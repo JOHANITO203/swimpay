@@ -374,12 +374,12 @@ Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, 
 ## Current Limitations
 
 - This is a foundation layer only.
-- Signal ingestion stores received signed signals, but does not parse, match, score, review, or confirm payments.
-- Bank parser output is currently a package-level foundation and is not yet wired into the signal worker pipeline.
-- Matching core output is currently package-level only and is not yet wired into live signal-worker execution.
-- Review queue APIs and repository methods exist, but automatic review creation from live matching decisions is not wired yet.
+- Signal ingestion stores received signed signals and publishes `signal.received`.
+- The signal worker now processes `signal.received` through deterministic parser, matching, review/reject/auto-confirm decision, audit, and webhook-request foundations.
+- Bank parser output and matching-core output are wired into the signal worker for task 027 runtime decisions.
+- Review queue APIs and repository methods exist, and live signal decisions can create review items.
 - Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
-- Webhook delivery core is wired to a tested Postgres-backed delivery loop and the NATS `webhook.delivery_requested` trigger. The full signal parser/matching/review runtime pipeline is not wired yet.
+- Webhook delivery core is wired to a tested Postgres-backed delivery loop and the NATS `webhook.delivery_requested` trigger. The signal runtime requests `payment.confirmed`, `payment.needs_review`, or `payment.rejected` delivery records when endpoints are configured.
 - Admin console is API-only. It exposes RBAC-protected operator read views and audited bank-template actions, but does not implement a browser UI, real app package/cert verification workflow, unsafe bulk actions, or a full operator identity provider.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.

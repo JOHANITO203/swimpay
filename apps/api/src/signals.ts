@@ -1,7 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import { connect, JSONCodec } from 'nats';
+import { connect, StringCodec } from 'nats';
 import pg from 'pg';
-import { EventTypes, type EventEnvelope } from '@swimpay/events';
+import { EventTypes, type EventEnvelope, type InternalEventEnvelope } from '@swimpay/events';
 
 const { Pool } = pg;
 
@@ -96,10 +96,20 @@ export class NatsEventPublisher implements InternalEventPublisher {
 
   public async publish(event: EventEnvelope): Promise<void> {
     const connection = await connect({ servers: this.natsUrl, timeout: 750 });
-    const codec = JSONCodec<EventEnvelope>();
+    const codec = StringCodec();
+    const envelope: InternalEventEnvelope = {
+      id: event.eventId,
+      type: event.eventType,
+      created_at: event.occurredAt,
+      source: 'swimpay-api',
+      data: event.data,
+      metadata: {
+        correlation_id: event.idempotencyKey
+      }
+    };
 
     try {
-      connection.publish(`swimpay.internal.${event.eventType}`, codec.encode(event));
+      await connection.jetstream().publish(event.eventType, codec.encode(JSON.stringify(envelope)));
     } finally {
       await connection.close();
     }

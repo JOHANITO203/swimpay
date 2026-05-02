@@ -160,3 +160,9 @@ All decisions must include reason codes:
 ## Critical rule
 
 Never auto-confirm on amount alone.
+
+## Runtime wiring
+
+Task 027 wires these rules into `swimpay-signal-worker` for the durable `signal.received` path. The runtime parses only redacted notification fields, keeps phone/reference matching on HMAC values, and refuses auto-confirmation when bank app metadata is `TO_VERIFY` or `pending_verification`.
+
+Unknown directions route to review. Negative categories such as cashback, refund, outgoing payment, promo and failed transfer are rejected as customer-payment candidates and never auto-confirm.

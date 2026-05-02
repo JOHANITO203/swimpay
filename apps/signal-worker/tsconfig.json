@@ -6,6 +6,7 @@
     "outDir": "dist"
   },
   "references": [
+    { "path": "../../packages/bank-templates" },
     { "path": "../../packages/events" },
     { "path": "../../packages/matching-core" }
   ],

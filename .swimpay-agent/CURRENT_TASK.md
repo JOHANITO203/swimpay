@@ -1,41 +1,41 @@
 # Current Task
 
-task id: 026_postgres_webhook_delivery_loop
-source task file: tasks/026_postgres_webhook_delivery_loop.md
+task id: 027_signal_runtime_pipeline
+source task file: tasks/027_signal_runtime_pipeline.md
 status: completed
 scope:
-Add a durable PostgreSQL-backed webhook delivery loop and connect the job worker webhook consumer to it.
+Wire `signal.received` to the deterministic parser, matching-core, review/reject/auto-confirm decisions, audit events and webhook delivery request foundation.
 
 files allowed:
-- tasks/026_postgres_webhook_delivery_loop.md
+- tasks/027_signal_runtime_pipeline.md
 - .swimpay-agent task queue and reports
-- apps/job-worker webhook delivery, runtime and tests
-- packages/database webhook delivery migration/schema exports
-- packages/contracts webhook delivery statuses
-- packages/events related webhook event constants
-- apps/api admin webhook failure status alignment
-- docs related to webhook delivery loop and local development
+- apps/signal-worker runtime, consumer wiring and tests
+- packages/events event usage only if needed
+- packages/matching-core usage only if needed
+- packages/bank-templates parser usage only if needed
+- docs related to signal runtime, matching, local development and implementation notes
 
 forbidden work:
-- Do not implement task 027 or later.
-- Do not implement signal/parser/matching/review runtime integration.
-- Do not implement Android Receiver logic.
-- Do not implement payment auto-confirmation.
-- Do not deploy.
-- Do not modify production secrets.
+- Do not implement task 028 or later.
+- Do not implement Android Receiver app logic.
+- Do not implement SBP, PSP behavior, SMS reading or bank app scraping.
 - Do not claim official bank confirmation.
 - Do not store raw phone numbers.
 - Do not store raw notification text by default.
+- Do not trust TO_VERIFY bank package names or certificates.
+- Do not auto-confirm amount-only or negative direction signals.
+- Do not deploy.
+- Do not modify production secrets.
 
 acceptance criteria:
-- Pending/failed due webhook deliveries can be claimed safely.
-- Successful delivery marks delivered.
-- Failed delivery schedules bounded retries and dead state after exhaustion.
-- Webhook HTTP requests include signed headers and delivery id.
-- NATS `webhook.delivery_requested` invokes the delivery processor.
-- Polling loop processes due deliveries only when enabled.
-- Payloads reject raw PII field markers.
-- No signal runtime pipeline or payment decision behavior is added.
+- `signal.received` can process a stored notification signal.
+- Redacted parser output feeds matching-core.
+- TO_VERIFY and pending bank metadata route to review.
+- Negative categories reject safely and never auto-confirm.
+- Amount-only signals never auto-confirm.
+- Strict synthetic trusted signal can auto-confirm in tests.
+- Review and webhook delivery requests are idempotency-safe.
+- Webhook payloads include notification-signal disclosure fields and no raw PII.
 
 commands to run:
 - npm run typecheck
@@ -44,10 +44,10 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T15:22:00+03:00
-completed_at: 2026-05-02T15:37:20+03:00
+started_at: 2026-05-02T16:00:00+03:00
+completed_at: 2026-05-02T16:12:30+03:00
 result: completed
 
 ## Source requirements
 
-See tasks/026_postgres_webhook_delivery_loop.md.
+See tasks/027_signal_runtime_pipeline.md.

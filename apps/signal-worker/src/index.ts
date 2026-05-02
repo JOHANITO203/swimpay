@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import {
+  EventTypes,
   NatsJetStreamRuntime,
   parseNatsRuntimeConfig,
   type DurableConsumerDefinition,
@@ -8,31 +9,54 @@ import {
   type SafeEventLogger
 } from '@swimpay/events';
 import { createSignalWorkerConsumers } from './consumers.js';
+import { PgSignalRuntimeRepository, SignalRuntimeProcessor, createSignalReceivedHandler } from './runtime.js';
 
 export interface SignalWorkerRuntime {
   nats: NatsJetStreamRuntime;
   consumers: DurableConsumerDefinition[];
   natsReady: boolean;
+  closeSignalRepository?: (() => Promise<void>) | undefined;
 }
 
 export async function createSignalWorkerRuntime(env: NodeJS.ProcessEnv, logger: SafeEventLogger): Promise<SignalWorkerRuntime> {
   const natsConfig = parseNatsRuntimeConfig(env);
   const nats = new NatsJetStreamRuntime(natsConfig, logger);
   const consumers = createSignalWorkerConsumers(natsConfig.durablePrefix);
+  const signalRepository = env.DATABASE_URL
+    ? new PgSignalRuntimeRepository({
+        connectionString: env.DATABASE_URL,
+        publishInternalEvent: (event) => nats.publish(event)
+      })
+    : null;
+  const processor = signalRepository
+    ? new SignalRuntimeProcessor({
+        repository: signalRepository
+      })
+    : null;
+  const closeSignalRepository =
+    signalRepository
+      ? async () => {
+          await signalRepository.close();
+        }
+      : undefined;
 
   try {
     await nats.connect();
     await nats.ensureStream();
     for (const consumer of consumers) {
-      await nats.subscribe(consumer, createSafeStubHandler('swimpay-signal-worker'));
+      const handler =
+        consumer.eventType === EventTypes.SIGNAL_RECEIVED && processor
+          ? createSignalReceivedHandler(processor)
+          : createSafeStubHandler('swimpay-signal-worker');
+      await nats.subscribe(consumer, handler);
     }
 
-    return { nats, consumers, natsReady: true };
+    return { nats, consumers, natsReady: true, closeSignalRepository };
   } catch (error) {
     logger.error('signal_worker_nats_setup_failed', {
       error_name: error instanceof Error ? error.name : 'UnknownError'
     });
-    return { nats, consumers, natsReady: false };
+    return { nats, consumers, natsReady: false, closeSignalRepository };
   }
 }
 
@@ -92,6 +116,7 @@ async function main(): Promise<void> {
 
   const shutdown = async () => {
     await runtime.nats.close();
+    await runtime.closeSignalRepository?.();
     await server.close();
   };
 

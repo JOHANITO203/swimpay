@@ -46,3 +46,7 @@ Move SwimPay from a validated foundation into durable local runtime integration 
 ## Task 026 Result
 
 `026_postgres_webhook_delivery_loop` adds the durable webhook delivery loop. Webhook deliveries are claimed from PostgreSQL using due-row status checks and `FOR UPDATE SKIP LOCKED`, processed with signed HTTP POST requests, retried on bounded schedules, marked `dead` after exhaustion, and audited with redacted metadata. The job worker now handles `webhook.delivery_requested` by `delivery_id` or `event_id`, while a disabled-by-default polling loop can recover due deliveries after missed events or restarts.
+
+## Task 027 Result
+
+`027_signal_runtime_pipeline` connects the durable `signal.received` consumer to the signal runtime processor. The processor parses redacted notification fields with the bank-template parser, uses matching-core for candidate scoring, creates review/reject/auto-confirm outcomes, writes redacted audit events, and requests webhook delivery records. Strict gates still block amount-only, unsafe directions, TO_VERIFY/pending app metadata, untrusted templates, untrusted devices and collisions from auto-confirmation.

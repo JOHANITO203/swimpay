@@ -47,6 +47,8 @@ Task 025 added the NATS JetStream durable consumer foundation. `@swimpay/events`
 
 Task 026 added a durable PostgreSQL-backed webhook delivery loop. Webhook deliveries now support explicit `pending`, `delivering`, `delivered`, `failed`, `dead`, and `cancelled` statuses, payload JSON, max attempts, HTTP status capture, updated timestamps and replay linkage. The job worker's `webhook.delivery_requested` consumer can process a specific delivery or all due deliveries for an event, and an optional fallback polling loop can process due rows when `WEBHOOK_WORKER_ENABLED=true`. Delivery uses signed SwimPay webhook headers including `SwimPay-Delivery-Id`, bounded retries, sanitized errors and redacted audit events.
 
+Task 027 added the signal runtime pipeline foundation. `swimpay-signal-worker` now wires the durable `signal.received` consumer into a deterministic processor that loads signal rows, parses redacted notification text with `@swimpay/bank-templates`, scores/matches candidates with `@swimpay/matching-core`, records rejected/review/auto-confirm decisions, writes redacted audit events, and requests safe public webhook delivery events. `TO_VERIFY` and pending bank app metadata cannot auto-confirm; amount-only and negative categories remain blocked.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:
@@ -70,7 +72,7 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - `GET /v1/payment-sessions/:id` returns checkout session status and reports expired sessions after `valid_until`.
 - Receiver device registration now supports `POST /v1/receiver-devices/register` and stores public key, app version, Android version, initial trust score, and a redacted registration audit event.
 - Receiver heartbeat now supports `POST /v1/receiver-devices/heartbeat` and updates notification access state, health status, app version, and last heartbeat time.
-- Workers only expose health endpoints and do not process jobs.
+- Workers expose health endpoints. The signal worker now processes `signal.received`; other signal consumers remain safe stubs until later runtime tasks.
 - Web now serves a hosted checkout foundation at `GET /checkout/:paymentSessionId`, with summary, buyer identity, payment instructions, waiting status, result text, timer, copy buttons, open-bank placeholder, and a safe `J'ai paye` button.
 - Web exposes `GET /checkout/:paymentSessionId/status` for checkout polling and `POST /checkout/:paymentSessionId/claimed-paid` as a non-confirming buyer claim endpoint.
 - `J'ai paye` does not confirm payment and only moves the local checkout UI toward waiting for the merchant-side signal.
@@ -87,12 +89,12 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Review creation is available as a backend foundation helper/repository method for ambiguous `needs_review` matches.
 - Manual review confirmation updates order and payment session state to `manual_confirmed`, records a review action, writes redacted audit data, persists a manual match, and emits an internal `review.confirmed` event with notification-signal disclosure fields.
 - Manual review rejection updates order and payment session state to `rejected`, records a review action, writes redacted audit data, and emits an internal `review.rejected` event.
-- Matching core is not yet wired into the signal worker pipeline. The review creation foundation exists, but automatic creation from live matching decisions is still a later integration step.
-- Webhook delivery is not implemented yet; review events are only published internally for the future worker.
+- Matching core is now wired into the signal-worker `signal.received` pipeline for runtime decisions.
+- Review creation is now wired from live signal runtime decisions and remains protected by redacted payloads.
 - Webhook worker foundation now includes public payment event creation, required notification-signal disclosure fields, HMAC signing, SwimPay webhook headers, retry scheduling, duplicate endpoint/event prevention, delivery status updates, and replay with the original event id.
 - Webhook worker tests use an injectable HTTP client and in-memory repository; no production external calls are made during tests.
-- The webhook worker is now connected to the NATS `webhook.delivery_requested` trigger and a Postgres-backed delivery loop. Parser/matching/review runtime integration remains task 027.
-- Signal worker NATS handlers are still safe stubs. Durable signal business processing starts in task 027.
+- The webhook worker is now connected to the NATS `webhook.delivery_requested` trigger and a Postgres-backed delivery loop.
+- Signal worker handles `signal.received` through the runtime processor. `signal.verified`, `signal.parsed`, and `match.scored` consumers remain stubs because they are not independent business entrypoints yet.
 - End-to-end tests now cover the foundation signal flow across matching-core and webhook worker primitives, including unsafe-path protections. They are still in-process tests and do not replace future Postgres/NATS integration tests.
 - Admin console foundation is API-only for now. It supports RBAC-protected operational views and audited template actions; it does not include a browser UI, a full operator identity provider, real app package/cert verification workflow, unsafe bulk actions, or raw PII access.
 - Bank template admin controls now support promotion, degradation, review-only, disable, and false-positive marking through API endpoints. Promotion is guarded by RBAC, evidence thresholds and verified bank app metadata; the console still does not verify real package/cert values or create a browser UI.

@@ -1,5 +1,44 @@
 # Progress Log
 
+## 2026-05-02 - Task 027 signal runtime pipeline
+
+Plan:
+- Verify task 026 migration integrity before touching runtime code.
+- Add tests first for parser/runtime, matching decisions, review/webhook requests, idempotency and privacy.
+- Implement only the `signal.received` runtime path in `swimpay-signal-worker`.
+- Keep `signal.verified`, `signal.parsed` and `match.scored` consumers as safe stubs for later tasks.
+
+Migration integrity preflight:
+- Inspected `packages/database/migrations/001_initial_schema.sql` diff from task 026.
+- The task 026 edits were additive/alignment changes for webhook delivery fields and indexes, mirrored by migration `002_webhook_delivery_loop.sql`.
+- No destructive table drop, documentation deletion, raw PII column, or unsafe payment state change was found.
+
+Implementation notes:
+- Added `apps/signal-worker/src/runtime.ts` with a deterministic signal processor, in-memory test repository and PostgreSQL runtime repository.
+- Wired `signal.received` to the processor when `DATABASE_URL` is configured.
+- Updated the API NATS publisher to publish existing internal events as JetStream-compatible envelopes on the event subject, so `signal.received` reaches the durable consumer path.
+- Parser input uses redacted notification fields only.
+- Auto-confirm remains blocked for TO_VERIFY/pending app metadata, untrusted profiles/templates, amount-only signals and negative directions.
+
+Validation so far:
+- `npm test -- --run apps/signal-worker/src/runtime.test.ts` PASS
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+Final validation rerun after API JetStream publisher alignment:
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+Result:
+- Task 027 completed.
+- Next task is 028_review_rejection_semantics.
+
 ## 2026-05-02 - Foundation baseline
 
 - Repository foundation exists.
