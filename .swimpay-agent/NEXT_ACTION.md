@@ -1,27 +1,27 @@
 # Next Action
 
-generated_at: 2026-05-03T01:36:30+03:00
+generated_at: 2026-05-03T02:00:46+03:00
 
 ## Latest Completed Sprint
 
-Sprint 4L - Bank Package Evidence Dry Run Readiness.
+Sprint 4M - Operator-reviewed Bank Evidence Workflow.
 
 ## Status
 
 PASS.
 
-The Android Receiver now has a bank package/certificate evidence contract, explicit PackageManager collector boundary, review-only policy guards, and PII-safe diagnostics for future evidence dry runs. The sprint did not collect real bank package/cert values and did not create production trust from observed evidence.
+The backend now has a `bank_package_evidence` model, receiver intake endpoint, RBAC-protected admin review endpoints, redacted audit events and a debug-only Android evidence submission action. Evidence approval is review-only and cannot create production trust or auto-confirmation eligibility.
 
 ## Next Recommended Sprint
 
-Sprint 4M - Operator-reviewed bank evidence dry run and verification workflow.
+Sprint 4N - Real-device operator evidence dry-run rehearsal with synthetic package only.
 
 Recommended tasks:
 
-1. Add a backend/admin evidence intake endpoint guarded by operator RBAC.
-2. Persist package/cert evidence as pending operator review only.
-3. Add audit events for evidence submission, review-only decision and rejection.
-4. Run the operator review path with synthetic evidence before any real package/cert dry run.
+1. Use the real device debug action to submit synthetic evidence through adb reverse.
+2. Verify `GET /v1/admin/bank-evidence` and approve-review-only against local Compose.
+3. Confirm all evidence remains review-only and no bank profile/template trust changes.
+4. Keep real bank notifications and real package/cert values out of scope until a separate explicit dry-run plan.
 
 ## What Not To Do Next
 

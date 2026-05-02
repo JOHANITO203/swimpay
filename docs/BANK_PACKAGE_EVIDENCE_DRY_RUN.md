@@ -42,6 +42,20 @@ Evidence states:
 
 Do not auto-trust. Backend/operator verification is a separate RBAC-protected action and still does not imply a payment was confirmed.
 
+Sprint 4M adds the backend/admin review workflow. Submitted evidence enters:
+
+```text
+pending_operator_review
+```
+
+An operator may approve it only as:
+
+```text
+approved_for_review_only
+```
+
+This status does not create production trust and does not enable auto-confirmation.
+
 ## Real-device Dry-run Checklist
 
 1. Keep backend local and non-production.
@@ -52,6 +66,21 @@ Do not auto-trust. Backend/operator verification is a separate RBAC-protected ac
 6. Submit evidence for operator review.
 7. Keep the related bank profile in review-only mode until explicit verification.
 8. Do not process real bank notifications during this sprint.
+
+Local API endpoint:
+
+```http
+POST /v1/bank-evidence
+```
+
+Admin review endpoints:
+
+```http
+GET /v1/admin/bank-evidence
+GET /v1/admin/bank-evidence/{id}
+POST /v1/admin/bank-evidence/{id}/approve-review-only
+POST /v1/admin/bank-evidence/{id}/reject
+```
 
 ## Diagnostics
 

@@ -154,6 +154,14 @@ Evidence remains review-only:
 
 See `docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md`.
 
+Sprint 4M wires debug-only evidence submission to the backend:
+
+- action id: `submit_synthetic_bank_evidence`;
+- endpoint: `POST /v1/bank-evidence`;
+- result: evidence submitted for operator review, not trusted yet, no auto-confirm enabled.
+
+The debug action uses `synthetic_debug_only` metadata and does not enumerate installed apps.
+
 ## Receiver Onboarding Readiness
 
 Phase 4J separates two Android permissions:

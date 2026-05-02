@@ -16,6 +16,8 @@ Those values should come from Android `PackageManager` inspection in the Android
 
 Sprint 4L adds the Android-side dry-run boundary for this evidence. PackageManager evidence is observation only and enters review-only / `pending_verification` state until an operator reviews it.
 
+Sprint 4M adds a separate `bank_package_evidence` workflow for submitted PackageManager evidence. Evidence can be `pending_operator_review`, `approved_for_review_only`, `rejected` or `deprecated`. This workflow intentionally does not write `verified` bank app signatures and does not enable production trust.
+
 ## States
 
 `bank_app_signatures.status` may be:

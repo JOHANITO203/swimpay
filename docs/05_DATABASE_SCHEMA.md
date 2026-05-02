@@ -172,6 +172,35 @@ CREATE TABLE bank_app_signatures (
 );
 ```
 
+### `bank_package_evidence`
+
+```sql
+CREATE TABLE bank_package_evidence (
+  id UUID PRIMARY KEY,
+  merchant_id UUID NOT NULL REFERENCES merchants(id),
+  device_id UUID NOT NULL REFERENCES receiver_devices(id),
+  bank_profile_id TEXT NOT NULL REFERENCES bank_profiles(id),
+  package_name TEXT NOT NULL,
+  cert_sha256 TEXT NOT NULL,
+  app_version TEXT,
+  install_source TEXT,
+  source TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending_operator_review',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by TEXT,
+  review_reason TEXT
+);
+```
+
+Allowed evidence statuses:
+
+```text
+pending_operator_review, approved_for_review_only, rejected, deprecated
+```
+
+Evidence rows are review workflow material only. They do not establish production trust and do not enable auto-confirmation.
+
 ### `bank_templates`
 
 ```sql
@@ -346,6 +375,9 @@ WHERE replay_of_delivery_id IS NULL;
 CREATE INDEX idx_webhook_due_claim
 ON webhook_deliveries(status, next_retry_at, created_at)
 WHERE status IN ('pending', 'failed');
+
+CREATE UNIQUE INDEX unique_bank_package_evidence_observation
+ON bank_package_evidence(merchant_id, device_id, bank_profile_id, package_name, cert_sha256, source);
 ```
 
 ## Critical uniqueness rules

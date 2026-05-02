@@ -77,6 +77,15 @@ import {
   validateAdminPromoteBody,
   type AdminRepository
 } from './admin.js';
+import {
+  PgBankEvidenceRepository,
+  toBankEvidenceResponse,
+  toBankEvidenceReviewResponse,
+  toBankEvidenceSubmitResponse,
+  validateBankEvidenceReviewBody,
+  validateBankEvidenceSubmitBody,
+  type BankEvidenceRepository
+} from './bank-evidence.js';
 
 const { Pool } = pg;
 
@@ -113,6 +122,7 @@ export interface ApiServerOptions {
   signalRepository?: ReceiverSignalRepository;
   reviewRepository?: ReviewRepository;
   adminRepository?: AdminRepository;
+  bankEvidenceRepository?: BankEvidenceRepository;
   eventPublisher?: InternalEventPublisher;
   phoneHmacSecret?: string;
   checkoutBaseUrl?: string;
@@ -120,6 +130,7 @@ export interface ApiServerOptions {
   receiverDeviceIdGenerator?: () => string;
   signalIdGenerator?: () => string;
   reviewIdGenerator?: ReviewIdGenerator;
+  bankEvidenceIdGenerator?: () => string;
   adminAuth?: OperatorAuthConfig;
   metrics?: MetricsRegistry;
   clock?: () => Date;
@@ -195,6 +206,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const signalRepository = options.signalRepository ?? createDefaultSignalRepository(process.env);
   const reviewRepository = options.reviewRepository ?? createDefaultReviewRepository(process.env);
   const adminRepository = options.adminRepository ?? createDefaultAdminRepository(process.env);
+  const bankEvidenceRepository = options.bankEvidenceRepository ?? createDefaultBankEvidenceRepository(process.env);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const metrics = options.metrics ?? defaultMetricsRegistry;
   const phoneHmacSecret = options.phoneHmacSecret ?? process.env.PHONE_HMAC_SECRET ?? 'local_dev_phone_hmac_secret';
@@ -203,6 +215,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const receiverDeviceIdGenerator = options.receiverDeviceIdGenerator ?? (() => randomUUID());
   const signalIdGenerator = options.signalIdGenerator ?? createDefaultSignalIdGenerator();
   const reviewIdGenerator = options.reviewIdGenerator ?? createDefaultReviewIdGenerator();
+  const bankEvidenceIdGenerator = options.bankEvidenceIdGenerator ?? (() => randomUUID());
   const adminAuth = options.adminAuth ?? createDefaultAdminAuthConfig(process.env, options.environment);
   const clock = options.clock ?? (() => new Date());
   const startedAt = options.startedAt ?? new Date();
@@ -600,6 +613,79 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     });
   });
 
+  server.post('/v1/bank-evidence', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+
+    if (!bankEvidenceRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Bank evidence repository is not configured.',
+          details: {}
+        }
+      });
+    }
+
+    const body = validateBankEvidenceSubmitBody(request.body);
+    if (!body.valid) {
+      return reply.status(400).send(body.response);
+    }
+
+    const occurredAt = clock().toISOString();
+    const result = await bankEvidenceRepository.submitEvidence({
+      evidenceId: bankEvidenceIdGenerator(),
+      merchantId,
+      deviceId: body.value.device_id,
+      bankProfileId: body.value.bank_profile_id,
+      packageName: body.value.package_name,
+      certSha256: body.value.cert_sha256,
+      appVersion: body.value.app_version,
+      installSource: body.value.install_source,
+      source: body.value.source,
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt
+    });
+
+    switch (result.kind) {
+      case 'stored':
+        return reply.status(201).send(toBankEvidenceSubmitResponse(result.evidence));
+      case 'duplicate':
+        return reply.status(409).send({
+          error: {
+            code: 'duplicate_bank_evidence',
+            message: 'Bank package evidence was already submitted for this device/profile/package/certificate.',
+            details: {
+              evidence_id: result.evidence.evidenceId,
+              status: result.evidence.status
+            }
+          }
+        });
+      case 'device_not_found':
+        return reply.status(404).send({
+          error: {
+            code: 'receiver_device_not_found',
+            message: 'Receiver device was not found.',
+            details: { device_id: body.value.device_id }
+          }
+        });
+      case 'bank_profile_not_found':
+        return reply.status(400).send({
+          error: {
+            code: 'bank_profile_not_found',
+            message: 'Bank profile was not found.',
+            details: { bank_profile_id: body.value.bank_profile_id }
+          }
+        });
+    }
+  });
+
   server.get('/v1/reviews', async (request, reply) => {
     const merchantId = parseMerchantId(request.headers.authorization);
     if (!merchantId) {
@@ -831,6 +917,98 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return reply
       .status(200)
       .send(toAdminListResponse('bank_app_signatures', await adminRepository.listBankAppSignatures(parseAdminLimit(query.limit))));
+  });
+
+  server.get('/v1/admin/bank-evidence', async (request, reply) => {
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
+    }
+
+    if (!bankEvidenceRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Bank evidence repository is not configured.',
+          details: {}
+        }
+      });
+    }
+
+    const query = request.query as { limit?: string };
+    const evidence = await bankEvidenceRepository.listEvidence(parseAdminLimit(query.limit));
+    return reply.status(200).send(toAdminListResponse('bank_evidence', evidence.map(toBankEvidenceResponse)));
+  });
+
+  server.get('/v1/admin/bank-evidence/:id', async (request, reply) => {
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
+    }
+
+    if (!bankEvidenceRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Bank evidence repository is not configured.',
+          details: {}
+        }
+      });
+    }
+
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Bank evidence id is required.', {}));
+    }
+
+    const evidence = await bankEvidenceRepository.getEvidence(params.id);
+    if (!evidence) {
+      return reply.status(404).send({
+        error: {
+          code: 'bank_evidence_not_found',
+          message: 'Bank evidence was not found.',
+          details: { evidence_id: params.id }
+        }
+      });
+    }
+
+    return reply.status(200).send(toBankEvidenceResponse(evidence));
+  });
+
+  server.post('/v1/admin/bank-evidence/:id/approve-review-only', async (request, reply) => {
+    return handleBankEvidenceReviewAction({
+      request,
+      reply,
+      bankEvidenceRepository,
+      adminAuth,
+      requiredPermission: OperatorPermissions.PROMOTE_BANK_TEMPLATES,
+      action: 'approve_review_only',
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
+  });
+
+  server.post('/v1/admin/bank-evidence/:id/reject', async (request, reply) => {
+    return handleBankEvidenceReviewAction({
+      request,
+      reply,
+      bankEvidenceRepository,
+      adminAuth,
+      requiredPermission: OperatorPermissions.DEGRADE_BANK_TEMPLATES,
+      action: 'reject',
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
   });
 
   server.post('/v1/admin/bank-app-signatures/:id/verify', async (request, reply) => {
@@ -1145,6 +1323,15 @@ function createDefaultAdminRepository(env: NodeJS.ProcessEnv): AdminRepository |
   return new PgAdminRepository(databaseUrl);
 }
 
+function createDefaultBankEvidenceRepository(env: NodeJS.ProcessEnv): BankEvidenceRepository | null {
+  const databaseUrl = env.DATABASE_URL;
+  if (!databaseUrl) {
+    return null;
+  }
+
+  return new PgBankEvidenceRepository(databaseUrl);
+}
+
 function createDefaultEventPublisher(env: NodeJS.ProcessEnv): InternalEventPublisher {
   if (!env.NATS_URL) {
     return new NoopEventPublisher();
@@ -1344,6 +1531,77 @@ async function handleAdminTemplateStatusAction(params: {
   );
 
   return sendAdminTemplateActionResult(params.reply, result, routeParams.id);
+}
+
+async function handleBankEvidenceReviewAction(params: {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  bankEvidenceRepository: BankEvidenceRepository | null;
+  adminAuth: OperatorAuthConfig;
+  requiredPermission: OperatorPermission;
+  action: 'approve_review_only' | 'reject';
+  auditEventId: string;
+  occurredAt: string;
+}) {
+  const operator = requireAdminPermission({
+    request: params.request,
+    reply: params.reply,
+    adminAuth: params.adminAuth,
+    permission: params.requiredPermission
+  });
+  if (!operator) {
+    return params.reply;
+  }
+
+  if (!params.bankEvidenceRepository) {
+    return params.reply.status(503).send({
+      error: {
+        code: 'service_unavailable',
+        message: 'Bank evidence repository is not configured.',
+        details: {}
+      }
+    });
+  }
+
+  const routeParams = params.request.params as { id?: string };
+  if (!routeParams.id) {
+    return params.reply.status(400).send(invalidRequest('Bank evidence id is required.', {}));
+  }
+
+  const body = validateBankEvidenceReviewBody(params.request.body);
+  if (!body.valid) {
+    return params.reply.status(400).send(body.response);
+  }
+
+  const result = await params.bankEvidenceRepository.reviewEvidence({
+    evidenceId: routeParams.id,
+    operatorId: operator.operatorId,
+    reason: body.reason,
+    auditEventId: params.auditEventId,
+    occurredAt: params.occurredAt,
+    action: params.action
+  });
+
+  switch (result.kind) {
+    case 'updated':
+      return params.reply.status(200).send(toBankEvidenceReviewResponse(result));
+    case 'not_found':
+      return params.reply.status(404).send({
+        error: {
+          code: 'bank_evidence_not_found',
+          message: 'Bank evidence was not found.',
+          details: { evidence_id: routeParams.id }
+        }
+      });
+    case 'not_pending':
+      return params.reply.status(409).send({
+        error: {
+          code: 'bank_evidence_not_pending',
+          message: 'Bank evidence was already reviewed and cannot be reviewed again.',
+          details: { evidence_id: routeParams.id }
+        }
+      });
+  }
 }
 
 function requireAdminPermission(params: {

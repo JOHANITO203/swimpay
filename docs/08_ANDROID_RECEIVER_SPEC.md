@@ -316,6 +316,14 @@ Rules:
 
 See `docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md`.
 
+Sprint 4M adds a backend submission path for that evidence:
+
+```http
+POST /v1/bank-evidence
+```
+
+The Android debug flow submits synthetic PackageManager evidence only after explicit package selection. The backend stores it as `pending_operator_review`. Operator approval can only mark it `approved_for_review_only`; Android and backend decision gates still treat it as non-production trust evidence.
+
 Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
 
 - `adb` available from the Android SDK.

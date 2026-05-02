@@ -67,6 +67,11 @@ class DebugReceiverSmokeController(
                 id = "process_synthetic_notification_e2e",
                 label = "Process synthetic notification",
                 safeDescription = "Runs listener-style synthetic notification path; backend decision pending; not official bank confirmation."
+            ),
+            DebugSmokeAction(
+                id = "submit_synthetic_bank_evidence",
+                label = "Submit synthetic bank evidence",
+                safeDescription = "Submits synthetic package evidence for operator review; not trusted yet; no auto-confirm enabled."
             )
         )
     }
@@ -81,6 +86,7 @@ class DebugReceiverSmokeController(
             "enqueue_synthetic_outbox_signal" -> enqueueSyntheticOutboxSignal()
             "flush_outbox" -> flushOutbox()
             "process_synthetic_notification_e2e" -> processSyntheticNotificationE2e()
+            "submit_synthetic_bank_evidence" -> submitSyntheticBankEvidence()
             else -> DebugSmokeResult(success = false, safeMessage = "Unknown debug action.")
         }
     }
@@ -294,6 +300,26 @@ class DebugReceiverSmokeController(
             success = flushed.success,
             safeMessage = "synthetic notification listener path ${flushed.safeMessage}"
         )
+    }
+
+    private fun submitSyntheticBankEvidence(): DebugSmokeResult {
+        val currentDeviceId = deviceId
+            ?: return DebugSmokeResult(
+                success = false,
+                safeMessage = "Register receiver first before submitting bank evidence."
+            )
+        val result = httpClient.submitBankEvidence(
+            deviceId = currentDeviceId,
+            bankProfileId = "sber_ru",
+            packageName = "synthetic_debug_only.com.swimpay.syntheticbank",
+            certSha256 = "synthetic_debug_only.cert_sha256"
+        )
+        val message = if (result.success) {
+            "evidence submitted for operator review; not trusted yet; review-only until approved; no auto-confirm enabled"
+        } else {
+            result.safeMessage
+        }
+        return DebugSmokeResult(result.success, message)
     }
 
     private fun signDebugSignal(signalWithoutSignature: Map<String, Any>): String {

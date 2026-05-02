@@ -437,7 +437,7 @@ describe('android device-side network smoke wiring', () => {
     const evidence = readAndroid('app/src/main/java/com/swimpay/receiver/BankPackageEvidence.kt');
     const collector = readAndroid('app/src/main/java/com/swimpay/receiver/PackageManagerBankPackageEvidenceCollector.kt');
     const docs = readFileSync(join(root, 'docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md'), 'utf8');
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4L_REPORT.md'), 'utf8');
 
     expect(evidence).toContain('BankPackageEvidenceObservation');
     expect(evidence).toContain('OPERATOR_REVIEW_REQUIRED');
@@ -459,6 +459,43 @@ describe('android device-side network smoke wiring', () => {
       '152_real_device_evidence_dry_run_plan',
       '153_bank_evidence_docs_and_local_flow',
       '154_sprint_4l_closeout_review'
+    ];
+    let previousIndex = -1;
+    for (const task of tasks) {
+      expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
+      const index = report.indexOf(task);
+      expect(index, task).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+  });
+
+  it('wires Sprint 4M operator-reviewed bank evidence workflow safely', () => {
+    const apiEvidence = readFileSync(join(root, 'apps/api/src/bank-evidence.ts'), 'utf8');
+    const server = readFileSync(join(root, 'apps/api/src/server.ts'), 'utf8');
+    const client = readAndroid('app/src/main/java/com/swimpay/receiver/DebugReceiverHttpClient.kt');
+    const controller = readAndroid('app/src/main/java/com/swimpay/receiver/DebugReceiverSmokeController.kt');
+    const docs = readFileSync(join(root, 'docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md'), 'utf8');
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+
+    expect(apiEvidence).toContain('pending_operator_review');
+    expect(apiEvidence).toContain('approved_for_review_only');
+    expect(apiEvidence).toContain('BankEvidenceAuditEventTypes');
+    expect(apiEvidence).toContain('bank_evidence.approved_review_only');
+    expect(server).toContain('/v1/bank-evidence');
+    expect(server).toContain('/v1/admin/bank-evidence');
+    expect(client).toContain('/v1/bank-evidence');
+    expect(controller).toContain('submit_synthetic_bank_evidence');
+    expect(docs).toContain('operator review');
+    expect(`${apiEvidence}\n${server}\n${client}\n${controller}\n${docs}`).not.toMatch(/READ_SMS|AccessibilityService|bank_confirmed|official_bank_confirmation = true|ready_auto_confirm/iu);
+
+    const tasks = [
+      '155_bank_evidence_backend_schema',
+      '156_bank_evidence_intake_endpoint',
+      '157_bank_evidence_admin_review_api',
+      '158_bank_evidence_audit_events',
+      '159_bank_evidence_receiver_submit_flow',
+      '160_bank_evidence_operator_review_tests',
+      '161_sprint_4m_closeout_review'
     ];
     let previousIndex = -1;
     for (const task of tasks) {

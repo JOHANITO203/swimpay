@@ -529,6 +529,37 @@ Evidence outcomes:
 
 Do not use real bank notifications during this dry run. Successful evidence capture does not mean the bank app is trusted and does not mean any payment was confirmed.
 
+Submit synthetic/debug evidence for operator review:
+
+```bash
+curl -X POST http://localhost:3000/v1/bank-evidence \
+  -H "Authorization: Bearer test_mch_local" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "device_id":"dev_local",
+    "bank_profile_id":"sberbank_ru",
+    "package_name":"synthetic_debug_only.com.swimpay.syntheticbank",
+    "cert_sha256":"synthetic_debug_only.cert_sha256",
+    "app_version":"0.1.0-debug",
+    "install_source":"debug_explicit_package_selection",
+    "source":"android_packagemanager"
+  }'
+```
+
+Review evidence as an operator:
+
+```bash
+curl http://localhost:3000/v1/admin/bank-evidence \
+  -H "Authorization: Bearer change_me_local_admin_token"
+
+curl -X POST http://localhost:3000/v1/admin/bank-evidence/<evidence-id>/approve-review-only \
+  -H "Authorization: Bearer change_me_local_admin_token" \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"operator reviewed PackageManager evidence"}'
+```
+
+Approval means review-only approval, not production trust and not payment confirmation. See `docs/BANK_EVIDENCE_OPERATOR_REVIEW.md`.
+
 ## Start Docker Compose
 
 ```bash

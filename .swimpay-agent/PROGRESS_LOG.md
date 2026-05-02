@@ -1327,3 +1327,17 @@ Safety checks:
 - Added `docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md` and updated Android Receiver, security, local development and bank verification docs.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Gradle assembleDebug, Gradle JVM tests, ADB reverse/install/launch.
 - No real bank notification, customer data, SMS, scraping, Android confirmation, raw phone, raw notification text or real bank package/cert value was used.
+
+## 2026-05-03T01:52:33+03:00 - Sprint 4M Operator-reviewed Bank Evidence Workflow
+
+- Created tasks 155 through 161 and updated the task queue.
+- Added `bank_package_evidence` migration with review-only statuses.
+- Added backend evidence validation and repository support.
+- Added `POST /v1/bank-evidence` receiver intake endpoint.
+- Added RBAC-protected `GET /v1/admin/bank-evidence`, detail, approve-review-only and reject endpoints.
+- Added audit events for evidence submission, review, approval and rejection.
+- Added Android debug-only synthetic bank evidence submission action.
+- Added backend API, Android JVM and static tests for evidence workflow safety.
+- Updated database, Android Receiver, security, local development and bank evidence docs.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Gradle assembleDebug, Gradle JVM tests, ADB reverse/install/launch.
+- No real bank notification, customer data, SMS, scraping, Android confirmation, raw phone, raw notification text or real bank package/cert value was used.

@@ -132,6 +132,33 @@ class DebugReceiverHttpClient(
         )
     }
 
+    fun submitBankEvidence(
+        deviceId: String,
+        bankProfileId: String,
+        packageName: String,
+        certSha256: String
+    ): DebugHttpResult {
+        val body = jsonObject(
+            "device_id" to deviceId,
+            "bank_profile_id" to bankProfileId,
+            "package_name" to packageName,
+            "cert_sha256" to certSha256,
+            "app_version" to config.appVersion,
+            "install_source" to "debug_explicit_package_selection",
+            "source" to "android_packagemanager"
+        )
+
+        return executeSafely(
+            request = DebugHttpRequest(
+                method = "POST",
+                path = "/v1/bank-evidence",
+                headers = mapOf("Authorization" to "Bearer test_${config.merchantId}"),
+                body = body
+            ),
+            successMessage = "evidence submitted for operator review; not trusted yet; review-only until approved; no auto-confirm enabled"
+        )
+    }
+
     private fun executeSafely(
         request: DebugHttpRequest,
         successMessage: String

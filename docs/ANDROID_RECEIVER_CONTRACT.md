@@ -325,4 +325,5 @@ No metric contains raw phone values, raw notification text, API keys or signatur
 - Real package/certificate verification is not implemented.
 - `TO_VERIFY` package/cert metadata remains untrusted.
 - Sprint 4L adds a PackageManager evidence dry-run boundary. It collects evidence only for an explicit operator-selected package name, masks diagnostics and keeps all observed values review-only until backend/operator verification.
+- Sprint 4M adds `/v1/bank-evidence` for receiver-side evidence submission and RBAC-protected `/v1/admin/bank-evidence` review endpoints. Submitted evidence is `pending_operator_review`; operator approval can only set `approved_for_review_only` and does not create production trust or auto-confirmation eligibility.
 - Backend signal matching and payment decisions remain in the signal runtime pipeline.

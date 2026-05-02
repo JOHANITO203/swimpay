@@ -92,6 +92,37 @@ class DebugReceiverNetworkActionsTest {
     }
 
     @Test
+    fun controllerSubmitsSyntheticBankEvidenceForOperatorReviewOnly() {
+        val transport = QueueDebugHttpTransport(
+            DebugHttpResponse(201, """{"device_id":"dev_debug_01","status":"active"}"""),
+            DebugHttpResponse(
+                201,
+                """{"evidence_id":"bev_debug_01","status":"pending_operator_review","trusted":false,"auto_confirm_enabled":false,"message":"evidence accepted for operator review; not trusted yet; no auto-confirm enabled"}"""
+            )
+        )
+        val controller = DebugReceiverSmokeController(
+            debugEnabled = true,
+            httpClient = DebugReceiverHttpClient(DebugBackendConfig(), transport),
+            nowIso = { "2026-05-03T02:00:00.000Z" }
+        )
+
+        val register = controller.performAction("register_receiver")
+        val evidence = controller.performAction("submit_synthetic_bank_evidence")
+
+        assertTrue(register.success)
+        assertTrue(evidence.success)
+        assertTrue(evidence.safeMessage.contains("operator review"))
+        assertTrue(evidence.safeMessage.contains("not trusted yet"))
+        assertTrue(evidence.safeMessage.contains("no auto-confirm enabled"))
+        assertEquals("/v1/bank-evidence", transport.requests[1].path)
+        assertTrue(transport.requests[1].body.contains("synthetic_debug_only"))
+        assertTrue(transport.requests[1].body.contains("android_packagemanager"))
+        assertFalse(transport.requests[1].body.contains("+7"))
+        assertFalse(transport.requests[1].body.contains("raw_notification", ignoreCase = true))
+        assertFalse(evidence.safeMessage.contains("official_bank_confirmation"))
+    }
+
+    @Test
     fun controllerReusesPersistentDeviceStateAndPersistentOutboxAcrossRecreation() {
         val deviceStore = PersistentDeviceStateStore(InMemoryDeviceStateStorage())
         val outboxStore = com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore(
