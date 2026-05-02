@@ -1199,3 +1199,42 @@ Safety checks:
 - Ran synthetic backend registration, heartbeat and signal upload; signal returned `backend_decision_pending`.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Gradle assembleDebug, Gradle JVM tests, Compose ps and API health.
 - Non-critical limitation: app-side network execution/outbox retry smoke remains for Sprint 4F.
+
+# 2026-05-02T22:09:47+03:00 - Sprint 4F Device-side Network Smoke Wiring
+
+- Created Sprint 4F task files 090-096 and updated the task queue.
+- Added debug-only Android backend config with default `http://127.0.0.1:8080`.
+- Added debug-only localhost cleartext network security for the debug source set only.
+- Added Android debug HTTP client for `/api-health`, receiver registration, heartbeat and signal upload.
+- Wired debug panel actions to real app-side network calls.
+- Added synthetic redacted signal signing with compact stable JSON compatible with the backend HMAC verifier.
+- Fixed initial real-device upload `401`: Kotlin canonical JSON included spaces while backend stable JSON is compact.
+- Added local counter advancement so upload followed by outbox flush does not replay the same counter.
+- Wired debug outbox enqueue/flush behavior; real-device flush returned `acked=1 failed_retrying=0`.
+- Rebuilt, installed and launched the APK on real device `R5CWA0FEPZW`.
+- Ran real app-side smoke over `adb reverse tcp:8080 tcp:8080`; register, heartbeat, synthetic signal upload, outbox enqueue and flush all passed.
+- Updated Android docs, local development docs, `.swimpay-agent/SPRINT_4F_REPORT.md`, `.swimpay-agent/REAL_DEVICE_SMOKE_REPORT.md`, `.swimpay-agent/BLOCKERS.md` and `.swimpay-agent/NEXT_ACTION.md`.
+
+Validation:
+- `npm run android:doctor` PASS
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml ps` PASS
+- `GET http://localhost:8080/api-health` PASS
+- `.\gradlew.bat :app:assembleDebug --no-daemon --stacktrace` PASS
+- `.\gradlew.bat :app:testDebugUnitTest --no-daemon --stacktrace` PASS
+- `adb devices -l` PASS
+- `adb -s R5CWA0FEPZW reverse tcp:8080 tcp:8080` PASS
+- `adb -s R5CWA0FEPZW install -r apps/android-receiver/android/app/build/outputs/apk/debug/app-debug.apk` PASS
+- `adb -s R5CWA0FEPZW shell am start -n com.swimpay.receiver/.MainActivity` PASS
+
+Safety checks:
+- No real bank notification used.
+- No real customer data used.
+- No SMS, scraping or Accessibility behavior added.
+- No Android payment confirmation or auto-confirmation added.
+- No raw phone or raw notification text uploaded/displayed.
+- `TO_VERIFY` package/cert metadata remains untrusted.

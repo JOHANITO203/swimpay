@@ -33,17 +33,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4E real-device smoke tasks in the approved order', () => {
+  test('task queue lists Sprint 4F device-side smoke tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '083_local_backend_startup_for_real_device',
-      '084_android_live_notification_access_status',
-      '085_debug_only_receiver_smoke_panel',
-      '086_real_device_register_heartbeat_smoke',
-      '087_real_device_synthetic_signal_upload_smoke',
-      '088_real_device_outbox_offline_online_smoke',
-      '089_sprint_4e_closeout_review'
+      '090_android_debug_backend_config',
+      '091_android_debug_http_client',
+      '092_android_debug_register_heartbeat_actions',
+      '093_android_debug_synthetic_signal_upload_action',
+      '094_android_debug_outbox_enqueue_flush_actions',
+      '095_real_device_app_side_smoke_execution',
+      '096_sprint_4f_closeout_review'
     ];
 
     let previousIndex = -1;

@@ -6,10 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `083_local_backend_startup_for_real_device` - status: completed - source: `tasks/083_local_backend_startup_for_real_device.md`
-- [x] `084_android_live_notification_access_status` - status: completed - source: `tasks/084_android_live_notification_access_status.md`
-- [x] `085_debug_only_receiver_smoke_panel` - status: completed - source: `tasks/085_debug_only_receiver_smoke_panel.md`
-- [x] `086_real_device_register_heartbeat_smoke` - status: completed - source: `tasks/086_real_device_register_heartbeat_smoke.md`
-- [x] `087_real_device_synthetic_signal_upload_smoke` - status: completed - source: `tasks/087_real_device_synthetic_signal_upload_smoke.md`
-- [ ] `088_real_device_outbox_offline_online_smoke` - status: blocked - source: `tasks/088_real_device_outbox_offline_online_smoke.md`
-- [x] `089_sprint_4e_closeout_review` - status: completed - source: `tasks/089_sprint_4e_closeout_review.md`
+- [x] `090_android_debug_backend_config` - status: completed - source: `tasks/090_android_debug_backend_config.md`
+- [x] `091_android_debug_http_client` - status: completed - source: `tasks/091_android_debug_http_client.md`
+- [x] `092_android_debug_register_heartbeat_actions` - status: completed - source: `tasks/092_android_debug_register_heartbeat_actions.md`
+- [x] `093_android_debug_synthetic_signal_upload_action` - status: completed - source: `tasks/093_android_debug_synthetic_signal_upload_action.md`
+- [x] `094_android_debug_outbox_enqueue_flush_actions` - status: completed - source: `tasks/094_android_debug_outbox_enqueue_flush_actions.md`
+- [x] `095_real_device_app_side_smoke_execution` - status: completed - source: `tasks/095_real_device_app_side_smoke_execution.md`
+- [x] `096_sprint_4f_closeout_review` - status: completed - source: `tasks/096_sprint_4f_closeout_review.md`

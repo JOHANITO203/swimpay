@@ -202,16 +202,16 @@ describe('android emulator smoke validation', () => {
     expect(smokeReport).toContain('Outbox offline/online result');
   });
 
-  it('lists Sprint 4E task files in the approved order', () => {
+  it('lists Sprint 4F task files in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
     const tasks = [
-      '083_local_backend_startup_for_real_device',
-      '084_android_live_notification_access_status',
-      '085_debug_only_receiver_smoke_panel',
-      '086_real_device_register_heartbeat_smoke',
-      '087_real_device_synthetic_signal_upload_smoke',
-      '088_real_device_outbox_offline_online_smoke',
-      '089_sprint_4e_closeout_review'
+      '090_android_debug_backend_config',
+      '091_android_debug_http_client',
+      '092_android_debug_register_heartbeat_actions',
+      '093_android_debug_synthetic_signal_upload_action',
+      '094_android_debug_outbox_enqueue_flush_actions',
+      '095_real_device_app_side_smoke_execution',
+      '096_sprint_4f_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -230,5 +230,42 @@ describe('android emulator smoke validation', () => {
     expect(smokeDocs).toContain('No accessibility scraping service');
     expect(smokeDocs).toContain('No local payment confirmation');
     expect(smokeDocs).toContain('backend_decision_pending');
+  });
+});
+
+describe('android device-side network smoke wiring', () => {
+  it('defines debug-only backend config, cleartext localhost and HTTP client boundaries', () => {
+    const config = readAndroid('app/src/main/java/com/swimpay/receiver/DebugBackendConfig.kt');
+    const client = readAndroid('app/src/main/java/com/swimpay/receiver/DebugReceiverHttpClient.kt');
+    const debugManifest = readAndroid('app/src/debug/AndroidManifest.xml');
+    const debugNetwork = readAndroid('app/src/debug/res/xml/debug_network_security_config.xml');
+
+    expect(config).toContain('http://127.0.0.1:8080');
+    expect(config).toContain('adb reverse localhost');
+    expect(config).toContain('/api-health');
+    expect(client).toContain('/v1/receiver-devices/register');
+    expect(client).toContain('/v1/receiver-devices/heartbeat');
+    expect(client).toContain('/v1/receiver/signals');
+    expect(client).toContain('backend decision pending');
+    expect(client).not.toMatch(/paymentConfirmed|autoConfirm|official_bank_confirmation = true/iu);
+    expect(debugManifest).toContain('debug_network_security_config');
+    expect(debugNetwork).toContain('127.0.0.1');
+  });
+
+  it('keeps debug smoke controller wired to real actions without raw PII', () => {
+    const controller = readAndroid('app/src/main/java/com/swimpay/receiver/DebugReceiverSmokeController.kt');
+    const activity = readAndroid('app/src/main/java/com/swimpay/receiver/MainActivity.kt');
+
+    expect(controller).toContain('performAction');
+    expect(controller).toContain('registerReceiver');
+    expect(controller).toContain('sendHeartbeat');
+    expect(controller).toContain('uploadSyntheticSignal');
+    expect(controller).toContain('enqueueSyntheticOutboxSignal');
+    expect(controller).toContain('flushOutbox');
+    expect(controller).toContain('TO_VERIFY');
+    expect(controller).toContain('not official bank confirmation');
+    expect(controller).not.toMatch(/\+7|raw_notification|bank_confirmed|auto_confirm/iu);
+    expect(activity).toContain('Thread');
+    expect(activity).toContain('performAction');
   });
 });

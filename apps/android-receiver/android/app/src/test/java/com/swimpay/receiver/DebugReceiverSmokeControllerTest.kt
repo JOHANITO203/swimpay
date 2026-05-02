@@ -52,10 +52,11 @@ class DebugReceiverSmokeControllerTest {
         assertEquals("TO_VERIFY", signal["package_name"])
         assertEquals("TO_VERIFY", signal["package_cert_sha256"])
         assertEquals(false, signal["raw_text_present"])
+        assertTrue(signal["signature"].toString().isNotBlank())
+        assertFalse(signal["signature"].toString().contains("placeholder", ignoreCase = true))
         assertFalse(serialized.contains("+7"))
         assertFalse(serialized.contains("raw_notification"))
         assertFalse(serialized.contains("official_bank_confirmation"))
         assertFalse(serialized.contains("confirmed", ignoreCase = true))
     }
 }
-

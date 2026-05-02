@@ -1,44 +1,39 @@
 # Next Action
 
-generated_at: 2026-05-02T21:34:45+03:00
+generated_at: 2026-05-02T22:09:47+03:00
 
 ## Latest Completed Sprint
 
-Sprint 4E - Backend Live Smoke + Receiver Debug Triggers.
+Sprint 4F - Device-side Network Smoke Wiring.
 
 ## Status
 
-PASS_WITH_NON_CRITICAL_LIMITATION.
+PASS.
 
 ## What Passed
 
-- Docker Compose backend starts locally.
-- Correct API health URL is `http://localhost:8080/api-health`.
-- API health reports database, NATS and Valkey OK.
-- Real device `R5CWA0FEPZW` is authorized.
-- ADB reverse `tcp:8080 tcp:8080` passed.
-- APK build, install and launch passed.
-- Android app now reads live Notification Access state.
-- Debug-only smoke actions are visible and use safe wording.
-- Synthetic receiver registration passed through local backend.
-- Synthetic heartbeat passed through local backend.
-- Synthetic redacted signal upload passed and returned `backend_decision_pending`.
-
-## Remaining Limitation
-
-The debug smoke panel does not yet execute the real HTTP registration/heartbeat/upload/outbox flows from the device app itself. The backend smoke was executed through a local synthetic helper against the same local backend. Full app-side network wiring should be the next sprint.
+- Android debug backend config defaults to `http://127.0.0.1:8080`.
+- ADB reverse `tcp:8080 tcp:8080` passed on real device `R5CWA0FEPZW`.
+- Debug app-side HTTP client reached the local backend through the phone.
+- App-side receiver registration passed.
+- App-side heartbeat passed.
+- App-side synthetic redacted signal upload passed and returned backend-decision-pending wording.
+- App-side outbox enqueue passed with redacted/signed payload.
+- App-side outbox flush passed with `acked=1 failed_retrying=0`.
+- Compose backend remained healthy at `http://localhost:8080/api-health`.
+- Full npm and Android validation passed.
 
 ## Next Recommended Sprint
 
-Sprint 4F - Device-side network smoke wiring.
+Sprint 4G - Android persistent outbox and backend status polish.
 
 Recommended tasks:
 
-1. Add debug-only Android HTTP client wiring for register, heartbeat and synthetic upload.
-2. Persist synthetic debug device id safely in debug state.
-3. Wire debug outbox enqueue/flush to encrypted outbox and WorkManager boundaries.
-4. Rerun real-device smoke through the app over `adb reverse tcp:8080 tcp:8080`.
-5. Keep every payload synthetic, redacted and marked as backend decision pending.
+1. Persist debug receiver device id and local counter safely across Activity recreation.
+2. Wire outbox smoke to the platform encrypted outbox adapter instead of in-memory debug state.
+3. Add live backend health refresh to the app status screen.
+4. Validate offline/online retry by removing and restoring adb reverse.
+5. Keep all payloads synthetic and redacted.
 
 ## What Not To Do Next
 
@@ -51,3 +46,4 @@ Recommended tasks:
 - Do not implement Android auto-confirmation.
 - Do not trust `TO_VERIFY` package names or certificate fingerprints.
 - Do not store raw phone or raw notification text.
+

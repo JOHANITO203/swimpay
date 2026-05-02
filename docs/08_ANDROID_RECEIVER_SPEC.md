@@ -197,6 +197,26 @@ Both pass with `ANDROID_HOME`/`ANDROID_SDK_ROOT` set to the local SDK. Emulator/
 
 ## Sprint 4C Emulator Smoke Status
 
+## Sprint 4F Device-Side Debug Smoke
+
+The debug Android app can call the local backend through adb reverse:
+
+```text
+adb reverse tcp:8080 tcp:8080
+http://127.0.0.1:8080
+```
+
+The debug-only smoke controller supports:
+
+- `GET /api-health`
+- `POST /v1/receiver-devices/register`
+- `POST /v1/receiver-devices/heartbeat`
+- `POST /v1/receiver/signals`
+
+The signal upload action sends synthetic redacted notification-signal data with `TO_VERIFY` package/cert metadata. Accepted upload means backend processing is pending. Android still does not confirm, auto-confirm or make a payment decision.
+
+Outbox debug actions can enqueue and flush synthetic redacted payloads. Failed uploads move to retry state; successful uploads become acknowledged. No raw phone number or raw notification text is stored.
+
 Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
 
 - `adb` available from the Android SDK.

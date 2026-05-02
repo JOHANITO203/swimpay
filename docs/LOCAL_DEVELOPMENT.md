@@ -532,6 +532,38 @@ curl http://localhost:8080/api-health
 
 `http://localhost:3000/health` is expected to fail in Compose mode because `swimpay-api` listens on private container port `3000` and is not host-published.
 
+## Android Real Device Debug Smoke
+
+Sprint 4F wires the debug-only Android Receiver smoke buttons to real device-side HTTP calls.
+
+Use the local Compose proxy and adb reverse:
+
+```powershell
+docker compose --env-file .env.example -f infra/docker-compose.yml up -d --build
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/api-health
+adb -s R5CWA0FEPZW reverse tcp:8080 tcp:8080
+```
+
+The debug app uses:
+
+```text
+http://127.0.0.1:8080
+```
+
+This URL is local to the Android device through adb reverse. It is not a production URL.
+
+Debug-only actions:
+
+- Register receiver
+- Send heartbeat
+- Upload synthetic signal
+- Queue synthetic outbox signal
+- Flush outbox
+
+All debug smoke actions use synthetic redacted data only. They do not use real bank notifications, raw phone numbers or raw notification text. The UI wording must remain `backend decision pending`, `notification signal` and `not official bank confirmation`.
+
+Debug cleartext HTTP is scoped to the debug source set and localhost only. Release network security must not be weakened.
+
 Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, and workers stay on the private Compose network. For a real single-server install, set `HTTP_PORT=80` in the server environment and configure TLS/reverse-proxy policy before exposing merchants.
 
 Before starting the full local runtime, run the lightweight smoke guard:

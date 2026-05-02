@@ -1,24 +1,22 @@
 # Current Task
 
-task_id: 074_emulator_smoke_closeout_review
-source_task_file: tasks/074_emulator_smoke_closeout_review.md
+task_id: 096_sprint_4f_closeout_review
+source_task_file: tasks/096_sprint_4f_closeout_review.md
 status: completed
 
 ## Scope
 
-Sprint 4C - Android Emulator Smoke Validation.
+Sprint 4F - Device-side Network Smoke Wiring.
 
 ## Files Allowed
 
 - `apps/android-receiver/**`
 - Android receiver docs
 - `.swimpay-agent/**`
-- `tasks/068_*.md` through `tasks/074_*.md`
-- local Android emulator diagnostic script/docs
+- `tasks/090_*.md` through `tasks/096_*.md`
 
 ## Forbidden Work
 
-- Claiming emulator smoke success without a running emulator/device.
 - Android payment confirmation or auto-confirmation.
 - SMS permissions, SMS reading, accessibility scraping or bank app scraping.
 - Real bank package names or certificate fingerprints.
@@ -27,31 +25,35 @@ Sprint 4C - Android Emulator Smoke Validation.
 
 ## Acceptance Criteria
 
-- Sprint 4C task files exist.
-- Task queue lists 068-074 in order.
-- Emulator environment doctor exists and reports adb/emulator/AVD/device/APK status.
-- APK install is attempted only if a running emulator/device exists.
-- Notification Access flow is documented safely.
-- Receiver register, heartbeat, signal upload and outbox smoke status are reported honestly.
-- Full Node/Compose validation passes.
+- Sprint 4F task files exist.
+- Task queue lists 090-096 in order.
+- Debug app uses `http://127.0.0.1:8080` over `adb reverse tcp:8080 tcp:8080`.
+- Debug HTTP client supports health, register, heartbeat and signal upload.
+- Register, heartbeat, synthetic signal upload, outbox enqueue and outbox flush run from the real Android app.
+- Payloads remain synthetic and redacted.
+- Full Node, Compose and Android validation passes.
 
 ## Commands Run
 
 - `npm run android:doctor`
-- `npm run android:emulator-doctor`
-- `npm test -- --run apps/android-receiver/src/android-runnable-app.test.ts`
-- `npm test -- --run tests/agent-framework.test.ts`
-- `.\gradlew.bat :app:assembleDebug --no-daemon --stacktrace`
-- `.\gradlew.bat :app:testDebugUnitTest --no-daemon --stacktrace`
 - `npm run typecheck`
 - `npm run lint`
 - `npm test`
 - `npm run build`
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config`
+- `docker compose --env-file .env.example -f infra/docker-compose.yml ps`
+- `GET http://localhost:8080/api-health`
+- `.\gradlew.bat :app:assembleDebug --no-daemon --stacktrace`
+- `.\gradlew.bat :app:testDebugUnitTest --no-daemon --stacktrace`
+- `adb devices -l`
+- `adb -s R5CWA0FEPZW reverse tcp:8080 tcp:8080`
+- `adb -s R5CWA0FEPZW install -r apps/android-receiver/android/app/build/outputs/apk/debug/app-debug.apk`
+- `adb -s R5CWA0FEPZW shell am start -n com.swimpay.receiver/.MainActivity`
 
-started_at: 2026-05-02T20:45:00+03:00
-completed_at: 2026-05-02T21:05:00+03:00
+started_at: 2026-05-02T21:35:00+03:00
+completed_at: 2026-05-02T22:09:47+03:00
 
 ## Result
 
-Sprint 4C prepared the emulator smoke path and added diagnostics/reports. SDK adb and the debug APK are available, but live emulator validation is blocked because no Android Emulator command, AVD or running device is available. Repository validation remains passing; APK install and live app smoke were not claimed as passed.
+Sprint 4F passed. The real Android app registered a receiver, sent heartbeat, uploaded a synthetic redacted notification signal and flushed a queued synthetic outbox signal through the local backend over adb reverse. The initial signature mismatch was fixed by using compact stable JSON for HMAC input.
+

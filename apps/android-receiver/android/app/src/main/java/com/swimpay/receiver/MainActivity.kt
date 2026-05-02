@@ -9,6 +9,9 @@ import android.widget.TextView
 
 class MainActivity : Activity() {
     private val statusViewModel = ReceiverStatusViewModel()
+    private val debugController by lazy {
+        DebugReceiverSmokeController(BuildConfig.DEBUG)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,12 +54,17 @@ class MainActivity : Activity() {
         container.addView(TextView(this).apply { this.text = text })
         container.addView(result)
 
-        val debugController = DebugReceiverSmokeController(BuildConfig.DEBUG)
         for (action in debugController.availableActions()) {
             container.addView(Button(this).apply {
                 this.text = action.label
                 setOnClickListener {
-                    result.text = "Prepared ${action.id}: ${action.safeDescription}"
+                    result.text = "Running ${action.id}..."
+                    Thread {
+                        val actionResult = debugController.performAction(action.id)
+                        runOnUiThread {
+                            result.text = "${if (actionResult.success) "Success" else "Error"}: ${actionResult.safeMessage}"
+                        }
+                    }.start()
                 }
             })
         }

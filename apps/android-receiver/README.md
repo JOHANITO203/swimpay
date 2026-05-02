@@ -83,6 +83,33 @@ npm run android:doctor
 
 `npm run smoke:receiver` prints a local synthetic flow. It does not require a real Android device and does not call external services.
 
+## Real Device Debug Smoke
+
+Sprint 4F debug builds include a local-only smoke panel wired to app-side HTTP calls.
+
+Backend URL on the device:
+
+```text
+http://127.0.0.1:8080
+```
+
+Host setup:
+
+```powershell
+adb -s R5CWA0FEPZW reverse tcp:8080 tcp:8080
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/api-health
+```
+
+Debug actions use synthetic redacted data only:
+
+- Register receiver
+- Send heartbeat
+- Upload synthetic signal
+- Queue synthetic outbox signal
+- Flush outbox
+
+The debug app never confirms or auto-confirms a payment. Successful signal upload means backend decision pending, not official bank confirmation.
+
 ## Emulator Smoke
 
 Run:
