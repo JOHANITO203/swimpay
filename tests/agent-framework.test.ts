@@ -29,15 +29,15 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Phase 3A receiver readiness tasks as executable in the approved order', () => {
+  test('task queue lists Phase 3B Android Receiver MVP tasks as executable in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '032_device_signature_verification_hardening',
-      '033_live_docker_runtime_smoke_tests',
-      '034_backend_receiver_signal_live_flow',
-      '035_bank_app_verification_workflow',
-      '036_phase_2_closeout_review'
+      '037_android_project_setup',
+      '038_notification_listener_service',
+      '039_bank_allowlist_and_package_verification',
+      '040_snapshot_extractor_and_coalescer',
+      '041_privacy_firewall_and_local_parser'
     ];
 
     let previousIndex = -1;

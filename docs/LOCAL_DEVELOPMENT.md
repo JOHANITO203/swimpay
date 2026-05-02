@@ -69,7 +69,7 @@ Ingest a signed receiver signal:
 ```bash
 curl -X POST http://localhost:3000/v1/receiver/signals \
   -H "Content-Type: application/json" \
-  -d '{"event_id":"evt_local_01","device_id":"dev_01","merchant_id":"mch_01","bank_profile_id":"sber_ru","package_name":"ru.sberbankmobile","package_cert_sha256":"pending_cert_sha256","notification_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","local_counter":1,"observed_at":"2026-05-02T08:00:00.000Z","payload":{"title_redacted":"Transfer <AMOUNT> <CURRENCY>","body_redacted":"Transfer from <PHONE>. <REFERENCE>","amount_minor":13700,"currency":"RUB","sender_phone_hmac":"hmac_phone","sender_phone_masked":"+7 *** *** **33","reference_hmac":"hmac_ref","reference_code_masked":"SWP-A***","direction_label":"incoming_customer_transfer"},"signature":"hex_hmac_signature_for_foundation"}'
+  -d '{"event_id":"evt_local_01","device_id":"dev_01","merchant_id":"mch_01","bank_profile_id":"bank_synthetic_v1","package_name":"test.bank.synthetic","package_cert_sha256":"synthetic_cert_sha256_v1","notification_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","local_counter":1,"observed_at":"2026-05-02T08:00:00.000Z","payload":{"title_redacted":"Transfer <AMOUNT> <CURRENCY>","body_redacted":"Transfer from <PHONE>. <REFERENCE>","amount_minor":13700,"currency":"RUB","sender_phone_hmac":"hmac_phone","sender_phone_masked":"+7 *** *** **33","reference_hmac":"hmac_ref","reference_code_masked":"SWP-A***","direction_label":"incoming_customer_transfer"},"signature":"hex_hmac_signature_for_foundation"}'
 ```
 
 The foundation signature verifier is deterministic for local development and tests. Real Android keypair verification is intentionally not complete yet.
@@ -428,6 +428,14 @@ curl -X POST http://localhost:3000/v1/receiver-devices/heartbeat \
 `POST /v1/receiver/signals` requires a canonical signed redacted payload. Raw phone fields and raw notification text are rejected by default. `TO_VERIFY` package/cert metadata remains untrusted and accepted uploads still wait for backend decision processing.
 
 Receiver signal upload responses with `accepted: true` mean the redacted signal was accepted for backend processing only. They do not confirm a payment and do not claim official bank confirmation. See `docs/BACKEND_RECEIVER_SIGNAL_LIVE_FLOW.md`.
+
+Run the Android Receiver MVP core tests:
+
+```bash
+npm test -- --run apps/android-receiver/src
+```
+
+The Android Receiver module is Kotlin-source-ready under `apps/android-receiver/android`, but this repo does not currently include Gradle or Android build tooling. See `docs/ANDROID_RECEIVER_MVP_FOUNDATION.md`.
 
 ## Bank App Verification Workflow
 

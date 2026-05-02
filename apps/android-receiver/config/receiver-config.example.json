@@ -1,0 +1,20 @@
+{
+  "api_base_url": "http://10.0.2.2:3000",
+  "device_install_id": "install_synthetic_local",
+  "coalescing_window_ms": 1500,
+  "debug_raw_text_upload_enabled": false,
+  "allowed_banks": [
+    {
+      "bank_profile_id": "bank_synthetic_v1",
+      "package_name": "test.bank.synthetic",
+      "cert_sha256": "synthetic_cert_sha256_v1",
+      "verification_status": "verified"
+    },
+    {
+      "bank_profile_id": "bank_to_verify_v1",
+      "package_name": "TO_VERIFY",
+      "cert_sha256": "TO_VERIFY",
+      "verification_status": "TO_VERIFY"
+    }
+  ]
+}

@@ -77,6 +77,8 @@ Android may read platform notification fields such as:
 
 Only redacted fields should leave the device in normal mode.
 
+Sprint 3B defines this as an MVP TypeScript/Kotlin-source-ready boundary. The listener receives platform notification objects, ignores non-allowlisted packages, extracts a snapshot, coalesces duplicate updates, applies the privacy firewall and builds a signed upload envelope. It does not confirm payment locally.
+
 ## Signal Coalescing
 
 Bank notifications may update quickly. The app should coalesce snapshots over a short window, then upload one signal with:
@@ -89,6 +91,12 @@ Bank notifications may update quickly. The app should coalesce snapshots over a 
 - `semantic_hash`
 
 Backend uniqueness constraints on `event_id` and `notification_hash` protect final idempotency.
+
+The default MVP coalescing window is:
+
+```text
+1500 ms
+```
 
 ## Signed Upload
 
@@ -125,3 +133,16 @@ Heartbeats report:
 - battery optimization risk
 
 Backend warnings include notification access, listener connectivity, queue backlog and battery optimization risks.
+
+## Local Parser Hints
+
+The Android Receiver may emit extraction hints only:
+
+- amount minor units;
+- currency;
+- masked sender phone;
+- masked reference code;
+- direction hint;
+- negative keyword hints.
+
+These hints are not payment decisions. Backend matching and decision logic remain authoritative.

@@ -1,15 +1,19 @@
 # Current Task
 
-task id: 036_phase_2_closeout_review
-source task file: tasks/036_phase_2_closeout_review.md
+task id: 041_privacy_firewall_and_local_parser
+source task file: tasks/041_privacy_firewall_and_local_parser.md
 status: completed
 scope:
-Create Phase 2 closeout review and Sprint 3A report.
+Create Android Receiver MVP foundation through privacy firewall and local parser hints.
 
 files allowed:
-- tasks/036_phase_2_closeout_review.md
+- tasks/037_android_project_setup.md
+- tasks/038_notification_listener_service.md
+- tasks/039_bank_allowlist_and_package_verification.md
+- tasks/040_snapshot_extractor_and_coalescer.md
+- tasks/041_privacy_firewall_and_local_parser.md
 - .swimpay-agent task queue and reports
-- docs and agent reports related to Phase 2 and Sprint 3A closeout
+- apps/android-receiver TypeScript MVP core, tests, docs and Kotlin-source-ready skeleton
 
 forbidden work:
 - Do not implement production deployment.
@@ -23,10 +27,12 @@ forbidden work:
 - Do not add unrelated parser, matching, review, webhook or UI features.
 
 acceptance criteria:
-- `.swimpay-agent/PHASE_2_CLOSEOUT_REVIEW.md` exists.
-- `.swimpay-agent/SPRINT_3A_REPORT.md` exists.
-- Completed Phase 2 tasks, limitations, Android MVP tasks and go/no-go criteria are documented.
-- No production deployment or product feature change is introduced.
+- Android project structure and README exist.
+- Notification listener skeleton ignores non-allowlisted packages and never decides payments.
+- Bank allowlist model keeps `TO_VERIFY` untrusted.
+- Snapshot extractor and coalescer dedupe/merge snapshots.
+- Privacy firewall redacts raw phone/raw notification text and emits only extraction hints.
+- Backend remains the final decision maker.
 
 commands to run:
 - npm run typecheck
@@ -35,10 +41,10 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T18:29:00+03:00
-completed_at: 2026-05-02T18:32:00+03:00
+started_at: 2026-05-02T18:33:00+03:00
+completed_at: 2026-05-02T18:45:00+03:00
 result: completed.
 
 ## Source requirements
 
-See tasks/036_phase_2_closeout_review.md.
+See tasks/037_android_project_setup.md through tasks/041_privacy_firewall_and_local_parser.md.

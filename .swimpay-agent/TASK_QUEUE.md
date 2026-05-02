@@ -6,8 +6,8 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `032_device_signature_verification_hardening` - status: completed - source: `tasks/032_device_signature_verification_hardening.md`
-- [x] `033_live_docker_runtime_smoke_tests` - status: completed - source: `tasks/033_live_docker_runtime_smoke_tests.md`
-- [x] `034_backend_receiver_signal_live_flow` - status: completed - source: `tasks/034_backend_receiver_signal_live_flow.md`
-- [x] `035_bank_app_verification_workflow` - status: completed - source: `tasks/035_bank_app_verification_workflow.md`
-- [x] `036_phase_2_closeout_review` - status: completed - source: `tasks/036_phase_2_closeout_review.md`
+- [x] `037_android_project_setup` - status: completed - source: `tasks/037_android_project_setup.md`
+- [x] `038_notification_listener_service` - status: completed - source: `tasks/038_notification_listener_service.md`
+- [x] `039_bank_allowlist_and_package_verification` - status: completed - source: `tasks/039_bank_allowlist_and_package_verification.md`
+- [x] `040_snapshot_extractor_and_coalescer` - status: completed - source: `tasks/040_snapshot_extractor_and_coalescer.md`
+- [x] `041_privacy_firewall_and_local_parser` - status: completed - source: `tasks/041_privacy_firewall_and_local_parser.md`

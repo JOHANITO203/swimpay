@@ -5,23 +5,25 @@ import {
   NotificationAccessStatus,
   buildHeartbeatPayload,
   createHmacSignalSigner,
+  BankPackageVerificationStatuses,
   processAndroidNotification,
   type AndroidNotificationInput
 } from './index.js';
 
 const allowedBank = {
   bankProfileId: 'bank_sber_v1',
-  packageName: 'ru.sberbankmobile',
-  packageCertSha256: 'cert_sha256_test_only',
+  packageName: 'test.bank.synthetic',
+  packageCertSha256: 'synthetic_cert_sha256_test_only',
+  verificationStatus: BankPackageVerificationStatuses.Verified,
   strictVerification: true
 };
 
 const notification: AndroidNotificationInput = {
-  packageName: 'ru.sberbankmobile',
-  packageCertSha256: 'cert_sha256_test_only',
+  packageName: 'test.bank.synthetic',
+  packageCertSha256: 'synthetic_cert_sha256_test_only',
   notificationId: 42,
   tag: 'transfer',
-  key: '0|ru.sberbankmobile|42|transfer|1000',
+  key: '0|test.bank.synthetic|42|transfer|1000',
   postTime: '2026-05-02T07:50:00.000Z',
   channelId: 'payments',
   groupKey: 'bank',
@@ -82,6 +84,7 @@ describe('android receiver core', () => {
     expect(result.snapshot.title).toBe('Sberbank');
     expect(result.snapshot.titleBig).toBe('Incoming transfer');
     expect(result.snapshot.body).toBe('Transfer +7 999 111-22-33 137.00 RUB');
+    expect(result.snapshot.text).toBe('Transfer +7 999 111-22-33 137.00 RUB');
     expect(result.snapshot.bigText).toContain('Incoming transfer');
     expect(result.snapshot.subText).toBe('Card *1234');
     expect(result.snapshot.textLines).toEqual(['Incoming transfer', '+7 999 111-22-33', '137.00 RUB']);
@@ -116,6 +119,7 @@ describe('android receiver core', () => {
     expect(result.upload.signature).toMatch(/^[a-f0-9]{64}$/);
     expect(result.upload.payload.redacted_text).toContain('<PHONE>');
     expect(result.upload.payload.redacted_text).toContain('<AMOUNT>');
+    expect(result.upload.payload.raw_text_present).toBe(false);
   });
 
   it('builds heartbeat payload without payment decision data', () => {

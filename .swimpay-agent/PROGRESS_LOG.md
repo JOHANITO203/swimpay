@@ -845,6 +845,32 @@ Validation:
 - `npm test` PASS
 - `npm run build` PASS
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+# 2026-05-02 - Sprint 3B Android Receiver MVP Foundation
+
+Plan:
+- Create tasks 037 through 041 and move the task queue to Sprint 3B.
+- Prepare `apps/android-receiver` for Android MVP work with Kotlin-source-ready structure and local TypeScript tests.
+- Add listener boundary, allowlist/package verification, snapshot extraction/coalescing, privacy firewall and local parser hints.
+- Preserve all Android guardrails: no SMS, no scraping, no raw PII upload, no payment confirmation, backend decides.
+
+Result:
+- Added task files `037_android_project_setup` through `041_privacy_firewall_and_local_parser`.
+- Added `apps/android-receiver/README.md`, config placeholder and Android source skeleton.
+- Added `AndroidReceiverNotificationListener`, `BankPackageVerificationStatuses`, `evaluateAllowedBankPackage`, `buildNotificationSnapshot`, `NotificationCoalescer` and `runPrivacyFirewall`.
+- Added tests for listener ignore behavior, `TO_VERIFY` untrusted behavior, snapshot coalescing, privacy redaction and local parser hints.
+- Replaced Android Receiver examples that used real-looking package names with synthetic package/cert values.
+- Added `docs/ANDROID_RECEIVER_MVP_FOUNDATION.md`.
+
+Validation:
+- `npm test -- --run apps/android-receiver/src` PASS
+- `npm run typecheck --workspace @swimpay/android-receiver` PASS
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS (`32` test files, `214` tests)
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+- Android/Gradle tests not run because the repo does not yet include a Gradle wrapper or Android SDK build configuration.
 # 2026-05-02 - Task 031 Android Receiver Contract Validation
 
 Plan:

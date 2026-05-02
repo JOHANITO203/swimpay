@@ -48,6 +48,8 @@ Canonical placeholders:
 - `<REFERENCE>`;
 - `<CARD_MASK>`.
 
+Android Receiver Sprint 3B applies a local privacy firewall before upload. The local MVP core redacts phone-like values, amount/currency strings, card masks and SwimPay-style references, then emits only parser hints. Normal upload payloads set `raw_text_present` to `false`.
+
 ## Receiver App signing
 
 Each Receiver device has a keypair.
@@ -128,3 +130,17 @@ Audit events are required for:
 - review actions;
 - webhook failures;
 - bank/template promotion/degradation.
+
+## Android Receiver MVP Boundary
+
+The Android Receiver MVP foundation is capture-only:
+
+- no Android payment confirmation;
+- no Android auto-confirmation;
+- no SMS access;
+- no bank app scraping;
+- no non-allowlisted notification upload;
+- no raw phone upload;
+- no raw notification text upload.
+
+Package/cert values marked `TO_VERIFY` stay untrusted locally and on the backend.
