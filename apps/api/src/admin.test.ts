@@ -8,7 +8,7 @@ describe('minimal admin console api', () => {
     const repository = buildAdminRepository();
     const server = buildTestServer(repository, { role: 'operator' });
 
-    const [profiles, templates, drift, webhookFailures, receiverHealth, auditEvents] = await Promise.all([
+    const [profiles, templates, bankAppSignatures, drift, webhookFailures, receiverHealth, auditEvents] = await Promise.all([
       server.inject({
         method: 'GET',
         url: '/v1/admin/bank-profiles',
@@ -17,6 +17,11 @@ describe('minimal admin console api', () => {
       server.inject({
         method: 'GET',
         url: '/v1/admin/templates',
+        headers: adminHeaders()
+      }),
+      server.inject({
+        method: 'GET',
+        url: '/v1/admin/bank-app-signatures',
         headers: adminHeaders()
       }),
       server.inject({
@@ -53,6 +58,14 @@ describe('minimal admin console api', () => {
       canonicalTitle: '<AMOUNT> <CURRENCY>',
       canonicalBody: '<PHONE> <REFERENCE>'
     });
+    expect(bankAppSignatures.statusCode).toBe(200);
+    expect(bankAppSignatures.json().bank_app_signatures[0]).toMatchObject({
+      signatureId: 'bas_to_verify',
+      bankProfileId: 'sberbank_ru',
+      packageName: 'TO_VERIFY',
+      certSha256Masked: 'TO_VERIFY',
+      status: 'pending_verification'
+    });
     expect(drift.statusCode).toBe(200);
     expect(drift.json().drift_events[0]).toMatchObject({
       bankProfileId: 'sberbank_ru',
@@ -75,8 +88,8 @@ describe('minimal admin console api', () => {
         template_id: 'tpl_01'
       }
     });
-    expect([profiles.body, templates.body, auditEvents.body].join('\n')).not.toContain('+79991234567');
-    expect([profiles.body, templates.body, auditEvents.body].join('\n')).not.toContain('raw notification');
+    expect([profiles.body, templates.body, bankAppSignatures.body, auditEvents.body].join('\n')).not.toContain('+79991234567');
+    expect([profiles.body, templates.body, bankAppSignatures.body, auditEvents.body].join('\n')).not.toContain('raw notification');
   });
 
   it('marks a template degraded and writes an operator audit event with redacted reason', async () => {
@@ -355,6 +368,97 @@ describe('minimal admin console api', () => {
     expect(response.json().error.details.required_permission).toBe('promote_bank_templates');
     expect(repository.templates[0]?.status).toBe('learning');
   });
+
+  it('does not verify TO_VERIFY bank app metadata automatically', async () => {
+    const repository = buildAdminRepository();
+    const server = buildTestServer(repository, { role: 'admin' });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-app-signatures/bas_to_verify/verify',
+      headers: adminHeaders(),
+      payload: {
+        reason: 'operator cannot verify placeholder metadata'
+      }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('bank_app_signature_to_verify');
+    expect(repository.bankAppSignatures[0]?.status).toBe('pending_verification');
+    expect(repository.verifiedBankAppProfiles.has('sberbank_ru')).toBe(false);
+  });
+
+  it('verifies only synthetic observed bank app metadata through an audited operator action', async () => {
+    const repository = buildAdminRepository({
+      bankAppSignatures: [
+        {
+          signatureId: 'bas_synthetic_01',
+          bankProfileId: 'sberbank_ru',
+          packageName: 'synthetic.receiver.bank',
+          certSha256Masked: 'synthe...cert01',
+          status: 'pending_verification',
+          firstSeenAt: '2026-05-02T10:00:00.000Z'
+        }
+      ]
+    });
+    const server = buildTestServer(repository, { role: 'admin' });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-app-signatures/bas_synthetic_01/verify',
+      headers: adminHeaders(),
+      payload: {
+        reason: 'synthetic PackageManager review completed'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      signature_id: 'bas_synthetic_01',
+      bank_profile_id: 'sberbank_ru',
+      package_name: 'synthetic.receiver.bank',
+      cert_sha256_masked: 'synthe...cert01',
+      status: 'verified',
+      audit_event_id: 'aud_admin_01'
+    });
+    expect(repository.verifiedBankAppProfiles.has('sberbank_ru')).toBe(true);
+    expect(repository.auditEvents[0]).toMatchObject({
+      eventType: AdminAuditEventTypes.BANK_APP_SIGNATURE_VERIFIED,
+      objectType: 'bank_app_signature',
+      objectId: 'bas_synthetic_01',
+      payloadRedacted: {
+        cert_sha256_masked: 'synthe...cert01',
+        status: 'verified'
+      }
+    });
+  });
+
+  it('requires promote_bank_templates permission to verify bank app metadata', async () => {
+    const repository = buildAdminRepository({
+      bankAppSignatures: [
+        {
+          signatureId: 'bas_synthetic_01',
+          bankProfileId: 'sberbank_ru',
+          packageName: 'synthetic.receiver.bank',
+          certSha256Masked: 'synthe...cert01',
+          status: 'pending_verification',
+          firstSeenAt: '2026-05-02T10:00:00.000Z'
+        }
+      ]
+    });
+    const server = buildTestServer(repository, { role: 'operator' });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-app-signatures/bas_synthetic_01/verify',
+      headers: adminHeaders(),
+      payload: {}
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error.details.required_permission).toBe('promote_bank_templates');
+    expect(repository.bankAppSignatures[0]?.status).toBe('pending_verification');
+  });
 });
 
 function buildTestServer(
@@ -400,6 +504,7 @@ function adminHeaders() {
 function buildAdminRepository(
   overrides: {
     templates?: AdminTemplateSummary[] | undefined;
+    bankAppSignatures?: ConstructorParameters<typeof InMemoryAdminRepository>[0]['bankAppSignatures'] | undefined;
     verifiedBankAppProfiles?: string[] | undefined;
   } = {}
 ): InMemoryAdminRepository {
@@ -450,6 +555,16 @@ function buildAdminRepository(
         lastHeartbeatAt: '2026-05-02T10:30:00.000Z',
         appVersion: '0.1.0',
         updatedAt: '2026-05-02T10:30:00.000Z'
+      }
+    ],
+    bankAppSignatures: overrides.bankAppSignatures ?? [
+      {
+        signatureId: 'bas_to_verify',
+        bankProfileId: 'sberbank_ru',
+        packageName: 'TO_VERIFY',
+        certSha256Masked: 'TO_VERIFY',
+        status: 'pending_verification',
+        firstSeenAt: '2026-05-02T10:00:00.000Z'
       }
     ],
     auditEvents: [

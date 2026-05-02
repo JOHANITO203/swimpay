@@ -48,6 +48,7 @@ import {
   buildSignalIngestionInput,
   buildSignalReceivedEvent,
   createDefaultSignalIdGenerator,
+  isReceiverDeviceEligibleForSignalUpload,
   NatsEventPublisher,
   NoopEventPublisher,
   PgSignalRepository,
@@ -512,6 +513,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       deviceId: body.value.device_id
     });
     if (!device) {
+      metrics.increment(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL);
       return reply.status(404).send({
         error: {
           code: 'receiver_device_not_found',
@@ -523,12 +525,27 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       });
     }
 
-    if (!verifyReceiverSignalSignature(body.value, device.publicKey)) {
+    if (!isReceiverDeviceEligibleForSignalUpload(device)) {
+      metrics.increment(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL);
+      return reply.status(403).send({
+        error: {
+          code: 'receiver_device_disabled',
+          message: 'Receiver device is not allowed to upload signals.',
+          details: {
+            device_id: body.value.device_id,
+            status: device.status
+          }
+        }
+      });
+    }
+
+    const signatureVerification = verifyReceiverSignalSignature(body.value, device.publicKey);
+    if (!signatureVerification.valid) {
       metrics.increment(MetricNames.RECEIVER_SIGNATURE_INVALID_TOTAL);
       metrics.increment(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL);
       return reply.status(401).send({
         error: {
-          code: 'invalid_signature',
+          code: signatureVerification.reason === 'missing_signature' ? 'signature_missing' : 'invalid_signature',
           message: 'Receiver signal signature is invalid.',
           details: {}
         }
@@ -793,6 +810,90 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     const query = request.query as { limit?: string };
     return reply.status(200).send(toAdminListResponse('templates', await adminRepository.listTemplates(parseAdminLimit(query.limit))));
+  });
+
+  server.get('/v1/admin/bank-app-signatures', async (request, reply) => {
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
+    }
+
+    if (!adminRepository) {
+      return reply.status(503).send(adminRepositoryUnavailableError());
+    }
+
+    const query = request.query as { limit?: string };
+    return reply
+      .status(200)
+      .send(toAdminListResponse('bank_app_signatures', await adminRepository.listBankAppSignatures(parseAdminLimit(query.limit))));
+  });
+
+  server.post('/v1/admin/bank-app-signatures/:id/verify', async (request, reply) => {
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.PROMOTE_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
+    }
+
+    if (!adminRepository) {
+      return reply.status(503).send(adminRepositoryUnavailableError());
+    }
+
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Bank app signature id is required.', {}));
+    }
+
+    const body = validateAdminActionBody(request.body);
+    if ('error' in body) {
+      return reply.status(400).send(body);
+    }
+
+    const result = await adminRepository.verifyBankAppSignature({
+      signatureId: params.id,
+      operatorId: operator.operatorId,
+      reason: body.reason,
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
+
+    if (result.kind === 'updated') {
+      return reply.status(200).send({
+        signature_id: result.signature.signatureId,
+        bank_profile_id: result.signature.bankProfileId,
+        package_name: result.signature.packageName,
+        cert_sha256_masked: result.signature.certSha256Masked,
+        status: result.signature.status,
+        audit_event_id: result.auditEvent.auditEventId
+      });
+    }
+
+    if (result.kind === 'not_found') {
+      return reply.status(404).send({
+        error: {
+          code: 'bank_app_signature_not_found',
+          message: 'Bank app signature was not found.',
+          details: { signature_id: params.id }
+        }
+      });
+    }
+
+    return reply.status(409).send({
+      error: {
+        code: 'bank_app_signature_to_verify',
+        message: 'TO_VERIFY package or certificate metadata cannot be trusted automatically.',
+        details: { signature_id: params.id }
+      }
+    });
   });
 
   server.post('/v1/admin/templates/:id/degrade', async (request, reply) => {

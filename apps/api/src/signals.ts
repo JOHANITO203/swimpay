@@ -2,12 +2,16 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { connect, StringCodec } from 'nats';
 import pg from 'pg';
 import {
+  ReceiverSignatureAlgorithms,
   validateAndroidReceiverSignalUploadRequest,
-  type AndroidReceiverErrorCode
+  type AndroidReceiverErrorCode,
+  type ReceiverSignatureAlgorithm
 } from '@swimpay/contracts';
 import { EventTypes, type EventEnvelope, type InternalEventEnvelope } from '@swimpay/events';
 
 const { Pool } = pg;
+
+export { ReceiverSignatureAlgorithms } from '@swimpay/contracts';
 
 export interface ReceiverSignalDevice {
   id: string;
@@ -16,6 +20,8 @@ export interface ReceiverSignalDevice {
   lastLocalCounter: number;
   status: string;
 }
+
+export type ReceiverSignalDeviceStatus = 'pending' | 'active' | 'degraded' | 'suspended' | 'revoked' | 'disabled';
 
 export interface ReceiverSignalPayload {
   title_redacted?: string | undefined;
@@ -103,6 +109,10 @@ export interface InternalEventPublisher {
 export type ReceiverSignalValidationResult =
   | { valid: true; value: ReceiverSignalRequestBody }
   | { valid: false; code: AndroidReceiverErrorCode; field?: string | undefined };
+
+export type ReceiverSignatureVerificationResult =
+  | { valid: true; algorithm: ReceiverSignatureAlgorithm }
+  | { valid: false; algorithm: ReceiverSignatureAlgorithm; reason: 'missing_signature' | 'invalid_signature' };
 
 export class NoopEventPublisher implements InternalEventPublisher {
   public async publish(): Promise<void> {}
@@ -395,13 +405,45 @@ export function createReceiverSignalSignature(
     .digest('hex');
 }
 
-export function verifyReceiverSignalSignature(body: ReceiverSignalRequestBody, verificationKey: string): boolean {
-  const { signature, signature_payload: signaturePayload, ...signalWithoutSignature } = body;
+export function verifyReceiverSignalSignature(
+  body: ReceiverSignalRequestBody | Record<string, unknown>,
+  verificationKey: string
+): ReceiverSignatureVerificationResult {
+  const signature = typeof body.signature === 'string' ? body.signature : '';
+  if (!signature) {
+    return {
+      valid: false,
+      algorithm: ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1,
+      reason: 'missing_signature'
+    };
+  }
+
+  const signaturePayload =
+    'signature_payload' in body && body.signature_payload && typeof body.signature_payload === 'object' && !Array.isArray(body.signature_payload)
+      ? (body.signature_payload as Record<string, unknown>)
+      : undefined;
+  const signalWithoutSignature = { ...(body as Record<string, unknown>) };
+  delete signalWithoutSignature.signature;
+  delete signalWithoutSignature.signature_payload;
   const expected = createReceiverSignalSignature(signaturePayload ?? signalWithoutSignature, verificationKey);
   const expectedBuffer = Buffer.from(expected, 'hex');
   const actualBuffer = Buffer.from(signature, 'hex');
 
-  return expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
+  const valid = expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
+  return valid
+    ? {
+        valid: true,
+        algorithm: ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1
+      }
+    : {
+        valid: false,
+        algorithm: ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1,
+        reason: 'invalid_signature'
+      };
+}
+
+export function isReceiverDeviceEligibleForSignalUpload(device: ReceiverSignalDevice): boolean {
+  return ['pending', 'active', 'degraded'].includes(device.status);
 }
 
 export function buildSignalIngestionInput(params: {

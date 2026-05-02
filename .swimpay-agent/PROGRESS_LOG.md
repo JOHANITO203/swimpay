@@ -870,3 +870,109 @@ Validation:
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
 
 Completed at: 2026-05-02T17:48:21+03:00.
+
+# 2026-05-02 - Sprint 3A / Task 032 Device Signature Verification Hardening
+
+Plan:
+- Add tests first for explicit receiver signature algorithm, unknown device rejection, suspended/revoked device rejection, invalid signature rejection and local counter replay protection.
+- Keep the verifier deterministic and testable without introducing a production bypass.
+- Preserve Android as capture/redact/sign/upload only; backend remains the decision point.
+
+Result:
+- Added explicit `hmac_sha256_canonical_v1` receiver signature algorithm constant.
+- Changed signature verification to return a typed result with algorithm and failure reason.
+- Blocked suspended, revoked and disabled receiver devices from signal upload before signature persistence.
+- Added rejected-signal metrics for unknown and disabled devices.
+- Documented the current deterministic verifier and future asymmetric verification requirement.
+
+Validation:
+- `npm test -- --run packages/contracts/src/android-receiver.test.ts apps/api/src/signals.test.ts` PASS
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+# 2026-05-02 - Sprint 3A / Task 033 Live Docker Runtime Smoke Tests
+
+Plan:
+- Add a local smoke checker for Docker Compose runtime readiness.
+- Verify service presence, private infrastructure exposure, healthchecks and log rotation.
+- Document exact local commands without deploying to production or changing product behavior.
+
+Result:
+- Added `npm run smoke:runtime`.
+- Added a Compose config inspector for expected services, internal private network, healthchecks, log rotation and host port exposure.
+- Added unit tests for safe Compose shape, forbidden infrastructure ports and missing runtime healthchecks.
+- Added `docs/LIVE_DOCKER_RUNTIME_SMOKE.md` and local development notes.
+
+Validation:
+- `npm test -- --run tests/live-runtime-smoke.test.ts` PASS
+- `npm run smoke:runtime` PASS
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+# 2026-05-02 - Sprint 3A / Task 034 Backend Receiver Signal Live Flow
+
+Plan:
+- Strengthen the in-process durable E2E receiver upload flow around response semantics.
+- Verify accepted receiver uploads remain backend-decision-pending and cannot imply payment confirmation.
+- Document the synthetic backend flow and privacy constraints.
+
+Result:
+- Added assertions that API receiver signal upload returns `status: received`, `accepted: true` and `next_action: backend_decision_pending`.
+- Verified the response does not include `official_bank_confirmation`.
+- Preserved the existing runtime check that `TO_VERIFY` bank metadata routes to review and never auto-confirms.
+- Added `docs/BACKEND_RECEIVER_SIGNAL_LIVE_FLOW.md`.
+
+Validation:
+- `npm test -- --run tests/durable-worker-e2e.test.ts` PASS
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+# 2026-05-02 - Sprint 3A / Task 035 Bank App Verification Workflow
+
+Plan:
+- Add a guarded operator/admin workflow for observed bank app package/certificate metadata.
+- Keep `TO_VERIFY` metadata untrusted and impossible to verify automatically.
+- Audit verification actions and avoid exposing full certificate fingerprints.
+
+Result:
+- Added `GET /v1/admin/bank-app-signatures`.
+- Added `POST /v1/admin/bank-app-signatures/:id/verify`.
+- Verification requires `promote_bank_templates`, writes `admin.bank_app_signature.verified`, and updates admin repository state.
+- Added tests for listing metadata, blocking `TO_VERIFY`, verifying synthetic observed metadata, and permission denial.
+- Added `docs/BANK_APP_VERIFICATION_WORKFLOW.md`.
+
+Validation:
+- `npm test -- --run apps/api/src/admin.test.ts` PASS
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+# 2026-05-02 - Sprint 3A / Task 036 Phase 2 Closeout Review
+
+Plan:
+- Create Phase 2 closeout review.
+- Create Sprint 3A report.
+- Update blockers, next action and queue state.
+
+Result:
+- Added `.swimpay-agent/PHASE_2_CLOSEOUT_REVIEW.md`.
+- Added `.swimpay-agent/SPRINT_3A_REPORT.md`.
+- Updated `.swimpay-agent/BLOCKERS.md`, `.swimpay-agent/NEXT_ACTION.md`, `.swimpay-agent/CURRENT_TASK.md` and `.swimpay-agent/TASK_QUEUE.md`.
+
+Validation:
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS

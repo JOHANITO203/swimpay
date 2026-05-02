@@ -19,6 +19,7 @@ Android must not finalize payment confirmation.
 - Android does not claim official bank confirmation.
 - Backend responses never set `official_bank_confirmation` to true.
 - Bank package names and certificate fingerprints marked `TO_VERIFY` are untrusted.
+- Bank package and certificate observations remain untrusted until explicit operator verification. Backend admin review can verify an observed row only when both `package_name` and `package_cert_sha256` are concrete non-`TO_VERIFY` values.
 
 ## Device Registration
 
@@ -215,6 +216,12 @@ Duplicate snapshots must not create duplicate payment signals. Backend uniquenes
 
 The signed payload is canonical JSON with deterministic key ordering and excludes the `signature` field.
 
+Supported algorithm:
+
+```text
+hmac_sha256_canonical_v1
+```
+
 The signed payload must include:
 
 - `event_id`
@@ -226,6 +233,16 @@ The signed payload must include:
 - redacted signal fields
 
 The current foundation uses the registered device `public_key` value as a deterministic verification key in local tests. A production-grade asymmetric verification layer is intentionally future work.
+
+Signal upload is accepted only when:
+
+- the receiver device exists for the merchant;
+- the receiver device status is `pending`, `active` or `degraded`;
+- the signature is present;
+- the signature matches the canonical payload;
+- the local counter is strictly greater than the device's last accepted counter.
+
+Devices in `suspended`, `revoked` or `disabled` state cannot upload signals.
 
 ## Error Codes
 

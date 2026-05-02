@@ -59,9 +59,18 @@ Backend verifies:
 - device exists;
 - public key matches;
 - signature valid;
+- receiver device is not suspended, revoked or disabled;
 - event id unique;
 - notification hash unique;
 - local counter increasing.
+
+Current V1 foundation signature algorithm:
+
+```text
+hmac_sha256_canonical_v1
+```
+
+The foundation uses the registered receiver public key field as the local deterministic verification key in tests. Production-grade asymmetric verification remains a follow-up hardening step and must not introduce a bypass mode.
 
 ## Anti-replay
 

@@ -10,7 +10,8 @@ export const AdminAuditEventTypes = {
   TEMPLATE_REVIEW_ONLY: 'admin.template.review_only',
   TEMPLATE_PROMOTED: 'admin.template.promoted',
   TEMPLATE_DISABLED: 'admin.template.disabled',
-  TEMPLATE_FALSE_POSITIVE: 'admin.template.false_positive'
+  TEMPLATE_FALSE_POSITIVE: 'admin.template.false_positive',
+  BANK_APP_SIGNATURE_VERIFIED: 'admin.bank_app_signature.verified'
 } as const;
 
 export type AdminAuditEventType = (typeof AdminAuditEventTypes)[keyof typeof AdminAuditEventTypes];
@@ -74,6 +75,16 @@ export interface AdminReceiverHealthSummary {
   updatedAt: string;
 }
 
+export interface AdminBankAppSignatureSummary {
+  signatureId: string;
+  bankProfileId: string;
+  packageName: string;
+  certSha256Masked: string;
+  status: 'pending_verification' | 'verified' | 'rejected' | 'revoked' | 'TO_VERIFY';
+  firstSeenAt: string;
+  lastSeenAt?: string | undefined;
+}
+
 export interface AdminAuditEventSummary {
   auditEventId: string;
   merchantId?: string | undefined;
@@ -102,15 +113,30 @@ export type AdminTemplateStatusActionResult =
   | { kind: 'verified_bank_app_required' }
   | { kind: 'insufficient_evidence'; missingEvidence: string[] };
 
+export interface AdminBankAppSignatureActionInput {
+  signatureId: string;
+  operatorId: string;
+  reason?: string | undefined;
+  auditEventId: string;
+  occurredAt: string;
+}
+
+export type AdminBankAppSignatureActionResult =
+  | { kind: 'updated'; signature: AdminBankAppSignatureSummary; auditEvent: AdminAuditEventSummary }
+  | { kind: 'not_found' }
+  | { kind: 'to_verify_metadata' };
+
 export interface AdminRepository {
   listBankProfiles(): Promise<AdminBankProfileSummary[]>;
   listTemplates(limit: number): Promise<AdminTemplateSummary[]>;
   listDriftEvents(limit: number): Promise<AdminDriftEventSummary[]>;
   listWebhookFailures(limit: number): Promise<AdminWebhookFailureSummary[]>;
   listReceiverHealth(limit: number): Promise<AdminReceiverHealthSummary[]>;
+  listBankAppSignatures(limit: number): Promise<AdminBankAppSignatureSummary[]>;
   searchAuditEvents(input: { limit: number; eventType?: string | undefined; objectType?: string | undefined }): Promise<AdminAuditEventSummary[]>;
   updateTemplateStatus(input: AdminTemplateStatusActionInput): Promise<AdminTemplateStatusActionResult>;
   markTemplateFalsePositive(input: Omit<AdminTemplateStatusActionInput, 'status'>): Promise<AdminTemplateStatusActionResult>;
+  verifyBankAppSignature(input: AdminBankAppSignatureActionInput): Promise<AdminBankAppSignatureActionResult>;
 }
 
 export interface AdminActionRequestBody {
@@ -191,6 +217,18 @@ export class PgAdminRepository implements AdminRepository {
     );
 
     return result.rows.map((row) => toReceiverHealthSummary(row as AdminReceiverHealthRow));
+  }
+
+  public async listBankAppSignatures(limit: number): Promise<AdminBankAppSignatureSummary[]> {
+    const result = await this.pool.query(
+      `SELECT id, bank_profile_id, package_name, cert_sha256, status, first_seen_at, last_seen_at
+       FROM bank_app_signatures
+       ORDER BY COALESCE(last_seen_at, first_seen_at) DESC, id ASC
+       LIMIT $1`,
+      [limit]
+    );
+
+    return result.rows.map((row) => toBankAppSignatureSummary(row as AdminBankAppSignatureRow));
   }
 
   public async searchAuditEvents(input: {
@@ -347,6 +385,67 @@ export class PgAdminRepository implements AdminRepository {
     }
   }
 
+  public async verifyBankAppSignature(input: AdminBankAppSignatureActionInput): Promise<AdminBankAppSignatureActionResult> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query(
+        `SELECT id, bank_profile_id, package_name, cert_sha256, status, first_seen_at, last_seen_at
+         FROM bank_app_signatures
+         WHERE id = $1
+         FOR UPDATE`,
+        [input.signatureId]
+      );
+
+      if (existing.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_found' };
+      }
+
+      const current = toBankAppSignatureSummary(existing.rows[0] as AdminBankAppSignatureRow);
+      if (current.packageName === 'TO_VERIFY' || current.certSha256Masked === 'TO_VERIFY' || current.status === 'TO_VERIFY') {
+        await client.query('ROLLBACK');
+        return { kind: 'to_verify_metadata' };
+      }
+
+      const updated = await client.query(
+        `UPDATE bank_app_signatures
+         SET status = 'verified', last_seen_at = $1
+         WHERE id = $2
+         RETURNING id, bank_profile_id, package_name, cert_sha256, status, first_seen_at, last_seen_at`,
+        [input.occurredAt, input.signatureId]
+      );
+
+      const signature = toBankAppSignatureSummary(updated.rows[0] as AdminBankAppSignatureRow);
+      const auditEvent = buildBankAppSignatureAuditEvent(input, signature);
+
+      await client.query(
+        `INSERT INTO audit_events (
+          id, event_type, object_type, object_id, actor_type, actor_id, payload_redacted, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          auditEvent.auditEventId,
+          auditEvent.eventType,
+          auditEvent.objectType,
+          auditEvent.objectId,
+          auditEvent.actorType ?? null,
+          auditEvent.actorId ?? null,
+          JSON.stringify(auditEvent.payloadRedacted),
+          auditEvent.createdAt
+        ]
+      );
+
+      await client.query('COMMIT');
+      return { kind: 'updated', signature, auditEvent };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   private async evaluateTemplateStatusGuard(
     input: AdminTemplateStatusActionInput,
     template: AdminTemplateSummary
@@ -385,6 +484,7 @@ export class InMemoryAdminRepository implements AdminRepository {
   public readonly driftEvents: AdminDriftEventSummary[];
   public readonly webhookFailures: AdminWebhookFailureSummary[];
   public readonly receiverHealth: AdminReceiverHealthSummary[];
+  public readonly bankAppSignatures: AdminBankAppSignatureSummary[];
   public readonly auditEvents: AdminAuditEventSummary[];
   public readonly verifiedBankAppProfiles: Set<string>;
 
@@ -394,6 +494,7 @@ export class InMemoryAdminRepository implements AdminRepository {
     driftEvents?: AdminDriftEventSummary[] | undefined;
     webhookFailures?: AdminWebhookFailureSummary[] | undefined;
     receiverHealth?: AdminReceiverHealthSummary[] | undefined;
+    bankAppSignatures?: AdminBankAppSignatureSummary[] | undefined;
     auditEvents?: AdminAuditEventSummary[] | undefined;
     verifiedBankAppProfiles?: string[] | undefined;
   }) {
@@ -402,6 +503,7 @@ export class InMemoryAdminRepository implements AdminRepository {
     this.driftEvents = seed.driftEvents ?? [];
     this.webhookFailures = seed.webhookFailures ?? [];
     this.receiverHealth = seed.receiverHealth ?? [];
+    this.bankAppSignatures = seed.bankAppSignatures ?? [];
     this.auditEvents = seed.auditEvents ?? [];
     this.verifiedBankAppProfiles = new Set(seed.verifiedBankAppProfiles ?? []);
   }
@@ -424,6 +526,10 @@ export class InMemoryAdminRepository implements AdminRepository {
 
   public async listReceiverHealth(limit: number): Promise<AdminReceiverHealthSummary[]> {
     return this.receiverHealth.slice(0, limit);
+  }
+
+  public async listBankAppSignatures(limit: number): Promise<AdminBankAppSignatureSummary[]> {
+    return this.bankAppSignatures.slice(0, limit);
   }
 
   public async searchAuditEvents(input: {
@@ -470,6 +576,25 @@ export class InMemoryAdminRepository implements AdminRepository {
     this.auditEvents.unshift(auditEvent);
 
     return { kind: 'updated', template, auditEvent };
+  }
+
+  public async verifyBankAppSignature(input: AdminBankAppSignatureActionInput): Promise<AdminBankAppSignatureActionResult> {
+    const signature = this.bankAppSignatures.find((candidate) => candidate.signatureId === input.signatureId);
+    if (!signature) {
+      return { kind: 'not_found' };
+    }
+
+    if (signature.packageName === 'TO_VERIFY' || signature.certSha256Masked === 'TO_VERIFY' || signature.status === 'TO_VERIFY') {
+      return { kind: 'to_verify_metadata' };
+    }
+
+    signature.status = 'verified';
+    signature.lastSeenAt = input.occurredAt;
+    this.verifiedBankAppProfiles.add(signature.bankProfileId);
+    const auditEvent = buildBankAppSignatureAuditEvent(input, signature);
+    this.auditEvents.unshift(auditEvent);
+
+    return { kind: 'updated', signature, auditEvent };
   }
 
   private evaluateTemplateStatusGuard(
@@ -613,6 +738,28 @@ function buildTemplateAuditEvent(
   };
 }
 
+function buildBankAppSignatureAuditEvent(
+  input: AdminBankAppSignatureActionInput,
+  signature: AdminBankAppSignatureSummary
+): AdminAuditEventSummary {
+  return {
+    auditEventId: input.auditEventId,
+    eventType: AdminAuditEventTypes.BANK_APP_SIGNATURE_VERIFIED,
+    objectType: 'bank_app_signature',
+    objectId: signature.signatureId,
+    actorType: 'operator',
+    actorId: input.operatorId,
+    payloadRedacted: {
+      bank_profile_id: signature.bankProfileId,
+      package_name: signature.packageName,
+      cert_sha256_masked: signature.certSha256Masked,
+      status: signature.status,
+      reason: input.reason
+    },
+    createdAt: input.occurredAt
+  };
+}
+
 function templateStatusAuditEventType(status: AdminTemplateStatusActionInput['status']): AdminAuditEventType {
   switch (status) {
     case 'shadow_testing':
@@ -741,6 +888,16 @@ interface AdminReceiverHealthRow {
   updated_at: Date | string;
 }
 
+interface AdminBankAppSignatureRow {
+  id: string;
+  bank_profile_id: string;
+  package_name: string;
+  cert_sha256: string;
+  status: string;
+  first_seen_at: Date | string;
+  last_seen_at: Date | string | null;
+}
+
 function toBankProfileSummary(row: AdminBankProfileRow): AdminBankProfileSummary {
   return {
     bankProfileId: String(row.id),
@@ -810,6 +967,30 @@ function toReceiverHealthSummary(row: AdminReceiverHealthRow): AdminReceiverHeal
     appVersion: row.app_version ?? undefined,
     updatedAt: new Date(row.updated_at).toISOString()
   };
+}
+
+function toBankAppSignatureSummary(row: AdminBankAppSignatureRow): AdminBankAppSignatureSummary {
+  return {
+    signatureId: String(row.id),
+    bankProfileId: String(row.bank_profile_id),
+    packageName: String(row.package_name),
+    certSha256Masked: maskCertificateHash(String(row.cert_sha256)),
+    status: String(row.status) as AdminBankAppSignatureSummary['status'],
+    firstSeenAt: new Date(row.first_seen_at).toISOString(),
+    lastSeenAt: row.last_seen_at ? new Date(row.last_seen_at).toISOString() : undefined
+  };
+}
+
+function maskCertificateHash(certSha256: string): string {
+  if (certSha256 === 'TO_VERIFY') {
+    return 'TO_VERIFY';
+  }
+
+  if (certSha256.length <= 12) {
+    return '<CERT_SHA256>';
+  }
+
+  return `${certSha256.slice(0, 6)}...${certSha256.slice(-6)}`;
 }
 
 function toAuditEventSummary(row: AdminAuditRow): AdminAuditEventSummary {

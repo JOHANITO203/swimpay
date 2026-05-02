@@ -427,6 +427,28 @@ curl -X POST http://localhost:3000/v1/receiver-devices/heartbeat \
 
 `POST /v1/receiver/signals` requires a canonical signed redacted payload. Raw phone fields and raw notification text are rejected by default. `TO_VERIFY` package/cert metadata remains untrusted and accepted uploads still wait for backend decision processing.
 
+Receiver signal upload responses with `accepted: true` mean the redacted signal was accepted for backend processing only. They do not confirm a payment and do not claim official bank confirmation. See `docs/BACKEND_RECEIVER_SIGNAL_LIVE_FLOW.md`.
+
+## Bank App Verification Workflow
+
+Observed bank app package/cert metadata can be reviewed through the admin API:
+
+```bash
+curl http://localhost:3000/v1/admin/bank-app-signatures \
+  -H "Authorization: Bearer change_me_local_admin_token"
+```
+
+Verification is an explicit RBAC-protected operator action:
+
+```bash
+curl -X POST http://localhost:3000/v1/admin/bank-app-signatures/<signature-id>/verify \
+  -H "Authorization: Bearer change_me_local_admin_token" \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"operator reviewed PackageManager metadata"}'
+```
+
+Rows with `TO_VERIFY` package/cert metadata cannot be verified. See `docs/BANK_APP_VERIFICATION_WORKFLOW.md`.
+
 ## Start Docker Compose
 
 ```bash
@@ -443,6 +465,14 @@ http://localhost:8080
 
 Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, and workers stay on the private Compose network. For a real single-server install, set `HTTP_PORT=80` in the server environment and configure TLS/reverse-proxy policy before exposing merchants.
 
+Before starting the full local runtime, run the lightweight smoke guard:
+
+```bash
+npm run smoke:runtime
+```
+
+This verifies the Compose config shape, private Postgres/Valkey/NATS exposure, runtime healthcheck definitions and Docker log rotation settings. See `docs/LIVE_DOCKER_RUNTIME_SMOKE.md`.
+
 ## Current Limitations
 
 - This is a foundation layer only.
@@ -452,7 +482,7 @@ Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, 
 - Review queue APIs and repository methods exist, and live signal decisions can create review items.
 - Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
 - Webhook delivery core is wired to a tested Postgres-backed delivery loop and the NATS `webhook.delivery_requested` trigger. The signal runtime requests `payment.confirmed`, `payment.needs_review`, or `payment.rejected` delivery records when endpoints are configured.
-- Admin console is API-only. It exposes RBAC-protected operator read views and audited bank-template actions, but does not implement a browser UI, real app package/cert verification workflow, unsafe bulk actions, or a full operator identity provider.
+- Admin console is API-only. It exposes RBAC-protected operator read views, audited bank-template actions, and a guarded bank app metadata verification workflow, but does not implement a browser UI, automated real-world package/cert trust policy, unsafe bulk actions, or a full operator identity provider.
 - Runtime observability is lightweight and in-process. It exposes safe health, metrics and runtime-status JSON only; it does not include a heavy monitoring/log aggregation stack.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.

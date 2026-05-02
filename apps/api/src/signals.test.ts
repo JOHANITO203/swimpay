@@ -4,6 +4,8 @@ import { EventTypes, type EventEnvelope } from '@swimpay/events';
 import { buildApiServer } from './server.js';
 import {
   createReceiverSignalSignature,
+  ReceiverSignatureAlgorithms,
+  verifyReceiverSignalSignature,
   type ReceiverSignalDevice,
   type ReceiverSignalRepository,
   type SignalIngestionInput,
@@ -165,6 +167,62 @@ describe('receiver signal ingestion api', () => {
     expect(response.statusCode).toBe(401);
     expect(response.json().error.code).toBe('invalid_signature');
     expect(metrics.counterValue(MetricNames.RECEIVER_SIGNATURE_INVALID_TOTAL)).toBe(1);
+  });
+
+  it('rejects unknown receiver devices before signature verification', async () => {
+    const metrics = new InMemoryMetricsRegistry();
+    const server = buildApiServer({
+      environment: 'test',
+      healthChecks: skippedHealthChecks(),
+      signalRepository: new FakeSignalRepository(),
+      eventPublisher: new FakeEventPublisher(),
+      signalIdGenerator: () => 'sig_01',
+      metrics
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver/signals',
+      payload: createValidSignal({ device_id: 'dev_unknown' })
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json().error.code).toBe('receiver_device_not_found');
+    expect(metrics.counterValue(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL)).toBe(1);
+  });
+
+  it.each(['suspended', 'revoked'] as const)('rejects %s receiver devices', async (status) => {
+    const repository = new FakeSignalRepository();
+    repository.device.status = status;
+    const metrics = new InMemoryMetricsRegistry();
+    const server = buildApiServer({
+      environment: 'test',
+      healthChecks: skippedHealthChecks(),
+      signalRepository: repository,
+      eventPublisher: new FakeEventPublisher(),
+      signalIdGenerator: () => 'sig_01',
+      metrics
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver/signals',
+      payload: createValidSignal()
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error.code).toBe('receiver_device_disabled');
+    expect(repository.storedSignals).toEqual([]);
+    expect(metrics.counterValue(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL)).toBe(1);
+  });
+
+  it('verifies signatures with the declared canonical HMAC algorithm', () => {
+    const body = createValidSignal();
+    expect(ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1).toBe('hmac_sha256_canonical_v1');
+    expect(verifyReceiverSignalSignature(body, publicKey)).toEqual({
+      valid: true,
+      algorithm: ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1
+    });
   });
 
   it('rejects local counter regressions', async () => {

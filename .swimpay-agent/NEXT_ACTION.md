@@ -1,16 +1,25 @@
 # Next Action
 
-generated_at: 2026-05-02T17:48:21+03:00
+generated_at: 2026-05-02T18:32:00+03:00
 
 ## Latest completed task
 
-031_android_receiver_contract_validation is complete.
+Sprint 3A is complete:
+
+- `032_device_signature_verification_hardening`
+- `033_live_docker_runtime_smoke_tests`
+- `034_backend_receiver_signal_live_flow`
+- `035_bank_app_verification_workflow`
+- `036_phase_2_closeout_review`
 
 ## Commands run
 
 - `npm test -- --run packages/contracts/src/android-receiver.test.ts apps/api/src/receiver-devices.test.ts apps/api/src/signals.test.ts`
-- `npm run typecheck`
+- `npm test -- --run tests/live-runtime-smoke.test.ts`
+- `npm run smoke:runtime`
 - `npm test -- --run tests/durable-worker-e2e.test.ts`
+- `npm test -- --run apps/api/src/admin.test.ts`
+- `npm run typecheck`
 - `npm run lint`
 - `npm test`
 - `npm run build`
@@ -22,19 +31,19 @@ PASS
 
 ## Blockers
 
-No current blockers.
+No current critical blockers.
 
 ## Next recommended task
 
-Human review of Phase 2 Durable Runtime Integration, then define Phase 3 queue.
+Human review of Sprint 3A, then start Android MVP planning with backend contract integration.
 
-Recommended Phase 3 focus:
+Recommended next sprint:
 
-- live PostgreSQL/NATS integration tests
-- production-grade receiver device asymmetric signature verification
-- real operator identity provider integration
-- bank app package/cert verification workflow
-- Android app implementation planning
+- Android MVP app shell and local receiver core integration.
+- Notification permission and allowlist UX.
+- Device registration and signed heartbeat flow against local API.
+- Synthetic redacted signal upload from Android test harness.
+- Live Docker smoke with containers running, if the workstation is ready for it.
 
 ## What not to do next
 

@@ -96,6 +96,13 @@ describe('durable worker e2e tests', () => {
       })
     });
     expect(signalResponse.statusCode).toBe(201);
+    expect(signalResponse.json()).toMatchObject({
+      status: 'received',
+      accepted: true,
+      reason_codes: [],
+      next_action: 'backend_decision_pending'
+    });
+    expect(signalResponse.body).not.toContain('official_bank_confirmation');
 
     const runtime = createRuntimeHarness({
       signal: signalFromApi(api.signals.storedSignals[0]!),

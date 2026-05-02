@@ -29,18 +29,15 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Phase 2 durable runtime tasks as executable in the approved order', () => {
+  test('task queue lists Phase 3A receiver readiness tasks as executable in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '024_operator_auth_and_admin_rbac',
-      '025_nats_jetstream_consumers',
-      '026_postgres_webhook_delivery_loop',
-      '027_signal_runtime_pipeline',
-      '028_review_rejection_semantics',
-      '029_durable_worker_e2e_tests',
-      '030_runtime_observability',
-      '031_android_receiver_contract_validation'
+      '032_device_signature_verification_hardening',
+      '033_live_docker_runtime_smoke_tests',
+      '034_backend_receiver_signal_live_flow',
+      '035_bank_app_verification_workflow',
+      '036_phase_2_closeout_review'
     ];
 
     let previousIndex = -1;

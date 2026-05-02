@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AndroidReceiverErrorCodes,
+  ReceiverSignatureAlgorithms,
   buildCanonicalReceiverSignalPayload,
   validateAndroidNotificationSnapshot,
   validateAndroidReceiverHeartbeatRequest,
@@ -121,6 +122,10 @@ describe('android receiver contracts', () => {
 
     expect(buildCanonicalReceiverSignalPayload(payload)).toBe(buildCanonicalReceiverSignalPayload(withDifferentSignature));
     expect(buildCanonicalReceiverSignalPayload(payload)).not.toContain('signature');
+  });
+
+  it('declares the supported receiver signature algorithm explicitly', () => {
+    expect(ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1).toBe('hmac_sha256_canonical_v1');
   });
 
   it('validates redacted notification snapshot and rejects non-bank package markers', () => {

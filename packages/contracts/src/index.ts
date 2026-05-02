@@ -231,6 +231,13 @@ export const AndroidReceiverErrorCodes = {
 export type AndroidReceiverErrorCode =
   (typeof AndroidReceiverErrorCodes)[keyof typeof AndroidReceiverErrorCodes];
 
+export const ReceiverSignatureAlgorithms = {
+  HMAC_SHA256_CANONICAL_V1: 'hmac_sha256_canonical_v1'
+} as const;
+
+export type ReceiverSignatureAlgorithm =
+  (typeof ReceiverSignatureAlgorithms)[keyof typeof ReceiverSignatureAlgorithms];
+
 export const AndroidReceiverWarnings = {
   NOTIFICATION_ACCESS_DISABLED: 'notification_access_disabled',
   LISTENER_DISCONNECTED: 'listener_disconnected',
