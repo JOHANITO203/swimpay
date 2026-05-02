@@ -118,11 +118,15 @@ class DebugReceiverHttpClient(
     }
 
     fun uploadSignal(signal: Map<String, Any>): DebugHttpResult {
+        return uploadSignalJson(jsonObject(signal.entries.map { it.key to it.value }))
+    }
+
+    fun uploadSignalJson(signalJson: String): DebugHttpResult {
         return executeSafely(
             request = DebugHttpRequest(
                 method = "POST",
                 path = "/v1/receiver/signals",
-                body = jsonObject(signal.entries.map { it.key to it.value })
+                body = signalJson
             ),
             successMessage = "notification signal accepted; backend decision pending; not official bank confirmation"
         )
@@ -211,4 +215,3 @@ fun redactDebugMessage(value: String): String {
         .replace(Regex("public_key", RegexOption.IGNORE_CASE), "<REDACTED>")
         .replace(Regex("secret|token|password", RegexOption.IGNORE_CASE), "<REDACTED>")
 }
-

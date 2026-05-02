@@ -287,6 +287,7 @@ No metric contains raw phone values, raw notification text, API keys or signatur
 - Sprint 4B generates a trusted Gradle wrapper and validates `assembleDebug` plus Android JVM unit tests. Emulator/device validation remains future work.
 - Sprint 4C adds emulator smoke diagnostics and documents that APK install/live app validation is blocked until Android Emulator/AVD or a real test device is available.
 - Sprint 4F wires debug-only app-side registration, heartbeat, synthetic redacted signal upload and outbox smoke actions to the local backend over `adb reverse tcp:8080 tcp:8080`.
+- Sprint 4G adds persistent debug receiver device state, a protected SharedPreferences-backed outbox boundary for redacted signed payloads, bounded retry policy wiring and live debug backend health refresh. The protected outbox is suitable for local MVP smoke validation but is not claimed as production-grade encryption.
 - Real package/certificate verification is not implemented.
 - `TO_VERIFY` package/cert metadata remains untrusted.
 - Backend signal matching and payment decisions remain in the signal runtime pipeline.

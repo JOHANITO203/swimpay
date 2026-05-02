@@ -1,5 +1,11 @@
 package com.swimpay.receiver
 
+import com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore
+import com.swimpay.receiver.outbox.EncryptedOutboxStore
+import com.swimpay.receiver.outbox.FakeEncryptedStorageAdapter
+import com.swimpay.receiver.outbox.OutboxRecord
+import com.swimpay.receiver.work.ReceiverRetryPolicy
+import java.time.Instant
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -14,21 +20,17 @@ data class DebugSmokeResult(
     val safeMessage: String
 )
 
-private data class DebugOutboxEntry(
-    val payload: Map<String, Any>,
-    var status: String,
-    var attemptCount: Int
-)
-
 class DebugReceiverSmokeController(
     private val debugEnabled: Boolean,
     private val config: DebugBackendConfig = DebugBackendConfig(),
     private val httpClient: DebugReceiverHttpClient = DebugReceiverHttpClient(config),
+    private val deviceStateStore: PersistentDeviceStateStore = PersistentDeviceStateStore(InMemoryDeviceStateStorage()),
+    private val outboxStore: EncryptedOutboxStore = AndroidEncryptedOutboxStore(FakeEncryptedStorageAdapter()),
+    private val retryPolicy: ReceiverRetryPolicy = ReceiverRetryPolicy(),
     private val nowIso: () -> String = { java.time.Instant.now().toString() }
 ) {
-    private var deviceId: String? = null
+    private var deviceId: String? = deviceStateStore.load()?.deviceId
     private var nextLocalCounter = 1L
-    private val outbox = linkedMapOf<String, DebugOutboxEntry>()
 
     fun availableActions(): List<DebugSmokeAction> {
         if (!debugEnabled) {
@@ -120,6 +122,18 @@ class DebugReceiverSmokeController(
         val result = httpClient.registerDevice()
         if (result.success && result.deviceId != null) {
             deviceId = result.deviceId
+            deviceStateStore.save(
+                ReceiverDeviceState(
+                    deviceId = result.deviceId,
+                    deviceStatus = "active",
+                    serverTime = null,
+                    appVersion = config.appVersion,
+                    lastRegistrationAt = nowIso(),
+                    lastHeartbeatAt = null,
+                    backendBaseUrl = config.baseUrl,
+                    lastLocalCounter = deviceStateStore.load()?.lastLocalCounter ?: 0
+                )
+            )
         }
         return DebugSmokeResult(result.success, result.safeMessage)
     }
@@ -131,6 +145,9 @@ class DebugReceiverSmokeController(
                 safeMessage = "Register receiver first before heartbeat."
             )
         val result = httpClient.sendHeartbeat(currentDeviceId)
+        if (result.success) {
+            deviceStateStore.updateHeartbeat(nowIso())
+        }
         return DebugSmokeResult(result.success, result.safeMessage)
     }
 
@@ -166,9 +183,22 @@ class DebugReceiverSmokeController(
             observedAt = nowIso(),
             localCounter = nextCounter()
         )
-        outbox.putIfAbsent(
-            eventId,
-            DebugOutboxEntry(payload = signal, status = "pending_upload", attemptCount = 0)
+        val payloadJson = jsonObject(signal.entries.map { it.key to it.value })
+        outboxStore.enqueue(
+            OutboxRecord(
+                localId = "outbox_$eventId",
+                eventId = eventId,
+                notificationHash = signal["notification_hash"].toString(),
+                semanticHash = signal["semantic_hash"].toString(),
+                payloadHash = sha256Hex(payloadJson),
+                encryptedPayload = payloadJson,
+                status = com.swimpay.receiver.outbox.OutboxStatus.PENDING_UPLOAD,
+                attemptCount = 0,
+                firstSeenAt = nowIso(),
+                lastAttemptAt = null,
+                nextRetryAt = null,
+                ackReceivedAt = null
+            )
         )
         return DebugSmokeResult(
             success = true,
@@ -177,7 +207,7 @@ class DebugReceiverSmokeController(
     }
 
     private fun flushOutbox(): DebugSmokeResult {
-        val due = outbox.values.filter { it.status == "pending_upload" || it.status == "failed_retrying" }
+        val due = outboxStore.dueRecords("9999-12-31T23:59:59.999Z")
         if (due.isEmpty()) {
             return DebugSmokeResult(success = true, safeMessage = "outbox empty")
         }
@@ -185,15 +215,22 @@ class DebugReceiverSmokeController(
         var acked = 0
         var retrying = 0
         for (entry in due) {
-            entry.status = "uploading"
-            entry.attemptCount += 1
-            val result = httpClient.uploadSignal(entry.payload)
+            outboxStore.markUploading(entry.eventId)
+            val result = httpClient.uploadSignalJson(entry.encryptedPayload)
             if (result.success) {
-                entry.status = "acked"
+                outboxStore.markAcked(entry.eventId, nowIso())
                 acked += 1
             } else {
-                entry.status = "failed_retrying"
-                retrying += 1
+                val nextAttempt = entry.attemptCount + 1
+                if (retryPolicy.shouldRetry(nextAttempt)) {
+                    outboxStore.markFailedRetrying(
+                        eventId = entry.eventId,
+                        sanitizedError = result.safeMessage,
+                        nextRetryAt = addDelay(nowIso(), retryPolicy.delayMsForAttempt(nextAttempt + 1)),
+                        lastAttemptAt = nowIso()
+                    )
+                    retrying += 1
+                }
             }
         }
 
@@ -208,9 +245,22 @@ class DebugReceiverSmokeController(
     }
 
     private fun nextCounter(): Long {
-        val counter = nextLocalCounter
-        nextLocalCounter += 1
+        val storedState = deviceStateStore.load()
+        val counter = if (storedState != null) {
+            storedState.lastLocalCounter + 1
+        } else {
+            nextLocalCounter
+        }
+        if (storedState != null) {
+            deviceStateStore.save(storedState.copy(lastLocalCounter = counter))
+        } else {
+            nextLocalCounter += 1
+        }
         return counter
+    }
+
+    private fun addDelay(now: String, delayMs: Long): String {
+        return Instant.parse(now).plusMillis(delayMs).toString()
     }
 
     private fun hmacSha256Hex(secret: String, value: String): String {

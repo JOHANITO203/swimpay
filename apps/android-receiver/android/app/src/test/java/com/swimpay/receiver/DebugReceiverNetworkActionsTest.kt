@@ -92,6 +92,48 @@ class DebugReceiverNetworkActionsTest {
     }
 
     @Test
+    fun controllerReusesPersistentDeviceStateAndPersistentOutboxAcrossRecreation() {
+        val deviceStore = PersistentDeviceStateStore(InMemoryDeviceStateStorage())
+        val outboxStore = com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore(
+            com.swimpay.receiver.outbox.FakeEncryptedStorageAdapter()
+        )
+        val firstTransport = QueueDebugHttpTransport(
+            DebugHttpResponse(201, """{"device_id":"dev_persisted_01","status":"active","server_time":"2026-05-02T18:00:00.000Z"}""")
+        )
+        val first = DebugReceiverSmokeController(
+            debugEnabled = true,
+            httpClient = DebugReceiverHttpClient(DebugBackendConfig(), firstTransport),
+            deviceStateStore = deviceStore,
+            outboxStore = outboxStore,
+            nowIso = { "2026-05-02T18:00:00.000Z" }
+        )
+
+        assertTrue(first.performAction("register_receiver").success)
+        assertEquals("dev_persisted_01", deviceStore.load()?.deviceId)
+        assertTrue(first.performAction("enqueue_synthetic_outbox_signal").success)
+
+        val secondTransport = QueueDebugHttpTransport(
+            DebugHttpResponse(200, """{"device_status":"active"}"""),
+            DebugHttpResponse(201, """{"accepted":true,"next_action":"backend_decision_pending"}""")
+        )
+        val recreated = DebugReceiverSmokeController(
+            debugEnabled = true,
+            httpClient = DebugReceiverHttpClient(DebugBackendConfig(), secondTransport),
+            deviceStateStore = deviceStore,
+            outboxStore = outboxStore,
+            nowIso = { "2026-05-02T18:01:00.000Z" }
+        )
+
+        assertTrue(recreated.performAction("send_heartbeat").success)
+        assertTrue(recreated.performAction("flush_outbox").success)
+        assertTrue(secondTransport.requests.first().body.contains("dev_persisted_01"))
+        assertTrue(secondTransport.requests[1].body.contains("dev_persisted_01"))
+        assertTrue(secondTransport.requests[1].body.contains("\"local_counter\":1"))
+        assertFalse(secondTransport.requests[1].body.contains("+7"))
+        assertFalse(secondTransport.requests[1].body.contains("raw_notification", ignoreCase = true))
+    }
+
+    @Test
     fun syntheticSignalSignatureIsNotPlaceholderAndCoversSafeFields() {
         val controller = DebugReceiverSmokeController(
             debugEnabled = true,

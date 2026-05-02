@@ -1238,3 +1238,13 @@ Safety checks:
 - No Android payment confirmation or auto-confirmation added.
 - No raw phone or raw notification text uploaded/displayed.
 - `TO_VERIFY` package/cert metadata remains untrusted.
+## 2026-05-02T23:00:00+03:00 - Sprint 4G Persistent Outbox and Live Status
+
+- Created tasks 097 through 103.
+- Persisted debug receiver device state and local anti-replay counter.
+- Added persistent protected outbox storage for redacted signed payloads.
+- Added bounded retry policy and manual debug flush against persisted entries.
+- Added live debug backend `/api-health` refresh to the Android status screen.
+- Added debug-only broadcast smoke automation to avoid unsafe UI tapping.
+- Real-device offline/online smoke passed using local Caddy proxy stop/start.
+- No real bank notifications, customer data, SMS, scraping, Android confirmation or raw PII were used.

@@ -6,11 +6,25 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore
+import com.swimpay.receiver.outbox.SharedPreferencesOutboxStorageAdapter
 
 class MainActivity : Activity() {
     private val statusViewModel = ReceiverStatusViewModel()
+    private var backendStatus = BackendStatusSnapshot(
+        reachable = false,
+        checkedAt = "not checked",
+        safeMessage = "backend not checked"
+    )
     private val debugController by lazy {
-        DebugReceiverSmokeController(BuildConfig.DEBUG)
+        DebugReceiverSmokeController(
+            debugEnabled = BuildConfig.DEBUG,
+            deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(this)),
+            outboxStore = AndroidEncryptedOutboxStore(SharedPreferencesOutboxStorageAdapter(this))
+        )
+    }
+    private val backendStatusRefresher by lazy {
+        BackendStatusRefresher(DebugReceiverHttpClient(DebugBackendConfig()))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,6 +34,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        refreshBackendStatus()
         renderStatus()
     }
 
@@ -31,7 +46,7 @@ class MainActivity : Activity() {
             allowedBanksCount = 0,
             trustedBanksCount = 0,
             queueLength = 0,
-            backendReachable = false
+            backendReachable = backendStatus.reachable
         )
 
         val text = """
@@ -41,6 +56,8 @@ class MainActivity : Activity() {
             Allowed banks: ${state.allowedBanksCount}
             Queue length: ${state.queueLength}
             Backend: ${if (state.backendReachable) "reachable" else "unreachable"}
+            Last backend check: ${backendStatus.checkedAt}
+            Backend status: ${backendStatus.safeMessage}
             Warnings: ${state.warnings.joinToString(", ")}
         """.trimIndent()
 
@@ -70,5 +87,18 @@ class MainActivity : Activity() {
         }
 
         setContentView(ScrollView(this).apply { addView(container) })
+    }
+
+    private fun refreshBackendStatus() {
+        if (!BuildConfig.DEBUG) {
+            return
+        }
+        Thread {
+            val refreshed = backendStatusRefresher.refresh()
+            runOnUiThread {
+                backendStatus = refreshed
+                renderStatus()
+            }
+        }.start()
     }
 }

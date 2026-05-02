@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Sprint 4F device-side network smoke wiring: 2026-05-02T22:09:47+03:00.
+Last checked after Sprint 4G persistent outbox and live status hardening: 2026-05-02T23:00:00+03:00.
 
 Known non-critical limitations:
 
@@ -12,8 +12,8 @@ Known non-critical limitations:
 - No Android Virtual Devices are configured.
 - Real device `R5CWA0FEPZW` is authorized and usable through adb.
 - Compose API health is available at `http://localhost:8080/api-health`; `localhost:3000` is intentionally private in Compose mode.
-- Debug outbox smoke is in-memory inside the debug controller; persistent encrypted storage and WorkManager retry need deeper real-device validation.
-- The Android status screen still reports backend reachability from static state until live health refresh is wired.
-- Android Keystore, encrypted outbox and WorkManager behavior still need deeper real-device validation.
+- Debug outbox smoke now persists through a protected SharedPreferences-backed local storage boundary; production-grade encryption still requires Android Keystore-backed storage.
+- Android status screen now refreshes live backend reachability through `/api-health` in debug mode.
+- Full WorkManager background outbox execution still needs deeper real-device validation.
 - Real bank package/certificate verification policy requires human/operator process and real Android PackageManager evidence outside this repo.
 

@@ -110,6 +110,16 @@ Debug actions use synthetic redacted data only:
 
 The debug app never confirms or auto-confirms a payment. Successful signal upload means backend decision pending, not official bank confirmation.
 
+Sprint 4G adds persistent debug state:
+
+- receiver registration state is kept across activity recreation;
+- heartbeat and signal upload reuse the stored device id;
+- synthetic outbox entries persist in a protected local storage boundary;
+- retry delays are bounded and non-infinite;
+- the status screen refreshes backend reachability through `/api-health`.
+
+The current persistent outbox is for local MVP smoke validation only. It stores redacted signed payloads and must not be treated as production-grade encrypted storage.
+
 ## Emulator Smoke
 
 Run:

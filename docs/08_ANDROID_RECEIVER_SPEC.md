@@ -217,6 +217,22 @@ The signal upload action sends synthetic redacted notification-signal data with 
 
 Outbox debug actions can enqueue and flush synthetic redacted payloads. Failed uploads move to retry state; successful uploads become acknowledged. No raw phone number or raw notification text is stored.
 
+## Sprint 4G Persistent Outbox and Live Status
+
+Sprint 4G hardens the debug Android app for local real-device validation:
+
+- registration state is persisted with safe fields only;
+- heartbeat, synthetic signal upload and outbox flush reuse the stored device id;
+- redacted signed outbox entries persist through a SharedPreferences-backed protected storage boundary;
+- outbox entries dedupe by `event_id` and `notification_hash`;
+- retry delays are bounded: immediate, 30s, 2m, 5m, then 15m capped;
+- the main status screen refreshes `/api-health` in debug mode through `http://127.0.0.1:8080`;
+- cleartext HTTP remains debug-localhost only.
+
+The Sprint 4G storage boundary does not claim production-grade encryption. A production app must replace it with Android Keystore-backed encrypted storage before real merchant rollout.
+
+All Sprint 4G smoke payloads remain synthetic and redacted. Android still does not confirm, auto-confirm or make a payment decision.
+
 Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
 
 - `adb` available from the Android SDK.

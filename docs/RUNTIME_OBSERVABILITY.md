@@ -160,3 +160,13 @@ Instrumentation does not change payment decision behavior.
 - Live NATS/PostgreSQL integration metrics are covered through current runtime abstractions, not a separate live infrastructure test suite.
 - No heavy monitoring stack is included in V1.
 - Operators should still review Docker logs and database state during local development.
+
+## Android Debug Live Status
+
+Sprint 4G adds a debug Android backend health refresh. The app checks `/api-health` through:
+
+```text
+http://127.0.0.1:8080
+```
+
+with `adb reverse tcp:8080 tcp:8080`. The UI shows only safe reachability, last check time and redacted error summaries. It does not display response bodies, secrets, raw phone numbers or raw notification text.

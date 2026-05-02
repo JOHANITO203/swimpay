@@ -154,3 +154,5 @@ Sprint 4A adds build-toolchain diagnostics only. It does not change receiver run
 Sprint 4B generates the Gradle wrapper and validates Android build/tests. It adds no SMS permission, scraping behavior, local payment confirmation or auto-confirmation behavior.
 
 Sprint 4C adds emulator smoke diagnostics and manual validation steps. No new Android permissions, scraping behavior, raw PII exposure or local payment decisions are added.
+
+Sprint 4G adds persistent Android debug state and outbox storage for real-device smoke hardening. Persisted values are limited to safe device metadata and redacted signed signal payloads. Raw phone numbers, raw notification text, secrets and local payment-confirmation state are rejected by the storage boundary. The current SharedPreferences-backed outbox is a local MVP boundary, not production-grade encryption.

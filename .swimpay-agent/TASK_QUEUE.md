@@ -6,10 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `090_android_debug_backend_config` - status: completed - source: `tasks/090_android_debug_backend_config.md`
-- [x] `091_android_debug_http_client` - status: completed - source: `tasks/091_android_debug_http_client.md`
-- [x] `092_android_debug_register_heartbeat_actions` - status: completed - source: `tasks/092_android_debug_register_heartbeat_actions.md`
-- [x] `093_android_debug_synthetic_signal_upload_action` - status: completed - source: `tasks/093_android_debug_synthetic_signal_upload_action.md`
-- [x] `094_android_debug_outbox_enqueue_flush_actions` - status: completed - source: `tasks/094_android_debug_outbox_enqueue_flush_actions.md`
-- [x] `095_real_device_app_side_smoke_execution` - status: completed - source: `tasks/095_real_device_app_side_smoke_execution.md`
-- [x] `096_sprint_4f_closeout_review` - status: completed - source: `tasks/096_sprint_4f_closeout_review.md`
+- [x] `097_android_persistent_device_state` - status: completed - source: `tasks/097_android_persistent_device_state.md`
+- [x] `098_android_persistent_protected_outbox` - status: completed - source: `tasks/098_android_persistent_protected_outbox.md`
+- [x] `099_android_workmanager_retry_live_wiring` - status: completed - source: `tasks/099_android_workmanager_retry_live_wiring.md`
+- [x] `100_android_live_backend_status_refresh` - status: completed - source: `tasks/100_android_live_backend_status_refresh.md`
+- [x] `101_android_debug_panel_persistence_polish` - status: completed - source: `tasks/101_android_debug_panel_persistence_polish.md`
+- [x] `102_real_device_offline_online_persistent_outbox_smoke` - status: completed - source: `tasks/102_real_device_offline_online_persistent_outbox_smoke.md`
+- [x] `103_sprint_4g_closeout_review` - status: completed - source: `tasks/103_sprint_4g_closeout_review.md`

@@ -202,16 +202,16 @@ describe('android emulator smoke validation', () => {
     expect(smokeReport).toContain('Outbox offline/online result');
   });
 
-  it('lists Sprint 4F task files in the approved order', () => {
+  it('lists Sprint 4G task files in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
     const tasks = [
-      '090_android_debug_backend_config',
-      '091_android_debug_http_client',
-      '092_android_debug_register_heartbeat_actions',
-      '093_android_debug_synthetic_signal_upload_action',
-      '094_android_debug_outbox_enqueue_flush_actions',
-      '095_real_device_app_side_smoke_execution',
-      '096_sprint_4f_closeout_review'
+      '097_android_persistent_device_state',
+      '098_android_persistent_protected_outbox',
+      '099_android_workmanager_retry_live_wiring',
+      '100_android_live_backend_status_refresh',
+      '101_android_debug_panel_persistence_polish',
+      '102_real_device_offline_online_persistent_outbox_smoke',
+      '103_sprint_4g_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -267,5 +267,37 @@ describe('android device-side network smoke wiring', () => {
     expect(controller).not.toMatch(/\+7|raw_notification|bank_confirmed|auto_confirm/iu);
     expect(activity).toContain('Thread');
     expect(activity).toContain('performAction');
+  });
+
+  it('wires Sprint 4G persistent state, outbox and live backend status boundaries', () => {
+    const deviceState = readAndroid('app/src/main/java/com/swimpay/receiver/PersistentDeviceStateStore.kt');
+    const outboxStore = readAndroid('app/src/main/java/com/swimpay/receiver/outbox/AndroidEncryptedOutboxStore.kt');
+    const retryPolicy = readAndroid('app/src/main/java/com/swimpay/receiver/work/ReceiverRetryPolicy.kt');
+    const backendStatus = readAndroid('app/src/main/java/com/swimpay/receiver/BackendStatusRefresher.kt');
+    const activity = readAndroid('app/src/main/java/com/swimpay/receiver/MainActivity.kt');
+
+    expect(deviceState).toContain('SharedPreferencesDeviceStateStorage');
+    expect(deviceState).toContain('raw phone must not be stored');
+    expect(deviceState).toContain('debug backend URL must use adb reverse localhost');
+    expect(outboxStore).toContain('SharedPreferencesOutboxStorageAdapter');
+    expect(outboxStore).toContain('notificationHash == record.notificationHash');
+    expect(outboxStore).toContain('ackReceivedAt');
+    expect(retryPolicy).toContain('30_000L');
+    expect(retryPolicy).toContain('900_000L');
+    expect(backendStatus).toContain('BackendStatusSnapshot');
+    expect(activity).toContain('refreshBackendStatus');
+    expect(activity).toContain('SharedPreferencesOutboxStorageAdapter');
+  });
+
+  it('keeps real-device smoke automation debug-only through a safe broadcast receiver', () => {
+    const debugManifest = readAndroid('app/src/debug/AndroidManifest.xml');
+    const receiver = readAndroid('app/src/debug/java/com/swimpay/receiver/DebugSmokeBroadcastReceiver.kt');
+
+    expect(debugManifest).toContain('com.swimpay.receiver.DEBUG_SMOKE');
+    expect(debugManifest).toContain('DebugSmokeBroadcastReceiver');
+    expect(receiver).toContain('goAsync');
+    expect(receiver).toContain('performAction');
+    expect(receiver).toContain('SwimPayDebugSmoke');
+    expect(receiver).not.toMatch(/READ_SMS|AccessibilityService|paymentConfirmed|autoConfirm|bank_confirmed/iu);
   });
 });
