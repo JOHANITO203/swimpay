@@ -1,10 +1,10 @@
 # Next Action
 
-generated_at: 2026-05-02T10:36:34.993Z
+generated_at: 2026-05-02T10:44:13.020Z
 
 ## Latest completed task
 
-Repository foundation baseline is complete. Current prepared task: 021_bank_template_fixtures_tests.
+Repository foundation baseline is complete. Current prepared task: 022_bank_template_drift_radar.
 
 ## Files changed if detectable
 
@@ -14,18 +14,15 @@ M .swimpay-agent/CURRENT_TASK.md
  M .swimpay-agent/TASK_QUEUE.md
  M docs/IMPLEMENTATION_NOTES.md
  M packages/bank-templates/src/index.ts
- M packages/bank-templates/src/parser.test.ts
- M packages/bank-templates/src/parser.ts
- M packages/bank-templates/src/reason-codes.ts
-?? packages/bank-templates/src/fixtures.test.ts
-?? packages/bank-templates/src/fixtures.ts
+?? packages/bank-templates/src/drift.test.ts
+?? packages/bank-templates/src/drift.ts
 ```
 
 ## Commands run
 
 See .swimpay-agent/PROGRESS_LOG.md.
 
-Latest validation: pass at 2026-05-02T10:36:28.979Z
+Latest validation: pass at 2026-05-02T10:44:03.737Z
 
 ## Pass/fail status
 
@@ -39,7 +36,7 @@ No current blockers.
 
 ## Next recommended task
 
-022_bank_template_drift_radar (tasks/022_bank_template_drift_radar.md)
+013_bank_template_learning (tasks/013_bank_template_learning.md)
 
 ## What not to do next
 

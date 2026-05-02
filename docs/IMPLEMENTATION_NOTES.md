@@ -27,6 +27,8 @@ Task 020 hardened the deterministic parser core. It now normalizes RU text befor
 
 Task 021 added automated JSONL fixture coverage for the bank-template corpus. The tests load global, adversarial, and bank-specific redacted samples, materialize safe placeholder values for parser input, compare expected direction labels and auto-confirm candidate flags, and assert that amount-only or negative fixtures never become auto-confirm candidates.
 
+Task 022 added a bank-template drift radar foundation. It loads template YAML assets, canonicalizes redacted notification shapes, calculates similarity to known templates, tracks unknown rate, amount extraction success, phone/reference visibility, and parser confidence, and outputs `stable`, `minor_drift`, `major_drift`, or `critical_drift` with reason codes. New template candidates remain `new`/`learning` recommendations only and are never trusted automatically; critical drift recommends review-only bank behavior and disables auto-confirm eligibility for the affected bank.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:

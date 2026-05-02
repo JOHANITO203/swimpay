@@ -337,7 +337,29 @@
 - Hardened parser direction support for outgoing transfer fixtures and added reason codes for amount-only, balance disambiguation, and non-customer-transfer cases.
 - Did not implement drift radar, template learning, trust promotion, or payment confirmation behavior.
 
+## 2026-05-02 - Task 022 bank template drift radar plan
+
+- Scope: implement a pure bank-template drift radar based on YAML templates, canonicalized notification shapes, similarity, unknown rate, extraction success, phone/reference visibility, and parser confidence metrics.
+- Boundaries: no automatic trust promotion, no parser learning lifecycle, no database/worker wiring, no payment confirmation, no real bank package/cert values.
+- Safety checks: new template candidates must stay untrusted, and critical drift must disable auto-confirm eligibility for the affected bank.
+
+## 2026-05-02 - Task 022 bank template drift radar completed
+
+- Added `packages/bank-templates/src/drift.ts` with known-template loading, canonicalization, similarity scoring, drift metrics, candidate detection, status classification, and `template.drift_detected` event creation.
+- Added tests for similarity, new candidate safety, critical drift bank auto-confirm disabling, drift event reason codes, and default YAML template loading against fixture materialized samples.
+- New template candidates are emitted with `status: new`, `recommendedStatus: learning`, and `allowAutoConfirmCandidate: false`.
+- Critical drift returns `recommendedBankAutoConfirmStatus: review_only` and `autoConfirmAllowedForBank: false`.
+- Did not implement template learning, trust promotion, admin controls, or payment confirmation behavior.
+
 ## 2026-05-02T10:36:28.979Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T10:44:03.737Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
 - PASS: `npm run lint` (Lint, exit 0)

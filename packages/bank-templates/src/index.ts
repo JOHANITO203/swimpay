@@ -43,3 +43,19 @@ export {
   type BankTemplateFixtureExpected,
   type LoadedBankTemplateFixture
 } from './fixtures.js';
+export {
+  calculateTemplateSimilarity,
+  canonicalizeTemplateText,
+  createTemplateDriftEvent,
+  detectNewTemplateCandidates,
+  evaluateBankTemplateDrift,
+  getDefaultBankTemplatesDirectory,
+  loadBankTemplatesFromDirectory,
+  type BankTemplateDriftEvaluation,
+  type BankTemplateDriftMetrics,
+  type KnownBankTemplate,
+  type NewTemplateCandidate,
+  type TemplateDriftEvent,
+  type TemplateDriftStatus,
+  type TemplateObservation
+} from './drift.js';
