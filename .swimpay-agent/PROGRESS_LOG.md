@@ -1184,3 +1184,18 @@ Safety checks:
 - No real customer data used.
 - No SMS permission or scraping behavior added.
 - No Android payment confirmation or auto-confirmation added.
+# 2026-05-02T21:34:45+03:00 - Sprint 4E Backend Live Smoke + Receiver Debug Triggers
+
+- Created Sprint 4E task files 083-089 and updated the task queue.
+- Diagnosed `localhost:3000/health`: API port 3000 is private in Compose; correct host route is `http://localhost:8080/api-health`.
+- Fixed Docker build failures by copying declared workspace packages into service Dockerfiles.
+- Fixed PostgreSQL local Docker network connectivity with `listen_addresses = '*'` while keeping Postgres unexposed publicly.
+- Added `npm run backend:doctor`.
+- Verified Compose stack healthy and API health dependencies OK.
+- Re-established ADB reverse on real device `R5CWA0FEPZW` for port 8080.
+- Rebuilt, reinstalled and launched the Android APK.
+- Added live Notification Access status reading; device UI now shows Notification Access enabled and listener connected.
+- Added debug-only receiver smoke action panel with safe wording and synthetic/redacted boundaries.
+- Ran synthetic backend registration, heartbeat and signal upload; signal returned `backend_decision_pending`.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Gradle assembleDebug, Gradle JVM tests, Compose ps and API health.
+- Non-critical limitation: app-side network execution/outbox retry smoke remains for Sprint 4F.

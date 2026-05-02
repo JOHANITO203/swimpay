@@ -202,22 +202,22 @@ describe('android emulator smoke validation', () => {
     expect(smokeReport).toContain('Outbox offline/online result');
   });
 
-  it('lists Sprint 4C task files in the approved order', () => {
+  it('lists Sprint 4E task files in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
     const tasks = [
-      '068_emulator_environment_doctor',
-      '069_emulator_install_and_launch',
-      '070_notification_access_manual_flow',
-      '071_receiver_register_heartbeat_local_backend',
-      '072_receiver_synthetic_signal_upload_local_backend',
-      '073_receiver_outbox_offline_online_smoke',
-      '074_emulator_smoke_closeout_review'
+      '083_local_backend_startup_for_real_device',
+      '084_android_live_notification_access_status',
+      '085_debug_only_receiver_smoke_panel',
+      '086_real_device_register_heartbeat_smoke',
+      '087_real_device_synthetic_signal_upload_smoke',
+      '088_real_device_outbox_offline_online_smoke',
+      '089_sprint_4e_closeout_review'
     ];
 
     let previousIndex = -1;
     for (const task of tasks) {
       expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
+      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
       expect(index, task).toBeGreaterThan(previousIndex);
       previousIndex = index;
     }

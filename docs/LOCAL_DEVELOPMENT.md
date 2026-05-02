@@ -523,6 +523,15 @@ http://localhost:8080
 
 `/v1/*` and `/api/*` are routed to `swimpay-api`; checkout and web routes are routed to `swimpay-web`.
 
+API health through Docker Compose is available through the proxy:
+
+```bash
+npm run backend:doctor
+curl http://localhost:8080/api-health
+```
+
+`http://localhost:3000/health` is expected to fail in Compose mode because `swimpay-api` listens on private container port `3000` and is not host-published.
+
 Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, and workers stay on the private Compose network. For a real single-server install, set `HTTP_PORT=80` in the server environment and configure TLS/reverse-proxy policy before exposing merchants.
 
 Before starting the full local runtime, run the lightweight smoke guard:

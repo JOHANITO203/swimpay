@@ -4,6 +4,13 @@ import { join } from 'node:path';
 
 const root = process.cwd();
 
+const dockerizedWorkspaces = [
+  { app: 'api', packageName: '@swimpay/api' },
+  { app: 'signal-worker', packageName: '@swimpay/signal-worker' },
+  { app: 'job-worker', packageName: '@swimpay/job-worker' },
+  { app: 'web', packageName: '@swimpay/web' }
+] as const;
+
 describe('single-server docker compose deployment', () => {
   const composePath = join(root, 'infra/docker-compose.yml');
   const compose = readFileSync(composePath, 'utf8');
@@ -47,5 +54,35 @@ describe('single-server docker compose deployment', () => {
 
     expect(compose).toContain('max-size: "${DOCKER_LOG_MAX_SIZE:-50m}"');
     expect(compose).toContain('max-file: "${DOCKER_LOG_MAX_FILE:-3}"');
+  });
+
+  test('configures PostgreSQL to accept private Docker network connections only', () => {
+    const postgresConfig = readFileSync(join(root, 'infra/postgres/postgresql.conf'), 'utf8');
+
+    expect(postgresConfig).toContain("listen_addresses = '*'");
+    expect(compose).not.toContain('5432:5432');
+  });
+
+  test('dockerized apps copy their declared workspace package dependencies', () => {
+    for (const workspace of dockerizedWorkspaces) {
+      const packageJson = JSON.parse(
+        readFileSync(join(root, 'apps', workspace.app, 'package.json'), 'utf8')
+      ) as { dependencies?: Record<string, string> };
+      const dockerfile = readFileSync(join(root, 'apps', workspace.app, 'Dockerfile'), 'utf8');
+      const workspaceDeps = Object.keys(packageJson.dependencies ?? {})
+        .filter((dependency) => dependency.startsWith('@swimpay/'))
+        .filter((dependency) => dependency !== workspace.packageName)
+        .map((dependency) => dependency.replace('@swimpay/', ''));
+
+      for (const dependency of workspaceDeps) {
+        expect(dockerfile, `${workspace.app} Dockerfile should copy packages/${dependency}`).toContain(
+          `COPY packages/${dependency}`
+        );
+        expect(
+          dockerfile,
+          `${workspace.app} Dockerfile should include packages/${dependency}/package.json before npm ci`
+        ).toContain(`COPY packages/${dependency}/package.json packages/${dependency}/package.json`);
+      }
+    }
   });
 });

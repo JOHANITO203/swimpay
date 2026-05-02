@@ -22,7 +22,8 @@
     "smoke:runtime": "node scripts/live-runtime-smoke.mjs",
     "smoke:receiver": "node scripts/receiver-local-smoke.mjs",
     "android:doctor": "node scripts/android-toolchain-check.mjs",
-    "android:emulator-doctor": "node scripts/android-emulator-doctor.mjs"
+    "android:emulator-doctor": "node scripts/android-emulator-doctor.mjs",
+    "backend:doctor": "node scripts/local-backend-doctor.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.1",

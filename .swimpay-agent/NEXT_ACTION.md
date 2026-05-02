@@ -1,93 +1,53 @@
 # Next Action
 
-generated_at: 2026-05-02T21:58:00+03:00
+generated_at: 2026-05-02T21:34:45+03:00
 
-## Latest completed task
+## Latest Completed Sprint
 
-Sprint 4D ADB real-device takeover is partially complete:
+Sprint 4E - Backend Live Smoke + Receiver Debug Triggers.
 
-- real phone detected and authorized;
-- debug APK installed;
-- app launched;
-- adb reverse for port `3000` configured;
-- Notification Access enabled at Android system level;
-- backend smoke blocked because local API/Docker runtime is not running.
+## Status
 
-## Commands run
+PASS_WITH_NON_CRITICAL_LIMITATION.
 
-- adb discovery and `adb devices -l`
-- `npm run android:doctor`
-- `npm run typecheck`
-- `npm run lint`
-- `npm test`
-- `npm run build`
-- `docker compose --env-file .env.example -f infra/docker-compose.yml config`
-- `.\gradlew.bat :app:assembleDebug --no-daemon --stacktrace`
-- `.\gradlew.bat :app:testDebugUnitTest --no-daemon --stacktrace`
-- `adb -s R5CWA0FEPZW install -r apps\android-receiver\android\app\build\outputs\apk\debug\app-debug.apk`
-- `adb -s R5CWA0FEPZW shell monkey -p com.swimpay.receiver 1`
-- `adb -s R5CWA0FEPZW reverse tcp:3000 tcp:3000`
-- `adb -s R5CWA0FEPZW shell am start -a android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`
-- `adb -s R5CWA0FEPZW shell settings get secure enabled_notification_listeners`
+## What Passed
 
-## Pass/fail status
+- Docker Compose backend starts locally.
+- Correct API health URL is `http://localhost:8080/api-health`.
+- API health reports database, NATS and Valkey OK.
+- Real device `R5CWA0FEPZW` is authorized.
+- ADB reverse `tcp:8080 tcp:8080` passed.
+- APK build, install and launch passed.
+- Android app now reads live Notification Access state.
+- Debug-only smoke actions are visible and use safe wording.
+- Synthetic receiver registration passed through local backend.
+- Synthetic heartbeat passed through local backend.
+- Synthetic redacted signal upload passed and returned `backend_decision_pending`.
 
-Node/Compose validation: PASS
+## Remaining Limitation
 
-Android doctor: PASS
+The debug smoke panel does not yet execute the real HTTP registration/heartbeat/upload/outbox flows from the device app itself. The backend smoke was executed through a local synthetic helper against the same local backend. Full app-side network wiring should be the next sprint.
 
-Android `assembleDebug`: PASS
+## Next Recommended Sprint
 
-Android JVM tests: PASS
+Sprint 4F - Device-side network smoke wiring.
 
-ADB device detection: PASS
+Recommended tasks:
 
-APK install: PASS
+1. Add debug-only Android HTTP client wiring for register, heartbeat and synthetic upload.
+2. Persist synthetic debug device id safely in debug state.
+3. Wire debug outbox enqueue/flush to encrypted outbox and WorkManager boundaries.
+4. Rerun real-device smoke through the app over `adb reverse tcp:8080 tcp:8080`.
+5. Keep every payload synthetic, redacted and marked as backend decision pending.
 
-App launch: PASS
+## What Not To Do Next
 
-adb reverse: PASS
-
-Notification Access: PASS at Android system level
-
-Backend registration/heartbeat/signal smoke: BLOCKED, local backend unavailable
-
-## Blockers
-
-No current critical blockers.
-
-Non-critical limitations:
-
-- Global `gradle` remains unavailable in PATH, but the generated wrapper is available.
-- `ANDROID_HOME`/`ANDROID_SDK_ROOT` must be set for local Android Gradle commands.
-- Android Emulator package is unavailable or not discoverable under the local SDK.
-- No AVD is configured.
-- Real device is available and authorized: `R5CWA0FEPZW`.
-- Docker Desktop Linux engine is not running.
-- Local API is not reachable on `localhost:3000`.
-- Receiver registration, heartbeat, signal upload and outbox retry smoke remain pending.
-- The app status screen does not yet read live Notification Access state.
-
-## Next recommended sprint
-
-Sprint 4E - Real Device Backend Smoke Wiring:
-
-- start Docker Desktop and the local Compose runtime;
-- verify `http://localhost:3000/health`;
-- keep `adb reverse tcp:3000 tcp:3000`;
-- add/run a debug-only app smoke trigger for receiver registration, heartbeat and synthetic redacted signal upload;
-- verify `backend_decision_pending`;
-- keep Android capture-only and backend-decision boundaries.
-
-## What not to do next
-
-- Do not push to remote until explicitly requested.
 - Do not deploy.
-- Do not implement Android final payment decisions.
-- Do not implement Android auto-confirmation.
+- Do not push without explicit request.
+- Do not use real bank notifications.
 - Do not add SMS permissions.
-- Do not add accessibility scraping behavior.
+- Do not add accessibility scraping.
+- Do not implement Android payment confirmation.
+- Do not implement Android auto-confirmation.
 - Do not trust `TO_VERIFY` package names or certificate fingerprints.
-- Do not claim official bank confirmation.
-- Do not store raw phone numbers.
-- Do not store raw notification text by default.
+- Do not store raw phone or raw notification text.

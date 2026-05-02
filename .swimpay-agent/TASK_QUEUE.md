@@ -6,10 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `068_emulator_environment_doctor` - status: completed - source: `tasks/068_emulator_environment_doctor.md`
-- [ ] `069_emulator_install_and_launch` - status: blocked - source: `tasks/069_emulator_install_and_launch.md`
-- [x] `070_notification_access_manual_flow` - status: completed - source: `tasks/070_notification_access_manual_flow.md`
-- [ ] `071_receiver_register_heartbeat_local_backend` - status: blocked - source: `tasks/071_receiver_register_heartbeat_local_backend.md`
-- [ ] `072_receiver_synthetic_signal_upload_local_backend` - status: blocked - source: `tasks/072_receiver_synthetic_signal_upload_local_backend.md`
-- [ ] `073_receiver_outbox_offline_online_smoke` - status: blocked - source: `tasks/073_receiver_outbox_offline_online_smoke.md`
-- [x] `074_emulator_smoke_closeout_review` - status: completed - source: `tasks/074_emulator_smoke_closeout_review.md`
+- [x] `083_local_backend_startup_for_real_device` - status: completed - source: `tasks/083_local_backend_startup_for_real_device.md`
+- [x] `084_android_live_notification_access_status` - status: completed - source: `tasks/084_android_live_notification_access_status.md`
+- [x] `085_debug_only_receiver_smoke_panel` - status: completed - source: `tasks/085_debug_only_receiver_smoke_panel.md`
+- [x] `086_real_device_register_heartbeat_smoke` - status: completed - source: `tasks/086_real_device_register_heartbeat_smoke.md`
+- [x] `087_real_device_synthetic_signal_upload_smoke` - status: completed - source: `tasks/087_real_device_synthetic_signal_upload_smoke.md`
+- [ ] `088_real_device_outbox_offline_online_smoke` - status: blocked - source: `tasks/088_real_device_outbox_offline_online_smoke.md`
+- [x] `089_sprint_4e_closeout_review` - status: completed - source: `tasks/089_sprint_4e_closeout_review.md`
