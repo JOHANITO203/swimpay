@@ -6,8 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `037_android_project_setup` - status: completed - source: `tasks/037_android_project_setup.md`
-- [x] `038_notification_listener_service` - status: completed - source: `tasks/038_notification_listener_service.md`
-- [x] `039_bank_allowlist_and_package_verification` - status: completed - source: `tasks/039_bank_allowlist_and_package_verification.md`
-- [x] `040_snapshot_extractor_and_coalescer` - status: completed - source: `tasks/040_snapshot_extractor_and_coalescer.md`
-- [x] `041_privacy_firewall_and_local_parser` - status: completed - source: `tasks/041_privacy_firewall_and_local_parser.md`
+- [x] `042_receiver_device_registration_client` - status: completed - source: `tasks/042_receiver_device_registration_client.md`
+- [x] `043_receiver_signed_heartbeat_client` - status: completed - source: `tasks/043_receiver_signed_heartbeat_client.md`
+- [x] `044_receiver_signed_signal_upload_client` - status: completed - source: `tasks/044_receiver_signed_signal_upload_client.md`
+- [x] `045_receiver_encrypted_outbox_retry_loop` - status: completed - source: `tasks/045_receiver_encrypted_outbox_retry_loop.md`
+- [x] `046_receiver_health_status_model` - status: completed - source: `tasks/046_receiver_health_status_model.md`
+- [x] `047_receiver_local_backend_smoke_test` - status: completed - source: `tasks/047_receiver_local_backend_smoke_test.md`
+- [x] `048_android_gradle_readiness_plan` - status: completed - source: `tasks/048_android_gradle_readiness_plan.md`

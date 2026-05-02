@@ -19,7 +19,8 @@ const requiredAgentFiles = [
   '.swimpay-agent/summarize_work.sh',
   'scripts/agent-runner.mjs',
   'scripts/agent-validate.mjs',
-  'scripts/agent-summary.mjs'
+  'scripts/agent-summary.mjs',
+  'scripts/receiver-local-smoke.mjs'
 ];
 
 describe('local agent orchestration framework', () => {
@@ -29,15 +30,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Phase 3B Android Receiver MVP tasks as executable in the approved order', () => {
+  test('task queue lists Phase 3C receiver lifecycle tasks as executable in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '037_android_project_setup',
-      '038_notification_listener_service',
-      '039_bank_allowlist_and_package_verification',
-      '040_snapshot_extractor_and_coalescer',
-      '041_privacy_firewall_and_local_parser'
+      '042_receiver_device_registration_client',
+      '043_receiver_signed_heartbeat_client',
+      '044_receiver_signed_signal_upload_client',
+      '045_receiver_encrypted_outbox_retry_loop',
+      '046_receiver_health_status_model',
+      '047_receiver_local_backend_smoke_test',
+      '048_android_gradle_readiness_plan'
     ];
 
     let previousIndex = -1;
@@ -69,5 +72,6 @@ describe('local agent orchestration framework', () => {
     expect(pkg.scripts['agent:next']).toBe('node scripts/agent-runner.mjs');
     expect(pkg.scripts['agent:validate']).toBe('node scripts/agent-validate.mjs');
     expect(pkg.scripts['agent:summary']).toBe('node scripts/agent-summary.mjs');
+    expect(pkg.scripts['smoke:receiver']).toBe('node scripts/receiver-local-smoke.mjs');
   });
 });

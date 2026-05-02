@@ -871,6 +871,35 @@ Validation:
 - `npm run build` PASS
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
 - Android/Gradle tests not run because the repo does not yet include a Gradle wrapper or Android SDK build configuration.
+
+# 2026-05-02 - Sprint 3C Receiver Lifecycle, Signed Upload, Outbox and Health
+
+Plan:
+- Create tasks 042 through 048 and move the task queue to Sprint 3C.
+- Add testable receiver clients for registration, signed heartbeat and signed signal upload.
+- Add encrypted outbox retry modeling, safe receiver health warnings and a local backend smoke plan.
+- Document Android Gradle readiness without adding unstable Gradle tooling.
+
+Result:
+- Added task files `042_receiver_device_registration_client` through `048_android_gradle_readiness_plan`.
+- Added lifecycle helpers in `apps/android-receiver/src/index.ts`.
+- Added `apps/android-receiver/src/android-receiver-lifecycle.test.ts`.
+- Added `scripts/receiver-local-smoke.mjs` and `npm run smoke:receiver`.
+- Added `docs/ANDROID_RECEIVER_LIFECYCLE.md` and `docs/ANDROID_GRADLE_READINESS_PLAN.md`.
+- Updated Android Receiver docs, local development notes, implementation notes and agent queue state.
+
+Validation:
+- `npm test -- --run apps/android-receiver/src/android-receiver-lifecycle.test.ts` RED first, then PASS after implementation.
+- `npm run typecheck --workspace @swimpay/android-receiver` PASS
+- `npm test -- --run apps/android-receiver/src` PASS
+- `npm test -- --run apps/android-receiver/src tests/agent-framework.test.ts` PASS
+- `npm run smoke:receiver` PASS
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS (`33` test files, `223` tests)
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+- Android/Gradle tests not run because no Gradle wrapper or Android SDK build configuration exists yet.
 # 2026-05-02 - Task 031 Android Receiver Contract Validation
 
 Plan:

@@ -5,6 +5,15 @@ export enum NotificationAccessStatus {
   Disabled = 'disabled'
 }
 
+export const ReceiverOutboxStatuses = {
+  Captured: 'captured',
+  PendingUpload: 'pending_upload',
+  Uploading: 'uploading',
+  Acked: 'acked',
+  FailedRetrying: 'failed_retrying',
+  Expired: 'expired'
+} as const;
+
 export const BankPackageVerificationStatuses = {
   ToVerify: 'TO_VERIFY',
   PendingVerification: 'pending_verification',
@@ -17,7 +26,7 @@ export type BankPackageVerificationStatus =
   (typeof BankPackageVerificationStatuses)[keyof typeof BankPackageVerificationStatuses];
 
 export type ReceiverHealthStatus = 'healthy' | 'degraded' | 'offline';
-export type OutboxState = 'captured' | 'pending_upload' | 'uploading' | 'acked' | 'failed_retrying' | 'expired';
+export type OutboxState = (typeof ReceiverOutboxStatuses)[keyof typeof ReceiverOutboxStatuses];
 export type IgnoredReason = 'package_not_allowlisted' | 'package_cert_mismatch' | 'package_untrusted';
 export type LocalDirectionHint =
   | 'incoming_customer_transfer'
@@ -146,7 +155,12 @@ export interface EncryptedOutboxRecord {
   observedAt: string;
   encryptedPayload: string;
   attemptCount: number;
+  firstSeenAt?: string | undefined;
   lastAttemptAt?: string | undefined;
+  nextRetryAt?: string | undefined;
+  ackReceivedAt?: string | undefined;
+  expiresAt?: string | undefined;
+  lastError?: string | undefined;
   state: OutboxState;
 }
 
@@ -155,7 +169,7 @@ export interface PayloadEncryptor {
 }
 
 export interface SignalSigner {
-  sign(envelopeWithoutSignature: Omit<SignalUploadEnvelope, 'signature'>): string;
+  sign(payloadWithoutSignature: unknown): string;
 }
 
 export interface EncryptedOutbox {
@@ -211,6 +225,190 @@ export interface ReceiverHeartbeatPayload {
   health_status: ReceiverHealthStatus;
 }
 
+export interface ReceiverRegistrationClientRequest {
+  deviceName?: string | undefined;
+  appVersion: string;
+  androidVersion: string;
+  publicKey: string;
+  installId?: string | undefined;
+  deviceInstallId?: string | undefined;
+  supportedCapabilities: string[];
+}
+
+export interface ReceiverRegistrationClientResponse {
+  deviceId: string;
+  merchantId: string;
+  status: string;
+  serverTime: string;
+  requiredCapabilities: string[];
+  warnings: string[];
+}
+
+export interface ReceiverSignedHeartbeatInput {
+  deviceId: string;
+  appVersion: string;
+  androidVersion: string;
+  notificationAccessEnabled: boolean;
+  listenerConnected: boolean;
+  allowedBankProfileIds: string[];
+  queueLength: number;
+  lastSignalObservedAt?: string | undefined;
+  batteryOptimizationIgnored?: boolean | undefined;
+  timestamp: string;
+}
+
+export interface ReceiverSignedHeartbeatPayload {
+  device_id: string;
+  app_version: string;
+  android_version: string;
+  notification_access_enabled: boolean;
+  listener_connected: boolean;
+  allowed_bank_profile_ids: string[];
+  queue_length: number;
+  last_signal_observed_at?: string | undefined;
+  battery_optimization_ignored?: boolean | undefined;
+  timestamp: string;
+  signature: string;
+}
+
+export interface ReceiverHeartbeatClientResponse {
+  deviceStatus: string;
+  serverTime: string;
+  receiverMode: string;
+  activePaymentSessionsCount: number;
+  warnings: string[];
+  requiredActions: string[];
+}
+
+export interface ReceiverSignalUploadBuilderInput {
+  eventId: string;
+  merchantId: string;
+  deviceId: string;
+  bankProfile: AllowedBankProfile;
+  observedAt: string;
+  receivedAt?: string | undefined;
+  notificationHash: string;
+  semanticHash?: string | undefined;
+  localCounter: number;
+  snapshotCount: number;
+  coalesced: boolean;
+  amountMinor?: number | undefined;
+  currency?: string | undefined;
+  senderPhoneHmac?: string | undefined;
+  senderPhoneMasked?: string | undefined;
+  referenceHmac?: string | undefined;
+  referenceCodeMasked?: string | undefined;
+  directionHint?: LocalDirectionHint | undefined;
+  parserHint?: string | undefined;
+  signalQualityHint?: number | undefined;
+  redactedTitle?: string | undefined;
+  redactedBody?: string | undefined;
+  rawTextPresent: boolean;
+  rawPhone?: string | undefined;
+  rawNotificationText?: string | undefined;
+}
+
+export interface ReceiverSignedSignalUploadPayload {
+  event_id: string;
+  merchant_id: string;
+  device_id: string;
+  bank_profile_id: string;
+  package_name: string;
+  package_cert_sha256: string;
+  observed_at: string;
+  received_at?: string | undefined;
+  notification_hash: string;
+  semantic_hash?: string | undefined;
+  local_counter: number;
+  snapshot_count: number;
+  coalesced: boolean;
+  amount_minor?: number | undefined;
+  currency?: string | undefined;
+  sender_phone_hmac?: string | undefined;
+  sender_phone_masked?: string | undefined;
+  reference_hmac?: string | undefined;
+  reference_code_masked?: string | undefined;
+  direction_hint?: LocalDirectionHint | undefined;
+  parser_hint?: string | undefined;
+  signal_quality_hint?: number | undefined;
+  redacted_title?: string | undefined;
+  redacted_body?: string | undefined;
+  raw_text_present: false;
+  signature: string;
+  package_verification_trust: 'trusted' | 'untrusted';
+}
+
+export interface ReceiverSignalUploadClientResponse {
+  signalId: string;
+  status: string;
+  accepted: boolean;
+  reasonCodes: string[];
+  serverTime: string;
+  nextAction: string;
+}
+
+export interface ReceiverHttpTransport {
+  request(input: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    body?: unknown;
+  }): Promise<{ status: number; body: unknown }>;
+}
+
+export interface ReceiverApiClientOptions {
+  baseUrl: string;
+  merchantAuthToken?: string | undefined;
+  transport?: ReceiverHttpTransport | undefined;
+}
+
+export interface ReceiverApiClient {
+  registerDevice(input: ReceiverRegistrationClientRequest): Promise<ReceiverRegistrationClientResponse>;
+  sendHeartbeat(payload: ReceiverSignedHeartbeatPayload): Promise<ReceiverHeartbeatClientResponse>;
+  uploadSignal(payload: ReceiverSignedSignalUploadPayload): Promise<ReceiverSignalUploadClientResponse>;
+}
+
+export type ReceiverHealthWarning =
+  | 'notification_access_disabled'
+  | 'listener_disconnected'
+  | 'no_banks_allowed'
+  | 'all_banks_untrusted'
+  | 'queue_backlog_high'
+  | 'backend_unreachable'
+  | 'battery_optimization_risk';
+
+export interface ReceiverHealthStatusInput {
+  notificationAccessEnabled: boolean;
+  listenerConnected: boolean;
+  allowedBanks: AllowedBankProfile[];
+  queueLength: number;
+  lastSignalObservedAt?: string | undefined;
+  lastUploadAt?: string | undefined;
+  appVersion: string;
+  deviceStatus: string;
+  backendReachable: boolean;
+  batteryOptimizationIgnored: boolean;
+}
+
+export interface ReceiverHealthStatusSnapshot {
+  notification_access_enabled: boolean;
+  listener_connected: boolean;
+  allowed_banks_count: number;
+  trusted_banks_count: number;
+  queue_length: number;
+  last_signal_observed_at?: string | undefined;
+  last_upload_at?: string | undefined;
+  app_version: string;
+  device_status: string;
+  warnings: ReceiverHealthWarning[];
+}
+
+export interface ReceiverLocalSmokePlan {
+  backendBaseUrl: string;
+  requiresRealAndroidDevice: false;
+  steps: { name: string; method: string; path: string; expected: string }[];
+}
+
 export interface AndroidReceiverNotificationListenerOptions {
   allowedBanks: AllowedBankProfile[];
   deviceId?: string | undefined;
@@ -263,6 +461,107 @@ export class InMemoryEncryptedOutbox {
 
   public async persist(record: EncryptedOutboxRecord): Promise<void> {
     this.records.push(record);
+  }
+}
+
+export class RetryingEncryptedOutbox {
+  public readonly records: EncryptedOutboxRecord[] = [];
+
+  private readonly now: () => Date;
+  private readonly ttlMs: number;
+  private readonly encryptor: { encrypt(payload: ReceiverSignedSignalUploadPayload): string };
+
+  public constructor(options: {
+    now: () => Date;
+    ttlMs: number;
+    encryptor: { encrypt(payload: ReceiverSignedSignalUploadPayload): string };
+  }) {
+    this.now = options.now;
+    this.ttlMs = options.ttlMs;
+    this.encryptor = options.encryptor;
+  }
+
+  public enqueue(payload: ReceiverSignedSignalUploadPayload): EncryptedOutboxRecord {
+    assertNoReceiverRawPii(payload);
+
+    const existing = this.records.find((record) => record.eventId === payload.event_id);
+    if (existing) {
+      return existing;
+    }
+
+    const firstSeenAt = this.now().toISOString();
+    const record: EncryptedOutboxRecord = {
+      eventId: payload.event_id,
+      notificationHash: payload.notification_hash,
+      observedAt: payload.observed_at,
+      encryptedPayload: this.encryptor.encrypt(payload),
+      attemptCount: 0,
+      firstSeenAt,
+      nextRetryAt: firstSeenAt,
+      expiresAt: new Date(new Date(firstSeenAt).getTime() + this.ttlMs).toISOString(),
+      state: ReceiverOutboxStatuses.PendingUpload
+    };
+
+    this.records.push(record);
+    return record;
+  }
+
+  public markUploading(eventId: string, at: Date): void {
+    const record = this.getRecord(eventId);
+    if (record.state === ReceiverOutboxStatuses.Acked || record.state === ReceiverOutboxStatuses.Expired) {
+      return;
+    }
+    record.state = ReceiverOutboxStatuses.Uploading;
+    record.lastAttemptAt = at.toISOString();
+  }
+
+  public markFailedRetrying(eventId: string, at: Date, error: string): void {
+    const record = this.getRecord(eventId);
+    if (record.state === ReceiverOutboxStatuses.Acked || record.state === ReceiverOutboxStatuses.Expired) {
+      return;
+    }
+
+    record.attemptCount += 1;
+    record.state = ReceiverOutboxStatuses.FailedRetrying;
+    record.lastAttemptAt = at.toISOString();
+    record.lastError = sanitizeOutboxError(error);
+    record.nextRetryAt = new Date(at.getTime() + retryDelayMs(record.attemptCount)).toISOString();
+  }
+
+  public markAcked(eventId: string, at: Date): void {
+    const record = this.getRecord(eventId);
+    record.state = ReceiverOutboxStatuses.Acked;
+    record.ackReceivedAt = at.toISOString();
+    record.nextRetryAt = undefined;
+  }
+
+  public expireDue(at: Date): void {
+    for (const record of this.records) {
+      if (
+        record.state !== ReceiverOutboxStatuses.Acked &&
+        record.expiresAt &&
+        new Date(record.expiresAt).getTime() <= at.getTime()
+      ) {
+        record.state = ReceiverOutboxStatuses.Expired;
+      }
+    }
+  }
+
+  public dueUploads(at: Date): EncryptedOutboxRecord[] {
+    return this.records.filter((record) => {
+      if (record.state !== ReceiverOutboxStatuses.PendingUpload && record.state !== ReceiverOutboxStatuses.FailedRetrying) {
+        return false;
+      }
+      return !record.nextRetryAt || new Date(record.nextRetryAt).getTime() <= at.getTime();
+    });
+  }
+
+  private getRecord(eventId: string): EncryptedOutboxRecord {
+    const record = this.records.find((candidate) => candidate.eventId === eventId);
+    if (!record) {
+      throw new Error(`Outbox record not found: ${eventId}`);
+    }
+    return record;
   }
 }
 
@@ -351,9 +650,230 @@ export class AndroidReceiverNotificationListener {
 
 export function createHmacSignalSigner(secret: string): SignalSigner {
   return {
-    sign(envelopeWithoutSignature: Omit<SignalUploadEnvelope, 'signature'>): string {
-      return createHmac('sha256', secret).update(stableStringify(envelopeWithoutSignature)).digest('hex');
+    sign(payloadWithoutSignature: unknown): string {
+      return createHmac('sha256', secret).update(stableStringify(payloadWithoutSignature)).digest('hex');
     }
+  };
+}
+
+export function createRetryingEncryptedOutbox(options: {
+  now: () => Date;
+  ttlMs: number;
+  encryptor: { encrypt(payload: ReceiverSignedSignalUploadPayload): string };
+}): RetryingEncryptedOutbox {
+  return new RetryingEncryptedOutbox(options);
+}
+
+export function createReceiverApiClient(options: ReceiverApiClientOptions): ReceiverApiClient {
+  const baseUrl = options.baseUrl.replace(/\/+$/u, '');
+  if (!baseUrl) {
+    throw new Error('Receiver API baseUrl is required.');
+  }
+
+  const transport = options.transport ?? new FetchReceiverHttpTransport();
+
+  async function post(path: string, body: unknown): Promise<unknown> {
+    const headers: Record<string, string> = {
+      'content-type': 'application/json'
+    };
+    if (options.merchantAuthToken) {
+      headers.authorization = `Bearer ${options.merchantAuthToken}`;
+    }
+
+    const response = await transport.request({
+      method: 'POST',
+      url: `${baseUrl}${path}`,
+      headers,
+      body
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+      const error = isRecord(response.body) && typeof response.body.error === 'string' ? response.body.error : 'request_failed';
+      throw new Error(`Receiver API request failed: ${response.status} ${error}`);
+    }
+
+    return response.body;
+  }
+
+  return {
+    async registerDevice(input: ReceiverRegistrationClientRequest): Promise<ReceiverRegistrationClientResponse> {
+      const body = {
+        device_name: input.deviceName,
+        app_version: input.appVersion,
+        android_version: input.androidVersion,
+        public_key: input.publicKey,
+        install_id: input.installId,
+        device_install_id: input.deviceInstallId,
+        supported_capabilities: input.supportedCapabilities
+      };
+      const response = await post('/v1/receiver-devices/register', compactRecord(body));
+      return parseRegistrationResponse(response);
+    },
+
+    async sendHeartbeat(payload: ReceiverSignedHeartbeatPayload): Promise<ReceiverHeartbeatClientResponse> {
+      const response = await post('/v1/receiver-devices/heartbeat', payload);
+      return parseHeartbeatResponse(response);
+    },
+
+    async uploadSignal(payload: ReceiverSignedSignalUploadPayload): Promise<ReceiverSignalUploadClientResponse> {
+      const uploadPayload = stripLocalSignalTrustMetadata(payload);
+      const response = await post('/v1/receiver/signals', uploadPayload);
+      return parseSignalUploadResponse(response);
+    }
+  };
+}
+
+export function buildSignedHeartbeatPayload(
+  input: ReceiverSignedHeartbeatInput,
+  signer: SignalSigner
+): ReceiverSignedHeartbeatPayload {
+  const payloadWithoutSignature = compactRecord({
+    device_id: input.deviceId,
+    app_version: input.appVersion,
+    android_version: input.androidVersion,
+    notification_access_enabled: input.notificationAccessEnabled,
+    listener_connected: input.listenerConnected,
+    allowed_bank_profile_ids: input.allowedBankProfileIds,
+    queue_length: input.queueLength,
+    last_signal_observed_at: input.lastSignalObservedAt,
+    battery_optimization_ignored: input.batteryOptimizationIgnored,
+    timestamp: input.timestamp
+  }) as Omit<ReceiverSignedHeartbeatPayload, 'signature'>;
+
+  return {
+    ...payloadWithoutSignature,
+    signature: signer.sign(payloadWithoutSignature)
+  };
+}
+
+export function buildSignedSignalUploadPayload(
+  input: ReceiverSignalUploadBuilderInput,
+  signer: SignalSigner
+): ReceiverSignedSignalUploadPayload {
+  if (input.rawPhone) {
+    throw new Error('raw phone fields are not allowed in receiver signal uploads');
+  }
+  if (input.rawNotificationText || input.rawTextPresent) {
+    throw new Error('raw notification text is not allowed in receiver signal uploads');
+  }
+
+  const payloadWithoutSignature = compactRecord({
+    event_id: input.eventId,
+    merchant_id: input.merchantId,
+    device_id: input.deviceId,
+    bank_profile_id: input.bankProfile.bankProfileId,
+    package_name: input.bankProfile.packageName,
+    package_cert_sha256: input.bankProfile.packageCertSha256,
+    observed_at: input.observedAt,
+    received_at: input.receivedAt,
+    notification_hash: input.notificationHash,
+    semantic_hash: input.semanticHash,
+    local_counter: input.localCounter,
+    snapshot_count: input.snapshotCount,
+    coalesced: input.coalesced,
+    amount_minor: input.amountMinor,
+    currency: input.currency,
+    sender_phone_hmac: input.senderPhoneHmac,
+    sender_phone_masked: input.senderPhoneMasked,
+    reference_hmac: input.referenceHmac,
+    reference_code_masked: input.referenceCodeMasked,
+    direction_hint: input.directionHint,
+    parser_hint: input.parserHint,
+    signal_quality_hint: input.signalQualityHint,
+    redacted_title: input.redactedTitle,
+    redacted_body: input.redactedBody,
+    raw_text_present: false
+  }) as Omit<ReceiverSignedSignalUploadPayload, 'signature' | 'package_verification_trust'>;
+
+  assertNoReceiverRawPii(payloadWithoutSignature);
+
+  return {
+    ...payloadWithoutSignature,
+    signature: signer.sign(payloadWithoutSignature),
+    package_verification_trust: isTrustedBankProfile(input.bankProfile) ? 'trusted' : 'untrusted'
+  };
+}
+
+export function buildReceiverHealthStatus(input: ReceiverHealthStatusInput): ReceiverHealthStatusSnapshot {
+  const trustedBanksCount = input.allowedBanks.filter(isTrustedBankProfile).length;
+  const warnings: ReceiverHealthWarning[] = [];
+
+  if (!input.notificationAccessEnabled) {
+    warnings.push('notification_access_disabled');
+  }
+  if (!input.listenerConnected) {
+    warnings.push('listener_disconnected');
+  }
+  if (input.allowedBanks.length === 0) {
+    warnings.push('no_banks_allowed');
+  } else if (trustedBanksCount === 0) {
+    warnings.push('all_banks_untrusted');
+  }
+  if (input.queueLength >= 50) {
+    warnings.push('queue_backlog_high');
+  }
+  if (!input.backendReachable) {
+    warnings.push('backend_unreachable');
+  }
+  if (!input.batteryOptimizationIgnored) {
+    warnings.push('battery_optimization_risk');
+  }
+
+  const snapshot: ReceiverHealthStatusSnapshot = {
+    notification_access_enabled: input.notificationAccessEnabled,
+    listener_connected: input.listenerConnected,
+    allowed_banks_count: input.allowedBanks.length,
+    trusted_banks_count: trustedBanksCount,
+    queue_length: input.queueLength,
+    app_version: input.appVersion,
+    device_status: input.deviceStatus,
+    warnings
+  };
+  if (input.lastSignalObservedAt !== undefined) {
+    snapshot.last_signal_observed_at = input.lastSignalObservedAt;
+  }
+  if (input.lastUploadAt !== undefined) {
+    snapshot.last_upload_at = input.lastUploadAt;
+  }
+  return snapshot;
+}
+
+export function createReceiverLocalSmokePlan(backendBaseUrl: string): ReceiverLocalSmokePlan {
+  return {
+    backendBaseUrl: backendBaseUrl.replace(/\/+$/u, ''),
+    requiresRealAndroidDevice: false,
+    steps: [
+      {
+        name: 'register_receiver_device',
+        method: 'POST',
+        path: '/v1/receiver-devices/register',
+        expected: 'device registration returns pending or active receiver device'
+      },
+      {
+        name: 'send_signed_heartbeat',
+        method: 'POST',
+        path: '/v1/receiver-devices/heartbeat',
+        expected: 'heartbeat response returns safe warnings and server time'
+      },
+      {
+        name: 'upload_synthetic_redacted_signal',
+        method: 'POST',
+        path: '/v1/receiver/signals',
+        expected: 'redacted signed signal is accepted for backend processing'
+      },
+      {
+        name: 'verify_backend_decision_pending',
+        method: 'ASSERT',
+        path: '/v1/receiver/signals',
+        expected: 'accepted upload returns backend_decision_pending only'
+      },
+      {
+        name: 'verify_to_verify_routes_to_review',
+        method: 'ASSERT',
+        path: '/v1/reviews',
+        expected: 'TO_VERIFY bank metadata routes to review and never auto-confirms'
+      }
+    ]
   };
 }
 
@@ -584,6 +1104,140 @@ function maskReference(reference: string): string {
 
 function sha256Hex(value: string): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+class FetchReceiverHttpTransport implements ReceiverHttpTransport {
+  public async request(input: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    body?: unknown;
+  }): Promise<{ status: number; body: unknown }> {
+    const init: RequestInit = {
+      method: input.method,
+      headers: input.headers
+    };
+    if (input.body !== undefined) {
+      init.body = JSON.stringify(input.body);
+    }
+    const response = await fetch(input.url, init);
+
+    const text = await response.text();
+    return {
+      status: response.status,
+      body: text.length > 0 ? (JSON.parse(text) as unknown) : {}
+    };
+  }
+}
+
+function parseRegistrationResponse(value: unknown): ReceiverRegistrationClientResponse {
+  if (!isRecord(value)) {
+    throw new Error('Receiver API registration response was invalid.');
+  }
+
+  return {
+    deviceId: requiredString(value, 'device_id'),
+    merchantId: requiredString(value, 'merchant_id'),
+    status: requiredString(value, 'status'),
+    serverTime: requiredString(value, 'server_time'),
+    requiredCapabilities: stringArray(value.required_capabilities),
+    warnings: stringArray(value.warnings)
+  };
+}
+
+function parseHeartbeatResponse(value: unknown): ReceiverHeartbeatClientResponse {
+  if (!isRecord(value)) {
+    throw new Error('Receiver API heartbeat response was invalid.');
+  }
+
+  return {
+    deviceStatus: requiredString(value, 'device_status'),
+    serverTime: requiredString(value, 'server_time'),
+    receiverMode: requiredString(value, 'receiver_mode'),
+    activePaymentSessionsCount:
+      typeof value.active_payment_sessions_count === 'number' ? value.active_payment_sessions_count : 0,
+    warnings: stringArray(value.warnings),
+    requiredActions: stringArray(value.required_actions)
+  };
+}
+
+function parseSignalUploadResponse(value: unknown): ReceiverSignalUploadClientResponse {
+  if (!isRecord(value)) {
+    throw new Error('Receiver API signal upload response was invalid.');
+  }
+
+  return {
+    signalId: requiredString(value, 'signal_id'),
+    status: requiredString(value, 'status'),
+    accepted: value.accepted === true,
+    reasonCodes: stringArray(value.reason_codes),
+    serverTime: requiredString(value, 'server_time'),
+    nextAction: requiredString(value, 'next_action')
+  };
+}
+
+function requiredString(value: Record<string, unknown>, field: string): string {
+  const raw = value[field];
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    throw new Error(`Receiver API response missing ${field}.`);
+  }
+  return raw;
+}
+
+function stringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+function compactRecord<T extends Record<string, unknown>>(value: T): Record<string, unknown> {
+  const output: Record<string, unknown> = {};
+  for (const [key, nested] of Object.entries(value)) {
+    if (nested !== undefined) {
+      output[key] = nested;
+    }
+  }
+  return output;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isTrustedBankProfile(bankProfile: AllowedBankProfile): boolean {
+  return (
+    bankProfile.verificationStatus === BankPackageVerificationStatuses.Verified &&
+    bankProfile.packageName !== 'TO_VERIFY' &&
+    bankProfile.packageCertSha256 !== 'TO_VERIFY'
+  );
+}
+
+function stripLocalSignalTrustMetadata(
+  payload: ReceiverSignedSignalUploadPayload
+): Omit<ReceiverSignedSignalUploadPayload, 'package_verification_trust'> {
+  const uploadPayload: Partial<ReceiverSignedSignalUploadPayload> = { ...payload };
+  delete uploadPayload.package_verification_trust;
+  return uploadPayload as Omit<ReceiverSignedSignalUploadPayload, 'package_verification_trust'>;
+}
+
+function assertNoReceiverRawPii(value: unknown): void {
+  const serialized = JSON.stringify(value);
+  if (/(?:\+7|8)[\s().-]*\d{3}[\s().-]*\d{3}[\s().-]*\d{2}[\s().-]*\d{2}/u.test(serialized)) {
+    throw new Error('raw phone fields are not allowed in receiver signal uploads');
+  }
+  if (serialized.includes('raw_notification') || serialized.includes('raw_text_present":true')) {
+    throw new Error('raw notification text is not allowed in receiver signal uploads');
+  }
+}
+
+function sanitizeOutboxError(error: string): string {
+  return redactNotificationText(error).slice(0, 160);
+}
+
+function retryDelayMs(attemptCount: number): number {
+  const delays = [0, 30_000, 120_000, 300_000, 900_000];
+  return delays[Math.min(attemptCount, delays.length - 1)]!;
 }
 
 function stableStringify(value: unknown): string {

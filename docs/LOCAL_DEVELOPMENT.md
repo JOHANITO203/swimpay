@@ -437,6 +437,20 @@ npm test -- --run apps/android-receiver/src
 
 The Android Receiver module is Kotlin-source-ready under `apps/android-receiver/android`, but this repo does not currently include Gradle or Android build tooling. See `docs/ANDROID_RECEIVER_MVP_FOUNDATION.md`.
 
+Sprint 3C receiver lifecycle tests cover local registration, signed heartbeat, signed signal upload, encrypted outbox retry and health warnings:
+
+```bash
+npm test -- --run apps/android-receiver/src/android-receiver-lifecycle.test.ts
+```
+
+Print the local receiver smoke plan:
+
+```bash
+npm run smoke:receiver
+```
+
+The smoke plan uses synthetic redacted data and does not require a real Android device. See `docs/ANDROID_RECEIVER_LIFECYCLE.md` and `docs/ANDROID_GRADLE_READINESS_PLAN.md`.
+
 ## Bank App Verification Workflow
 
 Observed bank app package/cert metadata can be reviewed through the admin API:

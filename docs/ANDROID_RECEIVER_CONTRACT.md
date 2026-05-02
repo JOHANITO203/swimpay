@@ -281,6 +281,7 @@ No metric contains raw phone values, raw notification text, API keys or signatur
 
 - Sprint 3B adds a Kotlin-source-ready Android skeleton and executable TypeScript MVP core, but does not add a Gradle Android build.
 - Sprint 3B adds a NotificationListenerService boundary skeleton. Platform permission UX and a runnable installed Android app remain future work.
+- Sprint 3C adds testable receiver lifecycle clients for registration, signed heartbeat, signed redacted signal upload, encrypted outbox retry modeling and safe health snapshots.
 - Real package/certificate verification is not implemented.
 - `TO_VERIFY` package/cert metadata remains untrusted.
 - Backend signal matching and payment decisions remain in the signal runtime pipeline.

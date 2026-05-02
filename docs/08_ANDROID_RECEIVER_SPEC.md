@@ -146,3 +146,16 @@ The Android Receiver may emit extraction hints only:
 - negative keyword hints.
 
 These hints are not payment decisions. Backend matching and decision logic remain authoritative.
+
+## Sprint 3C Lifecycle Foundation
+
+The receiver core now includes testable local clients and models for:
+
+- device registration;
+- signed heartbeat;
+- signed signal upload;
+- encrypted outbox retry state;
+- safe receiver health status;
+- local backend smoke planning.
+
+These are TypeScript-testable foundations for the later Android platform implementation. They do not add Android payment confirmation, SMS access, bank app scraping, or real bank package/cert trust.

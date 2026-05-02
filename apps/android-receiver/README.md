@@ -43,5 +43,20 @@ npm run build
 - Local parser hints.
 - Encrypted outbox foundation.
 - Signed upload envelope.
+- Receiver device registration client.
+- Signed heartbeat client.
+- Signed signal upload client.
+- Retrying encrypted outbox model.
+- Receiver health status model.
+- Local backend smoke plan helper.
 
 All package/cert values in examples are synthetic.
+
+## Sprint 3C Commands
+
+```bash
+npm test -- --run apps/android-receiver/src/android-receiver-lifecycle.test.ts
+npm run smoke:receiver
+```
+
+`npm run smoke:receiver` prints a local synthetic flow. It does not require a real Android device and does not call external services.

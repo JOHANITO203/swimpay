@@ -1,50 +1,62 @@
 # Current Task
 
-task id: 041_privacy_firewall_and_local_parser
-source task file: tasks/041_privacy_firewall_and_local_parser.md
+task_id: 048_android_gradle_readiness_plan
+source_task_file: tasks/048_android_gradle_readiness_plan.md
 status: completed
-scope:
-Create Android Receiver MVP foundation through privacy firewall and local parser hints.
 
-files allowed:
-- tasks/037_android_project_setup.md
-- tasks/038_notification_listener_service.md
-- tasks/039_bank_allowlist_and_package_verification.md
-- tasks/040_snapshot_extractor_and_coalescer.md
-- tasks/041_privacy_firewall_and_local_parser.md
-- .swimpay-agent task queue and reports
-- apps/android-receiver TypeScript MVP core, tests, docs and Kotlin-source-ready skeleton
+## Scope
 
-forbidden work:
-- Do not implement production deployment.
-- Do not invent real bank package names or certificate fingerprints.
-- Do not implement SBP or PSP behavior.
-- Do not claim official bank confirmation.
-- Do not store raw phone numbers.
-- Do not store raw notification text by default.
-- Do not weaken auto-confirm gates.
-- Do not weaken admin RBAC.
-- Do not add unrelated parser, matching, review, webhook or UI features.
+Sprint 3C - Receiver Lifecycle, Signed Upload, Outbox and Health.
 
-acceptance criteria:
-- Android project structure and README exist.
-- Notification listener skeleton ignores non-allowlisted packages and never decides payments.
-- Bank allowlist model keeps `TO_VERIFY` untrusted.
-- Snapshot extractor and coalescer dedupe/merge snapshots.
-- Privacy firewall redacts raw phone/raw notification text and emits only extraction hints.
-- Backend remains the final decision maker.
+## Files Allowed
 
-commands to run:
-- npm run typecheck
-- npm run lint
-- npm test
-- npm run build
-- docker compose --env-file .env.example -f infra/docker-compose.yml config
+- `apps/android-receiver/**`
+- `scripts/receiver-local-smoke.mjs`
+- `docs/ANDROID_RECEIVER_LIFECYCLE.md`
+- `docs/ANDROID_GRADLE_READINESS_PLAN.md`
+- related Android Receiver docs
+- `.swimpay-agent/**`
+- `tasks/042_*.md` through `tasks/048_*.md`
+- tests covering local agent queue and Android Receiver lifecycle
 
-started_at: 2026-05-02T18:33:00+03:00
-completed_at: 2026-05-02T18:45:00+03:00
-result: completed.
+## Forbidden Work
 
-## Source requirements
+- Android payment confirmation.
+- Android auto-confirmation.
+- SMS reading.
+- Bank app scraping.
+- Upload of non-allowlisted notifications.
+- Raw phone or raw notification text storage/upload.
+- Real bank package names or certificate fingerprints.
+- Production deployment or secret changes.
 
-See tasks/037_android_project_setup.md through tasks/041_privacy_firewall_and_local_parser.md.
+## Acceptance Criteria
+
+- Receiver device registration client exists and is tested.
+- Signed heartbeat client exists and is tested.
+- Signed signal upload client exists and rejects raw PII.
+- Encrypted outbox retry model exists and is tested.
+- Receiver health/status model exists and is tested.
+- Local backend smoke helper exists.
+- Android Gradle readiness plan exists.
+- Full repo validation passes.
+
+## Commands Run
+
+- `npm test -- --run apps/android-receiver/src/android-receiver-lifecycle.test.ts`
+- `npm run typecheck --workspace @swimpay/android-receiver`
+- `npm test -- --run apps/android-receiver/src`
+- `npm test -- --run apps/android-receiver/src tests/agent-framework.test.ts`
+- `npm run smoke:receiver`
+- `npm run typecheck`
+- `npm run lint`
+- `npm test`
+- `npm run build`
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config`
+
+started_at: 2026-05-02T18:50:00+03:00
+completed_at: 2026-05-02T19:02:00+03:00
+
+## Result
+
+Sprint 3C completed and validated locally. Android/Gradle platform tests were not run because no Gradle wrapper or Android SDK build configuration exists yet.

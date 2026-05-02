@@ -19,7 +19,8 @@
     "dev:signal-worker": "npm run dev --workspace @swimpay/signal-worker",
     "dev:job-worker": "npm run dev --workspace @swimpay/job-worker",
     "dev:web": "npm run dev --workspace @swimpay/web",
-    "smoke:runtime": "node scripts/live-runtime-smoke.mjs"
+    "smoke:runtime": "node scripts/live-runtime-smoke.mjs",
+    "smoke:receiver": "node scripts/receiver-local-smoke.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.1",
