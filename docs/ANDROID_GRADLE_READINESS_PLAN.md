@@ -16,6 +16,7 @@ Current Sprint 4B local status:
 - Gradle wrapper: available and generated through verified Gradle `8.11.1`.
 - `assembleDebug`: PASS when `ANDROID_HOME`/`ANDROID_SDK_ROOT` points to the local SDK.
 - Android JVM tests: PASS.
+- Emulator smoke: blocked until Android Emulator package, AVD and running device are available.
 
 ## Required Build Pieces
 

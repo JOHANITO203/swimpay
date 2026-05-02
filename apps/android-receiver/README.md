@@ -20,6 +20,7 @@ No Gradle wrapper JAR is currently present in this repo, and the current shell d
 ```bash
 npm test -- --run apps/android-receiver/src
 npm run android:doctor
+npm run android:emulator-doctor
 npm run typecheck
 npm run build
 ```
@@ -81,3 +82,13 @@ npm run android:doctor
 ```
 
 `npm run smoke:receiver` prints a local synthetic flow. It does not require a real Android device and does not call external services.
+
+## Emulator Smoke
+
+Run:
+
+```bash
+npm run android:emulator-doctor
+```
+
+Current Sprint 4C status: `adb` is available through the SDK, but the Android Emulator command and AVDs are not installed. APK install and launch are blocked until an emulator/device is available.

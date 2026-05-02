@@ -152,3 +152,5 @@ Sprint 3D adds Android platform-facing boundaries for Keystore signing, encrypte
 Sprint 4A adds build-toolchain diagnostics only. It does not change receiver runtime behavior, does not add permissions, and does not weaken privacy guardrails.
 
 Sprint 4B generates the Gradle wrapper and validates Android build/tests. It adds no SMS permission, scraping behavior, local payment confirmation or auto-confirmation behavior.
+
+Sprint 4C adds emulator smoke diagnostics and manual validation steps. No new Android permissions, scraping behavior, raw PII exposure or local payment decisions are added.

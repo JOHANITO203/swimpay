@@ -139,8 +139,8 @@ describe('android Gradle wrapper and build validation', () => {
     expect(triage).toContain('critical or non-critical');
   });
 
-  it('lists Sprint 4B task files in the approved order', () => {
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+  it('keeps Sprint 4B task files and report available for build history', () => {
+    const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4B_REPORT.md'), 'utf8');
     const tasks = [
       '062_gradle_toolchain_bootstrap',
       '063_generate_trusted_gradle_wrapper',
@@ -150,12 +150,9 @@ describe('android Gradle wrapper and build validation', () => {
       '067_sprint_4b_closeout_review'
     ];
 
-    let previousIndex = -1;
     for (const task of tasks) {
       expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
-      expect(index, task).toBeGreaterThan(previousIndex);
-      previousIndex = index;
+      expect(report, task).toContain(task);
     }
   });
 
@@ -182,5 +179,56 @@ describe('android Gradle wrapper and build validation', () => {
 
     const properties = readFileSync(gradlePropertiesPath, 'utf8');
     expect(properties).toContain('android.useAndroidX=true');
+  });
+});
+
+describe('android emulator smoke validation', () => {
+  it('provides a Sprint 4C emulator doctor script and reports', () => {
+    const doctor = readFileSync(join(root, 'scripts/android-emulator-doctor.mjs'), 'utf8');
+    const sprintReport = readFileSync(join(root, '.swimpay-agent/SPRINT_4C_REPORT.md'), 'utf8');
+    const smokeReport = readFileSync(join(root, '.swimpay-agent/EMULATOR_SMOKE_REPORT.md'), 'utf8');
+
+    expect(doctor).toContain('adb available');
+    expect(doctor).toContain('emulator command available');
+    expect(doctor).toContain('available AVDs');
+    expect(doctor).toContain('running devices');
+    expect(doctor).toContain('app APK path');
+    expect(doctor).toContain('backend local URL guidance');
+
+    expect(sprintReport).toContain('Emulator availability');
+    expect(sprintReport).toContain('APK install status');
+    expect(sprintReport).toContain('Synthetic signal upload result');
+    expect(smokeReport).toContain('Notification Access flow status');
+    expect(smokeReport).toContain('Outbox offline/online result');
+  });
+
+  it('lists Sprint 4C task files in the approved order', () => {
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const tasks = [
+      '068_emulator_environment_doctor',
+      '069_emulator_install_and_launch',
+      '070_notification_access_manual_flow',
+      '071_receiver_register_heartbeat_local_backend',
+      '072_receiver_synthetic_signal_upload_local_backend',
+      '073_receiver_outbox_offline_online_smoke',
+      '074_emulator_smoke_closeout_review'
+    ];
+
+    let previousIndex = -1;
+    for (const task of tasks) {
+      expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
+      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
+      expect(index, task).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+  });
+
+  it('keeps emulator smoke docs explicit about no SMS, no scraping and no confirmation', () => {
+    const smokeDocs = readFileSync(join(root, 'docs/ANDROID_EMULATOR_SMOKE_TEST.md'), 'utf8');
+
+    expect(smokeDocs).toContain('No SMS permissions');
+    expect(smokeDocs).toContain('No accessibility scraping service');
+    expect(smokeDocs).toContain('No local payment confirmation');
+    expect(smokeDocs).toContain('backend_decision_pending');
   });
 });

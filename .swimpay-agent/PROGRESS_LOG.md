@@ -1112,3 +1112,43 @@ Validation:
 - `npm test` PASS
 - `npm run build` PASS
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+## 2026-05-02 - Sprint 4C / Android Emulator Smoke Validation
+
+Plan:
+- Create Sprint 4C task files 068 through 074 and move the task queue to emulator smoke validation.
+- Add an emulator doctor that reports adb, emulator command, AVDs, running devices, APK path and local backend URL guidance.
+- Document Notification Access manual flow and local backend receiver smoke expectations.
+- Do not claim APK install or emulator smoke success unless adb confirms a running device.
+
+Result:
+- Added `scripts/android-emulator-doctor.mjs`.
+- Added `npm run android:emulator-doctor`.
+- Added task files `068_emulator_environment_doctor` through `074_emulator_smoke_closeout_review`.
+- Updated Android receiver docs, local development notes and implementation notes with emulator smoke status and commands.
+- Created `.swimpay-agent/EMULATOR_SMOKE_REPORT.md`.
+- Created `.swimpay-agent/SPRINT_4C_REPORT.md`.
+
+Environment findings:
+- SDK adb is available at `C:\Users\Lenovo\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
+- No Android Emulator command is available under the local SDK.
+- No AVD is configured.
+- No running adb device is attached.
+- The debug APK exists at `apps/android-receiver/android/app/build/outputs/apk/debug/app-debug.apk`.
+
+Validation:
+- `npm run android:doctor` PASS
+- `npm run android:emulator-doctor` PASS as diagnostic, with live emulator blocked
+- `npm test -- --run apps/android-receiver/src/android-runnable-app.test.ts` PASS
+- `npm test -- --run tests/agent-framework.test.ts` PASS
+- `.\gradlew.bat :app:assembleDebug --no-daemon --stacktrace` PASS
+- `.\gradlew.bat :app:testDebugUnitTest --no-daemon --stacktrace` PASS
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+Notes:
+- APK install, Notification Access live validation, receiver registration, heartbeat, synthetic signal upload and outbox offline/online smoke are blocked until an emulator/device is available.
+- No critical SwimPay blockers were added.

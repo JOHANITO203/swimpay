@@ -194,3 +194,14 @@ Sprint 4B generated a trusted Gradle wrapper, enabled AndroidX, aligned Java/Kot
 - `:app:testDebugUnitTest`
 
 Both pass with `ANDROID_HOME`/`ANDROID_SDK_ROOT` set to the local SDK. Emulator/device validation remains future work.
+
+## Sprint 4C Emulator Smoke Status
+
+Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
+
+- `adb` available from the Android SDK.
+- Android Emulator command unavailable.
+- No AVDs available.
+- No running devices attached.
+
+APK install, Notification Access UI validation, receiver registration from the app, synthetic app-side signal upload and outbox offline/online smoke are blocked until an emulator/device is available.

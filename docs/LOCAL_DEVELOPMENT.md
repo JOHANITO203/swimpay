@@ -455,6 +455,7 @@ Check Android build tooling:
 
 ```bash
 npm run android:doctor
+npm run android:emulator-doctor
 ```
 
 Sprint 4B generated a trusted Gradle wrapper. Java and the Android SDK are present, while global Gradle is still not available in PATH. Use the wrapper for local Android builds.
@@ -485,6 +486,8 @@ npm test -- --run apps/android-receiver/src/android-runnable-app.test.ts
 ```
 
 Manual emulator smoke instructions are in `docs/ANDROID_EMULATOR_SMOKE_TEST.md`.
+
+Sprint 4C emulator doctor currently reports `adb` available from the SDK, no Android Emulator command, no AVDs, and no running devices. APK install and emulator UI smoke validation are therefore blocked until the Android Emulator package and an AVD are installed.
 
 ## Bank App Verification Workflow
 

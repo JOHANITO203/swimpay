@@ -21,7 +21,8 @@ const requiredAgentFiles = [
   'scripts/agent-validate.mjs',
   'scripts/agent-summary.mjs',
   'scripts/receiver-local-smoke.mjs',
-  'scripts/android-toolchain-check.mjs'
+  'scripts/android-toolchain-check.mjs',
+  'scripts/android-emulator-doctor.mjs'
 ];
 
 describe('local agent orchestration framework', () => {
@@ -31,21 +32,22 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4B Android build tasks as executable in the approved order', () => {
+  test('task queue lists Sprint 4C emulator smoke tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '062_gradle_toolchain_bootstrap',
-      '063_generate_trusted_gradle_wrapper',
-      '064_android_assemble_debug_run',
-      '065_android_jvm_unit_tests_execution',
-      '066_android_build_failure_triage',
-      '067_sprint_4b_closeout_review'
+      '068_emulator_environment_doctor',
+      '069_emulator_install_and_launch',
+      '070_notification_access_manual_flow',
+      '071_receiver_register_heartbeat_local_backend',
+      '072_receiver_synthetic_signal_upload_local_backend',
+      '073_receiver_outbox_offline_online_smoke',
+      '074_emulator_smoke_closeout_review'
     ];
 
     let previousIndex = -1;
     for (const task of orderedTasks) {
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed) - source: \\\`tasks/${task}\\.md\\\``));
+      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
       expect(index, task).toBeGreaterThan(previousIndex);
       previousIndex = index;
     }
@@ -74,5 +76,6 @@ describe('local agent orchestration framework', () => {
     expect(pkg.scripts['agent:summary']).toBe('node scripts/agent-summary.mjs');
     expect(pkg.scripts['smoke:receiver']).toBe('node scripts/receiver-local-smoke.mjs');
     expect(pkg.scripts['android:doctor']).toBe('node scripts/android-toolchain-check.mjs');
+    expect(pkg.scripts['android:emulator-doctor']).toBe('node scripts/android-emulator-doctor.mjs');
   });
 });
