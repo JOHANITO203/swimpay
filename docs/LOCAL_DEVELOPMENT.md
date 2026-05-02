@@ -271,6 +271,32 @@ curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/degrade \
   -d '{"reason":"operator observed drift in redacted template sample"}'
 ```
 
+Other bank-template admin actions:
+
+```bash
+curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/promote \
+  -H "Authorization: Bearer admin_ops_01" \
+  -H "Content-Type: application/json" \
+  -d '{"target_status":"shadow_testing","reason":"review evidence threshold met"}'
+
+curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/review-only \
+  -H "Authorization: Bearer admin_ops_01" \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"manual review required after drift"}'
+
+curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/disable \
+  -H "Authorization: Bearer admin_ops_01" \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"critical drift incident"}'
+
+curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/false-positive \
+  -H "Authorization: Bearer admin_ops_01" \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"merchant reported false positive"}'
+```
+
+Promoting to `trusted_low_amount` or `trusted` is blocked unless evidence thresholds are met and the related bank app package/certificate metadata has verified values. `TO_VERIFY` metadata cannot pass the trust gate.
+
 The admin foundation returns canonical/redacted template fields and operational metadata only. It does not expose raw phone numbers or raw notification text.
 
 ## Start Docker Compose
@@ -298,7 +324,7 @@ Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, 
 - Review queue APIs and repository methods exist, but automatic review creation from live matching decisions is not wired yet.
 - Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
 - Webhook delivery core is implemented as a tested worker foundation, but live NATS/Postgres orchestration is not wired yet.
-- Admin console is API-only. It exposes operator read views and audited template degrade/review-only actions, but does not implement a browser UI, template promotion, app package/cert trust verification, or unsafe bulk actions.
+- Admin console is API-only. It exposes operator read views and audited bank-template actions, but does not implement a browser UI, real app package/cert verification workflow, or unsafe bulk actions.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.
 - Phone fields are represented as HMAC/masked fields, not raw phone fields.

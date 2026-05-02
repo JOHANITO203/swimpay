@@ -1,13 +1,13 @@
 # Current Task
 
-task id: 017_admin_console_minimal
-source task file: tasks/017_admin_console_minimal.md
+task id: 023_bank_template_admin_console
+source task file: tasks/023_bank_template_admin_console.md
 status: completed
 scope:
-Implement minimal internal admin console for bank profiles, templates and incidents.
+Expose minimal admin views/actions for bank templates.
 
 files allowed:
-- Files named or implied by tasks/017_admin_console_minimal.md
+- Files named or implied by tasks/023_bank_template_admin_console.md
 - Tests for this task
 - Documentation directly related to this task
 - Shared packages only when required by this task
@@ -23,10 +23,9 @@ forbidden work:
 - Do not modify unrelated services.
 
 acceptance criteria:
-- Operator can view bank statuses.
-- Operator can view templates.
-- Operator can mark template degraded/review_only.
-- Actions create audit events.
+- Admin cannot promote template to trusted if false_positive_count > 0.
+- Admin cannot trust package/cert values equal to `TO_VERIFY`.
+- Disable action immediately blocks auto-confirm candidate status.
 
 commands to run:
 - npm run typecheck
@@ -35,17 +34,14 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T11:04:55.013Z
-completed_at: 2026-05-02T11:18:00.000Z
+started_at: 2026-05-02T11:12:37.159Z
+completed_at: 2026-05-02T11:28:00.000Z
 result: completed
 
 ## Source requirements
 
-Implement pages or API endpoints for:
-
-- bank profiles;
-- template registry;
-- drift events;
-- webhook failures;
-- receiver health;
-- audit search minimal.
+- List bank profiles.
+- List templates.
+- Show status, reliability, seen count, human verified count, false positive count.
+- Allow safe actions: promote, degrade, disable, mark false positive.
+- Every admin action writes audit event.

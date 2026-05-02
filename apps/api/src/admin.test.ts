@@ -97,6 +97,8 @@ describe('minimal admin console api', () => {
       template_id: 'tpl_01',
       bank_profile_id: 'sberbank_ru',
       status: 'degraded',
+      false_positive_count: 0,
+      auto_confirm_allowed_by_template: false,
       audit_event_id: 'aud_admin_01'
     });
     expect(repository.templates[0]?.status).toBe('degraded');
@@ -135,9 +137,131 @@ describe('minimal admin console api', () => {
     expect(action.json()).toMatchObject({
       template_id: 'tpl_01',
       status: 'review_only',
+      auto_confirm_allowed_by_template: false,
       audit_event_id: 'aud_admin_01'
     });
     expect(repository.auditEvents[0]?.eventType).toBe(AdminAuditEventTypes.TEMPLATE_REVIEW_ONLY);
+  });
+
+  it('blocks trusted promotion when false positives exist', async () => {
+    const repository = buildAdminRepository({
+      templates: [
+        {
+          ...trustedCandidateTemplate(),
+          templateId: 'tpl_false_positive',
+          falsePositiveCount: 1
+        }
+      ],
+      verifiedBankAppProfiles: ['sberbank_ru']
+    });
+    const server = buildTestServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/templates/tpl_false_positive/promote',
+      headers: { authorization: 'Bearer admin_ops_01' },
+      payload: {
+        target_status: 'trusted'
+      }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('template_false_positive_present');
+    expect(repository.templates[0]?.status).toBe('learning');
+  });
+
+  it('blocks trusted promotion when package/cert metadata is still TO_VERIFY', async () => {
+    const repository = buildAdminRepository({
+      templates: [trustedCandidateTemplate()],
+      verifiedBankAppProfiles: []
+    });
+    const server = buildTestServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/templates/tpl_trusted/promote',
+      headers: { authorization: 'Bearer admin_ops_01' },
+      payload: {
+        target_status: 'trusted'
+      }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('verified_bank_app_required');
+    expect(response.json().error.message).toContain('TO_VERIFY');
+  });
+
+  it('promotes only with evidence and verified bank app metadata', async () => {
+    const repository = buildAdminRepository({
+      templates: [trustedCandidateTemplate()],
+      verifiedBankAppProfiles: ['sberbank_ru']
+    });
+    const server = buildTestServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/templates/tpl_trusted/promote',
+      headers: { authorization: 'Bearer admin_ops_01' },
+      payload: {
+        target_status: 'trusted',
+        reason: 'shadow evidence and operator review thresholds met'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      template_id: 'tpl_trusted',
+      status: 'trusted',
+      false_positive_count: 0,
+      auto_confirm_allowed_by_template: true
+    });
+    expect(repository.auditEvents[0]).toMatchObject({
+      eventType: AdminAuditEventTypes.TEMPLATE_PROMOTED,
+      payloadRedacted: {
+        auto_confirm_allowed_by_template: true
+      }
+    });
+  });
+
+  it('marks false positives review_only and disables template auto-confirm candidate status', async () => {
+    const repository = buildAdminRepository({
+      templates: [{ ...trustedCandidateTemplate(), status: 'trusted' }],
+      verifiedBankAppProfiles: ['sberbank_ru']
+    });
+    const server = buildTestServer(repository);
+
+    const falsePositive = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/templates/tpl_trusted/false-positive',
+      headers: { authorization: 'Bearer admin_ops_01' },
+      payload: {
+        reason: 'merchant reported a false positive'
+      }
+    });
+    const disable = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/templates/tpl_trusted/disable',
+      headers: { authorization: 'Bearer admin_ops_01' },
+      payload: {
+        reason: 'critical drift incident'
+      }
+    });
+
+    expect(falsePositive.statusCode).toBe(200);
+    expect(falsePositive.json()).toMatchObject({
+      status: 'review_only',
+      false_positive_count: 1,
+      auto_confirm_allowed_by_template: false
+    });
+    expect(disable.statusCode).toBe(200);
+    expect(disable.json()).toMatchObject({
+      status: 'disabled',
+      auto_confirm_allowed_by_template: false
+    });
+    expect(repository.templates[0]).toMatchObject({
+      status: 'disabled',
+      falsePositiveCount: 1
+    });
   });
 });
 
@@ -160,7 +284,12 @@ function buildTestServer(repository: InMemoryAdminRepository) {
   });
 }
 
-function buildAdminRepository(): InMemoryAdminRepository {
+function buildAdminRepository(
+  overrides: {
+    templates?: AdminTemplateSummary[] | undefined;
+    verifiedBankAppProfiles?: string[] | undefined;
+  } = {}
+): InMemoryAdminRepository {
   return new InMemoryAdminRepository({
     bankProfiles: [
       {
@@ -175,7 +304,7 @@ function buildAdminRepository(): InMemoryAdminRepository {
         updatedAt: '2026-05-02T10:00:00.000Z'
       }
     ],
-    templates: [template()],
+    templates: overrides.templates ?? [template()],
     driftEvents: [
       {
         eventId: 'drift_01',
@@ -224,7 +353,8 @@ function buildAdminRepository(): InMemoryAdminRepository {
         },
         createdAt: '2026-05-02T10:40:00.000Z'
       }
-    ]
+    ],
+    verifiedBankAppProfiles: overrides.verifiedBankAppProfiles ?? []
   });
 }
 
@@ -240,6 +370,23 @@ function template(): AdminTemplateSummary {
     humanVerifiedCount: 3,
     falsePositiveCount: 0,
     reliabilityScore: 0.65,
+    lastSeenAt: '2026-05-02T10:10:00.000Z',
+    updatedAt: '2026-05-02T10:10:00.000Z'
+  };
+}
+
+function trustedCandidateTemplate(): AdminTemplateSummary {
+  return {
+    templateId: 'tpl_trusted',
+    bankProfileId: 'sberbank_ru',
+    directionLabel: 'incoming_customer_transfer',
+    canonicalTitle: '<AMOUNT> <CURRENCY>',
+    canonicalBody: '<PHONE> <REFERENCE>',
+    status: 'learning',
+    seenCount: 120,
+    humanVerifiedCount: 50,
+    falsePositiveCount: 0,
+    reliabilityScore: 0.96,
     lastSeenAt: '2026-05-02T10:10:00.000Z',
     updatedAt: '2026-05-02T10:10:00.000Z'
   };

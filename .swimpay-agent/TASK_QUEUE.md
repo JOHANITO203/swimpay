@@ -26,4 +26,4 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `015_security_hardening` - status: completed - source: `tasks/015_security_hardening.md`
 - [x] `016_end_to_end_tests` - status: completed - source: `tasks/016_end_to_end_tests.md`
 - [x] `017_admin_console_minimal` - status: completed - source: `tasks/017_admin_console_minimal.md`
-- [ ] `023_bank_template_admin_console` - status: pending - source: `tasks/023_bank_template_admin_console.md`
+- [x] `023_bank_template_admin_console` - status: completed - source: `tasks/023_bank_template_admin_console.md`

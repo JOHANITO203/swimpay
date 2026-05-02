@@ -39,6 +39,8 @@ Task 016 added an end-to-end payment signal foundation test. It exercises order/
 
 Task 017 added a minimal operator admin API foundation. It exposes bank profile status, template registry, drift events, webhook failures, receiver health, and audit search endpoints under `/v1/admin/*` with a local operator bearer placeholder. It also supports degrading a bank template or moving it to `review_only`, and every template action writes a redacted operator audit event.
 
+Task 023 extended the admin foundation with bank-template-specific actions: promote, degrade, review-only, disable, and mark false positive. Promotion to trusted statuses is blocked when false positives exist, when evidence thresholds are not met, or when the bank app package/certificate metadata is still unverified or `TO_VERIFY`. Disable and false-positive actions immediately make the template ineligible for auto-confirm candidates and write redacted operator audit events.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:
@@ -86,6 +88,7 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - The webhook worker is not yet connected to NATS JetStream event consumption or a Postgres-backed delivery loop.
 - End-to-end tests now cover the foundation signal flow across matching-core and webhook worker primitives, including unsafe-path protections. They are still in-process tests and do not replace future Postgres/NATS integration tests.
 - Admin console foundation is API-only for now. It supports read-only operational views and audited template degradation/review-only actions; it does not include a browser UI, dangerous admin actions, template promotion, package/certificate trust verification, or raw PII access.
+- Bank template admin controls now support promotion, degradation, review-only, disable, and false-positive marking through API endpoints. Promotion is guarded by evidence thresholds and verified bank app metadata; the console still does not verify real package/cert values or create a browser UI.
 - No official bank confirmation wording or status was introduced.
 - Receiver registration does not mark any bank package name or certificate fingerprint as trusted.
 - Android Receiver does not implement final payment confirmation logic; backend-only decisions remain intentionally unimplemented.

@@ -55,6 +55,7 @@ import {
   toAdminListResponse,
   toAdminTemplateActionResponse,
   validateAdminActionBody,
+  validateAdminPromoteBody,
   type AdminRepository
 } from './admin.js';
 
@@ -709,6 +710,40 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     });
   });
 
+  server.post('/v1/admin/templates/:id/promote', async (request, reply) => {
+    const operatorId = parseAdminOperatorId(request.headers.authorization);
+    if (!operatorId) {
+      return reply.status(401).send(adminAuthorizationError());
+    }
+
+    if (!adminRepository) {
+      return reply.status(503).send(adminRepositoryUnavailableError());
+    }
+
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Template id is required.', {}));
+    }
+
+    const body = validateAdminPromoteBody(request.body);
+    if ('error' in body) {
+      return reply.status(400).send(body);
+    }
+
+    const result = await adminRepository.updateTemplateStatus(
+      buildAdminTemplateStatusInput({
+        templateId: params.id,
+        status: body.target_status,
+        operatorId,
+        body,
+        auditEventId: idGenerator.auditEventId(),
+        occurredAt: clock().toISOString()
+      })
+    );
+
+    return sendAdminTemplateActionResult(reply, result, params.id);
+  });
+
   server.post('/v1/admin/templates/:id/review-only', async (request, reply) => {
     return handleAdminTemplateStatusAction({
       request,
@@ -718,6 +753,48 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       auditEventId: idGenerator.auditEventId(),
       occurredAt: clock().toISOString()
     });
+  });
+
+  server.post('/v1/admin/templates/:id/disable', async (request, reply) => {
+    return handleAdminTemplateStatusAction({
+      request,
+      reply,
+      adminRepository,
+      status: 'disabled',
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
+  });
+
+  server.post('/v1/admin/templates/:id/false-positive', async (request, reply) => {
+    const operatorId = parseAdminOperatorId(request.headers.authorization);
+    if (!operatorId) {
+      return reply.status(401).send(adminAuthorizationError());
+    }
+
+    if (!adminRepository) {
+      return reply.status(503).send(adminRepositoryUnavailableError());
+    }
+
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Template id is required.', {}));
+    }
+
+    const body = validateAdminActionBody(request.body);
+    if ('error' in body) {
+      return reply.status(400).send(body);
+    }
+
+    const result = await adminRepository.markTemplateFalsePositive({
+      templateId: params.id,
+      operatorId: body.actor_id ?? operatorId,
+      reason: body.reason,
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
+
+    return sendAdminTemplateActionResult(reply, result, params.id);
   });
 
   server.get('/v1/admin/drift-events', async (request, reply) => {
@@ -922,7 +999,7 @@ async function handleAdminTemplateStatusAction(params: {
   request: FastifyRequest;
   reply: FastifyReply;
   adminRepository: AdminRepository | null;
-  status: 'degraded' | 'review_only';
+  status: 'degraded' | 'review_only' | 'disabled';
   auditEventId: string;
   occurredAt: string;
 }) {
@@ -956,19 +1033,59 @@ async function handleAdminTemplateStatusAction(params: {
     })
   );
 
-  if (result.kind === 'not_found') {
-    return params.reply.status(404).send({
-      error: {
-        code: 'not_found',
-        message: 'Bank template was not found.',
-        details: {
-          template_id: routeParams.id
-        }
-      }
-    });
-  }
+  return sendAdminTemplateActionResult(params.reply, result, routeParams.id);
+}
 
-  return params.reply.status(200).send(toAdminTemplateActionResponse(result));
+function sendAdminTemplateActionResult(
+  reply: FastifyReply,
+  result: Awaited<ReturnType<AdminRepository['updateTemplateStatus']>>,
+  templateId: string
+) {
+  switch (result.kind) {
+    case 'updated':
+      return reply.status(200).send(toAdminTemplateActionResponse(result));
+    case 'not_found':
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Bank template was not found.',
+          details: {
+            template_id: templateId
+          }
+        }
+      });
+    case 'false_positive_present':
+      return reply.status(409).send({
+        error: {
+          code: 'template_false_positive_present',
+          message: 'Template with false positives cannot be promoted to a trusted status.',
+          details: {
+            template_id: templateId
+          }
+        }
+      });
+    case 'verified_bank_app_required':
+      return reply.status(409).send({
+        error: {
+          code: 'verified_bank_app_required',
+          message: 'Template cannot be trusted while bank package/certificate metadata is unverified or TO_VERIFY.',
+          details: {
+            template_id: templateId
+          }
+        }
+      });
+    case 'insufficient_evidence':
+      return reply.status(409).send({
+        error: {
+          code: 'insufficient_template_evidence',
+          message: 'Template does not have enough evidence for the requested promotion.',
+          details: {
+            template_id: templateId,
+            missing_evidence: result.missingEvidence
+          }
+        }
+      });
+  }
 }
 
 function adminAuthorizationError() {

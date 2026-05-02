@@ -7,7 +7,10 @@ const { Pool } = pg;
 
 export const AdminAuditEventTypes = {
   TEMPLATE_DEGRADED: 'admin.template.degraded',
-  TEMPLATE_REVIEW_ONLY: 'admin.template.review_only'
+  TEMPLATE_REVIEW_ONLY: 'admin.template.review_only',
+  TEMPLATE_PROMOTED: 'admin.template.promoted',
+  TEMPLATE_DISABLED: 'admin.template.disabled',
+  TEMPLATE_FALSE_POSITIVE: 'admin.template.false_positive'
 } as const;
 
 export type AdminAuditEventType = (typeof AdminAuditEventTypes)[keyof typeof AdminAuditEventTypes];
@@ -85,7 +88,7 @@ export interface AdminAuditEventSummary {
 
 export interface AdminTemplateStatusActionInput {
   templateId: string;
-  status: Extract<BankTemplateStatus, 'degraded' | 'review_only'>;
+  status: Extract<BankTemplateStatus, 'shadow_testing' | 'trusted_low_amount' | 'trusted' | 'degraded' | 'review_only' | 'disabled'>;
   operatorId: string;
   reason?: string | undefined;
   auditEventId: string;
@@ -94,7 +97,10 @@ export interface AdminTemplateStatusActionInput {
 
 export type AdminTemplateStatusActionResult =
   | { kind: 'updated'; template: AdminTemplateSummary; auditEvent: AdminAuditEventSummary }
-  | { kind: 'not_found' };
+  | { kind: 'not_found' }
+  | { kind: 'false_positive_present' }
+  | { kind: 'verified_bank_app_required' }
+  | { kind: 'insufficient_evidence'; missingEvidence: string[] };
 
 export interface AdminRepository {
   listBankProfiles(): Promise<AdminBankProfileSummary[]>;
@@ -104,11 +110,16 @@ export interface AdminRepository {
   listReceiverHealth(limit: number): Promise<AdminReceiverHealthSummary[]>;
   searchAuditEvents(input: { limit: number; eventType?: string | undefined; objectType?: string | undefined }): Promise<AdminAuditEventSummary[]>;
   updateTemplateStatus(input: AdminTemplateStatusActionInput): Promise<AdminTemplateStatusActionResult>;
+  markTemplateFalsePositive(input: Omit<AdminTemplateStatusActionInput, 'status'>): Promise<AdminTemplateStatusActionResult>;
 }
 
 export interface AdminActionRequestBody {
   actor_id?: string | undefined;
   reason?: string | undefined;
+}
+
+export interface AdminTemplatePromoteRequestBody extends AdminActionRequestBody {
+  target_status: Extract<BankTemplateStatus, 'shadow_testing' | 'trusted_low_amount' | 'trusted'>;
 }
 
 export class PgAdminRepository implements AdminRepository {
@@ -220,6 +231,26 @@ export class PgAdminRepository implements AdminRepository {
 
     try {
       await client.query('BEGIN');
+      const existingResult = await client.query(
+        `SELECT id, bank_profile_id, direction_label, canonical_title, canonical_body, status,
+          seen_count, human_verified_count, false_positive_count, reliability_score, last_seen_at, updated_at
+         FROM bank_templates
+         WHERE id = $1
+         FOR UPDATE`,
+        [input.templateId]
+      );
+
+      if (existingResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_found' };
+      }
+
+      const existingTemplate = toTemplateSummary(existingResult.rows[0] as AdminTemplateRow);
+      const guard = await this.evaluateTemplateStatusGuard(input, existingTemplate);
+      if (guard.kind !== 'allowed') {
+        await client.query('ROLLBACK');
+        return guard;
+      }
 
       const templateResult = await client.query(
         `UPDATE bank_templates
@@ -263,6 +294,89 @@ export class PgAdminRepository implements AdminRepository {
       client.release();
     }
   }
+
+  public async markTemplateFalsePositive(input: Omit<AdminTemplateStatusActionInput, 'status'>): Promise<AdminTemplateStatusActionResult> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const templateResult = await client.query(
+        `UPDATE bank_templates
+         SET false_positive_count = false_positive_count + 1,
+             status = 'review_only',
+             reliability_score = LEAST(reliability_score, 0.1000),
+             updated_at = $1
+         WHERE id = $2
+         RETURNING id, bank_profile_id, direction_label, canonical_title, canonical_body, status,
+           seen_count, human_verified_count, false_positive_count, reliability_score, last_seen_at, updated_at`,
+        [input.occurredAt, input.templateId]
+      );
+
+      if (templateResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_found' };
+      }
+
+      const template = toTemplateSummary(templateResult.rows[0] as AdminTemplateRow);
+      const auditEvent = buildTemplateAuditEvent({ ...input, status: 'review_only' }, template, AdminAuditEventTypes.TEMPLATE_FALSE_POSITIVE);
+
+      await client.query(
+        `INSERT INTO audit_events (
+          id, event_type, object_type, object_id, actor_type, actor_id, payload_redacted, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          auditEvent.auditEventId,
+          auditEvent.eventType,
+          auditEvent.objectType,
+          auditEvent.objectId,
+          auditEvent.actorType ?? null,
+          auditEvent.actorId ?? null,
+          JSON.stringify(auditEvent.payloadRedacted),
+          auditEvent.createdAt
+        ]
+      );
+
+      await client.query('COMMIT');
+      return { kind: 'updated', template, auditEvent };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async evaluateTemplateStatusGuard(
+    input: AdminTemplateStatusActionInput,
+    template: AdminTemplateSummary
+  ): Promise<Extract<AdminTemplateStatusActionResult, { kind: 'false_positive_present' | 'verified_bank_app_required' | 'insufficient_evidence' }> | { kind: 'allowed' }> {
+    const guard = evaluatePromotionEvidence(input.status, template);
+    if (guard.kind !== 'allowed') {
+      return guard;
+    }
+
+    if ((input.status === 'trusted_low_amount' || input.status === 'trusted') && !(await this.hasVerifiedBankApp(template.bankProfileId))) {
+      return { kind: 'verified_bank_app_required' };
+    }
+
+    return { kind: 'allowed' };
+  }
+
+  private async hasVerifiedBankApp(bankProfileId: string): Promise<boolean> {
+    const result = await this.pool.query(
+      `SELECT id
+       FROM bank_app_signatures
+       WHERE bank_profile_id = $1
+         AND status = 'verified'
+         AND package_name <> 'TO_VERIFY'
+         AND cert_sha256 <> 'TO_VERIFY'
+       LIMIT 1`,
+      [bankProfileId]
+    );
+
+    return Boolean(result.rowCount && result.rowCount > 0);
+  }
 }
 
 export class InMemoryAdminRepository implements AdminRepository {
@@ -272,6 +386,7 @@ export class InMemoryAdminRepository implements AdminRepository {
   public readonly webhookFailures: AdminWebhookFailureSummary[];
   public readonly receiverHealth: AdminReceiverHealthSummary[];
   public readonly auditEvents: AdminAuditEventSummary[];
+  public readonly verifiedBankAppProfiles: Set<string>;
 
   public constructor(seed: {
     bankProfiles?: AdminBankProfileSummary[] | undefined;
@@ -280,6 +395,7 @@ export class InMemoryAdminRepository implements AdminRepository {
     webhookFailures?: AdminWebhookFailureSummary[] | undefined;
     receiverHealth?: AdminReceiverHealthSummary[] | undefined;
     auditEvents?: AdminAuditEventSummary[] | undefined;
+    verifiedBankAppProfiles?: string[] | undefined;
   }) {
     this.bankProfiles = seed.bankProfiles ?? [];
     this.templates = seed.templates ?? [];
@@ -287,6 +403,7 @@ export class InMemoryAdminRepository implements AdminRepository {
     this.webhookFailures = seed.webhookFailures ?? [];
     this.receiverHealth = seed.receiverHealth ?? [];
     this.auditEvents = seed.auditEvents ?? [];
+    this.verifiedBankAppProfiles = new Set(seed.verifiedBankAppProfiles ?? []);
   }
 
   public async listBankProfiles(): Promise<AdminBankProfileSummary[]> {
@@ -326,12 +443,49 @@ export class InMemoryAdminRepository implements AdminRepository {
       return { kind: 'not_found' };
     }
 
+    const guard = this.evaluateTemplateStatusGuard(input, template);
+    if (guard.kind !== 'allowed') {
+      return guard;
+    }
+
     template.status = input.status;
     template.updatedAt = input.occurredAt;
     const auditEvent = buildTemplateAuditEvent(input, template);
     this.auditEvents.unshift(auditEvent);
 
     return { kind: 'updated', template, auditEvent };
+  }
+
+  public async markTemplateFalsePositive(input: Omit<AdminTemplateStatusActionInput, 'status'>): Promise<AdminTemplateStatusActionResult> {
+    const template = this.templates.find((candidate) => candidate.templateId === input.templateId);
+    if (!template) {
+      return { kind: 'not_found' };
+    }
+
+    template.falsePositiveCount += 1;
+    template.status = 'review_only';
+    template.reliabilityScore = Math.min(template.reliabilityScore, 0.1);
+    template.updatedAt = input.occurredAt;
+    const auditEvent = buildTemplateAuditEvent({ ...input, status: 'review_only' }, template, AdminAuditEventTypes.TEMPLATE_FALSE_POSITIVE);
+    this.auditEvents.unshift(auditEvent);
+
+    return { kind: 'updated', template, auditEvent };
+  }
+
+  private evaluateTemplateStatusGuard(
+    input: AdminTemplateStatusActionInput,
+    template: AdminTemplateSummary
+  ): Extract<AdminTemplateStatusActionResult, { kind: 'false_positive_present' | 'verified_bank_app_required' | 'insufficient_evidence' }> | { kind: 'allowed' } {
+    const guard = evaluatePromotionEvidence(input.status, template);
+    if (guard.kind !== 'allowed') {
+      return guard;
+    }
+
+    if ((input.status === 'trusted_low_amount' || input.status === 'trusted') && !this.verifiedBankAppProfiles.has(template.bankProfileId)) {
+      return { kind: 'verified_bank_app_required' };
+    }
+
+    return { kind: 'allowed' };
   }
 }
 
@@ -375,9 +529,34 @@ export function validateAdminActionBody(body: unknown): AdminActionRequestBody |
   };
 }
 
+export function validateAdminPromoteBody(body: unknown): AdminTemplatePromoteRequestBody | ApiErrorResponse {
+  const base = validateAdminActionBody(body);
+  if ('error' in base) {
+    return base;
+  }
+
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return invalidRequest('Admin promote request body must include target_status.', {
+      allowed: ['shadow_testing', 'trusted_low_amount', 'trusted']
+    });
+  }
+
+  const targetStatus = (body as Partial<AdminTemplatePromoteRequestBody>).target_status;
+  if (!['shadow_testing', 'trusted_low_amount', 'trusted'].includes(String(targetStatus))) {
+    return invalidRequest('Admin promote target_status is invalid.', {
+      allowed: ['shadow_testing', 'trusted_low_amount', 'trusted']
+    });
+  }
+
+  return {
+    ...base,
+    target_status: targetStatus as AdminTemplatePromoteRequestBody['target_status']
+  };
+}
+
 export function buildAdminTemplateStatusInput(params: {
   templateId: string;
-  status: Extract<BankTemplateStatus, 'degraded' | 'review_only'>;
+  status: Extract<BankTemplateStatus, 'shadow_testing' | 'trusted_low_amount' | 'trusted' | 'degraded' | 'review_only' | 'disabled'>;
   operatorId: string;
   body: AdminActionRequestBody;
   auditEventId: string;
@@ -398,6 +577,9 @@ export function toAdminTemplateActionResponse(result: Extract<AdminTemplateStatu
     template_id: result.template.templateId,
     bank_profile_id: result.template.bankProfileId,
     status: result.template.status,
+    false_positive_count: result.template.falsePositiveCount,
+    auto_confirm_allowed_by_template:
+      (result.template.status === 'trusted_low_amount' || result.template.status === 'trusted') && result.template.falsePositiveCount === 0,
     audit_event_id: result.auditEvent.auditEventId
   };
 }
@@ -408,11 +590,12 @@ export function toAdminListResponse<T>(key: string, values: T[]): Record<string,
 
 function buildTemplateAuditEvent(
   input: AdminTemplateStatusActionInput,
-  template: AdminTemplateSummary
+  template: AdminTemplateSummary,
+  overrideEventType?: AdminAuditEventType
 ): AdminAuditEventSummary {
   return {
     auditEventId: input.auditEventId,
-    eventType: input.status === 'degraded' ? AdminAuditEventTypes.TEMPLATE_DEGRADED : AdminAuditEventTypes.TEMPLATE_REVIEW_ONLY,
+    eventType: overrideEventType ?? templateStatusAuditEventType(input.status),
     objectType: 'bank_template',
     objectId: template.templateId,
     actorType: 'operator',
@@ -421,10 +604,78 @@ function buildTemplateAuditEvent(
       template_id: template.templateId,
       bank_profile_id: template.bankProfileId,
       status: input.status,
+      false_positive_count: template.falsePositiveCount,
+      auto_confirm_allowed_by_template:
+        (template.status === 'trusted_low_amount' || template.status === 'trusted') && template.falsePositiveCount === 0,
       reason: input.reason
     },
     createdAt: input.occurredAt
   };
+}
+
+function templateStatusAuditEventType(status: AdminTemplateStatusActionInput['status']): AdminAuditEventType {
+  switch (status) {
+    case 'shadow_testing':
+    case 'trusted_low_amount':
+    case 'trusted':
+      return AdminAuditEventTypes.TEMPLATE_PROMOTED;
+    case 'degraded':
+      return AdminAuditEventTypes.TEMPLATE_DEGRADED;
+    case 'review_only':
+      return AdminAuditEventTypes.TEMPLATE_REVIEW_ONLY;
+    case 'disabled':
+      return AdminAuditEventTypes.TEMPLATE_DISABLED;
+  }
+}
+
+function evaluatePromotionEvidence(
+  status: AdminTemplateStatusActionInput['status'],
+  template: AdminTemplateSummary
+): Extract<AdminTemplateStatusActionResult, { kind: 'false_positive_present' | 'insufficient_evidence' }> | { kind: 'allowed' } {
+  if (!['shadow_testing', 'trusted_low_amount', 'trusted'].includes(status)) {
+    return { kind: 'allowed' };
+  }
+
+  if (template.falsePositiveCount > 0) {
+    return { kind: 'false_positive_present' };
+  }
+
+  const missingEvidence: string[] = [];
+
+  if (status === 'shadow_testing') {
+    if (template.seenCount < 10) {
+      missingEvidence.push('seen_count_lt_10');
+    }
+    if (template.humanVerifiedCount < 3) {
+      missingEvidence.push('human_verified_count_lt_3');
+    }
+  }
+
+  if (status === 'trusted_low_amount') {
+    if (template.seenCount < 30) {
+      missingEvidence.push('seen_count_lt_30');
+    }
+    if (template.humanVerifiedCount < 15) {
+      missingEvidence.push('human_verified_count_lt_15');
+    }
+    if (template.reliabilityScore < 0.9) {
+      missingEvidence.push('reliability_score_lt_0_90');
+    }
+  }
+
+  if (status === 'trusted') {
+    if (template.seenCount < 100) {
+      missingEvidence.push('seen_count_lt_100');
+    }
+    if (template.humanVerifiedCount < 40) {
+      missingEvidence.push('human_verified_count_lt_40');
+    }
+    if (template.reliabilityScore < 0.93) {
+      missingEvidence.push('reliability_score_lt_0_93');
+    }
+  }
+
+  return missingEvidence.length > 0 ? { kind: 'insufficient_evidence', missingEvidence } : { kind: 'allowed' };
 }
 
 interface AdminBankProfileRow {
