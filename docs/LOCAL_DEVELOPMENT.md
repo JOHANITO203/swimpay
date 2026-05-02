@@ -451,6 +451,22 @@ npm run smoke:receiver
 
 The smoke plan uses synthetic redacted data and does not require a real Android device. See `docs/ANDROID_RECEIVER_LIFECYCLE.md` and `docs/ANDROID_GRADLE_READINESS_PLAN.md`.
 
+Check Android build tooling:
+
+```bash
+npm run android:doctor
+```
+
+Sprint 3D adds Gradle Android project files under `apps/android-receiver/android`, but no Gradle wrapper JAR is checked in. In the current environment Java and Android SDK are present, while Gradle is not available in PATH. Android assemble/debug builds should be run only after generating a wrapper from a trusted local Gradle installation.
+
+Static Android runnable app checks:
+
+```bash
+npm test -- --run apps/android-receiver/src/android-runnable-app.test.ts
+```
+
+Manual emulator smoke instructions are in `docs/ANDROID_EMULATOR_SMOKE_TEST.md`.
+
 ## Bank App Verification Workflow
 
 Observed bank app package/cert metadata can be reviewed through the admin API:

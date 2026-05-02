@@ -20,7 +20,8 @@ const requiredAgentFiles = [
   'scripts/agent-runner.mjs',
   'scripts/agent-validate.mjs',
   'scripts/agent-summary.mjs',
-  'scripts/receiver-local-smoke.mjs'
+  'scripts/receiver-local-smoke.mjs',
+  'scripts/android-toolchain-check.mjs'
 ];
 
 describe('local agent orchestration framework', () => {
@@ -30,17 +31,18 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Phase 3C receiver lifecycle tasks as executable in the approved order', () => {
+  test('task queue lists Phase 3D Android runnable app tasks as executable in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '042_receiver_device_registration_client',
-      '043_receiver_signed_heartbeat_client',
-      '044_receiver_signed_signal_upload_client',
-      '045_receiver_encrypted_outbox_retry_loop',
-      '046_receiver_health_status_model',
-      '047_receiver_local_backend_smoke_test',
-      '048_android_gradle_readiness_plan'
+      '049_android_gradle_project_setup',
+      '050_android_manifest_notification_access',
+      '051_android_notification_access_status_screen',
+      '052_android_keystore_signer_platform_impl',
+      '053_android_encrypted_outbox_platform_impl',
+      '054_android_workmanager_upload_retry',
+      '055_android_emulator_smoke_path',
+      '056_android_mvp_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -73,5 +75,6 @@ describe('local agent orchestration framework', () => {
     expect(pkg.scripts['agent:validate']).toBe('node scripts/agent-validate.mjs');
     expect(pkg.scripts['agent:summary']).toBe('node scripts/agent-summary.mjs');
     expect(pkg.scripts['smoke:receiver']).toBe('node scripts/receiver-local-smoke.mjs');
+    expect(pkg.scripts['android:doctor']).toBe('node scripts/android-toolchain-check.mjs');
   });
 });

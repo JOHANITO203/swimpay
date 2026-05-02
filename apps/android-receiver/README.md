@@ -9,15 +9,17 @@ Android captures, filters, redacts, signs and uploads operational payment signal
 This repository currently contains:
 
 - TypeScript MVP core used by local tests.
-- Kotlin-source-ready skeleton under `android/app/src/main`.
+- Gradle Android project files under `android`.
+- Kotlin-source-ready Android app skeleton under `android/app/src/main`.
 - Configuration placeholders under `config`.
 
-No Gradle wrapper or Android build toolchain is currently present in this repo, so Android platform tests are documented as unavailable. The executable checks are the TypeScript tests in `src`.
+No Gradle wrapper JAR is currently present in this repo, and the current shell does not expose a `gradle` command. Android platform builds/tests are documented as unavailable until a trusted wrapper is generated or Gradle is installed. The executable checks are the TypeScript/static tests in `src`.
 
 ## Commands
 
 ```bash
 npm test -- --run apps/android-receiver/src
+npm run android:doctor
 npm run typecheck
 npm run build
 ```
@@ -49,6 +51,11 @@ npm run build
 - Retrying encrypted outbox model.
 - Receiver health status model.
 - Local backend smoke plan helper.
+- Gradle Android project foundation.
+- Notification access status screen skeleton.
+- Android Keystore signer skeleton.
+- Android encrypted outbox storage boundary.
+- WorkManager upload retry skeleton.
 
 All package/cert values in examples are synthetic.
 
@@ -56,7 +63,9 @@ All package/cert values in examples are synthetic.
 
 ```bash
 npm test -- --run apps/android-receiver/src/android-receiver-lifecycle.test.ts
+npm test -- --run apps/android-receiver/src/android-runnable-app.test.ts
 npm run smoke:receiver
+npm run android:doctor
 ```
 
 `npm run smoke:receiver` prints a local synthetic flow. It does not require a real Android device and does not call external services.

@@ -146,3 +146,5 @@ The Android Receiver MVP foundation is capture-only:
 Package/cert values marked `TO_VERIFY` stay untrusted locally and on the backend.
 
 Sprint 3C adds receiver lifecycle clients and an outbox model. The outbox stores encrypted redacted signed payloads only, dedupes by event id, and tracks retry metadata without raw phone numbers or raw notification text. Android Keystore and encrypted platform storage remain future Android-platform implementation work.
+
+Sprint 3D adds Android platform-facing boundaries for Keystore signing, encrypted outbox storage and WorkManager upload retry. These are app foundations only; Android still does not confirm or auto-confirm payments, and no SMS or accessibility scraping permissions are requested.

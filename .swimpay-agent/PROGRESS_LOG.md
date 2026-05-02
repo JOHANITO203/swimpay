@@ -900,6 +900,34 @@ Validation:
 - `npm run build` PASS
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
 - Android/Gradle tests not run because no Gradle wrapper or Android SDK build configuration exists yet.
+
+# 2026-05-02 - Sprint 3D Android Runnable App Setup
+
+Plan:
+- Create tasks 049 through 056 and move the task queue to Sprint 3D.
+- Add Android Gradle project files without inventing a wrapper JAR.
+- Add manifest, status screen/model, Android Keystore signer skeleton, encrypted outbox platform boundary and WorkManager retry skeleton.
+- Add emulator smoke documentation and closeout review.
+- Keep Android capture/filter/redact/sign/upload only.
+
+Result:
+- Added Gradle project files under `apps/android-receiver/android`.
+- Added `MainActivity`, `ReceiverStatusViewModel`, Android Keystore signer, fake signer, encrypted outbox interfaces/adapters and `SignalUploadWorker`.
+- Added `docs/ANDROID_EMULATOR_SMOKE_TEST.md`.
+- Added `.swimpay-agent/ANDROID_MVP_CLOSEOUT_REVIEW.md`.
+- Added static tests in `apps/android-receiver/src/android-runnable-app.test.ts`.
+- Added `npm run android:doctor`.
+
+Validation:
+- `npm test -- --run apps/android-receiver/src/android-runnable-app.test.ts` RED first, then PASS after implementation.
+- `npm test -- --run apps/android-receiver/src tests/agent-framework.test.ts` PASS
+- `npm run android:doctor` PASS as diagnostic; Java and Android SDK present, Gradle unavailable.
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS (`34` test files, `227` tests)
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+- Android Gradle assemble not run because no `gradle` command is available and no wrapper JAR is checked in.
 # 2026-05-02 - Task 031 Android Receiver Contract Validation
 
 Plan:

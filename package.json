@@ -20,7 +20,8 @@
     "dev:job-worker": "npm run dev --workspace @swimpay/job-worker",
     "dev:web": "npm run dev --workspace @swimpay/web",
     "smoke:runtime": "node scripts/live-runtime-smoke.mjs",
-    "smoke:receiver": "node scripts/receiver-local-smoke.mjs"
+    "smoke:receiver": "node scripts/receiver-local-smoke.mjs",
+    "android:doctor": "node scripts/android-toolchain-check.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.1",

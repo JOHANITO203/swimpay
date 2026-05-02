@@ -1,17 +1,17 @@
 # Android Gradle Readiness Plan
 
-The current Android Receiver is Kotlin-source-ready and TypeScript-testable, but not yet a runnable Android app module. Sprint 3C intentionally does not add an unstable Gradle setup because the repo has no Gradle wrapper or Android SDK build configuration.
+The Android Receiver now has Gradle project files and Kotlin source under `apps/android-receiver/android`. No Gradle wrapper JAR is checked in, and the current shell does not expose a `gradle` command, so Android assemble has not been run yet.
 
 ## Required Build Pieces
 
-- Gradle wrapper pinned in the repository.
-- Android Gradle Plugin pinned to a supported version.
-- Kotlin Android plugin pinned to a supported version.
-- `settings.gradle.kts`.
-- Root `build.gradle.kts`.
-- `apps/android-receiver/android/app/build.gradle.kts`.
-- Android namespace, `minSdk`, `targetSdk` and `compileSdk`.
-- JVM/Kotlin toolchain configuration.
+- Gradle wrapper pinned in the repository: pending trusted generation.
+- Android Gradle Plugin pinned to a supported version: configured in `build.gradle.kts`.
+- Kotlin Android plugin pinned to a supported version: configured in `build.gradle.kts`.
+- `settings.gradle.kts`: present.
+- Root `build.gradle.kts`: present.
+- `apps/android-receiver/android/app/build.gradle.kts`: present.
+- Android namespace, `minSdk`, `targetSdk` and `compileSdk`: present.
+- JVM/Kotlin toolchain configuration: present.
 
 ## App Module Requirements
 
@@ -74,10 +74,12 @@ Instrumented tests should cover:
 
 ## Go Criteria For Adding Gradle
 
-Add Gradle only when:
+Generate the Gradle wrapper only when:
 
 - Android SDK is available in the development environment;
-- wrapper generation is intentional and reviewed;
+- a trusted `gradle` command is installed;
 - validation can run without breaking the existing Node monorepo checks;
 - no production secrets are introduced;
 - no real bank package names or cert fingerprints are invented.
+
+Do not manually invent or paste a Gradle wrapper JAR.

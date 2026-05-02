@@ -159,3 +159,17 @@ The receiver core now includes testable local clients and models for:
 - local backend smoke planning.
 
 These are TypeScript-testable foundations for the later Android platform implementation. They do not add Android payment confirmation, SMS access, bank app scraping, or real bank package/cert trust.
+
+## Sprint 3D Android Runnable App Foundation
+
+The repository now includes Android project files and Kotlin source boundaries for:
+
+- app module configuration;
+- `NotificationListenerService` manifest declaration;
+- safe receiver status screen/model;
+- Android Keystore signer skeleton;
+- encrypted outbox platform adapter boundary;
+- WorkManager upload retry skeleton;
+- emulator smoke documentation.
+
+The app still does not confirm or auto-confirm payments. Android assemble has not been run in the current shell because Gradle is not installed and no wrapper JAR is checked in.
