@@ -1152,3 +1152,35 @@ Validation:
 Notes:
 - APK install, Notification Access live validation, receiver registration, heartbeat, synthetic signal upload and outbox offline/online smoke are blocked until an emulator/device is available.
 - No critical SwimPay blockers were added.
+
+## 2026-05-02 - Sprint 4D / ADB Real Device Receiver Smoke
+
+Plan:
+- Locate ADB even though it is not in PATH.
+- Detect and authorize the connected Android phone.
+- Build, install and launch the SwimPay Receiver APK on the real device.
+- Configure adb reverse for backend port `3000`.
+- Open Notification Access settings and verify Android system-level listener state.
+- Attempt the safest possible backend smoke, using synthetic data only.
+
+Result:
+- ADB found at `C:\Users\Lenovo\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
+- Selected physical USB device serial `R5CWA0FEPZW` for Samsung `SM_S916B`.
+- Device authorization status is `device`.
+- `:app:assembleDebug` PASS.
+- `:app:testDebugUnitTest` PASS.
+- APK install PASS.
+- App launch PASS.
+- adb reverse `tcp:3000 tcp:3000` PASS.
+- Notification Access enabled at Android system level for `com.swimpay.receiver/com.swimpay.receiver.SwimPayNotificationListenerService`.
+
+Blocked live backend steps:
+- `http://localhost:3000/health` did not respond.
+- Docker Desktop Linux engine pipe was unavailable.
+- Receiver registration, heartbeat, synthetic signal upload and outbox offline/online smoke were not run against a live backend.
+
+Safety checks:
+- No real bank notifications used.
+- No real customer data used.
+- No SMS permission or scraping behavior added.
+- No Android payment confirmation or auto-confirmation added.

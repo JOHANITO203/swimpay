@@ -1,28 +1,34 @@
 # Next Action
 
-generated_at: 2026-05-02T21:05:00+03:00
+generated_at: 2026-05-02T21:58:00+03:00
 
 ## Latest completed task
 
-Sprint 4C emulator smoke preparation is complete, with live emulator execution blocked by local Android environment:
+Sprint 4D ADB real-device takeover is partially complete:
 
-- `068_emulator_environment_doctor`
-- `070_notification_access_manual_flow`
-- `074_emulator_smoke_closeout_review`
+- real phone detected and authorized;
+- debug APK installed;
+- app launched;
+- adb reverse for port `3000` configured;
+- Notification Access enabled at Android system level;
+- backend smoke blocked because local API/Docker runtime is not running.
 
 ## Commands run
 
+- adb discovery and `adb devices -l`
 - `npm run android:doctor`
-- `npm run android:emulator-doctor`
-- `npm test -- --run apps/android-receiver/src/android-runnable-app.test.ts`
-- `npm test -- --run tests/agent-framework.test.ts`
-- `.\gradlew.bat :app:assembleDebug --no-daemon --stacktrace`
-- `.\gradlew.bat :app:testDebugUnitTest --no-daemon --stacktrace`
 - `npm run typecheck`
 - `npm run lint`
 - `npm test`
 - `npm run build`
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config`
+- `.\gradlew.bat :app:assembleDebug --no-daemon --stacktrace`
+- `.\gradlew.bat :app:testDebugUnitTest --no-daemon --stacktrace`
+- `adb -s R5CWA0FEPZW install -r apps\android-receiver\android\app\build\outputs\apk\debug\app-debug.apk`
+- `adb -s R5CWA0FEPZW shell monkey -p com.swimpay.receiver 1`
+- `adb -s R5CWA0FEPZW reverse tcp:3000 tcp:3000`
+- `adb -s R5CWA0FEPZW shell am start -a android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`
+- `adb -s R5CWA0FEPZW shell settings get secure enabled_notification_listeners`
 
 ## Pass/fail status
 
@@ -30,15 +36,21 @@ Node/Compose validation: PASS
 
 Android doctor: PASS
 
-Android emulator doctor: PASS as diagnostic, BLOCKED for live emulator because no emulator command, AVD or running device exists
-
 Android `assembleDebug`: PASS
 
 Android JVM tests: PASS
 
-APK install: NOT RUN, no emulator/device available
+ADB device detection: PASS
 
-Live emulator smoke: BLOCKED
+APK install: PASS
+
+App launch: PASS
+
+adb reverse: PASS
+
+Notification Access: PASS at Android system level
+
+Backend registration/heartbeat/signal smoke: BLOCKED, local backend unavailable
 
 ## Blockers
 
@@ -50,20 +62,22 @@ Non-critical limitations:
 - `ANDROID_HOME`/`ANDROID_SDK_ROOT` must be set for local Android Gradle commands.
 - Android Emulator package is unavailable or not discoverable under the local SDK.
 - No AVD is configured.
-- No running emulator/device is attached through adb.
-- Live APK install, Notification Access validation, receiver registration, heartbeat, signal upload and outbox retry smoke remain pending.
+- Real device is available and authorized: `R5CWA0FEPZW`.
+- Docker Desktop Linux engine is not running.
+- Local API is not reachable on `localhost:3000`.
+- Receiver registration, heartbeat, signal upload and outbox retry smoke remain pending.
+- The app status screen does not yet read live Notification Access state.
 
 ## Next recommended sprint
 
-Sprint 4D - Emulator Environment Provisioning And Live App Smoke:
+Sprint 4E - Real Device Backend Smoke Wiring:
 
-- install Android Emulator and Android SDK command-line tools;
-- create a local AVD;
-- install `app-debug.apk`;
-- verify Notification Access settings path;
-- verify safe receiver status screen;
-- verify no SMS/scanning permissions;
-- run synthetic local backend flow if practical.
+- start Docker Desktop and the local Compose runtime;
+- verify `http://localhost:3000/health`;
+- keep `adb reverse tcp:3000 tcp:3000`;
+- add/run a debug-only app smoke trigger for receiver registration, heartbeat and synthetic redacted signal upload;
+- verify `backend_decision_pending`;
+- keep Android capture-only and backend-decision boundaries.
 
 ## What not to do next
 
