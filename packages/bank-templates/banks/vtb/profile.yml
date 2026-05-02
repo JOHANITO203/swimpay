@@ -1,0 +1,50 @@
+bank_profile_id: vtb_ru
+display_name: "VTB Bank"
+country: RU
+status: learning
+auto_confirm_status: review_only
+notes: "Start in learning. Expect conservative auto-confirm until dataset is verified."
+
+trusted_apps:
+  - package_name: TO_VERIFY
+    cert_sha256: TO_VERIFY
+    verification_status: pending_verification
+    source: verify_from_android_packagemanager
+
+supported_locales:
+  - ru-RU
+
+field_priority:
+  - EXTRA_TITLE
+  - EXTRA_TITLE_BIG
+  - EXTRA_TEXT
+  - EXTRA_BIG_TEXT
+  - EXTRA_TEXT_LINES
+  - EXTRA_SUB_TEXT
+  - EXTRA_SUMMARY_TEXT
+  - tickerText
+  - channelId
+  - groupKey
+
+template_defaults:
+  require_amount_for_signal_quality: true
+  require_direction_for_signal_quality: true
+  require_phone_or_reference_for_auto_confirm: true
+  require_no_collision_for_auto_confirm: true
+  parse_combined_fields: true
+  coalescing_required: true
+
+operational_limits:
+  initial_max_auto_confirm_minor:
+    RUB: 500000
+  review_required_above_minor:
+    RUB: 500000
+  disable_auto_confirm_if_drift_status:
+    - major_drift
+    - critical_drift
+
+privacy:
+  upload_raw_text_default: false
+  store_redacted_text: true
+  store_phone_raw: false
+  store_phone_hmac: true

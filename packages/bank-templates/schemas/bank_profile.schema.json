@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SwimPay Bank Profile",
+  "type": "object",
+  "required": [
+    "bank_profile_id",
+    "display_name",
+    "country",
+    "status",
+    "trusted_apps",
+    "field_priority",
+    "template_defaults"
+  ],
+  "properties": {
+    "bank_profile_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 2
+    },
+    "status": {
+      "enum": [
+        "learning",
+        "shadow_testing",
+        "trusted_low_amount",
+        "trusted",
+        "degraded",
+        "review_only",
+        "disabled"
+      ]
+    },
+    "auto_confirm_status": {
+      "enum": [
+        "disabled",
+        "review_only",
+        "shadow_testing",
+        "trusted_low_amount",
+        "trusted"
+      ]
+    },
+    "trusted_apps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "package_name",
+          "cert_sha256",
+          "verification_status"
+        ],
+        "properties": {
+          "package_name": {
+            "type": "string"
+          },
+          "cert_sha256": {
+            "type": "string"
+          },
+          "verification_status": {
+            "enum": [
+              "pending_verification",
+              "verified",
+              "rejected",
+              "deprecated"
+            ]
+          }
+        }
+      }
+    },
+    "supported_locales": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "field_priority": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "template_defaults": {
+      "type": "object"
+    }
+  }
+}

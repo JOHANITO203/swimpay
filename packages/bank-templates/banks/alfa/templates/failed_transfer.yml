@@ -1,0 +1,48 @@
+template_id: alfa_ru_failed_transfer_v1
+bank_profile_id: alfa_ru
+version: 1
+status: learning
+direction_label: failed_transfer
+risk_class: negative_failed_signal
+
+match:
+  title_any:
+    - "операция отклонена"
+    - "перевод не выполнен"
+    - "платеж не выполнен"
+    - "отклонено <AMOUNT> <CURRENCY>"
+  body_any:
+    - "не выполнено"
+    - "не исполнено"
+    - "отменено"
+    - "declined"
+    - "failed"
+
+positive_keywords:
+  - отклонено
+  - не выполнено
+  - не исполнено
+  - отменено
+  - declined
+  - failed
+  - rejected
+
+negative_keywords:
+  - поступление
+  - зачисление
+
+extractors:
+  amount:
+    strategy: optional_amount_near_failed_keyword
+    required: false
+
+decision_hints:
+  parser_signal_quality_floor: 0
+  allow_auto_confirm_candidate: false
+  backend_must_reject_auto_confirm: true
+
+reason_codes:
+  positive:
+    - failed_keyword_detected
+  negative:
+    - not_successful_transfer

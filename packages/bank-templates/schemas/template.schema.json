@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SwimPay Bank Template",
+  "type": "object",
+  "required": [
+    "template_id",
+    "bank_profile_id",
+    "version",
+    "status",
+    "direction_label",
+    "risk_class",
+    "match",
+    "extractors",
+    "decision_hints"
+  ],
+  "properties": {
+    "template_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "bank_profile_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "enum": [
+        "new",
+        "learning",
+        "shadow_testing",
+        "trusted_low_amount",
+        "trusted",
+        "degraded",
+        "review_only",
+        "disabled"
+      ]
+    },
+    "direction_label": {
+      "enum": [
+        "incoming_customer_transfer",
+        "incoming_cashback",
+        "incoming_refund",
+        "incoming_salary_or_income",
+        "incoming_non_customer",
+        "outgoing_payment",
+        "outgoing_transfer",
+        "failed_transfer",
+        "promo",
+        "balance_update",
+        "unknown",
+        "unknown_ambiguous_direction"
+      ]
+    },
+    "risk_class": {
+      "type": "string"
+    },
+    "match": {
+      "type": "object"
+    },
+    "positive_keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "negative_keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "extractors": {
+      "type": "object"
+    },
+    "decision_hints": {
+      "type": "object"
+    }
+  }
+}

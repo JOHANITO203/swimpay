@@ -155,6 +155,24 @@ npm test -- packages/bank-templates/src/parser.test.ts
 
 The parser extracts RUB amounts, Russian phone candidates, SwimPay reference codes, direction labels, negative gates, and signal quality. It does not match signals to orders or make payment decisions.
 
+## Bank Template Package Assets
+
+Run the bank-template setup test:
+
+```bash
+npm test -- tests/bank-template-package.test.ts
+```
+
+The package includes imported YAML/JSONL assets from the downloaded bank-template pack:
+
+- `packages/bank-templates/banks/`
+- `packages/bank-templates/fixtures/`
+- `packages/bank-templates/policies/`
+- `packages/bank-templates/schemas/`
+- `packages/bank-templates/shared/`
+
+These files are trackable by git and are not trusted runtime decisions by themselves.
+
 ## Matching Core Foundation
 
 Run matching-core guardrail tests:

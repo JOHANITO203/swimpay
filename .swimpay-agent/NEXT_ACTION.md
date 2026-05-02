@@ -1,10 +1,10 @@
 # Next Action
 
-generated_at: 2026-05-02T10:11:27.206Z
+generated_at: 2026-05-02T10:14:36.451Z
 
 ## Latest completed task
 
-Repository foundation baseline is complete. Current prepared task: 012_webhook_worker.
+Repository foundation baseline is complete. Current prepared task: 018_bank_template_package_setup.
 
 ## Files changed if detectable
 
@@ -14,15 +14,22 @@ M .swimpay-agent/CURRENT_TASK.md
  M .swimpay-agent/TASK_QUEUE.md
  M docs/IMPLEMENTATION_NOTES.md
  M docs/LOCAL_DEVELOPMENT.md
-?? apps/job-worker/src/webhooks.test.ts
-?? apps/job-worker/src/webhooks.ts
+?? packages/bank-templates/INDEX.md
+?? packages/bank-templates/banks/
+?? packages/bank-templates/fixtures/
+?? packages/bank-templates/operations/
+?? packages/bank-templates/policies/
+?? packages/bank-templates/schemas/
+?? packages/bank-templates/shared/
+?? packages/bank-templates/src/README.md
+?? tests/bank-template-package.test.ts
 ```
 
 ## Commands run
 
 See .swimpay-agent/PROGRESS_LOG.md.
 
-Latest validation: pass at 2026-05-02T10:10:54.665Z
+Latest validation: pass at 2026-05-02T10:14:08.775Z
 
 ## Pass/fail status
 
@@ -36,7 +43,7 @@ No current blockers.
 
 ## Next recommended task
 
-018_bank_template_package_setup (tasks/018_bank_template_package_setup.md)
+019_bank_profile_registry (tasks/019_bank_profile_registry.md)
 
 ## What not to do next
 

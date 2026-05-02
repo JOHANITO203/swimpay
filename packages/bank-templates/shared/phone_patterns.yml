@@ -1,0 +1,31 @@
+patterns_id: phone_patterns_ru_v1
+version: 1
+
+normalization:
+  country: RU
+  canonical_format: "+7XXXXXXXXXX"
+  rules:
+    - "If 11 digits and starts with 8, replace 8 with +7."
+    - "If 11 digits and starts with 7, prefix with +."
+    - "If 10 digits, prefix with +7."
+    - "Reject otherwise."
+
+phone_regexes:
+  russian_visible_phone:
+    regex: '(?:(?:\\+7|8)[\\s\\-()]*)?(?:\\d[\\s\\-()]*){10,11}'
+    examples:
+      - "+7 999 123-45-67"
+      - "8 (999) 123-45-67"
+      - "9991234567"
+
+masked_phone_patterns:
+  russian_masked_phone:
+    regex: '(?:\\+7|8)?[\\s\\-()]*[\\*xх•\\d][\\s\\-()\\*xх•]{6,20}\\d{2,4}'
+    examples:
+      - "+7 *** *** **67"
+      - "8 *** *** 4567"
+
+auto_confirm_policy:
+  visible_phone_exact: allowed_as_primary_signal
+  masked_phone: weak_signal_only
+  missing_phone: require_exact_reference_or_review

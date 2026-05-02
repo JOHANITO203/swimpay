@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SwimPay Redacted Notification Fixture",
+  "type": "object",
+  "required": [
+    "fixture_id",
+    "bank_profile_id",
+    "locale",
+    "title",
+    "body",
+    "expected"
+  ],
+  "properties": {
+    "fixture_id": {
+      "type": "string"
+    },
+    "bank_profile_id": {
+      "type": "string"
+    },
+    "locale": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "big_text": {
+      "type": "string"
+    },
+    "sub_text": {
+      "type": "string"
+    },
+    "expected": {
+      "type": "object",
+      "required": [
+        "direction_label",
+        "auto_confirm_candidate"
+      ],
+      "properties": {
+        "direction_label": {
+          "type": "string"
+        },
+        "amount_present": {
+          "type": "boolean"
+        },
+        "phone_present": {
+          "type": "boolean"
+        },
+        "reference_present": {
+          "type": "boolean"
+        },
+        "auto_confirm_candidate": {
+          "type": "boolean"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+policy_id: mutation_prediction_policy_v1
+version: 1
+
+mutation_families:
+  incoming_keyword_synonym:
+    probability_hint: 0.70
+    impact: medium
+    examples:
+      - "поступление → зачисление"
+      - "вам перевели → получен перевод"
+    parser_action: add_synonym_candidate
+    auto_confirm_action: shadow_test_before_trust
+
+  amount_currency_format:
+    probability_hint: 0.65
+    impact: low
+    examples:
+      - "137 ₽ → 137 руб."
+      - "137 ₽ → RUB 137"
+    parser_action: keep_currency_regex_flexible
+    auto_confirm_action: no_change_if_amount_exact
+
+  amount_moved_title_to_body:
+    probability_hint: 0.50
+    impact: medium
+    examples:
+      - "title contains amount, body later contains amount"
+    parser_action: parse_combined_fields_and_disambiguate_balance
+    auto_confirm_action: require_template_shadow_if_new
+
+  phone_removed_or_masked:
+    probability_hint: 0.60
+    impact: high
+    examples:
+      - "<PHONE> → <PHONE_MASKED>"
+      - "<PHONE> removed"
+    parser_action: treat_masked_phone_as_weak_hint
+    auto_confirm_action: require_reference_exact_or_review
+
+  reference_removed_or_truncated:
+    probability_hint: 0.55
+    impact: high
+    examples:
+      - "<REFERENCE> → <REFERENCE_TRUNCATED>"
+      - "<REFERENCE> removed"
+    parser_action: fallback_to_phone_exact
+    auto_confirm_action: require_phone_exact_or_review
+
+  balance_suffix_added:
+    probability_hint: 0.55
+    impact: medium
+    examples:
+      - "Поступление 137 ₽. Баланс 10000 ₽"
+    parser_action: avoid_balance_amount_as_transaction_amount
+    auto_confirm_action: no_change_if_transaction_amount_disambiguated
+
+  promo_text_added:
+    probability_hint: 0.35
+    impact: high
+    examples:
+      - "Поступление 137 ₽. Акция банка..."
+    parser_action: avoid misclassifying promo as transfer
+    auto_confirm_action: review_if_ambiguous
+
+adversarial_generation:
+  enabled: true
+  generate_negative_cases_from_positive_templates: true
+  include_cashback_refund_outgoing_failed_promo: true

@@ -223,6 +223,19 @@
 - Added meaningful webhook tests for disclosure, signing, duplicate prevention, retry exhaustion, and replay.
 - Did not implement live NATS consumption, Postgres-backed delivery polling, admin UI, PSP/SBP behavior, or payment decision logic.
 
+## 2026-05-02 - Task 018 bank template package setup plan
+
+- Scope: integrate the downloaded bank-template package assets into `packages/bank-templates`, keep package metadata/build compatibility, and add a setup test for TypeScript exports plus YAML/JSONL asset presence.
+- Boundaries: do not rewrite the pack, do not implement parser core beyond existing foundation, do not promote templates or package/cert metadata to trusted.
+- Safety checks: YAML/JSONL assets must remain trackable; no real bank package or certificate values are introduced as verified/trusted by this task.
+
+## 2026-05-02 - Task 018 bank template package setup completed
+
+- Imported bank-template pack directories into `packages/bank-templates`: `banks`, `fixtures`, `operations`, `policies`, `schemas`, and `shared`.
+- Imported `packages/bank-templates/INDEX.md` and the pack `src/README.md`.
+- Added tests proving workspace TypeScript exports are available and YAML/JSONL assets are present and not ignored by `.gitignore`.
+- Did not implement final parser logic, bank profile trust promotion, real package/cert verification, or payment decision behavior.
+
 ## 2026-05-02T10:00:33.072Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
@@ -248,6 +261,14 @@
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
 
 ## 2026-05-02T10:10:54.665Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T10:14:08.775Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
 - PASS: `npm run lint` (Lint, exit 0)

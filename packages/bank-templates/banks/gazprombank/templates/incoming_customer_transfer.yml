@@ -1,0 +1,79 @@
+template_id: gazprombank_ru_incoming_customer_transfer_v1
+bank_profile_id: gazprombank_ru
+version: 1
+status: learning
+direction_label: incoming_customer_transfer
+risk_class: customer_payment_candidate
+
+match:
+  title_any:
+    - "поступление <AMOUNT> <CURRENCY>"
+    - "зачисление <AMOUNT> <CURRENCY>"
+    - "вам перевели <AMOUNT> <CURRENCY>"
+    - "получен перевод <AMOUNT> <CURRENCY>"
+    - "пополнение <AMOUNT> <CURRENCY>"
+  body_any:
+    - "перевод от <PERSON> <PHONE>"
+    - "перевод от <PHONE>"
+    - "от <PERSON> <PHONE>"
+    - "коммент <REFERENCE>"
+    - "назначение <REFERENCE>"
+
+positive_keywords:
+  - поступление
+  - зачисление
+  - перевод получен
+  - получен перевод
+  - вам перевели
+  - пополнение карты
+  - пополнение счета
+
+negative_keywords:
+  - списание
+  - покупка
+  - оплата
+  - кэшбэк
+  - кешбэк
+  - возврат
+  - отклонено
+  - не выполнено
+  - акция
+  - предложение
+
+extractors:
+  amount:
+    strategy: transaction_amount_near_direction_keyword
+    required: true
+    disambiguate_against_balance: true
+  currency:
+    strategy: ruble_currency_normalization
+    required: true
+  phone:
+    strategy: russian_phone_normalization
+    required_for_auto_confirm: true
+    masked_phone_is_weak_signal: true
+  reference:
+    strategy: swimpay_reference_or_comment_keyword
+    required_for_auto_confirm_if_phone_missing: true
+    truncated_reference_is_weak_signal: true
+  sender_name:
+    strategy: person_after_ot_or_from
+    weak_signal_only: true
+
+decision_hints:
+  parser_signal_quality_floor: 80
+  allow_auto_confirm_candidate: true
+  backend_must_verify_no_collision: true
+  backend_must_verify_phone_or_reference_exact: true
+  backend_must_verify_template_trust: true
+
+reason_codes:
+  positive:
+    - incoming_keyword_detected
+    - amount_extracted
+    - template_matched
+  negative:
+    - negative_keyword_detected
+    - phone_missing
+    - reference_missing
+    - ambiguous_direction

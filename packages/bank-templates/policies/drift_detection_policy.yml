@@ -1,0 +1,50 @@
+policy_id: bank_template_drift_detection_policy_v1
+version: 1
+
+metrics:
+  - unknown_rate_24h
+  - unknown_rate_7d
+  - parser_confidence_median_24h
+  - amount_extraction_success_rate_24h
+  - phone_visibility_rate_24h
+  - reference_visibility_rate_24h
+  - review_rate_24h
+  - false_positive_count_7d
+  - new_template_count_24h
+  - similarity_to_best_template
+
+thresholds:
+  stable:
+    unknown_rate_24h_lte: 0.05
+    parser_confidence_median_gte: 0.90
+
+  minor_drift:
+    unknown_rate_24h_gt: 0.05
+    unknown_rate_24h_lte: 0.12
+    similarity_to_best_template_gte: 0.78
+    action: shadow_test_new_templates
+
+  major_drift:
+    unknown_rate_24h_gt: 0.12
+    unknown_rate_24h_lte: 0.25
+    parser_confidence_median_lt: 0.85
+    action: set_bank_trusted_low_amount_or_review_only
+
+  critical_drift:
+    unknown_rate_24h_gt: 0.25
+    amount_extraction_success_rate_24h_lt: 0.80
+    action: disable_auto_confirm_for_bank
+
+actions:
+  shadow_test_new_templates:
+    create_review_queue_samples: true
+    auto_confirm_new_templates: false
+
+  set_bank_trusted_low_amount_or_review_only:
+    reduce_auto_confirm_limits: true
+    require_review_for_missing_phone_or_reference: true
+
+  disable_auto_confirm_for_bank:
+    set_bank_auto_confirm_status: review_only
+    notify_admin: true
+    notify_affected_merchants: true

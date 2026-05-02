@@ -1,0 +1,48 @@
+template_id: tbank_ru_promo_v1
+bank_profile_id: tbank_ru
+version: 1
+status: learning
+direction_label: promo
+risk_class: negative_non_payment_signal
+
+match:
+  title_any:
+    - "акция"
+    - "предложение"
+    - "скидка"
+    - "промо"
+  body_any:
+    - "специальное предложение"
+    - "персональное предложение"
+    - "бонусы"
+    - "скидка"
+
+positive_keywords:
+  - акция
+  - предложение
+  - скидка
+  - промо
+  - promo
+  - offer
+  - специальное предложение
+
+negative_keywords:
+  - поступление
+  - зачисление
+  - перевод получен
+
+extractors:
+  amount:
+    strategy: ignore_promo_amounts
+    required: false
+
+decision_hints:
+  parser_signal_quality_floor: 0
+  allow_auto_confirm_candidate: false
+  backend_must_reject_auto_confirm: true
+
+reason_codes:
+  positive:
+    - promo_keyword_detected
+  negative:
+    - not_payment_signal

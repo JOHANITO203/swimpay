@@ -1,0 +1,42 @@
+template_id: alfa_ru_incoming_refund_v1
+bank_profile_id: alfa_ru
+version: 1
+status: learning
+direction_label: incoming_refund
+risk_class: negative_incoming_non_customer
+
+match:
+  title_any:
+    - "возврат <AMOUNT> <CURRENCY>"
+    - "refund <AMOUNT> <CURRENCY>"
+  body_any:
+    - "возврат средств"
+    - "возврат покупки"
+    - "возвращено"
+
+positive_keywords:
+  - возврат
+  - refund
+  - возвращено
+  - возврат средств
+  - возврат покупки
+
+negative_keywords:
+  - перевод от
+  - получен перевод
+
+extractors:
+  amount:
+    strategy: amount_near_refund_keyword
+    required: false
+
+decision_hints:
+  parser_signal_quality_floor: 0
+  allow_auto_confirm_candidate: false
+  backend_must_reject_auto_confirm: true
+
+reason_codes:
+  positive:
+    - refund_keyword_detected
+  negative:
+    - not_customer_transfer

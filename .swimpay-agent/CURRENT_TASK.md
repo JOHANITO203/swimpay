@@ -1,13 +1,13 @@
 # Current Task
 
-task id: 012_webhook_worker
-source task file: tasks/012_webhook_worker.md
+task id: 018_bank_template_package_setup
+source task file: tasks/018_bank_template_package_setup.md
 status: completed
 scope:
-Implement signed webhook delivery with retries and replay.
+Integrate `packages/bank-templates` into the repo build system.
 
 files allowed:
-- Files named or implied by tasks/012_webhook_worker.md
+- Files named or implied by tasks/018_bank_template_package_setup.md
 - Tests for this task
 - Documentation directly related to this task
 - Shared packages only when required by this task
@@ -23,11 +23,9 @@ forbidden work:
 - Do not modify unrelated services.
 
 acceptance criteria:
-- Webhooks include required headers.
-- Events include `official_bank_confirmation: false`.
-- Retry works.
-- Replay works.
-- Duplicate endpoint/event delivery prevented.
+- Package is discoverable by the repo.
+- `packages/bank-templates/src/types.ts` compiles.
+- No payment decision logic is implemented here.
 
 commands to run:
 - npm run typecheck
@@ -36,18 +34,13 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T10:07:14.679Z
-completed_at: 2026-05-02T10:18:00.000Z
+started_at: 2026-05-02T10:11:53.391Z
+completed_at: 2026-05-02T10:25:00.000Z
 result: completed
 
 ## Source requirements
 
-Implement:
-
-- webhook endpoints;
-- event payload creation;
-- HMAC signature;
-- delivery worker;
-- retry schedule;
-- delivery logs;
-- manual replay.
+- Add package metadata if the repo uses workspaces.
+- Ensure TypeScript stubs compile if TypeScript is used.
+- Ensure YAML and JSONL assets are not ignored.
+- Add a basic test that verifies the package files exist.

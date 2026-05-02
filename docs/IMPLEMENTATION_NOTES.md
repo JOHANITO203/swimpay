@@ -17,6 +17,10 @@ The active `packages/bank-templates` package was integrated from `swimpay_bank_t
 
 No parser, final payment decision, trust promotion, or auto-confirmation logic was implemented.
 
+Task 018 imported the downloaded bank-template pack assets into `packages/bank-templates`, including bank directories, fixtures, operations runbooks, policies, schemas, shared extractor/redaction definitions, and the package index document. YAML and JSONL assets are intentionally trackable by git.
+
+These assets are data and review material only at this stage. They do not make templates trusted and do not create verified bank app package/certificate metadata.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SwimPay Template Mutation Rule",
+  "type": "object",
+  "required": [
+    "mutation_id",
+    "family",
+    "description",
+    "input_tokens",
+    "output_tokens",
+    "risk_impact"
+  ],
+  "properties": {
+    "mutation_id": {
+      "type": "string"
+    },
+    "family": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "input_tokens": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "output_tokens": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "risk_impact": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "parser_action": {
+      "type": "string"
+    },
+    "auto_confirm_action": {
+      "type": "string"
+    }
+  }
+}
