@@ -23,7 +23,7 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `022_bank_template_drift_radar` - status: completed - source: `tasks/022_bank_template_drift_radar.md`
 - [x] `013_bank_template_learning` - status: completed - source: `tasks/013_bank_template_learning.md`
 - [x] `014_deployment_docker_compose` - status: completed - source: `tasks/014_deployment_docker_compose.md`
-- [ ] `015_security_hardening` - status: pending - source: `tasks/015_security_hardening.md`
+- [x] `015_security_hardening` - status: completed - source: `tasks/015_security_hardening.md`
 - [ ] `016_end_to_end_tests` - status: pending - source: `tasks/016_end_to_end_tests.md`
 - [ ] `017_admin_console_minimal` - status: pending - source: `tasks/017_admin_console_minimal.md`
 - [ ] `023_bank_template_admin_console` - status: pending - source: `tasks/023_bank_template_admin_console.md`

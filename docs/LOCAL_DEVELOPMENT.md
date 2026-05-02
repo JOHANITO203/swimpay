@@ -221,6 +221,14 @@ npm test
 npm run build
 ```
 
+Security-focused tests include:
+
+```bash
+npm test -- packages/security/src/index.test.ts apps/job-worker/src/webhooks.test.ts apps/api/src/signals.test.ts
+```
+
+They verify API key hashing, webhook secret hashing, phone HMAC/masking, sensitive log redaction, webhook signatures, and receiver signal signature rejection.
+
 ## Start Docker Compose
 
 ```bash

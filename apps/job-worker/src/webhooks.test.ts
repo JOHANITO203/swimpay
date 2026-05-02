@@ -4,6 +4,7 @@ import {
   createPaymentWebhookEvent,
   InMemoryWebhookRepository,
   signWebhookPayload,
+  verifyWebhookSignature,
   WebhookDeliveryWorker,
   type WebhookEndpoint,
   type WebhookHttpClient
@@ -64,6 +65,8 @@ describe('webhook worker foundation', () => {
       'SwimPay-Timestamp': timestamp,
       'SwimPay-Signature': signature
     });
+    expect(verifyWebhookSignature({ secret: 'whsec_test', timestamp, payload, signature })).toBe(true);
+    expect(verifyWebhookSignature({ secret: 'whsec_test', timestamp, payload: '{"tampered":true}', signature })).toBe(false);
   });
 
   it('prevents duplicate endpoint/event deliveries and delivers signed webhooks', async () => {

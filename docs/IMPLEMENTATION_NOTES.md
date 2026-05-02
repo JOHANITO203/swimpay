@@ -33,6 +33,8 @@ Task 013 added the bank-template learning lifecycle foundation. It canonicalizes
 
 Task 014 hardened Docker Compose for the single-server deployment model. A Caddy proxy is now the only service publishing a host port by default, while PostgreSQL, Valkey, NATS, API, web, and workers stay on the private Compose network. Compose now includes service health checks, configurable Docker log rotation, and memory limits sized for the 2 GB RAM V1 target.
 
+Task 015 added security hardening primitives. `@swimpay/security` now includes API key hashing/verification, webhook secret hashing/verification, HMAC helpers, phone masking, recursive log redaction, and Fastify logger redaction paths. The API server now uses redacted logger options, and tests cover API key storage safety, webhook secret storage safety, phone HMAC/masking, sensitive log redaction, webhook signature verification, and receiver signal signature rejection.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:

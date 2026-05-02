@@ -380,6 +380,20 @@
 - Added deployment tests asserting required services, proxy-only public ports, private data services, health checks, and log rotation.
 - Did not deploy, add production secrets, Kubernetes, Kafka, or any product feature behavior.
 
+## 2026-05-02 - Task 015 security hardening plan
+
+- Scope: strengthen shared security helpers, API logger redaction, API key/webhook secret hashing, phone HMAC/masking tests, webhook signature tests, and receiver anti-replay/signature tests.
+- Boundaries: no production secrets, no deployment, no PSP/SBP behavior, no raw phone storage, no raw notification storage, and no unrelated product features.
+- Safety checks: sensitive values must be redacted from logs, API keys/webhook secrets must hash without raw storage, and signature verification must fail on tampering.
+
+## 2026-05-02 - Task 015 security hardening completed
+
+- Added API key hash/verify helpers and webhook secret hash/verify helpers in `@swimpay/security`.
+- Added recursive log redaction and shared Fastify logger redaction paths for authorization, signatures, secrets, raw notification text, and raw payload fields.
+- Updated the API service to use redacted Fastify logging options.
+- Extended tests for API key hashing, webhook secret hashing, phone HMAC/masking, sensitive log redaction, webhook signature verification/tamper rejection, and existing receiver signature rejection.
+- Did not introduce production secrets, raw phone storage, raw notification storage, or payment confirmation behavior.
+
 ## 2026-05-02T10:36:28.979Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
@@ -405,6 +419,14 @@
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
 
 ## 2026-05-02T10:53:38.485Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T10:59:41.205Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
 - PASS: `npm run lint` (Lint, exit 0)

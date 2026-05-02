@@ -1,13 +1,13 @@
 # Current Task
 
-task id: 014_deployment_docker_compose
-source task file: tasks/014_deployment_docker_compose.md
+task id: 015_security_hardening
+source task file: tasks/015_security_hardening.md
 status: completed
 scope:
-Create single-server Docker Compose deployment.
+Harden authentication, signatures, privacy and server-facing configuration.
 
 files allowed:
-- Files named or implied by tasks/014_deployment_docker_compose.md
+- Files named or implied by tasks/015_security_hardening.md
 - Tests for this task
 - Documentation directly related to this task
 - Shared packages only when required by this task
@@ -23,10 +23,10 @@ forbidden work:
 - Do not modify unrelated services.
 
 acceptance criteria:
-- Compose starts locally.
-- PostgreSQL/Valkey/NATS are not publicly exposed.
-- Health checks exist where practical.
-- Logs are configurable for rotation.
+- Sensitive values not logged.
+- API keys are not stored raw.
+- Webhook signatures verified in tests.
+- Receiver signatures verified in tests.
 
 commands to run:
 - npm run typecheck
@@ -35,21 +35,19 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T10:49:10.741Z
-completed_at: 2026-05-02T13:53:48.7157762+03:00
+started_at: 2026-05-02T10:54:58.264Z
+completed_at: 2026-05-02T13:58:16.8573056+03:00
 result: completed
 
 ## Source requirements
 
-Create compose services:
+Implement/check:
 
-- proxy;
-- postgres;
-- valkey;
-- nats;
-- swimpay-api;
-- swimpay-signal-worker;
-- swimpay-job-worker;
-- swimpay-web.
-
-Ensure only proxy exposes public web ports.
+- API key hashing;
+- webhook secret hashing;
+- HMAC helpers;
+- phone masking;
+- redacted logs;
+- anti-replay tests;
+- no raw notification logs;
+- private service networking.

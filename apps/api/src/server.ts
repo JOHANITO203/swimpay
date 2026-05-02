@@ -3,6 +3,7 @@ import { Redis } from 'ioredis';
 import { connect } from 'nats';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
+import { createFastifyLoggerOptions } from '@swimpay/security';
 import {
   buildOrderCreateInput,
   formatAmountMinor,
@@ -162,7 +163,7 @@ export function createDefaultHealthChecks(env: NodeJS.ProcessEnv): HealthChecks 
 }
 
 export function buildApiServer(options: ApiServerOptions): FastifyInstance {
-  const server = Fastify({ logger: true });
+  const server = Fastify({ logger: createFastifyLoggerOptions() });
   const checks = options.healthChecks ?? createDefaultHealthChecks(process.env);
   const repository = options.orderRepository ?? createDefaultOrderRepository(process.env);
   const receiverDeviceRepository = options.receiverDeviceRepository ?? createDefaultReceiverDeviceRepository(process.env);
