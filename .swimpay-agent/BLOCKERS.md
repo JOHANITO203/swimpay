@@ -2,12 +2,13 @@
 
 No current critical blockers.
 
-Last checked after Sprint 4M operator-reviewed bank evidence workflow: 2026-05-03T02:00:46+03:00.
+Last checked after Sprint 4N synthetic evidence operator review rehearsal: 2026-05-03T02:23:25+03:00.
 
 Known non-critical limitations:
 
 - Global `gradle` is still not available in PATH, but the repo has a trusted generated Gradle wrapper.
 - Android Gradle commands require `ANDROID_HOME` or `ANDROID_SDK_ROOT` to point to `C:\Users\Lenovo\AppData\Local\Android\Sdk` on this machine.
+- Android Gradle is configured with a smaller daemon heap and one worker for this local 7 GB Windows host; this avoids validation-time daemon out-of-memory crashes while Docker is running.
 - Android Emulator command is not available under the local SDK.
 - No Android Virtual Devices are configured.
 - Real device `R5CWA0FEPZW` is authorized and usable through adb.
@@ -19,4 +20,5 @@ Known non-critical limitations:
 - Sprint 4K verified selected `TO_VERIFY` bank readiness as `ready_review_only`, listener capture after app restart, and offline/online persisted outbox recovery.
 - Sprint 4L added PackageManager evidence collection readiness, but did not collect real bank package/cert evidence. Any real package/cert values still require a deliberate operator-controlled dry run and human review.
 - Sprint 4M added backend/admin review-only evidence workflow. Approval is limited to `approved_for_review_only` and does not create production trust.
+- Sprint 4N rehearsed synthetic real-device evidence submission, admin approve-review-only, rejection and audit trace. The dry run stayed synthetic and review-only.
 - Real bank package/certificate verification and real bank notifications remain out of scope.

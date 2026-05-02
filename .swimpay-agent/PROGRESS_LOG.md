@@ -1341,3 +1341,18 @@ Safety checks:
 - Updated database, Android Receiver, security, local development and bank evidence docs.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Gradle assembleDebug, Gradle JVM tests, ADB reverse/install/launch.
 - No real bank notification, customer data, SMS, scraping, Android confirmation, raw phone, raw notification text or real bank package/cert value was used.
+
+## 2026-05-03T02:13:21+03:00 - Sprint 4N Synthetic Evidence Operator Review Rehearsal
+
+- Created tasks 162 through 168 and updated the task queue.
+- Rebuilt the local Compose API/web images so `/v1/bank-evidence` and `/v1/admin/bank-evidence` were active in the live backend.
+- Applied additive migration `004_bank_package_evidence.sql` to the existing local Postgres volume.
+- Used real device `R5CWA0FEPZW` with adb reverse `tcp:8080 tcp:8080`.
+- Triggered Android debug action `submit_synthetic_bank_evidence`; backend stored synthetic evidence `1a9d9a24-c100-4a4c-8aba-d5e97373fb9b`.
+- Approved the synthetic evidence as `approved_for_review_only`; response kept `trusted: false` and `auto_confirm_enabled: false`.
+- Submitted and rejected a second synthetic fixture `c09d4c00-b75b-4397-bf47-29dbd4979852`.
+- Verified redacted audit events for submission, review, approve-review-only and rejection.
+- Created `docs/BANK_EVIDENCE_OPERATOR_RUNBOOK.md`.
+- Stabilized Android Gradle validation for this 7 GB Windows host by reducing daemon heap to `-Xmx768m`, capping metaspace and using one Gradle worker after an out-of-memory daemon crash.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Gradle assembleDebug, Gradle JVM tests, ADB reverse/install/launch.
+- No real bank notification, real bank package/cert, customer data, installed-app enumeration, SMS, scraping, Android confirmation, raw phone or raw notification text was used.

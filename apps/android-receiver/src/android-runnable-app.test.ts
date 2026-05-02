@@ -475,7 +475,7 @@ describe('android device-side network smoke wiring', () => {
     const client = readAndroid('app/src/main/java/com/swimpay/receiver/DebugReceiverHttpClient.kt');
     const controller = readAndroid('app/src/main/java/com/swimpay/receiver/DebugReceiverSmokeController.kt');
     const docs = readFileSync(join(root, 'docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md'), 'utf8');
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const sprint4mReport = readFileSync(join(root, '.swimpay-agent/SPRINT_4M_REPORT.md'), 'utf8');
 
     expect(apiEvidence).toContain('pending_operator_review');
     expect(apiEvidence).toContain('approved_for_review_only');
@@ -496,6 +496,43 @@ describe('android device-side network smoke wiring', () => {
       '159_bank_evidence_receiver_submit_flow',
       '160_bank_evidence_operator_review_tests',
       '161_sprint_4m_closeout_review'
+    ];
+    let previousIndex = -1;
+    for (const task of tasks) {
+      expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
+      const index = sprint4mReport.indexOf(task);
+      expect(index, task).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+  });
+
+  it('documents Sprint 4N synthetic evidence operator dry-run without trust escalation', () => {
+    const runbook = readFileSync(join(root, 'docs/BANK_EVIDENCE_OPERATOR_RUNBOOK.md'), 'utf8');
+    const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4N_REPORT.md'), 'utf8');
+    const smokeReport = readFileSync(join(root, '.swimpay-agent/REAL_DEVICE_SMOKE_REPORT.md'), 'utf8');
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+
+    expect(runbook).toContain('Synthetic dry-run flow');
+    expect(runbook).toContain('approve-review-only');
+    expect(runbook).toContain('no auto trust');
+    expect(runbook).toContain('no auto-confirm');
+    expect(runbook).toContain('human/operator verification required');
+    expect(report).toContain('status: PASS');
+    expect(report).toContain('synthetic_debug_only');
+    expect(report).toContain('approved_for_review_only');
+    expect(report).toContain('bank_evidence.approved_review_only');
+    expect(report).toContain('bank_evidence.rejected');
+    expect(smokeReport).toContain('Sprint 4N Synthetic Evidence Operator Rehearsal');
+    expect(`${runbook}\n${report}\n${smokeReport}`).not.toMatch(/READ_SMS|AccessibilityService|bank_confirmed|official_bank_confirmation = true|ready_auto_confirm/iu);
+
+    const tasks = [
+      '162_synthetic_evidence_real_device_submission',
+      '163_admin_evidence_review_local_flow',
+      '164_evidence_review_only_assertions',
+      '165_evidence_audit_trace_validation',
+      '166_evidence_rejection_rehearsal',
+      '167_evidence_workflow_operator_runbook',
+      '168_sprint_4n_closeout_review'
     ];
     let previousIndex = -1;
     for (const task of tasks) {
