@@ -1,13 +1,13 @@
 # Current Task
 
-task id: 020_bank_template_parser_core
-source task file: tasks/020_bank_template_parser_core.md
+task id: 021_bank_template_fixtures_tests
+source task file: tasks/021_bank_template_fixtures_tests.md
 status: completed
 scope:
-Implement deterministic parser logic using shared lexicons, patterns and templates.
+Create automated tests for all bank template fixtures.
 
 files allowed:
-- Files named or implied by tasks/020_bank_template_parser_core.md
+- Files named or implied by tasks/021_bank_template_fixtures_tests.md
 - Tests for this task
 - Documentation directly related to this task
 - Shared packages only when required by this task
@@ -23,12 +23,10 @@ forbidden work:
 - Do not modify unrelated services.
 
 acceptance criteria:
-- Cashback classified as `incoming_cashback`.
-- Refund classified as `incoming_refund`.
-- Outgoing classified as `outgoing_payment` or `outgoing_transfer`.
-- Failed classified as `failed_transfer`.
-- Promo classified as `promo`.
-- Incoming transfer classified only when negative gates do not block.
+- All global fixtures pass.
+- All adversarial fixtures pass.
+- All bank-specific fixtures pass.
+- Amount-only signals are never auto-confirm candidates.
 
 commands to run:
 - npm run typecheck
@@ -37,17 +35,14 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T10:19:09.330Z
-completed_at: 2026-05-02T10:39:00.000Z
+started_at: 2026-05-02T10:25:57.915Z
+completed_at: 2026-05-02T13:35:41.4011351+03:00
 result: completed
 
 ## Source requirements
 
-- Normalize RU text.
-- Extract amount/currency.
-- Extract phone if visible.
-- Extract reference if visible.
-- Detect masked phone as weak signal only.
-- Classify direction labels.
-- Apply negative gates before incoming customer transfer.
-- Emit reason codes.
+- Load JSONL fixtures.
+- Parse each fixture.
+- Compare expected direction label.
+- Compare expected auto-confirm candidate boolean.
+- Fail if any negative fixture becomes auto-confirm candidate.

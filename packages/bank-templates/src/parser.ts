@@ -31,9 +31,11 @@ export const V1_BANK_PROFILES: BankProfile[] = [
 const NEGATIVE_KEYWORDS = {
   cashback: ['кэшбэк', 'кешбэк', 'cashback'],
   refund: ['возврат', 'refund'],
+  outgoingTransfer: ['перевод отправлен', 'вы перевели', 'transfer sent'],
   outgoing: ['списание', 'покупка', 'оплата', 'purchase', 'payment'],
   promo: ['акция', 'предложение', 'скидка', 'promo', 'bonus'],
-  failed: ['отклонено', 'не выполнено', 'declined', 'failed']
+  failed: ['отклонено', 'отклонена', 'не выполнено', 'не выполнен', 'declined', 'failed'],
+  balance: ['баланс', 'balance']
 } as const;
 
 const INCOMING_KEYWORDS = [
@@ -67,7 +69,8 @@ export function parseBankNotification(input: ParseBankNotificationInput): Parsed
     amountMinor,
     senderPhoneNormalized,
     maskedPhoneDetected,
-    referenceCode
+    referenceCode,
+    normalizedText
   });
 
   return {
@@ -137,7 +140,7 @@ export function normalizeRussianPhone(input: string): string | null {
 }
 
 export function extractRussianPhone(text: string): string | null {
-  const match = text.match(/(?:\+7|8)?[\s(.-]*\d{3}[\s).-]*\d{3}[\s.-]*\d{2}[\s.-]*\d{2}/u);
+  const match = text.match(/(?<!\d)(?:\+7|8)?[\s(.-]*\d{3}[\s).-]*\d{3}[\s.-]*\d{2}[\s.-]*\d{2}(?!\d)/u);
   return match?.[0] ? normalizeRussianPhone(match[0]) : null;
 }
 
@@ -167,6 +170,10 @@ export function classifyDirection(text: string): DirectionLabel {
 
   if (containsAny(normalized, NEGATIVE_KEYWORDS.promo)) {
     return 'promo';
+  }
+
+  if (containsAny(normalized, NEGATIVE_KEYWORDS.outgoingTransfer)) {
+    return 'outgoing_transfer';
   }
 
   if (containsAny(normalized, NEGATIVE_KEYWORDS.outgoing)) {
@@ -228,6 +235,7 @@ function buildReasonCodes(input: {
   senderPhoneNormalized?: string | null | undefined;
   maskedPhoneDetected?: boolean | null | undefined;
   referenceCode?: string | null | undefined;
+  normalizedText: string;
 }): string[] {
   const codes: string[] = [];
 
@@ -247,7 +255,24 @@ function buildReasonCodes(input: {
     codes.push(BankTemplateReasonCodes.AMBIGUOUS_DIRECTION);
   }
 
+  if (input.directionLabel !== 'incoming_customer_transfer' && input.directionLabel !== 'unknown') {
+    codes.push(BankTemplateReasonCodes.NOT_CUSTOMER_TRANSFER);
+  }
+
   codes.push(input.amountMinor ? BankTemplateReasonCodes.AMOUNT_EXTRACTED : BankTemplateReasonCodes.AMOUNT_MISSING);
+
+  if (
+    input.directionLabel === 'incoming_customer_transfer' &&
+    input.amountMinor &&
+    !input.senderPhoneNormalized &&
+    !input.referenceCode
+  ) {
+    codes.push(BankTemplateReasonCodes.AMOUNT_ONLY_NEVER_AUTO_CONFIRM);
+  }
+
+  if (containsAny(input.normalizedText, NEGATIVE_KEYWORDS.balance)) {
+    codes.push(BankTemplateReasonCodes.BALANCE_DISAMBIGUATED);
+  }
 
   if (input.senderPhoneNormalized) {
     codes.push(BankTemplateReasonCodes.PHONE_EXTRACTED);

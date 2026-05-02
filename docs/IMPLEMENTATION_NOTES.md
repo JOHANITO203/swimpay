@@ -25,6 +25,8 @@ Task 019 added a bank profile registry loader for the package YAML assets. It va
 
 Task 020 hardened the deterministic parser core. It now normalizes RU text before matching, supports actual Russian keyword gates, detects masked phone values as weak review hints only, emits reason codes, and exposes `allowAutoConfirmCandidate` only for safe incoming transfer candidates with amount, RUB currency, and visible phone or reference.
 
+Task 021 added automated JSONL fixture coverage for the bank-template corpus. The tests load global, adversarial, and bank-specific redacted samples, materialize safe placeholder values for parser input, compare expected direction labels and auto-confirm candidate flags, and assert that amount-only or negative fixtures never become auto-confirm candidates.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:

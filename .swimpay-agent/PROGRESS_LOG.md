@@ -321,3 +321,26 @@
 - PASS: `npm test` (Tests, exit 0)
 - PASS: `npm run build` (Build, exit 0)
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02 - Task 021 bank template fixtures tests plan
+
+- Scope: load JSONL fixtures from global, adversarial, and bank-specific bank-template assets and compare parser output to expected labels.
+- Boundaries: no parser trust promotion, no payment confirmation, no worker/database wiring, no real bank package or cert values.
+- Safety checks: amount-only, cashback, refund, outgoing, failed, promo, and adversarial fixtures must never become auto-confirm candidates.
+
+## 2026-05-02 - Task 021 bank template fixtures tests completed
+
+- Added a JSONL fixture loader for global, adversarial, and bank-specific redacted fixture files.
+- Added deterministic placeholder materialization for safe parser inputs without storing raw notification text.
+- Added fixture corpus tests for expected direction labels, amount/phone/reference extraction flags, reason codes, and auto-confirm candidate flags.
+- Added explicit negative checks proving amount-only and non-customer-transfer fixtures cannot become auto-confirm candidates.
+- Hardened parser direction support for outgoing transfer fixtures and added reason codes for amount-only, balance disambiguation, and non-customer-transfer cases.
+- Did not implement drift radar, template learning, trust promotion, or payment confirmation behavior.
+
+## 2026-05-02T10:36:28.979Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)

@@ -33,3 +33,13 @@ export {
   type BankAppTrustResult,
   type BankProfileRuntimeBehavior
 } from './registry.js';
+export {
+  getDefaultFixturesRoot,
+  loadAllBankTemplateFixtures,
+  loadJsonlFixturesFromFile,
+  materializeFixtureText,
+  repairFixtureEncoding,
+  type BankTemplateFixture,
+  type BankTemplateFixtureExpected,
+  type LoadedBankTemplateFixture
+} from './fixtures.js';

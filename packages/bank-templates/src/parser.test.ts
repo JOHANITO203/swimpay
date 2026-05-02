@@ -5,6 +5,7 @@ import {
   extractAmountMinor,
   extractCurrency,
   extractReferenceCode,
+  extractRussianPhone,
   hasNegativeKeywordGate,
   normalizeRuText,
   normalizeRussianPhone,
@@ -44,12 +45,14 @@ describe('bank notification parser', () => {
     ['999 123 45 67']
   ])('normalizes Russian phone %s', (phone) => {
     expect(normalizeRussianPhone(phone)).toBe('+79991234567');
+    expect(extractRussianPhone(`from ${phone}`)).toBe('+79991234567');
   });
 
   it.each([
     ['Кэшбэк 12 ₽ за покупку', 'incoming_cashback'],
     ['Возврат 100 руб. по операции', 'incoming_refund'],
     ['Оплата покупки 137 RUB', 'outgoing_payment'],
+    ['Перевод отправлен 137 ₽. Вы перевели деньги', 'outgoing_transfer'],
     ['Акция: получите бонус за перевод', 'promo'],
     ['Перевод отклонено 137 ₽', 'failed_transfer']
   ])('does not classify %s as customer transfer', (text, expectedDirection) => {
