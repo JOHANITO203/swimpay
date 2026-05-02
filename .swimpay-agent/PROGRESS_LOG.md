@@ -1274,3 +1274,16 @@ Safety checks:
 - Synthetic notification posting passed, but live NotificationListener capture must be rerun after manually re-enabling Android Notification Access because reinstall/data clear removed the OS listener grant.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Gradle assembleDebug, Gradle JVM tests, ADB reverse/install/launch and debug broadcast smoke.
 - No real bank notifications, customer data, SMS, scraping, Android confirmation, raw PII or real bank package/cert values were used.
+
+## 2026-05-03T00:31:25+03:00 - Phase 4J Receiver Onboarding Gate
+
+- Created tasks 129 through 135 and updated the task queue.
+- Added `ReceiverOnboardingReadinessEvaluator` and readiness states.
+- Made Notification Listener Access mandatory for `receiver_ready`, `capture_enabled` and normal upload readiness.
+- Separated app notification permission from Notification Listener Access in status/readiness.
+- Added Android action for `android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`.
+- Added regrant detection when previous listener access was true but the current platform check is false after reinstall/data clear.
+- Added bank selection readiness gate; `TO_VERIFY` and review-only banks can reach `ready_review_only`, not auto-confirm readiness.
+- Updated Android docs, local development docs, app README and `.swimpay-agent/RECEIVER_ONBOARDING_GATE_REPORT.md`.
+- Added Android JVM and static tests for onboarding gates.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Gradle assembleDebug and Gradle JVM tests.

@@ -10,7 +10,8 @@ data class ReceiverDeviceState(
     val lastRegistrationAt: String?,
     val lastHeartbeatAt: String?,
     val backendBaseUrl: String,
-    val lastLocalCounter: Long = 0
+    val lastLocalCounter: Long = 0,
+    val lastNotificationListenerAccessEnabled: Boolean = false
 )
 
 interface DeviceStateStorage {
@@ -54,7 +55,8 @@ class PersistentDeviceStateStore(
             state.lastRegistrationAt,
             state.lastHeartbeatAt,
             state.backendBaseUrl,
-            state.lastLocalCounter.toString()
+            state.lastLocalCounter.toString(),
+            state.lastNotificationListenerAccessEnabled.toString()
         ).joinToString("|")
 
         require(!serialized.contains(Regex("\\+\\d[\\d\\s()-]{6,}"))) {
@@ -102,7 +104,8 @@ class SharedPreferencesDeviceStateStorage(context: Context) : DeviceStateStorage
             lastHeartbeatAt = preferences.getString("last_heartbeat_at", null),
             backendBaseUrl = preferences.getString("backend_base_url", DebugBackendConfig.DEFAULT_BASE_URL)
                 ?: DebugBackendConfig.DEFAULT_BASE_URL,
-            lastLocalCounter = preferences.getLong("last_local_counter", 0)
+            lastLocalCounter = preferences.getLong("last_local_counter", 0),
+            lastNotificationListenerAccessEnabled = preferences.getBoolean("last_notification_listener_access_enabled", false)
         )
     }
 
@@ -116,6 +119,7 @@ class SharedPreferencesDeviceStateStorage(context: Context) : DeviceStateStorage
             .putString("last_heartbeat_at", state.lastHeartbeatAt)
             .putString("backend_base_url", state.backendBaseUrl)
             .putLong("last_local_counter", state.lastLocalCounter)
+            .putBoolean("last_notification_listener_access_enabled", state.lastNotificationListenerAccessEnabled)
             .apply()
     }
 

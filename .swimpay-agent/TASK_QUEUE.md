@@ -6,12 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `112_synthetic_notification_source_strategy` - status: completed - source: `tasks/112_synthetic_notification_source_strategy.md`
-- [x] `113_debug_synthetic_notifier_app_or_channel` - status: completed - source: `tasks/113_debug_synthetic_notifier_app_or_channel.md`
-- [x] `114_notification_listener_e2e_capture` - status: completed - source: `tasks/114_notification_listener_e2e_capture.md`
-- [x] `115_allowlist_and_synthetic_package_gate` - status: completed - source: `tasks/115_allowlist_and_synthetic_package_gate.md`
-- [x] `116_snapshot_coalescer_live_validation` - status: completed - source: `tasks/116_snapshot_coalescer_live_validation.md`
-- [x] `117_privacy_firewall_live_validation` - status: completed - source: `tasks/117_privacy_firewall_live_validation.md`
-- [x] `118_notification_to_outbox_to_backend_e2e` - status: completed - source: `tasks/118_notification_to_outbox_to_backend_e2e.md`
-- [x] `119_receiver_operator_diagnostics` - status: completed - source: `tasks/119_receiver_operator_diagnostics.md`
-- [x] `120_sprint_4i_closeout_review` - status: completed - source: `tasks/120_sprint_4i_closeout_review.md`
+- [x] `129_receiver_onboarding_readiness_gate` - status: completed - source: `tasks/129_receiver_onboarding_readiness_gate.md`
+- [x] `130_notification_listener_access_required_step` - status: completed - source: `tasks/130_notification_listener_access_required_step.md`
+- [x] `131_app_notifications_vs_listener_access_status` - status: completed - source: `tasks/131_app_notifications_vs_listener_access_status.md`
+- [x] `132_bank_allowlist_onboarding_gate` - status: completed - source: `tasks/132_bank_allowlist_onboarding_gate.md`
+- [x] `133_receiver_ready_state_machine` - status: completed - source: `tasks/133_receiver_ready_state_machine.md`
+- [x] `134_onboarding_regrant_after_reinstall` - status: completed - source: `tasks/134_onboarding_regrant_after_reinstall.md`
+- [x] `135_receiver_onboarding_closeout_review` - status: completed - source: `tasks/135_receiver_onboarding_closeout_review.md`

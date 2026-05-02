@@ -1,27 +1,27 @@
 # Next Action
 
-generated_at: 2026-05-02T23:55:28+03:00
+generated_at: 2026-05-03T00:31:25+03:00
 
 ## Latest Completed Sprint
 
-Sprint 4I - Synthetic Notification Listener E2E and Receiver Diagnostics.
+Phase 4J - Receiver Onboarding Gate + Listener Replay.
 
 ## Status
 
-PASS with one manual Android permission step.
+PASS.
 
-The deterministic synthetic notification pipeline, outbox flush and backend upload path passed on the real device. Live NotificationListener capture must be rerun after re-enabling Android Notification Access for SwimPay Receiver, because reinstall/data clear removed the OS listener grant.
+Notification Listener Access is now a blocking onboarding condition. App notification permission is tracked separately and is not sufficient for payment signal detection.
 
 ## Next Recommended Sprint
 
-Sprint 4J - Real-device listener capture replay and receiver resilience.
+Sprint 4K - Real-device listener replay after onboarding gate.
 
 Recommended tasks:
 
-1. Re-enable SwimPay Receiver in Android Notification Access and rerun live synthetic listener capture.
-2. Add a debug-only warning/action when Notification Access is missing after reinstall.
-3. Validate WorkManager retry after app process death and phone reboot with synthetic redacted outbox entries.
-4. Add a safe diagnostics export for operator support without raw PII.
+1. Re-enable SwimPay Receiver in Android Notification Access.
+2. Rerun live synthetic NotificationListener capture.
+3. Confirm onboarding state moves from `notification_access_required` to `ready_review_only` once a selected unverified bank profile and backend/device state exist.
+4. Continue WorkManager process-death/reboot validation with synthetic redacted outbox entries.
 
 ## What Not To Do Next
 

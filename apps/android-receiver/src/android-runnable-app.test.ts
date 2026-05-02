@@ -348,7 +348,6 @@ describe('android device-side network smoke wiring', () => {
     const source = readAndroid('app/src/main/java/com/swimpay/receiver/DebugSyntheticNotificationSource.kt');
     const diagnostics = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverDiagnostics.kt');
     const debugManifest = readAndroid('app/src/debug/AndroidManifest.xml');
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     expect(pipeline).toContain('synthetic_debug_only');
     expect(pipeline).toContain('SyntheticPackageGate');
@@ -363,7 +362,33 @@ describe('android device-side network smoke wiring', () => {
     expect(diagnostics).toContain('outboxFailedRetryingCount');
     expect(debugManifest).toContain('android.permission.POST_NOTIFICATIONS');
     expect(`${pipeline}\n${listener}\n${source}\n${diagnostics}`).not.toMatch(/READ_SMS|AccessibilityService|bank_confirmed|paymentConfirmed|autoConfirm/iu);
-    expect(queue).toContain('112_synthetic_notification_source_strategy');
-    expect(queue).toContain('120_sprint_4i_closeout_review');
+    expect(existsSync(join(root, 'tasks/112_synthetic_notification_source_strategy.md'))).toBe(true);
+    expect(existsSync(join(root, 'tasks/120_sprint_4i_closeout_review.md'))).toBe(true);
+  });
+
+  it('wires Phase 4J onboarding readiness gate and separates Android notification permissions', () => {
+    const onboarding = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverOnboardingReadiness.kt');
+    const appPermission = readAndroid('app/src/main/java/com/swimpay/receiver/AppNotificationPermissionReader.kt');
+    const activity = readAndroid('app/src/main/java/com/swimpay/receiver/MainActivity.kt');
+    const report = readFileSync(join(root, '.swimpay-agent/RECEIVER_ONBOARDING_GATE_REPORT.md'), 'utf8');
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+
+    expect(onboarding).toContain('NOTIFICATION_ACCESS_REQUIRED');
+    expect(onboarding).toContain('READY_REVIEW_ONLY');
+    expect(onboarding).toContain('appNotificationsPermissionEnabled');
+    expect(onboarding).toContain('notificationListenerAccessEnabled');
+    expect(onboarding).toContain('val captureEnabled = receiverReady');
+    expect(onboarding).toContain('Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS');
+    expect(onboarding).toContain('regrant_required_after_reinstall');
+    expect(appPermission).toContain('POST_NOTIFICATIONS');
+    expect(activity).toContain("Ouvrir les paramètres d'accès aux notifications");
+    expect(activity).toContain('Android donne une permission large');
+    expect(report).toContain('app notifications ON + listener OFF');
+    expect(report).toContain('ready_review_only');
+    expect(`${onboarding}\n${activity}`).not.toContain('ready_auto_confirm');
+    const forbiddenClaim = ['SwimPay peut uniquement lire', 'les notifications bancaires'].join(' ');
+    expect(`${onboarding}\n${activity}`).not.toContain(forbiddenClaim);
+    expect(queue).toContain('129_receiver_onboarding_readiness_gate');
+    expect(queue).toContain('135_receiver_onboarding_closeout_review');
   });
 });

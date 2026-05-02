@@ -586,6 +586,37 @@ adb -s R5CWA0FEPZW shell am broadcast -a com.swimpay.receiver.DEBUG_SMOKE --es a
 
 The synthetic source is debug-only and marked `synthetic_debug_only`. It uses redacted examples, never real bank notifications, and never performs Android-side payment confirmation.
 
+## Receiver Onboarding Gate
+
+Phase 4J makes Notification Listener Access a blocking onboarding condition.
+
+Android has two separate states:
+
+- App notifications permission: lets SwimPay Receiver show its own notifications.
+- Notification Listener Access: lets SwimPay Receiver observe Android notifications and apply the local allowlist.
+
+App notifications ON with Notification Listener Access OFF is not ready.
+
+Manual phone path:
+
+```text
+Settings -> Notifications -> Device and app notifications / Notification access -> SwimPay Receiver
+```
+
+The app action opens:
+
+```text
+android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS
+```
+
+If a reinstall or `pm clear` removes the listener grant, the app reports `regrant_required_after_reinstall`.
+
+Required onboarding wording:
+
+```text
+Android donne une permission large d'accès aux notifications. SwimPay applique ensuite une allowlist locale : seules les notifications des banques que vous choisissez sont analysées. Les autres notifications sont ignorées localement.
+```
+
 Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, and workers stay on the private Compose network. For a real single-server install, set `HTTP_PORT=80` in the server environment and configure TLS/reverse-proxy policy before exposing merchants.
 
 Before starting the full local runtime, run the lightweight smoke guard:

@@ -19,10 +19,13 @@ class MainActivity : Activity() {
     private val outboxStore by lazy {
         AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(this))
     }
+    private val deviceStateStore by lazy {
+        PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(this))
+    }
     private val debugController by lazy {
         DebugReceiverSmokeController(
             debugEnabled = BuildConfig.DEBUG,
-            deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(this)),
+            deviceStateStore = deviceStateStore,
             outboxStore = outboxStore
         )
     }
@@ -43,6 +46,29 @@ class MainActivity : Activity() {
 
     private fun renderStatus() {
         val notificationAccessEnabled = NotificationAccessStatusReader(this).isEnabled()
+        val appNotificationsEnabled = AppNotificationPermissionReader(this).isEnabled()
+        val previousAccess = deviceStateStore.load()?.lastNotificationListenerAccessEnabled == true
+        deviceStateStore.load()?.let {
+            if (it.lastNotificationListenerAccessEnabled != notificationAccessEnabled) {
+                deviceStateStore.save(it.copy(lastNotificationListenerAccessEnabled = notificationAccessEnabled))
+            }
+        }
+        val onboarding = ReceiverOnboardingReadinessEvaluator().evaluate(
+            ReceiverOnboardingInput(
+                appNotificationsPermissionEnabled = appNotificationsEnabled,
+                notificationListenerAccessEnabled = notificationAccessEnabled,
+                listenerConnected = notificationAccessEnabled,
+                selectedBankProfiles = emptyList(),
+                backendConfigured = backendStatus.reachable,
+                deviceRegistrationStatus = if (deviceStateStore.load() == null) {
+                    DeviceRegistrationReadinessStatus.NONE
+                } else {
+                    DeviceRegistrationReadinessStatus.PENDING
+                },
+                previouslyHadNotificationListenerAccess = previousAccess,
+                appInstalled = true
+            )
+        )
         val state = statusViewModel.buildState(
             notificationAccessEnabled = notificationAccessEnabled,
             listenerConnected = notificationAccessEnabled,
@@ -53,6 +79,7 @@ class MainActivity : Activity() {
         )
         val diagnostics = ReceiverDiagnosticsBuilder().build(
             notificationAccessEnabled = notificationAccessEnabled,
+            appNotificationsPermissionEnabled = appNotificationsEnabled,
             listenerConnected = notificationAccessEnabled,
             allowedBanksCount = 0,
             syntheticDebugSourceEnabled = BuildConfig.DEBUG,
@@ -65,8 +92,12 @@ class MainActivity : Activity() {
 
         val text = """
             SwimPay Receiver
-            Notification access: ${if (state.notificationAccessEnabled) "enabled" else "disabled"}
+            App notifications: ${if (onboarding.appNotificationsPermissionEnabled) "enabled" else "disabled"}
+            Notification Listener Access: ${if (onboarding.notificationListenerAccessEnabled) "enabled" else "disabled"}
             Listener: ${if (state.listenerConnected) "connected" else "disconnected"}
+            Receiver ready state: ${onboarding.state.wireValue}
+            Capture enabled: ${onboarding.captureEnabled}
+            Upload enabled: ${onboarding.uploadEnabled}
             Allowed banks: ${state.allowedBanksCount}
             Queue length: ${state.queueLength}
             Outbox pending: ${diagnostics.outboxPendingCount}
@@ -76,7 +107,9 @@ class MainActivity : Activity() {
             Last backend check: ${backendStatus.checkedAt}
             Backend status: ${backendStatus.safeMessage}
             Last upload: ${diagnostics.lastUploadStatus}
-            Warnings: ${state.warnings.joinToString(", ")}
+            Warnings: ${(state.warnings + onboarding.diagnostics).distinct().joinToString(", ")}
+
+            Android donne une permission large d'accès aux notifications. SwimPay applique ensuite une allowlist locale : seules les notifications des banques que vous choisissez sont analysées. Les autres notifications sont ignorées localement.
         """.trimIndent()
 
         val container = LinearLayout(this).apply {
@@ -88,6 +121,13 @@ class MainActivity : Activity() {
         }
         container.addView(TextView(this).apply { this.text = text })
         container.addView(result)
+
+        container.addView(Button(this).apply {
+            this.text = "Ouvrir les paramètres d'accès aux notifications"
+            setOnClickListener {
+                startActivity(NotificationListenerSettingsAction.createIntent())
+            }
+        })
 
         if (BuildConfig.DEBUG) {
             container.addView(Button(this).apply {

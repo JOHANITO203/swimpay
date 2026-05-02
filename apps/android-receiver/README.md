@@ -140,6 +140,29 @@ adb -s R5CWA0FEPZW shell am broadcast -a com.swimpay.receiver.DEBUG_SMOKE --es a
 
 The source is marked `synthetic_debug_only`, logs safe metadata only, redacts before outbox/upload and still leaves the backend as the only decision maker.
 
+## Receiver Onboarding Readiness
+
+Phase 4J separates two Android permissions:
+
+- App notifications: allows SwimPay Receiver to show its own notifications.
+- Notification Listener Access: allows SwimPay Receiver to observe Android notifications and apply local bank allowlist filtering.
+
+Notification Listener Access is mandatory. If app notifications are enabled but listener access is disabled, Receiver readiness is blocked and capture/upload are disabled except explicit debug/test actions.
+
+The app opens Android's official Notification Listener settings with:
+
+```text
+android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS
+```
+
+Required onboarding wording:
+
+```text
+Android donne une permission large d'accès aux notifications. SwimPay applique ensuite une allowlist locale : seules les notifications des banques que vous choisissez sont analysées. Les autres notifications sont ignorées localement.
+```
+
+After reinstall or `pm clear`, Android may remove the listener grant. The app detects this as `regrant_required_after_reinstall`.
+
 ## Emulator Smoke
 
 Run:

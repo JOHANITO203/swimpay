@@ -113,10 +113,41 @@ Warnings:
 
 - `notification_access_disabled`
 - `listener_disconnected`
+- `regrant_required_after_reinstall`
 - `device_version_outdated`
 - `bank_profile_unverified`
 - `queue_backlog_high`
 - `battery_optimization_risk`
+
+## Onboarding Readiness
+
+The backend-facing Receiver contract distinguishes app notification permission from Notification Listener Access:
+
+- `app_notifications_permission` means the Receiver can show its own notifications.
+- `notification_listener_access` means the Receiver can observe Android notifications and apply the local bank allowlist.
+
+Only Notification Listener Access enables bank signal detection. App notifications ON with listener access OFF must be treated as not ready.
+
+Receiver readiness requires:
+
+- Notification Listener Access enabled;
+- at least one selected bank profile;
+- backend configuration present;
+- device registration completed or safely pending.
+
+Readiness states:
+
+- `not_installed`
+- `installed`
+- `notification_access_required`
+- `bank_selection_required`
+- `backend_config_required`
+- `device_registration_required`
+- `ready_review_only`
+- `ready`
+- `degraded`
+
+`TO_VERIFY` bank metadata can lead only to review-only readiness. It cannot establish production trust or auto-confirm eligibility.
 
 ## Signed Signal Upload
 

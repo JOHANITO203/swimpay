@@ -5,6 +5,7 @@ import com.swimpay.receiver.outbox.OutboxStatus
 
 data class ReceiverDiagnosticsSnapshot(
     val notificationAccessEnabled: Boolean,
+    val appNotificationsPermissionEnabled: Boolean,
     val listenerConnected: Boolean,
     val allowedBanksCount: Int,
     val syntheticDebugSourceEnabled: Boolean,
@@ -19,6 +20,7 @@ data class ReceiverDiagnosticsSnapshot(
 class ReceiverDiagnosticsBuilder {
     fun build(
         notificationAccessEnabled: Boolean,
+        appNotificationsPermissionEnabled: Boolean,
         listenerConnected: Boolean,
         allowedBanksCount: Int,
         syntheticDebugSourceEnabled: Boolean,
@@ -31,6 +33,7 @@ class ReceiverDiagnosticsBuilder {
         val records = outboxStore.dueRecords("9999-12-31T23:59:59.999Z")
         return ReceiverDiagnosticsSnapshot(
             notificationAccessEnabled = notificationAccessEnabled,
+            appNotificationsPermissionEnabled = appNotificationsPermissionEnabled,
             listenerConnected = listenerConnected,
             allowedBanksCount = allowedBanksCount,
             syntheticDebugSourceEnabled = syntheticDebugSourceEnabled,

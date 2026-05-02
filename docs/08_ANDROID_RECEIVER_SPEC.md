@@ -256,6 +256,49 @@ Android still does not confirm or auto-confirm payments. Successful listener smo
 
 See `docs/SYNTHETIC_NOTIFICATION_TESTING.md`.
 
+## Phase 4J Receiver Onboarding Gate
+
+The Receiver is not ready merely because Android lets the app show its own notifications. SwimPay tracks two separate Android permission states:
+
+- `app_notifications_permission`: lets SwimPay Receiver show its own app notifications.
+- `notification_listener_access`: lets SwimPay Receiver observe notifications for local allowlist filtering.
+
+Notification Listener Access is mandatory for payment signal detection.
+
+If app notifications are enabled but Notification Listener Access is disabled, the Receiver state is `notification_access_required`, with:
+
+- `receiver_ready = false`
+- `capture_enabled = false`
+- `upload_enabled = false`, except explicit debug/test actions
+
+The onboarding UI must include:
+
+```text
+Activer l'accès aux notifications
+```
+
+The action opens Android's official Notification Listener settings. SwimPay must not bypass Android settings.
+
+Required explanation:
+
+```text
+Android donne une permission large d'accès aux notifications. SwimPay applique ensuite une allowlist locale : seules les notifications des banques que vous choisissez sont analysées. Les autres notifications sont ignorées localement.
+```
+
+Readiness states:
+
+- `not_installed`
+- `installed`
+- `notification_access_required`
+- `bank_selection_required`
+- `backend_config_required`
+- `device_registration_required`
+- `ready_review_only`
+- `ready`
+- `degraded`
+
+For V1, `TO_VERIFY` and review-only bank selections can reach `ready_review_only`, not an auto-confirm readiness state. Android still does not confirm or auto-confirm payments.
+
 Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
 
 - `adb` available from the Android SDK.

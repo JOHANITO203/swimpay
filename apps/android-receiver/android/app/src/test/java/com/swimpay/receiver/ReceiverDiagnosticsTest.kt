@@ -24,6 +24,7 @@ class ReceiverDiagnosticsTest {
 
         val diagnostics = ReceiverDiagnosticsBuilder().build(
             notificationAccessEnabled = true,
+            appNotificationsPermissionEnabled = true,
             listenerConnected = true,
             allowedBanksCount = 1,
             syntheticDebugSourceEnabled = true,
@@ -35,6 +36,7 @@ class ReceiverDiagnosticsTest {
         )
 
         assertTrue(diagnostics.notificationAccessEnabled)
+        assertTrue(diagnostics.appNotificationsPermissionEnabled)
         assertTrue(diagnostics.listenerConnected)
         assertTrue(diagnostics.syntheticDebugSourceEnabled)
         assertEquals(1, diagnostics.outboxPendingCount)
@@ -50,6 +52,7 @@ class ReceiverDiagnosticsTest {
     fun diagnosticsCanRepresentDisabledSyntheticDebugSource() {
         val diagnostics = ReceiverDiagnosticsBuilder().build(
             notificationAccessEnabled = false,
+            appNotificationsPermissionEnabled = false,
             listenerConnected = false,
             allowedBanksCount = 0,
             syntheticDebugSourceEnabled = false,

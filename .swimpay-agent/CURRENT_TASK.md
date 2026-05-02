@@ -1,13 +1,13 @@
 # Current Task
 
-task_id: 120_sprint_4i_closeout_review
-source_task_file: tasks/120_sprint_4i_closeout_review.md
+task_id: 135_receiver_onboarding_closeout_review
+source_task_file: tasks/135_receiver_onboarding_closeout_review.md
 status: completed
 
 ## Scope
 
-Sprint 4I - Synthetic Notification Listener E2E and Receiver Diagnostics.
+Phase 4J - Receiver Onboarding Gate + Listener Replay.
 
 ## Result
 
-Sprint 4I added a debug-only synthetic notification source, NotificationListener pipeline boundaries, synthetic package gates, snapshot coalescing, privacy firewall validation, safe receiver diagnostics and deterministic real-device outbox/backend upload smoke with synthetic redacted data only. Live listener capture must be rerun after re-enabling Android Notification Access following reinstall/data clear.
+Phase 4J made Notification Listener Access a blocking onboarding condition, separated app notification permission from listener access, added bank selection/backend/device registration readiness gates, defined receiver readiness states, and added regrant detection after reinstall/data clear.
