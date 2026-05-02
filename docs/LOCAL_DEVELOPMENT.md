@@ -574,6 +574,8 @@ Sprint 4G persists debug receiver state and redacted outbox payloads:
 
 The current persistent outbox uses a protected storage boundary suitable for local MVP smoke validation. It is not production-grade encryption and must be replaced by Android Keystore/Encrypted storage before real merchant data is used.
 
+Sprint 4H updates the active Android debug outbox path to use an Android Keystore-backed protected adapter and migrates any previous local debug outbox entries into it. The JVM tests still use fakes so they can run without Android platform storage. WorkManager retry is unique, network-constrained and bounded; release builds do not expose debug smoke buttons or the debug broadcast receiver.
+
 Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, and workers stay on the private Compose network. For a real single-server install, set `HTTP_PORT=80` in the server environment and configure TLS/reverse-proxy policy before exposing merchants.
 
 Before starting the full local runtime, run the lightweight smoke guard:

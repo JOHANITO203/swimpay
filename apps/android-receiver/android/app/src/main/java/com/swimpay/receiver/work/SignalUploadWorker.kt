@@ -8,7 +8,40 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import android.util.Log
+import com.swimpay.receiver.BuildConfig
+import com.swimpay.receiver.DebugReceiverSmokeController
+import com.swimpay.receiver.PersistentDeviceStateStore
+import com.swimpay.receiver.SharedPreferencesDeviceStateStorage
+import com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore
+import com.swimpay.receiver.outbox.AndroidKeystoreOutboxStorageAdapter
 import java.util.concurrent.TimeUnit
+
+data class SignalUploadWorkPlan(
+    val uniqueName: String,
+    val initialDelayMs: Long,
+    val requiresNetwork: Boolean,
+    val maxAttempts: Int
+) {
+    companion object {
+        fun next(delayMs: Long): SignalUploadWorkPlan = SignalUploadWorkPlan(
+            uniqueName = SignalUploadWorker.UNIQUE_WORK_NAME,
+            initialDelayMs = delayMs.coerceAtLeast(0),
+            requiresNetwork = true,
+            maxAttempts = SignalUploadWorker.MAX_RETRY_ATTEMPTS
+        )
+    }
+}
+
+data class SignalUploadWorkDecision(
+    val shouldRetry: Boolean
+) {
+    companion object {
+        fun fromAttempts(attempts: Int, policy: ReceiverRetryPolicy): SignalUploadWorkDecision {
+            return SignalUploadWorkDecision(shouldRetry = policy.shouldRetry(attempts))
+        }
+    }
+}
 
 class SignalUploadWorker(
     appContext: Context,
@@ -19,23 +52,36 @@ class SignalUploadWorker(
         const val MAX_RETRY_ATTEMPTS = 6
 
         fun enqueue(workManager: WorkManager, delayMs: Long = 0) {
+            val plan = SignalUploadWorkPlan.next(delayMs)
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
             val request = OneTimeWorkRequestBuilder<SignalUploadWorker>()
                 .setConstraints(constraints)
-                .setInitialDelay(delayMs.coerceAtLeast(0), TimeUnit.MILLISECONDS)
+                .setInitialDelay(plan.initialDelayMs, TimeUnit.MILLISECONDS)
                 .build()
 
-            workManager.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
+            workManager.enqueueUniqueWork(plan.uniqueName, ExistingWorkPolicy.KEEP, request)
         }
     }
 
     override suspend fun doWork(): Result {
-        return if (runAttemptCount >= MAX_RETRY_ATTEMPTS) {
+        val decision = SignalUploadWorkDecision.fromAttempts(runAttemptCount, ReceiverRetryPolicy(MAX_RETRY_ATTEMPTS))
+        if (!decision.shouldRetry) {
             Result.failure()
-        } else {
-            Result.retry()
         }
+
+        if (!BuildConfig.DEBUG) {
+            return Result.failure()
+        }
+
+        val result = DebugReceiverSmokeController(
+            debugEnabled = true,
+            deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(applicationContext)),
+            outboxStore = AndroidEncryptedOutboxStore(AndroidKeystoreOutboxStorageAdapter(applicationContext))
+        ).performAction("flush_outbox")
+
+        Log.i("SwimPaySignalWorker", "background outbox flush success=${result.success} message=${result.safeMessage}")
+        return if (result.success) Result.success() else Result.retry()
     }
 }

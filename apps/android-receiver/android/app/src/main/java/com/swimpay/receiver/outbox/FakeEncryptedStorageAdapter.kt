@@ -10,4 +10,8 @@ class FakeEncryptedStorageAdapter : EncryptedStorageAdapter {
     override fun write(eventId: String, record: OutboxRecord) {
         records[eventId] = record
     }
+
+    override fun delete(eventId: String) {
+        records.remove(eventId)
+    }
 }

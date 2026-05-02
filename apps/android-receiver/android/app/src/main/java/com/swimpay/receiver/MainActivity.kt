@@ -7,7 +7,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore
-import com.swimpay.receiver.outbox.SharedPreferencesOutboxStorageAdapter
+import com.swimpay.receiver.outbox.AndroidOutboxStorageFactory
 
 class MainActivity : Activity() {
     private val statusViewModel = ReceiverStatusViewModel()
@@ -20,7 +20,7 @@ class MainActivity : Activity() {
         DebugReceiverSmokeController(
             debugEnabled = BuildConfig.DEBUG,
             deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(this)),
-            outboxStore = AndroidEncryptedOutboxStore(SharedPreferencesOutboxStorageAdapter(this))
+            outboxStore = AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(this))
         )
     }
     private val backendStatusRefresher by lazy {

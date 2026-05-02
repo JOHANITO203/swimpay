@@ -233,6 +233,21 @@ The Sprint 4G storage boundary does not claim production-grade encryption. A pro
 
 All Sprint 4G smoke payloads remain synthetic and redacted. Android still does not confirm, auto-confirm or make a payment decision.
 
+## Sprint 4H Production Storage and Worker Hardening
+
+Sprint 4H adds the first production-oriented Android storage and worker boundary:
+
+- signing policy explicitly distinguishes debug and production receiver modes;
+- production mode rejects the JVM fake signer and has no dev signer bypass;
+- platform outbox storage uses Android Keystore AES/GCM protection through an adapter boundary;
+- legacy debug SharedPreferences outbox records are migrated into the protected adapter with event/hash dedupe;
+- cleanup purges old acknowledged and expired outbox records;
+- WorkManager retry remains network-constrained, unique and bounded;
+- debug smoke controls remain in debug source sets and are hidden by `BuildConfig.DEBUG`;
+- release mode does not expose debug registration, heartbeat, synthetic upload or flush controls.
+
+The current real-device smoke remains synthetic and redacted. Real bank package/certificate verification and real bank notification testing remain out of scope.
+
 Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
 
 - `adb` available from the Android SDK.

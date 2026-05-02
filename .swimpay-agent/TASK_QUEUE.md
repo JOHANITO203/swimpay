@@ -6,10 +6,11 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `097_android_persistent_device_state` - status: completed - source: `tasks/097_android_persistent_device_state.md`
-- [x] `098_android_persistent_protected_outbox` - status: completed - source: `tasks/098_android_persistent_protected_outbox.md`
-- [x] `099_android_workmanager_retry_live_wiring` - status: completed - source: `tasks/099_android_workmanager_retry_live_wiring.md`
-- [x] `100_android_live_backend_status_refresh` - status: completed - source: `tasks/100_android_live_backend_status_refresh.md`
-- [x] `101_android_debug_panel_persistence_polish` - status: completed - source: `tasks/101_android_debug_panel_persistence_polish.md`
-- [x] `102_real_device_offline_online_persistent_outbox_smoke` - status: completed - source: `tasks/102_real_device_offline_online_persistent_outbox_smoke.md`
-- [x] `103_sprint_4g_closeout_review` - status: completed - source: `tasks/103_sprint_4g_closeout_review.md`
+- [x] `104_android_keystore_device_identity_hardening` - status: completed - source: `tasks/104_android_keystore_device_identity_hardening.md`
+- [x] `105_android_encrypted_storage_platform_impl` - status: completed - source: `tasks/105_android_encrypted_storage_platform_impl.md`
+- [x] `106_android_persistent_outbox_migration_and_cleanup` - status: completed - source: `tasks/106_android_persistent_outbox_migration_and_cleanup.md`
+- [x] `107_android_workmanager_background_retry_validation` - status: completed - source: `tasks/107_android_workmanager_background_retry_validation.md`
+- [x] `108_android_debug_release_separation` - status: completed - source: `tasks/108_android_debug_release_separation.md`
+- [x] `109_android_storage_security_tests` - status: completed - source: `tasks/109_android_storage_security_tests.md`
+- [x] `110_real_device_background_retry_smoke` - status: completed - source: `tasks/110_real_device_background_retry_smoke.md`
+- [x] `111_sprint_4h_closeout_review` - status: completed - source: `tasks/111_sprint_4h_closeout_review.md`

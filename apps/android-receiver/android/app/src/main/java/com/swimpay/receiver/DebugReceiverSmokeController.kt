@@ -245,18 +245,13 @@ class DebugReceiverSmokeController(
     }
 
     private fun nextCounter(): Long {
-        val storedState = deviceStateStore.load()
-        val counter = if (storedState != null) {
-            storedState.lastLocalCounter + 1
+        return if (deviceStateStore.load() != null) {
+            deviceStateStore.nextLocalCounter()
         } else {
             nextLocalCounter
-        }
-        if (storedState != null) {
-            deviceStateStore.save(storedState.copy(lastLocalCounter = counter))
-        } else {
+        }.also {
             nextLocalCounter += 1
         }
-        return counter
     }
 
     private fun addDelay(now: String, delayMs: Long): String {

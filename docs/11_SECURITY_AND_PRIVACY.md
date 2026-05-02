@@ -156,3 +156,5 @@ Sprint 4B generates the Gradle wrapper and validates Android build/tests. It add
 Sprint 4C adds emulator smoke diagnostics and manual validation steps. No new Android permissions, scraping behavior, raw PII exposure or local payment decisions are added.
 
 Sprint 4G adds persistent Android debug state and outbox storage for real-device smoke hardening. Persisted values are limited to safe device metadata and redacted signed signal payloads. Raw phone numbers, raw notification text, secrets and local payment-confirmation state are rejected by the storage boundary. The current SharedPreferences-backed outbox is a local MVP boundary, not production-grade encryption.
+
+Sprint 4H replaces the active outbox storage path with an Android Keystore-backed protected adapter for redacted signed payloads. The previous SharedPreferences outbox remains only as a migration source and JVM test boundary. The app rejects raw phone values, raw notification text, raw title/body keys and secret-like values before persistence. WorkManager retry is bounded and network-constrained, and debug smoke controls remain debug-only.

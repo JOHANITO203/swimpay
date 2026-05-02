@@ -1248,3 +1248,16 @@ Safety checks:
 - Added debug-only broadcast smoke automation to avoid unsafe UI tapping.
 - Real-device offline/online smoke passed using local Caddy proxy stop/start.
 - No real bank notifications, customer data, SMS, scraping, Android confirmation or raw PII were used.
+
+## 2026-05-02T23:30:00+03:00 - Sprint 4H Android Production Storage and Worker Hardening
+
+- Created tasks 104 through 111 and updated the task queue.
+- Added production/debug signing policy; production rejects the JVM fake signer.
+- Added Android Keystore-backed protected outbox storage adapter.
+- Added migration from legacy debug outbox storage into protected storage.
+- Added outbox cleanup for old acknowledged and expired records.
+- Hardened WorkManager retry boundaries with unique work, network constraint and bounded attempts.
+- Kept debug smoke broadcast/actions debug-only and release manifest free of debug receiver, SMS and Accessibility service.
+- Added Android JVM and static tests for storage security, signing policy, retry planning and debug/release separation.
+- Real-device background retry smoke passed with synthetic redacted data only.
+- No real bank notifications, customer data, SMS, scraping, Android confirmation or raw PII were used.

@@ -33,17 +33,18 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4G persistent receiver tasks in the approved order', () => {
+  test('task queue lists Sprint 4H production storage tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '097_android_persistent_device_state',
-      '098_android_persistent_protected_outbox',
-      '099_android_workmanager_retry_live_wiring',
-      '100_android_live_backend_status_refresh',
-      '101_android_debug_panel_persistence_polish',
-      '102_real_device_offline_online_persistent_outbox_smoke',
-      '103_sprint_4g_closeout_review'
+      '104_android_keystore_device_identity_hardening',
+      '105_android_encrypted_storage_platform_impl',
+      '106_android_persistent_outbox_migration_and_cleanup',
+      '107_android_workmanager_background_retry_validation',
+      '108_android_debug_release_separation',
+      '109_android_storage_security_tests',
+      '110_real_device_background_retry_smoke',
+      '111_sprint_4h_closeout_review'
     ];
 
     let previousIndex = -1;

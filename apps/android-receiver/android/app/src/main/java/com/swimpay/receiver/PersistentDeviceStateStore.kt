@@ -34,6 +34,13 @@ class PersistentDeviceStateStore(
         save(existing.copy(lastHeartbeatAt = lastHeartbeatAt))
     }
 
+    fun nextLocalCounter(): Long {
+        val existing = load() ?: return 1
+        val next = existing.lastLocalCounter + 1
+        save(existing.copy(lastLocalCounter = next))
+        return next
+    }
+
     fun clear() {
         storage.clear()
     }

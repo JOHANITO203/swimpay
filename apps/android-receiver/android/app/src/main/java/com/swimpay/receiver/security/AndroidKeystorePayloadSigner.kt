@@ -48,3 +48,23 @@ class AndroidKeystorePayloadSigner(
         return generator.generateKeyPair().private
     }
 }
+
+enum class ReceiverRuntimeMode {
+    DEBUG,
+    PRODUCTION
+}
+
+class ReceiverSigningPolicy private constructor(
+    private val mode: ReceiverRuntimeMode
+) {
+    companion object {
+        fun forMode(mode: ReceiverRuntimeMode): ReceiverSigningPolicy = ReceiverSigningPolicy(mode)
+    }
+
+    fun requireProductionSigner(signer: PayloadSigner): PayloadSigner {
+        if (mode == ReceiverRuntimeMode.PRODUCTION && signer is FakePayloadSigner) {
+            throw IllegalStateException("dev signer cannot be used in production receiver mode")
+        }
+        return signer
+    }
+}

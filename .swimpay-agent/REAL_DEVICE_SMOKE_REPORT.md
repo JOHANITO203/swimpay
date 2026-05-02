@@ -73,11 +73,11 @@ Initial signal upload returned `401` due to Kotlin canonical JSON including spac
 
 ## Remaining Non-critical Limits
 
-- Debug outbox state now persists through a protected local storage boundary.
+- Debug outbox state now persists through an Android Keystore-backed protected adapter on device.
 - Offline/online persistent outbox smoke passed by stopping/restarting the local Caddy proxy.
-- Production-grade encrypted outbox plus full WorkManager background execution still needs deeper real-device validation.
+- Full WorkManager process-death/reboot retry validation still needs deeper real-device validation.
 - Real bank package/cert verification remains out of scope.
 
 ## Next Step
 
-Sprint 4H should replace the local protected outbox boundary with Android Keystore-backed encrypted storage and validate background retry after app process death.
+Sprint 4I should validate background retry after app process death/reboot and prepare operator-facing receiver diagnostics without raw PII.

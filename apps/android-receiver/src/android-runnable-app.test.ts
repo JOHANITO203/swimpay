@@ -203,7 +203,7 @@ describe('android emulator smoke validation', () => {
   });
 
   it('lists Sprint 4G task files in the approved order', () => {
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4G_REPORT.md'), 'utf8');
     const tasks = [
       '097_android_persistent_device_state',
       '098_android_persistent_protected_outbox',
@@ -212,6 +212,25 @@ describe('android emulator smoke validation', () => {
       '101_android_debug_panel_persistence_polish',
       '102_real_device_offline_online_persistent_outbox_smoke',
       '103_sprint_4g_closeout_review'
+    ];
+
+    for (const task of tasks) {
+      expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
+      expect(report, task).toContain(task);
+    }
+  });
+
+  it('lists Sprint 4H task files in the approved order', () => {
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const tasks = [
+      '104_android_keystore_device_identity_hardening',
+      '105_android_encrypted_storage_platform_impl',
+      '106_android_persistent_outbox_migration_and_cleanup',
+      '107_android_workmanager_background_retry_validation',
+      '108_android_debug_release_separation',
+      '109_android_storage_security_tests',
+      '110_real_device_background_retry_smoke',
+      '111_sprint_4h_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -286,7 +305,7 @@ describe('android device-side network smoke wiring', () => {
     expect(retryPolicy).toContain('900_000L');
     expect(backendStatus).toContain('BackendStatusSnapshot');
     expect(activity).toContain('refreshBackendStatus');
-    expect(activity).toContain('SharedPreferencesOutboxStorageAdapter');
+    expect(activity).toContain('AndroidOutboxStorageFactory');
   });
 
   it('keeps real-device smoke automation debug-only through a safe broadcast receiver', () => {
@@ -297,7 +316,29 @@ describe('android device-side network smoke wiring', () => {
     expect(debugManifest).toContain('DebugSmokeBroadcastReceiver');
     expect(receiver).toContain('goAsync');
     expect(receiver).toContain('performAction');
+    expect(receiver).toContain('schedule_background_retry');
+    expect(receiver).toContain('SignalUploadWorker.enqueue');
     expect(receiver).toContain('SwimPayDebugSmoke');
     expect(receiver).not.toMatch(/READ_SMS|AccessibilityService|paymentConfirmed|autoConfirm|bank_confirmed/iu);
+  });
+
+  it('hardens Sprint 4H production storage and worker boundaries', () => {
+    const outboxStore = readAndroid('app/src/main/java/com/swimpay/receiver/outbox/AndroidEncryptedOutboxStore.kt');
+    const worker = readAndroid('app/src/main/java/com/swimpay/receiver/work/SignalUploadWorker.kt');
+    const signer = readAndroid('app/src/main/java/com/swimpay/receiver/security/AndroidKeystorePayloadSigner.kt');
+    const mainManifest = readAndroid('app/src/main/AndroidManifest.xml');
+    const debugManifest = readAndroid('app/src/debug/AndroidManifest.xml');
+
+    expect(outboxStore).toContain('AndroidKeystore');
+    expect(outboxStore).toContain('ProtectedOutboxStorageAdapter');
+    expect(outboxStore).toContain('OutboxMigration');
+    expect(outboxStore).toContain('cleanup');
+    expect(worker).toContain('SignalUploadWorkPlan');
+    expect(worker).toContain('NetworkType.CONNECTED');
+    expect(signer).toContain('ReceiverSigningPolicy');
+    expect(signer).toContain('PRODUCTION');
+    expect(mainManifest).not.toContain('DebugSmokeBroadcastReceiver');
+    expect(debugManifest).toContain('DebugSmokeBroadcastReceiver');
+    expect(`${outboxStore}\n${worker}\n${signer}`).not.toMatch(/paymentConfirmed|autoConfirm|official_bank_confirmation = true/iu);
   });
 });

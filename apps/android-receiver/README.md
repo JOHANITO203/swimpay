@@ -120,6 +120,16 @@ Sprint 4G adds persistent debug state:
 
 The current persistent outbox is for local MVP smoke validation only. It stores redacted signed payloads and must not be treated as production-grade encrypted storage.
 
+Sprint 4H hardens the app path:
+
+- Android Keystore protects persisted outbox records on device.
+- Legacy debug outbox records migrate into the protected adapter.
+- Old acknowledged and expired records can be cleaned up.
+- WorkManager retry is network-constrained and bounded.
+- Debug smoke controls and broadcasts remain debug-only.
+
+The debug app still uses synthetic redacted data only. It never confirms or auto-confirms a payment.
+
 ## Emulator Smoke
 
 Run:
