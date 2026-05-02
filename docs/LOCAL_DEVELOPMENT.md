@@ -173,6 +173,14 @@ The package includes imported YAML/JSONL assets from the downloaded bank-templat
 
 These files are trackable by git and are not trusted runtime decisions by themselves.
 
+Run the bank profile registry tests:
+
+```bash
+npm test -- packages/bank-templates/src/registry.test.ts
+```
+
+The registry loads V1 bank profile YAML files and exposes conservative runtime behavior. Unknown bank profiles return review-only behavior, and `TO_VERIFY` package/certificate metadata cannot pass the trusted bank app gate.
+
 ## Matching Core Foundation
 
 Run matching-core guardrail tests:

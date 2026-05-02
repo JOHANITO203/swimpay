@@ -21,6 +21,8 @@ Task 018 imported the downloaded bank-template pack assets into `packages/bank-t
 
 These assets are data and review material only at this stage. They do not make templates trusted and do not create verified bank app package/certificate metadata.
 
+Task 019 added a bank profile registry loader for the package YAML assets. It validates required profile fields, exposes runtime behavior for backend logic, returns review-only behavior for unknown profiles, and prevents `TO_VERIFY` or `pending_verification` bank app metadata from passing the trusted app gate.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:

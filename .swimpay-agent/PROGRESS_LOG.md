@@ -236,6 +236,21 @@
 - Added tests proving workspace TypeScript exports are available and YAML/JSONL assets are present and not ignored by `.gitignore`.
 - Did not implement final parser logic, bank profile trust promotion, real package/cert verification, or payment decision behavior.
 
+## 2026-05-02 - Task 019 bank profile registry plan
+
+- Scope: load V1 bank profile YAML assets, validate required fields, expose profile runtime behavior, and evaluate bank app package/cert trust gates.
+- Boundaries: no template parser core, no trust promotion, no real package/cert verification, no payment auto-confirmation logic.
+- Safety checks: unknown profiles must route to review-only behavior; `TO_VERIFY` package/cert entries must be untrusted and block auto-confirm candidates.
+
+## 2026-05-02 - Task 019 bank profile registry completed
+
+- Added `BankProfileRegistry` with default loading from `packages/bank-templates/banks/*/profile.yml`.
+- Added YAML profile validation for required fields, statuses, app verification state, field priority, and supported locales.
+- Added runtime behavior exposure for backend logic, including unknown-profile review-only fallback.
+- Added bank app trust evaluation where `TO_VERIFY` and `pending_verification` cannot pass the trusted gate.
+- Added registry tests covering all five V1 profiles, alias lookup for `sber_ru`, unknown bank fallback, `TO_VERIFY` rejection, validation failures, and explicit directory loading.
+- Did not implement parser core, template promotion, real app/cert trust, or payment confirmation behavior.
+
 ## 2026-05-02T10:00:33.072Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
@@ -269,6 +284,14 @@
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
 
 ## 2026-05-02T10:14:08.775Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T10:18:17.859Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
 - PASS: `npm run lint` (Lint, exit 0)

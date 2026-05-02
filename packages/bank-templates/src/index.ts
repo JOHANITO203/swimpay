@@ -22,3 +22,12 @@ export {
   type ParsedBankNotification,
   type ParseBankNotificationInput
 } from './parser.js';
+export {
+  BankProfileRegistry,
+  getDefaultBankProfilesDirectory,
+  loadBankProfilesFromDirectory,
+  validateBankProfileDocument,
+  type BankAppTrustInput,
+  type BankAppTrustResult,
+  type BankProfileRuntimeBehavior
+} from './registry.js';
