@@ -36,7 +36,9 @@ import {
 } from './orders.js';
 import { toPaymentSessionReadResponse } from './payment-sessions.js';
 import {
+  buildReceiverHeartbeatResponse,
   buildReceiverDeviceCreateInput,
+  buildReceiverRegistrationResponse,
   PgReceiverDeviceRepository,
   validateReceiverDeviceRegisterBody,
   validateReceiverHeartbeatBody,
@@ -405,12 +407,12 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     const body = validateReceiverDeviceRegisterBody(request.body);
-    if (!body) {
-      return reply.status(400).send(invalidRequest('Receiver device registration request is invalid.', {}));
+    if (!body.valid) {
+      return reply.status(400).send(receiverContractError(body.code, body.field));
     }
 
     const input = buildReceiverDeviceCreateInput({
-      body,
+      body: body.value,
       merchantId,
       deviceId: receiverDeviceIdGenerator(),
       auditEventId: idGenerator.auditEventId(),
@@ -418,12 +420,15 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     });
 
     const device = await receiverDeviceRepository.createReceiverDevice(input);
+    metrics.increment(MetricNames.RECEIVER_REGISTRATIONS_TOTAL);
 
-    return reply.status(201).send({
-      device_id: device.id,
-      status: device.status,
-      trust_score: device.trustScore
-    });
+    return reply.status(201).send(
+      buildReceiverRegistrationResponse({
+        device,
+        merchantId,
+        serverTime: clock().toISOString()
+      })
+    );
   });
 
   server.post('/v1/receiver-devices/heartbeat', async (request, reply) => {
@@ -447,17 +452,18 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     const body = validateReceiverHeartbeatBody(request.body);
-    if (!body) {
-      return reply.status(400).send(invalidRequest('Receiver heartbeat request is invalid.', {}));
+    if (!body.valid) {
+      return reply.status(400).send(receiverContractError(body.code, body.field));
     }
 
     const heartbeatAt = clock().toISOString();
     const device = await receiverDeviceRepository.updateHeartbeat({
       merchantId,
-      deviceId: body.device_id,
-      notificationAccessStatus: body.notification_access,
-      listenerConnected: body.listener_connected,
-      appVersion: body.app_version,
+      deviceId: body.value.device_id,
+      notificationAccessStatus: body.value.notification_access,
+      listenerConnected: body.value.listener_connected,
+      appVersion: body.value.app_version,
+      androidVersion: body.value.android_version,
       heartbeatAt
     });
 
@@ -467,18 +473,20 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
           code: 'not_found',
           message: 'Receiver device was not found.',
           details: {
-            device_id: body.device_id
+            device_id: body.value.device_id
           }
         }
       });
     }
+    metrics.increment(MetricNames.RECEIVER_HEARTBEATS_TOTAL);
 
-    return reply.status(200).send({
-      device_id: device.id,
-      status: device.status,
-      notification_access: device.notificationAccessStatus,
-      last_heartbeat_at: device.lastHeartbeatAt
-    });
+    return reply.status(200).send(
+      buildReceiverHeartbeatResponse({
+        device,
+        serverTime: heartbeatAt,
+        warnings: body.warnings ?? []
+      })
+    );
   });
 
   server.post('/v1/receiver/signals', async (request, reply) => {
@@ -493,13 +501,15 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     const body = validateReceiverSignalBody(request.body);
-    if (!body) {
-      return reply.status(400).send(invalidRequest('Receiver signal request is invalid.', {}));
+    if (!body.valid) {
+      metrics.increment(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL);
+      const statusCode = body.code === 'signature_missing' || body.code === 'signature_invalid' ? 401 : 400;
+      return reply.status(statusCode).send(receiverContractError(body.code, body.field));
     }
 
     const device = await signalRepository.getReceiverDevice({
-      merchantId: body.merchant_id,
-      deviceId: body.device_id
+      merchantId: body.value.merchant_id,
+      deviceId: body.value.device_id
     });
     if (!device) {
       return reply.status(404).send({
@@ -507,13 +517,15 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
           code: 'receiver_device_not_found',
           message: 'Receiver device was not found.',
           details: {
-            device_id: body.device_id
+            device_id: body.value.device_id
           }
         }
       });
     }
 
-    if (!verifyReceiverSignalSignature(body, device.publicKey)) {
+    if (!verifyReceiverSignalSignature(body.value, device.publicKey)) {
+      metrics.increment(MetricNames.RECEIVER_SIGNATURE_INVALID_TOTAL);
+      metrics.increment(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL);
       return reply.status(401).send({
         error: {
           code: 'invalid_signature',
@@ -525,7 +537,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     const receivedAt = clock().toISOString();
     const input = buildSignalIngestionInput({
-      body,
+      body: body.value,
       signalId: signalIdGenerator(),
       auditEventId: idGenerator.auditEventId(),
       receivedAt
@@ -536,6 +548,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       if (result.kind === 'duplicate_event_id' || result.kind === 'duplicate_notification_hash') {
         metrics.increment(MetricNames.SIGNALS_DUPLICATE_TOTAL);
       }
+      metrics.increment(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL);
       const statusCode = result.kind === 'bank_profile_not_found' || result.kind === 'package_signature_rejected' ? 400 : 409;
       return reply.status(statusCode).send({
         error: {
@@ -546,22 +559,27 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       });
     }
     metrics.increment(MetricNames.SIGNALS_RECEIVED_TOTAL);
+    metrics.increment(MetricNames.RECEIVER_SIGNALS_ACCEPTED_TOTAL);
 
     await eventPublisher.publish(
       buildSignalReceivedEvent({
-        eventId: body.event_id,
+        eventId: body.value.event_id,
         signalId: result.signalId,
-        merchantId: body.merchant_id,
-        deviceId: body.device_id,
-        bankProfileId: body.bank_profile_id,
-        notificationHash: body.notification_hash,
+        merchantId: body.value.merchant_id,
+        deviceId: body.value.device_id,
+        bankProfileId: body.value.bank_profile_id,
+        notificationHash: body.value.notification_hash,
         occurredAt: receivedAt
       })
     );
 
     return reply.status(201).send({
       signal_id: result.signalId,
-      status: 'received'
+      status: 'received',
+      accepted: true,
+      reason_codes: [],
+      server_time: receivedAt,
+      next_action: 'backend_decision_pending'
     });
   });
 
@@ -1091,6 +1109,37 @@ function signalIngestionErrorMessage(code: string): string {
       return 'Receiver device was not found.';
     default:
       return 'Receiver signal could not be accepted.';
+  }
+}
+
+function receiverContractError(code: string, field?: string) {
+  return {
+    error: {
+      code,
+      message: receiverContractErrorMessage(code),
+      details: field ? { field } : {}
+    }
+  };
+}
+
+function receiverContractErrorMessage(code: string): string {
+  switch (code) {
+    case 'signature_missing':
+      return 'Receiver signal signature is required.';
+    case 'signature_invalid':
+      return 'Receiver signal signature is invalid.';
+    case 'raw_phone_rejected':
+      return 'Receiver payload must not include raw phone fields.';
+    case 'raw_notification_rejected':
+      return 'Receiver payload must not include raw notification text.';
+    case 'local_counter_replay':
+      return 'Receiver local_counter must be a positive replay-protection counter.';
+    case 'timestamp_out_of_range':
+      return 'Receiver timestamp is invalid or out of accepted bounds.';
+    case 'package_not_allowed':
+      return 'Notification package is not allowlisted for receiver processing.';
+    default:
+      return 'Android Receiver contract payload is invalid.';
   }
 }
 

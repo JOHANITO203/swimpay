@@ -845,3 +845,28 @@ Validation:
 - `npm test` PASS
 - `npm run build` PASS
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+# 2026-05-02 - Task 031 Android Receiver Contract Validation
+
+Plan:
+- Add shared Android Receiver contract DTOs and validators in `@swimpay/contracts`.
+- Strengthen existing receiver registration, heartbeat and signal upload endpoints around those contracts.
+- Keep Android as capture/filter/redact/sign/upload only; backend remains the only decision maker.
+- Reject raw phone/raw notification fields by default and document restricted debug behavior as not implemented.
+- Add tests first for contract validation, API behavior, anti-replay/privacy and observability counters.
+
+Result:
+- Added shared Android Receiver DTOs, validation helpers, error codes, snapshot/coalescing contracts and canonical signed payload generation in `@swimpay/contracts`.
+- Strengthened receiver registration, heartbeat and signal upload API validation.
+- Rejected raw phone fields, raw notification text, missing signatures, invalid timestamps, invalid currency and non-integer minor-unit amounts before persistence.
+- Preserved `TO_VERIFY` package/cert metadata as untrusted and non-confirming.
+- Added receiver observability counters for registration, heartbeat, accepted signals, rejected signals and invalid signatures.
+- Updated Android Receiver contract/spec documentation and local development notes.
+
+Validation:
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+Completed at: 2026-05-02T17:48:21+03:00.

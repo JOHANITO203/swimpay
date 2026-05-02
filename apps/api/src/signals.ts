@@ -1,6 +1,10 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { connect, StringCodec } from 'nats';
 import pg from 'pg';
+import {
+  validateAndroidReceiverSignalUploadRequest,
+  type AndroidReceiverErrorCode
+} from '@swimpay/contracts';
 import { EventTypes, type EventEnvelope, type InternalEventEnvelope } from '@swimpay/events';
 
 const { Pool } = pg;
@@ -23,6 +27,9 @@ export interface ReceiverSignalPayload {
   reference_hmac?: string | undefined;
   reference_code_masked?: string | undefined;
   direction_label?: string | undefined;
+  snapshot_count?: number | undefined;
+  coalesced?: boolean | undefined;
+  raw_text_present?: false | undefined;
 }
 
 export interface ReceiverSignalRequestBody {
@@ -33,10 +40,15 @@ export interface ReceiverSignalRequestBody {
   package_name: string;
   package_cert_sha256: string;
   notification_hash: string;
+  semantic_hash?: string | undefined;
   local_counter: number;
   observed_at: string;
+  received_at?: string | undefined;
+  snapshot_count?: number | undefined;
+  coalesced?: boolean | undefined;
   payload: ReceiverSignalPayload;
   signature: string;
+  signature_payload?: Record<string, unknown> | undefined;
 }
 
 export interface StoredReceiverSignal {
@@ -48,6 +60,7 @@ export interface StoredReceiverSignal {
   packageCertSha256: string;
   eventId: string;
   notificationHash: string;
+  semanticHash?: string | undefined;
   localCounter: number;
   observedAt: string;
   receivedAt: string;
@@ -86,6 +99,10 @@ export interface ReceiverSignalRepository {
 export interface InternalEventPublisher {
   publish(event: EventEnvelope): Promise<void>;
 }
+
+export type ReceiverSignalValidationResult =
+  | { valid: true; value: ReceiverSignalRequestBody }
+  | { valid: false; code: AndroidReceiverErrorCode; field?: string | undefined };
 
 export class NoopEventPublisher implements InternalEventPublisher {
   public async publish(): Promise<void> {}
@@ -198,15 +215,15 @@ export class PgSignalRepository implements ReceiverSignalRepository {
 
       await client.query(
         `INSERT INTO notification_signals (
-          id, merchant_id, device_id, bank_profile_id, event_id, notification_hash,
+          id, merchant_id, device_id, bank_profile_id, event_id, notification_hash, semantic_hash,
           local_counter, observed_at, received_at, amount_minor, currency,
           sender_phone_hmac, sender_phone_masked, reference_hmac, reference_code_masked,
           direction_label, parser_version, signature_valid, status, created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6,
-          $7, $8, $9, $10, $11,
-          $12, $13, $14, $15,
-          $16, $17, $18, $19, $20
+          $1, $2, $3, $4, $5, $6, $7,
+          $8, $9, $10, $11, $12,
+          $13, $14, $15, $16,
+          $17, $18, $19, $20, $21
         )`,
         [
           input.signal.id,
@@ -215,6 +232,7 @@ export class PgSignalRepository implements ReceiverSignalRepository {
           input.signal.bankProfileId,
           input.signal.eventId,
           input.signal.notificationHash,
+          input.signal.semanticHash ?? null,
           input.signal.localCounter,
           input.signal.observedAt,
           input.signal.receivedAt,
@@ -275,11 +293,59 @@ export class PgSignalRepository implements ReceiverSignalRepository {
   }
 }
 
-export function validateReceiverSignalBody(body: unknown): ReceiverSignalRequestBody | null {
+export function validateReceiverSignalBody(body: unknown): ReceiverSignalValidationResult {
   if (!body || typeof body !== 'object') {
-    return null;
+    return { valid: false, code: 'payload_invalid' };
   }
 
+  const contractValidation = validateAndroidReceiverSignalUploadRequest(body);
+  if (contractValidation.valid) {
+    const value = contractValidation.value;
+    return {
+      valid: true,
+      value: {
+        event_id: value.event_id,
+        device_id: value.device_id,
+        merchant_id: value.merchant_id,
+        bank_profile_id: value.bank_profile_id,
+        package_name: value.package_name,
+        package_cert_sha256: value.package_cert_sha256,
+        notification_hash: value.notification_hash,
+        semantic_hash: value.semantic_hash,
+        local_counter: value.local_counter,
+        observed_at: value.observed_at,
+        received_at: value.received_at,
+        snapshot_count: value.snapshot_count,
+        coalesced: value.coalesced,
+        payload: {
+          title_redacted: value.redacted_title,
+          body_redacted: value.redacted_body,
+          amount_minor: value.amount_minor,
+          currency: value.currency,
+          sender_phone_hmac: value.sender_phone_hmac,
+          sender_phone_masked: value.sender_phone_masked,
+          reference_hmac: value.reference_hmac,
+          reference_code_masked: value.reference_code_masked,
+          direction_label: value.direction_hint,
+          snapshot_count: value.snapshot_count,
+          coalesced: value.coalesced,
+          raw_text_present: false
+        },
+        signature: value.signature,
+        signature_payload: canonicalSignalPayloadRecord(body)
+      }
+    };
+  }
+
+  const recordBody = body as Record<string, unknown>;
+  if (isLegacyReceiverSignalShape(recordBody)) {
+    return validateLegacyReceiverSignalBody(recordBody);
+  }
+
+  return contractValidation;
+}
+
+function validateLegacyReceiverSignalBody(body: Record<string, unknown>): ReceiverSignalValidationResult {
   const candidate = body as Partial<ReceiverSignalRequestBody>;
   const localCounter = candidate.local_counter;
   if (
@@ -299,21 +365,24 @@ export function validateReceiverSignalBody(body: unknown): ReceiverSignalRequest
     typeof candidate.payload !== 'object' ||
     !isNonEmptyString(candidate.signature)
   ) {
-    return null;
+    return { valid: false, code: 'payload_invalid' };
   }
 
   return {
-    event_id: candidate.event_id,
-    device_id: candidate.device_id,
-    merchant_id: candidate.merchant_id,
-    bank_profile_id: candidate.bank_profile_id,
-    package_name: candidate.package_name,
-    package_cert_sha256: candidate.package_cert_sha256,
-    notification_hash: candidate.notification_hash,
-    local_counter: localCounter,
-    observed_at: new Date(candidate.observed_at).toISOString(),
-    payload: normalizeSignalPayload(candidate.payload),
-    signature: candidate.signature
+    valid: true,
+    value: {
+      event_id: candidate.event_id,
+      device_id: candidate.device_id,
+      merchant_id: candidate.merchant_id,
+      bank_profile_id: candidate.bank_profile_id,
+      package_name: candidate.package_name,
+      package_cert_sha256: candidate.package_cert_sha256,
+      notification_hash: candidate.notification_hash,
+      local_counter: localCounter,
+      observed_at: new Date(candidate.observed_at).toISOString(),
+      payload: normalizeSignalPayload(candidate.payload as ReceiverSignalPayload),
+      signature: candidate.signature
+    }
   };
 }
 
@@ -327,8 +396,8 @@ export function createReceiverSignalSignature(
 }
 
 export function verifyReceiverSignalSignature(body: ReceiverSignalRequestBody, verificationKey: string): boolean {
-  const { signature, ...signalWithoutSignature } = body;
-  const expected = createReceiverSignalSignature(signalWithoutSignature, verificationKey);
+  const { signature, signature_payload: signaturePayload, ...signalWithoutSignature } = body;
+  const expected = createReceiverSignalSignature(signaturePayload ?? signalWithoutSignature, verificationKey);
   const expectedBuffer = Buffer.from(expected, 'hex');
   const actualBuffer = Buffer.from(signature, 'hex');
 
@@ -351,9 +420,10 @@ export function buildSignalIngestionInput(params: {
       packageCertSha256: params.body.package_cert_sha256,
       eventId: params.body.event_id,
       notificationHash: params.body.notification_hash,
+      semanticHash: params.body.semantic_hash,
       localCounter: params.body.local_counter,
       observedAt: params.body.observed_at,
-      receivedAt: params.receivedAt,
+      receivedAt: params.body.received_at ?? params.receivedAt,
       amountMinor: params.body.payload.amount_minor,
       currency: params.body.payload.currency,
       senderPhoneHmac: params.body.payload.sender_phone_hmac,
@@ -367,7 +437,10 @@ export function buildSignalIngestionInput(params: {
     },
     payloadRedacted: {
       title_redacted: params.body.payload.title_redacted,
-      body_redacted: params.body.payload.body_redacted
+      body_redacted: params.body.payload.body_redacted,
+      snapshot_count: params.body.payload.snapshot_count,
+      coalesced: params.body.payload.coalesced,
+      raw_text_present: false
     },
     auditEventId: params.auditEventId
   };
@@ -446,8 +519,25 @@ function normalizeSignalPayload(payload: ReceiverSignalPayload): ReceiverSignalP
     sender_phone_masked: payload.sender_phone_masked,
     reference_hmac: payload.reference_hmac,
     reference_code_masked: payload.reference_code_masked,
-    direction_label: payload.direction_label
+    direction_label: payload.direction_label,
+    snapshot_count: payload.snapshot_count,
+    coalesced: payload.coalesced,
+    raw_text_present: payload.raw_text_present
   };
+}
+
+function isLegacyReceiverSignalShape(body: Record<string, unknown>): boolean {
+  return Boolean(body.payload) && typeof body.payload === 'object';
+}
+
+function canonicalSignalPayloadRecord(body: unknown): Record<string, unknown> {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return {};
+  }
+
+  const payload = { ...(body as Record<string, unknown>) };
+  delete payload.signature;
+  return payload;
 }
 
 function toReceiverSignalDevice(row: Record<string, string | number>): ReceiverSignalDevice {

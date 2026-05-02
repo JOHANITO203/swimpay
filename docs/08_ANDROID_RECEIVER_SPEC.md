@@ -1,217 +1,127 @@
-# 08 — Android Receiver Specification
+# 08 - Android Receiver Specification
 
 ## Purpose
 
-The Android Receiver App captures authorized merchant-side bank notifications, extracts useful signal data, redacts sensitive values, signs the event and uploads it to SwimPay backend.
-
-## Absolute rule
+The Android Receiver captures authorized merchant-side bank notifications, filters allowed bank apps locally, extracts operational signal fields, redacts sensitive values, signs the upload and sends it to SwimPay.
 
 Android captures. Backend decides.
 
 Android must never finalize payment confirmation.
 
-## V1 banks
+## V1 Banks
 
-- Sberbank;
-- Tinkoff / T-Bank;
-- VTB;
-- Alfa-Bank;
-- Gazprombank.
+V1 targets bank profiles for:
 
-Bank packages and signing certificate fingerprints are not trusted until verified.
+- Sberbank
+- Tinkoff / T-Bank
+- VTB
+- Alfa-Bank
+- Gazprombank
 
-## Required modules
+The repo must not invent verified package names or certificate fingerprints. Metadata marked `TO_VERIFY` or `pending_verification` is untrusted and cannot pass auto-confirmation gates.
 
-### Onboarding
+## Required Android Responsibilities
 
-Must explain:
+- guide the merchant through Notification Access setup
+- filter locally using the bank allowlist
+- ignore non-bank packages locally
+- extract notification snapshot fields
+- coalesce multiple snapshots from the same notification
+- redact raw phone and notification text before upload
+- HMAC matchable phone/reference fields where configured
+- sign uploads with the registered device key
+- keep a local monotonic counter for replay protection
+- send heartbeats with health and queue state
 
-- SwimPay uses Android Notification Access;
-- Android grants a broad notification permission;
-- SwimPay filters locally using a bank allowlist;
-- only selected bank notifications are processed;
-- non-bank notifications are ignored locally;
-- SwimPay does not read buyer devices;
-- SwimPay does not read SMS.
+## Forbidden Android Behavior
 
-### Notification Access
+- no SMS reading
+- no bank app scraping
+- no hidden data collection
+- no final payment confirmation
+- no official bank confirmation wording
+- no upload of non-bank notifications
+- no raw phone upload by default
+- no raw notification text upload by default
 
-Guide merchant to enable Notification Access.
+## Backend-Facing Endpoints
 
-Show status:
+The backend contract is defined in `docs/ANDROID_RECEIVER_CONTRACT.md`.
 
-- enabled;
-- disabled;
-- listener connected;
-- listener disconnected.
+Minimum V1 endpoints:
 
-### Bank Allowlist
+- `POST /v1/receiver-devices/register`
+- `POST /v1/receiver-devices/heartbeat`
+- `POST /v1/receiver/signals`
 
-Merchant selects bank apps.
+Accepted signal upload means only that SwimPay stored the signal and queued backend processing. It does not confirm payment.
 
-App must store allowed bank profiles only.
+## Notification Snapshot Fields
 
-### Bank App Verification
+Android may read platform notification fields such as:
 
-Verify:
+- package name
+- notification id
+- tag
+- post time
+- channel id
+- group key
+- sort key
+- title
+- text
+- big text
+- sub text
+- summary text
+- text lines
+- ticker text
 
-- package name;
-- signing certificate SHA-256;
-- installed app version;
-- bank profile mapping.
+Only redacted fields should leave the device in normal mode.
 
-Do not mark a bank as trusted if package/cert is unknown.
+## Signal Coalescing
 
-### Notification Snapshot Extractor
+Bank notifications may update quickly. The app should coalesce snapshots over a short window, then upload one signal with:
 
-Extract all possible fields:
+- `snapshot_count`
+- `first_snapshot_at`
+- `last_snapshot_at`
+- `coalesced_hash`
+- `notification_hash`
+- `semantic_hash`
 
-- packageName;
-- notification id;
-- tag;
-- key;
-- postTime;
-- channelId;
-- groupKey;
-- sortKey;
-- `EXTRA_TITLE`;
-- `EXTRA_TITLE_BIG`;
-- `EXTRA_TEXT`;
-- `EXTRA_BIG_TEXT`;
-- `EXTRA_SUB_TEXT`;
-- `EXTRA_SUMMARY_TEXT`;
-- `EXTRA_TEXT_LINES`;
-- tickerText.
+Backend uniqueness constraints on `event_id` and `notification_hash` protect final idempotency.
 
-### Signal Coalescer
+## Signed Upload
 
-Bank notifications may update quickly. The app must coalesce snapshots.
+The signed payload excludes `signature` and uses canonical JSON with deterministic key ordering.
 
-Recommended window:
+Required anti-replay fields:
 
-```text
-800ms to 1500ms
-```
+- `event_id`
+- `notification_hash`
+- `device_id`
+- `observed_at`
+- `local_counter`
+- `signature`
 
-Output must include:
+Missing signatures are rejected unless a future explicit test-only mode is added. No such production bypass exists.
 
-- snapshot count;
-- chosen title/body;
-- final redacted text;
-- notification hash.
+## Receiver Armed Mode
 
-### Local Parser
+Backend may expose active payment session summaries to help the receiver prioritize matching signals locally. Android may use these summaries only for local prioritization and extraction hints.
 
-Extract locally when possible:
+Android must not use these summaries to confirm payment.
 
-- amount;
-- currency;
-- phone;
-- reference;
-- direction candidate;
-- negative keywords.
+## Health Expectations
 
-Backend will re-validate.
+Heartbeats report:
 
-### Privacy Firewall
+- notification access enabled/disabled
+- listener connected/disconnected
+- queue length
+- allowed bank profile ids
+- app version
+- Android version
+- last signal observed timestamp
+- battery optimization risk
 
-Must:
-
-- ignore non-allowlisted packages;
-- avoid uploading raw non-bank notifications;
-- redact sensitive values;
-- HMAC phone/reference if keying is available;
-- mask phone for UI;
-- block upload if package/cert is unknown and configured as strict.
-
-### Local Encrypted Outbox
-
-Every captured signal must be stored before upload.
-
-States:
-
-- `captured`;
-- `pending_upload`;
-- `uploading`;
-- `acked`;
-- `failed_retrying`;
-- `expired`.
-
-Store:
-
-- event id;
-- notification hash;
-- observed at;
-- encrypted payload;
-- attempt count;
-- last attempt time.
-
-### Signed Upload
-
-Each event must include:
-
-- `event_id`;
-- `device_id`;
-- `merchant_id`;
-- `bank_profile_id`;
-- `package_name`;
-- `package_cert_sha256`;
-- `notification_hash`;
-- `local_counter`;
-- `observed_at`;
-- `payload`;
-- `signature`.
-
-Use a device keypair generated during device registration.
-
-### Receiver Armed Mode
-
-Backend sends active payment sessions to the Receiver.
-
-Session payload:
-
-```json
-{
-  "payment_session_id": "ps_01",
-  "expected_amount_minor": 13700,
-  "currency": "RUB",
-  "buyer_phone_hmac": "hmac_...",
-  "reference_hmac": "hmac_...",
-  "valid_until": "2026-05-01T21:15:00Z"
-}
-```
-
-Receiver uses this only for prioritization/pre-match, not final decision.
-
-### Heartbeat
-
-Send heartbeat with:
-
-- device id;
-- notification access status;
-- listener status;
-- selected banks;
-- queue length;
-- last signal time;
-- app version;
-- Android version;
-- health status.
-
-## Android UI screens
-
-- Onboarding;
-- Permission guide;
-- Bank selection;
-- Test signal;
-- Connected banks;
-- Device status;
-- Local queue status;
-- Privacy explanation.
-
-## Forbidden
-
-- No SMS reading.
-- No bank app scraping.
-- No internal bank database access.
-- No final confirmation on Android.
-- No upload of non-bank notifications.
+Backend warnings include notification access, listener connectivity, queue backlog and battery optimization risks.

@@ -1,4 +1,11 @@
 import pg from 'pg';
+import {
+  RequiredAndroidReceiverCapabilities,
+  validateAndroidReceiverHeartbeatRequest,
+  validateAndroidReceiverRegistrationRequest,
+  type AndroidReceiverErrorCode,
+  type AndroidReceiverWarning
+} from '@swimpay/contracts';
 
 const { Pool } = pg;
 
@@ -40,6 +47,7 @@ export interface UpdateReceiverHeartbeatInput {
   notificationAccessStatus: boolean;
   listenerConnected: boolean;
   appVersion?: string | undefined;
+  androidVersion?: string | undefined;
   heartbeatAt: string;
 }
 
@@ -53,19 +61,32 @@ export interface ReceiverDeviceRegisterBody {
   public_key: string;
   app_version?: string | undefined;
   android_version?: string | undefined;
+  install_id?: string | undefined;
+  device_install_id?: string | undefined;
+  supported_capabilities?: string[] | undefined;
   selected_banks?: string[] | undefined;
 }
 
 export interface ReceiverHeartbeatBody {
   device_id: string;
   notification_access: boolean;
+  notification_access_enabled: boolean;
   listener_connected: boolean;
   allowed_banks?: string[] | undefined;
+  allowed_bank_profile_ids?: string[] | undefined;
   queue_length?: number | undefined;
   last_signal_at?: string | null | undefined;
+  last_signal_observed_at?: string | null | undefined;
+  android_version?: string | undefined;
   app_version?: string | undefined;
+  timestamp?: string | undefined;
+  signature?: string | undefined;
   status?: string | undefined;
 }
+
+export type ReceiverDeviceValidationResult<T> =
+  | { valid: true; value: T; warnings?: AndroidReceiverWarning[] | undefined }
+  | { valid: false; code: AndroidReceiverErrorCode; field?: string | undefined };
 
 export class PgReceiverDeviceRepository implements ReceiverDeviceRepository {
   private readonly pool: pg.Pool;
@@ -136,9 +157,10 @@ export class PgReceiverDeviceRepository implements ReceiverDeviceRepository {
        SET notification_access_status = $1,
            last_heartbeat_at = $2,
            app_version = COALESCE($3, app_version),
-           status = $4,
+           android_version = COALESCE($4, android_version),
+           status = $5,
            updated_at = $2
-       WHERE merchant_id = $5 AND id = $6
+       WHERE merchant_id = $6 AND id = $7
        RETURNING id, merchant_id, device_name, public_key, app_version, android_version,
          status, trust_score, notification_access_status, last_local_counter,
          last_heartbeat_at, created_at, updated_at`,
@@ -146,6 +168,7 @@ export class PgReceiverDeviceRepository implements ReceiverDeviceRepository {
         input.notificationAccessStatus,
         input.heartbeatAt,
         input.appVersion ?? null,
+        input.androidVersion ?? null,
         status,
         input.merchantId,
         input.deviceId
@@ -160,48 +183,49 @@ export class PgReceiverDeviceRepository implements ReceiverDeviceRepository {
   }
 }
 
-export function validateReceiverDeviceRegisterBody(body: unknown): ReceiverDeviceRegisterBody | null {
-  if (!body || typeof body !== 'object') {
-    return null;
+export function validateReceiverDeviceRegisterBody(
+  body: unknown
+): ReceiverDeviceValidationResult<ReceiverDeviceRegisterBody> {
+  const validation = validateAndroidReceiverRegistrationRequest(body);
+  if (!validation.valid) {
+    return validation;
   }
 
   const candidate = body as Partial<ReceiverDeviceRegisterBody>;
-  if (typeof candidate.public_key !== 'string' || !candidate.public_key.trim()) {
-    return null;
-  }
-
   return {
-    device_name: candidate.device_name,
-    public_key: candidate.public_key,
-    app_version: candidate.app_version,
-    android_version: candidate.android_version,
-    selected_banks: candidate.selected_banks
+    valid: true,
+    value: {
+      ...validation.value,
+      selected_banks: candidate.selected_banks
+    }
   };
 }
 
-export function validateReceiverHeartbeatBody(body: unknown): ReceiverHeartbeatBody | null {
-  if (!body || typeof body !== 'object') {
-    return null;
-  }
-
-  const candidate = body as Partial<ReceiverHeartbeatBody>;
-  if (
-    typeof candidate.device_id !== 'string' ||
-    typeof candidate.notification_access !== 'boolean' ||
-    typeof candidate.listener_connected !== 'boolean'
-  ) {
-    return null;
+export function validateReceiverHeartbeatBody(body: unknown): ReceiverDeviceValidationResult<ReceiverHeartbeatBody> {
+  const normalizedInput = normalizeHeartbeatAliases(body);
+  const validation = validateAndroidReceiverHeartbeatRequest(normalizedInput);
+  if (!validation.valid) {
+    return validation;
   }
 
   return {
-    device_id: candidate.device_id,
-    notification_access: candidate.notification_access,
-    listener_connected: candidate.listener_connected,
-    allowed_banks: candidate.allowed_banks,
-    queue_length: candidate.queue_length,
-    last_signal_at: candidate.last_signal_at,
-    app_version: candidate.app_version,
-    status: candidate.status
+    valid: true,
+    value: {
+      device_id: validation.value.device_id,
+      notification_access: validation.value.notification_access_enabled,
+      notification_access_enabled: validation.value.notification_access_enabled,
+      listener_connected: validation.value.listener_connected,
+      allowed_banks: validation.value.allowed_bank_profile_ids,
+      allowed_bank_profile_ids: validation.value.allowed_bank_profile_ids,
+      queue_length: validation.value.queue_length,
+      last_signal_at: validation.value.last_signal_observed_at,
+      last_signal_observed_at: validation.value.last_signal_observed_at,
+      app_version: validation.value.app_version,
+      android_version: validation.value.android_version,
+      timestamp: validation.value.timestamp,
+      signature: validation.value.signature
+    },
+    warnings: validation.warnings
   };
 }
 
@@ -241,10 +265,81 @@ export function buildReceiverDeviceCreateInput(params: {
         device_name: params.body.device_name,
         app_version: params.body.app_version,
         android_version: params.body.android_version,
+        install_id_present: Boolean(params.body.install_id ?? params.body.device_install_id),
+        supported_capabilities: params.body.supported_capabilities ?? [],
         selected_banks: params.body.selected_banks ?? []
       }
     }
   };
+}
+
+export function buildReceiverRegistrationResponse(params: {
+  device: StoredReceiverDeviceRecord;
+  merchantId: string;
+  serverTime: string;
+}) {
+  return {
+    device_id: params.device.id,
+    merchant_id: params.merchantId,
+    status: params.device.status,
+    trust_score: params.device.trustScore,
+    server_time: params.serverTime,
+    required_capabilities: [...RequiredAndroidReceiverCapabilities]
+  };
+}
+
+export function buildReceiverHeartbeatResponse(params: {
+  device: StoredReceiverDeviceRecord;
+  serverTime: string;
+  warnings: readonly AndroidReceiverWarning[];
+}) {
+  return {
+    device_id: params.device.id,
+    device_status: params.device.status,
+    status: params.device.status,
+    notification_access: params.device.notificationAccessStatus,
+    last_heartbeat_at: params.device.lastHeartbeatAt,
+    server_time: params.serverTime,
+    receiver_mode: params.warnings.length > 0 ? 'attention_required' : 'active',
+    active_payment_sessions_count: 0,
+    warnings: [...params.warnings],
+    required_actions: receiverRequiredActions(params.warnings)
+  };
+}
+
+function normalizeHeartbeatAliases(body: unknown): unknown {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return body;
+  }
+
+  const candidate = body as Partial<ReceiverHeartbeatBody>;
+  return {
+    ...candidate,
+    notification_access_enabled:
+      candidate.notification_access_enabled ?? candidate.notification_access,
+    allowed_bank_profile_ids: candidate.allowed_bank_profile_ids ?? candidate.allowed_banks,
+    last_signal_observed_at: candidate.last_signal_observed_at ?? candidate.last_signal_at
+  };
+}
+
+function receiverRequiredActions(warnings: readonly AndroidReceiverWarning[]): string[] {
+  const actions = new Set<string>();
+  for (const warning of warnings) {
+    if (warning === 'notification_access_disabled') {
+      actions.add('enable_notification_access');
+    }
+    if (warning === 'listener_disconnected') {
+      actions.add('reconnect_notification_listener');
+    }
+    if (warning === 'queue_backlog_high') {
+      actions.add('check_receiver_outbox');
+    }
+    if (warning === 'battery_optimization_risk') {
+      actions.add('disable_battery_optimization');
+    }
+  }
+
+  return [...actions];
 }
 
 function toReceiverDevice(row: Record<string, string | number | boolean | Date | null>): StoredReceiverDeviceRecord {

@@ -55,6 +55,8 @@ Task 029 added durable worker E2E stabilization tests. The new in-process suite 
 
 Task 030 added lightweight runtime observability. A new `@swimpay/observability` package provides recursive sensitive-field redaction, structured log entries, in-process counters/gauges, safe health snapshots, worker status tracking, and webhook queue summaries. The API health endpoint now includes uptime and timestamp, API responses include a correlation id header, and RBAC-protected admin endpoints expose safe metrics and runtime status. API, signal runtime, webhook delivery and JetStream consumer wrappers now increment observability counters without changing payment decision behavior.
 
+Task 031 added the Android Receiver contract validation foundation. `@swimpay/contracts` now defines receiver registration, heartbeat, notification snapshot, coalescing and signed signal upload DTOs, validation helpers, canonical signed payload generation and backend error codes. The API receiver endpoints now use these contracts, reject raw phone/raw notification fields, require signed uploads, preserve `TO_VERIFY` package/cert metadata as untrusted, return safe receiver responses and increment receiver observability counters. This task did not build the Android app or implement real bank package/certificate verification.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:
@@ -85,6 +87,8 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Web is not yet a merchant dashboard or admin console.
 - Android Receiver now has a TypeScript foundation core under `apps/android-receiver` for allowlist filtering, notification snapshot extraction, redaction, encrypted outbox persistence, signed upload envelope creation, and heartbeat payload construction.
 - Android Receiver is not yet a full Android/Gradle app and does not request Android permissions or run a platform notification listener in this foundation step.
+- Android Receiver backend contracts are now documented in `docs/ANDROID_RECEIVER_CONTRACT.md` and enforced by shared TypeScript validators for registration, heartbeat, redacted snapshot DTOs, coalescing metadata and signed signal uploads.
+- Receiver signal upload rejects raw phone fields, raw notification text, missing signatures, invalid timestamps, invalid currency and invalid minor-unit amounts before persistence.
 - Signal ingestion now supports `POST /v1/receiver/signals` with device existence checks, deterministic foundation signature verification, duplicate `event_id` rejection, duplicate `notification_hash` rejection, local counter regression rejection, bank profile checks, pending bank app signature observation, redacted audit storage, and `signal.received` publication through the internal event publisher.
 - The current signal signature verifier uses the registered receiver `public_key` field as a local deterministic verification key for this foundation. Real Android keypair verification is intentionally left for security hardening.
 - Bank templates now include a deterministic V1 parser foundation for Russian notification text: amount/currency extraction, Russian phone normalization, SwimPay reference extraction, direction classification, negative keyword gates, signal quality scoring, and V1 bank profiles in `learning` status.

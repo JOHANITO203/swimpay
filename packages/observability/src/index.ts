@@ -30,7 +30,12 @@ export const MetricNames = {
   WORKER_ERRORS_TOTAL: 'worker_errors_total',
   TEMPLATE_OBSERVED_TOTAL: 'template_observed_total',
   TEMPLATE_DRIFT_DETECTED_TOTAL: 'template_drift_detected_total',
-  TEMPLATE_UNKNOWN_TOTAL: 'template_unknown_total'
+  TEMPLATE_UNKNOWN_TOTAL: 'template_unknown_total',
+  RECEIVER_REGISTRATIONS_TOTAL: 'receiver_registrations_total',
+  RECEIVER_HEARTBEATS_TOTAL: 'receiver_heartbeats_total',
+  RECEIVER_SIGNALS_ACCEPTED_TOTAL: 'receiver_signals_accepted_total',
+  RECEIVER_SIGNALS_REJECTED_TOTAL: 'receiver_signals_rejected_total',
+  RECEIVER_SIGNATURE_INVALID_TOTAL: 'receiver_signature_invalid_total'
 } as const;
 
 export type MetricName = (typeof MetricNames)[keyof typeof MetricNames];

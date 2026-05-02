@@ -101,6 +101,11 @@ Current metrics include:
 - `template_observed_total`
 - `template_drift_detected_total`
 - `template_unknown_total`
+- `receiver_registrations_total`
+- `receiver_heartbeats_total`
+- `receiver_signals_accepted_total`
+- `receiver_signals_rejected_total`
+- `receiver_signature_invalid_total`
 
 ## Admin Metrics Endpoint
 
@@ -136,6 +141,8 @@ Current instrumentation covers:
 - order creation
 - payment session creation
 - receiver signal ingestion and duplicate signal rejection
+- receiver device registration and heartbeat
+- receiver contract rejection and invalid receiver signatures
 - signal parsing, review, reject and auto-confirm decisions
 - unsafe category blocks
 - amount-only review routing

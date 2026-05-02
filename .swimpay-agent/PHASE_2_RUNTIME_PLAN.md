@@ -62,3 +62,7 @@ Move SwimPay from a validated foundation into durable local runtime integration 
 ## Task 030 Result
 
 `030_runtime_observability` adds lightweight in-process observability for the V1 single-server runtime. `@swimpay/observability` now provides recursive sensitive-field redaction, structured logs, counters/gauges, health snapshots, worker status tracking and webhook queue summaries. API health includes uptime and timestamp, API responses carry `X-Correlation-Id`, admin metrics/runtime status endpoints are protected by existing RBAC, and API, signal runtime, webhook delivery and JetStream paths increment safe counters. No heavy monitoring stack was added.
+
+## Task 031 Result
+
+`031_android_receiver_contract_validation` defines and enforces the backend-facing Android Receiver contract. `@swimpay/contracts` now owns registration, heartbeat, notification snapshot, coalescing and signed signal upload DTOs, error codes, validators and canonical signed payload generation. API receiver endpoints now reject raw phone/raw notification fields, missing signatures, invalid timestamps, invalid currency and invalid minor-unit amounts; `TO_VERIFY` package/cert metadata remains untrusted. The task added documentation and tests without building the Android app or moving payment decisions onto Android.

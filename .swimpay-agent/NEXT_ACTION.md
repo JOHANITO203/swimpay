@@ -1,17 +1,18 @@
 # Next Action
 
-generated_at: 2026-05-02T17:21:45+03:00
+generated_at: 2026-05-02T17:48:21+03:00
 
 ## Latest completed task
 
-030_runtime_observability is complete.
+031_android_receiver_contract_validation is complete.
 
 ## Commands run
 
-- `npm test -- --run packages/observability/src/index.test.ts packages/events/src/jetstream.test.ts apps/api/src/health.test.ts apps/api/src/orders.test.ts apps/signal-worker/src/runtime.test.ts apps/job-worker/src/webhooks.test.ts`
+- `npm test -- --run packages/contracts/src/android-receiver.test.ts apps/api/src/receiver-devices.test.ts apps/api/src/signals.test.ts`
 - `npm run typecheck`
-- `npm test`
+- `npm test -- --run tests/durable-worker-e2e.test.ts`
 - `npm run lint`
+- `npm test`
 - `npm run build`
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config`
 
@@ -25,18 +26,24 @@ No current blockers.
 
 ## Next recommended task
 
-031_android_receiver_contract_validation (`tasks/031_android_receiver_contract_validation.md`)
+Human review of Phase 2 Durable Runtime Integration, then define Phase 3 queue.
+
+Recommended Phase 3 focus:
+
+- live PostgreSQL/NATS integration tests
+- production-grade receiver device asymmetric signature verification
+- real operator identity provider integration
+- bank app package/cert verification workflow
+- Android app implementation planning
 
 ## What not to do next
 
 - Do not push to remote until the user explicitly asks.
-- Do not add a heavy monitoring stack for V1 unless explicitly scoped.
-- Do not bypass the Postgres-backed webhook delivery loop for public webhooks.
 - Do not implement Android final payment decisions.
+- Do not trust `TO_VERIFY` package names or certificate fingerprints.
+- Do not claim official bank confirmation.
+- Do not implement PSP, SBP, SMS reading or bank-app scraping behavior.
 - Do not auto-confirm outside documented matching and decision rules.
-- Do not auto-confirm on amount alone.
 - Do not store raw phone numbers.
 - Do not store raw notification text by default.
-- Do not create real bank package or certificate values.
 - Do not deploy.
-- Do not continue after failing checks unless the failure is understood and documented.

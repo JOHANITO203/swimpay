@@ -385,6 +385,48 @@ Local requests may include `X-Correlation-Id`; otherwise the API returns a gener
 
 Metrics are in-process JSON counters and gauges. They are useful during local development and guarded single-server operation, but they reset on process restart. See `docs/RUNTIME_OBSERVABILITY.md`.
 
+## Android Receiver Contract
+
+The backend-facing Android Receiver contract is documented in:
+
+```text
+docs/ANDROID_RECEIVER_CONTRACT.md
+docs/08_ANDROID_RECEIVER_SPEC.md
+```
+
+Local receiver endpoints:
+
+```bash
+curl -X POST http://localhost:3000/v1/receiver-devices/register \
+  -H "Authorization: Bearer test_mch_local" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "device_name":"Local receiver",
+    "app_version":"0.1.0",
+    "android_version":"14",
+    "public_key":"local_receiver_verification_key",
+    "device_install_id":"install_local",
+    "supported_capabilities":["notification_access","signed_signal_upload","local_redaction"]
+  }'
+
+curl -X POST http://localhost:3000/v1/receiver-devices/heartbeat \
+  -H "Authorization: Bearer test_mch_local" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "device_id":"dev_local",
+    "app_version":"0.1.0",
+    "android_version":"14",
+    "notification_access_enabled":true,
+    "listener_connected":true,
+    "allowed_bank_profile_ids":["sber_ru"],
+    "queue_length":0,
+    "timestamp":"2026-05-02T00:00:00.000Z",
+    "signature":"local_signature"
+  }'
+```
+
+`POST /v1/receiver/signals` requires a canonical signed redacted payload. Raw phone fields and raw notification text are rejected by default. `TO_VERIFY` package/cert metadata remains untrusted and accepted uploads still wait for backend decision processing.
+
 ## Start Docker Compose
 
 ```bash
