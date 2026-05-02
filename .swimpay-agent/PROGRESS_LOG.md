@@ -1315,3 +1315,15 @@ Safety checks:
 - Real-device offline/online persistent outbox smoke passed: local proxy outage produced `failed_retrying=1`; after proxy restore and app relaunch, flush produced `acked=1 failed_retrying=0`.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Gradle assembleDebug, Gradle JVM tests, ADB reverse/install/launch and debug broadcast smoke.
 - No real bank notification, customer data, SMS, scraping, Android confirmation, raw phone, raw notification text or real bank package/cert value was used.
+
+## 2026-05-03T01:36:30+03:00 - Sprint 4L Bank Package Evidence Dry Run Readiness
+
+- Created tasks 148 through 154 and updated the task queue.
+- Added receiver-side bank package evidence observation, policy and diagnostics models.
+- Added Android PackageManager evidence collector for explicit package-name checks only; no app enumeration was added.
+- Kept `TO_VERIFY`, pending and observed package/cert evidence review-only until explicit operator review.
+- Kept synthetic debug package/cert metadata debug-only and non-production trust evidence.
+- Added PII-safe diagnostics with masked certificate hashes and redacted reason codes.
+- Added `docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md` and updated Android Receiver, security, local development and bank verification docs.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Gradle assembleDebug, Gradle JVM tests, ADB reverse/install/launch.
+- No real bank notification, customer data, SMS, scraping, Android confirmation, raw phone, raw notification text or real bank package/cert value was used.

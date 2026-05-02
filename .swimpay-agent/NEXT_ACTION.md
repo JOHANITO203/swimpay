@@ -1,29 +1,27 @@
 # Next Action
 
-generated_at: 2026-05-03T01:20:17+03:00
+generated_at: 2026-05-03T01:36:30+03:00
 
 ## Latest Completed Sprint
 
-Sprint 4K - Receiver Resilience and Bank-profile Selection Readiness.
+Sprint 4L - Bank Package Evidence Dry Run Readiness.
 
 ## Status
 
 PASS.
 
-PASS.
-
-The Android Receiver now has explicit safe bank-profile selection modeling, `ready_review_only` readiness for selected `TO_VERIFY` banks, a bank selection onboarding/debug UI model, and a PII-safe operator diagnostics export. Real-device smoke verified listener capture after app restart and persisted outbox recovery after a local backend outage.
+The Android Receiver now has a bank package/certificate evidence contract, explicit PackageManager collector boundary, review-only policy guards, and PII-safe diagnostics for future evidence dry runs. The sprint did not collect real bank package/cert values and did not create production trust from observed evidence.
 
 ## Next Recommended Sprint
 
-Sprint 4L - Bank package/certificate evidence dry-run preparation.
+Sprint 4M - Operator-reviewed bank evidence dry run and verification workflow.
 
 Recommended tasks:
 
-1. Define a real-device PackageManager evidence collection checklist without automatically trusting captured values.
-2. Add or harden an operator review path for bank package/cert evidence.
-3. Keep `TO_VERIFY` and pending profiles review-only until explicit operator verification.
-4. Continue reboot/background WorkManager validation using synthetic redacted data.
+1. Add a backend/admin evidence intake endpoint guarded by operator RBAC.
+2. Persist package/cert evidence as pending operator review only.
+3. Add audit events for evidence submission, review-only decision and rejection.
+4. Run the operator review path with synthetic evidence before any real package/cert dry run.
 
 ## What Not To Do Next
 
@@ -35,4 +33,5 @@ Recommended tasks:
 - Do not implement Android payment confirmation.
 - Do not implement Android auto-confirmation.
 - Do not trust `TO_VERIFY` package names or certificate fingerprints.
+- Do not treat PackageManager evidence as production trust without human/operator review.
 - Do not store raw phone or raw notification text.

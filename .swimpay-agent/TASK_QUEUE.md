@@ -6,10 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `141_bank_profile_selection_model` - status: completed - source: `tasks/141_bank_profile_selection_model.md`
-- [x] `142_receiver_ready_review_only_state` - status: completed - source: `tasks/142_receiver_ready_review_only_state.md`
-- [x] `143_bank_selection_onboarding_ui_debug` - status: completed - source: `tasks/143_bank_selection_onboarding_ui_debug.md`
-- [x] `144_listener_resilience_after_app_restart` - status: completed - source: `tasks/144_listener_resilience_after_app_restart.md`
-- [x] `145_workmanager_process_death_retry_real_device` - status: completed - source: `tasks/145_workmanager_process_death_retry_real_device.md`
-- [x] `146_operator_diagnostics_export_no_pii` - status: completed - source: `tasks/146_operator_diagnostics_export_no_pii.md`
-- [x] `147_sprint_4k_closeout_review` - status: completed - source: `tasks/147_sprint_4k_closeout_review.md`
+- [x] `148_bank_package_evidence_contract` - status: completed - source: `tasks/148_bank_package_evidence_contract.md`
+- [x] `149_android_package_manager_evidence_collector` - status: completed - source: `tasks/149_android_package_manager_evidence_collector.md`
+- [x] `150_evidence_review_only_guard` - status: completed - source: `tasks/150_evidence_review_only_guard.md`
+- [x] `151_operator_evidence_diagnostics_no_pii` - status: completed - source: `tasks/151_operator_evidence_diagnostics_no_pii.md`
+- [x] `152_real_device_evidence_dry_run_plan` - status: completed - source: `tasks/152_real_device_evidence_dry_run_plan.md`
+- [x] `153_bank_evidence_docs_and_local_flow` - status: completed - source: `tasks/153_bank_evidence_docs_and_local_flow.md`
+- [x] `154_sprint_4l_closeout_review` - status: completed - source: `tasks/154_sprint_4l_closeout_review.md`

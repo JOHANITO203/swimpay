@@ -20,6 +20,7 @@ Android must not finalize payment confirmation.
 - Backend responses never set `official_bank_confirmation` to true.
 - Bank package names and certificate fingerprints marked `TO_VERIFY` are untrusted.
 - Bank package and certificate observations remain untrusted until explicit operator verification. Backend admin review can verify an observed row only when both `package_name` and `package_cert_sha256` are concrete non-`TO_VERIFY` values.
+- Android PackageManager evidence is observation only. It can create `pending_verification` / review-only metadata, but it must not automatically create production trust.
 
 ## Device Registration
 
@@ -323,4 +324,5 @@ No metric contains raw phone values, raw notification text, API keys or signatur
 - Sprint 4I adds a synthetic debug notification listener contract using only `synthetic_debug_only` package/certificate metadata. It validates capture, coalescing, redaction, outbox and signed upload boundaries without real bank notifications. Synthetic package/cert metadata remains pending verification and cannot become production trust evidence.
 - Real package/certificate verification is not implemented.
 - `TO_VERIFY` package/cert metadata remains untrusted.
+- Sprint 4L adds a PackageManager evidence dry-run boundary. It collects evidence only for an explicit operator-selected package name, masks diagnostics and keeps all observed values review-only until backend/operator verification.
 - Backend signal matching and payment decisions remain in the signal runtime pipeline.

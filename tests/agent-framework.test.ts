@@ -33,17 +33,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Phase 4K bank selection readiness tasks in the approved order', () => {
+  test('task queue lists Phase 4L bank evidence dry-run tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '141_bank_profile_selection_model',
-      '142_receiver_ready_review_only_state',
-      '143_bank_selection_onboarding_ui_debug',
-      '144_listener_resilience_after_app_restart',
-      '145_workmanager_process_death_retry_real_device',
-      '146_operator_diagnostics_export_no_pii',
-      '147_sprint_4k_closeout_review'
+      '148_bank_package_evidence_contract',
+      '149_android_package_manager_evidence_collector',
+      '150_evidence_review_only_guard',
+      '151_operator_evidence_diagnostics_no_pii',
+      '152_real_device_evidence_dry_run_plan',
+      '153_bank_evidence_docs_and_local_flow',
+      '154_sprint_4l_closeout_review'
     ];
 
     let previousIndex = -1;

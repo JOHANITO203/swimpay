@@ -14,6 +14,8 @@ Android Receiver may report:
 
 Those values should come from Android `PackageManager` inspection in the Android app. This repository does not invent real package names or real certificate fingerprints.
 
+Sprint 4L adds the Android-side dry-run boundary for this evidence. PackageManager evidence is observation only and enters review-only / `pending_verification` state until an operator reviews it.
+
 ## States
 
 `bank_app_signatures.status` may be:
@@ -65,6 +67,7 @@ admin.bank_app_signature.verified
 - Verification does not auto-promote bank templates.
 - Template promotion still requires independent evidence, no false positives and RBAC.
 - Admin responses expose only masked certificate hashes.
+- Android PackageManager evidence must not be auto-trusted by the app.
 
 ## Not Implemented
 

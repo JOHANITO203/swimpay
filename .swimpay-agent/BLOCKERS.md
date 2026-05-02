@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Sprint 4K receiver bank selection readiness and resilience: 2026-05-03T01:20:17+03:00.
+Last checked after Sprint 4L bank package evidence dry run readiness: 2026-05-03T01:36:30+03:00.
 
 Known non-critical limitations:
 
@@ -17,4 +17,5 @@ Known non-critical limitations:
 - After reinstall or `pm clear`, Android Notification Listener Access must be re-enabled manually for SwimPay Receiver before live capture can run. Phase 4J now detects this as `regrant_required_after_reinstall` and blocks Receiver readiness until the OS grant is restored.
 - Sprint 4J-B verified live synthetic listener capture on real device after the user re-enabled Notification Listener Access.
 - Sprint 4K verified selected `TO_VERIFY` bank readiness as `ready_review_only`, listener capture after app restart, and offline/online persisted outbox recovery.
+- Sprint 4L added PackageManager evidence collection readiness, but did not collect real bank package/cert evidence. Any real package/cert values still require a deliberate operator-controlled dry run and human review.
 - Real bank package/certificate verification and real bank notifications remain out of scope.

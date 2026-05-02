@@ -140,6 +140,20 @@ adb -s R5CWA0FEPZW shell am broadcast -a com.swimpay.receiver.DEBUG_SMOKE --es a
 
 The source is marked `synthetic_debug_only`, logs safe metadata only, redacts before outbox/upload and still leaves the backend as the only decision maker.
 
+## Bank Package Evidence Dry Run
+
+Sprint 4L adds a PackageManager evidence boundary for future operator dry runs.
+
+The collector accepts an explicit package name and returns observed package/certificate metadata. It does not enumerate arbitrary apps, does not trust the package automatically and does not process real bank notifications.
+
+Evidence remains review-only:
+
+- `TO_VERIFY` stays untrusted.
+- concrete PackageManager evidence becomes `pending_verification`.
+- `synthetic_debug_only` stays debug-only.
+
+See `docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md`.
+
 ## Receiver Onboarding Readiness
 
 Phase 4J separates two Android permissions:

@@ -373,7 +373,6 @@ describe('android device-side network smoke wiring', () => {
     const appPermission = readAndroid('app/src/main/java/com/swimpay/receiver/AppNotificationPermissionReader.kt');
     const activity = readAndroid('app/src/main/java/com/swimpay/receiver/MainActivity.kt');
     const report = readFileSync(join(root, '.swimpay-agent/RECEIVER_ONBOARDING_GATE_REPORT.md'), 'utf8');
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     expect(onboarding).toContain('NOTIFICATION_ACCESS_REQUIRED');
     expect(onboarding).toContain('READY_REVIEW_ONLY');
@@ -392,8 +391,8 @@ describe('android device-side network smoke wiring', () => {
     expect(`${onboarding}\n${activity}`).not.toContain(forbiddenClaim);
     expect(report).toContain('129_receiver_onboarding_readiness_gate');
     expect(report).toContain('135_receiver_onboarding_closeout_review');
-    expect(queue).toContain('141_bank_profile_selection_model');
-    expect(queue).toContain('147_sprint_4k_closeout_review');
+    expect(existsSync(join(root, 'tasks/141_bank_profile_selection_model.md'))).toBe(true);
+    expect(existsSync(join(root, 'tasks/147_sprint_4k_closeout_review.md'))).toBe(true);
   });
 
   it('wires Sprint 4K bank selection readiness and safe operator diagnostics', () => {
@@ -401,7 +400,7 @@ describe('android device-side network smoke wiring', () => {
     const onboarding = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverOnboardingReadiness.kt');
     const diagnostics = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverDiagnostics.kt');
     const activity = readAndroid('app/src/main/java/com/swimpay/receiver/MainActivity.kt');
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4K_REPORT.md'), 'utf8');
 
     expect(bankSelection).toContain('ReceiverBankProfileSelection');
     expect(bankSelection).toContain('syntheticDebugOnly');
@@ -424,6 +423,42 @@ describe('android device-side network smoke wiring', () => {
       '145_workmanager_process_death_retry_real_device',
       '146_operator_diagnostics_export_no_pii',
       '147_sprint_4k_closeout_review'
+    ];
+    let previousIndex = -1;
+    for (const task of tasks) {
+      expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
+      const index = report.indexOf(task);
+      expect(index, task).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+  });
+
+  it('wires Sprint 4L bank package evidence dry-run boundaries safely', () => {
+    const evidence = readAndroid('app/src/main/java/com/swimpay/receiver/BankPackageEvidence.kt');
+    const collector = readAndroid('app/src/main/java/com/swimpay/receiver/PackageManagerBankPackageEvidenceCollector.kt');
+    const docs = readFileSync(join(root, 'docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md'), 'utf8');
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+
+    expect(evidence).toContain('BankPackageEvidenceObservation');
+    expect(evidence).toContain('OPERATOR_REVIEW_REQUIRED');
+    expect(evidence).toContain('PENDING_VERIFICATION');
+    expect(evidence).toContain('synthetic_debug_only');
+    expect(evidence).toContain('isTrustedForProductionReady');
+    expect(collector).toContain('PackageManager');
+    expect(collector).toContain('collectExplicitPackageEvidence');
+    expect(collector).toContain('MessageDigest.getInstance("SHA-256")');
+    expect(docs).toContain('PackageManager evidence is observation only');
+    expect(docs).toContain('Do not auto-trust');
+    expect(`${evidence}\n${collector}\n${docs}`).not.toMatch(/READ_SMS|AccessibilityService|bank_confirmed|official_bank_confirmation = true|ready_auto_confirm/iu);
+
+    const tasks = [
+      '148_bank_package_evidence_contract',
+      '149_android_package_manager_evidence_collector',
+      '150_evidence_review_only_guard',
+      '151_operator_evidence_diagnostics_no_pii',
+      '152_real_device_evidence_dry_run_plan',
+      '153_bank_evidence_docs_and_local_flow',
+      '154_sprint_4l_closeout_review'
     ];
     let previousIndex = -1;
     for (const task of tasks) {

@@ -509,6 +509,26 @@ curl -X POST http://localhost:3000/v1/admin/bank-app-signatures/<signature-id>/v
 
 Rows with `TO_VERIFY` package/cert metadata cannot be verified. See `docs/BANK_APP_VERIFICATION_WORKFLOW.md`.
 
+## Bank Package Evidence Dry Run
+
+Sprint 4L adds a safe preparation path for Android PackageManager evidence.
+
+Read:
+
+```text
+docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md
+```
+
+The Android boundary collects evidence only for an explicit package name. It does not enumerate apps for hidden collection and does not trust the result automatically.
+
+Evidence outcomes:
+
+- `TO_VERIFY`: review-only, untrusted.
+- concrete PackageManager package/cert: `pending_verification`, operator review required.
+- `synthetic_debug_only`: debug-only, not production trust evidence.
+
+Do not use real bank notifications during this dry run. Successful evidence capture does not mean the bank app is trusted and does not mean any payment was confirmed.
+
 ## Start Docker Compose
 
 ```bash

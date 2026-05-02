@@ -160,3 +160,5 @@ Sprint 4G adds persistent Android debug state and outbox storage for real-device
 Sprint 4H replaces the active outbox storage path with an Android Keystore-backed protected adapter for redacted signed payloads. The previous SharedPreferences outbox remains only as a migration source and JVM test boundary. The app rejects raw phone values, raw notification text, raw title/body keys and secret-like values before persistence. WorkManager retry is bounded and network-constrained, and debug smoke controls remain debug-only.
 
 Sprint 4I adds a debug-only synthetic notification listener smoke path. Synthetic package and certificate values are explicitly marked `synthetic_debug_only` and are not production trust evidence. The listener logs only safe metadata, redacts before outbox/upload, and keeps Android payment confirmation and auto-confirmation impossible.
+
+Sprint 4L adds a PackageManager evidence dry-run boundary. Evidence is collected only for an explicit operator-selected package and is treated as observed metadata. Concrete package/cert values become `pending_verification`, not trusted. Diagnostics mask certificate hashes and redact secret-like fields.

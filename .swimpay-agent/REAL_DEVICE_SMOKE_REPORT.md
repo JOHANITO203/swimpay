@@ -153,3 +153,31 @@ Safety:
 - No raw notification text stored/uploaded.
 - No official bank confirmation claim.
 - `TO_VERIFY` and `synthetic_debug_only` metadata remain untrusted for production decisions.
+
+## Sprint 4L Bank Package Evidence Dry Run Readiness
+
+- generated_at: 2026-05-03T01:36:30+03:00
+- status: PASS
+- Device serial: `R5CWA0FEPZW`
+- Device model: Samsung `SM_S916B`
+- Backend health: PASS at `http://localhost:8080/api-health`
+- ADB reverse: `tcp:8080 tcp:8080` PASS
+- APK build/install/launch: PASS
+- PackageManager evidence model: PASS
+- PackageManager collector boundary: explicit package-name checks only, no installed-app enumeration
+- Evidence policy: concrete observations require operator review and do not create production trust
+- Real bank package/cert collection: not run
+
+Safety:
+
+- No real bank notification used.
+- No real customer data used.
+- No SMS reading.
+- No bank app scraping.
+- No Accessibility scraping.
+- No Android payment confirmation.
+- No Android auto-confirmation.
+- No raw phone stored/uploaded.
+- No raw notification text stored/uploaded.
+- No official bank confirmation claim.
+- `TO_VERIFY`, pending and `synthetic_debug_only` metadata remain untrusted for production decisions.

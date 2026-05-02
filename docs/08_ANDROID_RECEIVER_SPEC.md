@@ -20,6 +20,8 @@ V1 targets bank profiles for:
 
 The repo must not invent verified package names or certificate fingerprints. Metadata marked `TO_VERIFY` or `pending_verification` is untrusted and cannot pass auto-confirmation gates.
 
+PackageManager evidence collection is a dry-run/operator workflow. It may observe a concrete package name and signing certificate hash for an explicitly selected package, but that evidence remains `pending_verification` and review-only until an operator verifies it through the backend workflow.
+
 ## Required Android Responsibilities
 
 - guide the merchant through Notification Access setup
@@ -298,6 +300,21 @@ Readiness states:
 - `degraded`
 
 For V1, `TO_VERIFY` and review-only bank selections can reach `ready_review_only`, not an auto-confirm readiness state. Android still does not confirm or auto-confirm payments.
+
+## Sprint 4L Package/Certificate Evidence Dry Run
+
+Sprint 4L adds Android-side model and platform boundaries for PackageManager package/certificate evidence.
+
+Rules:
+
+- evidence collection requires an explicit package name;
+- evidence is observation only;
+- concrete package/cert evidence maps to `pending_verification`;
+- placeholder `TO_VERIFY` values remain untrusted;
+- `synthetic_debug_only` evidence remains debug-only;
+- no evidence path creates Android payment confirmation or auto-confirm readiness.
+
+See `docs/BANK_PACKAGE_EVIDENCE_DRY_RUN.md`.
 
 Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
 
