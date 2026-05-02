@@ -32,7 +32,7 @@ review_status:
 open, confirmed, rejected, cancelled
 
 webhook_delivery_status:
-pending, delivered, failed, retrying, cancelled
+pending, delivering, delivered, failed, dead, cancelled
 ```
 
 ## Tables
@@ -299,13 +299,17 @@ CREATE TABLE webhook_deliveries (
   event_id TEXT NOT NULL,
   event_type TEXT NOT NULL,
   payload_hash TEXT NOT NULL,
+  payload_json JSONB NOT NULL DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'pending',
   attempt_count INTEGER NOT NULL DEFAULT 0,
+  max_attempts INTEGER NOT NULL DEFAULT 7,
   next_retry_at TIMESTAMPTZ,
   last_error TEXT,
+  last_http_status INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   delivered_at TIMESTAMPTZ,
-  UNIQUE (endpoint_id, event_id)
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  replay_of_delivery_id UUID REFERENCES webhook_deliveries(id)
 );
 ```
 
@@ -333,7 +337,13 @@ CREATE INDEX idx_payment_sessions_active ON payment_sessions(merchant_id, status
 CREATE INDEX idx_signals_merchant_observed ON notification_signals(merchant_id, observed_at);
 CREATE INDEX idx_signals_amount_currency ON notification_signals(merchant_id, amount_minor, currency);
 CREATE INDEX idx_reviews_open ON review_queue(merchant_id, status);
-CREATE INDEX idx_webhook_due ON webhook_deliveries(status, next_retry_at);
+CREATE UNIQUE INDEX unique_webhook_delivery_endpoint_event
+ON webhook_deliveries(endpoint_id, event_id)
+WHERE replay_of_delivery_id IS NULL;
+
+CREATE INDEX idx_webhook_due_claim
+ON webhook_deliveries(status, next_retry_at, created_at)
+WHERE status IN ('pending', 'failed');
 ```
 
 ## Critical uniqueness rules

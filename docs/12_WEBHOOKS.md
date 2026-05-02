@@ -21,6 +21,7 @@ Every payment event must include:
 SwimPay-Event-Id: evt_01
 SwimPay-Timestamp: 2026-05-01T21:02:03Z
 SwimPay-Signature: hmac_sha256_signature
+SwimPay-Delivery-Id: del_01
 ```
 
 ## Events
@@ -93,16 +94,30 @@ SwimPay-Signature: hmac_sha256_signature
 
 ## Retry policy
 
-Recommended retries:
+Task 026 implements bounded durable retries with PostgreSQL as source of truth:
 
 ```text
-1 min
-5 min
-15 min
-1 h
-6 h
-24 h
+attempt 1: immediate
+attempt 2: +1 min
+attempt 3: +5 min
+attempt 4: +15 min
+attempt 5: +1 h
+attempt 6: +6 h
+attempt 7: +24 h
 ```
+
+Delivery statuses:
+
+```text
+pending
+delivering
+delivered
+failed
+dead
+cancelled
+```
+
+`failed` is retryable when `next_retry_at <= now` and attempts remain. `dead` is terminal after the retry budget is exhausted.
 
 ## Idempotency
 
@@ -115,3 +130,5 @@ Webhook worker must not create duplicate active deliveries for the same endpoint
 Dashboard/API must support manual webhook replay.
 
 Replay must keep original event id but create a new delivery id.
+
+Task 026 implements the internal replay helper and durable model. Admin/API exposure must remain RBAC-protected by `replay_webhooks` when surfaced.

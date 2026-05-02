@@ -286,6 +286,22 @@ Consumers:
 - retry scheduler;
 - audit.
 
+### `webhook.dead`
+
+Producer: webhook worker.
+
+Consumers:
+
+- dashboard;
+- audit.
+
+### Webhook audit-only events
+
+The webhook delivery loop also writes redacted audit events for:
+
+- `webhook.delivery_attempted`;
+- `webhook.replayed`.
+
 ## Event rules
 
 - Event names are constants.

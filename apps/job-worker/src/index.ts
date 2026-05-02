@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import {
+  EventTypes,
   NatsJetStreamRuntime,
   parseNatsRuntimeConfig,
   type DurableConsumerDefinition,
@@ -8,31 +9,68 @@ import {
   type SafeEventLogger
 } from '@swimpay/events';
 import { createJobWorkerConsumers } from './consumers.js';
+import { FetchWebhookHttpClient, PgWebhookRepository, WebhookDeliveryWorker } from './webhooks.js';
+import {
+  createWebhookDeliveryRequestedHandler,
+  parseWebhookWorkerConfig,
+  WebhookPollingLoop,
+  type WebhookDeliveryProcessor,
+  type WebhookWorkerConfig
+} from './webhook-runtime.js';
 
 export interface JobWorkerRuntime {
   nats: NatsJetStreamRuntime;
   consumers: DurableConsumerDefinition[];
   natsReady: boolean;
+  webhookWorkerReady: boolean;
+  webhookPollingEnabled: boolean;
+  webhookPollingLoop: WebhookPollingLoop | null;
 }
 
 export async function createJobWorkerRuntime(env: NodeJS.ProcessEnv, logger: SafeEventLogger): Promise<JobWorkerRuntime> {
   const natsConfig = parseNatsRuntimeConfig(env);
+  const webhookConfig = parseWebhookWorkerConfig(env);
   const nats = new NatsJetStreamRuntime(natsConfig, logger);
   const consumers = createJobWorkerConsumers(natsConfig.durablePrefix);
+  const webhookProcessor = createDefaultWebhookProcessor(env, webhookConfig);
+  const webhookPollingLoop = webhookProcessor
+    ? new WebhookPollingLoop({
+        processor: webhookProcessor,
+        config: webhookConfig,
+        now: () => new Date().toISOString(),
+        logger
+      })
+    : null;
+
+  webhookPollingLoop?.start();
 
   try {
     await nats.connect();
     await nats.ensureStream();
     for (const consumer of consumers) {
-      await nats.subscribe(consumer, createSafeStubHandler('swimpay-job-worker'));
+      await nats.subscribe(consumer, createJobWorkerHandler(consumer, webhookProcessor));
     }
 
-    return { nats, consumers, natsReady: true };
+    return {
+      nats,
+      consumers,
+      natsReady: true,
+      webhookWorkerReady: Boolean(webhookProcessor),
+      webhookPollingEnabled: webhookConfig.enabled && Boolean(webhookProcessor),
+      webhookPollingLoop
+    };
   } catch (error) {
     logger.error('job_worker_nats_setup_failed', {
       error_name: error instanceof Error ? error.name : 'UnknownError'
     });
-    return { nats, consumers, natsReady: false };
+    return {
+      nats,
+      consumers,
+      natsReady: false,
+      webhookWorkerReady: Boolean(webhookProcessor),
+      webhookPollingEnabled: webhookConfig.enabled && Boolean(webhookProcessor),
+      webhookPollingLoop
+    };
   }
 }
 
@@ -51,12 +89,24 @@ export function buildJobWorkerHealthResponse(params: {
       stream: params.natsConfig.streamName,
       consumer_count: 0
     },
+    webhook_delivery: {
+      status: params.runtime?.webhookWorkerReady ? 'configured' : 'unconfigured',
+      polling_enabled: params.runtime?.webhookPollingEnabled ?? false
+    },
     consumers: params.runtime?.consumers.map((consumer) => ({
       durable_name: consumer.durableName,
       subject: consumer.subject,
       event_type: consumer.eventType
     })) ?? []
   };
+}
+
+function createJobWorkerHandler(consumer: DurableConsumerDefinition, webhookProcessor: WebhookDeliveryProcessor | null) {
+  if (consumer.eventType === EventTypes.WEBHOOK_DELIVERY_REQUESTED && webhookProcessor) {
+    return createWebhookDeliveryRequestedHandler(webhookProcessor, () => new Date().toISOString());
+  }
+
+  return createSafeStubHandler('swimpay-job-worker');
 }
 
 function createSafeStubHandler(workerName: string) {
@@ -66,6 +116,19 @@ function createSafeStubHandler(workerName: string) {
     void event;
     return { kind: 'ok' };
   };
+}
+
+function createDefaultWebhookProcessor(env: NodeJS.ProcessEnv, config: WebhookWorkerConfig): WebhookDeliveryProcessor | null {
+  if (!env.DATABASE_URL) {
+    return null;
+  }
+
+  return new WebhookDeliveryWorker({
+    repository: new PgWebhookRepository(env.DATABASE_URL),
+    httpClient: new FetchWebhookHttpClient(),
+    maxAttempts: config.maxAttempts,
+    requestTimeoutMs: config.requestTimeoutMs
+  });
 }
 
 function fastifyLoggerAdapter(server: ReturnType<typeof Fastify>): SafeEventLogger {
@@ -91,6 +154,7 @@ async function main(): Promise<void> {
   );
 
   const shutdown = async () => {
+    runtime.webhookPollingLoop?.stop();
     await runtime.nats.close();
     await server.close();
   };

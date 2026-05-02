@@ -1,23 +1,26 @@
 # Current Task
 
-task id: 025_nats_jetstream_consumers
-source task file: tasks/025_nats_jetstream_consumers.md
+task id: 026_postgres_webhook_delivery_loop
+source task file: tasks/026_postgres_webhook_delivery_loop.md
 status: completed
 scope:
-Add durable NATS JetStream consumer foundations for runtime services without implementing payment-decision changes.
+Add a durable PostgreSQL-backed webhook delivery loop and connect the job worker webhook consumer to it.
 
 files allowed:
-- tasks/025_nats_jetstream_consumers.md
+- tasks/026_postgres_webhook_delivery_loop.md
 - .swimpay-agent task queue and reports
-- packages/events event/NATS foundations and tests
-- apps/signal-worker durable consumer skeleton and tests
-- apps/job-worker durable consumer skeleton and tests
-- docs related to NATS JetStream consumers and local development
+- apps/job-worker webhook delivery, runtime and tests
+- packages/database webhook delivery migration/schema exports
+- packages/contracts webhook delivery statuses
+- packages/events related webhook event constants
+- apps/api admin webhook failure status alignment
+- docs related to webhook delivery loop and local development
 
 forbidden work:
-- Do not implement task 026 or later.
-- Do not implement parser/matching/review runtime integration.
-- Do not implement webhook delivery loop.
+- Do not implement task 027 or later.
+- Do not implement signal/parser/matching/review runtime integration.
+- Do not implement Android Receiver logic.
+- Do not implement payment auto-confirmation.
 - Do not deploy.
 - Do not modify production secrets.
 - Do not claim official bank confirmation.
@@ -25,11 +28,14 @@ forbidden work:
 - Do not store raw notification text by default.
 
 acceptance criteria:
-- NATS config parsing, stream config, event envelope validation and consumer helpers are typed and tested.
-- Signal/job workers define expected durable consumers.
-- Handler wrapper acks success, nacks handler errors and terms invalid/unexpected messages.
-- Worker health can report NATS/consumer state.
-- No product behavior changes beyond durable consumer scaffolding.
+- Pending/failed due webhook deliveries can be claimed safely.
+- Successful delivery marks delivered.
+- Failed delivery schedules bounded retries and dead state after exhaustion.
+- Webhook HTTP requests include signed headers and delivery id.
+- NATS `webhook.delivery_requested` invokes the delivery processor.
+- Polling loop processes due deliveries only when enabled.
+- Payloads reject raw PII field markers.
+- No signal runtime pipeline or payment decision behavior is added.
 
 commands to run:
 - npm run typecheck
@@ -38,10 +44,10 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T15:10:00+03:00
-completed_at: 2026-05-02T15:19:08+03:00
+started_at: 2026-05-02T15:22:00+03:00
+completed_at: 2026-05-02T15:37:20+03:00
 result: completed
 
 ## Source requirements
 
-See tasks/025_nats_jetstream_consumers.md.
+See tasks/026_postgres_webhook_delivery_loop.md.

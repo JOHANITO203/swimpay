@@ -171,7 +171,7 @@ export class PgAdminRepository implements AdminRepository {
       `SELECT id, merchant_id, endpoint_id, event_id, event_type, status, attempt_count,
         next_retry_at, last_error, created_at
        FROM webhook_deliveries
-       WHERE status IN ('failed', 'retrying') OR last_error IS NOT NULL
+       WHERE status IN ('failed', 'dead') OR last_error IS NOT NULL
        ORDER BY created_at DESC
        LIMIT $1`,
       [limit]

@@ -1,5 +1,8 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import pg from 'pg';
 import { PUBLIC_EVENT_SIGNAL_DISCLOSURE } from '@swimpay/events';
+
+const { Pool } = pg;
 
 export type PublicWebhookEventType =
   | 'payment.signal_detected'
@@ -8,7 +11,25 @@ export type PublicWebhookEventType =
   | 'payment.rejected'
   | 'order.expired';
 
-export type WebhookDeliveryStatus = 'pending' | 'delivered' | 'failed' | 'retrying' | 'cancelled';
+export const WEBHOOK_DELIVERY_STATUSES = {
+  PENDING: 'pending',
+  DELIVERING: 'delivering',
+  DELIVERED: 'delivered',
+  FAILED: 'failed',
+  DEAD: 'dead',
+  CANCELLED: 'cancelled'
+} as const;
+
+export type WebhookDeliveryStatus = (typeof WEBHOOK_DELIVERY_STATUSES)[keyof typeof WEBHOOK_DELIVERY_STATUSES];
+
+export const WEBHOOK_AUDIT_EVENTS = {
+  DELIVERY_REQUESTED: 'webhook.delivery_requested',
+  DELIVERY_ATTEMPTED: 'webhook.delivery_attempted',
+  DELIVERED: 'webhook.delivered',
+  FAILED: 'webhook.failed',
+  DEAD: 'webhook.dead',
+  REPLAYED: 'webhook.replayed'
+} as const;
 
 export interface PublicWebhookEvent<TData extends Record<string, unknown> = Record<string, unknown>> {
   id: string;
@@ -24,7 +45,7 @@ export interface WebhookEndpoint {
   url: string;
   secret: string;
   enabledEvents: PublicWebhookEventType[];
-  status: 'active' | 'disabled';
+  status: 'active' | 'disabled' | 'cancelled';
 }
 
 export interface WebhookDelivery {
@@ -33,17 +54,31 @@ export interface WebhookDelivery {
   endpointId: string;
   endpointUrl: string;
   endpointSecret: string;
+  endpointStatus: WebhookEndpoint['status'];
   eventId: string;
   eventType: PublicWebhookEventType;
   payload: PublicWebhookEvent;
   payloadHash: string;
   status: WebhookDeliveryStatus;
   attemptCount: number;
+  maxAttempts: number;
   nextRetryAt?: string | undefined;
   lastError?: string | undefined;
+  lastHttpStatus?: number | undefined;
   createdAt: string;
   deliveredAt?: string | undefined;
+  updatedAt: string;
   replayOfDeliveryId?: string | undefined;
+}
+
+export interface WebhookAuditEvent {
+  id: string;
+  merchantId: string;
+  eventType: string;
+  objectType: 'webhook_delivery';
+  objectId: string;
+  payloadRedacted: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface WebhookDeliveryCreateInput {
@@ -51,6 +86,7 @@ export interface WebhookDeliveryCreateInput {
   endpoint: WebhookEndpoint;
   event: PublicWebhookEvent;
   createdAt: string;
+  maxAttempts?: number | undefined;
   replayOfDeliveryId?: string | undefined;
   allowReplayDuplicate?: boolean | undefined;
 }
@@ -62,10 +98,14 @@ export type WebhookDeliveryCreateResult =
 export interface WebhookRepository {
   listActiveEndpoints(merchantId: string, eventType: PublicWebhookEventType): Promise<WebhookEndpoint[]>;
   createDelivery(input: WebhookDeliveryCreateInput): Promise<WebhookDeliveryCreateResult>;
-  listDueDeliveries(now: string): Promise<WebhookDelivery[]>;
-  markDelivered(deliveryId: string, deliveredAt: string): Promise<void>;
-  markRetrying(deliveryId: string, nextRetryAt: string, lastError: string): Promise<void>;
-  markFailed(deliveryId: string, lastError: string): Promise<void>;
+  claimDueDeliveries(now: string, limit: number): Promise<WebhookDelivery[]>;
+  claimDeliveryById(deliveryId: string, now: string): Promise<WebhookDelivery | null>;
+  claimDeliveriesByEventId(eventId: string, now: string, limit: number): Promise<WebhookDelivery[]>;
+  recordDeliveryAttempt(deliveryId: string, attemptedAt: string): Promise<void>;
+  markDelivered(deliveryId: string, deliveredAt: string, httpStatus: number): Promise<void>;
+  markFailed(deliveryId: string, nextRetryAt: string, lastError: string, httpStatus?: number | undefined): Promise<void>;
+  markDead(deliveryId: string, lastError: string, httpStatus?: number | undefined): Promise<void>;
+  markCancelled(deliveryId: string, reason: string, cancelledAt: string): Promise<void>;
   getDelivery(deliveryId: string): Promise<WebhookDelivery | null>;
 }
 
@@ -74,15 +114,19 @@ export interface WebhookHttpClient {
     url: string;
     headers: Record<string, string>;
     body: string;
+    timeoutMs: number;
   }): Promise<{ status: number; body?: string | undefined }>;
 }
 
 export interface WebhookDeliveryWorkerOptions {
   repository: WebhookRepository;
   httpClient: WebhookHttpClient;
+  maxAttempts?: number | undefined;
+  requestTimeoutMs?: number | undefined;
 }
 
-export const RETRY_DELAYS_MS = [
+export const WEBHOOK_RETRY_DELAYS_MS = [
+  0,
   60_000,
   5 * 60_000,
   15 * 60_000,
@@ -91,10 +135,22 @@ export const RETRY_DELAYS_MS = [
   24 * 60 * 60_000
 ] as const;
 
+export const RETRY_DELAYS_MS = WEBHOOK_RETRY_DELAYS_MS.slice(1);
+
+const DEFAULT_MAX_ATTEMPTS = WEBHOOK_RETRY_DELAYS_MS.length;
+const DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
+
 export class WebhookDeliveryWorker {
-  public constructor(private readonly options: WebhookDeliveryWorkerOptions) {}
+  private readonly maxAttempts: number;
+  private readonly requestTimeoutMs: number;
+
+  public constructor(private readonly options: WebhookDeliveryWorkerOptions) {
+    this.maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+    this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+  }
 
   public async enqueueEvent(event: PublicWebhookEvent): Promise<{ created: number; skippedDuplicates: number }> {
+    assertSafePublicWebhookEvent(event);
     const endpoints = await this.options.repository.listActiveEndpoints(event.merchant_id, event.type);
     let created = 0;
     let skippedDuplicates = 0;
@@ -104,7 +160,8 @@ export class WebhookDeliveryWorker {
         merchantId: event.merchant_id,
         endpoint,
         event,
-        createdAt: event.created_at
+        createdAt: event.created_at,
+        maxAttempts: this.maxAttempts
       });
 
       if (result.kind === 'created') {
@@ -117,46 +174,42 @@ export class WebhookDeliveryWorker {
     return { created, skippedDuplicates };
   }
 
-  public async deliverDue(now: string): Promise<{ delivered: number; retrying: number; failed: number }> {
-    const deliveries = await this.options.repository.listDueDeliveries(now);
+  public async processDueDeliveries(now: string, limit = 10): Promise<{ delivered: number; retrying: number; failed: number }> {
+    const deliveries = await this.options.repository.claimDueDeliveries(now, limit);
+    return this.deliverClaimed(deliveries, now);
+  }
+
+  public async deliverDue(now: string, limit = 10): Promise<{ delivered: number; retrying: number; failed: number }> {
+    return this.processDueDeliveries(now, limit);
+  }
+
+  public async processDeliveryById(deliveryId: string, now: string): Promise<{ delivered: number; retrying: number; failed: number }> {
+    const delivery = await this.options.repository.claimDeliveryById(deliveryId, now);
+    return this.deliverClaimed(delivery ? [delivery] : [], now);
+  }
+
+  public async processEventDeliveries(eventId: string, now: string): Promise<{ delivered: number; retrying: number; failed: number }> {
+    const deliveries = await this.options.repository.claimDeliveriesByEventId(eventId, now, 25);
+    return this.deliverClaimed(deliveries, now);
+  }
+
+  public async deliverClaimed(
+    deliveries: readonly WebhookDelivery[],
+    now: string
+  ): Promise<{ delivered: number; retrying: number; failed: number }> {
     let delivered = 0;
     let retrying = 0;
     let failed = 0;
 
     for (const delivery of deliveries) {
-      const body = stableStringify(delivery.payload);
-      const signature = signWebhookPayload({
-        secret: delivery.endpointSecret,
-        timestamp: now,
-        payload: body
-      });
-      const response = await this.options.httpClient.postJson({
-        url: delivery.endpointUrl,
-        headers: buildWebhookHeaders({
-          eventId: delivery.eventId,
-          timestamp: now,
-          signature
-        }),
-        body
-      });
-
-      if (response.status >= 200 && response.status < 300) {
-        await this.options.repository.markDelivered(delivery.id, now);
+      const result = await this.deliverOne(delivery, now);
+      if (result === 'delivered') {
         delivered += 1;
-        continue;
-      }
-
-      const error = buildDeliveryError(response);
-      const nextAttemptCount = delivery.attemptCount + 1;
-      const retryDelay = RETRY_DELAYS_MS[nextAttemptCount - 1];
-      if (retryDelay === undefined) {
-        await this.options.repository.markFailed(delivery.id, error);
+      } else if (result === 'retrying') {
+        retrying += 1;
+      } else {
         failed += 1;
-        continue;
       }
-
-      await this.options.repository.markRetrying(delivery.id, new Date(Date.parse(now) + retryDelay).toISOString(), error);
-      retrying += 1;
     }
 
     return { delivered, retrying, failed };
@@ -182,6 +235,7 @@ export class WebhookDeliveryWorker {
       endpoint,
       event: original.payload,
       createdAt: now,
+      maxAttempts: original.maxAttempts,
       replayOfDeliveryId: original.id,
       allowReplayDuplicate: true
     });
@@ -192,28 +246,106 @@ export class WebhookDeliveryWorker {
 
     return { kind: 'created', deliveryId: replay.delivery.id };
   }
+
+  private async deliverOne(delivery: WebhookDelivery, now: string): Promise<'delivered' | 'retrying' | 'failed'> {
+    if (delivery.status === WEBHOOK_DELIVERY_STATUSES.DELIVERED) {
+      return 'delivered';
+    }
+
+    if (delivery.endpointStatus !== 'active') {
+      await this.options.repository.markCancelled(delivery.id, 'webhook_endpoint_inactive', now);
+      return 'failed';
+    }
+
+    assertSafePublicWebhookEvent(delivery.payload);
+    await this.options.repository.recordDeliveryAttempt(delivery.id, now);
+
+    const body = stableStringify(delivery.payload);
+    const signature = signWebhookPayload({
+      secret: delivery.endpointSecret,
+      timestamp: now,
+      payload: body
+    });
+
+    try {
+      const response = await this.options.httpClient.postJson({
+        url: delivery.endpointUrl,
+        headers: buildWebhookHeaders({
+          eventId: delivery.eventId,
+          deliveryId: delivery.id,
+          timestamp: now,
+          signature
+        }),
+        body,
+        timeoutMs: this.requestTimeoutMs
+      });
+
+      if (response.status >= 200 && response.status < 300) {
+        await this.options.repository.markDelivered(delivery.id, now, response.status);
+        return 'delivered';
+      }
+
+      return this.scheduleFailure(delivery, now, buildDeliveryError(response), response.status);
+    } catch (error) {
+      return this.scheduleFailure(delivery, now, sanitizeNetworkError(error));
+    }
+  }
+
+  private async scheduleFailure(
+    delivery: WebhookDelivery,
+    now: string,
+    error: string,
+    httpStatus?: number | undefined
+  ): Promise<'retrying' | 'failed'> {
+    const attemptedCount = delivery.attemptCount + 1;
+    const maxAttempts = delivery.maxAttempts || this.maxAttempts;
+
+    if (attemptedCount >= maxAttempts) {
+      await this.options.repository.markDead(delivery.id, error, httpStatus);
+      return 'failed';
+    }
+
+    const nextAttempt = attemptedCount + 1;
+    const delay = retryDelayForAttempt(nextAttempt);
+    if (delay === undefined) {
+      await this.options.repository.markDead(delivery.id, error, httpStatus);
+      return 'failed';
+    }
+
+    await this.options.repository.markFailed(delivery.id, new Date(Date.parse(now) + delay).toISOString(), error, httpStatus);
+    return 'retrying';
+  }
 }
 
 export class FetchWebhookHttpClient implements WebhookHttpClient {
-  public async postJson(params: { url: string; headers: Record<string, string>; body: string }) {
-    const response = await fetch(params.url, {
-      method: 'POST',
-      headers: params.headers,
-      body: params.body
-    });
+  public async postJson(params: { url: string; headers: Record<string, string>; body: string; timeoutMs: number }) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), params.timeoutMs);
+    try {
+      const response = await fetch(params.url, {
+        method: 'POST',
+        headers: params.headers,
+        body: params.body,
+        redirect: 'manual',
+        signal: controller.signal
+      });
 
-    return {
-      status: response.status,
-      body: await response.text()
-    };
+      return {
+        status: response.status,
+        body: await response.text()
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }
 
 export class InMemoryWebhookRepository implements WebhookRepository {
   public readonly endpoints: WebhookEndpoint[] = [];
   public readonly deliveries: WebhookDelivery[] = [];
+  public readonly auditEvents: WebhookAuditEvent[] = [];
 
-  public constructor(private readonly idGenerator: { deliveryId: () => string }) {}
+  public constructor(private readonly idGenerator: { deliveryId: () => string; auditEventId?: () => string | undefined }) {}
 
   public async listActiveEndpoints(merchantId: string, eventType: PublicWebhookEventType): Promise<WebhookEndpoint[]> {
     return this.endpoints.filter(
@@ -223,6 +355,7 @@ export class InMemoryWebhookRepository implements WebhookRepository {
   }
 
   public async createDelivery(input: WebhookDeliveryCreateInput): Promise<WebhookDeliveryCreateResult> {
+    assertSafePublicWebhookEvent(input.event);
     if (!input.allowReplayDuplicate) {
       const existing = this.deliveries.find(
         (delivery) => delivery.endpointId === input.endpoint.id && delivery.eventId === input.event.id
@@ -239,59 +372,142 @@ export class InMemoryWebhookRepository implements WebhookRepository {
       endpointId: input.endpoint.id,
       endpointUrl: input.endpoint.url,
       endpointSecret: input.endpoint.secret,
+      endpointStatus: input.endpoint.status,
       eventId: input.event.id,
       eventType: input.event.type,
       payload,
       payloadHash: signPayloadHash(stableStringify(payload)),
-      status: 'pending',
+      status: WEBHOOK_DELIVERY_STATUSES.PENDING,
       attemptCount: 0,
+      maxAttempts: input.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
       nextRetryAt: input.createdAt,
       createdAt: input.createdAt,
-      replayOfDeliveryId: input.replayOfDeliveryId
+      updatedAt: input.createdAt,
+      ...(input.replayOfDeliveryId ? { replayOfDeliveryId: input.replayOfDeliveryId } : {})
     };
 
     this.deliveries.push(delivery);
+    this.addAuditEvent(
+      input.replayOfDeliveryId ? WEBHOOK_AUDIT_EVENTS.REPLAYED : WEBHOOK_AUDIT_EVENTS.DELIVERY_REQUESTED,
+      delivery,
+      input.createdAt,
+      {
+        event_id: delivery.eventId,
+        event_type: delivery.eventType,
+        replay_of_delivery_id: input.replayOfDeliveryId
+      }
+    );
     return { kind: 'created', delivery };
   }
 
-  public async listDueDeliveries(now: string): Promise<WebhookDelivery[]> {
+  public async claimDueDeliveries(now: string, limit: number): Promise<WebhookDelivery[]> {
     const nowMs = Date.parse(now);
-    return this.deliveries.filter((delivery) => {
-      if (delivery.status !== 'pending' && delivery.status !== 'retrying') {
-        return false;
-      }
+    return this.deliveries
+      .filter((delivery) => isDeliveryClaimable(delivery, nowMs))
+      .slice(0, limit)
+      .map((delivery) => this.claim(delivery, now));
+  }
 
-      return !delivery.nextRetryAt || Date.parse(delivery.nextRetryAt) <= nowMs;
+  public async claimDeliveryById(deliveryId: string, now: string): Promise<WebhookDelivery | null> {
+    const delivery = this.deliveries.find((item) => item.id === deliveryId);
+    if (!delivery || !isDeliveryClaimable(delivery, Date.parse(now))) {
+      return null;
+    }
+
+    return this.claim(delivery, now);
+  }
+
+  public async claimDeliveriesByEventId(eventId: string, now: string, limit: number): Promise<WebhookDelivery[]> {
+    const nowMs = Date.parse(now);
+    return this.deliveries
+      .filter((delivery) => delivery.eventId === eventId && isDeliveryClaimable(delivery, nowMs))
+      .slice(0, limit)
+      .map((delivery) => this.claim(delivery, now));
+  }
+
+  public async recordDeliveryAttempt(deliveryId: string, attemptedAt: string): Promise<void> {
+    const delivery = this.requireDelivery(deliveryId);
+    this.addAuditEvent(WEBHOOK_AUDIT_EVENTS.DELIVERY_ATTEMPTED, delivery, attemptedAt, {
+      event_id: delivery.eventId,
+      event_type: delivery.eventType,
+      attempt_number: delivery.attemptCount + 1
     });
   }
 
-  public async markDelivered(deliveryId: string, deliveredAt: string): Promise<void> {
+  public async markDelivered(deliveryId: string, deliveredAt: string, httpStatus: number): Promise<void> {
     const delivery = this.requireDelivery(deliveryId);
-    delivery.status = 'delivered';
+    if (delivery.status === WEBHOOK_DELIVERY_STATUSES.DELIVERED) {
+      return;
+    }
+
+    delivery.status = WEBHOOK_DELIVERY_STATUSES.DELIVERED;
     delivery.attemptCount += 1;
     delivery.deliveredAt = deliveredAt;
+    delivery.updatedAt = deliveredAt;
+    delivery.lastHttpStatus = httpStatus;
     delivery.nextRetryAt = undefined;
     delivery.lastError = undefined;
+    this.addAuditEvent(WEBHOOK_AUDIT_EVENTS.DELIVERED, delivery, deliveredAt, {
+      event_id: delivery.eventId,
+      http_status: httpStatus,
+      attempt_count: delivery.attemptCount
+    });
   }
 
-  public async markRetrying(deliveryId: string, nextRetryAt: string, lastError: string): Promise<void> {
+  public async markFailed(
+    deliveryId: string,
+    nextRetryAt: string,
+    lastError: string,
+    httpStatus?: number | undefined
+  ): Promise<void> {
     const delivery = this.requireDelivery(deliveryId);
-    delivery.status = 'retrying';
+    delivery.status = WEBHOOK_DELIVERY_STATUSES.FAILED;
     delivery.attemptCount += 1;
     delivery.nextRetryAt = nextRetryAt;
     delivery.lastError = lastError;
+    delivery.updatedAt = nextRetryAt;
+    delivery.lastHttpStatus = httpStatus;
+    this.addAuditEvent(WEBHOOK_AUDIT_EVENTS.FAILED, delivery, nextRetryAt, {
+      event_id: delivery.eventId,
+      retry_at: nextRetryAt,
+      error: lastError,
+      http_status: httpStatus,
+      attempt_count: delivery.attemptCount
+    });
   }
 
-  public async markFailed(deliveryId: string, lastError: string): Promise<void> {
+  public async markDead(deliveryId: string, lastError: string, httpStatus?: number | undefined): Promise<void> {
     const delivery = this.requireDelivery(deliveryId);
-    delivery.status = 'failed';
+    delivery.status = WEBHOOK_DELIVERY_STATUSES.DEAD;
     delivery.attemptCount += 1;
     delivery.nextRetryAt = undefined;
     delivery.lastError = lastError;
+    delivery.updatedAt = new Date().toISOString();
+    delivery.lastHttpStatus = httpStatus;
+    this.addAuditEvent(WEBHOOK_AUDIT_EVENTS.DEAD, delivery, delivery.updatedAt, {
+      event_id: delivery.eventId,
+      error: lastError,
+      http_status: httpStatus,
+      attempt_count: delivery.attemptCount
+    });
+  }
+
+  public async markCancelled(deliveryId: string, reason: string, cancelledAt: string): Promise<void> {
+    const delivery = this.requireDelivery(deliveryId);
+    delivery.status = WEBHOOK_DELIVERY_STATUSES.CANCELLED;
+    delivery.nextRetryAt = undefined;
+    delivery.lastError = reason;
+    delivery.updatedAt = cancelledAt;
   }
 
   public async getDelivery(deliveryId: string): Promise<WebhookDelivery | null> {
     return this.deliveries.find((delivery) => delivery.id === deliveryId) ?? null;
+  }
+
+  private claim(delivery: WebhookDelivery, now: string): WebhookDelivery {
+    delivery.status = WEBHOOK_DELIVERY_STATUSES.DELIVERING;
+    delivery.updatedAt = now;
+    return { ...delivery };
   }
 
   private requireDelivery(deliveryId: string): WebhookDelivery {
@@ -302,6 +518,297 @@ export class InMemoryWebhookRepository implements WebhookRepository {
 
     return delivery;
   }
+
+  private addAuditEvent(eventType: string, delivery: WebhookDelivery, createdAt: string, payloadRedacted: Record<string, unknown>): void {
+    this.auditEvents.push({
+      id: this.idGenerator.auditEventId?.() ?? `aud_${this.auditEvents.length + 1}`,
+      merchantId: delivery.merchantId,
+      eventType,
+      objectType: 'webhook_delivery',
+      objectId: delivery.id,
+      payloadRedacted: stripUndefined(payloadRedacted),
+      createdAt
+    });
+  }
+}
+
+export class PgWebhookRepository implements WebhookRepository {
+  private readonly pool: pg.Pool;
+
+  public constructor(connectionString: string) {
+    this.pool = new Pool({ connectionString, max: 4 });
+  }
+
+  public async listActiveEndpoints(merchantId: string, eventType: PublicWebhookEventType): Promise<WebhookEndpoint[]> {
+    const result = await this.pool.query(
+      `SELECT id, merchant_id, url, secret_hash, enabled_events, status
+       FROM webhook_endpoints
+       WHERE merchant_id = $1
+         AND status = 'active'
+         AND enabled_events ? $2`,
+      [merchantId, eventType]
+    );
+
+    return result.rows.map((row) => toEndpoint(row as WebhookEndpointRow));
+  }
+
+  public async createDelivery(input: WebhookDeliveryCreateInput): Promise<WebhookDeliveryCreateResult> {
+    assertSafePublicWebhookEvent(input.event);
+    const payload = stableStringify(input.event);
+    const deliveryId = randomUUID();
+    const replayOfDeliveryId = input.replayOfDeliveryId ?? null;
+    const maxAttempts = input.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+
+    try {
+      const result = await this.pool.query(
+        `INSERT INTO webhook_deliveries (
+          id, merchant_id, endpoint_id, event_id, event_type, payload_hash, payload_json,
+          status, attempt_count, max_attempts, next_retry_at, created_at, updated_at, replay_of_delivery_id
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, 'pending', 0, $8, $9, $9, $9, $10)
+        RETURNING *`,
+        [
+          deliveryId,
+          input.merchantId,
+          input.endpoint.id,
+          input.event.id,
+          input.event.type,
+          signPayloadHash(payload),
+          payload,
+          maxAttempts,
+          input.createdAt,
+          replayOfDeliveryId
+        ]
+      );
+
+      const delivery = toDelivery(result.rows[0] as WebhookDeliveryRow, input.endpoint);
+      await this.insertAuditEvent(
+        replayOfDeliveryId ? WEBHOOK_AUDIT_EVENTS.REPLAYED : WEBHOOK_AUDIT_EVENTS.DELIVERY_REQUESTED,
+        delivery,
+        input.createdAt,
+        { event_id: delivery.eventId, event_type: delivery.eventType, replay_of_delivery_id: replayOfDeliveryId }
+      );
+      return { kind: 'created', delivery };
+    } catch (error) {
+      if (!input.allowReplayDuplicate && isUniqueViolation(error)) {
+        return { kind: 'duplicate_endpoint_event' };
+      }
+
+      throw error;
+    }
+  }
+
+  public async claimDueDeliveries(now: string, limit: number): Promise<WebhookDelivery[]> {
+    return this.claimByWhere(
+      `d.status IN ('pending', 'failed')
+       AND (d.next_retry_at IS NULL OR d.next_retry_at <= $1::timestamptz)
+       AND d.attempt_count < d.max_attempts`,
+      [now],
+      now,
+      limit
+    );
+  }
+
+  public async claimDeliveryById(deliveryId: string, now: string): Promise<WebhookDelivery | null> {
+    const deliveries = await this.claimByWhere(
+      `d.id = $2
+       AND d.status IN ('pending', 'failed')
+       AND (d.next_retry_at IS NULL OR d.next_retry_at <= $1::timestamptz)
+       AND d.attempt_count < d.max_attempts`,
+      [now, deliveryId],
+      now,
+      1
+    );
+    return deliveries[0] ?? null;
+  }
+
+  public async claimDeliveriesByEventId(eventId: string, now: string, limit: number): Promise<WebhookDelivery[]> {
+    return this.claimByWhere(
+      `d.event_id = $2
+       AND d.status IN ('pending', 'failed')
+       AND (d.next_retry_at IS NULL OR d.next_retry_at <= $1::timestamptz)
+       AND d.attempt_count < d.max_attempts`,
+      [now, eventId],
+      now,
+      limit
+    );
+  }
+
+  public async recordDeliveryAttempt(deliveryId: string, attemptedAt: string): Promise<void> {
+    const delivery = await this.getDelivery(deliveryId);
+    if (!delivery) {
+      throw new Error(`Webhook delivery ${deliveryId} was not found.`);
+    }
+
+    await this.insertAuditEvent(WEBHOOK_AUDIT_EVENTS.DELIVERY_ATTEMPTED, delivery, attemptedAt, {
+      event_id: delivery.eventId,
+      event_type: delivery.eventType,
+      attempt_number: delivery.attemptCount + 1
+    });
+  }
+
+  public async markDelivered(deliveryId: string, deliveredAt: string, httpStatus: number): Promise<void> {
+    await this.pool.query(
+      `UPDATE webhook_deliveries
+       SET status = 'delivered',
+           attempt_count = attempt_count + CASE WHEN status <> 'delivered' THEN 1 ELSE 0 END,
+           delivered_at = COALESCE(delivered_at, $2::timestamptz),
+           updated_at = $2::timestamptz,
+           next_retry_at = NULL,
+           last_error = NULL,
+           last_http_status = $3
+       WHERE id = $1`,
+      [deliveryId, deliveredAt, httpStatus]
+    );
+    const delivery = await this.getDelivery(deliveryId);
+    if (delivery) {
+      await this.insertAuditEvent(WEBHOOK_AUDIT_EVENTS.DELIVERED, delivery, deliveredAt, {
+        event_id: delivery.eventId,
+        http_status: httpStatus,
+        attempt_count: delivery.attemptCount
+      });
+    }
+  }
+
+  public async markFailed(
+    deliveryId: string,
+    nextRetryAt: string,
+    lastError: string,
+    httpStatus?: number | undefined
+  ): Promise<void> {
+    const result = await this.pool.query(
+      `UPDATE webhook_deliveries
+       SET status = 'failed',
+           attempt_count = attempt_count + 1,
+           next_retry_at = $2::timestamptz,
+           last_error = $3,
+           last_http_status = $4,
+           updated_at = now()
+       WHERE id = $1
+       RETURNING *`,
+      [deliveryId, nextRetryAt, lastError, httpStatus ?? null]
+    );
+    const delivery = await this.hydrateDelivery(result.rows[0] as WebhookDeliveryRow | undefined);
+    if (delivery) {
+      await this.insertAuditEvent(WEBHOOK_AUDIT_EVENTS.FAILED, delivery, new Date().toISOString(), {
+        event_id: delivery.eventId,
+        retry_at: nextRetryAt,
+        error: lastError,
+        http_status: httpStatus,
+        attempt_count: delivery.attemptCount
+      });
+    }
+  }
+
+  public async markDead(deliveryId: string, lastError: string, httpStatus?: number | undefined): Promise<void> {
+    const result = await this.pool.query(
+      `UPDATE webhook_deliveries
+       SET status = 'dead',
+           attempt_count = attempt_count + 1,
+           next_retry_at = NULL,
+           last_error = $2,
+           last_http_status = $3,
+           updated_at = now()
+       WHERE id = $1
+       RETURNING *`,
+      [deliveryId, lastError, httpStatus ?? null]
+    );
+    const delivery = await this.hydrateDelivery(result.rows[0] as WebhookDeliveryRow | undefined);
+    if (delivery) {
+      await this.insertAuditEvent(WEBHOOK_AUDIT_EVENTS.DEAD, delivery, new Date().toISOString(), {
+        event_id: delivery.eventId,
+        error: lastError,
+        http_status: httpStatus,
+        attempt_count: delivery.attemptCount
+      });
+    }
+  }
+
+  public async markCancelled(deliveryId: string, reason: string, cancelledAt: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE webhook_deliveries
+       SET status = 'cancelled', next_retry_at = NULL, last_error = $2, updated_at = $3::timestamptz
+       WHERE id = $1`,
+      [deliveryId, reason, cancelledAt]
+    );
+  }
+
+  public async getDelivery(deliveryId: string): Promise<WebhookDelivery | null> {
+    const result = await this.pool.query(
+      `SELECT d.*, e.url, e.secret_hash, e.enabled_events, e.status AS endpoint_status
+       FROM webhook_deliveries d
+       JOIN webhook_endpoints e ON e.id = d.endpoint_id
+       WHERE d.id = $1`,
+      [deliveryId]
+    );
+    return this.hydrateDelivery(result.rows[0] as WebhookDeliveryRow | undefined);
+  }
+
+  private async claimByWhere(whereSql: string, values: unknown[], now: string, limit: number): Promise<WebhookDelivery[]> {
+    const limitParam = values.length + 1;
+    const nowParam = values.length + 2;
+    const result = await this.pool.query(
+      `WITH due AS (
+         SELECT d.id
+         FROM webhook_deliveries d
+         JOIN webhook_endpoints e ON e.id = d.endpoint_id
+         WHERE ${whereSql}
+         ORDER BY COALESCE(d.next_retry_at, d.created_at), d.created_at
+         LIMIT $${limitParam}
+         FOR UPDATE SKIP LOCKED
+       )
+       UPDATE webhook_deliveries d
+       SET status = 'delivering', updated_at = $${nowParam}::timestamptz
+       FROM due
+       WHERE d.id = due.id
+       RETURNING d.*`,
+      [...values, limit, now]
+    );
+
+    const deliveries: WebhookDelivery[] = [];
+    for (const row of result.rows as WebhookDeliveryRow[]) {
+      const delivery = await this.hydrateDelivery(row);
+      if (delivery) {
+        deliveries.push(delivery);
+      }
+    }
+
+    return deliveries;
+  }
+
+  private async hydrateDelivery(row: WebhookDeliveryRow | undefined): Promise<WebhookDelivery | null> {
+    if (!row) {
+      return null;
+    }
+
+    if (row.url && row.secret_hash && row.endpoint_status) {
+      return toDelivery(row, toEndpoint(row as WebhookEndpointRow));
+    }
+
+    const endpointResult = await this.pool.query(
+      `SELECT id, merchant_id, url, secret_hash, enabled_events, status
+       FROM webhook_endpoints
+       WHERE id = $1`,
+      [row.endpoint_id]
+    );
+    const endpoint = toEndpoint(endpointResult.rows[0] as WebhookEndpointRow);
+    return toDelivery(row, endpoint);
+  }
+
+  private async insertAuditEvent(
+    eventType: string,
+    delivery: WebhookDelivery,
+    createdAt: string,
+    payloadRedacted: Record<string, unknown>
+  ): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO audit_events (
+        id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+      )
+      VALUES (gen_random_uuid(), $1, $2, 'webhook_delivery', $3, 'system', $4::jsonb, $5::timestamptz)`,
+      [delivery.merchantId, eventType, delivery.id, JSON.stringify(stripUndefined(payloadRedacted)), createdAt]
+    );
+  }
 }
 
 export function createPaymentWebhookEvent<TData extends Record<string, unknown>>(params: {
@@ -311,6 +818,10 @@ export function createPaymentWebhookEvent<TData extends Record<string, unknown>>
   merchantId: string;
   data: TData;
 }): PublicWebhookEvent<TData> {
+  if (containsRawPiiMarker(params.data)) {
+    throw new Error('Webhook event data must not contain raw PII fields.');
+  }
+
   return {
     id: params.eventId,
     type: params.type,
@@ -321,6 +832,10 @@ export function createPaymentWebhookEvent<TData extends Record<string, unknown>>
       ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
     }
   };
+}
+
+export function retryDelayForAttempt(attemptNumber: number): number | undefined {
+  return WEBHOOK_RETRY_DELAYS_MS[attemptNumber - 1];
 }
 
 export function signWebhookPayload(params: { secret: string; timestamp: string; payload: string }): string {
@@ -343,15 +858,35 @@ export function verifyWebhookSignature(params: {
 
 export function buildWebhookHeaders(params: {
   eventId: string;
+  deliveryId: string;
   timestamp: string;
   signature: string;
 }): Record<string, string> {
   return {
     'Content-Type': 'application/json',
     'SwimPay-Event-Id': params.eventId,
+    'SwimPay-Delivery-Id': params.deliveryId,
     'SwimPay-Timestamp': params.timestamp,
     'SwimPay-Signature': params.signature
   };
+}
+
+function isDeliveryClaimable(delivery: WebhookDelivery, nowMs: number): boolean {
+  if (delivery.status !== WEBHOOK_DELIVERY_STATUSES.PENDING && delivery.status !== WEBHOOK_DELIVERY_STATUSES.FAILED) {
+    return false;
+  }
+
+  if (delivery.attemptCount >= delivery.maxAttempts) {
+    return false;
+  }
+
+  return !delivery.nextRetryAt || Date.parse(delivery.nextRetryAt) <= nowMs;
+}
+
+function assertSafePublicWebhookEvent(event: PublicWebhookEvent): void {
+  if (containsRawPiiMarker(event.data)) {
+    throw new Error('Webhook event data must not contain raw PII fields.');
+  }
 }
 
 function signPayloadHash(payload: string): string {
@@ -359,8 +894,21 @@ function signPayloadHash(payload: string): string {
 }
 
 function buildDeliveryError(response: { status: number; body?: string | undefined }): string {
-  const body = response.body?.trim();
+  const body = sanitizeErrorMessage(response.body);
   return body ? `HTTP ${response.status}: ${body}` : `HTTP ${response.status}`;
+}
+
+function sanitizeNetworkError(error: unknown): string {
+  return `Network error: ${error instanceof Error ? error.name : 'UnknownError'}`;
+}
+
+function sanitizeErrorMessage(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const cleaned = value.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned.length > 160 ? `${cleaned.slice(0, 160)}...` : cleaned;
 }
 
 function stableStringify(value: unknown): string {
@@ -377,4 +925,129 @@ function stableStringify(value: unknown): string {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
     .join(',')}}`;
+}
+
+function containsRawPiiMarker(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some((item) => containsRawPiiMarker(item));
+  }
+
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (/raw[_-]?(notification|text|phone)|notification_raw|phone_raw|raw_phone|buyer_phone$/iu.test(key)) {
+      return true;
+    }
+
+    if (containsRawPiiMarker(nestedValue)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function stripUndefined(value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return isRecord(error) && error.code === '23505';
+}
+
+interface WebhookEndpointRow {
+  id: string;
+  merchant_id: string;
+  url: string;
+  secret_hash: string;
+  enabled_events: PublicWebhookEventType[];
+  status: WebhookEndpoint['status'];
+  endpoint_status?: WebhookEndpoint['status'] | undefined;
+}
+
+interface WebhookDeliveryRow {
+  id: string;
+  merchant_id: string;
+  endpoint_id: string;
+  event_id: string;
+  event_type: PublicWebhookEventType;
+  payload_hash: string;
+  payload_json?: PublicWebhookEvent | string | undefined;
+  status: WebhookDeliveryStatus;
+  attempt_count: number;
+  max_attempts?: number | undefined;
+  next_retry_at?: Date | string | null | undefined;
+  last_error?: string | null | undefined;
+  last_http_status?: number | null | undefined;
+  created_at: Date | string;
+  delivered_at?: Date | string | null | undefined;
+  updated_at?: Date | string | undefined;
+  replay_of_delivery_id?: string | null | undefined;
+  url?: string | undefined;
+  secret_hash?: string | undefined;
+  enabled_events?: PublicWebhookEventType[] | undefined;
+  endpoint_status?: WebhookEndpoint['status'] | undefined;
+}
+
+function toEndpoint(row: WebhookEndpointRow): WebhookEndpoint {
+  return {
+    id: row.id,
+    merchantId: row.merchant_id,
+    url: row.url,
+    secret: row.secret_hash,
+    enabledEvents: Array.isArray(row.enabled_events) ? row.enabled_events : [],
+    status: row.endpoint_status ?? row.status
+  };
+}
+
+function toDelivery(row: WebhookDeliveryRow, endpoint: WebhookEndpoint): WebhookDelivery {
+  const payload = parsePayload(row.payload_json);
+  return {
+    id: row.id,
+    merchantId: row.merchant_id,
+    endpointId: row.endpoint_id,
+    endpointUrl: endpoint.url,
+    endpointSecret: endpoint.secret,
+    endpointStatus: endpoint.status,
+    eventId: row.event_id,
+    eventType: row.event_type,
+    payload,
+    payloadHash: row.payload_hash,
+    status: row.status,
+    attemptCount: row.attempt_count,
+    maxAttempts: row.max_attempts ?? DEFAULT_MAX_ATTEMPTS,
+    nextRetryAt: toOptionalIso(row.next_retry_at),
+    lastError: row.last_error ?? undefined,
+    lastHttpStatus: row.last_http_status ?? undefined,
+    createdAt: toIso(row.created_at),
+    deliveredAt: toOptionalIso(row.delivered_at),
+    updatedAt: toIso(row.updated_at ?? row.created_at),
+    replayOfDeliveryId: row.replay_of_delivery_id ?? undefined
+  };
+}
+
+function parsePayload(value: PublicWebhookEvent | string | undefined): PublicWebhookEvent {
+  if (!value) {
+    throw new Error('Webhook delivery payload_json is required.');
+  }
+
+  return typeof value === 'string' ? (JSON.parse(value) as PublicWebhookEvent) : value;
+}
+
+function toIso(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function toOptionalIso(value: Date | string | null | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return toIso(value);
 }

@@ -70,7 +70,7 @@ export type Decision = (typeof Decisions)[number];
 export const ReviewStatuses = ['open', 'confirmed', 'rejected', 'cancelled'] as const;
 export type ReviewStatus = (typeof ReviewStatuses)[number];
 
-export const WebhookDeliveryStatuses = ['pending', 'delivered', 'failed', 'retrying', 'cancelled'] as const;
+export const WebhookDeliveryStatuses = ['pending', 'delivering', 'delivered', 'failed', 'dead', 'cancelled'] as const;
 export type WebhookDeliveryStatus = (typeof WebhookDeliveryStatuses)[number];
 
 export interface Order {

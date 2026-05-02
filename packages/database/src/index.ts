@@ -1,4 +1,5 @@
 export const INITIAL_SCHEMA_MIGRATION = '001_initial_schema.sql';
+export const WEBHOOK_DELIVERY_LOOP_MIGRATION = '002_webhook_delivery_loop.sql';
 
 export const V1_BANK_PROFILE_IDS = [
   'sber_ru',

@@ -260,7 +260,27 @@ npm run dev:signal-worker
 npm run dev:job-worker
 ```
 
-Task 025 workers register durable consumer skeletons and expose the registration state on `/health`. Handlers only validate and acknowledge known events. Parser/matching/review runtime integration and the Postgres-backed webhook delivery loop are intentionally left for tasks 026 and 027.
+Task 025 workers register durable consumer skeletons and expose the registration state on `/health`. Task 026 wires the job worker's webhook consumer to the Postgres-backed delivery loop. Parser/matching/review runtime integration remains intentionally left for task 027.
+
+Webhook delivery loop tests include:
+
+```bash
+npm test -- apps/job-worker/src/webhooks.test.ts apps/job-worker/src/webhook-runtime.test.ts
+```
+
+Local webhook worker settings:
+
+```text
+WEBHOOK_WORKER_ENABLED=false
+WEBHOOK_POLL_INTERVAL_MS=30000
+WEBHOOK_WORKER_BATCH_SIZE=10
+WEBHOOK_MAX_ATTEMPTS=7
+WEBHOOK_REQUEST_TIMEOUT_MS=5000
+WEBHOOK_RETRY_BASE_DELAY_MS=60000
+WEBHOOK_RETRY_MAX_DELAY_MS=86400000
+```
+
+Set `WEBHOOK_WORKER_ENABLED=true` only when you want the job worker fallback polling loop to claim and deliver due rows from PostgreSQL. The NATS `webhook.delivery_requested` consumer can process due deliveries by `delivery_id` or `event_id`; PostgreSQL remains the source of truth.
 
 Admin console foundation tests include:
 
@@ -359,7 +379,7 @@ Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, 
 - Matching core output is currently package-level only and is not yet wired into live signal-worker execution.
 - Review queue APIs and repository methods exist, but automatic review creation from live matching decisions is not wired yet.
 - Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
-- Webhook delivery core is implemented as a tested worker foundation. NATS durable consumer skeletons exist, but the live Postgres-backed delivery loop is not wired yet.
+- Webhook delivery core is wired to a tested Postgres-backed delivery loop and the NATS `webhook.delivery_requested` trigger. The full signal parser/matching/review runtime pipeline is not wired yet.
 - Admin console is API-only. It exposes RBAC-protected operator read views and audited bank-template actions, but does not implement a browser UI, real app package/cert verification workflow, unsafe bulk actions, or a full operator identity provider.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.

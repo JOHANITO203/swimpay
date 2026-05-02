@@ -35,7 +35,8 @@ export const EventTypes = {
   REVIEW_REJECTED: 'review.rejected',
   WEBHOOK_DELIVERY_REQUESTED: 'webhook.delivery_requested',
   WEBHOOK_DELIVERED: 'webhook.delivered',
-  WEBHOOK_FAILED: 'webhook.failed'
+  WEBHOOK_FAILED: 'webhook.failed',
+  WEBHOOK_DEAD: 'webhook.dead'
 } as const;
 
 export type EventType = (typeof EventTypes)[keyof typeof EventTypes];

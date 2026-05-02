@@ -646,3 +646,67 @@ Notes:
 - Durable webhook delivery remains task 026.
 - Live signal parser/matching/review runtime integration remains task 027.
 - No blockers were added.
+
+## 2026-05-02T15:22:00+03:00 - Task 026 plan
+
+Task: `026_postgres_webhook_delivery_loop`
+
+Plan:
+
+- Add failing tests for durable webhook statuses, claim behavior, retry/dead transitions, signed headers with delivery id, PII rejection, NATS event handling and fallback polling.
+- Extend the existing webhook worker foundation instead of creating a second webhook system.
+- Add a minimal database migration for payload JSON, max attempts, HTTP status, updated timestamps, replay linkage and replay-safe endpoint/event uniqueness.
+- Connect the job worker `webhook.delivery_requested` consumer to the delivery processor.
+- Keep PostgreSQL as the source of truth and avoid Valkey locks for delivery state.
+- Update docs and local agent reports.
+
+Guardrails:
+
+- No signal runtime pipeline.
+- No parser/matching/review runtime integration.
+- No Android Receiver logic.
+- No payment auto-confirmation.
+- No production deployment.
+- No raw phone or raw notification payload exposure.
+
+## 2026-05-02T15:34:00+03:00 - Task 026 implementation
+
+Result: implemented.
+
+Changes:
+
+- Reworked `apps/job-worker/src/webhooks.ts` around explicit durable statuses: `pending`, `delivering`, `delivered`, `failed`, `dead`, and `cancelled`.
+- Added in-memory and PostgreSQL repository support for claiming due deliveries, claiming by delivery id, and claiming by event id.
+- Added `FOR UPDATE SKIP LOCKED`-based Postgres claim SQL.
+- Added signed delivery headers with `SwimPay-Delivery-Id`.
+- Added deterministic retry scheduling for attempts 1 through 7.
+- Added sanitized network/HTTP error recording and terminal `dead` state.
+- Added raw PII field-marker rejection for webhook payload data.
+- Added internal replay helper behavior that keeps the original public event id and creates a new delivery id.
+- Added `apps/job-worker/src/webhook-runtime.ts` for worker config, NATS handler and fallback polling loop.
+- Connected job worker `webhook.delivery_requested` to the delivery processor while leaving order/session expiry consumers as safe stubs.
+- Added migration `002_webhook_delivery_loop.sql`.
+- Updated webhook docs, schema docs, event catalog, local development notes and implementation notes.
+
+Targeted TDD evidence:
+
+- `npm test -- apps/job-worker/src/webhooks.test.ts apps/job-worker/src/webhook-runtime.test.ts`: RED, then PASS after implementation.
+- `npm run typecheck`: PASS after implementation.
+- `npm test -- apps/job-worker/src/webhooks.test.ts apps/job-worker/src/webhook-runtime.test.ts apps/api/src/admin.test.ts tests/foundation.test.ts`: PASS.
+
+## 2026-05-02T15:37:20+03:00 - Task 026 validation pass
+
+Final validation:
+
+- `npm run typecheck`: PASS
+- `npm run lint`: PASS
+- `npm test`: PASS, 26 test files and 144 tests passed
+- `npm run build`: PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config`: PASS
+
+Notes:
+
+- Webhook delivery is now durable and Postgres-backed.
+- The fallback polling loop is disabled by default and enabled with `WEBHOOK_WORKER_ENABLED=true`.
+- The signal parser/matching/review runtime pipeline remains task 027.
+- No blockers were added.
