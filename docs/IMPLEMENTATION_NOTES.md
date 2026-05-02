@@ -23,6 +23,8 @@ These assets are data and review material only at this stage. They do not make t
 
 Task 019 added a bank profile registry loader for the package YAML assets. It validates required profile fields, exposes runtime behavior for backend logic, returns review-only behavior for unknown profiles, and prevents `TO_VERIFY` or `pending_verification` bank app metadata from passing the trusted app gate.
 
+Task 020 hardened the deterministic parser core. It now normalizes RU text before matching, supports actual Russian keyword gates, detects masked phone values as weak review hints only, emits reason codes, and exposes `allowAutoConfirmCandidate` only for safe incoming transfer candidates with amount, RUB currency, and visible phone or reference.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:

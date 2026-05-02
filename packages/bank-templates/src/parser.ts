@@ -8,12 +8,15 @@ export interface ParseBankNotificationInput {
 
 export interface ParsedBankNotification {
   bankProfileId: string;
+  normalizedText: string;
   directionLabel: DirectionLabel;
   amountMinor?: number | undefined;
   currency?: 'RUB' | undefined;
   senderPhoneNormalized?: string | undefined;
+  maskedPhoneDetected: boolean;
   referenceCode?: string | undefined;
   signalQuality: number;
+  allowAutoConfirmCandidate: boolean;
   reasonCodes: string[];
 }
 
@@ -43,37 +46,58 @@ const INCOMING_KEYWORDS = [
   'перевод от',
   'incoming transfer',
   'transfer from'
-];
+] as const;
 
 export function parseBankNotification(input: ParseBankNotificationInput): ParsedBankNotification {
-  const directionLabel = classifyDirection(input.text);
-  const amountMinor = extractAmountMinor(input.text) ?? undefined;
-  const currency = extractCurrency(input.text) ?? undefined;
-  const senderPhoneNormalized = extractRussianPhone(input.text) ?? undefined;
-  const referenceCode = extractReferenceCode(input.text) ?? undefined;
+  const normalizedText = normalizeRuText(input.text);
+  const directionLabel = classifyDirection(normalizedText);
+  const amountMinor = extractAmountMinor(normalizedText) ?? undefined;
+  const currency = extractCurrency(normalizedText) ?? undefined;
+  const senderPhoneNormalized = extractRussianPhone(normalizedText) ?? undefined;
+  const maskedPhoneDetected = !senderPhoneNormalized && detectMaskedPhone(normalizedText);
+  const referenceCode = extractReferenceCode(normalizedText) ?? undefined;
+  const allowAutoConfirmCandidate =
+    directionLabel === 'incoming_customer_transfer' &&
+    amountMinor !== undefined &&
+    currency === 'RUB' &&
+    Boolean(senderPhoneNormalized || referenceCode) &&
+    !maskedPhoneDetected;
   const reasonCodes = buildReasonCodes({
     directionLabel,
     amountMinor,
     senderPhoneNormalized,
+    maskedPhoneDetected,
     referenceCode
   });
 
   return {
     bankProfileId: input.bankProfileId,
+    normalizedText,
     directionLabel,
     amountMinor,
     currency,
     senderPhoneNormalized,
+    maskedPhoneDetected,
     referenceCode,
     signalQuality: scoreParsedSignal({
       directionLabel,
       amountMinor,
       currency,
       senderPhoneNormalized,
+      maskedPhoneDetected,
       referenceCode
     }),
+    allowAutoConfirmCandidate,
     reasonCodes
   };
+}
+
+export function normalizeRuText(text: string): string {
+  return text
+    .normalize('NFKC')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase('ru-RU');
 }
 
 export function extractAmountMinor(text: string): number | null {
@@ -117,13 +141,17 @@ export function extractRussianPhone(text: string): string | null {
   return match?.[0] ? normalizeRussianPhone(match[0]) : null;
 }
 
+export function detectMaskedPhone(text: string): boolean {
+  return /(?:\+7|8)?[\s(.-]*(?:\*{2,3}|\d{3})[\s).-]*(?:\*{2,3}|\d{3})[\s.-]*(?:\*{2}|\d{2})[\s.-]*\d{2}/u.test(text);
+}
+
 export function extractReferenceCode(text: string): string | null {
   const match = text.match(/\bSWP-[A-Z0-9]{3,12}\b/iu);
   return match?.[0] ? match[0].toUpperCase() : null;
 }
 
 export function classifyDirection(text: string): DirectionLabel {
-  const normalized = text.toLowerCase();
+  const normalized = normalizeRuText(text);
 
   if (containsAny(normalized, NEGATIVE_KEYWORDS.failed)) {
     return 'failed_transfer';
@@ -153,7 +181,7 @@ export function classifyDirection(text: string): DirectionLabel {
 }
 
 export function hasNegativeKeywordGate(text: string): boolean {
-  const normalized = text.toLowerCase();
+  const normalized = normalizeRuText(text);
   return Object.values(NEGATIVE_KEYWORDS).some((keywords) => containsAny(normalized, keywords));
 }
 
@@ -162,6 +190,7 @@ export function scoreParsedSignal(input: {
   amountMinor?: number | null | undefined;
   currency?: 'RUB' | null | undefined;
   senderPhoneNormalized?: string | null | undefined;
+  maskedPhoneDetected?: boolean | null | undefined;
   referenceCode?: string | null | undefined;
 }): number {
   let score = 0;
@@ -182,6 +211,8 @@ export function scoreParsedSignal(input: {
 
   if (input.senderPhoneNormalized) {
     score += 20;
+  } else if (input.maskedPhoneDetected) {
+    score += 5;
   }
 
   if (input.referenceCode) {
@@ -195,6 +226,7 @@ function buildReasonCodes(input: {
   directionLabel: DirectionLabel;
   amountMinor?: number | null | undefined;
   senderPhoneNormalized?: string | null | undefined;
+  maskedPhoneDetected?: boolean | null | undefined;
   referenceCode?: string | null | undefined;
 }): string[] {
   const codes: string[] = [];
@@ -216,7 +248,15 @@ function buildReasonCodes(input: {
   }
 
   codes.push(input.amountMinor ? BankTemplateReasonCodes.AMOUNT_EXTRACTED : BankTemplateReasonCodes.AMOUNT_MISSING);
-  codes.push(input.senderPhoneNormalized ? BankTemplateReasonCodes.PHONE_EXTRACTED : BankTemplateReasonCodes.PHONE_MISSING);
+
+  if (input.senderPhoneNormalized) {
+    codes.push(BankTemplateReasonCodes.PHONE_EXTRACTED);
+  } else if (input.maskedPhoneDetected) {
+    codes.push(BankTemplateReasonCodes.PHONE_MASKED);
+  } else {
+    codes.push(BankTemplateReasonCodes.PHONE_MISSING);
+  }
+
   codes.push(input.referenceCode ? BankTemplateReasonCodes.REFERENCE_EXTRACTED : BankTemplateReasonCodes.REFERENCE_MISSING);
 
   return codes;

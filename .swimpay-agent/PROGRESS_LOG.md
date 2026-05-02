@@ -251,6 +251,21 @@
 - Added registry tests covering all five V1 profiles, alias lookup for `sber_ru`, unknown bank fallback, `TO_VERIFY` rejection, validation failures, and explicit directory loading.
 - Did not implement parser core, template promotion, real app/cert trust, or payment confirmation behavior.
 
+## 2026-05-02 - Task 020 bank template parser core plan
+
+- Scope: harden the deterministic parser with explicit RU text normalization, amount/currency extraction, visible phone extraction, masked-phone detection, reference extraction, direction classification, negative gates, signal quality, and reason codes.
+- Boundaries: no LLMs, no payment confirmation, no trust promotion, no worker/database wiring.
+- Safety checks: cashback, refund, outgoing, failed, promo, unknown, and masked-phone-only cases must not become auto-confirm candidates.
+
+## 2026-05-02 - Task 020 bank template parser core completed
+
+- Reworked parser core to normalize RU text deterministically before matching.
+- Added actual Russian keyword support for incoming, cashback, refund, outgoing, promo, and failed classifications.
+- Added masked-phone detection as a weak review hint only; it does not populate normalized sender phone and disables auto-confirm candidate output.
+- Added `allowAutoConfirmCandidate` output that is true only for incoming transfer with amount, RUB currency, phone or reference, and no masked-phone-only identity.
+- Added tests for cashback, refund, outgoing, failed, promo, incoming transfer, text normalization, masked-phone weak signal, and negative gates before incoming classification.
+- Did not wire parser output into worker/database decisions, promote templates, or implement payment confirmation behavior.
+
 ## 2026-05-02T10:00:33.072Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
@@ -292,6 +307,14 @@
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
 
 ## 2026-05-02T10:18:17.859Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T10:25:04.710Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
 - PASS: `npm run lint` (Lint, exit 0)

@@ -1,10 +1,10 @@
 # Next Action
 
-generated_at: 2026-05-02T10:18:44.172Z
+generated_at: 2026-05-02T10:25:34.293Z
 
 ## Latest completed task
 
-Repository foundation baseline is complete. Current prepared task: 019_bank_profile_registry.
+Repository foundation baseline is complete. Current prepared task: 020_bank_template_parser_core.
 
 ## Files changed if detectable
 
@@ -14,18 +14,16 @@ M .swimpay-agent/CURRENT_TASK.md
  M .swimpay-agent/TASK_QUEUE.md
  M docs/IMPLEMENTATION_NOTES.md
  M docs/LOCAL_DEVELOPMENT.md
- M package-lock.json
- M packages/bank-templates/package.json
  M packages/bank-templates/src/index.ts
-?? packages/bank-templates/src/registry.test.ts
-?? packages/bank-templates/src/registry.ts
+ M packages/bank-templates/src/parser.test.ts
+ M packages/bank-templates/src/parser.ts
 ```
 
 ## Commands run
 
 See .swimpay-agent/PROGRESS_LOG.md.
 
-Latest validation: pass at 2026-05-02T10:18:17.859Z
+Latest validation: pass at 2026-05-02T10:25:04.710Z
 
 ## Pass/fail status
 
@@ -39,7 +37,7 @@ No current blockers.
 
 ## Next recommended task
 
-020_bank_template_parser_core (tasks/020_bank_template_parser_core.md)
+021_bank_template_fixtures_tests (tasks/021_bank_template_fixtures_tests.md)
 
 ## What not to do next
 

@@ -155,6 +155,8 @@ npm test -- packages/bank-templates/src/parser.test.ts
 
 The parser extracts RUB amounts, Russian phone candidates, SwimPay reference codes, direction labels, negative gates, and signal quality. It does not match signals to orders or make payment decisions.
 
+Parser task 020 adds normalized RU text matching, masked-phone weak-signal detection, and an `allowAutoConfirmCandidate` parser hint. This hint is not a payment decision; backend matching and trust gates still decide.
+
 ## Bank Template Package Assets
 
 Run the bank-template setup test:

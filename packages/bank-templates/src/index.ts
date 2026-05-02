@@ -11,11 +11,13 @@ export { BankTemplateReasonCodes } from './reason-codes.js';
 export {
   V1_BANK_PROFILES,
   classifyDirection,
+  detectMaskedPhone,
   extractAmountMinor,
   extractCurrency,
   extractReferenceCode,
   extractRussianPhone,
   hasNegativeKeywordGate,
+  normalizeRuText,
   normalizeRussianPhone,
   parseBankNotification,
   scoreParsedSignal,
