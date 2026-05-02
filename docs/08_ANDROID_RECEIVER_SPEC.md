@@ -173,3 +173,15 @@ The repository now includes Android project files and Kotlin source boundaries f
 - emulator smoke documentation.
 
 The app still does not confirm or auto-confirm payments. Android assemble has not been run in the current shell because Gradle is not installed and no wrapper JAR is checked in.
+
+## Sprint 4A Toolchain Status
+
+Sprint 4A adds an explicit Android toolchain doctor and Gradle wrapper policy. Current status is:
+
+- Java available.
+- Android SDK available.
+- Gradle unavailable in `PATH`.
+- Gradle wrapper unavailable.
+- `assembleDebug` blocked until Gradle or a trusted wrapper exists.
+
+This is a tooling blocker only; it does not change the receiver safety boundary.

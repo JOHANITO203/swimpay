@@ -2,6 +2,20 @@
 
 The Android Receiver now has Gradle project files and Kotlin source under `apps/android-receiver/android`. No Gradle wrapper JAR is checked in, and the current shell does not expose a `gradle` command, so Android assemble has not been run yet.
 
+Sprint 4A adds an explicit Android doctor command:
+
+```bash
+npm run android:doctor
+```
+
+Current local status:
+
+- Java: available through Android Studio JBR.
+- Android SDK: available at `C:\Users\Lenovo\AppData\Local\Android\Sdk`.
+- Gradle command: unavailable in `PATH`.
+- Gradle wrapper: unavailable because no wrapper JAR is checked in.
+- `assembleDebug`: blocked, not failed.
+
 ## Required Build Pieces
 
 - Gradle wrapper pinned in the repository: pending trusted generation.
@@ -83,3 +97,5 @@ Generate the Gradle wrapper only when:
 - no real bank package names or cert fingerprints are invented.
 
 Do not manually invent or paste a Gradle wrapper JAR.
+
+See `docs/GRADLE_WRAPPER_POLICY.md` before generating or committing wrapper files.

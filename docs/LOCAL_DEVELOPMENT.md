@@ -457,7 +457,25 @@ Check Android build tooling:
 npm run android:doctor
 ```
 
-Sprint 3D adds Gradle Android project files under `apps/android-receiver/android`, but no Gradle wrapper JAR is checked in. In the current environment Java and Android SDK are present, while Gradle is not available in PATH. Android assemble/debug builds should be run only after generating a wrapper from a trusted local Gradle installation.
+Sprint 4A keeps the Android build status explicit. Java and the Android SDK are present, while Gradle is not available in PATH and no Gradle wrapper JAR is checked in. Android assemble/debug builds should be run only after generating a wrapper from a trusted local Gradle installation.
+
+Do not manually invent or paste `gradle-wrapper.jar`. Read `docs/GRADLE_WRAPPER_POLICY.md` first.
+
+Expected command after wrapper generation:
+
+```bash
+cd apps/android-receiver/android
+./gradlew :app:assembleDebug
+```
+
+Windows PowerShell:
+
+```powershell
+cd apps/android-receiver/android
+.\gradlew.bat :app:assembleDebug
+```
+
+The Android JVM unit test plan is documented in `docs/ANDROID_JVM_UNIT_TEST_PLAN.md`.
 
 Static Android runnable app checks:
 

@@ -24,6 +24,17 @@ npm run typecheck
 npm run build
 ```
 
+`npm run android:doctor` reports Java, Android SDK, Gradle, wrapper and `assembleDebug` readiness. Current Sprint 4A status is that Java and the Android SDK are present, but Gradle and the wrapper are absent, so Android build execution is blocked and not claimed as passed.
+
+After installing trusted Gradle or generating a trusted wrapper:
+
+```powershell
+cd apps/android-receiver/android
+.\gradlew.bat :app:assembleDebug
+```
+
+Do not manually invent or paste `gradle-wrapper.jar`.
+
 ## Guardrails
 
 - Do not implement Android payment confirmation.

@@ -76,3 +76,48 @@ describe('android runnable app setup', () => {
     expect(source).not.toMatch(/bank_confirmed|official_bank_confirmation|paymentConfirmed|autoConfirm/iu);
   });
 });
+
+describe('android build toolchain activation', () => {
+  it('documents Sprint 4A Gradle wrapper policy and build closeout artifacts', () => {
+    const policy = readFileSync(join(root, 'docs/GRADLE_WRAPPER_POLICY.md'), 'utf8');
+    const report = readFileSync(join(root, '.swimpay-agent/ANDROID_BUILD_TOOLCHAIN_REPORT.md'), 'utf8');
+
+    expect(policy).toContain('Do not manually invent or paste a Gradle wrapper JAR');
+    expect(policy).toContain('gradle wrapper');
+    expect(policy).toContain('trusted');
+
+    expect(report).toContain('Java status');
+    expect(report).toContain('Android SDK status');
+    expect(report).toContain('Gradle status');
+    expect(report).toContain('assembleDebug status');
+  });
+
+  it('lists Sprint 4A task files in the approved order', () => {
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const tasks = [
+      '057_android_toolchain_activation',
+      '058_gradle_wrapper_generation_policy',
+      '059_android_assemble_debug_validation',
+      '060_android_jvm_unit_tests',
+      '061_android_build_closeout_review'
+    ];
+
+    let previousIndex = -1;
+    for (const task of tasks) {
+      const taskFile = join(root, 'tasks', `${task}.md`);
+      expect(existsSync(taskFile), task).toBe(true);
+      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed) - source: \\\`tasks/${task}\\.md\\\``));
+      expect(index, task).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+  });
+
+  it('keeps Android doctor explicit about wrapper and assemble readiness', () => {
+    const doctor = readFileSync(join(root, 'scripts/android-toolchain-check.mjs'), 'utf8');
+
+    expect(doctor).toContain('Gradle wrapper available');
+    expect(doctor).toContain('Android module path');
+    expect(doctor).toContain('assembleDebug command readiness');
+    expect(doctor).toContain('gradle-wrapper.jar');
+  });
+});

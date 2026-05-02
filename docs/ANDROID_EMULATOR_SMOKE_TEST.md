@@ -19,6 +19,14 @@ gradle wrapper
 
 Do not manually invent or paste a wrapper JAR.
 
+Sprint 4A keeps this as a non-critical build-tooling blocker. Run:
+
+```bash
+npm run android:doctor
+```
+
+before attempting any Android build command.
+
 ## Build And Install
 
 When Gradle is available:

@@ -1059,3 +1059,28 @@ Validation:
 - `npm test` PASS
 - `npm run build` PASS
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+## 2026-05-02 - Sprint 4A / Android Toolchain Activation and Build Validation
+
+Plan:
+- Improve Android toolchain diagnostics without faking Gradle success.
+- Document safe Gradle wrapper generation policy.
+- Record `assembleDebug` and Android JVM test status honestly.
+- Keep Node/Compose validation passing.
+
+Result:
+- Added Sprint 4A task files `057` through `061`.
+- Updated `.swimpay-agent/TASK_QUEUE.md` to Sprint 4A.
+- Improved `npm run android:doctor` to report Java, Android SDK, Gradle, Gradle wrapper, Android module path and `assembleDebug` readiness.
+- Added `docs/GRADLE_WRAPPER_POLICY.md`.
+- Added `docs/ANDROID_JVM_UNIT_TEST_PLAN.md`.
+- Added `.swimpay-agent/ANDROID_BUILD_TOOLCHAIN_REPORT.md` and `.swimpay-agent/SPRINT_4A_REPORT.md`.
+- Java and Android SDK are available.
+- Gradle and the Gradle wrapper are unavailable, so `assembleDebug` and Android JVM tests remain blocked and are not claimed as passed.
+
+Validation:
+- `npm run android:doctor` PASS as diagnostic
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
