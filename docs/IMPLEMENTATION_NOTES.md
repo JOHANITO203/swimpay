@@ -29,6 +29,8 @@ Task 021 added automated JSONL fixture coverage for the bank-template corpus. Th
 
 Task 022 added a bank-template drift radar foundation. It loads template YAML assets, canonicalizes redacted notification shapes, calculates similarity to known templates, tracks unknown rate, amount extraction success, phone/reference visibility, and parser confidence, and outputs `stable`, `minor_drift`, `major_drift`, or `critical_drift` with reason codes. New template candidates remain `new`/`learning` recommendations only and are never trusted automatically; critical drift recommends review-only bank behavior and disables auto-confirm eligibility for the affected bank.
 
+Task 013 added the bank-template learning lifecycle foundation. It canonicalizes notification text into redacted templates, hashes canonical templates, updates observation/review/shadow stats, calculates reliability, recommends lifecycle status across `new`, `learning`, `shadow_testing`, `trusted_low_amount`, `trusted`, `degraded`, `review_only`, and `disabled`, and predicts mutation candidates for shadow testing. False positives force review-only behavior, and trusted statuses require human verification plus shadow evidence.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:

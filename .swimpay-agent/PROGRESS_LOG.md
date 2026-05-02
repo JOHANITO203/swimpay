@@ -351,6 +351,20 @@
 - Critical drift returns `recommendedBankAutoConfirmStatus: review_only` and `autoConfirmAllowedForBank: false`.
 - Did not implement template learning, trust promotion, admin controls, or payment confirmation behavior.
 
+## 2026-05-02 - Task 013 bank template learning plan
+
+- Scope: implement deterministic template learning primitives for canonicalization, hashing, stats updates, lifecycle recommendation, reliability scoring, shadow evidence, and basic mutation prediction.
+- Boundaries: no database/worker wiring, no automatic trust without evidence, no payment confirmation, no LLMs, and no real bank package/cert values.
+- Safety checks: raw inputs must become redacted templates, false positives must degrade the template, new templates must start in learning, and mutation candidates must remain untrusted.
+
+## 2026-05-02 - Task 013 bank template learning completed
+
+- Added `packages/bank-templates/src/learning.ts` with redacted canonical template generation, SHA-256 template hashes, learning stats updates, reliability scoring, lifecycle recommendations, and safe mutation candidates.
+- Added tests for raw notification redaction, stable hashing, seen count increments, false-positive review-only degradation, no promotion without human evidence, trusted-low-amount requirements, and mutation candidate safety.
+- Lifecycle recommendations support `new`, `learning`, `shadow_testing`, `trusted_low_amount`, `trusted`, `degraded`, `review_only`, and `disabled`.
+- Trusted lifecycle statuses require evidence thresholds and shadow/reviewer agreement; new mutations remain `status: new` and `allowAutoConfirmCandidate: false`.
+- Did not wire learning into workers, databases, admin controls, or payment confirmation behavior.
+
 ## 2026-05-02T10:36:28.979Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
@@ -360,6 +374,14 @@
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
 
 ## 2026-05-02T10:44:03.737Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T10:48:38.989Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
 - PASS: `npm run lint` (Lint, exit 0)

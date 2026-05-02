@@ -59,3 +59,19 @@ export {
   type TemplateDriftStatus,
   type TemplateObservation
 } from './drift.js';
+export {
+  calculateTemplateReliabilityScore,
+  canonicalizeLearningTemplate,
+  createInitialTemplateLearningState,
+  hashCanonicalTemplate,
+  observeTemplateSignal,
+  predictTemplateMutations,
+  recommendTemplateLifecycleStatus,
+  updateTemplateLearningStats,
+  type ObserveTemplateSignalInput,
+  type TemplateLearningState,
+  type TemplateLearningStats,
+  type TemplateLifecycleRecommendation,
+  type TemplateMutationCandidate,
+  type TemplateReviewOutcome
+} from './learning.js';
