@@ -1287,3 +1287,17 @@ Safety checks:
 - Updated Android docs, local development docs, app README and `.swimpay-agent/RECEIVER_ONBOARDING_GATE_REPORT.md`.
 - Added Android JVM and static tests for onboarding gates.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Gradle assembleDebug and Gradle JVM tests.
+
+## 2026-05-03T00:52:04+03:00 - Phase 4J-B Real NotificationListener Replay After Onboarding Gate
+
+- Created tasks 136 through 140 and updated the task queue.
+- Verified backend health at `http://localhost:8080/api-health`.
+- Verified real device `R5CWA0FEPZW` is authorized and adb reverse `tcp:8080 tcp:8080` works.
+- Verified Android Notification Listener Access includes `com.swimpay.receiver/com.swimpay.receiver.SwimPayNotificationListenerService`.
+- Rebuilt, installed and launched the debug APK.
+- Replayed the debug-only synthetic notification source on the real device.
+- Captured live listener diagnostics with safe metadata only: synthetic package label, notification id/tag, post time, field count and result.
+- Tightened the listener prefilter so non-allowlisted packages are ignored before snapshot extraction.
+- Made synthetic debug notification ids/tags unique per replay to avoid stale same-id notification updates.
+- Verified the listener-created outbox entry flushed through WorkManager with `acked=1 failed_retrying=0`.
+- No real bank notification, customer data, SMS, scraping, Android confirmation, raw phone, raw notification text or real bank package/cert value was used.

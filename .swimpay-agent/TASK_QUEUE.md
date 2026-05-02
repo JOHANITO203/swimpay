@@ -6,10 +6,8 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `129_receiver_onboarding_readiness_gate` - status: completed - source: `tasks/129_receiver_onboarding_readiness_gate.md`
-- [x] `130_notification_listener_access_required_step` - status: completed - source: `tasks/130_notification_listener_access_required_step.md`
-- [x] `131_app_notifications_vs_listener_access_status` - status: completed - source: `tasks/131_app_notifications_vs_listener_access_status.md`
-- [x] `132_bank_allowlist_onboarding_gate` - status: completed - source: `tasks/132_bank_allowlist_onboarding_gate.md`
-- [x] `133_receiver_ready_state_machine` - status: completed - source: `tasks/133_receiver_ready_state_machine.md`
-- [x] `134_onboarding_regrant_after_reinstall` - status: completed - source: `tasks/134_onboarding_regrant_after_reinstall.md`
-- [x] `135_receiver_onboarding_closeout_review` - status: completed - source: `tasks/135_receiver_onboarding_closeout_review.md`
+- [x] `136_real_listener_replay_after_onboarding_gate` - status: completed - source: `tasks/136_real_listener_replay_after_onboarding_gate.md`
+- [x] `137_synthetic_notification_listener_capture` - status: completed - source: `tasks/137_synthetic_notification_listener_capture.md`
+- [x] `138_listener_to_privacy_firewall_validation` - status: completed - source: `tasks/138_listener_to_privacy_firewall_validation.md`
+- [x] `139_listener_to_outbox_to_backend_validation` - status: completed - source: `tasks/139_listener_to_outbox_to_backend_validation.md`
+- [x] `140_listener_diagnostics_and_closeout` - status: completed - source: `tasks/140_listener_diagnostics_and_closeout.md`

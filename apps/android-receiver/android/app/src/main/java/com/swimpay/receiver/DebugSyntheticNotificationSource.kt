@@ -14,6 +14,8 @@ class DebugSyntheticNotificationSource(
         require(debugEnabled) { "Synthetic notification source is debug-only." }
         return try {
             ensureChannel()
+            val uniqueSuffix = (System.currentTimeMillis() % 100_000L).toInt()
+            val notificationId = 10_000 + uniqueSuffix
             val notification = Notification.Builder(context, SyntheticNotificationConstants.CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_notify_more)
                 .setContentTitle("Поступление 137 ₽")
@@ -26,7 +28,7 @@ class DebugSyntheticNotificationSource(
                 .setAutoCancel(true)
                 .build()
             val manager = context.getSystemService(NotificationManager::class.java)
-            manager.notify("${SyntheticNotificationConstants.TAG_PREFIX}_incoming", 137, notification)
+            manager.notify("${SyntheticNotificationConstants.TAG_PREFIX}_incoming_$uniqueSuffix", notificationId, notification)
             DebugSmokeResult(
                 success = true,
                 safeMessage = "synthetic debug notification posted; backend decision pending; not official bank confirmation"

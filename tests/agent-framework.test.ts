@@ -33,17 +33,15 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Phase 4J receiver onboarding gate tasks in the approved order', () => {
+  test('task queue lists Phase 4J-B real listener replay tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '129_receiver_onboarding_readiness_gate',
-      '130_notification_listener_access_required_step',
-      '131_app_notifications_vs_listener_access_status',
-      '132_bank_allowlist_onboarding_gate',
-      '133_receiver_ready_state_machine',
-      '134_onboarding_regrant_after_reinstall',
-      '135_receiver_onboarding_closeout_review'
+      '136_real_listener_replay_after_onboarding_gate',
+      '137_synthetic_notification_listener_capture',
+      '138_listener_to_privacy_firewall_validation',
+      '139_listener_to_outbox_to_backend_validation',
+      '140_listener_diagnostics_and_closeout'
     ];
 
     let previousIndex = -1;

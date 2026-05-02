@@ -93,3 +93,30 @@ Live NotificationListener capture was not observed after reinstall/data clear be
 ## Next Step
 
 Sprint 4J should re-enable Notification Access on the device and rerun live synthetic notification capture, then continue process-death/reboot WorkManager validation.
+
+## Sprint 4J-B Real Listener Replay
+
+- generated_at: 2026-05-03T00:52:04+03:00
+- status: PASS
+- Device serial: `R5CWA0FEPZW`
+- Backend health: PASS at `http://localhost:8080/api-health`
+- ADB reverse: `tcp:8080 tcp:8080` PASS
+- APK build/install/launch: PASS
+- Notification Listener Access: enabled for `com.swimpay.receiver/com.swimpay.receiver.SwimPayNotificationListenerService`
+- Synthetic notification capture: PASS
+- Listener safe metadata observed: package, notification id/tag, post time, `fields_detected=4`, `result=enqueued`
+- Persistent outbox/backend upload: PASS, `acked=1 failed_retrying=0`
+- Public/result wording: `backend decision pending`, `notification signal`, `not official bank confirmation`
+
+Safety:
+
+- No real bank notification used.
+- No real customer data used.
+- No SMS reading.
+- No bank app scraping.
+- No Accessibility scraping.
+- No Android payment confirmation.
+- No Android auto-confirmation.
+- No raw phone stored/uploaded.
+- No raw notification text stored/uploaded.
+- `synthetic_debug_only` package/cert metadata remains debug-only and not production trust evidence.

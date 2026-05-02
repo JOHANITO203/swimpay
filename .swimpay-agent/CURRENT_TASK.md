@@ -1,13 +1,13 @@
 # Current Task
 
-task_id: 135_receiver_onboarding_closeout_review
-source_task_file: tasks/135_receiver_onboarding_closeout_review.md
+task_id: 140_listener_diagnostics_and_closeout
+source_task_file: tasks/140_listener_diagnostics_and_closeout.md
 status: completed
 
 ## Scope
 
-Phase 4J - Receiver Onboarding Gate + Listener Replay.
+Phase 4J-B - Real NotificationListener Replay After Onboarding Gate.
 
 ## Result
 
-Phase 4J made Notification Listener Access a blocking onboarding condition, separated app notification permission from listener access, added bank selection/backend/device registration readiness gates, defined receiver readiness states, and added regrant detection after reinstall/data clear.
+The real device synthetic listener replay passed after Notification Listener Access was restored. The debug-only synthetic notification reached `SwimPayNotificationListenerService`, passed through the allowlist/privacy firewall/outbox path, and flushed to the local backend with backend decision pending. Android did not confirm or auto-confirm payment.

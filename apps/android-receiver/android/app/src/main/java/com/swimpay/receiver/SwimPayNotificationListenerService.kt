@@ -10,7 +10,7 @@ import com.swimpay.receiver.work.SignalUploadWorker
 
 class SwimPayNotificationListenerService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (!ReceiverBoundaries.isRuntimeNotificationAllowed(sbn.packageName)) {
+        if (!ReceiverBoundaries.isRuntimeNotificationAllowed(sbn.packageName, packageName, BuildConfig.DEBUG)) {
             return
         }
 

@@ -80,6 +80,8 @@ describe('android runnable app setup', () => {
     expect(source).not.toMatch(/READ_SMS|SmsMessage|android\.provider\.Telephony/u);
     expect(source).not.toMatch(/AccessibilityService|getRootInActiveWindow|performGlobalAction/u);
     expect(source).not.toMatch(/bank_confirmed|official_bank_confirmation|paymentConfirmed|autoConfirm/iu);
+    expect(source).toContain('isRuntimeNotificationAllowed');
+    expect(source).toContain('packageName == appPackageName');
   });
 });
 
@@ -388,7 +390,9 @@ describe('android device-side network smoke wiring', () => {
     expect(`${onboarding}\n${activity}`).not.toContain('ready_auto_confirm');
     const forbiddenClaim = ['SwimPay peut uniquement lire', 'les notifications bancaires'].join(' ');
     expect(`${onboarding}\n${activity}`).not.toContain(forbiddenClaim);
-    expect(queue).toContain('129_receiver_onboarding_readiness_gate');
-    expect(queue).toContain('135_receiver_onboarding_closeout_review');
+    expect(report).toContain('129_receiver_onboarding_readiness_gate');
+    expect(report).toContain('135_receiver_onboarding_closeout_review');
+    expect(queue).toContain('136_real_listener_replay_after_onboarding_gate');
+    expect(queue).toContain('140_listener_diagnostics_and_closeout');
   });
 });

@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Phase 4J receiver onboarding gate: 2026-05-03T00:31:25+03:00.
+Last checked after Phase 4J-B real listener replay: 2026-05-03T00:52:04+03:00.
 
 Known non-critical limitations:
 
@@ -15,3 +15,4 @@ Known non-critical limitations:
 - Outbox persistence now uses an Android Keystore-backed protected adapter on device, but full process-death/reboot WorkManager validation remains future work.
 - Real bank package/certificate verification policy requires human/operator process and real Android PackageManager evidence outside this repo.
 - After reinstall or `pm clear`, Android Notification Listener Access must be re-enabled manually for SwimPay Receiver before live capture can run. Phase 4J now detects this as `regrant_required_after_reinstall` and blocks Receiver readiness until the OS grant is restored.
+- Sprint 4J-B verified live synthetic listener capture on real device after the user re-enabled Notification Listener Access. Real bank package/certificate verification and real bank notifications remain out of scope.
