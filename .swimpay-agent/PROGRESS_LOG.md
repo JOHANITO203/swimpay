@@ -207,6 +207,22 @@
 - Added checkout tests covering safe wording, buyer phone explanation, status polling, and the non-confirming paid button.
 - Did not implement webhooks, admin dashboard, real bank opening integration, API-side buyer state persistence, or payment confirmation behavior.
 
+## 2026-05-02 - Task 012 webhook worker plan
+
+- Scope: implement a signed webhook delivery foundation in `apps/job-worker`, including public event payload creation, HMAC headers, delivery processing, retry scheduling, delivery logging contract, replay, and endpoint/event duplicate prevention.
+- Boundaries: no production external calls in tests, no payment decision logic, no fake confirmation, no checkout/admin work.
+- Security/product wording: every payment event must include `confirmation_type = notification_signal` and `official_bank_confirmation = false`; webhook secrets are used only for HMAC signing and are not exposed.
+- Validation after implementation: targeted webhook tests, then full agent validation.
+
+## 2026-05-02 - Task 012 webhook worker completed
+
+- Implemented public webhook event payload creation with mandatory notification-signal disclosure.
+- Implemented `SwimPay-Event-Id`, `SwimPay-Timestamp`, and `SwimPay-Signature` headers with HMAC-SHA256 signing.
+- Implemented a testable `WebhookDeliveryWorker` with enqueue, delivery, retry scheduling, terminal failure, and manual replay.
+- Implemented duplicate endpoint/event delivery prevention while allowing manual replay to keep the original event id and create a new delivery id.
+- Added meaningful webhook tests for disclosure, signing, duplicate prevention, retry exhaustion, and replay.
+- Did not implement live NATS consumption, Postgres-backed delivery polling, admin UI, PSP/SBP behavior, or payment decision logic.
+
 ## 2026-05-02T10:00:33.072Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
@@ -224,6 +240,14 @@
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
 
 ## 2026-05-02T10:06:32.297Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T10:10:54.665Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
 - PASS: `npm run lint` (Lint, exit 0)

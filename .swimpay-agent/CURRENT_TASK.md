@@ -1,13 +1,13 @@
 # Current Task
 
-task id: 011_hosted_checkout
-source task file: tasks/011_hosted_checkout.md
+task id: 012_webhook_worker
+source task file: tasks/012_webhook_worker.md
 status: completed
 scope:
-Implement buyer checkout UI.
+Implement signed webhook delivery with retries and replay.
 
 files allowed:
-- Files named or implied by tasks/011_hosted_checkout.md
+- Files named or implied by tasks/012_webhook_worker.md
 - Tests for this task
 - Documentation directly related to this task
 - Shared packages only when required by this task
@@ -23,10 +23,11 @@ forbidden work:
 - Do not modify unrelated services.
 
 acceptance criteria:
-- UI does not claim official bank confirmation.
-- Buyer phone explanation is shown.
-- `J’ai payé` does not confirm payment.
-- Status reflects backend order/session states.
+- Webhooks include required headers.
+- Events include `official_bank_confirmation: false`.
+- Retry works.
+- Replay works.
+- Duplicate endpoint/event delivery prevented.
 
 commands to run:
 - npm run typecheck
@@ -35,27 +36,18 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T10:01:27.954Z
-completed_at: 2026-05-02T10:12:00.000Z
+started_at: 2026-05-02T10:07:14.679Z
+completed_at: 2026-05-02T10:18:00.000Z
 result: completed
 
 ## Source requirements
 
-Implement screens:
+Implement:
 
-- Checkout Summary;
-- Buyer Identity;
-- Payment Instructions;
-- Waiting Confirmation;
-- Result.
-
-Include:
-
-- amount;
-- timer;
-- recipient;
-- reference;
-- copy buttons;
-- open bank button placeholder;
-- `J’ai payé` button;
-- status polling.
+- webhook endpoints;
+- event payload creation;
+- HMAC signature;
+- delivery worker;
+- retry schedule;
+- delivery logs;
+- manual replay.

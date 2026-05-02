@@ -165,6 +165,25 @@ npm test -- packages/matching-core/src/index.test.ts
 
 The matching core is a pure deterministic package. It checks candidate sessions, exact amount/currency, phone/reference identity, time windows, collision risk, duplicate signal flags, order reuse flags, trust inputs, and unsafe directions. It is not yet wired into workers or persistent state transitions.
 
+## Webhook Worker Foundation
+
+Run webhook worker tests:
+
+```bash
+npm test -- apps/job-worker/src/webhooks.test.ts
+```
+
+The webhook foundation covers:
+
+- public event payload creation with `confirmation_type: notification_signal`;
+- `official_bank_confirmation: false`;
+- HMAC signatures and SwimPay webhook headers;
+- retry scheduling;
+- duplicate endpoint/event prevention;
+- manual replay with the original event id and a new delivery id.
+
+The worker is not yet connected to NATS JetStream or a Postgres-backed polling loop.
+
 ## Run Checks
 
 ```bash
@@ -190,7 +209,7 @@ PostgreSQL, Valkey, and NATS are on the private Compose network and are not publ
 - Matching core output is currently package-level only and is not yet wired into live signal-worker execution.
 - Review queue APIs and repository methods exist, but automatic review creation from live matching decisions is not wired yet.
 - Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
-- Webhook delivery is not implemented yet.
+- Webhook delivery core is implemented as a tested worker foundation, but live NATS/Postgres orchestration is not wired yet.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.
 - Phone fields are represented as HMAC/masked fields, not raw phone fields.

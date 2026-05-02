@@ -59,6 +59,9 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Manual review rejection updates order and payment session state to `rejected`, records a review action, writes redacted audit data, and emits an internal `review.rejected` event.
 - Matching core is not yet wired into the signal worker pipeline. The review creation foundation exists, but automatic creation from live matching decisions is still a later integration step.
 - Webhook delivery is not implemented yet; review events are only published internally for the future worker.
+- Webhook worker foundation now includes public payment event creation, required notification-signal disclosure fields, HMAC signing, SwimPay webhook headers, retry scheduling, duplicate endpoint/event prevention, delivery status updates, and replay with the original event id.
+- Webhook worker tests use an injectable HTTP client and in-memory repository; no production external calls are made during tests.
+- The webhook worker is not yet connected to NATS JetStream event consumption or a Postgres-backed delivery loop.
 - No official bank confirmation wording or status was introduced.
 - Receiver registration does not mark any bank package name or certificate fingerprint as trusted.
 - Android Receiver does not implement final payment confirmation logic; backend-only decisions remain intentionally unimplemented.
