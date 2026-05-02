@@ -3,6 +3,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { platform, release } from 'node:os';
 
 const repoRoot = process.cwd();
 const androidModulePath = resolve(repoRoot, 'apps/android-receiver/android');
@@ -23,6 +24,9 @@ function firstLine(output) {
 
 const java = run('java', ['-version']);
 const gradle = run('gradle', ['--version']);
+const winget = run('winget', ['--version']);
+const choco = run('choco', ['--version']);
+const scoop = run('scoop', ['--version']);
 const androidSdkAvailable = existsSync(sdkPath);
 const androidModuleAvailable = existsSync(join(androidModulePath, 'settings.gradle.kts'))
   && existsSync(join(androidModulePath, 'app/build.gradle.kts'));
@@ -34,12 +38,16 @@ const assembleCommand = gradleWrapperAvailable
   : 'gradle :app:assembleDebug';
 
 console.log('# Android Toolchain Check');
+console.log(`OS: ${platform()} ${release()}`);
 console.log(`Java available: ${java.status === 0}`);
 console.log(`Java version: ${firstLine(java.stderr || java.stdout)}`);
 console.log(`Android SDK path: ${sdkPath}`);
 console.log(`Android SDK available: ${androidSdkAvailable}`);
 console.log(`Gradle available: ${gradleAvailable}`);
 console.log(`Gradle wrapper available: ${gradleWrapperAvailable}`);
+console.log(`winget available: ${winget.status === 0}`);
+console.log(`choco available: ${choco.status === 0}`);
+console.log(`scoop available: ${scoop.status === 0}`);
 console.log(`Gradle wrapper JAR path: ${wrapperJarPath}`);
 console.log(`Android module path: ${androidModulePath}`);
 console.log(`Android module available: ${androidModuleAvailable}`);

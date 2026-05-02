@@ -8,17 +8,18 @@ Sprint 4A adds an explicit Android doctor command:
 npm run android:doctor
 ```
 
-Current local status:
+Current Sprint 4B local status:
 
 - Java: available through Android Studio JBR.
 - Android SDK: available at `C:\Users\Lenovo\AppData\Local\Android\Sdk`.
 - Gradle command: unavailable in `PATH`.
-- Gradle wrapper: unavailable because no wrapper JAR is checked in.
-- `assembleDebug`: blocked, not failed.
+- Gradle wrapper: available and generated through verified Gradle `8.11.1`.
+- `assembleDebug`: PASS when `ANDROID_HOME`/`ANDROID_SDK_ROOT` points to the local SDK.
+- Android JVM tests: PASS.
 
 ## Required Build Pieces
 
-- Gradle wrapper pinned in the repository: pending trusted generation.
+- Gradle wrapper pinned in the repository: present.
 - Android Gradle Plugin pinned to a supported version: configured in `build.gradle.kts`.
 - Kotlin Android plugin pinned to a supported version: configured in `build.gradle.kts`.
 - `settings.gradle.kts`: present.

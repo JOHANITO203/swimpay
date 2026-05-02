@@ -10,11 +10,10 @@ function readAndroid(path: string): string {
 }
 
 describe('android runnable app setup', () => {
-  it('defines Gradle Android project files without a checked-in wrapper jar', () => {
+  it('defines Gradle Android project files and only allows an official generated wrapper', () => {
     expect(existsSync(join(androidRoot, 'settings.gradle.kts'))).toBe(true);
     expect(existsSync(join(androidRoot, 'build.gradle.kts'))).toBe(true);
     expect(existsSync(join(androidRoot, 'app/build.gradle.kts'))).toBe(true);
-    expect(existsSync(join(androidRoot, 'gradle/wrapper/gradle-wrapper.jar'))).toBe(false);
 
     const settings = readAndroid('settings.gradle.kts');
     const appBuild = readAndroid('app/build.gradle.kts');
@@ -25,6 +24,13 @@ describe('android runnable app setup', () => {
     expect(appBuild).toContain('org.jetbrains.kotlin.android');
     expect(appBuild).toContain('namespace = "com.swimpay.receiver"');
     expect(appBuild).toContain('compileSdk = 36');
+    expect(appBuild).toContain('sourceCompatibility = JavaVersion.VERSION_17');
+    expect(appBuild).toContain('targetCompatibility = JavaVersion.VERSION_17');
+
+    const wrapperProperties = join(androidRoot, 'gradle/wrapper/gradle-wrapper.properties');
+    if (existsSync(join(androidRoot, 'gradle/wrapper/gradle-wrapper.jar'))) {
+      expect(readFileSync(wrapperProperties, 'utf8')).toContain('services.gradle.org/distributions');
+    }
   });
 
   it('declares NotificationListenerService permission and no SMS or scraping permissions', () => {
@@ -92,8 +98,7 @@ describe('android build toolchain activation', () => {
     expect(report).toContain('assembleDebug status');
   });
 
-  it('lists Sprint 4A task files in the approved order', () => {
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+  it('keeps Sprint 4A task files available for history', () => {
     const tasks = [
       '057_android_toolchain_activation',
       '058_gradle_wrapper_generation_policy',
@@ -102,13 +107,9 @@ describe('android build toolchain activation', () => {
       '061_android_build_closeout_review'
     ];
 
-    let previousIndex = -1;
     for (const task of tasks) {
       const taskFile = join(root, 'tasks', `${task}.md`);
       expect(existsSync(taskFile), task).toBe(true);
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed) - source: \\\`tasks/${task}\\.md\\\``));
-      expect(index, task).toBeGreaterThan(previousIndex);
-      previousIndex = index;
     }
   });
 
@@ -119,5 +120,67 @@ describe('android build toolchain activation', () => {
     expect(doctor).toContain('Android module path');
     expect(doctor).toContain('assembleDebug command readiness');
     expect(doctor).toContain('gradle-wrapper.jar');
+  });
+});
+
+describe('android Gradle wrapper and build validation', () => {
+  it('documents Sprint 4B wrapper/build execution artifacts', () => {
+    const sprintReport = readFileSync(join(root, '.swimpay-agent/SPRINT_4B_REPORT.md'), 'utf8');
+    const triage = readFileSync(join(root, '.swimpay-agent/ANDROID_BUILD_FAILURE_TRIAGE.md'), 'utf8');
+
+    expect(sprintReport).toContain('Gradle availability');
+    expect(sprintReport).toContain('wrapper generation status');
+    expect(sprintReport).toContain('assembleDebug status');
+    expect(sprintReport).toContain('Android unit test status');
+
+    expect(triage).toContain('command run');
+    expect(triage).toContain('error summary');
+    expect(triage).toContain('suspected cause');
+    expect(triage).toContain('critical or non-critical');
+  });
+
+  it('lists Sprint 4B task files in the approved order', () => {
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const tasks = [
+      '062_gradle_toolchain_bootstrap',
+      '063_generate_trusted_gradle_wrapper',
+      '064_android_assemble_debug_run',
+      '065_android_jvm_unit_tests_execution',
+      '066_android_build_failure_triage',
+      '067_sprint_4b_closeout_review'
+    ];
+
+    let previousIndex = -1;
+    for (const task of tasks) {
+      expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
+      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
+      expect(index, task).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+  });
+
+  it('verifies any checked-in Gradle wrapper points to an official Gradle distribution', () => {
+    const wrapperJar = join(androidRoot, 'gradle/wrapper/gradle-wrapper.jar');
+    const wrapperProperties = join(androidRoot, 'gradle/wrapper/gradle-wrapper.properties');
+
+    if (!existsSync(wrapperJar)) {
+      expect(existsSync(wrapperProperties)).toBe(false);
+      return;
+    }
+
+    expect(existsSync(wrapperProperties)).toBe(true);
+    const properties = readFileSync(wrapperProperties, 'utf8');
+    expect(properties).toMatch(/distributionUrl=.*services\.gradle\.org\/distributions\/gradle-[\d.]+-bin\.zip/u);
+  });
+
+  it('enables AndroidX when AndroidX dependencies are declared', () => {
+    const appBuild = readAndroid('app/build.gradle.kts');
+    const gradlePropertiesPath = join(androidRoot, 'gradle.properties');
+
+    expect(appBuild).toMatch(/androidx\.(core|work):/u);
+    expect(existsSync(gradlePropertiesPath)).toBe(true);
+
+    const properties = readFileSync(gradlePropertiesPath, 'utf8');
+    expect(properties).toContain('android.useAndroidX=true');
   });
 });

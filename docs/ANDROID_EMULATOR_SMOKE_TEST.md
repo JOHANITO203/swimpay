@@ -10,16 +10,18 @@ The repository now contains Gradle Android project files under:
 apps/android-receiver/android
 ```
 
-No Gradle wrapper JAR is checked in, and `gradle` is not available in the current shell. Generate the wrapper only from a trusted local Gradle installation:
+Sprint 4B generated a trusted Gradle wrapper. Global `gradle` is still not available in the current shell, so use the checked-in wrapper:
 
-```bash
+```powershell
 cd apps/android-receiver/android
-gradle wrapper
+$env:ANDROID_HOME='C:\Users\Lenovo\AppData\Local\Android\Sdk'
+$env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
+.\gradlew.bat :app:assembleDebug
 ```
 
-Do not manually invent or paste a wrapper JAR.
+Do not manually invent or paste a wrapper JAR. Future wrapper upgrades must still use the official Gradle wrapper flow.
 
-Sprint 4A keeps this as a non-critical build-tooling blocker. Run:
+Run:
 
 ```bash
 npm run android:doctor

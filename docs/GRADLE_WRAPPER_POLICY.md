@@ -33,9 +33,15 @@ Do not copy a wrapper from an unknown project or untrusted download.
 
 Do not claim Android build readiness because Gradle files exist. `assembleDebug` is PASS only after the command actually runs successfully.
 
-## Current Sprint 4A Status
+## Current Sprint 4B Status
 
-The current machine has Java and an Android SDK, but `gradle` is not available in `PATH` and no Gradle wrapper JAR is checked in. Wrapper generation is therefore blocked until Gradle is installed or otherwise made available from a trusted source.
+The current machine has Java and an Android SDK. Global `gradle` is not available in `PATH`, so Sprint 4B used a local temporary Gradle `8.11.1` distribution downloaded from `services.gradle.org` and verified against the official SHA256 checksum before running `gradle wrapper`.
+
+The repository now contains a generated Gradle wrapper. The wrapper properties point to:
+
+```text
+https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+```
 
 ## Expected Build Command After Wrapper Generation
 

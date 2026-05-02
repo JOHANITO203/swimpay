@@ -457,11 +457,11 @@ Check Android build tooling:
 npm run android:doctor
 ```
 
-Sprint 4A keeps the Android build status explicit. Java and the Android SDK are present, while Gradle is not available in PATH and no Gradle wrapper JAR is checked in. Android assemble/debug builds should be run only after generating a wrapper from a trusted local Gradle installation.
+Sprint 4B generated a trusted Gradle wrapper. Java and the Android SDK are present, while global Gradle is still not available in PATH. Use the wrapper for local Android builds.
 
 Do not manually invent or paste `gradle-wrapper.jar`. Read `docs/GRADLE_WRAPPER_POLICY.md` first.
 
-Expected command after wrapper generation:
+Expected command:
 
 ```bash
 cd apps/android-receiver/android
@@ -473,6 +473,7 @@ Windows PowerShell:
 ```powershell
 cd apps/android-receiver/android
 .\gradlew.bat :app:assembleDebug
+.\gradlew.bat :app:testDebugUnitTest
 ```
 
 The Android JVM unit test plan is documented in `docs/ANDROID_JVM_UNIT_TEST_PLAN.md`.

@@ -1084,3 +1084,31 @@ Validation:
 - `npm test` PASS
 - `npm run build` PASS
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS
+
+## 2026-05-02 - Sprint 4B / Gradle Wrapper Generation and Android Build Execution
+
+Plan:
+- Bootstrap Gradle without a privileged/global install.
+- Generate the wrapper through the official Gradle wrapper task.
+- Run Android `assembleDebug` and JVM tests if the wrapper works.
+- Triage any Android build failures without weakening safety rules.
+
+Result:
+- Downloaded Gradle `8.11.1` from `services.gradle.org` to a temporary local cache outside the repo.
+- Verified the Gradle ZIP SHA256 against the official Gradle checksum file.
+- Generated `gradlew`, `gradlew.bat`, `gradle-wrapper.properties` and `gradle-wrapper.jar` through `gradle wrapper`.
+- Verified wrapper properties point to `https://services.gradle.org/distributions/gradle-8.11.1-bin.zip`.
+- Added Android `gradle.properties` with AndroidX enabled.
+- Aligned Java and Kotlin compile targets to 17.
+- Added Android JVM tests for status warnings, canonical payload signing, fake signer behavior and encrypted outbox boundaries.
+- `assembleDebug` and `testDebugUnitTest` pass with `ANDROID_HOME` set to the local SDK.
+
+Validation:
+- `npm run android:doctor` PASS
+- `.\gradlew.bat :app:assembleDebug --no-daemon --stacktrace` PASS
+- `.\gradlew.bat :app:testDebugUnitTest --no-daemon --stacktrace` PASS
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS

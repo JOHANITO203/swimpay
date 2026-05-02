@@ -185,3 +185,12 @@ Sprint 4A adds an explicit Android toolchain doctor and Gradle wrapper policy. C
 - `assembleDebug` blocked until Gradle or a trusted wrapper exists.
 
 This is a tooling blocker only; it does not change the receiver safety boundary.
+
+## Sprint 4B Build Status
+
+Sprint 4B generated a trusted Gradle wrapper, enabled AndroidX, aligned Java/Kotlin target 17, and ran:
+
+- `:app:assembleDebug`
+- `:app:testDebugUnitTest`
+
+Both pass with `ANDROID_HOME`/`ANDROID_SDK_ROOT` set to the local SDK. Emulator/device validation remains future work.

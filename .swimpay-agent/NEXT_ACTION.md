@@ -1,21 +1,26 @@
 # Next Action
 
-generated_at: 2026-05-02T19:58:00+03:00
+generated_at: 2026-05-02T20:18:00+03:00
 
 ## Latest completed task
 
-Sprint 4A is complete:
+Sprint 4B is complete:
 
-- `057_android_toolchain_activation`
-- `058_gradle_wrapper_generation_policy`
-- `059_android_assemble_debug_validation`
-- `060_android_jvm_unit_tests`
-- `061_android_build_closeout_review`
+- `062_gradle_toolchain_bootstrap`
+- `063_generate_trusted_gradle_wrapper`
+- `064_android_assemble_debug_run`
+- `065_android_jvm_unit_tests_execution`
+- `066_android_build_failure_triage`
+- `067_sprint_4b_closeout_review`
 
 ## Commands run
 
-- `npm test -- --run apps/android-receiver/src/android-runnable-app.test.ts`
+- `gradle --version` from verified temporary Gradle `8.11.1`
+- `gradle wrapper --gradle-version 8.11.1 --distribution-type bin`
 - `npm run android:doctor`
+- `.\gradlew.bat :app:assembleDebug --no-daemon --stacktrace`
+- `.\gradlew.bat :app:testDebugUnitTest --no-daemon --stacktrace`
+- `npm test -- --run apps/android-receiver/src/android-runnable-app.test.ts`
 - `npm run typecheck`
 - `npm run lint`
 - `npm test`
@@ -26,35 +31,39 @@ Sprint 4A is complete:
 
 Node/Compose validation: PASS
 
-Android doctor: PASS as diagnostic
+Android doctor: PASS
 
-Android Gradle assemble: BLOCKED, not failed. Gradle is unavailable and no wrapper JAR is checked in.
+Gradle wrapper generation: PASS
 
-Android JVM tests: BLOCKED, not failed. Gradle/wrapper is unavailable.
+Android `assembleDebug`: PASS
+
+Android JVM tests: PASS
 
 ## Blockers
 
 No current critical blockers.
 
-Non-critical blocker:
+Non-critical limitations:
 
-- Android build cannot run until a trusted Gradle wrapper is generated or Gradle is installed.
+- Global `gradle` remains unavailable in PATH, but the generated wrapper is available.
+- `ANDROID_HOME`/`ANDROID_SDK_ROOT` must be set for local Android Gradle commands.
+- Emulator/device validation remains pending.
 
 ## Next recommended sprint
 
-Sprint 4B - Gradle Wrapper Generation and Android Build Execution:
+Sprint 4C - Android Emulator Smoke Validation:
 
-- install or expose trusted Gradle;
-- generate Gradle wrapper with `gradle wrapper` from `apps/android-receiver/android`;
-- commit wrapper files after review;
-- run `./gradlew :app:assembleDebug`;
-- add and run Android JVM unit tests;
-- proceed to emulator smoke validation only after a real build passes.
+- start an Android emulator;
+- install `app-debug.apk`;
+- verify Notification Access settings path;
+- verify safe receiver status screen;
+- verify no SMS/scanning permissions;
+- run synthetic local backend flow if practical.
 
 ## What not to do next
 
-- Do not manually invent or paste a Gradle wrapper JAR.
 - Do not push to remote until explicitly requested.
+- Do not deploy.
 - Do not implement Android final payment decisions.
 - Do not implement Android auto-confirmation.
 - Do not add SMS permissions.
@@ -63,4 +72,3 @@ Sprint 4B - Gradle Wrapper Generation and Android Build Execution:
 - Do not claim official bank confirmation.
 - Do not store raw phone numbers.
 - Do not store raw notification text by default.
-- Do not deploy.

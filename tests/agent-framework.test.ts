@@ -31,15 +31,16 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4A Android toolchain tasks as executable in the approved order', () => {
+  test('task queue lists Sprint 4B Android build tasks as executable in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '057_android_toolchain_activation',
-      '058_gradle_wrapper_generation_policy',
-      '059_android_assemble_debug_validation',
-      '060_android_jvm_unit_tests',
-      '061_android_build_closeout_review'
+      '062_gradle_toolchain_bootstrap',
+      '063_generate_trusted_gradle_wrapper',
+      '064_android_assemble_debug_run',
+      '065_android_jvm_unit_tests_execution',
+      '066_android_build_failure_triage',
+      '067_sprint_4b_closeout_review'
     ];
 
     let previousIndex = -1;

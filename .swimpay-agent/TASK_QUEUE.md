@@ -6,8 +6,9 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `057_android_toolchain_activation` - status: completed - source: `tasks/057_android_toolchain_activation.md`
-- [x] `058_gradle_wrapper_generation_policy` - status: completed - source: `tasks/058_gradle_wrapper_generation_policy.md`
-- [x] `059_android_assemble_debug_validation` - status: completed - source: `tasks/059_android_assemble_debug_validation.md`
-- [x] `060_android_jvm_unit_tests` - status: completed - source: `tasks/060_android_jvm_unit_tests.md`
-- [x] `061_android_build_closeout_review` - status: completed - source: `tasks/061_android_build_closeout_review.md`
+- [x] `062_gradle_toolchain_bootstrap` - status: completed - source: `tasks/062_gradle_toolchain_bootstrap.md`
+- [x] `063_generate_trusted_gradle_wrapper` - status: completed - source: `tasks/063_generate_trusted_gradle_wrapper.md`
+- [x] `064_android_assemble_debug_run` - status: completed - source: `tasks/064_android_assemble_debug_run.md`
+- [x] `065_android_jvm_unit_tests_execution` - status: completed - source: `tasks/065_android_jvm_unit_tests_execution.md`
+- [x] `066_android_build_failure_triage` - status: completed - source: `tasks/066_android_build_failure_triage.md`
+- [x] `067_sprint_4b_closeout_review` - status: completed - source: `tasks/067_sprint_4b_closeout_review.md`

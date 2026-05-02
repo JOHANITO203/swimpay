@@ -22,3 +22,6 @@ id_rsa*
 *.7z
 *.tar
 *.tar.gz
+.gradle/
+apps/android-receiver/android/.gradle/
+apps/android-receiver/android/app/build/

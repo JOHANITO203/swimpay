@@ -1,6 +1,6 @@
 # Android JVM Unit Test Plan
 
-The Sprint 4A environment cannot run Gradle JVM unit tests because no trusted Gradle command or wrapper is available.
+Sprint 4B generated the trusted Gradle wrapper and ran Android JVM unit tests.
 
 When Gradle is available, add and run JVM tests under:
 
@@ -35,4 +35,4 @@ cd apps/android-receiver/android
 - No bank app scraping behavior.
 - No Android payment confirmation or auto-confirmation behavior.
 
-Until Gradle is available, the repository keeps static TypeScript tests around the Android project files and source boundaries.
+Sprint 4B added JVM tests under `apps/android-receiver/android/app/src/test` for status warning derivation, canonical payload generation, fake signer behavior and encrypted outbox boundaries. The repository also keeps static TypeScript tests around the Android project files and source boundaries.

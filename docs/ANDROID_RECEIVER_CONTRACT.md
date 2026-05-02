@@ -284,6 +284,7 @@ No metric contains raw phone values, raw notification text, API keys or signatur
 - Sprint 3C adds testable receiver lifecycle clients for registration, signed heartbeat, signed redacted signal upload, encrypted outbox retry modeling and safe health snapshots.
 - Sprint 3D adds Android Gradle project files and Kotlin platform boundaries, but Android assemble has not run because Gradle is unavailable in the current shell and no wrapper JAR is checked in.
 - Sprint 4A adds explicit Android toolchain diagnostics and wrapper policy. `assembleDebug` remains blocked until Gradle or a trusted wrapper is available.
+- Sprint 4B generates a trusted Gradle wrapper and validates `assembleDebug` plus Android JVM unit tests. Emulator/device validation remains future work.
 - Real package/certificate verification is not implemented.
 - `TO_VERIFY` package/cert metadata remains untrusted.
 - Backend signal matching and payment decisions remain in the signal runtime pipeline.
