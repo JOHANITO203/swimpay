@@ -1,4 +1,34 @@
 services:
+  proxy:
+    image: caddy:2.8-alpine
+    container_name: swimpay-proxy
+    restart: unless-stopped
+    depends_on:
+      swimpay-api:
+        condition: service_healthy
+      swimpay-web:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - swimpay_private
+      - swimpay_public
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: &default_logging
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-50m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    mem_limit: 128m
+
   postgres:
     image: postgres:16-alpine
     container_name: swimpay-postgres
@@ -19,11 +49,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    logging: &default_logging
-      driver: json-file
-      options:
-        max-size: "50m"
-        max-file: "3"
+    logging: *default_logging
+    mem_limit: 512m
 
   valkey:
     image: valkey/valkey:8-alpine
@@ -41,6 +68,7 @@ services:
       timeout: 5s
       retries: 5
     logging: *default_logging
+    mem_limit: 192m
 
   nats:
     image: nats:2.10-alpine
@@ -58,6 +86,7 @@ services:
       timeout: 5s
       retries: 5
     logging: *default_logging
+    mem_limit: 192m
 
   swimpay-api:
     build:
@@ -74,12 +103,17 @@ services:
         condition: service_healthy
       nats:
         condition: service_started
+    expose:
+      - "3000"
     networks:
       - swimpay_private
-      - swimpay_public
-    ports:
-      - "${API_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     logging: *default_logging
+    mem_limit: 256m
 
   swimpay-signal-worker:
     build:
@@ -94,9 +128,17 @@ services:
         condition: service_healthy
       nats:
         condition: service_started
+    expose:
+      - "3010"
     networks:
       - swimpay_private
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3010/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     logging: *default_logging
+    mem_limit: 192m
 
   swimpay-job-worker:
     build:
@@ -111,9 +153,17 @@ services:
         condition: service_healthy
       nats:
         condition: service_started
+    expose:
+      - "3011"
     networks:
       - swimpay_private
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3011/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     logging: *default_logging
+    mem_limit: 192m
 
   swimpay-web:
     build:
@@ -121,15 +171,22 @@ services:
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     env_file: ../.env.example
+    environment:
+      API_BASE_URL: http://swimpay-api:3000
     depends_on:
       swimpay-api:
-        condition: service_started
+        condition: service_healthy
+    expose:
+      - "3001"
     networks:
       - swimpay_private
-      - swimpay_public
-    ports:
-      - "${WEB_PORT:-3001}:3001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     logging: *default_logging
+    mem_limit: 256m
 
 networks:
   swimpay_private:
@@ -137,6 +194,8 @@ networks:
   swimpay_public:
 
 volumes:
+  caddy_data:
+  caddy_config:
   postgres_data:
   valkey_data:
   nats_data:

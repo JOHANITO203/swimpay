@@ -227,7 +227,15 @@ npm run build
 docker compose --env-file .env.example -f infra/docker-compose.yml up --build
 ```
 
-PostgreSQL, Valkey, and NATS are on the private Compose network and are not published to public host ports. API and web publish local ports for development and should later sit behind Caddy or Nginx.
+The local proxy is available at:
+
+```text
+http://localhost:8080
+```
+
+`/v1/*` and `/api/*` are routed to `swimpay-api`; checkout and web routes are routed to `swimpay-web`.
+
+Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, and workers stay on the private Compose network. For a real single-server install, set `HTTP_PORT=80` in the server environment and configure TLS/reverse-proxy policy before exposing merchants.
 
 ## Current Limitations
 

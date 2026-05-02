@@ -31,6 +31,8 @@ Task 022 added a bank-template drift radar foundation. It loads template YAML as
 
 Task 013 added the bank-template learning lifecycle foundation. It canonicalizes notification text into redacted templates, hashes canonical templates, updates observation/review/shadow stats, calculates reliability, recommends lifecycle status across `new`, `learning`, `shadow_testing`, `trusted_low_amount`, `trusted`, `degraded`, `review_only`, and `disabled`, and predicts mutation candidates for shadow testing. False positives force review-only behavior, and trusted statuses require human verification plus shadow evidence.
 
+Task 014 hardened Docker Compose for the single-server deployment model. A Caddy proxy is now the only service publishing a host port by default, while PostgreSQL, Valkey, NATS, API, web, and workers stay on the private Compose network. Compose now includes service health checks, configurable Docker log rotation, and memory limits sized for the 2 GB RAM V1 target.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:

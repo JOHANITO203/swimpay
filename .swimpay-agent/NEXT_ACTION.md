@@ -1,28 +1,30 @@
 # Next Action
 
-generated_at: 2026-05-02T10:48:45.934Z
+generated_at: 2026-05-02T10:54:30.044Z
 
 ## Latest completed task
 
-Repository foundation baseline is complete. Current prepared task: 013_bank_template_learning.
+Repository foundation baseline is complete. Current prepared task: 014_deployment_docker_compose.
 
 ## Files changed if detectable
 
 ```text
-M .swimpay-agent/CURRENT_TASK.md
+M .env.example
+ M .swimpay-agent/CURRENT_TASK.md
  M .swimpay-agent/PROGRESS_LOG.md
  M .swimpay-agent/TASK_QUEUE.md
  M docs/IMPLEMENTATION_NOTES.md
- M packages/bank-templates/src/index.ts
-?? packages/bank-templates/src/learning.test.ts
-?? packages/bank-templates/src/learning.ts
+ M docs/LOCAL_DEVELOPMENT.md
+ M infra/docker-compose.yml
+?? infra/caddy/
+?? tests/deployment-compose.test.ts
 ```
 
 ## Commands run
 
 See .swimpay-agent/PROGRESS_LOG.md.
 
-Latest validation: pass at 2026-05-02T10:48:38.989Z
+Latest validation: pass at 2026-05-02T10:53:38.485Z
 
 ## Pass/fail status
 
@@ -36,7 +38,7 @@ No current blockers.
 
 ## Next recommended task
 
-014_deployment_docker_compose (tasks/014_deployment_docker_compose.md)
+015_security_hardening (tasks/015_security_hardening.md)
 
 ## What not to do next
 

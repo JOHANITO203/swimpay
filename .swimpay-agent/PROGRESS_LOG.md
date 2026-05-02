@@ -365,6 +365,21 @@
 - Trusted lifecycle statuses require evidence thresholds and shadow/reviewer agreement; new mutations remain `status: new` and `allowAutoConfirmCandidate: false`.
 - Did not wire learning into workers, databases, admin controls, or payment confirmation behavior.
 
+## 2026-05-02 - Task 014 deployment docker compose plan
+
+- Scope: harden the single-server Docker Compose deployment with a proxy, private data/service networks, health checks, log rotation, and 2 GB RAM-conscious memory limits.
+- Boundaries: no production deployment, no production secrets, no Kubernetes, no Kafka, and no unrelated application behavior.
+- Safety checks: PostgreSQL, Valkey, NATS, API, web, and workers must not publish host ports; only the proxy may publish a local public port.
+
+## 2026-05-02 - Task 014 deployment docker compose completed
+
+- Added Caddy proxy service as the only host-port-publishing service, defaulting to `HTTP_PORT=8080` for local development.
+- Moved API and web from published ports to private `expose` entries and routed `/v1/*`, `/api/*`, and web traffic through Caddy.
+- Kept PostgreSQL, Valkey, and NATS on the private Compose network without public host ports.
+- Added service health checks, configurable Docker log rotation, and memory limits appropriate for the compact V1 single-server target.
+- Added deployment tests asserting required services, proxy-only public ports, private data services, health checks, and log rotation.
+- Did not deploy, add production secrets, Kubernetes, Kafka, or any product feature behavior.
+
 ## 2026-05-02T10:36:28.979Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
@@ -382,6 +397,14 @@
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
 
 ## 2026-05-02T10:48:38.989Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T10:53:38.485Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
 - PASS: `npm run lint` (Lint, exit 0)
