@@ -1,13 +1,13 @@
 # Current Task
 
-task id: 015_security_hardening
-source task file: tasks/015_security_hardening.md
+task id: 016_end_to_end_tests
+source task file: tasks/016_end_to_end_tests.md
 status: completed
 scope:
-Harden authentication, signatures, privacy and server-facing configuration.
+Create end-to-end tests for the full payment signal flow.
 
 files allowed:
-- Files named or implied by tasks/015_security_hardening.md
+- Files named or implied by tasks/016_end_to_end_tests.md
 - Tests for this task
 - Documentation directly related to this task
 - Shared packages only when required by this task
@@ -23,10 +23,9 @@ forbidden work:
 - Do not modify unrelated services.
 
 acceptance criteria:
-- Sensitive values not logged.
-- API keys are not stored raw.
-- Webhook signatures verified in tests.
-- Receiver signatures verified in tests.
+- E2E tests run automatically.
+- Critical unsafe paths are covered.
+- Tests use fake redacted data only.
 
 commands to run:
 - npm run typecheck
@@ -35,19 +34,10 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T10:54:58.264Z
-completed_at: 2026-05-02T13:58:16.8573056+03:00
+started_at: 2026-05-02T11:00:21.845Z
+completed_at: 2026-05-02T11:05:00.000Z
 result: completed
 
 ## Source requirements
 
-Implement/check:
-
-- API key hashing;
-- webhook secret hashing;
-- HMAC helpers;
-- phone masking;
-- redacted logs;
-- anti-replay tests;
-- no raw notification logs;
-- private service networking.
+See source task file.

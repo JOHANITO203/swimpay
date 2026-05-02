@@ -229,6 +229,14 @@ npm test -- packages/security/src/index.test.ts apps/job-worker/src/webhooks.tes
 
 They verify API key hashing, webhook secret hashing, phone HMAC/masking, sensitive log redaction, webhook signatures, and receiver signal signature rejection.
 
+End-to-end foundation tests include:
+
+```bash
+npm test -- tests/e2e-payment-signal-flow.test.ts
+```
+
+They verify the in-process payment signal flow across matching-core and webhook worker primitives: safe incoming signal confirmation, signed webhook delivery, review routing for missing identity and collisions, and rejection for cashback, outgoing, and duplicate signals.
+
 ## Start Docker Compose
 
 ```bash

@@ -433,3 +433,24 @@
 - PASS: `npm test` (Tests, exit 0)
 - PASS: `npm run build` (Build, exit 0)
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02 - Task 016 end-to-end tests plan
+
+- Scope: add meaningful in-process E2E coverage for order/session matching inputs, safe incoming signal decision, signed webhook delivery, review routing, unsafe direction rejection, duplicate signal rejection, and collision handling.
+- Boundaries: no production external calls, no new product feature implementation, no raw phone or raw notification fixtures, no official bank confirmation wording.
+- Safety checks: tests must use fake redacted data, verify unsafe paths do not auto-confirm, and verify public webhook disclosure fields remain `confirmation_type: notification_signal` and `official_bank_confirmation: false`.
+
+## 2026-05-02 - Task 016 end-to-end tests completed
+
+- Added `tests/e2e-payment-signal-flow.test.ts` covering a foundation payment signal flow across matching-core and webhook worker primitives.
+- Verified safe incoming signal matching can produce `auto_confirmed` only with exact identity and trust gates, then enqueues and delivers a signed webhook with notification-signal disclosure fields.
+- Verified missing phone/reference routes to review, cashback and outgoing signals reject, duplicate signals reject, and amount collisions route to review.
+- Used HMAC values derived from redacted placeholders only; no raw notification text, raw phone fixtures, production calls, PSP/SBP behavior, or official bank confirmation wording were introduced.
+
+## 2026-05-02T11:05:00.000Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)

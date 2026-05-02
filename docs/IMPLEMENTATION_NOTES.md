@@ -35,6 +35,8 @@ Task 014 hardened Docker Compose for the single-server deployment model. A Caddy
 
 Task 015 added security hardening primitives. `@swimpay/security` now includes API key hashing/verification, webhook secret hashing/verification, HMAC helpers, phone masking, recursive log redaction, and Fastify logger redaction paths. The API server now uses redacted logger options, and tests cover API key storage safety, webhook secret storage safety, phone HMAC/masking, sensitive log redaction, webhook signature verification, and receiver signal signature rejection.
 
+Task 016 added an end-to-end payment signal foundation test. It exercises order/session-like matching inputs, a safe incoming signal auto-confirm decision through matching-core trust gates, signed webhook delivery after confirmation, review routing for missing identity, rejection for cashback/outgoing/duplicate signals, and collision routing to review. The test uses redacted placeholder-derived HMAC values and does not use production external calls.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:
@@ -80,6 +82,7 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Webhook worker foundation now includes public payment event creation, required notification-signal disclosure fields, HMAC signing, SwimPay webhook headers, retry scheduling, duplicate endpoint/event prevention, delivery status updates, and replay with the original event id.
 - Webhook worker tests use an injectable HTTP client and in-memory repository; no production external calls are made during tests.
 - The webhook worker is not yet connected to NATS JetStream event consumption or a Postgres-backed delivery loop.
+- End-to-end tests now cover the foundation signal flow across matching-core and webhook worker primitives, including unsafe-path protections. They are still in-process tests and do not replace future Postgres/NATS integration tests.
 - No official bank confirmation wording or status was introduced.
 - Receiver registration does not mark any bank package name or certificate fingerprint as trusted.
 - Android Receiver does not implement final payment confirmation logic; backend-only decisions remain intentionally unimplemented.
