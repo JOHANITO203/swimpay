@@ -237,6 +237,31 @@ npm test -- tests/e2e-payment-signal-flow.test.ts
 
 They verify the in-process payment signal flow across matching-core and webhook worker primitives: safe incoming signal confirmation, signed webhook delivery, review routing for missing identity and collisions, and rejection for cashback, outgoing, and duplicate signals.
 
+NATS JetStream consumer foundation tests include:
+
+```bash
+npm test -- packages/events/src/jetstream.test.ts
+npm test -- apps/signal-worker/src/consumers.test.ts apps/job-worker/src/consumers.test.ts
+```
+
+Local NATS runtime settings:
+
+```text
+NATS_URL=nats://nats:4222
+NATS_STREAM_NAME=SWIMPAY_EVENTS
+NATS_DURABLE_PREFIX=swimpay
+NATS_CONNECT_TIMEOUT_MS=2000
+```
+
+Run workers locally:
+
+```bash
+npm run dev:signal-worker
+npm run dev:job-worker
+```
+
+Task 025 workers register durable consumer skeletons and expose the registration state on `/health`. Handlers only validate and acknowledge known events. Parser/matching/review runtime integration and the Postgres-backed webhook delivery loop are intentionally left for tasks 026 and 027.
+
 Admin console foundation tests include:
 
 ```bash
@@ -334,7 +359,7 @@ Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, 
 - Matching core output is currently package-level only and is not yet wired into live signal-worker execution.
 - Review queue APIs and repository methods exist, but automatic review creation from live matching decisions is not wired yet.
 - Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
-- Webhook delivery core is implemented as a tested worker foundation, but live NATS/Postgres orchestration is not wired yet.
+- Webhook delivery core is implemented as a tested worker foundation. NATS durable consumer skeletons exist, but the live Postgres-backed delivery loop is not wired yet.
 - Admin console is API-only. It exposes RBAC-protected operator read views and audited bank-template actions, but does not implement a browser UI, real app package/cert verification workflow, unsafe bulk actions, or a full operator identity provider.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.

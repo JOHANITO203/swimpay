@@ -14,5 +14,8 @@
     "build": "tsc -b",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "nats": "^2.29.3"
   }
 }

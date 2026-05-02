@@ -43,6 +43,8 @@ Task 023 extended the admin foundation with bank-template-specific actions: prom
 
 Task 024 added a Phase 2 operator auth/RBAC foundation. `@swimpay/security` now defines operator roles, permissions, role-permission mappings, dev-token verification, HMAC-signed operator token verification, and permission checks. Admin endpoints now reject missing auth, reject `Bearer admin_<operator_id>` placeholders, require explicit permissions for reads and dangerous template actions, and use the authenticated operator id for audit events. Local development can use `ADMIN_AUTH_MODE=dev_token` with a configured `DEV_ADMIN_TOKEN`; production must use signed-token mode or a future identity provider and cannot rely on the dev placeholder path.
 
+Task 025 added the NATS JetStream durable consumer foundation. `@swimpay/events` now owns NATS runtime config parsing, the `SWIMPAY_EVENTS` stream definition, internal runtime event envelope validation, durable consumer definitions, explicit ack/nack/term message processing, publish/connect/close helpers, and safe event metadata logging. Signal worker now registers stub consumers for `signal.received`, `signal.verified`, `signal.parsed`, and `match.scored`; job worker registers stub consumers for `webhook.delivery_requested`, `order.expired`, and `payment_session.expired`. These handlers acknowledge known events only and intentionally do not run parser, matching, review creation, or webhook delivery logic yet.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:
@@ -88,6 +90,7 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Webhook worker foundation now includes public payment event creation, required notification-signal disclosure fields, HMAC signing, SwimPay webhook headers, retry scheduling, duplicate endpoint/event prevention, delivery status updates, and replay with the original event id.
 - Webhook worker tests use an injectable HTTP client and in-memory repository; no production external calls are made during tests.
 - The webhook worker is not yet connected to NATS JetStream event consumption or a Postgres-backed delivery loop.
+- Workers now have NATS JetStream durable consumer skeletons, but the handlers are safe stubs only. Durable business processing starts in tasks 026 and 027.
 - End-to-end tests now cover the foundation signal flow across matching-core and webhook worker primitives, including unsafe-path protections. They are still in-process tests and do not replace future Postgres/NATS integration tests.
 - Admin console foundation is API-only for now. It supports RBAC-protected operational views and audited template actions; it does not include a browser UI, a full operator identity provider, real app package/cert verification workflow, unsafe bulk actions, or raw PII access.
 - Bank template admin controls now support promotion, degradation, review-only, disable, and false-positive marking through API endpoints. Promotion is guarded by RBAC, evidence thresholds and verified bank app metadata; the console still does not verify real package/cert values or create a browser UI.

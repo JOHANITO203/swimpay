@@ -588,3 +588,61 @@ Notes:
 
 - Initial full `npm test` failed because `tests/agent-framework.test.ts` still asserted the old task queue. The test was updated to verify the Phase 2 queue order and the full test suite then passed.
 - No blockers were added.
+
+## 2026-05-02T15:10:00+03:00 - Task 025 plan
+
+Task: `025_nats_jetstream_consumers`
+
+Plan:
+
+- Add typed NATS/JetStream runtime helpers in `@swimpay/events` instead of scattering NATS code across services.
+- Define the `SWIMPAY_EVENTS` stream subjects from the internal event catalog.
+- Add a runtime internal event envelope with validation and raw-PII field rejection.
+- Add durable consumer definitions and an explicit ack/nack/term handler wrapper.
+- Register safe stub consumers in signal worker and job worker.
+- Update docs and local agent reports.
+
+Guardrails:
+
+- No webhook delivery loop.
+- No parser, matching, review or payment decision runtime wiring.
+- No Android receiver implementation.
+- No raw phone or raw notification storage.
+- No official bank confirmation wording.
+
+## 2026-05-02T15:16:00+03:00 - Task 025 implementation
+
+Result: implemented.
+
+Changes:
+
+- Added `nats` as the NATS client dependency for `@swimpay/events`.
+- Added `InternalEventEnvelope`, NATS config parsing, stream configuration, publish/connect/close helpers, durable consumer definitions, consumer option summaries, and message processing with explicit ack/nack/term behavior.
+- Added `payment_session.expired` to the internal event catalog for the job worker expiry consumer.
+- Signal worker now registers durable consumer skeletons for `signal.received`, `signal.verified`, `signal.parsed`, and `match.scored`.
+- Job worker now registers durable consumer skeletons for `webhook.delivery_requested`, `order.expired`, and `payment_session.expired`.
+- Worker health responses now include NATS connection state and registered consumer metadata.
+- Added documentation in `docs/NATS_JETSTREAM_CONSUMERS.md`, `docs/07_EVENT_CATALOG.md`, `docs/IMPLEMENTATION_NOTES.md`, and `docs/LOCAL_DEVELOPMENT.md`.
+
+Targeted TDD evidence:
+
+- `npm test -- packages/events/src/jetstream.test.ts`: RED, then PASS after implementation.
+- `npm test -- apps/signal-worker/src/consumers.test.ts apps/job-worker/src/consumers.test.ts`: RED, then PASS after implementation.
+- `npm run typecheck`: PASS after fixing NATS enum typing and event envelope narrowing.
+
+## 2026-05-02T15:19:08+03:00 - Task 025 validation pass
+
+Final validation:
+
+- `npm run typecheck`: PASS
+- `npm run lint`: PASS
+- `npm test`: PASS, 25 test files and 136 tests passed
+- `npm run build`: PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config`: PASS
+
+Notes:
+
+- NATS consumers intentionally acknowledge only validated known events for now.
+- Durable webhook delivery remains task 026.
+- Live signal parser/matching/review runtime integration remains task 027.
+- No blockers were added.

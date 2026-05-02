@@ -38,3 +38,7 @@ Move SwimPay from a validated foundation into durable local runtime integration 
 ## Task 024 Result
 
 `024_operator_auth_and_admin_rbac` replaces placeholder admin auth with centralized roles, permissions, dev-token auth, signed-token verification and route-level permission checks. Further tasks must build on this RBAC foundation instead of reintroducing `Bearer admin_<operator_id>` placeholders.
+
+## Task 025 Result
+
+`025_nats_jetstream_consumers` adds the durable NATS JetStream foundation. `@swimpay/events` now owns NATS config parsing, `SWIMPAY_EVENTS` stream metadata, runtime event envelope validation, publish/connect/close helpers, durable consumer definitions and explicit ack/nack/term message processing. Signal worker and job worker register safe stub consumers and expose NATS/consumer health metadata. Further tasks must add real business handlers through this shared abstraction instead of embedding NATS logic directly in services.

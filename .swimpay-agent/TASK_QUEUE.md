@@ -7,7 +7,7 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 ## Queue
 
 - [x] `024_operator_auth_and_admin_rbac` - status: completed - source: `tasks/024_operator_auth_and_admin_rbac.md`
-- [ ] `025_nats_jetstream_consumers` - status: pending - source: `tasks/025_nats_jetstream_consumers.md`
+- [x] `025_nats_jetstream_consumers` - status: completed - source: `tasks/025_nats_jetstream_consumers.md`
 - [ ] `026_postgres_webhook_delivery_loop` - status: pending - source: `tasks/026_postgres_webhook_delivery_loop.md`
 - [ ] `027_signal_runtime_pipeline` - status: pending - source: `tasks/027_signal_runtime_pipeline.md`
 - [ ] `028_review_rejection_semantics` - status: pending - source: `tasks/028_review_rejection_semantics.md`

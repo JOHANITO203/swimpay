@@ -6,6 +6,24 @@ Events must be explicit, versionable and idempotent.
 
 ## Event envelope
 
+Runtime workers use the Phase 2 internal envelope:
+
+```json
+{
+  "id": "evt_01",
+  "type": "order.created",
+  "created_at": "2026-05-01T21:00:00Z",
+  "source": "swimpay-api",
+  "data": {},
+  "metadata": {
+    "correlation_id": "corr_01",
+    "causation_id": "evt_parent"
+  }
+}
+```
+
+Legacy/foundation code may still expose this typed envelope shape while migration proceeds:
+
 ```json
 {
   "event_id": "evt_01",
@@ -48,6 +66,16 @@ Consumers:
 
 - receiver arming logic;
 - audit module.
+
+### `payment_session.expired`
+
+Producer: expiry module / job worker.
+
+Consumers:
+
+- checkout status;
+- audit module;
+- webhook worker.
 
 ### `payment_session.receiver_arming_requested`
 

@@ -1,37 +1,35 @@
 # Current Task
 
-task id: 024_operator_auth_and_admin_rbac
-source task file: tasks/024_operator_auth_and_admin_rbac.md
+task id: 025_nats_jetstream_consumers
+source task file: tasks/025_nats_jetstream_consumers.md
 status: completed
 scope:
-Replace the placeholder admin bearer convention with a production-oriented operator authentication and RBAC foundation for SwimPay admin endpoints.
+Add durable NATS JetStream consumer foundations for runtime services without implementing payment-decision changes.
 
 files allowed:
-- tasks/024_operator_auth_and_admin_rbac.md
-- Phase 2 task files 025-031
+- tasks/025_nats_jetstream_consumers.md
 - .swimpay-agent task queue and reports
-- packages/security role/auth primitives
-- apps/api admin auth integration and tests
-- docs related to admin auth/RBAC and local development
+- packages/events event/NATS foundations and tests
+- apps/signal-worker durable consumer skeleton and tests
+- apps/job-worker durable consumer skeleton and tests
+- docs related to NATS JetStream consumers and local development
 
 forbidden work:
-- Do not implement tasks 025-031.
+- Do not implement task 026 or later.
+- Do not implement parser/matching/review runtime integration.
+- Do not implement webhook delivery loop.
 - Do not deploy.
 - Do not modify production secrets.
-- Do not create real bank package/cert values.
 - Do not claim official bank confirmation.
 - Do not store raw phone numbers.
 - Do not store raw notification text by default.
-- Do not modify unrelated product flows.
 
 acceptance criteria:
-- Missing admin auth is rejected.
-- Dev admin auth works only when configured.
-- Production mode rejects placeholder admin auth.
-- read_only cannot perform dangerous actions.
-- operator cannot promote bank templates without permission.
-- Allowed admin action writes a redacted audit event.
-- Admin responses do not expose raw PII.
+- NATS config parsing, stream config, event envelope validation and consumer helpers are typed and tested.
+- Signal/job workers define expected durable consumers.
+- Handler wrapper acks success, nacks handler errors and terms invalid/unexpected messages.
+- Worker health can report NATS/consumer state.
+- No product behavior changes beyond durable consumer scaffolding.
 
 commands to run:
 - npm run typecheck
@@ -40,10 +38,10 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T14:35:00+03:00
-completed_at: 2026-05-02T14:47:23+03:00
+started_at: 2026-05-02T15:10:00+03:00
+completed_at: 2026-05-02T15:19:08+03:00
 result: completed
 
 ## Source requirements
 
-See tasks/024_operator_auth_and_admin_rbac.md.
+See tasks/025_nats_jetstream_consumers.md.
