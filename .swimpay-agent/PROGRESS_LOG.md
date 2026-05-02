@@ -174,3 +174,27 @@
 - PASS: `npm test` (Tests, exit 0)
 - PASS: `npm run build` (Build, exit 0)
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02 - Task 010 review queue plan
+
+- Scope: implement review creation helper, merchant review list endpoint, manual confirm endpoint, manual reject endpoint, review actions, review audit events, and a template feedback hook placeholder.
+- Boundaries: no checkout implementation, no webhook worker implementation, no parser/matching changes beyond accepting review creation inputs, no auto-confirmation logic, no official bank wording.
+- Security/privacy checks: responses must expose masked phone/reference values only; audit payloads must be redacted; raw notification text and raw phone numbers must not be introduced.
+- Validation after implementation: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, and Docker Compose config through the agent validator.
+
+## 2026-05-02 - Task 010 review queue completed
+
+- Implemented review queue API endpoints: `GET /v1/reviews`, `POST /v1/reviews/:id/confirm`, and `POST /v1/reviews/:id/reject`.
+- Added review creation foundation for ambiguous `needs_review` matches, including persisted match metadata and redacted `review.created` audit payload.
+- Manual confirmation now records a review action, stores a manual signal match, updates order/session state to `manual_confirmed`, writes redacted audit data, and emits `review.confirmed`.
+- Manual rejection now records a review action, updates order/session state to `rejected`, writes redacted audit data, and emits `review.rejected`.
+- Review list responses expose masked phone/reference fields only and do not expose raw notification text.
+- Did not implement hosted checkout, webhook delivery, parser/matching worker wiring, PSP/SBP behavior, SMS reading, bank app scraping, or official bank confirmation.
+
+## 2026-05-02T10:00:33.072Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)

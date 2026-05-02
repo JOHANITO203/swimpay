@@ -1,0 +1,722 @@
+import pg from 'pg';
+import { EventTypes, PUBLIC_EVENT_SIGNAL_DISCLOSURE, type EventEnvelope } from '@swimpay/events';
+import type { Decision, OrderStatus, PaymentSessionStatus, ReviewStatus } from '@swimpay/contracts';
+import { formatAmountMinor, invalidRequest, type ApiErrorResponse } from './orders.js';
+
+const { Pool } = pg;
+
+export interface ReviewListItem {
+  id: string;
+  merchantId: string;
+  orderId: string;
+  paymentSessionId: string;
+  signalId: string;
+  reasonCode: string;
+  status: ReviewStatus;
+  amountMinor?: number | undefined;
+  currency?: string | undefined;
+  bankProfileId?: string | undefined;
+  directionLabel?: string | undefined;
+  signalQuality?: number | undefined;
+  score?: number | undefined;
+  positiveReasonCodes: string[];
+  negativeReasonCodes: string[];
+  senderPhoneMasked?: string | undefined;
+  referenceCodeMasked?: string | undefined;
+  createdAt: string;
+  resolvedAt?: string | undefined;
+}
+
+export interface ReviewSignalMatchInput {
+  id: string;
+  signalId: string;
+  orderId: string;
+  paymentSessionId: string;
+  score: number;
+  decision: Extract<Decision, 'needs_review'>;
+  collisionDetected: boolean;
+  reasonCodes: string[];
+}
+
+export interface ReviewAuditEventInput {
+  id: string;
+  merchantId: string;
+  eventType: (typeof EventTypes.REVIEW_CREATED) | (typeof EventTypes.REVIEW_CONFIRMED) | (typeof EventTypes.REVIEW_REJECTED);
+  objectType: 'review' | 'order' | 'payment_session';
+  objectId: string;
+  actorType: 'system' | 'merchant_user';
+  actorId?: string | undefined;
+  payloadRedacted: Record<string, unknown>;
+}
+
+export interface ReviewCreateInput {
+  review: ReviewListItem;
+  signalMatch: ReviewSignalMatchInput;
+  auditEvent: ReviewAuditEventInput;
+}
+
+export interface ReviewActionInput {
+  merchantId: string;
+  reviewId: string;
+  reviewActionId: string;
+  auditEventId: string;
+  actorId?: string | undefined;
+  action: 'confirmed' | 'rejected';
+  reason?: string | undefined;
+  feedbackLabel?: string | undefined;
+  createdAt: string;
+}
+
+export type ReviewCreateResult = { kind: 'created'; reviewId: string };
+
+export type ReviewActionResult =
+  | {
+      kind: 'updated';
+      reviewId: string;
+      status: 'confirmed' | 'rejected';
+      orderId: string;
+      paymentSessionId: string;
+      orderStatus: Extract<OrderStatus, 'manual_confirmed' | 'rejected'>;
+      paymentSessionStatus: Extract<PaymentSessionStatus, 'manual_confirmed' | 'rejected'>;
+    }
+  | { kind: 'not_found' }
+  | { kind: 'not_open' }
+  | { kind: 'already_confirmed' };
+
+export interface ReviewRepository {
+  createReview(input: ReviewCreateInput): Promise<ReviewCreateResult>;
+  listOpenReviews(merchantId: string): Promise<ReviewListItem[]>;
+  confirmReview(input: ReviewActionInput): Promise<ReviewActionResult>;
+  rejectReview(input: ReviewActionInput): Promise<ReviewActionResult>;
+}
+
+export interface ReviewIdGenerator {
+  reviewActionId: () => string;
+  auditEventId: () => string;
+  eventId: () => string;
+}
+
+export interface ReviewActionRequestBody {
+  actor_id?: string | undefined;
+  reason?: string | undefined;
+  feedback_label?: string | undefined;
+}
+
+export interface ReviewListResponse {
+  reviews: ReviewListItemResponse[];
+}
+
+export interface ReviewListItemResponse {
+  review_id: string;
+  status: ReviewStatus;
+  reason_code: string;
+  order_id: string;
+  payment_session_id: string;
+  signal_id: string;
+  amount?: {
+    value: string;
+    currency: string;
+  };
+  bank_profile_id?: string | undefined;
+  direction_label?: string | undefined;
+  signal_quality?: number | undefined;
+  score?: number | undefined;
+  positive_reasons: string[];
+  negative_reasons: string[];
+  sender_phone_masked?: string | undefined;
+  reference_code_masked?: string | undefined;
+  recommended_action: 'manual_review';
+  created_at: string;
+}
+
+export interface ReviewActionResponse {
+  review_id: string;
+  status: 'confirmed' | 'rejected';
+  order_id: string;
+  payment_session_id: string;
+  order_status: Extract<OrderStatus, 'manual_confirmed' | 'rejected'>;
+  payment_session_status: Extract<PaymentSessionStatus, 'manual_confirmed' | 'rejected'>;
+}
+
+export class PgReviewRepository implements ReviewRepository {
+  private readonly pool: pg.Pool;
+
+  public constructor(connectionString: string) {
+    this.pool = new Pool({ connectionString, max: 5 });
+  }
+
+  public async createReview(input: ReviewCreateInput): Promise<ReviewCreateResult> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `INSERT INTO signal_matches (
+          id, signal_id, order_id, payment_session_id, score, decision, collision_detected, reasons_json, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          input.signalMatch.id,
+          input.signalMatch.signalId,
+          input.signalMatch.orderId,
+          input.signalMatch.paymentSessionId,
+          input.signalMatch.score,
+          input.signalMatch.decision,
+          input.signalMatch.collisionDetected,
+          JSON.stringify(input.signalMatch.reasonCodes),
+          input.review.createdAt
+        ]
+      );
+
+      await client.query(
+        `INSERT INTO review_queue (
+          id, merchant_id, order_id, payment_session_id, signal_id, reason_code, status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          input.review.id,
+          input.review.merchantId,
+          input.review.orderId,
+          input.review.paymentSessionId,
+          input.review.signalId,
+          input.review.reasonCode,
+          input.review.status,
+          input.review.createdAt
+        ]
+      );
+
+      await client.query(
+        `UPDATE orders
+         SET status = $1, updated_at = $2
+         WHERE merchant_id = $3 AND id = $4 AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
+        ['needs_review', input.review.createdAt, input.review.merchantId, input.review.orderId]
+      );
+
+      await client.query(
+        `UPDATE payment_sessions
+         SET status = $1, updated_at = $2
+         WHERE merchant_id = $3 AND id = $4 AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'rejected', 'expired')`,
+        ['needs_review', input.review.createdAt, input.review.merchantId, input.review.paymentSessionId]
+      );
+
+      await insertReviewAuditEvent(client, input.auditEvent);
+
+      await client.query('COMMIT');
+      return { kind: 'created', reviewId: input.review.id };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async listOpenReviews(merchantId: string): Promise<ReviewListItem[]> {
+    const result = await this.pool.query(
+      `SELECT
+        rq.id,
+        rq.merchant_id,
+        rq.order_id,
+        rq.payment_session_id,
+        rq.signal_id,
+        rq.reason_code,
+        rq.status,
+        rq.created_at,
+        rq.resolved_at,
+        COALESCE(ns.amount_minor, o.amount_minor, ps.expected_amount_minor) AS amount_minor,
+        COALESCE(ns.currency, o.currency, ps.currency) AS currency,
+        ns.bank_profile_id,
+        ns.direction_label,
+        ns.signal_quality,
+        ns.sender_phone_masked,
+        ns.reference_code_masked,
+        sm.score,
+        sm.reasons_json
+       FROM review_queue rq
+       LEFT JOIN orders o ON o.id = rq.order_id AND o.merchant_id = rq.merchant_id
+       LEFT JOIN payment_sessions ps ON ps.id = rq.payment_session_id AND ps.merchant_id = rq.merchant_id
+       LEFT JOIN notification_signals ns ON ns.id = rq.signal_id AND ns.merchant_id = rq.merchant_id
+       LEFT JOIN LATERAL (
+         SELECT score, reasons_json
+         FROM signal_matches
+         WHERE signal_id = rq.signal_id
+           AND order_id = rq.order_id
+           AND payment_session_id = rq.payment_session_id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) sm ON true
+       WHERE rq.merchant_id = $1 AND rq.status = 'open'
+       ORDER BY rq.created_at ASC`,
+      [merchantId]
+    );
+
+    return result.rows.map((row) => toReviewListItem(row as ReviewListRow));
+  }
+
+  public async confirmReview(input: ReviewActionInput): Promise<ReviewActionResult> {
+    return this.actionReview(input, {
+      reviewStatus: 'confirmed',
+      stateStatus: 'manual_confirmed',
+      eventType: EventTypes.REVIEW_CONFIRMED
+    });
+  }
+
+  public async rejectReview(input: ReviewActionInput): Promise<ReviewActionResult> {
+    return this.actionReview(input, {
+      reviewStatus: 'rejected',
+      stateStatus: 'rejected',
+      eventType: EventTypes.REVIEW_REJECTED
+    });
+  }
+
+  private async actionReview(
+    input: ReviewActionInput,
+    outcome: {
+      reviewStatus: 'confirmed' | 'rejected';
+      stateStatus: 'manual_confirmed' | 'rejected';
+      eventType: typeof EventTypes.REVIEW_CONFIRMED | typeof EventTypes.REVIEW_REJECTED;
+    }
+  ): Promise<ReviewActionResult> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const reviewResult = await client.query(
+        `SELECT id, merchant_id, order_id, payment_session_id, signal_id, status
+         FROM review_queue
+         WHERE merchant_id = $1 AND id = $2
+         FOR UPDATE`,
+        [input.merchantId, input.reviewId]
+      );
+
+      if (reviewResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_found' };
+      }
+
+      const review = reviewResult.rows[0] as ReviewActionRow;
+      if (String(review.status) !== 'open') {
+        await client.query('ROLLBACK');
+        return { kind: 'not_open' };
+      }
+
+      if (outcome.reviewStatus === 'confirmed') {
+        const duplicateConfirmed = await client.query(
+          `SELECT id FROM signal_matches
+           WHERE (order_id = $1 OR signal_id = $2)
+             AND decision IN ('auto_confirmed', 'manual_confirmed')
+           LIMIT 1`,
+          [review.order_id, review.signal_id]
+        );
+
+        if (duplicateConfirmed.rowCount && duplicateConfirmed.rowCount > 0) {
+          await client.query('ROLLBACK');
+          return { kind: 'already_confirmed' };
+        }
+
+        await client.query(
+          `INSERT INTO signal_matches (
+            signal_id, order_id, payment_session_id, score, decision, collision_detected, reasons_json, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            review.signal_id,
+            review.order_id,
+            review.payment_session_id,
+            100,
+            'manual_confirmed',
+            false,
+            JSON.stringify(['manual_review_confirmed']),
+            input.createdAt
+          ]
+        );
+      }
+
+      await client.query(
+        `UPDATE review_queue
+         SET status = $1, resolved_at = $2
+         WHERE merchant_id = $3 AND id = $4`,
+        [outcome.reviewStatus, input.createdAt, input.merchantId, input.reviewId]
+      );
+
+      await client.query(
+        `INSERT INTO review_actions (
+          id, review_id, merchant_id, actor_id, action, reason, feedback_label, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          input.reviewActionId,
+          input.reviewId,
+          input.merchantId,
+          input.actorId ?? null,
+          input.action,
+          input.reason ?? null,
+          input.feedbackLabel ?? null,
+          input.createdAt
+        ]
+      );
+
+      await client.query(
+        `UPDATE orders
+         SET status = $1, updated_at = $2
+         WHERE merchant_id = $3 AND id = $4`,
+        [outcome.stateStatus, input.createdAt, input.merchantId, review.order_id]
+      );
+
+      await client.query(
+        `UPDATE payment_sessions
+         SET status = $1, updated_at = $2
+         WHERE merchant_id = $3 AND id = $4`,
+        [outcome.stateStatus, input.createdAt, input.merchantId, review.payment_session_id]
+      );
+
+      await insertReviewAuditEvent(client, {
+        id: input.auditEventId,
+        merchantId: input.merchantId,
+        eventType: outcome.eventType,
+        objectType: 'review',
+        objectId: input.reviewId,
+        actorType: 'merchant_user',
+        actorId: input.actorId,
+        payloadRedacted: {
+          order_id: review.order_id,
+          payment_session_id: review.payment_session_id,
+          signal_id: review.signal_id,
+          action: input.action,
+          reason: input.reason,
+          feedback_label: input.feedbackLabel
+        }
+      });
+
+      await client.query('COMMIT');
+
+      return {
+        kind: 'updated',
+        reviewId: input.reviewId,
+        status: outcome.reviewStatus,
+        orderId: String(review.order_id),
+        paymentSessionId: String(review.payment_session_id),
+        orderStatus: outcome.stateStatus,
+        paymentSessionStatus: outcome.stateStatus
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (isConfirmedUniqueViolation(error)) {
+        return { kind: 'already_confirmed' };
+      }
+
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+}
+
+export function buildReviewCreateInput(params: {
+  merchantId: string;
+  reviewId: string;
+  signalMatchId: string;
+  auditEventId: string;
+  now: string;
+  orderId: string;
+  paymentSessionId: string;
+  signalId: string;
+  reasonCode: string;
+  score: number;
+  collisionDetected: boolean;
+  reasonCodes: string[];
+}): ReviewCreateInput {
+  const review: ReviewListItem = {
+    id: params.reviewId,
+    merchantId: params.merchantId,
+    orderId: params.orderId,
+    paymentSessionId: params.paymentSessionId,
+    signalId: params.signalId,
+    reasonCode: params.reasonCode,
+    status: 'open',
+    positiveReasonCodes: [],
+    negativeReasonCodes: params.reasonCodes,
+    createdAt: params.now
+  };
+
+  return {
+    review,
+    signalMatch: {
+      id: params.signalMatchId,
+      signalId: params.signalId,
+      orderId: params.orderId,
+      paymentSessionId: params.paymentSessionId,
+      score: params.score,
+      decision: 'needs_review',
+      collisionDetected: params.collisionDetected,
+      reasonCodes: params.reasonCodes
+    },
+    auditEvent: {
+      id: params.auditEventId,
+      merchantId: params.merchantId,
+      eventType: EventTypes.REVIEW_CREATED,
+      objectType: 'review',
+      objectId: params.reviewId,
+      actorType: 'system',
+      payloadRedacted: {
+        order_id: params.orderId,
+        payment_session_id: params.paymentSessionId,
+        signal_id: params.signalId,
+        reason_code: params.reasonCode,
+        score: params.score,
+        collision_detected: params.collisionDetected,
+        reason_codes: params.reasonCodes
+      }
+    }
+  };
+}
+
+export function validateReviewActionBody(body: unknown): ReviewActionRequestBody | ApiErrorResponse {
+  if (body === undefined || body === null) {
+    return {};
+  }
+
+  if (typeof body !== 'object' || Array.isArray(body)) {
+    return invalidRequest('Review action request body must be a JSON object.', {});
+  }
+
+  const candidate = body as Partial<ReviewActionRequestBody>;
+  const actorId = normalizeOptionalString(candidate.actor_id);
+  const reason = normalizeOptionalString(candidate.reason);
+  const feedbackLabel = normalizeOptionalString(candidate.feedback_label);
+
+  if (reason && reason.length > 500) {
+    return invalidRequest('Review action reason is too long.', { max_length: 500 });
+  }
+
+  if (feedbackLabel && !['true_payment', 'false_positive', 'ambiguous', 'template_issue'].includes(feedbackLabel)) {
+    return invalidRequest('Review action feedback_label is invalid.', {
+      allowed: ['true_payment', 'false_positive', 'ambiguous', 'template_issue']
+    });
+  }
+
+  return {
+    actor_id: actorId,
+    reason: reason ? redactOperatorText(reason) : undefined,
+    feedback_label: feedbackLabel
+  };
+}
+
+export function buildReviewActionInput(params: {
+  merchantId: string;
+  reviewId: string;
+  action: 'confirmed' | 'rejected';
+  body: ReviewActionRequestBody;
+  idGenerator: ReviewIdGenerator;
+  now: string;
+}): ReviewActionInput {
+  return {
+    merchantId: params.merchantId,
+    reviewId: params.reviewId,
+    action: params.action,
+    reviewActionId: params.idGenerator.reviewActionId(),
+    auditEventId: params.idGenerator.auditEventId(),
+    actorId: params.body.actor_id,
+    reason: params.body.reason,
+    feedbackLabel: params.body.feedback_label,
+    createdAt: params.now
+  };
+}
+
+export function buildReviewActionEvent(params: {
+  eventId: string;
+  result: Extract<ReviewActionResult, { kind: 'updated' }>;
+  merchantId: string;
+  occurredAt: string;
+}): EventEnvelope {
+  const eventType = params.result.status === 'confirmed' ? EventTypes.REVIEW_CONFIRMED : EventTypes.REVIEW_REJECTED;
+
+  return {
+    eventId: params.eventId,
+    eventType,
+    version: 1,
+    occurredAt: params.occurredAt,
+    merchantId: params.merchantId,
+    idempotencyKey: `${eventType}:${params.result.reviewId}`,
+    data: {
+      review_id: params.result.reviewId,
+      order_id: params.result.orderId,
+      payment_session_id: params.result.paymentSessionId,
+      ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+    }
+  };
+}
+
+export function toReviewListResponse(items: ReviewListItem[]): ReviewListResponse {
+  return {
+    reviews: items.map((item) => {
+      const response: ReviewListItemResponse = {
+        review_id: item.id,
+        status: item.status,
+        reason_code: item.reasonCode,
+        order_id: item.orderId,
+        payment_session_id: item.paymentSessionId,
+        signal_id: item.signalId,
+        positive_reasons: item.positiveReasonCodes,
+        negative_reasons: item.negativeReasonCodes,
+        recommended_action: 'manual_review',
+        created_at: item.createdAt
+      };
+
+      if (item.amountMinor !== undefined && item.currency) {
+        response.amount = {
+          value: formatAmountMinor(item.amountMinor),
+          currency: item.currency
+        };
+      }
+
+      if (item.bankProfileId) {
+        response.bank_profile_id = item.bankProfileId;
+      }
+
+      if (item.directionLabel) {
+        response.direction_label = item.directionLabel;
+      }
+
+      if (item.signalQuality !== undefined) {
+        response.signal_quality = item.signalQuality;
+      }
+
+      if (item.score !== undefined) {
+        response.score = item.score;
+      }
+
+      if (item.senderPhoneMasked) {
+        response.sender_phone_masked = item.senderPhoneMasked;
+      }
+
+      if (item.referenceCodeMasked) {
+        response.reference_code_masked = item.referenceCodeMasked;
+      }
+
+      return response;
+    })
+  };
+}
+
+export function toReviewActionResponse(result: Extract<ReviewActionResult, { kind: 'updated' }>): ReviewActionResponse {
+  return {
+    review_id: result.reviewId,
+    status: result.status,
+    order_id: result.orderId,
+    payment_session_id: result.paymentSessionId,
+    order_status: result.orderStatus,
+    payment_session_status: result.paymentSessionStatus
+  };
+}
+
+async function insertReviewAuditEvent(client: pg.PoolClient, auditEvent: ReviewAuditEventInput): Promise<void> {
+  await client.query(
+    `INSERT INTO audit_events (
+      id, merchant_id, event_type, object_type, object_id, actor_type, actor_id, payload_redacted
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      auditEvent.id,
+      auditEvent.merchantId,
+      auditEvent.eventType,
+      auditEvent.objectType,
+      auditEvent.objectId,
+      auditEvent.actorType,
+      auditEvent.actorId ?? null,
+      JSON.stringify(auditEvent.payloadRedacted)
+    ]
+  );
+}
+
+interface ReviewListRow {
+  id: string;
+  merchant_id: string;
+  order_id: string;
+  payment_session_id: string;
+  signal_id: string;
+  reason_code: string;
+  status: string;
+  created_at: Date | string;
+  resolved_at: Date | string | null;
+  amount_minor: number | string | null;
+  currency: string | null;
+  bank_profile_id: string | null;
+  direction_label: string | null;
+  signal_quality: number | string | null;
+  sender_phone_masked: string | null;
+  reference_code_masked: string | null;
+  score: number | string | null;
+  reasons_json: unknown;
+}
+
+interface ReviewActionRow {
+  id: string;
+  merchant_id: string;
+  order_id: string;
+  payment_session_id: string;
+  signal_id: string;
+  status: string;
+}
+
+function toReviewListItem(row: ReviewListRow): ReviewListItem {
+  const reasonCodes = parseReasonCodes(row.reasons_json);
+  const negativeReasonCodes = reasonCodes.filter((reason) =>
+    ['amount_collision', 'phone_missing', 'reference_missing', 'requires_review', 'template_drift'].includes(reason)
+  );
+
+  return {
+    id: String(row.id),
+    merchantId: String(row.merchant_id),
+    orderId: String(row.order_id),
+    paymentSessionId: String(row.payment_session_id),
+    signalId: String(row.signal_id),
+    reasonCode: String(row.reason_code),
+    status: String(row.status) as ReviewStatus,
+    amountMinor: row.amount_minor === null ? undefined : Number(row.amount_minor),
+    currency: row.currency ?? undefined,
+    bankProfileId: row.bank_profile_id ?? undefined,
+    directionLabel: row.direction_label ?? undefined,
+    signalQuality: row.signal_quality === null ? undefined : Number(row.signal_quality),
+    score: row.score === null ? undefined : Number(row.score),
+    positiveReasonCodes: reasonCodes.filter((reason) => !negativeReasonCodes.includes(reason)),
+    negativeReasonCodes: negativeReasonCodes.length > 0 ? negativeReasonCodes : [String(row.reason_code)],
+    senderPhoneMasked: row.sender_phone_masked ?? undefined,
+    referenceCodeMasked: row.reference_code_masked ?? undefined,
+    createdAt: new Date(row.created_at).toISOString(),
+    resolvedAt: row.resolved_at ? new Date(row.resolved_at).toISOString() : undefined
+  };
+}
+
+function parseReasonCodes(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string');
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function redactOperatorText(value: string): string {
+  return value
+    .replace(/(?:\+7|8)[\s().-]*\d{3}[\s().-]*\d{3}[\s().-]*\d{2}[\s().-]*\d{2}/g, '<PHONE>')
+    .replace(/\b\d{10,16}\b/g, '<REFERENCE>');
+}
+
+function isConfirmedUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error) || error.code !== '23505') {
+    return false;
+  }
+
+  const constraint = 'constraint' in error ? String(error.constraint) : '';
+  return constraint.includes('unique_confirmed_order') || constraint.includes('unique_used_signal_confirmed');
+}

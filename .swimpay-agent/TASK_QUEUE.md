@@ -13,7 +13,7 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `007_signal_ingestion_endpoint` - status: completed - source: `tasks/007_signal_ingestion_endpoint.md`
 - [x] `008_bank_profiles_and_parser` - status: completed - source: `tasks/008_bank_profiles_and_parser.md`
 - [x] `009_matching_core` - status: completed - source: `tasks/009_matching_core.md`
-- [ ] `010_review_queue` - status: pending - source: `tasks/010_review_queue.md`
+- [x] `010_review_queue` - status: completed - source: `tasks/010_review_queue.md`
 - [ ] `011_hosted_checkout` - status: pending - source: `tasks/011_hosted_checkout.md`
 - [ ] `012_webhook_worker` - status: pending - source: `tasks/012_webhook_worker.md`
 - [ ] `018_bank_template_package_setup` - status: pending - source: `tasks/018_bank_template_package_setup.md`

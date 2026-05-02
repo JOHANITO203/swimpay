@@ -232,6 +232,37 @@ Returns merchant visible payment signals with masked sensitive data.
 
 Returns open review items.
 
+Response fields are merchant-visible and redacted. Phone/reference values are masked only.
+
+```json
+{
+  "reviews": [
+    {
+      "review_id": "rev_01",
+      "status": "open",
+      "reason_code": "amount_collision",
+      "order_id": "ord_01",
+      "payment_session_id": "ps_01",
+      "signal_id": "sig_01",
+      "amount": {
+        "value": "137.00",
+        "currency": "RUB"
+      },
+      "bank_profile_id": "sber_ru",
+      "direction_label": "incoming_customer_transfer",
+      "signal_quality": 72,
+      "score": 68,
+      "positive_reasons": ["amount_exact"],
+      "negative_reasons": ["amount_collision"],
+      "sender_phone_masked": "+7 *** *** **67",
+      "reference_code_masked": "SWP-A***",
+      "recommended_action": "manual_review",
+      "created_at": "2026-05-02T10:00:00Z"
+    }
+  ]
+}
+```
+
 ## POST `/v1/reviews/{id}/confirm`
 
 Manual confirm.
@@ -242,9 +273,25 @@ Manual confirm.
 - Creates review action.
 - Updates order/session status.
 - Creates audit event.
-- Emits public webhook event with `confirmation_type = notification_signal` and `official_bank_confirmation = false`.
+- Emits an internal review event with `confirmation_type = notification_signal` and `official_bank_confirmation = false`.
+- Webhook delivery is handled by the webhook worker task.
+
+Response:
+
+```json
+{
+  "review_id": "rev_01",
+  "status": "confirmed",
+  "order_id": "ord_01",
+  "payment_session_id": "ps_01",
+  "order_status": "manual_confirmed",
+  "payment_session_status": "manual_confirmed"
+}
+```
 
 ## POST `/v1/reviews/{id}/reject`
+
+Manual reject. Creates a review action, marks the review rejected, updates order/session state to `rejected` when linked, writes audit, and emits an internal `review.rejected` event.
 
 Manual reject.
 

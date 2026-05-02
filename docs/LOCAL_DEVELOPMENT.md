@@ -74,6 +74,33 @@ curl -X POST http://localhost:3000/v1/receiver/signals \
 
 The foundation signature verifier is deterministic for local development and tests. Real Android keypair verification is intentionally not complete yet.
 
+List open review items:
+
+```bash
+curl http://localhost:3000/v1/reviews \
+  -H "Authorization: Bearer test_mch_01"
+```
+
+Confirm a review item manually:
+
+```bash
+curl -X POST http://localhost:3000/v1/reviews/rev_01/confirm \
+  -H "Authorization: Bearer test_mch_01" \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"masked sender and reference match the order","feedback_label":"true_payment"}'
+```
+
+Reject a review item manually:
+
+```bash
+curl -X POST http://localhost:3000/v1/reviews/rev_01/reject \
+  -H "Authorization: Bearer test_mch_01" \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"masked fields do not match the order","feedback_label":"false_positive"}'
+```
+
+Review responses expose masked phone/reference fields only. They do not expose raw phone numbers or raw notification text.
+
 ## Android Receiver Core Foundation
 
 The Android Receiver foundation is currently a TypeScript core package for deterministic tests and later Android integration:
@@ -125,10 +152,11 @@ PostgreSQL, Valkey, and NATS are on the private Compose network and are not publ
 ## Current Limitations
 
 - This is a foundation layer only.
-- No signal ingestion, matching, review, webhook, or bank parser behavior exists yet.
 - Signal ingestion stores received signed signals, but does not parse, match, score, review, or confirm payments.
 - Bank parser output is currently a package-level foundation and is not yet wired into the signal worker pipeline.
-- Matching core output is currently package-level only and is not yet writing `signal_matches`, creating reviews, or changing order/session state.
+- Matching core output is currently package-level only and is not yet wired into live signal-worker execution.
+- Review queue APIs and repository methods exist, but automatic review creation from live matching decisions is not wired yet.
+- Webhook delivery is not implemented yet.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.
 - Phone fields are represented as HMAC/masked fields, not raw phone fields.

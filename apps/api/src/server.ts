@@ -36,6 +36,16 @@ import {
   type InternalEventPublisher,
   type ReceiverSignalRepository
 } from './signals.js';
+import {
+  buildReviewActionEvent,
+  buildReviewActionInput,
+  PgReviewRepository,
+  toReviewActionResponse,
+  toReviewListResponse,
+  validateReviewActionBody,
+  type ReviewIdGenerator,
+  type ReviewRepository
+} from './reviews.js';
 
 const { Pool } = pg;
 
@@ -47,6 +57,14 @@ export type {
   StoredOrderRecord,
   StoredPaymentSessionRecord
 } from './orders.js';
+export type {
+  ReviewActionInput,
+  ReviewActionResult,
+  ReviewCreateInput,
+  ReviewCreateResult,
+  ReviewListItem,
+  ReviewRepository
+} from './reviews.js';
 
 export type DependencyStatus = 'ok' | 'error' | 'skipped';
 
@@ -62,12 +80,14 @@ export interface ApiServerOptions {
   orderRepository?: OrderRepository;
   receiverDeviceRepository?: ReceiverDeviceRepository;
   signalRepository?: ReceiverSignalRepository;
+  reviewRepository?: ReviewRepository;
   eventPublisher?: InternalEventPublisher;
   phoneHmacSecret?: string;
   checkoutBaseUrl?: string;
   idGenerator?: IdGenerator;
   receiverDeviceIdGenerator?: () => string;
   signalIdGenerator?: () => string;
+  reviewIdGenerator?: ReviewIdGenerator;
   clock?: () => Date;
 }
 
@@ -147,12 +167,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const repository = options.orderRepository ?? createDefaultOrderRepository(process.env);
   const receiverDeviceRepository = options.receiverDeviceRepository ?? createDefaultReceiverDeviceRepository(process.env);
   const signalRepository = options.signalRepository ?? createDefaultSignalRepository(process.env);
+  const reviewRepository = options.reviewRepository ?? createDefaultReviewRepository(process.env);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const phoneHmacSecret = options.phoneHmacSecret ?? process.env.PHONE_HMAC_SECRET ?? 'local_dev_phone_hmac_secret';
   const checkoutBaseUrl = options.checkoutBaseUrl ?? process.env.CHECKOUT_BASE_URL ?? 'http://localhost:3001/checkout';
   const idGenerator = options.idGenerator ?? createDefaultIdGenerator();
   const receiverDeviceIdGenerator = options.receiverDeviceIdGenerator ?? (() => randomUUID());
   const signalIdGenerator = options.signalIdGenerator ?? createDefaultSignalIdGenerator();
+  const reviewIdGenerator = options.reviewIdGenerator ?? createDefaultReviewIdGenerator();
   const clock = options.clock ?? (() => new Date());
 
   server.get('/health', async (): Promise<HealthResponse> => ({
@@ -498,6 +520,144 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     });
   });
 
+  server.get('/v1/reviews', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+
+    if (!reviewRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Review repository is not configured.',
+          details: {}
+        }
+      });
+    }
+
+    const reviews = await reviewRepository.listOpenReviews(merchantId);
+    return reply.status(200).send(toReviewListResponse(reviews));
+  });
+
+  server.post('/v1/reviews/:id/confirm', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+
+    if (!reviewRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Review repository is not configured.',
+          details: {}
+        }
+      });
+    }
+
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Review id is required.', {}));
+    }
+
+    const body = validateReviewActionBody(request.body);
+    if ('error' in body) {
+      return reply.status(400).send(body);
+    }
+
+    const occurredAt = clock().toISOString();
+    const input = buildReviewActionInput({
+      merchantId,
+      reviewId: params.id,
+      action: 'confirmed',
+      body,
+      idGenerator: reviewIdGenerator,
+      now: occurredAt
+    });
+    const result = await reviewRepository.confirmReview(input);
+
+    if (result.kind !== 'updated') {
+      return reply.status(reviewActionErrorStatus(result.kind)).send(reviewActionErrorResponse(result.kind, params.id));
+    }
+
+    await eventPublisher.publish(
+      buildReviewActionEvent({
+        eventId: reviewIdGenerator.eventId(),
+        result,
+        merchantId,
+        occurredAt
+      })
+    );
+
+    return reply.status(200).send(toReviewActionResponse(result));
+  });
+
+  server.post('/v1/reviews/:id/reject', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+
+    if (!reviewRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Review repository is not configured.',
+          details: {}
+        }
+      });
+    }
+
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Review id is required.', {}));
+    }
+
+    const body = validateReviewActionBody(request.body);
+    if ('error' in body) {
+      return reply.status(400).send(body);
+    }
+
+    const occurredAt = clock().toISOString();
+    const input = buildReviewActionInput({
+      merchantId,
+      reviewId: params.id,
+      action: 'rejected',
+      body,
+      idGenerator: reviewIdGenerator,
+      now: occurredAt
+    });
+    const result = await reviewRepository.rejectReview(input);
+
+    if (result.kind !== 'updated') {
+      return reply.status(reviewActionErrorStatus(result.kind)).send(reviewActionErrorResponse(result.kind, params.id));
+    }
+
+    await eventPublisher.publish(
+      buildReviewActionEvent({
+        eventId: reviewIdGenerator.eventId(),
+        result,
+        merchantId,
+        occurredAt
+      })
+    );
+
+    return reply.status(200).send(toReviewActionResponse(result));
+  });
+
   return server;
 }
 
@@ -528,6 +688,15 @@ function createDefaultSignalRepository(env: NodeJS.ProcessEnv): ReceiverSignalRe
   return new PgSignalRepository(databaseUrl);
 }
 
+function createDefaultReviewRepository(env: NodeJS.ProcessEnv): ReviewRepository | null {
+  const databaseUrl = env.DATABASE_URL;
+  if (!databaseUrl) {
+    return null;
+  }
+
+  return new PgReviewRepository(databaseUrl);
+}
+
 function createDefaultEventPublisher(env: NodeJS.ProcessEnv): InternalEventPublisher {
   if (!env.NATS_URL) {
     return new NoopEventPublisher();
@@ -542,6 +711,14 @@ function createDefaultIdGenerator(): IdGenerator {
     paymentSessionId: () => randomUUID(),
     auditEventId: () => randomUUID(),
     referenceCode: () => `SWP-${randomUUID().slice(0, 8).toUpperCase()}`
+  };
+}
+
+function createDefaultReviewIdGenerator(): ReviewIdGenerator {
+  return {
+    reviewActionId: () => randomUUID(),
+    auditEventId: () => randomUUID(),
+    eventId: () => randomUUID()
   };
 }
 
@@ -561,6 +738,45 @@ function signalIngestionErrorMessage(code: string): string {
       return 'Receiver device was not found.';
     default:
       return 'Receiver signal could not be accepted.';
+  }
+}
+
+function reviewActionErrorStatus(kind: 'not_found' | 'not_open' | 'already_confirmed'): 404 | 409 {
+  return kind === 'not_found' ? 404 : 409;
+}
+
+function reviewActionErrorResponse(kind: 'not_found' | 'not_open' | 'already_confirmed', reviewId: string) {
+  switch (kind) {
+    case 'not_found':
+      return {
+        error: {
+          code: 'not_found',
+          message: 'Review item was not found.',
+          details: {
+            review_id: reviewId
+          }
+        }
+      };
+    case 'not_open':
+      return {
+        error: {
+          code: 'review_not_open',
+          message: 'Review item is no longer open.',
+          details: {
+            review_id: reviewId
+          }
+        }
+      };
+    case 'already_confirmed':
+      return {
+        error: {
+          code: 'already_confirmed',
+          message: 'Review item cannot confirm an order or signal that is already confirmed.',
+          details: {
+            review_id: reviewId
+          }
+        }
+      };
   }
 }
 

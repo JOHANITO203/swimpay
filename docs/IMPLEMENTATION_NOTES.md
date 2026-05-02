@@ -33,7 +33,7 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 
 ## Current Limitations
 
-- API exposes `/health`, `POST /v1/orders`, and `GET /v1/orders/:id`.
+- API exposes `/health`, `POST /v1/orders`, `GET /v1/orders/:id`, `GET /v1/payment-sessions/:id`, receiver device endpoints, signal ingestion, and review queue endpoints.
 - Order API authentication is a local foundation placeholder: `Authorization: Bearer test_<merchant_id>`. Real hashed API key validation is still intentionally not implemented.
 - Order creation creates an order, a receiver-arming payment session placeholder, and a redacted audit event.
 - Payment session creation now records redacted audit events for `payment_session.created` and `payment_session.receiver_arming_requested`.
@@ -50,7 +50,12 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Parser directions separate customer transfers from cashback, refunds, outgoing payments, promos, failed transfers, balance updates, and unknown signals.
 - Matching core now includes a deterministic pure function for candidate search, exact amount/currency matching, phone/reference matching, time-window checks, collision detection, score computation, and internal decision output.
 - Matching core blocks amount-only auto-confirmation, duplicate signal reuse, double-confirming an order, unsafe directions, and unresolved collisions.
-- Matching core is not yet wired into the signal worker, database match persistence, review queue creation, webhook delivery, or any public payment confirmation flow.
+- Review queue foundation now supports `GET /v1/reviews`, `POST /v1/reviews/:id/confirm`, and `POST /v1/reviews/:id/reject`.
+- Review creation is available as a backend foundation helper/repository method for ambiguous `needs_review` matches.
+- Manual review confirmation updates order and payment session state to `manual_confirmed`, records a review action, writes redacted audit data, persists a manual match, and emits an internal `review.confirmed` event with notification-signal disclosure fields.
+- Manual review rejection updates order and payment session state to `rejected`, records a review action, writes redacted audit data, and emits an internal `review.rejected` event.
+- Matching core is not yet wired into the signal worker pipeline. The review creation foundation exists, but automatic creation from live matching decisions is still a later integration step.
+- Webhook delivery is not implemented yet; review events are only published internally for the future worker.
 - No official bank confirmation wording or status was introduced.
 - Receiver registration does not mark any bank package name or certificate fingerprint as trusted.
 - Android Receiver does not implement final payment confirmation logic; backend-only decisions remain intentionally unimplemented.
