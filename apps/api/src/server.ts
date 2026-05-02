@@ -4,6 +4,13 @@ import { connect } from 'nats';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
 import {
+  MetricNames,
+  buildHealthSnapshot,
+  defaultMetricsRegistry,
+  type HealthSnapshot,
+  type MetricsRegistry
+} from '@swimpay/observability';
+import {
   createFastifyLoggerOptions,
   hasOperatorPermission,
   OperatorPermissions,
@@ -111,19 +118,12 @@ export interface ApiServerOptions {
   signalIdGenerator?: () => string;
   reviewIdGenerator?: ReviewIdGenerator;
   adminAuth?: OperatorAuthConfig;
+  metrics?: MetricsRegistry;
   clock?: () => Date;
+  startedAt?: Date;
 }
 
-export interface HealthResponse {
-  service: 'swimpay-api';
-  version: '0.1.0';
-  environment: string;
-  dependencies: {
-    database: DependencyStatus;
-    nats: DependencyStatus;
-    valkey: DependencyStatus;
-  };
-}
+export type HealthResponse = HealthSnapshot & { service: 'swimpay-api'; version: '0.1.0' };
 
 async function checkDatabase(url: string | undefined): Promise<DependencyStatus> {
   if (!url) {
@@ -193,6 +193,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const reviewRepository = options.reviewRepository ?? createDefaultReviewRepository(process.env);
   const adminRepository = options.adminRepository ?? createDefaultAdminRepository(process.env);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
+  const metrics = options.metrics ?? defaultMetricsRegistry;
   const phoneHmacSecret = options.phoneHmacSecret ?? process.env.PHONE_HMAC_SECRET ?? 'local_dev_phone_hmac_secret';
   const checkoutBaseUrl = options.checkoutBaseUrl ?? process.env.CHECKOUT_BASE_URL ?? 'http://localhost:3001/checkout';
   const idGenerator = options.idGenerator ?? createDefaultIdGenerator();
@@ -201,17 +202,30 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const reviewIdGenerator = options.reviewIdGenerator ?? createDefaultReviewIdGenerator();
   const adminAuth = options.adminAuth ?? createDefaultAdminAuthConfig(process.env, options.environment);
   const clock = options.clock ?? (() => new Date());
+  const startedAt = options.startedAt ?? new Date();
 
-  server.get('/health', async (): Promise<HealthResponse> => ({
-    service: 'swimpay-api',
-    version: '0.1.0',
-    environment: options.environment,
-    dependencies: {
-      database: await checks.database(),
-      nats: await checks.nats(),
-      valkey: await checks.valkey()
-    }
-  }));
+  server.addHook('onRequest', async (request, reply) => {
+    const incoming = Array.isArray(request.headers['x-correlation-id'])
+      ? request.headers['x-correlation-id'][0]
+      : request.headers['x-correlation-id'];
+    const correlationId = typeof incoming === 'string' && incoming.trim().length > 0 ? incoming.trim() : randomUUID();
+    reply.header('X-Correlation-Id', correlationId);
+  });
+
+  server.get('/health', async (): Promise<HealthResponse> =>
+    buildHealthSnapshot({
+      service: 'swimpay-api',
+      version: '0.1.0',
+      environment: options.environment,
+      dependencies: {
+        database: await checks.database(),
+        nats: await checks.nats(),
+        valkey: await checks.valkey()
+      },
+      startedAtMs: startedAt.getTime(),
+      now: clock
+    }) as HealthResponse
+  );
 
   server.post('/v1/orders', async (request, reply) => {
     const merchantId = parseMerchantId(request.headers.authorization);
@@ -262,6 +276,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         }
       });
     }
+    metrics.increment(MetricNames.ORDERS_CREATED_TOTAL);
+    metrics.increment(MetricNames.PAYMENT_SESSIONS_CREATED_TOTAL);
 
     const response: OrderCreateResponse = {
       order_id: result.order.id,
@@ -517,6 +533,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     const result = await signalRepository.ingestSignal(input);
 
     if (result.kind !== 'stored') {
+      if (result.kind === 'duplicate_event_id' || result.kind === 'duplicate_notification_hash') {
+        metrics.increment(MetricNames.SIGNALS_DUPLICATE_TOTAL);
+      }
       const statusCode = result.kind === 'bank_profile_not_found' || result.kind === 'package_signature_rejected' ? 400 : 409;
       return reply.status(statusCode).send({
         error: {
@@ -526,6 +545,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         }
       });
     }
+    metrics.increment(MetricNames.SIGNALS_RECEIVED_TOTAL);
 
     await eventPublisher.publish(
       buildSignalReceivedEvent({
@@ -613,6 +633,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (result.kind !== 'updated') {
       return reply.status(reviewActionErrorStatus(result.kind)).send(reviewActionErrorResponse(result.kind, params.id));
     }
+    metrics.increment(MetricNames.REVIEWS_CONFIRMED_TOTAL);
 
     await eventPublisher.publish(
       buildReviewActionEvent({
@@ -670,6 +691,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (result.kind !== 'updated') {
       return reply.status(reviewActionErrorStatus(result.kind)).send(reviewActionErrorResponse(result.kind, params.id));
     }
+    metrics.increment(MetricNames.REVIEWS_REJECTED_TOTAL);
 
     await eventPublisher.publish(
       buildReviewActionEvent({
@@ -699,6 +721,41 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     return reply.status(200).send(toAdminListResponse('bank_profiles', await adminRepository.listBankProfiles()));
+  });
+
+  server.get('/v1/admin/metrics', async (request, reply) => {
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_ADMIN_DASHBOARD
+    });
+    if (!operator) {
+      return reply;
+    }
+
+    return reply.status(200).send({
+      metrics: metrics.snapshot()
+    });
+  });
+
+  server.get('/v1/admin/runtime-status', async (request, reply) => {
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_ADMIN_DASHBOARD
+    });
+    if (!operator) {
+      return reply;
+    }
+
+    return reply.status(200).send({
+      service: 'swimpay-api',
+      environment: options.environment,
+      uptime_seconds: Math.max(0, Math.floor((clock().getTime() - startedAt.getTime()) / 1_000)),
+      timestamp: clock().toISOString()
+    });
   });
 
   server.get('/v1/admin/templates', async (request, reply) => {

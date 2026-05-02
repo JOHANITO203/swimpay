@@ -175,8 +175,17 @@ export const FASTIFY_REDACTION_PATHS = [
   'req.body.api_key',
   'req.body.apiKey',
   'req.body.secret',
+  'req.body.token',
+  'req.body.password',
   'req.body.webhook_secret',
+  'req.body.phone',
+  'req.body.buyer_phone',
+  'req.body.sender_phone',
+  'req.body.normalized_phone',
+  'req.body.notification_text',
   'req.body.raw_notification_text',
+  'req.body.raw_body',
+  'req.body.raw_title',
   'req.body.payload.raw_notification_text',
   'req.body.payload.raw_text',
   'req.body.payload.title',
@@ -289,5 +298,7 @@ function operatorTokenSignature(operatorId: string, role: OperatorRole, secret: 
 }
 
 function isSensitiveLogKey(key: string): boolean {
-  return /authorization|cookie|api[_-]?key|secret|signature|raw[_-]?(notification|text)|phone_raw|raw_phone/iu.test(key);
+  return /authorization|cookie|api[_-]?key|secret|signature|token|password|raw[_-]?(notification|text|phone|body|title)|phone_raw|raw_phone|(^|_)phone$|buyer_phone|sender_phone|normalized_phone|notification_text/iu.test(
+    key
+  );
 }

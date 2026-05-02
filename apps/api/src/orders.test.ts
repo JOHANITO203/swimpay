@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { InMemoryMetricsRegistry, MetricNames } from '@swimpay/observability';
 import {
   buildApiServer,
   type OrderRepository,
@@ -57,10 +58,11 @@ class InMemoryOrderRepository implements OrderRepository {
   }
 }
 
-function buildTestServer(repository: InMemoryOrderRepository) {
+function buildTestServer(repository: InMemoryOrderRepository, metrics?: InMemoryMetricsRegistry) {
   return buildApiServer({
     environment: 'test',
     orderRepository: repository,
+    ...(metrics ? { metrics } : {}),
     phoneHmacSecret: 'test_secret',
     checkoutBaseUrl: 'https://pay.test/checkout',
     idGenerator: {
@@ -99,7 +101,8 @@ const validOrderPayload = {
 describe('order api', () => {
   test('creates an order, payment session placeholder and audit event without storing raw phone', async () => {
     const repository = new InMemoryOrderRepository();
-    const server = buildTestServer(repository);
+    const metrics = new InMemoryMetricsRegistry();
+    const server = buildTestServer(repository, metrics);
 
     const response = await server.inject({
       method: 'POST',
@@ -156,6 +159,8 @@ describe('order api', () => {
       objectType: 'payment_session',
       objectId: 'ps_test_01'
     });
+    expect(metrics.counterValue(MetricNames.ORDERS_CREATED_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.PAYMENT_SESSIONS_CREATED_TOTAL)).toBe(1);
   });
 
   test('rejects duplicate external id for a merchant', async () => {

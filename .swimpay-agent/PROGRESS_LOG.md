@@ -823,3 +823,25 @@ Notes:
 - The fallback polling loop is disabled by default and enabled with `WEBHOOK_WORKER_ENABLED=true`.
 - The signal parser/matching/review runtime pipeline remains task 027.
 - No blockers were added.
+# 2026-05-02 - Task 030 Runtime Observability
+
+Plan:
+- Add a small shared observability package for redaction, structured logs, in-process metrics, safe health snapshots and lightweight worker status helpers.
+- Protect API observability through existing admin RBAC and avoid introducing a new product surface.
+- Instrument safe paths only: API order/session creation, signal decisions, webhook delivery outcomes and JetStream ack/nack bookkeeping.
+- Add focused tests first, then implement only the observability plumbing.
+
+Result:
+- Added `@swimpay/observability` with deep sensitive-field redaction, structured logger, metrics registry, health snapshot builder, worker status tracker and webhook queue summary helper.
+- API health now includes uptime and timestamp; API requests return `X-Correlation-Id`.
+- Added RBAC-protected `GET /v1/admin/metrics` and `GET /v1/admin/runtime-status`.
+- Instrumented order/session creation, receiver signal ingestion duplicates, review confirm/reject, signal runtime parse/review/reject/auto-confirm decisions, webhook delivery outcomes and JetStream ack/nack/error counters.
+- Expanded existing security log redaction for phones, notification text, raw bodies/titles, tokens and passwords.
+- Added `docs/RUNTIME_OBSERVABILITY.md` and updated local development and implementation notes.
+
+Validation:
+- `npm run typecheck` PASS
+- `npm run lint` PASS
+- `npm test` PASS
+- `npm run build` PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` PASS

@@ -53,6 +53,8 @@ Task 028 clarified manual review rejection semantics. Review rejection now has e
 
 Task 029 added durable worker E2E stabilization tests. The new in-process suite covers API order/session creation, receiver signal ingestion, `signal.received` consumer processing, untrusted bank-app review routing, amount-only and unsafe category protections, trusted synthetic auto-confirmation, webhook delivery through the job-worker handler, collision review, duplicate signal idempotency, review rejection semantics, webhook retry/dead behavior and invalid worker envelope handling. The suite uses local fakes for repositories, event publishing and HTTP delivery; it does not call external services or live NATS/PostgreSQL.
 
+Task 030 added lightweight runtime observability. A new `@swimpay/observability` package provides recursive sensitive-field redaction, structured log entries, in-process counters/gauges, safe health snapshots, worker status tracking, and webhook queue summaries. The API health endpoint now includes uptime and timestamp, API responses include a correlation id header, and RBAC-protected admin endpoints expose safe metrics and runtime status. API, signal runtime, webhook delivery and JetStream consumer wrappers now increment observability counters without changing payment decision behavior.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:
@@ -100,6 +102,7 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - The webhook worker is now connected to the NATS `webhook.delivery_requested` trigger and a Postgres-backed delivery loop.
 - Signal worker handles `signal.received` through the runtime processor. `signal.verified`, `signal.parsed`, and `match.scored` consumers remain stubs because they are not independent business entrypoints yet.
 - End-to-end tests now cover the foundation signal flow across matching-core and webhook worker primitives, including unsafe-path protections. Task 029 extends this with durable in-process worker E2E coverage across API routes, signal runtime, review rejection semantics, webhook delivery and consumer wrappers. These tests still do not replace future live PostgreSQL/NATS integration tests.
+- Runtime observability is in-process and lightweight. It provides safe JSON metrics, health/status snapshots, expanded log redaction, API correlation ids, worker processed/error summaries and queue status helpers. It does not add Prometheus, Grafana, Loki, OpenSearch, Elastic, ClickHouse or other heavy monitoring infrastructure.
 - Admin console foundation is API-only for now. It supports RBAC-protected operational views and audited template actions; it does not include a browser UI, a full operator identity provider, real app package/cert verification workflow, unsafe bulk actions, or raw PII access.
 - Bank template admin controls now support promotion, degradation, review-only, disable, and false-positive marking through API endpoints. Promotion is guarded by RBAC, evidence thresholds and verified bank app metadata; the console still does not verify real package/cert values or create a browser UI.
 - No official bank confirmation wording or status was introduced.

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { InMemoryMetricsRegistry, MetricNames } from '@swimpay/observability';
 
 import {
   EventTypes,
@@ -129,22 +130,27 @@ describe('nats jetstream foundations', () => {
     const ack = vi.fn();
     const nack = vi.fn();
     const term = vi.fn();
+    const metrics = new InMemoryMetricsRegistry();
 
     await processJetStreamMessage({
       message: buildMessage({ ack, nack, term }),
       expectedEventType: EventTypes.SIGNAL_RECEIVED,
-      handler: async () => ({ kind: 'ok' })
+      handler: async () => ({ kind: 'ok' }),
+      metrics
     });
 
     expect(ack).toHaveBeenCalledOnce();
     expect(nack).not.toHaveBeenCalled();
     expect(term).not.toHaveBeenCalled();
+    expect(metrics.counterValue(MetricNames.NATS_EVENTS_CONSUMED_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.NATS_EVENTS_ACKED_TOTAL)).toBe(1);
   });
 
   it('nacks and rethrows handler errors instead of swallowing them', async () => {
     const ack = vi.fn();
     const nack = vi.fn();
     const term = vi.fn();
+    const metrics = new InMemoryMetricsRegistry();
 
     await expect(
       processJetStreamMessage({
@@ -152,13 +158,17 @@ describe('nats jetstream foundations', () => {
         expectedEventType: EventTypes.SIGNAL_RECEIVED,
         handler: async () => {
           throw new Error('handler failed');
-        }
+        },
+        metrics
       })
     ).rejects.toThrow('handler failed');
 
     expect(ack).not.toHaveBeenCalled();
     expect(nack).toHaveBeenCalledOnce();
     expect(term).not.toHaveBeenCalled();
+    expect(metrics.counterValue(MetricNames.NATS_EVENTS_CONSUMED_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.NATS_EVENTS_NACKED_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.WORKER_ERRORS_TOTAL)).toBe(1);
   });
 
   it('terms malformed or unexpected event messages', async () => {

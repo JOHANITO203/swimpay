@@ -1,5 +1,5 @@
 {
-  "name": "@swimpay/events",
+  "name": "@swimpay/observability",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
@@ -14,9 +14,5 @@
     "build": "tsc -b",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run"
-  },
-  "dependencies": {
-    "@swimpay/observability": "0.1.0",
-    "nats": "^2.29.3"
   }
 }

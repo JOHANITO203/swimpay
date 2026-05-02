@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { InMemoryMetricsRegistry, MetricNames } from '@swimpay/observability';
 import { EventTypes, type InternalEventEnvelope } from '@swimpay/events';
 import {
   InMemorySignalRuntimeRepository,
@@ -73,6 +74,7 @@ function createProcessor(params: {
   signal?: SignalRuntimeSignal;
   sessions?: SignalRuntimeSessionCandidate[];
   trustContext?: SignalRuntimeTrustContext;
+  metrics?: InMemoryMetricsRegistry;
 } = {}) {
   const repository = new InMemorySignalRuntimeRepository({
     signals: [params.signal ?? buildSignal()],
@@ -81,6 +83,7 @@ function createProcessor(params: {
   });
   const processor = new SignalRuntimeProcessor({
     repository,
+    metrics: params.metrics,
     now: () => now,
     idGenerator: {
       eventId: () => `evt_${repository.publishedEvents.length + 1}`,
@@ -96,7 +99,8 @@ function createProcessor(params: {
 
 describe('signal runtime processor', () => {
   it('routes an incoming transfer to review when bank app metadata is still TO_VERIFY/pending', async () => {
-    const { processor, repository } = createProcessor({ trustContext: toVerifyContext });
+    const metrics = new InMemoryMetricsRegistry();
+    const { processor, repository } = createProcessor({ trustContext: toVerifyContext, metrics });
 
     const result = await processor.processSignalReceived({ signalId: 'sig_01', eventId: 'bank_evt_01' });
 
@@ -107,6 +111,10 @@ describe('signal runtime processor', () => {
     expect(repository.webhookEvents[0]?.type).toBe('payment.needs_review');
     expect(repository.webhookEvents[0]?.data.official_bank_confirmation).toBe(false);
     expect(repository.webhookEvents[0]?.data.confirmation_type).toBe('notification_signal');
+    expect(metrics.counterValue(MetricNames.SIGNALS_PARSED_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.SIGNALS_NEEDS_REVIEW_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.REVIEWS_CREATED_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.UNTRUSTED_BANK_REVIEW_TOTAL)).toBe(1);
   });
 
   it.each([
@@ -116,7 +124,9 @@ describe('signal runtime processor', () => {
     ['promo', 'promo bonus 137 RUB', 'promo'],
     ['failed', 'failed transfer 137 RUB', 'failed_transfer']
   ] as const)('never auto-confirms %s notifications', async (_label, text, direction) => {
+    const metrics = new InMemoryMetricsRegistry();
     const { processor, repository } = createProcessor({
+      metrics,
       signal: buildSignal({ titleRedacted: text, bodyRedacted: '' })
     });
 
@@ -126,6 +136,8 @@ describe('signal runtime processor', () => {
     expect(repository.matches[0]?.decision).toBe('rejected');
     expect(repository.signals[0]?.directionLabel).toBe(direction);
     expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
+    expect(metrics.counterValue(MetricNames.SIGNALS_REJECTED_TOTAL)).toBe(1);
+    expect(metrics.counterValue(safetyMetricForDirection(direction))).toBe(1);
   });
 
   it('routes unknown direction to review without auto-confirming', async () => {
@@ -154,7 +166,8 @@ describe('signal runtime processor', () => {
   });
 
   it('auto-confirms only a trusted synthetic signal with exact identity match and emits a safe webhook request', async () => {
-    const { processor, repository } = createProcessor();
+    const metrics = new InMemoryMetricsRegistry();
+    const { processor, repository } = createProcessor({ metrics });
 
     const result = await processor.processSignalReceived({ signalId: 'sig_01' });
 
@@ -170,6 +183,7 @@ describe('signal runtime processor', () => {
     });
     expect(JSON.stringify(repository.webhookEvents[0])).not.toContain('+7 999');
     expect(JSON.stringify(repository.auditEvents)).not.toContain('Transfer from +7');
+    expect(metrics.counterValue(MetricNames.SIGNALS_AUTO_CONFIRMED_TOTAL)).toBe(1);
   });
 
   it('creates review on collision and does not auto-confirm', async () => {
@@ -200,7 +214,8 @@ describe('signal runtime processor', () => {
   });
 
   it('is idempotent for repeated signal events', async () => {
-    const { processor, repository } = createProcessor();
+    const metrics = new InMemoryMetricsRegistry();
+    const { processor, repository } = createProcessor({ metrics });
 
     await processor.processSignalReceived({ signalId: 'sig_01' });
     const repeated = await processor.processSignalReceived({ signalId: 'sig_01' });
@@ -209,6 +224,7 @@ describe('signal runtime processor', () => {
     expect(repository.matches).toHaveLength(1);
     expect(repository.webhookEvents).toHaveLength(1);
     expect(repository.reviews).toHaveLength(0);
+    expect(metrics.counterValue(MetricNames.SIGNALS_DUPLICATE_TOTAL)).toBe(1);
   });
 
   it('does not duplicate review items for repeated review decisions', async () => {
@@ -221,6 +237,24 @@ describe('signal runtime processor', () => {
     expect(repository.webhookEvents).toHaveLength(1);
   });
 });
+
+function safetyMetricForDirection(direction: SignalRuntimeSignal['directionLabel']) {
+  switch (direction) {
+    case 'incoming_cashback':
+      return MetricNames.UNSAFE_CASHBACK_BLOCKED_TOTAL;
+    case 'incoming_refund':
+      return MetricNames.UNSAFE_REFUND_BLOCKED_TOTAL;
+    case 'outgoing_payment':
+    case 'outgoing_transfer':
+      return MetricNames.UNSAFE_OUTGOING_BLOCKED_TOTAL;
+    case 'promo':
+      return MetricNames.UNSAFE_PROMO_BLOCKED_TOTAL;
+    case 'failed_transfer':
+      return MetricNames.UNSAFE_FAILED_BLOCKED_TOTAL;
+    default:
+      return MetricNames.SIGNALS_REJECTED_TOTAL;
+  }
+}
 
 describe('signal.received handler', () => {
   it('calls the runtime processor with a safe envelope', async () => {

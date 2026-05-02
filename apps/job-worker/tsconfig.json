@@ -5,6 +5,6 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "references": [{ "path": "../../packages/events" }],
+  "references": [{ "path": "../../packages/events" }, { "path": "../../packages/observability" }],
   "include": ["src/**/*.ts"]
 }

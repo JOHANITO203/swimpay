@@ -123,18 +123,26 @@ describe('security helpers', () => {
   it('redacts sensitive log fields recursively', () => {
     const redacted = redactLogValue({
       authorization: 'Bearer secret',
+      buyer_phone: '+79991234567',
+      notification_text: 'raw notification',
+      token: 'operator-token',
       nested: {
         signature: 'receiver_signature',
         raw_notification_text: 'raw bank text',
+        raw_body: 'raw body',
         safe: 'visible'
       }
     });
 
     expect(redacted).toEqual({
       authorization: '[REDACTED]',
+      buyer_phone: '[REDACTED]',
+      notification_text: '[REDACTED]',
+      token: '[REDACTED]',
       nested: {
         signature: '[REDACTED]',
         raw_notification_text: '[REDACTED]',
+        raw_body: '[REDACTED]',
         safe: 'visible'
       }
     });

@@ -16,6 +16,7 @@ import {
   type MatchingSignal,
   type TemplateTrustStatus
 } from '@swimpay/matching-core';
+import { MetricNames, type MetricsRegistry } from '@swimpay/observability';
 
 const { Pool } = pg;
 
@@ -124,6 +125,7 @@ export interface SignalRuntimeRepository {
 
 export interface SignalRuntimeProcessorOptions {
   repository: SignalRuntimeRepository;
+  metrics?: MetricsRegistry | undefined;
   now?: () => string;
   idGenerator?: SignalRuntimeIdGenerator;
 }
@@ -190,11 +192,13 @@ export class SignalRuntimeProcessor {
 
     const existing = await this.options.repository.getExistingResult(signal.id);
     if (existing) {
+      this.options.metrics?.increment(MetricNames.SIGNALS_DUPLICATE_TOTAL);
       return existing;
     }
 
     const now = this.now();
     const parsed = parseSignal(signal);
+    this.options.metrics?.increment(MetricNames.SIGNALS_PARSED_TOTAL);
     await this.options.repository.markSignalParsed({ signalId: signal.id, parsed, parsedAt: now });
     await this.emitRuntimeEvent(EventTypes.SIGNAL_PARSED, signal, now, {
       signal_id: signal.id,
@@ -222,6 +226,7 @@ export class SignalRuntimeProcessor {
     }
 
     if (REJECTED_DIRECTIONS.has(parsed.directionLabel)) {
+      this.incrementSafetyMetric(parsed.directionLabel);
       return this.rejectSignal({
         signal: hydratedSignal,
         parsed,
@@ -336,6 +341,7 @@ export class SignalRuntimeProcessor {
     });
 
     if (!confirmation.confirmed && confirmation.alreadyConfirmed) {
+      this.options.metrics?.increment(MetricNames.SIGNALS_DUPLICATE_TOTAL);
       return {
         ...result,
         decision: 'rejected',
@@ -357,6 +363,7 @@ export class SignalRuntimeProcessor {
       ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
     });
     await this.createWebhookRequest('payment.confirmed', input.signal, input.now, result);
+    this.options.metrics?.increment(MetricNames.SIGNALS_AUTO_CONFIRMED_TOTAL);
     return result;
   }
 
@@ -422,6 +429,20 @@ export class SignalRuntimeProcessor {
       reason_code: review.reasonCode
     });
     await this.createWebhookRequest('payment.needs_review', input.signal, input.now, result);
+    this.options.metrics?.increment(MetricNames.SIGNALS_NEEDS_REVIEW_TOTAL);
+    if (created.created) {
+      this.options.metrics?.increment(MetricNames.REVIEWS_CREATED_TOTAL);
+    }
+    if (input.reasonCodes.includes('amount_only_never_auto_confirm')) {
+      this.options.metrics?.increment(MetricNames.AMOUNT_ONLY_REVIEW_TOTAL);
+    }
+    if (
+      input.reasonCodes.includes('bank_profile_untrusted') ||
+      input.reasonCodes.includes('bank_app_unverified') ||
+      input.reasonCodes.includes('package_cert_to_verify')
+    ) {
+      this.options.metrics?.increment(MetricNames.UNTRUSTED_BANK_REVIEW_TOTAL);
+    }
     return result;
   }
 
@@ -455,7 +476,31 @@ export class SignalRuntimeProcessor {
       ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
     });
     await this.createWebhookRequest('payment.rejected', input.signal, input.now, result);
+    this.options.metrics?.increment(MetricNames.SIGNALS_REJECTED_TOTAL);
     return result;
+  }
+
+  private incrementSafetyMetric(directionLabel: MatchingSignal['directionLabel']): void {
+    switch (directionLabel) {
+      case 'incoming_cashback':
+        this.options.metrics?.increment(MetricNames.UNSAFE_CASHBACK_BLOCKED_TOTAL);
+        return;
+      case 'incoming_refund':
+        this.options.metrics?.increment(MetricNames.UNSAFE_REFUND_BLOCKED_TOTAL);
+        return;
+      case 'outgoing_payment':
+      case 'outgoing_transfer':
+        this.options.metrics?.increment(MetricNames.UNSAFE_OUTGOING_BLOCKED_TOTAL);
+        return;
+      case 'promo':
+        this.options.metrics?.increment(MetricNames.UNSAFE_PROMO_BLOCKED_TOTAL);
+        return;
+      case 'failed_transfer':
+        this.options.metrics?.increment(MetricNames.UNSAFE_FAILED_BLOCKED_TOTAL);
+        return;
+      default:
+        return;
+    }
   }
 
   private async createWebhookRequest(

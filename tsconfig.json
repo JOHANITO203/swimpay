@@ -5,6 +5,7 @@
     { "path": "packages/contracts" },
     { "path": "packages/database" },
     { "path": "packages/security" },
+    { "path": "packages/observability" },
     { "path": "packages/matching-core" },
     { "path": "packages/bank-templates" },
     { "path": "packages/shared-utils" },

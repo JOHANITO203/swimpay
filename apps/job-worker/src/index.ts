@@ -8,6 +8,12 @@ import {
   type NatsRuntimeConfig,
   type SafeEventLogger
 } from '@swimpay/events';
+import {
+  RuntimeStatusTracker,
+  createWorkerStatus,
+  defaultMetricsRegistry,
+  type MetricsRegistry
+} from '@swimpay/observability';
 import { createJobWorkerConsumers } from './consumers.js';
 import { FetchWebhookHttpClient, PgWebhookRepository, WebhookDeliveryWorker } from './webhooks.js';
 import {
@@ -25,14 +31,20 @@ export interface JobWorkerRuntime {
   webhookWorkerReady: boolean;
   webhookPollingEnabled: boolean;
   webhookPollingLoop: WebhookPollingLoop | null;
+  statusTracker: RuntimeStatusTracker;
 }
 
-export async function createJobWorkerRuntime(env: NodeJS.ProcessEnv, logger: SafeEventLogger): Promise<JobWorkerRuntime> {
+export async function createJobWorkerRuntime(
+  env: NodeJS.ProcessEnv,
+  logger: SafeEventLogger,
+  metrics: MetricsRegistry = defaultMetricsRegistry
+): Promise<JobWorkerRuntime> {
   const natsConfig = parseNatsRuntimeConfig(env);
   const webhookConfig = parseWebhookWorkerConfig(env);
-  const nats = new NatsJetStreamRuntime(natsConfig, logger);
+  const nats = new NatsJetStreamRuntime(natsConfig, logger, metrics);
   const consumers = createJobWorkerConsumers(natsConfig.durablePrefix);
-  const webhookProcessor = createDefaultWebhookProcessor(env, webhookConfig);
+  const statusTracker = new RuntimeStatusTracker();
+  const webhookProcessor = createDefaultWebhookProcessor(env, webhookConfig, metrics);
   const webhookPollingLoop = webhookProcessor
     ? new WebhookPollingLoop({
         processor: webhookProcessor,
@@ -48,7 +60,17 @@ export async function createJobWorkerRuntime(env: NodeJS.ProcessEnv, logger: Saf
     await nats.connect();
     await nats.ensureStream();
     for (const consumer of consumers) {
-      await nats.subscribe(consumer, createJobWorkerHandler(consumer, webhookProcessor));
+      const handler = createJobWorkerHandler(consumer, webhookProcessor);
+      await nats.subscribe(consumer, async (event) => {
+        try {
+          const result = await handler(event);
+          statusTracker.recordProcessed(event.id, new Date().toISOString());
+          return result;
+        } catch (error) {
+          statusTracker.recordError(error, new Date().toISOString());
+          throw error;
+        }
+      });
     }
 
     return {
@@ -57,19 +79,22 @@ export async function createJobWorkerRuntime(env: NodeJS.ProcessEnv, logger: Saf
       natsReady: true,
       webhookWorkerReady: Boolean(webhookProcessor),
       webhookPollingEnabled: webhookConfig.enabled && Boolean(webhookProcessor),
-      webhookPollingLoop
+      webhookPollingLoop,
+      statusTracker
     };
   } catch (error) {
     logger.error('job_worker_nats_setup_failed', {
       error_name: error instanceof Error ? error.name : 'UnknownError'
     });
+    statusTracker.recordError(error, new Date().toISOString());
     return {
       nats,
       consumers,
       natsReady: false,
       webhookWorkerReady: Boolean(webhookProcessor),
       webhookPollingEnabled: webhookConfig.enabled && Boolean(webhookProcessor),
-      webhookPollingLoop
+      webhookPollingLoop,
+      statusTracker
     };
   }
 }
@@ -80,10 +105,14 @@ export function buildJobWorkerHealthResponse(params: {
   natsConfig: NatsRuntimeConfig;
 }) {
   return {
-    service: 'swimpay-job-worker',
     version: '0.1.0',
     environment: params.environment,
-    worker: params.runtime?.natsReady ? 'nats_consumers_registered' : 'idle',
+    ...createWorkerStatus({
+      service: 'swimpay-job-worker',
+      workerState: params.runtime?.natsReady ? 'nats_consumers_registered' : 'idle',
+      configuredConsumers: params.runtime?.consumers.map((consumer) => consumer.durableName) ?? [],
+      tracker: params.runtime?.statusTracker
+    }),
     nats: params.runtime?.nats.health() ?? {
       status: 'disconnected',
       stream: params.natsConfig.streamName,
@@ -118,7 +147,11 @@ function createSafeStubHandler(workerName: string) {
   };
 }
 
-function createDefaultWebhookProcessor(env: NodeJS.ProcessEnv, config: WebhookWorkerConfig): WebhookDeliveryProcessor | null {
+function createDefaultWebhookProcessor(
+  env: NodeJS.ProcessEnv,
+  config: WebhookWorkerConfig,
+  metrics: MetricsRegistry
+): WebhookDeliveryProcessor | null {
   if (!env.DATABASE_URL) {
     return null;
   }
@@ -127,7 +160,8 @@ function createDefaultWebhookProcessor(env: NodeJS.ProcessEnv, config: WebhookWo
     repository: new PgWebhookRepository(env.DATABASE_URL),
     httpClient: new FetchWebhookHttpClient(),
     maxAttempts: config.maxAttempts,
-    requestTimeoutMs: config.requestTimeoutMs
+    requestTimeoutMs: config.requestTimeoutMs,
+    metrics
   });
 }
 

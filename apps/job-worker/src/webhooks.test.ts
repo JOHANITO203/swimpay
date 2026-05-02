@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { InMemoryMetricsRegistry, MetricNames } from '@swimpay/observability';
 import {
   buildWebhookHeaders,
   createPaymentWebhookEvent,
@@ -95,7 +96,8 @@ describe('webhook worker foundation', () => {
     });
     repository.endpoints.push(activeEndpoint());
     const httpClient = new FakeWebhookHttpClient([{ status: 200 }]);
-    const worker = new WebhookDeliveryWorker({ repository, httpClient });
+    const metrics = new InMemoryMetricsRegistry();
+    const worker = new WebhookDeliveryWorker({ repository, httpClient, metrics });
     const event = createPaymentWebhookEvent({
       eventId: 'evt_01',
       type: 'payment.needs_review',
@@ -131,6 +133,8 @@ describe('webhook worker foundation', () => {
     expect(httpClient.requests[0]?.body).toContain('"official_bank_confirmation":false');
     expect(repository.auditEvents.map((event) => event.eventType)).toContain('webhook.delivery_attempted');
     expect(repository.auditEvents.map((event) => event.eventType)).toContain('webhook.delivered');
+    expect(metrics.counterValue(MetricNames.WEBHOOK_DELIVERY_ATTEMPTS_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.WEBHOOK_DELIVERIES_DELIVERED_TOTAL)).toBe(1);
   });
 
   it('schedules bounded retries as failed and marks dead after retry budget is exhausted', async () => {
@@ -148,7 +152,8 @@ describe('webhook worker foundation', () => {
       { status: 500 },
       { status: 500 }
     ]);
-    const worker = new WebhookDeliveryWorker({ repository, httpClient });
+    const metrics = new InMemoryMetricsRegistry();
+    const worker = new WebhookDeliveryWorker({ repository, httpClient, metrics });
     const event = createPaymentWebhookEvent({
       eventId: 'evt_retry',
       type: 'payment.needs_review',
@@ -183,6 +188,8 @@ describe('webhook worker foundation', () => {
       attemptCount: 7
     });
     expect(repository.auditEvents.map((event) => event.eventType)).toContain('webhook.dead');
+    expect(metrics.counterValue(MetricNames.WEBHOOK_DELIVERIES_FAILED_TOTAL)).toBe(6);
+    expect(metrics.counterValue(MetricNames.WEBHOOK_DELIVERIES_DEAD_TOTAL)).toBe(1);
   });
 
   it('records network errors as sanitized retryable failures', async () => {

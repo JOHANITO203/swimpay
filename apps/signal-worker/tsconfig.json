@@ -8,7 +8,8 @@
   "references": [
     { "path": "../../packages/bank-templates" },
     { "path": "../../packages/events" },
-    { "path": "../../packages/matching-core" }
+    { "path": "../../packages/matching-core" },
+    { "path": "../../packages/observability" }
   ],
   "include": ["src/**/*.ts"]
 }

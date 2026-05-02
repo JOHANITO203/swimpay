@@ -1,6 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import pg from 'pg';
 import { PUBLIC_EVENT_SIGNAL_DISCLOSURE } from '@swimpay/events';
+import { MetricNames, type MetricsRegistry } from '@swimpay/observability';
 
 const { Pool } = pg;
 
@@ -123,6 +124,7 @@ export interface WebhookDeliveryWorkerOptions {
   httpClient: WebhookHttpClient;
   maxAttempts?: number | undefined;
   requestTimeoutMs?: number | undefined;
+  metrics?: MetricsRegistry | undefined;
 }
 
 export const WEBHOOK_RETRY_DELAYS_MS = [
@@ -170,6 +172,7 @@ export class WebhookDeliveryWorker {
         skippedDuplicates += 1;
       }
     }
+    this.options.metrics?.setGauge(MetricNames.WEBHOOK_DELIVERIES_PENDING, created);
 
     return { created, skippedDuplicates };
   }
@@ -202,11 +205,13 @@ export class WebhookDeliveryWorker {
     let failed = 0;
 
     for (const delivery of deliveries) {
-      const result = await this.deliverOne(delivery, now);
+    const result = await this.deliverOne(delivery, now);
       if (result === 'delivered') {
         delivered += 1;
+        this.options.metrics?.increment(MetricNames.WEBHOOK_DELIVERIES_DELIVERED_TOTAL);
       } else if (result === 'retrying') {
         retrying += 1;
+        this.options.metrics?.increment(MetricNames.WEBHOOK_DELIVERIES_FAILED_TOTAL);
       } else {
         failed += 1;
       }
@@ -259,6 +264,7 @@ export class WebhookDeliveryWorker {
 
     assertSafePublicWebhookEvent(delivery.payload);
     await this.options.repository.recordDeliveryAttempt(delivery.id, now);
+    this.options.metrics?.increment(MetricNames.WEBHOOK_DELIVERY_ATTEMPTS_TOTAL);
 
     const body = stableStringify(delivery.payload);
     const signature = signWebhookPayload({
@@ -302,6 +308,7 @@ export class WebhookDeliveryWorker {
 
     if (attemptedCount >= maxAttempts) {
       await this.options.repository.markDead(delivery.id, error, httpStatus);
+      this.options.metrics?.increment(MetricNames.WEBHOOK_DELIVERIES_DEAD_TOTAL);
       return 'failed';
     }
 
@@ -309,6 +316,7 @@ export class WebhookDeliveryWorker {
     const delay = retryDelayForAttempt(nextAttempt);
     if (delay === undefined) {
       await this.options.repository.markDead(delivery.id, error, httpStatus);
+      this.options.metrics?.increment(MetricNames.WEBHOOK_DELIVERIES_DEAD_TOTAL);
       return 'failed';
     }
 

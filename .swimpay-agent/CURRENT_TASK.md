@@ -1,22 +1,26 @@
 # Current Task
 
-task id: 029_durable_worker_e2e_tests
-source task file: tasks/029_durable_worker_e2e_tests.md
+task id: 030_runtime_observability
+source task file: tasks/030_runtime_observability.md
 status: completed
 scope:
-Add durable in-process end-to-end tests across API, signal runtime, review semantics, webhook delivery and worker boundaries.
+Add lightweight runtime observability for SwimPay V1: safe structured logs, correlation IDs, health/status helpers, in-process metrics and admin visibility.
 
 files allowed:
-- tasks/029_durable_worker_e2e_tests.md
+- tasks/030_runtime_observability.md
 - .swimpay-agent task queue and reports
-- tests durable E2E files
-- existing app/package test harness files if needed
-- docs related to durable worker E2E tests, local development and implementation notes
+- packages/observability
+- packages/events observability hooks
+- apps/api health/admin metrics instrumentation
+- apps/signal-worker safe runtime/health instrumentation
+- apps/job-worker safe runtime/health/webhook instrumentation
+- docs related to runtime observability, local development and implementation notes
 
 forbidden work:
-- Do not implement task 030 or later.
+- Do not implement task 031 or later.
 - Do not implement Android Receiver app logic.
 - Do not implement production deployment.
+- Do not add Prometheus/Grafana, Loki/OpenSearch/Elastic, ClickHouse, Kubernetes or Kafka.
 - Do not add real bank package/cert verification.
 - Do not implement SBP or PSP behavior.
 - Do not claim official bank confirmation.
@@ -26,15 +30,13 @@ forbidden work:
 - Do not add unrelated parser, matching, review, webhook or UI features.
 
 acceptance criteria:
-- In-process E2E tests cover API order/session creation and receiver signal ingestion.
-- Tests cover untrusted bank app routing to review.
-- Tests cover amount-only and unsafe categories never auto-confirm.
-- Tests cover trusted synthetic auto-confirm and webhook delivery record creation.
-- Tests cover collision review and duplicate signal idempotency.
-- Tests cover review rejection semantics through API.
-- Tests cover webhook delivery success, retry/dead behavior and required signatures.
-- Tests assert no raw phone, raw notification text, raw API keys or official-bank-confirmation claims in payloads.
-- Worker boundary handlers are covered through current consumer abstractions.
+- Structured logger redacts phones, raw notifications, API keys and secrets without mutating inputs.
+- API health includes safe uptime and timestamp plus dependency status.
+- Admin metrics/status endpoint is RBAC protected and safe for read-only operators.
+- Runtime metrics cover API order/session creation, signals, reviews, webhooks, NATS and safety counters.
+- Worker health/status helpers expose configured consumers and safe status only.
+- Tests prove redaction, metric increments, correlation id handling and auth-protected observability endpoints.
+- Documentation explains observability behavior and V1 limits.
 
 commands to run:
 - npm run typecheck
@@ -43,10 +45,10 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T16:52:01+03:00
-completed_at: 2026-05-02T16:57:53+03:00
-result: completed. Added durable in-process E2E tests across API order/session creation, receiver signal ingestion, signal runtime, review rejection semantics, webhook delivery, retry/dead states and worker consumer boundaries. Full validation passed.
+started_at: 2026-05-02T17:05:00+03:00
+completed_at: 2026-05-02T17:21:45+03:00
+result: completed. Added lightweight runtime observability: shared redaction/logger/metrics/status helpers, API health uptime/timestamp, RBAC-protected admin metrics/runtime-status endpoints, in-process counters for API/signal/webhook/NATS paths, expanded Fastify redaction and documentation. Full validation passed.
 
 ## Source requirements
 
-See tasks/029_durable_worker_e2e_tests.md.
+See tasks/030_runtime_observability.md.

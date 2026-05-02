@@ -8,6 +8,7 @@ import {
   type JetStreamSubscription,
   type NatsConnection
 } from 'nats';
+import { MetricNames, type MetricsRegistry } from '@swimpay/observability';
 
 export const EventTypes = {
   ORDER_CREATED: 'order.created',
@@ -242,6 +243,7 @@ export async function processJetStreamMessage(params: {
   expectedEventType: EventType;
   handler: DurableEventHandler;
   logger?: SafeEventLogger | undefined;
+  metrics?: MetricsRegistry | undefined;
 }): Promise<void> {
   const envelope = decodeEventEnvelope(params.message.data);
   const validation = validateInternalEventEnvelope(envelope);
@@ -252,6 +254,7 @@ export async function processJetStreamMessage(params: {
   }
 
   const event = envelope as InternalEventEnvelope;
+  params.metrics?.increment(MetricNames.NATS_EVENTS_CONSUMED_TOTAL);
 
   if (event.type !== params.expectedEventType) {
     params.message.term('unexpected_event_type');
@@ -261,9 +264,12 @@ export async function processJetStreamMessage(params: {
   try {
     await params.handler(event);
     params.message.ack();
+    params.metrics?.increment(MetricNames.NATS_EVENTS_ACKED_TOTAL);
     params.logger?.info('jetstream_event_acked', safeEventLogFields(event));
   } catch (error) {
     params.message.nak();
+    params.metrics?.increment(MetricNames.NATS_EVENTS_NACKED_TOTAL);
+    params.metrics?.increment(MetricNames.WORKER_ERRORS_TOTAL);
     params.logger?.error('jetstream_event_handler_failed', {
       ...safeEventLogFields(event),
       error_name: error instanceof Error ? error.name : 'UnknownError'
@@ -280,7 +286,8 @@ export class NatsJetStreamRuntime {
 
   public constructor(
     private readonly config: NatsRuntimeConfig,
-    private readonly logger: SafeEventLogger = noopLogger
+    private readonly logger: SafeEventLogger = noopLogger,
+    private readonly metrics?: MetricsRegistry | undefined
   ) {}
 
   public async connect(): Promise<void> {
@@ -359,7 +366,8 @@ export class NatsJetStreamRuntime {
         message,
         expectedEventType: definition.eventType,
         handler,
-        logger: this.logger
+        logger: this.logger,
+        metrics: this.metrics
       }).catch(() => {
         // processJetStreamMessage already nacks/terms and logs safe metadata.
       });

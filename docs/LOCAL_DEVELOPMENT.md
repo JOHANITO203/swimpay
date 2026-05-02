@@ -363,6 +363,28 @@ Promoting to `trusted_low_amount` or `trusted` is blocked unless evidence thresh
 
 The admin foundation returns canonical/redacted template fields and operational metadata only. It does not expose raw phone numbers or raw notification text.
 
+## Runtime Observability
+
+API health:
+
+```bash
+curl http://localhost:3000/health
+```
+
+Admin metrics and status require operator auth:
+
+```bash
+curl http://localhost:3000/v1/admin/metrics \
+  -H "Authorization: Bearer change_me_local_admin_token"
+
+curl http://localhost:3000/v1/admin/runtime-status \
+  -H "Authorization: Bearer change_me_local_admin_token"
+```
+
+Local requests may include `X-Correlation-Id`; otherwise the API returns a generated `X-Correlation-Id` header.
+
+Metrics are in-process JSON counters and gauges. They are useful during local development and guarded single-server operation, but they reset on process restart. See `docs/RUNTIME_OBSERVABILITY.md`.
+
 ## Start Docker Compose
 
 ```bash
@@ -389,6 +411,7 @@ Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, 
 - Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
 - Webhook delivery core is wired to a tested Postgres-backed delivery loop and the NATS `webhook.delivery_requested` trigger. The signal runtime requests `payment.confirmed`, `payment.needs_review`, or `payment.rejected` delivery records when endpoints are configured.
 - Admin console is API-only. It exposes RBAC-protected operator read views and audited bank-template actions, but does not implement a browser UI, real app package/cert verification workflow, unsafe bulk actions, or a full operator identity provider.
+- Runtime observability is lightweight and in-process. It exposes safe health, metrics and runtime-status JSON only; it does not include a heavy monitoring/log aggregation stack.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.
 - Phone fields are represented as HMAC/masked fields, not raw phone fields.

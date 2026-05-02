@@ -8,6 +8,12 @@ import {
   type NatsRuntimeConfig,
   type SafeEventLogger
 } from '@swimpay/events';
+import {
+  RuntimeStatusTracker,
+  createWorkerStatus,
+  defaultMetricsRegistry,
+  type MetricsRegistry
+} from '@swimpay/observability';
 import { createSignalWorkerConsumers } from './consumers.js';
 import { PgSignalRuntimeRepository, SignalRuntimeProcessor, createSignalReceivedHandler } from './runtime.js';
 
@@ -16,12 +22,18 @@ export interface SignalWorkerRuntime {
   consumers: DurableConsumerDefinition[];
   natsReady: boolean;
   closeSignalRepository?: (() => Promise<void>) | undefined;
+  statusTracker: RuntimeStatusTracker;
 }
 
-export async function createSignalWorkerRuntime(env: NodeJS.ProcessEnv, logger: SafeEventLogger): Promise<SignalWorkerRuntime> {
+export async function createSignalWorkerRuntime(
+  env: NodeJS.ProcessEnv,
+  logger: SafeEventLogger,
+  metrics: MetricsRegistry = defaultMetricsRegistry
+): Promise<SignalWorkerRuntime> {
   const natsConfig = parseNatsRuntimeConfig(env);
-  const nats = new NatsJetStreamRuntime(natsConfig, logger);
+  const nats = new NatsJetStreamRuntime(natsConfig, logger, metrics);
   const consumers = createSignalWorkerConsumers(natsConfig.durablePrefix);
+  const statusTracker = new RuntimeStatusTracker();
   const signalRepository = env.DATABASE_URL
     ? new PgSignalRuntimeRepository({
         connectionString: env.DATABASE_URL,
@@ -30,7 +42,8 @@ export async function createSignalWorkerRuntime(env: NodeJS.ProcessEnv, logger: 
     : null;
   const processor = signalRepository
     ? new SignalRuntimeProcessor({
-        repository: signalRepository
+        repository: signalRepository,
+        metrics
       })
     : null;
   const closeSignalRepository =
@@ -48,15 +61,25 @@ export async function createSignalWorkerRuntime(env: NodeJS.ProcessEnv, logger: 
         consumer.eventType === EventTypes.SIGNAL_RECEIVED && processor
           ? createSignalReceivedHandler(processor)
           : createSafeStubHandler('swimpay-signal-worker');
-      await nats.subscribe(consumer, handler);
+      await nats.subscribe(consumer, async (event) => {
+        try {
+          const result = await handler(event);
+          statusTracker.recordProcessed(event.id, new Date().toISOString());
+          return result;
+        } catch (error) {
+          statusTracker.recordError(error, new Date().toISOString());
+          throw error;
+        }
+      });
     }
 
-    return { nats, consumers, natsReady: true, closeSignalRepository };
+    return { nats, consumers, natsReady: true, closeSignalRepository, statusTracker };
   } catch (error) {
     logger.error('signal_worker_nats_setup_failed', {
       error_name: error instanceof Error ? error.name : 'UnknownError'
     });
-    return { nats, consumers, natsReady: false, closeSignalRepository };
+    statusTracker.recordError(error, new Date().toISOString());
+    return { nats, consumers, natsReady: false, closeSignalRepository, statusTracker };
   }
 }
 
@@ -66,10 +89,14 @@ export function buildSignalWorkerHealthResponse(params: {
   natsConfig: NatsRuntimeConfig;
 }) {
   return {
-    service: 'swimpay-signal-worker',
     version: '0.1.0',
     environment: params.environment,
-    worker: params.runtime?.natsReady ? 'nats_consumers_registered' : 'idle',
+    ...createWorkerStatus({
+      service: 'swimpay-signal-worker',
+      workerState: params.runtime?.natsReady ? 'nats_consumers_registered' : 'idle',
+      configuredConsumers: params.runtime?.consumers.map((consumer) => consumer.durableName) ?? [],
+      tracker: params.runtime?.statusTracker
+    }),
     nats: params.runtime?.nats.health() ?? {
       status: 'disconnected',
       stream: params.natsConfig.streamName,

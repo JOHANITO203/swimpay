@@ -8,6 +8,7 @@
   "references": [
     { "path": "../../packages/events" },
     { "path": "../../packages/contracts" },
+    { "path": "../../packages/observability" },
     { "path": "../../packages/security" }
   ],
   "include": ["src/**/*.ts"]
