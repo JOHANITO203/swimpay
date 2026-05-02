@@ -392,7 +392,45 @@ describe('android device-side network smoke wiring', () => {
     expect(`${onboarding}\n${activity}`).not.toContain(forbiddenClaim);
     expect(report).toContain('129_receiver_onboarding_readiness_gate');
     expect(report).toContain('135_receiver_onboarding_closeout_review');
-    expect(queue).toContain('136_real_listener_replay_after_onboarding_gate');
-    expect(queue).toContain('140_listener_diagnostics_and_closeout');
+    expect(queue).toContain('141_bank_profile_selection_model');
+    expect(queue).toContain('147_sprint_4k_closeout_review');
+  });
+
+  it('wires Sprint 4K bank selection readiness and safe operator diagnostics', () => {
+    const bankSelection = readAndroid('app/src/main/java/com/swimpay/receiver/BankProfileSelection.kt');
+    const onboarding = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverOnboardingReadiness.kt');
+    const diagnostics = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverDiagnostics.kt');
+    const activity = readAndroid('app/src/main/java/com/swimpay/receiver/MainActivity.kt');
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+
+    expect(bankSelection).toContain('ReceiverBankProfileSelection');
+    expect(bankSelection).toContain('syntheticDebugOnly');
+    expect(bankSelection).toContain('TO_VERIFY');
+    expect(bankSelection).toContain('review_only');
+    expect(bankSelection).toContain('Cette banque peut être utilisée pour détecter des signaux');
+    expect(onboarding).toContain('READY_REVIEW_ONLY');
+    expect(onboarding).toContain('syntheticDebugOnly');
+    expect(diagnostics).toContain('ReceiverOperatorDiagnosticsExport');
+    expect(diagnostics).toContain('selectedBankVerificationStatuses');
+    expect(activity).toContain('Selected banks:');
+    expect(activity).toContain('trustedBanksCount = selectedBankProfiles.count');
+    expect(`${bankSelection}\n${onboarding}\n${diagnostics}\n${activity}`).not.toMatch(/bank_confirmed|official_bank_confirmation = true|ready_auto_confirm/iu);
+
+    const tasks = [
+      '141_bank_profile_selection_model',
+      '142_receiver_ready_review_only_state',
+      '143_bank_selection_onboarding_ui_debug',
+      '144_listener_resilience_after_app_restart',
+      '145_workmanager_process_death_retry_real_device',
+      '146_operator_diagnostics_export_no_pii',
+      '147_sprint_4k_closeout_review'
+    ];
+    let previousIndex = -1;
+    for (const task of tasks) {
+      expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
+      const index = queue.indexOf(task);
+      expect(index, task).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
   });
 });

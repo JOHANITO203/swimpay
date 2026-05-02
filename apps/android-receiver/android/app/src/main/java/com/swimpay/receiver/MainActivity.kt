@@ -48,6 +48,17 @@ class MainActivity : Activity() {
         val notificationAccessEnabled = NotificationAccessStatusReader(this).isEnabled()
         val appNotificationsEnabled = AppNotificationPermissionReader(this).isEnabled()
         val previousAccess = deviceStateStore.load()?.lastNotificationListenerAccessEnabled == true
+        val selectedBankProfiles = ReceiverBankProfileSelectionDefaults.debugSelectedProfiles(BuildConfig.DEBUG)
+        val selectedBankStatusLabels = selectedBankProfiles
+            .filter { it.selected }
+            .map {
+                val mode = if (it.syntheticDebugOnly) "synthetic_debug_only" else "review_only"
+                "${it.bankProfileId}:${it.verificationStatus.name}:$mode"
+            }
+        val bankSelectionUi = BankSelectionOnboardingUiModel().build(
+            selections = selectedBankProfiles,
+            debugEnabled = BuildConfig.DEBUG
+        )
         deviceStateStore.load()?.let {
             if (it.lastNotificationListenerAccessEnabled != notificationAccessEnabled) {
                 deviceStateStore.save(it.copy(lastNotificationListenerAccessEnabled = notificationAccessEnabled))
@@ -58,7 +69,7 @@ class MainActivity : Activity() {
                 appNotificationsPermissionEnabled = appNotificationsEnabled,
                 notificationListenerAccessEnabled = notificationAccessEnabled,
                 listenerConnected = notificationAccessEnabled,
-                selectedBankProfiles = emptyList(),
+                selectedBankProfiles = selectedBankProfiles.map { it.toOnboardingProfile() },
                 backendConfigured = backendStatus.reachable,
                 deviceRegistrationStatus = if (deviceStateStore.load() == null) {
                     DeviceRegistrationReadinessStatus.NONE
@@ -72,8 +83,8 @@ class MainActivity : Activity() {
         val state = statusViewModel.buildState(
             notificationAccessEnabled = notificationAccessEnabled,
             listenerConnected = notificationAccessEnabled,
-            allowedBanksCount = 0,
-            trustedBanksCount = 0,
+            allowedBanksCount = selectedBankProfiles.count { it.selected },
+            trustedBanksCount = selectedBankProfiles.count { it.isTrustedForProductionReady() },
             queueLength = 0,
             backendReachable = backendStatus.reachable
         )
@@ -81,14 +92,20 @@ class MainActivity : Activity() {
             notificationAccessEnabled = notificationAccessEnabled,
             appNotificationsPermissionEnabled = appNotificationsEnabled,
             listenerConnected = notificationAccessEnabled,
-            allowedBanksCount = 0,
+            allowedBanksCount = selectedBankProfiles.count { it.selected },
             syntheticDebugSourceEnabled = BuildConfig.DEBUG,
             backendReachable = backendStatus.reachable,
             lastSignalObservedAt = null,
             lastUploadStatus = backendStatus.safeMessage,
             lastSafeErrorSummary = null,
-            outboxStore = outboxStore
+            outboxStore = outboxStore,
+            appVersion = BuildConfig.VERSION_NAME,
+            deviceStatus = deviceStateStore.load()?.deviceStatus ?: "unregistered",
+            selectedBankVerificationStatuses = selectedBankStatusLabels
         )
+        val selectedBankText = bankSelectionUi.rows.joinToString("\n") {
+            "- ${it.displayName}: ${it.statusLabel}; ${if (it.reviewOnly) "review-only" else "verified"}; ${it.warning}"
+        }.ifBlank { "- none" }
 
         val text = """
             SwimPay Receiver
@@ -99,6 +116,9 @@ class MainActivity : Activity() {
             Capture enabled: ${onboarding.captureEnabled}
             Upload enabled: ${onboarding.uploadEnabled}
             Allowed banks: ${state.allowedBanksCount}
+            Trusted banks: ${state.trustedBanksCount}
+            Selected banks:
+            $selectedBankText
             Queue length: ${state.queueLength}
             Outbox pending: ${diagnostics.outboxPendingCount}
             Outbox retrying: ${diagnostics.outboxFailedRetryingCount}

@@ -1,27 +1,29 @@
 # Next Action
 
-generated_at: 2026-05-03T00:52:04+03:00
+generated_at: 2026-05-03T01:20:17+03:00
 
 ## Latest Completed Sprint
 
-Phase 4J-B - Real NotificationListener Replay After Onboarding Gate.
+Sprint 4K - Receiver Resilience and Bank-profile Selection Readiness.
 
 ## Status
 
 PASS.
 
-The real device replay captured a debug-only synthetic notification through `SwimPayNotificationListenerService`, enqueued a redacted signed payload, and flushed it to the local backend with `acked=1 failed_retrying=0`.
+PASS.
+
+The Android Receiver now has explicit safe bank-profile selection modeling, `ready_review_only` readiness for selected `TO_VERIFY` banks, a bank selection onboarding/debug UI model, and a PII-safe operator diagnostics export. Real-device smoke verified listener capture after app restart and persisted outbox recovery after a local backend outage.
 
 ## Next Recommended Sprint
 
-Sprint 4K - Receiver resilience and bank-profile selection readiness.
+Sprint 4L - Bank package/certificate evidence dry-run preparation.
 
 Recommended tasks:
 
-1. Add safe selected-bank onboarding/debug selection so the app can reach `ready_review_only` without trusting `TO_VERIFY`.
-2. Validate listener capture across app restart/process death with synthetic notifications.
-3. Continue WorkManager process-death/reboot validation with synthetic redacted outbox entries.
-4. Prepare operator diagnostics export without raw PII.
+1. Define a real-device PackageManager evidence collection checklist without automatically trusting captured values.
+2. Add or harden an operator review path for bank package/cert evidence.
+3. Keep `TO_VERIFY` and pending profiles review-only until explicit operator verification.
+4. Continue reboot/background WorkManager validation using synthetic redacted data.
 
 ## What Not To Do Next
 

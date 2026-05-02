@@ -211,7 +211,7 @@ fun extractString(body: String, key: String): String? {
 fun redactDebugMessage(value: String): String {
     return value
         .replace(Regex("\\+\\d[\\d\\s()-]{6,}"), "<PHONE>")
-        .replace(Regex("raw_notification", RegexOption.IGNORE_CASE), "<REDACTED>")
+        .replace(Regex("raw_notification|notification_text|raw_body|raw_title|raw_text", RegexOption.IGNORE_CASE), "<REDACTED>")
         .replace(Regex("public_key", RegexOption.IGNORE_CASE), "<REDACTED>")
-        .replace(Regex("secret|token|password", RegexOption.IGNORE_CASE), "<REDACTED>")
+        .replace(Regex("secret|token|password|api_key|signature", RegexOption.IGNORE_CASE), "<REDACTED>")
 }

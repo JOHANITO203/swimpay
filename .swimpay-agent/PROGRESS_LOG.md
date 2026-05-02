@@ -1301,3 +1301,17 @@ Safety checks:
 - Made synthetic debug notification ids/tags unique per replay to avoid stale same-id notification updates.
 - Verified the listener-created outbox entry flushed through WorkManager with `acked=1 failed_retrying=0`.
 - No real bank notification, customer data, SMS, scraping, Android confirmation, raw phone, raw notification text or real bank package/cert value was used.
+
+## 2026-05-03T01:20:17+03:00 - Sprint 4K Receiver Bank Selection Readiness and Resilience
+
+- Created tasks 141 through 147 and updated the task queue.
+- Added receiver-side bank profile selection model with `selected`, `review_only`, `synthetic_debug_only` and verification status fields.
+- Kept V1 `TO_VERIFY` bank profiles review-only and untrusted for production readiness.
+- Added `ready_review_only` tests for selected `TO_VERIFY` banks and synthetic debug profiles.
+- Added bank selection onboarding/debug UI model with safe French review-only warning.
+- Added PII-safe `ReceiverOperatorDiagnosticsExport`.
+- Updated Android status screen to show selected banks, trusted bank count and review-only warning.
+- Real-device restart smoke passed: after app force-stop/relaunch, synthetic debug notification was captured, enqueued and uploaded with `acked=1 failed_retrying=0`.
+- Real-device offline/online persistent outbox smoke passed: local proxy outage produced `failed_retrying=1`; after proxy restore and app relaunch, flush produced `acked=1 failed_retrying=0`.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Gradle assembleDebug, Gradle JVM tests, ADB reverse/install/launch and debug broadcast smoke.
+- No real bank notification, customer data, SMS, scraping, Android confirmation, raw phone, raw notification text or real bank package/cert value was used.

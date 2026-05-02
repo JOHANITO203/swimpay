@@ -120,3 +120,36 @@ Safety:
 - No raw phone stored/uploaded.
 - No raw notification text stored/uploaded.
 - `synthetic_debug_only` package/cert metadata remains debug-only and not production trust evidence.
+
+## Sprint 4K Receiver Resilience and Bank Selection Readiness
+
+- generated_at: 2026-05-03T01:20:17+03:00
+- status: PASS
+- Device serial: `R5CWA0FEPZW`
+- Backend health: PASS at `http://localhost:8080/api-health`
+- ADB reverse: `tcp:8080 tcp:8080` PASS
+- APK build/install/launch: PASS
+- Notification Listener Access: enabled for `com.swimpay.receiver/com.swimpay.receiver.SwimPayNotificationListenerService`
+- Bank selection model: PASS
+- Selected `TO_VERIFY` profile readiness: `ready_review_only`, not production trusted
+- Synthetic debug profile: debug-only, not production trust evidence
+- Listener restart resilience: PASS after `am force-stop`, app relaunch and synthetic notification replay
+- Restart replay result: listener captured safe metadata, outbox enqueue PASS, backend upload PASS with `acked=1 failed_retrying=0`
+- Offline/online persisted outbox smoke: PASS
+- Offline result while proxy stopped: `acked=0 failed_retrying=1`
+- Online recovery after proxy restore and app relaunch: `acked=1 failed_retrying=0`
+- Diagnostics export: safe operator fields only; no raw PII/secrets
+
+Safety:
+
+- No real bank notification used.
+- No real customer data used.
+- No SMS reading.
+- No bank app scraping.
+- No Accessibility scraping.
+- No Android payment confirmation.
+- No Android auto-confirmation.
+- No raw phone stored/uploaded.
+- No raw notification text stored/uploaded.
+- No official bank confirmation claim.
+- `TO_VERIFY` and `synthetic_debug_only` metadata remain untrusted for production decisions.

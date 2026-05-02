@@ -27,11 +27,13 @@ data class SelectedBankOnboardingProfile(
     val bankProfileId: String,
     val selected: Boolean,
     val verificationStatus: BankPackageVerificationStatus,
-    val reviewOnly: Boolean
+    val reviewOnly: Boolean,
+    val syntheticDebugOnly: Boolean = false
 ) {
     fun isTrustedForReadyState(): Boolean {
         return selected &&
             !reviewOnly &&
+            !syntheticDebugOnly &&
             verificationStatus == BankPackageVerificationStatus.VERIFIED &&
             !bankProfileId.contains("TO_VERIFY", ignoreCase = true) &&
             !bankProfileId.contains("synthetic_debug_only", ignoreCase = true)

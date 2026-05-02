@@ -69,6 +69,42 @@ class ReceiverDiagnosticsTest {
         assertEquals("none", diagnostics.lastSafeErrorSummary)
     }
 
+    @Test
+    fun operatorDiagnosticsExportContainsSafeStatusOnly() {
+        val store = AndroidEncryptedOutboxStore(FakeEncryptedStorageAdapter())
+        store.enqueue(record("evt_safe", OutboxStatus.PENDING_UPLOAD))
+
+        val diagnostics = ReceiverDiagnosticsBuilder().build(
+            notificationAccessEnabled = true,
+            appNotificationsPermissionEnabled = true,
+            listenerConnected = true,
+            allowedBanksCount = 1,
+            syntheticDebugSourceEnabled = true,
+            backendReachable = true,
+            lastSignalObservedAt = "2026-05-02T18:00:00.000Z",
+            lastUploadStatus = "uploaded without raw phone +79991234567",
+            lastSafeErrorSummary = "secret token raw_body api_key password signature notification_text",
+            outboxStore = store,
+            appVersion = "1.0-debug",
+            deviceStatus = "active",
+            selectedBankVerificationStatuses = listOf("sber_ru:TO_VERIFY:review_only")
+        )
+
+        val exported = ReceiverOperatorDiagnosticsExporter().export(diagnostics)
+
+        assertEquals("1.0-debug", exported.appVersion)
+        assertEquals("active", exported.deviceStatus)
+        assertEquals(1, exported.selectedBankCount)
+        assertEquals(listOf("sber_ru:TO_VERIFY:review_only"), exported.selectedBankVerificationStatuses)
+        assertFalse(exported.toString().contains("+79991234567"))
+        assertFalse(exported.toString().contains("notification_text", ignoreCase = true))
+        assertFalse(exported.toString().contains("api_key", ignoreCase = true))
+        assertFalse(exported.toString().contains("password", ignoreCase = true))
+        assertFalse(exported.toString().contains("signature", ignoreCase = true))
+        assertFalse(exported.toString().contains("official_bank_confirmation", ignoreCase = true))
+        assertFalse(exported.toString().contains("bank_confirmed", ignoreCase = true))
+    }
+
     private fun record(eventId: String, status: OutboxStatus): OutboxRecord {
         return OutboxRecord(
             localId = "outbox_$eventId",

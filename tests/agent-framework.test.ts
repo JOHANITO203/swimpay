@@ -33,15 +33,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Phase 4J-B real listener replay tasks in the approved order', () => {
+  test('task queue lists Phase 4K bank selection readiness tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '136_real_listener_replay_after_onboarding_gate',
-      '137_synthetic_notification_listener_capture',
-      '138_listener_to_privacy_firewall_validation',
-      '139_listener_to_outbox_to_backend_validation',
-      '140_listener_diagnostics_and_closeout'
+      '141_bank_profile_selection_model',
+      '142_receiver_ready_review_only_state',
+      '143_bank_selection_onboarding_ui_debug',
+      '144_listener_resilience_after_app_restart',
+      '145_workmanager_process_death_retry_real_device',
+      '146_operator_diagnostics_export_no_pii',
+      '147_sprint_4k_closeout_review'
     ];
 
     let previousIndex = -1;
