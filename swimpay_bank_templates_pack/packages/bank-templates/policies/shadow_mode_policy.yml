@@ -1,0 +1,29 @@
+policy_id: bank_template_shadow_mode_policy_v1
+version: 1
+
+purpose: >
+  Shadow mode lets SwimPay predict what it would do without actually auto-confirming
+  based on a new or not-yet-trusted bank template.
+
+shadow_decisions:
+  record:
+    - predicted_match_order_id
+    - predicted_score
+    - predicted_decision
+    - reason_codes
+    - reviewer_final_action
+    - template_id
+    - parser_version
+
+promotion_inputs:
+  - shadow_predictions_count
+  - reviewer_agreement_rate
+  - false_positive_count
+  - unknown_rate
+  - phone_visibility_rate
+  - reference_visibility_rate
+
+minimum_shadow_before_trusted_low_amount:
+  predictions: 30
+  reviewer_agreement_rate_gte: 0.95
+  false_positive_count: 0

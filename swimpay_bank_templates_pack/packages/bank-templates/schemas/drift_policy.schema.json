@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SwimPay Drift Policy",
+  "type": "object",
+  "required": [
+    "policy_id",
+    "thresholds",
+    "actions"
+  ],
+  "properties": {
+    "policy_id": {
+      "type": "string"
+    },
+    "thresholds": {
+      "type": "object"
+    },
+    "actions": {
+      "type": "object"
+    }
+  }
+}

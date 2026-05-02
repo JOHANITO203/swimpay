@@ -1,0 +1,50 @@
+policy_id: bank_template_auto_confirm_policy_v1
+version: 1
+
+hard_gates:
+  required:
+    - bank_app_package_verified
+    - bank_app_cert_verified
+    - device_signature_valid
+    - event_id_unique
+    - notification_hash_unique
+    - active_payment_session
+    - order_pending
+    - amount_exact
+    - direction_incoming_customer_transfer
+    - no_collision
+    - template_not_degraded
+  require_any:
+    - sender_phone_exact
+    - reference_exact
+
+never_auto_confirm_labels:
+  - incoming_cashback
+  - incoming_refund
+  - incoming_salary_or_income
+  - incoming_non_customer
+  - outgoing_payment
+  - outgoing_transfer
+  - failed_transfer
+  - promo
+  - balance_update
+  - unknown
+  - unknown_ambiguous_direction
+
+amount_only_policy:
+  allowed: false
+  reason_code: amount_only_never_auto_confirm
+
+masked_phone_policy:
+  allowed_for_auto_confirm: false
+  allowed_as_review_hint: true
+
+truncated_reference_policy:
+  allowed_for_auto_confirm: false
+  allowed_as_review_hint: true
+
+initial_v1_amount_limits:
+  trusted_low_amount_max_minor:
+    RUB: 500000
+  trusted_max_minor:
+    RUB: 1500000

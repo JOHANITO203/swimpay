@@ -1,0 +1,44 @@
+template_id: vtb_ru_incoming_cashback_v1
+bank_profile_id: vtb_ru
+version: 1
+status: learning
+direction_label: incoming_cashback
+risk_class: negative_incoming_non_customer
+
+match:
+  title_any:
+    - "кэшбэк <AMOUNT> <CURRENCY>"
+    - "кешбэк <AMOUNT> <CURRENCY>"
+    - "cashback <AMOUNT> <CURRENCY>"
+  body_any:
+    - "начислен кэшбэк"
+    - "начислен кешбэк"
+    - "бонус за покупку"
+
+positive_keywords:
+  - кэшбэк
+  - кешбэк
+  - cashback
+  - начислен кэшбэк
+  - начислен кешбэк
+  - бонус за покупку
+
+negative_keywords:
+  - поступление
+  - перевод получен
+
+extractors:
+  amount:
+    strategy: amount_near_cashback_keyword
+    required: false
+
+decision_hints:
+  parser_signal_quality_floor: 0
+  allow_auto_confirm_candidate: false
+  backend_must_reject_auto_confirm: true
+
+reason_codes:
+  positive:
+    - cashback_keyword_detected
+  negative:
+    - not_customer_transfer

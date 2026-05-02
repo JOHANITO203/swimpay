@@ -1,0 +1,47 @@
+policy_id: signal_quality_policy_v1
+version: 1
+
+quality_bands:
+  SQ100:
+    min_score: 95
+    description: Incoming customer transfer, amount, phone and reference visible.
+  SQ90:
+    min_score: 85
+    description: Incoming customer transfer, amount and phone or reference visible.
+  SQ70:
+    min_score: 70
+    description: Incoming customer transfer and amount visible, but weak identity.
+  SQ40:
+    min_score: 40
+    description: Direction and amount detected, but missing key match signals.
+  SQ0:
+    min_score: 0
+    description: Negative or unusable signal.
+
+positive_weights:
+  trusted_bank_app: 10
+  verified_bank_cert: 10
+  incoming_customer_transfer: 25
+  amount_extracted: 25
+  phone_extracted: 20
+  reference_extracted: 25
+  sender_name_guess: 5
+  template_reliable: 15
+  no_negative_keyword: 10
+
+negative_weights:
+  outgoing_keyword: -100
+  cashback_keyword: -80
+  refund_keyword: -70
+  promo_keyword: -80
+  failed_keyword: -100
+  ambiguous_direction: -40
+  missing_amount: -50
+  phone_missing: -20
+  reference_missing: -10
+  template_low_reliability: -20
+  package_unverified: -100
+
+auto_confirm_candidate_floor: 85
+review_floor: 60
+reject_below: 20

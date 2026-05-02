@@ -1,0 +1,37 @@
+policy_id: bank_template_privacy_redaction_policy_v1
+version: 1
+
+raw_text_storage:
+  default_allowed: false
+  allowed_only_for_debug_with_explicit_admin_flag: true
+  retention_hours_if_enabled: 24
+  must_be_redacted_before_training: true
+
+pii_fields:
+  phone:
+    operational_storage: hmac
+    dashboard_display: masked
+    raw_storage: disallowed_by_default
+
+  person_name:
+    operational_storage: hmac_or_redacted
+    dashboard_display: masked_or_hidden
+    raw_storage: disallowed_by_default
+
+  card_mask:
+    operational_storage: redacted_last4_if_needed
+    dashboard_display: masked
+    raw_storage: disallowed_by_default
+
+redaction_order:
+  - amount
+  - phone
+  - reference
+  - card_mask
+  - person
+  - account
+  - generic_codes
+
+training_consent:
+  required: true
+  type: separate_from_operational_consent

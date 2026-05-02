@@ -1,0 +1,67 @@
+policy_id: template_lifecycle_policy_v1
+version: 1
+
+statuses:
+  new:
+    description: First observed canonical template. No automatic usage.
+    auto_confirm_allowed: false
+
+  learning:
+    description: Template is being observed and labeled.
+    auto_confirm_allowed: false
+
+  shadow_testing:
+    description: System predicts decisions but does not auto-confirm based on this template.
+    auto_confirm_allowed: false
+
+  trusted_low_amount:
+    description: Template may be used for low-risk auto-confirm candidates if backend gates pass.
+    auto_confirm_allowed: true
+
+  trusted:
+    description: Template is stable and may support normal auto-confirm candidates if backend gates pass.
+    auto_confirm_allowed: true
+
+  degraded:
+    description: Reliability declined. Auto-confirm limited or disabled.
+    auto_confirm_allowed: false
+
+  review_only:
+    description: Signals may be detected, but require review.
+    auto_confirm_allowed: false
+
+  disabled:
+    description: Template must not be used for matching or auto-confirm.
+    auto_confirm_allowed: false
+
+promotion:
+  learning_to_shadow_testing:
+    min_seen_count: 10
+    min_human_verified_count: 3
+    max_false_positive_count: 0
+
+  shadow_testing_to_trusted_low_amount:
+    min_seen_count: 30
+    min_human_verified_count: 15
+    max_false_positive_count: 0
+    min_parser_confidence: 0.90
+    max_unknown_rate_24h: 0.08
+
+  trusted_low_amount_to_trusted:
+    min_seen_count: 100
+    min_human_verified_count: 40
+    max_false_positive_count: 0
+    min_parser_confidence: 0.93
+    max_drift_rate_7d: 0.05
+
+degradation:
+  any_false_positive:
+    action: set_review_only
+    reason_code: template_false_positive
+
+  unknown_rate_spike:
+    if_unknown_rate_24h_gt: 0.15
+    action: set_degraded
+
+  drift_critical:
+    action: set_review_only

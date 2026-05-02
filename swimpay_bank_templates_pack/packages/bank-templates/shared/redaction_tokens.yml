@@ -1,0 +1,23 @@
+tokens_id: redaction_tokens_v1
+version: 1
+
+tokens:
+  amount: "<AMOUNT>"
+  currency: "<CURRENCY>"
+  phone: "<PHONE>"
+  phone_masked: "<PHONE_MASKED>"
+  person: "<PERSON>"
+  reference: "<REFERENCE>"
+  reference_truncated: "<REFERENCE_TRUNCATED>"
+  card_mask: "<CARD_MASK>"
+  balance_amount: "<BALANCE_AMOUNT>"
+  account_mask: "<ACCOUNT_MASK>"
+
+rules:
+  - Replace transaction amount before generic digit redaction.
+  - Replace phones before person names.
+  - Replace references before generic code-like strings.
+  - Keep direction keywords intact.
+  - Keep negative keywords intact.
+  - Do not keep raw phone numbers.
+  - Do not keep full names when storing training samples.

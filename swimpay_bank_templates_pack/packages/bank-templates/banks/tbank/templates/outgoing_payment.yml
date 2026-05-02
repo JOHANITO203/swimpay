@@ -1,0 +1,51 @@
+template_id: tbank_ru_outgoing_payment_v1
+bank_profile_id: tbank_ru
+version: 1
+status: learning
+direction_label: outgoing_payment
+risk_class: negative_payment_signal
+
+match:
+  title_any:
+    - "покупка <AMOUNT> <CURRENCY>"
+    - "оплата <AMOUNT> <CURRENCY>"
+    - "списание <AMOUNT> <CURRENCY>"
+    - "вы перевели <AMOUNT> <CURRENCY>"
+  body_any:
+    - "оплата"
+    - "покупка"
+    - "списание"
+    - "карта <CARD_MASK>"
+
+positive_keywords:
+  - покупка
+  - оплата
+  - списание
+  - вы перевели
+  - перевод отправлен
+  - снятие
+
+negative_keywords:
+  - поступление
+  - зачисление
+  - получен перевод
+  - вам перевели
+
+extractors:
+  amount:
+    strategy: transaction_amount_near_outgoing_keyword
+    required: false
+  card_mask:
+    strategy: masked_card_detection
+    weak_signal_only: true
+
+decision_hints:
+  parser_signal_quality_floor: 0
+  allow_auto_confirm_candidate: false
+  backend_must_reject_auto_confirm: true
+
+reason_codes:
+  positive:
+    - outgoing_keyword_detected
+  negative:
+    - negative_direction

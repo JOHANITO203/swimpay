@@ -1,0 +1,18 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/events" },
+    { "path": "packages/contracts" },
+    { "path": "packages/database" },
+    { "path": "packages/security" },
+    { "path": "packages/matching-core" },
+    { "path": "packages/bank-templates" },
+    { "path": "packages/shared-utils" },
+    { "path": "packages/risk-core" },
+    { "path": "apps/api" },
+    { "path": "apps/signal-worker" },
+    { "path": "apps/job-worker" },
+    { "path": "apps/web" },
+    { "path": "apps/android-receiver" }
+  ]
+}

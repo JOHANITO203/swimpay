@@ -1,0 +1,32 @@
+patterns_id: swimpay_reference_patterns_v1
+version: 1
+
+reference_prefixes:
+  - SWP
+  - SWIMPAY
+
+reference_regexes:
+  swimpay_reference:
+    regex: '\\b(?:SWP|SWIMPAY)[-_]?[A-Z0-9]{4,12}\\b'
+    examples:
+      - "SWP-A8K2"
+      - "SWP8K2Q9"
+      - "SWIMPAY-AB12CD"
+
+comment_keywords:
+  ru:
+    - коммент
+    - комментарий
+    - назначение
+    - сообщение
+    - код
+  en:
+    - comment
+    - reference
+    - ref
+    - code
+
+auto_confirm_policy:
+  exact_reference_visible: allowed_as_primary_signal
+  truncated_reference: review_only
+  missing_reference: require_phone_exact_or_review

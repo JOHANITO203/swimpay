@@ -1,0 +1,142 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: swimpay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-swimpay}
+      POSTGRES_USER: ${POSTGRES_USER:-swimpay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-swimpay_dev_password}
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ../packages/database/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - swimpay_private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: &default_logging
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: swimpay-valkey
+    restart: unless-stopped
+    command: ["valkey-server", "/usr/local/etc/valkey/valkey.conf"]
+    volumes:
+      - valkey_data:/data
+      - ./valkey/valkey.conf:/usr/local/etc/valkey/valkey.conf:ro
+    networks:
+      - swimpay_private
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default_logging
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: swimpay-nats
+    restart: unless-stopped
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - nats_data:/data
+      - ./nats/nats.conf:/etc/nats/nats.conf:ro
+    networks:
+      - swimpay_private
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default_logging
+
+  swimpay-api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env.example
+    environment:
+      SERVICE_NAME: swimpay-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    networks:
+      - swimpay_private
+      - swimpay_public
+    ports:
+      - "${API_PORT:-3000}:3000"
+    logging: *default_logging
+
+  swimpay-signal-worker:
+    build:
+      context: ..
+      dockerfile: apps/signal-worker/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env.example
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    networks:
+      - swimpay_private
+    logging: *default_logging
+
+  swimpay-job-worker:
+    build:
+      context: ..
+      dockerfile: apps/job-worker/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env.example
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    networks:
+      - swimpay_private
+    logging: *default_logging
+
+  swimpay-web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env.example
+    depends_on:
+      swimpay-api:
+        condition: service_started
+    networks:
+      - swimpay_private
+      - swimpay_public
+    ports:
+      - "${WEB_PORT:-3001}:3001"
+    logging: *default_logging
+
+networks:
+  swimpay_private:
+    internal: true
+  swimpay_public:
+
+volumes:
+  postgres_data:
+  valkey_data:
+  nats_data:

@@ -1,0 +1,34 @@
+{
+  "items": [
+    {
+      "type": "file",
+      "ctime": 1777705200000,
+      "path": "OBSIDIAN.md",
+      "title": "SwimPay Brain"
+    },
+    {
+      "type": "file",
+      "ctime": 1777705200000,
+      "path": "docs/02_SYSTEM_ARCHITECTURE.md",
+      "title": "Architecture"
+    },
+    {
+      "type": "file",
+      "ctime": 1777705200000,
+      "path": "docs/05_DATABASE_SCHEMA.md",
+      "title": "Database Schema"
+    },
+    {
+      "type": "file",
+      "ctime": 1777705200000,
+      "path": "docs/10_MATCHING_AND_SCORING.md",
+      "title": "Matching"
+    },
+    {
+      "type": "file",
+      "ctime": 1777705200000,
+      "path": "swimpay_bank_templates_pack/packages/bank-templates/README.md",
+      "title": "Bank Templates Pack"
+    }
+  ]
+}
