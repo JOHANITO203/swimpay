@@ -3,7 +3,17 @@ import { Redis } from 'ioredis';
 import { connect } from 'nats';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
-import { createFastifyLoggerOptions } from '@swimpay/security';
+import {
+  createFastifyLoggerOptions,
+  hasOperatorPermission,
+  OperatorPermissions,
+  OperatorRoles,
+  verifyOperatorAuthorization,
+  type OperatorAuthConfig,
+  type OperatorPermission,
+  type OperatorPrincipal,
+  type OperatorRole
+} from '@swimpay/security';
 import {
   buildOrderCreateInput,
   formatAmountMinor,
@@ -50,7 +60,6 @@ import {
 import {
   buildAdminTemplateStatusInput,
   parseAdminLimit,
-  parseAdminOperatorId,
   PgAdminRepository,
   toAdminListResponse,
   toAdminTemplateActionResponse,
@@ -101,6 +110,7 @@ export interface ApiServerOptions {
   receiverDeviceIdGenerator?: () => string;
   signalIdGenerator?: () => string;
   reviewIdGenerator?: ReviewIdGenerator;
+  adminAuth?: OperatorAuthConfig;
   clock?: () => Date;
 }
 
@@ -189,6 +199,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const receiverDeviceIdGenerator = options.receiverDeviceIdGenerator ?? (() => randomUUID());
   const signalIdGenerator = options.signalIdGenerator ?? createDefaultSignalIdGenerator();
   const reviewIdGenerator = options.reviewIdGenerator ?? createDefaultReviewIdGenerator();
+  const adminAuth = options.adminAuth ?? createDefaultAdminAuthConfig(process.env, options.environment);
   const clock = options.clock ?? (() => new Date());
 
   server.get('/health', async (): Promise<HealthResponse> => ({
@@ -673,9 +684,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/admin/bank-profiles', async (request, reply) => {
-    const operatorId = parseAdminOperatorId(request.headers.authorization);
-    if (!operatorId) {
-      return reply.status(401).send(adminAuthorizationError());
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
     }
 
     if (!adminRepository) {
@@ -686,9 +702,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/admin/templates', async (request, reply) => {
-    const operatorId = parseAdminOperatorId(request.headers.authorization);
-    if (!operatorId) {
-      return reply.status(401).send(adminAuthorizationError());
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
     }
 
     if (!adminRepository) {
@@ -704,6 +725,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       request,
       reply,
       adminRepository,
+      adminAuth,
+      requiredPermission: OperatorPermissions.DEGRADE_BANK_TEMPLATES,
       status: 'degraded',
       auditEventId: idGenerator.auditEventId(),
       occurredAt: clock().toISOString()
@@ -711,9 +734,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/admin/templates/:id/promote', async (request, reply) => {
-    const operatorId = parseAdminOperatorId(request.headers.authorization);
-    if (!operatorId) {
-      return reply.status(401).send(adminAuthorizationError());
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.PROMOTE_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
     }
 
     if (!adminRepository) {
@@ -734,7 +762,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       buildAdminTemplateStatusInput({
         templateId: params.id,
         status: body.target_status,
-        operatorId,
+        operatorId: operator.operatorId,
         body,
         auditEventId: idGenerator.auditEventId(),
         occurredAt: clock().toISOString()
@@ -749,6 +777,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       request,
       reply,
       adminRepository,
+      adminAuth,
+      requiredPermission: OperatorPermissions.DEGRADE_BANK_TEMPLATES,
       status: 'review_only',
       auditEventId: idGenerator.auditEventId(),
       occurredAt: clock().toISOString()
@@ -760,6 +790,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       request,
       reply,
       adminRepository,
+      adminAuth,
+      requiredPermission: OperatorPermissions.DISABLE_BANK_TEMPLATES,
       status: 'disabled',
       auditEventId: idGenerator.auditEventId(),
       occurredAt: clock().toISOString()
@@ -767,9 +799,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/admin/templates/:id/false-positive', async (request, reply) => {
-    const operatorId = parseAdminOperatorId(request.headers.authorization);
-    if (!operatorId) {
-      return reply.status(401).send(adminAuthorizationError());
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.DISABLE_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
     }
 
     if (!adminRepository) {
@@ -788,7 +825,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     const result = await adminRepository.markTemplateFalsePositive({
       templateId: params.id,
-      operatorId: body.actor_id ?? operatorId,
+      operatorId: operator.operatorId,
       reason: body.reason,
       auditEventId: idGenerator.auditEventId(),
       occurredAt: clock().toISOString()
@@ -798,9 +835,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/admin/drift-events', async (request, reply) => {
-    const operatorId = parseAdminOperatorId(request.headers.authorization);
-    if (!operatorId) {
-      return reply.status(401).send(adminAuthorizationError());
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
     }
 
     if (!adminRepository) {
@@ -812,9 +854,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/admin/webhook-failures', async (request, reply) => {
-    const operatorId = parseAdminOperatorId(request.headers.authorization);
-    if (!operatorId) {
-      return reply.status(401).send(adminAuthorizationError());
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_WEBHOOKS
+    });
+    if (!operator) {
+      return reply;
     }
 
     if (!adminRepository) {
@@ -828,9 +875,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/admin/receiver-health', async (request, reply) => {
-    const operatorId = parseAdminOperatorId(request.headers.authorization);
-    if (!operatorId) {
-      return reply.status(401).send(adminAuthorizationError());
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_ADMIN_DASHBOARD
+    });
+    if (!operator) {
+      return reply;
     }
 
     if (!adminRepository) {
@@ -842,9 +894,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/admin/audit-events', async (request, reply) => {
-    const operatorId = parseAdminOperatorId(request.headers.authorization);
-    if (!operatorId) {
-      return reply.status(401).send(adminAuthorizationError());
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_AUDIT_LOGS
+    });
+    if (!operator) {
+      return reply;
     }
 
     if (!adminRepository) {
@@ -918,6 +975,30 @@ function createDefaultEventPublisher(env: NodeJS.ProcessEnv): InternalEventPubli
   }
 
   return new NatsEventPublisher(env.NATS_URL);
+}
+
+function createDefaultAdminAuthConfig(env: NodeJS.ProcessEnv, environment: string): OperatorAuthConfig {
+  const mode = parseAdminAuthMode(env.ADMIN_AUTH_MODE, environment);
+  return {
+    mode,
+    environment,
+    devToken: env.DEV_ADMIN_TOKEN,
+    devOperatorId: env.DEV_ADMIN_OPERATOR_ID ?? 'dev_operator',
+    devRole: parseOperatorRole(env.DEV_ADMIN_ROLE) ?? OperatorRoles.ADMIN,
+    tokenHmacSecret: env.ADMIN_TOKEN_HMAC_SECRET
+  };
+}
+
+function parseAdminAuthMode(value: string | undefined, environment: string): OperatorAuthConfig['mode'] {
+  if (value === 'dev_token' || value === 'signed_token') {
+    return value;
+  }
+
+  return environment === 'production' ? 'signed_token' : 'dev_token';
+}
+
+function parseOperatorRole(value: string | undefined): OperatorRole | undefined {
+  return Object.values(OperatorRoles).includes(value as OperatorRole) ? (value as OperatorRole) : undefined;
 }
 
 function createDefaultIdGenerator(): IdGenerator {
@@ -999,13 +1080,20 @@ async function handleAdminTemplateStatusAction(params: {
   request: FastifyRequest;
   reply: FastifyReply;
   adminRepository: AdminRepository | null;
+  adminAuth: OperatorAuthConfig;
+  requiredPermission: OperatorPermission;
   status: 'degraded' | 'review_only' | 'disabled';
   auditEventId: string;
   occurredAt: string;
 }) {
-  const operatorId = parseAdminOperatorId(params.request.headers.authorization);
-  if (!operatorId) {
-    return params.reply.status(401).send(adminAuthorizationError());
+  const operator = requireAdminPermission({
+    request: params.request,
+    reply: params.reply,
+    adminAuth: params.adminAuth,
+    permission: params.requiredPermission
+  });
+  if (!operator) {
+    return params.reply;
   }
 
   if (!params.adminRepository) {
@@ -1026,7 +1114,7 @@ async function handleAdminTemplateStatusAction(params: {
     buildAdminTemplateStatusInput({
       templateId: routeParams.id,
       status: params.status,
-      operatorId,
+      operatorId: operator.operatorId,
       body,
       auditEventId: params.auditEventId,
       occurredAt: params.occurredAt
@@ -1034,6 +1122,31 @@ async function handleAdminTemplateStatusAction(params: {
   );
 
   return sendAdminTemplateActionResult(params.reply, result, routeParams.id);
+}
+
+function requireAdminPermission(params: {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  adminAuth: OperatorAuthConfig;
+  permission: OperatorPermission;
+}): OperatorPrincipal | null {
+  const authorization = Array.isArray(params.request.headers.authorization)
+    ? params.request.headers.authorization[0]
+    : params.request.headers.authorization;
+  const result = verifyOperatorAuthorization(authorization, params.adminAuth);
+
+  if (result.kind !== 'authenticated') {
+    const statusCode = result.reason === 'missing_bearer_token' ? 401 : 401;
+    params.reply.status(statusCode).send(adminAuthorizationError(result.reason));
+    return null;
+  }
+
+  if (!hasOperatorPermission(result.operator.role, params.permission)) {
+    params.reply.status(403).send(adminPermissionDeniedError(result.operator, params.permission));
+    return null;
+  }
+
+  return result.operator;
 }
 
 function sendAdminTemplateActionResult(
@@ -1088,10 +1201,30 @@ function sendAdminTemplateActionResult(
   }
 }
 
-function adminAuthorizationError() {
-  return invalidRequest('An operator bearer token is required for this foundation endpoint.', {
-    authorization: 'Bearer admin_<operator_id>'
-  });
+function adminAuthorizationError(reason: string) {
+  return {
+    error: {
+      code: reason === 'missing_bearer_token' ? 'operator_auth_required' : 'operator_auth_rejected',
+      message: 'A valid operator bearer token is required for admin endpoints.',
+      details: {
+        reason
+      }
+    }
+  };
+}
+
+function adminPermissionDeniedError(operator: OperatorPrincipal, requiredPermission: OperatorPermission) {
+  return {
+    error: {
+      code: 'operator_permission_denied',
+      message: 'Operator role does not have the required admin permission.',
+      details: {
+        operator_id: operator.operatorId,
+        role: operator.role,
+        required_permission: requiredPermission
+      }
+    }
+  };
 }
 
 function adminRepositoryUnavailableError() {

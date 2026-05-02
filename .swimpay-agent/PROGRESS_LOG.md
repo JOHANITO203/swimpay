@@ -532,3 +532,59 @@
 - PASS: `npm test` (Tests, exit 0)
 - PASS: `npm run build` (Build, exit 0)
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+## 2026-05-02T14:35:00+03:00 - Task 024 plan
+
+Task: `024_operator_auth_and_admin_rbac`
+
+Plan:
+
+- Create Phase 2 task files 024-031 and replace the completed foundation queue with the durable runtime queue.
+- Add failing tests for centralized operator roles/permissions and admin endpoint auth/RBAC behavior.
+- Implement RBAC constants and auth helpers in `@swimpay/security`.
+- Replace API admin placeholder auth with configured dev-token auth and signed-token production foundation.
+- Require explicit permissions for admin reads and dangerous bank-template actions.
+- Update local docs and agent reports.
+
+Guardrails:
+
+- No production deployment.
+- No production secrets.
+- No PSP/SBP/SMS/scraping behavior.
+- No official bank confirmation wording.
+- No raw phone or raw notification storage.
+- No implementation of tasks 025-031.
+
+## 2026-05-02T14:47:23+03:00 - Task 024 implementation
+
+Result: implemented.
+
+Changes:
+
+- Added Phase 2 task files `024` through `031`.
+- Replaced the active queue with Phase 2 durable runtime tasks and marked `024` complete.
+- Added centralized operator roles, permissions, role-permission mappings, dev-token auth and signed-token verification in `@swimpay/security`.
+- Admin endpoints now reject missing auth and placeholder `Bearer admin_<operator_id>` tokens.
+- Admin endpoints now enforce explicit permissions for reads, template promotion, degradation/review-only, disable and false-positive actions.
+- Template audit events now use the authenticated operator id instead of accepting an actor override from request body.
+- Added `docs/ADMIN_AUTH_AND_RBAC.md` and updated local development/implementation notes.
+
+Targeted TDD evidence:
+
+- `npm test -- packages/security/src/index.test.ts`: RED, then PASS after implementation.
+- `npm test -- apps/api/src/admin.test.ts`: RED, then PASS after implementation.
+- `npm run typecheck`: PASS after implementation.
+
+## 2026-05-02T14:50:30+03:00 - Task 024 validation pass
+
+Final validation:
+
+- `npm run typecheck`: PASS
+- `npm run lint`: PASS
+- `npm test`: PASS, 22 test files and 123 tests passed
+- `npm run build`: PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config`: PASS
+
+Notes:
+
+- Initial full `npm test` failed because `tests/agent-framework.test.ts` still asserted the old task queue. The test was updated to verify the Phase 2 queue order and the full test suite then passed.
+- No blockers were added.

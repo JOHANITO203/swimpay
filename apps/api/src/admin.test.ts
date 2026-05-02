@@ -6,38 +6,38 @@ import { AdminAuditEventTypes, InMemoryAdminRepository, type AdminTemplateSummar
 describe('minimal admin console api', () => {
   it('lists bank profiles, templates, incidents, receiver health, and redacted audit events for operators', async () => {
     const repository = buildAdminRepository();
-    const server = buildTestServer(repository);
+    const server = buildTestServer(repository, { role: 'operator' });
 
     const [profiles, templates, drift, webhookFailures, receiverHealth, auditEvents] = await Promise.all([
       server.inject({
         method: 'GET',
         url: '/v1/admin/bank-profiles',
-        headers: { authorization: 'Bearer admin_ops_01' }
+        headers: adminHeaders()
       }),
       server.inject({
         method: 'GET',
         url: '/v1/admin/templates',
-        headers: { authorization: 'Bearer admin_ops_01' }
+        headers: adminHeaders()
       }),
       server.inject({
         method: 'GET',
         url: '/v1/admin/drift-events',
-        headers: { authorization: 'Bearer admin_ops_01' }
+        headers: adminHeaders()
       }),
       server.inject({
         method: 'GET',
         url: '/v1/admin/webhook-failures',
-        headers: { authorization: 'Bearer admin_ops_01' }
+        headers: adminHeaders()
       }),
       server.inject({
         method: 'GET',
         url: '/v1/admin/receiver-health',
-        headers: { authorization: 'Bearer admin_ops_01' }
+        headers: adminHeaders()
       }),
       server.inject({
         method: 'GET',
         url: '/v1/admin/audit-events?object_type=bank_template',
-        headers: { authorization: 'Bearer admin_ops_01' }
+        headers: adminHeaders()
       })
     ]);
 
@@ -81,12 +81,12 @@ describe('minimal admin console api', () => {
 
   it('marks a template degraded and writes an operator audit event with redacted reason', async () => {
     const repository = buildAdminRepository();
-    const server = buildTestServer(repository);
+    const server = buildTestServer(repository, { role: 'operator' });
 
     const response = await server.inject({
       method: 'POST',
       url: '/v1/admin/templates/tpl_01/degrade',
-      headers: { authorization: 'Bearer admin_ops_01' },
+      headers: adminHeaders(),
       payload: {
         reason: 'operator observed false positive around +7 999 123-45-67 and reference 123456789012'
       }
@@ -118,7 +118,7 @@ describe('minimal admin console api', () => {
 
   it('marks a template review_only and rejects non-operator access', async () => {
     const repository = buildAdminRepository();
-    const server = buildTestServer(repository);
+    const server = buildTestServer(repository, { role: 'operator' });
 
     const unauthorized = await server.inject({
       method: 'GET',
@@ -128,7 +128,7 @@ describe('minimal admin console api', () => {
     const action = await server.inject({
       method: 'POST',
       url: '/v1/admin/templates/tpl_01/review-only',
-      headers: { authorization: 'Bearer admin_ops_01' },
+      headers: adminHeaders(),
       payload: {}
     });
 
@@ -154,12 +154,12 @@ describe('minimal admin console api', () => {
       ],
       verifiedBankAppProfiles: ['sberbank_ru']
     });
-    const server = buildTestServer(repository);
+    const server = buildTestServer(repository, { role: 'admin' });
 
     const response = await server.inject({
       method: 'POST',
       url: '/v1/admin/templates/tpl_false_positive/promote',
-      headers: { authorization: 'Bearer admin_ops_01' },
+      headers: adminHeaders(),
       payload: {
         target_status: 'trusted'
       }
@@ -175,12 +175,12 @@ describe('minimal admin console api', () => {
       templates: [trustedCandidateTemplate()],
       verifiedBankAppProfiles: []
     });
-    const server = buildTestServer(repository);
+    const server = buildTestServer(repository, { role: 'admin' });
 
     const response = await server.inject({
       method: 'POST',
       url: '/v1/admin/templates/tpl_trusted/promote',
-      headers: { authorization: 'Bearer admin_ops_01' },
+      headers: adminHeaders(),
       payload: {
         target_status: 'trusted'
       }
@@ -196,12 +196,12 @@ describe('minimal admin console api', () => {
       templates: [trustedCandidateTemplate()],
       verifiedBankAppProfiles: ['sberbank_ru']
     });
-    const server = buildTestServer(repository);
+    const server = buildTestServer(repository, { role: 'admin' });
 
     const response = await server.inject({
       method: 'POST',
       url: '/v1/admin/templates/tpl_trusted/promote',
-      headers: { authorization: 'Bearer admin_ops_01' },
+      headers: adminHeaders(),
       payload: {
         target_status: 'trusted',
         reason: 'shadow evidence and operator review thresholds met'
@@ -228,12 +228,12 @@ describe('minimal admin console api', () => {
       templates: [{ ...trustedCandidateTemplate(), status: 'trusted' }],
       verifiedBankAppProfiles: ['sberbank_ru']
     });
-    const server = buildTestServer(repository);
+    const server = buildTestServer(repository, { role: 'admin' });
 
     const falsePositive = await server.inject({
       method: 'POST',
       url: '/v1/admin/templates/tpl_trusted/false-positive',
-      headers: { authorization: 'Bearer admin_ops_01' },
+      headers: adminHeaders(),
       payload: {
         reason: 'merchant reported a false positive'
       }
@@ -241,7 +241,7 @@ describe('minimal admin console api', () => {
     const disable = await server.inject({
       method: 'POST',
       url: '/v1/admin/templates/tpl_trusted/disable',
-      headers: { authorization: 'Bearer admin_ops_01' },
+      headers: adminHeaders(),
       payload: {
         reason: 'critical drift incident'
       }
@@ -263,17 +263,126 @@ describe('minimal admin console api', () => {
       falsePositiveCount: 1
     });
   });
+
+  it('rejects missing admin authentication', async () => {
+    const repository = buildAdminRepository();
+    const server = buildTestServer(repository, { role: 'operator' });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/admin/templates'
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe('operator_auth_required');
+  });
+
+  it('dev admin auth works only when the dev token is configured', async () => {
+    const repository = buildAdminRepository();
+    const configuredServer = buildTestServer(repository, { role: 'read_only' });
+    const unconfiguredServer = buildTestServer(repository, { role: 'read_only', devToken: undefined });
+
+    const configured = await configuredServer.inject({
+      method: 'GET',
+      url: '/v1/admin/templates',
+      headers: adminHeaders()
+    });
+    const unconfigured = await unconfiguredServer.inject({
+      method: 'GET',
+      url: '/v1/admin/templates',
+      headers: adminHeaders()
+    });
+
+    expect(configured.statusCode).toBe(200);
+    expect(unconfigured.statusCode).toBe(401);
+    expect(unconfigured.json().error.code).toBe('operator_auth_rejected');
+  });
+
+  it('production mode rejects placeholder admin bearer tokens', async () => {
+    const repository = buildAdminRepository();
+    const server = buildTestServer(repository, {
+      environment: 'production',
+      authMode: 'signed_token',
+      tokenHmacSecret: 'production_test_secret'
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/admin/templates',
+      headers: { authorization: 'Bearer admin_ops_01' }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.details.reason).toBe('placeholder_admin_token_rejected');
+  });
+
+  it('read_only operators cannot perform dangerous template actions', async () => {
+    const repository = buildAdminRepository();
+    const server = buildTestServer(repository, { role: 'read_only' });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/templates/tpl_01/degrade',
+      headers: adminHeaders(),
+      payload: {
+        reason: 'read only user should not mutate templates'
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error.code).toBe('operator_permission_denied');
+    expect(repository.templates[0]?.status).toBe('learning');
+    expect(repository.auditEvents[0]?.auditEventId).toBe('aud_existing_01');
+  });
+
+  it('operator role cannot promote bank templates without explicit permission', async () => {
+    const repository = buildAdminRepository({
+      templates: [trustedCandidateTemplate()],
+      verifiedBankAppProfiles: ['sberbank_ru']
+    });
+    const server = buildTestServer(repository, { role: 'operator' });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/templates/tpl_trusted/promote',
+      headers: adminHeaders(),
+      payload: {
+        target_status: 'trusted'
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error.details.required_permission).toBe('promote_bank_templates');
+    expect(repository.templates[0]?.status).toBe('learning');
+  });
 });
 
-function buildTestServer(repository: InMemoryAdminRepository) {
+function buildTestServer(
+  repository: InMemoryAdminRepository,
+  options: {
+    environment?: 'test' | 'production';
+    authMode?: 'dev_token' | 'signed_token';
+    role?: 'owner' | 'admin' | 'operator' | 'support' | 'read_only';
+    devToken?: string | undefined;
+    tokenHmacSecret?: string | undefined;
+  } = {}
+) {
   return buildApiServer({
-    environment: 'test',
+    environment: options.environment ?? 'test',
     healthChecks: {
       database: async () => 'skipped',
       nats: async () => 'skipped',
       valkey: async () => 'skipped'
     },
     adminRepository: repository,
+    adminAuth: {
+      mode: options.authMode ?? 'dev_token',
+      environment: options.environment ?? 'test',
+      devToken: options.devToken === undefined && !('devToken' in options) ? 'local-admin-token' : options.devToken,
+      devOperatorId: 'ops_01',
+      devRole: options.role ?? 'admin',
+      tokenHmacSecret: options.tokenHmacSecret
+    },
     idGenerator: {
       orderId: () => 'ord_unused',
       paymentSessionId: () => 'ps_unused',
@@ -282,6 +391,10 @@ function buildTestServer(repository: InMemoryAdminRepository) {
     },
     clock: () => new Date('2026-05-02T11:15:00.000Z')
   });
+}
+
+function adminHeaders() {
+  return { authorization: 'Bearer local-admin-token' };
 }
 
 function buildAdminRepository(

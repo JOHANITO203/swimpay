@@ -92,8 +92,8 @@ ${nextTask}
 
 ## What not to do next
 
-- Do not implement task 004 before task 003 is complete.
-- Do not implement payment auto-confirmation in the Order API task.
+- Do not skip ahead of the first pending task in .swimpay-agent/TASK_QUEUE.md.
+- Do not implement payment auto-confirmation outside the documented matching and decision rules.
 - Do not store raw phone numbers.
 - Do not store raw notification text by default.
 - Do not create real bank package or certificate values.

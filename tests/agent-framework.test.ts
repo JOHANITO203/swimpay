@@ -29,27 +29,18 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists imported bank template tasks as executable in the approved order', () => {
+  test('task queue lists Phase 2 durable runtime tasks as executable in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
-    expect(queue).toContain('003_implement_order_api');
-    expect(queue).toContain('source: `tasks/003_implement_order_api.md`');
-
     const orderedTasks = [
-      '010_review_queue',
-      '011_hosted_checkout',
-      '012_webhook_worker',
-      '018_bank_template_package_setup',
-      '019_bank_profile_registry',
-      '020_bank_template_parser_core',
-      '021_bank_template_fixtures_tests',
-      '022_bank_template_drift_radar',
-      '013_bank_template_learning',
-      '014_deployment_docker_compose',
-      '015_security_hardening',
-      '016_end_to_end_tests',
-      '017_admin_console_minimal',
-      '023_bank_template_admin_console'
+      '024_operator_auth_and_admin_rbac',
+      '025_nats_jetstream_consumers',
+      '026_postgres_webhook_delivery_loop',
+      '027_signal_runtime_pipeline',
+      '028_review_rejection_semantics',
+      '029_durable_worker_e2e_tests',
+      '030_runtime_observability',
+      '031_android_receiver_contract_validation'
     ];
 
     let previousIndex = -1;

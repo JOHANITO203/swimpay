@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  hasOperatorPermission,
+  OperatorPermissions,
+  OperatorRoles,
+  ROLE_PERMISSIONS,
+  signOperatorToken,
+  verifyOperatorAuthorization,
   createFastifyLoggerOptions,
   FASTIFY_REDACTION_PATHS,
   hashApiKey,
@@ -14,6 +20,78 @@ import {
 } from './index.js';
 
 describe('security helpers', () => {
+  it('defines operator roles and role permissions centrally', () => {
+    expect(OperatorRoles).toEqual({
+      OWNER: 'owner',
+      ADMIN: 'admin',
+      OPERATOR: 'operator',
+      SUPPORT: 'support',
+      READ_ONLY: 'read_only'
+    });
+    expect(ROLE_PERMISSIONS.owner).toContain(OperatorPermissions.PROMOTE_BANK_TEMPLATES);
+    expect(ROLE_PERMISSIONS.read_only).toContain(OperatorPermissions.VIEW_BANK_TEMPLATES);
+    expect(ROLE_PERMISSIONS.read_only).not.toContain(OperatorPermissions.DISABLE_BANK_TEMPLATES);
+    expect(hasOperatorPermission('operator', OperatorPermissions.DEGRADE_BANK_TEMPLATES)).toBe(true);
+    expect(hasOperatorPermission('operator', OperatorPermissions.PROMOTE_BANK_TEMPLATES)).toBe(false);
+  });
+
+  it('verifies configured dev operator tokens and rejects unconfigured dev auth', () => {
+    const configured = verifyOperatorAuthorization('Bearer local-admin-token', {
+      mode: 'dev_token',
+      environment: 'development',
+      devToken: 'local-admin-token',
+      devOperatorId: 'ops_01',
+      devRole: 'admin'
+    });
+    const unconfigured = verifyOperatorAuthorization('Bearer local-admin-token', {
+      mode: 'dev_token',
+      environment: 'development'
+    });
+
+    expect(configured).toMatchObject({
+      kind: 'authenticated',
+      operator: {
+        operatorId: 'ops_01',
+        role: 'admin'
+      }
+    });
+    expect(unconfigured).toMatchObject({
+      kind: 'rejected',
+      reason: 'dev_admin_token_not_configured'
+    });
+  });
+
+  it('rejects placeholder admin tokens in production and accepts signed production tokens', () => {
+    const signedToken = signOperatorToken({
+      operatorId: 'ops_prod',
+      role: 'owner',
+      secret: 'production_test_secret'
+    });
+
+    const placeholder = verifyOperatorAuthorization('Bearer admin_ops_01', {
+      mode: 'signed_token',
+      environment: 'production',
+      tokenHmacSecret: 'production_test_secret'
+    });
+    const signed = verifyOperatorAuthorization(`Bearer ${signedToken}`, {
+      mode: 'signed_token',
+      environment: 'production',
+      tokenHmacSecret: 'production_test_secret'
+    });
+
+    expect(placeholder).toMatchObject({
+      kind: 'rejected',
+      reason: 'placeholder_admin_token_rejected'
+    });
+    expect(signed).toMatchObject({
+      kind: 'authenticated',
+      operator: {
+        operatorId: 'ops_prod',
+        role: 'owner'
+      }
+    });
+  });
+
   it('hashes API keys without storing the raw key and verifies them safely', () => {
     const rawApiKey = 'sk_live_should_not_be_stored';
     const storedHash = hashApiKey(rawApiKey, 'test_salt');

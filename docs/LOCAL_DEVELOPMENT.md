@@ -243,30 +243,39 @@ Admin console foundation tests include:
 npm test -- apps/api/src/admin.test.ts
 ```
 
-Admin API endpoints use a local operator bearer placeholder during this foundation stage:
+Admin API endpoints require operator auth/RBAC. For local development, configure a dev token:
 
 ```text
-Authorization: Bearer admin_ops_01
+ADMIN_AUTH_MODE=dev_token
+DEV_ADMIN_TOKEN=change_me_local_admin_token
+DEV_ADMIN_OPERATOR_ID=dev_operator
+DEV_ADMIN_ROLE=admin
+```
+
+Requests use:
+
+```text
+Authorization: Bearer change_me_local_admin_token
 ```
 
 Example operational reads:
 
 ```bash
 curl http://localhost:3000/v1/admin/bank-profiles \
-  -H "Authorization: Bearer admin_ops_01"
+  -H "Authorization: Bearer change_me_local_admin_token"
 
 curl http://localhost:3000/v1/admin/templates \
-  -H "Authorization: Bearer admin_ops_01"
+  -H "Authorization: Bearer change_me_local_admin_token"
 
 curl http://localhost:3000/v1/admin/audit-events?object_type=bank_template \
-  -H "Authorization: Bearer admin_ops_01"
+  -H "Authorization: Bearer change_me_local_admin_token"
 ```
 
 Example audited template degradation:
 
 ```bash
 curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/degrade \
-  -H "Authorization: Bearer admin_ops_01" \
+  -H "Authorization: Bearer change_me_local_admin_token" \
   -H "Content-Type: application/json" \
   -d '{"reason":"operator observed drift in redacted template sample"}'
 ```
@@ -275,25 +284,27 @@ Other bank-template admin actions:
 
 ```bash
 curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/promote \
-  -H "Authorization: Bearer admin_ops_01" \
+  -H "Authorization: Bearer change_me_local_admin_token" \
   -H "Content-Type: application/json" \
   -d '{"target_status":"shadow_testing","reason":"review evidence threshold met"}'
 
 curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/review-only \
-  -H "Authorization: Bearer admin_ops_01" \
+  -H "Authorization: Bearer change_me_local_admin_token" \
   -H "Content-Type: application/json" \
   -d '{"reason":"manual review required after drift"}'
 
 curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/disable \
-  -H "Authorization: Bearer admin_ops_01" \
+  -H "Authorization: Bearer change_me_local_admin_token" \
   -H "Content-Type: application/json" \
   -d '{"reason":"critical drift incident"}'
 
 curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/false-positive \
-  -H "Authorization: Bearer admin_ops_01" \
+  -H "Authorization: Bearer change_me_local_admin_token" \
   -H "Content-Type: application/json" \
   -d '{"reason":"merchant reported false positive"}'
 ```
+
+Production must not use `dev_token` mode or `Bearer admin_<operator_id>` placeholders. See `docs/ADMIN_AUTH_AND_RBAC.md` for role and permission details.
 
 Promoting to `trusted_low_amount` or `trusted` is blocked unless evidence thresholds are met and the related bank app package/certificate metadata has verified values. `TO_VERIFY` metadata cannot pass the trust gate.
 
@@ -324,7 +335,7 @@ Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, 
 - Review queue APIs and repository methods exist, but automatic review creation from live matching decisions is not wired yet.
 - Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
 - Webhook delivery core is implemented as a tested worker foundation, but live NATS/Postgres orchestration is not wired yet.
-- Admin console is API-only. It exposes operator read views and audited bank-template actions, but does not implement a browser UI, real app package/cert verification workflow, or unsafe bulk actions.
+- Admin console is API-only. It exposes RBAC-protected operator read views and audited bank-template actions, but does not implement a browser UI, real app package/cert verification workflow, unsafe bulk actions, or a full operator identity provider.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.
 - Phone fields are represented as HMAC/masked fields, not raw phone fields.

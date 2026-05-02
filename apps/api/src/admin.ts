@@ -565,7 +565,7 @@ export function buildAdminTemplateStatusInput(params: {
   return {
     templateId: params.templateId,
     status: params.status,
-    operatorId: params.body.actor_id ?? params.operatorId,
+    operatorId: params.operatorId,
     reason: params.body.reason,
     auditEventId: params.auditEventId,
     occurredAt: params.occurredAt

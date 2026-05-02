@@ -41,6 +41,8 @@ Task 017 added a minimal operator admin API foundation. It exposes bank profile 
 
 Task 023 extended the admin foundation with bank-template-specific actions: promote, degrade, review-only, disable, and mark false positive. Promotion to trusted statuses is blocked when false positives exist, when evidence thresholds are not met, or when the bank app package/certificate metadata is still unverified or `TO_VERIFY`. Disable and false-positive actions immediately make the template ineligible for auto-confirm candidates and write redacted operator audit events.
 
+Task 024 added a Phase 2 operator auth/RBAC foundation. `@swimpay/security` now defines operator roles, permissions, role-permission mappings, dev-token verification, HMAC-signed operator token verification, and permission checks. Admin endpoints now reject missing auth, reject `Bearer admin_<operator_id>` placeholders, require explicit permissions for reads and dangerous template actions, and use the authenticated operator id for audit events. Local development can use `ADMIN_AUTH_MODE=dev_token` with a configured `DEV_ADMIN_TOKEN`; production must use signed-token mode or a future identity provider and cannot rely on the dev placeholder path.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:
@@ -87,8 +89,8 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Webhook worker tests use an injectable HTTP client and in-memory repository; no production external calls are made during tests.
 - The webhook worker is not yet connected to NATS JetStream event consumption or a Postgres-backed delivery loop.
 - End-to-end tests now cover the foundation signal flow across matching-core and webhook worker primitives, including unsafe-path protections. They are still in-process tests and do not replace future Postgres/NATS integration tests.
-- Admin console foundation is API-only for now. It supports read-only operational views and audited template degradation/review-only actions; it does not include a browser UI, dangerous admin actions, template promotion, package/certificate trust verification, or raw PII access.
-- Bank template admin controls now support promotion, degradation, review-only, disable, and false-positive marking through API endpoints. Promotion is guarded by evidence thresholds and verified bank app metadata; the console still does not verify real package/cert values or create a browser UI.
+- Admin console foundation is API-only for now. It supports RBAC-protected operational views and audited template actions; it does not include a browser UI, a full operator identity provider, real app package/cert verification workflow, unsafe bulk actions, or raw PII access.
+- Bank template admin controls now support promotion, degradation, review-only, disable, and false-positive marking through API endpoints. Promotion is guarded by RBAC, evidence thresholds and verified bank app metadata; the console still does not verify real package/cert values or create a browser UI.
 - No official bank confirmation wording or status was introduced.
 - Receiver registration does not mark any bank package name or certificate fingerprint as trusted.
 - Android Receiver does not implement final payment confirmation logic; backend-only decisions remain intentionally unimplemented.
