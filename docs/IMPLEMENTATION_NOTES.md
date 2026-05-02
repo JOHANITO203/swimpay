@@ -51,6 +51,8 @@ Task 027 added the signal runtime pipeline foundation. `swimpay-signal-worker` n
 
 Task 028 clarified manual review rejection semantics. Review rejection now has explicit scopes: `signal`, `payment_session`, and `order`. The default `signal` scope rejects only the review and linked notification signal, leaving the order and payment session active. Session/order rejection requires explicit scope, writes additional redacted audit events, and repeated same-scope rejection is idempotent.
 
+Task 029 added durable worker E2E stabilization tests. The new in-process suite covers API order/session creation, receiver signal ingestion, `signal.received` consumer processing, untrusted bank-app review routing, amount-only and unsafe category protections, trusted synthetic auto-confirmation, webhook delivery through the job-worker handler, collision review, duplicate signal idempotency, review rejection semantics, webhook retry/dead behavior and invalid worker envelope handling. The suite uses local fakes for repositories, event publishing and HTTP delivery; it does not call external services or live NATS/PostgreSQL.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:
@@ -97,7 +99,7 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Webhook worker tests use an injectable HTTP client and in-memory repository; no production external calls are made during tests.
 - The webhook worker is now connected to the NATS `webhook.delivery_requested` trigger and a Postgres-backed delivery loop.
 - Signal worker handles `signal.received` through the runtime processor. `signal.verified`, `signal.parsed`, and `match.scored` consumers remain stubs because they are not independent business entrypoints yet.
-- End-to-end tests now cover the foundation signal flow across matching-core and webhook worker primitives, including unsafe-path protections. They are still in-process tests and do not replace future Postgres/NATS integration tests.
+- End-to-end tests now cover the foundation signal flow across matching-core and webhook worker primitives, including unsafe-path protections. Task 029 extends this with durable in-process worker E2E coverage across API routes, signal runtime, review rejection semantics, webhook delivery and consumer wrappers. These tests still do not replace future live PostgreSQL/NATS integration tests.
 - Admin console foundation is API-only for now. It supports RBAC-protected operational views and audited template actions; it does not include a browser UI, a full operator identity provider, real app package/cert verification workflow, unsafe bulk actions, or raw PII access.
 - Bank template admin controls now support promotion, degradation, review-only, disable, and false-positive marking through API endpoints. Promotion is guarded by RBAC, evidence thresholds and verified bank app metadata; the console still does not verify real package/cert values or create a browser UI.
 - No official bank confirmation wording or status was introduced.

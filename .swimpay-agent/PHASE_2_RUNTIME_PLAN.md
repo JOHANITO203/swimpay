@@ -54,3 +54,7 @@ Move SwimPay from a validated foundation into durable local runtime integration 
 ## Task 028 Result
 
 `028_review_rejection_semantics` clarifies review rejection scope. `POST /v1/reviews/:id/reject` now defaults to `signal`, which rejects only the review and linked signal while leaving the order and payment session active. Explicit `payment_session` and `order` scopes are supported, same-scope retries are idempotent, conflicting scope escalation returns a clear conflict, and redacted audit events record the resulting state changes. Signal-scope rejection remains internal and does not create a public `payment.rejected` webhook by default.
+
+## Task 029 Result
+
+`029_durable_worker_e2e_tests` adds an in-process durable E2E suite across API order/session creation, receiver signal ingestion, `signal.received` processing, signal runtime review/reject/auto-confirm decisions, review rejection API semantics, webhook delivery/retry/dead behavior, and worker consumer wrappers. The suite uses local repositories and a mocked HTTP client, so no external network services, live NATS or production database are required. It asserts notification-signal disclosure fields, blocks unsafe categories and amount-only auto-confirmation, and checks that raw phone, raw notification text, raw API keys and official-bank-confirmation claims are not exposed.

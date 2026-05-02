@@ -237,6 +237,14 @@ npm test -- tests/e2e-payment-signal-flow.test.ts
 
 They verify the in-process payment signal flow across matching-core and webhook worker primitives: safe incoming signal confirmation, signed webhook delivery, review routing for missing identity and collisions, and rejection for cashback, outgoing, and duplicate signals.
 
+Durable worker E2E tests include:
+
+```bash
+npm test -- --run tests/durable-worker-e2e.test.ts
+```
+
+They verify the in-process Phase 2 runtime path across API order/session creation, receiver signal ingestion, `signal.received` processing, review creation, review rejection semantics, webhook delivery, retry/dead handling and worker consumer wrappers. The suite uses mocked repositories and HTTP clients only; it does not call external services or live NATS.
+
 NATS JetStream consumer foundation tests include:
 
 ```bash

@@ -1,14 +1,14 @@
 # Next Action
 
-generated_at: 2026-05-02T16:36:19+03:00
+generated_at: 2026-05-02T16:57:53+03:00
 
 ## Latest completed task
 
-028_review_rejection_semantics is complete.
+029_durable_worker_e2e_tests is complete.
 
 ## Commands run
 
-- `npm test -- --run apps/api/src/reviews.test.ts`
+- `npm test -- --run tests/durable-worker-e2e.test.ts`
 - `npm run typecheck`
 - `npm run lint`
 - `npm test`
@@ -25,12 +25,12 @@ No current blockers.
 
 ## Next recommended task
 
-029_durable_worker_e2e_tests (`tasks/029_durable_worker_e2e_tests.md`)
+030_runtime_observability (`tasks/030_runtime_observability.md`)
 
 ## What not to do next
 
 - Do not push to remote until the user explicitly asks.
-- Do not reopen review rejection semantics unless product policy changes.
+- Do not replace the in-process E2E harness with live external services.
 - Do not bypass the Postgres-backed webhook delivery loop for public webhooks.
 - Do not implement Android final payment decisions.
 - Do not auto-confirm outside documented matching and decision rules.

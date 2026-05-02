@@ -1,21 +1,20 @@
 # Current Task
 
-task id: 028_review_rejection_semantics
-source task file: tasks/028_review_rejection_semantics.md
+task id: 029_durable_worker_e2e_tests
+source task file: tasks/029_durable_worker_e2e_tests.md
 status: completed
 scope:
-Clarify and implement safe review rejection semantics with explicit rejection scopes.
+Add durable in-process end-to-end tests across API, signal runtime, review semantics, webhook delivery and worker boundaries.
 
 files allowed:
-- tasks/028_review_rejection_semantics.md
+- tasks/029_durable_worker_e2e_tests.md
 - .swimpay-agent task queue and reports
-- apps/api review repository/API/tests
-- packages/events event constants
-- packages/database review action migration/schema
-- docs related to review queue, state machines, API, security and implementation notes
+- tests durable E2E files
+- existing app/package test harness files if needed
+- docs related to durable worker E2E tests, local development and implementation notes
 
 forbidden work:
-- Do not implement task 029 or later.
+- Do not implement task 030 or later.
 - Do not implement Android Receiver app logic.
 - Do not implement production deployment.
 - Do not add real bank package/cert verification.
@@ -24,16 +23,18 @@ forbidden work:
 - Do not store raw phone numbers.
 - Do not store raw notification text by default.
 - Do not weaken auto-confirm gates.
+- Do not add unrelated parser, matching, review, webhook or UI features.
 
 acceptance criteria:
-- Default reject scope is `signal`.
-- Signal-scope rejection rejects review/signal only.
-- Payment-session scope rejects the linked session without rejecting the order.
-- Order scope explicitly rejects both order and linked session.
-- Duplicate same-scope rejection is idempotent-safe.
-- Conflicting scope escalation after resolution returns a clear error.
-- Audit payloads are redacted.
-- No signal-scope public `payment.rejected` webhook is created by default.
+- In-process E2E tests cover API order/session creation and receiver signal ingestion.
+- Tests cover untrusted bank app routing to review.
+- Tests cover amount-only and unsafe categories never auto-confirm.
+- Tests cover trusted synthetic auto-confirm and webhook delivery record creation.
+- Tests cover collision review and duplicate signal idempotency.
+- Tests cover review rejection semantics through API.
+- Tests cover webhook delivery success, retry/dead behavior and required signatures.
+- Tests assert no raw phone, raw notification text, raw API keys or official-bank-confirmation claims in payloads.
+- Worker boundary handlers are covered through current consumer abstractions.
 
 commands to run:
 - npm run typecheck
@@ -42,10 +43,10 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T16:22:00+03:00
-completed_at: 2026-05-02T16:36:19+03:00
-result: completed. Review rejection now defaults to signal scope, supports explicit payment_session and order scopes, is idempotent for same-scope repeats, rejects conflicting scope escalation, writes redacted audit events, and keeps signal-scope rejection internal without public payment.rejected webhook delivery.
+started_at: 2026-05-02T16:52:01+03:00
+completed_at: 2026-05-02T16:57:53+03:00
+result: completed. Added durable in-process E2E tests across API order/session creation, receiver signal ingestion, signal runtime, review rejection semantics, webhook delivery, retry/dead states and worker consumer boundaries. Full validation passed.
 
 ## Source requirements
 
-See tasks/028_review_rejection_semantics.md.
+See tasks/029_durable_worker_e2e_tests.md.

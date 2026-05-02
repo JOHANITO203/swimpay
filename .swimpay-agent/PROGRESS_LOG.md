@@ -1,5 +1,45 @@
 # Progress Log
 
+## 2026-05-02 - Task 029 durable worker E2E tests
+
+Plan:
+- Add an in-process durable E2E harness under `tests/` using local fakes and existing runtime abstractions.
+- Cover API order/session creation, receiver signal ingestion, signal runtime decisions, review rejection API semantics, webhook delivery processing and worker-boundary handlers.
+- Keep external dependencies mocked or in-memory; do not call external network services or live NATS.
+- Add privacy assertions across API responses, runtime events, audit payloads and webhook payloads.
+- Update docs and local agent reports after validation.
+
+Guardrails:
+- No Android Receiver app logic.
+- No production deployment.
+- No real bank package/cert verification.
+- No PSP, SBP, SMS reading, bank app scraping or official bank confirmation behavior.
+- No broad parser/matching changes.
+
+TDD evidence:
+- `npm test -- --run tests/durable-worker-e2e.test.ts` failed first on an invalid-envelope expectation that did not match the current JetStream wrapper error text.
+- The test assertion was corrected to the existing wrapper behavior: `Invalid JetStream event payload: raw_pii_field_present`.
+- `npm test -- --run tests/durable-worker-e2e.test.ts` then passed with 7 tests.
+
+Implementation result:
+- Added `tests/durable-worker-e2e.test.ts`.
+- Added `docs/DURABLE_WORKER_E2E_TESTS.md`.
+- Updated local development and implementation notes.
+- Covered API order/session creation, receiver signal ingestion, signal runtime processing, review semantics, webhook delivery, retry/dead behavior, duplicate signal protection and worker-boundary error handling.
+- Kept live NATS, live PostgreSQL and external merchant endpoints mocked or in-memory.
+
+Final validation:
+- `npm run typecheck`: PASS
+- `npm run lint`: PASS
+- `npm test`: PASS, 28 test files and 171 tests passed
+- `npm run build`: PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config`: PASS
+- `git diff --check`: PASS
+
+Result:
+- Task 029 completed.
+- Next task is 030_runtime_observability.
+
 ## 2026-05-02 - Task 028 review rejection semantics
 
 Plan:
