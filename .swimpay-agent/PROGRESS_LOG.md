@@ -454,3 +454,34 @@
 - PASS: `npm test` (Tests, exit 0)
 - PASS: `npm run build` (Build, exit 0)
 - PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02 - Task 017 admin console minimal plan
+
+- Scope: add minimal operator admin API endpoints for bank profiles, template registry, drift events, webhook failures, receiver health, and audit event search.
+- Scope: allow an operator to mark a template `degraded` or `review_only` with a redacted audit event.
+- Boundaries: no browser UI, no template promotion, no package/cert trust verification, no raw PII exposure, no unsafe bulk admin actions, no payment decision changes.
+- Safety checks: operator-only placeholder auth, redacted action reasons, canonical/redacted template fields only, and audit events for every mutation.
+
+## 2026-05-02 - Task 017 admin console minimal completed
+
+- Added `apps/api/src/admin.ts` with a Postgres admin repository and in-memory test repository.
+- Added `/v1/admin/bank-profiles`, `/v1/admin/templates`, `/v1/admin/drift-events`, `/v1/admin/webhook-failures`, `/v1/admin/receiver-health`, and `/v1/admin/audit-events`.
+- Added `/v1/admin/templates/:id/degrade` and `/v1/admin/templates/:id/review-only` actions that update template status and write redacted operator audit events.
+- Added admin API tests covering read views, operator authorization, template degradation, review-only marking, redacted reasons, and audit event creation.
+- Did not implement template promotion, bank app/cert trust verification, dangerous admin actions, raw PII access, PSP/SBP behavior, or official bank confirmation wording.
+
+## 2026-05-02T11:18:00.000Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T11:12:08.578Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)

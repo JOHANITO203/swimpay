@@ -237,6 +237,42 @@ npm test -- tests/e2e-payment-signal-flow.test.ts
 
 They verify the in-process payment signal flow across matching-core and webhook worker primitives: safe incoming signal confirmation, signed webhook delivery, review routing for missing identity and collisions, and rejection for cashback, outgoing, and duplicate signals.
 
+Admin console foundation tests include:
+
+```bash
+npm test -- apps/api/src/admin.test.ts
+```
+
+Admin API endpoints use a local operator bearer placeholder during this foundation stage:
+
+```text
+Authorization: Bearer admin_ops_01
+```
+
+Example operational reads:
+
+```bash
+curl http://localhost:3000/v1/admin/bank-profiles \
+  -H "Authorization: Bearer admin_ops_01"
+
+curl http://localhost:3000/v1/admin/templates \
+  -H "Authorization: Bearer admin_ops_01"
+
+curl http://localhost:3000/v1/admin/audit-events?object_type=bank_template \
+  -H "Authorization: Bearer admin_ops_01"
+```
+
+Example audited template degradation:
+
+```bash
+curl -X POST http://localhost:3000/v1/admin/templates/<template_id>/degrade \
+  -H "Authorization: Bearer admin_ops_01" \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"operator observed drift in redacted template sample"}'
+```
+
+The admin foundation returns canonical/redacted template fields and operational metadata only. It does not expose raw phone numbers or raw notification text.
+
 ## Start Docker Compose
 
 ```bash
@@ -262,6 +298,7 @@ Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, 
 - Review queue APIs and repository methods exist, but automatic review creation from live matching decisions is not wired yet.
 - Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
 - Webhook delivery core is implemented as a tested worker foundation, but live NATS/Postgres orchestration is not wired yet.
+- Admin console is API-only. It exposes operator read views and audited template degrade/review-only actions, but does not implement a browser UI, template promotion, app package/cert trust verification, or unsafe bulk actions.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.
 - Phone fields are represented as HMAC/masked fields, not raw phone fields.

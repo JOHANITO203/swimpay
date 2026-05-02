@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { Redis } from 'ioredis';
 import { connect } from 'nats';
 import pg from 'pg';
@@ -47,6 +47,16 @@ import {
   type ReviewIdGenerator,
   type ReviewRepository
 } from './reviews.js';
+import {
+  buildAdminTemplateStatusInput,
+  parseAdminLimit,
+  parseAdminOperatorId,
+  PgAdminRepository,
+  toAdminListResponse,
+  toAdminTemplateActionResponse,
+  validateAdminActionBody,
+  type AdminRepository
+} from './admin.js';
 
 const { Pool } = pg;
 
@@ -82,6 +92,7 @@ export interface ApiServerOptions {
   receiverDeviceRepository?: ReceiverDeviceRepository;
   signalRepository?: ReceiverSignalRepository;
   reviewRepository?: ReviewRepository;
+  adminRepository?: AdminRepository;
   eventPublisher?: InternalEventPublisher;
   phoneHmacSecret?: string;
   checkoutBaseUrl?: string;
@@ -169,6 +180,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const receiverDeviceRepository = options.receiverDeviceRepository ?? createDefaultReceiverDeviceRepository(process.env);
   const signalRepository = options.signalRepository ?? createDefaultSignalRepository(process.env);
   const reviewRepository = options.reviewRepository ?? createDefaultReviewRepository(process.env);
+  const adminRepository = options.adminRepository ?? createDefaultAdminRepository(process.env);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const phoneHmacSecret = options.phoneHmacSecret ?? process.env.PHONE_HMAC_SECRET ?? 'local_dev_phone_hmac_secret';
   const checkoutBaseUrl = options.checkoutBaseUrl ?? process.env.CHECKOUT_BASE_URL ?? 'http://localhost:3001/checkout';
@@ -659,6 +671,122 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return reply.status(200).send(toReviewActionResponse(result));
   });
 
+  server.get('/v1/admin/bank-profiles', async (request, reply) => {
+    const operatorId = parseAdminOperatorId(request.headers.authorization);
+    if (!operatorId) {
+      return reply.status(401).send(adminAuthorizationError());
+    }
+
+    if (!adminRepository) {
+      return reply.status(503).send(adminRepositoryUnavailableError());
+    }
+
+    return reply.status(200).send(toAdminListResponse('bank_profiles', await adminRepository.listBankProfiles()));
+  });
+
+  server.get('/v1/admin/templates', async (request, reply) => {
+    const operatorId = parseAdminOperatorId(request.headers.authorization);
+    if (!operatorId) {
+      return reply.status(401).send(adminAuthorizationError());
+    }
+
+    if (!adminRepository) {
+      return reply.status(503).send(adminRepositoryUnavailableError());
+    }
+
+    const query = request.query as { limit?: string };
+    return reply.status(200).send(toAdminListResponse('templates', await adminRepository.listTemplates(parseAdminLimit(query.limit))));
+  });
+
+  server.post('/v1/admin/templates/:id/degrade', async (request, reply) => {
+    return handleAdminTemplateStatusAction({
+      request,
+      reply,
+      adminRepository,
+      status: 'degraded',
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
+  });
+
+  server.post('/v1/admin/templates/:id/review-only', async (request, reply) => {
+    return handleAdminTemplateStatusAction({
+      request,
+      reply,
+      adminRepository,
+      status: 'review_only',
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
+  });
+
+  server.get('/v1/admin/drift-events', async (request, reply) => {
+    const operatorId = parseAdminOperatorId(request.headers.authorization);
+    if (!operatorId) {
+      return reply.status(401).send(adminAuthorizationError());
+    }
+
+    if (!adminRepository) {
+      return reply.status(503).send(adminRepositoryUnavailableError());
+    }
+
+    const query = request.query as { limit?: string };
+    return reply.status(200).send(toAdminListResponse('drift_events', await adminRepository.listDriftEvents(parseAdminLimit(query.limit))));
+  });
+
+  server.get('/v1/admin/webhook-failures', async (request, reply) => {
+    const operatorId = parseAdminOperatorId(request.headers.authorization);
+    if (!operatorId) {
+      return reply.status(401).send(adminAuthorizationError());
+    }
+
+    if (!adminRepository) {
+      return reply.status(503).send(adminRepositoryUnavailableError());
+    }
+
+    const query = request.query as { limit?: string };
+    return reply
+      .status(200)
+      .send(toAdminListResponse('webhook_failures', await adminRepository.listWebhookFailures(parseAdminLimit(query.limit))));
+  });
+
+  server.get('/v1/admin/receiver-health', async (request, reply) => {
+    const operatorId = parseAdminOperatorId(request.headers.authorization);
+    if (!operatorId) {
+      return reply.status(401).send(adminAuthorizationError());
+    }
+
+    if (!adminRepository) {
+      return reply.status(503).send(adminRepositoryUnavailableError());
+    }
+
+    const query = request.query as { limit?: string };
+    return reply.status(200).send(toAdminListResponse('receiver_health', await adminRepository.listReceiverHealth(parseAdminLimit(query.limit))));
+  });
+
+  server.get('/v1/admin/audit-events', async (request, reply) => {
+    const operatorId = parseAdminOperatorId(request.headers.authorization);
+    if (!operatorId) {
+      return reply.status(401).send(adminAuthorizationError());
+    }
+
+    if (!adminRepository) {
+      return reply.status(503).send(adminRepositoryUnavailableError());
+    }
+
+    const query = request.query as { limit?: string; event_type?: string; object_type?: string };
+    return reply.status(200).send(
+      toAdminListResponse(
+        'audit_events',
+        await adminRepository.searchAuditEvents({
+          limit: parseAdminLimit(query.limit),
+          eventType: query.event_type,
+          objectType: query.object_type
+        })
+      )
+    );
+  });
+
   return server;
 }
 
@@ -696,6 +824,15 @@ function createDefaultReviewRepository(env: NodeJS.ProcessEnv): ReviewRepository
   }
 
   return new PgReviewRepository(databaseUrl);
+}
+
+function createDefaultAdminRepository(env: NodeJS.ProcessEnv): AdminRepository | null {
+  const databaseUrl = env.DATABASE_URL;
+  if (!databaseUrl) {
+    return null;
+  }
+
+  return new PgAdminRepository(databaseUrl);
 }
 
 function createDefaultEventPublisher(env: NodeJS.ProcessEnv): InternalEventPublisher {
@@ -779,6 +916,75 @@ function reviewActionErrorResponse(kind: 'not_found' | 'not_open' | 'already_con
         }
       };
   }
+}
+
+async function handleAdminTemplateStatusAction(params: {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  adminRepository: AdminRepository | null;
+  status: 'degraded' | 'review_only';
+  auditEventId: string;
+  occurredAt: string;
+}) {
+  const operatorId = parseAdminOperatorId(params.request.headers.authorization);
+  if (!operatorId) {
+    return params.reply.status(401).send(adminAuthorizationError());
+  }
+
+  if (!params.adminRepository) {
+    return params.reply.status(503).send(adminRepositoryUnavailableError());
+  }
+
+  const routeParams = params.request.params as { id?: string };
+  if (!routeParams.id) {
+    return params.reply.status(400).send(invalidRequest('Template id is required.', {}));
+  }
+
+  const body = validateAdminActionBody(params.request.body);
+  if ('error' in body) {
+    return params.reply.status(400).send(body);
+  }
+
+  const result = await params.adminRepository.updateTemplateStatus(
+    buildAdminTemplateStatusInput({
+      templateId: routeParams.id,
+      status: params.status,
+      operatorId,
+      body,
+      auditEventId: params.auditEventId,
+      occurredAt: params.occurredAt
+    })
+  );
+
+  if (result.kind === 'not_found') {
+    return params.reply.status(404).send({
+      error: {
+        code: 'not_found',
+        message: 'Bank template was not found.',
+        details: {
+          template_id: routeParams.id
+        }
+      }
+    });
+  }
+
+  return params.reply.status(200).send(toAdminTemplateActionResponse(result));
+}
+
+function adminAuthorizationError() {
+  return invalidRequest('An operator bearer token is required for this foundation endpoint.', {
+    authorization: 'Bearer admin_<operator_id>'
+  });
+}
+
+function adminRepositoryUnavailableError() {
+  return {
+    error: {
+      code: 'service_unavailable',
+      message: 'Admin repository is not configured.',
+      details: {}
+    }
+  };
 }
 
 function toOrderReadResponse(order: StoredOrderRecord, paymentSessionId: string | null): OrderReadResponse {

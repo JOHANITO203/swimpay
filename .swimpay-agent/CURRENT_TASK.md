@@ -1,13 +1,13 @@
 # Current Task
 
-task id: 016_end_to_end_tests
-source task file: tasks/016_end_to_end_tests.md
+task id: 017_admin_console_minimal
+source task file: tasks/017_admin_console_minimal.md
 status: completed
 scope:
-Create end-to-end tests for the full payment signal flow.
+Implement minimal internal admin console for bank profiles, templates and incidents.
 
 files allowed:
-- Files named or implied by tasks/016_end_to_end_tests.md
+- Files named or implied by tasks/017_admin_console_minimal.md
 - Tests for this task
 - Documentation directly related to this task
 - Shared packages only when required by this task
@@ -23,9 +23,10 @@ forbidden work:
 - Do not modify unrelated services.
 
 acceptance criteria:
-- E2E tests run automatically.
-- Critical unsafe paths are covered.
-- Tests use fake redacted data only.
+- Operator can view bank statuses.
+- Operator can view templates.
+- Operator can mark template degraded/review_only.
+- Actions create audit events.
 
 commands to run:
 - npm run typecheck
@@ -34,10 +35,17 @@ commands to run:
 - npm run build
 - docker compose --env-file .env.example -f infra/docker-compose.yml config
 
-started_at: 2026-05-02T11:00:21.845Z
-completed_at: 2026-05-02T11:05:00.000Z
+started_at: 2026-05-02T11:04:55.013Z
+completed_at: 2026-05-02T11:18:00.000Z
 result: completed
 
 ## Source requirements
 
-See source task file.
+Implement pages or API endpoints for:
+
+- bank profiles;
+- template registry;
+- drift events;
+- webhook failures;
+- receiver health;
+- audit search minimal.

@@ -37,6 +37,8 @@ Task 015 added security hardening primitives. `@swimpay/security` now includes A
 
 Task 016 added an end-to-end payment signal foundation test. It exercises order/session-like matching inputs, a safe incoming signal auto-confirm decision through matching-core trust gates, signed webhook delivery after confirmation, review routing for missing identity, rejection for cashback/outgoing/duplicate signals, and collision routing to review. The test uses redacted placeholder-derived HMAC values and does not use production external calls.
 
+Task 017 added a minimal operator admin API foundation. It exposes bank profile status, template registry, drift events, webhook failures, receiver health, and audit search endpoints under `/v1/admin/*` with a local operator bearer placeholder. It also supports degrading a bank template or moving it to `review_only`, and every template action writes a redacted operator audit event.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:
@@ -83,6 +85,7 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Webhook worker tests use an injectable HTTP client and in-memory repository; no production external calls are made during tests.
 - The webhook worker is not yet connected to NATS JetStream event consumption or a Postgres-backed delivery loop.
 - End-to-end tests now cover the foundation signal flow across matching-core and webhook worker primitives, including unsafe-path protections. They are still in-process tests and do not replace future Postgres/NATS integration tests.
+- Admin console foundation is API-only for now. It supports read-only operational views and audited template degradation/review-only actions; it does not include a browser UI, dangerous admin actions, template promotion, package/certificate trust verification, or raw PII access.
 - No official bank confirmation wording or status was introduced.
 - Receiver registration does not mark any bank package name or certificate fingerprint as trusted.
 - Android Receiver does not implement final payment confirmation logic; backend-only decisions remain intentionally unimplemented.
