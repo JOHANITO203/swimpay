@@ -130,6 +130,16 @@ Sprint 4H hardens the app path:
 
 The debug app still uses synthetic redacted data only. It never confirms or auto-confirms a payment.
 
+Sprint 4I adds a debug-only synthetic notification listener smoke path:
+
+```powershell
+adb -s R5CWA0FEPZW shell pm grant com.swimpay.receiver android.permission.POST_NOTIFICATIONS
+adb -s R5CWA0FEPZW shell am broadcast -a com.swimpay.receiver.DEBUG_SMOKE --es action post_synthetic_notification
+adb -s R5CWA0FEPZW shell am broadcast -a com.swimpay.receiver.DEBUG_SMOKE --es action process_synthetic_notification_e2e
+```
+
+The source is marked `synthetic_debug_only`, logs safe metadata only, redacts before outbox/upload and still leaves the backend as the only decision maker.
+
 ## Emulator Smoke
 
 Run:

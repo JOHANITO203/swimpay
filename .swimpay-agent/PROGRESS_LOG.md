@@ -1261,3 +1261,16 @@ Safety checks:
 - Added Android JVM and static tests for storage security, signing policy, retry planning and debug/release separation.
 - Real-device background retry smoke passed with synthetic redacted data only.
 - No real bank notifications, customer data, SMS, scraping, Android confirmation or raw PII were used.
+
+## 2026-05-02T23:55:28+03:00 - Sprint 4I Synthetic Notification Listener E2E and Receiver Diagnostics
+
+- Created tasks 112 through 120 and updated the task queue.
+- Added a debug-only synthetic notification source inside the Android Receiver.
+- Added synthetic package/cert metadata marked `synthetic_debug_only` and accepted only in debug mode.
+- Added NotificationListener pipeline pieces: snapshot extraction, allowlist gate, coalescer, privacy firewall, local hints, persistent outbox enqueue and signed upload flush.
+- Added receiver diagnostics model with safe status, queue counts and redacted error summaries.
+- Added Android JVM and static tests for synthetic package gating, coalescing, redaction, diagnostics and Sprint 4I task order.
+- Real-device deterministic synthetic notification pipeline passed through outbox/backend with `acked=1 failed_retrying=0`.
+- Synthetic notification posting passed, but live NotificationListener capture must be rerun after manually re-enabling Android Notification Access because reinstall/data clear removed the OS listener grant.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Gradle assembleDebug, Gradle JVM tests, ADB reverse/install/launch and debug broadcast smoke.
+- No real bank notifications, customer data, SMS, scraping, Android confirmation, raw PII or real bank package/cert values were used.

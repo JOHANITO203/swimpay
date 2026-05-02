@@ -221,7 +221,7 @@ describe('android emulator smoke validation', () => {
   });
 
   it('lists Sprint 4H task files in the approved order', () => {
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const sprintReport = readFileSync(join(root, '.swimpay-agent/SPRINT_4H_REPORT.md'), 'utf8');
     const tasks = [
       '104_android_keystore_device_identity_hardening',
       '105_android_encrypted_storage_platform_impl',
@@ -236,7 +236,7 @@ describe('android emulator smoke validation', () => {
     let previousIndex = -1;
     for (const task of tasks) {
       expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
+      const index = sprintReport.indexOf(task);
       expect(index, task).toBeGreaterThan(previousIndex);
       previousIndex = index;
     }
@@ -340,5 +340,30 @@ describe('android device-side network smoke wiring', () => {
     expect(mainManifest).not.toContain('DebugSmokeBroadcastReceiver');
     expect(debugManifest).toContain('DebugSmokeBroadcastReceiver');
     expect(`${outboxStore}\n${worker}\n${signer}`).not.toMatch(/paymentConfirmed|autoConfirm|official_bank_confirmation = true/iu);
+  });
+
+  it('wires Sprint 4I synthetic listener pipeline and diagnostics safely', () => {
+    const pipeline = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverNotificationPipeline.kt');
+    const listener = readAndroid('app/src/main/java/com/swimpay/receiver/SwimPayNotificationListenerService.kt');
+    const source = readAndroid('app/src/main/java/com/swimpay/receiver/DebugSyntheticNotificationSource.kt');
+    const diagnostics = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverDiagnostics.kt');
+    const debugManifest = readAndroid('app/src/debug/AndroidManifest.xml');
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+
+    expect(pipeline).toContain('synthetic_debug_only');
+    expect(pipeline).toContain('SyntheticPackageGate');
+    expect(pipeline).toContain('NotificationCoalescer');
+    expect(pipeline).toContain('raw_text_present');
+    expect(listener).toContain('SwimPayReceiverListener');
+    expect(listener).toContain('fields_detected');
+    expect(listener).toContain('enqueueProcessedNotificationSignal');
+    expect(source).toContain('DebugSyntheticNotificationSource');
+    expect(source).toContain('SyntheticNotificationConstants.CHANNEL_ID');
+    expect(diagnostics).toContain('outboxPendingCount');
+    expect(diagnostics).toContain('outboxFailedRetryingCount');
+    expect(debugManifest).toContain('android.permission.POST_NOTIFICATIONS');
+    expect(`${pipeline}\n${listener}\n${source}\n${diagnostics}`).not.toMatch(/READ_SMS|AccessibilityService|bank_confirmed|paymentConfirmed|autoConfirm/iu);
+    expect(queue).toContain('112_synthetic_notification_source_strategy');
+    expect(queue).toContain('120_sprint_4i_closeout_review');
   });
 });

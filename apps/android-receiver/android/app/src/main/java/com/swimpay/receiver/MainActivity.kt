@@ -16,11 +16,14 @@ class MainActivity : Activity() {
         checkedAt = "not checked",
         safeMessage = "backend not checked"
     )
+    private val outboxStore by lazy {
+        AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(this))
+    }
     private val debugController by lazy {
         DebugReceiverSmokeController(
             debugEnabled = BuildConfig.DEBUG,
             deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(this)),
-            outboxStore = AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(this))
+            outboxStore = outboxStore
         )
     }
     private val backendStatusRefresher by lazy {
@@ -48,6 +51,17 @@ class MainActivity : Activity() {
             queueLength = 0,
             backendReachable = backendStatus.reachable
         )
+        val diagnostics = ReceiverDiagnosticsBuilder().build(
+            notificationAccessEnabled = notificationAccessEnabled,
+            listenerConnected = notificationAccessEnabled,
+            allowedBanksCount = 0,
+            syntheticDebugSourceEnabled = BuildConfig.DEBUG,
+            backendReachable = backendStatus.reachable,
+            lastSignalObservedAt = null,
+            lastUploadStatus = backendStatus.safeMessage,
+            lastSafeErrorSummary = null,
+            outboxStore = outboxStore
+        )
 
         val text = """
             SwimPay Receiver
@@ -55,9 +69,13 @@ class MainActivity : Activity() {
             Listener: ${if (state.listenerConnected) "connected" else "disconnected"}
             Allowed banks: ${state.allowedBanksCount}
             Queue length: ${state.queueLength}
+            Outbox pending: ${diagnostics.outboxPendingCount}
+            Outbox retrying: ${diagnostics.outboxFailedRetryingCount}
+            Synthetic debug source: ${if (diagnostics.syntheticDebugSourceEnabled) "enabled" else "disabled"}
             Backend: ${if (state.backendReachable) "reachable" else "unreachable"}
             Last backend check: ${backendStatus.checkedAt}
             Backend status: ${backendStatus.safeMessage}
+            Last upload: ${diagnostics.lastUploadStatus}
             Warnings: ${state.warnings.joinToString(", ")}
         """.trimIndent()
 
@@ -70,6 +88,21 @@ class MainActivity : Activity() {
         }
         container.addView(TextView(this).apply { this.text = text })
         container.addView(result)
+
+        if (BuildConfig.DEBUG) {
+            container.addView(Button(this).apply {
+                this.text = "Post synthetic notification"
+                setOnClickListener {
+                    result.text = "Posting synthetic notification..."
+                    Thread {
+                        val actionResult = DebugSyntheticNotificationSource(this@MainActivity).postIncomingTransfer()
+                        runOnUiThread {
+                            result.text = "${if (actionResult.success) "Success" else "Error"}: ${actionResult.safeMessage}"
+                        }
+                    }.start()
+                }
+            })
+        }
 
         for (action in debugController.availableActions()) {
             container.addView(Button(this).apply {

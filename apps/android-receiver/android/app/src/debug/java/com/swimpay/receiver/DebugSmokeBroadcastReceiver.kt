@@ -16,6 +16,11 @@ class DebugSmokeBroadcastReceiver : BroadcastReceiver() {
 
         Thread {
             try {
+                if (actionId == "post_synthetic_notification") {
+                    val result = DebugSyntheticNotificationSource(context).postIncomingTransfer()
+                    Log.i(TAG, "action=$actionId success=${result.success} message=${result.safeMessage}")
+                    return@Thread
+                }
                 if (actionId == "schedule_background_retry") {
                     SignalUploadWorker.enqueue(WorkManager.getInstance(context), 0)
                     Log.i(TAG, "action=$actionId success=true message=background retry scheduled; backend decision pending; not official bank confirmation")

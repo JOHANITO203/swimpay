@@ -18,7 +18,8 @@ class DebugReceiverSmokeControllerTest {
                 "send_heartbeat",
                 "upload_synthetic_redacted_signal",
                 "enqueue_synthetic_outbox_signal",
-                "flush_outbox"
+                "flush_outbox",
+                "process_synthetic_notification_e2e"
             ),
             actions.map { it.id }
         )

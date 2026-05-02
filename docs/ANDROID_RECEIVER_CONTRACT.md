@@ -289,6 +289,7 @@ No metric contains raw phone values, raw notification text, API keys or signatur
 - Sprint 4F wires debug-only app-side registration, heartbeat, synthetic redacted signal upload and outbox smoke actions to the local backend over `adb reverse tcp:8080 tcp:8080`.
 - Sprint 4G adds persistent debug receiver device state, a protected SharedPreferences-backed outbox boundary for redacted signed payloads, bounded retry policy wiring and live debug backend health refresh. The protected outbox is suitable for local MVP smoke validation but is not claimed as production-grade encryption.
 - Sprint 4H adds Android Keystore-backed platform storage boundaries for outbox ciphertext, keeps the JVM fake storage isolated to tests, adds migration from the previous local outbox storage, and wires debug WorkManager retry to the persistent outbox flush boundary. Release mode still has no debug smoke controls or dev backend fallback.
+- Sprint 4I adds a synthetic debug notification listener contract using only `synthetic_debug_only` package/certificate metadata. It validates capture, coalescing, redaction, outbox and signed upload boundaries without real bank notifications. Synthetic package/cert metadata remains pending verification and cannot become production trust evidence.
 - Real package/certificate verification is not implemented.
 - `TO_VERIFY` package/cert metadata remains untrusted.
 - Backend signal matching and payment decisions remain in the signal runtime pipeline.

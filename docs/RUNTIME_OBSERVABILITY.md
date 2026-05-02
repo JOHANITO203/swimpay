@@ -172,3 +172,5 @@ http://127.0.0.1:8080
 with `adb reverse tcp:8080 tcp:8080`. The UI shows only safe reachability, last check time and redacted error summaries. It does not display response bodies, secrets, raw phone numbers or raw notification text.
 
 Sprint 4H keeps the same safe status surface while moving outbox storage to a Keystore-backed protected adapter. Background retry is still intentionally lightweight: WorkManager has network constraints and bounded attempts, and debug smoke logs expose only safe action results such as ack/retry counts.
+
+Sprint 4I adds receiver diagnostics for the synthetic listener path. The debug status surface may show listener state, synthetic debug source status, outbox pending/retry counts, backend reachability and safe last status/error. It must not show raw phone numbers, raw notification text, raw title/body fields or secrets.

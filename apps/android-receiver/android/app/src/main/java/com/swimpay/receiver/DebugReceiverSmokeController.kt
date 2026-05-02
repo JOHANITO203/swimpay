@@ -62,6 +62,11 @@ class DebugReceiverSmokeController(
                 id = "flush_outbox",
                 label = "Flush outbox",
                 safeDescription = "Retries queued redacted payloads; backend decision pending; not official bank confirmation."
+            ),
+            DebugSmokeAction(
+                id = "process_synthetic_notification_e2e",
+                label = "Process synthetic notification",
+                safeDescription = "Runs listener-style synthetic notification path; backend decision pending; not official bank confirmation."
             )
         )
     }
@@ -75,6 +80,7 @@ class DebugReceiverSmokeController(
             "upload_synthetic_redacted_signal" -> uploadSyntheticSignal()
             "enqueue_synthetic_outbox_signal" -> enqueueSyntheticOutboxSignal()
             "flush_outbox" -> flushOutbox()
+            "process_synthetic_notification_e2e" -> processSyntheticNotificationE2e()
             else -> DebugSmokeResult(success = false, safeMessage = "Unknown debug action.")
         }
     }
@@ -116,6 +122,42 @@ class DebugReceiverSmokeController(
         )
         signal["signature"] = signDebugSignal(signal)
         return signal
+    }
+
+    fun enqueueProcessedNotificationSignal(result: ReceiverNotificationPipelineResult): DebugSmokeResult {
+        require(debugEnabled) { "Debug receiver smoke actions are disabled." }
+        val payload = result.payload
+            ?: return DebugSmokeResult(success = false, safeMessage = "notification pipeline payload missing")
+        val currentDeviceId = deviceId ?: deviceStateStore.load()?.deviceId ?: "dev_debug_outbox"
+        val eventId = payload["event_id"]?.toString()
+            ?: return DebugSmokeResult(success = false, safeMessage = "notification pipeline event id missing")
+        val signal = linkedMapOf<String, Any>()
+        signal.putAll(payload)
+        signal["merchant_id"] = config.merchantId
+        signal["device_id"] = currentDeviceId
+        signal["local_counter"] = nextCounter()
+        signal["signature"] = signDebugSignal(signal)
+        val payloadJson = jsonObject(signal.entries.map { it.key to it.value })
+        outboxStore.enqueue(
+            OutboxRecord(
+                localId = "outbox_$eventId",
+                eventId = eventId,
+                notificationHash = signal["notification_hash"].toString(),
+                semanticHash = signal["semantic_hash"].toString(),
+                payloadHash = sha256Hex(payloadJson),
+                encryptedPayload = payloadJson,
+                status = com.swimpay.receiver.outbox.OutboxStatus.PENDING_UPLOAD,
+                attemptCount = 0,
+                firstSeenAt = nowIso(),
+                lastAttemptAt = null,
+                nextRetryAt = null,
+                ackReceivedAt = null
+            )
+        )
+        return DebugSmokeResult(
+            success = true,
+            safeMessage = "queued listener notification signal; backend decision pending; not official bank confirmation"
+        )
     }
 
     private fun registerReceiver(): DebugSmokeResult {
@@ -237,6 +279,20 @@ class DebugReceiverSmokeController(
         return DebugSmokeResult(
             success = retrying == 0,
             safeMessage = "outbox flush result: acked=$acked failed_retrying=$retrying; backend decision pending; not official bank confirmation"
+        )
+    }
+
+    private fun processSyntheticNotificationE2e(): DebugSmokeResult {
+        val processed = ReceiverNotificationPipeline(debugEnabled = true)
+            .process(listOf(SyntheticNotificationFixtures.incomingTransferSnapshot(postTime = System.currentTimeMillis())))
+        val queued = enqueueProcessedNotificationSignal(processed)
+        if (!queued.success) {
+            return queued
+        }
+        val flushed = flushOutbox()
+        return DebugSmokeResult(
+            success = flushed.success,
+            safeMessage = "synthetic notification listener path ${flushed.safeMessage}"
         )
     }
 

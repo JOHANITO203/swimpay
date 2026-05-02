@@ -248,6 +248,14 @@ Sprint 4H adds the first production-oriented Android storage and worker boundary
 
 The current real-device smoke remains synthetic and redacted. Real bank package/certificate verification and real bank notification testing remain out of scope.
 
+## Sprint 4I Synthetic Notification Listener E2E
+
+Sprint 4I adds a debug-only synthetic notification source for real-device listener smoke tests. The source is marked `synthetic_debug_only`, is not production trust evidence, and uses only redacted examples. The listener path extracts safe snapshot metadata, coalesces duplicate snapshots, redacts before outbox/upload, and queues a signed notification signal for backend processing.
+
+Android still does not confirm or auto-confirm payments. Successful listener smoke means the backend can receive a redacted notification signal and continue with backend decision pending or review.
+
+See `docs/SYNTHETIC_NOTIFICATION_TESTING.md`.
+
 Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
 
 - `adb` available from the Android SDK.

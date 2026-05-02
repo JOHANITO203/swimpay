@@ -1,25 +1,27 @@
 # Next Action
 
-generated_at: 2026-05-02T23:30:00+03:00
+generated_at: 2026-05-02T23:55:28+03:00
 
 ## Latest Completed Sprint
 
-Sprint 4H - Android Production Storage and Worker Hardening.
+Sprint 4I - Synthetic Notification Listener E2E and Receiver Diagnostics.
 
 ## Status
 
-PASS.
+PASS with one manual Android permission step.
+
+The deterministic synthetic notification pipeline, outbox flush and backend upload path passed on the real device. Live NotificationListener capture must be rerun after re-enabling Android Notification Access for SwimPay Receiver, because reinstall/data clear removed the OS listener grant.
 
 ## Next Recommended Sprint
 
-Sprint 4I - Android real-device resilience and operator readiness.
+Sprint 4J - Real-device listener capture replay and receiver resilience.
 
 Recommended tasks:
 
-1. Validate background retry after app process kill and phone reboot.
-2. Add a debug-only clear synthetic receiver state action.
-3. Add operator-visible receiver storage/queue diagnostics without raw PII.
-4. Prepare a human-approved real bank package/cert evidence collection checklist without trusting values automatically.
+1. Re-enable SwimPay Receiver in Android Notification Access and rerun live synthetic listener capture.
+2. Add a debug-only warning/action when Notification Access is missing after reinstall.
+3. Validate WorkManager retry after app process death and phone reboot with synthetic redacted outbox entries.
+4. Add a safe diagnostics export for operator support without raw PII.
 
 ## What Not To Do Next
 

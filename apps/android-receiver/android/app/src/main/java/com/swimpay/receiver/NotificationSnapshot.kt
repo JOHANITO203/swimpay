@@ -14,5 +14,9 @@ data class NotificationSnapshot(
     val subText: String?,
     val summaryText: String?,
     val textLines: List<String>,
-    val tickerText: String?
+    val tickerText: String?,
+    val syntheticDebugOnly: Boolean = false,
+    val bankProfileId: String = "sber_ru",
+    val packageCertSha256: String = "TO_VERIFY",
+    val verificationStatus: BankPackageVerificationStatus = BankPackageVerificationStatus.TO_VERIFY
 )

@@ -1,6 +1,6 @@
 # Real Device Smoke Report
 
-generated_at: 2026-05-02T22:09:47+03:00
+generated_at: 2026-05-02T23:55:28+03:00
 
 status: PASS
 
@@ -78,6 +78,18 @@ Initial signal upload returned `401` due to Kotlin canonical JSON including spac
 - Full WorkManager process-death/reboot retry validation still needs deeper real-device validation.
 - Real bank package/cert verification remains out of scope.
 
+## Sprint 4I Synthetic Notification Listener Smoke
+
+- Synthetic notification source: debug-only receiver notification channel.
+- Synthetic package: `synthetic_debug_only.com.swimpay.syntheticbank`.
+- Synthetic cert: `synthetic_debug_only.cert_sha256`.
+- Synthetic notification post: PASS.
+- Deterministic notification pipeline broadcast: PASS.
+- Outbox/backend result: `acked=1 failed_retrying=0`.
+- Backend result wording: `backend decision pending`; no official bank confirmation.
+
+Live NotificationListener capture was not observed after reinstall/data clear because Android Notification Access was no longer enabled for the package. Android requires the user to re-enable the listener after this reset. This is a manual OS permission step, not an application data-path failure.
+
 ## Next Step
 
-Sprint 4I should validate background retry after app process death/reboot and prepare operator-facing receiver diagnostics without raw PII.
+Sprint 4J should re-enable Notification Access on the device and rerun live synthetic notification capture, then continue process-death/reboot WorkManager validation.

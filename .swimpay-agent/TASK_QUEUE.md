@@ -6,11 +6,12 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `104_android_keystore_device_identity_hardening` - status: completed - source: `tasks/104_android_keystore_device_identity_hardening.md`
-- [x] `105_android_encrypted_storage_platform_impl` - status: completed - source: `tasks/105_android_encrypted_storage_platform_impl.md`
-- [x] `106_android_persistent_outbox_migration_and_cleanup` - status: completed - source: `tasks/106_android_persistent_outbox_migration_and_cleanup.md`
-- [x] `107_android_workmanager_background_retry_validation` - status: completed - source: `tasks/107_android_workmanager_background_retry_validation.md`
-- [x] `108_android_debug_release_separation` - status: completed - source: `tasks/108_android_debug_release_separation.md`
-- [x] `109_android_storage_security_tests` - status: completed - source: `tasks/109_android_storage_security_tests.md`
-- [x] `110_real_device_background_retry_smoke` - status: completed - source: `tasks/110_real_device_background_retry_smoke.md`
-- [x] `111_sprint_4h_closeout_review` - status: completed - source: `tasks/111_sprint_4h_closeout_review.md`
+- [x] `112_synthetic_notification_source_strategy` - status: completed - source: `tasks/112_synthetic_notification_source_strategy.md`
+- [x] `113_debug_synthetic_notifier_app_or_channel` - status: completed - source: `tasks/113_debug_synthetic_notifier_app_or_channel.md`
+- [x] `114_notification_listener_e2e_capture` - status: completed - source: `tasks/114_notification_listener_e2e_capture.md`
+- [x] `115_allowlist_and_synthetic_package_gate` - status: completed - source: `tasks/115_allowlist_and_synthetic_package_gate.md`
+- [x] `116_snapshot_coalescer_live_validation` - status: completed - source: `tasks/116_snapshot_coalescer_live_validation.md`
+- [x] `117_privacy_firewall_live_validation` - status: completed - source: `tasks/117_privacy_firewall_live_validation.md`
+- [x] `118_notification_to_outbox_to_backend_e2e` - status: completed - source: `tasks/118_notification_to_outbox_to_backend_e2e.md`
+- [x] `119_receiver_operator_diagnostics` - status: completed - source: `tasks/119_receiver_operator_diagnostics.md`
+- [x] `120_sprint_4i_closeout_review` - status: completed - source: `tasks/120_sprint_4i_closeout_review.md`

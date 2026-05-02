@@ -33,18 +33,19 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4H production storage tasks in the approved order', () => {
+  test('task queue lists Sprint 4I synthetic listener tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '104_android_keystore_device_identity_hardening',
-      '105_android_encrypted_storage_platform_impl',
-      '106_android_persistent_outbox_migration_and_cleanup',
-      '107_android_workmanager_background_retry_validation',
-      '108_android_debug_release_separation',
-      '109_android_storage_security_tests',
-      '110_real_device_background_retry_smoke',
-      '111_sprint_4h_closeout_review'
+      '112_synthetic_notification_source_strategy',
+      '113_debug_synthetic_notifier_app_or_channel',
+      '114_notification_listener_e2e_capture',
+      '115_allowlist_and_synthetic_package_gate',
+      '116_snapshot_coalescer_live_validation',
+      '117_privacy_firewall_live_validation',
+      '118_notification_to_outbox_to_backend_e2e',
+      '119_receiver_operator_diagnostics',
+      '120_sprint_4i_closeout_review'
     ];
 
     let previousIndex = -1;

@@ -576,6 +576,16 @@ The current persistent outbox uses a protected storage boundary suitable for loc
 
 Sprint 4H updates the active Android debug outbox path to use an Android Keystore-backed protected adapter and migrates any previous local debug outbox entries into it. The JVM tests still use fakes so they can run without Android platform storage. WorkManager retry is unique, network-constrained and bounded; release builds do not expose debug smoke buttons or the debug broadcast receiver.
 
+Sprint 4I adds synthetic listener smoke:
+
+```powershell
+adb -s R5CWA0FEPZW shell pm grant com.swimpay.receiver android.permission.POST_NOTIFICATIONS
+adb -s R5CWA0FEPZW shell am broadcast -a com.swimpay.receiver.DEBUG_SMOKE --es action post_synthetic_notification
+adb -s R5CWA0FEPZW shell am broadcast -a com.swimpay.receiver.DEBUG_SMOKE --es action process_synthetic_notification_e2e
+```
+
+The synthetic source is debug-only and marked `synthetic_debug_only`. It uses redacted examples, never real bank notifications, and never performs Android-side payment confirmation.
+
 Only the Caddy proxy publishes a host port. PostgreSQL, Valkey, NATS, API, web, and workers stay on the private Compose network. For a real single-server install, set `HTTP_PORT=80` in the server environment and configure TLS/reverse-proxy policy before exposing merchants.
 
 Before starting the full local runtime, run the lightweight smoke guard:
