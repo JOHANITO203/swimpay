@@ -191,7 +191,39 @@
 - Review list responses expose masked phone/reference fields only and do not expose raw notification text.
 - Did not implement hosted checkout, webhook delivery, parser/matching worker wiring, PSP/SBP behavior, SMS reading, bank app scraping, or official bank confirmation.
 
+## 2026-05-02 - Task 011 hosted checkout plan
+
+- Scope: implement a minimal hosted checkout UI foundation in `apps/web`, with summary, buyer identity, payment instructions, waiting status, result text, timer, copy buttons, open-bank placeholder, paid-claim button, and polling endpoint.
+- Boundaries: no payment confirmation, no API-side buyer-claimed-paid state transition, no bank integration, no PSP/SBP behavior, no raw phone storage.
+- Security/product wording: the page must describe SwimPay recognition from merchant-side notification signals only and must not claim official bank confirmation or guaranteed payment.
+- Validation after implementation: targeted web tests, then full agent validation.
+
+## 2026-05-02 - Task 011 hosted checkout completed
+
+- Refactored `apps/web` into a testable `buildWebServer()` foundation with conditional runtime startup.
+- Implemented `GET /checkout/:paymentSessionId` for the hosted checkout page.
+- Implemented `GET /checkout/:paymentSessionId/status` for browser polling mapped from backend session states.
+- Implemented `POST /checkout/:paymentSessionId/claimed-paid` as a safe claim endpoint that explicitly does not confirm payment.
+- Added checkout tests covering safe wording, buyer phone explanation, status polling, and the non-confirming paid button.
+- Did not implement webhooks, admin dashboard, real bank opening integration, API-side buyer state persistence, or payment confirmation behavior.
+
 ## 2026-05-02T10:00:33.072Z - Agent validation pass
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- PASS: `npm test` (Tests, exit 0)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T10:05:50.128Z - Agent validation fail
+
+- PASS: `npm run typecheck` (Typecheck, exit 0)
+- PASS: `npm run lint` (Lint, exit 0)
+- FAIL: `npm test` (Tests, exit 1)
+- PASS: `npm run build` (Build, exit 0)
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml config` (Docker Compose config, exit 0)
+
+## 2026-05-02T10:06:32.297Z - Agent validation pass
 
 - PASS: `npm run typecheck` (Typecheck, exit 0)
 - PASS: `npm run lint` (Lint, exit 0)

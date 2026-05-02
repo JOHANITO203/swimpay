@@ -101,6 +101,39 @@ curl -X POST http://localhost:3000/v1/reviews/rev_01/reject \
 
 Review responses expose masked phone/reference fields only. They do not expose raw phone numbers or raw notification text.
 
+## Hosted Checkout Foundation
+
+Start the web service:
+
+```bash
+npm run dev:web
+```
+
+Open a checkout page:
+
+```text
+http://localhost:3001/checkout/ps_01
+```
+
+The web service reads checkout session state from the API through `API_BASE_URL` and the temporary local merchant id `CHECKOUT_MERCHANT_ID`.
+
+```bash
+API_BASE_URL=http://localhost:3000 CHECKOUT_MERCHANT_ID=mch_01 npm run dev:web
+```
+
+The checkout page includes:
+
+- checkout summary;
+- buyer identity fields;
+- payment instructions;
+- timer;
+- copy buttons;
+- open-bank placeholder;
+- `J'ai paye` button;
+- status polling.
+
+`J'ai paye` does not confirm payment. It only records a local buyer claim response and keeps the UI waiting for the backend payment signal state.
+
 ## Android Receiver Core Foundation
 
 The Android Receiver foundation is currently a TypeScript core package for deterministic tests and later Android integration:
@@ -156,6 +189,7 @@ PostgreSQL, Valkey, and NATS are on the private Compose network and are not publ
 - Bank parser output is currently a package-level foundation and is not yet wired into the signal worker pipeline.
 - Matching core output is currently package-level only and is not yet wired into live signal-worker execution.
 - Review queue APIs and repository methods exist, but automatic review creation from live matching decisions is not wired yet.
+- Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
 - Webhook delivery is not implemented yet.
 - Raw notifications are not stored by default.
 - API keys are represented only by hashed storage fields.

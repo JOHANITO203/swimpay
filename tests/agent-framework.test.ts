@@ -54,7 +54,7 @@ describe('local agent orchestration framework', () => {
 
     let previousIndex = -1;
     for (const task of orderedTasks) {
-      const index = queue.indexOf(`\`${task}\` - status: pending - source: \`tasks/${task}.md\``);
+      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed) - source: \\\`tasks/${task}\\.md\\\``));
       expect(index, task).toBeGreaterThan(previousIndex);
       previousIndex = index;
     }

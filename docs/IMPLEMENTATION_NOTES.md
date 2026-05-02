@@ -41,7 +41,10 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Receiver device registration now supports `POST /v1/receiver-devices/register` and stores public key, app version, Android version, initial trust score, and a redacted registration audit event.
 - Receiver heartbeat now supports `POST /v1/receiver-devices/heartbeat` and updates notification access state, health status, app version, and last heartbeat time.
 - Workers only expose health endpoints and do not process jobs.
-- Web is a minimal health/static foundation, not hosted checkout or dashboard.
+- Web now serves a hosted checkout foundation at `GET /checkout/:paymentSessionId`, with summary, buyer identity, payment instructions, waiting status, result text, timer, copy buttons, open-bank placeholder, and a safe `J'ai paye` button.
+- Web exposes `GET /checkout/:paymentSessionId/status` for checkout polling and `POST /checkout/:paymentSessionId/claimed-paid` as a non-confirming buyer claim endpoint.
+- `J'ai paye` does not confirm payment and only moves the local checkout UI toward waiting for the merchant-side signal.
+- Web is not yet a merchant dashboard or admin console.
 - Android Receiver now has a TypeScript foundation core under `apps/android-receiver` for allowlist filtering, notification snapshot extraction, redaction, encrypted outbox persistence, signed upload envelope creation, and heartbeat payload construction.
 - Android Receiver is not yet a full Android/Gradle app and does not request Android permissions or run a platform notification listener in this foundation step.
 - Signal ingestion now supports `POST /v1/receiver/signals` with device existence checks, deterministic foundation signature verification, duplicate `event_id` rejection, duplicate `notification_hash` rejection, local counter regression rejection, bank profile checks, pending bank app signature observation, redacted audit storage, and `signal.received` publication through the internal event publisher.

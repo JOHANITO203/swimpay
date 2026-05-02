@@ -14,7 +14,7 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `008_bank_profiles_and_parser` - status: completed - source: `tasks/008_bank_profiles_and_parser.md`
 - [x] `009_matching_core` - status: completed - source: `tasks/009_matching_core.md`
 - [x] `010_review_queue` - status: completed - source: `tasks/010_review_queue.md`
-- [ ] `011_hosted_checkout` - status: pending - source: `tasks/011_hosted_checkout.md`
+- [x] `011_hosted_checkout` - status: completed - source: `tasks/011_hosted_checkout.md`
 - [ ] `012_webhook_worker` - status: pending - source: `tasks/012_webhook_worker.md`
 - [ ] `018_bank_template_package_setup` - status: pending - source: `tasks/018_bank_template_package_setup.md`
 - [ ] `019_bank_profile_registry` - status: pending - source: `tasks/019_bank_profile_registry.md`
