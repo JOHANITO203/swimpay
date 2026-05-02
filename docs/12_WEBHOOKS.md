@@ -90,6 +90,17 @@ SwimPay-Delivery-Id: del_01
 
 ### `payment.rejected`
 
+Task 028 does not emit this webhook for default signal-scope review rejection. Signal-scope rejection is an internal review/signal outcome only.
+
+Future explicit order-scope or payment-session-scope rejection webhooks may use this event if product policy requires it. Any public rejection payload must include:
+
+```json
+{
+  "confirmation_type": "notification_signal",
+  "official_bank_confirmation": false
+}
+```
+
 ### `order.expired`
 
 ## Retry policy

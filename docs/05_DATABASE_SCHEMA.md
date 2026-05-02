@@ -270,6 +270,7 @@ CREATE TABLE review_actions (
   action TEXT NOT NULL,
   reason TEXT,
   feedback_label TEXT,
+  scope TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
@@ -337,6 +338,7 @@ CREATE INDEX idx_payment_sessions_active ON payment_sessions(merchant_id, status
 CREATE INDEX idx_signals_merchant_observed ON notification_signals(merchant_id, observed_at);
 CREATE INDEX idx_signals_amount_currency ON notification_signals(merchant_id, amount_minor, currency);
 CREATE INDEX idx_reviews_open ON review_queue(merchant_id, status);
+CREATE INDEX idx_review_actions_review_action ON review_actions(review_id, action, created_at DESC);
 CREATE UNIQUE INDEX unique_webhook_delivery_endpoint_event
 ON webhook_deliveries(endpoint_id, event_id)
 WHERE replay_of_delivery_id IS NULL;

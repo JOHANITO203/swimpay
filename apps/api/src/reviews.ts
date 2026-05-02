@@ -62,6 +62,7 @@ export interface ReviewActionInput {
   auditEventId: string;
   actorId?: string | undefined;
   action: 'confirmed' | 'rejected';
+  scope?: ReviewRejectionScope | undefined;
   reason?: string | undefined;
   feedbackLabel?: string | undefined;
   createdAt: string;
@@ -76,12 +77,16 @@ export type ReviewActionResult =
       status: 'confirmed' | 'rejected';
       orderId: string;
       paymentSessionId: string;
-      orderStatus: Extract<OrderStatus, 'manual_confirmed' | 'rejected'>;
-      paymentSessionStatus: Extract<PaymentSessionStatus, 'manual_confirmed' | 'rejected'>;
+      orderStatus: OrderStatus;
+      paymentSessionStatus: PaymentSessionStatus;
+      rejectionScope?: ReviewRejectionScope | undefined;
+      reason?: ReviewRejectionReason | undefined;
+      idempotent?: boolean | undefined;
     }
   | { kind: 'not_found' }
   | { kind: 'not_open' }
-  | { kind: 'already_confirmed' };
+  | { kind: 'already_confirmed' }
+  | { kind: 'rejection_scope_conflict'; existingScope: ReviewRejectionScope; requestedScope: ReviewRejectionScope };
 
 export interface ReviewRepository {
   createReview(input: ReviewCreateInput): Promise<ReviewCreateResult>;
@@ -98,6 +103,7 @@ export interface ReviewIdGenerator {
 
 export interface ReviewActionRequestBody {
   actor_id?: string | undefined;
+  scope?: ReviewRejectionScope | undefined;
   reason?: string | undefined;
   feedback_label?: string | undefined;
 }
@@ -134,9 +140,28 @@ export interface ReviewActionResponse {
   status: 'confirmed' | 'rejected';
   order_id: string;
   payment_session_id: string;
-  order_status: Extract<OrderStatus, 'manual_confirmed' | 'rejected'>;
-  payment_session_status: Extract<PaymentSessionStatus, 'manual_confirmed' | 'rejected'>;
+  order_status: OrderStatus;
+  payment_session_status: PaymentSessionStatus;
+  rejection_scope?: ReviewRejectionScope | undefined;
+  reason?: ReviewRejectionReason | undefined;
+  idempotent?: boolean | undefined;
 }
+
+export const ReviewRejectionScopes = ['signal', 'payment_session', 'order'] as const;
+export type ReviewRejectionScope = (typeof ReviewRejectionScopes)[number];
+
+export const ReviewRejectionReasons = [
+  'false_positive',
+  'wrong_signal',
+  'amount_collision',
+  'negative_direction',
+  'buyer_not_recognized',
+  'expired_payment',
+  'fraud_suspected',
+  'merchant_cancelled',
+  'other'
+] as const;
+export type ReviewRejectionReason = (typeof ReviewRejectionReasons)[number];
 
 export class PgReviewRepository implements ReviewRepository {
   private readonly pool: pg.Pool;
@@ -261,11 +286,195 @@ export class PgReviewRepository implements ReviewRepository {
   }
 
   public async rejectReview(input: ReviewActionInput): Promise<ReviewActionResult> {
-    return this.actionReview(input, {
-      reviewStatus: 'rejected',
-      stateStatus: 'rejected',
-      eventType: EventTypes.REVIEW_REJECTED
-    });
+    const client = await this.pool.connect();
+    const scope = input.scope ?? 'signal';
+    const reason = normalizeRejectionReason(input.reason);
+
+    try {
+      await client.query('BEGIN');
+
+      const reviewResult = await client.query(
+        `SELECT
+           rq.id, rq.merchant_id, rq.order_id, rq.payment_session_id, rq.signal_id, rq.status,
+           o.status AS order_status,
+           ps.status AS payment_session_status
+         FROM review_queue rq
+         LEFT JOIN orders o ON o.id = rq.order_id AND o.merchant_id = rq.merchant_id
+         LEFT JOIN payment_sessions ps ON ps.id = rq.payment_session_id AND ps.merchant_id = rq.merchant_id
+         WHERE rq.merchant_id = $1 AND rq.id = $2
+         FOR UPDATE OF rq`,
+        [input.merchantId, input.reviewId]
+      );
+
+      if (reviewResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_found' };
+      }
+
+      const review = reviewResult.rows[0] as ReviewActionRow;
+      const currentOrderStatus = normalizeOrderStatus(review.order_status);
+      const currentSessionStatus = normalizePaymentSessionStatus(review.payment_session_status);
+
+      if (String(review.status) !== 'open') {
+        if (String(review.status) === 'rejected') {
+          const previous = await findPreviousRejectionAction(client, input.merchantId, input.reviewId);
+          if (previous?.scope === scope) {
+            await client.query('COMMIT');
+            return {
+              kind: 'updated',
+              reviewId: input.reviewId,
+              status: 'rejected',
+              orderId: String(review.order_id),
+              paymentSessionId: String(review.payment_session_id),
+              orderStatus: currentOrderStatus,
+              paymentSessionStatus: currentSessionStatus,
+              rejectionScope: previous.scope,
+              reason: previous.reason,
+              idempotent: true
+            };
+          }
+
+          await client.query('ROLLBACK');
+          return {
+            kind: 'rejection_scope_conflict',
+            existingScope: previous?.scope ?? 'signal',
+            requestedScope: scope
+          };
+        }
+
+        await client.query('ROLLBACK');
+        return { kind: 'not_open' };
+      }
+
+      await client.query(
+        `UPDATE review_queue
+         SET status = 'rejected', resolved_at = $2
+         WHERE merchant_id = $1 AND id = $3`,
+        [input.merchantId, input.createdAt, input.reviewId]
+      );
+
+      await client.query(
+        `UPDATE notification_signals
+         SET status = 'rejected'
+         WHERE merchant_id = $1 AND id = $2`,
+        [input.merchantId, review.signal_id]
+      );
+
+      let orderStatus = currentOrderStatus;
+      let paymentSessionStatus = currentSessionStatus;
+
+      if (scope === 'payment_session' || scope === 'order') {
+        paymentSessionStatus = 'rejected';
+        await client.query(
+          `UPDATE payment_sessions
+           SET status = 'rejected', updated_at = $3
+           WHERE merchant_id = $1 AND id = $2 AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'rejected', 'expired')`,
+          [input.merchantId, review.payment_session_id, input.createdAt]
+        );
+      }
+
+      if (scope === 'order') {
+        orderStatus = 'rejected';
+        await client.query(
+          `UPDATE orders
+           SET status = 'rejected', updated_at = $3
+           WHERE merchant_id = $1 AND id = $2 AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
+          [input.merchantId, review.order_id, input.createdAt]
+        );
+      }
+
+      await client.query(
+        `INSERT INTO review_actions (
+          id, review_id, merchant_id, actor_id, action, reason, feedback_label, scope, created_at
+        ) VALUES ($1, $2, $3, $4, 'rejected', $5, $6, $7, $8)`,
+        [
+          input.reviewActionId,
+          input.reviewId,
+          input.merchantId,
+          input.actorId ?? null,
+          reason,
+          input.feedbackLabel ?? null,
+          scope,
+          input.createdAt
+        ]
+      );
+
+      await insertReviewAuditEvent(client, {
+        id: input.auditEventId,
+        merchantId: input.merchantId,
+        eventType: EventTypes.REVIEW_REJECTED,
+        objectType: 'review',
+        objectId: input.reviewId,
+        actorType: 'merchant_user',
+        actorId: input.actorId,
+        payloadRedacted: {
+          order_id: review.order_id,
+          payment_session_id: review.payment_session_id,
+          signal_id: review.signal_id,
+          action: input.action,
+          rejection_scope: scope,
+          reason,
+          feedback_label: input.feedbackLabel
+        }
+      });
+      await insertSystemAuditEvent(client, {
+        merchantId: input.merchantId,
+        eventType: 'review.action_created',
+        objectType: 'review',
+        objectId: input.reviewId,
+        createdAt: input.createdAt,
+        payloadRedacted: { action: 'rejected', rejection_scope: scope, reason }
+      });
+      await insertSystemAuditEvent(client, {
+        merchantId: input.merchantId,
+        eventType: EventTypes.SIGNAL_REJECTED,
+        objectType: 'notification_signal',
+        objectId: String(review.signal_id),
+        createdAt: input.createdAt,
+        payloadRedacted: { review_id: input.reviewId, rejection_scope: scope, reason }
+      });
+
+      if (scope === 'payment_session' || scope === 'order') {
+        await insertSystemAuditEvent(client, {
+          merchantId: input.merchantId,
+          eventType: 'payment_session.status_changed',
+          objectType: 'payment_session',
+          objectId: String(review.payment_session_id),
+          createdAt: input.createdAt,
+          payloadRedacted: { review_id: input.reviewId, from_status: currentSessionStatus, to_status: 'rejected', reason }
+        });
+      }
+
+      if (scope === 'order') {
+        await insertSystemAuditEvent(client, {
+          merchantId: input.merchantId,
+          eventType: 'order.status_changed',
+          objectType: 'order',
+          objectId: String(review.order_id),
+          createdAt: input.createdAt,
+          payloadRedacted: { review_id: input.reviewId, from_status: currentOrderStatus, to_status: 'rejected', reason }
+        });
+      }
+
+      await client.query('COMMIT');
+
+      return {
+        kind: 'updated',
+        reviewId: input.reviewId,
+        status: 'rejected',
+        orderId: String(review.order_id),
+        paymentSessionId: String(review.payment_session_id),
+        orderStatus,
+        paymentSessionStatus,
+        rejectionScope: scope,
+        reason
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   private async actionReview(
@@ -469,9 +678,12 @@ export function buildReviewCreateInput(params: {
   };
 }
 
-export function validateReviewActionBody(body: unknown): ReviewActionRequestBody | ApiErrorResponse {
+export function validateReviewActionBody(
+  body: unknown,
+  action: 'confirmed' | 'rejected' = 'confirmed'
+): ReviewActionRequestBody | ApiErrorResponse {
   if (body === undefined || body === null) {
-    return {};
+    return action === 'rejected' ? { scope: 'signal', reason: 'other' } : {};
   }
 
   if (typeof body !== 'object' || Array.isArray(body)) {
@@ -481,7 +693,22 @@ export function validateReviewActionBody(body: unknown): ReviewActionRequestBody
   const candidate = body as Partial<ReviewActionRequestBody>;
   const actorId = normalizeOptionalString(candidate.actor_id);
   const reason = normalizeOptionalString(candidate.reason);
+  const scope = normalizeOptionalString(candidate.scope);
   const feedbackLabel = normalizeOptionalString(candidate.feedback_label);
+
+  if (action === 'rejected') {
+    if (scope && !isReviewRejectionScope(scope)) {
+      return invalidRequest('Review rejection scope is invalid.', {
+        allowed: ReviewRejectionScopes
+      });
+    }
+
+    if (reason && !isReviewRejectionReason(reason)) {
+      return invalidRequest('Review rejection reason is invalid.', {
+        allowed: ReviewRejectionReasons
+      });
+    }
+  }
 
   if (reason && reason.length > 500) {
     return invalidRequest('Review action reason is too long.', { max_length: 500 });
@@ -495,7 +722,8 @@ export function validateReviewActionBody(body: unknown): ReviewActionRequestBody
 
   return {
     actor_id: actorId,
-    reason: reason ? redactOperatorText(reason) : undefined,
+    scope: action === 'rejected' ? (scope as ReviewRejectionScope | undefined) ?? 'signal' : undefined,
+    reason: action === 'rejected' ? (reason as ReviewRejectionReason | undefined) ?? 'other' : reason ? redactOperatorText(reason) : undefined,
     feedback_label: feedbackLabel
   };
 }
@@ -515,6 +743,7 @@ export function buildReviewActionInput(params: {
     reviewActionId: params.idGenerator.reviewActionId(),
     auditEventId: params.idGenerator.auditEventId(),
     actorId: params.body.actor_id,
+    scope: params.action === 'rejected' ? params.body.scope ?? 'signal' : undefined,
     reason: params.body.reason,
     feedbackLabel: params.body.feedback_label,
     createdAt: params.now
@@ -540,6 +769,8 @@ export function buildReviewActionEvent(params: {
       review_id: params.result.reviewId,
       order_id: params.result.orderId,
       payment_session_id: params.result.paymentSessionId,
+      rejection_scope: params.result.rejectionScope,
+      reason: params.result.reason,
       ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
     }
   };
@@ -598,14 +829,17 @@ export function toReviewListResponse(items: ReviewListItem[]): ReviewListRespons
 }
 
 export function toReviewActionResponse(result: Extract<ReviewActionResult, { kind: 'updated' }>): ReviewActionResponse {
-  return {
+  return stripUndefined({
     review_id: result.reviewId,
     status: result.status,
     order_id: result.orderId,
     payment_session_id: result.paymentSessionId,
     order_status: result.orderStatus,
-    payment_session_status: result.paymentSessionStatus
-  };
+    payment_session_status: result.paymentSessionStatus,
+    rejection_scope: result.rejectionScope,
+    reason: result.reason,
+    idempotent: result.idempotent
+  }) as ReviewActionResponse;
 }
 
 async function insertReviewAuditEvent(client: pg.PoolClient, auditEvent: ReviewAuditEventInput): Promise<void> {
@@ -654,6 +888,13 @@ interface ReviewActionRow {
   payment_session_id: string;
   signal_id: string;
   status: string;
+  order_status?: string | null;
+  payment_session_status?: string | null;
+}
+
+interface PreviousRejectionActionRow {
+  scope: string | null;
+  reason: string | null;
 }
 
 function toReviewListItem(row: ReviewListRow): ReviewListItem {
@@ -704,6 +945,81 @@ function parseReasonCodes(value: unknown): string[] {
 
 function normalizeOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function isReviewRejectionScope(value: string): value is ReviewRejectionScope {
+  return (ReviewRejectionScopes as readonly string[]).includes(value);
+}
+
+function isReviewRejectionReason(value: string): value is ReviewRejectionReason {
+  return (ReviewRejectionReasons as readonly string[]).includes(value);
+}
+
+function normalizeRejectionReason(value: string | undefined): ReviewRejectionReason {
+  return value && isReviewRejectionReason(value) ? value : 'other';
+}
+
+async function findPreviousRejectionAction(
+  client: pg.PoolClient,
+  merchantId: string,
+  reviewId: string
+): Promise<{ scope: ReviewRejectionScope; reason: ReviewRejectionReason } | null> {
+  const result = await client.query(
+    `SELECT scope, reason
+     FROM review_actions
+     WHERE merchant_id = $1 AND review_id = $2 AND action = 'rejected'
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [merchantId, reviewId]
+  );
+  const row = result.rows[0] as PreviousRejectionActionRow | undefined;
+  if (!row) {
+    return null;
+  }
+
+  return {
+    scope: row.scope && isReviewRejectionScope(row.scope) ? row.scope : 'signal',
+    reason: row.reason && isReviewRejectionReason(row.reason) ? row.reason : 'other'
+  };
+}
+
+async function insertSystemAuditEvent(
+  client: pg.PoolClient,
+  event: {
+    merchantId: string;
+    eventType: string;
+    objectType: string;
+    objectId: string;
+    payloadRedacted: Record<string, unknown>;
+    createdAt: string;
+  }
+): Promise<void> {
+  await client.query(
+    `INSERT INTO audit_events (
+      id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+    )
+    VALUES (gen_random_uuid(), $1, $2, $3, $4, 'system', $5::jsonb, $6)`,
+    [
+      event.merchantId,
+      event.eventType,
+      event.objectType,
+      event.objectId,
+      JSON.stringify(stripUndefined(event.payloadRedacted)),
+      event.createdAt
+    ]
+  );
+}
+
+function normalizeOrderStatus(value: unknown): OrderStatus {
+  return typeof value === 'string' ? (value as OrderStatus) : 'awaiting_payment';
+}
+
+function normalizePaymentSessionStatus(value: unknown): PaymentSessionStatus {
+  return typeof value === 'string' ? (value as PaymentSessionStatus) : 'awaiting_payment';
+}
+
+function stripUndefined<T extends Record<string, unknown>>(value: T): Partial<T> {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as Partial<T>;
 }
 
 function redactOperatorText(value: string): string {

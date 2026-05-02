@@ -78,6 +78,14 @@ awaiting_payment
 → manual_confirmed or rejected
 ```
 
+Task 028 clarifies review rejection scopes:
+
+- `signal` scope rejects the review and signal only. The order and payment session remain in their current non-terminal states.
+- `payment_session` scope rejects the review, signal and payment session. The order is not rejected automatically.
+- `order` scope rejects the review, signal, order and linked payment session.
+
+The default API scope is `signal`.
+
 ## Expiry flow
 
 ```text

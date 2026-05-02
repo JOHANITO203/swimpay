@@ -50,3 +50,7 @@ Move SwimPay from a validated foundation into durable local runtime integration 
 ## Task 027 Result
 
 `027_signal_runtime_pipeline` connects the durable `signal.received` consumer to the signal runtime processor. The processor parses redacted notification fields with the bank-template parser, uses matching-core for candidate scoring, creates review/reject/auto-confirm outcomes, writes redacted audit events, and requests webhook delivery records. Strict gates still block amount-only, unsafe directions, TO_VERIFY/pending app metadata, untrusted templates, untrusted devices and collisions from auto-confirmation.
+
+## Task 028 Result
+
+`028_review_rejection_semantics` clarifies review rejection scope. `POST /v1/reviews/:id/reject` now defaults to `signal`, which rejects only the review and linked signal while leaving the order and payment session active. Explicit `payment_session` and `order` scopes are supported, same-scope retries are idempotent, conflicting scope escalation returns a clear conflict, and redacted audit events record the resulting state changes. Signal-scope rejection remains internal and does not create a public `payment.rejected` webhook by default.

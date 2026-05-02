@@ -49,6 +49,8 @@ Task 026 added a durable PostgreSQL-backed webhook delivery loop. Webhook delive
 
 Task 027 added the signal runtime pipeline foundation. `swimpay-signal-worker` now wires the durable `signal.received` consumer into a deterministic processor that loads signal rows, parses redacted notification text with `@swimpay/bank-templates`, scores/matches candidates with `@swimpay/matching-core`, records rejected/review/auto-confirm decisions, writes redacted audit events, and requests safe public webhook delivery events. `TO_VERIFY` and pending bank app metadata cannot auto-confirm; amount-only and negative categories remain blocked.
 
+Task 028 clarified manual review rejection semantics. Review rejection now has explicit scopes: `signal`, `payment_session`, and `order`. The default `signal` scope rejects only the review and linked notification signal, leaving the order and payment session active. Session/order rejection requires explicit scope, writes additional redacted audit events, and repeated same-scope rejection is idempotent.
+
 ## Database
 
 `packages/database/migrations/001_initial_schema.sql` creates the initial core tables and indexes from `docs/05_DATABASE_SCHEMA.md`, including:
@@ -88,7 +90,7 @@ V1 bank profiles are seeded in `learning` status only. No trusted package names 
 - Review queue foundation now supports `GET /v1/reviews`, `POST /v1/reviews/:id/confirm`, and `POST /v1/reviews/:id/reject`.
 - Review creation is available as a backend foundation helper/repository method for ambiguous `needs_review` matches.
 - Manual review confirmation updates order and payment session state to `manual_confirmed`, records a review action, writes redacted audit data, persists a manual match, and emits an internal `review.confirmed` event with notification-signal disclosure fields.
-- Manual review rejection updates order and payment session state to `rejected`, records a review action, writes redacted audit data, and emits an internal `review.rejected` event.
+- Manual review rejection defaults to `signal` scope: it rejects the review and linked signal only, records a scoped review action, writes redacted audit data, and emits an internal `review.rejected` event. Explicit `payment_session` or `order` scope is required to reject those linked resources.
 - Matching core is now wired into the signal-worker `signal.received` pipeline for runtime decisions.
 - Review creation is now wired from live signal runtime decisions and remains protected by redacted payloads.
 - Webhook worker foundation now includes public payment event creation, required notification-signal disclosure fields, HMAC signing, SwimPay webhook headers, retry scheduling, duplicate endpoint/event prevention, delivery status updates, and replay with the original event id.

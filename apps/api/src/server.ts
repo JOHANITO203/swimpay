@@ -594,7 +594,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply.status(400).send(invalidRequest('Review id is required.', {}));
     }
 
-    const body = validateReviewActionBody(request.body);
+    const body = validateReviewActionBody(request.body, 'confirmed');
     if ('error' in body) {
       return reply.status(400).send(body);
     }
@@ -651,7 +651,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply.status(400).send(invalidRequest('Review id is required.', {}));
     }
 
-    const body = validateReviewActionBody(request.body);
+    const body = validateReviewActionBody(request.body, 'rejected');
     if ('error' in body) {
       return reply.status(400).send(body);
     }
@@ -1037,11 +1037,16 @@ function signalIngestionErrorMessage(code: string): string {
   }
 }
 
-function reviewActionErrorStatus(kind: 'not_found' | 'not_open' | 'already_confirmed'): 404 | 409 {
+function reviewActionErrorStatus(
+  kind: 'not_found' | 'not_open' | 'already_confirmed' | 'rejection_scope_conflict'
+): 404 | 409 {
   return kind === 'not_found' ? 404 : 409;
 }
 
-function reviewActionErrorResponse(kind: 'not_found' | 'not_open' | 'already_confirmed', reviewId: string) {
+function reviewActionErrorResponse(
+  kind: 'not_found' | 'not_open' | 'already_confirmed' | 'rejection_scope_conflict',
+  reviewId: string
+) {
   switch (kind) {
     case 'not_found':
       return {
@@ -1068,6 +1073,16 @@ function reviewActionErrorResponse(kind: 'not_found' | 'not_open' | 'already_con
         error: {
           code: 'already_confirmed',
           message: 'Review item cannot confirm an order or signal that is already confirmed.',
+          details: {
+            review_id: reviewId
+          }
+        }
+      };
+    case 'rejection_scope_conflict':
+      return {
+        error: {
+          code: 'review_rejection_scope_conflict',
+          message: 'Review rejection scope cannot be escalated after the review is already resolved.',
           details: {
             review_id: reviewId
           }

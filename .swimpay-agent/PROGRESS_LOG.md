@@ -1,5 +1,39 @@
 # Progress Log
 
+## 2026-05-02 - Task 028 review rejection semantics
+
+Plan:
+- Add failing API tests for default signal-scope review rejection, explicit payment-session/order scopes, idempotency, conflict handling and validation.
+- Change review rejection so it no longer rejects order/session by default.
+- Add database support for storing rejection scope on review actions.
+- Update event catalog/docs/state-machine guidance.
+
+TDD evidence:
+- `npm test -- --run apps/api/src/reviews.test.ts` failed first because default reject still rejected order/session, scopes were ignored, idempotency returned `review_not_open`, and invalid scope/reason were accepted.
+- After implementation, `npm test -- --run apps/api/src/reviews.test.ts` PASS.
+
+Implementation result:
+- Added explicit review rejection scopes: `signal`, `payment_session`, and `order`.
+- Default rejection scope is now `signal`.
+- Signal-scope rejection updates the review and linked signal only.
+- Payment-session scope rejects the linked session without rejecting the order.
+- Order scope explicitly rejects the order and linked session.
+- Same-scope repeated rejection is idempotent-safe.
+- Conflicting scope escalation after a resolved rejection returns `review_rejection_scope_conflict`.
+- Rejection reasons are constrained to documented reason codes.
+- Redacted audit events are written for review action creation, review rejection, signal rejection, and scoped order/session state changes.
+
+Final validation:
+- `npm run typecheck`: PASS
+- `npm run lint`: PASS
+- `npm test`: PASS, 27 test files and 164 tests passed
+- `npm run build`: PASS
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config`: PASS
+
+Result:
+- Task 028 completed.
+- Next task is 029_durable_worker_e2e_tests.
+
 ## 2026-05-02 - Task 027 signal runtime pipeline
 
 Plan:

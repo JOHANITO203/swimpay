@@ -291,9 +291,45 @@ Response:
 
 ## POST `/v1/reviews/{id}/reject`
 
-Manual reject. Creates a review action, marks the review rejected, updates order/session state to `rejected` when linked, writes audit, and emits an internal `review.rejected` event.
+Manual reject with explicit scope. Default scope is `signal`.
 
-Manual reject.
+Request:
+
+```json
+{
+  "scope": "signal",
+  "reason": "false_positive"
+}
+```
+
+Allowed scopes:
+
+- `signal`
+- `payment_session`
+- `order`
+
+Behavior:
+
+- `signal`: reject the review and linked signal only; order and payment session stay unchanged unless already terminal.
+- `payment_session`: reject the review, linked signal and linked payment session; order stays unchanged.
+- `order`: reject the review, linked signal, linked order and linked payment session.
+
+Response:
+
+```json
+{
+  "review_id": "rev_01",
+  "status": "rejected",
+  "order_id": "ord_01",
+  "payment_session_id": "ps_01",
+  "rejection_scope": "signal",
+  "reason": "false_positive",
+  "order_status": "awaiting_payment",
+  "payment_session_status": "awaiting_payment"
+}
+```
+
+Repeating the same rejection scope is idempotent. Escalating a resolved rejection to another scope returns `review_rejection_scope_conflict`.
 
 ## POST `/v1/webhook-endpoints`
 

@@ -12,8 +12,10 @@ import {
 export const EventTypes = {
   ORDER_CREATED: 'order.created',
   ORDER_EXPIRED: 'order.expired',
+  ORDER_REJECTED: 'order.rejected',
   PAYMENT_SESSION_CREATED: 'payment_session.created',
   PAYMENT_SESSION_EXPIRED: 'payment_session.expired',
+  PAYMENT_SESSION_REJECTED: 'payment_session.rejected',
   PAYMENT_SESSION_RECEIVER_ARMING_REQUESTED: 'payment_session.receiver_arming_requested',
   PAYMENT_SESSION_RECEIVER_ARMED: 'payment_session.receiver_armed',
   RECEIVER_HEARTBEAT_RECEIVED: 'receiver.heartbeat_received',
@@ -21,6 +23,7 @@ export const EventTypes = {
   SIGNAL_RECEIVED: 'signal.received',
   SIGNAL_VERIFIED: 'signal.verified',
   SIGNAL_PARSED: 'signal.parsed',
+  SIGNAL_REJECTED: 'signal.rejected',
   SIGNAL_QUALITY_SCORED: 'signal.quality_scored',
   TEMPLATE_OBSERVED: 'template.observed',
   TEMPLATE_DRIFT_DETECTED: 'template.drift_detected',

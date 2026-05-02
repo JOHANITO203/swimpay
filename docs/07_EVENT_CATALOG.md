@@ -58,6 +58,16 @@ Payload:
 }
 ```
 
+### `order.rejected`
+
+Producer: review/order module.
+
+Consumers:
+
+- checkout status;
+- audit module;
+- webhook worker when an explicit order-scope rejection emits a public event.
+
 ### `payment_session.created`
 
 Producer: `swimpay-api`
@@ -76,6 +86,16 @@ Consumers:
 - checkout status;
 - audit module;
 - webhook worker.
+
+### `payment_session.rejected`
+
+Producer: review/payment session module.
+
+Consumers:
+
+- checkout status;
+- audit module;
+- webhook worker when an explicit session-scope rejection emits a public event.
 
 ### `payment_session.receiver_arming_requested`
 
@@ -141,6 +161,16 @@ Consumers:
 
 - template learning;
 - matching module.
+
+### `signal.rejected`
+
+Producer: decision/review module.
+
+Consumers:
+
+- template learning;
+- audit module;
+- dashboard.
 
 ### `signal.quality_scored`
 

@@ -66,6 +66,8 @@ Amount-only signals never auto-confirm. `TO_VERIFY` or `pending_verification` ba
 
 The runtime publishes `decision.needs_review` and `review.created`, writes redacted audit events, and requests a `payment.needs_review` webhook delivery.
 
+If the merchant later rejects that review, task 028 semantics apply. The default rejection scope rejects only the review and linked signal; it does not reject the order or payment session automatically.
+
 ## Auto-Confirm Path
 
 The runtime updates orders and payment sessions to `auto_confirmed` only through the repository transaction. Existing partial unique indexes still prevent confirming the same order or using the same signal twice.

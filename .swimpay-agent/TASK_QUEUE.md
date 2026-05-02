@@ -10,7 +10,7 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `025_nats_jetstream_consumers` - status: completed - source: `tasks/025_nats_jetstream_consumers.md`
 - [x] `026_postgres_webhook_delivery_loop` - status: completed - source: `tasks/026_postgres_webhook_delivery_loop.md`
 - [x] `027_signal_runtime_pipeline` - status: completed - source: `tasks/027_signal_runtime_pipeline.md`
-- [ ] `028_review_rejection_semantics` - status: pending - source: `tasks/028_review_rejection_semantics.md`
+- [x] `028_review_rejection_semantics` - status: completed - source: `tasks/028_review_rejection_semantics.md`
 - [ ] `029_durable_worker_e2e_tests` - status: pending - source: `tasks/029_durable_worker_e2e_tests.md`
 - [ ] `030_runtime_observability` - status: pending - source: `tasks/030_runtime_observability.md`
 - [ ] `031_android_receiver_contract_validation` - status: pending - source: `tasks/031_android_receiver_contract_validation.md`

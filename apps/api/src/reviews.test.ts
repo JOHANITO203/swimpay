@@ -4,9 +4,14 @@ import { buildApiServer, type ReviewRepository } from './server.js';
 import {
   buildReviewCreateInput,
   type ReviewActionInput,
+  type ReviewActionResult,
   type ReviewCreateInput,
-  type ReviewListItem
+  type ReviewListItem,
+  type ReviewRejectionReason,
+  type ReviewRejectionScope
 } from './reviews.js';
+
+type ReviewActionResultUpdated = Extract<ReviewActionResult, { kind: 'updated' }>;
 
 describe('review queue api', () => {
   it('lists open review items for the authenticated merchant without raw sensitive fields', async () => {
@@ -124,9 +129,11 @@ describe('review queue api', () => {
     });
   });
 
-  it('rejects a review, records the action, audits, and emits review.rejected', async () => {
+  it('rejects a review with default signal scope without rejecting order or session', async () => {
     const repository = new FakeReviewRepository();
     repository.items.set('rev_01', openReviewItem());
+    repository.orderStatuses.set('ord_01', 'awaiting_payment');
+    repository.paymentSessionStatuses.set('ps_01', 'awaiting_payment');
     const events = new FakeEventPublisher();
     const server = buildTestServer(repository, events);
 
@@ -135,7 +142,7 @@ describe('review queue api', () => {
       url: '/v1/reviews/rev_01/reject',
       headers: { authorization: 'Bearer test_mch_01' },
       payload: {
-        reason: 'masked fields did not match order',
+        reason: 'false_positive',
         feedback_label: 'false_positive'
       }
     });
@@ -146,17 +153,192 @@ describe('review queue api', () => {
       status: 'rejected',
       order_id: 'ord_01',
       payment_session_id: 'ps_01',
-      order_status: 'rejected',
-      payment_session_status: 'rejected'
+      rejection_scope: 'signal',
+      reason: 'false_positive',
+      order_status: 'awaiting_payment',
+      payment_session_status: 'awaiting_payment'
     });
+    expect(repository.items.get('rev_01')?.status).toBe('rejected');
+    expect(repository.signalStatuses.get('sig_01')).toBe('rejected');
+    expect(repository.orderStatuses.get('ord_01')).toBe('awaiting_payment');
+    expect(repository.paymentSessionStatuses.get('ps_01')).toBe('awaiting_payment');
     expect(repository.actions).toContainEqual(
       expect.objectContaining({
         reviewId: 'rev_01',
         action: 'rejected',
+        scope: 'signal',
+        reason: 'false_positive',
         feedbackLabel: 'false_positive'
       })
     );
+    expect(repository.auditEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ eventType: EventTypes.REVIEW_REJECTED, objectType: 'review', objectId: 'rev_01' }),
+        expect.objectContaining({ eventType: 'signal.rejected', objectType: 'notification_signal', objectId: 'sig_01' })
+      ])
+    );
     expect(events.events[0]?.eventType).toBe(EventTypes.REVIEW_REJECTED);
+    expect(response.body).not.toContain('+79991234567');
+    expect(response.body).not.toContain('raw notification');
+  });
+
+  it('rejects only the linked payment session when scope is payment_session', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_01', openReviewItem());
+    repository.orderStatuses.set('ord_01', 'awaiting_payment');
+    repository.paymentSessionStatuses.set('ps_01', 'awaiting_payment');
+    const events = new FakeEventPublisher();
+    const server = buildTestServer(repository, events);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_01/reject',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        scope: 'payment_session',
+        reason: 'expired_payment'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      rejection_scope: 'payment_session',
+      reason: 'expired_payment',
+      order_status: 'awaiting_payment',
+      payment_session_status: 'rejected'
+    });
+    expect(repository.signalStatuses.get('sig_01')).toBe('rejected');
+    expect(repository.orderStatuses.get('ord_01')).toBe('awaiting_payment');
+    expect(repository.paymentSessionStatuses.get('ps_01')).toBe('rejected');
+    expect(repository.auditEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ eventType: 'payment_session.status_changed', objectType: 'payment_session', objectId: 'ps_01' })
+      ])
+    );
+  });
+
+  it('rejects order and linked session only when scope is explicitly order', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_01', openReviewItem());
+    repository.orderStatuses.set('ord_01', 'awaiting_payment');
+    repository.paymentSessionStatuses.set('ps_01', 'awaiting_payment');
+    const server = buildTestServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_01/reject',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        scope: 'order',
+        reason: 'merchant_cancelled'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      rejection_scope: 'order',
+      reason: 'merchant_cancelled',
+      order_status: 'rejected',
+      payment_session_status: 'rejected'
+    });
+    expect(repository.signalStatuses.get('sig_01')).toBe('rejected');
+    expect(repository.orderStatuses.get('ord_01')).toBe('rejected');
+    expect(repository.paymentSessionStatuses.get('ps_01')).toBe('rejected');
+    expect(repository.auditEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ eventType: 'order.status_changed', objectType: 'order', objectId: 'ord_01' }),
+        expect.objectContaining({ eventType: 'payment_session.status_changed', objectType: 'payment_session', objectId: 'ps_01' })
+      ])
+    );
+  });
+
+  it('treats duplicate rejection with the same scope as idempotent without duplicate actions', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_01', { ...openReviewItem(), status: 'rejected', resolvedAt: '2026-05-02T10:05:00.000Z' });
+    repository.orderStatuses.set('ord_01', 'awaiting_payment');
+    repository.paymentSessionStatuses.set('ps_01', 'awaiting_payment');
+    repository.actions.push({
+      merchantId: 'mch_01',
+      reviewId: 'rev_01',
+      reviewActionId: 'act_existing',
+      auditEventId: 'aud_existing',
+      action: 'rejected',
+      scope: 'signal',
+      reason: 'false_positive',
+      createdAt: '2026-05-02T10:05:00.000Z'
+    });
+    const server = buildTestServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_01/reject',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        scope: 'signal',
+        reason: 'false_positive'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      rejection_scope: 'signal',
+      reason: 'false_positive',
+      idempotent: true
+    });
+    expect(repository.actions).toHaveLength(1);
+  });
+
+  it('rejects conflicting scope escalation after review resolution', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_01', { ...openReviewItem(), status: 'rejected', resolvedAt: '2026-05-02T10:05:00.000Z' });
+    repository.actions.push({
+      merchantId: 'mch_01',
+      reviewId: 'rev_01',
+      reviewActionId: 'act_existing',
+      auditEventId: 'aud_existing',
+      action: 'rejected',
+      scope: 'signal',
+      reason: 'false_positive',
+      createdAt: '2026-05-02T10:05:00.000Z'
+    });
+    const server = buildTestServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_01/reject',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        scope: 'order',
+        reason: 'merchant_cancelled'
+      }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('review_rejection_scope_conflict');
+    expect(repository.actions).toHaveLength(1);
+  });
+
+  it('rejects invalid rejection scope and reason without side effects', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_01', openReviewItem());
+    const server = buildTestServer(repository);
+
+    const invalidScope = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_01/reject',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { scope: 'everything', reason: 'false_positive' }
+    });
+    const invalidReason = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_01/reject',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { scope: 'signal', reason: 'contains raw +79991234567' }
+    });
+
+    expect(invalidScope.statusCode).toBe(400);
+    expect(invalidReason.statusCode).toBe(400);
+    expect(repository.actions).toHaveLength(0);
   });
 
   it('does not allow a closed review to be actioned twice', async () => {
@@ -278,6 +460,7 @@ class FakeReviewRepository implements ReviewRepository {
   public readonly auditEvents: Array<{ eventType: string; objectType: string; objectId: string }> = [];
   public readonly orderStatuses = new Map<string, string>();
   public readonly paymentSessionStatuses = new Map<string, string>();
+  public readonly signalStatuses = new Map<string, string>();
 
   public async createReview(input: ReviewCreateInput): Promise<{ kind: 'created'; reviewId: string }> {
     this.items.set(input.review.id, input.review);
@@ -295,8 +478,85 @@ class FakeReviewRepository implements ReviewRepository {
     return this.actionReview(input, 'confirmed', 'manual_confirmed');
   }
 
-  public async rejectReview(input: ReviewActionInput) {
-    return this.actionReview(input, 'rejected', 'rejected');
+  public async rejectReview(input: ReviewActionInput): Promise<ReviewActionResult> {
+    const review = this.items.get(input.reviewId);
+    if (!review || review.merchantId !== input.merchantId) {
+      return { kind: 'not_found' as const };
+    }
+
+    const scope: ReviewRejectionScope = input.scope ?? 'signal';
+    if (review.status !== 'open') {
+      if (review.status === 'rejected') {
+        const previous = this.actions.find((action) => action.reviewId === input.reviewId && action.action === 'rejected');
+        if (previous?.scope === scope) {
+          return {
+            kind: 'updated' as const,
+            reviewId: review.id,
+            status: 'rejected' as const,
+            orderId: review.orderId,
+            paymentSessionId: review.paymentSessionId,
+            orderStatus: (this.orderStatuses.get(review.orderId) ?? 'awaiting_payment') as ReviewActionResultUpdated['orderStatus'],
+            paymentSessionStatus: (this.paymentSessionStatuses.get(review.paymentSessionId) ?? 'awaiting_payment') as ReviewActionResultUpdated['paymentSessionStatus'],
+            rejectionScope: previous.scope,
+            reason: previous.reason as ReviewRejectionReason | undefined,
+            idempotent: true
+          };
+        }
+
+        return { kind: 'rejection_scope_conflict' as const, existingScope: previous?.scope ?? 'signal', requestedScope: scope };
+      }
+
+      return { kind: 'not_open' as const };
+    }
+
+    review.status = 'rejected';
+    review.resolvedAt = input.createdAt;
+    this.signalStatuses.set(review.signalId, 'rejected');
+
+    if (scope === 'payment_session' || scope === 'order') {
+      this.paymentSessionStatuses.set(review.paymentSessionId, 'rejected');
+    }
+    if (scope === 'order') {
+      this.orderStatuses.set(review.orderId, 'rejected');
+    }
+
+    this.actions.push(input);
+    this.auditEvents.push({
+      eventType: EventTypes.REVIEW_REJECTED,
+      objectType: 'review',
+      objectId: review.id
+    });
+    this.auditEvents.push({
+      eventType: EventTypes.SIGNAL_REJECTED,
+      objectType: 'notification_signal',
+      objectId: review.signalId
+    });
+    if (scope === 'payment_session' || scope === 'order') {
+      this.auditEvents.push({
+        eventType: 'payment_session.status_changed',
+        objectType: 'payment_session',
+        objectId: review.paymentSessionId
+      });
+    }
+    if (scope === 'order') {
+      this.auditEvents.push({
+        eventType: 'order.status_changed',
+        objectType: 'order',
+        objectId: review.orderId
+      });
+    }
+
+    return {
+      kind: 'updated' as const,
+      reviewId: review.id,
+      status: 'rejected' as const,
+      orderId: review.orderId,
+      paymentSessionId: review.paymentSessionId,
+      orderStatus: (this.orderStatuses.get(review.orderId) ?? 'awaiting_payment') as ReviewActionResultUpdated['orderStatus'],
+      paymentSessionStatus: (this.paymentSessionStatuses.get(review.paymentSessionId) ?? 'awaiting_payment') as ReviewActionResultUpdated['paymentSessionStatus'],
+      rejectionScope: scope,
+      reason: input.reason as ReviewRejectionReason | undefined
+    };
   }
 
   private actionReview(input: ReviewActionInput, reviewStatus: 'confirmed' | 'rejected', stateStatus: 'manual_confirmed' | 'rejected') {
