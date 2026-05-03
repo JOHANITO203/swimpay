@@ -1,13 +1,13 @@
 # Current Task
 
-task_id: 295_sprint_6c_closeout_review
-source_task_file: tasks/295_sprint_6c_closeout_review.md
+task_id: 302_sprint_6d_closeout_review
+source_task_file: tasks/302_sprint_6d_closeout_review.md
 status: completed
 
 ## Scope
 
-Sprint 6C - Five-bank Review-only Receiver Selection and Synthetic Shadow Runtime Rehearsal.
+Sprint 6D - Private Beta Review Queue and Webhook Rehearsal with Synthetic Merchant/Order Fixtures.
 
 ## Result
 
-Created redacted synthetic fixtures for all five V1 banks, rehearsed review-only runtime routing and webhook disclosure, verified negative signal safety and updated the five-bank matrix to synthetic shadow passed while real notification shadow remains not started.
+Created private beta synthetic merchant/order fixtures, rehearsed five-bank review queue routing, manual review webhook fulfillment, signal-scope rejection expectations and safe support trace documentation.

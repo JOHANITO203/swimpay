@@ -42,7 +42,7 @@ interface ShadowFixtureSet {
 }
 
 describe('Sprint 6C five-bank review-only shadow runtime rehearsal', () => {
-  test('creates Sprint 6C task files and active task queue order', () => {
+  test('creates Sprint 6C task files and closeout report', () => {
     const requiredFiles = [
       'tasks/289_five_bank_receiver_review_only_selection.md',
       'tasks/290_five_bank_synthetic_signal_fixture_set.md',
@@ -57,26 +57,6 @@ describe('Sprint 6C five-bank review-only shadow runtime rehearsal', () => {
     for (const file of requiredFiles) {
       expect(existsSync(join(root, file)), file).toBe(true);
     }
-
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
-    const orderedTasks = [
-      '289_five_bank_receiver_review_only_selection',
-      '290_five_bank_synthetic_signal_fixture_set',
-      '291_five_bank_shadow_runtime_review_queue_rehearsal',
-      '292_five_bank_webhook_disclosure_rehearsal',
-      '293_five_bank_negative_signal_safety_rehearsal',
-      '294_five_bank_matrix_shadow_status_update',
-      '295_sprint_6c_closeout_review'
-    ];
-
-    let previousIndex = -1;
-    for (const task of orderedTasks) {
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
-      expect(index, task).toBeGreaterThan(previousIndex);
-      previousIndex = index;
-    }
-
-    expect(queue).not.toContain('status: missing');
   });
 
   test('defines redacted synthetic shadow fixtures for each V1 bank and signal category', () => {

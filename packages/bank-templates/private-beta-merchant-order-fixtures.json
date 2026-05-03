@@ -1,0 +1,146 @@
+{
+  "mode": "private_beta_review_only_rehearsal",
+  "generated_at": "2026-05-03T15:45:00+03:00",
+  "merchant": {
+    "merchant_id": "mch_private_beta_01",
+    "display_name": "Synthetic Private Beta Merchant",
+    "webhook_endpoint": {
+      "url": "https://merchant.invalid/swimpay/private-beta",
+      "enabled_events": [
+        "payment.confirmed",
+        "payment.needs_review",
+        "payment.rejected"
+      ],
+      "secret_storage": "local_test_secret_only"
+    }
+  },
+  "product": {
+    "product_id": "prod_private_beta_tea_kit",
+    "name": "Synthetic beta test product",
+    "risk_level": "low"
+  },
+  "order_fixture": {
+    "order_id": "ord_private_beta_01",
+    "external_id": "order_private_beta_01",
+    "payment_session_id": "ps_private_beta_01",
+    "amount_minor": 13700,
+    "currency": "RUB",
+    "buyer_phone_hmac": "phone_hmac_private_beta_01",
+    "buyer_phone_masked": "+* *** *** **67",
+    "reference_hmac": "reference_hmac_private_beta_01",
+    "reference_code_masked": "SWP-BETA-***",
+    "checkout_url": "https://pay.invalid/checkout/ps_private_beta_01",
+    "status_url": "https://pay.invalid/checkout/ps_private_beta_01/status",
+    "expected_initial_status": "awaiting_payment",
+    "expected_review_status": "needs_review",
+    "expected_manual_confirm_status": "manual_confirmed"
+  },
+  "policy": {
+    "real_notification_processing": "not_started",
+    "real_customer_data": "forbidden",
+    "auto_confirm": "disabled",
+    "production_trust_request": "forbidden",
+    "official_bank_confirmation": false,
+    "confirmation_type": "notification_signal"
+  },
+  "bank_signal_scenarios": [
+    {
+      "bank_profile_id": "sber_ru",
+      "signal_id": "sig_private_beta_sber_01",
+      "event_id": "evt_private_beta_sber_01",
+      "notification_hash": "hash_private_beta_sber_01",
+      "redacted_title": "Incoming transfer <AMOUNT> <CURRENCY>",
+      "redacted_body": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
+      "expected_runtime_decision": "needs_review",
+      "expected_review_status": "open",
+      "expected_order_status_before_review": "needs_review",
+      "expected_manual_confirm_status": "manual_confirmed",
+      "expected_default_reject_scope": "signal",
+      "expected_webhook_decision": "manual_confirmed",
+      "official_bank_confirmation": false,
+      "confirmation_type": "notification_signal"
+    },
+    {
+      "bank_profile_id": "tbank_ru",
+      "signal_id": "sig_private_beta_tbank_01",
+      "event_id": "evt_private_beta_tbank_01",
+      "notification_hash": "hash_private_beta_tbank_01",
+      "redacted_title": "Incoming transfer <AMOUNT> <CURRENCY>",
+      "redacted_body": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
+      "expected_runtime_decision": "needs_review",
+      "expected_review_status": "open",
+      "expected_order_status_before_review": "needs_review",
+      "expected_manual_confirm_status": "manual_confirmed",
+      "expected_default_reject_scope": "signal",
+      "expected_webhook_decision": "manual_confirmed",
+      "official_bank_confirmation": false,
+      "confirmation_type": "notification_signal"
+    },
+    {
+      "bank_profile_id": "vtb_ru",
+      "signal_id": "sig_private_beta_vtb_01",
+      "event_id": "evt_private_beta_vtb_01",
+      "notification_hash": "hash_private_beta_vtb_01",
+      "redacted_title": "Incoming transfer <AMOUNT> <CURRENCY>",
+      "redacted_body": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
+      "expected_runtime_decision": "needs_review",
+      "expected_review_status": "open",
+      "expected_order_status_before_review": "needs_review",
+      "expected_manual_confirm_status": "manual_confirmed",
+      "expected_default_reject_scope": "signal",
+      "expected_webhook_decision": "manual_confirmed",
+      "official_bank_confirmation": false,
+      "confirmation_type": "notification_signal"
+    },
+    {
+      "bank_profile_id": "alfa_ru",
+      "signal_id": "sig_private_beta_alfa_01",
+      "event_id": "evt_private_beta_alfa_01",
+      "notification_hash": "hash_private_beta_alfa_01",
+      "redacted_title": "Incoming transfer <AMOUNT> <CURRENCY>",
+      "redacted_body": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
+      "expected_runtime_decision": "needs_review",
+      "expected_review_status": "open",
+      "expected_order_status_before_review": "needs_review",
+      "expected_manual_confirm_status": "manual_confirmed",
+      "expected_default_reject_scope": "signal",
+      "expected_webhook_decision": "manual_confirmed",
+      "official_bank_confirmation": false,
+      "confirmation_type": "notification_signal"
+    },
+    {
+      "bank_profile_id": "gazprombank_ru",
+      "signal_id": "sig_private_beta_gazprombank_01",
+      "event_id": "evt_private_beta_gazprombank_01",
+      "notification_hash": "hash_private_beta_gazprombank_01",
+      "redacted_title": "Incoming transfer <AMOUNT> <CURRENCY>",
+      "redacted_body": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
+      "expected_runtime_decision": "needs_review",
+      "expected_review_status": "open",
+      "expected_order_status_before_review": "needs_review",
+      "expected_manual_confirm_status": "manual_confirmed",
+      "expected_default_reject_scope": "signal",
+      "expected_webhook_decision": "manual_confirmed",
+      "official_bank_confirmation": false,
+      "confirmation_type": "notification_signal"
+    }
+  ],
+  "support_trace": {
+    "trace_keys": [
+      "order_id",
+      "payment_session_id",
+      "signal_id",
+      "review_id",
+      "webhook_event_id",
+      "audit_event_id"
+    ],
+    "excluded_fields": [
+      "raw_phone",
+      "raw_notification_text",
+      "raw_title",
+      "raw_body",
+      "webhook_secret",
+      "api_key"
+    ]
+  }
+}

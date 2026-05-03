@@ -6,10 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `289_five_bank_receiver_review_only_selection` - status: completed - source: `tasks/289_five_bank_receiver_review_only_selection.md`
-- [x] `290_five_bank_synthetic_signal_fixture_set` - status: completed - source: `tasks/290_five_bank_synthetic_signal_fixture_set.md`
-- [x] `291_five_bank_shadow_runtime_review_queue_rehearsal` - status: completed - source: `tasks/291_five_bank_shadow_runtime_review_queue_rehearsal.md`
-- [x] `292_five_bank_webhook_disclosure_rehearsal` - status: completed - source: `tasks/292_five_bank_webhook_disclosure_rehearsal.md`
-- [x] `293_five_bank_negative_signal_safety_rehearsal` - status: completed - source: `tasks/293_five_bank_negative_signal_safety_rehearsal.md`
-- [x] `294_five_bank_matrix_shadow_status_update` - status: completed - source: `tasks/294_five_bank_matrix_shadow_status_update.md`
-- [x] `295_sprint_6c_closeout_review` - status: completed - source: `tasks/295_sprint_6c_closeout_review.md`
+- [x] `296_beta_synthetic_merchant_fixture_set` - status: completed - source: `tasks/296_beta_synthetic_merchant_fixture_set.md`
+- [x] `297_beta_order_checkout_review_flow` - status: completed - source: `tasks/297_beta_order_checkout_review_flow.md`
+- [x] `298_beta_review_confirm_reject_rehearsal` - status: completed - source: `tasks/298_beta_review_confirm_reject_rehearsal.md`
+- [x] `299_beta_webhook_fulfillment_rehearsal` - status: completed - source: `tasks/299_beta_webhook_fulfillment_rehearsal.md`
+- [x] `300_beta_audit_and_support_trace` - status: completed - source: `tasks/300_beta_audit_and_support_trace.md`
+- [x] `301_beta_merchant_operator_runbook` - status: completed - source: `tasks/301_beta_merchant_operator_runbook.md`
+- [x] `302_sprint_6d_closeout_review` - status: completed - source: `tasks/302_sprint_6d_closeout_review.md`

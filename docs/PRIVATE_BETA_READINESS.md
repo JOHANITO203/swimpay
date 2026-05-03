@@ -4,6 +4,12 @@ Private beta can start only when the go criteria below are met and no no-go cond
 
 SwimPay is a Payment Signal Engine and not official bank confirmation. Real bank runtime starts review-only, with auto-confirm disabled.
 
+Merchant-facing wording for beta:
+
+- SwimPay recognizes merchant-side notification signals.
+- SwimPay does not provide official bank confirmation.
+- Review is required in beta.
+
 ## Go Criteria
 
 - backend healthy;
@@ -36,7 +42,16 @@ SwimPay is a Payment Signal Engine and not official bank confirmation. Real bank
 
 ## Current Readiness Snapshot
 
-Sberbank has review-only package evidence for `ru.sberbankmobile`. The other four banks still need explicit operator package-name input and review-only evidence collection.
+All five V1 banks have package evidence for review-only MVP validation. Sprint 6C rehearsed synthetic shadow runtime for every bank, and Sprint 6D rehearses private beta order, review and webhook behavior with synthetic merchant/order fixtures.
 
-Private beta is not ready until the five-bank MVP matrix has enough green review-only coverage for the chosen beta scope.
+Private beta still requires an explicit go/no-go review before any real bank notification shadow run. Review is required in beta.
 
+## Sprint 6D Rehearsal Criteria
+
+- synthetic merchant/order fixture exists;
+- checkout/status path is represented;
+- synthetic bank signals route to review queue;
+- merchant/operator confirm produces manual review semantics;
+- default reject scope is signal-level;
+- signed webhook delivery works with `official_bank_confirmation=false` and `confirmation_type=notification_signal`;
+- support trace is possible without raw phone or raw notification text.

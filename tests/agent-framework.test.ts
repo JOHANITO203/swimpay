@@ -40,17 +40,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 6C five-bank shadow rehearsal tasks in the approved order', () => {
+  test('task queue lists Sprint 6D private beta rehearsal tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '289_five_bank_receiver_review_only_selection',
-      '290_five_bank_synthetic_signal_fixture_set',
-      '291_five_bank_shadow_runtime_review_queue_rehearsal',
-      '292_five_bank_webhook_disclosure_rehearsal',
-      '293_five_bank_negative_signal_safety_rehearsal',
-      '294_five_bank_matrix_shadow_status_update',
-      '295_sprint_6c_closeout_review'
+      '296_beta_synthetic_merchant_fixture_set',
+      '297_beta_order_checkout_review_flow',
+      '298_beta_review_confirm_reject_rehearsal',
+      '299_beta_webhook_fulfillment_rehearsal',
+      '300_beta_audit_and_support_trace',
+      '301_beta_merchant_operator_runbook',
+      '302_sprint_6d_closeout_review'
     ];
 
     let previousIndex = -1;

@@ -1,35 +1,33 @@
 # Next Action
 
-generated_at: 2026-05-03T15:30:00+03:00
+generated_at: 2026-05-03T15:45:00+03:00
 
 ## Latest Sprint
 
-Sprint 6C - Five-bank Review-only Receiver Selection and Synthetic Shadow Runtime Rehearsal.
+Sprint 6D - Private Beta Review Queue and Webhook Rehearsal with Synthetic Merchant/Order Fixtures.
 
 ## Status
 
 PASS.
 
-Sprint 6C implementation is present:
+Sprint 6D implementation is present:
 
-- `.swimpay-agent/SPRINT_6C_REPORT.md`
-- `packages/bank-templates/five-bank-synthetic-shadow-fixtures.json`
-- `packages/bank-templates/v1-bank-mvp-matrix.json`
-- `docs/FIVE_BANK_MVP_VALIDATION_MATRIX.md`
-- `tests/five-bank-shadow-rehearsal.test.ts`
-- expanded `apps/signal-worker/src/runtime.test.ts`
+- `.swimpay-agent/SPRINT_6D_REPORT.md`
+- `packages/bank-templates/private-beta-merchant-order-fixtures.json`
+- `docs/PRIVATE_BETA_OPERATOR_RUNBOOK.md`
+- `tests/private-beta-review-webhook-rehearsal.test.ts`
 
-All five V1 bank profiles are `review_only_ready` in the matrix. Synthetic shadow runtime rehearsal passed for incoming-like, amount-only, cashback, refund, outgoing/payment, promo and failed transfer categories. Auto-confirm remains disabled for all five banks.
+The private beta path is rehearsed with synthetic merchant/order fixtures. Five-bank review-only signals route to review, manual confirm uses notification-signal disclosure, default reject scope remains signal-level and support tracing stays PII-safe.
 
 ## Next Recommended Action
 
-Proceed to Sprint 6D - Private beta review queue and webhook rehearsal.
+Proceed to Sprint 6E - Private beta go/no-go rehearsal and real-notification shadow readiness gate.
 
 Recommended scope:
 
-1. Exercise review queue operator UX with synthetic merchant/order fixtures.
-2. Verify review lifecycle and webhook delivery in private beta mode.
-3. Verify merchant-facing disclosure wording.
+1. Convert private beta readiness into a concrete go/no-go checklist runner.
+2. Verify review queue UX/support operations against synthetic data.
+3. Verify webhook retry/dead support handling in beta docs.
 4. Keep real bank notifications not started unless explicitly authorized.
 5. Keep production trust and auto-confirm out of scope.
 

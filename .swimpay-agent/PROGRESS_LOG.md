@@ -1604,3 +1604,14 @@ Safety checks:
 - Verified synthetic incoming-like and amount-only signals do not auto-confirm; negative categories never auto-confirm.
 - Webhook disclosure remains `official_bank_confirmation=false` and `confirmation_type=notification_signal`.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust request/approval, raw phone, raw notification text or auto-confirmation was used.
+
+## 2026-05-03T15:45:00+03:00 - Sprint 6D Private Beta Review Queue and Webhook Rehearsal
+
+- Created tasks 296 through 302 and updated the task queue to Sprint 6D.
+- Created `packages/bank-templates/private-beta-merchant-order-fixtures.json` with one synthetic merchant/order fixture and five review-only bank signal scenarios.
+- Added `docs/PRIVATE_BETA_OPERATOR_RUNBOOK.md` and updated private beta readiness.
+- Added `tests/private-beta-review-webhook-rehearsal.test.ts`.
+- Rehearsed order/payment-session fixture routing into review queue for all five V1 banks.
+- Rehearsed manual review webhook fulfillment with `decision=manual_confirmed`, `official_bank_confirmation=false` and `confirmation_type=notification_signal`.
+- Verified default rejection scope remains signal-level and support trace excludes raw phone, raw notification text, raw title/body, API keys and webhook secrets.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust request/approval, raw phone, raw notification text or auto-confirmation was used.
