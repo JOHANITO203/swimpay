@@ -36,6 +36,24 @@ class MainActivity : Activity() {
     private val backendStatusRefresher by lazy {
         BackendStatusRefresher(DebugReceiverHttpClient(DebugBackendConfig()))
     }
+    private val merchantSession by lazy {
+        if (BuildConfig.DEBUG) {
+            AuthenticatedMerchantSession.localDev(DebugBackendConfig().merchantId)
+        } else {
+            AuthenticatedMerchantSession.missing()
+        }
+    }
+    private val merchantApiTransport by lazy {
+        HttpUrlConnectionMerchantApiTransport(DebugBackendConfig().baseUrl)
+    }
+    private val merchantReceivingMethodsRepository by lazy {
+        MerchantReceivingMethodsApiRepository(merchantApiTransport)
+    }
+    private val merchantReviewQueueRepository by lazy {
+        MerchantReviewQueueApiRepository(merchantApiTransport)
+    }
+    private var apiReceivingMethods: List<MerchantReceivingMethodDisplay> = emptyList()
+    private var apiReviewQueueScreen: MerchantUiScreen? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +63,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         refreshBackendStatus()
+        refreshMerchantApiData()
         renderStatus()
     }
 
@@ -126,16 +145,9 @@ class MainActivity : Activity() {
             )
         )
         addScreenCard(container, merchantCatalog.dashboardScreen(receiverReady = onboarding.receiverReady))
-        addScreenCard(
-            container,
-            merchantCatalog.receivingMethodsScreen(
-                listOf(
-                    MerchantReceivingMethodDisplay.masked("Carte bancaire", "Sberbank · •••• 4821"),
-                    MerchantReceivingMethodDisplay.masked("Numéro de téléphone", "T-Bank · +7 *** *** 45-67")
-                )
-            )
-        )
-        addScreenCard(container, merchantCatalog.reviewQueueScreen())
+        val receivingMethods = apiReceivingMethods.ifEmpty { fallbackReceivingMethods() }
+        addScreenCard(container, merchantCatalog.receivingMethodsScreen(receivingMethods))
+        addScreenCard(container, apiReviewQueueScreen ?: merchantCatalog.reviewQueueScreen())
         addScreenCard(
             container,
             merchantCatalog.paymentReviewDetailScreen(
@@ -309,6 +321,19 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun fallbackReceivingMethods(): List<MerchantReceivingMethodDisplay> {
+        return listOf(
+            MerchantReceivingMethodDisplay.masked(
+                ReceivingMethodType.CARD_TRANSFER.merchantLabel,
+                "Sberbank \u00b7 \u2022\u2022\u2022\u2022 4821"
+            ),
+            MerchantReceivingMethodDisplay.masked(
+                ReceivingMethodType.PHONE_TRANSFER.merchantLabel,
+                "T-Bank \u00b7 +7 *** *** 45-67"
+            )
+        )
+    }
+
     private fun refreshBackendStatus() {
         if (!BuildConfig.DEBUG) {
             return
@@ -317,6 +342,25 @@ class MainActivity : Activity() {
             val refreshed = backendStatusRefresher.refresh()
             runOnUiThread {
                 backendStatus = refreshed
+                renderStatus()
+            }
+        }.start()
+    }
+
+    private fun refreshMerchantApiData() {
+        if (!merchantSession.isAuthenticated) {
+            return
+        }
+        Thread {
+            val receivingMethods = merchantReceivingMethodsRepository.list(merchantSession)
+            val reviewQueue = merchantReviewQueueRepository.list(merchantSession)
+            runOnUiThread {
+                if (receivingMethods.state == MerchantRepositoryState.SUCCESS && receivingMethods.items.isNotEmpty()) {
+                    apiReceivingMethods = receivingMethods.items
+                }
+                if (reviewQueue.state == MerchantRepositoryState.SUCCESS && reviewQueue.items.isNotEmpty()) {
+                    apiReviewQueueScreen = reviewQueue.toScreen()
+                }
                 renderStatus()
             }
         }.start()

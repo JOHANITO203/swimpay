@@ -2,6 +2,24 @@
 
 No current critical blockers.
 
+Last checked after Sprint 7E Android merchant API wiring and visual QA: 2026-05-03T21:39:35+03:00.
+
+Sprint 7E status:
+
+- Android merchant auth/session boundary passed validation with local/dev auth clearly marked.
+- Receiving methods are wired to live merchant receiving-route APIs and display masked routes only.
+- Review queue and review actions are wired to live review APIs.
+- `Rejeter le signal` remains signal-scoped and does not reject an order by default.
+- Android does not directly send developer webhooks.
+- Dashboard, connected site and configuration test remain explicit mock repositories because dedicated mobile/backend endpoints are missing.
+- Android build, JVM tests and real-device install/launch QA passed on Samsung SM-S916B `R5CWA0FEPZW`.
+- Docker was initially unavailable, then recovered after user restart; Compose services and API health are healthy.
+- No SMS permission, Accessibility scraping, broad installed-app enumeration, official bank confirmation claim or auto-confirmation was added.
+
+Known non-critical Sprint 7E follow-up:
+
+- Dedicated mobile/backend endpoints are still needed for dashboard summary, payment detail by id, connected-site status/test and configuration test.
+
 Last checked after Sprint 7D Android merchant frontend UX screens: 2026-05-03T20:20:00+03:00.
 
 Sprint 7D status:

@@ -1696,3 +1696,21 @@ Safety checks:
 - Full validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps and API health.
 - Android Gradle validation was not run because Sprint 7C did not touch Android platform code.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, SBP, official bank confirmation claim, raw notification text, webhook raw destination or real-bank auto-confirmation was used.
+
+## 2026-05-03T21:39:35+03:00 - Sprint 7E Android Merchant API Wiring and Visual QA
+
+- Created tasks 394 through 403 and updated the task queue to Sprint 7E.
+- Added `AuthenticatedMerchantSession` for Android merchant auth/session state.
+- Wired receiving methods to live backend APIs: `GET /v1/merchant/receiving-routes`, `POST /v1/merchant/receiving-routes` and `PATCH /v1/merchant/receiving-routes/:route_id`.
+- Wired review queue to `GET /v1/reviews`.
+- Wired review actions to `POST /v1/reviews/:id/confirm` and `POST /v1/reviews/:id/reject`.
+- Kept signal rejection signal-scoped by default; order rejection is explicit.
+- Kept Android out of developer webhook delivery; backend remains responsible after review actions.
+- Kept dashboard, connected site and configuration test as explicit typed mock repositories because dedicated mobile/backend endpoints are missing.
+- Updated `.swimpay-agent/ANDROID_FRONTEND_API_GAPS.md`, `docs/ANDROID_FRONTEND_API_CONTRACTS.md` and `docs/ANDROID_MERCHANT_APP_SCREENS.md`.
+- Added `AndroidMerchantApiWiringTest.kt` and updated Android runnable app static tests.
+- Validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps after Docker restart, API health after Docker restart, Android assembleDebug and Android JVM tests.
+- ADB command execution worked through the local SDK platform-tools.
+- Installed and launched the debug APK on Samsung SM-S916B `R5CWA0FEPZW`.
+- UI-tree viewport scans covered onboarding, Notification Access gate, bank selection, configuration test, dashboard, receiving methods, review queue/detail, connected site and Receiver health/settings.
+- No real bank notification, customer data, installed-app enumeration, SMS, Accessibility scraping, official bank confirmation claim, raw phone/card display, raw notification text or auto-confirmation was added.

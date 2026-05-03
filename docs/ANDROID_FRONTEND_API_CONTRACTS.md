@@ -1,6 +1,6 @@
 # Android Frontend API Contracts
 
-Sprint 7D defines typed Android frontend contracts for the merchant Receiver UI. Existing local Android models are reused where available; missing backend APIs are represented through mock repositories and documented in `.swimpay-agent/ANDROID_FRONTEND_API_GAPS.md`.
+Sprint 7D introduced typed Android merchant frontend contracts and mock repositories. Sprint 7E wires the parts that already have backend APIs and leaves the remaining areas explicitly mock-only.
 
 ## Contract States
 
@@ -12,67 +12,121 @@ Each screen contract supports:
 - action required;
 - error.
 
-## Contracts
+## Authentication Boundary
 
-### Onboarding Readiness
+Android uses an `AuthenticatedMerchantSession` model.
 
-Source:
+For local/dev backend calls only, the app can use:
 
-- existing `ReceiverOnboardingReadinessEvaluator`
-- existing `NotificationAccessStatusReader`
-- existing `AppNotificationPermissionReader`
+```text
+Authorization: Bearer test_<merchant_id>
+```
 
-Notification Listener Access remains separate from app notification permission.
+Missing auth maps to a safe disconnected/action-required state. The visible merchant UI must not show bearer tokens, API keys or webhook secrets.
 
-### Bank Selection
-
-Source:
-
-- existing receiver-side bank profile selection model
-- Sprint 7D merchant-facing screen model
-
-The merchant-facing UI displays only five bank names and the beta manual validation badge.
+## Wired Contracts
 
 ### Receiving Methods
 
-Current state:
+Backend endpoints:
 
-- frontend contract exists;
-- Android uses mock repository data until merchant route APIs are wired into the app.
+- `GET /v1/merchant/receiving-routes`
+- `POST /v1/merchant/receiving-routes`
+- `PATCH /v1/merchant/receiving-routes/:route_id`
 
-Raw card/phone values are accepted only for create/edit flows. Saved display state is masked.
+Android maps saved routes to merchant UI rows with masked identifiers only. Raw card/phone values are accepted only during create submission and cleared from frontend state after submit.
 
-### Configuration Test
+### Review Queue
 
-Current state:
+Backend endpoint:
 
-- frontend contract exists;
-- checklist uses local readiness and mock connected-site/method state until backend endpoints are available.
+- `GET /v1/reviews`
+
+Android maps backend reason codes to simple labels:
+
+- Validation manuelle en bêta
+- Référence non visible
+- Seul le montant a été reconnu
+- Plusieurs paiements similaires
+- Banque encore en test
+
+Raw reason codes are not displayed in merchant mode.
+
+### Review Actions
+
+Backend endpoints:
+
+- `POST /v1/reviews/:id/confirm`
+- `POST /v1/reviews/:id/reject`
+
+Android sends explicit action scope for rejection:
+
+- `signal` for `Rejeter le signal`
+- `order` for `Rejeter la commande`
+
+Android does not directly send developer webhooks; webhook delivery remains backend responsibility after review action processing.
+
+## Mock-only Contracts
 
 ### Dashboard Summary
 
 Current state:
 
-- frontend contract exists;
-- Android uses mock repository data for dashboard statistics and recent rows.
+- typed frontend contract exists;
+- Android uses mock repository data for summary statistics and recent rows.
 
-### Review Queue And Payment Detail
+Missing endpoint:
+
+- `GET /v1/android-merchant/dashboard-summary`
+
+### Payment Detail
 
 Current state:
 
-- frontend contract exists;
-- Android uses mock repository data for list/detail/actions until backend merchant review endpoints are connected to the app.
+- typed frontend/detail model exists;
+- list data can come from `GET /v1/reviews`;
+- dedicated payment detail endpoint remains missing.
 
-Review actions are modeled so `Rejeter le signal` does not reject an order by default.
+Missing endpoint:
+
+- `GET /v1/android-merchant/review-queue/:payment_id`
 
 ### Connected Site
 
 Current state:
 
-- frontend contract exists;
+- typed frontend contract exists;
 - Android uses mock repository data for connected-site status and latest deliveries.
 
+Missing endpoints:
+
+- `GET /v1/android-merchant/connected-site`
+- `POST /v1/android-merchant/connected-site/test`
+
 Developer details are hidden by default.
+
+### Configuration Test
+
+Current state:
+
+- typed frontend contract exists;
+- checklist uses local readiness and mock connected-site/method state until a backend endpoint is available.
+
+Missing endpoint:
+
+- `POST /v1/android-merchant/configuration-test`
+
+## Local Android Contracts
+
+### Onboarding Readiness
+
+Source:
+
+- existing `ReceiverOnboardingReadinessEvaluator`;
+- existing `NotificationAccessStatusReader`;
+- existing `AppNotificationPermissionReader`.
+
+Notification Listener Access remains separate from app notification permission.
 
 ### Receiver Health
 
@@ -88,3 +142,4 @@ Source:
 - Android does not confirm or auto-confirm payments.
 - Webhook details are hidden in merchant mode.
 - Raw notification text, raw phone, raw card and secrets are excluded from merchant-facing models.
+- The app adds no SMS permission and no Accessibility scraping service.

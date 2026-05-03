@@ -6,6 +6,19 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `394_android_merchant_auth_session_contract` - status: completed - source: `tasks/394_android_merchant_auth_session_contract.md`
+- [x] `395_android_receiving_methods_api_wiring` - status: completed - source: `tasks/395_android_receiving_methods_api_wiring.md`
+- [x] `396_android_dashboard_api_wiring` - status: completed - source: `tasks/396_android_dashboard_api_wiring.md`
+- [x] `397_android_review_queue_api_wiring` - status: completed - source: `tasks/397_android_review_queue_api_wiring.md`
+- [x] `398_android_review_actions_confirm_reject_wiring` - status: completed - source: `tasks/398_android_review_actions_confirm_reject_wiring.md`
+- [x] `399_android_connected_site_api_wiring` - status: completed - source: `tasks/399_android_connected_site_api_wiring.md`
+- [x] `400_android_configuration_test_api_wiring` - status: completed - source: `tasks/400_android_configuration_test_api_wiring.md`
+- [x] `401_android_real_device_visual_qa` - status: completed - source: `tasks/401_android_real_device_visual_qa.md`
+- [x] `402_android_api_gap_cleanup_and_docs` - status: completed - source: `tasks/402_android_api_gap_cleanup_and_docs.md`
+- [x] `403_sprint_7e_closeout_review` - status: completed - source: `tasks/403_sprint_7e_closeout_review.md`
+
+## Recently Completed
+
 - [x] `381_android_merchant_ux_language_contract` - status: completed - source: `tasks/381_android_merchant_ux_language_contract.md`
 - [x] `382_android_onboarding_frontend_screens` - status: completed - source: `tasks/382_android_onboarding_frontend_screens.md`
 - [x] `383_android_notification_access_gate` - status: completed - source: `tasks/383_android_notification_access_gate.md`
@@ -19,9 +32,6 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `391_android_api_contracts_and_state_models` - status: completed - source: `tasks/391_android_api_contracts_and_state_models.md`
 - [x] `392_android_ui_tests_copy_guardrails` - status: completed - source: `tasks/392_android_ui_tests_copy_guardrails.md`
 - [x] `393_sprint_7d_closeout_review` - status: completed - source: `tasks/393_sprint_7d_closeout_review.md`
-
-## Recently Completed
-
 - [x] `374_copy_details_session_hardening` - status: completed - source: `tasks/374_copy_details_session_hardening.md`
 - [x] `375_copy_details_rate_limit_and_audit` - status: completed - source: `tasks/375_copy_details_rate_limit_and_audit.md`
 - [x] `376_copy_details_short_lived_reveal_policy` - status: completed - source: `tasks/376_copy_details_short_lived_reveal_policy.md`

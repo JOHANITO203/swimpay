@@ -416,6 +416,9 @@ describe('android device-side network smoke wiring', () => {
     expect(diagnostics).toContain('selectedBankVerificationStatuses');
     expect(activity).toContain('chooseBanksScreen');
     expect(activity).toContain('merchantCatalog');
+    expect(activity).toContain('MerchantReceivingMethodsApiRepository');
+    expect(activity).toContain('MerchantReviewQueueApiRepository');
+    expect(activity).toContain('refreshMerchantApiData');
     expect(merchantUi).toContain('Sberbank');
     expect(merchantUi).toContain('T-Bank');
     expect(merchantUi).toContain('VTB');

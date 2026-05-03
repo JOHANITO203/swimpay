@@ -160,3 +160,73 @@ Settings shell sections:
 - Mode bêta
 
 The future automation teaser is display-only. Sprint 7D does not enable automation.
+
+## Sprint 7E API Wiring
+
+Sprint 7E keeps the Sprint 7D merchant-facing copy and adds live wiring where backend endpoints already exist.
+
+### Authenticated Session
+
+The Android app has a typed `AuthenticatedMerchantSession` boundary.
+
+- Missing auth shows a safe action-required/disconnected state.
+- Local/dev auth is clearly marked as local/dev.
+- Bearer tokens, API keys and webhook secrets are not shown in the merchant UI.
+
+### Receiving Methods
+
+The receiving methods screen can load and mutate live backend routes through:
+
+- `GET /v1/merchant/receiving-routes`
+- `POST /v1/merchant/receiving-routes`
+- `PATCH /v1/merchant/receiving-routes/:route_id`
+
+Saved rows remain masked only. Raw card or phone input is used only during submission and is cleared from Android view state after save.
+
+### Review Queue And Actions
+
+The review queue can load open reviews from:
+
+- `GET /v1/reviews`
+
+Review detail actions use:
+
+- `POST /v1/reviews/:id/confirm`
+- `POST /v1/reviews/:id/reject`
+
+`Rejeter le signal` sends a signal-scoped rejection. `Rejeter la commande` sends an explicit order-scoped rejection. Android does not directly notify developer systems.
+
+### Still Mock-only Screens
+
+The following areas remain typed mock repositories until dedicated mobile/backend endpoints exist:
+
+- dashboard summary;
+- payment detail by id;
+- connected site/webhook status and test;
+- configuration test.
+
+These gaps are listed in `.swimpay-agent/ANDROID_FRONTEND_API_GAPS.md`.
+
+## Real-device Visual QA
+
+Sprint 7E built, installed and launched the debug APK successfully on Samsung SM-S916B (`R5CWA0FEPZW`).
+
+Command shape:
+
+```powershell
+$adb = "C:\Users\Lenovo\AppData\Local\Android\Sdk\platform-tools\adb.exe"
+& $adb devices -l
+& $adb -s <SERIAL> install -r apps/android-receiver/android/app/build/outputs/apk/debug/app-debug.apk
+& $adb -s <SERIAL> shell am start -n com.swimpay.receiver/.MainActivity
+```
+
+UI-tree visual QA covered:
+
+- onboarding visible;
+- Notification Access gate visible and status shown;
+- dashboard renders ready/problem states;
+- receiving methods render masked destinations only;
+- review queue and payment detail render simple merchant labels;
+- connected-site developer details remain hidden unless enabled;
+- Receiver health renders Notification Access and queue state;
+- no raw card, raw phone, raw notification text, package/cert, HMAC, webhook secret or official bank confirmation wording appears.

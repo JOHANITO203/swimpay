@@ -622,4 +622,45 @@ object AndroidMerchantFrontendContracts {
             )
         )
     }
+
+    fun sprint7EContracts(): AndroidMerchantFrontendContractSet {
+        val local = AndroidMerchantFrontendContract(
+            name = "local_state_model",
+            supportsLoadingEmptySuccessActionRequiredError = true,
+            usesExistingLocalModel = true,
+            usesMockRepository = false
+        )
+        val wired = AndroidMerchantFrontendContract(
+            name = "authenticated_backend_api_wired",
+            supportsLoadingEmptySuccessActionRequiredError = true,
+            usesExistingLocalModel = false,
+            usesMockRepository = false
+        )
+        val mock = AndroidMerchantFrontendContract(
+            name = "explicit_mock_repository_missing_backend_endpoint",
+            supportsLoadingEmptySuccessActionRequiredError = true,
+            usesExistingLocalModel = false,
+            usesMockRepository = true
+        )
+        return AndroidMerchantFrontendContractSet(
+            onboardingReadiness = local,
+            notificationAccessStatus = local,
+            bankSelection = local,
+            receivingMethods = wired,
+            configurationTest = mock,
+            dashboardSummary = mock,
+            reviewQueue = wired,
+            paymentDetail = mock,
+            reviewActions = wired,
+            connectedSite = mock,
+            receiverHealth = local,
+            missingBackendEndpoints = listOf(
+                "GET /v1/android-merchant/dashboard-summary",
+                "GET /v1/android-merchant/review-queue/:payment_id",
+                "GET /v1/android-merchant/connected-site",
+                "POST /v1/android-merchant/connected-site/test",
+                "POST /v1/android-merchant/configuration-test"
+            )
+        )
+    }
 }
