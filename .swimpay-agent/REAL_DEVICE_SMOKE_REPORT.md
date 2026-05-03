@@ -212,3 +212,35 @@ Safety:
 - No raw phone stored/uploaded.
 - No raw notification text stored/uploaded.
 - `synthetic_debug_only` evidence remains review-only and not production trust evidence.
+
+## Sprint 4Q Real Package Evidence Dry Run
+
+- generated_at: 2026-05-03T11:35:33+03:00
+- status: PASS with non-critical app-side visibility limitation
+- Device serial: `R5CWA0FEPZW`
+- Device model: Samsung `SM_S916B`
+- Backend health: PASS at `http://localhost:8080/api-health`
+- ADB reverse: `tcp:8080 tcp:8080` PASS
+- APK build/install/launch: PASS
+- Operator-selected package: `ru.sberbankmobile`
+- App-side explicit PackageManager action: returned `package_not_found`
+- Exact ADB PackageManager metadata lookup: found package `ru.sberbankmobile`
+- Evidence id: `f4069615-028b-4329-a136-115495bd058c`
+- Evidence submission result: `pending_operator_review`, `trusted: false`, `auto_confirm_enabled: false`
+- Admin review-only result: `approved_for_review_only`, `trusted: false`, `production_trusted_app_metadata: false`, `auto_confirm_enabled: false`
+- Audit trace: PASS for submitted, reviewed and approved-review-only events with masked certificate hash `fea43e...99a2ea`
+
+Safety:
+
+- No real bank notification used.
+- No customer data used.
+- No installed-app enumeration.
+- No SMS reading.
+- No bank app scraping.
+- No Accessibility scraping.
+- No Android payment confirmation.
+- No Android auto-confirmation.
+- No raw phone stored/uploaded.
+- No raw notification text stored/uploaded.
+- Production trust was not requested or approved.
+- Review-only evidence must not be treated as production trust.

@@ -1384,3 +1384,17 @@ Safety checks:
 - Added Android JVM and static tests for explicit input, package-not-found, no enumeration, no raw PII and no auto-confirm behavior.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Android assembleDebug and Android JVM tests.
 - No live real evidence was collected because no explicit real package name was provided by the operator/user.
+
+## 2026-05-03T11:35:33+03:00 - Sprint 4Q Real Package Evidence Dry Run
+
+- Created tasks 183 through 188 and updated the task queue.
+- Recorded operator-selected package `ru.sberbankmobile` in `.swimpay-agent/REAL_PACKAGE_EVIDENCE_INPUT.md`.
+- Verified real device `R5CWA0FEPZW`, adb reverse `tcp:8080 tcp:8080`, Compose service health and API health at `http://localhost:8080/api-health`.
+- Built, installed and launched the debug Android Receiver APK.
+- App-side debug PackageManager lookup returned `package_not_found`; exact ADB PackageManager metadata lookup for `ru.sberbankmobile` found the package without installed-app enumeration.
+- Submitted exact metadata evidence `f4069615-028b-4329-a136-115495bd058c` to `/v1/bank-evidence` as `pending_operator_review`.
+- Approved the evidence as `approved_for_review_only`; response kept `trusted: false`, `production_trusted_app_metadata: false` and `auto_confirm_enabled: false`.
+- Verified redacted audit events for submission, review and approve-review-only with masked certificate hash `fea43e...99a2ea`.
+- Verified `sber_ru` bank profile stayed `learning`; `bank_app_signatures` did not gain a production-trusted real package signature.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Android assembleDebug and Android JVM tests.
+- No real notification, customer data, installed-app enumeration, SMS, scraping, production trust, auto-confirmation, raw phone or raw notification text was used.
