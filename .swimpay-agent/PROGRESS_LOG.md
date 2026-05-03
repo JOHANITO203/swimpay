@@ -1466,3 +1466,17 @@ Safety checks:
 - Rebuilt `swimpay-web` locally and verified `http://localhost:8080/admin/evidence-review` returns HTTP 200 with safety checks passing.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, operator UI page check and `npm run rehearsal:evidence`.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust approval, auto-confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T13:09:06+03:00 - Sprint 4W Evidence Production Trust Dual-operator Rehearsal and Operator Handoff
+
+- Created tasks 225 through 232 and updated the task queue to Sprint 4W.
+- Added `scripts/evidence-production-trust-handoff.mjs` and `npm run handoff:evidence-trust`.
+- Added a non-mutating handoff plan for production trust metadata review.
+- Added guarded default execution that checks evidence dashboard/audit access and redaction without mutating evidence.
+- Added explicit mutating drill support requiring `SWIMPAY_EVIDENCE_ID`, requester token, approver token and `SWIMPAY_ALLOW_PRODUCTION_TRUST_HANDOFF=true`.
+- Added handoff inspection for request, same-actor dual-control block, second-operator approval, revocation and redacted audit continuity.
+- Added `docs/BANK_EVIDENCE_PRODUCTION_TRUST_HANDOFF.md` and updated evidence lifecycle, operator runbook, production trust policy and security docs.
+- Local Compose run stayed non-mutating because `dev_token` mode represents one operator and cannot prove second-operator approval without weakening RBAC.
+- Added tests for the handoff plan, full fake dual-operator flow, redaction guards, default non-mutating behavior, explicit mutating call order and Sprint 4W queue/script wiring.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, handoff plan/default runs and `git diff --check`.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust approval in local Compose, auto-confirmation, raw phone or raw notification text was used.

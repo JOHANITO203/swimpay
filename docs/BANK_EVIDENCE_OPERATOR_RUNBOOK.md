@@ -209,6 +209,19 @@ Use it to visually review:
 
 The surface does not request, approve or revoke production trust. Production trust still requires the explicit API workflow and dual-control. The UI must keep `trusted=false` and `auto_confirm_enabled=false` visible, and it must never show raw phone numbers, raw notification text, full certificate hashes or secrets.
 
+Sprint 4W adds a dual-operator handoff helper:
+
+```powershell
+npm run handoff:evidence-trust -- --plan
+npm run handoff:evidence-trust
+```
+
+The default run is non-mutating. A full local/dev handoff drill requires `SWIMPAY_EVIDENCE_ID`, `SWIMPAY_REQUESTER_TOKEN`, `SWIMPAY_APPROVER_TOKEN` and `SWIMPAY_ALLOW_PRODUCTION_TRUST_HANDOFF=true`.
+
+Use this only with local/dev evidence that is already `approved_for_review_only`. The requester and approver must be different operator identities. The drill should revoke metadata trust after approval so the environment does not retain production trust from a rehearsal.
+
+See `docs/BANK_EVIDENCE_PRODUCTION_TRUST_HANDOFF.md`.
+
 ## Future Real Package/Cert Dry Run
 
 Real evidence collection must be explicit:

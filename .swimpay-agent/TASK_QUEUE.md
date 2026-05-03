@@ -6,11 +6,11 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `217_evidence_operator_web_surface` - status: completed - source: `tasks/217_evidence_operator_web_surface.md`
-- [x] `218_evidence_web_dashboard_data_model` - status: completed - source: `tasks/218_evidence_web_dashboard_data_model.md`
-- [x] `219_production_trust_audit_drill_surface` - status: completed - source: `tasks/219_production_trust_audit_drill_surface.md`
-- [x] `220_evidence_operator_ui_safety_copy` - status: completed - source: `tasks/220_evidence_operator_ui_safety_copy.md`
-- [x] `221_evidence_operator_ui_tests` - status: completed - source: `tasks/221_evidence_operator_ui_tests.md`
-- [x] `222_live_operator_ui_rehearsal` - status: completed - source: `tasks/222_live_operator_ui_rehearsal.md`
-- [x] `223_sprint_4v_validation` - status: completed - source: `tasks/223_sprint_4v_validation.md`
-- [x] `224_sprint_4v_closeout_review` - status: completed - source: `tasks/224_sprint_4v_closeout_review.md`
+- [x] `225_production_trust_dual_operator_rehearsal_plan` - status: completed - source: `tasks/225_production_trust_dual_operator_rehearsal_plan.md`
+- [x] `226_dual_operator_handoff_cli` - status: completed - source: `tasks/226_dual_operator_handoff_cli.md`
+- [x] `227_operator_handoff_checklist_docs` - status: completed - source: `tasks/227_operator_handoff_checklist_docs.md`
+- [x] `228_production_trust_audit_continuity_inspection` - status: completed - source: `tasks/228_production_trust_audit_continuity_inspection.md`
+- [x] `229_local_operator_token_guidance` - status: completed - source: `tasks/229_local_operator_token_guidance.md`
+- [x] `230_production_trust_handoff_tests` - status: completed - source: `tasks/230_production_trust_handoff_tests.md`
+- [x] `231_sprint_4w_validation` - status: completed - source: `tasks/231_sprint_4w_validation.md`
+- [x] `232_sprint_4w_closeout_review` - status: completed - source: `tasks/232_sprint_4w_closeout_review.md`

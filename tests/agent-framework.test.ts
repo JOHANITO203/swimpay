@@ -24,7 +24,8 @@ const requiredAgentFiles = [
   'scripts/android-toolchain-check.mjs',
   'scripts/android-emulator-doctor.mjs',
   'scripts/local-backend-doctor.mjs',
-  'scripts/evidence-lifecycle-rehearsal.mjs'
+  'scripts/evidence-lifecycle-rehearsal.mjs',
+  'scripts/evidence-production-trust-handoff.mjs'
 ];
 
 describe('local agent orchestration framework', () => {
@@ -34,18 +35,18 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4V evidence operator UI and audit drill tasks in the approved order', () => {
+  test('task queue lists Sprint 4W evidence production trust handoff tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '217_evidence_operator_web_surface',
-      '218_evidence_web_dashboard_data_model',
-      '219_production_trust_audit_drill_surface',
-      '220_evidence_operator_ui_safety_copy',
-      '221_evidence_operator_ui_tests',
-      '222_live_operator_ui_rehearsal',
-      '223_sprint_4v_validation',
-      '224_sprint_4v_closeout_review'
+      '225_production_trust_dual_operator_rehearsal_plan',
+      '226_dual_operator_handoff_cli',
+      '227_operator_handoff_checklist_docs',
+      '228_production_trust_audit_continuity_inspection',
+      '229_local_operator_token_guidance',
+      '230_production_trust_handoff_tests',
+      '231_sprint_4w_validation',
+      '232_sprint_4w_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -82,5 +83,6 @@ describe('local agent orchestration framework', () => {
     expect(pkg.scripts['android:emulator-doctor']).toBe('node scripts/android-emulator-doctor.mjs');
     expect(pkg.scripts['backend:doctor']).toBe('node scripts/local-backend-doctor.mjs');
     expect(pkg.scripts['rehearsal:evidence']).toBe('node scripts/evidence-lifecycle-rehearsal.mjs');
+    expect(pkg.scripts['handoff:evidence-trust']).toBe('node scripts/evidence-production-trust-handoff.mjs');
   });
 });

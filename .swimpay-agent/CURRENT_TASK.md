@@ -1,13 +1,13 @@
 # Current Task
 
-task_id: 224_sprint_4v_closeout_review
-source_task_file: tasks/224_sprint_4v_closeout_review.md
+task_id: 232_sprint_4w_closeout_review
+source_task_file: tasks/232_sprint_4w_closeout_review.md
 status: completed
 
 ## Scope
 
-Sprint 4V - Evidence operator UI surface and production trust audit drill.
+Sprint 4W - Evidence production trust dual-operator rehearsal and operator handoff.
 
 ## Result
 
-`swimpay-web` now exposes a read-only `GET /admin/evidence-review` operator surface. The page renders redacted evidence dashboard rows and audit traces, keeps `trusted=false` and `auto_confirm_enabled=false` visible, and provides a safe unavailable state without leaking admin tokens or backend error details.
+Added `npm run handoff:evidence-trust` for production trust handoff rehearsal. The tool is non-mutating by default, verifies dashboard/audit redaction, and only runs the full request/block/approve/revoke drill when an explicit evidence id, requester token, approver token and opt-in flag are provided.

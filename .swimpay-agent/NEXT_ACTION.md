@@ -1,35 +1,38 @@
 # Next Action
 
-generated_at: 2026-05-03T12:59:29+03:00
+generated_at: 2026-05-03T13:09:06+03:00
 
 ## Latest Completed Sprint
 
-Sprint 4V - Evidence operator UI surface and production trust audit drill.
+Sprint 4W - Evidence production trust dual-operator rehearsal and operator handoff.
 
 ## Status
 
 PASS.
 
-The evidence operator flow now has a local web surface:
+The evidence production trust handoff now has a guarded local operator tool:
 
-- `GET /admin/evidence-review`
-- reads the evidence review dashboard API;
-- reads redacted evidence audit events;
-- displays pending/recent evidence and production trust audit drill rows;
-- keeps `trusted=false` and `auto_confirm_enabled=false` explicit;
-- keeps production trust actions out of the UI.
+- `npm run handoff:evidence-trust -- --plan`
+- `npm run handoff:evidence-trust`
+
+Default mode is non-mutating. Full mutation requires:
+
+- explicit `SWIMPAY_EVIDENCE_ID`;
+- `SWIMPAY_ALLOW_PRODUCTION_TRUST_HANDOFF=true`;
+- requester token;
+- different approver token.
 
 ## Next Recommended Sprint
 
-Sprint 4W - Evidence production trust dual-operator rehearsal and operator handoff.
+Sprint 4X - Signed operator token local rehearsal and production trust handoff execution.
 
 Recommended tasks:
 
-1. Rehearse requester/approver separation with two explicit local dev operators.
-2. Add an operator handoff checklist from review-only evidence to production trust request.
-3. Verify audit trace continuity across request, blocked same-actor approval and second-actor approval/revocation on synthetic/local data only.
-4. Keep real notification processing out of scope.
-5. Keep auto-confirm disabled and separate from package/certificate metadata trust.
+1. Add a local signed-operator-token helper for development only.
+2. Configure a local signed-token API rehearsal path without weakening production RBAC.
+3. Run the full dual-operator handoff against synthetic/local evidence.
+4. Verify request, same-actor block, second-actor approval, revocation and audit continuity.
+5. Keep auto-confirm disabled and real notification processing out of scope.
 
 ## What Not To Do Next
 
@@ -42,4 +45,4 @@ Recommended tasks:
 - Do not add Android payment confirmation.
 - Do not add Android auto-confirmation.
 - Do not treat review-only evidence as production trust.
-- Do not enable auto-confirm from package/cert evidence.
+- Do not leave rehearsal production trust approved after a drill.

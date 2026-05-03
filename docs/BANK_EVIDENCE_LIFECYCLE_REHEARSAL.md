@@ -124,6 +124,28 @@ The web surface is intentionally non-mutating. It displays:
 
 The page must not display full certificate hashes, raw phone numbers, raw notification text, raw notification title/body, tokens, API keys or private keys. If the admin API is unavailable, it renders a safe unavailable state without exposing the underlying token or backend error body.
 
+## Sprint 4W Dual-operator Handoff
+
+Sprint 4W adds a production trust handoff helper:
+
+```powershell
+npm run handoff:evidence-trust -- --plan
+npm run handoff:evidence-trust
+```
+
+Default execution is non-mutating. It checks dashboard/audit API access and returns `mode: "plan_only"` unless all mutating drill controls are explicit.
+
+A mutating local/dev drill requires:
+
+- explicit `SWIMPAY_EVIDENCE_ID`;
+- `SWIMPAY_ALLOW_PRODUCTION_TRUST_HANDOFF=true`;
+- requester token;
+- different approver token.
+
+The full drill requests production trust, proves same-actor approval is blocked, approves with a second operator and revokes after the drill. It must keep `trusted=false` and `auto_confirm_enabled=false`.
+
+See `docs/BANK_EVIDENCE_PRODUCTION_TRUST_HANDOFF.md`.
+
 ## Audit Trace Filters
 
 Evidence audit traces can be narrowed without exposing raw evidence values:

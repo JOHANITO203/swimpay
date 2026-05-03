@@ -121,6 +121,22 @@ The Sprint 4V operator web surface is read-only. It may display redacted dashboa
 
 Production trust changes remain API/admin actions protected by RBAC and dual-control.
 
+## Handoff Drill Boundary
+
+Sprint 4W adds a CLI handoff drill for local/dev operator rehearsal. The drill is non-mutating by default and mutates only when an explicit evidence id, requester token, approver token and `SWIMPAY_ALLOW_PRODUCTION_TRUST_HANDOFF=true` are provided.
+
+The expected drill path is:
+
+```text
+approved_for_review_only
+-> production_trust_requested by requester
+-> same requester approval blocked
+-> production_trust_approved by second operator
+-> production_trust_revoked after drill
+```
+
+Do not weaken RBAC to fake a second operator. Compose `dev_token` mode represents one local operator and is not sufficient for full dual-operator approval proof.
+
 ## Audit
 
 Required audit events:
