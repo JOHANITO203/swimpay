@@ -1,6 +1,6 @@
 {
   "phase": "phase_6_five_bank_mvp_validation",
-  "generated_at": "2026-05-03T15:05:00+03:00",
+  "generated_at": "2026-05-03T15:11:00+03:00",
   "policy": {
     "real_notification_processing": "not_started",
     "real_bank_runtime_mode": "review_only_shadow_first",
@@ -34,9 +34,11 @@
     {
       "bank_profile_id": "tbank_ru",
       "display_name": "Tinkoff / T-Bank",
-      "package_input_status": "package_input_needed",
-      "cert_evidence_status": "not_collected",
-      "package_visibility_status": "not_configured",
+      "package_input_status": "filtered_candidate_selected",
+      "package_name": "com.idamob.tinkoff.android",
+      "cert_evidence_status": "approved_for_review_only",
+      "latest_evidence_id": "2517df4b-d7ae-4e3c-9ae2-e4697864d7c7",
+      "package_visibility_status": "visible_via_adb_exact_lookup",
       "receiver_selection_status": "selectable_review_only",
       "notification_listener_capture_status": "not_started",
       "sample_notification_status": "not_collected",
@@ -44,18 +46,20 @@
       "review_routing_status": "review_only_required",
       "webhook_status": "synthetic_needed",
       "auto_confirm_status": "disabled",
-      "beta_readiness_status": "not_ready",
+      "beta_readiness_status": "partial",
       "blockers": [
-        "explicit package name needed",
-        "operator evidence not collected"
+        "real bank notification shadow run not started",
+        "no real notification samples stored or approved"
       ]
     },
     {
       "bank_profile_id": "vtb_ru",
       "display_name": "VTB",
-      "package_input_status": "package_input_needed",
-      "cert_evidence_status": "not_collected",
-      "package_visibility_status": "not_configured",
+      "package_input_status": "filtered_candidate_selected",
+      "package_name": "ru.vtb24.mobilebanking.android",
+      "cert_evidence_status": "approved_for_review_only",
+      "latest_evidence_id": "6508ef0a-aefa-4378-8194-f86a19828fd3",
+      "package_visibility_status": "visible_via_adb_exact_lookup",
       "receiver_selection_status": "selectable_review_only",
       "notification_listener_capture_status": "not_started",
       "sample_notification_status": "not_collected",
@@ -63,18 +67,20 @@
       "review_routing_status": "review_only_required",
       "webhook_status": "synthetic_needed",
       "auto_confirm_status": "disabled",
-      "beta_readiness_status": "not_ready",
+      "beta_readiness_status": "partial",
       "blockers": [
-        "explicit package name needed",
-        "operator evidence not collected"
+        "real bank notification shadow run not started",
+        "no real notification samples stored or approved"
       ]
     },
     {
       "bank_profile_id": "alfa_ru",
       "display_name": "Alfa-Bank",
-      "package_input_status": "package_input_needed",
-      "cert_evidence_status": "not_collected",
-      "package_visibility_status": "not_configured",
+      "package_input_status": "filtered_candidate_selected",
+      "package_name": "ru.alfabank.mobile.android",
+      "cert_evidence_status": "approved_for_review_only",
+      "latest_evidence_id": "8d28cbd9-d88e-4ca8-906d-751d05263889",
+      "package_visibility_status": "visible_via_adb_exact_lookup",
       "receiver_selection_status": "selectable_review_only",
       "notification_listener_capture_status": "not_started",
       "sample_notification_status": "not_collected",
@@ -82,18 +88,20 @@
       "review_routing_status": "review_only_required",
       "webhook_status": "synthetic_needed",
       "auto_confirm_status": "disabled",
-      "beta_readiness_status": "not_ready",
+      "beta_readiness_status": "partial",
       "blockers": [
-        "explicit package name needed",
-        "operator evidence not collected"
+        "real bank notification shadow run not started",
+        "no real notification samples stored or approved"
       ]
     },
     {
       "bank_profile_id": "gazprombank_ru",
       "display_name": "Gazprombank",
-      "package_input_status": "package_input_needed",
-      "cert_evidence_status": "not_collected",
-      "package_visibility_status": "not_configured",
+      "package_input_status": "filtered_candidate_selected",
+      "package_name": "ru.gazprombank.android.mobilebank.app",
+      "cert_evidence_status": "approved_for_review_only",
+      "latest_evidence_id": "fa54c539-7654-4f5a-b0ec-e0221a752c9a",
+      "package_visibility_status": "visible_via_adb_exact_lookup",
       "receiver_selection_status": "selectable_review_only",
       "notification_listener_capture_status": "not_started",
       "sample_notification_status": "not_collected",
@@ -101,12 +109,11 @@
       "review_routing_status": "review_only_required",
       "webhook_status": "synthetic_needed",
       "auto_confirm_status": "disabled",
-      "beta_readiness_status": "not_ready",
+      "beta_readiness_status": "partial",
       "blockers": [
-        "explicit package name needed",
-        "operator evidence not collected"
+        "real bank notification shadow run not started",
+        "no real notification samples stored or approved"
       ]
     }
   ]
 }
-

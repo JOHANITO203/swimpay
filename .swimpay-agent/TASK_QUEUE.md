@@ -6,12 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `273_phase_6_five_bank_mvp_direction` - status: completed - source: `tasks/273_phase_6_five_bank_mvp_direction.md`
-- [x] `274_five_bank_mvp_validation_matrix` - status: completed - source: `tasks/274_five_bank_mvp_validation_matrix.md`
-- [x] `275_five_bank_package_evidence_collection_plan` - status: completed - source: `tasks/275_five_bank_package_evidence_collection_plan.md`
-- [x] `276_five_bank_receiver_selection_and_readiness` - status: completed - source: `tasks/276_five_bank_receiver_selection_and_readiness.md`
-- [x] `277_five_bank_redacted_notification_shadow_policy` - status: completed - source: `tasks/277_five_bank_redacted_notification_shadow_policy.md`
-- [x] `278_five_bank_review_only_runtime_tests` - status: completed - source: `tasks/278_five_bank_review_only_runtime_tests.md`
-- [x] `279_beta_merchant_onboarding_flow` - status: completed - source: `tasks/279_beta_merchant_onboarding_flow.md`
-- [x] `280_private_beta_go_no_go_checklist` - status: completed - source: `tasks/280_private_beta_go_no_go_checklist.md`
-- [x] `281_sprint_6a_closeout_review` - status: completed - source: `tasks/281_sprint_6a_closeout_review.md`
+- [x] `282_limited_bank_package_discovery_authorization` - status: completed - source: `tasks/282_limited_bank_package_discovery_authorization.md`
+- [x] `283_adb_filtered_bank_package_lookup` - status: completed - source: `tasks/283_adb_filtered_bank_package_lookup.md`
+- [x] `284_operator_candidate_package_selection` - status: completed - source: `tasks/284_operator_candidate_package_selection.md`
+- [x] `285_five_bank_package_evidence_collection` - status: completed - source: `tasks/285_five_bank_package_evidence_collection.md`
+- [x] `286_five_bank_evidence_review_only_approval` - status: completed - source: `tasks/286_five_bank_evidence_review_only_approval.md`
+- [x] `287_five_bank_matrix_update` - status: completed - source: `tasks/287_five_bank_matrix_update.md`
+- [x] `288_sprint_6b_closeout_review` - status: completed - source: `tasks/288_sprint_6b_closeout_review.md`

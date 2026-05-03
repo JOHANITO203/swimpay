@@ -1579,3 +1579,17 @@ Safety checks:
 - Full validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps and API health.
 - Android Gradle validation was not run because Sprint 6A did not touch Android platform code.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust request/approval, raw phone, raw notification text or auto-confirmation was used.
+
+## 2026-05-03T15:11:00+03:00 - Sprint 6B Five-bank Package Evidence Collection Wave
+
+- Created tasks 282 through 288 and updated the task queue to Sprint 6B.
+- Recorded the user's limited ADB package discovery authorization in `.swimpay-agent/LIMITED_BANK_PACKAGE_DISCOVERY_AUTHORIZATION.md`.
+- Used authorized real device `R5CWA0FEPZW` and ran filtered `pm list packages` queries only for `sber`, `tinkoff`, `tbank`, `vtb`, `alfa`, `gazprom` and `gazprombank`.
+- Created `.swimpay-agent/BANK_PACKAGE_CANDIDATES.md` with only matching candidate package names.
+- Found obvious candidates for all five V1 banks: `ru.sberbankmobile`, `com.idamob.tinkoff.android`, `ru.vtb24.mobilebanking.android`, `ru.alfabank.mobile.android` and `ru.gazprombank.android.mobilebank.app`.
+- Collected exact PackageManager metadata only for selected packages.
+- Submitted new evidence rows for Tinkoff / T-Bank, VTB, Alfa-Bank and Gazprombank to `/v1/bank-evidence`; each started `pending_operator_review` with `trusted=false` and `auto_confirm_enabled=false`.
+- Approved the four new evidence rows only as `approved_for_review_only`; no production trust was requested or approved.
+- Updated `docs/FIVE_BANK_MVP_VALIDATION_MATRIX.md` and `packages/bank-templates/v1-bank-mvp-matrix.json`.
+- Added `tests/five-bank-package-evidence-wave.test.ts` and updated the agent framework test to Sprint 6B queue order.
+- No real bank notification, customer data, app internals inspection, app opening, SMS, scraping, Accessibility path, full installed-app report, production trust or auto-confirmation was used.

@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Sprint 6A five-bank MVP validation and private beta readiness foundation: 2026-05-03T15:05:00+03:00.
+Last checked after Sprint 6B five-bank package evidence collection wave: 2026-05-03T15:11:00+03:00.
 
 Resolved during Sprint 4Y retry:
 
@@ -44,5 +44,6 @@ Known non-critical limitations:
 - Sprint 5B added `npm run production:admin-auth-preflight`, `.env.production.example` and `infra/docker-compose.production-admin-auth.override.yml`. The preflight is non-mutating and verifies dev admin auth is rejected for production and committed production examples do not contain admin tokens or HMAC secrets.
 - Production operator identity provider/infrastructure is not implemented. Sprints 5A and 5B define policy, readiness checks and production admin-auth preflight only.
 - Sprint 6A paused the production/admin hardening chain and created the five-bank MVP validation matrix plus private beta readiness foundation.
-- Only Sberbank currently has real package evidence: `ru.sberbankmobile`. Tinkoff / T-Bank, VTB, Alfa-Bank and Gazprombank still require explicit operator package-name input.
-- Real bank package/certificate evidence for the remaining four banks and real bank notifications remain out of scope until a dedicated Sprint 6B+ task.
+- Sprint 6B used operator-authorized, keyword-filtered ADB package discovery only. It found obvious candidates for all five V1 banks and collected exact PackageManager evidence for Tinkoff / T-Bank, VTB, Alfa-Bank and Gazprombank.
+- All selected V1 banks now have package evidence in the five-bank matrix. The four Sprint 6B rows are `approved_for_review_only`; Sberbank remains `production_trust_revoked` from the prior local drill. None of this creates production trust or auto-confirmation.
+- Real bank notifications remain out of scope. No real notification samples are stored or approved, and the next validation should remain synthetic/review-only unless explicitly authorized.
