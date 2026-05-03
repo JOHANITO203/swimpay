@@ -185,6 +185,8 @@ Sprint 4Z adds a non-mutating production trust readiness gate and operator packa
 
 Sprint 5A adds operator identity and secret lifecycle readiness. Local signed operator tokens remain rehearsal-only. Production handoff requires explicit operator onboarding, credential issuance, rotation, revocation, secure external secret storage, break-glass controls and audit review. Production must not use `ADMIN_AUTH_MODE=dev_token` or dev admin tokens.
 
+Sprint 5B adds a production admin-auth and secret-injection preflight. The committed production template leaves admin secrets blank, the Compose override requires `ADMIN_TOKEN_HMAC_SECRET` from external secret storage, and development admin token variables are blanked for production. The preflight is non-mutating and does not deploy, generate secrets, process real notifications or change payment decision gates.
+
 Sprint 4P adds a controlled real package evidence dry-run mechanism. It requires one explicit operator/user supplied `package_name`, uses Android PackageManager for that exact package only and returns `package_not_found` without submitting evidence when absent. Installed-app enumeration, app scraping, notification processing, SMS access and automatic trust remain forbidden.
 
 Sprint 4R adds package visibility controls. Android debug/operator builds may declare exact package visibility for an explicitly selected evidence dry run, currently `ru.sberbankmobile`. SwimPay must not request `QUERY_ALL_PACKAGES`, must not enumerate installed apps and must not treat package visibility as trust. Visibility only allows one explicit PackageManager lookup; evidence still remains pending operator review or review-only.

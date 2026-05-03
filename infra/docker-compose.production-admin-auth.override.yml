@@ -1,0 +1,18 @@
+services:
+  swimpay-api:
+    environment:
+      NODE_ENV: production
+      ADMIN_AUTH_MODE: signed_token
+      ADMIN_TOKEN_HMAC_SECRET: ${ADMIN_TOKEN_HMAC_SECRET:?set ADMIN_TOKEN_HMAC_SECRET from external secret storage}
+      DEV_ADMIN_TOKEN: ""
+      DEV_ADMIN_OPERATOR_ID: ""
+      DEV_ADMIN_ROLE: ""
+
+  swimpay-web:
+    environment:
+      NODE_ENV: production
+      ADMIN_AUTH_MODE: signed_token
+      ADMIN_TOKEN_HMAC_SECRET: ${ADMIN_TOKEN_HMAC_SECRET:?set ADMIN_TOKEN_HMAC_SECRET from external secret storage}
+      DEV_ADMIN_TOKEN: ""
+      DEV_ADMIN_OPERATOR_ID: ""
+      DEV_ADMIN_ROLE: ""

@@ -92,6 +92,18 @@ Production rejects:
 
 Do not hardcode production secrets in the repository.
 
+## Production Preflight
+
+Sprint 5B adds a production admin-auth preflight:
+
+```text
+npm run production:admin-auth-preflight
+```
+
+The preflight is non-mutating. It verifies that the committed production template and Compose override reject development admin values, require external secret injection for `ADMIN_TOKEN_HMAC_SECRET`, and keep production examples free of real admin tokens or HMAC secrets.
+
+Use `infra/docker-compose.production-admin-auth.override.yml` for the documented one-server Compose admin-auth overlay. The override must be paired with an external secret source; `.env.production.example` intentionally leaves secret values blank.
+
 ## Admin Endpoint Permissions
 
 Current admin endpoint gates:

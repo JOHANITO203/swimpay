@@ -6,11 +6,11 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `257_operator_identity_lifecycle_policy` - status: completed - source: `tasks/257_operator_identity_lifecycle_policy.md`
-- [x] `258_operator_secret_storage_and_rotation_runbook` - status: completed - source: `tasks/258_operator_secret_storage_and_rotation_runbook.md`
-- [x] `259_operator_revocation_and_break_glass_runbook` - status: completed - source: `tasks/259_operator_revocation_and_break_glass_runbook.md`
-- [x] `260_production_admin_auth_preflight_gate` - status: completed - source: `tasks/260_production_admin_auth_preflight_gate.md`
-- [x] `261_operator_identity_readiness_tests` - status: completed - source: `tasks/261_operator_identity_readiness_tests.md`
-- [x] `262_security_docs_operator_identity_update` - status: completed - source: `tasks/262_security_docs_operator_identity_update.md`
-- [x] `263_sprint_5a_validation` - status: completed - source: `tasks/263_sprint_5a_validation.md`
-- [x] `264_sprint_5a_closeout_review` - status: completed - source: `tasks/264_sprint_5a_closeout_review.md`
+- [x] `265_production_admin_auth_mode_preflight` - status: completed - source: `tasks/265_production_admin_auth_mode_preflight.md`
+- [x] `266_production_secret_injection_template` - status: completed - source: `tasks/266_production_secret_injection_template.md`
+- [x] `267_no_secret_in_repo_checks` - status: completed - source: `tasks/267_no_secret_in_repo_checks.md`
+- [x] `268_signed_token_helper_local_only_guard` - status: completed - source: `tasks/268_signed_token_helper_local_only_guard.md`
+- [x] `269_production_admin_auth_preflight_tests` - status: completed - source: `tasks/269_production_admin_auth_preflight_tests.md`
+- [x] `270_security_docs_production_admin_auth_update` - status: completed - source: `tasks/270_security_docs_production_admin_auth_update.md`
+- [x] `271_sprint_5b_validation` - status: completed - source: `tasks/271_sprint_5b_validation.md`
+- [x] `272_sprint_5b_closeout_review` - status: completed - source: `tasks/272_sprint_5b_closeout_review.md`

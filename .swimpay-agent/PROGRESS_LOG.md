@@ -1551,3 +1551,17 @@ Safety checks:
 - Full validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps, API health, operator identity readiness, Android assembleDebug with explicit SDK env, Android JVM tests with explicit SDK env and `git diff --check`.
 - Android Gradle initially failed in the shell because `ANDROID_HOME` was not exported; rerunning with `ANDROID_HOME` and `ANDROID_SDK_ROOT` set to `C:\Users\Lenovo\AppData\Local\Android\Sdk` passed.
 - No production secrets were generated, no production deployment was performed, no real notification was processed, no production trust mutation occurred and auto-confirmation remains disabled.
+
+## 2026-05-03T14:36:00+03:00 - Sprint 5B Production Admin Auth Mode and Secret Injection Preflight
+
+- Created tasks 265 through 272 and updated the task queue to Sprint 5B.
+- Added `.env.production.example` with production admin-auth shape and blank secret values.
+- Added `infra/docker-compose.production-admin-auth.override.yml` requiring `ADMIN_TOKEN_HMAC_SECRET` from external environment or secret storage.
+- Added `docs/PRODUCTION_ADMIN_AUTH_PREFLIGHT.md`.
+- Added `scripts/production-admin-auth-preflight.mjs` and `npm run production:admin-auth-preflight`.
+- Documented that production must not use `ADMIN_AUTH_MODE=dev_token` or development admin token variables.
+- Kept `scripts/operator-token-helper.mjs` local rehearsal tooling only.
+- Added `tests/production-admin-auth-preflight.test.ts` and updated agent framework tests.
+- Targeted TDD cycle passed: production preflight test failed before the script existed, then passed after implementation.
+- Full validation passed: production admin-auth preflight, android doctor, typecheck, lint, tests, build, Compose config, Compose ps, API health, production admin-auth override config with dummy external secret, Android assembleDebug with explicit SDK env, Android JVM tests with explicit SDK env and `git diff --check`.
+- No production secrets were generated, no production deployment was performed, no real notification was processed, no production trust mutation occurred and auto-confirmation remains disabled.

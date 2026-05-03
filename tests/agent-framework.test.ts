@@ -29,7 +29,8 @@ const requiredAgentFiles = [
   'scripts/operator-token-helper.mjs',
   'scripts/evidence-production-trust-compose-signed-rehearsal.mjs',
   'scripts/evidence-production-trust-readiness.mjs',
-  'scripts/operator-identity-readiness.mjs'
+  'scripts/operator-identity-readiness.mjs',
+  'scripts/production-admin-auth-preflight.mjs'
 ];
 
 describe('local agent orchestration framework', () => {
@@ -39,18 +40,18 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 5A operator identity lifecycle tasks in the approved order', () => {
+  test('task queue lists Sprint 5B production admin auth preflight tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '257_operator_identity_lifecycle_policy',
-      '258_operator_secret_storage_and_rotation_runbook',
-      '259_operator_revocation_and_break_glass_runbook',
-      '260_production_admin_auth_preflight_gate',
-      '261_operator_identity_readiness_tests',
-      '262_security_docs_operator_identity_update',
-      '263_sprint_5a_validation',
-      '264_sprint_5a_closeout_review'
+      '265_production_admin_auth_mode_preflight',
+      '266_production_secret_injection_template',
+      '267_no_secret_in_repo_checks',
+      '268_signed_token_helper_local_only_guard',
+      '269_production_admin_auth_preflight_tests',
+      '270_security_docs_production_admin_auth_update',
+      '271_sprint_5b_validation',
+      '272_sprint_5b_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -93,5 +94,6 @@ describe('local agent orchestration framework', () => {
     expect(pkg.scripts['rehearsal:evidence:compose-signed']).toBe('node scripts/evidence-production-trust-compose-signed-rehearsal.mjs');
     expect(pkg.scripts['handoff:evidence-readiness']).toBe('node scripts/evidence-production-trust-readiness.mjs');
     expect(pkg.scripts['operator:identity-readiness']).toBe('node scripts/operator-identity-readiness.mjs');
+    expect(pkg.scripts['production:admin-auth-preflight']).toBe('node scripts/production-admin-auth-preflight.mjs');
   });
 });

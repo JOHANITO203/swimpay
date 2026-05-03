@@ -55,9 +55,8 @@ describe('production operator identity and secret lifecycle readiness', () => {
     expect(report).not.toMatch(/op_ops_[A-Za-z0-9_.-]+|ADMIN_TOKEN_HMAC_SECRET=.*[A-Za-z0-9_-]{16,}|raw_phone|raw_notification_text/iu);
   });
 
-  test('Sprint 5A queue and npm script are exposed', () => {
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
-    const orderedTasks = [
+  test('Sprint 5A task artifacts and npm script remain available', () => {
+    const taskArtifacts = [
       '257_operator_identity_lifecycle_policy',
       '258_operator_secret_storage_and_rotation_runbook',
       '259_operator_revocation_and_break_glass_runbook',
@@ -68,11 +67,7 @@ describe('production operator identity and secret lifecycle readiness', () => {
       '264_sprint_5a_closeout_review'
     ];
 
-    let previousIndex = -1;
-    for (const task of orderedTasks) {
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
-      expect(index, task).toBeGreaterThan(previousIndex);
-      previousIndex = index;
+    for (const task of taskArtifacts) {
       expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
     }
 

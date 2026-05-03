@@ -678,6 +678,16 @@ npm run smoke:runtime
 
 This verifies the Compose config shape, private Postgres/Valkey/NATS exposure, runtime healthcheck definitions and Docker log rotation settings. See `docs/LIVE_DOCKER_RUNTIME_SMOKE.md`.
 
+## Production Admin Auth Preflight
+
+Sprint 5B adds a non-mutating production admin-auth preflight:
+
+```bash
+npm run production:admin-auth-preflight
+```
+
+Local `.env.example` may use `ADMIN_AUTH_MODE=dev_token`. Production must not. Use `.env.production.example` as the committed no-secret shape and inject `ADMIN_TOKEN_HMAC_SECRET` from the host environment or secret storage with `infra/docker-compose.production-admin-auth.override.yml`.
+
 ## Current Limitations
 
 - This is a foundation layer only.

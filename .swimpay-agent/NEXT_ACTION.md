@@ -1,46 +1,36 @@
 # Next Action
 
-generated_at: 2026-05-03T14:22:30+03:00
+generated_at: 2026-05-03T14:36:00+03:00
 
 ## Latest Sprint
 
-Sprint 5A - Production operator identity and secret lifecycle hardening.
+Sprint 5B - Production Admin Auth Mode and Secret Injection Preflight.
 
 ## Status
 
 PASS.
 
-Sprint 5A implementation is present:
+Sprint 5B implementation is present:
 
-- `docs/OPERATOR_IDENTITY_SECRET_LIFECYCLE.md`
-- `scripts/operator-identity-readiness.mjs`
-- `npm run operator:identity-readiness`
+- `docs/PRODUCTION_ADMIN_AUTH_PREFLIGHT.md`
+- `.env.production.example`
+- `infra/docker-compose.production-admin-auth.override.yml`
+- `scripts/production-admin-auth-preflight.mjs`
+- `npm run production:admin-auth-preflight`
 
-The operator identity gate is non-mutating and filesystem-only by default. It verifies required artifacts, blocker state, local token helper boundaries, lifecycle documentation, production admin auth preflight documentation and selected safety docs/reports/task files.
-
-Sprint 4Y evidence trail remains:
-
-- review-only setup;
-- production trust request by `ops_requester`;
-- same-actor approval blocked;
-- second-operator approval by `ops_approver`;
-- metadata trust revoked;
-- audit continuity verified;
-- final `trusted=false`, `production_trusted_app_metadata=false`, `auto_confirm_enabled=false`.
+The production admin-auth preflight is non-mutating and filesystem-only by default. It verifies required artifacts, blocker state, production template shape, dev-admin value rejection, external secret-injection docs and no committed production admin secrets.
 
 ## Next Recommended Action
 
-Proceed to Sprint 5B - Production Admin Auth Mode and Secret Injection Preflight.
+Proceed to Sprint 5C - Production Compose Config Assembly and Non-deploying Dry Run.
 
 Recommended scope:
 
-1. Add a production env/template preflight that rejects dev admin auth values.
-2. Define safe secret injection shape for one-server Docker Compose deployment.
-3. Add no-secret-in-repo checks for production env examples.
-4. Keep signed-token helper local-only unless a production identity system is explicitly chosen.
+1. Add a production Compose config assembly check using the production admin-auth override with dummy external env values.
+2. Verify PostgreSQL, Valkey and NATS stay private in production config.
+3. Add production backup/restore and log-retention preflight docs.
+4. Keep production deployment out of scope until a final operator go/no-go.
 5. Keep real bank notification processing out of scope.
-
-Any future mutating drill must again end with production trust revoked and audit continuity verified.
 
 ## What Not To Do Next
 
@@ -50,8 +40,9 @@ Any future mutating drill must again end with production trust revoked and audit
 - Do not read SMS.
 - Do not scrape bank apps.
 - Do not expose raw phone or raw notification text.
+- Do not commit production secrets.
+- Do not use `ADMIN_AUTH_MODE=dev_token` for production.
 - Do not add Android payment confirmation.
 - Do not add Android auto-confirmation.
 - Do not treat review-only evidence as production trust.
 - Do not leave rehearsal production trust approved after a drill.
-- Do not process real bank notifications before explicit future authorization and readiness review.

@@ -28,6 +28,7 @@
     "rehearsal:evidence:compose-signed": "node scripts/evidence-production-trust-compose-signed-rehearsal.mjs",
     "handoff:evidence-readiness": "node scripts/evidence-production-trust-readiness.mjs",
     "operator:identity-readiness": "node scripts/operator-identity-readiness.mjs",
+    "production:admin-auth-preflight": "node scripts/production-admin-auth-preflight.mjs",
     "android:doctor": "node scripts/android-toolchain-check.mjs",
     "android:emulator-doctor": "node scripts/android-emulator-doctor.mjs",
     "backend:doctor": "node scripts/local-backend-doctor.mjs"

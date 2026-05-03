@@ -64,6 +64,14 @@ Run the non-mutating identity readiness gate:
 npm run operator:identity-readiness
 ```
 
+Sprint 5B adds the production admin-auth preflight:
+
+```powershell
+npm run production:admin-auth-preflight
+```
+
+This gate confirms that production examples reject development admin auth values, require external secret injection and do not commit admin tokens or HMAC secrets.
+
 ## Evidence Dossier Format
 
 Each future production trust candidate should have a dossier containing:

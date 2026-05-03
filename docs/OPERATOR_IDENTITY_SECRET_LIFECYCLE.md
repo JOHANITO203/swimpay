@@ -43,6 +43,8 @@ Production must have:
 - revocation procedure tested before use;
 - audit-event access verified.
 
+Sprint 5B adds `npm run production:admin-auth-preflight` for this boundary. The command checks the committed production admin-auth template, the Compose secret-injection override and selected safety docs without mutating secrets or deploying services.
+
 ## Secret Storage
 
 Secrets must be stored outside the repository and outside documentation.
