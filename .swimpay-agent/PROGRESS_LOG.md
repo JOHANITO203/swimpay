@@ -1438,3 +1438,17 @@ Safety checks:
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps and API health.
 - Android Gradle validation was not run because Sprint 4T did not touch Android code.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust, auto-confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T12:47:04+03:00 - Sprint 4U Operator Evidence Review UI/API Rehearsal and Production Trust Guard Validation
+
+- Created tasks 210 through 216 and updated the task queue to Sprint 4U.
+- Added `scripts/evidence-lifecycle-rehearsal.mjs` and `npm run rehearsal:evidence`.
+- Added non-destructive rehearsal plan mode with `npm run rehearsal:evidence -- --plan`.
+- Added local dashboard/audit redaction inspection for evidence lifecycle rehearsal.
+- Added optional production trust dual-control guard validation for explicit local/dev evidence ids.
+- Fixed rehearsal false positives so UUIDs and timestamps are not treated as raw phone values.
+- Rebuilt the local API container so the Sprint 4T dashboard endpoint was available in Compose.
+- Ran local rehearsal successfully; dashboard/audit checks passed.
+- Ran optional guard rehearsal on local evidence `f4069615-028b-4329-a136-115495bd058c`; same-actor approval stayed blocked and auto-confirmation stayed disabled.
+- Added tests for rehearsal plan, redaction, production trust guard inspection, injected fetch execution and Sprint 4U queue/script wiring.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust approval, auto-confirmation, raw phone or raw notification text was used.

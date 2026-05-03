@@ -1,36 +1,35 @@
 # Next Action
 
-generated_at: 2026-05-03T12:35:24+03:00
+generated_at: 2026-05-03T12:47:04+03:00
 
 ## Latest Completed Sprint
 
-Sprint 4T - Evidence Lifecycle UI/API Rehearsal and Admin Audit Visibility.
+Sprint 4U - Operator Evidence Review UI/API Rehearsal and Production Trust Dry-run Guard Validation.
 
 ## Status
 
 PASS.
 
-Evidence lifecycle rehearsal now has a safe operator-facing API surface:
+Evidence lifecycle rehearsal now has a local operator tool:
 
-- `GET /v1/admin/bank-evidence/review-dashboard` summarizes review queue, recent evidence, status counts and next actions;
-- the dashboard exposes masked certificate hashes only;
-- dashboard safety flags keep `trusted: false`, `production_trust_requested: false` and `auto_confirm_enabled: false`;
-- admin audit event search supports `object_id`, `actor_id`, `created_after` and `created_before`;
-- evidence lifecycle rehearsal docs and runbook examples exist;
+- `npm run rehearsal:evidence -- --plan` prints a non-destructive plan;
+- `npm run rehearsal:evidence` validates dashboard/audit redaction against local backend;
+- optional `SWIMPAY_EVIDENCE_ID=<id> npm run rehearsal:evidence` validates production trust dual-control on explicit local/dev evidence;
+- same-actor production trust approval remains blocked;
 - `trusted` remains `false`;
 - `auto_confirm_enabled` remains `false`.
 
 ## Next Recommended Sprint
 
-Sprint 4U - Operator evidence review UI rehearsal and production trust dry-run guard validation.
+Sprint 4V - Evidence operator UI surface and production trust audit drill.
 
 Recommended tasks:
 
-1. Rehearse an operator-facing review UI or CLI using `/v1/admin/bank-evidence/review-dashboard`.
-2. Exercise audit trace lookup for submit, approve-review-only, reject and deprecate events against a live local backend.
-3. Verify production trust request/approval remains dual-control and separate from review-only actions.
-4. Confirm dashboard/audit views never expose raw cert hashes, raw notification text, raw phone values or secrets.
-5. Keep real notification processing out of scope.
+1. Add a minimal operator UI surface or static admin view backed by the evidence dashboard endpoint.
+2. Add an audit drill that links each evidence lifecycle action to its redacted audit event.
+3. Verify production trust approval still requires a second operator in UI/API rehearsal.
+4. Keep real notification processing out of scope.
+5. Keep auto-confirm disabled unless all separate payment gates are implemented and tested.
 
 ## What Not To Do Next
 

@@ -6,10 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `203_evidence_review_dashboard_api` - status: completed - source: `tasks/203_evidence_review_dashboard_api.md`
-- [x] `204_evidence_audit_trace_filters` - status: completed - source: `tasks/204_evidence_audit_trace_filters.md`
-- [x] `205_evidence_lifecycle_rehearsal_runbook` - status: completed - source: `tasks/205_evidence_lifecycle_rehearsal_runbook.md`
-- [x] `206_evidence_review_action_safety_copy` - status: completed - source: `tasks/206_evidence_review_action_safety_copy.md`
-- [x] `207_evidence_lifecycle_ui_api_tests` - status: completed - source: `tasks/207_evidence_lifecycle_ui_api_tests.md`
-- [x] `208_sprint_4t_validation_rehearsal` - status: completed - source: `tasks/208_sprint_4t_validation_rehearsal.md`
-- [x] `209_sprint_4t_closeout_review` - status: completed - source: `tasks/209_sprint_4t_closeout_review.md`
+- [x] `210_operator_evidence_rehearsal_cli` - status: completed - source: `tasks/210_operator_evidence_rehearsal_cli.md`
+- [x] `211_evidence_dashboard_live_api_rehearsal` - status: completed - source: `tasks/211_evidence_dashboard_live_api_rehearsal.md`
+- [x] `212_evidence_audit_visibility_rehearsal` - status: completed - source: `tasks/212_evidence_audit_visibility_rehearsal.md`
+- [x] `213_production_trust_dry_run_guard_validation` - status: completed - source: `tasks/213_production_trust_dry_run_guard_validation.md`
+- [x] `214_evidence_rehearsal_docs` - status: completed - source: `tasks/214_evidence_rehearsal_docs.md`
+- [x] `215_sprint_4u_validation` - status: completed - source: `tasks/215_sprint_4u_validation.md`
+- [x] `216_sprint_4u_closeout_review` - status: completed - source: `tasks/216_sprint_4u_closeout_review.md`

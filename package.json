@@ -21,6 +21,7 @@
     "dev:web": "npm run dev --workspace @swimpay/web",
     "smoke:runtime": "node scripts/live-runtime-smoke.mjs",
     "smoke:receiver": "node scripts/receiver-local-smoke.mjs",
+    "rehearsal:evidence": "node scripts/evidence-lifecycle-rehearsal.mjs",
     "android:doctor": "node scripts/android-toolchain-check.mjs",
     "android:emulator-doctor": "node scripts/android-emulator-doctor.mjs",
     "backend:doctor": "node scripts/local-backend-doctor.mjs"

@@ -23,7 +23,8 @@ const requiredAgentFiles = [
   'scripts/receiver-local-smoke.mjs',
   'scripts/android-toolchain-check.mjs',
   'scripts/android-emulator-doctor.mjs',
-  'scripts/local-backend-doctor.mjs'
+  'scripts/local-backend-doctor.mjs',
+  'scripts/evidence-lifecycle-rehearsal.mjs'
 ];
 
 describe('local agent orchestration framework', () => {
@@ -33,17 +34,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4T evidence lifecycle rehearsal tasks in the approved order', () => {
+  test('task queue lists Sprint 4U evidence review UI/API rehearsal tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '203_evidence_review_dashboard_api',
-      '204_evidence_audit_trace_filters',
-      '205_evidence_lifecycle_rehearsal_runbook',
-      '206_evidence_review_action_safety_copy',
-      '207_evidence_lifecycle_ui_api_tests',
-      '208_sprint_4t_validation_rehearsal',
-      '209_sprint_4t_closeout_review'
+      '210_operator_evidence_rehearsal_cli',
+      '211_evidence_dashboard_live_api_rehearsal',
+      '212_evidence_audit_visibility_rehearsal',
+      '213_production_trust_dry_run_guard_validation',
+      '214_evidence_rehearsal_docs',
+      '215_sprint_4u_validation',
+      '216_sprint_4u_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -79,5 +80,6 @@ describe('local agent orchestration framework', () => {
     expect(pkg.scripts['android:doctor']).toBe('node scripts/android-toolchain-check.mjs');
     expect(pkg.scripts['android:emulator-doctor']).toBe('node scripts/android-emulator-doctor.mjs');
     expect(pkg.scripts['backend:doctor']).toBe('node scripts/local-backend-doctor.mjs');
+    expect(pkg.scripts['rehearsal:evidence']).toBe('node scripts/evidence-lifecycle-rehearsal.mjs');
   });
 });

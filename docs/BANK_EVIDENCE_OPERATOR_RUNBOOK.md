@@ -184,6 +184,15 @@ Invoke-WebRequest -UseBasicParsing `
 
 Use these filters to prove that each evidence status transition has a redacted audit trace. Filtering audit traces must never reveal full raw cert hashes, notification text, phone values or secrets.
 
+Sprint 4U adds an operator rehearsal helper:
+
+```powershell
+npm run rehearsal:evidence -- --plan
+npm run rehearsal:evidence
+```
+
+The default live run is non-mutating and validates dashboard/audit redaction. To exercise production trust dual-control on a local review-only evidence row, set `SWIMPAY_EVIDENCE_ID` deliberately before running the command. This path must not be used against production data.
+
 ## Future Real Package/Cert Dry Run
 
 Real evidence collection must be explicit:

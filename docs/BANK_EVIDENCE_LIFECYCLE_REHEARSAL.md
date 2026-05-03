@@ -53,6 +53,47 @@ Evidence rows include masked certificate hashes only. The dashboard always keeps
 }
 ```
 
+## Sprint 4U CLI Rehearsal
+
+Sprint 4U adds a local operator rehearsal helper:
+
+```powershell
+npm run rehearsal:evidence -- --plan
+```
+
+The plan is non-destructive. It shows the dashboard, audit trace and guardrail checks the operator should rehearse.
+
+To run the non-mutating local API checks against the Compose proxy:
+
+```powershell
+$env:SWIMPAY_BASE_URL = "http://localhost:8080"
+$env:SWIMPAY_ADMIN_TOKEN = "change_me_local_admin_token"
+npm run rehearsal:evidence
+```
+
+This checks:
+
+- dashboard certificate values are masked;
+- dashboard safety keeps `trusted: false`;
+- dashboard safety keeps `production_trust_requested: false`;
+- dashboard safety keeps `auto_confirm_enabled: false`;
+- evidence audit traces do not expose raw phone values, raw notification text, raw title/body, secrets or full certificate hashes.
+
+Production trust dry-run guard validation is optional because it mutates a local review-only evidence row into `production_trust_requested`. Use it only against local/dev data and only with an explicit evidence id:
+
+```powershell
+$env:SWIMPAY_EVIDENCE_ID = "<approved-review-only-evidence-id>"
+$env:SWIMPAY_OPERATOR_ID = "dev_operator"
+npm run rehearsal:evidence
+```
+
+Expected guard result:
+
+- request may create `production_trust_requested`;
+- same-actor approval must return `bank_evidence_dual_control_required`;
+- responses keep `trusted: false`;
+- responses keep `auto_confirm_enabled: false`.
+
 ## Audit Trace Filters
 
 Evidence audit traces can be narrowed without exposing raw evidence values:
@@ -84,4 +125,3 @@ During rehearsal, operators should confirm:
 - deprecated evidence remains auditable and cannot be production trusted;
 - synthetic evidence remains test-only;
 - real package evidence remains pending or review-only unless the separate dual-control production trust policy is deliberately invoked.
-

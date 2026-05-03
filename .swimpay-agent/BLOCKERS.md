@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Sprint 4T evidence lifecycle UI/API rehearsal and admin audit visibility: 2026-05-03T12:35:24+03:00.
+Last checked after Sprint 4U operator evidence review UI/API rehearsal and production trust guard validation: 2026-05-03T12:47:04+03:00.
 
 Known non-critical limitations:
 
@@ -27,4 +27,5 @@ Known non-critical limitations:
 - Sprint 4R added exact debug/operator manifest visibility for `ru.sberbankmobile`, distinguished `PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED` from package absence and retested app-side evidence submission successfully. This remains debug/operator support only, not production trust.
 - Sprint 4S added idempotent duplicate handling, review reason codes, non-destructive deprecation and metadata-only admin filters for evidence review. Review-only evidence, deprecated evidence and duplicate evidence still do not create production trust or auto-confirmation.
 - Sprint 4T added a safe evidence review dashboard API and evidence audit trace filters. Dashboard and audit visibility remain redacted, review-only evidence still does not create production trust, and auto-confirmation remains disabled.
+- Sprint 4U added `npm run rehearsal:evidence` for local operator dashboard/audit rehearsal and optional production trust guard validation. The local dry run used evidence `f4069615-028b-4329-a136-115495bd058c` and left same-actor approval blocked by dual-control with auto-confirmation disabled.
 - Real bank package/certificate verification and real bank notifications remain out of scope.

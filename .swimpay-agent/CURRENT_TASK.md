@@ -1,13 +1,13 @@
 # Current Task
 
-task_id: 209_sprint_4t_closeout_review
-source_task_file: tasks/209_sprint_4t_closeout_review.md
+task_id: 216_sprint_4u_closeout_review
+source_task_file: tasks/216_sprint_4u_closeout_review.md
 status: completed
 
 ## Scope
 
-Sprint 4T - Evidence lifecycle UI/API rehearsal and admin audit visibility.
+Sprint 4U - Operator evidence review UI/API rehearsal and production trust dry-run guard validation.
 
 ## Result
 
-Evidence lifecycle rehearsal API and admin audit visibility passed validation. The admin review dashboard exposes masked evidence summaries and safe status counts, while audit event search now supports evidence-specific filters. Review-only evidence remains not trusted and auto-confirmation remains disabled.
+Operator evidence lifecycle rehearsal tooling is available through `npm run rehearsal:evidence`. Local dashboard/audit rehearsal passed, and same-actor production trust approval was blocked by dual-control while `trusted` and `auto_confirm_enabled` stayed false.
