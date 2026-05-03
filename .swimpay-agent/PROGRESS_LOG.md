@@ -1371,3 +1371,16 @@ Safety checks:
 - Added API/static tests for trust guards, RBAC, dual-control, revocation, audit and no-Pii behavior.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health and local API/proxy rebuild after applying migration 005.
 - No real bank evidence, real notification, customer data, installed-app enumeration, SMS, scraping, Android confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T11:20:00+03:00 - Sprint 4P Real Bank Evidence Dry-run Planning
+
+- Created tasks 176 through 182 and updated the task queue.
+- Added strict explicit package-name policy for real PackageManager evidence dry runs.
+- Added Android lookup result model with `FOUND`, `PACKAGE_NOT_FOUND` and `INVALID_PACKAGE_NAME`.
+- Hardened PackageManager evidence lookup to inspect one exact package only and fail safely when absent.
+- Added debug/operator action `submit_explicit_package_evidence` with `package_name` and optional `bank_profile_id` extras.
+- Kept all submitted explicit evidence as backend `pending_operator_review`, `trusted: false` and `auto_confirm_enabled: false`.
+- Created `docs/REAL_BANK_EVIDENCE_DRY_RUN_RUNBOOK.md` and updated receiver/security/runbook docs.
+- Added Android JVM and static tests for explicit input, package-not-found, no enumeration, no raw PII and no auto-confirm behavior.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Android assembleDebug and Android JVM tests.
+- No live real evidence was collected because no explicit real package name was provided by the operator/user.

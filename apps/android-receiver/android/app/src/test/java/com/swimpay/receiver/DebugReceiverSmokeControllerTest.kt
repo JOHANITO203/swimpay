@@ -20,7 +20,8 @@ class DebugReceiverSmokeControllerTest {
                 "enqueue_synthetic_outbox_signal",
                 "flush_outbox",
                 "process_synthetic_notification_e2e",
-                "submit_synthetic_bank_evidence"
+                "submit_synthetic_bank_evidence",
+                "submit_explicit_package_evidence"
             ),
             actions.map { it.id }
         )

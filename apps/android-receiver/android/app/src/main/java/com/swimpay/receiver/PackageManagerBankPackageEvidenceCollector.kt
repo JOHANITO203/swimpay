@@ -16,7 +16,7 @@ interface BankPackageEvidenceCollector {
 
 class PackageManagerBankPackageEvidenceCollector(
     private val context: Context
-) : BankPackageEvidenceCollector {
+) : BankPackageEvidenceCollector, ExplicitPackageEvidenceLookup {
     override fun collectExplicitPackageEvidence(
         bankProfileId: String,
         packageName: String,
@@ -36,6 +36,43 @@ class PackageManagerBankPackageEvidenceCollector(
             capturedAt = capturedAt,
             displayLabel = label
         )
+    }
+
+    override fun lookupExplicitPackageEvidence(
+        bankProfileId: String,
+        packageName: String,
+        capturedAt: String
+    ): ExplicitPackageEvidenceLookupResult {
+        val policy = RealBankPackageInputPolicy().validate(packageName)
+        if (policy.decision != PackageInputPolicyDecision.ACCEPT) {
+            return ExplicitPackageEvidenceLookupResult(
+                status = BankPackageEvidenceLookupStatus.INVALID_PACKAGE_NAME,
+                observation = null,
+                safeMessage = policy.safeMessage,
+                reasonCodes = policy.reasonCodes
+            )
+        }
+
+        return try {
+            val observation = collectExplicitPackageEvidence(
+                bankProfileId = bankProfileId,
+                packageName = packageName.trim(),
+                capturedAt = capturedAt
+            )
+            ExplicitPackageEvidenceLookupResult(
+                status = BankPackageEvidenceLookupStatus.FOUND,
+                observation = observation,
+                safeMessage = "package evidence found; pending operator review; not trusted yet",
+                reasonCodes = listOf("explicit_package_lookup", "pending_operator_review")
+            )
+        } catch (_: PackageManager.NameNotFoundException) {
+            ExplicitPackageEvidenceLookupResult(
+                status = BankPackageEvidenceLookupStatus.PACKAGE_NOT_FOUND,
+                observation = null,
+                safeMessage = "package_not_found; no trust evidence created",
+                reasonCodes = listOf("package_not_found")
+            )
+        }
     }
 
     private fun packageInfo(packageName: String): PackageInfo {

@@ -123,6 +123,88 @@ class DebugReceiverNetworkActionsTest {
     }
 
     @Test
+    fun controllerSubmitsExplicitPackageEvidenceOnlyAfterOperatorPackageInput() {
+        val observation = BankPackageEvidenceObservation(
+            bankProfileId = "sber_ru",
+            packageName = "operator.candidate.package",
+            packageCertSha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            source = BankPackageEvidenceSource.PACKAGE_MANAGER_DRY_RUN,
+            capturedAt = "2026-05-03T12:00:00.000Z",
+            displayLabel = "Operator selected package"
+        )
+        val transport = QueueDebugHttpTransport(
+            DebugHttpResponse(201, """{"device_id":"dev_debug_01","status":"active"}"""),
+            DebugHttpResponse(
+                201,
+                """{"evidence_id":"bev_real_dry_run_01","status":"pending_operator_review","trusted":false,"auto_confirm_enabled":false}"""
+            )
+        )
+        val controller = DebugReceiverSmokeController(
+            debugEnabled = true,
+            httpClient = DebugReceiverHttpClient(DebugBackendConfig(), transport),
+            packageEvidenceLookup = FakeControllerPackageEvidenceLookup(observation),
+            nowIso = { "2026-05-03T12:00:00.000Z" }
+        )
+
+        assertTrue(controller.performAction("register_receiver").success)
+        val evidence = controller.submitExplicitPackageEvidence("operator.candidate.package")
+
+        assertTrue(evidence.success)
+        assertTrue(evidence.safeMessage.contains("operator review"))
+        assertTrue(evidence.safeMessage.contains("not trusted yet"))
+        assertTrue(evidence.safeMessage.contains("no auto-confirm enabled"))
+        assertEquals("/v1/bank-evidence", transport.requests[1].path)
+        assertTrue(transport.requests[1].body.contains("operator.candidate.package"))
+        assertTrue(transport.requests[1].body.contains("android_packagemanager"))
+        assertFalse(transport.requests[1].body.contains("synthetic_debug_only"))
+        assertFalse(transport.requests[1].body.contains("+7"))
+        assertFalse(transport.requests[1].body.contains("raw_notification", ignoreCase = true))
+    }
+
+    @Test
+    fun controllerDoesNotSubmitExplicitPackageEvidenceWhenPackageMissing() {
+        val transport = QueueDebugHttpTransport(
+            DebugHttpResponse(201, """{"device_id":"dev_debug_01","status":"active"}""")
+        )
+        val controller = DebugReceiverSmokeController(
+            debugEnabled = true,
+            httpClient = DebugReceiverHttpClient(DebugBackendConfig(), transport),
+            packageEvidenceLookup = FakeControllerPackageEvidenceLookup(null),
+            nowIso = { "2026-05-03T12:00:00.000Z" }
+        )
+
+        assertTrue(controller.performAction("register_receiver").success)
+        val evidence = controller.submitExplicitPackageEvidence("operator.missing.package")
+
+        assertFalse(evidence.success)
+        assertTrue(evidence.safeMessage.contains("package_not_found"))
+        assertEquals(1, transport.requests.size)
+        assertFalse(evidence.safeMessage.contains("+7"))
+        assertFalse(evidence.safeMessage.contains("official_bank_confirmation"))
+    }
+
+    @Test
+    fun controllerRejectsEnumerationLikeExplicitPackageInput() {
+        val transport = QueueDebugHttpTransport(
+            DebugHttpResponse(201, """{"device_id":"dev_debug_01","status":"active"}""")
+        )
+        val controller = DebugReceiverSmokeController(
+            debugEnabled = true,
+            httpClient = DebugReceiverHttpClient(DebugBackendConfig(), transport),
+            packageEvidenceLookup = FakeControllerPackageEvidenceLookup(null),
+            nowIso = { "2026-05-03T12:00:00.000Z" }
+        )
+
+        assertTrue(controller.performAction("register_receiver").success)
+        val evidence = controller.submitExplicitPackageEvidence("operator.*")
+
+        assertFalse(evidence.success)
+        assertTrue(evidence.safeMessage.contains("explicit package name required"))
+        assertEquals(1, transport.requests.size)
+    }
+
+
+    @Test
     fun controllerReusesPersistentDeviceStateAndPersistentOutboxAcrossRecreation() {
         val deviceStore = PersistentDeviceStateStore(InMemoryDeviceStateStorage())
         val outboxStore = com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore(
@@ -256,5 +338,40 @@ private class QueueDebugHttpTransport(
 private class ThrowingDebugHttpTransport : DebugHttpTransport {
     override fun execute(request: DebugHttpRequest): DebugHttpResponse {
         throw IllegalStateException("backend unreachable")
+    }
+}
+
+private class FakeControllerPackageEvidenceLookup(
+    private val observation: BankPackageEvidenceObservation?
+) : ExplicitPackageEvidenceLookup {
+    override fun lookupExplicitPackageEvidence(
+        bankProfileId: String,
+        packageName: String,
+        capturedAt: String
+    ): ExplicitPackageEvidenceLookupResult {
+        val policy = RealBankPackageInputPolicy().validate(packageName)
+        if (policy.decision != PackageInputPolicyDecision.ACCEPT) {
+            return ExplicitPackageEvidenceLookupResult(
+                status = BankPackageEvidenceLookupStatus.INVALID_PACKAGE_NAME,
+                observation = null,
+                safeMessage = policy.safeMessage,
+                reasonCodes = policy.reasonCodes
+            )
+        }
+        return if (observation == null) {
+            ExplicitPackageEvidenceLookupResult(
+                status = BankPackageEvidenceLookupStatus.PACKAGE_NOT_FOUND,
+                observation = null,
+                safeMessage = "package_not_found; no trust evidence created",
+                reasonCodes = listOf("package_not_found")
+            )
+        } else {
+            ExplicitPackageEvidenceLookupResult(
+                status = BankPackageEvidenceLookupStatus.FOUND,
+                observation = observation,
+                safeMessage = "package evidence found; pending operator review; not trusted yet",
+                reasonCodes = listOf("explicit_package_lookup", "pending_operator_review")
+            )
+        }
     }
 }

@@ -136,13 +136,17 @@ Audit payloads must show masked certificate data only. They must not expose raw 
 
 ## Future Real Package/Cert Dry Run
 
-Future real evidence collection must be explicit:
+Real evidence collection must be explicit:
 
 1. Operator selects or enters one package name.
 2. Android checks that specific package with PackageManager.
 3. Android submits only package/cert metadata.
 4. Backend stores `pending_operator_review`.
 5. Operator reviews evidence and may mark it `approved_for_review_only`.
+
+Sprint 4P adds the debug/operator action `submit_explicit_package_evidence`. It requires an explicit `package_name` and returns `package_not_found` without submitting evidence if Android PackageManager cannot find that exact package.
+
+See `docs/REAL_BANK_EVIDENCE_DRY_RUN_RUNBOOK.md`.
 
 Production trust remains a separate future policy. It must require explicit human/operator verification and additional controls. Evidence review alone must never make a bank package trusted for auto-confirmation.
 

@@ -27,6 +27,7 @@ class DebugReceiverSmokeController(
     private val deviceStateStore: PersistentDeviceStateStore = PersistentDeviceStateStore(InMemoryDeviceStateStorage()),
     private val outboxStore: EncryptedOutboxStore = AndroidEncryptedOutboxStore(FakeEncryptedStorageAdapter()),
     private val retryPolicy: ReceiverRetryPolicy = ReceiverRetryPolicy(),
+    private val packageEvidenceLookup: ExplicitPackageEvidenceLookup = NoopExplicitPackageEvidenceLookup(),
     private val nowIso: () -> String = { java.time.Instant.now().toString() }
 ) {
     private var deviceId: String? = deviceStateStore.load()?.deviceId
@@ -72,6 +73,11 @@ class DebugReceiverSmokeController(
                 id = "submit_synthetic_bank_evidence",
                 label = "Submit synthetic bank evidence",
                 safeDescription = "Submits synthetic package evidence for operator review; not trusted yet; no auto-confirm enabled."
+            ),
+            DebugSmokeAction(
+                id = "submit_explicit_package_evidence",
+                label = "Submit explicit package evidence",
+                safeDescription = "Requires operator package_name input; PackageManager metadata only; no notification processing; no auto-confirm enabled."
             )
         )
     }
@@ -87,6 +93,10 @@ class DebugReceiverSmokeController(
             "flush_outbox" -> flushOutbox()
             "process_synthetic_notification_e2e" -> processSyntheticNotificationE2e()
             "submit_synthetic_bank_evidence" -> submitSyntheticBankEvidence()
+            "submit_explicit_package_evidence" -> DebugSmokeResult(
+                success = false,
+                safeMessage = "explicit package_name is required for real package evidence dry run"
+            )
             else -> DebugSmokeResult(success = false, safeMessage = "Unknown debug action.")
         }
     }
@@ -316,6 +326,40 @@ class DebugReceiverSmokeController(
         )
         val message = if (result.success) {
             "evidence submitted for operator review; not trusted yet; review-only until approved; no auto-confirm enabled"
+        } else {
+            result.safeMessage
+        }
+        return DebugSmokeResult(result.success, message)
+    }
+
+    fun submitExplicitPackageEvidence(
+        packageName: String,
+        bankProfileId: String = "sber_ru"
+    ): DebugSmokeResult {
+        require(debugEnabled) { "Debug receiver smoke actions are disabled." }
+        val currentDeviceId = deviceId
+            ?: return DebugSmokeResult(
+                success = false,
+                safeMessage = "Register receiver first before submitting explicit package evidence."
+            )
+        val lookup = packageEvidenceLookup.lookupExplicitPackageEvidence(
+            bankProfileId = bankProfileId,
+            packageName = packageName,
+            capturedAt = nowIso()
+        )
+        val observation = lookup.observation
+            ?: return DebugSmokeResult(
+                success = false,
+                safeMessage = redactDebugMessage(lookup.safeMessage)
+            )
+        val result = httpClient.submitBankEvidence(
+            deviceId = currentDeviceId,
+            bankProfileId = observation.bankProfileId,
+            packageName = observation.packageName,
+            certSha256 = observation.packageCertSha256
+        )
+        val message = if (result.success) {
+            "explicit package evidence submitted for operator review; not trusted yet; no auto-confirm enabled"
         } else {
             result.safeMessage
         }

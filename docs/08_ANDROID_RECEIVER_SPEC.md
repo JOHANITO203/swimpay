@@ -324,6 +324,8 @@ POST /v1/bank-evidence
 
 The Android debug flow submits synthetic PackageManager evidence only after explicit package selection. The backend stores it as `pending_operator_review`. Operator approval can only mark it `approved_for_review_only`; Android and backend decision gates still treat it as non-production trust evidence.
 
+Sprint 4P adds a real package dry-run mechanism for an explicitly provided package name. The debug/operator action `submit_explicit_package_evidence` performs one exact PackageManager lookup and can submit concrete metadata to `/v1/bank-evidence` as `pending_operator_review`. The action does not enumerate installed apps, does not read app internals, does not process notifications and does not create production trust.
+
 Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
 
 - `adb` available from the Android SDK.

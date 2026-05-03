@@ -29,9 +29,17 @@ class DebugSmokeBroadcastReceiver : BroadcastReceiver() {
                 val controller = DebugReceiverSmokeController(
                     debugEnabled = BuildConfig.DEBUG,
                     deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(context)),
-                    outboxStore = AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(context))
+                    outboxStore = AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(context)),
+                    packageEvidenceLookup = PackageManagerBankPackageEvidenceCollector(context)
                 )
-                val result = controller.performAction(actionId)
+                val result = if (actionId == "submit_explicit_package_evidence") {
+                    controller.submitExplicitPackageEvidence(
+                        packageName = intent.getStringExtra("package_name").orEmpty(),
+                        bankProfileId = intent.getStringExtra("bank_profile_id") ?: "sber_ru"
+                    )
+                } else {
+                    controller.performAction(actionId)
+                }
                 Log.i(TAG, "action=$actionId success=${result.success} message=${result.safeMessage}")
             } catch (error: Exception) {
                 Log.i(TAG, "action=$actionId success=false message=${redactDebugMessage(error.message ?: "debug smoke failed")}")

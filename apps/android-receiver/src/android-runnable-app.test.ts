@@ -547,7 +547,7 @@ describe('android device-side network smoke wiring', () => {
     const runbook = readFileSync(join(root, 'docs/BANK_EVIDENCE_OPERATOR_RUNBOOK.md'), 'utf8');
     const apiEvidence = readFileSync(join(root, 'apps/api/src/bank-evidence.ts'), 'utf8');
     const security = readFileSync(join(root, 'packages/security/src/index.ts'), 'utf8');
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4O_REPORT.md'), 'utf8');
 
     expect(policy).toContain('production_trust_requested');
     expect(policy).toContain('production_trust_approved');
@@ -572,6 +572,45 @@ describe('android device-side network smoke wiring', () => {
       '173_trust_policy_tests',
       '174_bank_trust_policy_docs',
       '175_sprint_4o_closeout_review'
+    ];
+    let previousIndex = -1;
+    for (const task of tasks) {
+      expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
+      const index = report.indexOf(task);
+      expect(index, task).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+  });
+
+  it('wires Sprint 4P explicit real package evidence dry-run without installed-app enumeration', () => {
+    const evidence = readAndroid('app/src/main/java/com/swimpay/receiver/BankPackageEvidence.kt');
+    const collector = readAndroid('app/src/main/java/com/swimpay/receiver/PackageManagerBankPackageEvidenceCollector.kt');
+    const controller = readAndroid('app/src/main/java/com/swimpay/receiver/DebugReceiverSmokeController.kt');
+    const receiver = readAndroid('app/src/debug/java/com/swimpay/receiver/DebugSmokeBroadcastReceiver.kt');
+    const runbook = readFileSync(join(root, 'docs/REAL_BANK_EVIDENCE_DRY_RUN_RUNBOOK.md'), 'utf8');
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+
+    expect(evidence).toContain('RealBankPackageInputPolicy');
+    expect(evidence).toContain('ExplicitPackageEvidenceLookup');
+    expect(evidence).toContain('PACKAGE_NOT_FOUND');
+    expect(collector).toContain('lookupExplicitPackageEvidence');
+    expect(controller).toContain('submitExplicitPackageEvidence');
+    expect(receiver).toContain('submit_explicit_package_evidence');
+    expect(runbook).toContain('operator or user must provide exactly one package name');
+    expect(runbook).toContain('must not guess or invent package names');
+    expect(runbook).toContain('no real bank notifications');
+    expect(`${collector}\n${controller}\n${receiver}`).toContain('package_name');
+    expect(`${collector}\n${controller}\n${receiver}`).not.toMatch(/getInstalledPackages|getInstalledApplications|queryIntentActivities|READ_SMS|AccessibilityService/iu);
+    expect(`${collector}\n${controller}\n${receiver}\n${runbook}`).not.toMatch(/bank_confirmed|official_bank_confirmation = true|ready_auto_confirm|auto_confirm_enabled:\s*true/iu);
+
+    const tasks = [
+      '176_real_bank_package_input_policy',
+      '177_android_explicit_package_evidence_lookup',
+      '178_real_bank_evidence_submit_dry_run',
+      '179_admin_real_evidence_review_only_dry_run',
+      '180_evidence_collection_privacy_and_safety_checks',
+      '181_real_bank_evidence_dry_run_runbook',
+      '182_sprint_4p_closeout_review'
     ];
     let previousIndex = -1;
     for (const task of tasks) {

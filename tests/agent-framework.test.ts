@@ -33,17 +33,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Phase 4O production trust policy tasks in the approved order', () => {
+  test('task queue lists Phase 4P real bank evidence dry-run tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '169_bank_evidence_production_trust_policy',
-      '170_bank_evidence_trust_state_machine',
-      '171_admin_production_trust_permission_model',
-      '172_trust_transition_audit_and_dual_control',
-      '173_trust_policy_tests',
-      '174_bank_trust_policy_docs',
-      '175_sprint_4o_closeout_review'
+      '176_real_bank_package_input_policy',
+      '177_android_explicit_package_evidence_lookup',
+      '178_real_bank_evidence_submit_dry_run',
+      '179_admin_real_evidence_review_only_dry_run',
+      '180_evidence_collection_privacy_and_safety_checks',
+      '181_real_bank_evidence_dry_run_runbook',
+      '182_sprint_4p_closeout_review'
     ];
 
     let previousIndex = -1;

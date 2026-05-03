@@ -162,6 +162,20 @@ Sprint 4M wires debug-only evidence submission to the backend:
 
 The debug action uses `synthetic_debug_only` metadata and does not enumerate installed apps.
 
+Sprint 4P adds a real package dry-run action for explicit operator input only:
+
+```text
+submit_explicit_package_evidence
+```
+
+Required input:
+
+```text
+package_name=<operator supplied package>
+```
+
+The Receiver performs one PackageManager lookup for that exact package. It does not list installed apps, does not scrape app data and does not process notifications. If the package is absent, the result is `package_not_found` and no evidence is submitted. If evidence is submitted, backend status remains `pending_operator_review`, `trusted: false` and `auto_confirm_enabled: false`.
+
 ## Receiver Onboarding Readiness
 
 Phase 4J separates two Android permissions:

@@ -12,6 +12,83 @@ enum class BankPackageEvidenceDecision {
     REJECTED
 }
 
+enum class PackageInputPolicyDecision {
+    ACCEPT,
+    REJECT
+}
+
+data class PackageInputPolicyResult(
+    val decision: PackageInputPolicyDecision,
+    val safeMessage: String,
+    val reasonCodes: List<String>
+)
+
+class RealBankPackageInputPolicy {
+    private val packageNamePattern = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
+
+    fun validate(packageName: String): PackageInputPolicyResult {
+        val trimmed = packageName.trim()
+        val reasons = buildList {
+            if (trimmed.isBlank()) add("package_name_required")
+            if (trimmed.contains("*") || trimmed == "all" || trimmed == "*") add("installed_app_enumeration_forbidden")
+            if (trimmed.any { it.isWhitespace() }) add("package_name_must_be_single_value")
+            if (trimmed == "TO_VERIFY") add("to_verify_not_collectable")
+            if (trimmed.contains("synthetic_debug_only", ignoreCase = true)) add("synthetic_debug_only_not_real_evidence")
+            if (trimmed.isNotBlank() && !trimmed.contains("*") && !packageNamePattern.matches(trimmed)) add("invalid_package_name")
+        }
+
+        return if (reasons.isEmpty()) {
+            PackageInputPolicyResult(
+                decision = PackageInputPolicyDecision.ACCEPT,
+                safeMessage = "explicit package name accepted for PackageManager evidence lookup",
+                reasonCodes = listOf("explicit_package_name")
+            )
+        } else {
+            PackageInputPolicyResult(
+                decision = PackageInputPolicyDecision.REJECT,
+                safeMessage = "explicit package name required; installed-app enumeration is forbidden",
+                reasonCodes = reasons
+            )
+        }
+    }
+}
+
+enum class BankPackageEvidenceLookupStatus {
+    FOUND,
+    PACKAGE_NOT_FOUND,
+    INVALID_PACKAGE_NAME
+}
+
+data class ExplicitPackageEvidenceLookupResult(
+    val status: BankPackageEvidenceLookupStatus,
+    val observation: BankPackageEvidenceObservation?,
+    val safeMessage: String,
+    val reasonCodes: List<String>
+)
+
+interface ExplicitPackageEvidenceLookup {
+    fun lookupExplicitPackageEvidence(
+        bankProfileId: String,
+        packageName: String,
+        capturedAt: String
+    ): ExplicitPackageEvidenceLookupResult
+}
+
+class NoopExplicitPackageEvidenceLookup : ExplicitPackageEvidenceLookup {
+    override fun lookupExplicitPackageEvidence(
+        bankProfileId: String,
+        packageName: String,
+        capturedAt: String
+    ): ExplicitPackageEvidenceLookupResult {
+        return ExplicitPackageEvidenceLookupResult(
+            status = BankPackageEvidenceLookupStatus.PACKAGE_NOT_FOUND,
+            observation = null,
+            safeMessage = "package evidence lookup unavailable; explicit package evidence not submitted",
+            reasonCodes = listOf("package_evidence_lookup_unavailable")
+        )
+    }
+}
+
 data class BankPackageEvidenceObservation(
     val bankProfileId: String,
     val packageName: String,

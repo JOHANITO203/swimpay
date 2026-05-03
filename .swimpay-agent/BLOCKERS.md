@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Sprint 4O production trust policy foundation: 2026-05-03T10:55:00+03:00.
+Last checked after Sprint 4P real bank evidence dry-run planning: 2026-05-03T11:20:00+03:00.
 
 Known non-critical limitations:
 
@@ -22,4 +22,5 @@ Known non-critical limitations:
 - Sprint 4M added backend/admin review-only evidence workflow. Approval is limited to `approved_for_review_only` and does not create production trust.
 - Sprint 4N rehearsed synthetic real-device evidence submission, admin approve-review-only, rejection and audit trace. The dry run stayed synthetic and review-only.
 - Sprint 4O added production trust policy states, owner/admin permission gates, dual-control and revocation. Production trust is metadata-only and still does not enable auto-confirmation.
+- Sprint 4P added an explicit package-name dry-run mechanism, but did not collect live real evidence because no operator/user package name was provided.
 - Real bank package/certificate verification and real bank notifications remain out of scope.
