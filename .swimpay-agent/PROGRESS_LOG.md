@@ -1668,3 +1668,19 @@ Safety checks:
 - Full validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps and API health.
 - Android Gradle validation was not run because Sprint 7B did not touch Android platform code.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, SBP, official bank confirmation claim, raw notification text or real-bank auto-confirmation was used.
+
+## 2026-05-03T19:06:22+03:00 - Sprint 7C Checkout Destination Copy Hardening and Route Admin
+
+- Created tasks 374 through 380 and updated the task queue to Sprint 7C.
+- Hardened `GET /v1/checkout/:session_id/receiving-route/copy-details` so it works only for an active, non-expired checkout session with a selected enabled merchant-owned route.
+- Added copy-details no-store/no-cache headers, `reveal_expires_at`, `masked_identifier` and explicit `destination_value` response shape.
+- Added lightweight copy-details rate limiting by session id, selected route id and coarse client fingerprint; excessive reveals return `429 copy_details_rate_limited` with `Retry-After`.
+- Added redacted `checkout.destination_copied` audit events with masked identifiers only.
+- Added no-store/no-cache headers to the hosted checkout copy-details proxy.
+- Added minimal merchant route admin UI at `/admin/merchant-receiving-routes` for list/create/disable/recommend actions.
+- Added browser-oriented hosted checkout QA coverage and merchant route admin web tests.
+- Extended security log redaction for raw destination keys such as `receiver_identifier_copy_value`, `destination_value`, `receiver_identifier` and `card_number`.
+- Updated hybrid receiving routes, checkout flow, developer plugin and private beta readiness docs.
+- Full validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps and API health.
+- Android Gradle validation was not run because Sprint 7C did not touch Android platform code.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, SBP, official bank confirmation claim, raw notification text, webhook raw destination or real-bank auto-confirmation was used.

@@ -81,6 +81,21 @@ class InMemoryOrderRepository implements OrderRepository {
     return { kind: 'not_found' as const };
   }
 
+  async recordCheckoutDestinationCopied(input: Parameters<OrderRepository['recordCheckoutDestinationCopied']>[0]) {
+    this.auditEvents.push({
+      merchantId: input.merchantId,
+      eventType: 'checkout.destination_copied',
+      objectType: 'payment_session',
+      objectId: input.paymentSessionId,
+      payloadRedacted: {
+        receiving_route_id: input.routeId,
+        rail_type: input.railType,
+        receiver_identifier_masked: input.receiverIdentifierMasked,
+        official_bank_confirmation: false
+      }
+    });
+  }
+
   async selectReceiverBank(input: Parameters<OrderRepository['selectReceiverBank']>[0]) {
     const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
     if ('kind' in found) {

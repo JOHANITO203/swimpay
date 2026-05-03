@@ -168,13 +168,48 @@ describe('hosted checkout web foundation', () => {
 
     expect(page.body).not.toContain('+79991234567');
     expect(copy.statusCode).toBe(200);
+    expect(copy.headers['cache-control']).toBe('no-store');
+    expect(copy.headers.pragma).toBe('no-cache');
     expect(copy.json()).toMatchObject({
       receiver_identifier_masked: '+7 *** *** **67',
+      masked_identifier: '+7 *** *** **67',
       receiver_identifier_copy_value: '+79991234567',
+      destination_value: '+79991234567',
+      reveal_expires_at: '2026-05-02T10:03:00.000Z',
       copy_action: 'explicit_buyer_copy',
       does_not_confirm_payment: true,
       official_bank_confirmation: false
     });
+  });
+
+  it('renders compact browser-QA states without unsafe wording or raw destination leakage', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      status: 'expired',
+      checkout_state: 'expired',
+      buyer_safe_status: 'expired'
+    };
+    const server = buildWebServer({
+      environment: 'test',
+      checkoutSessionProvider: provider
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Commande expiree');
+    expect(response.body).toContain('@media (max-width: 760px)');
+    expect(response.body).toContain('checkout-grid');
+    expect(response.body).not.toContain('+79991234567');
+    expect(response.body).not.toContain('2202201234567890');
+    expect(response.body).not.toContain('Compte marchand');
+    expect(response.body).not.toMatch(/confirmee? par la banque/i);
+    expect(response.body).not.toMatch(/confirmation officielle de banque fournie/i);
+    expect(response.body).not.toMatch(/paiement garanti/i);
   });
 
   it('accepts the buyer paid claim without marking a payment as confirmed', async () => {
@@ -312,7 +347,10 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
       rail_type: 'phone_transfer',
       receiver_identifier_type: 'phone',
       receiver_identifier_masked: '+7 *** *** **67',
+      masked_identifier: '+7 *** *** **67',
       receiver_identifier_copy_value: '+79991234567',
+      destination_value: '+79991234567',
+      reveal_expires_at: '2026-05-02T10:03:00.000Z',
       copy_action: 'explicit_buyer_copy' as const,
       does_not_confirm_payment: true as const,
       official_bank_confirmation: false as const

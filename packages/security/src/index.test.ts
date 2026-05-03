@@ -130,6 +130,11 @@ describe('security helpers', () => {
         signature: 'receiver_signature',
         raw_notification_text: 'raw bank text',
         raw_body: 'raw body',
+        receiver_identifier_copy_value: '+79991234567',
+        receiver_identifier_encrypted: 'encrypted_receiver_identifier',
+        receiver_identifier: '2202201234567890',
+        destination_value: '+79991234567',
+        card_number: '2202201234567890',
         safe: 'visible'
       }
     });
@@ -143,6 +148,11 @@ describe('security helpers', () => {
         signature: '[REDACTED]',
         raw_notification_text: '[REDACTED]',
         raw_body: '[REDACTED]',
+        receiver_identifier_copy_value: '[REDACTED]',
+        receiver_identifier_encrypted: '[REDACTED]',
+        receiver_identifier: '[REDACTED]',
+        destination_value: '[REDACTED]',
+        card_number: '[REDACTED]',
         safe: 'visible'
       }
     });

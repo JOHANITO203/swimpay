@@ -138,6 +138,19 @@ These examples intentionally exclude raw phone numbers, raw notification text,
 raw notification titles/bodies, raw card numbers, raw receiver phone numbers,
 raw buyer sender phones, API keys, webhook secrets and full customer identifiers.
 
+## Copy-details and Route Privacy
+
+Developer plugins must treat checkout copy-details as a hosted-checkout action, not as webhook data. The buyer can reveal the selected destination only through the active checkout session copy action. That reveal is short-lived, rate-limited, no-store/no-cache, and audited with masked route data only.
+
+Webhook payloads may include safe route context:
+
+- `receiver_route_code`
+- `rail_type`
+- `payment_reference`
+- `receiver_bank_id`
+
+Webhook payloads must not include raw card numbers, raw receiver phone numbers, buyer sender raw phone numbers or raw notification text. `buyer_claimed_paid`, payer launcher selection and copy action events do not confirm payment.
+
 ## Webhook Verification
 
 Webhook deliveries use signed headers:

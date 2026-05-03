@@ -301,7 +301,7 @@ function operatorTokenSignature(operatorId: string, role: OperatorRole, secret: 
 }
 
 function isSensitiveLogKey(key: string): boolean {
-  return /authorization|cookie|api[_-]?key|secret|signature|token|password|raw[_-]?(notification|text|phone|body|title)|phone_raw|raw_phone|(^|_)phone$|buyer_phone|sender_phone|normalized_phone|notification_text/iu.test(
+  return /authorization|cookie|api[_-]?key|secret|signature|token|password|raw[_-]?(notification|text|phone|body|title)|receiver[_-]?identifier|destination[_-]?value|card[_-]?number|phone_raw|raw_phone|(^|_)phone$|buyer_phone|sender_phone|normalized_phone|notification_text/iu.test(
     key
   );
 }

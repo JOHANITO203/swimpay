@@ -1,13 +1,13 @@
 # Current Task
 
-task_id: 331_sprint_6e_closeout_review
-source_task_file: tasks/331_sprint_6e_closeout_review.md
+task_id: 380_sprint_7c_closeout_review
+source_task_file: tasks/380_sprint_7c_closeout_review.md
 status: completed
 
 ## Scope
 
-Sprint 6E - Private Beta Go/No-Go Rehearsal and Real-notification Shadow Readiness Gate.
+Sprint 7C - Checkout Destination Copy Hardening, Merchant Route Admin UX and Browser QA.
 
 ## Result
 
-Prepared the real-notification shadow readiness gate, redaction preflight, safe beta flags, non-mutating prediction policy, dry-run commands and go/no-go checklist without processing real bank notifications.
+Hardened explicit checkout destination copy with active-session checks, rate limiting, short-lived no-store reveal, redacted audit events and hosted proxy headers. Added minimal merchant receiving-route admin UI and browser-oriented checkout QA without processing real notifications or enabling auto-confirmation.

@@ -95,3 +95,19 @@ Buyer-facing route details must not expose raw card, raw phone or personal merch
 identity. Webhooks and audits may include safe route context such as
 `receiver_route_code`, `rail_type`, `payment_reference` and `receiver_bank_id`,
 but never raw identifiers.
+
+## Sprint 7C Destination Copy Policy
+
+The checkout keeps destination details masked until the buyer explicitly clicks the copy destination action. The copy action:
+
+- works only for the active checkout session;
+- works only after the selected receiving route is stored;
+- returns only the selected route destination;
+- uses no-store/no-cache headers;
+- includes `reveal_expires_at`;
+- writes a redacted audit event with the masked identifier only;
+- is rate-limited by session, route and coarse client fingerprint.
+
+Normal checkout status and HTML never include raw card or raw phone values. Expired, rejected or inactive sessions cannot reveal copy details.
+
+Hosted checkout QA for Sprint 7C covers mobile and desktop responsive layout, bank selection, route reveal, copy-details proxy headers, payer launcher fallback, buyer-claimed-paid state, needs-review/expired copy and forbidden wording checks.

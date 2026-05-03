@@ -142,7 +142,8 @@ export type ReceivingRouteCopyDetailsResult =
     }
   | { kind: 'not_found' }
   | { kind: 'not_selected' }
-  | { kind: 'expired' };
+  | { kind: 'expired' }
+  | { kind: 'inactive' };
 
 export type PaymentSessionCheckoutMutationResult =
   | {
@@ -187,6 +188,15 @@ export interface OrderRepository {
     encryptionSecret: string;
     now: string;
   }): Promise<ReceivingRouteCopyDetailsResult>;
+  recordCheckoutDestinationCopied(input: {
+    merchantId: string;
+    paymentSessionId: string;
+    routeId: string;
+    railType: string;
+    receiverIdentifierMasked: string;
+    auditEventId: string;
+    now: string;
+  }): Promise<void>;
   selectReceiverBank(input: SelectReceiverBankInput): Promise<PaymentSessionCheckoutMutationResult>;
   selectReceivingRoute(input: SelectReceivingRouteInput): Promise<PaymentSessionCheckoutMutationResult>;
   selectPayerBankLauncher(input: SelectPayerBankLauncherInput): Promise<PaymentSessionCheckoutMutationResult>;
@@ -592,6 +602,9 @@ export class PgOrderRepository implements OrderRepository {
     if (new Date(loaded.paymentSession.validUntil).getTime() <= new Date(input.now).getTime()) {
       return { kind: 'expired' };
     }
+    if (!copyDetailsAllowedSessionStatuses.has(loaded.paymentSession.status)) {
+      return { kind: 'inactive' };
+    }
     if (!loaded.paymentSession.selectedReceiverBankProfileId || !loaded.paymentSession.selectedReceivingRouteId) {
       return { kind: 'not_selected' };
     }
@@ -608,6 +621,36 @@ export class PgOrderRepository implements OrderRepository {
       route,
       receiverIdentifier: decryptReceiverIdentifier(route.receiver_identifier_encrypted, input.encryptionSecret)
     };
+  }
+
+  public async recordCheckoutDestinationCopied(input: {
+    merchantId: string;
+    paymentSessionId: string;
+    routeId: string;
+    railType: string;
+    receiverIdentifierMasked: string;
+    auditEventId: string;
+    now: string;
+  }): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO audit_events (
+        id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+      ) VALUES ($1, $2, 'checkout.destination_copied', 'payment_session', $3, 'api', $4::jsonb, $5)`,
+      [
+        input.auditEventId,
+        input.merchantId,
+        input.paymentSessionId,
+        JSON.stringify({
+          payment_session_id: input.paymentSessionId,
+          receiving_route_id: input.routeId,
+          rail_type: input.railType,
+          receiver_identifier_masked: input.receiverIdentifierMasked,
+          auto_confirm_enabled: false,
+          official_bank_confirmation: false
+        }),
+        input.now
+      ]
+    );
   }
 
   public async selectReceiverBank(input: SelectReceiverBankInput): Promise<PaymentSessionCheckoutMutationResult> {
@@ -918,6 +961,16 @@ function toMerchantReceivingRoute(row: Record<string, string | boolean | Date | 
     updated_at: new Date(String(row.updated_at)).toISOString()
   };
 }
+
+const copyDetailsAllowedSessionStatuses = new Set<PaymentSessionStatus>([
+  'receiver_arming',
+  'receiver_armed',
+  'awaiting_payment',
+  'buyer_claimed_paid',
+  'signal_detected',
+  'matching',
+  'needs_review'
+]);
 
 export function buildMerchantReceivingRouteRecord(input: {
   routeId: string;

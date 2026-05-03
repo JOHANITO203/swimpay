@@ -87,6 +87,27 @@ No-go criteria added for Sprint 7B:
 - payer launcher choice affects matching or confirmation;
 - route policy enables broad auto-confirm for real bank notifications.
 
+## Sprint 7C Copy and Admin Readiness
+
+Sprint 7C hardens the beta checkout destination reveal and adds a minimal merchant route admin surface:
+
+- copy-details works only for the selected route on an active checkout session;
+- expired, rejected and inactive sessions cannot reveal full destinations;
+- reveal responses include `reveal_expires_at` and no-store/no-cache headers;
+- copy-details is rate-limited by session, route and coarse client fingerprint;
+- `checkout.destination_copied` audit events include masked identifiers only;
+- hosted checkout browser QA covers mobile/desktop layout, route reveal, copy, payer fallback, buyer-claimed-paid, needs-review and expired states;
+- merchant route admin lists only masked identifiers after save;
+- card routes are still beta review-first.
+
+No-go criteria added for Sprint 7C:
+
+- copy endpoint reveals an unselected or disabled route;
+- copy endpoint works for expired/rejected sessions;
+- raw card or phone appears in audit, log, webhook, HTML or status responses;
+- merchant admin displays raw identifiers after save;
+- buyer-facing copy implies official bank confirmation or guaranteed payment.
+
 ## Sprint 6D Rehearsal Criteria
 
 - synthetic merchant/order fixture exists;

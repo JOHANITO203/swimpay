@@ -117,6 +117,9 @@ import {
 } from './bank-evidence.js';
 
 const { Pool } = pg;
+const COPY_DETAILS_RATE_LIMIT_MAX = 3;
+const COPY_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const COPY_DETAILS_REVEAL_TTL_MS = 2 * 60 * 1000;
 
 export type {
   CreateOrderWithSessionInput,
@@ -250,6 +253,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const adminAuth = options.adminAuth ?? createDefaultAdminAuthConfig(process.env, options.environment);
   const clock = options.clock ?? (() => new Date());
   const startedAt = options.startedAt ?? new Date();
+  const copyDetailsLimiter = new Map<string, { windowStartedAtMs: number; count: number }>();
 
   server.addHook('onRequest', async (request, reply) => {
     const incoming = Array.isArray(request.headers['x-correlation-id'])
@@ -692,6 +696,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/checkout/:id/receiving-route/copy-details', async (request, reply) => {
+    applyCopyDetailsNoStoreHeaders(reply);
     const merchantId = parseMerchantId(request.headers.authorization);
     if (!merchantId) {
       return reply.status(401).send(
@@ -721,6 +726,15 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (result.kind === 'expired') {
       return reply.status(409).send(invalidRequest('Payment session is expired.', { payment_session_id: params.id }));
     }
+    if (result.kind === 'inactive') {
+      return reply.status(409).send({
+        error: {
+          code: 'checkout_session_inactive',
+          message: 'Copy details are available only for active checkout sessions.',
+          details: { payment_session_id: params.id }
+        }
+      });
+    }
     if (result.kind === 'not_selected') {
       return reply.status(409).send(
         invalidRequest('Receiving route must be selected before copy details are available.', {
@@ -729,11 +743,42 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       );
     }
 
+    const rateLimitKey = buildCopyDetailsRateLimitKey({
+      sessionId: result.paymentSession.id,
+      routeId: result.route.route_id,
+      fingerprint: coarseClientFingerprint(request.headers, request.ip)
+    });
+    if (isCopyDetailsRateLimited(copyDetailsLimiter, rateLimitKey, clock().getTime())) {
+      reply.header('Retry-After', String(Math.ceil(COPY_DETAILS_RATE_LIMIT_WINDOW_MS / 1000)));
+      return reply.status(429).send({
+        error: {
+          code: 'copy_details_rate_limited',
+          message: 'Destination copy was requested too often. Try again later.',
+          details: {
+            payment_session_id: result.paymentSession.id,
+            receiving_route_id: result.route.route_id
+          }
+        }
+      });
+    }
+
+    const now = clock();
+    await repository.recordCheckoutDestinationCopied({
+      merchantId,
+      paymentSessionId: result.paymentSession.id,
+      routeId: result.route.route_id,
+      railType: result.route.rail_type,
+      receiverIdentifierMasked: result.route.receiver_identifier_masked,
+      auditEventId: idGenerator.auditEventId(),
+      now: now.toISOString()
+    });
+
     return reply.status(200).send(
       toReceivingRouteCopyDetailsResponse({
         paymentSession: result.paymentSession,
         route: result.route,
-        receiverIdentifier: result.receiverIdentifier
+        receiverIdentifier: result.receiverIdentifier,
+        revealExpiresAt: new Date(now.getTime() + COPY_DETAILS_REVEAL_TTL_MS).toISOString()
       })
     );
   });
@@ -2050,6 +2095,49 @@ function orderRepositoryUnavailableError() {
       details: {}
     }
   };
+}
+
+function applyCopyDetailsNoStoreHeaders(reply: FastifyReply): void {
+  reply.header('Cache-Control', 'no-store');
+  reply.header('Pragma', 'no-cache');
+}
+
+function coarseClientFingerprint(headers: FastifyRequest['headers'], requestIp: string): string {
+  const forwardedFor = headers['x-forwarded-for'];
+  const forwardedValue = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+  const clientIp = typeof forwardedValue === 'string' && forwardedValue.trim()
+    ? forwardedValue.split(',')[0]?.trim() || requestIp
+    : requestIp;
+  const userAgent = headers['user-agent'];
+  const agentValue = Array.isArray(userAgent) ? userAgent[0] : userAgent;
+  return `${clientIp}|${agentValue ?? 'unknown-agent'}`;
+}
+
+function buildCopyDetailsRateLimitKey(input: {
+  sessionId: string;
+  routeId: string;
+  fingerprint: string;
+}): string {
+  return `${input.sessionId}:${input.routeId}:${input.fingerprint}`;
+}
+
+function isCopyDetailsRateLimited(
+  limiter: Map<string, { windowStartedAtMs: number; count: number }>,
+  key: string,
+  nowMs: number
+): boolean {
+  const current = limiter.get(key);
+  if (!current || nowMs - current.windowStartedAtMs >= COPY_DETAILS_RATE_LIMIT_WINDOW_MS) {
+    limiter.set(key, { windowStartedAtMs: nowMs, count: 1 });
+    return false;
+  }
+
+  if (current.count >= COPY_DETAILS_RATE_LIMIT_MAX) {
+    return true;
+  }
+
+  current.count += 1;
+  return false;
 }
 
 interface ReceivingRouteCreateBody {

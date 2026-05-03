@@ -863,6 +863,10 @@ class E2EOrderRepository implements OrderRepository {
   public async getSelectedReceivingRouteCopyDetails() {
     return { kind: 'not_found' as const };
   }
+
+  public async recordCheckoutDestinationCopied() {
+    // Durable worker E2E tests do not exercise buyer copy-details reveals.
+  }
 }
 
 class E2ESignalRepository implements ReceiverSignalRepository {

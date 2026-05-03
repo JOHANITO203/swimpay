@@ -2,6 +2,24 @@
 
 No current critical blockers.
 
+Last checked after Sprint 7C checkout destination copy hardening and route admin UX: 2026-05-03T19:06:22+03:00.
+
+Sprint 7C status:
+
+- Checkout destination copy hardening passed validation.
+- Full destination reveal now requires active session, selected enabled merchant-owned route and selected receiver bank/route alignment.
+- Copy details are explicit, short-lived, no-store/no-cache, rate-limited and audited with masked identifiers only.
+- Hosted checkout proxy also returns no-store/no-cache headers for copy details.
+- Minimal merchant route admin UI exists for list/create/disable/recommend actions and does not render raw identifiers after save.
+- Webhooks still exclude raw receiver identifiers and preserve `official_bank_confirmation=false`.
+- No real notification processing, SMS, SBP, scraping, official bank confirmation claim or real-bank auto-confirmation was added.
+
+Known non-critical Sprint 7C follow-ups:
+
+- The copy-details limiter is in-memory and should move to Valkey before multi-instance production deployment.
+- The merchant route admin page is minimal and needs authenticated merchant/operator access control before production use.
+- Browser QA is covered by server-injected web tests; a live Playwright-style mobile/desktop pass is recommended before beta traffic.
+
 Last checked after Sprint 7B bank-first hybrid receiving routes: 2026-05-03T18:27:43+03:00.
 
 Sprint 7B status:
@@ -12,11 +30,11 @@ Sprint 7B status:
 - Webhook route context excludes raw receiver identifiers and preserves `official_bank_confirmation=false`.
 - No real notification processing, SMS, SBP, scraping, official bank confirmation claim or real-bank auto-confirmation was added.
 
-Known non-critical Sprint 7B follow-ups:
+Resolved Sprint 7B follow-ups in Sprint 7C:
 
-- The explicit receiving-route copy endpoint needs production-grade buyer-session hardening, rate limiting and short-lived reveal policy before private beta.
-- Hosted checkout needs visual browser QA across mobile and desktop viewports.
-- Merchant route administration is API-first and still needs operator/merchant UI polish.
+- The explicit receiving-route copy endpoint now has active-session hardening, rate limiting and short-lived reveal response policy.
+- Hosted checkout has browser-oriented QA coverage for mobile/desktop responsive states through web tests.
+- Merchant route administration now has a minimal web UI for beta operations.
 
 Last checked after Sprint 7A PSP-like checkout bank selection flow: 2026-05-03T17:16:00+03:00.
 

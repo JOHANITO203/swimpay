@@ -27,7 +27,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
   public readonly paymentSessions = new Map<string, StoredPaymentSessionRecord>();
   public readonly receivingRoutes = new Map<string, TestReceivingRoute>();
   public readonly externalIds = new Set<string>();
-  public readonly auditEvents: Array<{ eventType: string; objectId: string }> = [];
+  public readonly auditEvents: Array<{ eventType: string; objectId: string; payloadRedacted?: Record<string, unknown> }> = [];
 
   async createOrderWithSession(input: Parameters<OrderRepository['createOrderWithSession']>[0]) {
     const externalKey = `${input.merchantId}:${input.order.externalId}`;
@@ -151,6 +151,9 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     if (result.kind !== 'ok') {
       return result;
     }
+    if (!copyDetailsAllowedStatuses.has(result.paymentSession.status)) {
+      return { kind: 'inactive' as const };
+    }
     if (!result.paymentSession.selectedReceivingRouteId) {
       return { kind: 'not_selected' as const };
     }
@@ -166,6 +169,29 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
       route,
       receiverIdentifier: decryptReceiverIdentifier(route.receiver_identifier_encrypted, input.encryptionSecret)
     };
+  }
+
+  async recordCheckoutDestinationCopied(input: {
+    merchantId: string;
+    paymentSessionId: string;
+    routeId: string;
+    railType: string;
+    receiverIdentifierMasked: string;
+    auditEventId: string;
+    now: string;
+  }) {
+    void input.now;
+    this.auditEvents.push({
+      eventType: 'checkout.destination_copied',
+      objectId: input.paymentSessionId,
+      payloadRedacted: {
+        payment_session_id: input.paymentSessionId,
+        receiving_route_id: input.routeId,
+        rail_type: input.railType,
+        receiver_identifier_masked: input.receiverIdentifierMasked,
+        auto_confirm_enabled: false
+      }
+    });
   }
 
   async selectReceivingRoute(input: {
@@ -256,6 +282,16 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     return { kind: 'ok' as const, order, paymentSession };
   }
 }
+
+const copyDetailsAllowedStatuses = new Set([
+  'receiver_arming',
+  'receiver_armed',
+  'awaiting_payment',
+  'buyer_claimed_paid',
+  'signal_detected',
+  'matching',
+  'needs_review'
+]);
 
 function buildServer(repository: InMemoryPaymentSessionRepository, now = '2026-05-02T10:00:00.000Z') {
   return buildApiServer({
@@ -552,17 +588,115 @@ describe('payment session api', () => {
     expect(repository.paymentSessions.get('ps_session_01')?.selectedReceivingRouteId).toBe('route_1');
     expect(repository.auditEvents.map((event) => event.eventType)).toContain('checkout.receiving_route_selected');
     expect(copyDetails.statusCode).toBe(200);
+    expect(copyDetails.headers['cache-control']).toBe('no-store');
+    expect(copyDetails.headers.pragma).toBe('no-cache');
     expect(copyDetails.json()).toMatchObject({
       payment_session_id: 'ps_session_01',
       receiving_route_id: 'route_1',
       rail_type: 'phone_transfer',
+      masked_identifier: '+7 *** *** **67',
       receiver_identifier_masked: '+7 *** *** **67',
+      destination_value: '+7 (999) 123-45-67',
       receiver_identifier_copy_value: '+7 (999) 123-45-67',
       copy_action: 'explicit_buyer_copy',
       does_not_confirm_payment: true,
       official_bank_confirmation: false
     });
+    expect(Date.parse(copyDetails.json().reveal_expires_at)).toBeGreaterThan(Date.parse('2026-05-02T10:00:00.000Z'));
     expect(JSON.stringify(repository.auditEvents)).not.toContain('+7 (999) 123-45-67');
+  });
+
+  test('writes redacted audit and rate limits repeated copy-detail reveals', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiver-bank',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiver_bank_id: 'sber_ru' }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiving-route',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiving_route_id: 'route_1' }
+    });
+
+    const requests = [];
+    for (let index = 0; index < 4; index += 1) {
+      requests.push(
+        await server.inject({
+          method: 'GET',
+          url: '/v1/checkout/ps_session_01/receiving-route/copy-details',
+          headers: {
+            authorization: 'Bearer test_mch_01',
+            'user-agent': 'copy-test-browser',
+            'x-forwarded-for': '203.0.113.9'
+          }
+        })
+      );
+    }
+
+    expect(requests.slice(0, 3).map((response) => response.statusCode)).toEqual([200, 200, 200]);
+    expect(requests[3]?.statusCode).toBe(429);
+    expect(requests[3]?.headers['retry-after']).toBe('300');
+    expect(requests[3]?.json()).toMatchObject({
+      error: {
+        code: 'copy_details_rate_limited'
+      }
+    });
+    const copyAudits = repository.auditEvents.filter((event) => event.eventType === 'checkout.destination_copied');
+    expect(copyAudits).toHaveLength(3);
+    expect(copyAudits[0]?.payloadRedacted).toMatchObject({
+      payment_session_id: 'ps_session_01',
+      receiving_route_id: 'route_1',
+      rail_type: 'phone_transfer',
+      receiver_identifier_masked: '+7 *** *** **67',
+      auto_confirm_enabled: false
+    });
+    expect(JSON.stringify(copyAudits)).not.toContain('+7 (999) 123-45-67');
+    expect(JSON.stringify(copyAudits)).not.toContain('2202201234567890');
+  });
+
+  test('rejects copy details for inactive sessions without revealing destination', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiver-bank',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiver_bank_id: 'sber_ru' }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiving-route',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiving_route_id: 'route_1' }
+    });
+    const session = repository.paymentSessions.get('ps_session_01');
+    if (!session) {
+      throw new Error('test session missing');
+    }
+    session.status = 'rejected';
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/receiving-route/copy-details',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      error: {
+        code: 'checkout_session_inactive'
+      }
+    });
+    expect(response.body).not.toContain('+7 (999) 123-45-67');
+    expect(repository.auditEvents.some((event) => event.eventType === 'checkout.destination_copied')).toBe(false);
   });
 
   test('stores buyer sender phone hint as HMAC and masked value only', async () => {

@@ -3,11 +3,15 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import {
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
+  V1ReceiverBankOptions,
   type BuyerSafeCheckoutStatus,
   type BuyerSafeReceivingRoute,
   type CheckoutSessionState,
   type PayerBankLauncherOption,
-  type ReceiverBankOption
+  type ReceiverBankOption,
+  type ReceiverIdentifierType,
+  type ReceivingRouteRailType,
+  type ReceivingRouteReviewPolicy
 } from '@swimpay/contracts';
 
 export type CheckoutStatus =
@@ -68,6 +72,7 @@ export interface WebServerOptions {
   environment: string;
   checkoutSessionProvider?: CheckoutSessionProvider | undefined;
   adminEvidenceClient?: AdminEvidenceClient | undefined;
+  merchantRouteAdminClient?: MerchantRouteAdminClient | undefined;
   recipient?: CheckoutRecipient | undefined;
 }
 
@@ -121,6 +126,27 @@ export interface AdminAuditEvent {
   createdAt?: string | undefined;
 }
 
+export interface MerchantRouteAdminRoute {
+  route_id: string;
+  bank_profile_id: string;
+  rail_type: ReceivingRouteRailType;
+  receiver_identifier_type: ReceiverIdentifierType;
+  receiver_identifier_masked: string;
+  route_code: string;
+  display_label: string;
+  enabled: boolean;
+  recommended: boolean;
+  review_policy: ReceivingRouteReviewPolicy;
+  fees_hint?: string | undefined;
+  updated_at?: string | undefined;
+}
+
+export interface MerchantRouteAdminClient {
+  listRoutes(): Promise<MerchantRouteAdminRoute[]>;
+  createRoute(input: Record<string, unknown>): Promise<MerchantRouteAdminRoute>;
+  updateRoute(routeId: string, patch: Record<string, unknown>): Promise<MerchantRouteAdminRoute>;
+}
+
 interface CheckoutRecipient {
   name: string;
   bank: string;
@@ -166,7 +192,10 @@ interface ReceivingRouteCopyDetailsPayload {
   rail_type: string;
   receiver_identifier_type: string;
   receiver_identifier_masked: string;
+  masked_identifier: string;
   receiver_identifier_copy_value: string;
+  destination_value: string;
+  reveal_expires_at: string;
   copy_action: 'explicit_buyer_copy';
   does_not_confirm_payment: true;
   official_bank_confirmation: false;
@@ -191,14 +220,18 @@ const defaultRecipient: CheckoutRecipient = {
 
 export function buildWebServer(options: WebServerOptions): FastifyInstance {
   const server = Fastify({ logger: true });
+  const apiBaseUrl = process.env.API_BASE_URL ?? 'http://localhost:3000';
+  const checkoutMerchantId = process.env.CHECKOUT_MERCHANT_ID ?? 'mch_dev';
   const checkoutSessionProvider =
-    options.checkoutSessionProvider ?? new ApiCheckoutSessionProvider(process.env.API_BASE_URL ?? 'http://localhost:3000');
+    options.checkoutSessionProvider ?? new ApiCheckoutSessionProvider(apiBaseUrl, checkoutMerchantId);
   const adminEvidenceClient =
     options.adminEvidenceClient ??
     new ApiAdminEvidenceClient(
-      process.env.API_BASE_URL ?? 'http://localhost:3000',
+      apiBaseUrl,
       process.env.SWIMPAY_ADMIN_TOKEN ?? process.env.DEV_ADMIN_TOKEN ?? 'change_me_local_admin_token'
     );
+  const merchantRouteAdminClient =
+    options.merchantRouteAdminClient ?? new ApiMerchantRouteAdminClient(apiBaseUrl, checkoutMerchantId);
   const recipient = options.recipient ?? defaultRecipient;
 
   server.get('/health', async () => ({
@@ -290,6 +323,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   server.get('/checkout/:paymentSessionId/receiving-route/copy-details', async (request, reply) => {
     const params = request.params as { paymentSessionId?: string };
     const paymentSessionId = params.paymentSessionId;
+    setNoStoreHeaders(reply);
     if (!paymentSessionId) {
       return reply.status(400).send({ error: { code: 'invalid_request', message: 'Payment session id is required.' } });
     }
@@ -362,6 +396,42 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     }
   });
 
+  server.get('/admin/merchant-receiving-routes', async (_request, reply) => {
+    try {
+      const routes = await merchantRouteAdminClient.listRoutes();
+      reply.type('text/html; charset=utf-8');
+      return renderMerchantReceivingRoutesPage(routes);
+    } catch {
+      reply.status(503).type('text/html; charset=utf-8');
+      return renderMerchantRoutesUnavailablePage();
+    }
+  });
+
+  server.post('/admin/merchant-receiving-routes', async (request, reply) => {
+    await merchantRouteAdminClient.createRoute(normalizeAdminRouteBody(request.body));
+    return redirectToMerchantRoutes(reply);
+  });
+
+  server.post('/admin/merchant-receiving-routes/:routeId/disable', async (request, reply) => {
+    const params = request.params as { routeId?: string };
+    if (!params.routeId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Route id is required.' } });
+    }
+
+    await merchantRouteAdminClient.updateRoute(params.routeId, { enabled: false });
+    return redirectToMerchantRoutes(reply);
+  });
+
+  server.post('/admin/merchant-receiving-routes/:routeId/recommend', async (request, reply) => {
+    const params = request.params as { routeId?: string };
+    if (!params.routeId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Route id is required.' } });
+    }
+
+    await merchantRouteAdminClient.updateRoute(params.routeId, { recommended: true });
+    return redirectToMerchantRoutes(reply);
+  });
+
   server.post('/checkout/:paymentSessionId/payment-instructions-shown', async (request, reply) => {
     const params = request.params as { paymentSessionId?: string };
     const paymentSessionId = params.paymentSessionId;
@@ -386,7 +456,10 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
 }
 
 export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
-  public constructor(private readonly apiBaseUrl: string) {}
+  public constructor(
+    private readonly apiBaseUrl: string,
+    private readonly merchantId = 'mch_dev'
+  ) {}
 
   public async getCheckoutSession(paymentSessionId: string): Promise<CheckoutSession | null> {
     const response = await this.fetchApi(`/v1/payment-sessions/${encodeURIComponent(paymentSessionId)}`);
@@ -474,11 +547,58 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
   private async fetchApi(path: string, init: RequestInit = {}): Promise<Response> {
     const headers = new Headers(init.headers);
     headers.set('content-type', 'application/json');
-    headers.set('authorization', `Bearer test_${process.env.CHECKOUT_MERCHANT_ID ?? 'mch_dev'}`);
+    headers.set('authorization', `Bearer test_${this.merchantId}`);
     return fetch(`${this.apiBaseUrl}${path}`, {
       ...init,
       headers
     });
+  }
+}
+
+export class ApiMerchantRouteAdminClient implements MerchantRouteAdminClient {
+  public constructor(
+    private readonly apiBaseUrl: string,
+    private readonly merchantId: string
+  ) {}
+
+  public async listRoutes(): Promise<MerchantRouteAdminRoute[]> {
+    const payload = await this.fetchJson<{ routes?: MerchantRouteAdminRoute[] }>('/v1/merchant/receiving-routes');
+    return payload.routes ?? [];
+  }
+
+  public async createRoute(input: Record<string, unknown>): Promise<MerchantRouteAdminRoute> {
+    const payload = await this.fetchJson<{ route: MerchantRouteAdminRoute }>('/v1/merchant/receiving-routes', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    });
+    return payload.route;
+  }
+
+  public async updateRoute(routeId: string, patch: Record<string, unknown>): Promise<MerchantRouteAdminRoute> {
+    const payload = await this.fetchJson<{ route: MerchantRouteAdminRoute }>(
+      `/v1/merchant/receiving-routes/${encodeURIComponent(routeId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(patch)
+      }
+    );
+    return payload.route;
+  }
+
+  private async fetchJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const headers = new Headers(init.headers);
+    headers.set('content-type', 'application/json');
+    headers.set('authorization', `Bearer test_${this.merchantId}`);
+    const response = await fetch(`${this.apiBaseUrl}${path}`, {
+      ...init,
+      headers
+    });
+
+    if (!response.ok) {
+      throw new Error(`Merchant receiving route API returned ${response.status}`);
+    }
+
+    return (await response.json()) as T;
   }
 }
 
@@ -528,6 +648,150 @@ export function toCheckoutStatusResponse(session: CheckoutSession): CheckoutStat
     expires_at: session.expires_at,
     official_bank_confirmation: false
   };
+}
+
+function renderMerchantReceivingRoutesPage(routes: MerchantRouteAdminRoute[]): string {
+  return [
+    '<!doctype html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<title>Merchant receiving routes - SwimPay</title>',
+    baseStyles(),
+    evidenceStyles(),
+    '</head>',
+    '<body>',
+    '<main class="admin-shell">',
+    '<section class="admin-header" aria-labelledby="merchant-routes-title">',
+    '<p class="eyebrow">Merchant route administration</p>',
+    '<h1 id="merchant-routes-title">Merchant receiving routes</h1>',
+    '<p class="safe-copy">Masked display is the default. Full card or phone values are accepted only during create/edit and are never shown after save.</p>',
+    '<p class="help">Card routes are beta review-first. Auto-confirm remains disabled.</p>',
+    '</section>',
+    '<section class="admin-section" aria-labelledby="create-route-title">',
+    '<h2 id="create-route-title">Create route</h2>',
+    renderMerchantRouteCreateForm(),
+    '</section>',
+    '<section class="admin-section" aria-labelledby="route-list-title">',
+    '<h2 id="route-list-title">Routes</h2>',
+    renderMerchantRoutesTable(routes),
+    '</section>',
+    '</main>',
+    '</body>',
+    '</html>'
+  ].join('');
+}
+
+function renderMerchantRoutesUnavailablePage(): string {
+  return [
+    '<!doctype html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<title>Merchant routes unavailable - SwimPay</title>',
+    baseStyles(),
+    evidenceStyles(),
+    '</head>',
+    '<body>',
+    '<main class="admin-shell">',
+    '<section class="admin-header" aria-labelledby="merchant-routes-unavailable-title">',
+    '<p class="eyebrow">Merchant route administration</p>',
+    '<h1 id="merchant-routes-unavailable-title">Merchant receiving routes unavailable</h1>',
+    '<p class="safe-copy">Check the local backend before editing route configuration.</p>',
+    '</section>',
+    '</main>',
+    '</body>',
+    '</html>'
+  ].join('');
+}
+
+function renderMerchantRouteCreateForm(): string {
+  return [
+    '<form class="admin-form" method="post" action="/admin/merchant-receiving-routes">',
+    '<label class="field-label" for="bank-profile">Bank</label>',
+    '<select id="bank-profile" class="input" name="bank_profile_id">',
+    ...V1ReceiverBankOptions.map(
+      (bank) => `<option value="${escapeHtml(bank.bank_profile_id)}">${escapeHtml(bank.display_name)}</option>`
+    ),
+    '</select>',
+    '<label class="field-label" for="rail-type">Rail type</label>',
+    '<select id="rail-type" class="input" name="rail_type">',
+    '<option value="phone_transfer">phone_transfer</option>',
+    '<option value="card_transfer">card_transfer</option>',
+    '</select>',
+    '<label class="field-label" for="receiver-identifier">Full card or phone for encrypted storage</label>',
+    '<input id="receiver-identifier" class="input" name="receiver_identifier" autocomplete="off" placeholder="Enter once, masked after save">',
+    '<label class="field-label" for="route-code">Route code</label>',
+    '<input id="route-code" class="input" name="route_code" placeholder="SBER-PHONE">',
+    '<label class="field-label" for="display-label">Display label</label>',
+    '<input id="display-label" class="input" name="display_label" placeholder="Sberbank phone">',
+    '<label class="field-label" for="fees-hint">Fees hint</label>',
+    '<input id="fees-hint" class="input" name="fees_hint" placeholder="Manual transfer">',
+    '<label class="field-label"><input type="checkbox" name="recommended" value="true"> Recommended</label>',
+    '<button class="button primary" type="submit">Create route</button>',
+    '<p class="help">The public checkout shows only masked route details until the buyer performs an explicit copy action.</p>',
+    '</form>'
+  ].join('');
+}
+
+function renderMerchantRoutesTable(routes: MerchantRouteAdminRoute[]): string {
+  if (routes.length === 0) {
+    return '<p class="empty-state">No receiving routes configured.</p>';
+  }
+
+  return [
+    '<div class="table-wrap"><table>',
+    '<thead><tr><th>Bank</th><th>Rail</th><th>Destination</th><th>Route code</th><th>Status</th><th>Review policy</th><th>Actions</th></tr></thead>',
+    '<tbody>',
+    ...routes.map((route) =>
+      [
+        '<tr>',
+        `<td>${escapeHtml(bankDisplayName(route.bank_profile_id))}</td>`,
+        `<td>${escapeHtml(route.rail_type)}</td>`,
+        `<td>${escapeHtml(route.receiver_identifier_masked)}</td>`,
+        `<td>${escapeHtml(route.route_code)}<span class="subtle">${escapeHtml(route.display_label)}</span></td>`,
+        `<td>${escapeHtml(route.enabled ? 'enabled' : 'disabled')}<span class="subtle">recommended=${escapeHtml(String(route.recommended))}</span></td>`,
+        `<td>${escapeHtml(route.review_policy)}${route.fees_hint ? `<span class="subtle">${escapeHtml(route.fees_hint)}</span>` : ''}</td>`,
+        '<td>',
+        route.enabled
+          ? `<form method="post" action="/admin/merchant-receiving-routes/${escapeHtml(route.route_id)}/disable"><button class="button secondary" type="submit">Disable</button></form>`
+          : '<span class="subtle">Disabled</span>',
+        route.recommended
+          ? '<span class="subtle">Recommended</span>'
+          : `<form method="post" action="/admin/merchant-receiving-routes/${escapeHtml(route.route_id)}/recommend"><button class="button secondary" type="submit">Mark recommended</button></form>`,
+        '</td>',
+        '</tr>'
+      ].join('')
+    ),
+    '</tbody>',
+    '</table></div>'
+  ].join('');
+}
+
+function bankDisplayName(bankProfileId: string): string {
+  return V1ReceiverBankOptions.find((bank) => bank.bank_profile_id === bankProfileId)?.display_name ?? bankProfileId;
+}
+
+function normalizeAdminRouteBody(body: unknown): Record<string, unknown> {
+  if (!body || typeof body !== 'object') {
+    return {};
+  }
+
+  const input = body as Record<string, unknown>;
+  const normalized: Record<string, unknown> = { ...input };
+  normalized.recommended = input.recommended === true || input.recommended === 'true' || input.recommended === 'on';
+  return normalized;
+}
+
+function redirectToMerchantRoutes(reply: { status(code: number): { header(name: string, value: string): { send(): unknown } } }): unknown {
+  return reply.status(303).header('Location', '/admin/merchant-receiving-routes').send();
+}
+
+function setNoStoreHeaders(reply: { header(name: string, value: string): unknown }): void {
+  reply.header('Cache-Control', 'no-store');
+  reply.header('Pragma', 'no-cache');
 }
 
 function renderEvidenceReviewPage(dashboard: BankEvidenceDashboard, auditEvents: AdminAuditEvent[]): string {
@@ -1159,7 +1423,7 @@ document.querySelectorAll('[data-copy-route]').forEach((button) => {
     const response = await fetch('/checkout/' + encodeURIComponent(sessionId) + '/receiving-route/copy-details');
     if (!response.ok) return;
     const payload = await response.json();
-    await navigator.clipboard?.writeText(payload.receiver_identifier_copy_value || '');
+    await navigator.clipboard?.writeText(payload.destination_value || payload.receiver_identifier_copy_value || '');
     await fetch('/checkout/' + encodeURIComponent(sessionId) + '/payment-instructions-shown', { method: 'POST' });
   });
 });

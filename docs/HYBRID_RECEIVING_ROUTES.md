@@ -71,3 +71,34 @@ Safe route context may be included:
 ```
 
 Webhook payloads must not include raw card, raw phone, buyer sender raw phone, raw notification text or personal merchant identity.
+
+## Sprint 7C Copy-details Hardening
+
+Masked route display remains the default. The full card or phone destination is returned only by the explicit buyer copy action:
+
+```text
+GET /v1/checkout/:session_id/receiving-route/copy-details
+```
+
+The copy-details endpoint requires an active, non-expired checkout session with a selected, enabled route that belongs to the session merchant. It does not return a destination for inactive, expired or rejected sessions, and it only returns the destination for the selected route.
+
+The response is action-bound and short-lived:
+
+- `masked_identifier` remains present for safe UI display.
+- `destination_value` is present only for the explicit copy response.
+- `reveal_expires_at` communicates the reveal window.
+- API responses use no-store/no-cache headers.
+
+Every successful reveal writes a redacted audit event:
+
+```text
+checkout.destination_copied
+```
+
+The audit event includes session id, selected route id, rail type and masked identifier only. It must not include raw card, raw phone or receiver identifier values. Webhooks never include copy-details raw destinations.
+
+## Merchant Route Admin
+
+Sprint 7C adds a minimal merchant/admin route surface for beta operations. It lists bank, rail type, masked identifier, enabled/recommended state, review policy and route code. Full card or phone input is accepted only in create/edit forms and is not rendered after save.
+
+Card routes remain beta review-first. Route administration does not enable auto-confirmation and does not change the review-only posture for real bank signals.

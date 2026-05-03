@@ -105,7 +105,10 @@ export interface ReceivingRouteCopyDetailsResponse {
   rail_type: ReceivingRouteRailType;
   receiver_identifier_type: MerchantReceivingRoute['receiver_identifier_type'];
   receiver_identifier_masked: string;
+  masked_identifier: string;
   receiver_identifier_copy_value: string;
+  destination_value: string;
+  reveal_expires_at: string;
   copy_action: 'explicit_buyer_copy';
   does_not_confirm_payment: true;
   official_bank_confirmation: false;
@@ -269,6 +272,7 @@ export function toReceivingRouteCopyDetailsResponse(params: {
   paymentSession: StoredPaymentSessionRecord;
   route: MerchantReceivingRoute;
   receiverIdentifier: string;
+  revealExpiresAt: string;
 }): ReceivingRouteCopyDetailsResponse {
   return {
     payment_session_id: params.paymentSession.id,
@@ -276,7 +280,10 @@ export function toReceivingRouteCopyDetailsResponse(params: {
     rail_type: params.route.rail_type,
     receiver_identifier_type: params.route.receiver_identifier_type,
     receiver_identifier_masked: params.route.receiver_identifier_masked,
+    masked_identifier: params.route.receiver_identifier_masked,
     receiver_identifier_copy_value: params.receiverIdentifier,
+    destination_value: params.receiverIdentifier,
+    reveal_expires_at: params.revealExpiresAt,
     copy_action: 'explicit_buyer_copy',
     does_not_confirm_payment: true,
     official_bank_confirmation: false
