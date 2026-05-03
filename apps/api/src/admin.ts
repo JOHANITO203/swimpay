@@ -133,10 +133,20 @@ export interface AdminRepository {
   listWebhookFailures(limit: number): Promise<AdminWebhookFailureSummary[]>;
   listReceiverHealth(limit: number): Promise<AdminReceiverHealthSummary[]>;
   listBankAppSignatures(limit: number): Promise<AdminBankAppSignatureSummary[]>;
-  searchAuditEvents(input: { limit: number; eventType?: string | undefined; objectType?: string | undefined }): Promise<AdminAuditEventSummary[]>;
+  searchAuditEvents(input: AdminAuditEventSearchInput): Promise<AdminAuditEventSummary[]>;
   updateTemplateStatus(input: AdminTemplateStatusActionInput): Promise<AdminTemplateStatusActionResult>;
   markTemplateFalsePositive(input: Omit<AdminTemplateStatusActionInput, 'status'>): Promise<AdminTemplateStatusActionResult>;
   verifyBankAppSignature(input: AdminBankAppSignatureActionInput): Promise<AdminBankAppSignatureActionResult>;
+}
+
+export interface AdminAuditEventSearchInput {
+  limit: number;
+  eventType?: string | undefined;
+  objectType?: string | undefined;
+  objectId?: string | undefined;
+  actorId?: string | undefined;
+  createdAfter?: string | undefined;
+  createdBefore?: string | undefined;
 }
 
 export interface AdminActionRequestBody {
@@ -231,11 +241,7 @@ export class PgAdminRepository implements AdminRepository {
     return result.rows.map((row) => toBankAppSignatureSummary(row as AdminBankAppSignatureRow));
   }
 
-  public async searchAuditEvents(input: {
-    limit: number;
-    eventType?: string | undefined;
-    objectType?: string | undefined;
-  }): Promise<AdminAuditEventSummary[]> {
+  public async searchAuditEvents(input: AdminAuditEventSearchInput): Promise<AdminAuditEventSummary[]> {
     const values: unknown[] = [];
     const filters: string[] = [];
 
@@ -247,6 +253,26 @@ export class PgAdminRepository implements AdminRepository {
     if (input.objectType) {
       values.push(input.objectType);
       filters.push(`object_type = $${values.length}`);
+    }
+
+    if (input.objectId) {
+      values.push(input.objectId);
+      filters.push(`object_id = $${values.length}`);
+    }
+
+    if (input.actorId) {
+      values.push(input.actorId);
+      filters.push(`actor_id = $${values.length}`);
+    }
+
+    if (input.createdAfter) {
+      values.push(input.createdAfter);
+      filters.push(`created_at >= $${values.length}`);
+    }
+
+    if (input.createdBefore) {
+      values.push(input.createdBefore);
+      filters.push(`created_at <= $${values.length}`);
     }
 
     values.push(input.limit);
@@ -532,14 +558,14 @@ export class InMemoryAdminRepository implements AdminRepository {
     return this.bankAppSignatures.slice(0, limit);
   }
 
-  public async searchAuditEvents(input: {
-    limit: number;
-    eventType?: string | undefined;
-    objectType?: string | undefined;
-  }): Promise<AdminAuditEventSummary[]> {
+  public async searchAuditEvents(input: AdminAuditEventSearchInput): Promise<AdminAuditEventSummary[]> {
     return this.auditEvents
       .filter((event) => !input.eventType || event.eventType === input.eventType)
       .filter((event) => !input.objectType || event.objectType === input.objectType)
+      .filter((event) => !input.objectId || event.objectId === input.objectId)
+      .filter((event) => !input.actorId || event.actorId === input.actorId)
+      .filter((event) => !input.createdAfter || event.createdAt >= input.createdAfter)
+      .filter((event) => !input.createdBefore || event.createdAt <= input.createdBefore)
       .slice(0, input.limit);
   }
 

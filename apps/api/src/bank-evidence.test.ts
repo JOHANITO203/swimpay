@@ -599,6 +599,64 @@ describe('bank package evidence workflow', () => {
     expect(response.body).not.toContain('+79991234567');
     expect(response.body).not.toContain('raw notification');
   });
+
+  it('returns a safe operator review dashboard summary for evidence lifecycle rehearsal', async () => {
+    const repository = buildEvidenceRepository({
+      bankProfileIds: ['sberbank_ru', 'tbank_ru'],
+      evidence: [
+        pendingEvidence({
+          evidenceId: 'bev_pending_sber',
+          bankProfileId: 'sberbank_ru',
+          packageName: 'ru.sberbankmobile',
+          createdAt: '2026-05-03T02:10:00.000Z'
+        }),
+        reviewOnlyEvidence({
+          evidenceId: 'bev_review_tbank',
+          bankProfileId: 'tbank_ru',
+          packageName: 'com.idamob.tinkoff.android',
+          createdAt: '2026-05-03T02:05:00.000Z'
+        }),
+        pendingEvidence({
+          evidenceId: 'bev_deprecated',
+          status: 'deprecated',
+          reviewReason: 'stale_evidence: superseded by newer cert',
+          createdAt: '2026-05-03T01:55:00.000Z'
+        })
+      ]
+    });
+    const server = buildTestServer(repository, { role: 'operator' });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/admin/bank-evidence/review-dashboard',
+      headers: adminHeaders()
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      total_count: 3,
+      counts_by_status: {
+        pending_operator_review: 1,
+        approved_for_review_only: 1,
+        deprecated: 1
+      },
+      next_actions: ['review_pending_evidence', 'monitor_review_only_evidence', 'keep_deprecated_for_audit'],
+      safety: {
+        trusted: false,
+        production_trust_requested: false,
+        auto_confirm_enabled: false
+      }
+    });
+    expect(response.json().review_queue[0]).toMatchObject({
+      evidence_id: 'bev_pending_sber',
+      status: 'pending_operator_review',
+      trusted: false,
+      auto_confirm_enabled: false
+    });
+    expect(response.body).not.toContain(certHash);
+    expect(response.body).not.toContain('+79991234567');
+    expect(response.body).not.toContain('raw notification');
+  });
 });
 
 function buildTestServer(

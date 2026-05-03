@@ -1,13 +1,13 @@
 # Current Task
 
-task_id: 140_listener_diagnostics_and_closeout
-source_task_file: tasks/140_listener_diagnostics_and_closeout.md
+task_id: 209_sprint_4t_closeout_review
+source_task_file: tasks/209_sprint_4t_closeout_review.md
 status: completed
 
 ## Scope
 
-Phase 4J-B - Real NotificationListener Replay After Onboarding Gate.
+Sprint 4T - Evidence lifecycle UI/API rehearsal and admin audit visibility.
 
 ## Result
 
-The real device synthetic listener replay passed after Notification Listener Access was restored. The debug-only synthetic notification reached `SwimPayNotificationListenerService`, passed through the allowlist/privacy firewall/outbox path, and flushed to the local backend with backend decision pending. Android did not confirm or auto-confirm payment.
+Evidence lifecycle rehearsal API and admin audit visibility passed validation. The admin review dashboard exposes masked evidence summaries and safe status counts, while audit event search now supports evidence-specific filters. Review-only evidence remains not trusted and auto-confirmation remains disabled.

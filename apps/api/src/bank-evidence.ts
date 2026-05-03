@@ -305,6 +305,37 @@ export function toBankEvidenceResponse(evidence: BankEvidenceRecord) {
   };
 }
 
+export function toBankEvidenceReviewDashboardResponse(evidence: BankEvidenceRecord[]) {
+  const countsByStatus: Record<BankEvidenceStatus, number> = {
+    [BankEvidenceStatuses.PENDING_OPERATOR_REVIEW]: 0,
+    [BankEvidenceStatuses.APPROVED_FOR_REVIEW_ONLY]: 0,
+    [BankEvidenceStatuses.REJECTED]: 0,
+    [BankEvidenceStatuses.DEPRECATED]: 0,
+    [BankEvidenceStatuses.PRODUCTION_TRUST_REQUESTED]: 0,
+    [BankEvidenceStatuses.PRODUCTION_TRUST_APPROVED]: 0,
+    [BankEvidenceStatuses.PRODUCTION_TRUST_REVOKED]: 0
+  };
+
+  for (const item of evidence) {
+    countsByStatus[item.status] += 1;
+  }
+
+  return {
+    total_count: evidence.length,
+    counts_by_status: countsByStatus,
+    review_queue: evidence
+      .filter((item) => item.status === BankEvidenceStatuses.PENDING_OPERATOR_REVIEW)
+      .map(toBankEvidenceResponse),
+    recent_evidence: evidence.slice(0, 10).map(toBankEvidenceResponse),
+    next_actions: buildEvidenceDashboardNextActions(countsByStatus),
+    safety: {
+      trusted: false,
+      production_trust_requested: false,
+      auto_confirm_enabled: false
+    }
+  };
+}
+
 export function toBankEvidenceSubmitResponse(evidence: BankEvidenceRecord, options: { duplicate?: boolean | undefined } = {}) {
   return {
     evidence_id: evidence.evidenceId,
@@ -317,6 +348,24 @@ export function toBankEvidenceSubmitResponse(evidence: BankEvidenceRecord, optio
     message: 'evidence accepted for operator review; not trusted yet; no auto-confirm enabled',
     cert_sha256_masked: maskCertificateHash(evidence.certSha256)
   };
+}
+
+function buildEvidenceDashboardNextActions(countsByStatus: Record<BankEvidenceStatus, number>): string[] {
+  const actions: string[] = [];
+  if (countsByStatus[BankEvidenceStatuses.PENDING_OPERATOR_REVIEW] > 0) {
+    actions.push('review_pending_evidence');
+  }
+  if (countsByStatus[BankEvidenceStatuses.APPROVED_FOR_REVIEW_ONLY] > 0) {
+    actions.push('monitor_review_only_evidence');
+  }
+  if (countsByStatus[BankEvidenceStatuses.DEPRECATED] > 0) {
+    actions.push('keep_deprecated_for_audit');
+  }
+  if (countsByStatus[BankEvidenceStatuses.PRODUCTION_TRUST_REQUESTED] > 0) {
+    actions.push('dual_control_production_trust_review_required');
+  }
+
+  return actions.length > 0 ? actions : ['no_operator_action_required'];
 }
 
 export function toBankEvidenceReviewResponse(result: Extract<BankEvidenceReviewResult, { kind: 'updated' }>) {

@@ -92,6 +92,70 @@ describe('minimal admin console api', () => {
     expect([profiles.body, templates.body, bankAppSignatures.body, auditEvents.body].join('\n')).not.toContain('raw notification');
   });
 
+  it('filters bank evidence audit traces without exposing raw evidence values', async () => {
+    const repository = buildAdminRepository({
+      auditEvents: [
+        {
+          auditEventId: 'aud_evidence_approved',
+          eventType: 'bank_evidence.approved_review_only',
+          objectType: 'bank_package_evidence',
+          objectId: 'bev_01',
+          actorType: 'operator',
+          actorId: 'ops_01',
+          payloadRedacted: {
+            evidence_id: 'bev_01',
+            package_name: 'ru.sberbankmobile',
+            cert_sha256_masked: 'fea43e...99a2ea',
+            reason: 'package_verified_for_review_only: reviewed <PHONE> <REFERENCE>',
+            trusted: false,
+            auto_confirm_enabled: false
+          },
+          createdAt: '2026-05-03T12:00:00.000Z'
+        },
+        {
+          auditEventId: 'aud_evidence_other',
+          eventType: 'bank_evidence.approved_review_only',
+          objectType: 'bank_package_evidence',
+          objectId: 'bev_02',
+          actorType: 'operator',
+          actorId: 'ops_02',
+          payloadRedacted: {
+            evidence_id: 'bev_02',
+            cert_sha256_masked: 'abcdef...123456',
+            trusted: false,
+            auto_confirm_enabled: false
+          },
+          createdAt: '2026-05-03T12:03:00.000Z'
+        }
+      ]
+    });
+    const server = buildTestServer(repository, { role: 'operator' });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/admin/audit-events?object_type=bank_package_evidence&object_id=bev_01&event_type=bank_evidence.approved_review_only&actor_id=ops_01&created_after=2026-05-03T11%3A59%3A00.000Z',
+      headers: adminHeaders()
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().audit_events).toHaveLength(1);
+    expect(response.json().audit_events[0]).toMatchObject({
+      auditEventId: 'aud_evidence_approved',
+      eventType: 'bank_evidence.approved_review_only',
+      objectType: 'bank_package_evidence',
+      objectId: 'bev_01',
+      actorId: 'ops_01',
+      payloadRedacted: {
+        cert_sha256_masked: 'fea43e...99a2ea',
+        trusted: false,
+        auto_confirm_enabled: false
+      }
+    });
+    expect(response.body).not.toContain('fea43e01fea43e01fea43e01fea43e01fea43e01fea43e01fea43e01fea43e01');
+    expect(response.body).not.toContain('+79991234567');
+    expect(response.body).not.toContain('raw notification');
+  });
+
   it('marks a template degraded and writes an operator audit event with redacted reason', async () => {
     const repository = buildAdminRepository();
     const server = buildTestServer(repository, { role: 'operator' });
@@ -505,6 +569,7 @@ function buildAdminRepository(
   overrides: {
     templates?: AdminTemplateSummary[] | undefined;
     bankAppSignatures?: ConstructorParameters<typeof InMemoryAdminRepository>[0]['bankAppSignatures'] | undefined;
+    auditEvents?: ConstructorParameters<typeof InMemoryAdminRepository>[0]['auditEvents'] | undefined;
     verifiedBankAppProfiles?: string[] | undefined;
   } = {}
 ): InMemoryAdminRepository {
@@ -567,7 +632,7 @@ function buildAdminRepository(
         firstSeenAt: '2026-05-02T10:00:00.000Z'
       }
     ],
-    auditEvents: [
+    auditEvents: overrides.auditEvents ?? [
       {
         auditEventId: 'aud_existing_01',
         eventType: AdminAuditEventTypes.TEMPLATE_DEGRADED,

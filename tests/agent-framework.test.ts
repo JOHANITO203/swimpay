@@ -33,17 +33,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4S evidence lifecycle tasks in the approved order', () => {
+  test('task queue lists Sprint 4T evidence lifecycle rehearsal tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '196_evidence_operator_review_dashboard_model',
-      '197_evidence_duplicate_and_latest_status_model',
-      '198_evidence_deprecation_and_cleanup_policy',
-      '199_evidence_review_action_reasons',
-      '200_evidence_admin_filtering_and_search',
-      '201_evidence_lifecycle_tests',
-      '202_sprint_4s_closeout_review'
+      '203_evidence_review_dashboard_api',
+      '204_evidence_audit_trace_filters',
+      '205_evidence_lifecycle_rehearsal_runbook',
+      '206_evidence_review_action_safety_copy',
+      '207_evidence_lifecycle_ui_api_tests',
+      '208_sprint_4t_validation_rehearsal',
+      '209_sprint_4t_closeout_review'
     ];
 
     let previousIndex = -1;

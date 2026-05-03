@@ -83,6 +83,7 @@ import {
   BankEvidenceStatuses,
   toBankEvidenceProductionTrustResponse,
   toBankEvidenceResponse,
+  toBankEvidenceReviewDashboardResponse,
   toBankEvidenceReviewResponse,
   toBankEvidenceSubmitResponse,
   validateBankEvidenceReviewBody,
@@ -951,6 +952,35 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return reply.status(200).send(toAdminListResponse('bank_evidence', evidence.map(toBankEvidenceResponse)));
   });
 
+  server.get('/v1/admin/bank-evidence/review-dashboard', async (request, reply) => {
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
+    }
+
+    if (!bankEvidenceRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Bank evidence repository is not configured.',
+          details: {}
+        }
+      });
+    }
+
+    const query = request.query as { limit?: string };
+    const evidence = await bankEvidenceRepository.listEvidence({
+      limit: parseAdminLimit(query.limit),
+      filters: {}
+    });
+    return reply.status(200).send(toBankEvidenceReviewDashboardResponse(evidence));
+  });
+
   server.get('/v1/admin/bank-evidence/:id', async (request, reply) => {
     const operator = requireAdminPermission({
       request,
@@ -1320,14 +1350,26 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply.status(503).send(adminRepositoryUnavailableError());
     }
 
-    const query = request.query as { limit?: string; event_type?: string; object_type?: string };
+    const query = request.query as {
+      limit?: string;
+      event_type?: string;
+      object_type?: string;
+      object_id?: string;
+      actor_id?: string;
+      created_after?: string;
+      created_before?: string;
+    };
     return reply.status(200).send(
       toAdminListResponse(
         'audit_events',
         await adminRepository.searchAuditEvents({
           limit: parseAdminLimit(query.limit),
           eventType: query.event_type,
-          objectType: query.object_type
+          objectType: query.object_type,
+          objectId: query.object_id,
+          actorId: query.actor_id,
+          createdAfter: query.created_after,
+          createdBefore: query.created_before
         })
       )
     );

@@ -82,6 +82,7 @@ List and inspect evidence:
 ```powershell
 Invoke-WebRequest -UseBasicParsing http://localhost:8080/v1/admin/bank-evidence -Headers $headers
 Invoke-WebRequest -UseBasicParsing http://localhost:8080/v1/admin/bank-evidence/<evidence-id> -Headers $headers
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/v1/admin/bank-evidence/review-dashboard -Headers $headers
 ```
 
 The list endpoint supports exact metadata filters for operator review:
@@ -172,6 +173,16 @@ Invoke-WebRequest -UseBasicParsing `
 ```
 
 Audit payloads must show masked certificate data only. They must not expose raw notification text, raw phone, secrets, API keys or private keys.
+
+Sprint 4T adds evidence trace filters for operator rehearsal:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing `
+  "http://localhost:8080/v1/admin/audit-events?object_type=bank_package_evidence&object_id=<evidence-id>&event_type=bank_evidence.approved_review_only&actor_id=<operator-id>&created_after=2026-05-03T00%3A00%3A00.000Z" `
+  -Headers $headers
+```
+
+Use these filters to prove that each evidence status transition has a redacted audit trace. Filtering audit traces must never reveal full raw cert hashes, notification text, phone values or secrets.
 
 ## Future Real Package/Cert Dry Run
 

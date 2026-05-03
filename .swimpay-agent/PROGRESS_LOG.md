@@ -1425,3 +1425,16 @@ Safety checks:
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps and API health.
 - Android Gradle validation was not run because Sprint 4S did not touch Android code.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust, auto-confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T12:35:24+03:00 - Sprint 4T Evidence Lifecycle UI/API Rehearsal and Admin Audit Visibility
+
+- Created tasks 203 through 209 and updated the task queue to Sprint 4T.
+- Added `GET /v1/admin/bank-evidence/review-dashboard` for operator evidence lifecycle rehearsal.
+- Dashboard responses include status counts, review queue, recent evidence, safe next actions and explicit safety flags.
+- Extended admin audit event search with `object_id`, `actor_id`, `created_after` and `created_before`.
+- Kept certificate hashes masked and audit/dashboard payloads free of raw phone, raw notification text, raw title/body, secrets and full certificate hashes.
+- Created `docs/BANK_EVIDENCE_LIFECYCLE_REHEARSAL.md` and updated the bank evidence operator runbook and security/privacy notes.
+- Added backend/API tests for dashboard and audit trace filtering plus Sprint 4T queue ordering.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps and API health.
+- Android Gradle validation was not run because Sprint 4T did not touch Android code.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust, auto-confirmation, raw phone or raw notification text was used.
