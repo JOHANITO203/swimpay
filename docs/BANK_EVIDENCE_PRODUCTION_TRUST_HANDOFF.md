@@ -101,6 +101,32 @@ This command runs an in-process local API with `ADMIN_AUTH_MODE=signed_token`, c
 
 The rehearsal proves the signed-token path without weakening local Compose `dev_token` defaults and without leaving metadata trust approved.
 
+## Signed Compose Rehearsal
+
+Sprint 4Y adds a local-only Docker Compose signed-token override and rehearsal wrapper:
+
+```powershell
+npm run rehearsal:evidence:compose-signed -- --plan
+```
+
+The override file is:
+
+```text
+infra/docker-compose.signed-admin.override.yml
+```
+
+It switches local API/web admin auth to `signed_token` and requires `ADMIN_TOKEN_HMAC_SECRET`. A mutating drill additionally requires:
+
+- `SWIMPAY_SIGNED_COMPOSE_HANDOFF=true`;
+- `SWIMPAY_ALLOW_PRODUCTION_TRUST_HANDOFF=true`;
+- `SWIMPAY_EVIDENCE_ID`;
+- `SWIMPAY_REQUESTER_TOKEN`;
+- `SWIMPAY_APPROVER_TOKEN`.
+
+Use the Compose signed-token drill only with local/dev evidence that is already `approved_for_review_only`. The drill must revoke metadata trust before closeout.
+
+See `docs/BANK_EVIDENCE_SIGNED_COMPOSE_HANDOFF_PLAYBOOK.md`.
+
 ## Audit Continuity
 
 Required events:

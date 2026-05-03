@@ -26,7 +26,8 @@ const requiredAgentFiles = [
   'scripts/local-backend-doctor.mjs',
   'scripts/evidence-lifecycle-rehearsal.mjs',
   'scripts/evidence-production-trust-handoff.mjs',
-  'scripts/operator-token-helper.mjs'
+  'scripts/operator-token-helper.mjs',
+  'scripts/evidence-production-trust-compose-signed-rehearsal.mjs'
 ];
 
 describe('local agent orchestration framework', () => {
@@ -36,18 +37,18 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4X signed operator handoff tasks in the approved order', () => {
+  test('task queue lists Sprint 4Y signed Compose handoff tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '233_signed_operator_token_helper',
-      '234_signed_token_local_api_rehearsal',
-      '235_dual_operator_handoff_execution',
-      '236_handoff_revocation_and_audit_verification',
-      '237_signed_operator_docs',
-      '238_signed_handoff_tests',
-      '239_sprint_4x_validation',
-      '240_sprint_4x_closeout_review'
+      '241_signed_token_compose_override',
+      '242_persisted_handoff_candidate_selection',
+      '243_signed_compose_handoff_rehearsal_script',
+      '244_production_trust_audit_playbook',
+      '245_signed_compose_handoff_tests',
+      '246_operational_handoff_docs',
+      '247_sprint_4y_validation',
+      '248_sprint_4y_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -87,5 +88,6 @@ describe('local agent orchestration framework', () => {
     expect(pkg.scripts['handoff:evidence-trust']).toBe('node scripts/evidence-production-trust-handoff.mjs');
     expect(pkg.scripts['operator:tokens']).toBe('node scripts/operator-token-helper.mjs');
     expect(pkg.scripts['rehearsal:evidence:signed']).toBe('vitest run tests/evidence-production-trust-signed-local-rehearsal.test.ts');
+    expect(pkg.scripts['rehearsal:evidence:compose-signed']).toBe('node scripts/evidence-production-trust-compose-signed-rehearsal.mjs');
   });
 });

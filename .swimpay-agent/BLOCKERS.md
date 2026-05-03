@@ -2,7 +2,14 @@
 
 No current critical blockers.
 
-Last checked after Sprint 4X signed operator token local rehearsal and production trust handoff execution: 2026-05-03T13:35:00+03:00.
+Last checked after Sprint 4Y signed-token Compose handoff retry: 2026-05-03T13:53:18+03:00.
+
+Resolved during Sprint 4Y retry:
+
+- Docker Desktop/WSL was restarted by the user.
+- Docker daemon, Compose service status and API health recovered.
+- The persisted signed-token Compose handoff rehearsal executed successfully.
+- Evidence `878ddd87-2e69-40b1-9cc7-da15d95a6b0b` ended `production_trust_revoked` with `trusted=false`, `production_trusted_app_metadata=false` and `auto_confirm_enabled=false`.
 
 Known non-critical limitations:
 
@@ -31,4 +38,5 @@ Known non-critical limitations:
 - Sprint 4V added a read-only `swimpay-web` operator evidence surface at `/admin/evidence-review`. It renders redacted dashboard/audit data only, does not expose full certificate hashes or raw PII, and cannot request/approve/revoke production trust.
 - Sprint 4W added `npm run handoff:evidence-trust` for production trust handoff rehearsal. Default mode is non-mutating; full live dual-operator approval requires signed operator tokens or another explicit two-operator local/dev setup because Compose `dev_token` mode represents one dev operator.
 - Sprint 4X added `npm run operator:tokens` and `npm run rehearsal:evidence:signed`. The signed-token handoff execution passed in an in-process local API with two signed operators and ended with metadata trust revoked. Compose remains `dev_token` by default; any persisted signed-token Compose drill should be explicit and local-only.
+- Sprint 4Y added a local-only signed-token Compose override, `npm run rehearsal:evidence:compose-signed` and an operational playbook. After Docker Desktop/WSL restart, the persisted signed-token Compose drill passed and ended with metadata trust revoked.
 - Real bank package/certificate verification and real bank notifications remain out of scope.

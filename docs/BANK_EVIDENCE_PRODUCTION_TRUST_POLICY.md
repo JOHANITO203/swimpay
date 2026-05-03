@@ -139,6 +139,8 @@ Do not weaken RBAC to fake a second operator. Compose `dev_token` mode represent
 
 Sprint 4X adds a signed-token local rehearsal. It uses the real `signed_token` authorization path with two distinct signed operators, then revokes the metadata trust after approval. This validates dual-control locally without changing production trust policy and without enabling auto-confirmation.
 
+Sprint 4Y adds a local-only signed-token Docker Compose override and operational playbook. It allows a deliberate persisted local handoff drill while keeping the same state machine, dual-control and revocation requirements. The default Compose file remains `dev_token`; signed-token Compose mode must be selected explicitly.
+
 ## Audit
 
 Required audit events:

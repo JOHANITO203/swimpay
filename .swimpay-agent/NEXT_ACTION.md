@@ -1,35 +1,45 @@
 # Next Action
 
-generated_at: 2026-05-03T13:35:00+03:00
+generated_at: 2026-05-03T13:53:18+03:00
 
-## Latest Completed Sprint
+## Latest Sprint
 
-Sprint 4X - Signed operator token local rehearsal and production trust handoff execution.
+Sprint 4Y - Signed-token Compose handoff rehearsal and production trust operational playbook.
 
 ## Status
 
 PASS.
 
-The production trust handoff now has a signed-token local rehearsal path:
+Sprint 4Y implementation is present:
 
-- `npm run operator:tokens -- --masked`
-- `npm run rehearsal:evidence:signed`
+- `infra/docker-compose.signed-admin.override.yml`
+- `npm run rehearsal:evidence:compose-signed`
+- `docs/BANK_EVIDENCE_SIGNED_COMPOSE_HANDOFF_PLAYBOOK.md`
 
-The rehearsal uses real signed-token admin authorization with distinct operator identities. It requests production trust, verifies same-actor approval is blocked, approves with a second signed operator, revokes after the drill and verifies redacted audit continuity.
+The deterministic tests pass, the signed Compose plan works and the persisted live Compose handoff has now run successfully after Docker Desktop/WSL was restarted.
 
-Auto-confirmation remains disabled. The final drill evidence state is revoked, not production-trusted.
+Evidence `878ddd87-2e69-40b1-9cc7-da15d95a6b0b` completed the full drill:
 
-## Next Recommended Sprint
+- review-only setup;
+- production trust request by `ops_requester`;
+- same-actor approval blocked;
+- second-operator approval by `ops_approver`;
+- metadata trust revoked;
+- audit continuity verified;
+- final `trusted=false`, `production_trusted_app_metadata=false`, `auto_confirm_enabled=false`.
 
-Sprint 4Y - Signed-token Compose handoff rehearsal and production trust operational playbook.
+## Next Recommended Action
 
-Recommended tasks:
+Proceed to operator handoff packaging or a production-readiness review sprint.
 
-1. Add a deliberate local-only Compose override or runbook for `ADMIN_AUTH_MODE=signed_token`.
-2. Run the same dual-operator handoff against persisted local Postgres evidence only after explicitly selecting review-only evidence.
-3. Verify persisted audit continuity through `/v1/admin/audit-events`.
-4. Revoke metadata trust at the end of the drill.
-5. Document operator handoff acceptance criteria before any future production trust operation.
+Recommended checks before any future handoff drill:
+
+1. `docker ps`
+2. `docker compose --env-file .env.example -f infra/docker-compose.yml ps`
+3. `Invoke-WebRequest -UseBasicParsing http://localhost:8080/api-health`
+4. `npm run rehearsal:evidence:compose-signed -- --plan`
+
+Any future mutating drill must again end with production trust revoked and audit continuity verified.
 
 ## What Not To Do Next
 
@@ -43,3 +53,4 @@ Recommended tasks:
 - Do not add Android auto-confirmation.
 - Do not treat review-only evidence as production trust.
 - Do not leave rehearsal production trust approved after a drill.
+- Do not process real bank notifications before explicit future authorization and readiness review.

@@ -241,6 +241,16 @@ The signed-token rehearsal still keeps:
 - no payment confirmation wording;
 - no production deployment.
 
+Sprint 4Y adds a signed-token Compose playbook and wrapper:
+
+```powershell
+npm run rehearsal:evidence:compose-signed -- --plan
+```
+
+For a full local persisted drill, start Compose with `infra/docker-compose.signed-admin.override.yml`, set explicit signed requester/approver tokens and run `npm run rehearsal:evidence:compose-signed`. This path is local-only and must revoke production metadata trust before closeout.
+
+See `docs/BANK_EVIDENCE_SIGNED_COMPOSE_HANDOFF_PLAYBOOK.md`.
+
 ## Future Real Package/Cert Dry Run
 
 Real evidence collection must be explicit:

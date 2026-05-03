@@ -1492,3 +1492,32 @@ Safety checks:
 - Updated production trust handoff, operator runbook, production trust policy and security/privacy docs.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, signed-token rehearsal, Android assembleDebug after exporting `ANDROID_HOME`, Android JVM tests and `git diff --check`.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, production deployment, persistent production trust, auto-confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T13:39:27+03:00 - Sprint 4Y Signed-token Compose Handoff Rehearsal and Production Trust Operational Playbook
+
+- Created tasks 241 through 248 and updated the task queue to Sprint 4Y.
+- Added `infra/docker-compose.signed-admin.override.yml` for local-only signed-token Compose rehearsal.
+- Added `scripts/evidence-production-trust-compose-signed-rehearsal.mjs` and `npm run rehearsal:evidence:compose-signed`.
+- Added guarded plan and execution behavior requiring signed requester/approver tokens, `SWIMPAY_SIGNED_COMPOSE_HANDOFF=true` and `SWIMPAY_ALLOW_PRODUCTION_TRUST_HANDOFF=true`.
+- Added `docs/BANK_EVIDENCE_SIGNED_COMPOSE_HANDOFF_PLAYBOOK.md` and updated the production trust handoff, operator runbook, production trust policy and security/privacy docs.
+- Added tests for signed Compose plan output, missing guard behavior, fake signed Compose handoff delegation and Sprint 4Y queue/script wiring.
+- Deterministic validation passed: targeted tests, signed Compose plan, signed Compose override config, android doctor, typecheck, lint, full npm test suite, build and `git diff --check`.
+- Docker Compose service status and API health failed after Docker Desktop/WSL daemon errors during the signed-token Compose startup attempt.
+- Persisted live signed Compose handoff execution is blocked until Docker Desktop/WSL is healthy again.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production deployment, unreverted production trust, auto-confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T13:53:18+03:00 - Sprint 4Y Docker Retry and Signed Compose Handoff Execution
+
+- User restarted Docker Desktop/WSL and requested a retry.
+- Verified Docker daemon, Docker info, Compose version and running containers.
+- Verified base Compose service status and `http://localhost:8080/api-health` returned HTTP 200.
+- Switched local Compose API/Web to signed-token mode with `infra/docker-compose.signed-admin.override.yml` and no image rebuild.
+- Verified API/Web had `ADMIN_AUTH_MODE=signed_token`, local HMAC secret set and dev-token env values blank.
+- Generated local signed requester and approver tokens from `scripts/operator-token-helper.mjs`.
+- Verified evidence `878ddd87-2e69-40b1-9cc7-da15d95a6b0b` was `pending_operator_review`.
+- Approved it review-only with signed admin token; result stayed `trusted=false` and `auto_confirm_enabled=false`.
+- Ran `npm run rehearsal:evidence:compose-signed`; result passed with `mode=signed_compose_dual_operator_drill`.
+- Verified final evidence state is `production_trust_revoked`, `trusted=false`, `production_trusted_app_metadata=false` and `auto_confirm_enabled=false`.
+- Verified audit contains review-only approval, production trust request, production trust approval and production trust revocation with masked cert hash.
+- Restored base Compose `dev_token` mode for local development.
+- Final base Compose service status and API health passed.
