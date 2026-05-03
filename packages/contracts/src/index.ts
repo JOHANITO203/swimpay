@@ -38,6 +38,205 @@ export const PaymentSessionStatuses = [
 
 export type PaymentSessionStatus = (typeof PaymentSessionStatuses)[number];
 
+export const CheckoutSessionStates = [
+  'receiver_bank_selection',
+  'payer_bank_launcher_selection',
+  'payment_instructions',
+  'awaiting_payment',
+  'buyer_claimed_paid',
+  'signal_detected',
+  'needs_review',
+  'confirmed',
+  'expired',
+  'rejected'
+] as const;
+
+export type CheckoutSessionState = (typeof CheckoutSessionStates)[number];
+
+export const BuyerSafeCheckoutStatuses = [
+  'awaiting_payment',
+  'searching_signal',
+  'signal_detected',
+  'needs_review',
+  'confirmed',
+  'expired',
+  'not_validated'
+] as const;
+
+export type BuyerSafeCheckoutStatus = (typeof BuyerSafeCheckoutStatuses)[number];
+
+export type ReceiverBankBuyerStatus = 'available' | 'review_required_beta' | 'temporarily_unavailable';
+
+export interface ReceiverBankOption {
+  receiver_bank_id: string;
+  bank_profile_id: string;
+  display_name: string;
+  status: ReceiverBankBuyerStatus;
+  review_only: boolean;
+  detection_supported: boolean;
+  merchant_receiver_account_id: string | null;
+  beta_ready: boolean;
+  disabled_reason: string | null;
+  auto_confirm_enabled: false;
+  official_bank_confirmation: false;
+}
+
+export type PayerBankLaunchStrategy = 'package_hint_only' | 'manual_only';
+export type PayerBankFallbackStrategy = 'copy_details_manual_transfer';
+
+export interface PayerBankLauncherOption {
+  payer_bank_launcher_id: string;
+  display_name: string;
+  country: 'RU';
+  android_package_candidates: readonly string[];
+  android_package_hint: string | null;
+  deeplink_schemes: readonly string[];
+  launch_url: string | null;
+  launch_strategy: PayerBankLaunchStrategy;
+  fallback_strategy: PayerBankFallbackStrategy;
+  enabled: boolean;
+  detection_supported: false;
+  does_not_confirm_payment: true;
+  official_bank_confirmation: false;
+}
+
+export const V1ReceiverBankOptions: readonly ReceiverBankOption[] = [
+  receiverBank('sber_ru', 'Sberbank'),
+  receiverBank('tbank_ru', 'Tinkoff / T-Bank'),
+  receiverBank('vtb_ru', 'VTB'),
+  receiverBank('alfa_ru', 'Alfa-Bank'),
+  receiverBank('gazprombank_ru', 'Gazprombank')
+] as const;
+
+export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
+  payerLauncher('sberbank_ru', 'Sberbank', ['ru.sberbankmobile']),
+  payerLauncher('tbank_ru', 'T-Bank', ['com.idamob.tinkoff.android']),
+  payerLauncher('vtb_ru', 'VTB', ['ru.vtb24.mobilebanking.android']),
+  payerLauncher('alfa_ru', 'Alfa-Bank', ['ru.alfabank.mobile.android']),
+  payerLauncher('gazprombank_ru', 'Gazprombank', ['ru.gazprombank.android.mobilebank.app']),
+  payerLauncher('yoomoney_ru', 'YooMoney', []),
+  payerLauncher('ozon_bank_ru', 'Ozon Bank', []),
+  payerLauncher('mts_bank_ru', 'MTS Bank', []),
+  payerLauncher('post_bank_ru', 'Post Bank', []),
+  payerLauncher('raiffeisen_ru', 'Raiffeisen', []),
+  payerLauncher('other_manual', 'Other bank / manual transfer', [], 'manual_only')
+] as const;
+
+export interface CheckoutStateInput {
+  paymentSessionStatus: PaymentSessionStatus;
+  selectedReceiverBankId?: string | null | undefined;
+  selectedPayerBankLauncherId?: string | null | undefined;
+  paymentInstructionsShownAt?: string | null | undefined;
+}
+
+export function getReceiverBankOption(receiverBankId: string): ReceiverBankOption | null {
+  return V1ReceiverBankOptions.find((bank) => bank.receiver_bank_id === receiverBankId) ?? null;
+}
+
+export function getPayerBankLauncherOption(payerBankLauncherId: string): PayerBankLauncherOption | null {
+  return PayerBankLauncherRegistry.find((launcher) => launcher.payer_bank_launcher_id === payerBankLauncherId) ?? null;
+}
+
+export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): CheckoutSessionState {
+  switch (input.paymentSessionStatus) {
+    case 'auto_confirmed':
+    case 'manual_confirmed':
+      return 'confirmed';
+    case 'expired':
+      return 'expired';
+    case 'rejected':
+      return 'rejected';
+    case 'needs_review':
+      return 'needs_review';
+    case 'signal_detected':
+    case 'matching':
+      return 'signal_detected';
+    case 'buyer_claimed_paid':
+      return 'buyer_claimed_paid';
+    case 'awaiting_payment':
+      return 'awaiting_payment';
+    case 'created':
+    case 'receiver_arming':
+    case 'receiver_armed':
+      if (!input.selectedReceiverBankId) {
+        return 'receiver_bank_selection';
+      }
+      if (!input.selectedPayerBankLauncherId) {
+        return 'payer_bank_launcher_selection';
+      }
+      if (!input.paymentInstructionsShownAt) {
+        return 'payment_instructions';
+      }
+      return 'awaiting_payment';
+  }
+}
+
+export function mapCheckoutStateToBuyerSafeStatus(state: CheckoutSessionState): BuyerSafeCheckoutStatus {
+  switch (state) {
+    case 'receiver_bank_selection':
+    case 'payer_bank_launcher_selection':
+      return 'not_validated';
+    case 'payment_instructions':
+    case 'awaiting_payment':
+      return 'awaiting_payment';
+    case 'buyer_claimed_paid':
+      return 'searching_signal';
+    case 'signal_detected':
+      return 'signal_detected';
+    case 'needs_review':
+      return 'needs_review';
+    case 'confirmed':
+      return 'confirmed';
+    case 'expired':
+      return 'expired';
+    case 'rejected':
+      return 'not_validated';
+  }
+}
+
+export function isCheckoutStatePaymentConfirming(state: CheckoutSessionState): boolean {
+  return state === 'confirmed';
+}
+
+function receiverBank(bankProfileId: string, displayName: string): ReceiverBankOption {
+  return {
+    receiver_bank_id: bankProfileId,
+    bank_profile_id: bankProfileId,
+    display_name: displayName,
+    status: 'review_required_beta',
+    review_only: true,
+    detection_supported: true,
+    merchant_receiver_account_id: null,
+    beta_ready: true,
+    disabled_reason: null,
+    auto_confirm_enabled: false,
+    official_bank_confirmation: false
+  };
+}
+
+function payerLauncher(
+  payerBankLauncherId: string,
+  displayName: string,
+  androidPackageCandidates: readonly string[],
+  launchStrategy: PayerBankLaunchStrategy = androidPackageCandidates.length > 0 ? 'package_hint_only' : 'manual_only'
+): PayerBankLauncherOption {
+  return {
+    payer_bank_launcher_id: payerBankLauncherId,
+    display_name: displayName,
+    country: 'RU',
+    android_package_candidates: androidPackageCandidates,
+    android_package_hint: androidPackageCandidates[0] ?? null,
+    deeplink_schemes: [],
+    launch_url: null,
+    launch_strategy: launchStrategy,
+    fallback_strategy: 'copy_details_manual_transfer',
+    enabled: true,
+    detection_supported: false,
+    does_not_confirm_payment: true,
+    official_bank_confirmation: false
+  };
+}
+
 export const BankProfileStatuses = [
   'learning',
   'shadow_testing',

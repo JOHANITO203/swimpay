@@ -129,14 +129,19 @@ describe('Sprint 6D private beta review queue and webhook rehearsal', () => {
         scenario.expected_order_status_before_review
       );
       expect(repository.orders.get(fixtures.order_fixture.order_id)?.status).not.toBe('auto_confirmed');
-      expect(repository.webhookEvents[0]).toMatchObject({
+      expect(repository.webhookEvents.map((event) => event.type)).toEqual([
+        'payment.signal_detected',
+        'payment.needs_review'
+      ]);
+      const needsReviewWebhook = repository.webhookEvents.find((event) => event.type === 'payment.needs_review');
+      expect(needsReviewWebhook).toMatchObject({
         type: 'payment.needs_review',
         data: {
           official_bank_confirmation: false,
           confirmation_type: 'notification_signal'
         }
       });
-      expect(JSON.stringify(repository.webhookEvents[0]?.data)).not.toContain('raw_notification_text');
+      expect(JSON.stringify(needsReviewWebhook?.data)).not.toContain('raw_notification_text');
     }
   });
 

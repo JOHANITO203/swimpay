@@ -126,7 +126,11 @@ describe('durable worker e2e tests', () => {
       expect.arrayContaining(['bank_profile_untrusted', 'bank_app_unverified'])
     );
     expect(runtime.repository.orders.get('ord_e2e_01')?.status).not.toBe('auto_confirmed');
-    expect(runtime.repository.webhookEvents[0]).toMatchObject({
+    expect(runtime.repository.webhookEvents.map((event) => event.type)).toEqual([
+      'payment.signal_detected',
+      'payment.needs_review'
+    ]);
+    expect(runtime.repository.webhookEvents.find((event) => event.type === 'payment.needs_review')).toMatchObject({
       type: 'payment.needs_review',
       data: {
         confirmation_type: 'notification_signal',
@@ -304,7 +308,10 @@ describe('durable worker e2e tests', () => {
 
     await collision.processor.processSignalReceived({ signalId: 'sig_e2e_01' });
     expect(collision.repository.reviews).toHaveLength(1);
-    expect(collision.repository.webhookEvents).toHaveLength(1);
+    expect(collision.repository.webhookEvents.map((event) => event.type)).toEqual([
+      'payment.signal_detected',
+      'payment.needs_review'
+    ]);
     expect(collision.repository.matches).toHaveLength(1);
 
     const duplicateApi = createApiHarness();

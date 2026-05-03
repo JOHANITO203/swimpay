@@ -62,6 +62,35 @@ describe('webhook worker foundation', () => {
     });
   });
 
+  it('delivers signal-detected webhooks without implying payment confirmation', async () => {
+    const repository = new InMemoryWebhookRepository({
+      deliveryId: () => 'del_signal_detected'
+    });
+    repository.endpoints.push(activeEndpoint());
+    const httpClient = new FakeWebhookHttpClient([{ status: 200 }]);
+    const worker = new WebhookDeliveryWorker({ repository, httpClient });
+    const event = createPaymentWebhookEvent({
+      eventId: 'evt_signal_detected',
+      type: 'payment.signal_detected',
+      createdAt: '2026-05-02T10:00:00.000Z',
+      merchantId: 'mch_01',
+      data: {
+        order_id: 'ord_01',
+        payment_session_id: 'ps_01',
+        signal_id: 'sig_01',
+        decision: 'needs_review'
+      }
+    });
+
+    await worker.enqueueEvent(event);
+    await worker.deliverDue('2026-05-02T10:00:00.000Z');
+
+    expect(repository.deliveries[0]?.status).toBe('delivered');
+    expect(httpClient.requests[0]?.body).toContain('"type":"payment.signal_detected"');
+    expect(httpClient.requests[0]?.body).toContain('"confirmation_type":"notification_signal"');
+    expect(httpClient.requests[0]?.body).toContain('"official_bank_confirmation":false');
+  });
+
   it('signs payloads with required SwimPay headers', () => {
     const payload = JSON.stringify({ id: 'evt_01', type: 'payment.needs_review' });
     const timestamp = '2026-05-02T10:00:00.000Z';
@@ -279,7 +308,7 @@ function activeEndpoint(): WebhookEndpoint {
     merchantId: 'mch_01',
     url: 'https://merchant.example/swimpay',
     secret: 'whsec_test',
-    enabledEvents: ['payment.confirmed', 'payment.needs_review', 'payment.rejected'],
+    enabledEvents: ['payment.signal_detected', 'payment.confirmed', 'payment.needs_review', 'payment.rejected'],
     status: 'active'
   };
 }

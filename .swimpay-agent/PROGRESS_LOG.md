@@ -1,5 +1,16 @@
 # Progress Log
 
+## 2026-05-03T16:45:40+03:00 - Sprint 7A Agent 5 QA/docs/safety scaffolding
+
+- Created tasks 340 through 349 and updated the task queue to Sprint 7A order.
+- Created `docs/DEVELOPER_PLUGIN_INTEGRATION.md` with developer checkout/webhook guidance.
+- Documented receiver banks as merchant-side receiving banks and payer bank launchers as buyer-side UX helpers only.
+- Documented that payer launcher selection does not prove payment, does not alter matching trust and does not enable confirmation.
+- Documented public webhook disclosure with `confirmation_type=notification_signal` and `official_bank_confirmation=false`.
+- Created `.swimpay-agent/SPRINT_7A_REPORT.md` and updated `.swimpay-agent/NEXT_ACTION.md` and `.swimpay-agent/BLOCKERS.md`.
+- No code files were edited by Agent 5.
+- No real bank notification, customer data, SMS, bank app scraping, broad installed-app enumeration, raw phone, raw notification text, production trust request/approval or auto-confirmation was used.
+
 ## 2026-05-02 - Task 029 durable worker E2E tests
 
 Plan:
@@ -1625,3 +1636,18 @@ Safety checks:
 - Updated private beta go/no-go criteria for real-notification shadow readiness.
 - Added `tests/real-notification-shadow-readiness.test.ts`.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust request/approval, raw phone, raw notification text or auto-confirmation was used.
+
+## 2026-05-03T17:16:00+03:00 - Sprint 7A PSP-like Checkout Bank Selection Flow
+
+- Created tasks 340 through 349 and updated the task queue to Sprint 7A.
+- Added checkout contracts for receiver-bank options, payer-bank launchers, checkout states and buyer-safe statuses.
+- Added five V1 receiver banks as review-only detection options with `auto_confirm_enabled=false`.
+- Added payer launchers as UX-only options with manual/copy fallback and no payment-proof semantics.
+- Added additive migration `006_checkout_bank_selection.sql` for checkout selections and buyer action timestamps on `payment_sessions`.
+- Added checkout APIs for receiver-bank selection, payer-launcher selection, payment instructions, buyer claimed paid and buyer-safe status polling.
+- Updated hosted checkout to a mobile-first multi-step Pay with SwimPay flow with safe wording: `SwimPay recherchera le signal de paiement côté marchand.`
+- Runtime now emits `payment.signal_detected` before `payment.needs_review` for matched review-only signals; both retain `official_bank_confirmation=false` and `confirmation_type=notification_signal`.
+- Created `docs/SWIMPAY_CHECKOUT_BANK_SELECTION_FLOW.md` and updated developer plugin/private beta docs.
+- Added contract, API, web, runtime, webhook and synthetic PSP-like checkout E2E tests.
+- Full validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps and API health.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, SBP, official bank confirmation claim, raw phone, raw notification text or real-bank auto-confirmation was used.

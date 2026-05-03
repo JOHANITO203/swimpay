@@ -10,6 +10,7 @@ import {
   type HealthSnapshot,
   type MetricsRegistry
 } from '@swimpay/observability';
+import { getPayerBankLauncherOption, getReceiverBankOption } from '@swimpay/contracts';
 import {
   createFastifyLoggerOptions,
   hasOperatorPermission,
@@ -32,9 +33,18 @@ import {
   type OrderCreateResponse,
   type OrderReadResponse,
   type OrderRepository,
-  type StoredOrderRecord
+  type StoredOrderRecord,
+  type StoredPaymentSessionRecord
 } from './orders.js';
-import { toPaymentSessionReadResponse } from './payment-sessions.js';
+import {
+  buildCheckoutActionResponse,
+  buildPayerBankLauncherSelectionResponse,
+  buildReceiverBankSelectionResponse,
+  toCheckoutStatusResponse,
+  toPayerBankLaunchersResponse,
+  toPaymentSessionReadResponse,
+  toReceiverBanksResponse
+} from './payment-sessions.js';
 import {
   buildReceiverHeartbeatResponse,
   buildReceiverDeviceCreateInput,
@@ -400,6 +410,134 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       toPaymentSessionReadResponse({
         order: result.order,
         paymentSession: result.paymentSession,
+        now: clock()
+      })
+    );
+  });
+
+  server.get('/v1/checkout/:id/receiver-banks', async (request, reply) => {
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
+    }
+
+    return reply.status(200).send(toReceiverBanksResponse(loaded.paymentSession));
+  });
+
+  server.post('/v1/checkout/:id/receiver-bank', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
+    }
+    const body = request.body as { receiver_bank_id?: unknown } | undefined;
+    if (typeof body?.receiver_bank_id !== 'string') {
+      return reply.status(400).send(invalidRequest('receiver_bank_id is required.', {}));
+    }
+    const receiverBank = getReceiverBankOption(body.receiver_bank_id);
+    if (!receiverBank) {
+      return reply.status(400).send(invalidRequest('receiver_bank_id is not supported for this checkout.', {
+        receiver_bank_id: body.receiver_bank_id
+      }));
+    }
+
+    const result = await repository.selectReceiverBank({
+      merchantId,
+      paymentSessionId: params.id,
+      receiverBankId: receiverBank.receiver_bank_id,
+      bankProfileId: receiverBank.bank_profile_id,
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    return sendCheckoutMutationResult(reply, result, (updated) =>
+      buildReceiverBankSelectionResponse({ ...updated, now: clock() })
+    );
+  });
+
+  server.get('/v1/checkout/:id/payer-bank-launchers', async (request, reply) => {
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
+    }
+
+    return reply.status(200).send(toPayerBankLaunchersResponse(loaded.paymentSession));
+  });
+
+  server.post('/v1/checkout/:id/payer-bank-launcher', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
+    }
+    const body = request.body as { payer_bank_launcher_id?: unknown } | undefined;
+    if (typeof body?.payer_bank_launcher_id !== 'string') {
+      return reply.status(400).send(invalidRequest('payer_bank_launcher_id is required.', {}));
+    }
+    const launcher = getPayerBankLauncherOption(body.payer_bank_launcher_id);
+    if (!launcher) {
+      return reply.status(400).send(invalidRequest('payer_bank_launcher_id is not supported for this checkout.', {
+        payer_bank_launcher_id: body.payer_bank_launcher_id
+      }));
+    }
+
+    const result = await repository.selectPayerBankLauncher({
+      merchantId,
+      paymentSessionId: params.id,
+      payerBankLauncherId: launcher.payer_bank_launcher_id,
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    return sendCheckoutMutationResult(reply, result, (updated) =>
+      buildPayerBankLauncherSelectionResponse({ ...updated, now: clock() })
+    );
+  });
+
+  server.post('/v1/checkout/:id/payment-instructions-shown', async (request, reply) => {
+    const result = await mutateSimpleCheckoutAction({ request, reply, repository, idGenerator, clock, action: 'instructions' });
+    if (!result) {
+      return reply;
+    }
+    return reply.status(200).send(buildCheckoutActionResponse({ ...result, now: clock() }));
+  });
+
+  server.post('/v1/checkout/:id/claimed-paid', async (request, reply) => {
+    const result = await mutateSimpleCheckoutAction({ request, reply, repository, idGenerator, clock, action: 'claimed_paid' });
+    if (!result) {
+      return reply;
+    }
+    return reply.status(202).send(buildCheckoutActionResponse({ ...result, now: clock(), buyerClaimedPaid: true }));
+  });
+
+  server.get('/v1/checkout/:id/status', async (request, reply) => {
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
+    }
+
+    return reply.status(200).send(
+      toCheckoutStatusResponse({
+        order: loaded.order,
+        paymentSession: loaded.paymentSession,
         now: clock()
       })
     );
@@ -1430,6 +1568,143 @@ function createDefaultBankEvidenceRepository(env: NodeJS.ProcessEnv): BankEviden
   }
 
   return new PgBankEvidenceRepository(databaseUrl);
+}
+
+async function loadCheckoutSession(params: {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  repository: OrderRepository | null;
+}): Promise<{ order: StoredOrderRecord; paymentSession: StoredPaymentSessionRecord } | null> {
+  const merchantId = parseMerchantId(params.request.headers.authorization);
+  if (!merchantId) {
+    params.reply.status(401).send(
+      invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+        authorization: 'Bearer test_<merchant_id>'
+      })
+    );
+    return null;
+  }
+  if (!params.repository) {
+    params.reply.status(503).send(orderRepositoryUnavailableError());
+    return null;
+  }
+  const routeParams = params.request.params as { id?: string };
+  if (!routeParams.id) {
+    params.reply.status(400).send(invalidRequest('Payment session id is required.', {}));
+    return null;
+  }
+
+  const result = await params.repository.getPaymentSessionById(merchantId, routeParams.id);
+  if (!result) {
+    params.reply.status(404).send({
+      error: {
+        code: 'not_found',
+        message: 'Payment session was not found.',
+        details: { payment_session_id: routeParams.id }
+      }
+    });
+    return null;
+  }
+
+  return result;
+}
+
+async function mutateSimpleCheckoutAction(params: {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  repository: OrderRepository | null;
+  idGenerator: IdGenerator;
+  clock: () => Date;
+  action: 'instructions' | 'claimed_paid';
+}) {
+  const merchantId = parseMerchantId(params.request.headers.authorization);
+  if (!merchantId) {
+    params.reply.status(401).send(
+      invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+        authorization: 'Bearer test_<merchant_id>'
+      })
+    );
+    return null;
+  }
+  if (!params.repository) {
+    params.reply.status(503).send(orderRepositoryUnavailableError());
+    return null;
+  }
+  const routeParams = params.request.params as { id?: string };
+  if (!routeParams.id) {
+    params.reply.status(400).send(invalidRequest('Payment session id is required.', {}));
+    return null;
+  }
+
+  const input = {
+    merchantId,
+    paymentSessionId: routeParams.id,
+    auditEventId: params.idGenerator.auditEventId(),
+    now: params.clock().toISOString()
+  };
+  const result =
+    params.action === 'instructions'
+      ? await params.repository.markPaymentInstructionsShown(input)
+      : await params.repository.markBuyerClaimedPaid(input);
+  switch (result.kind) {
+    case 'updated':
+      return result;
+    case 'not_found':
+      params.reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Payment session was not found.',
+          details: {}
+        }
+      });
+      return null;
+    case 'expired':
+      params.reply.status(409).send({
+        error: {
+          code: 'checkout_session_expired',
+          message: 'Checkout session is expired.',
+          details: {}
+        }
+      });
+      return null;
+  }
+}
+
+function sendCheckoutMutationResult<T>(
+  reply: FastifyReply,
+  result: Awaited<ReturnType<OrderRepository['selectReceiverBank']>>,
+  mapUpdated: (updated: { kind: 'updated'; order: StoredOrderRecord; paymentSession: StoredPaymentSessionRecord }) => T
+) {
+  switch (result.kind) {
+    case 'updated':
+      return mapUpdated(result);
+    case 'not_found':
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Payment session was not found.',
+          details: {}
+        }
+      });
+    case 'expired':
+      return reply.status(409).send({
+        error: {
+          code: 'checkout_session_expired',
+          message: 'Checkout session is expired.',
+          details: {}
+        }
+      });
+  }
+}
+
+function orderRepositoryUnavailableError() {
+  return {
+    error: {
+      code: 'service_unavailable',
+      message: 'Order repository is not configured.',
+      details: {}
+    }
+  };
 }
 
 function parseBankEvidenceListFilters(query: {

@@ -404,6 +404,9 @@ export class SignalRuntimeProcessor {
       result,
       review
     });
+    if (input.selected) {
+      await this.createWebhookRequest('payment.signal_detected', input.signal, input.now, result);
+    }
     await this.emitRuntimeEvent(EventTypes.DECISION_NEEDS_REVIEW, input.signal, input.now, {
       signal_id: input.signal.id,
       order_id: input.selected?.orderId,
@@ -697,7 +700,9 @@ export class InMemorySignalRuntimeRepository implements SignalRuntimeRepository 
   }
 
   public async requestWebhookDelivery(event: SignalRuntimeWebhookEvent): Promise<{ created: number; skippedDuplicates: number }> {
-    const existing = this.webhookEvents.find((item) => item.id === event.id || item.data.signal_id === event.data.signal_id);
+    const existing = this.webhookEvents.find(
+      (item) => item.id === event.id || (item.type === event.type && item.data.signal_id === event.data.signal_id)
+    );
     if (existing) {
       return { created: 0, skippedDuplicates: 1 };
     }

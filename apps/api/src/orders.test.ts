@@ -56,6 +56,59 @@ class InMemoryOrderRepository implements OrderRepository {
     const order = this.orders.get(paymentSession.orderId);
     return order ? { order, paymentSession } : null;
   }
+
+  async selectReceiverBank(input: Parameters<OrderRepository['selectReceiverBank']>[0]) {
+    const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
+    if ('kind' in found) {
+      return found;
+    }
+    found.paymentSession.selectedReceiverBankId = input.receiverBankId;
+    found.paymentSession.selectedReceiverBankProfileId = input.bankProfileId;
+    found.paymentSession.selectedPayerBankLauncherId = undefined;
+    found.paymentSession.paymentInstructionsShownAt = undefined;
+    return { kind: 'updated' as const, ...found };
+  }
+
+  async selectPayerBankLauncher(input: Parameters<OrderRepository['selectPayerBankLauncher']>[0]) {
+    const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
+    if ('kind' in found) {
+      return found;
+    }
+    found.paymentSession.selectedPayerBankLauncherId = input.payerBankLauncherId;
+    found.paymentSession.paymentInstructionsShownAt = undefined;
+    return { kind: 'updated' as const, ...found };
+  }
+
+  async markPaymentInstructionsShown(input: Parameters<OrderRepository['markPaymentInstructionsShown']>[0]) {
+    const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
+    if ('kind' in found) {
+      return found;
+    }
+    found.paymentSession.status = 'awaiting_payment';
+    found.paymentSession.paymentInstructionsShownAt = input.now;
+    return { kind: 'updated' as const, ...found };
+  }
+
+  async markBuyerClaimedPaid(input: Parameters<OrderRepository['markBuyerClaimedPaid']>[0]) {
+    const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
+    if ('kind' in found) {
+      return found;
+    }
+    found.paymentSession.status = 'buyer_claimed_paid';
+    found.paymentSession.buyerClaimedPaidAt = input.now;
+    return { kind: 'updated' as const, ...found };
+  }
+
+  private async requireMutablePaymentSession(merchantId: string, paymentSessionId: string) {
+    const found = await this.getPaymentSessionById(merchantId, paymentSessionId);
+    if (!found) {
+      return { kind: 'not_found' as const };
+    }
+    if (found.paymentSession.status === 'expired') {
+      return { kind: 'expired' as const };
+    }
+    return found;
+  }
 }
 
 function buildTestServer(repository: InMemoryOrderRepository, metrics?: InMemoryMetricsRegistry) {

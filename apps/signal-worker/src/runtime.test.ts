@@ -111,13 +111,33 @@ describe('signal runtime processor', () => {
     expect(repository.reviews).toHaveLength(1);
     expect(repository.reviews[0]?.reasonCodes).toContain('bank_profile_untrusted');
     expect(repository.reviews[0]?.reasonCodes).toContain('bank_app_unverified');
-    expect(repository.webhookEvents[0]?.type).toBe('payment.needs_review');
-    expect(repository.webhookEvents[0]?.data.official_bank_confirmation).toBe(false);
-    expect(repository.webhookEvents[0]?.data.confirmation_type).toBe('notification_signal');
+    const needsReviewWebhook = repository.webhookEvents.find((event) => event.type === 'payment.needs_review');
+    expect(needsReviewWebhook?.data.official_bank_confirmation).toBe(false);
+    expect(needsReviewWebhook?.data.confirmation_type).toBe('notification_signal');
     expect(metrics.counterValue(MetricNames.SIGNALS_PARSED_TOTAL)).toBe(1);
     expect(metrics.counterValue(MetricNames.SIGNALS_NEEDS_REVIEW_TOTAL)).toBe(1);
     expect(metrics.counterValue(MetricNames.REVIEWS_CREATED_TOTAL)).toBe(1);
     expect(metrics.counterValue(MetricNames.UNTRUSTED_BANK_REVIEW_TOTAL)).toBe(1);
+  });
+
+  it('emits signal detected before review webhook for matched review-only signals', async () => {
+    const { processor, repository } = createProcessor({ trustContext: toVerifyContext });
+
+    await processor.processSignalReceived({ signalId: 'sig_01', eventId: 'bank_evt_01' });
+
+    expect(repository.webhookEvents.map((event) => event.type)).toEqual([
+      'payment.signal_detected',
+      'payment.needs_review'
+    ]);
+    for (const event of repository.webhookEvents) {
+      expect(event.data.official_bank_confirmation).toBe(false);
+      expect(event.data.confirmation_type).toBe('notification_signal');
+      expect(event.data).not.toHaveProperty('sender_phone_hmac');
+      expect(event.data).not.toHaveProperty('sender_phone_masked');
+      expect(event.data).not.toHaveProperty('title_redacted');
+      expect(event.data).not.toHaveProperty('body_redacted');
+      expect(JSON.stringify(event)).not.toContain('+7 999');
+    }
   });
 
   it.each([
@@ -150,9 +170,9 @@ describe('signal runtime processor', () => {
       expect.arrayContaining(['bank_profile_untrusted', 'bank_app_unverified', 'package_cert_to_verify'])
     );
     expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
-    expect(repository.webhookEvents[0]?.type).toBe('payment.needs_review');
-    expect(repository.webhookEvents[0]?.data.official_bank_confirmation).toBe(false);
-    expect(repository.webhookEvents[0]?.data.confirmation_type).toBe('notification_signal');
+    const needsReviewWebhook = repository.webhookEvents.find((event) => event.type === 'payment.needs_review');
+    expect(needsReviewWebhook?.data.official_bank_confirmation).toBe(false);
+    expect(needsReviewWebhook?.data.confirmation_type).toBe('notification_signal');
   });
 
   it.each([
@@ -246,13 +266,13 @@ describe('signal runtime processor', () => {
 
         expect(result.decision, `${bank.bank_profile_id}/${fixture.category}`).toBe(fixture.expected_decision);
         expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
-        expect(repository.webhookEvents[0]?.type).toBe(fixture.expected_webhook_type);
-        expect(repository.webhookEvents[0]?.data.official_bank_confirmation).toBe(false);
-        expect(repository.webhookEvents[0]?.data.confirmation_type).toBe('notification_signal');
-        expect(repository.webhookEvents[0]?.data).not.toHaveProperty('sender_phone_hmac');
-        expect(repository.webhookEvents[0]?.data).not.toHaveProperty('sender_phone_masked');
-        expect(repository.webhookEvents[0]?.data).not.toHaveProperty('title_redacted');
-        expect(repository.webhookEvents[0]?.data).not.toHaveProperty('body_redacted');
+        const expectedWebhook = repository.webhookEvents.find((event) => event.type === fixture.expected_webhook_type);
+        expect(expectedWebhook?.data.official_bank_confirmation).toBe(false);
+        expect(expectedWebhook?.data.confirmation_type).toBe('notification_signal');
+        expect(expectedWebhook?.data).not.toHaveProperty('sender_phone_hmac');
+        expect(expectedWebhook?.data).not.toHaveProperty('sender_phone_masked');
+        expect(expectedWebhook?.data).not.toHaveProperty('title_redacted');
+        expect(expectedWebhook?.data).not.toHaveProperty('body_redacted');
         expect(JSON.stringify(repository.webhookEvents)).not.toContain('Transfer from +7');
       }
     }
@@ -327,7 +347,10 @@ describe('signal runtime processor', () => {
     await processor.processSignalReceived({ signalId: 'sig_01' });
 
     expect(repository.reviews).toHaveLength(1);
-    expect(repository.webhookEvents).toHaveLength(1);
+    expect(repository.webhookEvents.map((event) => event.type)).toEqual([
+      'payment.signal_detected',
+      'payment.needs_review'
+    ]);
   });
 });
 

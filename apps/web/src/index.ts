@@ -1,5 +1,13 @@
 import { pathToFileURL } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
+import {
+  mapCheckoutStateToBuyerSafeStatus,
+  mapPaymentSessionToCheckoutState,
+  type BuyerSafeCheckoutStatus,
+  type CheckoutSessionState,
+  type PayerBankLauncherOption,
+  type ReceiverBankOption
+} from '@swimpay/contracts';
 
 export type CheckoutStatus =
   | 'created'
@@ -21,6 +29,14 @@ export interface CheckoutSession {
   payment_session_id: string;
   order_id: string;
   status: CheckoutStatus;
+  checkout_state?: CheckoutSessionState | undefined;
+  buyer_safe_status?: BuyerSafeCheckoutStatus | undefined;
+  selected_receiver_bank_id?: string | undefined;
+  selected_receiver_bank_profile_id?: string | undefined;
+  selected_payer_bank_launcher_id?: string | undefined;
+  payment_instructions_shown_at?: string | undefined;
+  buyer_claimed_paid_at?: string | undefined;
+  official_bank_confirmation?: false | undefined;
   amount: {
     value: string;
     currency: string;
@@ -33,6 +49,12 @@ export interface CheckoutSession {
 
 export interface CheckoutSessionProvider {
   getCheckoutSession(paymentSessionId: string): Promise<CheckoutSession | null>;
+  getReceiverBanks(paymentSessionId: string): Promise<ReceiverBanksPayload>;
+  selectReceiverBank(paymentSessionId: string, receiverBankId: string): Promise<CheckoutSession>;
+  getPayerBankLaunchers(paymentSessionId: string): Promise<PayerBankLaunchersPayload>;
+  selectPayerBankLauncher(paymentSessionId: string, payerBankLauncherId: string): Promise<CheckoutSession>;
+  markPaymentInstructionsShown(paymentSessionId: string): Promise<CheckoutSession>;
+  markBuyerClaimedPaid(paymentSessionId: string): Promise<CheckoutClaimedPaidResponse>;
 }
 
 export interface WebServerOptions {
@@ -102,6 +124,8 @@ interface CheckoutStatusResponse {
   payment_session_id: string;
   order_id: string;
   status: CheckoutStatus;
+  checkout_state: CheckoutSessionState;
+  buyer_safe_status: BuyerSafeCheckoutStatus;
   display_status: string;
   result_state: 'pending' | 'review' | 'recognized' | 'rejected' | 'expired';
   amount: {
@@ -110,6 +134,28 @@ interface CheckoutStatusResponse {
   };
   reference: string;
   expires_at: string;
+  official_bank_confirmation: false;
+}
+
+interface ReceiverBanksPayload {
+  payment_session_id: string;
+  receiver_banks: readonly ReceiverBankOption[];
+}
+
+interface PayerBankLaunchersPayload {
+  payment_session_id: string;
+  payer_bank_launchers: readonly PayerBankLauncherOption[];
+}
+
+interface CheckoutClaimedPaidResponse {
+  payment_session_id: string;
+  buyer_claimed_paid: true;
+  does_not_confirm_payment: true;
+  next_status: string;
+  status?: CheckoutStatus | undefined;
+  checkout_state?: CheckoutSessionState | undefined;
+  buyer_safe_status?: BuyerSafeCheckoutStatus | undefined;
+  official_bank_confirmation?: false | undefined;
 }
 
 const defaultRecipient: CheckoutRecipient = {
@@ -148,13 +194,63 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       return reply.status(400).send({ error: { code: 'invalid_request', message: 'Payment session id is required.' } });
     }
 
-    const session = await checkoutSessionProvider.getCheckoutSession(paymentSessionId);
+    const [session, receiverBanks, payerBankLaunchers] = await Promise.all([
+      checkoutSessionProvider.getCheckoutSession(paymentSessionId),
+      checkoutSessionProvider.getReceiverBanks(paymentSessionId),
+      checkoutSessionProvider.getPayerBankLaunchers(paymentSessionId)
+    ]);
     if (!session) {
       return reply.status(404).send({ error: { code: 'not_found', message: 'Checkout session was not found.' } });
     }
 
     reply.type('text/html; charset=utf-8');
-    return renderCheckoutPage(session, recipient);
+    return renderCheckoutPage(session, recipient, receiverBanks.receiver_banks, payerBankLaunchers.payer_bank_launchers);
+  });
+
+  server.get('/checkout/:paymentSessionId/receiver-banks', async (request, reply) => {
+    const params = request.params as { paymentSessionId?: string };
+    const paymentSessionId = params.paymentSessionId;
+    if (!paymentSessionId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Payment session id is required.' } });
+    }
+
+    return reply.status(200).send(await checkoutSessionProvider.getReceiverBanks(paymentSessionId));
+  });
+
+  server.post('/checkout/:paymentSessionId/receiver-bank', async (request, reply) => {
+    const params = request.params as { paymentSessionId?: string };
+    const body = request.body as { receiver_bank_id?: string } | undefined;
+    const paymentSessionId = params.paymentSessionId;
+    const receiverBankId = body?.receiver_bank_id;
+    if (!paymentSessionId || !receiverBankId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Receiver bank id is required.' } });
+    }
+
+    return reply.status(200).send(toCheckoutStatusResponse(await checkoutSessionProvider.selectReceiverBank(paymentSessionId, receiverBankId)));
+  });
+
+  server.get('/checkout/:paymentSessionId/payer-bank-launchers', async (request, reply) => {
+    const params = request.params as { paymentSessionId?: string };
+    const paymentSessionId = params.paymentSessionId;
+    if (!paymentSessionId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Payment session id is required.' } });
+    }
+
+    return reply.status(200).send(await checkoutSessionProvider.getPayerBankLaunchers(paymentSessionId));
+  });
+
+  server.post('/checkout/:paymentSessionId/payer-bank-launcher', async (request, reply) => {
+    const params = request.params as { paymentSessionId?: string };
+    const body = request.body as { payer_bank_launcher_id?: string } | undefined;
+    const paymentSessionId = params.paymentSessionId;
+    const payerBankLauncherId = body?.payer_bank_launcher_id;
+    if (!paymentSessionId || !payerBankLauncherId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Payer bank launcher id is required.' } });
+    }
+
+    return reply.status(200).send(
+      toCheckoutStatusResponse(await checkoutSessionProvider.selectPayerBankLauncher(paymentSessionId, payerBankLauncherId))
+    );
   });
 
   server.get('/checkout/:paymentSessionId/status', async (request, reply) => {
@@ -186,6 +282,16 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     }
   });
 
+  server.post('/checkout/:paymentSessionId/payment-instructions-shown', async (request, reply) => {
+    const params = request.params as { paymentSessionId?: string };
+    const paymentSessionId = params.paymentSessionId;
+    if (!paymentSessionId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Payment session id is required.' } });
+    }
+
+    return reply.status(200).send(toCheckoutStatusResponse(await checkoutSessionProvider.markPaymentInstructionsShown(paymentSessionId)));
+  });
+
   server.post('/checkout/:paymentSessionId/claimed-paid', async (request, reply) => {
     const params = request.params as { paymentSessionId?: string };
     const paymentSessionId = params.paymentSessionId;
@@ -193,12 +299,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       return reply.status(400).send({ error: { code: 'invalid_request', message: 'Payment session id is required.' } });
     }
 
-    return reply.status(202).send({
-      payment_session_id: paymentSessionId,
-      buyer_claimed_paid: true,
-      does_not_confirm_payment: true,
-      next_status: 'Recherche du signal bancaire'
-    });
+    return reply.status(202).send(await checkoutSessionProvider.markBuyerClaimedPaid(paymentSessionId));
   });
 
   return server;
@@ -208,11 +309,7 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
   public constructor(private readonly apiBaseUrl: string) {}
 
   public async getCheckoutSession(paymentSessionId: string): Promise<CheckoutSession | null> {
-    const response = await fetch(`${this.apiBaseUrl}/v1/payment-sessions/${encodeURIComponent(paymentSessionId)}`, {
-      headers: {
-        authorization: `Bearer test_${process.env.CHECKOUT_MERCHANT_ID ?? 'mch_dev'}`
-      }
-    });
+    const response = await this.fetchApi(`/v1/payment-sessions/${encodeURIComponent(paymentSessionId)}`);
 
     if (response.status === 404) {
       return null;
@@ -223,6 +320,59 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
     }
 
     return (await response.json()) as CheckoutSession;
+  }
+
+  public async getReceiverBanks(paymentSessionId: string): Promise<ReceiverBanksPayload> {
+    return this.fetchJson<ReceiverBanksPayload>(`/v1/checkout/${encodeURIComponent(paymentSessionId)}/receiver-banks`);
+  }
+
+  public async selectReceiverBank(paymentSessionId: string, receiverBankId: string): Promise<CheckoutSession> {
+    return this.fetchJson<CheckoutSession>(`/v1/checkout/${encodeURIComponent(paymentSessionId)}/receiver-bank`, {
+      method: 'POST',
+      body: JSON.stringify({ receiver_bank_id: receiverBankId })
+    });
+  }
+
+  public async getPayerBankLaunchers(paymentSessionId: string): Promise<PayerBankLaunchersPayload> {
+    return this.fetchJson<PayerBankLaunchersPayload>(`/v1/checkout/${encodeURIComponent(paymentSessionId)}/payer-bank-launchers`);
+  }
+
+  public async selectPayerBankLauncher(paymentSessionId: string, payerBankLauncherId: string): Promise<CheckoutSession> {
+    return this.fetchJson<CheckoutSession>(`/v1/checkout/${encodeURIComponent(paymentSessionId)}/payer-bank-launcher`, {
+      method: 'POST',
+      body: JSON.stringify({ payer_bank_launcher_id: payerBankLauncherId })
+    });
+  }
+
+  public async markPaymentInstructionsShown(paymentSessionId: string): Promise<CheckoutSession> {
+    return this.fetchJson<CheckoutSession>(`/v1/checkout/${encodeURIComponent(paymentSessionId)}/payment-instructions-shown`, {
+      method: 'POST'
+    });
+  }
+
+  public async markBuyerClaimedPaid(paymentSessionId: string): Promise<CheckoutClaimedPaidResponse> {
+    return this.fetchJson<CheckoutClaimedPaidResponse>(`/v1/checkout/${encodeURIComponent(paymentSessionId)}/claimed-paid`, {
+      method: 'POST'
+    });
+  }
+
+  private async fetchJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const response = await this.fetchApi(path, init);
+    if (!response.ok) {
+      throw new Error(`Checkout API returned ${response.status}`);
+    }
+
+    return (await response.json()) as T;
+  }
+
+  private async fetchApi(path: string, init: RequestInit = {}): Promise<Response> {
+    const headers = new Headers(init.headers);
+    headers.set('content-type', 'application/json');
+    headers.set('authorization', `Bearer test_${process.env.CHECKOUT_MERCHANT_ID ?? 'mch_dev'}`);
+    return fetch(`${this.apiBaseUrl}${path}`, {
+      ...init,
+      headers
+    });
   }
 }
 
@@ -258,15 +408,19 @@ export class ApiAdminEvidenceClient implements AdminEvidenceClient {
 
 export function toCheckoutStatusResponse(session: CheckoutSession): CheckoutStatusResponse {
   const status = mapCheckoutStatus(session.status);
+  const checkoutState = session.checkout_state ?? inferCheckoutState(session);
   return {
     payment_session_id: session.payment_session_id,
     order_id: session.order_id,
     status: session.status,
+    checkout_state: checkoutState,
+    buyer_safe_status: session.buyer_safe_status ?? mapCheckoutStateToBuyerSafeStatus(checkoutState),
     display_status: status.displayStatus,
     result_state: status.resultState,
     amount: session.amount,
     reference: session.reference,
-    expires_at: session.expires_at
+    expires_at: session.expires_at,
+    official_bank_confirmation: false
   };
 }
 
@@ -432,6 +586,10 @@ function safetyChip(label: string, value: boolean): string {
   return `<div class="safety-chip"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`;
 }
 
+function statusChip(label: string, value: string): string {
+  return `<div class="status-chip"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+}
+
 function statusBadge(status: string): string {
   return `<span class="status-badge">${escapeHtml(status)}</span>`;
 }
@@ -467,12 +625,20 @@ function isFullSha256(value: string): boolean {
   return /^[a-f0-9]{64}$/i.test(value);
 }
 
-function renderCheckoutPage(session: CheckoutSession, recipient: CheckoutRecipient): string {
+function renderCheckoutPage(
+  session: CheckoutSession,
+  recipient: CheckoutRecipient,
+  receiverBanks: readonly ReceiverBankOption[],
+  payerBankLaunchers: readonly PayerBankLauncherOption[]
+): string {
   const status = mapCheckoutStatus(session.status);
   const amount = `${escapeHtml(session.amount.value)} ${escapeHtml(session.amount.currency)}`;
   const productName = escapeHtml(session.product_name ?? 'Commande SwimPay');
   const reference = escapeHtml(session.reference);
   const sessionId = escapeHtml(session.payment_session_id);
+  const checkoutState = session.checkout_state ?? inferCheckoutState(session);
+  const buyerSafeStatus = session.buyer_safe_status ?? mapCheckoutStateToBuyerSafeStatus(checkoutState);
+  const selectedLauncher = payerBankLaunchers.find((launcher) => launcher.payer_bank_launcher_id === session.selected_payer_bank_launcher_id);
 
   return [
     '<!doctype html>',
@@ -486,25 +652,39 @@ function renderCheckoutPage(session: CheckoutSession, recipient: CheckoutRecipie
     '<body>',
     '<main class="checkout-shell">',
     '<section class="checkout-header" aria-labelledby="checkout-title">',
-    `<p class="eyebrow">Paiement par transfert bancaire</p>`,
+    `<p class="eyebrow">Pay with SwimPay</p>`,
     `<h1 id="checkout-title">${productName}</h1>`,
-    '<p class="safe-copy">SwimPay reconnait le paiement a partir du signal de reception cote marchand.</p>',
+    '<p class="safe-copy">SwimPay recherchera le signal de paiement côté marchand.</p>',
+    '<p class="help">SwimPay aide le marchand à reconnaître un signal de notification. Ce n’est pas une confirmation officielle de banque.</p>',
+    '</section>',
+    '<section class="checkout-state" aria-label="Etat du checkout">',
+    statusChip('Etape', checkoutState),
+    statusChip('Statut acheteur', buyerSafeStatus),
+    statusChip('Confirmation officielle banque', 'false'),
     '</section>',
     '<section class="checkout-grid" aria-label="Parcours de paiement">',
-    renderStep('1', 'Resume', [
+    renderStep('1', 'Choisir la banque du marchand', [
+      '<p class="help">La banque de réception détermine où SwimPay cherchera le signal côté marchand. Toutes les banques V1 restent en review beta.</p>',
+      renderReceiverBankOptions(receiverBanks, session.selected_receiver_bank_id)
+    ]),
+    renderStep('2', 'Choisir votre app bancaire', [
+      '<p class="help">Cette étape sert uniquement à vous aider à ouvrir ou retrouver votre banque. Elle ne prouve pas le paiement.</p>',
+      renderPayerLauncherOptions(payerBankLaunchers, session.selected_payer_bank_launcher_id)
+    ]),
+    renderStep('3', 'Résumé', [
       row('Montant exact', amount),
       row('Methode', 'Transfert bancaire'),
       row('Statut', status.displayStatus),
       `<p class="timer" data-expires-at="${escapeHtml(session.expires_at)}">Temps restant: <span id="countdown">calcul...</span></p>`
     ]),
-    renderStep('2', 'Identite acheteur', [
+    renderStep('4', 'Identité acheteur', [
       '<label class="field-label" for="buyer-phone">Numero utilise dans votre app bancaire</label>',
       '<input id="buyer-phone" class="input" name="buyer-phone" inputmode="tel" autocomplete="tel" placeholder="+7 *** *** **67">',
       '<p class="help">Ce numero sert uniquement a reconnaitre votre paiement. SwimPay ne lit pas votre telephone et ne se connecte pas a votre banque.</p>',
       '<label class="field-label" for="buyer-name">Nom/prenom utilise dans la banque</label>',
       '<input id="buyer-name" class="input" name="buyer-name" autocomplete="name" placeholder="Optionnel">'
     ]),
-    renderStep('3', 'Instructions de paiement', [
+    renderStep('5', 'Instructions de paiement', [
       row('Destinataire', escapeHtml(recipient.name)),
       row('Banque', escapeHtml(recipient.bank)),
       row('Compte', escapeHtml(recipient.accountMasked)),
@@ -512,15 +692,15 @@ function renderCheckoutPage(session: CheckoutSession, recipient: CheckoutRecipie
       row('Reference', reference),
       `<button class="button secondary" type="button" data-copy="${amount}">Copier le montant</button>`,
       `<button class="button secondary" type="button" data-copy="${reference}">Copier la reference</button>`,
-      '<button class="button secondary" type="button" aria-disabled="true">Ouvrir la banque</button>',
+      renderOpenBankAction(selectedLauncher),
       `<button id="paid-button" class="button primary" type="button" data-session-id="${sessionId}" data-does-not-confirm="true">J&#39;ai paye</button>`,
-      '<p class="help">Ce bouton signale seulement que vous avez lance le transfert. Il ne valide pas le paiement.</p>'
+      '<p class="help">Ce bouton signale seulement que vous avez lancé le transfert. Il ne valide pas le paiement.</p>'
     ]),
-    renderStep('4', 'Attente', [
+    renderStep('6', 'Attente du signal', [
       `<p id="status-text" class="status-pill" data-status="${session.status}">${status.displayStatus}</p>`,
       '<p class="help">Le statut vient du backend SwimPay et peut demander une verification manuelle.</p>'
     ]),
-    renderStep('5', 'Resultat', [
+    renderStep('7', 'Résultat', [
       `<p id="result-text">${resultText(status.resultState)}</p>`
     ]),
     '</section>',
@@ -531,12 +711,69 @@ function renderCheckoutPage(session: CheckoutSession, recipient: CheckoutRecipie
   ].join('');
 }
 
+function renderReceiverBankOptions(receiverBanks: readonly ReceiverBankOption[], selectedReceiverBankId: string | undefined): string {
+  return [
+    '<div class="option-list" data-option-list="receiver-bank">',
+    ...receiverBanks.map((bank) =>
+      [
+        `<button class="option-button${bank.receiver_bank_id === selectedReceiverBankId ? ' selected' : ''}" type="button" data-receiver-bank-id="${escapeHtml(bank.receiver_bank_id)}">`,
+        `<strong>${escapeHtml(bank.display_name)}</strong>`,
+        `<span>${escapeHtml(bank.status)} · review_only=${escapeHtml(String(bank.review_only))}</span>`,
+        `<small>detection_supported=${escapeHtml(String(bank.detection_supported))} auto_confirm=false</small>`,
+        '</button>'
+      ].join('')
+    ),
+    '</div>'
+  ].join('');
+}
+
+function renderPayerLauncherOptions(payerBankLaunchers: readonly PayerBankLauncherOption[], selectedLauncherId: string | undefined): string {
+  return [
+    '<div class="option-list" data-option-list="payer-launcher">',
+    ...payerBankLaunchers.map((launcher) =>
+      [
+        `<button class="option-button${launcher.payer_bank_launcher_id === selectedLauncherId ? ' selected' : ''}" type="button" data-payer-bank-launcher-id="${escapeHtml(launcher.payer_bank_launcher_id)}">`,
+        `<strong>${escapeHtml(launcher.display_name)}</strong>`,
+        `<span>${escapeHtml(launcher.fallback_strategy)} · does_not_confirm_payment=${escapeHtml(String(launcher.does_not_confirm_payment))}</span>`,
+        `<small>${escapeHtml(launcher.android_package_hint ?? 'instructions manuelles')}</small>`,
+        '</button>'
+      ].join('')
+    ),
+    '</div>'
+  ].join('');
+}
+
+function renderOpenBankAction(launcher: PayerBankLauncherOption | undefined): string {
+  if (launcher?.launch_url) {
+    return `<a class="button secondary" href="${escapeHtml(launcher.launch_url)}" rel="noopener">Ouvrir ${escapeHtml(launcher.display_name)}</a>`;
+  }
+
+  const label = launcher ? `Ouvrir ${escapeHtml(launcher.display_name)}` : "Ouvrir l'app bancaire";
+  return `<button class="button secondary" type="button" aria-disabled="true" data-manual-fallback="true">${label}</button><p class="help">Ouverture automatique non garantie. Copiez le montant et la référence puis payez manuellement dans votre banque.</p>`;
+}
+
 function renderStep(index: string, title: string, children: string[]): string {
   return `<article class="step"><div class="step-index">${index}</div><div><h2>${title}</h2>${children.join('')}</div></article>`;
 }
 
 function row(label: string, value: string): string {
   return `<div class="row"><span>${label}</span><strong>${value}</strong></div>`;
+}
+
+function inferCheckoutState(session: CheckoutSession): CheckoutSessionState {
+  if (session.status === 'payment_instructions_shown') {
+    return 'payment_instructions';
+  }
+  if (session.status === 'fulfilled') {
+    return 'confirmed';
+  }
+
+  return mapPaymentSessionToCheckoutState({
+    paymentSessionStatus: session.status,
+    selectedReceiverBankId: session.selected_receiver_bank_id,
+    selectedPayerBankLauncherId: session.selected_payer_bank_launcher_id,
+    paymentInstructionsShownAt: session.payment_instructions_shown_at
+  });
 }
 
 function mapCheckoutStatus(status: CheckoutStatus): {
@@ -572,7 +809,7 @@ function mapCheckoutStatus(status: CheckoutStatus): {
 function resultText(resultState: CheckoutStatusResponse['result_state']): string {
   switch (resultState) {
     case 'recognized':
-      return 'Paiement reconnu par SwimPay. Produit active.';
+      return 'Paiement reconnu par SwimPay après la politique de revue du marchand.';
     case 'review':
       return 'Paiement en verification. Le marchand doit valider ce paiement.';
     case 'expired':
@@ -594,7 +831,7 @@ const paidButton = document.getElementById('paid-button');
 const timer = document.querySelector('[data-expires-at]');
 
 function resultCopy(state) {
-  if (state === 'recognized') return 'Paiement reconnu par SwimPay. Produit active.';
+  if (state === 'recognized') return 'Paiement reconnu par SwimPay après la politique de revue du marchand.';
   if (state === 'review') return 'Paiement en verification. Le marchand doit valider ce paiement.';
   if (state === 'expired') return 'Commande expiree. Creez une nouvelle commande avant de payer.';
   if (state === 'rejected') return 'Paiement non reconnu. Contactez le marchand si vous avez deja effectue le transfert.';
@@ -622,11 +859,35 @@ function tick() {
 document.querySelectorAll('[data-copy]').forEach((button) => {
   button.addEventListener('click', async () => {
     await navigator.clipboard?.writeText(button.dataset.copy || '');
+    await fetch('/checkout/' + encodeURIComponent(sessionId) + '/payment-instructions-shown', { method: 'POST' });
+  });
+});
+
+document.querySelectorAll('[data-receiver-bank-id]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    await fetch('/checkout/' + encodeURIComponent(sessionId) + '/receiver-bank', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ receiver_bank_id: button.dataset.receiverBankId })
+    });
+    window.location.reload();
+  });
+});
+
+document.querySelectorAll('[data-payer-bank-launcher-id]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    await fetch('/checkout/' + encodeURIComponent(sessionId) + '/payer-bank-launcher', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payer_bank_launcher_id: button.dataset.payerBankLauncherId })
+    });
+    window.location.reload();
   });
 });
 
 paidButton?.addEventListener('click', async () => {
   paidButton.setAttribute('disabled', 'disabled');
+  await fetch('/checkout/' + encodeURIComponent(sessionId) + '/payment-instructions-shown', { method: 'POST' });
   await fetch('/checkout/' + encodeURIComponent(sessionId) + '/claimed-paid', { method: 'POST' });
   statusText.textContent = 'Recherche du signal bancaire';
 });
@@ -647,12 +908,19 @@ body { margin: 0; }
 h1 { margin: 0 0 12px; font-size: 36px; line-height: 1.1; letter-spacing: 0; }
 h2 { margin: 0 0 14px; font-size: 18px; letter-spacing: 0; }
 .safe-copy, .help { color: #4d5c62; line-height: 1.5; }
+.checkout-state { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 18px; }
+.status-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; border: 1px solid #cfd8dc; border-radius: 6px; padding: 0 10px; background: #fff; }
+.status-chip span { color: #516269; }
 .checkout-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .step { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; border: 1px solid #d8e0e3; border-radius: 8px; background: #fff; padding: 18px; min-height: 180px; }
 .step-index { width: 32px; height: 32px; border-radius: 50%; background: #0f766e; color: #fff; display: grid; place-items: center; font-weight: 700; }
 .row { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid #eef2f3; padding: 10px 0; }
 .row span { color: #65747a; }
 .row strong { text-align: right; }
+.option-list { display: grid; gap: 8px; }
+.option-button { display: grid; gap: 4px; width: 100%; min-height: 70px; text-align: left; border: 1px solid #d8e0e3; border-radius: 8px; background: #fff; padding: 10px; color: inherit; cursor: pointer; }
+.option-button span, .option-button small { color: #516269; }
+.option-button.selected { border-color: #0f766e; box-shadow: inset 4px 0 0 #0f766e; background: #f2fbf9; }
 .field-label { display: block; font-weight: 700; margin: 10px 0 6px; }
 .input { box-sizing: border-box; width: 100%; min-height: 42px; border: 1px solid #cfd8dc; border-radius: 6px; padding: 8px 10px; font: inherit; }
 .button { min-height: 40px; border-radius: 6px; border: 1px solid #0f766e; padding: 8px 12px; margin: 6px 8px 6px 0; font: inherit; font-weight: 700; cursor: pointer; }

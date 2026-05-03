@@ -1,6 +1,6 @@
 import pg from 'pg';
 import { hmacSha256, maskPhone, normalizeRussianPhone } from '@swimpay/security';
-import type { PaymentSessionStatus } from '@swimpay/contracts';
+import type { OrderStatus, PaymentSessionStatus } from '@swimpay/contracts';
 
 const { Pool } = pg;
 
@@ -13,7 +13,7 @@ export interface StoredOrderRecord {
   productRiskLevel: string;
   amountMinor: number;
   currency: string;
-  status: PaymentSessionStatus;
+  status: OrderStatus;
   expiresAt: string;
   createdAt: string;
   updatedAt: string;
@@ -30,7 +30,12 @@ export interface StoredPaymentSessionRecord {
   buyerNameHmac?: string | undefined;
   referenceCode: string;
   referenceHmac: string;
-  status: 'receiver_arming';
+  status: PaymentSessionStatus;
+  selectedReceiverBankId?: string | undefined;
+  selectedReceiverBankProfileId?: string | undefined;
+  selectedPayerBankLauncherId?: string | undefined;
+  paymentInstructionsShownAt?: string | undefined;
+  buyerClaimedPaidAt?: string | undefined;
   validFrom: string;
   validUntil: string;
   createdAt: string;
@@ -40,7 +45,7 @@ export interface StoredPaymentSessionRecord {
 export interface StoredAuditEventRecord {
   id: string;
   merchantId: string;
-  eventType: 'order.created' | 'payment_session.created' | 'payment_session.receiver_arming_requested';
+  eventType: string;
   objectType: 'order' | 'payment_session';
   objectId: string;
   payloadRedacted: Record<string, unknown>;
@@ -63,6 +68,31 @@ export type CreateOrderWithSessionResult =
       kind: 'duplicate_external_id';
     };
 
+export interface CheckoutMutationBaseInput {
+  merchantId: string;
+  paymentSessionId: string;
+  auditEventId: string;
+  now: string;
+}
+
+export interface SelectReceiverBankInput extends CheckoutMutationBaseInput {
+  receiverBankId: string;
+  bankProfileId: string;
+}
+
+export interface SelectPayerBankLauncherInput extends CheckoutMutationBaseInput {
+  payerBankLauncherId: string;
+}
+
+export type PaymentSessionCheckoutMutationResult =
+  | {
+      kind: 'updated';
+      order: StoredOrderRecord;
+      paymentSession: StoredPaymentSessionRecord;
+    }
+  | { kind: 'not_found' }
+  | { kind: 'expired' };
+
 export interface OrderRepository {
   createOrderWithSession(input: CreateOrderWithSessionInput): Promise<CreateOrderWithSessionResult>;
   getOrderById(
@@ -77,8 +107,12 @@ export interface OrderRepository {
     paymentSessionId: string
   ): Promise<{
     order: StoredOrderRecord;
-    paymentSession: StoredPaymentSessionRecord;
-  } | null>;
+      paymentSession: StoredPaymentSessionRecord;
+    } | null>;
+  selectReceiverBank(input: SelectReceiverBankInput): Promise<PaymentSessionCheckoutMutationResult>;
+  selectPayerBankLauncher(input: SelectPayerBankLauncherInput): Promise<PaymentSessionCheckoutMutationResult>;
+  markPaymentInstructionsShown(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
+  markBuyerClaimedPaid(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
 }
 
 export interface IdGenerator {
@@ -109,7 +143,7 @@ export interface CreateOrderRequestBody {
 export interface OrderCreateResponse {
   order_id: string;
   payment_session_id: string;
-  status: 'receiver_arming';
+  status: PaymentSessionStatus;
   checkout_url: string;
   amount: {
     value: string;
@@ -257,6 +291,8 @@ export class PgOrderRepository implements OrderRepository {
     const paymentResult = await this.pool.query(
       `SELECT id, order_id, merchant_id, expected_amount_minor, currency, buyer_phone_hmac,
         buyer_phone_masked, buyer_name_hmac, reference_code, reference_hmac, status,
+        selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_payer_bank_launcher_id,
+        payment_instructions_shown_at, buyer_claimed_paid_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND order_id = $2
        ORDER BY created_at DESC LIMIT 1`,
@@ -272,7 +308,7 @@ export class PgOrderRepository implements OrderRepository {
       productRiskLevel: String(row.product_risk_level),
       amountMinor: Number(row.amount_minor),
       currency: String(row.currency),
-      status: 'receiver_arming',
+      status: String(row.status) as OrderStatus,
       expiresAt: new Date(String(row.expires_at)).toISOString(),
       createdAt: new Date(String(row.created_at)).toISOString(),
       updatedAt: new Date(String(row.updated_at)).toISOString()
@@ -287,6 +323,8 @@ export class PgOrderRepository implements OrderRepository {
     const paymentResult = await this.pool.query(
       `SELECT id, order_id, merchant_id, expected_amount_minor, currency, buyer_phone_hmac,
         buyer_phone_masked, buyer_name_hmac, reference_code, reference_hmac, status,
+        selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_payer_bank_launcher_id,
+        payment_instructions_shown_at, buyer_claimed_paid_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND id = $2`,
       [merchantId, paymentSessionId]
@@ -313,6 +351,164 @@ export class PgOrderRepository implements OrderRepository {
       paymentSession
     };
   }
+
+  public async selectReceiverBank(input: SelectReceiverBankInput): Promise<PaymentSessionCheckoutMutationResult> {
+    return this.mutateCheckoutSession({
+      input,
+      auditEventType: 'checkout.receiver_bank_selected',
+      apply: async (client) => {
+        await client.query(
+          `UPDATE payment_sessions
+           SET selected_receiver_bank_id = $3,
+               selected_receiver_bank_profile_id = $4,
+               selected_payer_bank_launcher_id = NULL,
+               payment_instructions_shown_at = NULL,
+               updated_at = $5
+           WHERE merchant_id = $1 AND id = $2`,
+          [input.merchantId, input.paymentSessionId, input.receiverBankId, input.bankProfileId, input.now]
+        );
+      },
+      payload: {
+        receiver_bank_id: input.receiverBankId,
+        bank_profile_id: input.bankProfileId,
+        review_only: true,
+        auto_confirm_enabled: false
+      }
+    });
+  }
+
+  public async selectPayerBankLauncher(input: SelectPayerBankLauncherInput): Promise<PaymentSessionCheckoutMutationResult> {
+    return this.mutateCheckoutSession({
+      input,
+      auditEventType: 'checkout.payer_bank_launcher_selected',
+      apply: async (client) => {
+        await client.query(
+          `UPDATE payment_sessions
+           SET selected_payer_bank_launcher_id = $3,
+               payment_instructions_shown_at = NULL,
+               updated_at = $4
+           WHERE merchant_id = $1 AND id = $2`,
+          [input.merchantId, input.paymentSessionId, input.payerBankLauncherId, input.now]
+        );
+      },
+      payload: {
+        payer_bank_launcher_id: input.payerBankLauncherId,
+        does_not_confirm_payment: true,
+        auto_confirm_enabled: false
+      }
+    });
+  }
+
+  public async markPaymentInstructionsShown(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult> {
+    return this.mutateCheckoutSession({
+      input,
+      auditEventType: 'checkout.payment_instructions_shown',
+      apply: async (client) => {
+        await client.query(
+          `UPDATE payment_sessions
+           SET status = 'awaiting_payment',
+               payment_instructions_shown_at = COALESCE(payment_instructions_shown_at, $3::timestamptz),
+               updated_at = $3
+           WHERE merchant_id = $1 AND id = $2`,
+          [input.merchantId, input.paymentSessionId, input.now]
+        );
+        await client.query(
+          `UPDATE orders
+           SET status = 'awaiting_payment', updated_at = $3
+           WHERE merchant_id = $1
+             AND id = (SELECT order_id FROM payment_sessions WHERE merchant_id = $1 AND id = $2)`,
+          [input.merchantId, input.paymentSessionId, input.now]
+        );
+      },
+      payload: {
+        next_status: 'awaiting_payment'
+      }
+    });
+  }
+
+  public async markBuyerClaimedPaid(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult> {
+    return this.mutateCheckoutSession({
+      input,
+      auditEventType: 'checkout.buyer_claimed_paid',
+      apply: async (client) => {
+        await client.query(
+          `UPDATE payment_sessions
+           SET status = 'buyer_claimed_paid',
+               buyer_claimed_paid_at = COALESCE(buyer_claimed_paid_at, $3::timestamptz),
+               updated_at = $3
+           WHERE merchant_id = $1 AND id = $2`,
+          [input.merchantId, input.paymentSessionId, input.now]
+        );
+        await client.query(
+          `UPDATE orders
+           SET status = 'buyer_claimed_paid', updated_at = $3
+           WHERE merchant_id = $1
+             AND id = (SELECT order_id FROM payment_sessions WHERE merchant_id = $1 AND id = $2)`,
+          [input.merchantId, input.paymentSessionId, input.now]
+        );
+      },
+      payload: {
+        buyer_claimed_paid: true,
+        does_not_confirm_payment: true
+      }
+    });
+  }
+
+  private async mutateCheckoutSession(params: {
+    input: CheckoutMutationBaseInput;
+    auditEventType: string;
+    apply: (client: pg.PoolClient) => Promise<void>;
+    payload: Record<string, unknown>;
+  }): Promise<PaymentSessionCheckoutMutationResult> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      const current = await client.query(
+        `SELECT ps.id, ps.valid_until
+         FROM payment_sessions ps
+         WHERE ps.merchant_id = $1 AND ps.id = $2
+         FOR UPDATE`,
+        [params.input.merchantId, params.input.paymentSessionId]
+      );
+      if (current.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_found' };
+      }
+      const row = current.rows[0] as { valid_until: string | Date };
+      if (new Date(row.valid_until).getTime() <= new Date(params.input.now).getTime()) {
+        await client.query('ROLLBACK');
+        return { kind: 'expired' };
+      }
+
+      await params.apply(client);
+      await client.query(
+        `INSERT INTO audit_events (
+          id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+        ) VALUES ($1, $2, $3, 'payment_session', $4, 'api', $5::jsonb, $6)`,
+        [
+          params.input.auditEventId,
+          params.input.merchantId,
+          params.auditEventType,
+          params.input.paymentSessionId,
+          JSON.stringify({
+            payment_session_id: params.input.paymentSessionId,
+            ...params.payload
+          }),
+          params.input.now
+        ]
+      );
+      await client.query('COMMIT');
+
+      const updated = await this.getPaymentSessionById(params.input.merchantId, params.input.paymentSessionId);
+      return updated ? { kind: 'updated', order: updated.order, paymentSession: updated.paymentSession } : { kind: 'not_found' };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 function toOrder(row: Record<string, string | number | Date | null>): StoredOrderRecord {
@@ -325,7 +521,7 @@ function toOrder(row: Record<string, string | number | Date | null>): StoredOrde
     productRiskLevel: String(row.product_risk_level),
     amountMinor: Number(row.amount_minor),
     currency: String(row.currency),
-    status: String(row.status) as PaymentSessionStatus,
+    status: String(row.status) as OrderStatus,
     expiresAt: new Date(String(row.expires_at)).toISOString(),
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at)).toISOString()
@@ -344,7 +540,18 @@ function toPaymentSession(row: Record<string, string | number | Date | null>): S
     buyerNameHmac: row.buyer_name_hmac ? String(row.buyer_name_hmac) : undefined,
     referenceCode: String(row.reference_code),
     referenceHmac: String(row.reference_hmac),
-    status: 'receiver_arming',
+    status: String(row.status) as PaymentSessionStatus,
+    selectedReceiverBankId: row.selected_receiver_bank_id ? String(row.selected_receiver_bank_id) : undefined,
+    selectedReceiverBankProfileId: row.selected_receiver_bank_profile_id
+      ? String(row.selected_receiver_bank_profile_id)
+      : undefined,
+    selectedPayerBankLauncherId: row.selected_payer_bank_launcher_id
+      ? String(row.selected_payer_bank_launcher_id)
+      : undefined,
+    paymentInstructionsShownAt: row.payment_instructions_shown_at
+      ? new Date(String(row.payment_instructions_shown_at)).toISOString()
+      : undefined,
+    buyerClaimedPaidAt: row.buyer_claimed_paid_at ? new Date(String(row.buyer_claimed_paid_at)).toISOString() : undefined,
     validFrom: new Date(String(row.valid_from)).toISOString(),
     validUntil: new Date(String(row.valid_until)).toISOString(),
     createdAt: new Date(String(row.created_at)).toISOString(),

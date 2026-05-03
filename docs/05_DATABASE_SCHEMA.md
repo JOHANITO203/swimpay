@@ -103,12 +103,22 @@ CREATE TABLE payment_sessions (
   reference_hmac TEXT,
   status TEXT NOT NULL,
   receiver_group_id UUID,
+  selected_receiver_bank_id TEXT,
+  selected_receiver_bank_profile_id TEXT REFERENCES bank_profiles(id),
+  selected_payer_bank_launcher_id TEXT,
+  payment_instructions_shown_at TIMESTAMPTZ,
+  buyer_claimed_paid_at TIMESTAMPTZ,
   valid_from TIMESTAMPTZ NOT NULL,
   valid_until TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
+
+Checkout selection fields are buyer-flow state only. Receiver-bank selection means the
+merchant-side receiving bank chosen for detection and review routing. Payer-bank
+launcher selection is buyer UX metadata only and never proves payment, trust, or
+official bank confirmation.
 
 ### `receiver_devices`
 
@@ -378,6 +388,12 @@ CREATE TABLE audit_events (
 ```sql
 CREATE INDEX idx_orders_merchant_status ON orders(merchant_id, status);
 CREATE INDEX idx_payment_sessions_active ON payment_sessions(merchant_id, status, valid_until);
+CREATE INDEX idx_payment_sessions_checkout_receiver_bank
+  ON payment_sessions(merchant_id, selected_receiver_bank_profile_id)
+  WHERE selected_receiver_bank_profile_id IS NOT NULL;
+CREATE INDEX idx_payment_sessions_checkout_payer_launcher
+  ON payment_sessions(merchant_id, selected_payer_bank_launcher_id)
+  WHERE selected_payer_bank_launcher_id IS NOT NULL;
 CREATE INDEX idx_signals_merchant_observed ON notification_signals(merchant_id, observed_at);
 CREATE INDEX idx_signals_amount_currency ON notification_signals(merchant_id, amount_minor, currency);
 CREATE INDEX idx_reviews_open ON review_queue(merchant_id, status);

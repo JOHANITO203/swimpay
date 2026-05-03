@@ -46,6 +46,27 @@ All five V1 banks have package evidence for review-only MVP validation. Sprint 6
 
 Private beta still requires an explicit go/no-go review before any real bank notification shadow run. Review is required in beta.
 
+## Sprint 7A Checkout Readiness
+
+The buyer-facing checkout can now show a PSP-like flow without changing SwimPay's
+Payment Signal Engine architecture:
+
+- buyer selects the merchant receiver bank;
+- buyer selects a payer-bank launcher or manual transfer fallback;
+- buyer sees amount/reference copy actions;
+- buyer may click `I paid`, which does not confirm payment;
+- review-only bank signals emit `payment.signal_detected` and `payment.needs_review`;
+- `payment.confirmed` is emitted only after manual review or controlled release.
+
+Buyer-facing copy must say:
+
+```text
+SwimPay recherchera le signal de paiement côté marchand.
+```
+
+The checkout must not claim official bank confirmation, guaranteed payment, PSP
+confirmation, SMS access, SBP, or bank app scraping.
+
 ## Sprint 6D Rehearsal Criteria
 
 - synthetic merchant/order fixture exists;

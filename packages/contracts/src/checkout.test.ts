@@ -1,0 +1,134 @@
+import { describe, expect, it } from 'vitest';
+import {
+  BuyerSafeCheckoutStatuses,
+  CheckoutSessionStates,
+  PayerBankLauncherRegistry,
+  V1ReceiverBankOptions,
+  getPayerBankLauncherOption,
+  getReceiverBankOption,
+  isCheckoutStatePaymentConfirming,
+  mapCheckoutStateToBuyerSafeStatus,
+  mapPaymentSessionToCheckoutState
+} from './index.js';
+
+describe('checkout bank selection contracts', () => {
+  it('declares five review-only receiver bank options without auto-confirm implications', () => {
+    expect(V1ReceiverBankOptions.map((bank) => bank.bank_profile_id)).toEqual([
+      'sber_ru',
+      'tbank_ru',
+      'vtb_ru',
+      'alfa_ru',
+      'gazprombank_ru'
+    ]);
+
+    for (const option of V1ReceiverBankOptions) {
+      expect(option.status).toBe('review_required_beta');
+      expect(option.review_only).toBe(true);
+      expect(option.detection_supported).toBe(true);
+      expect(option.beta_ready).toBe(true);
+      expect(option.auto_confirm_enabled).toBe(false);
+      expect(option.official_bank_confirmation).toBe(false);
+    }
+
+    expect(getReceiverBankOption('sber_ru')?.display_name).toBe('Sberbank');
+    expect(getReceiverBankOption('unknown')).toBeNull();
+  });
+
+  it('declares payer bank launchers as UX-only manual-fallback options', () => {
+    expect(PayerBankLauncherRegistry.map((launcher) => launcher.payer_bank_launcher_id)).toEqual([
+      'sberbank_ru',
+      'tbank_ru',
+      'vtb_ru',
+      'alfa_ru',
+      'gazprombank_ru',
+      'yoomoney_ru',
+      'ozon_bank_ru',
+      'mts_bank_ru',
+      'post_bank_ru',
+      'raiffeisen_ru',
+      'other_manual'
+    ]);
+
+    for (const launcher of PayerBankLauncherRegistry) {
+      expect(launcher.deeplink_schemes).toEqual([]);
+      expect(launcher.launch_url).toBeNull();
+      expect(launcher.fallback_strategy).toBe('copy_details_manual_transfer');
+      expect(launcher.does_not_confirm_payment).toBe(true);
+      expect(launcher.official_bank_confirmation).toBe(false);
+      expect(launcher.detection_supported).toBe(false);
+    }
+
+    expect(getPayerBankLauncherOption('other_manual')?.launch_strategy).toBe('manual_only');
+    expect(getPayerBankLauncherOption('unknown')).toBeNull();
+  });
+
+  it('maps checkout states to buyer-safe statuses without confirming early states', () => {
+    expect(CheckoutSessionStates).toContain('receiver_bank_selection');
+    expect(BuyerSafeCheckoutStatuses).toEqual([
+      'awaiting_payment',
+      'searching_signal',
+      'signal_detected',
+      'needs_review',
+      'confirmed',
+      'expired',
+      'not_validated'
+    ]);
+
+    expect(mapCheckoutStateToBuyerSafeStatus('receiver_bank_selection')).toBe('not_validated');
+    expect(mapCheckoutStateToBuyerSafeStatus('payment_instructions')).toBe('awaiting_payment');
+    expect(mapCheckoutStateToBuyerSafeStatus('buyer_claimed_paid')).toBe('searching_signal');
+    expect(mapCheckoutStateToBuyerSafeStatus('signal_detected')).toBe('signal_detected');
+    expect(mapCheckoutStateToBuyerSafeStatus('needs_review')).toBe('needs_review');
+    expect(mapCheckoutStateToBuyerSafeStatus('confirmed')).toBe('confirmed');
+    expect(isCheckoutStatePaymentConfirming('buyer_claimed_paid')).toBe(false);
+    expect(isCheckoutStatePaymentConfirming('signal_detected')).toBe(false);
+    expect(isCheckoutStatePaymentConfirming('confirmed')).toBe(true);
+  });
+
+  it('derives checkout state from persisted session selections and runtime status', () => {
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        selectedReceiverBankId: null,
+        selectedPayerBankLauncherId: null,
+        paymentInstructionsShownAt: null
+      })
+    ).toBe('receiver_bank_selection');
+
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        selectedReceiverBankId: 'sber_ru',
+        selectedPayerBankLauncherId: null,
+        paymentInstructionsShownAt: null
+      })
+    ).toBe('payer_bank_launcher_selection');
+
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        selectedReceiverBankId: 'sber_ru',
+        selectedPayerBankLauncherId: 'tbank_ru',
+        paymentInstructionsShownAt: null
+      })
+    ).toBe('payment_instructions');
+
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'buyer_claimed_paid',
+        selectedReceiverBankId: 'sber_ru',
+        selectedPayerBankLauncherId: 'tbank_ru',
+        paymentInstructionsShownAt: '2026-05-03T12:00:00.000Z'
+      })
+    ).toBe('buyer_claimed_paid');
+
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'manual_confirmed',
+        selectedReceiverBankId: 'sber_ru',
+        selectedPayerBankLauncherId: 'tbank_ru',
+        paymentInstructionsShownAt: '2026-05-03T12:00:00.000Z'
+      })
+    ).toBe('confirmed');
+  });
+});

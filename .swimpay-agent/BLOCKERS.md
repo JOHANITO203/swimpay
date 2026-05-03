@@ -2,6 +2,14 @@
 
 No current critical blockers.
 
+Last checked after Sprint 7A PSP-like checkout bank selection flow: 2026-05-03T17:16:00+03:00.
+
+Sprint 7A status:
+
+- PSP-like checkout bank selection flow passed validation.
+- No real notification processing, SMS, SBP, scraping, official bank confirmation claim or real-bank auto-confirmation was added.
+- Payer launcher deeplinks remain a non-critical future work item; Sprint 7A uses manual/copy fallback.
+
 Last checked after Sprint 6E real-notification shadow readiness gate: 2026-05-03T16:05:00+03:00.
 
 Resolved during Sprint 4Y retry:
