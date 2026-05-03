@@ -23,6 +23,8 @@
     "smoke:receiver": "node scripts/receiver-local-smoke.mjs",
     "rehearsal:evidence": "node scripts/evidence-lifecycle-rehearsal.mjs",
     "handoff:evidence-trust": "node scripts/evidence-production-trust-handoff.mjs",
+    "operator:tokens": "node scripts/operator-token-helper.mjs",
+    "rehearsal:evidence:signed": "vitest run tests/evidence-production-trust-signed-local-rehearsal.test.ts",
     "android:doctor": "node scripts/android-toolchain-check.mjs",
     "android:emulator-doctor": "node scripts/android-emulator-doctor.mjs",
     "backend:doctor": "node scripts/local-backend-doctor.mjs"

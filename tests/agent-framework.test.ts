@@ -25,7 +25,8 @@ const requiredAgentFiles = [
   'scripts/android-emulator-doctor.mjs',
   'scripts/local-backend-doctor.mjs',
   'scripts/evidence-lifecycle-rehearsal.mjs',
-  'scripts/evidence-production-trust-handoff.mjs'
+  'scripts/evidence-production-trust-handoff.mjs',
+  'scripts/operator-token-helper.mjs'
 ];
 
 describe('local agent orchestration framework', () => {
@@ -35,18 +36,18 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4W evidence production trust handoff tasks in the approved order', () => {
+  test('task queue lists Sprint 4X signed operator handoff tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '225_production_trust_dual_operator_rehearsal_plan',
-      '226_dual_operator_handoff_cli',
-      '227_operator_handoff_checklist_docs',
-      '228_production_trust_audit_continuity_inspection',
-      '229_local_operator_token_guidance',
-      '230_production_trust_handoff_tests',
-      '231_sprint_4w_validation',
-      '232_sprint_4w_closeout_review'
+      '233_signed_operator_token_helper',
+      '234_signed_token_local_api_rehearsal',
+      '235_dual_operator_handoff_execution',
+      '236_handoff_revocation_and_audit_verification',
+      '237_signed_operator_docs',
+      '238_signed_handoff_tests',
+      '239_sprint_4x_validation',
+      '240_sprint_4x_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -84,5 +85,7 @@ describe('local agent orchestration framework', () => {
     expect(pkg.scripts['backend:doctor']).toBe('node scripts/local-backend-doctor.mjs');
     expect(pkg.scripts['rehearsal:evidence']).toBe('node scripts/evidence-lifecycle-rehearsal.mjs');
     expect(pkg.scripts['handoff:evidence-trust']).toBe('node scripts/evidence-production-trust-handoff.mjs');
+    expect(pkg.scripts['operator:tokens']).toBe('node scripts/operator-token-helper.mjs');
+    expect(pkg.scripts['rehearsal:evidence:signed']).toBe('vitest run tests/evidence-production-trust-signed-local-rehearsal.test.ts');
   });
 });

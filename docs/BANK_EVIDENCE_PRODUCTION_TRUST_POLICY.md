@@ -137,6 +137,8 @@ approved_for_review_only
 
 Do not weaken RBAC to fake a second operator. Compose `dev_token` mode represents one local operator and is not sufficient for full dual-operator approval proof.
 
+Sprint 4X adds a signed-token local rehearsal. It uses the real `signed_token` authorization path with two distinct signed operators, then revokes the metadata trust after approval. This validates dual-control locally without changing production trust policy and without enabling auto-confirmation.
+
 ## Audit
 
 Required audit events:

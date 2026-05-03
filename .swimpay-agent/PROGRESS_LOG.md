@@ -1480,3 +1480,15 @@ Safety checks:
 - Added tests for the handoff plan, full fake dual-operator flow, redaction guards, default non-mutating behavior, explicit mutating call order and Sprint 4W queue/script wiring.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, handoff plan/default runs and `git diff --check`.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust approval in local Compose, auto-confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T13:35:00+03:00 - Sprint 4X Signed Operator Token Local Rehearsal and Production Trust Handoff Execution
+
+- Created tasks 233 through 240 and updated the task queue to Sprint 4X.
+- Added `scripts/operator-token-helper.mjs` and `npm run operator:tokens` for local signed requester/approver/revoker token generation.
+- Added `npm run rehearsal:evidence:signed` for a signed-token local API handoff rehearsal.
+- The signed-token rehearsal executes request, same-actor approval block, second-operator approval, revocation and audit continuity against in-process local evidence.
+- The final evidence state is `production_trust_revoked`.
+- Added tests for token helper behavior, masked output, unsafe input rejection, signed-token API auth, dual-control, read-only denial and audit redaction.
+- Updated production trust handoff, operator runbook, production trust policy and security/privacy docs.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, signed-token rehearsal, Android assembleDebug after exporting `ANDROID_HOME`, Android JVM tests and `git diff --check`.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production deployment, persistent production trust, auto-confirmation, raw phone or raw notification text was used.

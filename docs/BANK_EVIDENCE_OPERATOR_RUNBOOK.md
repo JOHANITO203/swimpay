@@ -222,6 +222,25 @@ Use this only with local/dev evidence that is already `approved_for_review_only`
 
 See `docs/BANK_EVIDENCE_PRODUCTION_TRUST_HANDOFF.md`.
 
+Sprint 4X adds signed-token local rehearsal support:
+
+```powershell
+npm run operator:tokens -- --masked
+npm run rehearsal:evidence:signed
+```
+
+`npm run operator:tokens` can generate local signed requester/approver/revoker tokens for a signed-token API rehearsal. Treat generated unmasked tokens as local secrets and do not commit them.
+
+`npm run rehearsal:evidence:signed` runs a local in-process signed-token API drill. It requests production trust, proves same-actor approval is blocked, approves with a second signed operator, revokes after the drill and inspects redacted audit continuity.
+
+The signed-token rehearsal still keeps:
+
+- `trusted=false`;
+- `auto_confirm_enabled=false`;
+- no real notification processing;
+- no payment confirmation wording;
+- no production deployment.
+
 ## Future Real Package/Cert Dry Run
 
 Real evidence collection must be explicit:

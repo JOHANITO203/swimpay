@@ -1,38 +1,35 @@
 # Next Action
 
-generated_at: 2026-05-03T13:09:06+03:00
+generated_at: 2026-05-03T13:35:00+03:00
 
 ## Latest Completed Sprint
 
-Sprint 4W - Evidence production trust dual-operator rehearsal and operator handoff.
+Sprint 4X - Signed operator token local rehearsal and production trust handoff execution.
 
 ## Status
 
 PASS.
 
-The evidence production trust handoff now has a guarded local operator tool:
+The production trust handoff now has a signed-token local rehearsal path:
 
-- `npm run handoff:evidence-trust -- --plan`
-- `npm run handoff:evidence-trust`
+- `npm run operator:tokens -- --masked`
+- `npm run rehearsal:evidence:signed`
 
-Default mode is non-mutating. Full mutation requires:
+The rehearsal uses real signed-token admin authorization with distinct operator identities. It requests production trust, verifies same-actor approval is blocked, approves with a second signed operator, revokes after the drill and verifies redacted audit continuity.
 
-- explicit `SWIMPAY_EVIDENCE_ID`;
-- `SWIMPAY_ALLOW_PRODUCTION_TRUST_HANDOFF=true`;
-- requester token;
-- different approver token.
+Auto-confirmation remains disabled. The final drill evidence state is revoked, not production-trusted.
 
 ## Next Recommended Sprint
 
-Sprint 4X - Signed operator token local rehearsal and production trust handoff execution.
+Sprint 4Y - Signed-token Compose handoff rehearsal and production trust operational playbook.
 
 Recommended tasks:
 
-1. Add a local signed-operator-token helper for development only.
-2. Configure a local signed-token API rehearsal path without weakening production RBAC.
-3. Run the full dual-operator handoff against synthetic/local evidence.
-4. Verify request, same-actor block, second-actor approval, revocation and audit continuity.
-5. Keep auto-confirm disabled and real notification processing out of scope.
+1. Add a deliberate local-only Compose override or runbook for `ADMIN_AUTH_MODE=signed_token`.
+2. Run the same dual-operator handoff against persisted local Postgres evidence only after explicitly selecting review-only evidence.
+3. Verify persisted audit continuity through `/v1/admin/audit-events`.
+4. Revoke metadata trust at the end of the drill.
+5. Document operator handoff acceptance criteria before any future production trust operation.
 
 ## What Not To Do Next
 

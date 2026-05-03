@@ -66,6 +66,41 @@ The default Docker Compose configuration uses `ADMIN_AUTH_MODE=dev_token`, which
 
 Full dual-operator rehearsal requires an environment configured with signed operator tokens or another explicit two-operator local/dev setup. Do not weaken RBAC to simulate a second operator.
 
+Sprint 4X adds a local helper for signed operator tokens:
+
+```powershell
+npm run operator:tokens -- --masked
+```
+
+The helper is local/development only. It signs the same `op_<operator>.<role>.<signature>` token format verified by the API `signed_token` admin auth mode. It creates distinct requester, approver and revoker identities without changing role permissions.
+
+For an unmasked local drill, set a local HMAC secret and capture tokens deliberately:
+
+```powershell
+$env:ADMIN_TOKEN_HMAC_SECRET = "local_signed_operator_token_secret_change_me"
+npm run operator:tokens
+```
+
+Do not commit generated tokens. Do not use this helper for production operator lifecycle management.
+
+## Signed Local Rehearsal
+
+Sprint 4X adds a deterministic signed-token API rehearsal:
+
+```powershell
+npm run rehearsal:evidence:signed
+```
+
+This command runs an in-process local API with `ADMIN_AUTH_MODE=signed_token`, creates local review-only evidence, signs separate requester and approver tokens, then executes:
+
+1. production trust request by requester;
+2. same-actor approval attempt blocked by dual-control;
+3. second-operator metadata trust approval;
+4. revocation after the drill;
+5. audit continuity inspection.
+
+The rehearsal proves the signed-token path without weakening local Compose `dev_token` defaults and without leaving metadata trust approved.
+
 ## Audit Continuity
 
 Required events:

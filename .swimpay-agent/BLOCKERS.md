@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Sprint 4W evidence production trust dual-operator rehearsal and operator handoff: 2026-05-03T13:09:06+03:00.
+Last checked after Sprint 4X signed operator token local rehearsal and production trust handoff execution: 2026-05-03T13:35:00+03:00.
 
 Known non-critical limitations:
 
@@ -30,4 +30,5 @@ Known non-critical limitations:
 - Sprint 4U added `npm run rehearsal:evidence` for local operator dashboard/audit rehearsal and optional production trust guard validation. The local dry run used evidence `f4069615-028b-4329-a136-115495bd058c` and left same-actor approval blocked by dual-control with auto-confirmation disabled.
 - Sprint 4V added a read-only `swimpay-web` operator evidence surface at `/admin/evidence-review`. It renders redacted dashboard/audit data only, does not expose full certificate hashes or raw PII, and cannot request/approve/revoke production trust.
 - Sprint 4W added `npm run handoff:evidence-trust` for production trust handoff rehearsal. Default mode is non-mutating; full live dual-operator approval requires signed operator tokens or another explicit two-operator local/dev setup because Compose `dev_token` mode represents one dev operator.
+- Sprint 4X added `npm run operator:tokens` and `npm run rehearsal:evidence:signed`. The signed-token handoff execution passed in an in-process local API with two signed operators and ended with metadata trust revoked. Compose remains `dev_token` by default; any persisted signed-token Compose drill should be explicit and local-only.
 - Real bank package/certificate verification and real bank notifications remain out of scope.
