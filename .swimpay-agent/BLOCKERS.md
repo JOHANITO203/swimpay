@@ -2,6 +2,22 @@
 
 No current critical blockers.
 
+Last checked after Sprint 7D Android merchant frontend UX screens: 2026-05-03T20:20:00+03:00.
+
+Sprint 7D status:
+
+- Android merchant frontend copy, screen models and `MainActivity` surface passed Android JVM validation.
+- Notification Access remains a blocking merchant readiness gate and opens Android system settings.
+- Merchant UI hides package/cert metadata, HMAC, raw card, raw phone, raw notification text, trust internals and default developer event details.
+- Android still does not confirm orders or auto-confirm payments.
+- No SMS permission, Accessibility scraping service or broad package visibility permission was added.
+
+Known non-critical Sprint 7D follow-ups:
+
+- Several Android merchant screens use mock repositories until authenticated backend endpoints are wired.
+- `MainActivity` uses programmatic native views; a future Compose/design-system pass can improve interaction polish.
+- Live real-device visual QA is recommended before beta rollout.
+
 Last checked after Sprint 7C checkout destination copy hardening and route admin UX: 2026-05-03T19:06:22+03:00.
 
 Sprint 7C status:

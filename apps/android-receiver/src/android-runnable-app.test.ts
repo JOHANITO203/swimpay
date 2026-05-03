@@ -372,6 +372,7 @@ describe('android device-side network smoke wiring', () => {
     const onboarding = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverOnboardingReadiness.kt');
     const appPermission = readAndroid('app/src/main/java/com/swimpay/receiver/AppNotificationPermissionReader.kt');
     const activity = readAndroid('app/src/main/java/com/swimpay/receiver/MainActivity.kt');
+    const merchantUi = readAndroid('app/src/main/java/com/swimpay/receiver/AndroidMerchantUiModels.kt');
     const report = readFileSync(join(root, '.swimpay-agent/RECEIVER_ONBOARDING_GATE_REPORT.md'), 'utf8');
 
     expect(onboarding).toContain('NOTIFICATION_ACCESS_REQUIRED');
@@ -382,8 +383,9 @@ describe('android device-side network smoke wiring', () => {
     expect(onboarding).toContain('Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS');
     expect(onboarding).toContain('regrant_required_after_reinstall');
     expect(appPermission).toContain('POST_NOTIFICATIONS');
-    expect(activity).toContain("Ouvrir les paramètres d'accès aux notifications");
-    expect(activity).toContain('Android donne une permission large');
+    expect(activity).toContain('Activer l’accès');
+    expect(activity).toContain('NotificationListenerSettingsAction.createIntent()');
+    expect(merchantUi).toContain('Accès notifications');
     expect(report).toContain('app notifications ON + listener OFF');
     expect(report).toContain('ready_review_only');
     expect(`${onboarding}\n${activity}`).not.toContain('ready_auto_confirm');
@@ -400,6 +402,7 @@ describe('android device-side network smoke wiring', () => {
     const onboarding = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverOnboardingReadiness.kt');
     const diagnostics = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverDiagnostics.kt');
     const activity = readAndroid('app/src/main/java/com/swimpay/receiver/MainActivity.kt');
+    const merchantUi = readAndroid('app/src/main/java/com/swimpay/receiver/AndroidMerchantUiModels.kt');
     const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4K_REPORT.md'), 'utf8');
 
     expect(bankSelection).toContain('ReceiverBankProfileSelection');
@@ -411,9 +414,16 @@ describe('android device-side network smoke wiring', () => {
     expect(onboarding).toContain('syntheticDebugOnly');
     expect(diagnostics).toContain('ReceiverOperatorDiagnosticsExport');
     expect(diagnostics).toContain('selectedBankVerificationStatuses');
-    expect(activity).toContain('Selected banks:');
+    expect(activity).toContain('chooseBanksScreen');
+    expect(activity).toContain('merchantCatalog');
+    expect(merchantUi).toContain('Sberbank');
+    expect(merchantUi).toContain('T-Bank');
+    expect(merchantUi).toContain('VTB');
+    expect(merchantUi).toContain('Alfa-Bank');
+    expect(merchantUi).toContain('Gazprombank');
+    expect(merchantUi).toContain('Validation manuelle en bêta');
     expect(activity).toContain('trustedBanksCount = selectedBankProfiles.count');
-    expect(`${bankSelection}\n${onboarding}\n${diagnostics}\n${activity}`).not.toMatch(/bank_confirmed|official_bank_confirmation = true|ready_auto_confirm/iu);
+    expect(`${bankSelection}\n${onboarding}\n${diagnostics}\n${activity}\n${merchantUi}`).not.toMatch(/bank_confirmed|official_bank_confirmation = true|ready_auto_confirm/iu);
 
     const tasks = [
       '141_bank_profile_selection_model',

@@ -1,5 +1,17 @@
 # Progress Log
 
+## 2026-05-03T20:20:00+03:00 - Sprint 7D Android Merchant Frontend UX Screens
+
+- Created tasks 381 through 393 and updated the task queue to Sprint 7D order.
+- Created `docs/ANDROID_MERCHANT_UX_LANGUAGE.md`, `docs/ANDROID_MERCHANT_APP_SCREENS.md` and `docs/ANDROID_FRONTEND_API_CONTRACTS.md`.
+- Created `.swimpay-agent/ANDROID_FRONTEND_API_GAPS.md` for Android merchant frontend mock repository gaps.
+- Added `AndroidMerchantUiModels.kt` with merchant copy constants, screen models, masked receiving method display, review reason labels, review action contracts and frontend API contract models.
+- Replaced the default Android `MainActivity` text dump with a real merchant-facing native UI surface using SwimPay teal/blue cards and simple French copy.
+- Kept debug smoke actions in a clearly separated debug-local panel for debug builds.
+- Added `AndroidMerchantUiContractTest.kt` covering exact copy, forbidden jargon, Notification Access gate states, five-bank selection, masked card/phone display, review queue/detail actions, connected site developer-details boundary, API mock gaps and forbidden Android permissions.
+- TDD cycle: Android JVM test failed first because the Sprint 7D UI classes did not exist, then passed after implementation.
+- No real bank notification, customer data, SMS, Accessibility scraping, broad app enumeration, official bank confirmation claim, raw card/phone display or Android payment confirmation was added.
+
 ## 2026-05-03T16:45:40+03:00 - Sprint 7A Agent 5 QA/docs/safety scaffolding
 
 - Created tasks 340 through 349 and updated the task queue to Sprint 7A order.
