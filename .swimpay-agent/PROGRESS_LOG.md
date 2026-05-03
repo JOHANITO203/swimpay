@@ -1356,3 +1356,18 @@ Safety checks:
 - Stabilized Android Gradle validation for this 7 GB Windows host by reducing daemon heap to `-Xmx768m`, capping metaspace and using one Gradle worker after an out-of-memory daemon crash.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Gradle assembleDebug, Gradle JVM tests, ADB reverse/install/launch.
 - No real bank notification, real bank package/cert, customer data, installed-app enumeration, SMS, scraping, Android confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T10:55:00+03:00 - Sprint 4O Bank Evidence Production Trust Policy
+
+- Created tasks 169 through 175 and updated the task queue.
+- Added production trust policy statuses: `production_trust_requested`, `production_trust_approved`, `production_trust_revoked`.
+- Added additive migration `005_bank_evidence_production_trust_policy.sql`.
+- Added owner/admin-only permissions for production trust request, approval and revocation.
+- Added admin endpoints for request/approve/revoke production trust.
+- Enforced dual-control: requester cannot approve the same evidence.
+- Kept production trust metadata-only; responses still keep `trusted: false` and `auto_confirm_enabled: false`.
+- Added redacted audit events for production trust transitions.
+- Added `docs/BANK_EVIDENCE_PRODUCTION_TRUST_POLICY.md` and updated RBAC, schema, security and runbook docs.
+- Added API/static tests for trust guards, RBAC, dual-control, revocation, audit and no-Pii behavior.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health and local API/proxy rebuild after applying migration 005.
+- No real bank evidence, real notification, customer data, installed-app enumeration, SMS, scraping, Android confirmation, raw phone or raw notification text was used.

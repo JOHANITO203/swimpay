@@ -79,6 +79,7 @@ import {
 } from './admin.js';
 import {
   PgBankEvidenceRepository,
+  toBankEvidenceProductionTrustResponse,
   toBankEvidenceResponse,
   toBankEvidenceReviewResponse,
   toBankEvidenceSubmitResponse,
@@ -1011,6 +1012,45 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     });
   });
 
+  server.post('/v1/admin/bank-evidence/:id/request-production-trust', async (request, reply) => {
+    return handleBankEvidenceProductionTrustAction({
+      request,
+      reply,
+      bankEvidenceRepository,
+      adminAuth,
+      requiredPermission: OperatorPermissions.REQUEST_BANK_EVIDENCE_PRODUCTION_TRUST,
+      action: 'request_production_trust',
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
+  });
+
+  server.post('/v1/admin/bank-evidence/:id/approve-production-trust', async (request, reply) => {
+    return handleBankEvidenceProductionTrustAction({
+      request,
+      reply,
+      bankEvidenceRepository,
+      adminAuth,
+      requiredPermission: OperatorPermissions.APPROVE_BANK_EVIDENCE_PRODUCTION_TRUST,
+      action: 'approve_production_trust',
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
+  });
+
+  server.post('/v1/admin/bank-evidence/:id/revoke-production-trust', async (request, reply) => {
+    return handleBankEvidenceProductionTrustAction({
+      request,
+      reply,
+      bankEvidenceRepository,
+      adminAuth,
+      requiredPermission: OperatorPermissions.REVOKE_BANK_EVIDENCE_PRODUCTION_TRUST,
+      action: 'revoke_production_trust',
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
+  });
+
   server.post('/v1/admin/bank-app-signatures/:id/verify', async (request, reply) => {
     const operator = requireAdminPermission({
       request,
@@ -1604,6 +1644,83 @@ async function handleBankEvidenceReviewAction(params: {
   }
 }
 
+async function handleBankEvidenceProductionTrustAction(params: {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  bankEvidenceRepository: BankEvidenceRepository | null;
+  adminAuth: OperatorAuthConfig;
+  requiredPermission: OperatorPermission;
+  action: 'request_production_trust' | 'approve_production_trust' | 'revoke_production_trust';
+  auditEventId: string;
+  occurredAt: string;
+}) {
+  const operator = requireAdminPermission({
+    request: params.request,
+    reply: params.reply,
+    adminAuth: params.adminAuth,
+    permission: params.requiredPermission
+  });
+  if (!operator) {
+    return params.reply;
+  }
+
+  if (!params.bankEvidenceRepository) {
+    return params.reply.status(503).send({
+      error: {
+        code: 'service_unavailable',
+        message: 'Bank evidence repository is not configured.',
+        details: {}
+      }
+    });
+  }
+
+  const routeParams = params.request.params as { id?: string };
+  if (!routeParams.id) {
+    return params.reply.status(400).send(invalidRequest('Bank evidence id is required.', {}));
+  }
+
+  const body = validateBankEvidenceReviewBody(params.request.body);
+  if (!body.valid) {
+    return params.reply.status(400).send(body.response);
+  }
+
+  const result = await params.bankEvidenceRepository.transitionProductionTrust({
+    evidenceId: routeParams.id,
+    operatorId: operator.operatorId,
+    reason: body.reason,
+    auditEventId: params.auditEventId,
+    occurredAt: params.occurredAt,
+    action: params.action
+  });
+
+  switch (result.kind) {
+    case 'updated':
+      return params.reply.status(200).send(toBankEvidenceProductionTrustResponse(result));
+    case 'not_found':
+      return params.reply.status(404).send({
+        error: {
+          code: 'bank_evidence_not_found',
+          message: 'Bank evidence was not found.',
+          details: { evidence_id: routeParams.id }
+        }
+      });
+    case 'not_review_only':
+      return params.reply.status(409).send(bankEvidenceTransitionError('bank_evidence_not_review_only', routeParams.id));
+    case 'not_requested':
+      return params.reply.status(409).send(bankEvidenceTransitionError('bank_evidence_production_trust_not_requested', routeParams.id));
+    case 'not_approved':
+      return params.reply.status(409).send(bankEvidenceTransitionError('bank_evidence_production_trust_not_approved', routeParams.id));
+    case 'dual_control_required':
+      return params.reply.status(409).send(bankEvidenceTransitionError('bank_evidence_dual_control_required', routeParams.id));
+    case 'to_verify_not_trustable':
+      return params.reply.status(409).send(bankEvidenceTransitionError('bank_evidence_to_verify_not_trustable', routeParams.id));
+    case 'synthetic_not_trustable':
+      return params.reply.status(409).send(bankEvidenceTransitionError('bank_evidence_synthetic_not_trustable', routeParams.id));
+    case 'source_not_trustable':
+      return params.reply.status(409).send(bankEvidenceTransitionError('bank_evidence_source_not_trustable', routeParams.id));
+  }
+}
+
 function requireAdminPermission(params: {
   request: FastifyRequest;
   reply: FastifyReply;
@@ -1715,6 +1832,39 @@ function adminRepositoryUnavailableError() {
       details: {}
     }
   };
+}
+
+function bankEvidenceTransitionError(code: string, evidenceId: string) {
+  return {
+    error: {
+      code,
+      message: bankEvidenceTransitionErrorMessage(code),
+      details: {
+        evidence_id: evidenceId
+      }
+    }
+  };
+}
+
+function bankEvidenceTransitionErrorMessage(code: string): string {
+  switch (code) {
+    case 'bank_evidence_not_review_only':
+      return 'Bank evidence must first be approved for review-only before production trust can be requested.';
+    case 'bank_evidence_production_trust_not_requested':
+      return 'Bank evidence production trust must be requested before it can be approved.';
+    case 'bank_evidence_production_trust_not_approved':
+      return 'Bank evidence production trust is not approved and cannot be revoked.';
+    case 'bank_evidence_dual_control_required':
+      return 'A different operator must approve the production trust request.';
+    case 'bank_evidence_to_verify_not_trustable':
+      return 'TO_VERIFY package or certificate metadata cannot become production trusted.';
+    case 'bank_evidence_synthetic_not_trustable':
+      return 'Synthetic debug evidence cannot become production trusted.';
+    case 'bank_evidence_source_not_trustable':
+      return 'Only Android PackageManager evidence can request production trust.';
+    default:
+      return 'Bank evidence production trust transition is not allowed.';
+  }
 }
 
 function toOrderReadResponse(order: StoredOrderRecord, paymentSessionId: string | null): OrderReadResponse {

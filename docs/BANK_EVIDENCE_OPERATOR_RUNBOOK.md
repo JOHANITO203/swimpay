@@ -145,3 +145,67 @@ Future real evidence collection must be explicit:
 5. Operator reviews evidence and may mark it `approved_for_review_only`.
 
 Production trust remains a separate future policy. It must require explicit human/operator verification and additional controls. Evidence review alone must never make a bank package trusted for auto-confirmation.
+
+## Production Trust Policy Foundation
+
+Production trust is now modeled as a separate metadata workflow. It is not the same as `approve-review-only`.
+
+Allowed path:
+
+```text
+pending_operator_review
+-> approved_for_review_only
+-> production_trust_requested
+-> production_trust_approved
+```
+
+Revocation path:
+
+```text
+production_trust_approved -> production_trust_revoked
+```
+
+Production trust means only:
+
+```text
+this bank app package/cert evidence is accepted as verified app metadata
+```
+
+It still does not enable auto-confirmation.
+
+Operator commands:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing `
+  http://localhost:8080/v1/admin/bank-evidence/<evidence-id>/request-production-trust `
+  -Headers $headers `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"reason":"request production metadata trust after review-only approval"}'
+
+Invoke-WebRequest -UseBasicParsing `
+  http://localhost:8080/v1/admin/bank-evidence/<evidence-id>/approve-production-trust `
+  -Headers $headers `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"reason":"second operator approved package/cert metadata"}'
+
+Invoke-WebRequest -UseBasicParsing `
+  http://localhost:8080/v1/admin/bank-evidence/<evidence-id>/revoke-production-trust `
+  -Headers $headers `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"reason":"package/cert metadata drifted or was superseded"}'
+```
+
+Guardrails:
+
+- the requester cannot approve the same production trust request;
+- `TO_VERIFY` cannot request production trust;
+- `synthetic_debug_only` cannot request production trust;
+- rejected or deprecated evidence cannot request production trust;
+- production trust approval does not mark a payment confirmed;
+- production trust approval does not set `auto_confirm_enabled`;
+- real notifications must not be processed during package/cert trust review.
+
+See `docs/BANK_EVIDENCE_PRODUCTION_TRUST_POLICY.md`.

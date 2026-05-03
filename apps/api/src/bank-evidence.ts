@@ -8,7 +8,10 @@ export const BankEvidenceStatuses = {
   PENDING_OPERATOR_REVIEW: 'pending_operator_review',
   APPROVED_FOR_REVIEW_ONLY: 'approved_for_review_only',
   REJECTED: 'rejected',
-  DEPRECATED: 'deprecated'
+  DEPRECATED: 'deprecated',
+  PRODUCTION_TRUST_REQUESTED: 'production_trust_requested',
+  PRODUCTION_TRUST_APPROVED: 'production_trust_approved',
+  PRODUCTION_TRUST_REVOKED: 'production_trust_revoked'
 } as const;
 
 export type BankEvidenceStatus = (typeof BankEvidenceStatuses)[keyof typeof BankEvidenceStatuses];
@@ -24,7 +27,10 @@ export const BankEvidenceAuditEventTypes = {
   SUBMITTED: 'bank_evidence.submitted',
   REVIEWED: 'bank_evidence.reviewed',
   APPROVED_REVIEW_ONLY: 'bank_evidence.approved_review_only',
-  REJECTED: 'bank_evidence.rejected'
+  REJECTED: 'bank_evidence.rejected',
+  PRODUCTION_TRUST_REQUESTED: 'bank_evidence.production_trust_requested',
+  PRODUCTION_TRUST_APPROVED: 'bank_evidence.production_trust_approved',
+  PRODUCTION_TRUST_REVOKED: 'bank_evidence.production_trust_revoked'
 } as const;
 
 export type BankEvidenceAuditEventType = (typeof BankEvidenceAuditEventTypes)[keyof typeof BankEvidenceAuditEventTypes];
@@ -44,6 +50,15 @@ export interface BankEvidenceRecord {
   reviewedAt?: string | undefined;
   reviewedBy?: string | undefined;
   reviewReason?: string | undefined;
+  productionTrustRequestedAt?: string | undefined;
+  productionTrustRequestedBy?: string | undefined;
+  productionTrustReason?: string | undefined;
+  productionTrustApprovedAt?: string | undefined;
+  productionTrustApprovedBy?: string | undefined;
+  productionTrustApprovalReason?: string | undefined;
+  productionTrustRevokedAt?: string | undefined;
+  productionTrustRevokedBy?: string | undefined;
+  productionTrustRevocationReason?: string | undefined;
 }
 
 export interface BankEvidenceAuditEvent {
@@ -92,11 +107,32 @@ export type BankEvidenceReviewResult =
   | { kind: 'not_found' }
   | { kind: 'not_pending' };
 
+export interface BankEvidenceProductionTrustInput {
+  evidenceId: string;
+  operatorId: string;
+  reason?: string | undefined;
+  auditEventId: string;
+  occurredAt: string;
+  action: 'request_production_trust' | 'approve_production_trust' | 'revoke_production_trust';
+}
+
+export type BankEvidenceProductionTrustResult =
+  | { kind: 'updated'; evidence: BankEvidenceRecord; auditEvent: BankEvidenceAuditEvent }
+  | { kind: 'not_found' }
+  | { kind: 'not_review_only' }
+  | { kind: 'not_requested' }
+  | { kind: 'not_approved' }
+  | { kind: 'dual_control_required' }
+  | { kind: 'to_verify_not_trustable' }
+  | { kind: 'synthetic_not_trustable' }
+  | { kind: 'source_not_trustable' };
+
 export interface BankEvidenceRepository {
   submitEvidence(input: BankEvidenceSubmitInput): Promise<BankEvidenceSubmitResult>;
   listEvidence(limit: number): Promise<BankEvidenceRecord[]>;
   getEvidence(evidenceId: string): Promise<BankEvidenceRecord | null>;
   reviewEvidence(input: BankEvidenceReviewInput): Promise<BankEvidenceReviewResult>;
+  transitionProductionTrust(input: BankEvidenceProductionTrustInput): Promise<BankEvidenceProductionTrustResult>;
 }
 
 export type BankEvidenceSubmitValidationResult =
@@ -205,11 +241,18 @@ export function toBankEvidenceResponse(evidence: BankEvidenceRecord) {
     source: evidence.source,
     status: evidence.status,
     trusted: false,
+    production_trusted_app_metadata: isProductionTrustApproved(evidence),
     auto_confirm_enabled: false,
     created_at: evidence.createdAt,
     reviewed_at: evidence.reviewedAt,
     reviewed_by: evidence.reviewedBy,
-    review_reason: evidence.reviewReason
+    review_reason: evidence.reviewReason,
+    requested_by: evidence.productionTrustRequestedBy,
+    requested_at: evidence.productionTrustRequestedAt,
+    approved_by: evidence.productionTrustApprovedBy,
+    approved_at: evidence.productionTrustApprovedAt,
+    revoked_by: evidence.productionTrustRevokedBy,
+    revoked_at: evidence.productionTrustRevokedAt
   };
 }
 
@@ -234,6 +277,20 @@ export function toBankEvidenceReviewResponse(result: Extract<BankEvidenceReviewR
     auto_confirm_enabled: false,
     review_reason: result.evidence.reviewReason,
     audit_event_id: reviewAudit?.auditEventId
+  };
+}
+
+export function toBankEvidenceProductionTrustResponse(result: Extract<BankEvidenceProductionTrustResult, { kind: 'updated' }>) {
+  return {
+    evidence_id: result.evidence.evidenceId,
+    status: result.evidence.status,
+    trusted: false,
+    production_trusted_app_metadata: isProductionTrustApproved(result.evidence),
+    auto_confirm_enabled: false,
+    requested_by: result.evidence.productionTrustRequestedBy,
+    approved_by: result.evidence.productionTrustApprovedBy,
+    revoked_by: result.evidence.productionTrustRevokedBy,
+    audit_event_id: result.auditEvent.auditEventId
   };
 }
 
@@ -349,6 +406,89 @@ export class InMemoryBankEvidenceRepository implements BankEvidenceRepository {
     });
     this.auditEvents.unshift(terminal, reviewed);
     return { kind: 'updated', evidence, auditEvents: [reviewed, terminal] };
+  }
+
+  public async transitionProductionTrust(input: BankEvidenceProductionTrustInput): Promise<BankEvidenceProductionTrustResult> {
+    const evidence = this.evidence.find((candidate) => candidate.evidenceId === input.evidenceId);
+    if (!evidence) {
+      return { kind: 'not_found' };
+    }
+
+    const guard = validateProductionTrustEvidence(evidence);
+    if (guard !== 'valid') {
+      return { kind: guard };
+    }
+
+    if (input.action === 'request_production_trust') {
+      if (evidence.status !== BankEvidenceStatuses.APPROVED_FOR_REVIEW_ONLY) {
+        return { kind: 'not_review_only' };
+      }
+
+      evidence.status = BankEvidenceStatuses.PRODUCTION_TRUST_REQUESTED;
+      evidence.productionTrustRequestedAt = input.occurredAt;
+      evidence.productionTrustRequestedBy = input.operatorId;
+      evidence.productionTrustReason = input.reason;
+      const auditEvent = buildBankEvidenceAuditEvent({
+        auditEventId: input.auditEventId,
+        merchantId: evidence.merchantId,
+        eventType: BankEvidenceAuditEventTypes.PRODUCTION_TRUST_REQUESTED,
+        evidence,
+        actorType: 'operator',
+        actorId: input.operatorId,
+        reason: input.reason,
+        occurredAt: input.occurredAt
+      });
+      this.auditEvents.unshift(auditEvent);
+      return { kind: 'updated', evidence, auditEvent };
+    }
+
+    if (input.action === 'approve_production_trust') {
+      if (evidence.status !== BankEvidenceStatuses.PRODUCTION_TRUST_REQUESTED) {
+        return { kind: 'not_requested' };
+      }
+
+      if (evidence.productionTrustRequestedBy === input.operatorId) {
+        return { kind: 'dual_control_required' };
+      }
+
+      evidence.status = BankEvidenceStatuses.PRODUCTION_TRUST_APPROVED;
+      evidence.productionTrustApprovedAt = input.occurredAt;
+      evidence.productionTrustApprovedBy = input.operatorId;
+      evidence.productionTrustApprovalReason = input.reason;
+      const auditEvent = buildBankEvidenceAuditEvent({
+        auditEventId: input.auditEventId,
+        merchantId: evidence.merchantId,
+        eventType: BankEvidenceAuditEventTypes.PRODUCTION_TRUST_APPROVED,
+        evidence,
+        actorType: 'operator',
+        actorId: input.operatorId,
+        reason: input.reason,
+        occurredAt: input.occurredAt
+      });
+      this.auditEvents.unshift(auditEvent);
+      return { kind: 'updated', evidence, auditEvent };
+    }
+
+    if (evidence.status !== BankEvidenceStatuses.PRODUCTION_TRUST_APPROVED) {
+      return { kind: 'not_approved' };
+    }
+
+    evidence.status = BankEvidenceStatuses.PRODUCTION_TRUST_REVOKED;
+    evidence.productionTrustRevokedAt = input.occurredAt;
+    evidence.productionTrustRevokedBy = input.operatorId;
+    evidence.productionTrustRevocationReason = input.reason;
+    const auditEvent = buildBankEvidenceAuditEvent({
+      auditEventId: input.auditEventId,
+      merchantId: evidence.merchantId,
+      eventType: BankEvidenceAuditEventTypes.PRODUCTION_TRUST_REVOKED,
+      evidence,
+      actorType: 'operator',
+      actorId: input.operatorId,
+      reason: input.reason,
+      occurredAt: input.occurredAt
+    });
+    this.auditEvents.unshift(auditEvent);
+    return { kind: 'updated', evidence, auditEvent };
   }
 }
 
@@ -515,6 +655,80 @@ export class PgBankEvidenceRepository implements BankEvidenceRepository {
     }
   }
 
+  public async transitionProductionTrust(input: BankEvidenceProductionTrustInput): Promise<BankEvidenceProductionTrustResult> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      const current = await client.query('SELECT * FROM bank_package_evidence WHERE id = $1 FOR UPDATE', [input.evidenceId]);
+      if (current.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_found' };
+      }
+
+      const evidence = toBankEvidenceRecord(current.rows[0] as BankEvidenceRow);
+      const guard = validateProductionTrustEvidence(evidence);
+      if (guard !== 'valid') {
+        await client.query('ROLLBACK');
+        return { kind: guard };
+      }
+
+      const transition = buildProductionTrustUpdate(input, evidence);
+      if (transition.kind !== 'update') {
+        await client.query('ROLLBACK');
+        return { kind: transition.kind };
+      }
+
+      const updated = await client.query(
+        `UPDATE bank_package_evidence
+         SET status = $1,
+             production_trust_requested_at = COALESCE($2, production_trust_requested_at),
+             production_trust_requested_by = COALESCE($3, production_trust_requested_by),
+             production_trust_reason = COALESCE($4, production_trust_reason),
+             production_trust_approved_at = COALESCE($5, production_trust_approved_at),
+             production_trust_approved_by = COALESCE($6, production_trust_approved_by),
+             production_trust_approval_reason = COALESCE($7, production_trust_approval_reason),
+             production_trust_revoked_at = COALESCE($8, production_trust_revoked_at),
+             production_trust_revoked_by = COALESCE($9, production_trust_revoked_by),
+             production_trust_revocation_reason = COALESCE($10, production_trust_revocation_reason)
+         WHERE id = $11
+         RETURNING *`,
+        [
+          transition.nextStatus,
+          transition.requestedAt ?? null,
+          transition.requestedBy ?? null,
+          transition.requestReason ?? null,
+          transition.approvedAt ?? null,
+          transition.approvedBy ?? null,
+          transition.approvalReason ?? null,
+          transition.revokedAt ?? null,
+          transition.revokedBy ?? null,
+          transition.revocationReason ?? null,
+          input.evidenceId
+        ]
+      );
+      const updatedEvidence = toBankEvidenceRecord(updated.rows[0] as BankEvidenceRow);
+      const auditEvent = buildBankEvidenceAuditEvent({
+        auditEventId: input.auditEventId,
+        merchantId: updatedEvidence.merchantId,
+        eventType: transition.auditEventType,
+        evidence: updatedEvidence,
+        actorType: 'operator',
+        actorId: input.operatorId,
+        reason: input.reason,
+        occurredAt: input.occurredAt
+      });
+      await insertBankEvidenceAuditEvent(client, auditEvent);
+      await client.query('COMMIT');
+      return { kind: 'updated', evidence: updatedEvidence, auditEvent };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   private async findDuplicate(input: BankEvidenceSubmitInput): Promise<BankEvidenceRecord | null> {
     const result = await this.pool.query(
       `SELECT *
@@ -543,6 +757,93 @@ export function maskCertificateHash(certSha256: string): string {
   return `${certSha256.slice(0, 6)}...${certSha256.slice(-6)}`;
 }
 
+export function isProductionTrustApproved(evidence: BankEvidenceRecord): boolean {
+  return evidence.status === BankEvidenceStatuses.PRODUCTION_TRUST_APPROVED;
+}
+
+function validateProductionTrustEvidence(
+  evidence: BankEvidenceRecord
+): 'valid' | 'to_verify_not_trustable' | 'synthetic_not_trustable' | 'source_not_trustable' {
+  if (evidence.packageName === 'TO_VERIFY' || evidence.certSha256 === 'TO_VERIFY') {
+    return 'to_verify_not_trustable';
+  }
+
+  if (isSyntheticDebugValue(evidence.packageName) || isSyntheticDebugValue(evidence.certSha256)) {
+    return 'synthetic_not_trustable';
+  }
+
+  if (evidence.source !== BankEvidenceSources.ANDROID_PACKAGEMANAGER) {
+    return 'source_not_trustable';
+  }
+
+  return 'valid';
+}
+
+type ProductionTrustTransition =
+  | {
+      kind: 'update';
+      nextStatus: BankEvidenceStatus;
+      auditEventType: BankEvidenceAuditEventType;
+      requestedAt?: string | undefined;
+      requestedBy?: string | undefined;
+      requestReason?: string | undefined;
+      approvedAt?: string | undefined;
+      approvedBy?: string | undefined;
+      approvalReason?: string | undefined;
+      revokedAt?: string | undefined;
+      revokedBy?: string | undefined;
+      revocationReason?: string | undefined;
+    }
+  | { kind: 'not_review_only' | 'not_requested' | 'not_approved' | 'dual_control_required' };
+
+function buildProductionTrustUpdate(input: BankEvidenceProductionTrustInput, evidence: BankEvidenceRecord): ProductionTrustTransition {
+  switch (input.action) {
+    case 'request_production_trust':
+      if (evidence.status !== BankEvidenceStatuses.APPROVED_FOR_REVIEW_ONLY) {
+        return { kind: 'not_review_only' };
+      }
+
+      return {
+        kind: 'update',
+        nextStatus: BankEvidenceStatuses.PRODUCTION_TRUST_REQUESTED,
+        auditEventType: BankEvidenceAuditEventTypes.PRODUCTION_TRUST_REQUESTED,
+        requestedAt: input.occurredAt,
+        requestedBy: input.operatorId,
+        requestReason: input.reason
+      };
+    case 'approve_production_trust':
+      if (evidence.status !== BankEvidenceStatuses.PRODUCTION_TRUST_REQUESTED) {
+        return { kind: 'not_requested' };
+      }
+
+      if (evidence.productionTrustRequestedBy === input.operatorId) {
+        return { kind: 'dual_control_required' };
+      }
+
+      return {
+        kind: 'update',
+        nextStatus: BankEvidenceStatuses.PRODUCTION_TRUST_APPROVED,
+        auditEventType: BankEvidenceAuditEventTypes.PRODUCTION_TRUST_APPROVED,
+        approvedAt: input.occurredAt,
+        approvedBy: input.operatorId,
+        approvalReason: input.reason
+      };
+    case 'revoke_production_trust':
+      if (evidence.status !== BankEvidenceStatuses.PRODUCTION_TRUST_APPROVED) {
+        return { kind: 'not_approved' };
+      }
+
+      return {
+        kind: 'update',
+        nextStatus: BankEvidenceStatuses.PRODUCTION_TRUST_REVOKED,
+        auditEventType: BankEvidenceAuditEventTypes.PRODUCTION_TRUST_REVOKED,
+        revokedAt: input.occurredAt,
+        revokedBy: input.operatorId,
+        revocationReason: input.reason
+      };
+  }
+}
+
 function buildBankEvidenceAuditEvent(input: {
   auditEventId: string;
   merchantId: string;
@@ -569,6 +870,7 @@ function buildBankEvidenceAuditEvent(input: {
       source: input.evidence.source,
       status: input.evidence.status,
       trusted: false,
+      production_trusted_app_metadata: isProductionTrustApproved(input.evidence),
       auto_confirm_enabled: false,
       reason: input.reason
     },
@@ -670,6 +972,15 @@ interface BankEvidenceRow {
   reviewed_at: Date | string | null;
   reviewed_by: string | null;
   review_reason: string | null;
+  production_trust_requested_at?: Date | string | null;
+  production_trust_requested_by?: string | null;
+  production_trust_reason?: string | null;
+  production_trust_approved_at?: Date | string | null;
+  production_trust_approved_by?: string | null;
+  production_trust_approval_reason?: string | null;
+  production_trust_revoked_at?: Date | string | null;
+  production_trust_revoked_by?: string | null;
+  production_trust_revocation_reason?: string | null;
 }
 
 function toBankEvidenceRecord(row: BankEvidenceRow): BankEvidenceRecord {
@@ -687,6 +998,15 @@ function toBankEvidenceRecord(row: BankEvidenceRow): BankEvidenceRecord {
     createdAt: new Date(row.created_at).toISOString(),
     reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).toISOString() : undefined,
     reviewedBy: row.reviewed_by ?? undefined,
-    reviewReason: row.review_reason ?? undefined
+    reviewReason: row.review_reason ?? undefined,
+    productionTrustRequestedAt: row.production_trust_requested_at ? new Date(row.production_trust_requested_at).toISOString() : undefined,
+    productionTrustRequestedBy: row.production_trust_requested_by ?? undefined,
+    productionTrustReason: row.production_trust_reason ?? undefined,
+    productionTrustApprovedAt: row.production_trust_approved_at ? new Date(row.production_trust_approved_at).toISOString() : undefined,
+    productionTrustApprovedBy: row.production_trust_approved_by ?? undefined,
+    productionTrustApprovalReason: row.production_trust_approval_reason ?? undefined,
+    productionTrustRevokedAt: row.production_trust_revoked_at ? new Date(row.production_trust_revoked_at).toISOString() : undefined,
+    productionTrustRevokedBy: row.production_trust_revoked_by ?? undefined,
+    productionTrustRevocationReason: row.production_trust_revocation_reason ?? undefined
   };
 }

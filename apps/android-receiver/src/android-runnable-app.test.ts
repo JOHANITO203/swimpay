@@ -510,7 +510,6 @@ describe('android device-side network smoke wiring', () => {
     const runbook = readFileSync(join(root, 'docs/BANK_EVIDENCE_OPERATOR_RUNBOOK.md'), 'utf8');
     const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4N_REPORT.md'), 'utf8');
     const smokeReport = readFileSync(join(root, '.swimpay-agent/REAL_DEVICE_SMOKE_REPORT.md'), 'utf8');
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     expect(runbook).toContain('Synthetic dry-run flow');
     expect(runbook).toContain('approve-review-only');
@@ -533,6 +532,46 @@ describe('android device-side network smoke wiring', () => {
       '166_evidence_rejection_rehearsal',
       '167_evidence_workflow_operator_runbook',
       '168_sprint_4n_closeout_review'
+    ];
+    let previousIndex = -1;
+    for (const task of tasks) {
+      expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
+      const index = report.indexOf(task);
+      expect(index, task).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+  });
+
+  it('documents Sprint 4O production trust policy without auto-confirm enablement', () => {
+    const policy = readFileSync(join(root, 'docs/BANK_EVIDENCE_PRODUCTION_TRUST_POLICY.md'), 'utf8');
+    const runbook = readFileSync(join(root, 'docs/BANK_EVIDENCE_OPERATOR_RUNBOOK.md'), 'utf8');
+    const apiEvidence = readFileSync(join(root, 'apps/api/src/bank-evidence.ts'), 'utf8');
+    const security = readFileSync(join(root, 'packages/security/src/index.ts'), 'utf8');
+    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+
+    expect(policy).toContain('production_trust_requested');
+    expect(policy).toContain('production_trust_approved');
+    expect(policy).toContain('production_trust_revoked');
+    expect(policy).toContain('Dual control is enforced');
+    expect(policy).toContain('It does not mean a payment was confirmed');
+    expect(runbook).toContain('request-production-trust');
+    expect(runbook).toContain('approve-production-trust');
+    expect(runbook).toContain('revoke-production-trust');
+    expect(apiEvidence).toContain('PRODUCTION_TRUST_REQUESTED');
+    expect(apiEvidence).toContain('PRODUCTION_TRUST_APPROVED');
+    expect(apiEvidence).toContain('PRODUCTION_TRUST_REVOKED');
+    expect(security).toContain('request_bank_evidence_production_trust');
+    expect(security).toContain('approve_bank_evidence_production_trust');
+    expect(`${policy}\n${runbook}`).not.toMatch(/bank_confirmed|official_bank_confirmation = true|ready_auto_confirm|auto_confirm_enabled:\s*true/iu);
+
+    const tasks = [
+      '169_bank_evidence_production_trust_policy',
+      '170_bank_evidence_trust_state_machine',
+      '171_admin_production_trust_permission_model',
+      '172_trust_transition_audit_and_dual_control',
+      '173_trust_policy_tests',
+      '174_bank_trust_policy_docs',
+      '175_sprint_4o_closeout_review'
     ];
     let previousIndex = -1;
     for (const task of tasks) {

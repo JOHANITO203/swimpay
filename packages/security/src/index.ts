@@ -21,6 +21,9 @@ export const OperatorPermissions = {
   PROMOTE_BANK_TEMPLATES: 'promote_bank_templates',
   DEGRADE_BANK_TEMPLATES: 'degrade_bank_templates',
   DISABLE_BANK_TEMPLATES: 'disable_bank_templates',
+  REQUEST_BANK_EVIDENCE_PRODUCTION_TRUST: 'request_bank_evidence_production_trust',
+  APPROVE_BANK_EVIDENCE_PRODUCTION_TRUST: 'approve_bank_evidence_production_trust',
+  REVOKE_BANK_EVIDENCE_PRODUCTION_TRUST: 'revoke_bank_evidence_production_trust',
   VIEW_WEBHOOKS: 'view_webhooks',
   REPLAY_WEBHOOKS: 'replay_webhooks',
   VIEW_AUDIT_LOGS: 'view_audit_logs'

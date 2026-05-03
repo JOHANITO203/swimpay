@@ -26,6 +26,9 @@ Permissions are also centralized in `@swimpay/security`:
 - `promote_bank_templates`
 - `degrade_bank_templates`
 - `disable_bank_templates`
+- `request_bank_evidence_production_trust`
+- `approve_bank_evidence_production_trust`
+- `revoke_bank_evidence_production_trust`
 - `view_webhooks`
 - `replay_webhooks`
 - `view_audit_logs`
@@ -100,6 +103,9 @@ Current admin endpoint gates:
 - template promote: `promote_bank_templates`
 - template degrade/review-only: `degrade_bank_templates`
 - template disable/false-positive: `disable_bank_templates`
+- bank package evidence production trust request: `request_bank_evidence_production_trust`
+- bank package evidence production trust approval: `approve_bank_evidence_production_trust`
+- bank package evidence production trust revocation: `revoke_bank_evidence_production_trust`
 
 Dangerous actions continue to write redacted audit events.
 

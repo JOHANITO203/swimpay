@@ -33,17 +33,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Phase 4N synthetic evidence rehearsal tasks in the approved order', () => {
+  test('task queue lists Phase 4O production trust policy tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '162_synthetic_evidence_real_device_submission',
-      '163_admin_evidence_review_local_flow',
-      '164_evidence_review_only_assertions',
-      '165_evidence_audit_trace_validation',
-      '166_evidence_rejection_rehearsal',
-      '167_evidence_workflow_operator_runbook',
-      '168_sprint_4n_closeout_review'
+      '169_bank_evidence_production_trust_policy',
+      '170_bank_evidence_trust_state_machine',
+      '171_admin_production_trust_permission_model',
+      '172_trust_transition_audit_and_dual_control',
+      '173_trust_policy_tests',
+      '174_bank_trust_policy_docs',
+      '175_sprint_4o_closeout_review'
     ];
 
     let previousIndex = -1;

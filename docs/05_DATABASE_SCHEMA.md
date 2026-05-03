@@ -189,17 +189,27 @@ CREATE TABLE bank_package_evidence (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   reviewed_at TIMESTAMPTZ,
   reviewed_by TEXT,
-  review_reason TEXT
+  review_reason TEXT,
+  production_trust_requested_at TIMESTAMPTZ,
+  production_trust_requested_by TEXT,
+  production_trust_reason TEXT,
+  production_trust_approved_at TIMESTAMPTZ,
+  production_trust_approved_by TEXT,
+  production_trust_approval_reason TEXT,
+  production_trust_revoked_at TIMESTAMPTZ,
+  production_trust_revoked_by TEXT,
+  production_trust_revocation_reason TEXT
 );
 ```
 
 Allowed evidence statuses:
 
 ```text
-pending_operator_review, approved_for_review_only, rejected, deprecated
+pending_operator_review, approved_for_review_only, rejected, deprecated,
+production_trust_requested, production_trust_approved, production_trust_revoked
 ```
 
-Evidence rows are review workflow material only. They do not establish production trust and do not enable auto-confirmation.
+Evidence rows are review workflow material. `approved_for_review_only` does not establish production trust and does not enable auto-confirmation. `production_trust_approved` means only that the package/certificate metadata has passed the explicit human/operator production trust policy; it still does not enable auto-confirmation by itself.
 
 ### `bank_templates`
 
@@ -378,6 +388,10 @@ WHERE status IN ('pending', 'failed');
 
 CREATE UNIQUE INDEX unique_bank_package_evidence_observation
 ON bank_package_evidence(merchant_id, device_id, bank_profile_id, package_name, cert_sha256, source);
+
+CREATE INDEX idx_bank_package_evidence_production_trust
+ON bank_package_evidence(status, production_trust_requested_at DESC, production_trust_approved_at DESC)
+WHERE status IN ('production_trust_requested', 'production_trust_approved', 'production_trust_revoked');
 ```
 
 ## Critical uniqueness rules

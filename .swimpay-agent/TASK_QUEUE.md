@@ -6,10 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `162_synthetic_evidence_real_device_submission` - status: completed - source: `tasks/162_synthetic_evidence_real_device_submission.md`
-- [x] `163_admin_evidence_review_local_flow` - status: completed - source: `tasks/163_admin_evidence_review_local_flow.md`
-- [x] `164_evidence_review_only_assertions` - status: completed - source: `tasks/164_evidence_review_only_assertions.md`
-- [x] `165_evidence_audit_trace_validation` - status: completed - source: `tasks/165_evidence_audit_trace_validation.md`
-- [x] `166_evidence_rejection_rehearsal` - status: completed - source: `tasks/166_evidence_rejection_rehearsal.md`
-- [x] `167_evidence_workflow_operator_runbook` - status: completed - source: `tasks/167_evidence_workflow_operator_runbook.md`
-- [x] `168_sprint_4n_closeout_review` - status: completed - source: `tasks/168_sprint_4n_closeout_review.md`
+- [x] `169_bank_evidence_production_trust_policy` - status: completed - source: `tasks/169_bank_evidence_production_trust_policy.md`
+- [x] `170_bank_evidence_trust_state_machine` - status: completed - source: `tasks/170_bank_evidence_trust_state_machine.md`
+- [x] `171_admin_production_trust_permission_model` - status: completed - source: `tasks/171_admin_production_trust_permission_model.md`
+- [x] `172_trust_transition_audit_and_dual_control` - status: completed - source: `tasks/172_trust_transition_audit_and_dual_control.md`
+- [x] `173_trust_policy_tests` - status: completed - source: `tasks/173_trust_policy_tests.md`
+- [x] `174_bank_trust_policy_docs` - status: completed - source: `tasks/174_bank_trust_policy_docs.md`
+- [x] `175_sprint_4o_closeout_review` - status: completed - source: `tasks/175_sprint_4o_closeout_review.md`

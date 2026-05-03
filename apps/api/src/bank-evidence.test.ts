@@ -238,12 +238,197 @@ describe('bank package evidence workflow', () => {
     expect(repository.verifiedBankAppProfiles.has('sberbank_ru')).toBe(false);
     expect(`${submitted.body}\n${approved.body}`).not.toContain('official_bank_confirmation');
   });
+
+  it('requests production trust only from approved review-only concrete PackageManager evidence', async () => {
+    const repository = buildEvidenceRepository({
+      evidence: [reviewOnlyEvidence()]
+    });
+    const server = buildTestServer(repository, { role: 'admin', operatorId: 'ops_requester' });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_existing/request-production-trust',
+      headers: adminHeaders(),
+      payload: {
+        reason: 'operator reviewed package and certificate evidence for future production metadata trust'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      evidence_id: 'bev_existing',
+      status: 'production_trust_requested',
+      production_trusted_app_metadata: false,
+      auto_confirm_enabled: false,
+      requested_by: 'ops_requester',
+      audit_event_id: 'aud_bank_evidence_01'
+    });
+    expect(repository.evidence[0]).toMatchObject({
+      status: 'production_trust_requested',
+      productionTrustRequestedBy: 'ops_requester'
+    });
+    expect(repository.auditEvents[0]).toMatchObject({
+      eventType: BankEvidenceAuditEventTypes.PRODUCTION_TRUST_REQUESTED,
+      actorType: 'operator',
+      actorId: 'ops_requester',
+      payloadRedacted: {
+        status: 'production_trust_requested',
+        production_trusted_app_metadata: false,
+        auto_confirm_enabled: false
+      }
+    });
+  });
+
+  it('blocks production trust request for TO_VERIFY, synthetic, rejected or pending evidence', async () => {
+    const evidence = [
+      reviewOnlyEvidence({
+        evidenceId: 'bev_to_verify',
+        packageName: 'TO_VERIFY',
+        certSha256: certHash
+      }),
+      reviewOnlyEvidence({
+        evidenceId: 'bev_synthetic',
+        packageName: 'synthetic_debug_only.com.swimpay.syntheticbank',
+        certSha256: 'synthetic_debug_only.cert_sha256',
+        source: 'synthetic_debug_only'
+      }),
+      reviewOnlyEvidence({
+        evidenceId: 'bev_rejected',
+        status: 'rejected'
+      }),
+      pendingEvidence()
+    ];
+    const repository = buildEvidenceRepository({ evidence });
+    const server = buildTestServer(repository, { role: 'admin' });
+
+    const responses = await Promise.all(
+      evidence.map((record) =>
+        server.inject({
+          method: 'POST',
+          url: `/v1/admin/bank-evidence/${record.evidenceId}/request-production-trust`,
+          headers: adminHeaders(),
+          payload: { reason: 'unsafe trust request must be blocked' }
+        })
+      )
+    );
+
+    expect(responses.map((response) => response.statusCode)).toEqual([409, 409, 409, 409]);
+    expect(responses.map((response) => response.json().error.code)).toEqual([
+      'bank_evidence_to_verify_not_trustable',
+      'bank_evidence_synthetic_not_trustable',
+      'bank_evidence_not_review_only',
+      'bank_evidence_not_review_only'
+    ]);
+    expect(repository.auditEvents.some((event) => event.eventType === BankEvidenceAuditEventTypes.PRODUCTION_TRUST_REQUESTED)).toBe(false);
+  });
+
+  it('blocks direct pending to production trust approval and requires dual-control', async () => {
+    const repository = buildEvidenceRepository({
+      evidence: [pendingEvidence(), trustRequestedEvidence({ productionTrustRequestedBy: 'ops_01' })]
+    });
+    const server = buildTestServer(repository, { role: 'admin', operatorId: 'ops_01' });
+
+    const directPendingApproval = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_existing/approve-production-trust',
+      headers: adminHeaders(),
+      payload: { reason: 'direct approval must fail' }
+    });
+    const sameActorApproval = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_requested/approve-production-trust',
+      headers: adminHeaders(),
+      payload: { reason: 'same actor cannot approve own request' }
+    });
+
+    expect(directPendingApproval.statusCode).toBe(409);
+    expect(directPendingApproval.json().error.code).toBe('bank_evidence_production_trust_not_requested');
+    expect(sameActorApproval.statusCode).toBe(409);
+    expect(sameActorApproval.json().error.code).toBe('bank_evidence_dual_control_required');
+    expect(repository.evidence.find((evidence) => evidence.evidenceId === 'bev_requested')?.status).toBe('production_trust_requested');
+  });
+
+  it('approves and revokes production trust metadata without enabling auto-confirm', async () => {
+    const repository = buildEvidenceRepository({
+      evidence: [trustRequestedEvidence({ productionTrustRequestedBy: 'ops_requester' })]
+    });
+    const server = buildTestServer(repository, { role: 'admin', operatorId: 'ops_approver' });
+
+    const approved = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_requested/approve-production-trust',
+      headers: adminHeaders(),
+      payload: {
+        reason: 'second operator completed production metadata review'
+      }
+    });
+    const revoked = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_requested/revoke-production-trust',
+      headers: adminHeaders(),
+      payload: {
+        reason: 'operator revoked metadata trust after app update drift'
+      }
+    });
+
+    expect(approved.statusCode).toBe(200);
+    expect(approved.json()).toMatchObject({
+      evidence_id: 'bev_requested',
+      status: 'production_trust_approved',
+      production_trusted_app_metadata: true,
+      auto_confirm_enabled: false,
+      approved_by: 'ops_approver'
+    });
+    expect(revoked.statusCode).toBe(200);
+    expect(revoked.json()).toMatchObject({
+      evidence_id: 'bev_requested',
+      status: 'production_trust_revoked',
+      production_trusted_app_metadata: false,
+      auto_confirm_enabled: false,
+      revoked_by: 'ops_approver'
+    });
+    expect(repository.auditEvents.map((event) => event.eventType)).toEqual([
+      BankEvidenceAuditEventTypes.PRODUCTION_TRUST_REVOKED,
+      BankEvidenceAuditEventTypes.PRODUCTION_TRUST_APPROVED
+    ]);
+    expect(`${approved.body}\n${revoked.body}`).not.toContain(certHash);
+    expect(`${approved.body}\n${revoked.body}`).not.toContain('+79991234567');
+  });
+
+  it('restricts production trust transitions to explicit owner/admin permissions', async () => {
+    const repository = buildEvidenceRepository({
+      evidence: [reviewOnlyEvidence(), trustRequestedEvidence({ productionTrustRequestedBy: 'ops_requester' })]
+    });
+    const operatorServer = buildTestServer(repository, { role: 'operator', operatorId: 'ops_operator' });
+    const readOnlyServer = buildTestServer(repository, { role: 'read_only', operatorId: 'ops_read' });
+
+    const operatorRequest = await operatorServer.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_existing/request-production-trust',
+      headers: adminHeaders(),
+      payload: { reason: 'operator cannot request production trust' }
+    });
+    const readOnlyApprove = await readOnlyServer.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_requested/approve-production-trust',
+      headers: adminHeaders(),
+      payload: { reason: 'read only cannot approve production trust' }
+    });
+
+    expect(operatorRequest.statusCode).toBe(403);
+    expect(operatorRequest.json().error.details.required_permission).toBe('request_bank_evidence_production_trust');
+    expect(readOnlyApprove.statusCode).toBe(403);
+    expect(readOnlyApprove.json().error.details.required_permission).toBe('approve_bank_evidence_production_trust');
+    expect(repository.evidence.find((evidence) => evidence.evidenceId === 'bev_existing')?.status).toBe('approved_for_review_only');
+    expect(repository.evidence.find((evidence) => evidence.evidenceId === 'bev_requested')?.status).toBe('production_trust_requested');
+  });
 });
 
 function buildTestServer(
   bankEvidenceRepository: InMemoryBankEvidenceRepository,
   options: {
     role?: 'owner' | 'admin' | 'operator' | 'support' | 'read_only';
+    operatorId?: string | undefined;
   } = {}
 ) {
   return buildApiServer({
@@ -258,7 +443,7 @@ function buildTestServer(
       mode: 'dev_token',
       environment: 'test',
       devToken: 'local-admin-token',
-      devOperatorId: 'ops_01',
+      devOperatorId: options.operatorId ?? 'ops_01',
       devRole: options.role ?? 'admin'
     },
     idGenerator: {
@@ -306,6 +491,32 @@ function pendingEvidence(): BankEvidenceRecord {
     source: 'android_packagemanager',
     status: 'pending_operator_review',
     createdAt: '2026-05-03T01:58:00.000Z'
+  };
+}
+
+function reviewOnlyEvidence(overrides: Partial<BankEvidenceRecord> = {}): BankEvidenceRecord {
+  return {
+    ...pendingEvidence(),
+    status: 'approved_for_review_only',
+    reviewedAt: '2026-05-03T02:00:00.000Z',
+    reviewedBy: 'ops_review',
+    reviewReason: 'review-only approval',
+    ...overrides
+  };
+}
+
+function trustRequestedEvidence(
+  overrides: Partial<BankEvidenceRecord> & { productionTrustRequestedBy?: string | undefined } = {}
+): BankEvidenceRecord {
+  return {
+    ...reviewOnlyEvidence({
+      evidenceId: 'bev_requested'
+    }),
+    status: 'production_trust_requested' as BankEvidenceRecord['status'],
+    productionTrustRequestedAt: '2026-05-03T02:10:00.000Z',
+    productionTrustRequestedBy: overrides.productionTrustRequestedBy ?? 'ops_requester',
+    productionTrustReason: 'production metadata trust requested',
+    ...overrides
   };
 }
 
