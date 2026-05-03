@@ -232,7 +232,18 @@ fun escapeJson(value: String): String {
 
 fun extractString(body: String, key: String): String? {
     val pattern = Regex("\"${Regex.escape(key)}\"\\s*:\\s*\"([^\"]*)\"")
-    return pattern.find(body)?.groupValues?.get(1)
+    return pattern.find(body)?.groupValues?.get(1)?.decodeJsonString()
+}
+
+private fun String.decodeJsonString(): String {
+    return replace("\\\\n", "\n")
+        .replace("\\\\r", "\r")
+        .replace("\\\\t", "\t")
+        .replace("\\\\\"", "\"")
+        .replace("\\\\\\\\", "\\")
+        .replace(Regex("\\\\u([0-9a-fA-F]{4})")) { match ->
+            match.groupValues[1].toInt(16).toChar().toString()
+        }
 }
 
 fun redactDebugMessage(value: String): String {

@@ -196,16 +196,19 @@ Review detail actions use:
 
 `Rejeter le signal` sends a signal-scoped rejection. `Rejeter la commande` sends an explicit order-scoped rejection. Android does not directly notify developer systems.
 
-### Still Mock-only Screens
+## Sprint 7F Mobile Backend Gap Closure
 
-The following areas remain typed mock repositories until dedicated mobile/backend endpoints exist:
+Sprint 7F adds live Android mobile backend wiring for the areas that were mock-only in Sprint 7E:
 
-- dashboard summary;
-- payment detail by id;
-- connected site/webhook status and test;
-- configuration test.
+- dashboard summary through `GET /v1/android-merchant/dashboard-summary`;
+- payment detail through `GET /v1/android-merchant/payments/:id`;
+- connected site status through `GET /v1/android-merchant/connected-site`;
+- connected site test through `POST /v1/android-merchant/connected-site/test`;
+- configuration test through `POST /v1/android-merchant/configuration-test`.
 
-These gaps are listed in `.swimpay-agent/ANDROID_FRONTEND_API_GAPS.md`.
+The Android UI keeps the approved merchant-facing language and maps backend results into simple screen states. Raw card, raw phone, raw notification text, package/cert details, HMAC values and webhook secrets remain excluded from merchant screens.
+
+Sprint 7F code-level validation and real-device install/launch passed. Live Docker-backed endpoint QA is blocked until the local Docker Desktop/containerd I/O issue recorded in `.swimpay-agent/BLOCKERS.md` is resolved.
 
 ## Real-device Visual QA
 

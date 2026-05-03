@@ -3,6 +3,7 @@ import { Redis } from 'ioredis';
 import { connect } from 'nats';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
+import { EventTypes, PUBLIC_EVENT_SIGNAL_DISCLOSURE } from '@swimpay/events';
 import {
   MetricNames,
   buildHealthSnapshot,
@@ -89,6 +90,7 @@ import {
   toReviewListResponse,
   validateReviewActionBody,
   type ReviewIdGenerator,
+  type ReviewListItem,
   type ReviewRepository
 } from './reviews.js';
 import {
@@ -164,6 +166,11 @@ export interface ApiServerOptions {
   reviewIdGenerator?: ReviewIdGenerator;
   bankEvidenceIdGenerator?: () => string;
   receivingRouteIdGenerator?: () => string;
+  androidMerchantDeliveryIdGenerator?: () => string;
+  androidMerchantConnectedSite?: {
+    url: string;
+    status: 'active' | 'problem';
+  };
   adminAuth?: OperatorAuthConfig;
   metrics?: MetricsRegistry;
   clock?: () => Date;
@@ -250,6 +257,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const reviewIdGenerator = options.reviewIdGenerator ?? createDefaultReviewIdGenerator();
   const bankEvidenceIdGenerator = options.bankEvidenceIdGenerator ?? (() => randomUUID());
   const receivingRouteIdGenerator = options.receivingRouteIdGenerator ?? (() => randomUUID());
+  const androidMerchantDeliveryIdGenerator = options.androidMerchantDeliveryIdGenerator ?? (() => randomUUID());
+  const androidMerchantConnectedSite = options.androidMerchantConnectedSite ?? parseAndroidMerchantConnectedSite(process.env);
   const adminAuth = options.adminAuth ?? createDefaultAdminAuthConfig(process.env, options.environment);
   const clock = options.clock ?? (() => new Date());
   const startedAt = options.startedAt ?? new Date();
@@ -1210,6 +1219,142 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return reply.status(200).send(toReviewListResponse(reviews));
   });
 
+  server.get('/v1/android-merchant/dashboard-summary', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!reviewRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Review repository is not configured.',
+          details: {}
+        }
+      });
+    }
+
+    const reviews = await reviewRepository.listOpenReviews(merchantId);
+    return reply.status(200).send(toAndroidMerchantDashboardSummaryResponse(reviews));
+  });
+
+  server.get('/v1/android-merchant/payments/:id', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!reviewRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Review repository is not configured.',
+          details: {}
+        }
+      });
+    }
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Payment id is required.', {}));
+    }
+
+    const reviews = await reviewRepository.listOpenReviews(merchantId);
+    const review = reviews.find((item) => [item.id, item.orderId, item.paymentSessionId].includes(params.id!));
+    if (!review) {
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Payment review was not found.',
+          details: { payment_id: params.id }
+        }
+      });
+    }
+
+    const route = repository ? await findSelectedRouteForReview(repository, merchantId, review) : null;
+    return reply.status(200).send(toAndroidMerchantPaymentDetailResponse(review, route));
+  });
+
+  server.get('/v1/android-merchant/connected-site', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    void merchantId;
+    const query = request.query as { developer_mode?: string | boolean | undefined };
+    const developerMode = query.developer_mode === true || query.developer_mode === 'true';
+    return reply.status(200).send(toAndroidMerchantConnectedSiteResponse(androidMerchantConnectedSite, developerMode));
+  });
+
+  server.post('/v1/android-merchant/connected-site/test', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    const occurredAt = clock().toISOString();
+    const deliveryId = androidMerchantDeliveryIdGenerator();
+    await eventPublisher.publish({
+      eventId: idGenerator.auditEventId(),
+      eventType: EventTypes.WEBHOOK_DELIVERY_REQUESTED,
+      version: 1,
+      occurredAt,
+      merchantId,
+      idempotencyKey: `android_merchant_connected_site_test:${merchantId}:${deliveryId}`,
+      data: {
+        delivery_id: deliveryId,
+        test_only: true,
+        source: 'android_merchant_connected_site_test',
+        ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+      }
+    });
+    return reply.status(202).send({
+      status: 'test_queued',
+      delivery_id: deliveryId,
+      safe_status: 'Notification envoyée',
+      android_sent_webhook_directly: false,
+      ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+    });
+  });
+
+  server.post('/v1/android-merchant/configuration-test', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const body = parseAndroidMerchantConfigurationTestBody(request.body);
+    const routes = await repository.listReceivingRoutes(merchantId);
+    return reply.status(200).send(
+      toAndroidMerchantConfigurationTestResponse({
+        receiverConnected: body.receiverConnected,
+        notificationAccessActive: body.notificationAccessActive,
+        bankChosen: routes.some((route) => route.enabled),
+        receivingMethodAdded: routes.some((route) => route.enabled),
+        connectedSiteConfigured: body.connectedSiteConfigured ?? androidMerchantConnectedSite.status === 'active'
+      })
+    );
+  });
+
   server.post('/v1/reviews/:id/confirm', async (request, reply) => {
     const merchantId = parseMerchantId(request.headers.authorization);
     if (!merchantId) {
@@ -2085,6 +2230,222 @@ function sendCheckoutMutationResult<T>(
         }
       });
   }
+}
+
+interface AndroidMerchantConnectedSiteConfig {
+  url: string | null;
+  status: 'active' | 'problem';
+}
+
+function toAndroidMerchantDashboardSummaryResponse(reviews: ReviewListItem[]): Record<string, unknown> {
+  const sorted = sortAndroidMerchantReviews(reviews);
+  return {
+    payments_to_review_count: sorted.length,
+    confirmed_today_count: 0,
+    notifications_sent_count: 0,
+    receiver_status: {
+      status: 'action_required',
+      label: 'Téléphone',
+      display: 'Action requise'
+    },
+    recent_detected_payments: sorted.slice(0, 5).map((item) => ({
+      review_id: item.id,
+      order_id: item.orderId,
+      payment_session_id: item.paymentSessionId,
+      amount: amountResponse(item.amountMinor, item.currency),
+      bank_display_name: bankDisplayNameForProfile(item.bankProfileId),
+      status: 'to_review',
+      status_label: 'À vérifier',
+      created_at: item.createdAt
+    })),
+    ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+  };
+}
+
+async function findSelectedRouteForReview(
+  repository: OrderRepository,
+  merchantId: string,
+  review: { paymentSessionId: string }
+): Promise<StoredMerchantReceivingRouteRecord | null> {
+  const loaded = await repository.getPaymentSessionById(merchantId, review.paymentSessionId);
+  if (!loaded?.paymentSession.selectedReceivingRouteId) {
+    return null;
+  }
+  const routes = await repository.listReceivingRoutes(merchantId);
+  return routes.find((route) => route.route_id === loaded.paymentSession.selectedReceivingRouteId) ?? null;
+}
+
+function toAndroidMerchantPaymentDetailResponse(
+  review: {
+    id: string;
+    orderId: string;
+    paymentSessionId: string;
+    bankProfileId?: string | undefined;
+    amountMinor?: number | undefined;
+    currency?: string | undefined;
+    referenceCodeMasked?: string | undefined;
+    createdAt: string;
+    reasonCode: string;
+    positiveReasonCodes: string[];
+    negativeReasonCodes: string[];
+  },
+  route: StoredMerchantReceivingRouteRecord | null
+): Record<string, unknown> {
+  return {
+    payment: {
+      id: review.id,
+      review_id: review.id,
+      order_id: review.orderId,
+      payment_session_id: review.paymentSessionId,
+      status: 'to_review',
+      status_label: 'À vérifier',
+      amount_expected: amountResponse(review.amountMinor, review.currency),
+      amount_detected: amountResponse(review.amountMinor, review.currency),
+      bank_display_name: bankDisplayNameForProfile(review.bankProfileId),
+      receiving_method_masked: route ? receivingMethodMaskedLabel(route) : 'Moyen de réception masqué',
+      payment_reference: review.referenceCodeMasked ?? '<REFERENCE>',
+      signal_received_at: review.createdAt,
+      reason_labels: reasonLabelsForAndroidMerchantReview([
+        review.reasonCode,
+        ...review.positiveReasonCodes,
+        ...review.negativeReasonCodes
+      ]),
+      allowed_actions: ['confirm', 'reject_signal', 'reject_order']
+    },
+    ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+  };
+}
+
+function toAndroidMerchantConnectedSiteResponse(
+  config: AndroidMerchantConnectedSiteConfig,
+  developerMode: boolean
+): Record<string, unknown> {
+  const active = config.status === 'active' && Boolean(config.url);
+  return {
+    webhook_url_display: active ? config.url : null,
+    status: active ? 'active' : 'problem',
+    status_label: active ? 'Connexion active' : 'Action nécessaire',
+    last_delivery_status: 'none',
+    last_delivery_at: null,
+    latest_deliveries: [],
+    developer_details: developerMode
+      ? {
+          event_types_visible: true,
+          signature_status_visible: true
+        }
+      : null,
+    ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+  };
+}
+
+function toAndroidMerchantConfigurationTestResponse(input: {
+  receiverConnected: boolean;
+  notificationAccessActive: boolean;
+  bankChosen: boolean;
+  receivingMethodAdded: boolean;
+  connectedSiteConfigured: boolean;
+}): Record<string, unknown> {
+  const phoneReady = input.receiverConnected && input.notificationAccessActive;
+  const checklist = [
+    { label: 'Téléphone connecté', status: phoneReady ? 'passed' : 'action_required' },
+    { label: 'Banque choisie', status: input.bankChosen ? 'passed' : 'action_required' },
+    { label: 'Moyen de réception ajouté', status: input.receivingMethodAdded ? 'passed' : 'action_required' },
+    { label: 'Site ou application connecté', status: input.connectedSiteConfigured ? 'passed' : 'action_required' }
+  ];
+  const ready = checklist.every((item) => item.status === 'passed');
+  return {
+    outcome: ready ? 'ready' : 'action_required',
+    confirms_real_payment: false,
+    emits_payment_confirmed_webhook: false,
+    checklist,
+    ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+  };
+}
+
+function sortAndroidMerchantReviews<T extends { createdAt: string }>(reviews: T[]): T[] {
+  return reviews.slice().sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+}
+
+function amountResponse(amountMinor: number | undefined, currency: string | undefined): { value: string; currency: string } {
+  return {
+    value: formatAmountMinor(amountMinor ?? 0),
+    currency: currency ?? 'RUB'
+  };
+}
+
+function bankDisplayNameForProfile(bankProfileId: string | undefined): string {
+  switch (bankProfileId) {
+    case 'sber_ru':
+      return 'Sberbank';
+    case 'tbank_ru':
+      return 'T-Bank';
+    case 'vtb_ru':
+      return 'VTB';
+    case 'alfa_ru':
+      return 'Alfa-Bank';
+    case 'gazprombank_ru':
+      return 'Gazprombank';
+    default:
+      return 'Banque choisie';
+  }
+}
+
+function receivingMethodMaskedLabel(route: StoredMerchantReceivingRouteRecord): string {
+  const railLabel = route.rail_type === 'phone_transfer' ? 'Numéro de téléphone' : 'Carte bancaire';
+  return `${railLabel} · ${route.receiver_identifier_masked}`;
+}
+
+function reasonLabelsForAndroidMerchantReview(reasonCodes: string[]): string[] {
+  const labels = new Set<string>();
+  for (const reasonCode of reasonCodes) {
+    const normalized = reasonCode.toLowerCase();
+    if (
+      normalized.includes('review_only') ||
+      normalized.includes('manual') ||
+      normalized.includes('requires_review') ||
+      normalized.includes('receiver_route')
+    ) {
+      labels.add('Validation manuelle en bêta');
+    }
+    if (normalized.includes('reference')) {
+      labels.add('Référence non visible');
+    }
+    if (normalized.includes('amount_only')) {
+      labels.add('Seul le montant a été reconnu');
+    }
+    if (normalized.includes('collision') || normalized.includes('multiple')) {
+      labels.add('Plusieurs paiements similaires');
+    }
+    if (normalized.includes('bank') || normalized.includes('untrusted')) {
+      labels.add('Banque encore en test');
+    }
+  }
+  if (labels.size === 0) {
+    labels.add('Validation manuelle en bêta');
+  }
+  return [...labels];
+}
+
+function parseAndroidMerchantConfigurationTestBody(body: unknown): {
+  receiverConnected: boolean;
+  notificationAccessActive: boolean;
+  connectedSiteConfigured?: boolean | undefined;
+} {
+  const candidate = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+  return {
+    receiverConnected: candidate.receiver_connected === true,
+    notificationAccessActive: candidate.notification_access_active === true,
+    connectedSiteConfigured:
+      typeof candidate.connected_site_configured === 'boolean' ? candidate.connected_site_configured : undefined
+  };
+}
+
+function parseAndroidMerchantConnectedSite(env: NodeJS.ProcessEnv): AndroidMerchantConnectedSiteConfig {
+  const url = env.ANDROID_MERCHANT_WEBHOOK_URL ?? env.DEV_MERCHANT_WEBHOOK_URL ?? null;
+  return {
+    url,
+    status: url ? 'active' : 'problem'
+  };
 }
 
 function orderRepositoryUnavailableError() {

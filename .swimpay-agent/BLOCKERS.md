@@ -1,6 +1,24 @@
 # Blockers
 
-No current critical blockers.
+Current critical blocker:
+
+- Docker Desktop/containerd local storage has I/O errors. Evidence from Sprint 7F:
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml up -d --build swimpay-api proxy` failed with `metadata_v2.db: input/output error`.
+  - `docker system df` failed with a containerd blob `input/output error`.
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml restart ...` failed opening a container `hosts` file with `input/output error`.
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml ps` timed out after the Docker failure.
+  - `GET http://localhost:8080/api-health` timed out after the Docker failure; an earlier response showed `database=error` and `valkey=error`.
+- This is a local Docker environment blocker, not a Sprint 7F code/test failure. It blocks Compose health validation, live Docker-backed Android endpoint QA and the Sprint 7F commit condition.
+
+Last checked during Sprint 7F Android mobile backend gap closure: 2026-05-03T23:20:11+03:00.
+
+Sprint 7F code status:
+
+- Android mobile backend endpoints were implemented and covered by tests.
+- Android repositories were wired to the new endpoints.
+- Node tests, typecheck, lint, build, Android assemble and Android JVM tests passed.
+- Debug APK install/launch and UI-tree viewport inspection passed on Samsung SM-S916B `R5CWA0FEPZW`.
+- No SMS permission, Accessibility scraping, broad installed-app enumeration, official bank confirmation claim or auto-confirmation was added.
 
 Last checked after Sprint 7E Android merchant API wiring and visual QA: 2026-05-03T21:39:35+03:00.
 

@@ -238,6 +238,153 @@ class AndroidMerchantApiWiringTest {
         assertTrue(contracts.connectedSite.usesMockRepository)
         assertTrue(contracts.configurationTest.usesMockRepository)
     }
+
+    @Test
+    fun sprint7FRepositoriesCallMobileBackendGapEndpointsAndKeepUiSafe() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "payments_to_review_count": 1,
+                  "confirmed_today_count": 24,
+                  "notifications_sent_count": 31,
+                  "receiver_status": { "status": "connected", "display": "Connect\u00e9" },
+                  "recent_detected_payments": [
+                    {
+                      "review_id": "rev_01",
+                      "amount": { "value": "58.41", "currency": "RUB" },
+                      "bank_display_name": "Sberbank",
+                      "status_label": "\u00c0 v\u00e9rifier",
+                      "created_at": "2026-05-03T10:00:00.000Z"
+                    }
+                  ],
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "payment": {
+                    "review_id": "rev_01",
+                    "amount_expected": { "value": "58.41", "currency": "RUB" },
+                    "amount_detected": { "value": "58.41", "currency": "RUB" },
+                    "bank_display_name": "Sberbank",
+                    "receiving_method_masked": "Carte bancaire \u00b7 \u2022\u2022\u2022\u2022 4821",
+                    "payment_reference": "TANGO ALFA",
+                    "signal_received_at": "2026-05-03T10:00:00.000Z",
+                    "reason_labels": ["Validation manuelle en b\u00eata", "R\u00e9f\u00e9rence non visible"],
+                    "allowed_actions": ["confirm", "reject_signal", "reject_order"]
+                  },
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "webhook_url_display": "https://merchant.example/swimpay/webhook",
+                  "status": "active",
+                  "status_label": "Connexion active",
+                  "latest_deliveries": [],
+                  "developer_details": null,
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                202,
+                """
+                {
+                  "status": "test_queued",
+                  "delivery_id": "delivery_test_01",
+                  "safe_status": "Notification envoy\u00e9e",
+                  "android_sent_webhook_directly": false,
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "outcome": "ready",
+                  "confirms_real_payment": false,
+                  "emits_payment_confirmed_webhook": false,
+                  "checklist": [
+                    { "label": "T\u00e9l\u00e9phone connect\u00e9", "status": "passed" },
+                    { "label": "Banque choisie", "status": "passed" },
+                    { "label": "Moyen de r\u00e9ception ajout\u00e9", "status": "passed" },
+                    { "label": "Site ou application connect\u00e9", "status": "passed" }
+                  ],
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
+        )
+        val session = AuthenticatedMerchantSession.localDev("mch_demo")
+
+        val dashboard = MerchantDashboardApiRepository(transport).load(session)
+        assertEquals(MerchantRepositoryState.SUCCESS, dashboard.state)
+        assertFalse(dashboard.usesMockRepository)
+        assertTrue(dashboard.visibleTexts().contains("Tableau de bord"))
+        assertTrue(dashboard.visibleTexts().contains("58,41 \u20bd"))
+
+        val detail = MerchantPaymentDetailApiRepository(transport).load(session, "rev_01")
+        assertEquals(MerchantRepositoryState.SUCCESS, detail.state)
+        assertFalse(detail.visibleTexts().joinToString(" ").contains("receiver_route_review_only"))
+        assertTrue(detail.visibleTexts().contains("Confirmer le paiement"))
+
+        val connectedSite = MerchantConnectedSiteApiRepository(transport).load(session, developerDetailsEnabled = false)
+        assertEquals(MerchantRepositoryState.SUCCESS, connectedSite.state)
+        assertFalse(connectedSite.usesMockRepository)
+        assertFalse(connectedSite.visibleTexts().joinToString(" ").contains("payment.confirmed"))
+
+        val testResult = MerchantConnectedSiteApiRepository(transport).testConnection(session)
+        assertEquals(MerchantRepositoryState.SUCCESS, testResult.state)
+        assertFalse(testResult.sendsWebhookDirectlyFromAndroid)
+        assertTrue(testResult.visibleTexts().contains("Notification envoy\u00e9e"))
+
+        val config = MerchantConfigurationTestApiRepository(transport).run(
+            session,
+            MerchantConfigurationChecklist.allReady()
+        )
+        assertEquals(MerchantConfigurationTestOutcome.READY, config.outcome)
+        assertFalse(config.usesMockRepository)
+        assertFalse(config.confirmsRealPayment)
+
+        assertEquals("/v1/android-merchant/dashboard-summary", transport.requests[0].path)
+        assertEquals("/v1/android-merchant/payments/rev_01", transport.requests[1].path)
+        assertEquals("/v1/android-merchant/connected-site", transport.requests[2].path)
+        assertEquals("/v1/android-merchant/connected-site/test", transport.requests[3].path)
+        assertEquals("/v1/android-merchant/configuration-test", transport.requests[4].path)
+
+        val visible = listOf(
+            dashboard.visibleTexts(),
+            detail.visibleTexts(),
+            connectedSite.visibleTexts(),
+            testResult.visibleTexts(),
+            config.visibleTexts()
+        ).flatten().joinToString(" ")
+        assertFalse(visible.contains("2200123412344821"))
+        assertFalse(visible.contains("+79991234567"))
+        assertFalse(visible.contains("webhook_secret", ignoreCase = true))
+        assertFalse(visible.contains("official_bank_confirmation", ignoreCase = true))
+    }
+
+    @Test
+    fun sprint7FContractsDowngradeClosedGapsFromMockToLive() {
+        val contracts = AndroidMerchantFrontendContracts.sprint7FContracts()
+
+        assertFalse(contracts.dashboardSummary.usesMockRepository)
+        assertFalse(contracts.paymentDetail.usesMockRepository)
+        assertFalse(contracts.connectedSite.usesMockRepository)
+        assertFalse(contracts.configurationTest.usesMockRepository)
+        assertTrue(contracts.missingBackendEndpoints.isEmpty())
+    }
 }
 
 private class RecordingMerchantApiTransport(

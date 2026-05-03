@@ -1,6 +1,6 @@
 # Android Frontend API Contracts
 
-Sprint 7D introduced typed Android merchant frontend contracts and mock repositories. Sprint 7E wires the parts that already have backend APIs and leaves the remaining areas explicitly mock-only.
+Sprint 7D introduced typed Android merchant frontend contracts and mock repositories. Sprint 7E wired the pre-existing backend APIs. Sprint 7F closes the remaining mobile backend gaps with Android-specific merchant endpoints.
 
 ## Contract States
 
@@ -66,55 +66,42 @@ Android sends explicit action scope for rejection:
 
 Android does not directly send developer webhooks; webhook delivery remains backend responsibility after review action processing.
 
-## Mock-only Contracts
+## Sprint 7F Mobile Endpoints
+
+These endpoints are implemented and covered by API and Android repository tests. Live Docker-backed device validation must be rerun after the local Docker Desktop/containerd I/O issue recorded in `.swimpay-agent/BLOCKERS.md` is resolved.
 
 ### Dashboard Summary
 
-Current state:
-
-- typed frontend contract exists;
-- Android uses mock repository data for summary statistics and recent rows.
-
-Missing endpoint:
+Backend endpoint:
 
 - `GET /v1/android-merchant/dashboard-summary`
 
+Returns merchant-safe counts, receiver status and recent detected payments. It does not return raw card, raw phone, raw notification text or technical internals.
+
 ### Payment Detail
 
-Current state:
+Backend endpoint:
 
-- typed frontend/detail model exists;
-- list data can come from `GET /v1/reviews`;
-- dedicated payment detail endpoint remains missing.
+- `GET /v1/android-merchant/payments/:id`
 
-Missing endpoint:
-
-- `GET /v1/android-merchant/review-queue/:payment_id`
+Returns safe detail for review/payment screens: expected and detected amount, bank display name, masked receiving method, payment reference, signal time, simple reason labels and allowed actions.
 
 ### Connected Site
 
-Current state:
-
-- typed frontend contract exists;
-- Android uses mock repository data for connected-site status and latest deliveries.
-
-Missing endpoints:
+Backend endpoints:
 
 - `GET /v1/android-merchant/connected-site`
 - `POST /v1/android-merchant/connected-site/test`
 
-Developer details are hidden by default.
+Developer details are hidden by default and appear only with an explicit developer mode flag. The test action is backend-owned; Android does not send developer webhooks directly.
 
 ### Configuration Test
 
-Current state:
-
-- typed frontend contract exists;
-- checklist uses local readiness and mock connected-site/method state until a backend endpoint is available.
-
-Missing endpoint:
+Backend endpoint:
 
 - `POST /v1/android-merchant/configuration-test`
+
+Runs non-confirming readiness checks and returns merchant-facing checklist labels. It does not confirm real payments and does not emit `payment.confirmed`.
 
 ## Local Android Contracts
 

@@ -1,5 +1,14 @@
 import { Palette, coreStyles } from './Theme.js';
 
+export function escapeHtml(value: string | undefined): string {
+  return (value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function AppShell(params: { title: string; children: string; bodyClass?: string }): string {
   return `<!doctype html>
 <html lang="fr">
@@ -103,10 +112,11 @@ export function Card(params: { children: string; class?: string }): string {
   `;
 }
 
-export function StatusChip(params: { text: string; variant?: 'success' | 'warning' | 'danger' | 'info' }): string {
+export function StatusChip(params: { text: string | undefined; variant?: 'success' | 'warning' | 'danger' | 'info' }): string {
   const variant = params.variant ?? 'info';
+  const text = params.text ?? 'unknown';
   return `
-    <span class="status-chip status-${variant}">${params.text}</span>
+    <span class="status-chip status-${variant}">${text}</span>
     <style>
         .status-chip {
             display: inline-flex;
@@ -175,20 +185,87 @@ export function CopyField(params: { label: string; value: string; masked?: boole
   `;
 }
 
-export function StepProgress(params: { current: number; total: number }): string {
-  const percentage = (params.current / params.total) * 100;
+export function MetricCard(params: { label: string; value: string; variant?: 'default' | 'primary' }): string {
   return `
-    <div class="step-progress">
-        <div class="progress-bar">
-            <div class="progress-fill" style="width: ${percentage}%"></div>
-        </div>
-        <p class="step-text">Étape ${params.current} sur ${params.total}</p>
+    <div class="metric-card metric-${params.variant ?? 'default'}">
+        <span class="metric-label">${params.label}</span>
+        <strong class="metric-value">${params.value}</strong>
     </div>
     <style>
-        .step-progress { margin-bottom: 32px; }
-        .progress-bar { height: 6px; background: var(--color-border); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
-        .progress-fill { height: 100%; background: var(--color-teal); transition: width 0.3s ease; }
-        .step-text { font-size: 14px; font-weight: 600; color: var(--color-muted); margin: 0; }
+        .metric-card {
+            background: var(--color-surface);
+            border-radius: var(--radius-card);
+            padding: 24px;
+            border: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .metric-label { color: var(--color-muted); font-size: 14px; font-weight: 600; }
+        .metric-value { color: var(--color-navy); font-size: 24px; font-weight: 700; }
+        .metric-primary { border-color: var(--color-teal); background: var(--color-mint); }
+    </style>
+  `;
+}
+
+export function OptionButton(params: {
+  title: string;
+  subtitle?: string;
+  detail?: string;
+  selected?: boolean;
+  attr?: string;
+}): string {
+  return `
+    <button class="option-button ${params.selected ? 'selected' : ''}" type="button" ${params.attr ?? ''}>
+        <div class="option-content">
+            <strong class="option-title">${params.title}</strong>
+            ${params.subtitle ? `<span class="option-subtitle">${params.subtitle}</span>` : ''}
+            ${params.detail ? `<small class="option-detail">${params.detail}</small>` : ''}
+        </div>
+        <div class="option-indicator"></div>
+    </button>
+    <style>
+        .option-button {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 20px;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-input);
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+        }
+        .option-button:hover { border-color: var(--color-teal); background: var(--color-mint); }
+        .option-button.selected {
+            border-color: var(--color-teal);
+            background: var(--color-mint);
+            box-shadow: 0 0 0 1px var(--color-teal);
+        }
+        .option-content { display: flex; flex-direction: column; gap: 4px; }
+        .option-title { color: var(--color-navy); font-size: 16px; }
+        .option-subtitle { color: var(--color-text); font-size: 14px; }
+        .option-detail { color: var(--color-muted); font-size: 12px; }
+        .option-indicator {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--color-border);
+            border-radius: 50%;
+            position: relative;
+        }
+        .selected .option-indicator { border-color: var(--color-teal); background: var(--color-teal); }
+        .selected .option-indicator::after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+        }
     </style>
   `;
 }

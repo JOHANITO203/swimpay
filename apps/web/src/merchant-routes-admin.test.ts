@@ -15,7 +15,7 @@ describe('merchant receiving route admin web surface', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('Merchant receiving routes');
+    expect(response.body).toContain('Moyens de réception');
     expect(response.body).toContain('SBER-PHONE');
     expect(response.body).toContain('+7 *** *** **67');
     expect(response.body).toContain('2202 **** **** 7890');

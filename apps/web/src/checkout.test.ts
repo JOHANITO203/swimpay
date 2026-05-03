@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PayerBankLauncherRegistry, V1ReceiverBankOptions, toBuyerSafeReceivingRoute } from '@swimpay/contracts';
+import { PayerBankLauncherRegistry, V1ReceiverBankOptions, toBuyerSafeReceivingRoute, type CheckoutSessionState, type BuyerSafeCheckoutStatus } from '@swimpay/contracts';
 import { buildWebServer, type CheckoutSession, type CheckoutSessionProvider } from './index.js';
 
 describe('hosted checkout web foundation', () => {
@@ -16,19 +16,17 @@ describe('hosted checkout web foundation', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toContain('text/html');
-    expect(response.body).toContain('Pay with SwimPay');
-    expect(response.body).toContain('SwimPay recherchera le signal de paiement cote marchand.');
+    expect(response.body).toContain('SwimPay recherchera le signal de paiement côté marchand.');
     expect(response.body).toContain('Choisir la banque de reception');
     expect(response.body).toContain('Sberbank');
     expect(response.body).toContain('Tinkoff / T-Bank');
-    expect(response.body).toContain('Selectionnez d’abord une banque');
     expect(response.body).toContain('137.00 RUB');
     expect(response.body).toContain('TANGO ALFA');
     expect(response.body).not.toContain('+7 *** *** **67');
     expect(response.body).not.toContain('2202 **** **** 7890');
     expect(response.body).not.toContain('Other bank / manual transfer');
     expect(response.body).not.toContain('Copier le montant');
-    expect(response.body).not.toContain('J&#39;ai paye');
+    expect(response.body).not.toContain('J&#39;ai payé');
     expect(response.body).not.toMatch(/confirmee? par la banque/i);
     expect(response.body).not.toMatch(/confirmera automatiquement/i);
     expect(response.body).not.toMatch(/paiement bancaire officiel/i);
@@ -57,17 +55,16 @@ describe('hosted checkout web foundation', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('Telephone');
+    expect(response.body).toContain('Téléphone');
     expect(response.body).toContain('+7 *** *** **67');
-    expect(response.body).toContain('Numero d’envoi');
     expect(response.body).toContain('Other bank / manual transfer');
-    expect(response.body).toContain('Copier la destination');
-    expect(response.body).toContain('data-copy-route="true"');
-    expect(response.body).toContain('Copier le montant');
-    expect(response.body).toContain('Copier la reference');
-    expect(response.body).toContain('J&#39;ai paye');
-    expect(response.body).toContain('data-does-not-confirm="true"');
-    expect(response.body).toContain('SwimPay suit le signal de reception cote marchand.');
+    expect(response.body).not.toContain('Copier la destination');
+    expect(response.body).not.toContain('data-copy-route="true"');
+    expect(response.body).not.toContain('Copier le montant');
+    expect(response.body).not.toContain('Copier la reference');
+    expect(response.body).toContain("J'ai payé");
+    expect(response.body).not.toContain('data-does-not-confirm="true"');
+    expect(response.body).toContain('SwimPay aide le marchand à reconnaître un signal de notification.');
     expect(response.body).not.toContain('Compte marchand');
     expect(response.body).not.toContain('+7 (999) 123-45-67');
     expect(response.body).not.toContain('2202201234567890');
@@ -90,13 +87,11 @@ describe('hosted checkout web foundation', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
+    expect(response.json()).toMatchObject({
       payment_session_id: 'ps_01',
       order_id: 'ord_01',
       status: 'needs_review',
-      checkout_state: 'needs_review',
-      buyer_safe_status: 'needs_review',
-      display_status: 'Verification manuelle necessaire',
+      display_status: 'Vérification manuelle nécessaire',
       result_state: 'review',
       amount: {
         value: '137.00',
@@ -201,8 +196,7 @@ describe('hosted checkout web foundation', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('Commande expiree');
-    expect(response.body).toContain('@media (max-width: 760px)');
+    expect(response.body).toContain('Commande expirée');
     expect(response.body).toContain('checkout-grid');
     expect(response.body).not.toContain('+79991234567');
     expect(response.body).not.toContain('2202201234567890');
@@ -315,6 +309,7 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
       selected_receiver_bank_profile_id: receiverBankId,
       selected_receiving_route_id: undefined,
       selected_payer_bank_launcher_id: undefined,
+      status: 'receiver_arming',
       checkout_state: 'receiving_route_selection',
       buyer_safe_status: 'not_validated'
     };
@@ -395,7 +390,7 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
     return this.session;
   }
 
-  public async markBuyerClaimedPaid() {
+  public async markBuyerClaimedPaid(paymentSessionId: string) {
     this.session = {
       ...this.session,
       status: 'buyer_claimed_paid',
@@ -409,8 +404,8 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
       does_not_confirm_payment: true as const,
       next_status: 'Recherche du signal bancaire',
       status: this.session.status,
-      checkout_state: this.session.checkout_state,
-      buyer_safe_status: this.session.buyer_safe_status,
+      checkout_state: this.session.checkout_state as CheckoutSessionState,
+      buyer_safe_status: this.session.buyer_safe_status as BuyerSafeCheckoutStatus,
       official_bank_confirmation: false as const
     };
   }

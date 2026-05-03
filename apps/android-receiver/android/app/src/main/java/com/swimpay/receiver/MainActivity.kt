@@ -52,8 +52,24 @@ class MainActivity : Activity() {
     private val merchantReviewQueueRepository by lazy {
         MerchantReviewQueueApiRepository(merchantApiTransport)
     }
+    private val merchantDashboardRepository by lazy {
+        MerchantDashboardApiRepository(merchantApiTransport)
+    }
+    private val merchantPaymentDetailRepository by lazy {
+        MerchantPaymentDetailApiRepository(merchantApiTransport)
+    }
+    private val merchantConnectedSiteRepository by lazy {
+        MerchantConnectedSiteApiRepository(merchantApiTransport)
+    }
+    private val merchantConfigurationTestRepository by lazy {
+        MerchantConfigurationTestApiRepository(merchantApiTransport)
+    }
     private var apiReceivingMethods: List<MerchantReceivingMethodDisplay> = emptyList()
+    private var apiDashboardScreen: MerchantUiScreen? = null
     private var apiReviewQueueScreen: MerchantUiScreen? = null
+    private var apiPaymentDetailScreen: MerchantUiScreen? = null
+    private var apiConnectedSiteScreen: MerchantUiScreen? = null
+    private var apiConfigurationTestScreen: MerchantUiScreen? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -135,7 +151,7 @@ class MainActivity : Activity() {
         )
         addScreenCard(
             container,
-            merchantCatalog.configurationTestScreen(
+            apiConfigurationTestScreen ?: merchantCatalog.configurationTestScreen(
                 MerchantConfigurationChecklist(
                     phoneConnected = notificationAccessEnabled,
                     bankChosen = state.allowedBanksCount > 0,
@@ -144,20 +160,20 @@ class MainActivity : Activity() {
                 )
             )
         )
-        addScreenCard(container, merchantCatalog.dashboardScreen(receiverReady = onboarding.receiverReady))
+        addScreenCard(container, apiDashboardScreen ?: merchantCatalog.dashboardScreen(receiverReady = onboarding.receiverReady))
         val receivingMethods = apiReceivingMethods.ifEmpty { fallbackReceivingMethods() }
         addScreenCard(container, merchantCatalog.receivingMethodsScreen(receivingMethods))
         addScreenCard(container, apiReviewQueueScreen ?: merchantCatalog.reviewQueueScreen())
         addScreenCard(
             container,
-            merchantCatalog.paymentReviewDetailScreen(
+            apiPaymentDetailScreen ?: merchantCatalog.paymentReviewDetailScreen(
                 listOf(
                     MerchantReviewReasonCode.MANUAL_VALIDATION_BETA,
                     MerchantReviewReasonCode.REFERENCE_NOT_VISIBLE
                 )
             )
         )
-        addScreenCard(container, merchantCatalog.connectedSiteScreen(developerDetailsEnabled = false))
+        addScreenCard(container, apiConnectedSiteScreen ?: merchantCatalog.connectedSiteScreen(developerDetailsEnabled = false))
         addScreenCard(container, merchantCatalog.receiverHealthScreen(notificationAccessEnabled))
 
         if (BuildConfig.DEBUG) {
@@ -352,14 +368,47 @@ class MainActivity : Activity() {
             return
         }
         Thread {
+            val checklist = MerchantConfigurationChecklist(
+                phoneConnected = NotificationAccessStatusReader(this).isEnabled(),
+                bankChosen = true,
+                receivingMethodAdded = true,
+                connectedSiteReady = backendStatus.reachable
+            )
+            val dashboard = merchantDashboardRepository.load(merchantSession)
             val receivingMethods = merchantReceivingMethodsRepository.list(merchantSession)
             val reviewQueue = merchantReviewQueueRepository.list(merchantSession)
+            val firstReviewId = reviewQueue.items.firstOrNull()?.reviewId ?: "rev_01"
+            val paymentDetail = merchantPaymentDetailRepository.load(merchantSession, firstReviewId)
+            val connectedSite = merchantConnectedSiteRepository.load(merchantSession, developerDetailsEnabled = false)
+            val configurationTest = merchantConfigurationTestRepository.run(merchantSession, checklist)
             runOnUiThread {
+                if (dashboard.state == MerchantRepositoryState.SUCCESS) {
+                    apiDashboardScreen = dashboard.toScreen(id = "dashboard", title = "Tableau de bord")
+                }
                 if (receivingMethods.state == MerchantRepositoryState.SUCCESS && receivingMethods.items.isNotEmpty()) {
                     apiReceivingMethods = receivingMethods.items
                 }
                 if (reviewQueue.state == MerchantRepositoryState.SUCCESS && reviewQueue.items.isNotEmpty()) {
                     apiReviewQueueScreen = reviewQueue.toScreen()
+                }
+                if (paymentDetail.state == MerchantRepositoryState.SUCCESS) {
+                    apiPaymentDetailScreen = paymentDetail.toScreen(id = "payment_review_detail", title = "Vérifier ce paiement")
+                }
+                if (connectedSite.state == MerchantRepositoryState.SUCCESS) {
+                    apiConnectedSiteScreen = connectedSite.toScreen(
+                        id = "connected_site",
+                        title = "Site ou application connecté",
+                        subtitle = "Votre site ou application reçoit une notification quand un paiement change de statut."
+                    )
+                }
+                if (configurationTest.outcome != MerchantConfigurationTestOutcome.ERROR) {
+                    apiConfigurationTestScreen = MerchantUiScreen(
+                        id = "configuration_test",
+                        title = "Vérifiez que tout fonctionne",
+                        subtitle = "Lancez un test avant de recevoir vos premiers paiements.",
+                        primaryAction = "Lancer un test",
+                        texts = configurationTest.visibleTexts()
+                    )
                 }
                 renderStatus()
             }

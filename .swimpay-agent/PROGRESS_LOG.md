@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-05-03T23:20:11+03:00 - Sprint 7F Android Mobile Backend Gap Closure
+
+- Created tasks 404 through 411 and updated the task queue to Sprint 7F.
+- Added Android-specific merchant endpoints for dashboard summary, payment detail, connected site status, connected site test and configuration test.
+- Kept all Sprint 7F responses merchant-safe: no raw card, raw phone, raw notification text, package/cert, HMAC, template internals or webhook secrets.
+- Connected-site test remains backend-owned and test-only; Android does not send developer webhooks directly.
+- Configuration test runs non-confirming readiness checks and does not emit `payment.confirmed`.
+- Wired Android repositories for dashboard, payment detail, connected site, connected-site test and configuration test.
+- Updated `.swimpay-agent/ANDROID_FRONTEND_API_GAPS.md`, `docs/ANDROID_FRONTEND_API_CONTRACTS.md` and `docs/ANDROID_MERCHANT_APP_SCREENS.md`.
+- Added `apps/api/src/android-merchant.test.ts` and expanded `AndroidMerchantApiWiringTest.kt`.
+- Validation passed for `npm run android:doctor`, `npm run typecheck`, `npm run lint`, `npm test` (53 files / 366 tests), `npm run build`, Compose config, Android assembleDebug and Android JVM tests.
+- Installed and launched the debug APK on Samsung SM-S916B `R5CWA0FEPZW`; UI-tree scroll dumps showed onboarding, Notification Access, bank/configuration sections, dashboard/recent payments, review queue, connected site and action-required states.
+- UI-tree scans found no forbidden merchant-facing jargon and no obvious raw card/phone/customer values.
+- Docker Desktop/containerd failed during local rebuild/restart with I/O errors and Compose health degraded; this blocks live Docker-backed endpoint QA and the Sprint 7F commit condition.
+- No real bank notification, customer data, installed-app enumeration, SMS, Accessibility scraping, official bank confirmation claim, raw phone/card display, raw notification text or auto-confirmation was added.
+
 ## 2026-05-03T20:20:00+03:00 - Sprint 7D Android Merchant Frontend UX Screens
 
 - Created tasks 381 through 393 and updated the task queue to Sprint 7D order.

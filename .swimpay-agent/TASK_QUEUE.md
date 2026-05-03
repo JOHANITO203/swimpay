@@ -6,6 +6,17 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `404_android_dashboard_summary_endpoint` - status: completed - source: `tasks/404_android_dashboard_summary_endpoint.md`
+- [x] `405_android_payment_detail_endpoint` - status: completed - source: `tasks/405_android_payment_detail_endpoint.md`
+- [x] `406_android_connected_site_status_endpoint` - status: completed - source: `tasks/406_android_connected_site_status_endpoint.md`
+- [x] `407_android_connected_site_test_endpoint` - status: completed - source: `tasks/407_android_connected_site_test_endpoint.md`
+- [x] `408_android_configuration_test_endpoint` - status: completed - source: `tasks/408_android_configuration_test_endpoint.md`
+- [x] `409_android_frontend_gap_wiring_cleanup` - status: completed - source: `tasks/409_android_frontend_gap_wiring_cleanup.md`
+- [ ] `410_android_real_device_full_flow_visual_qa` - status: blocked_by_docker_environment - source: `tasks/410_android_real_device_full_flow_visual_qa.md`
+- [x] `411_sprint_7f_closeout_review` - status: completed - source: `tasks/411_sprint_7f_closeout_review.md`
+
+## Recently Completed
+
 - [x] `394_android_merchant_auth_session_contract` - status: completed - source: `tasks/394_android_merchant_auth_session_contract.md`
 - [x] `395_android_receiving_methods_api_wiring` - status: completed - source: `tasks/395_android_receiving_methods_api_wiring.md`
 - [x] `396_android_dashboard_api_wiring` - status: completed - source: `tasks/396_android_dashboard_api_wiring.md`
@@ -16,9 +27,6 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `401_android_real_device_visual_qa` - status: completed - source: `tasks/401_android_real_device_visual_qa.md`
 - [x] `402_android_api_gap_cleanup_and_docs` - status: completed - source: `tasks/402_android_api_gap_cleanup_and_docs.md`
 - [x] `403_sprint_7e_closeout_review` - status: completed - source: `tasks/403_sprint_7e_closeout_review.md`
-
-## Recently Completed
-
 - [x] `381_android_merchant_ux_language_contract` - status: completed - source: `tasks/381_android_merchant_ux_language_contract.md`
 - [x] `382_android_onboarding_frontend_screens` - status: completed - source: `tasks/382_android_onboarding_frontend_screens.md`
 - [x] `383_android_notification_access_gate` - status: completed - source: `tasks/383_android_notification_access_gate.md`

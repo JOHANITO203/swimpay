@@ -29,6 +29,19 @@ Before each task, Codex must read:
 16. `016_end_to_end_tests.md`
 17. `017_admin_console_minimal.md`
 
+## Frontend Realignment (Sprints 7d-7f)
+
+381. `381_frontend_ui_audit_and_component_map.md`
+382. `382_design_tokens_and_base_components.md`
+383. `383_merchant_onboarding_screen_refactor.md`
+384. `384_merchant_dashboard_screen_refactor.md`
+385. `385_receiving_methods_screen_refactor.md`
+386. `386_review_queue_and_detail_refactor.md`
+387. `387_connected_site_screen_refactor.md`
+388. `388_checkout_visual_consistency_pass.md`
+389. `389_ui_copy_guardrails_tests.md`
+390. `390_frontend_realignment_closeout_review.md`
+
 ## Completion rule
 
 A task is complete only if:

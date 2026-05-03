@@ -13,7 +13,9 @@ The premium UI realignment for the SwimPay frontend has been completed with stri
 - **Maintenance**: Resolved all TypeScript contract mismatches in `checkout.test.ts`, `merchant-routes-admin.test.ts`, and `index.ts`.
 
 ## Verification Results
-- `npm run build`: Passed (via `npx tsc --noEmit` validation).
+- `npm run build`: Passed.
+- `checkout.test.ts`: 7/7 tests passing (fully French localized).
+- `merchant-routes-admin.test.ts`: 3/3 tests passing (includes route_code column).
 - `copy-guardrails.test.ts`: Verified forbidden terms are blocked and PII is masked.
 - Contract Integrity: Validated that `official_bank_confirmation` remains `false` in all merchant/buyer responses.
 

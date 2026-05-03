@@ -478,6 +478,300 @@ class MerchantReviewActionsApiRepository(
     }
 }
 
+class MerchantDashboardApiRepository(
+    private val transport: MerchantApiTransport
+) {
+    fun load(session: AuthenticatedMerchantSession): MerchantScreenRepositoryResult {
+        if (!session.isAuthenticated) {
+            return MerchantScreenRepositoryResult(
+                state = MerchantRepositoryState.ACTION_REQUIRED,
+                texts = listOf("Action requise", "Session marchand requise"),
+                usesMockRepository = false
+            )
+        }
+        val response = execute(
+            MerchantApiRequest(
+                method = "GET",
+                path = "/v1/android-merchant/dashboard-summary",
+                headers = authHeaders(session)
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return MerchantScreenRepositoryResult(MerchantRepositoryState.ERROR, listOf("Action nécessaire"), false)
+        }
+        val toReview = extractNumber(response.body, "payments_to_review_count") ?: "0"
+        val confirmed = extractNumber(response.body, "confirmed_today_count") ?: "0"
+        val notifications = extractNumber(response.body, "notifications_sent_count") ?: "0"
+        val receiverDisplay = extractNestedString(response.body, "receiver_status", "display") ?: "Action requise"
+        val recentTexts = extractTopLevelObjectsFromArray(response.body, "recent_detected_payments").flatMap { item ->
+            val amount = extractNestedString(item, "amount", "value") ?: "0.00"
+            val currency = extractNestedString(item, "amount", "currency") ?: "RUB"
+            listOf(
+                formatAmountLabel(amount, currency),
+                extractString(item, "bank_display_name") ?: "Banque choisie",
+                extractString(item, "status_label") ?: "À vérifier"
+            )
+        }
+        return MerchantScreenRepositoryResult(
+            state = MerchantRepositoryState.SUCCESS,
+            texts = listOf(
+                "Tableau de bord",
+                "SwimPay est prêt",
+                "Votre téléphone est connecté et vos paiements peuvent être détectés.",
+                "À vérifier",
+                toReview,
+                "Validés aujourd’hui",
+                confirmed,
+                "Notifications envoyées",
+                notifications,
+                "Téléphone",
+                receiverDisplay,
+                "Derniers paiements détectés"
+            ) + recentTexts + listOf("Accueil", "Revue", "Commandes", "Plus"),
+            usesMockRepository = false
+        )
+    }
+
+    private fun execute(request: MerchantApiRequest): MerchantApiResponse {
+        return try {
+            transport.execute(request)
+        } catch (_: Exception) {
+            MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
+        }
+    }
+}
+
+class MerchantPaymentDetailApiRepository(
+    private val transport: MerchantApiTransport
+) {
+    fun load(session: AuthenticatedMerchantSession, paymentId: String): MerchantScreenRepositoryResult {
+        if (!session.isAuthenticated) {
+            return MerchantScreenRepositoryResult(
+                state = MerchantRepositoryState.ACTION_REQUIRED,
+                texts = listOf("Action requise", "Session marchand requise"),
+                usesMockRepository = false
+            )
+        }
+        val response = execute(
+            MerchantApiRequest(
+                method = "GET",
+                path = "/v1/android-merchant/payments/${urlPath(paymentId)}",
+                headers = authHeaders(session)
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return MerchantScreenRepositoryResult(MerchantRepositoryState.ERROR, listOf("Action requise"), false)
+        }
+        val payment = extractObjectValue(response.body, "payment").orEmpty()
+        val expectedValue = extractNestedString(payment, "amount_expected", "value") ?: "0.00"
+        val expectedCurrency = extractNestedString(payment, "amount_expected", "currency") ?: "RUB"
+        val detectedValue = extractNestedString(payment, "amount_detected", "value") ?: expectedValue
+        val detectedCurrency = extractNestedString(payment, "amount_detected", "currency") ?: expectedCurrency
+        val reasonLabels = extractStringArray(payment, "reason_labels").ifEmpty {
+            listOf(MerchantReviewReasonCode.MANUAL_VALIDATION_BETA.merchantLabel)
+        }
+        return MerchantScreenRepositoryResult(
+            state = MerchantRepositoryState.SUCCESS,
+            texts = listOf(
+                "Vérifier ce paiement",
+                "À vérifier",
+                "Ce paiement nécessite une validation manuelle.",
+                "Montant attendu",
+                formatAmountLabel(expectedValue, expectedCurrency),
+                "Montant détecté",
+                formatAmountLabel(detectedValue, detectedCurrency),
+                "Banque",
+                extractString(payment, "bank_display_name") ?: "Banque choisie",
+                "Moyen de réception",
+                extractString(payment, "receiving_method_masked") ?: "Moyen de réception masqué",
+                "Référence",
+                extractString(payment, "payment_reference") ?: "<REFERENCE>",
+                "Signal reçu",
+                "Il y a 2 min",
+                "Pourquoi ce paiement est à vérifier ?"
+            ) + reasonLabels + listOf(
+                MerchantReviewAction.CONFIRM_PAYMENT.label,
+                MerchantReviewAction.REJECT_SIGNAL.label,
+                MerchantReviewAction.REJECT_ORDER.label
+            ),
+            usesMockRepository = false
+        )
+    }
+
+    private fun execute(request: MerchantApiRequest): MerchantApiResponse {
+        return try {
+            transport.execute(request)
+        } catch (_: Exception) {
+            MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
+        }
+    }
+}
+
+class MerchantConnectedSiteApiRepository(
+    private val transport: MerchantApiTransport
+) {
+    fun load(
+        session: AuthenticatedMerchantSession,
+        developerDetailsEnabled: Boolean
+    ): MerchantScreenRepositoryResult {
+        if (!session.isAuthenticated) {
+            return MerchantScreenRepositoryResult(
+                state = MerchantRepositoryState.ACTION_REQUIRED,
+                texts = listOf("Action requise", "Session marchand requise"),
+                usesMockRepository = false
+            )
+        }
+        val path = if (developerDetailsEnabled) {
+            "/v1/android-merchant/connected-site?developer_mode=true"
+        } else {
+            "/v1/android-merchant/connected-site"
+        }
+        val response = execute(
+            MerchantApiRequest(
+                method = "GET",
+                path = path,
+                headers = authHeaders(session)
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return MerchantScreenRepositoryResult(MerchantRepositoryState.ERROR, listOf("Action nécessaire"), false)
+        }
+        val developerTexts = if (developerDetailsEnabled) {
+            listOf("event_id", "signature status", "delivery attempts")
+        } else {
+            emptyList()
+        }
+        return MerchantScreenRepositoryResult(
+            state = MerchantRepositoryState.SUCCESS,
+            texts = listOf(
+                "Site ou application connecté",
+                "Votre site ou application reçoit une notification quand un paiement change de statut.",
+                extractString(response.body, "status_label") ?: "Action nécessaire",
+                "URL de notification",
+                extractString(response.body, "webhook_url_display") ?: "Non configurée",
+                "Statut",
+                if (extractString(response.body, "status") == "active") "Actif" else "Action requise",
+                "Tester la connexion",
+                "Copier la clé développeur",
+                "Voir les derniers envois",
+                "Afficher les détails développeur"
+            ) + developerTexts,
+            usesMockRepository = false
+        )
+    }
+
+    fun testConnection(session: AuthenticatedMerchantSession): MerchantConnectedSiteTestResult {
+        if (!session.isAuthenticated) {
+            return MerchantConnectedSiteTestResult(
+                state = MerchantRepositoryState.ACTION_REQUIRED,
+                sendsWebhookDirectlyFromAndroid = false,
+                texts = listOf("Action requise", "Session marchand requise")
+            )
+        }
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = "/v1/android-merchant/connected-site/test",
+                headers = authHeaders(session)
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return MerchantConnectedSiteTestResult(
+                state = MerchantRepositoryState.ERROR,
+                sendsWebhookDirectlyFromAndroid = false,
+                texts = listOf("Action nécessaire")
+            )
+        }
+        return MerchantConnectedSiteTestResult(
+            state = MerchantRepositoryState.SUCCESS,
+            sendsWebhookDirectlyFromAndroid = extractBoolean(response.body, "android_sent_webhook_directly") == true,
+            texts = listOf(extractString(response.body, "safe_status") ?: "Notification envoyée")
+        )
+    }
+
+    private fun execute(request: MerchantApiRequest): MerchantApiResponse {
+        return try {
+            transport.execute(request)
+        } catch (_: Exception) {
+            MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
+        }
+    }
+}
+
+data class MerchantConnectedSiteTestResult(
+    val state: MerchantRepositoryState,
+    val sendsWebhookDirectlyFromAndroid: Boolean,
+    private val texts: List<String>
+) {
+    fun visibleTexts(): List<String> = texts
+}
+
+class MerchantConfigurationTestApiRepository(
+    private val transport: MerchantApiTransport
+) {
+    fun run(
+        session: AuthenticatedMerchantSession,
+        checklist: MerchantConfigurationChecklist
+    ): MerchantConfigurationTestResult {
+        if (!session.isAuthenticated) {
+            return MerchantConfigurationTestResult(
+                outcome = MerchantConfigurationTestOutcome.ACTION_REQUIRED,
+                confirmsRealPayment = false,
+                texts = listOf("Action requise", "Session marchand requise"),
+                usesMockRepository = false
+            )
+        }
+        val body = jsonObject(
+            "receiver_connected" to checklist.phoneConnected,
+            "notification_access_active" to checklist.phoneConnected,
+            "connected_site_configured" to checklist.connectedSiteReady
+        )
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = "/v1/android-merchant/configuration-test",
+                headers = authHeaders(session),
+                body = body
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return MerchantConfigurationTestResult(
+                outcome = MerchantConfigurationTestOutcome.ERROR,
+                confirmsRealPayment = false,
+                texts = listOf("Action requise"),
+                usesMockRepository = false
+            )
+        }
+        val outcome = when (extractString(response.body, "outcome")) {
+            "ready" -> MerchantConfigurationTestOutcome.READY
+            "action_required" -> MerchantConfigurationTestOutcome.ACTION_REQUIRED
+            else -> MerchantConfigurationTestOutcome.ERROR
+        }
+        val labels = extractTopLevelObjectsFromArray(response.body, "checklist")
+            .mapNotNull { extractString(it, "label") }
+            .ifEmpty { MerchantConfigurationChecklist.REQUIRED_LABELS }
+        val resultTexts = if (outcome == MerchantConfigurationTestOutcome.READY) {
+            listOf("SwimPay est prêt", "Votre configuration fonctionne pour la bêta.")
+        } else {
+            listOf("Action requise")
+        }
+        return MerchantConfigurationTestResult(
+            outcome = outcome,
+            confirmsRealPayment = false,
+            texts = labels + resultTexts,
+            usesMockRepository = false
+        )
+    }
+
+    private fun execute(request: MerchantApiRequest): MerchantApiResponse {
+        return try {
+            transport.execute(request)
+        } catch (_: Exception) {
+            MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
+        }
+    }
+}
+
 data class MerchantScreenRepositoryResult(
     val state: MerchantRepositoryState,
     private val texts: List<String>,
@@ -485,6 +779,20 @@ data class MerchantScreenRepositoryResult(
     val safeMessage: String = ""
 ) {
     fun visibleTexts(): List<String> = texts + safeMessage
+
+    fun toScreen(
+        id: String,
+        title: String,
+        subtitle: String? = null
+    ): MerchantUiScreen {
+        val visible = visibleTexts()
+        return MerchantUiScreen(
+            id = id,
+            title = visible.firstOrNull() ?: title,
+            subtitle = subtitle,
+            texts = visible.drop(1)
+        )
+    }
 }
 
 class MerchantDashboardRepository private constructor() {
@@ -674,6 +982,11 @@ fun extractObjectValue(body: String, key: String): String? {
 fun extractBoolean(body: String, key: String): Boolean? {
     val match = Regex("\"${Regex.escape(key)}\"\\s*:\\s*(true|false)").find(body) ?: return null
     return match.groupValues[1].toBooleanStrictOrNull()
+}
+
+fun extractNumber(body: String, key: String): String? {
+    val match = Regex("\"${Regex.escape(key)}\"\\s*:\\s*([0-9]+)").find(body) ?: return null
+    return match.groupValues[1]
 }
 
 fun extractNestedString(body: String, objectKey: String, nestedKey: String): String? {

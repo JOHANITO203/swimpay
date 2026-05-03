@@ -1,45 +1,55 @@
 # Next Action
 
-generated_at: 2026-05-03T21:39:35+03:00
+generated_at: 2026-05-03T23:20:11+03:00
 
 ## Latest Sprint
 
-Sprint 7E - Android Merchant API Wiring, Authenticated Review Actions and Real-device Visual QA.
+Sprint 7F - Android Mobile Backend Gap Closure and Real-device QA Completion.
 
 ## Current Status
 
-Sprint 7E passed.
+Sprint 7F implementation is code-complete, but final live backend validation is blocked by local Docker Desktop/containerd I/O errors.
 
 Implemented:
 
-1. Android merchant auth/session boundary with safe missing-auth state.
-2. Local/dev merchant bearer auth contract clearly marked as local/dev.
-3. Receiving methods API wiring for live merchant route list/create/update.
-4. Review queue API wiring for live open review list.
-5. Review action API wiring for confirm, signal-scope reject and order-scope reject.
-6. Explicit typed mock boundaries for dashboard, connected site and configuration test.
-7. Android API gap documentation cleanup.
-8. Android JVM tests for auth, route wiring, review actions, no raw identifiers and mock gaps.
-9. Android debug APK build, install, launch and UI-tree visual QA on Samsung SM-S916B `R5CWA0FEPZW`.
+1. `GET /v1/android-merchant/dashboard-summary`.
+2. `GET /v1/android-merchant/payments/:id`.
+3. `GET /v1/android-merchant/connected-site`.
+4. `POST /v1/android-merchant/connected-site/test`.
+5. `POST /v1/android-merchant/configuration-test`.
+6. Android repositories for the five Sprint 7F endpoints.
+7. Android frontend gap cleanup and docs.
+8. API and Android tests for endpoint safety, UI model safety and backend-owned webhook/configuration-test actions.
+9. Debug APK build, install, launch and UI-tree visual QA on Samsung SM-S916B `R5CWA0FEPZW`.
 
 No real bank notifications were processed. Android still does not confirm or auto-confirm payments. Raw card/phone, raw notification text, package/cert, HMAC and webhook secrets remain out of merchant UI.
 
-## Validation Notes
+## Blocking Issue
 
-Docker was initially unavailable, then the user restarted Docker. Compose service status and `http://localhost:8080/api-health` passed after restart.
+Docker Desktop/containerd local storage is unhealthy.
 
-ADB command execution worked through the local SDK path. The authorized real device `R5CWA0FEPZW` was connected for install, launch and UI-tree viewport inspection.
+Required before commit/private-beta validation:
+
+1. Fully repair/restart Docker Desktop/WSL.
+2. Rerun:
+   - `docker compose --env-file .env.example -f infra/docker-compose.yml ps`
+   - `GET http://localhost:8080/api-health`
+   - live Android endpoint QA with `adb reverse tcp:8080 tcp:8080`
+3. If Docker recovers, rerun the final validation commands and commit Sprint 7F.
 
 ## Next Recommended Sprint
 
-Sprint 7F - Android mobile backend gap closure and merchant UX polish.
+After Docker recovery and Sprint 7F validation:
 
-Recommended Sprint 7F scope:
+Sprint 7G - Android merchant beta hardening and navigation polish.
 
-1. Add backend/mobile endpoints for dashboard summary, payment detail by id, connected-site status/test and configuration test.
-2. Replace remaining mock repositories where backend endpoints become available.
-3. Add richer merchant UX polish while preserving approved copy and guardrails.
-4. Keep real bank notification shadow testing gated behind Sprint 6E consent rules.
+Recommended Sprint 7G scope:
+
+1. Production merchant auth/session handoff plan for the Android app.
+2. Connected-site delivery history hardening.
+3. Better screen navigation and state refresh polish.
+4. Real-device visual QA with backend healthy.
+5. Keep real bank notification shadow testing gated behind Sprint 6E consent rules.
 
 ## What Not To Do Next
 
