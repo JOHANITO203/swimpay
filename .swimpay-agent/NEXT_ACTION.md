@@ -1,42 +1,47 @@
 # Next Action
 
-generated_at: 2026-05-03T14:36:00+03:00
+generated_at: 2026-05-03T15:05:00+03:00
 
 ## Latest Sprint
 
-Sprint 5B - Production Admin Auth Mode and Secret Injection Preflight.
+Sprint 6A - Five-bank MVP Validation Matrix and Private Beta Readiness.
 
 ## Status
 
 PASS.
 
-Sprint 5B implementation is present:
+Sprint 6A implementation is present:
 
-- `docs/PRODUCTION_ADMIN_AUTH_PREFLIGHT.md`
-- `.env.production.example`
-- `infra/docker-compose.production-admin-auth.override.yml`
-- `scripts/production-admin-auth-preflight.mjs`
-- `npm run production:admin-auth-preflight`
+- `.swimpay-agent/PHASE_6_FIVE_BANK_MVP_PLAN.md`
+- `docs/FIVE_BANK_MVP_VALIDATION_MATRIX.md`
+- `packages/bank-templates/v1-bank-mvp-matrix.json`
+- `docs/FIVE_BANK_NOTIFICATION_SHADOW_POLICY.md`
+- `docs/BETA_MERCHANT_ONBOARDING_FLOW.md`
+- `docs/PRIVATE_BETA_READINESS.md`
+- `tests/five-bank-mvp-readiness.test.ts`
 
-The production admin-auth preflight is non-mutating and filesystem-only by default. It verifies required artifacts, blocker state, production template shape, dev-admin value rejection, external secret-injection docs and no committed production admin secrets.
+Production/admin hardening is paused. The current product priority is five-bank MVP validation and private beta readiness.
 
 ## Next Recommended Action
 
-Proceed to Sprint 5C - Production Compose Config Assembly and Non-deploying Dry Run.
+Proceed to Sprint 6B - Five-bank Package Evidence Collection Wave.
 
 Recommended scope:
 
-1. Add a production Compose config assembly check using the production admin-auth override with dummy external env values.
-2. Verify PostgreSQL, Valkey and NATS stay private in production config.
-3. Add production backup/restore and log-retention preflight docs.
-4. Keep production deployment out of scope until a final operator go/no-go.
-5. Keep real bank notification processing out of scope.
+1. Collect explicit operator package-name input for Tinkoff / T-Bank, VTB, Alfa-Bank and Gazprombank.
+2. Run one-package PackageManager evidence dry runs only for explicitly provided packages.
+3. Submit evidence as `pending_operator_review`.
+4. Approve evidence only as `approved_for_review_only`.
+5. Update the five-bank matrix after each bank.
+6. Keep real bank notifications and auto-confirmation out of scope.
 
 ## What Not To Do Next
 
 - Do not deploy.
 - Do not process real bank notifications.
 - Do not enumerate installed apps.
+- Do not guess bank package names.
+- Do not invent certificate fingerprints.
 - Do not read SMS.
 - Do not scrape bank apps.
 - Do not expose raw phone or raw notification text.

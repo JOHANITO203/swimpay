@@ -67,9 +67,8 @@ describe('production admin auth and secret injection preflight', () => {
     expect(report).not.toMatch(/op_ops_[A-Za-z0-9_.-]+|ADMIN_TOKEN_HMAC_SECRET=.*[A-Za-z0-9_-]{16,}|raw_phone|raw_notification_text/iu);
   });
 
-  test('Sprint 5B queue and npm script are exposed', () => {
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
-    const orderedTasks = [
+  test('Sprint 5B task artifacts and npm script remain available after later queues take over', () => {
+    const taskArtifacts = [
       '265_production_admin_auth_mode_preflight',
       '266_production_secret_injection_template',
       '267_no_secret_in_repo_checks',
@@ -80,11 +79,7 @@ describe('production admin auth and secret injection preflight', () => {
       '272_sprint_5b_closeout_review'
     ];
 
-    let previousIndex = -1;
-    for (const task of orderedTasks) {
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
-      expect(index, task).toBeGreaterThan(previousIndex);
-      previousIndex = index;
+    for (const task of taskArtifacts) {
       expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
     }
 

@@ -40,18 +40,19 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 5B production admin auth preflight tasks in the approved order', () => {
+  test('task queue lists Sprint 6A five-bank MVP tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '265_production_admin_auth_mode_preflight',
-      '266_production_secret_injection_template',
-      '267_no_secret_in_repo_checks',
-      '268_signed_token_helper_local_only_guard',
-      '269_production_admin_auth_preflight_tests',
-      '270_security_docs_production_admin_auth_update',
-      '271_sprint_5b_validation',
-      '272_sprint_5b_closeout_review'
+      '273_phase_6_five_bank_mvp_direction',
+      '274_five_bank_mvp_validation_matrix',
+      '275_five_bank_package_evidence_collection_plan',
+      '276_five_bank_receiver_selection_and_readiness',
+      '277_five_bank_redacted_notification_shadow_policy',
+      '278_five_bank_review_only_runtime_tests',
+      '279_beta_merchant_onboarding_flow',
+      '280_private_beta_go_no_go_checklist',
+      '281_sprint_6a_closeout_review'
     ];
 
     let previousIndex = -1;

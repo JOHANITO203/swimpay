@@ -1,13 +1,13 @@
 # Current Task
 
-task_id: 272_sprint_5b_closeout_review
-source_task_file: tasks/272_sprint_5b_closeout_review.md
+task_id: 281_sprint_6a_closeout_review
+source_task_file: tasks/281_sprint_6a_closeout_review.md
 status: completed
 
 ## Scope
 
-Sprint 5B - Production Admin Auth Mode and Secret Injection Preflight.
+Sprint 6A - Five-bank MVP Validation Matrix and Private Beta Readiness.
 
 ## Result
 
-Added a non-mutating production admin auth preflight, safe production env template, Compose secret-injection override, tests and docs. The package rejects development admin auth values for production and verifies that committed production examples do not contain real admin tokens or HMAC secrets.
+Paused the production/admin hardening chain and created the five-bank MVP validation foundation: Phase 6 plan, five-bank matrix, package evidence plan, shadow notification policy, private beta onboarding, go/no-go checklist and review-only runtime tests.

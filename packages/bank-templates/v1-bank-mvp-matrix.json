@@ -1,0 +1,112 @@
+{
+  "phase": "phase_6_five_bank_mvp_validation",
+  "generated_at": "2026-05-03T15:05:00+03:00",
+  "policy": {
+    "real_notification_processing": "not_started",
+    "real_bank_runtime_mode": "review_only_shadow_first",
+    "auto_confirm_real_banks": "disabled",
+    "package_collection": "explicit_operator_input_only",
+    "installed_app_enumeration": "forbidden",
+    "official_bank_confirmation": false
+  },
+  "banks": [
+    {
+      "bank_profile_id": "sber_ru",
+      "display_name": "Sberbank",
+      "package_input_status": "operator_provided",
+      "package_name": "ru.sberbankmobile",
+      "cert_evidence_status": "production_trust_revoked",
+      "latest_evidence_id": "878ddd87-2e69-40b1-9cc7-da15d95a6b0b",
+      "package_visibility_status": "visible_in_debug_operator_build",
+      "receiver_selection_status": "selectable_review_only",
+      "notification_listener_capture_status": "not_started_real_bank",
+      "sample_notification_status": "not_collected_real_bank",
+      "parser_status": "synthetic_only",
+      "review_routing_status": "review_only_required",
+      "webhook_status": "synthetic_validated",
+      "auto_confirm_status": "disabled",
+      "beta_readiness_status": "partial",
+      "blockers": [
+        "real bank notification shadow run not started",
+        "no real notification samples stored or approved"
+      ]
+    },
+    {
+      "bank_profile_id": "tbank_ru",
+      "display_name": "Tinkoff / T-Bank",
+      "package_input_status": "package_input_needed",
+      "cert_evidence_status": "not_collected",
+      "package_visibility_status": "not_configured",
+      "receiver_selection_status": "selectable_review_only",
+      "notification_listener_capture_status": "not_started",
+      "sample_notification_status": "not_collected",
+      "parser_status": "synthetic_needed",
+      "review_routing_status": "review_only_required",
+      "webhook_status": "synthetic_needed",
+      "auto_confirm_status": "disabled",
+      "beta_readiness_status": "not_ready",
+      "blockers": [
+        "explicit package name needed",
+        "operator evidence not collected"
+      ]
+    },
+    {
+      "bank_profile_id": "vtb_ru",
+      "display_name": "VTB",
+      "package_input_status": "package_input_needed",
+      "cert_evidence_status": "not_collected",
+      "package_visibility_status": "not_configured",
+      "receiver_selection_status": "selectable_review_only",
+      "notification_listener_capture_status": "not_started",
+      "sample_notification_status": "not_collected",
+      "parser_status": "synthetic_needed",
+      "review_routing_status": "review_only_required",
+      "webhook_status": "synthetic_needed",
+      "auto_confirm_status": "disabled",
+      "beta_readiness_status": "not_ready",
+      "blockers": [
+        "explicit package name needed",
+        "operator evidence not collected"
+      ]
+    },
+    {
+      "bank_profile_id": "alfa_ru",
+      "display_name": "Alfa-Bank",
+      "package_input_status": "package_input_needed",
+      "cert_evidence_status": "not_collected",
+      "package_visibility_status": "not_configured",
+      "receiver_selection_status": "selectable_review_only",
+      "notification_listener_capture_status": "not_started",
+      "sample_notification_status": "not_collected",
+      "parser_status": "synthetic_needed",
+      "review_routing_status": "review_only_required",
+      "webhook_status": "synthetic_needed",
+      "auto_confirm_status": "disabled",
+      "beta_readiness_status": "not_ready",
+      "blockers": [
+        "explicit package name needed",
+        "operator evidence not collected"
+      ]
+    },
+    {
+      "bank_profile_id": "gazprombank_ru",
+      "display_name": "Gazprombank",
+      "package_input_status": "package_input_needed",
+      "cert_evidence_status": "not_collected",
+      "package_visibility_status": "not_configured",
+      "receiver_selection_status": "selectable_review_only",
+      "notification_listener_capture_status": "not_started",
+      "sample_notification_status": "not_collected",
+      "parser_status": "synthetic_needed",
+      "review_routing_status": "review_only_required",
+      "webhook_status": "synthetic_needed",
+      "auto_confirm_status": "disabled",
+      "beta_readiness_status": "not_ready",
+      "blockers": [
+        "explicit package name needed",
+        "operator evidence not collected"
+      ]
+    }
+  ]
+}
+

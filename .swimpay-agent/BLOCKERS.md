@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Sprint 5B production admin auth mode and secret injection preflight: 2026-05-03T14:36:00+03:00.
+Last checked after Sprint 6A five-bank MVP validation and private beta readiness foundation: 2026-05-03T15:05:00+03:00.
 
 Resolved during Sprint 4Y retry:
 
@@ -43,4 +43,6 @@ Known non-critical limitations:
 - Sprint 5A added `npm run operator:identity-readiness` and `docs/OPERATOR_IDENTITY_SECRET_LIFECYCLE.md`. The readiness gate is non-mutating and verifies the production operator identity lifecycle package plus selected docs, reports, task files and agent status files.
 - Sprint 5B added `npm run production:admin-auth-preflight`, `.env.production.example` and `infra/docker-compose.production-admin-auth.override.yml`. The preflight is non-mutating and verifies dev admin auth is rejected for production and committed production examples do not contain admin tokens or HMAC secrets.
 - Production operator identity provider/infrastructure is not implemented. Sprints 5A and 5B define policy, readiness checks and production admin-auth preflight only.
-- Real bank package/certificate verification and real bank notifications remain out of scope.
+- Sprint 6A paused the production/admin hardening chain and created the five-bank MVP validation matrix plus private beta readiness foundation.
+- Only Sberbank currently has real package evidence: `ru.sberbankmobile`. Tinkoff / T-Bank, VTB, Alfa-Bank and Gazprombank still require explicit operator package-name input.
+- Real bank package/certificate evidence for the remaining four banks and real bank notifications remain out of scope until a dedicated Sprint 6B+ task.

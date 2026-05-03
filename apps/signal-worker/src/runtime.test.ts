@@ -118,6 +118,41 @@ describe('signal runtime processor', () => {
   });
 
   it.each([
+    'sber_ru',
+    'tbank_ru',
+    'vtb_ru',
+    'alfa_ru',
+    'gazprombank_ru'
+  ] as const)('routes synthetic review-only %s signals to review without auto-confirm', async (bankProfileId) => {
+    const { processor, repository } = createProcessor({
+      trustContext: toVerifyContext,
+      signal: buildSignal({
+        id: `sig_${bankProfileId}`,
+        bankProfileId,
+        eventId: `evt_${bankProfileId}`,
+        notificationHash: `hash_${bankProfileId}`,
+        titleRedacted: 'Incoming transfer <AMOUNT> <CURRENCY>',
+        bodyRedacted: 'Transfer from <PHONE>. Reference <REFERENCE>',
+        amountMinor: 13700,
+        currency: 'RUB',
+        directionLabel: 'incoming_customer_transfer'
+      })
+    });
+
+    const result = await processor.processSignalReceived({ signalId: `sig_${bankProfileId}` });
+
+    expect(result.decision).toBe('needs_review');
+    expect(repository.reviews).toHaveLength(1);
+    expect(repository.reviews[0]?.reasonCodes).toEqual(
+      expect.arrayContaining(['bank_profile_untrusted', 'bank_app_unverified', 'package_cert_to_verify'])
+    );
+    expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
+    expect(repository.webhookEvents[0]?.type).toBe('payment.needs_review');
+    expect(repository.webhookEvents[0]?.data.official_bank_confirmation).toBe(false);
+    expect(repository.webhookEvents[0]?.data.confirmation_type).toBe('notification_signal');
+  });
+
+  it.each([
     ['cashback', 'cashback 137 RUB from store', 'incoming_cashback'],
     ['refund', 'refund 137 RUB from shop', 'incoming_refund'],
     ['outgoing', 'payment 137 RUB to shop', 'outgoing_payment'],

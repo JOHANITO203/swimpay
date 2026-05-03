@@ -328,6 +328,22 @@ Sprint 4P adds a real package dry-run mechanism for an explicitly provided packa
 
 Sprint 4R adds Android package visibility handling. Android can hide an installed package from an app unless that package is explicitly visible. The Receiver now distinguishes `PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED` from `PACKAGE_NOT_FOUND` and shows safe operator guidance. The debug/operator manifest contains an exact query for `ru.sberbankmobile` because the operator selected it during dry-run testing. This query is not production trust, does not enable real notification processing and does not enable auto-confirmation. Broad visibility through `QUERY_ALL_PACKAGES` is forbidden.
 
+## Phase 6 Five-bank MVP Boundary
+
+Phase 6 pauses production/admin hardening and returns the Android Receiver focus to five-bank MVP validation and private beta readiness.
+
+The selected V1 banks are:
+
+- Sberbank
+- Tinkoff / T-Bank
+- VTB
+- Alfa-Bank
+- Gazprombank
+
+Only Sberbank currently has an operator-selected package evidence baseline: `ru.sberbankmobile`. The other package names must remain unknown until an operator explicitly provides one package name per bank.
+
+Real bank notifications are not processed in Sprint 6A. Future first real notification tests must be review-only/shadow-first, redacted before storage or upload, and must not enable Android or backend auto-confirmation.
+
 Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
 
 - `adb` available from the Android SDK.

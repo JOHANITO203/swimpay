@@ -1565,3 +1565,17 @@ Safety checks:
 - Targeted TDD cycle passed: production preflight test failed before the script existed, then passed after implementation.
 - Full validation passed: production admin-auth preflight, android doctor, typecheck, lint, tests, build, Compose config, Compose ps, API health, production admin-auth override config with dummy external secret, Android assembleDebug with explicit SDK env, Android JVM tests with explicit SDK env and `git diff --check`.
 - No production secrets were generated, no production deployment was performed, no real notification was processed, no production trust mutation occurred and auto-confirmation remains disabled.
+
+## 2026-05-03T15:05:00+03:00 - Sprint 6A Five-bank MVP Validation Matrix and Private Beta Readiness
+
+- Strategic correction accepted: paused the production/admin hardening chain after Sprint 5B.
+- Created tasks 273 through 281 and updated the task queue to Sprint 6A.
+- Created `.swimpay-agent/PHASE_6_FIVE_BANK_MVP_PLAN.md`.
+- Created `docs/FIVE_BANK_MVP_VALIDATION_MATRIX.md` and `packages/bank-templates/v1-bank-mvp-matrix.json`.
+- Created `docs/FIVE_BANK_NOTIFICATION_SHADOW_POLICY.md`, `docs/BETA_MERCHANT_ONBOARDING_FLOW.md` and `docs/PRIVATE_BETA_READINESS.md`.
+- Prefilled Sberbank with operator-selected package `ru.sberbankmobile`; the other four V1 banks remain `package_input_needed`.
+- Added `tests/five-bank-mvp-readiness.test.ts` and five-bank review-only runtime coverage in `apps/signal-worker/src/runtime.test.ts`.
+- Verified that synthetic redacted untrusted/review-only signals for all five bank ids route to review, emit safe notification-signal disclosure and do not auto-confirm.
+- Full validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps and API health.
+- Android Gradle validation was not run because Sprint 6A did not touch Android platform code.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust request/approval, raw phone, raw notification text or auto-confirmation was used.
