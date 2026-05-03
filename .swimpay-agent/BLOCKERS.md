@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Sprint 4Z production trust handoff readiness packaging: 2026-05-03T14:07:42+03:00.
+Last checked after Sprint 5A production operator identity and secret lifecycle hardening: 2026-05-03T14:22:30+03:00.
 
 Resolved during Sprint 4Y retry:
 
@@ -40,5 +40,6 @@ Known non-critical limitations:
 - Sprint 4X added `npm run operator:tokens` and `npm run rehearsal:evidence:signed`. The signed-token handoff execution passed in an in-process local API with two signed operators and ended with metadata trust revoked. Compose remains `dev_token` by default; any persisted signed-token Compose drill should be explicit and local-only.
 - Sprint 4Y added a local-only signed-token Compose override, `npm run rehearsal:evidence:compose-signed` and an operational playbook. After Docker Desktop/WSL restart, the persisted signed-token Compose drill passed and ended with metadata trust revoked.
 - Sprint 4Z added `npm run handoff:evidence-readiness` and `docs/BANK_EVIDENCE_PRODUCTION_TRUST_READINESS.md`. The readiness gate is non-mutating and verifies required artifacts, Sprint 4Y status, blocker state, default Compose mode and safety wording.
-- Production operator identity lifecycle is not implemented. The local signed-token helper remains rehearsal tooling, not production credential lifecycle tooling.
+- Sprint 5A added `npm run operator:identity-readiness` and `docs/OPERATOR_IDENTITY_SECRET_LIFECYCLE.md`. The readiness gate is non-mutating and verifies the production operator identity lifecycle package plus selected docs, reports, task files and agent status files.
+- Production operator identity provider/infrastructure is not implemented. Sprint 5A defines policy and readiness checks only.
 - Real bank package/certificate verification and real bank notifications remain out of scope.

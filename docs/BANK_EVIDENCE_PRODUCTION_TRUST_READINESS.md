@@ -56,6 +56,14 @@ Before production use, SwimPay needs an explicit operator identity plan:
 - audit review;
 - separation between requester, approver and revoker duties.
 
+Sprint 5A adds the operator identity and secret lifecycle package in `docs/OPERATOR_IDENTITY_SECRET_LIFECYCLE.md`.
+
+Run the non-mutating identity readiness gate:
+
+```powershell
+npm run operator:identity-readiness
+```
+
 ## Evidence Dossier Format
 
 Each future production trust candidate should have a dossier containing:

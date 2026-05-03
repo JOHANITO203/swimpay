@@ -49,9 +49,8 @@ describe('production trust handoff readiness packaging', () => {
     expect(report).not.toMatch(/raw_phone|raw_notification_text|official_bank_confirmation":true|auto_confirm_enabled":true/iu);
   });
 
-  test('Sprint 4Z queue and npm script are exposed', () => {
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
-    const orderedTasks = [
+  test('Sprint 4Z task artifacts and npm script remain available', () => {
+    const taskArtifacts = [
       '249_operator_handoff_package_checklist',
       '250_production_trust_readiness_gate',
       '251_signed_compose_evidence_trail_packaging',
@@ -62,11 +61,7 @@ describe('production trust handoff readiness packaging', () => {
       '256_sprint_4z_closeout_review'
     ];
 
-    let previousIndex = -1;
-    for (const task of orderedTasks) {
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
-      expect(index, task).toBeGreaterThan(previousIndex);
-      previousIndex = index;
+    for (const task of taskArtifacts) {
       expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
     }
 

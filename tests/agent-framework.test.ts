@@ -28,7 +28,8 @@ const requiredAgentFiles = [
   'scripts/evidence-production-trust-handoff.mjs',
   'scripts/operator-token-helper.mjs',
   'scripts/evidence-production-trust-compose-signed-rehearsal.mjs',
-  'scripts/evidence-production-trust-readiness.mjs'
+  'scripts/evidence-production-trust-readiness.mjs',
+  'scripts/operator-identity-readiness.mjs'
 ];
 
 describe('local agent orchestration framework', () => {
@@ -38,18 +39,18 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4Z production trust readiness tasks in the approved order', () => {
+  test('task queue lists Sprint 5A operator identity lifecycle tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '249_operator_handoff_package_checklist',
-      '250_production_trust_readiness_gate',
-      '251_signed_compose_evidence_trail_packaging',
-      '252_operator_secret_and_token_handling_runbook',
-      '253_handoff_acceptance_tests',
-      '254_production_readiness_docs',
-      '255_sprint_4z_validation',
-      '256_sprint_4z_closeout_review'
+      '257_operator_identity_lifecycle_policy',
+      '258_operator_secret_storage_and_rotation_runbook',
+      '259_operator_revocation_and_break_glass_runbook',
+      '260_production_admin_auth_preflight_gate',
+      '261_operator_identity_readiness_tests',
+      '262_security_docs_operator_identity_update',
+      '263_sprint_5a_validation',
+      '264_sprint_5a_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -91,5 +92,6 @@ describe('local agent orchestration framework', () => {
     expect(pkg.scripts['rehearsal:evidence:signed']).toBe('vitest run tests/evidence-production-trust-signed-local-rehearsal.test.ts');
     expect(pkg.scripts['rehearsal:evidence:compose-signed']).toBe('node scripts/evidence-production-trust-compose-signed-rehearsal.mjs');
     expect(pkg.scripts['handoff:evidence-readiness']).toBe('node scripts/evidence-production-trust-readiness.mjs');
+    expect(pkg.scripts['operator:identity-readiness']).toBe('node scripts/operator-identity-readiness.mjs');
   });
 });

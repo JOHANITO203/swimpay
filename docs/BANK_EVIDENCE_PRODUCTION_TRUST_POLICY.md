@@ -149,6 +149,14 @@ npm run handoff:evidence-readiness
 
 The readiness gate verifies the handoff package, safety wording and blocker state before operator handoff. It does not request, approve or revoke production trust.
 
+Sprint 5A adds an operator identity and secret lifecycle readiness gate:
+
+```powershell
+npm run operator:identity-readiness
+```
+
+The gate documents production operator lifecycle controls and verifies the local token helper remains rehearsal tooling only.
+
 ## Audit
 
 Required audit events:

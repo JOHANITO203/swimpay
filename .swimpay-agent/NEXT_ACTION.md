@@ -1,22 +1,22 @@
 # Next Action
 
-generated_at: 2026-05-03T14:07:42+03:00
+generated_at: 2026-05-03T14:22:30+03:00
 
 ## Latest Sprint
 
-Sprint 4Z - Production trust handoff readiness and operator packaging.
+Sprint 5A - Production operator identity and secret lifecycle hardening.
 
 ## Status
 
 PASS.
 
-Sprint 4Z implementation is present:
+Sprint 5A implementation is present:
 
-- `docs/BANK_EVIDENCE_PRODUCTION_TRUST_READINESS.md`
-- `scripts/evidence-production-trust-readiness.mjs`
-- `npm run handoff:evidence-readiness`
+- `docs/OPERATOR_IDENTITY_SECRET_LIFECYCLE.md`
+- `scripts/operator-identity-readiness.mjs`
+- `npm run operator:identity-readiness`
 
-The readiness gate is non-mutating and filesystem-only by default. It verifies required artifacts, Sprint 4Y PASS status, blocker state, default Compose mode and safety wording.
+The operator identity gate is non-mutating and filesystem-only by default. It verifies required artifacts, blocker state, local token helper boundaries, lifecycle documentation, production admin auth preflight documentation and selected safety docs/reports/task files.
 
 Sprint 4Y evidence trail remains:
 
@@ -30,14 +30,14 @@ Sprint 4Y evidence trail remains:
 
 ## Next Recommended Action
 
-Proceed to Sprint 5A - Production Operator Identity and Secret Lifecycle Hardening.
+Proceed to Sprint 5B - Production Admin Auth Mode and Secret Injection Preflight.
 
 Recommended scope:
 
-1. Define production operator identity provider or signed-token issuance policy.
-2. Define token/secret storage, rotation and revocation.
-3. Define break-glass access and audit review.
-4. Add production deployment preflight for `ADMIN_AUTH_MODE` and dev-token absence.
+1. Add a production env/template preflight that rejects dev admin auth values.
+2. Define safe secret injection shape for one-server Docker Compose deployment.
+3. Add no-secret-in-repo checks for production env examples.
+4. Keep signed-token helper local-only unless a production identity system is explicitly chosen.
 5. Keep real bank notification processing out of scope.
 
 Any future mutating drill must again end with production trust revoked and audit continuity verified.
