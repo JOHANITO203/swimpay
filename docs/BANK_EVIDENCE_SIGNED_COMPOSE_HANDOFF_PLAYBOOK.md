@@ -136,3 +136,9 @@ Before closing the drill:
 - Compose was restored to the expected local mode;
 - no auto-confirmation was enabled;
 - no real notification was processed.
+
+## Production-readiness Package
+
+Before using this playbook as part of any operator handoff, review `docs/BANK_EVIDENCE_PRODUCTION_TRUST_READINESS.md`.
+
+That readiness package binds the local signed-token drill to operator identity, evidence dossier, audit, monitoring and rollback expectations. It also documents that the local token helper is not production operator lifecycle tooling.

@@ -141,6 +141,14 @@ Sprint 4X adds a signed-token local rehearsal. It uses the real `signed_token` a
 
 Sprint 4Y adds a local-only signed-token Docker Compose override and operational playbook. It allows a deliberate persisted local handoff drill while keeping the same state machine, dual-control and revocation requirements. The default Compose file remains `dev_token`; signed-token Compose mode must be selected explicitly.
 
+Sprint 4Z adds a non-mutating readiness gate:
+
+```powershell
+npm run handoff:evidence-readiness
+```
+
+The readiness gate verifies the handoff package, safety wording and blocker state before operator handoff. It does not request, approve or revoke production trust.
+
 ## Audit
 
 Required audit events:

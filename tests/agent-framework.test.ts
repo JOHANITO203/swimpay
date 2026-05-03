@@ -27,7 +27,8 @@ const requiredAgentFiles = [
   'scripts/evidence-lifecycle-rehearsal.mjs',
   'scripts/evidence-production-trust-handoff.mjs',
   'scripts/operator-token-helper.mjs',
-  'scripts/evidence-production-trust-compose-signed-rehearsal.mjs'
+  'scripts/evidence-production-trust-compose-signed-rehearsal.mjs',
+  'scripts/evidence-production-trust-readiness.mjs'
 ];
 
 describe('local agent orchestration framework', () => {
@@ -37,18 +38,18 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4Y signed Compose handoff tasks in the approved order', () => {
+  test('task queue lists Sprint 4Z production trust readiness tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '241_signed_token_compose_override',
-      '242_persisted_handoff_candidate_selection',
-      '243_signed_compose_handoff_rehearsal_script',
-      '244_production_trust_audit_playbook',
-      '245_signed_compose_handoff_tests',
-      '246_operational_handoff_docs',
-      '247_sprint_4y_validation',
-      '248_sprint_4y_closeout_review'
+      '249_operator_handoff_package_checklist',
+      '250_production_trust_readiness_gate',
+      '251_signed_compose_evidence_trail_packaging',
+      '252_operator_secret_and_token_handling_runbook',
+      '253_handoff_acceptance_tests',
+      '254_production_readiness_docs',
+      '255_sprint_4z_validation',
+      '256_sprint_4z_closeout_review'
     ];
 
     let previousIndex = -1;
@@ -89,5 +90,6 @@ describe('local agent orchestration framework', () => {
     expect(pkg.scripts['operator:tokens']).toBe('node scripts/operator-token-helper.mjs');
     expect(pkg.scripts['rehearsal:evidence:signed']).toBe('vitest run tests/evidence-production-trust-signed-local-rehearsal.test.ts');
     expect(pkg.scripts['rehearsal:evidence:compose-signed']).toBe('node scripts/evidence-production-trust-compose-signed-rehearsal.mjs');
+    expect(pkg.scripts['handoff:evidence-readiness']).toBe('node scripts/evidence-production-trust-readiness.mjs');
   });
 });

@@ -1,24 +1,24 @@
 # Next Action
 
-generated_at: 2026-05-03T13:53:18+03:00
+generated_at: 2026-05-03T14:07:42+03:00
 
 ## Latest Sprint
 
-Sprint 4Y - Signed-token Compose handoff rehearsal and production trust operational playbook.
+Sprint 4Z - Production trust handoff readiness and operator packaging.
 
 ## Status
 
 PASS.
 
-Sprint 4Y implementation is present:
+Sprint 4Z implementation is present:
 
-- `infra/docker-compose.signed-admin.override.yml`
-- `npm run rehearsal:evidence:compose-signed`
-- `docs/BANK_EVIDENCE_SIGNED_COMPOSE_HANDOFF_PLAYBOOK.md`
+- `docs/BANK_EVIDENCE_PRODUCTION_TRUST_READINESS.md`
+- `scripts/evidence-production-trust-readiness.mjs`
+- `npm run handoff:evidence-readiness`
 
-The deterministic tests pass, the signed Compose plan works and the persisted live Compose handoff has now run successfully after Docker Desktop/WSL was restarted.
+The readiness gate is non-mutating and filesystem-only by default. It verifies required artifacts, Sprint 4Y PASS status, blocker state, default Compose mode and safety wording.
 
-Evidence `878ddd87-2e69-40b1-9cc7-da15d95a6b0b` completed the full drill:
+Sprint 4Y evidence trail remains:
 
 - review-only setup;
 - production trust request by `ops_requester`;
@@ -30,14 +30,15 @@ Evidence `878ddd87-2e69-40b1-9cc7-da15d95a6b0b` completed the full drill:
 
 ## Next Recommended Action
 
-Proceed to operator handoff packaging or a production-readiness review sprint.
+Proceed to Sprint 5A - Production Operator Identity and Secret Lifecycle Hardening.
 
-Recommended checks before any future handoff drill:
+Recommended scope:
 
-1. `docker ps`
-2. `docker compose --env-file .env.example -f infra/docker-compose.yml ps`
-3. `Invoke-WebRequest -UseBasicParsing http://localhost:8080/api-health`
-4. `npm run rehearsal:evidence:compose-signed -- --plan`
+1. Define production operator identity provider or signed-token issuance policy.
+2. Define token/secret storage, rotation and revocation.
+3. Define break-glass access and audit review.
+4. Add production deployment preflight for `ADMIN_AUTH_MODE` and dev-token absence.
+5. Keep real bank notification processing out of scope.
 
 Any future mutating drill must again end with production trust revoked and audit continuity verified.
 

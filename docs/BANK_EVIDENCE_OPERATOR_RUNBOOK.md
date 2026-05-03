@@ -251,6 +251,14 @@ For a full local persisted drill, start Compose with `infra/docker-compose.signe
 
 See `docs/BANK_EVIDENCE_SIGNED_COMPOSE_HANDOFF_PLAYBOOK.md`.
 
+Sprint 4Z adds a non-mutating readiness package:
+
+```powershell
+npm run handoff:evidence-readiness
+```
+
+The readiness check verifies that the handoff docs, scripts, task queue, Sprint 4Y report and blocker state are ready for operator packaging. It does not call admin APIs, does not mutate evidence and does not require Docker. See `docs/BANK_EVIDENCE_PRODUCTION_TRUST_READINESS.md`.
+
 ## Future Real Package/Cert Dry Run
 
 Real evidence collection must be explicit:
