@@ -4,6 +4,7 @@ import {
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
   type BuyerSafeCheckoutStatus,
+  type BuyerSafeReceivingRoute,
   type CheckoutSessionState,
   type PayerBankLauncherOption,
   type ReceiverBankOption
@@ -33,7 +34,9 @@ export interface CheckoutSession {
   buyer_safe_status?: BuyerSafeCheckoutStatus | undefined;
   selected_receiver_bank_id?: string | undefined;
   selected_receiver_bank_profile_id?: string | undefined;
+  selected_receiving_route_id?: string | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
+  buyer_sender_phone_masked?: string | undefined;
   payment_instructions_shown_at?: string | undefined;
   buyer_claimed_paid_at?: string | undefined;
   official_bank_confirmation?: false | undefined;
@@ -51,6 +54,10 @@ export interface CheckoutSessionProvider {
   getCheckoutSession(paymentSessionId: string): Promise<CheckoutSession | null>;
   getReceiverBanks(paymentSessionId: string): Promise<ReceiverBanksPayload>;
   selectReceiverBank(paymentSessionId: string, receiverBankId: string): Promise<CheckoutSession>;
+  getReceivingRoutes(paymentSessionId: string, bankProfileId: string): Promise<ReceivingRoutesPayload>;
+  selectReceivingRoute(paymentSessionId: string, receivingRouteId: string): Promise<CheckoutSession>;
+  getReceivingRouteCopyDetails(paymentSessionId: string): Promise<ReceivingRouteCopyDetailsPayload>;
+  saveBuyerSenderPhoneHint(paymentSessionId: string, buyerSenderPhone: string): Promise<CheckoutSession>;
   getPayerBankLaunchers(paymentSessionId: string): Promise<PayerBankLaunchersPayload>;
   selectPayerBankLauncher(paymentSessionId: string, payerBankLauncherId: string): Promise<CheckoutSession>;
   markPaymentInstructionsShown(paymentSessionId: string): Promise<CheckoutSession>;
@@ -147,6 +154,24 @@ interface PayerBankLaunchersPayload {
   payer_bank_launchers: readonly PayerBankLauncherOption[];
 }
 
+interface ReceivingRoutesPayload {
+  payment_session_id: string;
+  bank_profile_id: string;
+  routes: readonly BuyerSafeReceivingRoute[];
+}
+
+interface ReceivingRouteCopyDetailsPayload {
+  payment_session_id: string;
+  receiving_route_id: string;
+  rail_type: string;
+  receiver_identifier_type: string;
+  receiver_identifier_masked: string;
+  receiver_identifier_copy_value: string;
+  copy_action: 'explicit_buyer_copy';
+  does_not_confirm_payment: true;
+  official_bank_confirmation: false;
+}
+
 interface CheckoutClaimedPaidResponse {
   payment_session_id: string;
   buyer_claimed_paid: true;
@@ -203,8 +228,18 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       return reply.status(404).send({ error: { code: 'not_found', message: 'Checkout session was not found.' } });
     }
 
+    const receivingRoutes = session.selected_receiver_bank_id
+      ? await checkoutSessionProvider.getReceivingRoutes(paymentSessionId, session.selected_receiver_bank_id)
+      : { payment_session_id: paymentSessionId, bank_profile_id: '', routes: [] };
+
     reply.type('text/html; charset=utf-8');
-    return renderCheckoutPage(session, recipient, receiverBanks.receiver_banks, payerBankLaunchers.payer_bank_launchers);
+    return renderCheckoutPage(
+      session,
+      recipient,
+      receiverBanks.receiver_banks,
+      receivingRoutes.routes,
+      payerBankLaunchers.payer_bank_launchers
+    );
   });
 
   server.get('/checkout/:paymentSessionId/receiver-banks', async (request, reply) => {
@@ -227,6 +262,51 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     }
 
     return reply.status(200).send(toCheckoutStatusResponse(await checkoutSessionProvider.selectReceiverBank(paymentSessionId, receiverBankId)));
+  });
+
+  server.get('/checkout/:paymentSessionId/receiver-banks/:bankProfileId/routes', async (request, reply) => {
+    const params = request.params as { paymentSessionId?: string; bankProfileId?: string };
+    const paymentSessionId = params.paymentSessionId;
+    const bankProfileId = params.bankProfileId;
+    if (!paymentSessionId || !bankProfileId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Payment session id and bank profile id are required.' } });
+    }
+
+    return reply.status(200).send(await checkoutSessionProvider.getReceivingRoutes(paymentSessionId, bankProfileId));
+  });
+
+  server.post('/checkout/:paymentSessionId/receiving-route', async (request, reply) => {
+    const params = request.params as { paymentSessionId?: string };
+    const body = request.body as { receiving_route_id?: string } | undefined;
+    const paymentSessionId = params.paymentSessionId;
+    const receivingRouteId = body?.receiving_route_id;
+    if (!paymentSessionId || !receivingRouteId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Receiving route id is required.' } });
+    }
+
+    return reply.status(200).send(toCheckoutStatusResponse(await checkoutSessionProvider.selectReceivingRoute(paymentSessionId, receivingRouteId)));
+  });
+
+  server.get('/checkout/:paymentSessionId/receiving-route/copy-details', async (request, reply) => {
+    const params = request.params as { paymentSessionId?: string };
+    const paymentSessionId = params.paymentSessionId;
+    if (!paymentSessionId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Payment session id is required.' } });
+    }
+
+    return reply.status(200).send(await checkoutSessionProvider.getReceivingRouteCopyDetails(paymentSessionId));
+  });
+
+  server.post('/checkout/:paymentSessionId/buyer-sender-phone', async (request, reply) => {
+    const params = request.params as { paymentSessionId?: string };
+    const body = request.body as { buyer_sender_phone?: string } | undefined;
+    const paymentSessionId = params.paymentSessionId;
+    const buyerSenderPhone = body?.buyer_sender_phone;
+    if (!paymentSessionId || !buyerSenderPhone) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'Buyer sender phone is required.' } });
+    }
+
+    return reply.status(200).send(toCheckoutStatusResponse(await checkoutSessionProvider.saveBuyerSenderPhoneHint(paymentSessionId, buyerSenderPhone)));
   });
 
   server.get('/checkout/:paymentSessionId/payer-bank-launchers', async (request, reply) => {
@@ -330,6 +410,32 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
     return this.fetchJson<CheckoutSession>(`/v1/checkout/${encodeURIComponent(paymentSessionId)}/receiver-bank`, {
       method: 'POST',
       body: JSON.stringify({ receiver_bank_id: receiverBankId })
+    });
+  }
+
+  public async getReceivingRoutes(paymentSessionId: string, bankProfileId: string): Promise<ReceivingRoutesPayload> {
+    return this.fetchJson<ReceivingRoutesPayload>(
+      `/v1/checkout/${encodeURIComponent(paymentSessionId)}/receiver-banks/${encodeURIComponent(bankProfileId)}/routes`
+    );
+  }
+
+  public async selectReceivingRoute(paymentSessionId: string, receivingRouteId: string): Promise<CheckoutSession> {
+    return this.fetchJson<CheckoutSession>(`/v1/checkout/${encodeURIComponent(paymentSessionId)}/receiving-route`, {
+      method: 'POST',
+      body: JSON.stringify({ receiving_route_id: receivingRouteId })
+    });
+  }
+
+  public async getReceivingRouteCopyDetails(paymentSessionId: string): Promise<ReceivingRouteCopyDetailsPayload> {
+    return this.fetchJson<ReceivingRouteCopyDetailsPayload>(
+      `/v1/checkout/${encodeURIComponent(paymentSessionId)}/receiving-route/copy-details`
+    );
+  }
+
+  public async saveBuyerSenderPhoneHint(paymentSessionId: string, buyerSenderPhone: string): Promise<CheckoutSession> {
+    return this.fetchJson<CheckoutSession>(`/v1/checkout/${encodeURIComponent(paymentSessionId)}/buyer-sender-phone`, {
+      method: 'POST',
+      body: JSON.stringify({ buyer_sender_phone: buyerSenderPhone })
     });
   }
 
@@ -629,6 +735,7 @@ function renderCheckoutPage(
   session: CheckoutSession,
   recipient: CheckoutRecipient,
   receiverBanks: readonly ReceiverBankOption[],
+  receivingRoutes: readonly BuyerSafeReceivingRoute[],
   payerBankLaunchers: readonly PayerBankLauncherOption[]
 ): string {
   const status = mapCheckoutStatus(session.status);
@@ -638,7 +745,28 @@ function renderCheckoutPage(
   const sessionId = escapeHtml(session.payment_session_id);
   const checkoutState = session.checkout_state ?? inferCheckoutState(session);
   const buyerSafeStatus = session.buyer_safe_status ?? mapCheckoutStateToBuyerSafeStatus(checkoutState);
+  const selectedReceiverBank = receiverBanks.find((bank) => bank.receiver_bank_id === session.selected_receiver_bank_id);
+  const selectedRoute = receivingRoutes.find((route) => route.route_id === session.selected_receiving_route_id);
   const selectedLauncher = payerBankLaunchers.find((launcher) => launcher.payer_bank_launcher_id === session.selected_payer_bank_launcher_id);
+  const canShowPaymentInstructions = Boolean(selectedReceiverBank && selectedRoute && selectedLauncher);
+
+  return renderCheckoutPageV2({
+    session,
+    receiverBanks,
+    receivingRoutes,
+    payerBankLaunchers,
+    status,
+    amount,
+    productName,
+    reference,
+    sessionId,
+    checkoutState,
+    buyerSafeStatus,
+    selectedReceiverBank,
+    selectedRoute,
+    selectedLauncher,
+    canShowPaymentInstructions
+  });
 
   return [
     '<!doctype html>',
@@ -711,6 +839,168 @@ function renderCheckoutPage(
   ].join('');
 }
 
+function renderCheckoutPageV2(params: {
+  session: CheckoutSession;
+  receiverBanks: readonly ReceiverBankOption[];
+  receivingRoutes: readonly BuyerSafeReceivingRoute[];
+  payerBankLaunchers: readonly PayerBankLauncherOption[];
+  status: ReturnType<typeof mapCheckoutStatus>;
+  amount: string;
+  productName: string;
+  reference: string;
+  sessionId: string;
+  checkoutState: CheckoutSessionState;
+  buyerSafeStatus: BuyerSafeCheckoutStatus;
+  selectedReceiverBank?: ReceiverBankOption | undefined;
+  selectedRoute?: BuyerSafeReceivingRoute | undefined;
+  selectedLauncher?: PayerBankLauncherOption | undefined;
+  canShowPaymentInstructions: boolean;
+}): string {
+  return [
+    '<!doctype html>',
+    '<html lang="fr">',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    `<title>${params.productName} - SwimPay</title>`,
+    baseStyles(),
+    '</head>',
+    '<body>',
+    '<main class="checkout-shell">',
+    '<section class="checkout-header" aria-labelledby="checkout-title">',
+    '<p class="eyebrow">Pay with SwimPay</p>',
+    `<h1 id="checkout-title">${params.productName}</h1>`,
+    '<p class="safe-copy">SwimPay recherchera le signal de paiement cote marchand.</p>',
+    '<p class="help">SwimPay aide le marchand a reconnaitre un signal de notification. Ce n’est pas une confirmation officielle de banque.</p>',
+    '</section>',
+    '<section class="checkout-state" aria-label="Etat du checkout">',
+    statusChip('Etape', params.checkoutState),
+    statusChip('Statut acheteur', params.buyerSafeStatus),
+    statusChip('Confirmation officielle banque', 'false'),
+    '</section>',
+    '<section class="checkout-grid" aria-label="Parcours de paiement">',
+    renderStep('1', 'Choisir la banque de reception', [
+      '<p class="help">Choisissez seulement la banque ou le marchand recevra le transfert. Les details de destination apparaissent apres.</p>',
+      renderReceiverBankOptionsV2(params.receiverBanks, params.session.selected_receiver_bank_id)
+    ]),
+    renderStep('2', 'Choisir la route de reception', [
+      params.selectedReceiverBank
+        ? `<p class="help">${escapeHtml(params.selectedReceiverBank.display_name)} accepte ces routes en review beta. La selection ne confirme pas le paiement.</p>`
+        : '<p class="help">Selectionnez d’abord une banque pour afficher les routes disponibles.</p>',
+      params.selectedReceiverBank ? renderReceivingRouteOptions(params.receivingRoutes, params.session.selected_receiving_route_id) : ''
+    ]),
+    renderStep('3', 'Choisir votre app bancaire', [
+      '<p class="help">Cette etape sert uniquement a ouvrir ou retrouver votre banque. Elle ne prouve pas le paiement.</p>',
+      params.selectedRoute
+        ? renderPayerLauncherOptionsV2(params.payerBankLaunchers, params.session.selected_payer_bank_launcher_id)
+        : '<p class="help">Selectionnez une route avant de choisir votre app bancaire.</p>'
+    ]),
+    renderStep('4', 'Resume', [
+      row('Montant exact', params.amount),
+      row('Methode', params.selectedRoute ? routeLabel(params.selectedRoute.rail_type) : 'Transfert bancaire'),
+      row('Statut', params.status.displayStatus),
+      `<p class="timer" data-expires-at="${escapeHtml(params.session.expires_at)}">Temps restant: <span id="countdown">calcul...</span></p>`
+    ]),
+    renderStep('5', 'Instructions de paiement', [
+      params.canShowPaymentInstructions && params.selectedRoute
+        ? row(params.selectedRoute.rail_type === 'card_transfer' ? 'Carte' : 'Telephone', escapeHtml(params.selectedRoute.receiver_identifier_masked))
+        : '<p class="help">Selectionnez une banque, une route et une app bancaire pour afficher les instructions.</p>',
+      row('Montant', params.amount),
+      row('Reference', params.reference),
+      params.selectedRoute?.rail_type === 'phone_transfer'
+        ? '<label class="field-label" for="buyer-phone">Numero d’envoi — utilise uniquement pour reconnaitre votre paiement.</label><input id="buyer-phone" class="input" name="buyer-phone" inputmode="tel" autocomplete="tel" placeholder="+7 *** *** **67">'
+        : '',
+      params.canShowPaymentInstructions && params.selectedRoute
+        ? '<button class="button secondary" type="button" data-copy-route="true">Copier la destination</button>'
+        : '',
+      params.canShowPaymentInstructions ? `<button class="button secondary" type="button" data-copy="${params.amount}">Copier le montant</button>` : '',
+      params.canShowPaymentInstructions ? `<button class="button secondary" type="button" data-copy="${params.reference}">Copier la reference</button>` : '',
+      params.canShowPaymentInstructions ? renderOpenBankAction(params.selectedLauncher) : '',
+      params.canShowPaymentInstructions
+        ? `<button id="paid-button" class="button primary" type="button" data-session-id="${params.sessionId}" data-does-not-confirm="true">J&#39;ai paye</button>`
+        : '',
+      '<p class="help">SwimPay suit le signal de reception cote marchand. Ce bouton ne valide pas le paiement.</p>'
+    ]),
+    renderStep('6', 'Attente du signal', [
+      `<p id="status-text" class="status-pill" data-status="${params.session.status}">${params.status.displayStatus}</p>`,
+      '<p class="help">Le statut vient du backend SwimPay et peut demander une verification manuelle.</p>'
+    ]),
+    renderStep('7', 'Resultat', [
+      `<p id="result-text">${resultText(params.status.resultState)}</p>`
+    ]),
+    '</section>',
+    '</main>',
+    checkoutScript(params.sessionId),
+    '</body>',
+    '</html>'
+  ].join('');
+}
+
+function renderReceiverBankOptionsV2(receiverBanks: readonly ReceiverBankOption[], selectedReceiverBankId: string | undefined): string {
+  return [
+    '<div class="option-list" data-option-list="receiver-bank">',
+    ...receiverBanks.map((bank) =>
+      [
+        `<button class="option-button${bank.receiver_bank_id === selectedReceiverBankId ? ' selected' : ''}" type="button" data-receiver-bank-id="${escapeHtml(bank.receiver_bank_id)}">`,
+        `<strong>${escapeHtml(bank.display_name)}</strong>`,
+        `<span>${escapeHtml(bank.status === 'review_required_beta' ? 'Disponible en beta review' : bank.status)}</span>`,
+        `<small>${escapeHtml(routeSummaryForBank(bank))}</small>`,
+        '</button>'
+      ].join('')
+    ),
+    '</div>'
+  ].join('');
+}
+
+function renderReceivingRouteOptions(routes: readonly BuyerSafeReceivingRoute[], selectedRouteId: string | undefined): string {
+  if (routes.length === 0) {
+    return '<p class="help">Aucune route active pour cette banque. Choisissez une autre banque ou contactez le marchand.</p>';
+  }
+
+  return [
+    '<div class="option-list" data-option-list="receiving-route">',
+    ...routes.map((route) =>
+      [
+        `<button class="option-button${route.route_id === selectedRouteId ? ' selected' : ''}" type="button" data-receiving-route-id="${escapeHtml(route.route_id)}">`,
+        `<strong>${escapeHtml(routeLabel(route.rail_type))}</strong>`,
+        `<span>${escapeHtml(route.receiver_identifier_masked)}</span>`,
+        `<small>${escapeHtml(route.recommended ? 'Recommande · review beta' : 'Review beta')}${route.fees_hint ? ` · ${escapeHtml(route.fees_hint)}` : ''}</small>`,
+        '</button>'
+      ].join('')
+    ),
+    '</div>'
+  ].join('');
+}
+
+function routeLabel(railType: BuyerSafeReceivingRoute['rail_type']): string {
+  return railType === 'card_transfer' ? 'Carte' : 'Telephone';
+}
+
+function routeSummaryForBank(bank: ReceiverBankOption): string {
+  const count = bank.available_route_count ?? 0;
+  if (count === 0) {
+    return 'Temporairement indisponible';
+  }
+  const rails = (bank.rail_types ?? []).map(routeLabel).join(' / ');
+  return rails ? `${count} route(s): ${rails}` : `${count} route(s) disponible(s)`;
+}
+
+function renderPayerLauncherOptionsV2(payerBankLaunchers: readonly PayerBankLauncherOption[], selectedLauncherId: string | undefined): string {
+  return [
+    '<div class="option-list" data-option-list="payer-launcher">',
+    ...payerBankLaunchers.map((launcher) =>
+      [
+        `<button class="option-button${launcher.payer_bank_launcher_id === selectedLauncherId ? ' selected' : ''}" type="button" data-payer-bank-launcher-id="${escapeHtml(launcher.payer_bank_launcher_id)}">`,
+        `<strong>${escapeHtml(launcher.display_name)}</strong>`,
+        '<span>Ouverture app si possible, sinon paiement manuel</span>',
+        '<small>Ne confirme pas le paiement</small>',
+        '</button>'
+      ].join('')
+    ),
+    '</div>'
+  ].join('');
+}
+
 function renderReceiverBankOptions(receiverBanks: readonly ReceiverBankOption[], selectedReceiverBankId: string | undefined): string {
   return [
     '<div class="option-list" data-option-list="receiver-bank">',
@@ -771,6 +1061,7 @@ function inferCheckoutState(session: CheckoutSession): CheckoutSessionState {
   return mapPaymentSessionToCheckoutState({
     paymentSessionStatus: session.status,
     selectedReceiverBankId: session.selected_receiver_bank_id,
+    selectedReceivingRouteId: session.selected_receiving_route_id,
     selectedPayerBankLauncherId: session.selected_payer_bank_launcher_id,
     paymentInstructionsShownAt: session.payment_instructions_shown_at
   });
@@ -863,6 +1154,16 @@ document.querySelectorAll('[data-copy]').forEach((button) => {
   });
 });
 
+document.querySelectorAll('[data-copy-route]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    const response = await fetch('/checkout/' + encodeURIComponent(sessionId) + '/receiving-route/copy-details');
+    if (!response.ok) return;
+    const payload = await response.json();
+    await navigator.clipboard?.writeText(payload.receiver_identifier_copy_value || '');
+    await fetch('/checkout/' + encodeURIComponent(sessionId) + '/payment-instructions-shown', { method: 'POST' });
+  });
+});
+
 document.querySelectorAll('[data-receiver-bank-id]').forEach((button) => {
   button.addEventListener('click', async () => {
     await fetch('/checkout/' + encodeURIComponent(sessionId) + '/receiver-bank', {
@@ -885,7 +1186,26 @@ document.querySelectorAll('[data-payer-bank-launcher-id]').forEach((button) => {
   });
 });
 
+document.querySelectorAll('[data-receiving-route-id]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    await fetch('/checkout/' + encodeURIComponent(sessionId) + '/receiving-route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ receiving_route_id: button.dataset.receivingRouteId })
+    });
+    window.location.reload();
+  });
+});
+
 paidButton?.addEventListener('click', async () => {
+  const buyerPhone = document.getElementById('buyer-phone');
+  if (buyerPhone && buyerPhone.value) {
+    await fetch('/checkout/' + encodeURIComponent(sessionId) + '/buyer-sender-phone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buyer_sender_phone: buyerPhone.value })
+    });
+  }
   paidButton.setAttribute('disabled', 'disabled');
   await fetch('/checkout/' + encodeURIComponent(sessionId) + '/payment-instructions-shown', { method: 'POST' });
   await fetch('/checkout/' + encodeURIComponent(sessionId) + '/claimed-paid', { method: 'POST' });

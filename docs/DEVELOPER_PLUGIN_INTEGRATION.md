@@ -13,11 +13,13 @@ confirmation system.
 1. Merchant backend creates an order through the SwimPay API.
 2. Merchant redirects the buyer to the returned `checkout_url`.
 3. Buyer selects the merchant-side receiver bank.
-4. Buyer optionally selects a payer bank launcher for convenience.
-5. Buyer manually pays through their own bank app or manual transfer flow.
-6. SwimPay searches for a merchant-side notification signal.
-7. A detected signal routes to review or controlled release according to policy.
-8. Merchant receives signed webhook events and releases fulfillment only after
+4. Buyer selects the merchant receiving route for that bank (`phone_transfer` or
+   `card_transfer`).
+5. Buyer optionally selects a payer bank launcher for convenience.
+6. Buyer manually pays through their own bank app or manual transfer flow.
+7. SwimPay searches for a merchant-side notification signal.
+8. A detected signal routes to review or controlled release according to policy.
+9. Merchant receives signed webhook events and releases fulfillment only after
    the configured review/release step.
 
 ## Receiver Bank vs Payer Bank Launcher
@@ -35,6 +37,13 @@ Payer bank launcher:
 - may help the buyer open or identify their own bank app;
 - does not prove payment;
 - does not affect bank trust, matching confidence or confirmation gates.
+
+Merchant receiving route:
+
+- merchant-side destination shown only after receiver bank selection;
+- may be `phone_transfer` or `card_transfer`;
+- is stored with protected raw identifier data and masked public display;
+- can improve review reasoning but does not enable auto-confirm by itself.
 
 ## Checkout Integration Shape
 
@@ -71,6 +80,10 @@ Example `payment.signal_detected` payload:
   "payment_session_id": "ps_test_123",
   "amount_minor": 13700,
   "currency": "RUB",
+  "receiver_route_code": "SBER-PHONE",
+  "rail_type": "phone_transfer",
+  "payment_reference": "TANGO ALFA",
+  "receiver_bank_id": "sber_ru",
   "confirmation_type": "notification_signal",
   "official_bank_confirmation": false,
   "decision": "signal_detected",
@@ -89,6 +102,10 @@ Example `payment.needs_review` payload:
   "review_id": "rev_test_123",
   "amount_minor": 13700,
   "currency": "RUB",
+  "receiver_route_code": "SBER-PHONE",
+  "rail_type": "phone_transfer",
+  "payment_reference": "TANGO ALFA",
+  "receiver_bank_id": "sber_ru",
   "confirmation_type": "notification_signal",
   "official_bank_confirmation": false,
   "decision": "needs_review",
@@ -106,6 +123,10 @@ Example `payment.confirmed` payload after manual review:
   "review_id": "rev_test_123",
   "amount_minor": 13700,
   "currency": "RUB",
+  "receiver_route_code": "SBER-PHONE",
+  "rail_type": "phone_transfer",
+  "payment_reference": "TANGO ALFA",
+  "receiver_bank_id": "sber_ru",
   "confirmation_type": "notification_signal",
   "official_bank_confirmation": false,
   "decision": "manual_confirmed",
@@ -114,8 +135,8 @@ Example `payment.confirmed` payload after manual review:
 ```
 
 These examples intentionally exclude raw phone numbers, raw notification text,
-raw notification titles/bodies, API keys, webhook secrets and full customer
-identifiers.
+raw notification titles/bodies, raw card numbers, raw receiver phone numbers,
+raw buyer sender phones, API keys, webhook secrets and full customer identifiers.
 
 ## Webhook Verification
 

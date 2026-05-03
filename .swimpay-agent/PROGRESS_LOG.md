@@ -1651,3 +1651,20 @@ Safety checks:
 - Added contract, API, web, runtime, webhook and synthetic PSP-like checkout E2E tests.
 - Full validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps and API health.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, SBP, official bank confirmation claim, raw phone, raw notification text or real-bank auto-confirmation was used.
+
+## 2026-05-03T18:27:43+03:00 - Sprint 7B Bank-first Hybrid Receiving Routes
+
+- Created tasks 350 through 358 and updated the task queue to Sprint 7B.
+- Added `MerchantReceivingRoute` contracts for `phone_transfer` and `card_transfer`.
+- Added additive migration `007_hybrid_receiving_routes.sql` plus merchant route create/list/update APIs.
+- Added checkout route reveal, receiving-route selection, explicit copy-details and buyer sender phone hint APIs.
+- Stored buyer sender phone hints as HMAC/masked values only; raw phone is not persisted by default.
+- Added a two-word uppercase payment reference generator with three-word collision fallback.
+- Updated hosted checkout to bank-first flow: bank names/logos first, then buyer-safe route reveal, then payment instructions.
+- Added route-aware matching/risk reason codes. Card routes remain review-first in beta; phone sender hints improve reasoning but do not enable default auto-confirm.
+- Added safe route context to webhook payloads: `receiver_route_code`, `rail_type`, `payment_reference` and `receiver_bank_id`.
+- Extended webhook and worker PII guards to reject raw card, phone, receiver identifier and notification text fields.
+- Added/updated contract, API, web, runtime, webhook and synthetic E2E tests.
+- Full validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps and API health.
+- Android Gradle validation was not run because Sprint 7B did not touch Android platform code.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, SBP, official bank confirmation claim, raw notification text or real-bank auto-confirmation was used.

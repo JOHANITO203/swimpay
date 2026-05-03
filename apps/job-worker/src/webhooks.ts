@@ -945,7 +945,11 @@ function containsRawPiiMarker(value: unknown): boolean {
   }
 
   for (const [key, nestedValue] of Object.entries(value)) {
-    if (/raw[_-]?(notification|text|phone)|notification_raw|phone_raw|raw_phone|buyer_phone$/iu.test(key)) {
+    if (
+      /raw[_-]?(notification|text|phone|card)|notification_raw|phone_raw|raw_phone|buyer_phone$|receiver_(phone|card|identifier)|card_(number|pan)|^pan$/iu.test(
+        key
+      )
+    ) {
       return true;
     }
 

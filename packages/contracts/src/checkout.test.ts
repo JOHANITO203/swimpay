@@ -3,12 +3,19 @@ import {
   BuyerSafeCheckoutStatuses,
   CheckoutSessionStates,
   PayerBankLauncherRegistry,
+  ReceivingRouteReviewPolicies,
+  ReceivingRouteRiskReasonCodes,
+  ReceivingRouteRailTypes,
+  ReceiverIdentifierTypes,
   V1ReceiverBankOptions,
+  generateHumanReadablePaymentReference,
   getPayerBankLauncherOption,
   getReceiverBankOption,
   isCheckoutStatePaymentConfirming,
   mapCheckoutStateToBuyerSafeStatus,
-  mapPaymentSessionToCheckoutState
+  mapPaymentSessionToCheckoutState,
+  maskReceiverIdentifier,
+  toBuyerSafeReceivingRoute
 } from './index.js';
 
 describe('checkout bank selection contracts', () => {
@@ -99,6 +106,17 @@ describe('checkout bank selection contracts', () => {
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming',
         selectedReceiverBankId: 'sber_ru',
+        selectedReceivingRouteId: null,
+        selectedPayerBankLauncherId: null,
+        paymentInstructionsShownAt: null
+      })
+    ).toBe('receiving_route_selection');
+
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        selectedReceiverBankId: 'sber_ru',
+        selectedReceivingRouteId: 'route_sber_phone',
         selectedPayerBankLauncherId: null,
         paymentInstructionsShownAt: null
       })
@@ -108,6 +126,7 @@ describe('checkout bank selection contracts', () => {
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming',
         selectedReceiverBankId: 'sber_ru',
+        selectedReceivingRouteId: 'route_sber_phone',
         selectedPayerBankLauncherId: 'tbank_ru',
         paymentInstructionsShownAt: null
       })
@@ -117,6 +136,7 @@ describe('checkout bank selection contracts', () => {
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'buyer_claimed_paid',
         selectedReceiverBankId: 'sber_ru',
+        selectedReceivingRouteId: 'route_sber_phone',
         selectedPayerBankLauncherId: 'tbank_ru',
         paymentInstructionsShownAt: '2026-05-03T12:00:00.000Z'
       })
@@ -126,9 +146,87 @@ describe('checkout bank selection contracts', () => {
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'manual_confirmed',
         selectedReceiverBankId: 'sber_ru',
+        selectedReceivingRouteId: 'route_sber_phone',
         selectedPayerBankLauncherId: 'tbank_ru',
         paymentInstructionsShownAt: '2026-05-03T12:00:00.000Z'
       })
     ).toBe('confirmed');
+  });
+
+  it('defines hybrid merchant receiving routes with masked buyer-safe output', () => {
+    expect(ReceivingRouteRailTypes).toEqual(['phone_transfer', 'card_transfer']);
+    expect(ReceiverIdentifierTypes).toEqual(['phone', 'card']);
+    expect(ReceivingRouteReviewPolicies).toEqual(['review_first', 'eligible_low_risk_later']);
+
+    const phoneRoute = toBuyerSafeReceivingRoute({
+      route_id: 'route_sber_phone',
+      merchant_id: 'mch_01',
+      bank_profile_id: 'sber_ru',
+      rail_type: 'phone_transfer',
+      receiver_identifier_type: 'phone',
+      receiver_identifier_encrypted: 'enc:v1:test',
+      receiver_identifier_masked: '+7 *** *** **67',
+      route_code: 'SBER-PHONE',
+      display_label: 'Sberbank telephone',
+      enabled: true,
+      recommended: true,
+      review_policy: 'eligible_low_risk_later',
+      fees_hint: 'Usually instant',
+      created_at: '2026-05-03T12:00:00.000Z',
+      updated_at: '2026-05-03T12:00:00.000Z'
+    });
+
+    expect(phoneRoute).toEqual({
+      route_id: 'route_sber_phone',
+      bank_profile_id: 'sber_ru',
+      rail_type: 'phone_transfer',
+      receiver_identifier_type: 'phone',
+      receiver_identifier_masked: '+7 *** *** **67',
+      route_code: 'SBER-PHONE',
+      display_label: 'Sberbank telephone',
+      enabled: true,
+      recommended: true,
+      review_policy: 'eligible_low_risk_later',
+      fees_hint: 'Usually instant',
+      copy_action_available: true,
+      buyer_status_label: 'review_beta',
+      official_bank_confirmation: false
+    });
+    expect(JSON.stringify(phoneRoute)).not.toContain('receiver_identifier_encrypted');
+  });
+
+  it('masks receiver identifiers and keeps card routes review-first by policy', () => {
+    expect(maskReceiverIdentifier('phone', '+7 (999) 123-45-67')).toBe('+7 *** *** **67');
+    expect(maskReceiverIdentifier('card', '2202201234567890')).toBe('2202 **** **** 7890');
+    expect(ReceivingRouteRiskReasonCodes).toEqual(
+      expect.arrayContaining([
+        'phone_transfer_matching_hint_available',
+        'buyer_sender_phone_missing',
+        'card_transfer_review_required',
+        'amount_only_card_transfer',
+        'receiver_route_review_only',
+        'receiving_route_not_selected'
+      ])
+    );
+  });
+
+  it('generates human-readable payment references with collision fallback', () => {
+    expect(
+      generateHumanReadablePaymentReference({
+        merchantId: 'mch_01',
+        receivingRouteId: 'route_01',
+        activeReferences: new Set(),
+        wordSource: ['TANGO', 'ALFA']
+      })
+    ).toBe('TANGO ALFA');
+
+    expect(
+      generateHumanReadablePaymentReference({
+        merchantId: 'mch_01',
+        receivingRouteId: 'route_01',
+        activeReferences: new Set(['mch_01:route_01:TANGO ALFA']),
+        wordSource: ['TANGO', 'ALFA', 'NOVA']
+      })
+    ).toBe('TANGO ALFA NOVA');
   });
 });

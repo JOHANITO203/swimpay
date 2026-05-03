@@ -115,6 +115,45 @@ CREATE TABLE payment_sessions (
 );
 ```
 
+Sprint 7B adds hybrid receiving route selection fields:
+
+```sql
+ALTER TABLE payment_sessions
+  ADD COLUMN selected_receiving_route_id UUID REFERENCES merchant_receiving_routes(id),
+  ADD COLUMN buyer_sender_phone_hmac TEXT,
+  ADD COLUMN buyer_sender_phone_masked TEXT;
+```
+
+Raw buyer sender phone is not stored.
+
+### `merchant_receiving_routes`
+
+Merchant-side receiving destinations for hosted checkout.
+
+```sql
+CREATE TABLE merchant_receiving_routes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  merchant_id UUID NOT NULL REFERENCES merchants(id),
+  bank_profile_id TEXT NOT NULL REFERENCES bank_profiles(id),
+  rail_type TEXT NOT NULL CHECK (rail_type IN ('phone_transfer', 'card_transfer')),
+  receiver_identifier_type TEXT NOT NULL CHECK (receiver_identifier_type IN ('phone', 'card')),
+  receiver_identifier_encrypted TEXT NOT NULL,
+  receiver_identifier_masked TEXT NOT NULL,
+  route_code TEXT NOT NULL,
+  display_label TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  recommended BOOLEAN NOT NULL DEFAULT false,
+  review_policy TEXT NOT NULL CHECK (review_policy IN ('review_first', 'eligible_low_risk_later')),
+  fees_hint TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (merchant_id, route_code)
+);
+```
+
+`receiver_identifier_encrypted` is protected storage. Public API, webhook, audit
+and log surfaces must use masked route details only.
+
 Checkout selection fields are buyer-flow state only. Receiver-bank selection means the
 merchant-side receiving bank chosen for detection and review routing. Payer-bank
 launcher selection is buyer UX metadata only and never proves payment, trust, or

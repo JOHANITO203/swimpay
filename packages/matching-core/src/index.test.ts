@@ -47,29 +47,82 @@ describe('matching core', () => {
     expect(result.reasonCodes).toContain('requires_review');
   });
 
-  it('auto-confirms internally when sender phone is exact and all hard gates pass', () => {
+  it('routes exact sender phone match to review when receiving route is not selected', () => {
     const result = evaluateSignalMatch({
       signal: { ...baseSignal, senderPhoneHmac: 'hmac_phone' },
       sessions: [{ ...baseSession, buyerPhoneHmac: 'hmac_phone' }],
       context: trustedContext
     });
 
-    expect(result.decision).toBe('auto_confirmed');
+    expect(result.decision).toBe('needs_review');
     expect(result.selected?.paymentSessionId).toBe('ps_01');
     expect(result.reasonCodes).toContain('sender_phone_exact');
+    expect(result.reasonCodes).toContain('receiving_route_not_selected');
     expect(result.reasonCodes).toContain('no_collision');
   });
 
-  it('auto-confirms internally when reference is exact and all hard gates pass', () => {
+  it('routes exact reference match to review when receiving route is review-only beta', () => {
     const result = evaluateSignalMatch({
       signal: { ...baseSignal, referenceHmac: 'hmac_ref' },
-      sessions: [{ ...baseSession, referenceHmac: 'hmac_ref' }],
+      sessions: [
+        {
+          ...baseSession,
+          referenceHmac: 'hmac_ref',
+          selectedReceivingRouteId: 'route_sber_phone',
+          railType: 'phone_transfer',
+          receivingRouteReviewPolicy: 'eligible_low_risk_later'
+        }
+      ],
       context: trustedContext
     });
 
-    expect(result.decision).toBe('auto_confirmed');
+    expect(result.decision).toBe('needs_review');
     expect(result.selected?.paymentSessionId).toBe('ps_01');
     expect(result.reasonCodes).toContain('reference_exact');
+    expect(result.reasonCodes).toContain('receiver_route_review_only');
+  });
+
+  it('uses buyer sender phone HMAC as a phone-transfer matching hint without confirming by default', () => {
+    const result = evaluateSignalMatch({
+      signal: { ...baseSignal, senderPhoneHmac: 'hmac_sender', bankProfileId: 'sber_ru' },
+      sessions: [
+        {
+          ...baseSession,
+          buyerSenderPhoneHmac: 'hmac_sender',
+          selectedReceiverBankProfileId: 'sber_ru',
+          selectedReceivingRouteId: 'route_sber_phone',
+          railType: 'phone_transfer',
+          receivingRouteReviewPolicy: 'eligible_low_risk_later'
+        }
+      ],
+      context: trustedContext
+    });
+
+    expect(result.decision).toBe('needs_review');
+    expect(result.reasonCodes).toContain('phone_transfer_matching_hint_available');
+    expect(result.reasonCodes).toContain('receiver_bank_exact');
+    expect(result.reasonCodes).toContain('receiver_route_review_only');
+  });
+
+  it('keeps card-transfer amount-only matches in review with route risk reasons', () => {
+    const result = evaluateSignalMatch({
+      signal: { ...baseSignal, bankProfileId: 'sber_ru' },
+      sessions: [
+        {
+          ...baseSession,
+          selectedReceiverBankProfileId: 'sber_ru',
+          selectedReceivingRouteId: 'route_sber_card',
+          railType: 'card_transfer',
+          receivingRouteReviewPolicy: 'review_first'
+        }
+      ],
+      context: trustedContext
+    });
+
+    expect(result.decision).toBe('needs_review');
+    expect(result.reasonCodes).toContain('card_transfer_review_required');
+    expect(result.reasonCodes).toContain('amount_only_card_transfer');
+    expect(result.reasonCodes).toContain('receiver_route_review_only');
   });
 
   it('routes amount collisions to review', () => {

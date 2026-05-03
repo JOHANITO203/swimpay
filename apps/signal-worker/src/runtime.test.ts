@@ -63,6 +63,12 @@ function buildSession(overrides: Partial<SignalRuntimeSessionCandidate> = {}): S
     currency: 'RUB',
     buyerPhoneHmac: 'phone_hmac_01',
     referenceHmac: 'ref_hmac_01',
+    selectedReceiverBankId: 'sber_ru',
+    selectedReceiverBankProfileId: 'sber_ru',
+    selectedReceivingRouteId: 'route_sber_phone',
+    receiverRouteCode: 'SBER-PHONE',
+    railType: 'phone_transfer',
+    paymentReference: 'TANGO ALFA',
     status: 'awaiting_payment',
     validFrom: '2026-05-02T07:50:00.000Z',
     validUntil: '2026-05-02T08:10:00.000Z',
@@ -136,6 +142,12 @@ describe('signal runtime processor', () => {
       expect(event.data).not.toHaveProperty('sender_phone_masked');
       expect(event.data).not.toHaveProperty('title_redacted');
       expect(event.data).not.toHaveProperty('body_redacted');
+      expect(event.data).toMatchObject({
+        receiver_route_code: 'SBER-PHONE',
+        rail_type: 'phone_transfer',
+        payment_reference: 'TANGO ALFA',
+        receiver_bank_id: 'sber_ru'
+      });
       expect(JSON.stringify(event)).not.toContain('+7 999');
     }
   });
@@ -292,7 +304,11 @@ describe('signal runtime processor', () => {
       official_bank_confirmation: false,
       order_id: 'ord_01',
       payment_session_id: 'ps_01',
-      signal_id: 'sig_01'
+      signal_id: 'sig_01',
+      receiver_route_code: 'SBER-PHONE',
+      rail_type: 'phone_transfer',
+      payment_reference: 'TANGO ALFA',
+      receiver_bank_id: 'sber_ru'
     });
     expect(JSON.stringify(repository.webhookEvents[0])).not.toContain('+7 999');
     expect(JSON.stringify(repository.auditEvents)).not.toContain('Transfer from +7');

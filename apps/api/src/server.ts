@@ -10,10 +10,18 @@ import {
   type HealthSnapshot,
   type MetricsRegistry
 } from '@swimpay/observability';
-import { getPayerBankLauncherOption, getReceiverBankOption } from '@swimpay/contracts';
+import {
+  ReceivingRouteRailTypes,
+  getPayerBankLauncherOption,
+  getReceiverBankOption,
+  type ReceivingRouteRailType
+} from '@swimpay/contracts';
 import {
   createFastifyLoggerOptions,
+  hmacSha256,
   hasOperatorPermission,
+  maskPhone,
+  normalizeRussianPhone,
   OperatorPermissions,
   OperatorRoles,
   verifyOperatorAuthorization,
@@ -23,6 +31,7 @@ import {
   type OperatorRole
 } from '@swimpay/security';
 import {
+  buildMerchantReceivingRouteRecord,
   buildOrderCreateInput,
   formatAmountMinor,
   invalidRequest,
@@ -33,13 +42,18 @@ import {
   type OrderCreateResponse,
   type OrderReadResponse,
   type OrderRepository,
+  type StoredMerchantReceivingRouteRecord,
   type StoredOrderRecord,
   type StoredPaymentSessionRecord
 } from './orders.js';
 import {
+  buildBuyerSenderPhoneHintResponse,
   buildCheckoutActionResponse,
   buildPayerBankLauncherSelectionResponse,
+  toReceivingRouteCopyDetailsResponse,
+  buildReceivingRouteSelectionResponse,
   buildReceiverBankSelectionResponse,
+  toReceivingRoutesForBankResponse,
   toCheckoutStatusResponse,
   toPayerBankLaunchersResponse,
   toPaymentSessionReadResponse,
@@ -146,6 +160,7 @@ export interface ApiServerOptions {
   signalIdGenerator?: () => string;
   reviewIdGenerator?: ReviewIdGenerator;
   bankEvidenceIdGenerator?: () => string;
+  receivingRouteIdGenerator?: () => string;
   adminAuth?: OperatorAuthConfig;
   metrics?: MetricsRegistry;
   clock?: () => Date;
@@ -231,6 +246,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const signalIdGenerator = options.signalIdGenerator ?? createDefaultSignalIdGenerator();
   const reviewIdGenerator = options.reviewIdGenerator ?? createDefaultReviewIdGenerator();
   const bankEvidenceIdGenerator = options.bankEvidenceIdGenerator ?? (() => randomUUID());
+  const receivingRouteIdGenerator = options.receivingRouteIdGenerator ?? (() => randomUUID());
   const adminAuth = options.adminAuth ?? createDefaultAdminAuthConfig(process.env, options.environment);
   const clock = options.clock ?? (() => new Date());
   const startedAt = options.startedAt ?? new Date();
@@ -415,13 +431,129 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     );
   });
 
+  server.post('/v1/merchant/receiving-routes', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const body = validateReceivingRouteCreateBody(request.body);
+    if ('error' in body) {
+      return reply.status(400).send(body);
+    }
+    const now = clock().toISOString();
+    const route = buildMerchantReceivingRouteRecord({
+      routeId: receivingRouteIdGenerator(),
+      merchantId,
+      bankProfileId: body.bank_profile_id,
+      railType: body.rail_type,
+      receiverIdentifier: body.receiver_identifier,
+      routeCode: body.route_code,
+      displayLabel: body.display_label,
+      enabled: body.enabled,
+      recommended: body.recommended,
+      reviewPolicy: body.review_policy,
+      feesHint: body.fees_hint,
+      encryptionSecret: phoneHmacSecret,
+      now
+    });
+    if ('error' in route) {
+      return reply.status(400).send(route);
+    }
+    const result = await repository.createReceivingRoute({
+      route,
+      auditEventId: idGenerator.auditEventId()
+    });
+    if (result.kind === 'duplicate_route_code') {
+      return reply.status(409).send({
+        error: {
+          code: 'duplicate_route_code',
+          message: 'Receiving route code already exists for this merchant.',
+          details: { route_code: body.route_code }
+        }
+      });
+    }
+    return reply.status(201).send({
+      route: toMerchantReceivingRouteResponse(result.route),
+      official_bank_confirmation: false
+    });
+  });
+
+  server.get('/v1/merchant/receiving-routes', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const routes = await repository.listReceivingRoutes(merchantId);
+    return reply.status(200).send({
+      routes: routes.map((route) => toMerchantReceivingRouteResponse(route)),
+      official_bank_confirmation: false
+    });
+  });
+
+  server.patch('/v1/merchant/receiving-routes/:route_id', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { route_id?: string };
+    if (!params.route_id) {
+      return reply.status(400).send(invalidRequest('Receiving route id is required.', {}));
+    }
+    const body = validateReceivingRoutePatchBody(request.body);
+    if ('error' in body) {
+      return reply.status(400).send(body);
+    }
+    const result = await repository.updateReceivingRoute({
+      merchantId,
+      routeId: params.route_id,
+      patch: body,
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    if (result.kind === 'not_found') {
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Receiving route was not found.',
+          details: { route_id: params.route_id }
+        }
+      });
+    }
+    return reply.status(200).send({
+      route: toMerchantReceivingRouteResponse(result.route),
+      official_bank_confirmation: false
+    });
+  });
+
   server.get('/v1/checkout/:id/receiver-banks', async (request, reply) => {
     const loaded = await loadCheckoutSession({ request, reply, repository });
     if (!loaded) {
       return reply;
     }
 
-    return reply.status(200).send(toReceiverBanksResponse(loaded.paymentSession));
+    const routes = await repository!.listReceiverBanksForCheckout(loaded.paymentSession.merchantId, loaded.paymentSession.id);
+    return reply.status(200).send(toReceiverBanksResponse(loaded.paymentSession, routes));
   });
 
   server.post('/v1/checkout/:id/receiver-bank', async (request, reply) => {
@@ -464,6 +596,185 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     );
   });
 
+  server.get('/v1/checkout/:id/receiver-banks/:bank_profile_id/routes', async (request, reply) => {
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
+    }
+    const params = request.params as { id?: string; bank_profile_id?: string };
+    if (!params.bank_profile_id) {
+      return reply.status(400).send(invalidRequest('bank_profile_id is required.', {}));
+    }
+    const receiverBank = getReceiverBankOption(params.bank_profile_id);
+    if (!receiverBank) {
+      return reply.status(400).send(invalidRequest('bank_profile_id is not supported for this checkout.', {
+        bank_profile_id: params.bank_profile_id
+      }));
+    }
+    if (loaded.paymentSession.selectedReceiverBankProfileId !== receiverBank.bank_profile_id) {
+      return reply.status(409).send({
+        error: {
+          code: 'receiver_bank_not_selected',
+          message: 'Select the receiver bank before revealing receiving routes.',
+          details: { bank_profile_id: receiverBank.bank_profile_id }
+        }
+      });
+    }
+    const routes = await repository!.listReceivingRoutesForCheckoutBank(
+      loaded.paymentSession.merchantId,
+      loaded.paymentSession.id,
+      receiverBank.bank_profile_id
+    );
+    return reply.status(200).send(
+      toReceivingRoutesForBankResponse({
+        paymentSession: loaded.paymentSession,
+        bankProfileId: receiverBank.bank_profile_id,
+        routes
+      })
+    );
+  });
+
+  server.post('/v1/checkout/:id/receiving-route', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
+    }
+    const body = request.body as { receiving_route_id?: unknown } | undefined;
+    if (typeof body?.receiving_route_id !== 'string' || !body.receiving_route_id.trim()) {
+      return reply.status(400).send(invalidRequest('receiving_route_id is required.', {}));
+    }
+    const loaded = await repository.getPaymentSessionById(merchantId, params.id);
+    if (!loaded?.paymentSession.selectedReceiverBankProfileId) {
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Payment session or selected receiver bank was not found.',
+          details: {}
+        }
+      });
+    }
+    const visibleRoutes = await repository.listReceivingRoutesForCheckoutBank(
+      merchantId,
+      params.id,
+      loaded.paymentSession.selectedReceiverBankProfileId
+    );
+    const selectedRoute = visibleRoutes.find((route) => route.route_id === body.receiving_route_id) ?? null;
+    if (!selectedRoute) {
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Receiving route was not found for the selected receiver bank.',
+          details: { receiving_route_id: body.receiving_route_id }
+        }
+      });
+    }
+    const result = await repository.selectReceivingRoute({
+      merchantId,
+      paymentSessionId: params.id,
+      receivingRouteId: selectedRoute.route_id,
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    return sendCheckoutMutationResult(reply, result, (updated) =>
+      buildReceivingRouteSelectionResponse({ ...updated, now: clock(), route: selectedRoute })
+    );
+  });
+
+  server.get('/v1/checkout/:id/receiving-route/copy-details', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
+    }
+
+    const result = await repository.getSelectedReceivingRouteCopyDetails({
+      merchantId,
+      paymentSessionId: params.id,
+      encryptionSecret: phoneHmacSecret,
+      now: clock().toISOString()
+    });
+
+    if (result.kind === 'not_found') {
+      return reply.status(404).send(invalidRequest('Selected receiving route was not found.', { payment_session_id: params.id }));
+    }
+    if (result.kind === 'expired') {
+      return reply.status(409).send(invalidRequest('Payment session is expired.', { payment_session_id: params.id }));
+    }
+    if (result.kind === 'not_selected') {
+      return reply.status(409).send(
+        invalidRequest('Receiving route must be selected before copy details are available.', {
+          payment_session_id: params.id
+        })
+      );
+    }
+
+    return reply.status(200).send(
+      toReceivingRouteCopyDetailsResponse({
+        paymentSession: result.paymentSession,
+        route: result.route,
+        receiverIdentifier: result.receiverIdentifier
+      })
+    );
+  });
+
+  server.post('/v1/checkout/:id/buyer-sender-phone', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
+    }
+    const body = request.body as { buyer_sender_phone?: unknown } | undefined;
+    if (typeof body?.buyer_sender_phone !== 'string') {
+      return reply.status(400).send(invalidRequest('buyer_sender_phone is required.', {}));
+    }
+    const normalizedPhone = normalizeRussianPhone(body.buyer_sender_phone);
+    if (!normalizedPhone) {
+      return reply.status(400).send(invalidRequest('buyer_sender_phone must be a valid Russian phone number.', {}));
+    }
+    const result = await repository.saveBuyerSenderPhoneHint({
+      merchantId,
+      paymentSessionId: params.id,
+      buyerSenderPhoneHmac: hmacSha256(normalizedPhone, phoneHmacSecret),
+      buyerSenderPhoneMasked: maskPhone(normalizedPhone),
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    return sendCheckoutMutationResult(reply, result, (updated) =>
+      buildBuyerSenderPhoneHintResponse({ ...updated, now: clock() })
+    );
+  });
+
   server.get('/v1/checkout/:id/payer-bank-launchers', async (request, reply) => {
     const loaded = await loadCheckoutSession({ request, reply, repository });
     if (!loaded) {
@@ -498,6 +809,16 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply.status(400).send(invalidRequest('payer_bank_launcher_id is not supported for this checkout.', {
         payer_bank_launcher_id: body.payer_bank_launcher_id
       }));
+    }
+    const loaded = await repository.getPaymentSessionById(merchantId, params.id);
+    if (!loaded?.paymentSession.selectedReceivingRouteId) {
+      return reply.status(409).send({
+        error: {
+          code: 'receiving_route_required',
+          message: 'Select a merchant receiving route before choosing the payer bank launcher.',
+          details: {}
+        }
+      });
     }
 
     const result = await repository.selectPayerBankLauncher({
@@ -1642,6 +1963,30 @@ async function mutateSimpleCheckoutAction(params: {
     auditEventId: params.idGenerator.auditEventId(),
     now: params.clock().toISOString()
   };
+  const loaded = await params.repository.getPaymentSessionById(merchantId, routeParams.id);
+  if (!loaded) {
+    params.reply.status(404).send({
+      error: {
+        code: 'not_found',
+        message: 'Payment session was not found.',
+        details: {}
+      }
+    });
+    return null;
+  }
+  if (
+    params.action === 'instructions' &&
+    (!loaded.paymentSession.selectedReceivingRouteId || !loaded.paymentSession.selectedPayerBankLauncherId)
+  ) {
+    params.reply.status(409).send({
+      error: {
+        code: 'checkout_selection_incomplete',
+        message: 'Receiver bank, receiving route and payer launcher must be selected before payment instructions are shown.',
+        details: {}
+      }
+    });
+    return null;
+  }
   const result =
     params.action === 'instructions'
       ? await params.repository.markPaymentInstructionsShown(input)
@@ -1704,6 +2049,107 @@ function orderRepositoryUnavailableError() {
       message: 'Order repository is not configured.',
       details: {}
     }
+  };
+}
+
+interface ReceivingRouteCreateBody {
+  bank_profile_id: string;
+  rail_type: ReceivingRouteRailType;
+  receiver_identifier: string;
+  route_code: string;
+  display_label: string;
+  enabled?: boolean | undefined;
+  recommended?: boolean | undefined;
+  review_policy?: StoredMerchantReceivingRouteRecord['review_policy'] | undefined;
+  fees_hint?: string | undefined;
+}
+
+function validateReceivingRouteCreateBody(body: unknown): ReceivingRouteCreateBody | ReturnType<typeof invalidRequest> {
+  if (!body || typeof body !== 'object') {
+    return invalidRequest('Receiving route request body must be a JSON object.', {});
+  }
+  const candidate = body as Partial<Record<keyof ReceivingRouteCreateBody, unknown>>;
+  if (typeof candidate.bank_profile_id !== 'string' || !candidate.bank_profile_id.trim()) {
+    return invalidRequest('bank_profile_id is required.', {});
+  }
+  if (typeof candidate.rail_type !== 'string' || !ReceivingRouteRailTypes.includes(candidate.rail_type as ReceivingRouteRailType)) {
+    return invalidRequest('rail_type must be phone_transfer or card_transfer.', {});
+  }
+  if (typeof candidate.receiver_identifier !== 'string' || !candidate.receiver_identifier.trim()) {
+    return invalidRequest('receiver_identifier is required.', {});
+  }
+  if (typeof candidate.route_code !== 'string' || !candidate.route_code.trim()) {
+    return invalidRequest('route_code is required.', {});
+  }
+  if (typeof candidate.display_label !== 'string' || !candidate.display_label.trim()) {
+    return invalidRequest('display_label is required.', {});
+  }
+
+  return {
+    bank_profile_id: candidate.bank_profile_id.trim(),
+    rail_type: candidate.rail_type as ReceivingRouteRailType,
+    receiver_identifier: candidate.receiver_identifier.trim(),
+    route_code: candidate.route_code.trim(),
+    display_label: candidate.display_label.trim(),
+    enabled: typeof candidate.enabled === 'boolean' ? candidate.enabled : undefined,
+    recommended: typeof candidate.recommended === 'boolean' ? candidate.recommended : undefined,
+    review_policy:
+      candidate.review_policy === 'review_first' || candidate.review_policy === 'eligible_low_risk_later'
+        ? candidate.review_policy
+        : undefined,
+    fees_hint: typeof candidate.fees_hint === 'string' && candidate.fees_hint.trim() ? candidate.fees_hint.trim() : undefined
+  };
+}
+
+function validateReceivingRoutePatchBody(
+  body: unknown
+): Partial<Pick<StoredMerchantReceivingRouteRecord, 'enabled' | 'recommended' | 'display_label' | 'fees_hint'>> | ReturnType<typeof invalidRequest> {
+  if (!body || typeof body !== 'object') {
+    return invalidRequest('Receiving route patch body must be a JSON object.', {});
+  }
+  const candidate = body as {
+    enabled?: unknown;
+    recommended?: unknown;
+    display_label?: unknown;
+    fees_hint?: unknown;
+  };
+  const patch: Partial<Pick<StoredMerchantReceivingRouteRecord, 'enabled' | 'recommended' | 'display_label' | 'fees_hint'>> = {};
+  if (typeof candidate.enabled === 'boolean') {
+    patch.enabled = candidate.enabled;
+  }
+  if (typeof candidate.recommended === 'boolean') {
+    patch.recommended = candidate.recommended;
+  }
+  if (typeof candidate.display_label === 'string') {
+    const displayLabel = candidate.display_label.trim();
+    if (!displayLabel) {
+      return invalidRequest('display_label cannot be blank.', {});
+    }
+    patch.display_label = displayLabel;
+  }
+  if (typeof candidate.fees_hint === 'string') {
+    patch.fees_hint = candidate.fees_hint.trim() || undefined;
+  }
+  return patch;
+}
+
+function toMerchantReceivingRouteResponse(route: StoredMerchantReceivingRouteRecord): Record<string, unknown> {
+  return {
+    route_id: route.route_id,
+    bank_profile_id: route.bank_profile_id,
+    rail_type: route.rail_type,
+    receiver_identifier_type: route.receiver_identifier_type,
+    receiver_identifier_masked: route.receiver_identifier_masked,
+    route_code: route.route_code,
+    display_label: route.display_label,
+    enabled: route.enabled,
+    recommended: route.recommended,
+    review_policy: route.review_policy,
+    fees_hint: route.fees_hint,
+    created_at: route.created_at,
+    updated_at: route.updated_at,
+    auto_confirm_enabled: false,
+    official_bank_confirmation: false
   };
 }
 

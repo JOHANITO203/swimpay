@@ -40,18 +40,19 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 6E real notification shadow readiness tasks in the approved order', () => {
+  test('task queue lists Sprint 7B hybrid receiving route tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '324_real_notification_shadow_consent_gate',
-      '325_real_notification_redaction_preflight',
-      '326_five_bank_shadow_readiness_matrix',
-      '327_receiver_real_notification_shadow_mode_flags',
-      '328_real_notification_shadow_dry_run_commands',
-      '329_shadow_prediction_non_mutating_policy',
-      '330_beta_go_no_go_rehearsal',
-      '331_sprint_6e_closeout_review'
+      '350_hybrid_receiving_route_model',
+      '351_receiving_route_storage_and_api',
+      '352_buyer_sender_phone_matching_hint',
+      '353_human_readable_payment_reference_generator',
+      '354_checkout_bank_first_route_reveal_ui',
+      '355_hybrid_route_matching_risk_policy',
+      '356_webhook_route_context_no_pii',
+      '357_hybrid_receiving_routes_e2e_tests',
+      '358_sprint_7b_closeout_review'
     ];
 
     let previousIndex = -1;

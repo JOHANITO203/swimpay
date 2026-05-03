@@ -69,6 +69,10 @@ export interface SignalRuntimeResult {
   reasonCodes: string[];
   orderId?: string | undefined;
   paymentSessionId?: string | undefined;
+  receiverRouteCode?: string | undefined;
+  railType?: 'phone_transfer' | 'card_transfer' | undefined;
+  paymentReference?: string | undefined;
+  receiverBankId?: string | undefined;
 }
 
 export interface SignalRuntimeReviewItem {
@@ -328,7 +332,8 @@ export class SignalRuntimeProcessor {
       collisionDetected: input.collisionDetected,
       reasonCodes: input.reasonCodes,
       orderId: input.selected.orderId,
-      paymentSessionId: input.selected.paymentSessionId
+      paymentSessionId: input.selected.paymentSessionId,
+      ...routeContextFromSession(input.selected)
     };
 
     const confirmation = await this.options.repository.autoConfirm({
@@ -383,7 +388,8 @@ export class SignalRuntimeProcessor {
       collisionDetected: input.collisionDetected,
       reasonCodes: input.reasonCodes,
       orderId: input.selected?.orderId,
-      paymentSessionId: input.selected?.paymentSessionId
+      paymentSessionId: input.selected?.paymentSessionId,
+      ...(input.selected ? routeContextFromSession(input.selected) : {})
     };
     const review: SignalRuntimeReviewItem = {
       id: this.idGenerator.reviewId(),
@@ -521,6 +527,10 @@ export class SignalRuntimeProcessor {
         signal_id: signal.id,
         order_id: result.orderId,
         payment_session_id: result.paymentSessionId,
+        receiver_route_code: result.receiverRouteCode,
+        rail_type: result.railType,
+        payment_reference: result.paymentReference,
+        receiver_bank_id: result.receiverBankId,
         decision: result.decision,
         reason_codes: result.reasonCodes,
         score: result.score,
@@ -851,7 +861,15 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
         ps.expected_amount_minor,
         ps.currency,
         ps.buyer_phone_hmac,
+        ps.buyer_sender_phone_hmac,
         ps.reference_hmac,
+        ps.selected_receiver_bank_id,
+        ps.selected_receiver_bank_profile_id,
+        ps.selected_receiving_route_id,
+        mrr.route_code AS receiver_route_code,
+        mrr.rail_type,
+        mrr.review_policy AS receiving_route_review_policy,
+        ps.reference_code AS payment_reference,
         ps.status,
         ps.valid_from,
         ps.valid_until,
@@ -865,6 +883,9 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
         ) AS order_already_confirmed
        FROM payment_sessions ps
        JOIN orders o ON o.id = ps.order_id AND o.merchant_id = ps.merchant_id
+       LEFT JOIN merchant_receiving_routes mrr
+         ON mrr.id = ps.selected_receiving_route_id
+        AND mrr.merchant_id = ps.merchant_id
        WHERE ps.merchant_id = $1
          AND ps.expected_amount_minor = $2
          AND ps.currency = $3
@@ -1154,6 +1175,7 @@ function toMatchingSignal(signal: SignalRuntimeSignal): MatchingSignal {
   return {
     id: signal.id,
     merchantId: signal.merchantId,
+    bankProfileId: signal.bankProfileId,
     amountMinor: signal.amountMinor,
     currency: signal.currency,
     senderPhoneHmac: signal.senderPhoneHmac,
@@ -1201,6 +1223,18 @@ function enrichReasonCodes(
   }
 
   return uniqueReasonCodes(codes);
+}
+
+function routeContextFromSession(session: SignalRuntimeSessionCandidate): Pick<
+  SignalRuntimeResult,
+  'receiverRouteCode' | 'railType' | 'paymentReference' | 'receiverBankId'
+> {
+  return {
+    receiverRouteCode: session.receiverRouteCode,
+    railType: session.railType,
+    paymentReference: session.paymentReference,
+    receiverBankId: session.selectedReceiverBankId ?? session.selectedReceiverBankProfileId
+  };
 }
 
 function primaryReasonCode(reasonCodes: string[]): string {
@@ -1261,7 +1295,11 @@ function containsRawPiiMarker(value: unknown): boolean {
   }
 
   for (const [key, nestedValue] of Object.entries(value)) {
-    if (/raw[_-]?(notification|text|phone)|notification_raw|phone_raw|raw_phone|buyer_phone$/iu.test(key)) {
+    if (
+      /raw[_-]?(notification|text|phone|card)|notification_raw|phone_raw|raw_phone|buyer_phone$|receiver_(phone|card|identifier)|card_(number|pan)|^pan$/iu.test(
+        key
+      )
+    ) {
       return true;
     }
     if (containsRawPiiMarker(nestedValue)) {
@@ -1365,7 +1403,15 @@ interface SessionRow {
   expected_amount_minor: number | string;
   currency: string;
   buyer_phone_hmac: string | null;
+  buyer_sender_phone_hmac: string | null;
   reference_hmac: string | null;
+  selected_receiver_bank_id: string | null;
+  selected_receiver_bank_profile_id: string | null;
+  selected_receiving_route_id: string | null;
+  receiver_route_code: string | null;
+  rail_type: 'phone_transfer' | 'card_transfer' | null;
+  receiving_route_review_policy: 'review_first' | 'eligible_low_risk_later' | null;
+  payment_reference: string | null;
   status: string;
   valid_from: Date | string;
   valid_until: Date | string;
@@ -1419,7 +1465,15 @@ function toSession(row: SessionRow): SignalRuntimeSessionCandidate {
     expectedAmountMinor: Number(row.expected_amount_minor),
     currency: row.currency,
     buyerPhoneHmac: row.buyer_phone_hmac ?? undefined,
+    buyerSenderPhoneHmac: row.buyer_sender_phone_hmac ?? undefined,
     referenceHmac: row.reference_hmac ?? undefined,
+    selectedReceiverBankId: row.selected_receiver_bank_id ?? undefined,
+    selectedReceiverBankProfileId: row.selected_receiver_bank_profile_id ?? undefined,
+    selectedReceivingRouteId: row.selected_receiving_route_id ?? undefined,
+    receiverRouteCode: row.receiver_route_code ?? undefined,
+    railType: row.rail_type ?? undefined,
+    paymentReference: row.payment_reference ?? undefined,
+    receivingRouteReviewPolicy: row.receiving_route_review_policy ?? undefined,
     status: row.status,
     validFrom: toIso(row.valid_from),
     validUntil: toIso(row.valid_until),

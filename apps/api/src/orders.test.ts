@@ -57,6 +57,30 @@ class InMemoryOrderRepository implements OrderRepository {
     return order ? { order, paymentSession } : null;
   }
 
+  async createReceivingRoute(input: Parameters<OrderRepository['createReceivingRoute']>[0]) {
+    return { kind: 'created' as const, route: input.route };
+  }
+
+  async listReceivingRoutes() {
+    return [];
+  }
+
+  async updateReceivingRoute() {
+    return { kind: 'not_found' as const };
+  }
+
+  async listReceiverBanksForCheckout() {
+    return [];
+  }
+
+  async listReceivingRoutesForCheckoutBank() {
+    return [];
+  }
+
+  async getSelectedReceivingRouteCopyDetails() {
+    return { kind: 'not_found' as const };
+  }
+
   async selectReceiverBank(input: Parameters<OrderRepository['selectReceiverBank']>[0]) {
     const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
     if ('kind' in found) {
@@ -69,6 +93,17 @@ class InMemoryOrderRepository implements OrderRepository {
     return { kind: 'updated' as const, ...found };
   }
 
+  async selectReceivingRoute(input: Parameters<OrderRepository['selectReceivingRoute']>[0]) {
+    const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
+    if ('kind' in found) {
+      return found;
+    }
+    found.paymentSession.selectedReceivingRouteId = input.receivingRouteId;
+    found.paymentSession.selectedPayerBankLauncherId = undefined;
+    found.paymentSession.paymentInstructionsShownAt = undefined;
+    return { kind: 'updated' as const, ...found };
+  }
+
   async selectPayerBankLauncher(input: Parameters<OrderRepository['selectPayerBankLauncher']>[0]) {
     const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
     if ('kind' in found) {
@@ -76,6 +111,16 @@ class InMemoryOrderRepository implements OrderRepository {
     }
     found.paymentSession.selectedPayerBankLauncherId = input.payerBankLauncherId;
     found.paymentSession.paymentInstructionsShownAt = undefined;
+    return { kind: 'updated' as const, ...found };
+  }
+
+  async saveBuyerSenderPhoneHint(input: Parameters<OrderRepository['saveBuyerSenderPhoneHint']>[0]) {
+    const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
+    if ('kind' in found) {
+      return found;
+    }
+    found.paymentSession.buyerSenderPhoneHmac = input.buyerSenderPhoneHmac;
+    found.paymentSession.buyerSenderPhoneMasked = input.buyerSenderPhoneMasked;
     return { kind: 'updated' as const, ...found };
   }
 

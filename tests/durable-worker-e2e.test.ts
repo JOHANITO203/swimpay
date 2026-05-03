@@ -687,7 +687,14 @@ function runtimeSession(overrides: Partial<SignalRuntimeSessionCandidate> = {}):
     expectedAmountMinor: 13700,
     currency: 'RUB',
     buyerPhoneHmac,
+    buyerSenderPhoneHmac: buyerPhoneHmac,
     referenceHmac,
+    selectedReceiverBankId: 'synthetic_test_bank',
+    selectedReceiverBankProfileId: 'synthetic_test_bank',
+    selectedReceivingRouteId: 'route_e2e_phone',
+    receiverRouteCode: 'SYN-PHONE',
+    railType: 'phone_transfer',
+    paymentReference: 'TANGO ALFA',
     status: 'awaiting_payment',
     orderStatus: 'awaiting_payment',
     paymentSessionStatus: 'awaiting_payment',
@@ -851,6 +858,10 @@ class E2EOrderRepository implements OrderRepository {
 
     const order = this.orders.get(paymentSession.orderId);
     return order ? { order, paymentSession } : null;
+  }
+
+  public async getSelectedReceivingRouteCopyDetails() {
+    return { kind: 'not_found' as const };
   }
 }
 

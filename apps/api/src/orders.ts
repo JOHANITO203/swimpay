@@ -1,6 +1,19 @@
 import pg from 'pg';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { hmacSha256, maskPhone, normalizeRussianPhone } from '@swimpay/security';
-import type { OrderStatus, PaymentSessionStatus } from '@swimpay/contracts';
+import {
+  ReceivingRouteRailTypes,
+  ReceivingRouteReviewPolicies,
+  ReceiverIdentifierTypes,
+  V1ReceiverBankOptions,
+  maskReceiverIdentifier,
+  type MerchantReceivingRoute,
+  type OrderStatus,
+  type PaymentSessionStatus,
+  type ReceivingRouteRailType,
+  type ReceivingRouteReviewPolicy,
+  type ReceiverIdentifierType
+} from '@swimpay/contracts';
 
 const { Pool } = pg;
 
@@ -33,7 +46,10 @@ export interface StoredPaymentSessionRecord {
   status: PaymentSessionStatus;
   selectedReceiverBankId?: string | undefined;
   selectedReceiverBankProfileId?: string | undefined;
+  selectedReceivingRouteId?: string | undefined;
   selectedPayerBankLauncherId?: string | undefined;
+  buyerSenderPhoneHmac?: string | undefined;
+  buyerSenderPhoneMasked?: string | undefined;
   paymentInstructionsShownAt?: string | undefined;
   buyerClaimedPaidAt?: string | undefined;
   validFrom: string;
@@ -46,10 +62,12 @@ export interface StoredAuditEventRecord {
   id: string;
   merchantId: string;
   eventType: string;
-  objectType: 'order' | 'payment_session';
+  objectType: 'order' | 'payment_session' | 'merchant_receiving_route';
   objectId: string;
   payloadRedacted: Record<string, unknown>;
 }
+
+export type StoredMerchantReceivingRouteRecord = MerchantReceivingRoute;
 
 export interface CreateOrderWithSessionInput {
   merchantId: string;
@@ -84,6 +102,48 @@ export interface SelectPayerBankLauncherInput extends CheckoutMutationBaseInput 
   payerBankLauncherId: string;
 }
 
+export interface CreateReceivingRouteInput {
+  route: StoredMerchantReceivingRouteRecord;
+  auditEventId: string;
+}
+
+export type CreateReceivingRouteResult =
+  | { kind: 'created'; route: StoredMerchantReceivingRouteRecord }
+  | { kind: 'duplicate_route_code' };
+
+export interface UpdateReceivingRouteInput {
+  merchantId: string;
+  routeId: string;
+  patch: Partial<Pick<StoredMerchantReceivingRouteRecord, 'enabled' | 'recommended' | 'display_label' | 'fees_hint'>>;
+  auditEventId: string;
+  now: string;
+}
+
+export type ReceivingRouteMutationResult =
+  | { kind: 'updated'; route: StoredMerchantReceivingRouteRecord }
+  | { kind: 'not_found' };
+
+export interface SelectReceivingRouteInput extends CheckoutMutationBaseInput {
+  receivingRouteId: string;
+}
+
+export interface SaveBuyerSenderPhoneHintInput extends CheckoutMutationBaseInput {
+  buyerSenderPhoneHmac: string;
+  buyerSenderPhoneMasked: string;
+}
+
+export type ReceivingRouteCopyDetailsResult =
+  | {
+      kind: 'found';
+      order: StoredOrderRecord;
+      paymentSession: StoredPaymentSessionRecord;
+      route: StoredMerchantReceivingRouteRecord;
+      receiverIdentifier: string;
+    }
+  | { kind: 'not_found' }
+  | { kind: 'not_selected' }
+  | { kind: 'expired' };
+
 export type PaymentSessionCheckoutMutationResult =
   | {
       kind: 'updated';
@@ -109,8 +169,28 @@ export interface OrderRepository {
     order: StoredOrderRecord;
       paymentSession: StoredPaymentSessionRecord;
     } | null>;
+  createReceivingRoute(input: CreateReceivingRouteInput): Promise<CreateReceivingRouteResult>;
+  listReceivingRoutes(merchantId: string): Promise<StoredMerchantReceivingRouteRecord[]>;
+  updateReceivingRoute(input: UpdateReceivingRouteInput): Promise<ReceivingRouteMutationResult>;
+  listReceiverBanksForCheckout(
+    merchantId: string,
+    paymentSessionId: string
+  ): Promise<StoredMerchantReceivingRouteRecord[]>;
+  listReceivingRoutesForCheckoutBank(
+    merchantId: string,
+    paymentSessionId: string,
+    bankProfileId: string
+  ): Promise<StoredMerchantReceivingRouteRecord[]>;
+  getSelectedReceivingRouteCopyDetails(input: {
+    merchantId: string;
+    paymentSessionId: string;
+    encryptionSecret: string;
+    now: string;
+  }): Promise<ReceivingRouteCopyDetailsResult>;
   selectReceiverBank(input: SelectReceiverBankInput): Promise<PaymentSessionCheckoutMutationResult>;
+  selectReceivingRoute(input: SelectReceivingRouteInput): Promise<PaymentSessionCheckoutMutationResult>;
   selectPayerBankLauncher(input: SelectPayerBankLauncherInput): Promise<PaymentSessionCheckoutMutationResult>;
+  saveBuyerSenderPhoneHint(input: SaveBuyerSenderPhoneHintInput): Promise<PaymentSessionCheckoutMutationResult>;
   markPaymentInstructionsShown(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
   markBuyerClaimedPaid(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
 }
@@ -291,7 +371,8 @@ export class PgOrderRepository implements OrderRepository {
     const paymentResult = await this.pool.query(
       `SELECT id, order_id, merchant_id, expected_amount_minor, currency, buyer_phone_hmac,
         buyer_phone_masked, buyer_name_hmac, reference_code, reference_hmac, status,
-        selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_payer_bank_launcher_id,
+        selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_receiving_route_id,
+        selected_payer_bank_launcher_id, buyer_sender_phone_hmac, buyer_sender_phone_masked,
         payment_instructions_shown_at, buyer_claimed_paid_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND order_id = $2
@@ -323,7 +404,8 @@ export class PgOrderRepository implements OrderRepository {
     const paymentResult = await this.pool.query(
       `SELECT id, order_id, merchant_id, expected_amount_minor, currency, buyer_phone_hmac,
         buyer_phone_masked, buyer_name_hmac, reference_code, reference_hmac, status,
-        selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_payer_bank_launcher_id,
+        selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_receiving_route_id,
+        selected_payer_bank_launcher_id, buyer_sender_phone_hmac, buyer_sender_phone_masked,
         payment_instructions_shown_at, buyer_claimed_paid_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND id = $2`,
@@ -352,6 +434,182 @@ export class PgOrderRepository implements OrderRepository {
     };
   }
 
+  public async createReceivingRoute(input: CreateReceivingRouteInput): Promise<CreateReceivingRouteResult> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      const duplicate = await client.query(
+        `SELECT id FROM merchant_receiving_routes WHERE merchant_id = $1 AND route_code = $2`,
+        [input.route.merchant_id, input.route.route_code]
+      );
+      if (duplicate.rowCount && duplicate.rowCount > 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'duplicate_route_code' };
+      }
+
+      await client.query(
+        `INSERT INTO merchant_receiving_routes (
+          id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
+          receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+          enabled, recommended, review_policy, fees_hint, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+        [
+          input.route.route_id,
+          input.route.merchant_id,
+          input.route.bank_profile_id,
+          input.route.rail_type,
+          input.route.receiver_identifier_type,
+          input.route.receiver_identifier_encrypted,
+          input.route.receiver_identifier_masked,
+          input.route.route_code,
+          input.route.display_label,
+          input.route.enabled,
+          input.route.recommended,
+          input.route.review_policy,
+          input.route.fees_hint ?? null,
+          input.route.created_at,
+          input.route.updated_at
+        ]
+      );
+      await client.query(
+        `INSERT INTO audit_events (
+          id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+        ) VALUES ($1, $2, 'merchant_receiving_route.created', 'merchant_receiving_route', $3, 'api', $4::jsonb, $5)`,
+        [
+          input.auditEventId,
+          input.route.merchant_id,
+          input.route.route_id,
+          JSON.stringify(toReceivingRouteAuditPayload(input.route)),
+          input.route.created_at
+        ]
+      );
+      await client.query('COMMIT');
+      return { kind: 'created', route: input.route };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async listReceivingRoutes(merchantId: string): Promise<StoredMerchantReceivingRouteRecord[]> {
+    const result = await this.pool.query(
+      `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
+        receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at
+       FROM merchant_receiving_routes
+       WHERE merchant_id = $1
+       ORDER BY recommended DESC, created_at ASC`,
+      [merchantId]
+    );
+    return result.rows.map((row) => toMerchantReceivingRoute(row as Record<string, string | boolean | Date | null>));
+  }
+
+  public async updateReceivingRoute(input: UpdateReceivingRouteInput): Promise<ReceivingRouteMutationResult> {
+    const route = await this.getReceivingRoute(input.merchantId, input.routeId);
+    if (!route) {
+      return { kind: 'not_found' };
+    }
+    const updatedRoute: StoredMerchantReceivingRouteRecord = {
+      ...route,
+      ...input.patch,
+      updated_at: input.now
+    };
+    const result = await this.pool.query(
+      `UPDATE merchant_receiving_routes
+       SET enabled = $3,
+           recommended = $4,
+           display_label = $5,
+           fees_hint = $6,
+           updated_at = $7
+       WHERE merchant_id = $1 AND id = $2
+       RETURNING id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
+        receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at`,
+      [
+        input.merchantId,
+        input.routeId,
+        updatedRoute.enabled,
+        updatedRoute.recommended,
+        updatedRoute.display_label,
+        updatedRoute.fees_hint ?? null,
+        input.now
+      ]
+    );
+    if (result.rowCount === 0) {
+      return { kind: 'not_found' };
+    }
+    const updated = toMerchantReceivingRoute(result.rows[0] as Record<string, string | boolean | Date | null>);
+    await this.pool.query(
+      `INSERT INTO audit_events (
+        id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+      ) VALUES ($1, $2, 'merchant_receiving_route.updated', 'merchant_receiving_route', $3, 'api', $4::jsonb, $5)`,
+      [input.auditEventId, input.merchantId, input.routeId, JSON.stringify(toReceivingRouteAuditPayload(updated)), input.now]
+    );
+    return { kind: 'updated', route: updated };
+  }
+
+  public async listReceiverBanksForCheckout(merchantId: string, paymentSessionId: string) {
+    void paymentSessionId;
+    const result = await this.pool.query(
+      `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
+        receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at
+       FROM merchant_receiving_routes
+       WHERE merchant_id = $1 AND enabled = true
+       ORDER BY recommended DESC, created_at ASC`,
+      [merchantId]
+    );
+    return result.rows.map((row) => toMerchantReceivingRoute(row as Record<string, string | boolean | Date | null>));
+  }
+
+  public async listReceivingRoutesForCheckoutBank(merchantId: string, paymentSessionId: string, bankProfileId: string) {
+    void paymentSessionId;
+    const result = await this.pool.query(
+      `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
+        receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at
+       FROM merchant_receiving_routes
+       WHERE merchant_id = $1 AND bank_profile_id = $2 AND enabled = true
+       ORDER BY recommended DESC, created_at ASC`,
+      [merchantId, bankProfileId]
+    );
+    return result.rows.map((row) => toMerchantReceivingRoute(row as Record<string, string | boolean | Date | null>));
+  }
+
+  public async getSelectedReceivingRouteCopyDetails(input: {
+    merchantId: string;
+    paymentSessionId: string;
+    encryptionSecret: string;
+    now: string;
+  }): Promise<ReceivingRouteCopyDetailsResult> {
+    const loaded = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+    if (!loaded) {
+      return { kind: 'not_found' };
+    }
+    if (new Date(loaded.paymentSession.validUntil).getTime() <= new Date(input.now).getTime()) {
+      return { kind: 'expired' };
+    }
+    if (!loaded.paymentSession.selectedReceiverBankProfileId || !loaded.paymentSession.selectedReceivingRouteId) {
+      return { kind: 'not_selected' };
+    }
+
+    const route = await this.getReceivingRoute(input.merchantId, loaded.paymentSession.selectedReceivingRouteId);
+    if (!route || !route.enabled || route.bank_profile_id !== loaded.paymentSession.selectedReceiverBankProfileId) {
+      return { kind: 'not_found' };
+    }
+
+    return {
+      kind: 'found',
+      order: loaded.order,
+      paymentSession: loaded.paymentSession,
+      route,
+      receiverIdentifier: decryptReceiverIdentifier(route.receiver_identifier_encrypted, input.encryptionSecret)
+    };
+  }
+
   public async selectReceiverBank(input: SelectReceiverBankInput): Promise<PaymentSessionCheckoutMutationResult> {
     return this.mutateCheckoutSession({
       input,
@@ -361,6 +619,7 @@ export class PgOrderRepository implements OrderRepository {
           `UPDATE payment_sessions
            SET selected_receiver_bank_id = $3,
                selected_receiver_bank_profile_id = $4,
+               selected_receiving_route_id = NULL,
                selected_payer_bank_launcher_id = NULL,
                payment_instructions_shown_at = NULL,
                updated_at = $5
@@ -372,6 +631,40 @@ export class PgOrderRepository implements OrderRepository {
         receiver_bank_id: input.receiverBankId,
         bank_profile_id: input.bankProfileId,
         review_only: true,
+        auto_confirm_enabled: false
+      }
+    });
+  }
+
+  public async selectReceivingRoute(input: SelectReceivingRouteInput): Promise<PaymentSessionCheckoutMutationResult> {
+    const loaded = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+    if (!loaded?.paymentSession.selectedReceiverBankProfileId) {
+      return { kind: 'not_found' };
+    }
+    const route = await this.getReceivingRoute(input.merchantId, input.receivingRouteId);
+    if (!route || route.bank_profile_id !== loaded.paymentSession.selectedReceiverBankProfileId || !route.enabled) {
+      return { kind: 'not_found' };
+    }
+
+    return this.mutateCheckoutSession({
+      input,
+      auditEventType: 'checkout.receiving_route_selected',
+      apply: async (client) => {
+        await client.query(
+          `UPDATE payment_sessions
+           SET selected_receiving_route_id = $3,
+               selected_payer_bank_launcher_id = NULL,
+               payment_instructions_shown_at = NULL,
+               updated_at = $4
+           WHERE merchant_id = $1 AND id = $2`,
+          [input.merchantId, input.paymentSessionId, input.receivingRouteId, input.now]
+        );
+      },
+      payload: {
+        receiving_route_id: input.receivingRouteId,
+        receiver_route_code: route.route_code,
+        rail_type: route.rail_type,
+        review_policy: route.review_policy,
         auto_confirm_enabled: false
       }
     });
@@ -395,6 +688,33 @@ export class PgOrderRepository implements OrderRepository {
         payer_bank_launcher_id: input.payerBankLauncherId,
         does_not_confirm_payment: true,
         auto_confirm_enabled: false
+      }
+    });
+  }
+
+  public async saveBuyerSenderPhoneHint(input: SaveBuyerSenderPhoneHintInput): Promise<PaymentSessionCheckoutMutationResult> {
+    return this.mutateCheckoutSession({
+      input,
+      auditEventType: 'checkout.buyer_sender_phone_hint_saved',
+      apply: async (client) => {
+        await client.query(
+          `UPDATE payment_sessions
+           SET buyer_sender_phone_hmac = $3,
+               buyer_sender_phone_masked = $4,
+               updated_at = $5
+           WHERE merchant_id = $1 AND id = $2`,
+          [
+            input.merchantId,
+            input.paymentSessionId,
+            input.buyerSenderPhoneHmac,
+            input.buyerSenderPhoneMasked,
+            input.now
+          ]
+        );
+      },
+      payload: {
+        buyer_sender_phone_masked: input.buyerSenderPhoneMasked,
+        does_not_confirm_payment: true
       }
     });
   }
@@ -452,6 +772,23 @@ export class PgOrderRepository implements OrderRepository {
         does_not_confirm_payment: true
       }
     });
+  }
+
+  private async getReceivingRoute(
+    merchantId: string,
+    routeId: string
+  ): Promise<StoredMerchantReceivingRouteRecord | null> {
+    const result = await this.pool.query(
+      `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
+        receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at
+       FROM merchant_receiving_routes
+       WHERE merchant_id = $1 AND id = $2`,
+      [merchantId, routeId]
+    );
+    return result.rowCount
+      ? toMerchantReceivingRoute(result.rows[0] as Record<string, string | boolean | Date | null>)
+      : null;
   }
 
   private async mutateCheckoutSession(params: {
@@ -545,9 +882,12 @@ function toPaymentSession(row: Record<string, string | number | Date | null>): S
     selectedReceiverBankProfileId: row.selected_receiver_bank_profile_id
       ? String(row.selected_receiver_bank_profile_id)
       : undefined,
+    selectedReceivingRouteId: row.selected_receiving_route_id ? String(row.selected_receiving_route_id) : undefined,
     selectedPayerBankLauncherId: row.selected_payer_bank_launcher_id
       ? String(row.selected_payer_bank_launcher_id)
       : undefined,
+    buyerSenderPhoneHmac: row.buyer_sender_phone_hmac ? String(row.buyer_sender_phone_hmac) : undefined,
+    buyerSenderPhoneMasked: row.buyer_sender_phone_masked ? String(row.buyer_sender_phone_masked) : undefined,
     paymentInstructionsShownAt: row.payment_instructions_shown_at
       ? new Date(String(row.payment_instructions_shown_at)).toISOString()
       : undefined,
@@ -556,6 +896,141 @@ function toPaymentSession(row: Record<string, string | number | Date | null>): S
     validUntil: new Date(String(row.valid_until)).toISOString(),
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at)).toISOString()
+  };
+}
+
+function toMerchantReceivingRoute(row: Record<string, string | boolean | Date | null>): StoredMerchantReceivingRouteRecord {
+  return {
+    route_id: String(row.id),
+    merchant_id: String(row.merchant_id),
+    bank_profile_id: String(row.bank_profile_id),
+    rail_type: String(row.rail_type) as ReceivingRouteRailType,
+    receiver_identifier_type: String(row.receiver_identifier_type) as ReceiverIdentifierType,
+    receiver_identifier_encrypted: String(row.receiver_identifier_encrypted),
+    receiver_identifier_masked: String(row.receiver_identifier_masked),
+    route_code: String(row.route_code),
+    display_label: String(row.display_label),
+    enabled: Boolean(row.enabled),
+    recommended: Boolean(row.recommended),
+    review_policy: String(row.review_policy) as ReceivingRouteReviewPolicy,
+    fees_hint: row.fees_hint ? String(row.fees_hint) : undefined,
+    created_at: new Date(String(row.created_at)).toISOString(),
+    updated_at: new Date(String(row.updated_at)).toISOString()
+  };
+}
+
+export function buildMerchantReceivingRouteRecord(input: {
+  routeId: string;
+  merchantId: string;
+  bankProfileId: string;
+  railType: ReceivingRouteRailType;
+  receiverIdentifier: string;
+  routeCode: string;
+  displayLabel: string;
+  enabled?: boolean | undefined;
+  recommended?: boolean | undefined;
+  reviewPolicy?: ReceivingRouteReviewPolicy | undefined;
+  feesHint?: string | undefined;
+  encryptionSecret: string;
+  now: string;
+}): StoredMerchantReceivingRouteRecord | ApiErrorResponse {
+  if (!V1ReceiverBankOptions.some((bank) => bank.bank_profile_id === input.bankProfileId)) {
+    return invalidRequest('bank_profile_id is not supported for receiving routes.', {
+      bank_profile_id: input.bankProfileId
+    });
+  }
+  if (!ReceivingRouteRailTypes.includes(input.railType)) {
+    return invalidRequest('rail_type is not supported.', { rail_type: input.railType });
+  }
+  const receiverIdentifierType = receiverIdentifierTypeForRail(input.railType);
+  if (!ReceiverIdentifierTypes.includes(receiverIdentifierType)) {
+    return invalidRequest('receiver identifier type is not supported.', { rail_type: input.railType });
+  }
+  if (!input.receiverIdentifier.trim()) {
+    return invalidRequest('receiver_identifier is required.', {});
+  }
+  const routeCode = sanitizeRouteCode(input.routeCode);
+  if (!routeCode) {
+    return invalidRequest('route_code must contain letters, numbers, dash or underscore.', {});
+  }
+  const displayLabel = input.displayLabel.trim();
+  if (!displayLabel) {
+    return invalidRequest('display_label is required.', {});
+  }
+
+  const reviewPolicy = input.reviewPolicy ?? defaultReviewPolicyForRail(input.railType);
+  if (!ReceivingRouteReviewPolicies.includes(reviewPolicy)) {
+    return invalidRequest('review_policy is not supported.', { review_policy: reviewPolicy });
+  }
+
+  return {
+    route_id: input.routeId,
+    merchant_id: input.merchantId,
+    bank_profile_id: input.bankProfileId,
+    rail_type: input.railType,
+    receiver_identifier_type: receiverIdentifierType,
+    receiver_identifier_encrypted: encryptReceiverIdentifier(input.receiverIdentifier, input.encryptionSecret),
+    receiver_identifier_masked: maskReceiverIdentifier(receiverIdentifierType, input.receiverIdentifier),
+    route_code: routeCode,
+    display_label: displayLabel,
+    enabled: input.enabled ?? true,
+    recommended: input.recommended ?? false,
+    review_policy: reviewPolicy,
+    fees_hint: input.feesHint?.trim() || undefined,
+    created_at: input.now,
+    updated_at: input.now
+  };
+}
+
+export function receiverIdentifierTypeForRail(railType: ReceivingRouteRailType): ReceiverIdentifierType {
+  return railType === 'phone_transfer' ? 'phone' : 'card';
+}
+
+export function defaultReviewPolicyForRail(railType: ReceivingRouteRailType): ReceivingRouteReviewPolicy {
+  return railType === 'phone_transfer' ? 'eligible_low_risk_later' : 'review_first';
+}
+
+function encryptReceiverIdentifier(value: string, secret: string): string {
+  const iv = randomBytes(12);
+  const key = createHash('sha256').update(`swimpay_receiver_route:${secret}`, 'utf8').digest();
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const ciphertext = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `aes256gcm:${iv.toString('base64')}:${tag.toString('base64')}:${ciphertext.toString('base64')}`;
+}
+
+export function decryptReceiverIdentifier(value: string, secret: string): string {
+  const [scheme, ivBase64, tagBase64, ciphertextBase64] = value.split(':');
+  if (scheme !== 'aes256gcm' || !ivBase64 || !tagBase64 || !ciphertextBase64) {
+    throw new Error('Unsupported receiver route encryption envelope.');
+  }
+
+  const key = createHash('sha256').update(`swimpay_receiver_route:${secret}`, 'utf8').digest();
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(ivBase64, 'base64'));
+  decipher.setAuthTag(Buffer.from(tagBase64, 'base64'));
+  return Buffer.concat([
+    decipher.update(Buffer.from(ciphertextBase64, 'base64')),
+    decipher.final()
+  ]).toString('utf8');
+}
+
+function sanitizeRouteCode(routeCode: string): string | null {
+  const value = routeCode.trim().toUpperCase();
+  return /^[A-Z0-9_-]{3,64}$/.test(value) ? value : null;
+}
+
+function toReceivingRouteAuditPayload(route: StoredMerchantReceivingRouteRecord): Record<string, unknown> {
+  return {
+    route_id: route.route_id,
+    bank_profile_id: route.bank_profile_id,
+    rail_type: route.rail_type,
+    receiver_identifier_type: route.receiver_identifier_type,
+    receiver_identifier_masked: route.receiver_identifier_masked,
+    route_code: route.route_code,
+    enabled: route.enabled,
+    recommended: route.recommended,
+    review_policy: route.review_policy,
+    auto_confirm_enabled: false
   };
 }
 

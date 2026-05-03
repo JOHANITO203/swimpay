@@ -23,6 +23,7 @@ export type TemplateTrustStatus = 'new' | 'learning' | 'shadow_testing' | 'trust
 export interface MatchingSignal {
   id: string;
   merchantId: string;
+  bankProfileId?: string | undefined;
   amountMinor?: number | undefined;
   currency?: string | undefined;
   senderPhoneHmac?: string | undefined;
@@ -40,7 +41,15 @@ export interface MatchingCandidateSession {
   expectedAmountMinor: number;
   currency: string;
   buyerPhoneHmac?: string | undefined;
+  buyerSenderPhoneHmac?: string | undefined;
   referenceHmac?: string | undefined;
+  selectedReceiverBankId?: string | undefined;
+  selectedReceiverBankProfileId?: string | undefined;
+  selectedReceivingRouteId?: string | undefined;
+  receiverRouteCode?: string | undefined;
+  railType?: 'phone_transfer' | 'card_transfer' | undefined;
+  paymentReference?: string | undefined;
+  receivingRouteReviewPolicy?: 'review_first' | 'eligible_low_risk_later' | undefined;
   status: string;
   validFrom: string;
   validUntil: string;
@@ -307,14 +316,40 @@ function computeReasonCodes(
 
   if (hasPhoneMatch(signal, session)) {
     codes.push('sender_phone_exact');
+    if (session.railType === 'phone_transfer' && session.buyerSenderPhoneHmac) {
+      codes.push('phone_transfer_matching_hint_available');
+    }
   } else {
     codes.push('phone_missing');
+    if (session.railType === 'phone_transfer') {
+      codes.push('buyer_sender_phone_missing');
+    }
   }
 
   if (hasReferenceMatch(signal, session)) {
     codes.push('reference_exact');
   } else {
     codes.push('reference_missing');
+    codes.push('reference_not_observed');
+  }
+
+  if (!session.selectedReceivingRouteId) {
+    codes.push('receiving_route_not_selected');
+  }
+
+  if (session.railType === 'card_transfer') {
+    codes.push('card_transfer_review_required');
+    if (!hasPhoneMatch(signal, session) && !hasReferenceMatch(signal, session)) {
+      codes.push('amount_only_card_transfer');
+    }
+  }
+
+  if (session.receivingRouteReviewPolicy === 'review_first' || session.receivingRouteReviewPolicy === 'eligible_low_risk_later') {
+    codes.push('receiver_route_review_only');
+  }
+
+  if (signal.bankProfileId && session.selectedReceiverBankProfileId) {
+    codes.push(signal.bankProfileId === session.selectedReceiverBankProfileId ? 'receiver_bank_exact' : 'receiver_bank_mismatch');
   }
 
   if (signal.directionLabel === 'incoming_customer_transfer') {
@@ -342,6 +377,15 @@ function canAutoConfirm(input: {
   context: MatchingContext;
   score: number;
 }): boolean {
+  if (
+    !input.candidate.selectedReceivingRouteId ||
+    input.candidate.railType === 'card_transfer' ||
+    input.candidate.receivingRouteReviewPolicy === 'review_first' ||
+    input.candidate.receivingRouteReviewPolicy === 'eligible_low_risk_later'
+  ) {
+    return false;
+  }
+
   return (
     input.score >= 90 &&
     input.signal.amountMinor === input.candidate.expectedAmountMinor &&
@@ -361,7 +405,8 @@ function hasIdentityMatch(signal: MatchingSignal, session: MatchingCandidateSess
 }
 
 function hasPhoneMatch(signal: MatchingSignal, session: MatchingCandidateSession): boolean {
-  return Boolean(signal.senderPhoneHmac && session.buyerPhoneHmac && signal.senderPhoneHmac === session.buyerPhoneHmac);
+  const sessionPhoneHmac = session.buyerSenderPhoneHmac ?? session.buyerPhoneHmac;
+  return Boolean(signal.senderPhoneHmac && sessionPhoneHmac && signal.senderPhoneHmac === sessionPhoneHmac);
 }
 
 function hasReferenceMatch(signal: MatchingSignal, session: MatchingCandidateSession): boolean {

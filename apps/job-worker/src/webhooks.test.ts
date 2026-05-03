@@ -263,6 +263,18 @@ describe('webhook worker foundation', () => {
         }
       })
     ).toThrow('Webhook event data must not contain raw PII fields.');
+    expect(() =>
+      createPaymentWebhookEvent({
+        eventId: 'evt_raw_card',
+        type: 'payment.needs_review',
+        createdAt: '2026-05-02T10:00:00.000Z',
+        merchantId: 'mch_01',
+        data: {
+          order_id: 'ord_01',
+          receiver_card: '2202201234567890'
+        }
+      })
+    ).toThrow('Webhook event data must not contain raw PII fields.');
   });
 
   it('replays a delivery with the original event id and a new delivery id', async () => {

@@ -5,10 +5,14 @@ import {
   getReceiverBankOption,
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
+  toBuyerSafeReceivingRoute,
   type BuyerSafeCheckoutStatus,
+  type BuyerSafeReceivingRoute,
   type CheckoutSessionState,
+  type MerchantReceivingRoute,
   type PaymentSessionStatus,
   type PayerBankLauncherOption,
+  type ReceivingRouteRailType,
   type ReceiverBankOption
 } from '@swimpay/contracts';
 import { formatAmountMinor, type StoredOrderRecord, type StoredPaymentSessionRecord } from './orders.js';
@@ -55,7 +59,9 @@ export interface PaymentSessionReadResponse {
   receiver_status: ReceiverStatus;
   expires_at: string;
   selected_receiver_bank_id?: string | undefined;
+  selected_receiving_route_id?: string | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
+  buyer_sender_phone_masked?: string | undefined;
   official_bank_confirmation: false;
 }
 
@@ -72,7 +78,9 @@ export interface CheckoutStatusResponse {
   reference: string;
   expires_at: string;
   selected_receiver_bank_id?: string | undefined;
+  selected_receiving_route_id?: string | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
+  buyer_sender_phone_masked?: string | undefined;
   receiver_bank_status?: ReceiverBankOption['status'] | undefined;
   official_bank_confirmation: false;
 }
@@ -81,6 +89,25 @@ export interface ReceiverBanksResponse {
   payment_session_id: string;
   receiver_banks: readonly ReceiverBankOption[];
   selected_receiver_bank_id?: string | undefined;
+  official_bank_confirmation: false;
+}
+
+export interface ReceivingRoutesForBankResponse {
+  payment_session_id: string;
+  bank_profile_id: string;
+  routes: readonly BuyerSafeReceivingRoute[];
+  official_bank_confirmation: false;
+}
+
+export interface ReceivingRouteCopyDetailsResponse {
+  payment_session_id: string;
+  receiving_route_id: string;
+  rail_type: ReceivingRouteRailType;
+  receiver_identifier_type: MerchantReceivingRoute['receiver_identifier_type'];
+  receiver_identifier_masked: string;
+  receiver_identifier_copy_value: string;
+  copy_action: 'explicit_buyer_copy';
+  does_not_confirm_payment: true;
   official_bank_confirmation: false;
 }
 
@@ -154,7 +181,9 @@ export function toPaymentSessionReadResponse(params: {
     receiver_status: receiverStatusFromPaymentSessionStatus(status),
     expires_at: params.paymentSession.validUntil,
     selected_receiver_bank_id: params.paymentSession.selectedReceiverBankId,
+    selected_receiving_route_id: params.paymentSession.selectedReceivingRouteId,
     selected_payer_bank_launcher_id: params.paymentSession.selectedPayerBankLauncherId,
+    buyer_sender_phone_masked: params.paymentSession.buyerSenderPhoneMasked,
     official_bank_confirmation: false
   }) as unknown as PaymentSessionReadResponse;
 }
@@ -179,16 +208,21 @@ export function toCheckoutStatusResponse(params: {
     reference: read.reference,
     expires_at: read.expires_at,
     selected_receiver_bank_id: read.selected_receiver_bank_id,
+    selected_receiving_route_id: read.selected_receiving_route_id,
     selected_payer_bank_launcher_id: read.selected_payer_bank_launcher_id,
+    buyer_sender_phone_masked: read.buyer_sender_phone_masked,
     receiver_bank_status: receiverBank?.status,
     official_bank_confirmation: false
   }) as unknown as CheckoutStatusResponse;
 }
 
-export function toReceiverBanksResponse(paymentSession: StoredPaymentSessionRecord): ReceiverBanksResponse {
+export function toReceiverBanksResponse(
+  paymentSession: StoredPaymentSessionRecord,
+  routes: readonly MerchantReceivingRoute[] = []
+): ReceiverBanksResponse {
   return stripUndefined({
     payment_session_id: paymentSession.id,
-    receiver_banks: V1ReceiverBankOptions,
+    receiver_banks: V1ReceiverBankOptions.map((bank) => withRouteSummary(bank, routes)),
     selected_receiver_bank_id: paymentSession.selectedReceiverBankId,
     official_bank_confirmation: false
   }) as unknown as ReceiverBanksResponse;
@@ -215,6 +249,61 @@ export function buildReceiverBankSelectionResponse(params: {
     selected_receiver_bank: params.paymentSession.selectedReceiverBankId
       ? getReceiverBankOption(params.paymentSession.selectedReceiverBankId)
       : null
+  });
+}
+
+export function toReceivingRoutesForBankResponse(params: {
+  paymentSession: StoredPaymentSessionRecord;
+  bankProfileId: string;
+  routes: readonly MerchantReceivingRoute[];
+}): ReceivingRoutesForBankResponse {
+  return {
+    payment_session_id: params.paymentSession.id,
+    bank_profile_id: params.bankProfileId,
+    routes: params.routes.map((route) => toBuyerSafeReceivingRoute(route)),
+    official_bank_confirmation: false
+  };
+}
+
+export function toReceivingRouteCopyDetailsResponse(params: {
+  paymentSession: StoredPaymentSessionRecord;
+  route: MerchantReceivingRoute;
+  receiverIdentifier: string;
+}): ReceivingRouteCopyDetailsResponse {
+  return {
+    payment_session_id: params.paymentSession.id,
+    receiving_route_id: params.route.route_id,
+    rail_type: params.route.rail_type,
+    receiver_identifier_type: params.route.receiver_identifier_type,
+    receiver_identifier_masked: params.route.receiver_identifier_masked,
+    receiver_identifier_copy_value: params.receiverIdentifier,
+    copy_action: 'explicit_buyer_copy',
+    does_not_confirm_payment: true,
+    official_bank_confirmation: false
+  };
+}
+
+export function buildReceivingRouteSelectionResponse(params: {
+  order: StoredOrderRecord;
+  paymentSession: StoredPaymentSessionRecord;
+  now: Date;
+  route: MerchantReceivingRoute | null;
+}): Record<string, unknown> {
+  return stripUndefined({
+    ...toCheckoutStatusResponse(params),
+    selected_receiving_route: params.route ? toBuyerSafeReceivingRoute(params.route) : null
+  });
+}
+
+export function buildBuyerSenderPhoneHintResponse(params: {
+  order: StoredOrderRecord;
+  paymentSession: StoredPaymentSessionRecord;
+  now: Date;
+}): Record<string, unknown> {
+  return stripUndefined({
+    ...toCheckoutStatusResponse(params),
+    buyer_sender_phone_masked: params.paymentSession.buyerSenderPhoneMasked,
+    does_not_confirm_payment: true
   });
 }
 
@@ -253,9 +342,22 @@ function checkoutStateForPaymentSession(
   return mapPaymentSessionToCheckoutState({
     paymentSessionStatus: status,
     selectedReceiverBankId: paymentSession.selectedReceiverBankId,
+    selectedReceivingRouteId: paymentSession.selectedReceivingRouteId,
     selectedPayerBankLauncherId: paymentSession.selectedPayerBankLauncherId,
     paymentInstructionsShownAt: paymentSession.paymentInstructionsShownAt
   });
+}
+
+function withRouteSummary(bank: ReceiverBankOption, routes: readonly MerchantReceivingRoute[]): ReceiverBankOption {
+  const bankRoutes = routes.filter((route) => route.bank_profile_id === bank.bank_profile_id && route.enabled);
+  const railTypes = [...new Set(bankRoutes.map((route) => route.rail_type))] as ReceivingRouteRailType[];
+  const recommended = bankRoutes.find((route) => route.recommended) ?? bankRoutes[0] ?? null;
+  return stripUndefined({
+    ...bank,
+    available_route_count: bankRoutes.length,
+    rail_types: railTypes,
+    recommended_rail_type: recommended?.rail_type ?? null
+  }) as unknown as ReceiverBankOption;
 }
 
 function stripUndefined(value: Record<string, unknown>): Record<string, unknown> {

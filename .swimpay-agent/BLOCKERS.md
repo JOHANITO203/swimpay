@@ -2,6 +2,22 @@
 
 No current critical blockers.
 
+Last checked after Sprint 7B bank-first hybrid receiving routes: 2026-05-03T18:27:43+03:00.
+
+Sprint 7B status:
+
+- Bank-first hybrid receiving routes passed validation.
+- `phone_transfer` and `card_transfer` receiving routes are modeled and selected separately from payer launchers.
+- Buyer sender phone hints are stored as HMAC/masked values only.
+- Webhook route context excludes raw receiver identifiers and preserves `official_bank_confirmation=false`.
+- No real notification processing, SMS, SBP, scraping, official bank confirmation claim or real-bank auto-confirmation was added.
+
+Known non-critical Sprint 7B follow-ups:
+
+- The explicit receiving-route copy endpoint needs production-grade buyer-session hardening, rate limiting and short-lived reveal policy before private beta.
+- Hosted checkout needs visual browser QA across mobile and desktop viewports.
+- Merchant route administration is API-first and still needs operator/merchant UI polish.
+
 Last checked after Sprint 7A PSP-like checkout bank selection flow: 2026-05-03T17:16:00+03:00.
 
 Sprint 7A status:

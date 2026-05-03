@@ -73,3 +73,25 @@ Sprint 7A adds checkout bank-selection endpoints:
 
 Responses are buyer-safe and include no raw notification text, raw phone, secrets,
 or official-bank-confirmation claim.
+
+## Sprint 7B Hybrid Receiving Routes
+
+Sprint 7B adds a bank-first route reveal:
+
+1. Buyer sees only receiver bank logos/names.
+2. Buyer selects the merchant-side receiver bank.
+3. Checkout reveals masked routes for that selected bank:
+   - `phone_transfer`;
+   - `card_transfer`.
+4. Buyer selects the actual merchant receiving route.
+5. Buyer selects a payer bank launcher or manual fallback.
+6. Checkout shows masked destination, exact amount and a human-readable reference.
+7. Buyer may click `I paid`; this is still only a buyer claim.
+
+Receiver route selection is separate from payer launcher selection. Payer launcher
+choice is UX-only and never proves payment.
+
+Buyer-facing route details must not expose raw card, raw phone or personal merchant
+identity. Webhooks and audits may include safe route context such as
+`receiver_route_code`, `rail_type`, `payment_reference` and `receiver_bank_id`,
+but never raw identifiers.

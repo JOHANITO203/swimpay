@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PayerBankLauncherRegistry, V1ReceiverBankOptions } from '@swimpay/contracts';
+import { PayerBankLauncherRegistry, V1ReceiverBankOptions, toBuyerSafeReceivingRoute } from '@swimpay/contracts';
 import { buildWebServer, type CheckoutSession, type CheckoutSessionProvider } from './index.js';
 
 describe('hosted checkout web foundation', () => {
-  it('renders the buyer checkout flow with safe payment-signal wording', async () => {
+  it('renders the initial buyer checkout as bank-first without route details', async () => {
     const server = buildWebServer({
       environment: 'test',
       checkoutSessionProvider: new FakeCheckoutSessionProvider()
@@ -17,28 +17,60 @@ describe('hosted checkout web foundation', () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toContain('text/html');
     expect(response.body).toContain('Pay with SwimPay');
-    expect(response.body).toContain('SwimPay recherchera le signal de paiement côté marchand.');
-    expect(response.body).toContain('Choisir la banque du marchand');
+    expect(response.body).toContain('SwimPay recherchera le signal de paiement cote marchand.');
+    expect(response.body).toContain('Choisir la banque de reception');
     expect(response.body).toContain('Sberbank');
     expect(response.body).toContain('Tinkoff / T-Bank');
-    expect(response.body).toContain('review_required_beta');
-    expect(response.body).toContain('Choisir votre app bancaire');
-    expect(response.body).toContain('Other bank / manual transfer');
-    expect(response.body).toContain('does_not_confirm_payment=true');
-    expect(response.body).toContain('Numero utilise dans votre app bancaire');
-    expect(response.body).toContain('SwimPay ne lit pas votre telephone et ne se connecte pas a votre banque.');
+    expect(response.body).toContain('Selectionnez d’abord une banque');
     expect(response.body).toContain('137.00 RUB');
-    expect(response.body).toContain('SWP-A8K2');
-    expect(response.body).toContain('Copier le montant');
-    expect(response.body).toContain('Copier la reference');
-    expect(response.body).toContain("Ouvrir l'app bancaire");
-    expect(response.body).toContain('J&#39;ai paye');
-    expect(response.body).toContain('data-does-not-confirm="true"');
-    expect(response.body).toContain('En attente du transfert');
-    expect(response.body).not.toMatch(/confirm[eé] par la banque/i);
+    expect(response.body).toContain('TANGO ALFA');
+    expect(response.body).not.toContain('+7 *** *** **67');
+    expect(response.body).not.toContain('2202 **** **** 7890');
+    expect(response.body).not.toContain('Other bank / manual transfer');
+    expect(response.body).not.toContain('Copier le montant');
+    expect(response.body).not.toContain('J&#39;ai paye');
+    expect(response.body).not.toMatch(/confirmee? par la banque/i);
     expect(response.body).not.toMatch(/confirmera automatiquement/i);
     expect(response.body).not.toMatch(/paiement bancaire officiel/i);
     expect(response.body).not.toMatch(/paiement garanti/i);
+  });
+
+  it('reveals receiving routes and instructions only after bank, route and launcher selection', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_phone',
+      selected_payer_bank_launcher_id: 'other_manual',
+      checkout_state: 'payment_instructions',
+      buyer_safe_status: 'awaiting_payment'
+    };
+    const server = buildWebServer({
+      environment: 'test',
+      checkoutSessionProvider: provider
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Telephone');
+    expect(response.body).toContain('+7 *** *** **67');
+    expect(response.body).toContain('Numero d’envoi');
+    expect(response.body).toContain('Other bank / manual transfer');
+    expect(response.body).toContain('Copier la destination');
+    expect(response.body).toContain('data-copy-route="true"');
+    expect(response.body).toContain('Copier le montant');
+    expect(response.body).toContain('Copier la reference');
+    expect(response.body).toContain('J&#39;ai paye');
+    expect(response.body).toContain('data-does-not-confirm="true"');
+    expect(response.body).toContain('SwimPay suit le signal de reception cote marchand.');
+    expect(response.body).not.toContain('Compte marchand');
+    expect(response.body).not.toContain('+7 (999) 123-45-67');
+    expect(response.body).not.toContain('2202201234567890');
   });
 
   it('exposes a status polling endpoint mapped from backend session state', async () => {
@@ -70,13 +102,13 @@ describe('hosted checkout web foundation', () => {
         value: '137.00',
         currency: 'RUB'
       },
-      reference: 'SWP-A8K2',
+      reference: 'TANGO ALFA',
       expires_at: '2026-05-02T10:15:00.000Z',
       official_bank_confirmation: false
     });
   });
 
-  it('proxies receiver and payer launcher selection without confirming payment', async () => {
+  it('proxies receiver, route and payer launcher selection without confirming payment', async () => {
     const provider = new FakeCheckoutSessionProvider();
     const server = buildWebServer({
       environment: 'test',
@@ -88,6 +120,11 @@ describe('hosted checkout web foundation', () => {
       url: '/checkout/ps_01/receiver-bank',
       payload: { receiver_bank_id: 'sber_ru' }
     });
+    const routeResponse = await server.inject({
+      method: 'POST',
+      url: '/checkout/ps_01/receiving-route',
+      payload: { receiving_route_id: 'route_sber_phone' }
+    });
     const launcherResponse = await server.inject({
       method: 'POST',
       url: '/checkout/ps_01/payer-bank-launcher',
@@ -95,12 +132,49 @@ describe('hosted checkout web foundation', () => {
     });
 
     expect(receiverResponse.statusCode).toBe(200);
+    expect(routeResponse.statusCode).toBe(200);
     expect(launcherResponse.statusCode).toBe(200);
     expect(provider.session.selected_receiver_bank_id).toBe('sber_ru');
+    expect(provider.session.selected_receiving_route_id).toBe('route_sber_phone');
     expect(provider.session.selected_payer_bank_launcher_id).toBe('other_manual');
     expect(provider.session.status).not.toBe('auto_confirmed');
     expect(receiverResponse.json().official_bank_confirmation).toBe(false);
+    expect(routeResponse.json().official_bank_confirmation).toBe(false);
     expect(launcherResponse.json().official_bank_confirmation).toBe(false);
+  });
+
+  it('proxies explicit receiving route copy details without rendering raw destination in html', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_phone',
+      selected_payer_bank_launcher_id: 'other_manual'
+    };
+    const server = buildWebServer({
+      environment: 'test',
+      checkoutSessionProvider: provider
+    });
+
+    const page = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01'
+    });
+    const copy = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01/receiving-route/copy-details'
+    });
+
+    expect(page.body).not.toContain('+79991234567');
+    expect(copy.statusCode).toBe(200);
+    expect(copy.json()).toMatchObject({
+      receiver_identifier_masked: '+7 *** *** **67',
+      receiver_identifier_copy_value: '+79991234567',
+      copy_action: 'explicit_buyer_copy',
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
   });
 
   it('accepts the buyer paid claim without marking a payment as confirmed', async () => {
@@ -132,16 +206,52 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
   public session: CheckoutSession = {
     payment_session_id: 'ps_01',
     order_id: 'ord_01',
-    status: 'awaiting_payment',
+    status: 'receiver_arming',
     amount: {
       value: '137.00',
       currency: 'RUB'
     },
-    reference: 'SWP-A8K2',
+    reference: 'TANGO ALFA',
     receiver_status: 'armed',
     expires_at: '2026-05-02T10:15:00.000Z',
     product_name: 'Premium Pack'
   };
+
+  private readonly routes = [
+    toBuyerSafeReceivingRoute({
+      route_id: 'route_sber_phone',
+      merchant_id: 'mch_01',
+      bank_profile_id: 'sber_ru',
+      rail_type: 'phone_transfer',
+      receiver_identifier_type: 'phone',
+      receiver_identifier_encrypted: 'encrypted',
+      receiver_identifier_masked: '+7 *** *** **67',
+      route_code: 'SBER-PHONE',
+      display_label: 'Sberbank telephone',
+      enabled: true,
+      recommended: true,
+      review_policy: 'eligible_low_risk_later',
+      fees_hint: 'Usually instant',
+      created_at: '2026-05-02T10:00:00.000Z',
+      updated_at: '2026-05-02T10:00:00.000Z'
+    }),
+    toBuyerSafeReceivingRoute({
+      route_id: 'route_sber_card',
+      merchant_id: 'mch_01',
+      bank_profile_id: 'sber_ru',
+      rail_type: 'card_transfer',
+      receiver_identifier_type: 'card',
+      receiver_identifier_encrypted: 'encrypted',
+      receiver_identifier_masked: '2202 **** **** 7890',
+      route_code: 'SBER-CARD',
+      display_label: 'Sberbank card',
+      enabled: true,
+      recommended: false,
+      review_policy: 'review_first',
+      created_at: '2026-05-02T10:00:00.000Z',
+      updated_at: '2026-05-02T10:00:00.000Z'
+    })
+  ];
 
   public async getCheckoutSession(paymentSessionId: string) {
     return paymentSessionId === this.session.payment_session_id ? this.session : null;
@@ -150,7 +260,16 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
   public async getReceiverBanks(paymentSessionId: string) {
     return {
       payment_session_id: paymentSessionId,
-      receiver_banks: V1ReceiverBankOptions
+      receiver_banks: V1ReceiverBankOptions.map((bank) =>
+        bank.receiver_bank_id === 'sber_ru'
+          ? {
+              ...bank,
+              available_route_count: 2,
+              rail_types: ['phone_transfer', 'card_transfer'] as const,
+              recommended_rail_type: 'phone_transfer' as const
+            }
+          : bank
+      )
     };
   }
 
@@ -159,9 +278,53 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
       ...this.session,
       selected_receiver_bank_id: receiverBankId,
       selected_receiver_bank_profile_id: receiverBankId,
+      selected_receiving_route_id: undefined,
+      selected_payer_bank_launcher_id: undefined,
+      checkout_state: 'receiving_route_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    return this.session;
+  }
+
+  public async getReceivingRoutes(paymentSessionId: string, bankProfileId: string) {
+    return {
+      payment_session_id: paymentSessionId,
+      bank_profile_id: bankProfileId,
+      routes: bankProfileId === 'sber_ru' ? this.routes : []
+    };
+  }
+
+  public async selectReceivingRoute(_paymentSessionId: string, receivingRouteId: string) {
+    this.session = {
+      ...this.session,
+      selected_receiving_route_id: receivingRouteId,
       selected_payer_bank_launcher_id: undefined,
       checkout_state: 'payer_bank_launcher_selection',
       buyer_safe_status: 'not_validated'
+    };
+    return this.session;
+  }
+
+  public async getReceivingRouteCopyDetails(paymentSessionId: string) {
+    return {
+      payment_session_id: paymentSessionId,
+      receiving_route_id: 'route_sber_phone',
+      rail_type: 'phone_transfer',
+      receiver_identifier_type: 'phone',
+      receiver_identifier_masked: '+7 *** *** **67',
+      receiver_identifier_copy_value: '+79991234567',
+      copy_action: 'explicit_buyer_copy' as const,
+      does_not_confirm_payment: true as const,
+      official_bank_confirmation: false as const
+    };
+  }
+
+  public async saveBuyerSenderPhoneHint(paymentSessionId: string, buyerSenderPhone: string) {
+    void paymentSessionId;
+    void buyerSenderPhone;
+    this.session = {
+      ...this.session,
+      buyer_sender_phone_masked: '+7 *** *** **67'
     };
     return this.session;
   }

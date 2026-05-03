@@ -1,11 +1,31 @@
 import { describe, expect, test } from 'vitest';
 import { getPayerBankLauncherOption, getReceiverBankOption } from '@swimpay/contracts';
 import { buildApiServer, type OrderRepository, type StoredOrderRecord, type StoredPaymentSessionRecord } from './server.js';
+import { decryptReceiverIdentifier } from './orders.js';
 import { isPaymentSessionTransitionAllowed, resolvePaymentSessionStatusForRead } from './payment-sessions.js';
+
+interface TestReceivingRoute {
+  route_id: string;
+  merchant_id: string;
+  bank_profile_id: string;
+  rail_type: 'phone_transfer' | 'card_transfer';
+  receiver_identifier_type: 'phone' | 'card';
+  receiver_identifier_encrypted: string;
+  receiver_identifier_masked: string;
+  route_code: string;
+  display_label: string;
+  enabled: boolean;
+  recommended: boolean;
+  review_policy: 'review_first' | 'eligible_low_risk_later';
+  fees_hint?: string | undefined;
+  created_at: string;
+  updated_at: string;
+}
 
 class InMemoryPaymentSessionRepository implements OrderRepository {
   public readonly orders = new Map<string, StoredOrderRecord>();
   public readonly paymentSessions = new Map<string, StoredPaymentSessionRecord>();
+  public readonly receivingRoutes = new Map<string, TestReceivingRoute>();
   public readonly externalIds = new Set<string>();
   public readonly auditEvents: Array<{ eventType: string; objectId: string }> = [];
 
@@ -55,6 +75,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
 
     result.paymentSession.selectedReceiverBankId = input.receiverBankId;
     result.paymentSession.selectedReceiverBankProfileId = input.bankProfileId;
+    result.paymentSession.selectedReceivingRouteId = undefined;
     result.paymentSession.selectedPayerBankLauncherId = undefined;
     result.paymentSession.updatedAt = input.now;
     this.auditEvents.push({ eventType: 'checkout.receiver_bank_selected', objectId: input.paymentSessionId });
@@ -70,6 +91,123 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     result.paymentSession.selectedPayerBankLauncherId = input.payerBankLauncherId;
     result.paymentSession.updatedAt = input.now;
     this.auditEvents.push({ eventType: 'checkout.payer_bank_launcher_selected', objectId: input.paymentSessionId });
+    return { kind: 'updated' as const, order: result.order, paymentSession: result.paymentSession };
+  }
+
+  async createReceivingRoute(input: {
+    route: TestReceivingRoute;
+    auditEventId: string;
+  }) {
+    const duplicate = [...this.receivingRoutes.values()].find(
+      (route) => route.merchant_id === input.route.merchant_id && route.route_code === input.route.route_code
+    );
+    if (duplicate) {
+      return { kind: 'duplicate_route_code' as const };
+    }
+    this.receivingRoutes.set(input.route.route_id, input.route);
+    this.auditEvents.push({ eventType: 'merchant_receiving_route.created', objectId: input.route.route_id });
+    return { kind: 'created' as const, route: input.route };
+  }
+
+  async listReceivingRoutes(merchantId: string) {
+    return [...this.receivingRoutes.values()].filter((route) => route.merchant_id === merchantId);
+  }
+
+  async updateReceivingRoute(input: {
+    merchantId: string;
+    routeId: string;
+    patch: Partial<Pick<TestReceivingRoute, 'enabled' | 'recommended' | 'display_label' | 'fees_hint'>>;
+    auditEventId: string;
+    now: string;
+  }) {
+    const route = this.receivingRoutes.get(input.routeId);
+    if (!route || route.merchant_id !== input.merchantId) {
+      return { kind: 'not_found' as const };
+    }
+    Object.assign(route, input.patch, { updated_at: input.now });
+    this.auditEvents.push({ eventType: 'merchant_receiving_route.updated', objectId: input.routeId });
+    return { kind: 'updated' as const, route };
+  }
+
+  async listReceiverBanksForCheckout(merchantId: string, paymentSessionId: string) {
+    void paymentSessionId;
+    return [...this.receivingRoutes.values()].filter((route) => route.merchant_id === merchantId && route.enabled);
+  }
+
+  async listReceivingRoutesForCheckoutBank(merchantId: string, paymentSessionId: string, bankProfileId: string) {
+    void paymentSessionId;
+    return [...this.receivingRoutes.values()].filter(
+      (route) => route.merchant_id === merchantId && route.bank_profile_id === bankProfileId && route.enabled
+    );
+  }
+
+  async getSelectedReceivingRouteCopyDetails(input: {
+    merchantId: string;
+    paymentSessionId: string;
+    encryptionSecret: string;
+    now: string;
+  }) {
+    const result = this.requireMutableSession(input.merchantId, input.paymentSessionId, input.now);
+    if (result.kind !== 'ok') {
+      return result;
+    }
+    if (!result.paymentSession.selectedReceivingRouteId) {
+      return { kind: 'not_selected' as const };
+    }
+    const route = this.receivingRoutes.get(result.paymentSession.selectedReceivingRouteId);
+    if (!route || !route.enabled || route.merchant_id !== input.merchantId) {
+      return { kind: 'not_found' as const };
+    }
+
+    return {
+      kind: 'found' as const,
+      order: result.order,
+      paymentSession: result.paymentSession,
+      route,
+      receiverIdentifier: decryptReceiverIdentifier(route.receiver_identifier_encrypted, input.encryptionSecret)
+    };
+  }
+
+  async selectReceivingRoute(input: {
+    merchantId: string;
+    paymentSessionId: string;
+    receivingRouteId: string;
+    auditEventId: string;
+    now: string;
+  }) {
+    const result = this.requireMutableSession(input.merchantId, input.paymentSessionId, input.now);
+    if (result.kind !== 'ok') {
+      return result;
+    }
+    const route = this.receivingRoutes.get(input.receivingRouteId);
+    if (!route || route.merchant_id !== input.merchantId || route.bank_profile_id !== result.paymentSession.selectedReceiverBankProfileId) {
+      return { kind: 'not_found' as const };
+    }
+
+    result.paymentSession.selectedReceivingRouteId = input.receivingRouteId;
+    result.paymentSession.selectedPayerBankLauncherId = undefined;
+    result.paymentSession.paymentInstructionsShownAt = undefined;
+    result.paymentSession.updatedAt = input.now;
+    this.auditEvents.push({ eventType: 'checkout.receiving_route_selected', objectId: input.paymentSessionId });
+    return { kind: 'updated' as const, order: result.order, paymentSession: result.paymentSession };
+  }
+
+  async saveBuyerSenderPhoneHint(input: {
+    merchantId: string;
+    paymentSessionId: string;
+    buyerSenderPhoneHmac: string;
+    buyerSenderPhoneMasked: string;
+    auditEventId: string;
+    now: string;
+  }) {
+    const result = this.requireMutableSession(input.merchantId, input.paymentSessionId, input.now);
+    if (result.kind !== 'ok') {
+      return result;
+    }
+    result.paymentSession.buyerSenderPhoneHmac = input.buyerSenderPhoneHmac;
+    result.paymentSession.buyerSenderPhoneMasked = input.buyerSenderPhoneMasked;
+    result.paymentSession.updatedAt = input.now;
+    this.auditEvents.push({ eventType: 'checkout.buyer_sender_phone_hint_saved', objectId: input.paymentSessionId });
     return { kind: 'updated' as const, order: result.order, paymentSession: result.paymentSession };
   }
 
@@ -131,6 +269,7 @@ function buildServer(repository: InMemoryPaymentSessionRepository, now = '2026-0
       auditEventId: () => `aud_${repository.auditEvents.length + 1}`,
       referenceCode: () => 'SWP-SESSION'
     },
+    receivingRouteIdGenerator: () => `route_${repository.receivingRoutes.size + 1}`,
     clock: () => new Date(now),
     healthChecks: {
       database: async () => 'skipped',
@@ -155,6 +294,39 @@ async function createOrder(server: ReturnType<typeof buildApiServer>) {
         bank_phone: '+79991234567'
       },
       expires_in_seconds: 900
+    }
+  });
+}
+
+async function createPhoneRoute(server: ReturnType<typeof buildApiServer>) {
+  return server.inject({
+    method: 'POST',
+    url: '/v1/merchant/receiving-routes',
+    headers: { authorization: 'Bearer test_mch_01' },
+    payload: {
+      bank_profile_id: 'sber_ru',
+      rail_type: 'phone_transfer',
+      receiver_identifier: '+7 (999) 123-45-67',
+      route_code: 'SBER-PHONE',
+      display_label: 'Sberbank telephone',
+      recommended: true,
+      fees_hint: 'Usually instant'
+    }
+  });
+}
+
+async function createCardRoute(server: ReturnType<typeof buildApiServer>) {
+  return server.inject({
+    method: 'POST',
+    url: '/v1/merchant/receiving-routes',
+    headers: { authorization: 'Bearer test_mch_01' },
+    payload: {
+      bank_profile_id: 'sber_ru',
+      rail_type: 'card_transfer',
+      receiver_identifier: '2202201234567890',
+      route_code: 'SBER-CARD',
+      display_label: 'Sberbank card',
+      recommended: false
     }
   });
 }
@@ -244,6 +416,7 @@ describe('payment session api', () => {
     const repository = new InMemoryPaymentSessionRepository();
     const server = buildServer(repository);
     await createOrder(server);
+    await createPhoneRoute(server);
 
     const response = await server.inject({
       method: 'GET',
@@ -267,18 +440,172 @@ describe('payment session api', () => {
         })
       ])
     );
+    expect(JSON.stringify(payload.receiver_banks)).not.toContain('+7 (999)');
+    expect(payload.receiver_banks.find((bank: { receiver_bank_id: string }) => bank.receiver_bank_id === 'sber_ru')).toMatchObject({
+      available_route_count: 1,
+      rail_types: ['phone_transfer'],
+      recommended_rail_type: 'phone_transfer'
+    });
+  });
+
+  test('creates, lists and updates merchant receiving routes without exposing raw identifiers', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+
+    const created = await createPhoneRoute(server);
+    const listed = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const updated = await server.inject({
+      method: 'PATCH',
+      url: '/v1/merchant/receiving-routes/route_1',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { enabled: false, recommended: false, display_label: 'Sberbank phone backup' }
+    });
+
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      route: {
+        route_id: 'route_1',
+        bank_profile_id: 'sber_ru',
+        rail_type: 'phone_transfer',
+        receiver_identifier_type: 'phone',
+        receiver_identifier_masked: '+7 *** *** **67',
+        route_code: 'SBER-PHONE',
+        review_policy: 'eligible_low_risk_later',
+        official_bank_confirmation: false
+      }
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().routes).toHaveLength(1);
+    expect(updated.statusCode).toBe(200);
+    expect(updated.json().route).toMatchObject({ enabled: false, recommended: false });
+    expect(JSON.stringify([created.json(), listed.json(), updated.json()])).not.toContain('+7 (999) 123-45-67');
+    expect(JSON.stringify(repository.receivingRoutes)).not.toContain('+7 (999) 123-45-67');
+    expect(repository.auditEvents.map((event) => event.eventType)).toEqual(
+      expect.arrayContaining(['merchant_receiving_route.created', 'merchant_receiving_route.updated'])
+    );
+  });
+
+  test('reveals buyer-safe receiving routes only after bank selection and selects the actual route', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createCardRoute(server);
+
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiver-bank',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiver_bank_id: 'sber_ru' }
+    });
+    const routesResponse = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/receiver-banks/sber_ru/routes',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const selectedRoute = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiving-route',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiving_route_id: 'route_1' }
+    });
+    const copyDetails = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/receiving-route/copy-details',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(routesResponse.statusCode).toBe(200);
+    expect(routesResponse.json()).toMatchObject({
+      payment_session_id: 'ps_session_01',
+      bank_profile_id: 'sber_ru',
+      routes: [
+        expect.objectContaining({
+          route_id: 'route_1',
+          rail_type: 'phone_transfer',
+          receiver_identifier_masked: '+7 *** *** **67',
+          review_policy: 'eligible_low_risk_later'
+        }),
+        expect.objectContaining({
+          route_id: 'route_2',
+          rail_type: 'card_transfer',
+          receiver_identifier_masked: '2202 **** **** 7890',
+          review_policy: 'review_first'
+        })
+      ],
+      official_bank_confirmation: false
+    });
+    expect(JSON.stringify(routesResponse.json())).not.toContain('2202201234567890');
+    expect(selectedRoute.statusCode).toBe(200);
+    expect(selectedRoute.json()).toMatchObject({
+      selected_receiving_route: expect.objectContaining({
+        route_id: 'route_1',
+        rail_type: 'phone_transfer'
+      }),
+      checkout_state: 'payer_bank_launcher_selection',
+      official_bank_confirmation: false
+    });
+    expect(repository.paymentSessions.get('ps_session_01')?.selectedReceivingRouteId).toBe('route_1');
+    expect(repository.auditEvents.map((event) => event.eventType)).toContain('checkout.receiving_route_selected');
+    expect(copyDetails.statusCode).toBe(200);
+    expect(copyDetails.json()).toMatchObject({
+      payment_session_id: 'ps_session_01',
+      receiving_route_id: 'route_1',
+      rail_type: 'phone_transfer',
+      receiver_identifier_masked: '+7 *** *** **67',
+      receiver_identifier_copy_value: '+7 (999) 123-45-67',
+      copy_action: 'explicit_buyer_copy',
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(JSON.stringify(repository.auditEvents)).not.toContain('+7 (999) 123-45-67');
+  });
+
+  test('stores buyer sender phone hint as HMAC and masked value only', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/buyer-sender-phone',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { buyer_sender_phone: '+7 (999) 000-12-34' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      buyer_sender_phone_masked: '+7 *** *** **34',
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(repository.paymentSessions.get('ps_session_01')?.buyerSenderPhoneHmac).toMatch(/^hmac_sha256:/);
+    expect(repository.paymentSessions.get('ps_session_01')?.buyerSenderPhoneMasked).toBe('+7 *** *** **34');
+    expect(JSON.stringify(repository.paymentSessions)).not.toContain('+7 (999) 000-12-34');
+    expect(JSON.stringify(response.json())).not.toContain('+7 (999) 000-12-34');
   });
 
   test('selects receiver bank and payer launcher without confirming payment', async () => {
     const repository = new InMemoryPaymentSessionRepository();
     const server = buildServer(repository);
     await createOrder(server);
+    await createPhoneRoute(server);
 
     const receiverResponse = await server.inject({
       method: 'POST',
       url: '/v1/checkout/ps_session_01/receiver-bank',
       headers: { authorization: 'Bearer test_mch_01' },
       payload: { receiver_bank_id: 'sber_ru' }
+    });
+    const routeResponse = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiving-route',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiving_route_id: 'route_1' }
     });
     const launcherResponse = await server.inject({
       method: 'POST',
@@ -295,9 +622,13 @@ describe('payment session api', () => {
     expect(receiverResponse.statusCode).toBe(200);
     expect(receiverResponse.json()).toMatchObject({
       selected_receiver_bank: getReceiverBankOption('sber_ru'),
-      checkout_state: 'payer_bank_launcher_selection',
+      checkout_state: 'receiving_route_selection',
       buyer_safe_status: 'not_validated',
       official_bank_confirmation: false
+    });
+    expect(routeResponse.json()).toMatchObject({
+      selected_receiving_route: expect.objectContaining({ route_id: 'route_1' }),
+      checkout_state: 'payer_bank_launcher_selection'
     });
     expect(launcherResponse.statusCode).toBe(200);
     expect(launcherResponse.json()).toMatchObject({
@@ -325,11 +656,18 @@ describe('payment session api', () => {
     const repository = new InMemoryPaymentSessionRepository();
     const server = buildServer(repository);
     await createOrder(server);
+    await createPhoneRoute(server);
     await server.inject({
       method: 'POST',
       url: '/v1/checkout/ps_session_01/receiver-bank',
       headers: { authorization: 'Bearer test_mch_01' },
       payload: { receiver_bank_id: 'sber_ru' }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiving-route',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiving_route_id: 'route_1' }
     });
     await server.inject({
       method: 'POST',

@@ -67,6 +67,26 @@ SwimPay recherchera le signal de paiement côté marchand.
 The checkout must not claim official bank confirmation, guaranteed payment, PSP
 confirmation, SMS access, SBP, or bank app scraping.
 
+## Sprint 7B Hybrid Receiving Route Readiness
+
+Private beta checkout now requires an explicit merchant receiving route:
+
+- buyer sees receiver banks first, without card or phone details;
+- route details are revealed only after bank selection;
+- supported V1 route rails are `phone_transfer` and `card_transfer`;
+- card routes are review-first by default in beta;
+- phone routes may collect an optional buyer sender phone hint, stored only as
+  HMAC and masked output;
+- human-readable references are used for checkout UX and matching review;
+- webhook route context is safe and excludes raw identifiers.
+
+No-go criteria added for Sprint 7B:
+
+- bank selection step shows raw card or phone;
+- webhook/audit/log includes raw card or raw phone;
+- payer launcher choice affects matching or confirmation;
+- route policy enables broad auto-confirm for real bank notifications.
+
 ## Sprint 6D Rehearsal Criteria
 
 - synthetic merchant/order fixture exists;

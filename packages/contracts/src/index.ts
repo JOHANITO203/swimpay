@@ -40,6 +40,7 @@ export type PaymentSessionStatus = (typeof PaymentSessionStatuses)[number];
 
 export const CheckoutSessionStates = [
   'receiver_bank_selection',
+  'receiving_route_selection',
   'payer_bank_launcher_selection',
   'payment_instructions',
   'awaiting_payment',
@@ -66,6 +67,30 @@ export const BuyerSafeCheckoutStatuses = [
 export type BuyerSafeCheckoutStatus = (typeof BuyerSafeCheckoutStatuses)[number];
 
 export type ReceiverBankBuyerStatus = 'available' | 'review_required_beta' | 'temporarily_unavailable';
+export type ReceiverRouteBuyerStatus = 'review_beta' | 'temporarily_unavailable';
+
+export const ReceivingRouteRailTypes = ['phone_transfer', 'card_transfer'] as const;
+export type ReceivingRouteRailType = (typeof ReceivingRouteRailTypes)[number];
+
+export const ReceiverIdentifierTypes = ['phone', 'card'] as const;
+export type ReceiverIdentifierType = (typeof ReceiverIdentifierTypes)[number];
+
+export const ReceivingRouteReviewPolicies = ['review_first', 'eligible_low_risk_later'] as const;
+export type ReceivingRouteReviewPolicy = (typeof ReceivingRouteReviewPolicies)[number];
+
+export const ReceivingRouteRiskReasonCodes = [
+  'phone_transfer_matching_hint_available',
+  'buyer_sender_phone_missing',
+  'card_transfer_review_required',
+  'reference_not_observed',
+  'amount_only_card_transfer',
+  'receiver_route_review_only',
+  'receiving_route_not_selected',
+  'receiver_bank_exact',
+  'receiver_bank_mismatch'
+] as const;
+
+export type ReceivingRouteRiskReasonCode = (typeof ReceivingRouteRiskReasonCodes)[number];
 
 export interface ReceiverBankOption {
   receiver_bank_id: string;
@@ -77,7 +102,45 @@ export interface ReceiverBankOption {
   merchant_receiver_account_id: string | null;
   beta_ready: boolean;
   disabled_reason: string | null;
+  available_route_count?: number | undefined;
+  rail_types?: readonly ReceivingRouteRailType[] | undefined;
+  recommended_rail_type?: ReceivingRouteRailType | null | undefined;
   auto_confirm_enabled: false;
+  official_bank_confirmation: false;
+}
+
+export interface MerchantReceivingRoute {
+  route_id: string;
+  merchant_id: string;
+  bank_profile_id: string;
+  rail_type: ReceivingRouteRailType;
+  receiver_identifier_type: ReceiverIdentifierType;
+  receiver_identifier_encrypted: string;
+  receiver_identifier_masked: string;
+  route_code: string;
+  display_label: string;
+  enabled: boolean;
+  recommended: boolean;
+  review_policy: ReceivingRouteReviewPolicy;
+  fees_hint?: string | undefined;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BuyerSafeReceivingRoute {
+  route_id: string;
+  bank_profile_id: string;
+  rail_type: ReceivingRouteRailType;
+  receiver_identifier_type: ReceiverIdentifierType;
+  receiver_identifier_masked: string;
+  route_code: string;
+  display_label: string;
+  enabled: boolean;
+  recommended: boolean;
+  review_policy: ReceivingRouteReviewPolicy;
+  fees_hint?: string | undefined;
+  copy_action_available: boolean;
+  buyer_status_label: ReceiverRouteBuyerStatus;
   official_bank_confirmation: false;
 }
 
@@ -125,6 +188,7 @@ export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
 export interface CheckoutStateInput {
   paymentSessionStatus: PaymentSessionStatus;
   selectedReceiverBankId?: string | null | undefined;
+  selectedReceivingRouteId?: string | null | undefined;
   selectedPayerBankLauncherId?: string | null | undefined;
   paymentInstructionsShownAt?: string | null | undefined;
 }
@@ -161,6 +225,9 @@ export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): Che
       if (!input.selectedReceiverBankId) {
         return 'receiver_bank_selection';
       }
+      if (!input.selectedReceivingRouteId) {
+        return 'receiving_route_selection';
+      }
       if (!input.selectedPayerBankLauncherId) {
         return 'payer_bank_launcher_selection';
       }
@@ -174,6 +241,7 @@ export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): Che
 export function mapCheckoutStateToBuyerSafeStatus(state: CheckoutSessionState): BuyerSafeCheckoutStatus {
   switch (state) {
     case 'receiver_bank_selection':
+    case 'receiving_route_selection':
     case 'payer_bank_launcher_selection':
       return 'not_validated';
     case 'payment_instructions':
@@ -192,6 +260,66 @@ export function mapCheckoutStateToBuyerSafeStatus(state: CheckoutSessionState): 
     case 'rejected':
       return 'not_validated';
   }
+}
+
+export function toBuyerSafeReceivingRoute(route: MerchantReceivingRoute): BuyerSafeReceivingRoute {
+  const value: BuyerSafeReceivingRoute = {
+    route_id: route.route_id,
+    bank_profile_id: route.bank_profile_id,
+    rail_type: route.rail_type,
+    receiver_identifier_type: route.receiver_identifier_type,
+    receiver_identifier_masked: route.receiver_identifier_masked,
+    route_code: route.route_code,
+    display_label: route.display_label,
+    enabled: route.enabled,
+    recommended: route.recommended,
+    review_policy: route.review_policy,
+    copy_action_available: route.enabled,
+    buyer_status_label: route.enabled ? 'review_beta' : 'temporarily_unavailable',
+    official_bank_confirmation: false
+  };
+  assignIfDefined(value, 'fees_hint', route.fees_hint);
+  return value;
+}
+
+export function maskReceiverIdentifier(type: ReceiverIdentifierType, value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (type === 'phone') {
+    const lastTwo = digits.slice(-2).padStart(2, '*');
+    return `+7 *** *** **${lastTwo}`;
+  }
+
+  if (digits.length < 8) {
+    return '****';
+  }
+  return `${digits.slice(0, 4)} **** **** ${digits.slice(-4)}`;
+}
+
+export function generateHumanReadablePaymentReference(input: {
+  merchantId: string;
+  receivingRouteId: string;
+  activeReferences: ReadonlySet<string>;
+  wordSource?: readonly string[] | undefined;
+  seed?: number | undefined;
+}): string {
+  const words = input.wordSource ?? DEFAULT_REFERENCE_WORDS;
+  if (words.length < 2) {
+    throw new Error('At least two reference words are required.');
+  }
+
+  const first = words[indexForSeed(input.seed ?? 0, words.length)];
+  const second = words[indexForSeed((input.seed ?? 0) + 1, words.length)];
+  const twoWord = `${first} ${second}`;
+  if (!input.activeReferences.has(referenceScopeKey(input.merchantId, input.receivingRouteId, twoWord))) {
+    return twoWord;
+  }
+
+  const third = words[indexForSeed((input.seed ?? 0) + 2, words.length)];
+  return `${twoWord} ${third}`;
+}
+
+export function referenceScopeKey(merchantId: string, receivingRouteId: string, reference: string): string {
+  return `${merchantId}:${receivingRouteId}:${reference}`;
 }
 
 export function isCheckoutStatePaymentConfirming(state: CheckoutSessionState): boolean {
@@ -235,6 +363,25 @@ function payerLauncher(
     does_not_confirm_payment: true,
     official_bank_confirmation: false
   };
+}
+
+const DEFAULT_REFERENCE_WORDS = [
+  'TANGO',
+  'ALFA',
+  'NOVA',
+  'KILO',
+  'MANGO',
+  'RIVER',
+  'DELTA',
+  'ORBIT',
+  'LIMA',
+  'VECTOR',
+  'PULSE',
+  'MIR'
+] as const;
+
+function indexForSeed(seed: number, length: number): number {
+  return Math.abs(seed) % length;
 }
 
 export const BankProfileStatuses = [
@@ -300,6 +447,14 @@ export interface PaymentSession {
   referenceHmac?: string;
   status: PaymentSessionStatus;
   receiverGroupId?: string;
+  selectedReceiverBankId?: string;
+  selectedReceiverBankProfileId?: string;
+  selectedReceivingRouteId?: string;
+  selectedPayerBankLauncherId?: string;
+  buyerSenderPhoneHmac?: string;
+  buyerSenderPhoneMasked?: string;
+  paymentInstructionsShownAt?: string;
+  buyerClaimedPaidAt?: string;
   validFrom: string;
   validUntil: string;
   createdAt: string;

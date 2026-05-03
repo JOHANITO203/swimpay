@@ -51,11 +51,19 @@ describe('Sprint 7A PSP-like checkout bank selection flow', () => {
         paymentSessionStatus: 'receiver_arming',
         selectedReceiverBankId: receiverBank?.receiver_bank_id
       })
+    ).toBe('receiving_route_selection');
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        selectedReceiverBankId: receiverBank?.receiver_bank_id,
+        selectedReceivingRouteId: 'route_checkout_phone'
+      })
     ).toBe('payer_bank_launcher_selection');
     expect(
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming',
         selectedReceiverBankId: receiverBank?.receiver_bank_id,
+        selectedReceivingRouteId: 'route_checkout_phone',
         selectedPayerBankLauncherId: payerLauncher?.payer_bank_launcher_id
       })
     ).toBe('payment_instructions');
@@ -64,6 +72,7 @@ describe('Sprint 7A PSP-like checkout bank selection flow', () => {
         mapPaymentSessionToCheckoutState({
           paymentSessionStatus: 'buyer_claimed_paid',
           selectedReceiverBankId: receiverBank?.receiver_bank_id,
+          selectedReceivingRouteId: 'route_checkout_phone',
           selectedPayerBankLauncherId: payerLauncher?.payer_bank_launcher_id,
           paymentInstructionsShownAt: now
         })
@@ -177,7 +186,15 @@ function runtimeSession(): SignalRuntimeSessionCandidate {
     expectedAmountMinor: 13700,
     currency: 'RUB',
     buyerPhoneHmac: 'phone_hmac_checkout',
+    buyerSenderPhoneHmac: 'phone_hmac_checkout',
     referenceHmac: 'ref_hmac_checkout',
+    selectedReceiverBankId: 'sber_ru',
+    selectedReceiverBankProfileId: 'sber_ru',
+    selectedReceivingRouteId: 'route_checkout_phone',
+    receiverRouteCode: 'SBER-PHONE',
+    railType: 'phone_transfer',
+    paymentReference: 'TANGO ALFA',
+    receivingRouteReviewPolicy: 'review_first',
     status: 'awaiting_payment',
     validFrom: '2026-05-03T14:50:00.000Z',
     validUntil: '2026-05-03T15:10:00.000Z',

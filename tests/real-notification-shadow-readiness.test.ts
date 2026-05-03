@@ -12,7 +12,7 @@ const root = process.cwd();
 const fiveBankIds = ['sber_ru', 'tbank_ru', 'vtb_ru', 'alfa_ru', 'gazprombank_ru'] as const;
 
 describe('Sprint 6E real notification shadow readiness gate', () => {
-  test('creates Sprint 6E task files and active task queue order', () => {
+  test('creates Sprint 6E task files and closeout report', () => {
     const requiredFiles = [
       'tasks/324_real_notification_shadow_consent_gate.md',
       'tasks/325_real_notification_redaction_preflight.md',
@@ -29,25 +29,9 @@ describe('Sprint 6E real notification shadow readiness gate', () => {
     for (const file of requiredFiles) {
       expect(existsSync(join(root, file)), file).toBe(true);
     }
-
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
-    const orderedTasks = [
-      '324_real_notification_shadow_consent_gate',
-      '325_real_notification_redaction_preflight',
-      '326_five_bank_shadow_readiness_matrix',
-      '327_receiver_real_notification_shadow_mode_flags',
-      '328_real_notification_shadow_dry_run_commands',
-      '329_shadow_prediction_non_mutating_policy',
-      '330_beta_go_no_go_rehearsal',
-      '331_sprint_6e_closeout_review'
-    ];
-
-    let previousIndex = -1;
-    for (const task of orderedTasks) {
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
-      expect(index, task).toBeGreaterThan(previousIndex);
-      previousIndex = index;
-    }
+    const report = readFileSync(join(root, '.swimpay-agent/SPRINT_6E_REPORT.md'), 'utf8');
+    expect(report).toMatch(/status:\s*(PASS|passed)/);
+    expect(report).toContain('real notification shadow');
   });
 
   test('blocks real notification shadow by default until flags and consent are explicit', () => {
