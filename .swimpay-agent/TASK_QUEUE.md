@@ -19,3 +19,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `186_real_package_admin_review_only` - status: completed - source: `tasks/186_real_package_admin_review_only.md`
 - [x] `187_real_package_evidence_safety_assertions` - status: completed - source: `tasks/187_real_package_evidence_safety_assertions.md`
 - [x] `188_sprint_4q_closeout_review` - status: completed - source: `tasks/188_sprint_4q_closeout_review.md`
+- [x] `189_android_package_visibility_policy` - status: completed - source: `tasks/189_android_package_visibility_policy.md`
+- [x] `190_manifest_queries_for_operator_selected_packages` - status: completed - source: `tasks/190_manifest_queries_for_operator_selected_packages.md`
+- [x] `191_package_not_visible_vs_not_found` - status: completed - source: `tasks/191_package_not_visible_vs_not_found.md`
+- [x] `192_operator_evidence_ux_status_messages` - status: completed - source: `tasks/192_operator_evidence_ux_status_messages.md`
+- [x] `193_package_visibility_real_device_retest` - status: completed - source: `tasks/193_package_visibility_real_device_retest.md`
+- [x] `194_evidence_visibility_safety_tests` - status: completed - source: `tasks/194_evidence_visibility_safety_tests.md`
+- [x] `195_sprint_4r_closeout_review` - status: completed - source: `tasks/195_sprint_4r_closeout_review.md`

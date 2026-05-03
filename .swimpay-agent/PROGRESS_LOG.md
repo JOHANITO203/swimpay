@@ -1398,3 +1398,15 @@ Safety checks:
 - Verified `sber_ru` bank profile stayed `learning`; `bank_app_signatures` did not gain a production-trusted real package signature.
 - Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, Android assembleDebug and Android JVM tests.
 - No real notification, customer data, installed-app enumeration, SMS, scraping, production trust, auto-confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T11:54:16+03:00 - Sprint 4R Android Package Visibility Evidence Hardening
+
+- Created tasks 189 through 195 and updated the task queue.
+- Added `docs/ANDROID_PACKAGE_VISIBILITY_POLICY.md`.
+- Added exact debug/operator manifest visibility for `ru.sberbankmobile`; no main/release query and no broad visibility were added.
+- Added `PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED` lookup status and safe operator messages for package visibility limitations.
+- Kept evidence lookup one explicit package at a time with no installed-app enumeration.
+- Retested real device `R5CWA0FEPZW`: backend health, adb reverse, APK build/install/launch and app-side explicit evidence submission all passed.
+- App-side evidence submission created `878ddd87-2e69-40b1-9cc7-da15d95a6b0b` as `pending_operator_review` with `trusted: false`, `production_trusted_app_metadata: false` and `auto_confirm_enabled: false`.
+- Added Android JVM/static tests for visibility semantics, exact debug query, no `QUERY_ALL_PACKAGES`, no enumeration, no SMS, no Accessibility scraping and no auto-confirm behavior.
+- No real notification, customer data, installed-app enumeration, SMS, scraping, production trust, auto-confirmation, raw phone or raw notification text was used.

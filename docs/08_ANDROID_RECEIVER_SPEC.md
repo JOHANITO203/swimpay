@@ -326,6 +326,8 @@ The Android debug flow submits synthetic PackageManager evidence only after expl
 
 Sprint 4P adds a real package dry-run mechanism for an explicitly provided package name. The debug/operator action `submit_explicit_package_evidence` performs one exact PackageManager lookup and can submit concrete metadata to `/v1/bank-evidence` as `pending_operator_review`. The action does not enumerate installed apps, does not read app internals, does not process notifications and does not create production trust.
 
+Sprint 4R adds Android package visibility handling. Android can hide an installed package from an app unless that package is explicitly visible. The Receiver now distinguishes `PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED` from `PACKAGE_NOT_FOUND` and shows safe operator guidance. The debug/operator manifest contains an exact query for `ru.sberbankmobile` because the operator selected it during dry-run testing. This query is not production trust, does not enable real notification processing and does not enable auto-confirmation. Broad visibility through `QUERY_ALL_PACKAGES` is forbidden.
+
 Sprint 4C adds an emulator doctor and manual smoke procedure. Current environment status:
 
 - `adb` available from the Android SDK.

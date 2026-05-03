@@ -620,4 +620,50 @@ describe('android device-side network smoke wiring', () => {
       previousIndex = index;
     }
   });
+
+  it('hardens Sprint 4R package visibility with exact debug queries and safe operator messages', () => {
+    const mainManifest = readAndroid('app/src/main/AndroidManifest.xml');
+    const debugManifest = readAndroid('app/src/debug/AndroidManifest.xml');
+    const evidence = readAndroid('app/src/main/java/com/swimpay/receiver/BankPackageEvidence.kt');
+    const collector = readAndroid('app/src/main/java/com/swimpay/receiver/PackageManagerBankPackageEvidenceCollector.kt');
+    const controller = readAndroid('app/src/main/java/com/swimpay/receiver/DebugReceiverSmokeController.kt');
+    const policy = readFileSync(join(root, 'docs/ANDROID_PACKAGE_VISIBILITY_POLICY.md'), 'utf8');
+    const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4R_REPORT.md'), 'utf8');
+
+    expect(debugManifest).toContain('<queries>');
+    expect(debugManifest).toContain('<package android:name="ru.sberbankmobile" />');
+    expect(mainManifest).not.toContain('ru.sberbankmobile');
+    expect(`${mainManifest}\n${debugManifest}`).not.toContain('QUERY_ALL_PACKAGES');
+
+    expect(evidence).toContain('PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED');
+    expect(evidence).toContain('Package not visible to the app. Add explicit package visibility or use operator ADB dry-run.');
+    expect(evidence).toContain('Evidence remains pending operator review.');
+    expect(evidence).toContain('Not trusted yet.');
+    expect(evidence).toContain('Auto-confirm remains disabled.');
+    expect(collector).toContain('package_not_visible_or_not_declared');
+    expect(`${collector}\n${controller}`).not.toMatch(/getInstalledPackages|getInstalledApplications|queryIntentActivities/iu);
+    expect(policy).toContain('QUERY_ALL_PACKAGES');
+    expect(policy).toContain('collected evidence starts as `pending_operator_review`');
+    expect(report).toContain('status: PASS');
+    expect(report).toContain('PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED');
+    expect(report).toContain('878ddd87-2e69-40b1-9cc7-da15d95a6b0b');
+    expect(`${debugManifest}\n${evidence}\n${collector}\n${controller}\n${policy}\n${report}`).not.toMatch(/READ_SMS|AccessibilityService|bank_confirmed|official_bank_confirmation = true|auto_confirm_enabled:\s*true/iu);
+
+    const tasks = [
+      '189_android_package_visibility_policy',
+      '190_manifest_queries_for_operator_selected_packages',
+      '191_package_not_visible_vs_not_found',
+      '192_operator_evidence_ux_status_messages',
+      '193_package_visibility_real_device_retest',
+      '194_evidence_visibility_safety_tests',
+      '195_sprint_4r_closeout_review'
+    ];
+    let previousIndex = -1;
+    for (const task of tasks) {
+      expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
+      const index = report.indexOf(task);
+      expect(index, task).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+  });
 });

@@ -56,7 +56,25 @@ class RealBankPackageInputPolicy {
 enum class BankPackageEvidenceLookupStatus {
     FOUND,
     PACKAGE_NOT_FOUND,
+    PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED,
     INVALID_PACKAGE_NAME
+}
+
+object BankPackageEvidenceOperatorMessages {
+    const val PACKAGE_NOT_VISIBLE =
+        "Package not visible to the app. Add explicit package visibility or use operator ADB dry-run."
+    const val PENDING_OPERATOR_REVIEW = "Evidence remains pending operator review."
+    const val NOT_TRUSTED_YET = "Not trusted yet."
+    const val AUTO_CONFIRM_DISABLED = "Auto-confirm remains disabled."
+
+    fun visibilityLimitation(): String {
+        return listOf(
+            PACKAGE_NOT_VISIBLE,
+            PENDING_OPERATOR_REVIEW,
+            NOT_TRUSTED_YET,
+            AUTO_CONFIRM_DISABLED
+        ).joinToString(" ")
+    }
 }
 
 data class ExplicitPackageEvidenceLookupResult(
@@ -81,10 +99,10 @@ class NoopExplicitPackageEvidenceLookup : ExplicitPackageEvidenceLookup {
         capturedAt: String
     ): ExplicitPackageEvidenceLookupResult {
         return ExplicitPackageEvidenceLookupResult(
-            status = BankPackageEvidenceLookupStatus.PACKAGE_NOT_FOUND,
+            status = BankPackageEvidenceLookupStatus.PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED,
             observation = null,
-            safeMessage = "package evidence lookup unavailable; explicit package evidence not submitted",
-            reasonCodes = listOf("package_evidence_lookup_unavailable")
+            safeMessage = BankPackageEvidenceOperatorMessages.visibilityLimitation(),
+            reasonCodes = listOf("package_not_visible_or_not_declared", "package_evidence_lookup_unavailable")
         )
     }
 }

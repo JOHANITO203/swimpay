@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries>
+        <!-- Debug/operator dry-run visibility for one explicitly selected package. This is not trust. -->
+        <package android:name="ru.sberbankmobile" />
+    </queries>
+
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application

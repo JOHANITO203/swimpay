@@ -244,3 +244,35 @@ Safety:
 - No raw notification text stored/uploaded.
 - Production trust was not requested or approved.
 - Review-only evidence must not be treated as production trust.
+
+## Sprint 4R Package Visibility Evidence Retest
+
+- generated_at: 2026-05-03T11:54:16+03:00
+- status: PASS
+- Device serial: `R5CWA0FEPZW`
+- Device model: Samsung `SM_S916B`
+- Backend health: PASS at `http://localhost:8080/api-health`
+- ADB reverse: `tcp:8080 tcp:8080` PASS
+- APK build/install/launch: PASS
+- Debug/operator manifest query: exact package `ru.sberbankmobile`
+- App-side explicit PackageManager evidence action: PASS
+- Evidence id: `878ddd87-2e69-40b1-9cc7-da15d95a6b0b`
+- Evidence status: `pending_operator_review`
+- Trusted: `false`
+- Production trusted app metadata: `false`
+- Auto-confirm enabled: `false`
+
+Safety:
+
+- No real bank notification used.
+- No customer data used.
+- No installed-app enumeration.
+- No `QUERY_ALL_PACKAGES`.
+- No SMS reading.
+- No bank app scraping.
+- No Accessibility scraping.
+- No Android payment confirmation.
+- No Android auto-confirmation.
+- No raw phone stored/uploaded.
+- No raw notification text stored/uploaded.
+- Package visibility does not imply trust.

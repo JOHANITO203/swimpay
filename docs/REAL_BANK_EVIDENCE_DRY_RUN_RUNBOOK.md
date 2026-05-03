@@ -46,7 +46,8 @@ bank_profile_id=<target bank profile, defaults to sber_ru in debug>
 The Android Receiver must:
 
 - call PackageManager for that exact package only;
-- return `package_not_found` if the package is absent;
+- return `package_not_found` if the package is known absent;
+- return `PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED` if Android package visibility prevents the app from seeing the package;
 - collect `package_name`, `cert_sha256`, `app_version` if available and `install_source` if available;
 - set evidence source to `android_packagemanager` on backend submission;
 - submit only after explicit operator/user action.
@@ -102,6 +103,13 @@ If the package is absent, expected result:
 - no evidence submitted;
 - no trust evidence created.
 
+If the package is visible through exact ADB lookup but not visible to the app, expected result:
+
+- `PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED`;
+- no trust evidence created by the app-side lookup;
+- operator may add an exact debug/operator `<queries>` entry or use the exact ADB dry-run fallback;
+- no installed-app enumeration and no `QUERY_ALL_PACKAGES`.
+
 ## Admin Review
 
 Use local dev admin auth only in local development:
@@ -156,3 +164,11 @@ Production trust still means verified app metadata only. It is not a payment con
 - no automatic trust;
 - no automatic auto-confirmation;
 - no official bank confirmation wording.
+
+## Android Package Visibility
+
+Android may hide an installed package from SwimPay Receiver unless the package is explicitly visible to the app. During Sprint 4R, `ru.sberbankmobile` was added to the debug/operator manifest as an exact `<queries>` package entry because the operator selected that one package for dry-run evidence collection.
+
+This visibility entry is not trust evidence. It does not enable notification processing, production trust or auto-confirmation.
+
+Never use `QUERY_ALL_PACKAGES`, wildcard matching or installed-app enumeration for evidence discovery.

@@ -69,6 +69,30 @@ class BankPackageEvidenceTest {
     }
 
     @Test
+    fun explicitPackageLookupSeparatesPackageVisibilityFromPackageAbsence() {
+        val lookup = FakeExplicitPackageEvidenceLookup(
+            observations = emptyMap(),
+            notVisiblePackages = setOf("ru.sberbankmobile")
+        )
+
+        val notVisible = lookup.lookupExplicitPackageEvidence(
+            bankProfileId = "sber_ru",
+            packageName = "ru.sberbankmobile",
+            capturedAt = "2026-05-03T12:00:00.000Z"
+        )
+
+        assertEquals(BankPackageEvidenceLookupStatus.PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED, notVisible.status)
+        assertEquals(null, notVisible.observation)
+        assertTrue(notVisible.safeMessage.contains("Package not visible to the app"))
+        assertTrue(notVisible.safeMessage.contains("operator ADB dry-run"))
+        assertTrue(notVisible.safeMessage.contains("Not trusted yet"))
+        assertTrue(notVisible.safeMessage.contains("Auto-confirm remains disabled"))
+        assertTrue(notVisible.reasonCodes.contains("package_not_visible_or_not_declared"))
+        assertFalse(notVisible.safeMessage.contains("official_bank_confirmation", ignoreCase = true))
+        assertFalse(notVisible.safeMessage.contains("bank_confirmed", ignoreCase = true))
+    }
+
+    @Test
     fun toVerifyEvidenceRemainsReviewOnlyAndUntrusted() {
         val evidence = BankPackageEvidenceObservation(
             bankProfileId = "sber_ru",
@@ -155,7 +179,8 @@ class BankPackageEvidenceTest {
 }
 
 private class FakeExplicitPackageEvidenceLookup(
-    private val observations: Map<String, BankPackageEvidenceObservation>
+    private val observations: Map<String, BankPackageEvidenceObservation>,
+    private val notVisiblePackages: Set<String> = emptySet()
 ) : ExplicitPackageEvidenceLookup {
     override fun lookupExplicitPackageEvidence(
         bankProfileId: String,
@@ -172,7 +197,14 @@ private class FakeExplicitPackageEvidenceLookup(
             )
         }
         val observation = observations[packageName]
-        return if (observation == null) {
+        return if (packageName in notVisiblePackages) {
+            ExplicitPackageEvidenceLookupResult(
+                status = BankPackageEvidenceLookupStatus.PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED,
+                observation = null,
+                safeMessage = "Package not visible to the app. Add explicit package visibility or use operator ADB dry-run. Evidence remains pending operator review. Not trusted yet. Auto-confirm remains disabled.",
+                reasonCodes = listOf("package_not_visible_or_not_declared")
+            )
+        } else if (observation == null) {
             ExplicitPackageEvidenceLookupResult(
                 status = BankPackageEvidenceLookupStatus.PACKAGE_NOT_FOUND,
                 observation = null,

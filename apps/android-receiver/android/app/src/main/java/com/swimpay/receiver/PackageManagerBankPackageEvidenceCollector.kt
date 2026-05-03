@@ -67,10 +67,10 @@ class PackageManagerBankPackageEvidenceCollector(
             )
         } catch (_: PackageManager.NameNotFoundException) {
             ExplicitPackageEvidenceLookupResult(
-                status = BankPackageEvidenceLookupStatus.PACKAGE_NOT_FOUND,
+                status = BankPackageEvidenceLookupStatus.PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED,
                 observation = null,
-                safeMessage = "package_not_found; no trust evidence created",
-                reasonCodes = listOf("package_not_found")
+                safeMessage = BankPackageEvidenceOperatorMessages.visibilityLimitation(),
+                reasonCodes = listOf("package_not_visible_or_not_declared")
             )
         }
     }
