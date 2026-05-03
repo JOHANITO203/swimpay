@@ -33,17 +33,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Phase 4P real bank evidence dry-run tasks in the approved order', () => {
+  test('task queue lists Sprint 4S evidence lifecycle tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '176_real_bank_package_input_policy',
-      '177_android_explicit_package_evidence_lookup',
-      '178_real_bank_evidence_submit_dry_run',
-      '179_admin_real_evidence_review_only_dry_run',
-      '180_evidence_collection_privacy_and_safety_checks',
-      '181_real_bank_evidence_dry_run_runbook',
-      '182_sprint_4p_closeout_review'
+      '196_evidence_operator_review_dashboard_model',
+      '197_evidence_duplicate_and_latest_status_model',
+      '198_evidence_deprecation_and_cleanup_policy',
+      '199_evidence_review_action_reasons',
+      '200_evidence_admin_filtering_and_search',
+      '201_evidence_lifecycle_tests',
+      '202_sprint_4s_closeout_review'
     ];
 
     let previousIndex = -1;

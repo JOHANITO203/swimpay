@@ -84,6 +84,26 @@ Invoke-WebRequest -UseBasicParsing http://localhost:8080/v1/admin/bank-evidence 
 Invoke-WebRequest -UseBasicParsing http://localhost:8080/v1/admin/bank-evidence/<evidence-id> -Headers $headers
 ```
 
+The list endpoint supports exact metadata filters for operator review:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing `
+  "http://localhost:8080/v1/admin/bank-evidence?status=pending_operator_review&bank_profile_id=sber_ru&package_name=ru.sberbankmobile&source=android_packagemanager" `
+  -Headers $headers
+```
+
+Supported filters:
+
+- `status`
+- `bank_profile_id`
+- `package_name`
+- `source`
+- `submitted_after`
+- `submitted_before`
+- `limit`
+
+Admin review responses expose `submitted_at`, `production_trust_status`, masked certificate hash, review metadata and explicit safety flags. They must keep `trusted: false` and `auto_confirm_enabled: false` unless a separate future policy changes those fields.
+
 Approve review-only:
 
 ```powershell
@@ -92,7 +112,7 @@ Invoke-WebRequest -UseBasicParsing `
   -Headers $headers `
   -Method POST `
   -ContentType "application/json" `
-  -Body '{"reason":"operator reviewed PackageManager evidence; review-only only"}'
+  -Body '{"reason_code":"package_verified_for_review_only","notes":"operator reviewed PackageManager evidence; review-only only"}'
 ```
 
 Reject evidence:
@@ -103,17 +123,35 @@ Invoke-WebRequest -UseBasicParsing `
   -Headers $headers `
   -Method POST `
   -ContentType "application/json" `
-  -Body '{"reason":"operator rejected evidence"}'
+  -Body '{"reason_code":"insufficient_evidence","notes":"operator rejected evidence"}'
 ```
 
-Common rejection reasons:
+Deprecate stale or superseded evidence without deleting it:
 
-- `package_mismatch`
-- `certificate_mismatch`
-- `source_not_operator_controlled`
-- `synthetic_only`
+```powershell
+Invoke-WebRequest -UseBasicParsing `
+  http://localhost:8080/v1/admin/bank-evidence/<evidence-id>/deprecate `
+  -Headers $headers `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"reason_code":"stale_evidence","notes":"superseded by a newer cert observation"}'
+```
+
+Allowed review reason codes:
+
+- `package_verified_for_review_only`
+- `cert_matches_operator_expectation`
+- `package_not_expected`
+- `cert_changed`
 - `stale_evidence`
+- `duplicate_evidence`
+- `insufficient_evidence`
+- `synthetic_test_only`
 - `other`
+
+Optional `notes` are redacted before storage. Legacy `reason` is still accepted as `other` for local compatibility, but new operator tooling should send `reason_code`.
+
+Exact duplicate evidence is idempotent: the backend returns the existing evidence with `duplicate: true` and does not create another audit event. A changed certificate for the same package creates a new `pending_operator_review` row.
 
 ## Audit Expectations
 
@@ -123,6 +161,7 @@ Evidence review must write redacted audit events:
 - `bank_evidence.reviewed`
 - `bank_evidence.approved_review_only`
 - `bank_evidence.rejected`
+- `bank_evidence.deprecated`
 
 Query:
 
@@ -185,21 +224,21 @@ Invoke-WebRequest -UseBasicParsing `
   -Headers $headers `
   -Method POST `
   -ContentType "application/json" `
-  -Body '{"reason":"request production metadata trust after review-only approval"}'
+  -Body '{"reason_code":"cert_matches_operator_expectation","notes":"request production metadata trust after review-only approval"}'
 
 Invoke-WebRequest -UseBasicParsing `
   http://localhost:8080/v1/admin/bank-evidence/<evidence-id>/approve-production-trust `
   -Headers $headers `
   -Method POST `
   -ContentType "application/json" `
-  -Body '{"reason":"second operator approved package/cert metadata"}'
+  -Body '{"reason_code":"cert_matches_operator_expectation","notes":"second operator approved package/cert metadata"}'
 
 Invoke-WebRequest -UseBasicParsing `
   http://localhost:8080/v1/admin/bank-evidence/<evidence-id>/revoke-production-trust `
   -Headers $headers `
   -Method POST `
   -ContentType "application/json" `
-  -Body '{"reason":"package/cert metadata drifted or was superseded"}'
+  -Body '{"reason_code":"cert_changed","notes":"package/cert metadata drifted or was superseded"}'
 ```
 
 Guardrails:

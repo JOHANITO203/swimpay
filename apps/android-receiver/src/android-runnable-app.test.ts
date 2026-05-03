@@ -588,7 +588,7 @@ describe('android device-side network smoke wiring', () => {
     const controller = readAndroid('app/src/main/java/com/swimpay/receiver/DebugReceiverSmokeController.kt');
     const receiver = readAndroid('app/src/debug/java/com/swimpay/receiver/DebugSmokeBroadcastReceiver.kt');
     const runbook = readFileSync(join(root, 'docs/REAL_BANK_EVIDENCE_DRY_RUN_RUNBOOK.md'), 'utf8');
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
+    const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4P_REPORT.md'), 'utf8');
 
     expect(evidence).toContain('RealBankPackageInputPolicy');
     expect(evidence).toContain('ExplicitPackageEvidenceLookup');
@@ -615,7 +615,7 @@ describe('android device-side network smoke wiring', () => {
     let previousIndex = -1;
     for (const task of tasks) {
       expect(existsSync(join(root, 'tasks', `${task}.md`)), task).toBe(true);
-      const index = queue.indexOf(task);
+      const index = report.indexOf(task);
       expect(index, task).toBeGreaterThan(previousIndex);
       previousIndex = index;
     }

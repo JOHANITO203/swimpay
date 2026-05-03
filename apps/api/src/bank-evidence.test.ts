@@ -47,7 +47,7 @@ describe('bank package evidence workflow', () => {
     expect(response.body).not.toContain('raw notification');
   });
 
-  it('rejects duplicate evidence clearly and does not duplicate audit effects', async () => {
+  it('handles duplicate evidence idempotently without duplicate audit effects', async () => {
     const repository = buildEvidenceRepository();
     const server = buildTestServer(repository);
 
@@ -64,10 +64,53 @@ describe('bank package evidence workflow', () => {
       payload: evidencePayload()
     });
 
-    expect(duplicate.statusCode).toBe(409);
-    expect(duplicate.json().error.code).toBe('duplicate_bank_evidence');
+    expect(duplicate.statusCode).toBe(200);
+    expect(duplicate.json()).toMatchObject({
+      evidence_id: 'bev_01',
+      status: 'pending_operator_review',
+      duplicate: true,
+      duplicate_of: 'bev_01',
+      trusted: false,
+      auto_confirm_enabled: false
+    });
     expect(repository.evidence).toHaveLength(1);
     expect(repository.auditEvents.filter((event) => event.eventType === BankEvidenceAuditEventTypes.SUBMITTED)).toHaveLength(1);
+  });
+
+  it('creates new review-required evidence when the package certificate changes', async () => {
+    const repository = buildEvidenceRepository();
+    const server = buildTestServer(repository);
+
+    const first = await server.inject({
+      method: 'POST',
+      url: '/v1/bank-evidence',
+      headers: merchantHeaders(),
+      payload: evidencePayload()
+    });
+    const changedCertificate = await server.inject({
+      method: 'POST',
+      url: '/v1/bank-evidence',
+      headers: merchantHeaders(),
+      payload: {
+        ...evidencePayload(),
+        cert_sha256: 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789'
+      }
+    });
+
+    expect(first.statusCode).toBe(201);
+    expect(changedCertificate.statusCode).toBe(201);
+    expect(changedCertificate.json()).toMatchObject({
+      evidence_id: 'bev_02',
+      status: 'pending_operator_review',
+      next_action: 'operator_review_required',
+      trusted: false,
+      auto_confirm_enabled: false
+    });
+    expect(repository.evidence).toHaveLength(2);
+    expect(repository.evidence.map((evidence) => evidence.certSha256)).toEqual([
+      'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
+      certHash
+    ]);
   });
 
   it('lists and reads evidence through redacted admin APIs', async () => {
@@ -92,6 +135,8 @@ describe('bank package evidence workflow', () => {
       evidence_id: 'bev_existing',
       status: 'pending_operator_review',
       cert_sha256_masked: '012345...abcdef',
+      submitted_at: '2026-05-03T01:58:00.000Z',
+      production_trust_status: 'not_requested',
       trusted: false,
       auto_confirm_enabled: false
     });
@@ -100,7 +145,9 @@ describe('bank package evidence workflow', () => {
       evidence_id: 'bev_existing',
       bank_profile_id: 'sberbank_ru',
       status: 'pending_operator_review',
-      cert_sha256_masked: '012345...abcdef'
+      cert_sha256_masked: '012345...abcdef',
+      submitted_at: '2026-05-03T01:58:00.000Z',
+      production_trust_status: 'not_requested'
     });
     expect(`${list.body}\n${detail.body}`).not.toContain(certHash);
     expect(`${list.body}\n${detail.body}`).not.toContain('+79991234567');
@@ -118,7 +165,8 @@ describe('bank package evidence workflow', () => {
       url: '/v1/admin/bank-evidence/bev_existing/approve-review-only',
       headers: adminHeaders(),
       payload: {
-        reason: 'operator reviewed PackageManager evidence for +7 999 123-45-67 reference 123456789012'
+        reason_code: 'package_verified_for_review_only',
+        notes: 'operator reviewed PackageManager evidence for +7 999 123-45-67 reference 123456789012'
       }
     });
 
@@ -133,7 +181,7 @@ describe('bank package evidence workflow', () => {
     expect(repository.evidence[0]).toMatchObject({
       status: 'approved_for_review_only',
       reviewedBy: 'ops_01',
-      reviewReason: 'operator reviewed PackageManager evidence for <PHONE> reference <REFERENCE>'
+      reviewReason: 'package_verified_for_review_only: operator reviewed PackageManager evidence for <PHONE> reference <REFERENCE>'
     });
     expect(repository.verifiedBankAppProfiles.has('sberbank_ru')).toBe(false);
     expect(repository.auditEvents[0]).toMatchObject({
@@ -143,7 +191,8 @@ describe('bank package evidence workflow', () => {
       payloadRedacted: {
         status: 'approved_for_review_only',
         trusted: false,
-        auto_confirm_enabled: false
+        auto_confirm_enabled: false,
+        reason: 'package_verified_for_review_only: operator reviewed PackageManager evidence for <PHONE> reference <REFERENCE>'
       }
     });
   });
@@ -159,7 +208,8 @@ describe('bank package evidence workflow', () => {
       url: '/v1/admin/bank-evidence/bev_existing/reject',
       headers: adminHeaders(),
       payload: {
-        reason: 'operator saw mismatch around +7 999 123-45-67'
+        reason_code: 'package_not_expected',
+        notes: 'operator saw mismatch around +7 999 123-45-67'
       }
     });
 
@@ -172,12 +222,12 @@ describe('bank package evidence workflow', () => {
     });
     expect(repository.evidence[0]).toMatchObject({
       status: 'rejected',
-      reviewReason: 'operator saw mismatch around <PHONE>'
+      reviewReason: 'package_not_expected: operator saw mismatch around <PHONE>'
     });
     expect(repository.auditEvents[0]).toMatchObject({
       eventType: BankEvidenceAuditEventTypes.REJECTED,
       payloadRedacted: {
-        reason: 'operator saw mismatch around <PHONE>'
+        reason: 'package_not_expected: operator saw mismatch around <PHONE>'
       }
     });
     expect(response.body).not.toContain('+79991234567');
@@ -198,7 +248,7 @@ describe('bank package evidence workflow', () => {
       method: 'POST',
       url: '/v1/admin/bank-evidence/bev_existing/approve-review-only',
       headers: adminHeaders(),
-      payload: { reason: 'read only cannot approve' }
+      payload: { reason_code: 'package_verified_for_review_only' }
     });
 
     expect(view.statusCode).toBe(200);
@@ -225,7 +275,7 @@ describe('bank package evidence workflow', () => {
       method: 'POST',
       url: '/v1/admin/bank-evidence/bev_01/approve-review-only',
       headers: adminHeaders(),
-      payload: { reason: 'synthetic fixture review' }
+      payload: { reason_code: 'synthetic_test_only' }
     });
 
     expect(submitted.statusCode).toBe(201);
@@ -422,6 +472,133 @@ describe('bank package evidence workflow', () => {
     expect(repository.evidence.find((evidence) => evidence.evidenceId === 'bev_existing')?.status).toBe('approved_for_review_only');
     expect(repository.evidence.find((evidence) => evidence.evidenceId === 'bev_requested')?.status).toBe('production_trust_requested');
   });
+
+  it('validates evidence review reason codes before storing operator decisions', async () => {
+    const repository = buildEvidenceRepository({
+      evidence: [pendingEvidence()]
+    });
+    const server = buildTestServer(repository, { role: 'admin' });
+
+    const invalid = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_existing/reject',
+      headers: adminHeaders(),
+      payload: {
+        reason_code: 'mark_trusted_now',
+        notes: 'unsafe reason must be rejected'
+      }
+    });
+    const valid = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_existing/reject',
+      headers: adminHeaders(),
+      payload: {
+        reason_code: 'insufficient_evidence',
+        notes: 'operator note with +7 999 123-45-67'
+      }
+    });
+
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('invalid_request');
+    expect(invalid.json().error.details.allowed_reason_codes).toContain('insufficient_evidence');
+    expect(valid.statusCode).toBe(200);
+    expect(repository.evidence[0]?.reviewReason).toBe('insufficient_evidence: operator note with <PHONE>');
+  });
+
+  it('deprecates evidence without deleting it, enabling trust or auto-confirm', async () => {
+    const repository = buildEvidenceRepository({
+      evidence: [reviewOnlyEvidence()]
+    });
+    const server = buildTestServer(repository, { role: 'admin' });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_existing/deprecate',
+      headers: adminHeaders(),
+      payload: {
+        reason_code: 'stale_evidence',
+        notes: 'operator observed newer package evidence'
+      }
+    });
+    const productionTrustRequest = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_existing/request-production-trust',
+      headers: adminHeaders(),
+      payload: { reason_code: 'cert_matches_operator_expectation' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      evidence_id: 'bev_existing',
+      status: 'deprecated',
+      trusted: false,
+      auto_confirm_enabled: false
+    });
+    expect(repository.evidence).toHaveLength(1);
+    expect(repository.evidence[0]).toMatchObject({
+      status: 'deprecated',
+      reviewedBy: 'ops_01',
+      reviewReason: 'stale_evidence: operator observed newer package evidence'
+    });
+    expect(repository.auditEvents[0]).toMatchObject({
+      eventType: BankEvidenceAuditEventTypes.DEPRECATED,
+      payloadRedacted: {
+        status: 'deprecated',
+        trusted: false,
+        auto_confirm_enabled: false
+      }
+    });
+    expect(productionTrustRequest.statusCode).toBe(409);
+    expect(productionTrustRequest.json().error.code).toBe('bank_evidence_not_review_only');
+    expect(repository.verifiedBankAppProfiles.has('sberbank_ru')).toBe(false);
+  });
+
+  it('filters admin evidence review lists without exposing raw PII', async () => {
+    const repository = buildEvidenceRepository({
+      bankProfileIds: ['sberbank_ru', 'tbank_ru'],
+      evidence: [
+        pendingEvidence({
+          evidenceId: 'bev_pending_sber',
+          bankProfileId: 'sberbank_ru',
+          packageName: 'ru.sberbankmobile',
+          createdAt: '2026-05-03T02:00:00.000Z'
+        }),
+        reviewOnlyEvidence({
+          evidenceId: 'bev_review_tbank',
+          bankProfileId: 'tbank_ru',
+          packageName: 'com.idamob.tinkoff.android',
+          createdAt: '2026-05-03T02:05:00.000Z'
+        }),
+        pendingEvidence({
+          evidenceId: 'bev_pending_old',
+          bankProfileId: 'sberbank_ru',
+          packageName: 'ru.sberbankmobile',
+          createdAt: '2026-05-02T23:59:00.000Z'
+        })
+      ]
+    });
+    const server = buildTestServer(repository, { role: 'operator' });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/admin/bank-evidence?status=pending_operator_review&bank_profile_id=sberbank_ru&package_name=ru.sberbankmobile&source=android_packagemanager&submitted_after=2026-05-03T00%3A00%3A00.000Z',
+      headers: adminHeaders()
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().bank_evidence).toHaveLength(1);
+    expect(response.json().bank_evidence[0]).toMatchObject({
+      evidence_id: 'bev_pending_sber',
+      bank_profile_id: 'sberbank_ru',
+      package_name: 'ru.sberbankmobile',
+      status: 'pending_operator_review',
+      trusted: false,
+      auto_confirm_enabled: false
+    });
+    expect(response.body).not.toContain(certHash);
+    expect(response.body).not.toContain('+79991234567');
+    expect(response.body).not.toContain('raw notification');
+  });
 });
 
 function buildTestServer(
@@ -431,6 +608,7 @@ function buildTestServer(
     operatorId?: string | undefined;
   } = {}
 ) {
+  let nextEvidenceId = 1;
   return buildApiServer({
     environment: 'test',
     healthChecks: {
@@ -452,17 +630,20 @@ function buildTestServer(
       auditEventId: () => 'aud_bank_evidence_01',
       referenceCode: () => 'SWP-EVIDENCE'
     },
-    bankEvidenceIdGenerator: () => 'bev_01',
+    bankEvidenceIdGenerator: () => `bev_${String(nextEvidenceId++).padStart(2, '0')}`,
     clock: () => new Date('2026-05-03T02:00:00.000Z')
   });
 }
 
-function buildEvidenceRepository(overrides: { evidence?: BankEvidenceRecord[] | undefined } = {}) {
+function buildEvidenceRepository(
+  overrides: { evidence?: BankEvidenceRecord[] | undefined; bankProfileIds?: string[] | undefined } = {}
+) {
+  let nextEvidenceId = 1;
   return new InMemoryBankEvidenceRepository({
     devices: [{ merchantId: 'mch_01', deviceId: 'dev_01' }],
-    bankProfileIds: ['sberbank_ru'],
+    bankProfileIds: overrides.bankProfileIds ?? ['sberbank_ru'],
     evidence: overrides.evidence ?? [],
-    evidenceId: () => 'bev_01'
+    evidenceId: () => `bev_${String(nextEvidenceId++).padStart(2, '0')}`
   });
 }
 
@@ -478,7 +659,7 @@ function evidencePayload() {
   };
 }
 
-function pendingEvidence(): BankEvidenceRecord {
+function pendingEvidence(overrides: Partial<BankEvidenceRecord> = {}): BankEvidenceRecord {
   return {
     evidenceId: 'bev_existing',
     merchantId: 'mch_01',
@@ -490,7 +671,8 @@ function pendingEvidence(): BankEvidenceRecord {
     installSource: 'debug_manual_entry',
     source: 'android_packagemanager',
     status: 'pending_operator_review',
-    createdAt: '2026-05-03T01:58:00.000Z'
+    createdAt: '2026-05-03T01:58:00.000Z',
+    ...overrides
   };
 }
 

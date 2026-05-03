@@ -211,6 +211,10 @@ production_trust_requested, production_trust_approved, production_trust_revoked
 
 Evidence rows are review workflow material. `approved_for_review_only` does not establish production trust and does not enable auto-confirmation. `production_trust_approved` means only that the package/certificate metadata has passed the explicit human/operator production trust policy; it still does not enable auto-confirmation by itself.
 
+Exact duplicate evidence for the same merchant, receiver device, bank profile, package name, certificate hash and source is idempotent. A changed certificate for the same package creates a new `pending_operator_review` row. `deprecated` is non-destructive and keeps the row available for audit; deprecated evidence cannot request production trust.
+
+`review_reason` should be built from an allowed reason code plus optional redacted notes. Allowed codes are `package_verified_for_review_only`, `cert_matches_operator_expectation`, `package_not_expected`, `cert_changed`, `stale_evidence`, `duplicate_evidence`, `insufficient_evidence`, `synthetic_test_only` and `other`.
+
 ### `bank_templates`
 
 ```sql

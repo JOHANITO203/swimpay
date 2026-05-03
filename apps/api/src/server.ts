@@ -79,12 +79,15 @@ import {
 } from './admin.js';
 import {
   PgBankEvidenceRepository,
+  BankEvidenceSources,
+  BankEvidenceStatuses,
   toBankEvidenceProductionTrustResponse,
   toBankEvidenceResponse,
   toBankEvidenceReviewResponse,
   toBankEvidenceSubmitResponse,
   validateBankEvidenceReviewBody,
   validateBankEvidenceSubmitBody,
+  type BankEvidenceListFilters,
   type BankEvidenceRepository
 } from './bank-evidence.js';
 
@@ -658,16 +661,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       case 'stored':
         return reply.status(201).send(toBankEvidenceSubmitResponse(result.evidence));
       case 'duplicate':
-        return reply.status(409).send({
-          error: {
-            code: 'duplicate_bank_evidence',
-            message: 'Bank package evidence was already submitted for this device/profile/package/certificate.',
-            details: {
-              evidence_id: result.evidence.evidenceId,
-              status: result.evidence.status
-            }
-          }
-        });
+        return reply.status(200).send(toBankEvidenceSubmitResponse(result.evidence, { duplicate: true }));
       case 'device_not_found':
         return reply.status(404).send({
           error: {
@@ -941,8 +935,19 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       });
     }
 
-    const query = request.query as { limit?: string };
-    const evidence = await bankEvidenceRepository.listEvidence(parseAdminLimit(query.limit));
+    const query = request.query as {
+      limit?: string;
+      status?: string;
+      bank_profile_id?: string;
+      package_name?: string;
+      source?: string;
+      submitted_after?: string;
+      submitted_before?: string;
+    };
+    const evidence = await bankEvidenceRepository.listEvidence({
+      limit: parseAdminLimit(query.limit),
+      filters: parseBankEvidenceListFilters(query)
+    });
     return reply.status(200).send(toAdminListResponse('bank_evidence', evidence.map(toBankEvidenceResponse)));
   });
 
@@ -1007,6 +1012,19 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       adminAuth,
       requiredPermission: OperatorPermissions.DEGRADE_BANK_TEMPLATES,
       action: 'reject',
+      auditEventId: idGenerator.auditEventId(),
+      occurredAt: clock().toISOString()
+    });
+  });
+
+  server.post('/v1/admin/bank-evidence/:id/deprecate', async (request, reply) => {
+    return handleBankEvidenceReviewAction({
+      request,
+      reply,
+      bankEvidenceRepository,
+      adminAuth,
+      requiredPermission: OperatorPermissions.DEGRADE_BANK_TEMPLATES,
+      action: 'deprecate',
       auditEventId: idGenerator.auditEventId(),
       occurredAt: clock().toISOString()
     });
@@ -1372,6 +1390,36 @@ function createDefaultBankEvidenceRepository(env: NodeJS.ProcessEnv): BankEviden
   return new PgBankEvidenceRepository(databaseUrl);
 }
 
+function parseBankEvidenceListFilters(query: {
+  status?: string;
+  bank_profile_id?: string;
+  package_name?: string;
+  source?: string;
+  submitted_after?: string;
+  submitted_before?: string;
+}): BankEvidenceListFilters {
+  const filters: BankEvidenceListFilters = {};
+  if (query.status && Object.values(BankEvidenceStatuses).includes(query.status as (typeof BankEvidenceStatuses)[keyof typeof BankEvidenceStatuses])) {
+    filters.status = query.status as BankEvidenceListFilters['status'];
+  }
+  if (query.bank_profile_id) {
+    filters.bankProfileId = query.bank_profile_id;
+  }
+  if (query.package_name) {
+    filters.packageName = query.package_name;
+  }
+  if (query.source && Object.values(BankEvidenceSources).includes(query.source as (typeof BankEvidenceSources)[keyof typeof BankEvidenceSources])) {
+    filters.source = query.source as BankEvidenceListFilters['source'];
+  }
+  if (query.submitted_after) {
+    filters.submittedAfter = query.submitted_after;
+  }
+  if (query.submitted_before) {
+    filters.submittedBefore = query.submitted_before;
+  }
+  return filters;
+}
+
 function createDefaultEventPublisher(env: NodeJS.ProcessEnv): InternalEventPublisher {
   if (!env.NATS_URL) {
     return new NoopEventPublisher();
@@ -1579,7 +1627,7 @@ async function handleBankEvidenceReviewAction(params: {
   bankEvidenceRepository: BankEvidenceRepository | null;
   adminAuth: OperatorAuthConfig;
   requiredPermission: OperatorPermission;
-  action: 'approve_review_only' | 'reject';
+  action: 'approve_review_only' | 'reject' | 'deprecate';
   auditEventId: string;
   occurredAt: string;
 }) {

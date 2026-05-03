@@ -1410,3 +1410,18 @@ Safety checks:
 - App-side evidence submission created `878ddd87-2e69-40b1-9cc7-da15d95a6b0b` as `pending_operator_review` with `trusted: false`, `production_trusted_app_metadata: false` and `auto_confirm_enabled: false`.
 - Added Android JVM/static tests for visibility semantics, exact debug query, no `QUERY_ALL_PACKAGES`, no enumeration, no SMS, no Accessibility scraping and no auto-confirm behavior.
 - No real notification, customer data, installed-app enumeration, SMS, scraping, production trust, auto-confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T12:20:25+03:00 - Sprint 4S Operator Review UX and Evidence Lifecycle Hardening
+
+- Created tasks 196 through 202 and updated the task queue to Sprint 4S.
+- Added operator review dashboard response fields: `submitted_at` and `production_trust_status`.
+- Changed exact duplicate evidence submission to idempotent success with `duplicate: true` and no duplicate audit event.
+- Kept changed package certificate submissions as new `pending_operator_review` evidence rows.
+- Added explicit evidence review reason codes with optional redacted notes; invalid reason codes are rejected.
+- Added `POST /v1/admin/bank-evidence/:id/deprecate`, redacted `bank_evidence.deprecated` audit event and non-destructive deprecated lifecycle behavior.
+- Added metadata-only admin evidence filters for status, bank profile, package name, source and submitted date range.
+- Updated bank evidence runbook, production trust policy, database schema notes, security/privacy notes and Android Receiver contract docs.
+- Added backend/API and orchestration tests for duplicate handling, changed certs, dashboard DTOs, reason validation, deprecation, filtering and Sprint 4S task queue ordering.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps and API health.
+- Android Gradle validation was not run because Sprint 4S did not touch Android code.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust, auto-confirmation, raw phone or raw notification text was used.

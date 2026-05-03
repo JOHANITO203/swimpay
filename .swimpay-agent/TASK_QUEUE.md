@@ -6,23 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `176_real_bank_package_input_policy` - status: completed - source: `tasks/176_real_bank_package_input_policy.md`
-- [x] `177_android_explicit_package_evidence_lookup` - status: completed - source: `tasks/177_android_explicit_package_evidence_lookup.md`
-- [x] `178_real_bank_evidence_submit_dry_run` - status: completed - source: `tasks/178_real_bank_evidence_submit_dry_run.md`
-- [x] `179_admin_real_evidence_review_only_dry_run` - status: completed - source: `tasks/179_admin_real_evidence_review_only_dry_run.md`
-- [x] `180_evidence_collection_privacy_and_safety_checks` - status: completed - source: `tasks/180_evidence_collection_privacy_and_safety_checks.md`
-- [x] `181_real_bank_evidence_dry_run_runbook` - status: completed - source: `tasks/181_real_bank_evidence_dry_run_runbook.md`
-- [x] `182_sprint_4p_closeout_review` - status: completed - source: `tasks/182_sprint_4p_closeout_review.md`
-- [x] `183_operator_package_evidence_input_record` - status: completed - source: `tasks/183_operator_package_evidence_input_record.md`
-- [x] `184_real_package_manager_lookup_one_package` - status: completed - source: `tasks/184_real_package_manager_lookup_one_package.md`
-- [x] `185_real_package_evidence_submit_to_backend` - status: completed - source: `tasks/185_real_package_evidence_submit_to_backend.md`
-- [x] `186_real_package_admin_review_only` - status: completed - source: `tasks/186_real_package_admin_review_only.md`
-- [x] `187_real_package_evidence_safety_assertions` - status: completed - source: `tasks/187_real_package_evidence_safety_assertions.md`
-- [x] `188_sprint_4q_closeout_review` - status: completed - source: `tasks/188_sprint_4q_closeout_review.md`
-- [x] `189_android_package_visibility_policy` - status: completed - source: `tasks/189_android_package_visibility_policy.md`
-- [x] `190_manifest_queries_for_operator_selected_packages` - status: completed - source: `tasks/190_manifest_queries_for_operator_selected_packages.md`
-- [x] `191_package_not_visible_vs_not_found` - status: completed - source: `tasks/191_package_not_visible_vs_not_found.md`
-- [x] `192_operator_evidence_ux_status_messages` - status: completed - source: `tasks/192_operator_evidence_ux_status_messages.md`
-- [x] `193_package_visibility_real_device_retest` - status: completed - source: `tasks/193_package_visibility_real_device_retest.md`
-- [x] `194_evidence_visibility_safety_tests` - status: completed - source: `tasks/194_evidence_visibility_safety_tests.md`
-- [x] `195_sprint_4r_closeout_review` - status: completed - source: `tasks/195_sprint_4r_closeout_review.md`
+- [x] `196_evidence_operator_review_dashboard_model` - status: completed - source: `tasks/196_evidence_operator_review_dashboard_model.md`
+- [x] `197_evidence_duplicate_and_latest_status_model` - status: completed - source: `tasks/197_evidence_duplicate_and_latest_status_model.md`
+- [x] `198_evidence_deprecation_and_cleanup_policy` - status: completed - source: `tasks/198_evidence_deprecation_and_cleanup_policy.md`
+- [x] `199_evidence_review_action_reasons` - status: completed - source: `tasks/199_evidence_review_action_reasons.md`
+- [x] `200_evidence_admin_filtering_and_search` - status: completed - source: `tasks/200_evidence_admin_filtering_and_search.md`
+- [x] `201_evidence_lifecycle_tests` - status: completed - source: `tasks/201_evidence_lifecycle_tests.md`
+- [x] `202_sprint_4s_closeout_review` - status: completed - source: `tasks/202_sprint_4s_closeout_review.md`

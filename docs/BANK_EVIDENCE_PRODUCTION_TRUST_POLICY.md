@@ -43,6 +43,14 @@ production_trust_approved -> production_trust_revoked
 
 Direct `pending_operator_review -> production_trust_approved` is blocked.
 
+Deprecation is non-destructive:
+
+```text
+pending_operator_review | approved_for_review_only | rejected -> deprecated
+```
+
+Deprecated evidence is retained for audit/history and cannot request or regain production trust. If a package certificate changes, submit a new evidence row and review it separately.
+
 ## Required Evidence
 
 Production trust requires:
@@ -64,6 +72,8 @@ Production trust is forbidden for:
 - deprecated evidence;
 - pending evidence;
 - non-PackageManager evidence.
+
+Exact duplicate evidence is idempotent and does not create trust. A changed certificate for the same package requires a new operator review row.
 
 ## RBAC
 

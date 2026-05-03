@@ -28,12 +28,28 @@ export const BankEvidenceAuditEventTypes = {
   REVIEWED: 'bank_evidence.reviewed',
   APPROVED_REVIEW_ONLY: 'bank_evidence.approved_review_only',
   REJECTED: 'bank_evidence.rejected',
+  DEPRECATED: 'bank_evidence.deprecated',
   PRODUCTION_TRUST_REQUESTED: 'bank_evidence.production_trust_requested',
   PRODUCTION_TRUST_APPROVED: 'bank_evidence.production_trust_approved',
   PRODUCTION_TRUST_REVOKED: 'bank_evidence.production_trust_revoked'
 } as const;
 
 export type BankEvidenceAuditEventType = (typeof BankEvidenceAuditEventTypes)[keyof typeof BankEvidenceAuditEventTypes];
+
+export const BankEvidenceReviewReasonCodes = {
+  PACKAGE_VERIFIED_FOR_REVIEW_ONLY: 'package_verified_for_review_only',
+  CERT_MATCHES_OPERATOR_EXPECTATION: 'cert_matches_operator_expectation',
+  PACKAGE_NOT_EXPECTED: 'package_not_expected',
+  CERT_CHANGED: 'cert_changed',
+  STALE_EVIDENCE: 'stale_evidence',
+  DUPLICATE_EVIDENCE: 'duplicate_evidence',
+  INSUFFICIENT_EVIDENCE: 'insufficient_evidence',
+  SYNTHETIC_TEST_ONLY: 'synthetic_test_only',
+  OTHER: 'other'
+} as const;
+
+export type BankEvidenceReviewReasonCode =
+  (typeof BankEvidenceReviewReasonCodes)[keyof typeof BankEvidenceReviewReasonCodes];
 
 export interface BankEvidenceRecord {
   evidenceId: string;
@@ -99,13 +115,27 @@ export interface BankEvidenceReviewInput {
   reason?: string | undefined;
   auditEventId: string;
   occurredAt: string;
-  action: 'approve_review_only' | 'reject';
+  action: 'approve_review_only' | 'reject' | 'deprecate';
 }
 
 export type BankEvidenceReviewResult =
   | { kind: 'updated'; evidence: BankEvidenceRecord; auditEvents: BankEvidenceAuditEvent[] }
   | { kind: 'not_found' }
   | { kind: 'not_pending' };
+
+export interface BankEvidenceListFilters {
+  status?: BankEvidenceStatus | undefined;
+  bankProfileId?: string | undefined;
+  packageName?: string | undefined;
+  source?: BankEvidenceSource | undefined;
+  submittedAfter?: string | undefined;
+  submittedBefore?: string | undefined;
+}
+
+export interface BankEvidenceListInput {
+  limit: number;
+  filters?: BankEvidenceListFilters | undefined;
+}
 
 export interface BankEvidenceProductionTrustInput {
   evidenceId: string;
@@ -129,7 +159,7 @@ export type BankEvidenceProductionTrustResult =
 
 export interface BankEvidenceRepository {
   submitEvidence(input: BankEvidenceSubmitInput): Promise<BankEvidenceSubmitResult>;
-  listEvidence(limit: number): Promise<BankEvidenceRecord[]>;
+  listEvidence(input: BankEvidenceListInput): Promise<BankEvidenceRecord[]>;
   getEvidence(evidenceId: string): Promise<BankEvidenceRecord | null>;
   reviewEvidence(input: BankEvidenceReviewInput): Promise<BankEvidenceReviewResult>;
   transitionProductionTrust(input: BankEvidenceProductionTrustInput): Promise<BankEvidenceProductionTrustResult>;
@@ -224,7 +254,24 @@ export function validateBankEvidenceReviewBody(body: unknown): { valid: true; re
     return { valid: false, response: invalidRequest('Bank evidence review must not include raw phone or notification text.', {}) };
   }
 
-  const reason = redactOperatorText(normalizeOptionalString((body as { reason?: unknown }).reason) ?? '');
+  const candidate = body as { reason?: unknown; reason_code?: unknown; notes?: unknown };
+  const reasonCode = normalizeOptionalString(candidate.reason_code);
+  if (reasonCode !== undefined && !isAllowedReviewReasonCode(reasonCode)) {
+    return {
+      valid: false,
+      response: invalidRequest('Bank evidence review reason code is invalid.', {
+        allowed_reason_codes: Object.values(BankEvidenceReviewReasonCodes)
+      })
+    };
+  }
+
+  const notes = normalizeOptionalString(candidate.notes);
+  if (reasonCode) {
+    return { valid: true, reason: notes ? `${reasonCode}: ${notes}` : reasonCode };
+  }
+
+  const legacyReason = normalizeOptionalString(candidate.reason);
+  const reason = legacyReason ? `${BankEvidenceReviewReasonCodes.OTHER}: ${legacyReason}` : '';
   return { valid: true, reason: reason || undefined };
 }
 
@@ -242,8 +289,10 @@ export function toBankEvidenceResponse(evidence: BankEvidenceRecord) {
     status: evidence.status,
     trusted: false,
     production_trusted_app_metadata: isProductionTrustApproved(evidence),
+    production_trust_status: productionTrustStatus(evidence),
     auto_confirm_enabled: false,
     created_at: evidence.createdAt,
+    submitted_at: evidence.createdAt,
     reviewed_at: evidence.reviewedAt,
     reviewed_by: evidence.reviewedBy,
     review_reason: evidence.reviewReason,
@@ -256,10 +305,12 @@ export function toBankEvidenceResponse(evidence: BankEvidenceRecord) {
   };
 }
 
-export function toBankEvidenceSubmitResponse(evidence: BankEvidenceRecord) {
+export function toBankEvidenceSubmitResponse(evidence: BankEvidenceRecord, options: { duplicate?: boolean | undefined } = {}) {
   return {
     evidence_id: evidence.evidenceId,
     status: evidence.status,
+    duplicate: options.duplicate === true,
+    duplicate_of: options.duplicate ? evidence.evidenceId : undefined,
     next_action: 'operator_review_required',
     trusted: false,
     auto_confirm_enabled: false,
@@ -360,8 +411,8 @@ export class InMemoryBankEvidenceRepository implements BankEvidenceRepository {
     return { kind: 'stored', evidence, auditEvent };
   }
 
-  public async listEvidence(limit: number): Promise<BankEvidenceRecord[]> {
-    return this.evidence.slice(0, limit);
+  public async listEvidence(input: BankEvidenceListInput): Promise<BankEvidenceRecord[]> {
+    return this.evidence.filter((evidence) => matchesListFilters(evidence, input.filters)).slice(0, input.limit);
   }
 
   public async getEvidence(evidenceId: string): Promise<BankEvidenceRecord | null> {
@@ -374,12 +425,11 @@ export class InMemoryBankEvidenceRepository implements BankEvidenceRepository {
       return { kind: 'not_found' };
     }
 
-    if (evidence.status !== BankEvidenceStatuses.PENDING_OPERATOR_REVIEW) {
+    if (input.action !== 'deprecate' && evidence.status !== BankEvidenceStatuses.PENDING_OPERATOR_REVIEW) {
       return { kind: 'not_pending' };
     }
 
-    evidence.status =
-      input.action === 'approve_review_only' ? BankEvidenceStatuses.APPROVED_FOR_REVIEW_ONLY : BankEvidenceStatuses.REJECTED;
+    evidence.status = reviewActionStatus(input.action);
     evidence.reviewedAt = input.occurredAt;
     evidence.reviewedBy = input.operatorId;
     evidence.reviewReason = input.reason;
@@ -397,7 +447,7 @@ export class InMemoryBankEvidenceRepository implements BankEvidenceRepository {
     const terminal = buildBankEvidenceAuditEvent({
       auditEventId: input.auditEventId,
       merchantId: evidence.merchantId,
-      eventType: input.action === 'approve_review_only' ? BankEvidenceAuditEventTypes.APPROVED_REVIEW_ONLY : BankEvidenceAuditEventTypes.REJECTED,
+      eventType: reviewActionAuditEventType(input.action),
       evidence,
       actorType: 'operator',
       actorId: input.operatorId,
@@ -580,13 +630,16 @@ export class PgBankEvidenceRepository implements BankEvidenceRepository {
     }
   }
 
-  public async listEvidence(limit: number): Promise<BankEvidenceRecord[]> {
+  public async listEvidence(input: BankEvidenceListInput): Promise<BankEvidenceRecord[]> {
+    const { clauses, values } = buildListEvidenceWhereClause(input.filters);
+    values.push(input.limit);
     const result = await this.pool.query(
       `SELECT *
        FROM bank_package_evidence
+       ${clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''}
        ORDER BY created_at DESC, id ASC
-       LIMIT $1`,
-      [limit]
+       LIMIT $${values.length}`,
+      values
     );
     return result.rows.map((row) => toBankEvidenceRecord(row as BankEvidenceRow));
   }
@@ -608,13 +661,12 @@ export class PgBankEvidenceRepository implements BankEvidenceRepository {
       }
 
       const evidence = toBankEvidenceRecord(current.rows[0] as BankEvidenceRow);
-      if (evidence.status !== BankEvidenceStatuses.PENDING_OPERATOR_REVIEW) {
+      if (input.action !== 'deprecate' && evidence.status !== BankEvidenceStatuses.PENDING_OPERATOR_REVIEW) {
         await client.query('ROLLBACK');
         return { kind: 'not_pending' };
       }
 
-      const nextStatus =
-        input.action === 'approve_review_only' ? BankEvidenceStatuses.APPROVED_FOR_REVIEW_ONLY : BankEvidenceStatuses.REJECTED;
+      const nextStatus = reviewActionStatus(input.action);
       const updated = await client.query(
         `UPDATE bank_package_evidence
          SET status = $1, reviewed_at = $2, reviewed_by = $3, review_reason = $4
@@ -636,7 +688,7 @@ export class PgBankEvidenceRepository implements BankEvidenceRepository {
       const terminal = buildBankEvidenceAuditEvent({
         auditEventId: input.auditEventId,
         merchantId: updatedEvidence.merchantId,
-        eventType: input.action === 'approve_review_only' ? BankEvidenceAuditEventTypes.APPROVED_REVIEW_ONLY : BankEvidenceAuditEventTypes.REJECTED,
+        eventType: reviewActionAuditEventType(input.action),
         evidence: updatedEvidence,
         actorType: 'operator',
         actorId: input.operatorId,
@@ -759,6 +811,104 @@ export function maskCertificateHash(certSha256: string): string {
 
 export function isProductionTrustApproved(evidence: BankEvidenceRecord): boolean {
   return evidence.status === BankEvidenceStatuses.PRODUCTION_TRUST_APPROVED;
+}
+
+function productionTrustStatus(evidence: BankEvidenceRecord): 'not_requested' | 'requested' | 'approved' | 'revoked' {
+  switch (evidence.status) {
+    case BankEvidenceStatuses.PRODUCTION_TRUST_REQUESTED:
+      return 'requested';
+    case BankEvidenceStatuses.PRODUCTION_TRUST_APPROVED:
+      return 'approved';
+    case BankEvidenceStatuses.PRODUCTION_TRUST_REVOKED:
+      return 'revoked';
+    default:
+      return 'not_requested';
+  }
+}
+
+function reviewActionStatus(action: BankEvidenceReviewInput['action']): BankEvidenceStatus {
+  switch (action) {
+    case 'approve_review_only':
+      return BankEvidenceStatuses.APPROVED_FOR_REVIEW_ONLY;
+    case 'reject':
+      return BankEvidenceStatuses.REJECTED;
+    case 'deprecate':
+      return BankEvidenceStatuses.DEPRECATED;
+  }
+}
+
+function reviewActionAuditEventType(action: BankEvidenceReviewInput['action']): BankEvidenceAuditEventType {
+  switch (action) {
+    case 'approve_review_only':
+      return BankEvidenceAuditEventTypes.APPROVED_REVIEW_ONLY;
+    case 'reject':
+      return BankEvidenceAuditEventTypes.REJECTED;
+    case 'deprecate':
+      return BankEvidenceAuditEventTypes.DEPRECATED;
+  }
+}
+
+function matchesListFilters(evidence: BankEvidenceRecord, filters: BankEvidenceListFilters | undefined): boolean {
+  if (!filters) {
+    return true;
+  }
+
+  if (filters.status && evidence.status !== filters.status) {
+    return false;
+  }
+
+  if (filters.bankProfileId && evidence.bankProfileId !== filters.bankProfileId) {
+    return false;
+  }
+
+  if (filters.packageName && evidence.packageName !== filters.packageName) {
+    return false;
+  }
+
+  if (filters.source && evidence.source !== filters.source) {
+    return false;
+  }
+
+  if (filters.submittedAfter && evidence.createdAt < filters.submittedAfter) {
+    return false;
+  }
+
+  if (filters.submittedBefore && evidence.createdAt > filters.submittedBefore) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildListEvidenceWhereClause(filters: BankEvidenceListFilters | undefined): { clauses: string[]; values: unknown[] } {
+  const clauses: string[] = [];
+  const values: unknown[] = [];
+
+  const add = (sql: string, value: unknown) => {
+    values.push(value);
+    clauses.push(sql.replace('?', `$${values.length}`));
+  };
+
+  if (filters?.status) {
+    add('status = ?', filters.status);
+  }
+  if (filters?.bankProfileId) {
+    add('bank_profile_id = ?', filters.bankProfileId);
+  }
+  if (filters?.packageName) {
+    add('package_name = ?', filters.packageName);
+  }
+  if (filters?.source) {
+    add('source = ?', filters.source);
+  }
+  if (filters?.submittedAfter) {
+    add('created_at >= ?', filters.submittedAfter);
+  }
+  if (filters?.submittedBefore) {
+    add('created_at <= ?', filters.submittedBefore);
+  }
+
+  return { clauses, values };
 }
 
 function validateProductionTrustEvidence(
@@ -939,6 +1089,10 @@ function normalizeOptionalString(value: unknown): string | undefined {
 
 function isAllowedEvidenceSource(value: string): value is BankEvidenceSource {
   return Object.values(BankEvidenceSources).includes(value as BankEvidenceSource);
+}
+
+function isAllowedReviewReasonCode(value: string): value is BankEvidenceReviewReasonCode {
+  return Object.values(BankEvidenceReviewReasonCodes).includes(value as BankEvidenceReviewReasonCode);
 }
 
 function isSyntheticDebugValue(value: string): boolean {
