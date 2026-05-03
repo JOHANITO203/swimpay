@@ -82,7 +82,7 @@ describe('Phase 6 five-bank MVP readiness foundation', () => {
         expect(entry.cert_evidence_status).toBe('not_collected');
       }
       expect(entry.auto_confirm_status).toBe('disabled');
-      expect(entry.review_routing_status).toBe('review_only_required');
+      expect(['review_only_required', 'synthetic_review_queue_passed']).toContain(entry.review_routing_status);
       expect(entry.cert_evidence_status).not.toBe('production_trust_approved');
       expect(entry.cert_evidence_status).not.toBe('trusted');
     }

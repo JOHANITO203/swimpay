@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Sprint 6B five-bank package evidence collection wave: 2026-05-03T15:11:00+03:00.
+Last checked after Sprint 6C five-bank review-only synthetic shadow rehearsal: 2026-05-03T15:30:00+03:00.
 
 Resolved during Sprint 4Y retry:
 
@@ -46,4 +46,5 @@ Known non-critical limitations:
 - Sprint 6A paused the production/admin hardening chain and created the five-bank MVP validation matrix plus private beta readiness foundation.
 - Sprint 6B used operator-authorized, keyword-filtered ADB package discovery only. It found obvious candidates for all five V1 banks and collected exact PackageManager evidence for Tinkoff / T-Bank, VTB, Alfa-Bank and Gazprombank.
 - All selected V1 banks now have package evidence in the five-bank matrix. The four Sprint 6B rows are `approved_for_review_only`; Sberbank remains `production_trust_revoked` from the prior local drill. None of this creates production trust or auto-confirmation.
-- Real bank notifications remain out of scope. No real notification samples are stored or approved, and the next validation should remain synthetic/review-only unless explicitly authorized.
+- Sprint 6C rehearsed redacted synthetic review-only notification-signal fixtures for all five V1 banks. Incoming-like and amount-only signals route to review, negative categories never auto-confirm, and webhook disclosure remains `official_bank_confirmation=false` with `confirmation_type=notification_signal`.
+- Real bank notifications remain out of scope. No real notification samples are stored or approved, and any real notification shadow run requires explicit future authorization.

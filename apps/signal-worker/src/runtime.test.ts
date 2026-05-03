@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { InMemoryMetricsRegistry, MetricNames } from '@swimpay/observability';
 import { EventTypes, type InternalEventEnvelope } from '@swimpay/events';
@@ -11,6 +13,7 @@ import {
 } from './runtime.js';
 
 const now = '2026-05-02T08:00:00.000Z';
+const root = process.cwd();
 
 const trustedContext: SignalRuntimeTrustContext = {
   bankProfileStatus: 'trusted',
@@ -198,6 +201,61 @@ describe('signal runtime processor', () => {
     expect(result.decision).toBe('needs_review');
     expect(repository.reviews[0]?.reasonCodes).toContain('amount_only_never_auto_confirm');
     expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
+  });
+
+  it('rehearses five-bank synthetic shadow fixtures through review or rejection without official confirmation claims', async () => {
+    const fixtureSet = JSON.parse(
+      readFileSync(join(root, 'packages/bank-templates/five-bank-synthetic-shadow-fixtures.json'), 'utf8')
+    ) as {
+      banks: Array<{
+        bank_profile_id: string;
+        fixtures: Array<{
+          category: string;
+          title_redacted: string;
+          body_redacted: string;
+          expected_decision: 'needs_review' | 'rejected';
+          expected_webhook_type: 'payment.needs_review' | 'payment.rejected';
+        }>;
+      }>;
+    };
+
+    for (const bank of fixtureSet.banks) {
+      for (const fixture of bank.fixtures) {
+        const signalId = `sig_${bank.bank_profile_id}_${fixture.category}`;
+        const { processor, repository } = createProcessor({
+          trustContext: toVerifyContext,
+          signal: buildSignal({
+            id: signalId,
+            bankProfileId: bank.bank_profile_id,
+            eventId: `evt_${bank.bank_profile_id}_${fixture.category}`,
+            notificationHash: `hash_${bank.bank_profile_id}_${fixture.category}`,
+            titleRedacted: fixture.title_redacted,
+            bodyRedacted: fixture.body_redacted,
+            amountMinor: fixture.category === 'promo' ? undefined : 13700,
+            currency: fixture.category === 'promo' ? undefined : 'RUB'
+          }),
+          sessions: [
+            buildSession({
+              buyerPhoneHmac: fixture.category === 'amount_only' ? undefined : 'phone_hmac_01',
+              referenceHmac: fixture.category === 'amount_only' ? undefined : 'ref_hmac_01'
+            })
+          ]
+        });
+
+        const result = await processor.processSignalReceived({ signalId });
+
+        expect(result.decision, `${bank.bank_profile_id}/${fixture.category}`).toBe(fixture.expected_decision);
+        expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
+        expect(repository.webhookEvents[0]?.type).toBe(fixture.expected_webhook_type);
+        expect(repository.webhookEvents[0]?.data.official_bank_confirmation).toBe(false);
+        expect(repository.webhookEvents[0]?.data.confirmation_type).toBe('notification_signal');
+        expect(repository.webhookEvents[0]?.data).not.toHaveProperty('sender_phone_hmac');
+        expect(repository.webhookEvents[0]?.data).not.toHaveProperty('sender_phone_masked');
+        expect(repository.webhookEvents[0]?.data).not.toHaveProperty('title_redacted');
+        expect(repository.webhookEvents[0]?.data).not.toHaveProperty('body_redacted');
+        expect(JSON.stringify(repository.webhookEvents)).not.toContain('Transfer from +7');
+      }
+    }
   });
 
   it('auto-confirms only a trusted synthetic signal with exact identity match and emits a safe webhook request', async () => {

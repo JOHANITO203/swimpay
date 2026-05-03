@@ -1593,3 +1593,14 @@ Safety checks:
 - Updated `docs/FIVE_BANK_MVP_VALIDATION_MATRIX.md` and `packages/bank-templates/v1-bank-mvp-matrix.json`.
 - Added `tests/five-bank-package-evidence-wave.test.ts` and updated the agent framework test to Sprint 6B queue order.
 - No real bank notification, customer data, app internals inspection, app opening, SMS, scraping, Accessibility path, full installed-app report, production trust or auto-confirmation was used.
+
+## 2026-05-03T15:30:00+03:00 - Sprint 6C Five-bank Review-only Receiver Selection and Synthetic Shadow Runtime Rehearsal
+
+- Created tasks 289 through 295 and updated the task queue to Sprint 6C.
+- Created `packages/bank-templates/five-bank-synthetic-shadow-fixtures.json` with redacted synthetic fixtures for all five V1 banks.
+- Updated the five-bank MVP matrix to mark every bank `review_only_ready`, synthetic shadow runtime `passed`, real notification shadow `not_started` and auto-confirm `disabled`.
+- Added `tests/five-bank-shadow-rehearsal.test.ts`.
+- Expanded `apps/signal-worker/src/runtime.test.ts` so the runtime processes every five-bank synthetic shadow fixture through review or rejection without official confirmation claims.
+- Verified synthetic incoming-like and amount-only signals do not auto-confirm; negative categories never auto-confirm.
+- Webhook disclosure remains `official_bank_confirmation=false` and `confirmation_type=notification_signal`.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust request/approval, raw phone, raw notification text or auto-confirmation was used.

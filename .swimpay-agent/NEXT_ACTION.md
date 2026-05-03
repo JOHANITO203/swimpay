@@ -1,38 +1,37 @@
 # Next Action
 
-generated_at: 2026-05-03T15:11:00+03:00
+generated_at: 2026-05-03T15:30:00+03:00
 
 ## Latest Sprint
 
-Sprint 6B - Five-bank Package Evidence Collection Wave.
+Sprint 6C - Five-bank Review-only Receiver Selection and Synthetic Shadow Runtime Rehearsal.
 
 ## Status
 
 PASS.
 
-Sprint 6B implementation is present:
+Sprint 6C implementation is present:
 
-- `.swimpay-agent/LIMITED_BANK_PACKAGE_DISCOVERY_AUTHORIZATION.md`
-- `.swimpay-agent/BANK_PACKAGE_CANDIDATES.md`
-- `.swimpay-agent/SPRINT_6B_REPORT.md`
+- `.swimpay-agent/SPRINT_6C_REPORT.md`
+- `packages/bank-templates/five-bank-synthetic-shadow-fixtures.json`
 - `packages/bank-templates/v1-bank-mvp-matrix.json`
 - `docs/FIVE_BANK_MVP_VALIDATION_MATRIX.md`
-- `tests/five-bank-package-evidence-wave.test.ts`
+- `tests/five-bank-shadow-rehearsal.test.ts`
+- expanded `apps/signal-worker/src/runtime.test.ts`
 
-All selected V1 banks now have package evidence in the five-bank matrix. The four newly collected evidence rows are `approved_for_review_only`; Sberbank remains `production_trust_revoked` from the prior local drill. Auto-confirm remains disabled for all five banks.
+All five V1 bank profiles are `review_only_ready` in the matrix. Synthetic shadow runtime rehearsal passed for incoming-like, amount-only, cashback, refund, outgoing/payment, promo and failed transfer categories. Auto-confirm remains disabled for all five banks.
 
 ## Next Recommended Action
 
-Proceed to Sprint 6C - Five-bank Review-only Receiver Selection and Synthetic Shadow Runtime Rehearsal.
+Proceed to Sprint 6D - Private beta review queue and webhook rehearsal.
 
 Recommended scope:
 
-1. Select the five V1 bank profiles in the Receiver in review-only mode.
-2. Run synthetic redacted notification-signal fixtures for each bank.
-3. Verify review queue routing and webhook disclosure for each bank.
-4. Verify `official_bank_confirmation=false` and `confirmation_type=notification_signal`.
-5. Verify negative categories never auto-confirm.
-6. Keep real bank notifications, production trust and auto-confirmation out of scope unless a later sprint explicitly authorizes them.
+1. Exercise review queue operator UX with synthetic merchant/order fixtures.
+2. Verify review lifecycle and webhook delivery in private beta mode.
+3. Verify merchant-facing disclosure wording.
+4. Keep real bank notifications not started unless explicitly authorized.
+5. Keep production trust and auto-confirm out of scope.
 
 ## What Not To Do Next
 
@@ -45,8 +44,7 @@ Recommended scope:
 - Do not scrape bank apps.
 - Do not expose raw phone or raw notification text.
 - Do not commit production secrets.
-- Do not use `ADMIN_AUTH_MODE=dev_token` for production.
 - Do not add Android payment confirmation.
 - Do not add Android auto-confirmation.
 - Do not treat review-only evidence as production trust.
-- Do not leave rehearsal production trust approved after a drill.
+- Do not claim official bank confirmation.

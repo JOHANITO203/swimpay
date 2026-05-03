@@ -5,11 +5,18 @@ import { join } from 'node:path';
 const root = process.cwd();
 
 describe('Sprint 6B five-bank package evidence collection wave', () => {
-  test('records limited ADB discovery authorization and Sprint 6B queue order', () => {
+  test('records limited ADB discovery authorization and Sprint 6B task artifacts', () => {
     const requiredFiles = [
       '.swimpay-agent/LIMITED_BANK_PACKAGE_DISCOVERY_AUTHORIZATION.md',
       '.swimpay-agent/BANK_PACKAGE_CANDIDATES.md',
-      '.swimpay-agent/SPRINT_6B_REPORT.md'
+      '.swimpay-agent/SPRINT_6B_REPORT.md',
+      'tasks/282_limited_bank_package_discovery_authorization.md',
+      'tasks/283_adb_filtered_bank_package_lookup.md',
+      'tasks/284_operator_candidate_package_selection.md',
+      'tasks/285_five_bank_package_evidence_collection.md',
+      'tasks/286_five_bank_evidence_review_only_approval.md',
+      'tasks/287_five_bank_matrix_update.md',
+      'tasks/288_sprint_6b_closeout_review.md'
     ];
 
     for (const file of requiredFiles) {
@@ -23,24 +30,6 @@ describe('Sprint 6B five-bank package evidence collection wave', () => {
     expect(authorization).toContain('no full installed-app report');
     expect(authorization).toContain('no production trust');
     expect(authorization).toContain('no auto-confirm');
-
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
-    const orderedTasks = [
-      '282_limited_bank_package_discovery_authorization',
-      '283_adb_filtered_bank_package_lookup',
-      '284_operator_candidate_package_selection',
-      '285_five_bank_package_evidence_collection',
-      '286_five_bank_evidence_review_only_approval',
-      '287_five_bank_matrix_update',
-      '288_sprint_6b_closeout_review'
-    ];
-
-    let previousIndex = -1;
-    for (const task of orderedTasks) {
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
-      expect(index, task).toBeGreaterThan(previousIndex);
-      previousIndex = index;
-    }
   });
 
   test('candidate report only contains allowed keyword package names and no full package listing', () => {

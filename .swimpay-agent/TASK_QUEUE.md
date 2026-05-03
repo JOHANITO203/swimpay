@@ -6,10 +6,10 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `282_limited_bank_package_discovery_authorization` - status: completed - source: `tasks/282_limited_bank_package_discovery_authorization.md`
-- [x] `283_adb_filtered_bank_package_lookup` - status: completed - source: `tasks/283_adb_filtered_bank_package_lookup.md`
-- [x] `284_operator_candidate_package_selection` - status: completed - source: `tasks/284_operator_candidate_package_selection.md`
-- [x] `285_five_bank_package_evidence_collection` - status: completed - source: `tasks/285_five_bank_package_evidence_collection.md`
-- [x] `286_five_bank_evidence_review_only_approval` - status: completed - source: `tasks/286_five_bank_evidence_review_only_approval.md`
-- [x] `287_five_bank_matrix_update` - status: completed - source: `tasks/287_five_bank_matrix_update.md`
-- [x] `288_sprint_6b_closeout_review` - status: completed - source: `tasks/288_sprint_6b_closeout_review.md`
+- [x] `289_five_bank_receiver_review_only_selection` - status: completed - source: `tasks/289_five_bank_receiver_review_only_selection.md`
+- [x] `290_five_bank_synthetic_signal_fixture_set` - status: completed - source: `tasks/290_five_bank_synthetic_signal_fixture_set.md`
+- [x] `291_five_bank_shadow_runtime_review_queue_rehearsal` - status: completed - source: `tasks/291_five_bank_shadow_runtime_review_queue_rehearsal.md`
+- [x] `292_five_bank_webhook_disclosure_rehearsal` - status: completed - source: `tasks/292_five_bank_webhook_disclosure_rehearsal.md`
+- [x] `293_five_bank_negative_signal_safety_rehearsal` - status: completed - source: `tasks/293_five_bank_negative_signal_safety_rehearsal.md`
+- [x] `294_five_bank_matrix_shadow_status_update` - status: completed - source: `tasks/294_five_bank_matrix_shadow_status_update.md`
+- [x] `295_sprint_6c_closeout_review` - status: completed - source: `tasks/295_sprint_6c_closeout_review.md`

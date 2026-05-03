@@ -40,17 +40,17 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 6B five-bank package evidence tasks in the approved order', () => {
+  test('task queue lists Sprint 6C five-bank shadow rehearsal tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '282_limited_bank_package_discovery_authorization',
-      '283_adb_filtered_bank_package_lookup',
-      '284_operator_candidate_package_selection',
-      '285_five_bank_package_evidence_collection',
-      '286_five_bank_evidence_review_only_approval',
-      '287_five_bank_matrix_update',
-      '288_sprint_6b_closeout_review'
+      '289_five_bank_receiver_review_only_selection',
+      '290_five_bank_synthetic_signal_fixture_set',
+      '291_five_bank_shadow_runtime_review_queue_rehearsal',
+      '292_five_bank_webhook_disclosure_rehearsal',
+      '293_five_bank_negative_signal_safety_rehearsal',
+      '294_five_bank_matrix_shadow_status_update',
+      '295_sprint_6c_closeout_review'
     ];
 
     let previousIndex = -1;

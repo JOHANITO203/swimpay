@@ -1,0 +1,428 @@
+{
+  "mode": "synthetic_review_only_shadow",
+  "generated_at": "2026-05-03T15:30:00+03:00",
+  "policy": {
+    "real_notification_processing": "forbidden",
+    "real_customer_data": "forbidden",
+    "auto_confirm": "disabled",
+    "official_bank_confirmation": false,
+    "confirmation_type": "notification_signal"
+  },
+  "banks": [
+    {
+      "bank_profile_id": "sber_ru",
+      "display_name": "Sberbank",
+      "fixtures": [
+        {
+          "fixture_id": "sber_ru_incoming_transfer_shadow_001",
+          "category": "incoming_transfer",
+          "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
+          "expected_decision": "needs_review",
+          "expected_webhook_type": "payment.needs_review",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "sber_ru_amount_only_shadow_001",
+          "category": "amount_only",
+          "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Amount observed without usable <PHONE> or <REFERENCE>",
+          "expected_decision": "needs_review",
+          "expected_webhook_type": "payment.needs_review",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "sber_ru_cashback_shadow_001",
+          "category": "cashback",
+          "title_redacted": "Cashback <AMOUNT> <CURRENCY>",
+          "body_redacted": "Cashback reward for <PERSON> with <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "sber_ru_refund_shadow_001",
+          "category": "refund",
+          "title_redacted": "Refund <AMOUNT> <CURRENCY>",
+          "body_redacted": "Refund to <PERSON> for <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "sber_ru_outgoing_payment_shadow_001",
+          "category": "outgoing_payment",
+          "title_redacted": "Payment <AMOUNT> <CURRENCY>",
+          "body_redacted": "Payment to recipient for <REFERENCE> from <PERSON>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "sber_ru_promo_shadow_001",
+          "category": "promo",
+          "title_redacted": "Promo bonus <AMOUNT> <CURRENCY>",
+          "body_redacted": "Promo message for <PERSON> with <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "sber_ru_failed_transfer_shadow_001",
+          "category": "failed_transfer",
+          "title_redacted": "Failed transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Transfer from <PERSON> <PHONE> failed for <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        }
+      ]
+    },
+    {
+      "bank_profile_id": "tbank_ru",
+      "display_name": "Tinkoff / T-Bank",
+      "fixtures": [
+        {
+          "fixture_id": "tbank_ru_incoming_transfer_shadow_001",
+          "category": "incoming_transfer",
+          "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
+          "expected_decision": "needs_review",
+          "expected_webhook_type": "payment.needs_review",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "tbank_ru_amount_only_shadow_001",
+          "category": "amount_only",
+          "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Amount observed without usable <PHONE> or <REFERENCE>",
+          "expected_decision": "needs_review",
+          "expected_webhook_type": "payment.needs_review",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "tbank_ru_cashback_shadow_001",
+          "category": "cashback",
+          "title_redacted": "Cashback <AMOUNT> <CURRENCY>",
+          "body_redacted": "Cashback reward for <PERSON> with <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "tbank_ru_refund_shadow_001",
+          "category": "refund",
+          "title_redacted": "Refund <AMOUNT> <CURRENCY>",
+          "body_redacted": "Refund to <PERSON> for <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "tbank_ru_outgoing_payment_shadow_001",
+          "category": "outgoing_payment",
+          "title_redacted": "Payment <AMOUNT> <CURRENCY>",
+          "body_redacted": "Payment to recipient for <REFERENCE> from <PERSON>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "tbank_ru_promo_shadow_001",
+          "category": "promo",
+          "title_redacted": "Promo bonus <AMOUNT> <CURRENCY>",
+          "body_redacted": "Promo message for <PERSON> with <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "tbank_ru_failed_transfer_shadow_001",
+          "category": "failed_transfer",
+          "title_redacted": "Failed transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Transfer from <PERSON> <PHONE> failed for <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        }
+      ]
+    },
+    {
+      "bank_profile_id": "vtb_ru",
+      "display_name": "VTB",
+      "fixtures": [
+        {
+          "fixture_id": "vtb_ru_incoming_transfer_shadow_001",
+          "category": "incoming_transfer",
+          "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
+          "expected_decision": "needs_review",
+          "expected_webhook_type": "payment.needs_review",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "vtb_ru_amount_only_shadow_001",
+          "category": "amount_only",
+          "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Amount observed without usable <PHONE> or <REFERENCE>",
+          "expected_decision": "needs_review",
+          "expected_webhook_type": "payment.needs_review",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "vtb_ru_cashback_shadow_001",
+          "category": "cashback",
+          "title_redacted": "Cashback <AMOUNT> <CURRENCY>",
+          "body_redacted": "Cashback reward for <PERSON> with <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "vtb_ru_refund_shadow_001",
+          "category": "refund",
+          "title_redacted": "Refund <AMOUNT> <CURRENCY>",
+          "body_redacted": "Refund to <PERSON> for <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "vtb_ru_outgoing_payment_shadow_001",
+          "category": "outgoing_payment",
+          "title_redacted": "Payment <AMOUNT> <CURRENCY>",
+          "body_redacted": "Payment to recipient for <REFERENCE> from <PERSON>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "vtb_ru_promo_shadow_001",
+          "category": "promo",
+          "title_redacted": "Promo bonus <AMOUNT> <CURRENCY>",
+          "body_redacted": "Promo message for <PERSON> with <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "vtb_ru_failed_transfer_shadow_001",
+          "category": "failed_transfer",
+          "title_redacted": "Failed transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Transfer from <PERSON> <PHONE> failed for <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        }
+      ]
+    },
+    {
+      "bank_profile_id": "alfa_ru",
+      "display_name": "Alfa-Bank",
+      "fixtures": [
+        {
+          "fixture_id": "alfa_ru_incoming_transfer_shadow_001",
+          "category": "incoming_transfer",
+          "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
+          "expected_decision": "needs_review",
+          "expected_webhook_type": "payment.needs_review",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "alfa_ru_amount_only_shadow_001",
+          "category": "amount_only",
+          "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Amount observed without usable <PHONE> or <REFERENCE>",
+          "expected_decision": "needs_review",
+          "expected_webhook_type": "payment.needs_review",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "alfa_ru_cashback_shadow_001",
+          "category": "cashback",
+          "title_redacted": "Cashback <AMOUNT> <CURRENCY>",
+          "body_redacted": "Cashback reward for <PERSON> with <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "alfa_ru_refund_shadow_001",
+          "category": "refund",
+          "title_redacted": "Refund <AMOUNT> <CURRENCY>",
+          "body_redacted": "Refund to <PERSON> for <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "alfa_ru_outgoing_payment_shadow_001",
+          "category": "outgoing_payment",
+          "title_redacted": "Payment <AMOUNT> <CURRENCY>",
+          "body_redacted": "Payment to recipient for <REFERENCE> from <PERSON>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "alfa_ru_promo_shadow_001",
+          "category": "promo",
+          "title_redacted": "Promo bonus <AMOUNT> <CURRENCY>",
+          "body_redacted": "Promo message for <PERSON> with <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "alfa_ru_failed_transfer_shadow_001",
+          "category": "failed_transfer",
+          "title_redacted": "Failed transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Transfer from <PERSON> <PHONE> failed for <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        }
+      ]
+    },
+    {
+      "bank_profile_id": "gazprombank_ru",
+      "display_name": "Gazprombank",
+      "fixtures": [
+        {
+          "fixture_id": "gazprombank_ru_incoming_transfer_shadow_001",
+          "category": "incoming_transfer",
+          "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
+          "expected_decision": "needs_review",
+          "expected_webhook_type": "payment.needs_review",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "gazprombank_ru_amount_only_shadow_001",
+          "category": "amount_only",
+          "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Amount observed without usable <PHONE> or <REFERENCE>",
+          "expected_decision": "needs_review",
+          "expected_webhook_type": "payment.needs_review",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "gazprombank_ru_cashback_shadow_001",
+          "category": "cashback",
+          "title_redacted": "Cashback <AMOUNT> <CURRENCY>",
+          "body_redacted": "Cashback reward for <PERSON> with <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "gazprombank_ru_refund_shadow_001",
+          "category": "refund",
+          "title_redacted": "Refund <AMOUNT> <CURRENCY>",
+          "body_redacted": "Refund to <PERSON> for <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "gazprombank_ru_outgoing_payment_shadow_001",
+          "category": "outgoing_payment",
+          "title_redacted": "Payment <AMOUNT> <CURRENCY>",
+          "body_redacted": "Payment to recipient for <REFERENCE> from <PERSON>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "gazprombank_ru_promo_shadow_001",
+          "category": "promo",
+          "title_redacted": "Promo bonus <AMOUNT> <CURRENCY>",
+          "body_redacted": "Promo message for <PERSON> with <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        },
+        {
+          "fixture_id": "gazprombank_ru_failed_transfer_shadow_001",
+          "category": "failed_transfer",
+          "title_redacted": "Failed transfer <AMOUNT> <CURRENCY>",
+          "body_redacted": "Transfer from <PERSON> <PHONE> failed for <REFERENCE>",
+          "expected_decision": "rejected",
+          "expected_webhook_type": "payment.rejected",
+          "confirmation_type": "notification_signal",
+          "official_bank_confirmation": false,
+          "auto_confirm_expected": false
+        }
+      ]
+    }
+  ]
+}
