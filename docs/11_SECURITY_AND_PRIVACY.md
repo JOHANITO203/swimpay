@@ -173,6 +173,8 @@ Sprint 4T adds evidence lifecycle rehearsal visibility. The review dashboard and
 
 Sprint 4U adds a local evidence lifecycle rehearsal helper. Its default mode is non-mutating and validates dashboard/audit redaction against the local backend. Production trust guard validation requires an explicit local evidence id and is limited to proving dual-control; it must still keep `trusted: false` and `auto_confirm_enabled: false`.
 
+Sprint 4V adds a read-only operator evidence web surface. The page renders masked certificate hashes, status counts and redacted audit events only. It does not expose admin tokens, raw phone numbers, raw notification text, raw title/body, full certificate hashes, secrets, API keys or private keys. The page is non-mutating and cannot request, approve or revoke production trust.
+
 Sprint 4P adds a controlled real package evidence dry-run mechanism. It requires one explicit operator/user supplied `package_name`, uses Android PackageManager for that exact package only and returns `package_not_found` without submitting evidence when absent. Installed-app enumeration, app scraping, notification processing, SMS access and automatic trust remain forbidden.
 
 Sprint 4R adds package visibility controls. Android debug/operator builds may declare exact package visibility for an explicitly selected evidence dry run, currently `ru.sberbankmobile`. SwimPay must not request `QUERY_ALL_PACKAGES`, must not enumerate installed apps and must not treat package visibility as trust. Visibility only allows one explicit PackageManager lookup; evidence still remains pending operator review or review-only.

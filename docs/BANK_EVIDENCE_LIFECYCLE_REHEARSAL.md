@@ -94,6 +94,36 @@ Expected guard result:
 - responses keep `trusted: false`;
 - responses keep `auto_confirm_enabled: false`.
 
+## Sprint 4V Operator Web Surface
+
+Sprint 4V adds a read-only local operator surface in `swimpay-web`:
+
+```text
+GET /admin/evidence-review
+```
+
+In Compose mode through the local proxy:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/admin/evidence-review
+```
+
+The page fetches:
+
+- `/v1/admin/bank-evidence/review-dashboard`
+- `/v1/admin/audit-events?object_type=bank_package_evidence`
+
+The web surface is intentionally non-mutating. It displays:
+
+- evidence status counts;
+- pending review queue;
+- recent evidence;
+- redacted production trust audit drill rows;
+- explicit safety flags: `trusted=false`, `auto_confirm_enabled=false`;
+- copy that review-only evidence is not production trust and production trust requires dual-control.
+
+The page must not display full certificate hashes, raw phone numbers, raw notification text, raw notification title/body, tokens, API keys or private keys. If the admin API is unavailable, it renders a safe unavailable state without exposing the underlying token or backend error body.
+
 ## Audit Trace Filters
 
 Evidence audit traces can be narrowed without exposing raw evidence values:

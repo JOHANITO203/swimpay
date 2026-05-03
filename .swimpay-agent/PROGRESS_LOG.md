@@ -1452,3 +1452,17 @@ Safety checks:
 - Ran optional guard rehearsal on local evidence `f4069615-028b-4329-a136-115495bd058c`; same-actor approval stayed blocked and auto-confirmation stayed disabled.
 - Added tests for rehearsal plan, redaction, production trust guard inspection, injected fetch execution and Sprint 4U queue/script wiring.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust approval, auto-confirmation, raw phone or raw notification text was used.
+
+## 2026-05-03T12:59:29+03:00 - Sprint 4V Evidence Operator UI Surface and Production Trust Audit Drill
+
+- Created tasks 217 through 224 and updated the task queue to Sprint 4V.
+- Added `GET /admin/evidence-review` in `swimpay-web`.
+- Added a web-side admin evidence client for the existing evidence dashboard and audit event APIs.
+- Rendered evidence status counts, pending queue, recent evidence and redacted audit traces.
+- Added production trust audit drill copy: review-only evidence is not production trust, auto-confirm remains disabled and production trust requires dual-control.
+- Kept the page read-only; it cannot request, approve or revoke production trust.
+- Added defensive web rendering so full certificate hashes, raw phone, raw notification text, raw title/body, tokens and secrets are not shown.
+- Added tests for the evidence operator page, safe unavailable state and Sprint 4V queue ordering.
+- Rebuilt `swimpay-web` locally and verified `http://localhost:8080/admin/evidence-review` returns HTTP 200 with safety checks passing.
+- Validation passed: android doctor, typecheck, lint, tests, build, compose config, Compose ps, API health, operator UI page check and `npm run rehearsal:evidence`.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust approval, auto-confirmation, raw phone or raw notification text was used.

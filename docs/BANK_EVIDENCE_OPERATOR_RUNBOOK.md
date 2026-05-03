@@ -193,6 +193,22 @@ npm run rehearsal:evidence
 
 The default live run is non-mutating and validates dashboard/audit redaction. To exercise production trust dual-control on a local review-only evidence row, set `SWIMPAY_EVIDENCE_ID` deliberately before running the command. This path must not be used against production data.
 
+Sprint 4V adds a read-only web rehearsal surface:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/admin/evidence-review
+```
+
+Use it to visually review:
+
+- status counts;
+- pending evidence rows;
+- recent evidence rows;
+- redacted audit traces;
+- production trust request traces.
+
+The surface does not request, approve or revoke production trust. Production trust still requires the explicit API workflow and dual-control. The UI must keep `trusted=false` and `auto_confirm_enabled=false` visible, and it must never show raw phone numbers, raw notification text, full certificate hashes or secrets.
+
 ## Future Real Package/Cert Dry Run
 
 Real evidence collection must be explicit:

@@ -108,6 +108,19 @@ Responses keep:
 
 `production_trusted_app_metadata` is separate from payment auto-confirm eligibility.
 
+## Operator UI Boundary
+
+The Sprint 4V operator web surface is read-only. It may display redacted dashboard and audit information for an audit drill, but it must not:
+
+- request production trust;
+- approve production trust;
+- revoke production trust;
+- enable auto-confirmation;
+- display full certificate hashes;
+- display raw notification or phone data.
+
+Production trust changes remain API/admin actions protected by RBAC and dual-control.
+
 ## Audit
 
 Required audit events:

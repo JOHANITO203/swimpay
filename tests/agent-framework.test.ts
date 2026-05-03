@@ -34,17 +34,18 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 4U evidence review UI/API rehearsal tasks in the approved order', () => {
+  test('task queue lists Sprint 4V evidence operator UI and audit drill tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '210_operator_evidence_rehearsal_cli',
-      '211_evidence_dashboard_live_api_rehearsal',
-      '212_evidence_audit_visibility_rehearsal',
-      '213_production_trust_dry_run_guard_validation',
-      '214_evidence_rehearsal_docs',
-      '215_sprint_4u_validation',
-      '216_sprint_4u_closeout_review'
+      '217_evidence_operator_web_surface',
+      '218_evidence_web_dashboard_data_model',
+      '219_production_trust_audit_drill_surface',
+      '220_evidence_operator_ui_safety_copy',
+      '221_evidence_operator_ui_tests',
+      '222_live_operator_ui_rehearsal',
+      '223_sprint_4v_validation',
+      '224_sprint_4v_closeout_review'
     ];
 
     let previousIndex = -1;

@@ -38,7 +38,58 @@ export interface CheckoutSessionProvider {
 export interface WebServerOptions {
   environment: string;
   checkoutSessionProvider?: CheckoutSessionProvider | undefined;
+  adminEvidenceClient?: AdminEvidenceClient | undefined;
   recipient?: CheckoutRecipient | undefined;
+}
+
+export interface AdminEvidenceClient {
+  getDashboard(): Promise<BankEvidenceDashboard>;
+  getAuditEvents(): Promise<AdminAuditEvent[]>;
+}
+
+export interface BankEvidenceDashboard {
+  total_count?: number | undefined;
+  counts_by_status?: Record<string, number> | undefined;
+  review_queue?: BankEvidenceRow[] | undefined;
+  recent_evidence?: BankEvidenceRow[] | undefined;
+  next_actions?: string[] | undefined;
+  safety?: {
+    trusted?: boolean | undefined;
+    production_trust_requested?: boolean | undefined;
+    auto_confirm_enabled?: boolean | undefined;
+  } | undefined;
+}
+
+export interface BankEvidenceRow {
+  evidence_id?: string | undefined;
+  bank_profile_id?: string | undefined;
+  package_name?: string | undefined;
+  cert_sha256?: string | undefined;
+  cert_sha256_masked?: string | undefined;
+  app_version?: string | undefined;
+  install_source?: string | undefined;
+  source?: string | undefined;
+  status?: string | undefined;
+  production_trust_status?: string | undefined;
+  trusted?: boolean | undefined;
+  auto_confirm_enabled?: boolean | undefined;
+  submitted_at?: string | undefined;
+  created_at?: string | undefined;
+  reviewed_at?: string | undefined;
+  reviewed_by?: string | undefined;
+  requested_by?: string | undefined;
+  requested_at?: string | undefined;
+}
+
+export interface AdminAuditEvent {
+  auditEventId?: string | undefined;
+  eventType?: string | undefined;
+  objectType?: string | undefined;
+  objectId?: string | undefined;
+  actorId?: string | undefined;
+  payloadRedacted?: Record<string, unknown> | undefined;
+  occurredAt?: string | undefined;
+  createdAt?: string | undefined;
 }
 
 interface CheckoutRecipient {
@@ -71,6 +122,12 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   const server = Fastify({ logger: true });
   const checkoutSessionProvider =
     options.checkoutSessionProvider ?? new ApiCheckoutSessionProvider(process.env.API_BASE_URL ?? 'http://localhost:3000');
+  const adminEvidenceClient =
+    options.adminEvidenceClient ??
+    new ApiAdminEvidenceClient(
+      process.env.API_BASE_URL ?? 'http://localhost:3000',
+      process.env.SWIMPAY_ADMIN_TOKEN ?? process.env.DEV_ADMIN_TOKEN ?? 'change_me_local_admin_token'
+    );
   const recipient = options.recipient ?? defaultRecipient;
 
   server.get('/health', async () => ({
@@ -115,6 +172,20 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     return reply.status(200).send(toCheckoutStatusResponse(session));
   });
 
+  server.get('/admin/evidence-review', async (_request, reply) => {
+    try {
+      const [dashboard, auditEvents] = await Promise.all([
+        adminEvidenceClient.getDashboard(),
+        adminEvidenceClient.getAuditEvents()
+      ]);
+      reply.type('text/html; charset=utf-8');
+      return renderEvidenceReviewPage(dashboard, auditEvents);
+    } catch {
+      reply.status(503).type('text/html; charset=utf-8');
+      return renderEvidenceUnavailablePage();
+    }
+  });
+
   server.post('/checkout/:paymentSessionId/claimed-paid', async (request, reply) => {
     const params = request.params as { paymentSessionId?: string };
     const paymentSessionId = params.paymentSessionId;
@@ -155,6 +226,36 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
   }
 }
 
+export class ApiAdminEvidenceClient implements AdminEvidenceClient {
+  public constructor(
+    private readonly apiBaseUrl: string,
+    private readonly adminToken: string
+  ) {}
+
+  public async getDashboard(): Promise<BankEvidenceDashboard> {
+    return this.fetchJson<BankEvidenceDashboard>('/v1/admin/bank-evidence/review-dashboard');
+  }
+
+  public async getAuditEvents(): Promise<AdminAuditEvent[]> {
+    const payload = await this.fetchJson<{ audit_events?: AdminAuditEvent[] }>('/v1/admin/audit-events?object_type=bank_package_evidence');
+    return payload.audit_events ?? [];
+  }
+
+  private async fetchJson<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.apiBaseUrl}${path}`, {
+      headers: {
+        authorization: `Bearer ${this.adminToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Admin evidence API returned ${response.status}`);
+    }
+
+    return (await response.json()) as T;
+  }
+}
+
 export function toCheckoutStatusResponse(session: CheckoutSession): CheckoutStatusResponse {
   const status = mapCheckoutStatus(session.status);
   return {
@@ -167,6 +268,78 @@ export function toCheckoutStatusResponse(session: CheckoutSession): CheckoutStat
     reference: session.reference,
     expires_at: session.expires_at
   };
+}
+
+function renderEvidenceReviewPage(dashboard: BankEvidenceDashboard, auditEvents: AdminAuditEvent[]): string {
+  return [
+    '<!doctype html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<title>Evidence operator review - SwimPay</title>',
+    baseStyles(),
+    evidenceStyles(),
+    '</head>',
+    '<body>',
+    '<main class="admin-shell">',
+    '<section class="admin-header" aria-labelledby="evidence-title">',
+    '<p class="eyebrow">Operator evidence workflow</p>',
+    '<h1 id="evidence-title">Evidence operator review</h1>',
+    '<p class="safe-copy">Review-only evidence is not production trust. Auto-confirm remains disabled. Production trust requires dual-control.</p>',
+    '</section>',
+    '<section class="safety-strip" aria-label="Evidence safety state">',
+    safetyChip('trusted', false),
+    safetyChip('auto_confirm_enabled', false),
+    safetyChip('metadata_trust_requires_dual_control', true),
+    '</section>',
+    renderEvidenceCounts(dashboard.counts_by_status ?? {}),
+    '<section class="admin-section" aria-labelledby="review-queue-title">',
+    '<h2 id="review-queue-title">Review queue</h2>',
+    renderEvidenceTable(dashboard.review_queue ?? []),
+    '</section>',
+    '<section class="admin-section" aria-labelledby="recent-evidence-title">',
+    '<h2 id="recent-evidence-title">Recent evidence</h2>',
+    renderEvidenceTable(dashboard.recent_evidence ?? []),
+    '</section>',
+    '<section class="admin-section" aria-labelledby="audit-trace-title">',
+    '<h2 id="audit-trace-title">Production trust audit drill</h2>',
+    '<p class="help">Audit traces below are redacted. A production trust request still needs a different approving actor.</p>',
+    renderAuditTable(auditEvents),
+    '</section>',
+    '</main>',
+    '</body>',
+    '</html>'
+  ].join('');
+}
+
+function renderEvidenceUnavailablePage(): string {
+  return [
+    '<!doctype html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<title>Evidence API unavailable - SwimPay</title>',
+    baseStyles(),
+    evidenceStyles(),
+    '</head>',
+    '<body>',
+    '<main class="admin-shell">',
+    '<section class="admin-header" aria-labelledby="evidence-unavailable-title">',
+    '<p class="eyebrow">Operator evidence workflow</p>',
+    '<h1 id="evidence-unavailable-title">Evidence API unavailable</h1>',
+    '<p class="safe-copy">Check local backend health and admin token configuration.</p>',
+    '</section>',
+    '<section class="safety-strip" aria-label="Evidence safety state">',
+    safetyChip('trusted', false),
+    safetyChip('auto_confirm_enabled', false),
+    safetyChip('no_sensitive_payload_displayed', true),
+    '</section>',
+    '</main>',
+    '</body>',
+    '</html>'
+  ].join('');
 }
 
 function renderHomePage(): string {
@@ -187,6 +360,111 @@ function renderHomePage(): string {
     '</body>',
     '</html>'
   ].join('');
+}
+
+function renderEvidenceCounts(counts: Record<string, number>): string {
+  const entries = Object.entries(counts).sort(([left], [right]) => left.localeCompare(right));
+  if (entries.length === 0) {
+    return '<section class="metric-grid" aria-label="Evidence status counts"><div class="metric"><span>No status counts</span><strong>0</strong></div></section>';
+  }
+
+  return [
+    '<section class="metric-grid" aria-label="Evidence status counts">',
+    ...entries.map(([status, count]) => `<div class="metric"><span>${escapeHtml(status)}</span><strong>${escapeHtml(String(count))}</strong></div>`),
+    '</section>'
+  ].join('');
+}
+
+function renderEvidenceTable(rows: BankEvidenceRow[]): string {
+  if (rows.length === 0) {
+    return '<p class="empty-state">No evidence rows in this view.</p>';
+  }
+
+  return [
+    '<div class="table-wrap"><table>',
+    '<thead><tr><th>Evidence</th><th>Bank profile</th><th>Package</th><th>Cert</th><th>Status</th><th>Trust</th><th>Submitted</th></tr></thead>',
+    '<tbody>',
+    ...rows.map((item) =>
+      [
+        '<tr>',
+        `<td>${escapeHtml(item.evidence_id ?? 'unknown')}</td>`,
+        `<td>${escapeHtml(item.bank_profile_id ?? 'unknown')}</td>`,
+        `<td>${escapeHtml(item.package_name ?? 'unknown')}</td>`,
+        `<td>${escapeHtml(safeCertificateDisplay(item))}</td>`,
+        `<td>${statusBadge(item.status ?? 'unknown')}<span class="subtle">${escapeHtml(item.production_trust_status ?? 'not_requested')}</span></td>`,
+        `<td>${escapeHtml(trustDisplay(item))}</td>`,
+        `<td>${escapeHtml(item.submitted_at ?? item.created_at ?? 'unknown')}</td>`,
+        '</tr>'
+      ].join('')
+    ),
+    '</tbody>',
+    '</table></div>'
+  ].join('');
+}
+
+function renderAuditTable(events: AdminAuditEvent[]): string {
+  if (events.length === 0) {
+    return '<p class="empty-state">No evidence audit events found.</p>';
+  }
+
+  return [
+    '<div class="table-wrap"><table>',
+    '<thead><tr><th>Event</th><th>Object</th><th>Actor</th><th>Cert</th><th>Safety</th><th>Created</th></tr></thead>',
+    '<tbody>',
+    ...events.map((event) =>
+      [
+        '<tr>',
+        `<td>${escapeHtml(event.eventType ?? 'unknown')}</td>`,
+        `<td>${escapeHtml(event.objectId ?? 'unknown')}</td>`,
+        `<td>${escapeHtml(event.actorId ?? 'unknown')}</td>`,
+        `<td>${escapeHtml(maskedPayloadCert(event.payloadRedacted))}</td>`,
+        `<td>${escapeHtml(auditSafetyDisplay(event.payloadRedacted))}</td>`,
+        `<td>${escapeHtml(event.createdAt ?? event.occurredAt ?? 'unknown')}</td>`,
+        '</tr>'
+      ].join('')
+    ),
+    '</tbody>',
+    '</table></div>'
+  ].join('');
+}
+
+function safetyChip(label: string, value: boolean): string {
+  return `<div class="safety-chip"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`;
+}
+
+function statusBadge(status: string): string {
+  return `<span class="status-badge">${escapeHtml(status)}</span>`;
+}
+
+function safeCertificateDisplay(item: BankEvidenceRow): string {
+  if (item.cert_sha256_masked && !isFullSha256(item.cert_sha256_masked)) {
+    return item.cert_sha256_masked;
+  }
+
+  return '[masked]';
+}
+
+function maskedPayloadCert(payload: Record<string, unknown> | undefined): string {
+  const candidate = typeof payload?.cert_sha256_masked === 'string' ? payload.cert_sha256_masked : undefined;
+  if (candidate && !isFullSha256(candidate)) {
+    return candidate;
+  }
+
+  return '[masked]';
+}
+
+function trustDisplay(item: BankEvidenceRow): string {
+  return `trusted=${String(item.trusted === true)} auto_confirm_enabled=${String(item.auto_confirm_enabled === true)}`;
+}
+
+function auditSafetyDisplay(payload: Record<string, unknown> | undefined): string {
+  const trusted = payload?.trusted === true;
+  const autoConfirm = payload?.auto_confirm_enabled === true;
+  return `trusted=${String(trusted)} auto_confirm_enabled=${String(autoConfirm)}`;
+}
+
+function isFullSha256(value: string): boolean {
+  return /^[a-f0-9]{64}$/i.test(value);
 }
 
 function renderCheckoutPage(session: CheckoutSession, recipient: CheckoutRecipient): string {
@@ -383,6 +661,29 @@ h2 { margin: 0 0 14px; font-size: 18px; letter-spacing: 0; }
 .status-pill { display: inline-flex; min-height: 34px; align-items: center; border-radius: 999px; padding: 0 12px; background: #e8f4f2; color: #0f625c; font-weight: 700; }
 .timer { font-weight: 700; }
 @media (max-width: 760px) { .checkout-grid { grid-template-columns: 1fr; } h1 { font-size: 28px; } .step { min-height: auto; } }
+</style>`;
+}
+
+function evidenceStyles(): string {
+  return `<style>
+.admin-shell { width: min(1240px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 40px; }
+.admin-header { padding: 18px 0 14px; }
+.safety-strip { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 18px; }
+.safety-chip { display: inline-flex; gap: 8px; align-items: center; min-height: 32px; border: 1px solid #cfd8dc; border-radius: 6px; padding: 0 10px; background: #fff; }
+.safety-chip span { color: #516269; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 12px 0 18px; }
+.metric { border: 1px solid #d8e0e3; border-radius: 8px; background: #fff; padding: 12px; }
+.metric span { display: block; color: #516269; font-size: 13px; }
+.metric strong { display: block; margin-top: 4px; font-size: 24px; }
+.admin-section { margin-top: 22px; }
+.table-wrap { overflow-x: auto; border: 1px solid #d8e0e3; border-radius: 8px; background: #fff; }
+table { width: 100%; border-collapse: collapse; min-width: 860px; }
+th, td { padding: 10px 12px; border-bottom: 1px solid #eef2f3; text-align: left; vertical-align: top; font-size: 14px; }
+th { color: #516269; background: #f8fafb; font-weight: 700; }
+.status-badge { display: inline-flex; align-items: center; min-height: 26px; border-radius: 999px; padding: 0 10px; background: #e8f4f2; color: #0f625c; font-weight: 700; }
+.subtle { display: block; margin-top: 4px; color: #65747a; font-size: 12px; }
+.empty-state { border: 1px dashed #cfd8dc; border-radius: 8px; padding: 14px; background: #fff; color: #516269; }
+@media (max-width: 760px) { .admin-shell { width: min(100% - 20px, 1240px); } .metric-grid { grid-template-columns: 1fr; } }
 </style>`;
 }
 
