@@ -371,6 +371,228 @@ export type AndroidReceiverSignalValidationResult =
     }
   | { valid: false; code: AndroidReceiverErrorCode; field?: string };
 
+export interface ReceiverRealNotificationShadowFlags {
+  realNotificationShadowEnabled: boolean;
+  requireRealNotificationConsent: boolean;
+  realBankAutoConfirm: boolean;
+  shadowAutoConfirmPrediction: boolean;
+  rawNotificationStorage: boolean;
+}
+
+export type ReceiverRealNotificationShadowRequiredAction =
+  | 'enable_real_notification_shadow_flag'
+  | 'disable_real_bank_auto_confirm'
+  | 'disable_raw_notification_storage'
+  | 'operator_consent_required'
+  | 'merchant_consent_required'
+  | 'bank_selection_required'
+  | 'bank_review_only_status_required'
+  | 'notification_listener_access_required'
+  | 'backend_health_required'
+  | 'outbox_health_required';
+
+export interface ReceiverRealNotificationShadowConsentInput {
+  flags: ReceiverRealNotificationShadowFlags;
+  operatorConsent: boolean;
+  merchantConsent: boolean;
+  selectedBankProfileId?: string;
+  bankReviewOnlyReady: boolean;
+  notificationListenerAccessEnabled: boolean;
+  backendHealthy: boolean;
+  outboxHealthy: boolean;
+}
+
+export interface ReceiverRealNotificationShadowConsentResult {
+  allowed: boolean;
+  mode: 'blocked' | 'shadow_review_only_ready';
+  requiredActions: ReceiverRealNotificationShadowRequiredAction[];
+  warnings: string[];
+}
+
+export type RealNotificationRedactionPreflightResult =
+  | {
+      valid: true;
+      allowed_fields: readonly string[];
+    }
+  | {
+      valid: false;
+      code:
+        | 'raw_phone_rejected'
+        | 'raw_notification_rejected'
+        | 'raw_customer_identifier_rejected'
+        | 'payload_invalid';
+      field?: string;
+    };
+
+export interface ShadowAutoConfirmPredictionInput {
+  amountExact: boolean;
+  currencyExact: boolean;
+  incomingCustomerTransfer: boolean;
+  senderPhoneOrReferenceExact: boolean;
+  noCollision: boolean;
+  deviceTrusted: boolean;
+  bankProfileTrusted: boolean;
+  templateReliable: boolean;
+  uniqueEventId: boolean;
+  uniqueNotificationHash: boolean;
+  signalUnused: boolean;
+  activeOrderAndSession: boolean;
+}
+
+export interface ShadowAutoConfirmPredictionResult {
+  would_auto_confirm: boolean;
+  confidence_score: number;
+  missing_gates: string[];
+  reason_codes: string[];
+  mutates_order: false;
+  emits_payment_confirmed_webhook: false;
+  releases_fulfillment: false;
+  confirmation_type: 'notification_signal';
+  official_bank_confirmation: false;
+}
+
+export function buildSafeReceiverShadowFlags(
+  env: Record<string, string | boolean | undefined>
+): ReceiverRealNotificationShadowFlags {
+  return {
+    realNotificationShadowEnabled: parseBooleanFlag(env.SWIMPAY_REAL_NOTIFICATION_SHADOW_ENABLED, false),
+    requireRealNotificationConsent: parseBooleanFlag(env.SWIMPAY_REQUIRE_REAL_NOTIFICATION_CONSENT, true),
+    realBankAutoConfirm: parseBooleanFlag(env.SWIMPAY_REAL_BANK_AUTO_CONFIRM, false),
+    shadowAutoConfirmPrediction: parseBooleanFlag(env.SWIMPAY_SHADOW_AUTO_CONFIRM_PREDICTION, true),
+    rawNotificationStorage: parseBooleanFlag(env.SWIMPAY_RAW_NOTIFICATION_STORAGE, false)
+  };
+}
+
+export function evaluateRealNotificationShadowConsentGate(
+  input: ReceiverRealNotificationShadowConsentInput
+): ReceiverRealNotificationShadowConsentResult {
+  const requiredActions: ReceiverRealNotificationShadowRequiredAction[] = [];
+
+  if (!input.flags.realNotificationShadowEnabled) {
+    requiredActions.push('enable_real_notification_shadow_flag');
+  }
+  if (input.flags.realBankAutoConfirm) {
+    requiredActions.push('disable_real_bank_auto_confirm');
+  }
+  if (input.flags.rawNotificationStorage) {
+    requiredActions.push('disable_raw_notification_storage');
+  }
+  if (input.flags.requireRealNotificationConsent && !input.operatorConsent) {
+    requiredActions.push('operator_consent_required');
+  }
+  if (input.flags.requireRealNotificationConsent && !input.merchantConsent) {
+    requiredActions.push('merchant_consent_required');
+  }
+  if (!isNonEmptyString(input.selectedBankProfileId)) {
+    requiredActions.push('bank_selection_required');
+  }
+  if (!input.bankReviewOnlyReady) {
+    requiredActions.push('bank_review_only_status_required');
+  }
+  if (!input.notificationListenerAccessEnabled) {
+    requiredActions.push('notification_listener_access_required');
+  }
+  if (!input.backendHealthy) {
+    requiredActions.push('backend_health_required');
+  }
+  if (!input.outboxHealthy) {
+    requiredActions.push('outbox_health_required');
+  }
+
+  return {
+    allowed: requiredActions.length === 0,
+    mode: requiredActions.length === 0 ? 'shadow_review_only_ready' : 'blocked',
+    requiredActions,
+    warnings: requiredActions.length === 0 ? ['real_notification_shadow_review_only'] : []
+  };
+}
+
+export function validateRealNotificationRedactionPreflight(
+  body: unknown
+): RealNotificationRedactionPreflightResult {
+  if (!isPlainRecord(body)) {
+    return { valid: false, code: 'payload_invalid' };
+  }
+
+  const rawField = findForbiddenReceiverRawField(body);
+  if (rawField?.kind === 'phone') {
+    return { valid: false, code: 'raw_phone_rejected', field: rawField.field };
+  }
+  if (rawField?.kind === 'notification') {
+    return { valid: false, code: 'raw_notification_rejected', field: rawField.field };
+  }
+
+  for (const [key, value] of Object.entries(body)) {
+    if (/^(customer|buyer|sender)_(name|id|identifier)$/iu.test(key)) {
+      return { valid: false, code: 'raw_customer_identifier_rejected', field: key };
+    }
+    if ((key === 'redacted_title' || key === 'redacted_body') && containsRawPhoneLikeValue(value)) {
+      return { valid: false, code: 'raw_phone_rejected', field: key };
+    }
+  }
+
+  const allowedFields = [
+    'redacted_title',
+    'redacted_body',
+    'amount_minor',
+    'currency',
+    'sender_phone_hmac',
+    'sender_phone_masked',
+    'reference_hmac',
+    'reference_code_masked',
+    'reason_codes'
+  ] as const;
+
+  for (const key of Object.keys(body)) {
+    if (!(allowedFields as readonly string[]).includes(key)) {
+      return { valid: false, code: 'payload_invalid', field: key };
+    }
+  }
+
+  return { valid: true, allowed_fields: allowedFields };
+}
+
+export function evaluateShadowAutoConfirmPrediction(
+  input: ShadowAutoConfirmPredictionInput
+): ShadowAutoConfirmPredictionResult {
+  const gates: Array<[string, boolean]> = [
+    ['amount_exact', input.amountExact],
+    ['currency_exact', input.currencyExact],
+    ['incoming_customer_transfer', input.incomingCustomerTransfer],
+    ['sender_phone_or_reference_exact', input.senderPhoneOrReferenceExact],
+    ['no_collision', input.noCollision],
+    ['device_trusted', input.deviceTrusted],
+    ['bank_profile_trusted', input.bankProfileTrusted],
+    ['template_reliable', input.templateReliable],
+    ['unique_event_id', input.uniqueEventId],
+    ['unique_notification_hash', input.uniqueNotificationHash],
+    ['signal_unused', input.signalUnused],
+    ['active_order_and_session', input.activeOrderAndSession]
+  ];
+  const missingGates = gates.filter(([, passed]) => !passed).map(([gate]) => gate);
+  const passedCount = gates.length - missingGates.length;
+  const reasonCodes = ['shadow_prediction_only'];
+
+  if (!input.bankProfileTrusted) {
+    reasonCodes.push('review_only_bank_signal');
+  }
+  if (!input.templateReliable) {
+    reasonCodes.push('template_not_reliable');
+  }
+
+  return {
+    would_auto_confirm: missingGates.length === 0,
+    confidence_score: Math.round((passedCount / gates.length) * 100),
+    missing_gates: missingGates,
+    reason_codes: reasonCodes,
+    mutates_order: false,
+    emits_payment_confirmed_webhook: false,
+    releases_fulfillment: false,
+    confirmation_type: 'notification_signal',
+    official_bank_confirmation: false
+  };
+}
+
 export function validateAndroidReceiverRegistrationRequest(
   body: unknown
 ): AndroidReceiverValidationResult<AndroidReceiverRegistrationRequest> {
@@ -685,6 +907,21 @@ function assignIfDefined<T extends object, K extends keyof T>(target: T, key: K,
   if (value !== undefined) {
     target[key] = value;
   }
+}
+
+function parseBooleanFlag(value: string | boolean | undefined, defaultValue: boolean): boolean {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return defaultValue;
+  }
+
+  return value.trim().toLowerCase() === 'true';
+}
+
+function containsRawPhoneLikeValue(value: unknown): boolean {
+  return typeof value === 'string' && /\+?\d[\d\s().-]{7,}\d/u.test(value);
 }
 
 function findForbiddenReceiverRawField(

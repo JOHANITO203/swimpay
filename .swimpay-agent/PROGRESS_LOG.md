@@ -1615,3 +1615,13 @@ Safety checks:
 - Rehearsed manual review webhook fulfillment with `decision=manual_confirmed`, `official_bank_confirmation=false` and `confirmation_type=notification_signal`.
 - Verified default rejection scope remains signal-level and support trace excludes raw phone, raw notification text, raw title/body, API keys and webhook secrets.
 - No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust request/approval, raw phone, raw notification text or auto-confirmation was used.
+
+## 2026-05-03T16:05:00+03:00 - Sprint 6E Real-notification Shadow Readiness Gate
+
+- Created tasks 324 through 331 and updated the task queue to Sprint 6E.
+- Added contract models for safe shadow flags, consent gate, redaction preflight and non-mutating shadow prediction.
+- Updated the five-bank MVP matrix with readiness gate fields while keeping real notification shadow `not_started`.
+- Created `docs/REAL_NOTIFICATION_SHADOW_DRY_RUN.md`.
+- Updated private beta go/no-go criteria for real-notification shadow readiness.
+- Added `tests/real-notification-shadow-readiness.test.ts`.
+- No real bank notification, customer data, installed-app enumeration, SMS, scraping, production trust request/approval, raw phone, raw notification text or auto-confirmation was used.

@@ -2,7 +2,7 @@
 
 No current critical blockers.
 
-Last checked after Sprint 6D private beta review queue and webhook rehearsal: 2026-05-03T15:45:00+03:00.
+Last checked after Sprint 6E real-notification shadow readiness gate: 2026-05-03T16:05:00+03:00.
 
 Resolved during Sprint 4Y retry:
 
@@ -48,4 +48,5 @@ Known non-critical limitations:
 - All selected V1 banks now have package evidence in the five-bank matrix. The four Sprint 6B rows are `approved_for_review_only`; Sberbank remains `production_trust_revoked` from the prior local drill. None of this creates production trust or auto-confirmation.
 - Sprint 6C rehearsed redacted synthetic review-only notification-signal fixtures for all five V1 banks. Incoming-like and amount-only signals route to review, negative categories never auto-confirm, and webhook disclosure remains `official_bank_confirmation=false` with `confirmation_type=notification_signal`.
 - Sprint 6D added synthetic private beta merchant/order fixtures, rehearsed five-bank review queue routing, manual review webhook fulfillment, signal-scope rejection expectations and safe support trace documentation.
+- Sprint 6E added the real-notification shadow consent gate, redaction preflight, safe beta flags, non-mutating shadow prediction policy and dry-run commands. It did not process real bank notifications.
 - Real bank notifications remain out of scope. No real notification samples are stored or approved, and any real notification shadow run requires explicit future authorization.

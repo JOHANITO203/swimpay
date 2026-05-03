@@ -63,7 +63,7 @@ interface PrivateBetaFixtureSet {
 }
 
 describe('Sprint 6D private beta review queue and webhook rehearsal', () => {
-  test('creates Sprint 6D task files and active task queue order', () => {
+  test('creates Sprint 6D task files and closeout report', () => {
     const requiredFiles = [
       'tasks/296_beta_synthetic_merchant_fixture_set.md',
       'tasks/297_beta_order_checkout_review_flow.md',
@@ -79,24 +79,6 @@ describe('Sprint 6D private beta review queue and webhook rehearsal', () => {
 
     for (const file of requiredFiles) {
       expect(existsSync(join(root, file)), file).toBe(true);
-    }
-
-    const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
-    const orderedTasks = [
-      '296_beta_synthetic_merchant_fixture_set',
-      '297_beta_order_checkout_review_flow',
-      '298_beta_review_confirm_reject_rehearsal',
-      '299_beta_webhook_fulfillment_rehearsal',
-      '300_beta_audit_and_support_trace',
-      '301_beta_merchant_operator_runbook',
-      '302_sprint_6d_closeout_review'
-    ];
-
-    let previousIndex = -1;
-    for (const task of orderedTasks) {
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
-      expect(index, task).toBeGreaterThan(previousIndex);
-      previousIndex = index;
     }
   });
 

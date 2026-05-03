@@ -6,10 +6,11 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `296_beta_synthetic_merchant_fixture_set` - status: completed - source: `tasks/296_beta_synthetic_merchant_fixture_set.md`
-- [x] `297_beta_order_checkout_review_flow` - status: completed - source: `tasks/297_beta_order_checkout_review_flow.md`
-- [x] `298_beta_review_confirm_reject_rehearsal` - status: completed - source: `tasks/298_beta_review_confirm_reject_rehearsal.md`
-- [x] `299_beta_webhook_fulfillment_rehearsal` - status: completed - source: `tasks/299_beta_webhook_fulfillment_rehearsal.md`
-- [x] `300_beta_audit_and_support_trace` - status: completed - source: `tasks/300_beta_audit_and_support_trace.md`
-- [x] `301_beta_merchant_operator_runbook` - status: completed - source: `tasks/301_beta_merchant_operator_runbook.md`
-- [x] `302_sprint_6d_closeout_review` - status: completed - source: `tasks/302_sprint_6d_closeout_review.md`
+- [x] `324_real_notification_shadow_consent_gate` - status: completed - source: `tasks/324_real_notification_shadow_consent_gate.md`
+- [x] `325_real_notification_redaction_preflight` - status: completed - source: `tasks/325_real_notification_redaction_preflight.md`
+- [x] `326_five_bank_shadow_readiness_matrix` - status: completed - source: `tasks/326_five_bank_shadow_readiness_matrix.md`
+- [x] `327_receiver_real_notification_shadow_mode_flags` - status: completed - source: `tasks/327_receiver_real_notification_shadow_mode_flags.md`
+- [x] `328_real_notification_shadow_dry_run_commands` - status: completed - source: `tasks/328_real_notification_shadow_dry_run_commands.md`
+- [x] `329_shadow_prediction_non_mutating_policy` - status: completed - source: `tasks/329_shadow_prediction_non_mutating_policy.md`
+- [x] `330_beta_go_no_go_rehearsal` - status: completed - source: `tasks/330_beta_go_no_go_rehearsal.md`
+- [x] `331_sprint_6e_closeout_review` - status: completed - source: `tasks/331_sprint_6e_closeout_review.md`

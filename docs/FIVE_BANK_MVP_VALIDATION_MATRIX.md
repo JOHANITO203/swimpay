@@ -14,6 +14,8 @@ SwimPay is a Payment Signal Engine. This matrix tracks MVP readiness for the sel
 - Auto-confirm remains disabled for real banks.
 - Sprint 6C rehearses synthetic redacted notification-signal fixtures only.
 - Webhook disclosure remains `official_bank_confirmation=false` and `confirmation_type=notification_signal`.
+- Sprint 6E prepares the real-notification shadow readiness gate only.
+- Safe beta defaults are `SWIMPAY_REAL_NOTIFICATION_SHADOW_ENABLED=false`, `SWIMPAY_REAL_BANK_AUTO_CONFIRM=false` and `SWIMPAY_RAW_NOTIFICATION_STORAGE=false`.
 
 ## Matrix
 
@@ -24,6 +26,18 @@ SwimPay is a Payment Signal Engine. This matrix tracks MVP readiness for the sel
 | `vtb_ru` | VTB | filtered_candidate_selected | `ru.vtb24.mobilebanking.android` | approved_for_review_only | visible_via_adb_exact_lookup | review_only_ready | passed | not_started | not_collected | synthetic_shadow_passed | synthetic_review_queue_passed | synthetic_disclosure_passed | disabled | pending_real_notification_shadow | real notification shadow run not started |
 | `alfa_ru` | Alfa-Bank | filtered_candidate_selected | `ru.alfabank.mobile.android` | approved_for_review_only | visible_via_adb_exact_lookup | review_only_ready | passed | not_started | not_collected | synthetic_shadow_passed | synthetic_review_queue_passed | synthetic_disclosure_passed | disabled | pending_real_notification_shadow | real notification shadow run not started |
 | `gazprombank_ru` | Gazprombank | filtered_candidate_selected | `ru.gazprombank.android.mobilebank.app` | approved_for_review_only | visible_via_adb_exact_lookup | review_only_ready | passed | not_started | not_collected | synthetic_shadow_passed | synthetic_review_queue_passed | synthetic_disclosure_passed | disabled | pending_real_notification_shadow | real notification shadow run not started |
+
+## Sprint 6E Real-notification Shadow Readiness Gate
+
+The readiness fields below are gate-preparation metadata. They do not mark real notification shadow as passed and do not authorize real bank notification processing.
+
+| Bank profile | package_evidence_review_only | receiver_selection_ready | notification_access_ready | redaction_preflight_ready | shadow_consent_ready | real_notification_shadow_status | parser_shadow_status | review_queue_status | webhook_after_manual_review_status |
+|---|---|---|---|---|---|---|---|---|---|
+| `sber_ru` | true | true | preflight_required_on_device | ready | consent_required | not_started | synthetic_only_ready | synthetic_review_queue_passed | synthetic_manual_review_webhook_passed |
+| `tbank_ru` | true | true | preflight_required_on_device | ready | consent_required | not_started | synthetic_only_ready | synthetic_review_queue_passed | synthetic_manual_review_webhook_passed |
+| `vtb_ru` | true | true | preflight_required_on_device | ready | consent_required | not_started | synthetic_only_ready | synthetic_review_queue_passed | synthetic_manual_review_webhook_passed |
+| `alfa_ru` | true | true | preflight_required_on_device | ready | consent_required | not_started | synthetic_only_ready | synthetic_review_queue_passed | synthetic_manual_review_webhook_passed |
+| `gazprombank_ru` | true | true | preflight_required_on_device | ready | consent_required | not_started | synthetic_only_ready | synthetic_review_queue_passed | synthetic_manual_review_webhook_passed |
 
 ## Sprint 6C Synthetic Shadow Rehearsal
 

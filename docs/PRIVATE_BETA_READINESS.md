@@ -42,7 +42,7 @@ Merchant-facing wording for beta:
 
 ## Current Readiness Snapshot
 
-All five V1 banks have package evidence for review-only MVP validation. Sprint 6C rehearsed synthetic shadow runtime for every bank, and Sprint 6D rehearses private beta order, review and webhook behavior with synthetic merchant/order fixtures.
+All five V1 banks have package evidence for review-only MVP validation. Sprint 6C rehearsed synthetic shadow runtime for every bank, and Sprint 6D rehearsed private beta order, review and webhook behavior with synthetic merchant/order fixtures. Sprint 6E prepares the real-notification shadow readiness gate only.
 
 Private beta still requires an explicit go/no-go review before any real bank notification shadow run. Review is required in beta.
 
@@ -55,3 +55,38 @@ Private beta still requires an explicit go/no-go review before any real bank not
 - default reject scope is signal-level;
 - signed webhook delivery works with `official_bank_confirmation=false` and `confirmation_type=notification_signal`;
 - support trace is possible without raw phone or raw notification text.
+
+## Sprint 6E Real-notification Shadow Gate
+
+Safe beta defaults:
+
+- `SWIMPAY_REAL_NOTIFICATION_SHADOW_ENABLED=false`
+- `SWIMPAY_REQUIRE_REAL_NOTIFICATION_CONSENT=true`
+- `SWIMPAY_REAL_BANK_AUTO_CONFIRM=false`
+- `SWIMPAY_SHADOW_AUTO_CONFIRM_PREDICTION=true`
+- `SWIMPAY_RAW_NOTIFICATION_STORAGE=false`
+
+Go criteria before the next authorized shadow sprint:
+
+- 5 banks package evidence review-only;
+- synthetic shadow runtime passed;
+- private beta review/webhook rehearsal passed;
+- real notification shadow gate ready;
+- auto-confirm off;
+- raw storage off;
+- webhook signature works;
+- support/audit trace works;
+- Notification Listener Access onboarding is understood by the merchant.
+
+No-go criteria:
+
+- raw notification leak;
+- raw phone leak;
+- auto-confirm real bank enabled;
+- webhook confirmed without manual review;
+- Notification Access onboarding broken;
+- receiver outbox unstable;
+- backend health unstable;
+- merchant-facing wording implies official bank confirmation.
+
+Real notification shadow remains `not_started`. A future sprint must record explicit operator and merchant consent before enabling `SWIMPAY_REAL_NOTIFICATION_SHADOW_ENABLED=true`.
