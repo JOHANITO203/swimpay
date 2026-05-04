@@ -269,7 +269,7 @@ function renderDesktopQrHandoff(session: CheckoutSession): string {
 function buyerCheckoutStyles(): string {
   return `<style>
     .buyer-checkout .brand { margin-bottom: 36px; }
-    .buyer-checkout-content { max-width: 1120px; }
+    .buyer-checkout-content { width: 100%; max-width: 1120px; }
     .checkout-grid { display:grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items:start; }
     .checkout-hero-card { text-align:center; padding: 34px; }
     .checkout-hero-card h1 { font-size: clamp(34px, 5vw, 56px); }
@@ -287,7 +287,7 @@ function buyerCheckoutStyles(): string {
       border-radius:18px; background: var(--color-mint); color: var(--color-teal);
       font-weight: 900; box-shadow: 0 10px 24px rgba(7, 27, 51, 0.06);
     }
-    .checkout-section { scroll-margin-top: 24px; }
+    .checkout-section { min-width: 0; scroll-margin-top: 24px; }
     .checkout-section-head { margin-bottom: 18px; }
     .checkout-section-head h2 { font-size: clamp(28px, 4vw, 42px); line-height: 1.08; }
     .checkout-section-head p { margin: 10px 0 0; color: var(--color-muted); font-size: 18px; }
@@ -298,6 +298,7 @@ function buyerCheckoutStyles(): string {
       border-radius: 26px; background: rgba(255,255,255,0.96);
       box-shadow: var(--shadow-soft); padding:18px;
       display:flex; align-items:center; gap:16px; text-align:left;
+      min-width: 0;
       cursor:pointer; color: var(--color-navy);
       transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
     }
@@ -312,15 +313,16 @@ function buyerCheckoutStyles(): string {
     .method-copy em { color: var(--color-muted); font-style: normal; font-size: 14px; }
     .bank-chevron, .method-chevron { color: var(--color-teal); font-weight: 900; font-size: 24px; }
     .checkout-action-row { margin-top: 18px; }
-    .payment-instructions-card { padding: 28px; }
+    .payment-instructions-card { padding: 28px; min-width: 0; }
     .instruction-destination {
       display:flex; align-items:center; gap:16px;
       padding:18px; border-radius:24px; background: var(--color-bg);
       border:1px solid rgba(225,232,237,0.9); margin-bottom:18px;
+      min-width: 0;
     }
-    .instruction-destination div { display:flex; flex-direction:column; flex:1; gap:3px; }
+    .instruction-destination div { display:flex; flex-direction:column; flex:1; min-width: 0; gap:3px; }
     .instruction-destination small { color: var(--color-muted); font-weight:700; }
-    .instruction-destination strong { color: var(--color-navy); font-size:24px; }
+    .instruction-destination strong { color: var(--color-navy); font-size:24px; overflow-wrap: anywhere; }
     .instruction-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:14px; }
     .sender-phone-field {
       display:flex; flex-direction:column; gap:8px; margin-top:16px;
@@ -337,13 +339,14 @@ function buyerCheckoutStyles(): string {
     .buyer-state-panel {
       display:flex; align-items:center; gap:18px;
       border-width:1px;
+      min-width: 0;
     }
     .buyer-state-panel h2 { font-size: 28px; }
     .buyer-state-panel p { margin: 4px 0 0; color: var(--color-muted); font-size:18px; }
     .buyer-state-success { border-color: rgba(34,181,115,0.28); }
     .buyer-state-warning { border-color: rgba(245,166,35,0.28); }
     .buyer-state-danger { border-color: rgba(229,72,77,0.28); }
-    .checkout-side { position: sticky; top: 24px; }
+    .checkout-side { position: sticky; top: 24px; min-width: 0; }
     .checkout-note {
       padding: 18px; background: var(--color-mint);
       border: 1px solid rgba(35,199,201,0.28);
@@ -358,6 +361,9 @@ function buyerCheckoutStyles(): string {
     .qr-box {
       width: 154px; aspect-ratio: 1; margin: 10px auto 16px;
       border-radius: 28px; background:
+        radial-gradient(circle at 18px 18px, var(--color-navy) 0 5px, transparent 6px),
+        radial-gradient(circle at calc(100% - 18px) 18px, var(--color-navy) 0 5px, transparent 6px),
+        radial-gradient(circle at 18px calc(100% - 18px), var(--color-navy) 0 5px, transparent 6px),
         linear-gradient(90deg, rgba(7,27,51,.10) 2px, transparent 2px),
         linear-gradient(rgba(7,27,51,.10) 2px, transparent 2px),
         white;
@@ -378,8 +384,27 @@ function buyerCheckoutStyles(): string {
       .checkout-hero-card, .payment-instructions-card { padding:22px; }
       .benefit-grid, .instruction-grid, .instruction-actions { grid-template-columns: 1fr; }
       .buyer-state-panel { align-items:flex-start; }
-      .instruction-destination { align-items:flex-start; }
+      .instruction-destination { align-items:flex-start; flex-wrap: wrap; }
       .instruction-destination strong { font-size:20px; }
+    }
+    @media (max-width: 430px) {
+      .checkout-grid { gap: 20px; }
+      .checkout-hero-card, .payment-instructions-card { padding: 20px; border-radius: 24px; }
+      .checkout-hero-card h1 { font-size: 32px; }
+      .checkout-lead, .checkout-section-head p, .buyer-state-panel p { font-size: 16px; }
+      .checkout-section-head h2 { font-size: 28px; }
+      .bank-option-card, .launcher-card, .method-card {
+        min-height: 82px;
+        padding: 15px;
+        gap: 13px;
+        border-radius: 22px;
+      }
+      .bank-copy strong, .launcher-copy strong, .method-copy strong { font-size: 19px; }
+      .bank-copy small, .launcher-copy small, .method-copy small { font-size: 14px; }
+      .instruction-destination { padding: 15px; border-radius: 20px; }
+      .instruction-destination .copy-btn { width: 100%; min-height: 44px; border-radius: var(--radius-pill); background: white; }
+      .buyer-state-icon { flex: 0 0 52px; }
+      .buyer-state-panel h2 { font-size: 24px; }
     }
   </style>`;
 }

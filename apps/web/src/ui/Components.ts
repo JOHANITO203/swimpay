@@ -40,10 +40,12 @@ function layoutStyles(): string {
       min-height: 100vh;
       width: 100%;
       padding: 28px;
+      overflow-x: hidden;
     }
 
     .screen {
       position: relative;
+      width: 100%;
       max-width: 980px;
       margin: 0 auto;
       overflow: hidden;
@@ -76,6 +78,8 @@ function layoutStyles(): string {
     .screen-content {
       position: relative;
       z-index: 1;
+      width: 100%;
+      min-width: 0;
       max-width: 820px;
       margin: 0 auto;
     }
@@ -107,6 +111,13 @@ function layoutStyles(): string {
       .two-col { grid-template-columns: 1fr; }
       .screen-content { max-width: none; }
     }
+
+    @media (max-width: 430px) {
+      .merchant-screen { padding: 22px 16px 92px; }
+      .merchant-screen::before { left: -22%; width: 144%; }
+      .split { flex-direction: column; align-items: stretch; }
+      .safe-note { align-items: flex-start; }
+    }
   `;
 }
 
@@ -116,7 +127,7 @@ export function SwimPayBrand(): string {
     <div class="brand-word">SwimPay</div>
   </div>
   <style>
-    .brand { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 56px; }
+    .brand { display: flex; align-items: center; justify-content: center; gap: 14px; max-width: 100%; min-width: 0; margin-bottom: 56px; }
     .brand-mark {
       width: 58px; height: 42px; border-radius: 24px;
       display: grid; place-items: center;
@@ -125,11 +136,16 @@ export function SwimPayBrand(): string {
       box-shadow: 0 12px 28px rgba(35, 199, 201, 0.22);
       font-style: italic;
     }
-    .brand-word { font-size: 40px; font-weight: 800; color: var(--color-navy); letter-spacing: 0; }
+    .brand-word { min-width: 0; font-size: 40px; font-weight: 800; color: var(--color-navy); letter-spacing: 0; }
     @media (max-width: 600px) {
       .brand { margin-bottom: 48px; }
       .brand-word { font-size: 34px; }
       .brand-mark { width: 52px; height: 38px; font-size: 26px; }
+    }
+    @media (max-width: 380px) {
+      .brand { gap: 10px; margin-bottom: 42px; }
+      .brand-word { font-size: 30px; }
+      .brand-mark { width: 48px; height: 36px; font-size: 24px; }
     }
   </style>`;
 }
@@ -162,7 +178,13 @@ export function PageHeader(params: { title: string; subtitle?: string; eyebrow?:
     }
     .page-header-left .subtitle { margin-left: 0; }
     @media (max-width: 600px) {
+      .page-header { margin-bottom: 24px; }
+      .page-header h1 { font-size: clamp(29px, 8vw, 34px); overflow-wrap: anywhere; }
       .page-header .subtitle { font-size: 18px; }
+    }
+    @media (max-width: 380px) {
+      .page-header h1 { font-size: 29px; }
+      .page-header .subtitle { font-size: 16px; }
     }
   </style>`;
 }
@@ -357,6 +379,7 @@ export function componentStyles(): string {
       border-radius: var(--radius-card);
       padding: 24px;
       box-shadow: var(--shadow-soft);
+      min-width: 0;
     }
 
     .icon-bubble {
@@ -418,7 +441,7 @@ export function componentStyles(): string {
       border-color: var(--color-teal);
       background: linear-gradient(135deg, rgba(232, 250, 248, 0.98), white);
     }
-    .option-content { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .option-content { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
     .option-title { color: var(--color-navy); font-size: 22px; }
     .option-subtitle { color: var(--color-muted); font-size: 17px; }
     .option-detail { color: var(--color-muted); font-size: 14px; }
@@ -468,7 +491,7 @@ export function componentStyles(): string {
       gap: 18px;
     }
     .review-payment-main { display: flex; align-items: center; gap: 18px; min-width: 0; }
-    .review-payment-copy { display: flex; flex-direction: column; gap: 4px; }
+    .review-payment-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
     .review-payment-copy strong { font-size: 34px; color: var(--color-navy); line-height: 1; }
     .review-payment-copy span { color: var(--color-navy); font-size: 21px; }
     .review-payment-copy small { color: var(--color-muted); font-size: 15px; }
@@ -552,6 +575,19 @@ export function componentStyles(): string {
       .review-payment-copy strong { font-size: 30px; }
       .detail-row { grid-template-columns: 34px 1fr; }
       .detail-row strong { grid-column: 2; text-align: left; }
+    }
+    @media (max-width: 430px) {
+      .btn-wide { min-height: 58px; font-size: 19px; }
+      .card { border-radius: 24px; padding: 20px; }
+      .option-button { min-height: 86px; padding: 16px; gap: 14px; border-radius: 20px; }
+      .option-title { font-size: 19px; }
+      .option-subtitle { font-size: 15px; }
+      .option-indicator, .option-square { width: 26px; height: 26px; flex: 0 0 26px; }
+      .icon-bubble { width: 50px; height: 50px; flex-basis: 50px; font-size: 21px; }
+      .status-panel p { font-size: 16px; }
+      .review-payment-copy strong { font-size: 26px; }
+      .review-payment-copy span { font-size: 18px; }
+      .bottom-nav { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
     }
   `;
 }

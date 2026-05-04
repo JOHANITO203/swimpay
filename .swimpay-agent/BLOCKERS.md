@@ -2,6 +2,14 @@
 
 No current critical blockers.
 
+## Frontend Browser QA
+
+- No critical blocker introduced.
+- Browser screenshot QA completed for merchant and buyer checkout screens.
+- Non-critical: local Chrome headless on this Windows machine crops requested 360px captures, so reliable mobile evidence was captured with CSS-equivalent 720px screenshots.
+- Non-critical: final visual acceptance should still be checked by the user in the real app/browser/device flow.
+- Backend APIs, contracts, workers, database, payment logic, Android notification processing, real bank notifications and auto-confirmation were not changed.
+
 ## Buyer Checkout UX Realignment
 
 - No critical blocker introduced.

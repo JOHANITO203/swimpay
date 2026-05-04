@@ -1,5 +1,16 @@
 # Progress Log
 
+## 2026-05-04T22:15:00+03:00 - Frontend Browser QA and Responsive Fixes
+
+- Continued the frontend-only QA pass after the checkpoint commit.
+- Created `.swimpay-agent/browser-qa/mock-server.mjs` to serve frontend screens with mock data without touching backend APIs, contracts or payment logic.
+- Rebuilt the web frontend and captured browser screenshots for merchant onboarding, dashboard, receiving methods, review queue/detail, connected site and buyer checkout states.
+- Tested mobile-equivalent, mobile-large, tablet and desktop widths. The local Windows Chrome headless path crops direct 360px captures, so reliable mobile evidence was captured through CSS-equivalent 720px screenshots.
+- Fixed visual-only responsive issues in `apps/web/src/ui/Components.ts` and `apps/web/src/screens/CheckoutScreen.ts`.
+- Added shrink-safe screen/content wrappers, mobile type/spacing clamps, instruction-row wrapping, full-width narrow copy controls and a stronger QR handoff placeholder.
+- Created `.swimpay-agent/FRONTEND_BROWSER_QA_REPORT.md`.
+- No backend, API, contract, worker, database, payment decision, webhook, Android notification processing, real bank notification or auto-confirmation logic was changed.
+
 ## 2026-05-04T21:05:00+03:00 - Buyer Checkout UX Realignment
 
 - Created tasks 399 through 406 and updated the task queue.
