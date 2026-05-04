@@ -98,11 +98,20 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
 }
 
 @Composable
-fun PremiumOnboardingFlow(onDone: () -> Unit) {
+fun PremiumOnboardingFlow(
+    notificationAccessEnabled: Boolean,
+    openNotificationSettings: () -> Unit,
+    onDone: () -> Unit
+) {
     var step by remember { mutableIntStateOf(0) }
     when (step) {
         0 -> WelcomeStep { step = 1 }
-        1 -> AuthorizationStep(onBack = { step = 0 }, onNext = { step = 2 })
+        1 -> AuthorizationStep(
+            notificationAccessEnabled = notificationAccessEnabled,
+            openNotificationSettings = openNotificationSettings,
+            onBack = { step = 0 },
+            onNext = { step = 2 }
+        )
         2 -> BankSourcesStep(onBack = { step = 1 }, onNext = { step = 3 })
         3 -> BusinessProfileStep(onBack = { step = 2 }, onNext = { step = 4 })
         4 -> PolicyEngineStep(onBack = { step = 3 }, onNext = { step = 5 })
@@ -162,11 +171,16 @@ private fun WelcomeStep(onNext: () -> Unit) {
 }
 
 @Composable
-private fun AuthorizationStep(onBack: () -> Unit, onNext: () -> Unit) {
+private fun AuthorizationStep(
+    notificationAccessEnabled: Boolean,
+    openNotificationSettings: () -> Unit,
+    onBack: () -> Unit,
+    onNext: () -> Unit
+) {
     OnboardingShell("AUTORISATION", 1, onBack) {
         PremiumTitle(
             "Écoute Active",
-            "Pour valider les paiements automatiques, SwimPay nécessite\nl'accès au service d'écoute des notifications système."
+            "Pour détecter les paiements reçus, SwimPay a besoin\nd'accéder aux notifications système."
         )
         PremiumCard(Modifier.fillMaxWidth().height(260.dp), radius = 34.dp) {
             Box(Modifier.fillMaxSize().padding(28.dp)) {
@@ -186,8 +200,16 @@ private fun AuthorizationStep(onBack: () -> Unit, onNext: () -> Unit) {
             "Accès spécial > Notifications",
             "Cochez l'application SwimPay"
         ).forEachIndexed { index, text -> NumberedStep(index + 1, text) }
+        NumberedStep(4, "Cherchez SwimPay dans la liste Android")
+        NumberedStep(5, "Activez l'interrupteur SwimPay")
+        NumberedStep(6, "Revenez dans SwimPay")
         Spacer(Modifier.height(18.dp))
-        PremiumPrimaryButton("CONTINUER L'ONBOARDING", onClick = onNext)
+        PremiumPrimaryButton(
+            if (notificationAccessEnabled) "CONTINUER L'ONBOARDING" else "ACTIVER L'ACCÈS",
+            onClick = if (notificationAccessEnabled) onNext else openNotificationSettings
+        )
+        Spacer(Modifier.height(12.dp))
+        PremiumOutlineButton("OUVRIR LES REGLAGES NOTIFICATIONS", onClick = openNotificationSettings)
     }
 }
 
@@ -231,7 +253,7 @@ private fun BusinessProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
 @Composable
 private fun PolicyEngineStep(onBack: () -> Unit, onNext: () -> Unit) {
     OnboardingShell("SIGNATURE", 4, onBack) {
-        PremiumTitle("Policy Engine", "Configurez l'intelligence de détection pour éviter les faux\npositifs et fraudes.")
+        PremiumTitle("Validation sûre", "Gardez une validation manuelle claire avant les vrais\npaiements.")
         SectionLabel("VÉRIFICATION DE DONNÉE")
         PremiumCard(Modifier.fillMaxWidth(), radius = 22.dp) {
             Row(Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -241,12 +263,12 @@ private fun PolicyEngineStep(onBack: () -> Unit, onNext: () -> Unit) {
                 }
             }
         }
-        SectionLabel("ALGORITHME DE CONFIANCE", Modifier.padding(top = 28.dp))
+        SectionLabel("MODE DE VALIDATION", Modifier.padding(top = 28.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.weight(1f)) { PremiumPrimaryButton("HUMAIN (HIGH)", onClick = {}) }
+            Box(Modifier.weight(1f)) { PremiumPrimaryButton("REVUE HUMAINE", onClick = {}) }
             Surface(Modifier.weight(1f).height(56.dp), color = PremiumColors.Surface, shape = RoundedCornerShape(20.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("AI (EXPERT)", color = Color(0xFFD2DAE6), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                    Text("OPTION FUTURE", color = Color(0xFFD2DAE6), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                 }
             }
         }

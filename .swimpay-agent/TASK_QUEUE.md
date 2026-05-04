@@ -6,14 +6,12 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [x] `399_buyer_checkout_screen_inventory` - status: completed - source: `tasks/399_buyer_checkout_screen_inventory.md`
-- [x] `400_buyer_checkout_copy_alignment` - status: completed - source: `tasks/400_buyer_checkout_copy_alignment.md`
-- [x] `401_buyer_bank_first_flow_polish` - status: completed - source: `tasks/401_buyer_bank_first_flow_polish.md`
-- [x] `402_buyer_payment_instructions_card_phone` - status: completed - source: `tasks/402_buyer_payment_instructions_card_phone.md`
-- [x] `403_buyer_checkout_status_states` - status: completed - source: `tasks/403_buyer_checkout_status_states.md`
-- [x] `404_buyer_desktop_qr_handoff` - status: completed - source: `tasks/404_buyer_desktop_qr_handoff.md`
-- [x] `405_buyer_checkout_visual_guardrails_tests` - status: completed - source: `tasks/405_buyer_checkout_visual_guardrails_tests.md`
-- [x] `406_buyer_checkout_closeout_review` - status: completed - source: `tasks/406_buyer_checkout_closeout_review.md`
+- [x] `407_sberbank_shadow_test_preflight` - status: completed_with_pending_live_capture - source: `tasks/407_sberbank_shadow_test_preflight.md`
+- [x] `408_sberbank_shadow_consent_and_flags` - status: completed_with_pending_live_consent - source: `tasks/408_sberbank_shadow_consent_and_flags.md`
+- [ ] `409_sberbank_real_notification_capture_redaction` - status: blocked_pending_explicit_live_consent - source: `tasks/409_sberbank_real_notification_capture_redaction.md`
+- [ ] `410_sberbank_shadow_parser_matching_review` - status: blocked_no_real_signal - source: `tasks/410_sberbank_shadow_parser_matching_review.md`
+- [ ] `411_sberbank_manual_review_webhook_rehearsal` - status: blocked_no_review_row - source: `tasks/411_sberbank_manual_review_webhook_rehearsal.md`
+- [x] `412_sberbank_shadow_test_report` - status: completed - source: `tasks/412_sberbank_shadow_test_report.md`
 
 ## Recently Completed
 
@@ -34,3 +32,11 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `396_buyer_checkout_screen_inventory_audit` - status: completed - source: `tasks/396_buyer_checkout_screen_inventory_audit.md`
 - [x] `397_ui_copy_and_jargon_guardrails` - status: completed - source: `tasks/397_ui_copy_and_jargon_guardrails.md`
 - [x] `398_frontend_screen_realignment_closeout` - status: completed - source: `tasks/398_frontend_screen_realignment_closeout.md`
+- [x] `399_buyer_checkout_screen_inventory` - status: completed - source: `tasks/399_buyer_checkout_screen_inventory.md`
+- [x] `400_buyer_checkout_copy_alignment` - status: completed - source: `tasks/400_buyer_checkout_copy_alignment.md`
+- [x] `401_buyer_bank_first_flow_polish` - status: completed - source: `tasks/401_buyer_bank_first_flow_polish.md`
+- [x] `402_buyer_payment_instructions_card_phone` - status: completed - source: `tasks/402_buyer_payment_instructions_card_phone.md`
+- [x] `403_buyer_checkout_status_states` - status: completed - source: `tasks/403_buyer_checkout_status_states.md`
+- [x] `404_buyer_desktop_qr_handoff` - status: completed - source: `tasks/404_buyer_desktop_qr_handoff.md`
+- [x] `405_buyer_checkout_visual_guardrails_tests` - status: completed - source: `tasks/405_buyer_checkout_visual_guardrails_tests.md`
+- [x] `406_buyer_checkout_closeout_review` - status: completed - source: `tasks/406_buyer_checkout_closeout_review.md`

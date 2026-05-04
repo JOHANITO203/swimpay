@@ -264,6 +264,22 @@ fun PremiumPrimaryButton(text: String, modifier: Modifier = Modifier, onClick: (
 }
 
 @Composable
+fun PremiumOutlineButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(PremiumColors.Surface, RoundedCornerShape(22.dp))
+            .border(1.dp, PremiumColors.Line, RoundedCornerShape(22.dp))
+            .premiumTap(onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text.uppercase(), color = PremiumColors.Navy, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.2.sp)
+    }
+}
+
+@Composable
 fun PremiumBlueButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier

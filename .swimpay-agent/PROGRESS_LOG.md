@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-05-04T23:58:46+03:00 - Sprint 7I Sberbank Shadow Preflight
+
+- Created Sprint 7I tasks 407 through 412 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Created `.swimpay-agent/SBERBANK_SHADOW_CONSENT.md` with consent state `pending_explicit_operator_confirmation`.
+- Started Docker Desktop after the Linux engine pipe was initially unavailable.
+- Verified Compose services healthy and `http://localhost:8080/api-health` returning database, NATS and Valkey `ok`.
+- Ran validation: `npm run android:doctor`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, Compose config, Android assembleDebug and Android debug unit tests.
+- Verified ADB device `R5CWA0FEPZW`, reverse, APK install and app launch.
+- Verified Notification Listener Access includes SwimPay.
+- Verified exact Sberbank package `ru.sberbankmobile` exists on device without broad app enumeration.
+- Verified safe backend Sberbank state without full cert output: `sber_ru` exists, `auto_confirm_status=disabled`, `ru.sberbankmobile` evidence exists.
+- Found preflight warning: latest local Sberbank evidence status is `production_trust_revoked`, not literal `approved_for_review_only`.
+- No real Sberbank notification was captured, read, uploaded, logged, parsed or matched.
+- No manual review or webhook was performed.
+- Created `.swimpay-agent/SPRINT_7I_SBERBANK_SHADOW_REPORT.md`.
+
 ## 2026-05-04T22:15:00+03:00 - Frontend Browser QA and Responsive Fixes
 
 - Continued the frontend-only QA pass after the checkpoint commit.
@@ -1820,3 +1836,15 @@ Safety checks:
 - Installed and launched the debug APK on Samsung SM-S916B `R5CWA0FEPZW`.
 - UI-tree viewport scans covered onboarding, Notification Access gate, bank selection, configuration test, dashboard, receiving methods, review queue/detail, connected site and Receiver health/settings.
 - No real bank notification, customer data, installed-app enumeration, SMS, Accessibility scraping, official bank confirmation claim, raw phone/card display, raw notification text or auto-confirmation was added.
+## 2026-05-05T01:12:00+03:00 - Android Onboarding Notification Access Fix
+
+- Confirmed with a red Android JVM test that premium onboarding persistence did not exist yet.
+- Added `PremiumOnboardingCompletionStore`, `SharedPreferencesPremiumOnboardingStateStore` and `PremiumOnboardingNavigation`.
+- Wired `MainActivity` to real `NotificationAccessStatusReader` state and refreshed it on `onResume`.
+- Updated premium onboarding so disabled Notification Listener Access opens Android settings instead of advancing.
+- Persisted onboarding completion so future launches start at the dashboard/main app shell after onboarding is finished.
+- Removed unsafe `Policy Engine`, `AI (EXPERT)`, `ALGORITHME DE CONFIANCE` and payment automation wording from onboarding.
+- Android JVM tests and APK build passed.
+- Root validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps and API health.
+- ADB currently lists no connected devices, so APK install/launch was not possible in this pass.
+- No backend/API/contracts/workers/database/payment logic, real notification capture, SMS, Accessibility scraping, raw notification storage or auto-confirmation behavior was changed.

@@ -1,6 +1,17 @@
 # Blockers
 
-No current critical blockers.
+Current Sprint 7I live-capture gate:
+
+- No current critical blocker for frontend/Android UI validation.
+- No current critical blockers.
+- Explicit live-capture operator consent has not yet been recorded. `.swimpay-agent/SBERBANK_SHADOW_CONSENT.md` is `pending_explicit_operator_confirmation`.
+- This is a hard gate for any real Sberbank notification shadow capture, not a blocker for Android UI, build or repository validation.
+
+Preflight warning:
+
+- Latest local Sberbank package evidence row for `ru.sberbankmobile` is `production_trust_revoked`, not literal `approved_for_review_only`. Bank profile auto-confirm remains `disabled`, and this is safe from an auto-confirm perspective, but live shadow capture should acknowledge the local evidence state before proceeding.
+
+No real Sberbank notification was captured, read, uploaded, parsed or matched.
 
 ## Frontend Browser QA
 

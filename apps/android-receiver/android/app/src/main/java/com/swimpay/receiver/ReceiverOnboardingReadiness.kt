@@ -65,8 +65,12 @@ data class ReceiverOnboardingReadiness(
 object NotificationListenerSettingsAction {
     const val intentAction: String = Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS
 
-    fun createIntent(): Intent {
-        return Intent(intentAction)
+    fun createIntent(packageName: String? = null): Intent {
+        return Intent(intentAction).apply {
+            if (!packageName.isNullOrBlank()) {
+                putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            }
+        }
     }
 }
 

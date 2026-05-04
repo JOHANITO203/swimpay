@@ -13,9 +13,16 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun PremiumMerchantApp(
-    runtime: PremiumMerchantRuntime
+    runtime: PremiumMerchantRuntime,
+    onboardingCompletionStore: PremiumOnboardingCompletionStore = InMemoryPremiumOnboardingStateStore(),
+    notificationAccessEnabled: Boolean = true,
+    onOpenNotificationSettings: () -> Unit = {}
 ) {
-    var route by remember { mutableStateOf("landing") }
+    var route by remember(onboardingCompletionStore) {
+        mutableStateOf(
+            PremiumOnboardingNavigation.initialRoute(onboardingCompletionStore.isCompleted())
+        )
+    }
     var tab by remember { mutableIntStateOf(0) }
     var selectedReviewId by remember { mutableStateOf("rev_demo_1") }
     var dashboardState by remember { mutableStateOf(PremiumDashboardUiState.preview()) }
@@ -25,7 +32,7 @@ fun PremiumMerchantApp(
     var configurationState by remember { mutableStateOf(PremiumConfigurationUiState.preview()) }
 
     LaunchedEffect(route, tab, selectedReviewId) {
-        if (route == "main") {
+        if (route == PremiumOnboardingNavigation.ROUTE_MAIN) {
             when (tab) {
                 0 -> dashboardState = withContext(Dispatchers.IO) { runtime.loadDashboard() }
                 1 -> reviewsState = withContext(Dispatchers.IO) { runtime.loadReviews() }
@@ -43,16 +50,21 @@ fun PremiumMerchantApp(
     }
 
     when (route) {
-        "landing" -> PremiumLandingScreen { route = "onboarding" }
-        "onboarding" -> PremiumOnboardingFlow(onDone = {
-            tab = 0
-            route = "main"
-        })
+        PremiumOnboardingNavigation.ROUTE_LANDING -> PremiumLandingScreen { route = "onboarding" }
+        "onboarding" -> PremiumOnboardingFlow(
+            notificationAccessEnabled = notificationAccessEnabled,
+            openNotificationSettings = onOpenNotificationSettings,
+            onDone = {
+                onboardingCompletionStore.markCompleted()
+                tab = 0
+                route = PremiumOnboardingNavigation.ROUTE_MAIN
+            }
+        )
         "payment_detail" -> PremiumPaymentDetailScreen(
             state = paymentDetailState,
             onBack = {
                 tab = 1
-                route = "main"
+                route = PremiumOnboardingNavigation.ROUTE_MAIN
             },
             onConfirm = {
                 paymentDetailState = runtime.confirm(selectedReviewId)
@@ -64,7 +76,7 @@ fun PremiumMerchantApp(
                 paymentDetailState = runtime.rejectOrder(selectedReviewId)
             }
         )
-        "main" -> PremiumAppShell(
+        PremiumOnboardingNavigation.ROUTE_MAIN -> PremiumAppShell(
             selectedTab = tab,
             onTab = { tab = it },
             content = {
