@@ -1,146 +1,64 @@
 # Blockers
 
-Current critical blocker:
+No current critical blockers.
 
-- Docker Desktop/containerd local storage has I/O errors. Evidence from Sprint 7F:
-  - `docker compose --env-file .env.example -f infra/docker-compose.yml up -d --build swimpay-api proxy` failed with `metadata_v2.db: input/output error`.
-  - `docker system df` failed with a containerd blob `input/output error`.
-  - `docker compose --env-file .env.example -f infra/docker-compose.yml restart ...` failed opening a container `hosts` file with `input/output error`.
-  - `docker compose --env-file .env.example -f infra/docker-compose.yml ps` timed out after the Docker failure.
-  - `GET http://localhost:8080/api-health` timed out after the Docker failure; an earlier response showed `database=error` and `valkey=error`.
-- This is a local Docker environment blocker, not a Sprint 7F code/test failure. It blocks Compose health validation, live Docker-backed Android endpoint QA and the Sprint 7F commit condition.
+## Buyer Checkout UX Realignment
 
-Last checked during Sprint 7F Android mobile backend gap closure: 2026-05-03T23:20:11+03:00.
+- No critical blocker introduced.
+- Non-critical: the desktop QR handoff is a safe visual placeholder; a real QR generator can be added later if it encodes only the checkout session URL and never raw card/phone details.
+- Non-critical: buyer checkout browser screenshot QA is recommended to tune spacing on small mobile, tablet and desktop viewports.
+- Real bank notifications, backend APIs, contracts, workers, payment logic, database, webhooks and Android notification processing were not changed.
 
-Sprint 7F code status:
+## Frontend Screen Inventory / Realignment
 
-- Android mobile backend endpoints were implemented and covered by tests.
-- Android repositories were wired to the new endpoints.
-- Node tests, typecheck, lint, build, Android assemble and Android JVM tests passed.
-- Debug APK install/launch and UI-tree viewport inspection passed on Samsung SM-S916B `R5CWA0FEPZW`.
-- No SMS permission, Accessibility scraping, broad installed-app enumeration, official bank confirmation claim or auto-confirmation was added.
+- No critical blocker introduced.
+- Non-critical: browser/device screenshot QA is still recommended before calling the visual polish complete.
+- Non-critical: several web merchant routes are static/demo renderers and should not be treated as new backend integrations.
+- Non-critical: buyer checkout status states are audited as partial visual states and can be polished later without API changes.
 
-Last checked after Sprint 7E Android merchant API wiring and visual QA: 2026-05-03T21:39:35+03:00.
+## Current Local Backend Validation Blocker
 
-Sprint 7E status:
+- 2026-05-04T17:36:31+03:00: Docker Desktop is not reachable from this shell.
+- `docker compose --env-file .env.example -f infra/docker-compose.yml ps` failed with `open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified`.
+- `http://localhost:8080/api-health` is unreachable while Docker is down.
+- This blocks fresh live backend/API health validation only. Code validation, Android JVM tests, APK build, ADB install and app launch passed.
+- Per user instruction, Docker was not restarted or repaired by the agent in this pass.
 
-- Android merchant auth/session boundary passed validation with local/dev auth clearly marked.
-- Receiving methods are wired to live merchant receiving-route APIs and display masked routes only.
-- Review queue and review actions are wired to live review APIs.
-- `Rejeter le signal` remains signal-scoped and does not reject an order by default.
-- Android does not directly send developer webhooks.
-- Dashboard, connected site and configuration test remain explicit mock repositories because dedicated mobile/backend endpoints are missing.
-- Android build, JVM tests and real-device install/launch QA passed on Samsung SM-S916B `R5CWA0FEPZW`.
-- Docker was initially unavailable, then recovered after user restart; Compose services and API health are healthy.
-- No SMS permission, Accessibility scraping, broad installed-app enumeration, official bank confirmation claim or auto-confirmation was added.
+## Android Premium API Wiring
 
-Known non-critical Sprint 7E follow-up:
+- Premium Android merchant UI is now connected to the existing Sprint 7F Android merchant repositories through `PremiumMerchantRuntime`.
+- Debug builds can use local/dev auth (`Bearer test_<merchant_id>`) for local QA.
+- Non-debug builds now use a disconnected merchant session rather than a test bearer token.
+- Remaining non-critical limitation: production merchant auth/session handoff remains the next contract/API hardening step.
 
-- Dedicated mobile/backend endpoints are still needed for dashboard summary, payment detail by id, connected-site status/test and configuration test.
+## Frontend Realignment Notes
 
-Last checked after Sprint 7D Android merchant frontend UX screens: 2026-05-03T20:20:00+03:00.
+- No critical blocker found during the UI refactor.
+- Remaining non-critical follow-up: browser screenshot QA is still needed to tune spacing and responsive details against the provided mockups.
+- No product/API/security blocker was introduced.
 
-Sprint 7D status:
+Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 
-- Android merchant frontend copy, screen models and `MainActivity` surface passed Android JVM validation.
-- Notification Access remains a blocking merchant readiness gate and opens Android system settings.
-- Merchant UI hides package/cert metadata, HMAC, raw card, raw phone, raw notification text, trust internals and default developer event details.
-- Android still does not confirm orders or auto-confirm payments.
-- No SMS permission, Accessibility scraping service or broad package visibility permission was added.
+## Resolved Environment Issue
 
-Known non-critical Sprint 7D follow-ups:
+- Docker Desktop/containerd is responding again after local recovery.
+- `docker version`, `docker info` and `docker compose version` succeeded.
+- Compose config renders successfully.
+- Postgres, Valkey, NATS, API, web, proxy, signal worker and job worker are healthy.
+- API health through the local proxy returns database, NATS and Valkey as `ok`.
+- Sprint 7F live endpoint QA through `http://localhost:8080` passed after applying additive local-volume migrations `006` and `007`.
+- Real-device install/launch/UI-tree smoke on `R5CWA0FEPZW` passed.
 
-- Several Android merchant screens use mock repositories until authenticated backend endpoints are wired.
-- `MainActivity` uses programmatic native views; a future Compose/design-system pass can improve interaction polish.
-- Live real-device visual QA is recommended before beta rollout.
+## Validation Note
 
-Last checked after Sprint 7C checkout destination copy hardening and route admin UX: 2026-05-03T19:06:22+03:00.
+- The Compose `swimpay-web` container was unhealthy because its healthcheck called `/health`, while the web app currently serves `/` as the lightweight liveness page.
+- Fixed the Compose healthcheck to call `/` instead. This is an infra validation repair, not a product API change.
+- The existing Postgres volume predated Sprint 7A/7B migrations; additive migrations `006_checkout_bank_selection.sql` and `007_hybrid_receiving_routes.sql` were applied manually with `psql`.
 
-Sprint 7C status:
+## Standing Non-critical Limitations
 
-- Checkout destination copy hardening passed validation.
-- Full destination reveal now requires active session, selected enabled merchant-owned route and selected receiver bank/route alignment.
-- Copy details are explicit, short-lived, no-store/no-cache, rate-limited and audited with masked identifiers only.
-- Hosted checkout proxy also returns no-store/no-cache headers for copy details.
-- Minimal merchant route admin UI exists for list/create/disable/recommend actions and does not render raw identifiers after save.
-- Webhooks still exclude raw receiver identifiers and preserve `official_bank_confirmation=false`.
-- No real notification processing, SMS, SBP, scraping, official bank confirmation claim or real-bank auto-confirmation was added.
-
-Known non-critical Sprint 7C follow-ups:
-
-- The copy-details limiter is in-memory and should move to Valkey before multi-instance production deployment.
-- The merchant route admin page is minimal and needs authenticated merchant/operator access control before production use.
-- Browser QA is covered by server-injected web tests; a live Playwright-style mobile/desktop pass is recommended before beta traffic.
-
-Last checked after Sprint 7B bank-first hybrid receiving routes: 2026-05-03T18:27:43+03:00.
-
-Sprint 7B status:
-
-- Bank-first hybrid receiving routes passed validation.
-- `phone_transfer` and `card_transfer` receiving routes are modeled and selected separately from payer launchers.
-- Buyer sender phone hints are stored as HMAC/masked values only.
-- Webhook route context excludes raw receiver identifiers and preserves `official_bank_confirmation=false`.
-- No real notification processing, SMS, SBP, scraping, official bank confirmation claim or real-bank auto-confirmation was added.
-
-Resolved Sprint 7B follow-ups in Sprint 7C:
-
-- The explicit receiving-route copy endpoint now has active-session hardening, rate limiting and short-lived reveal response policy.
-- Hosted checkout has browser-oriented QA coverage for mobile/desktop responsive states through web tests.
-- Merchant route administration now has a minimal web UI for beta operations.
-
-Last checked after Sprint 7A PSP-like checkout bank selection flow: 2026-05-03T17:16:00+03:00.
-
-Sprint 7A status:
-
-- PSP-like checkout bank selection flow passed validation.
-- No real notification processing, SMS, SBP, scraping, official bank confirmation claim or real-bank auto-confirmation was added.
-- Payer launcher deeplinks remain a non-critical future work item; Sprint 7A uses manual/copy fallback.
-
-Last checked after Sprint 6E real-notification shadow readiness gate: 2026-05-03T16:05:00+03:00.
-
-Resolved during Sprint 4Y retry:
-
-- Docker Desktop/WSL was restarted by the user.
-- Docker daemon, Compose service status and API health recovered.
-- The persisted signed-token Compose handoff rehearsal executed successfully.
-- Evidence `878ddd87-2e69-40b1-9cc7-da15d95a6b0b` ended `production_trust_revoked` with `trusted=false`, `production_trusted_app_metadata=false` and `auto_confirm_enabled=false`.
-
-Known non-critical limitations:
-
-- Global `gradle` is still not available in PATH, but the repo has a trusted generated Gradle wrapper.
-- Android Gradle commands require `ANDROID_HOME` or `ANDROID_SDK_ROOT` to point to `C:\Users\Lenovo\AppData\Local\Android\Sdk` on this machine.
-- Android Gradle is configured with a smaller daemon heap and one worker for this local 7 GB Windows host; this avoids validation-time daemon out-of-memory crashes while Docker is running.
-- Android Emulator command is not available under the local SDK.
-- No Android Virtual Devices are configured.
-- Real device `R5CWA0FEPZW` is authorized and usable through adb.
-- Compose API health is available at `http://localhost:8080/api-health`; `localhost:3000` is intentionally private in Compose mode.
-- Outbox persistence now uses an Android Keystore-backed protected adapter on device. Sprint 4K verified persisted outbox recovery across app restart after local backend outage; full autonomous WorkManager behavior after Android force-stop/reboot remains future work.
-- Real bank package/certificate verification policy requires human/operator process and real Android PackageManager evidence outside this repo.
-- After reinstall or `pm clear`, Android Notification Listener Access must be re-enabled manually for SwimPay Receiver before live capture can run. Phase 4J now detects this as `regrant_required_after_reinstall` and blocks Receiver readiness until the OS grant is restored.
-- Sprint 4J-B verified live synthetic listener capture on real device after the user re-enabled Notification Listener Access.
-- Sprint 4K verified selected `TO_VERIFY` bank readiness as `ready_review_only`, listener capture after app restart, and offline/online persisted outbox recovery.
-- Sprint 4L added PackageManager evidence collection readiness, but did not collect real bank package/cert evidence. Any real package/cert values still require a deliberate operator-controlled dry run and human review.
-- Sprint 4M added backend/admin review-only evidence workflow. Approval is limited to `approved_for_review_only` and does not create production trust.
-- Sprint 4N rehearsed synthetic real-device evidence submission, admin approve-review-only, rejection and audit trace. The dry run stayed synthetic and review-only.
-- Sprint 4O added production trust policy states, owner/admin permission gates, dual-control and revocation. Production trust is metadata-only and still does not enable auto-confirmation.
-- Sprint 4P added an explicit package-name dry-run mechanism, but did not collect live real evidence because no operator/user package name was provided.
-- Sprint 4Q collected exact PackageManager metadata for operator-selected `ru.sberbankmobile` and approved it as review-only. Android app-side PackageManager lookup initially failed because Android package visibility hid the package from the app.
-- Sprint 4R added exact debug/operator manifest visibility for `ru.sberbankmobile`, distinguished `PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED` from package absence and retested app-side evidence submission successfully. This remains debug/operator support only, not production trust.
-- Sprint 4S added idempotent duplicate handling, review reason codes, non-destructive deprecation and metadata-only admin filters for evidence review. Review-only evidence, deprecated evidence and duplicate evidence still do not create production trust or auto-confirmation.
-- Sprint 4T added a safe evidence review dashboard API and evidence audit trace filters. Dashboard and audit visibility remain redacted, review-only evidence still does not create production trust, and auto-confirmation remains disabled.
-- Sprint 4U added `npm run rehearsal:evidence` for local operator dashboard/audit rehearsal and optional production trust guard validation. The local dry run used evidence `f4069615-028b-4329-a136-115495bd058c` and left same-actor approval blocked by dual-control with auto-confirmation disabled.
-- Sprint 4V added a read-only `swimpay-web` operator evidence surface at `/admin/evidence-review`. It renders redacted dashboard/audit data only, does not expose full certificate hashes or raw PII, and cannot request/approve/revoke production trust.
-- Sprint 4W added `npm run handoff:evidence-trust` for production trust handoff rehearsal. Default mode is non-mutating; full live dual-operator approval requires signed operator tokens or another explicit two-operator local/dev setup because Compose `dev_token` mode represents one dev operator.
-- Sprint 4X added `npm run operator:tokens` and `npm run rehearsal:evidence:signed`. The signed-token handoff execution passed in an in-process local API with two signed operators and ended with metadata trust revoked. Compose remains `dev_token` by default; any persisted signed-token Compose drill should be explicit and local-only.
-- Sprint 4Y added a local-only signed-token Compose override, `npm run rehearsal:evidence:compose-signed` and an operational playbook. After Docker Desktop/WSL restart, the persisted signed-token Compose drill passed and ended with metadata trust revoked.
-- Sprint 4Z added `npm run handoff:evidence-readiness` and `docs/BANK_EVIDENCE_PRODUCTION_TRUST_READINESS.md`. The readiness gate is non-mutating and verifies required artifacts, Sprint 4Y status, blocker state, default Compose mode and safety wording.
-- Sprint 5A added `npm run operator:identity-readiness` and `docs/OPERATOR_IDENTITY_SECRET_LIFECYCLE.md`. The readiness gate is non-mutating and verifies the production operator identity lifecycle package plus selected docs, reports, task files and agent status files.
-- Sprint 5B added `npm run production:admin-auth-preflight`, `.env.production.example` and `infra/docker-compose.production-admin-auth.override.yml`. The preflight is non-mutating and verifies dev admin auth is rejected for production and committed production examples do not contain admin tokens or HMAC secrets.
-- Production operator identity provider/infrastructure is not implemented. Sprints 5A and 5B define policy, readiness checks and production admin-auth preflight only.
-- Sprint 6A paused the production/admin hardening chain and created the five-bank MVP validation matrix plus private beta readiness foundation.
-- Sprint 6B used operator-authorized, keyword-filtered ADB package discovery only. It found obvious candidates for all five V1 banks and collected exact PackageManager evidence for Tinkoff / T-Bank, VTB, Alfa-Bank and Gazprombank.
-- All selected V1 banks now have package evidence in the five-bank matrix. The four Sprint 6B rows are `approved_for_review_only`; Sberbank remains `production_trust_revoked` from the prior local drill. None of this creates production trust or auto-confirmation.
-- Sprint 6C rehearsed redacted synthetic review-only notification-signal fixtures for all five V1 banks. Incoming-like and amount-only signals route to review, negative categories never auto-confirm, and webhook disclosure remains `official_bank_confirmation=false` with `confirmation_type=notification_signal`.
-- Sprint 6D added synthetic private beta merchant/order fixtures, rehearsed five-bank review queue routing, manual review webhook fulfillment, signal-scope rejection expectations and safe support trace documentation.
-- Sprint 6E added the real-notification shadow consent gate, redaction preflight, safe beta flags, non-mutating shadow prediction policy and dry-run commands. It did not process real bank notifications.
-- Real bank notifications remain out of scope. No real notification samples are stored or approved, and any real notification shadow run requires explicit future authorization.
+- Global `gradle` is still not available in PATH; use the checked-in Android Gradle wrapper.
+- Android SDK path on this machine is `C:\Users\Lenovo\AppData\Local\Android\Sdk`.
+- Android Emulator command and AVDs are not configured; real device `R5CWA0FEPZW` is available through adb.
+- Real bank notifications remain out of scope until the explicit real-notification shadow consent gate is used.
+- Real-bank auto-confirmation remains disabled.

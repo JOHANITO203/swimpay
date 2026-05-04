@@ -1,13 +1,8 @@
-# Task 384 — Merchant dashboard screen refactor
+# Task 384 — Merchant Dashboard Screen Refactor
 
-## Status
-- [ ] Refactor the merchant dashboard.
-- [ ] Implement metric cards (To verify, Validated today, Notifications sent, Phone connected).
-- [ ] Implement "Latest detected payments" list.
-- [ ] Add status "SwimPay is ready" when phone is connected.
-- [ ] Add UI tests.
+Status: completed
 
-## Requirements
-- UI claire, courte, mobile-first.
-- Modern visual grammar.
-- Use the status chips and cards defined in Task 382.
+Scope:
+- Refactor dashboard into a separated merchant screen.
+- Use status panel, metric cards and recent payment cards.
+- Keep data contract unchanged.

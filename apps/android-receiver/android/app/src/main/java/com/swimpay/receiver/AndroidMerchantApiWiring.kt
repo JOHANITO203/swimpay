@@ -75,6 +75,14 @@ interface MerchantApiTransport {
     fun execute(request: MerchantApiRequest): MerchantApiResponse
 }
 
+object AndroidMerchantReviewApiContract {
+    const val REVIEW_QUEUE_PATH = "/v1/reviews"
+
+    fun confirmPath(reviewId: String): String = "$REVIEW_QUEUE_PATH/${urlPath(reviewId)}/confirm"
+
+    fun rejectPath(reviewId: String): String = "$REVIEW_QUEUE_PATH/${urlPath(reviewId)}/reject"
+}
+
 class HttpUrlConnectionMerchantApiTransport(
     private val baseUrl: String,
     private val timeoutMs: Int = 5_000
@@ -327,7 +335,7 @@ class MerchantReviewQueueApiRepository(
         val response = execute(
             MerchantApiRequest(
                 method = "GET",
-                path = "/v1/reviews",
+                path = AndroidMerchantReviewApiContract.REVIEW_QUEUE_PATH,
                 headers = authHeaders(session)
             )
         )
@@ -383,6 +391,7 @@ data class MerchantReviewActionApiResult(
 class MerchantReviewActionsApiRepository(
     private val transport: MerchantApiTransport
 ) {
+    val backendOwnsReviewDecisions: Boolean = true
     val sendsDeveloperWebhookDirectly: Boolean = false
 
     fun confirm(session: AuthenticatedMerchantSession, reviewId: String): MerchantReviewActionApiResult {
@@ -441,7 +450,11 @@ class MerchantReviewActionsApiRepository(
             transport.execute(
                 MerchantApiRequest(
                     method = "POST",
-                    path = "/v1/reviews/${urlPath(reviewId)}/$pathSuffix",
+                    path = when (pathSuffix) {
+                        "confirm" -> AndroidMerchantReviewApiContract.confirmPath(reviewId)
+                        "reject" -> AndroidMerchantReviewApiContract.rejectPath(reviewId)
+                        else -> "${AndroidMerchantReviewApiContract.REVIEW_QUEUE_PATH}/${urlPath(reviewId)}/$pathSuffix"
+                    },
                     headers = authHeaders(session),
                     body = body
                 )

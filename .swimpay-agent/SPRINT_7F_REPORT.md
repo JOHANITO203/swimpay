@@ -1,13 +1,15 @@
 # Sprint 7F Report - Android Mobile Backend Gap Closure
 
-status: blocked_by_docker_environment
-generated_at: 2026-05-03T23:20:11+03:00
+status: passed_after_revalidation
+generated_at: 2026-05-04T01:44:42+03:00
 
 ## Summary
 
 Sprint 7F added the remaining Android merchant mobile backend endpoints and wired the Android merchant repositories away from Sprint 7E mock-only gaps.
 
-The code, Node test suite, Android build, Android JVM tests and real-device APK install/launch passed. Full live Docker-backed backend validation is blocked by a local Docker Desktop/containerd I/O failure. No code-level validation failure was found.
+Revalidation after Docker recovery passed. See `.swimpay-agent/SPRINT_7F_REVALIDATION_REPORT.md`.
+
+The code, Node test suite, Android build, Android JVM tests, live Docker-backed backend validation and real-device APK install/launch passed after revalidation. The previous Docker Desktop/containerd I/O failure is resolved.
 
 This sprint did not process real bank notifications, did not add SMS or Accessibility behavior, did not enumerate installed apps, did not expose raw card/phone or raw notification text, did not expose package/cert/HMAC/template internals, did not claim official bank confirmation and did not enable auto-confirmation.
 
@@ -19,7 +21,7 @@ This sprint did not process real bank notifications, did not add SMS or Accessib
 - `407_android_connected_site_test_endpoint` - completed
 - `408_android_configuration_test_endpoint` - completed
 - `409_android_frontend_gap_wiring_cleanup` - completed
-- `410_android_real_device_full_flow_visual_qa` - blocked by local Docker backend health
+- `410_android_real_device_full_flow_visual_qa` - completed after revalidation
 - `411_sprint_7f_closeout_review` - completed
 
 ## Dashboard Endpoint
@@ -106,9 +108,9 @@ Passed:
 - UI-tree dumps after scroll showed onboarding, Notification Access gate, bank selection, configuration sections, dashboard/recent payments, review queue, connected site and action-required states.
 - UI-tree scans found no forbidden merchant-facing jargon and no obvious raw card/phone/customer values.
 
-Blocked:
+Revalidation result:
 
-- Docker-backed live endpoint QA could not be completed because Docker Desktop/containerd returned I/O errors and Compose health degraded.
+- Docker-backed live endpoint QA passed after Docker recovery, local-volume additive migrations `006` and `007`, and API/proxy rebuild.
 
 ## Tests
 
@@ -135,7 +137,7 @@ Passed:
 - `npm run android:doctor`
 - `npm run typecheck`
 - `npm run lint`
-- `npm test` - 53 files / 366 tests
+- `npm test` - revalidated at 54 files / 370 tests
 - `npm run build`
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config`
 - Android `:app:assembleDebug`
@@ -146,25 +148,15 @@ Passed:
 - `adb -s R5CWA0FEPZW shell am start -n com.swimpay.receiver/.MainActivity`
 - `adb -s R5CWA0FEPZW shell uiautomator dump`
 
-Failed or blocked by local Docker:
+Previously blocked by local Docker:
 
-- `docker compose --env-file .env.example -f infra/docker-compose.yml up -d --build swimpay-api proxy` failed with Docker BuildKit/containerd I/O errors.
-- `docker compose --env-file .env.example -f infra/docker-compose.yml restart ...` failed with Docker container filesystem I/O errors.
-- `docker compose --env-file .env.example -f infra/docker-compose.yml ps` timed out after the Docker I/O failure.
-- `GET http://localhost:8080/api-health` timed out after the Docker I/O failure; before the timeout state it returned `database=error` and `valkey=error`.
+- The earlier Docker BuildKit/containerd I/O failure is resolved.
+- Revalidation passed for `docker compose --env-file .env.example -f infra/docker-compose.yml up -d --build swimpay-api proxy`, `docker compose --env-file .env.example -f infra/docker-compose.yml ps` and `GET http://localhost:8080/api-health`.
 
 ## Blockers
 
-Critical local environment blocker:
-
-- Docker Desktop/containerd has I/O errors in its local image/container storage. This blocks Compose health, backend live-device endpoint QA and the final commit condition for Sprint 7F.
+No current critical blocker after Sprint 7F revalidation.
 
 ## Next Recommended Sprint
 
-First action:
-
-1. Repair or fully restart Docker Desktop/WSL and rerun Sprint 7F backend validation plus live-device endpoint QA.
-
-Then:
-
-2. Sprint 7G - Android merchant beta hardening: production auth handoff, better connected-site delivery history, and navigation polish.
+Sprint 7G - Android merchant beta hardening: production auth handoff, better connected-site delivery history, and navigation polish.

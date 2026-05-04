@@ -100,6 +100,34 @@ describe('android merchant mobile backend endpoints', () => {
     expectSafeAndroidMerchantBody(response.body);
   });
 
+  it('returns safe payment detail for legacy review rows without linked sessions', async () => {
+    const { server, reviewRepository } = buildAndroidMerchantServer();
+    reviewRepository.items.set('rev_unlinked', {
+      ...openReviewItem(),
+      id: 'rev_unlinked',
+      orderId: 'null',
+      paymentSessionId: 'null'
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/android-merchant/payments/rev_unlinked',
+      headers: merchantHeaders()
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      payment: {
+        id: 'rev_unlinked',
+        receiving_method_masked: 'Moyen de réception masqué',
+        allowed_actions: ['confirm', 'reject_signal', 'reject_order']
+      },
+      confirmation_type: 'notification_signal',
+      official_bank_confirmation: false
+    });
+    expectSafeAndroidMerchantBody(response.body);
+  });
+
   it('returns connected-site status without exposing webhook secrets and gates developer details explicitly', async () => {
     const { server } = buildAndroidMerchantServer({
       connectedSite: { url: 'https://merchant.example/swimpay/webhook', status: 'active' }

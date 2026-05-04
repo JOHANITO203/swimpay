@@ -2267,12 +2267,20 @@ async function findSelectedRouteForReview(
   merchantId: string,
   review: { paymentSessionId: string }
 ): Promise<StoredMerchantReceivingRouteRecord | null> {
+  if (!hasLinkedPaymentSession(review.paymentSessionId)) {
+    return null;
+  }
+
   const loaded = await repository.getPaymentSessionById(merchantId, review.paymentSessionId);
   if (!loaded?.paymentSession.selectedReceivingRouteId) {
     return null;
   }
   const routes = await repository.listReceivingRoutes(merchantId);
   return routes.find((route) => route.route_id === loaded.paymentSession.selectedReceivingRouteId) ?? null;
+}
+
+function hasLinkedPaymentSession(paymentSessionId: string): boolean {
+  return paymentSessionId.trim().length > 0 && paymentSessionId !== 'null';
 }
 
 function toAndroidMerchantPaymentDetailResponse(

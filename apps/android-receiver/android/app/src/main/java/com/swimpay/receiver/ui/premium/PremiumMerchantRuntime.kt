@@ -1,0 +1,359 @@
+package com.swimpay.receiver.ui.premium
+
+import com.swimpay.receiver.AuthenticatedMerchantSession
+import com.swimpay.receiver.BuildConfig
+import com.swimpay.receiver.DebugBackendConfig
+import com.swimpay.receiver.HttpUrlConnectionMerchantApiTransport
+import com.swimpay.receiver.MerchantApiTransport
+import com.swimpay.receiver.MerchantConfigurationChecklist
+import com.swimpay.receiver.MerchantConfigurationTestApiRepository
+import com.swimpay.receiver.MerchantConnectedSiteApiRepository
+import com.swimpay.receiver.MerchantDashboardApiRepository
+import com.swimpay.receiver.MerchantPaymentDetailApiRepository
+import com.swimpay.receiver.MerchantReceivingMethodsApiRepository
+import com.swimpay.receiver.MerchantRepositoryState
+import com.swimpay.receiver.MerchantReviewActionsApiRepository
+import com.swimpay.receiver.MerchantReviewQueueApiRepository
+
+data class PremiumMetricUiState(
+    val value: String,
+    val label: String,
+    val trend: String = ""
+)
+
+data class PremiumRecentPaymentUiState(
+    val amount: String,
+    val detail: String,
+    val status: String = "À vérifier"
+)
+
+data class PremiumDashboardUiState(
+    val readyTitle: String,
+    val readyText: String,
+    val monthlyAmount: String,
+    val metrics: List<PremiumMetricUiState>,
+    val recentPayments: List<PremiumRecentPaymentUiState>,
+    val usesLiveApi: Boolean
+) {
+    companion object {
+        fun preview(): PremiumDashboardUiState {
+            return PremiumDashboardUiState(
+                readyTitle = "SwimPay est prêt",
+                readyText = "Votre téléphone est connecté et vos paiements peuvent être détectés.",
+                monthlyAmount = "1 482 000 ₽",
+                metrics = listOf(
+                    PremiumMetricUiState("7", "À VÉRIFIER", "+2"),
+                    PremiumMetricUiState("24", "VALIDÉS", "+84%")
+                ),
+                recentPayments = listOf(
+                    PremiumRecentPaymentUiState("58,41 ₽", "Sberbank · Il y a 2 min", "À vérifier"),
+                    PremiumRecentPaymentUiState("129,00 ₽", "T-Bank · Il y a 8 min", "Validé"),
+                    PremiumRecentPaymentUiState("45,00 ₽", "Alfa-Bank · Il y a 12 min", "En attente")
+                ),
+                usesLiveApi = false
+            )
+        }
+    }
+}
+
+data class PremiumReviewUiItem(
+    val reviewId: String,
+    val amount: String,
+    val bank: String,
+    val status: String,
+    val helper: String,
+    val reasons: List<String>,
+    val valid: Boolean
+)
+
+data class PremiumReviewsUiState(
+    val items: List<PremiumReviewUiItem>,
+    val usesLiveApi: Boolean,
+    val safeMessage: String = ""
+) {
+    companion object {
+        fun preview(): PremiumReviewsUiState {
+            return PremiumReviewsUiState(
+                items = listOf(
+                    PremiumReviewUiItem("rev_demo_1", "58,41 ₽", "Sberbank", "À vérifier", "Signal détecté il y a 2 min", listOf("Validation manuelle en bêta"), false),
+                    PremiumReviewUiItem("rev_demo_2", "129,00 ₽", "T-Bank", "À vérifier", "Référence non visible", listOf("Référence non visible"), false),
+                    PremiumReviewUiItem("rev_demo_3", "45,00 ₽", "Alfa-Bank", "Validé", "Confirmé manuellement", listOf("Validation manuelle en bêta"), true)
+                ),
+                usesLiveApi = false
+            )
+        }
+    }
+}
+
+data class PremiumPaymentDetailUiState(
+    val reviewId: String,
+    val statusTitle: String,
+    val statusText: String,
+    val summaryRows: List<Pair<String, String>>,
+    val reasons: List<String>,
+    val actionMessage: String = "",
+    val usesLiveApi: Boolean
+) {
+    companion object {
+        fun preview(reviewId: String = "rev_demo_1"): PremiumPaymentDetailUiState {
+            return PremiumPaymentDetailUiState(
+                reviewId = reviewId,
+                statusTitle = "À vérifier",
+                statusText = "Ce paiement nécessite une validation manuelle.",
+                summaryRows = listOf(
+                    "Montant attendu" to "58,41 ₽",
+                    "Montant détecté" to "58,41 ₽",
+                    "Banque" to "Sberbank",
+                    "Moyen de réception" to "Carte · •••• 4821",
+                    "Référence" to "TANGO ALFA",
+                    "Signal reçu" to "Il y a 2 min"
+                ),
+                reasons = listOf("Validation manuelle en bêta", "Référence non visible"),
+                usesLiveApi = false
+            )
+        }
+    }
+}
+
+data class PremiumReceivingMethodsUiState(
+    val rows: List<String>,
+    val usesLiveApi: Boolean,
+    val safeMessage: String = ""
+)
+
+data class PremiumConnectedSiteUiState(
+    val statusTitle: String,
+    val statusText: String,
+    val rows: List<Pair<String, String>>,
+    val usesLiveApi: Boolean,
+    val safeMessage: String = ""
+) {
+    companion object {
+        fun preview(): PremiumConnectedSiteUiState {
+            return PremiumConnectedSiteUiState(
+                statusTitle = "Connexion active",
+                statusText = "Dernière notification envoyée il y a 3 min.",
+                rows = listOf(
+                    "URL de notification" to "https://votre-site.com/swimpay/webhook",
+                    "Statut" to "Actif"
+                ),
+                usesLiveApi = false
+            )
+        }
+    }
+}
+
+data class PremiumConfigurationUiState(
+    val checklist: List<String>,
+    val outcomeTitle: String,
+    val outcomeText: String,
+    val usesLiveApi: Boolean
+) {
+    companion object {
+        fun preview(): PremiumConfigurationUiState {
+            return PremiumConfigurationUiState(
+                checklist = MerchantConfigurationChecklist.REQUIRED_LABELS,
+                outcomeTitle = "SwimPay est prêt",
+                outcomeText = "Votre configuration fonctionne pour la bêta.",
+                usesLiveApi = false
+            )
+        }
+    }
+}
+
+class PremiumMerchantRuntime(
+    private val session: AuthenticatedMerchantSession,
+    private val dashboardRepository: MerchantDashboardApiRepository,
+    private val reviewQueueRepository: MerchantReviewQueueApiRepository,
+    private val paymentDetailRepository: MerchantPaymentDetailApiRepository,
+    private val reviewActionsRepository: MerchantReviewActionsApiRepository,
+    private val receivingMethodsRepository: MerchantReceivingMethodsApiRepository,
+    private val connectedSiteRepository: MerchantConnectedSiteApiRepository,
+    private val configurationTestRepository: MerchantConfigurationTestApiRepository
+) {
+    val reviewActionsAreBackendOwned: Boolean
+        get() = reviewActionsRepository.backendOwnsReviewDecisions
+
+    fun loadDashboard(): PremiumDashboardUiState {
+        val result = dashboardRepository.load(session)
+        if (result.state != MerchantRepositoryState.SUCCESS) return PremiumDashboardUiState.preview()
+        val texts = result.visibleTexts()
+        val recent = texts.drop(12).chunked(3).mapNotNull { chunk ->
+            val amount = chunk.getOrNull(0) ?: return@mapNotNull null
+            val bank = chunk.getOrNull(1) ?: "Banque choisie"
+            val status = chunk.getOrNull(2) ?: "À vérifier"
+            PremiumRecentPaymentUiState(amount, "$bank · récemment", status)
+        }.ifEmpty { PremiumDashboardUiState.preview().recentPayments }
+        return PremiumDashboardUiState(
+            readyTitle = texts.getOrNull(1) ?: "SwimPay est prêt",
+            readyText = texts.getOrNull(2) ?: "Votre téléphone est connecté et vos paiements peuvent être détectés.",
+            monthlyAmount = recent.firstOrNull()?.amount ?: PremiumDashboardUiState.preview().monthlyAmount,
+            metrics = listOf(
+                PremiumMetricUiState(texts.getOrNull(4) ?: "0", "À VÉRIFIER"),
+                PremiumMetricUiState(texts.getOrNull(6) ?: "0", "VALIDÉS")
+            ),
+            recentPayments = recent,
+            usesLiveApi = !result.usesMockRepository
+        )
+    }
+
+    fun loadReviews(): PremiumReviewsUiState {
+        val result = reviewQueueRepository.list(session)
+        if (result.state != MerchantRepositoryState.SUCCESS) {
+            return PremiumReviewsUiState.preview().copy(safeMessage = result.safeMessage)
+        }
+        val items = result.items.map {
+            PremiumReviewUiItem(
+                reviewId = it.reviewId,
+                amount = it.amountLabel,
+                bank = it.bankDisplayName,
+                status = it.statusLabel,
+                helper = it.helper,
+                reasons = it.reasonLabels,
+                valid = it.statusLabel.equals("Validé", ignoreCase = true)
+            )
+        }
+        return PremiumReviewsUiState(
+            items = items.ifEmpty { PremiumReviewsUiState.preview().items },
+            usesLiveApi = true
+        )
+    }
+
+    fun loadPaymentDetail(reviewId: String): PremiumPaymentDetailUiState {
+        val result = paymentDetailRepository.load(session, reviewId)
+        if (result.state != MerchantRepositoryState.SUCCESS) return PremiumPaymentDetailUiState.preview(reviewId)
+        val texts = result.visibleTexts()
+        return PremiumPaymentDetailUiState(
+            reviewId = reviewId,
+            statusTitle = texts.getOrNull(1) ?: "À vérifier",
+            statusText = texts.getOrNull(2) ?: "Ce paiement nécessite une validation manuelle.",
+            summaryRows = listOf(
+                (texts.getOrNull(3) ?: "Montant attendu") to (texts.getOrNull(4) ?: "0,00 ₽"),
+                (texts.getOrNull(5) ?: "Montant détecté") to (texts.getOrNull(6) ?: "0,00 ₽"),
+                (texts.getOrNull(7) ?: "Banque") to (texts.getOrNull(8) ?: "Banque choisie"),
+                (texts.getOrNull(9) ?: "Moyen de réception") to (texts.getOrNull(10) ?: "Moyen de réception"),
+                (texts.getOrNull(11) ?: "Référence") to (texts.getOrNull(12) ?: "<REFERENCE>"),
+                (texts.getOrNull(13) ?: "Signal reçu") to (texts.getOrNull(14) ?: "Récemment")
+            ),
+            reasons = texts.drop(16).takeWhile { it !in REVIEW_ACTION_LABELS }.ifEmpty {
+                listOf("Validation manuelle en bêta")
+            },
+            usesLiveApi = !result.usesMockRepository
+        )
+    }
+
+    fun confirm(reviewId: String): PremiumPaymentDetailUiState {
+        val result = reviewActionsRepository.confirm(session, reviewId)
+        return loadPaymentDetail(reviewId).copy(actionMessage = result.safeMessage)
+    }
+
+    fun rejectSignal(reviewId: String): PremiumPaymentDetailUiState {
+        val result = reviewActionsRepository.rejectSignal(session, reviewId)
+        return loadPaymentDetail(reviewId).copy(actionMessage = result.safeMessage)
+    }
+
+    fun rejectOrder(reviewId: String): PremiumPaymentDetailUiState {
+        val result = reviewActionsRepository.rejectOrder(session, reviewId)
+        return loadPaymentDetail(reviewId).copy(actionMessage = result.safeMessage)
+    }
+
+    fun loadReceivingMethods(): PremiumReceivingMethodsUiState {
+        val result = receivingMethodsRepository.list(session)
+        return PremiumReceivingMethodsUiState(
+            rows = result.items.map { "${it.title}|${it.subtitle}|${it.status}" },
+            usesLiveApi = true,
+            safeMessage = result.safeMessage
+        )
+    }
+
+    fun loadConnectedSite(): PremiumConnectedSiteUiState {
+        val result = connectedSiteRepository.load(session, developerDetailsEnabled = false)
+        if (result.state != MerchantRepositoryState.SUCCESS) return PremiumConnectedSiteUiState.preview()
+        val texts = result.visibleTexts()
+        return PremiumConnectedSiteUiState(
+            statusTitle = texts.getOrNull(2) ?: "Action requise",
+            statusText = "Votre site ou application reçoit une notification quand un paiement change de statut.",
+            rows = listOf(
+                (texts.getOrNull(3) ?: "URL de notification") to (texts.getOrNull(4) ?: "Non configurée"),
+                (texts.getOrNull(5) ?: "Statut") to (texts.getOrNull(6) ?: "Action requise")
+            ),
+            usesLiveApi = !result.usesMockRepository
+        )
+    }
+
+    fun runConfigurationTest(checklist: MerchantConfigurationChecklist): PremiumConfigurationUiState {
+        val result = configurationTestRepository.run(session, checklist)
+        val texts = result.visibleTexts()
+        return PremiumConfigurationUiState(
+            checklist = texts.take(MerchantConfigurationChecklist.REQUIRED_LABELS.size).ifEmpty {
+                MerchantConfigurationChecklist.REQUIRED_LABELS
+            },
+            outcomeTitle = if (texts.contains("SwimPay est prêt")) "SwimPay est prêt" else "Action requise",
+            outcomeText = if (texts.contains("SwimPay est prêt")) {
+                "Votre configuration fonctionne pour la bêta."
+            } else {
+                "Vérifiez les étapes avant de recevoir vos premiers paiements."
+            },
+            usesLiveApi = !result.usesMockRepository && !result.confirmsRealPayment
+        )
+    }
+
+    companion object {
+        private val REVIEW_ACTION_LABELS = setOf(
+            "Confirmer le paiement",
+            "Rejeter le signal",
+            "Rejeter la commande"
+        )
+
+        fun localDev(
+            baseUrl: String = DebugBackendConfig.DEFAULT_BASE_URL,
+            merchantId: String = "mch_demo"
+        ): PremiumMerchantRuntime {
+            val transport: MerchantApiTransport = HttpUrlConnectionMerchantApiTransport(baseUrl)
+            return PremiumMerchantRuntime(
+                session = AuthenticatedMerchantSession.localDev(merchantId),
+                dashboardRepository = MerchantDashboardApiRepository(transport),
+                reviewQueueRepository = MerchantReviewQueueApiRepository(transport),
+                paymentDetailRepository = MerchantPaymentDetailApiRepository(transport),
+                reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
+                receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
+                connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
+                configurationTestRepository = MerchantConfigurationTestApiRepository(transport)
+            )
+        }
+
+        fun forAppBuild(
+            baseUrl: String = DebugBackendConfig.DEFAULT_BASE_URL,
+            merchantId: String = "mch_demo"
+        ): PremiumMerchantRuntime {
+            return if (BuildConfig.DEBUG) {
+                localDev(baseUrl = baseUrl, merchantId = merchantId)
+            } else {
+                disconnected()
+            }
+        }
+
+        fun disconnected(): PremiumMerchantRuntime {
+            val transport: MerchantApiTransport = NoopMerchantApiTransport
+            return PremiumMerchantRuntime(
+                session = AuthenticatedMerchantSession.missing(),
+                dashboardRepository = MerchantDashboardApiRepository(transport),
+                reviewQueueRepository = MerchantReviewQueueApiRepository(transport),
+                paymentDetailRepository = MerchantPaymentDetailApiRepository(transport),
+                reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
+                receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
+                connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
+                configurationTestRepository = MerchantConfigurationTestApiRepository(transport)
+            )
+        }
+    }
+}
+
+private object NoopMerchantApiTransport : MerchantApiTransport {
+    override fun execute(request: com.swimpay.receiver.MerchantApiRequest): com.swimpay.receiver.MerchantApiResponse {
+        return com.swimpay.receiver.MerchantApiResponse(
+            statusCode = 503,
+            body = """{"error":{"code":"merchant_session_required"}}"""
+        )
+    }
+}

@@ -1,5 +1,84 @@
 # Progress Log
 
+## 2026-05-04T21:05:00+03:00 - Buyer Checkout UX Realignment
+
+- Created tasks 399 through 406 and updated the task queue.
+- Created `.swimpay-agent/BUYER_CHECKOUT_SCREEN_INVENTORY.md`.
+- Created `.swimpay-agent/BUYER_CHECKOUT_UX_REPORT.md`.
+- Audited the hosted buyer checkout screens in `apps/web/src/screens/CheckoutScreen.ts`.
+- Refactored the buyer checkout presentation into staged surfaces: Pay with SwimPay intro, bank selection, payment method selection, payer launcher, card/phone instructions, buyer status panels and desktop QR handoff.
+- Kept the bank selection step bank-only; no card or phone route details are shown before bank selection.
+- Added separate masked card and masked phone instruction variants.
+- Added buyer-safe status panels for awaiting payment, searching signal, signal detected, needs review, confirmed, expired and not validated states.
+- Updated web checkout tests and copy guardrails to cover safe wording, masking and official-bank-confirmation avoidance.
+- Backend APIs, contracts, workers, payment logic, webhooks, database, Android notification processing, real bank notifications and auto-confirmation were not changed.
+
+## 2026-05-04T20:05:00+03:00 - Frontend Screen Inventory and Gap Completion
+
+- Created tasks 391 through 398 and updated the task queue.
+- Created `.swimpay-agent/FRONTEND_SCREEN_INVENTORY.md`.
+- Created `.swimpay-agent/FRONTEND_SCREEN_REALIGNMENT_REPORT.md`.
+- Audited web merchant screens, web buyer checkout screens and Android frontend screen locations.
+- Aligned web onboarding copy to approved French merchant wording.
+- Added missing web merchant routes/screens for banks, orders, order detail, receiver phone, tests, settings and connected site.
+- Added simple visual states for ready, action required, empty, error, offline, expired and rejected cases.
+- Kept iconography conservative with consistent placeholder bubbles; no fake official bank logos were added.
+- Strengthened web UI copy guardrails for forbidden jargon, official bank confirmation claims and raw phone/card leakage.
+- Full required validation passed: `npm run typecheck`, `npm run lint`, `npm test` (54 files / 373 tests), `npm run build` and Compose config.
+- Backend APIs, contracts, workers, payment decisions, state machines, Android notification processing, real bank notifications and auto-confirmation were not changed.
+
+## 2026-05-04T17:36:31+03:00 - Android Premium Contract/API Continuation
+
+- Added/validated `PremiumMerchantRuntime` as the contract boundary between the premium Compose merchant UI and Sprint 7F Android merchant repositories.
+- Premium dashboard, reviews, payment detail, connected site and configuration states now load through typed repository contracts when backend access is available.
+- Review actions remain backend-owned; Android does not send developer webhooks directly.
+- Signal rejection remains signal-scoped by default; order rejection remains explicit.
+- Multi-agent review found the local/dev runtime boundary was too permissive; `MainActivity` now uses `PremiumMerchantRuntime.forAppBuild()`, and non-debug builds use a disconnected session instead of a test bearer token.
+- `/v1/reviews` was kept as the explicit existing authenticated review API contract for Android merchant queue/actions.
+- Full Node validation passed: `npm test` reported 54 files / 372 tests.
+- Android validation passed with local SDK env: `:app:testDebugUnitTest` and `:app:assembleDebug`.
+- Installed and launched the debug APK on Samsung SM-S916B `R5CWA0FEPZW` via ADB transport `25`.
+- Captured UI tree and screenshot under `.swimpay-agent/visual-qa-android/`.
+- Fresh live backend validation is currently blocked because Docker Desktop is not reachable through `dockerDesktopLinuxEngine`; `http://localhost:8080/api-health` is unreachable.
+- No real bank notification, SMS, Accessibility scraping, installed-app enumeration, official bank confirmation claim, raw PII exposure or auto-confirmation was added.
+
+## 2026-05-04T02:55:00+03:00 - Frontend UI Realignment
+
+- Created tasks 381 through 390 and updated the task queue.
+- Created `.swimpay-agent/FRONTEND_UI_AUDIT.md`.
+- Split active web screen rendering out of `apps/web/src/index.ts` into:
+  - `apps/web/src/screens/MerchantScreens.ts`;
+  - `apps/web/src/screens/CheckoutScreen.ts`;
+  - `apps/web/src/screens/EvidenceAdminScreen.ts`.
+- Strengthened `apps/web/src/ui/Theme.ts` and `apps/web/src/ui/Components.ts` with SwimPay visual tokens and reusable UI primitives.
+- Realigned merchant onboarding, dashboard, receiving methods, review queue, payment detail and connected site surfaces with the provided mobile-first fintech grammar.
+- Applied a visual consistency pass to checkout without changing API/state-machine behavior.
+- Added copy guardrail coverage for onboarding screens and payment review detail.
+- Targeted validation passed: web typecheck, lint and web UI tests.
+- No real bank notification processing, SMS, scraping, raw PII exposure, official bank confirmation claim or auto-confirm enablement was added.
+
+
+## 2026-05-04T01:44:42+03:00 - Sprint 7F Revalidation After Docker Recovery
+
+- Revalidated Docker Desktop/containerd after local recovery: Docker client/server `28.4.0`, Compose `v2.39.2-desktop.1`, Docker info responsive.
+- Fixed Compose `swimpay-web` healthcheck from `/health` to `/`, matching the current web liveness route and unblocking proxy dependency health.
+- Applied additive migrations `006_checkout_bank_selection.sql` and `007_hybrid_receiving_routes.sql` to the existing local Postgres volume because it predated Sprint 7A/7B schema additions.
+- Rebuilt/restarted `swimpay-api` and `proxy`; Compose status shows Postgres, Valkey, NATS, API, web, proxy, signal worker and job worker healthy.
+- Verified `http://localhost:8080/api-health` returned HTTP 200 with database, NATS and Valkey `ok`.
+- Revalidated Sprint 7F live endpoints using the local UUID merchant token:
+  - `GET /v1/android-merchant/dashboard-summary` HTTP 200.
+  - `GET /v1/android-merchant/payments/:id` HTTP 200 for an existing local review.
+  - `GET /v1/android-merchant/connected-site` HTTP 200.
+  - `GET /v1/android-merchant/connected-site?developer_mode=true` HTTP 200.
+  - `POST /v1/android-merchant/connected-site/test` HTTP 202 with backend-owned test queueing.
+  - `POST /v1/android-merchant/configuration-test` HTTP 200 and non-confirming result.
+- Added a validation-only robustness test for legacy unlinked review rows so Android payment detail no longer fails with a UUID parse error when a local review has no linked payment session.
+- Revalidated Android: `assembleDebug` and `testDebugUnitTest` passed with `ANDROID_HOME` and `ANDROID_SDK_ROOT` set to `C:\Users\Lenovo\AppData\Local\Android\Sdk`.
+- Real-device QA passed on `R5CWA0FEPZW`: adb authorized, reverse `tcp:8080`, APK install, `MainActivity` launch and UI-tree dump.
+- Current visible UI dump showed onboarding/Notification Access/five-bank selection and no forbidden technical/raw-PII visible text.
+- Full validation passed: android doctor, typecheck, lint, full npm test suite (54 files / 370 tests), build, Compose config, Compose ps, API health, Android assembleDebug, Android JVM tests and ADB install/launch.
+- No real bank notification, customer data, installed-app enumeration, SMS, Accessibility scraping, official bank confirmation claim, raw phone/card display, raw notification text or auto-confirmation was added.
+
 ## 2026-05-03T23:20:11+03:00 - Sprint 7F Android Mobile Backend Gap Closure
 
 - Created tasks 404 through 411 and updated the task queue to Sprint 7F.

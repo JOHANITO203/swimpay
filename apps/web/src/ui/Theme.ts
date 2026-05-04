@@ -14,10 +14,10 @@ export const Palette = {
 };
 
 export const Radii = {
-  card: '24px',
-  button: '18px',
+  card: '28px',
+  button: '22px',
   pill: '999px',
-  input: '12px',
+  input: '18px',
 };
 
 export function coreStyles(): string {
@@ -41,8 +41,9 @@ export function coreStyles(): string {
       --radius-pill: ${Radii.pill};
       --radius-input: ${Radii.input};
 
-      --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.05);
-      --shadow-medium: 0 8px 30px rgba(7, 27, 51, 0.08);
+      --shadow-soft: 0 12px 34px rgba(7, 27, 51, 0.07);
+      --shadow-medium: 0 18px 44px rgba(7, 27, 51, 0.11);
+      --shadow-button: 0 12px 24px rgba(0, 151, 167, 0.24);
     }
 
     * { box-sizing: border-box; }
@@ -51,6 +52,9 @@ export function coreStyles(): string {
       margin: 0;
       font-family: 'Inter', -apple-system, sans-serif;
       background-color: var(--color-bg);
+      background-image:
+        radial-gradient(circle at 15% 8%, rgba(35, 199, 201, 0.12), transparent 28%),
+        linear-gradient(180deg, #FFFFFF 0%, var(--color-bg) 42%, #FFFFFF 100%);
       color: var(--color-text);
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
@@ -62,7 +66,7 @@ export function coreStyles(): string {
       font-weight: 700;
     }
 
-    h1 { font-size: 32px; letter-spacing: -0.02em; }
+    h1 { font-size: 44px; letter-spacing: 0; line-height: 1.08; }
     h2 { font-size: 24px; }
     h3 { font-size: 18px; }
 
@@ -74,9 +78,13 @@ export function coreStyles(): string {
     .gap-4 { gap: 16px; }
     .items-center { align-items: center; }
     .justify-between { justify-content: space-between; }
+    .grid { display: grid; }
+
+    a { color: inherit; }
+    button, input, select, textarea { font: inherit; }
 
     @media (max-width: 600px) {
-      h1 { font-size: 28px; }
+      h1 { font-size: 34px; }
     }
   `;
 }

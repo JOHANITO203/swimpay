@@ -19,7 +19,7 @@ describe('merchant receiving route admin web surface', () => {
     expect(response.body).toContain('SBER-PHONE');
     expect(response.body).toContain('+7 *** *** **67');
     expect(response.body).toContain('2202 **** **** 7890');
-    expect(response.body).toContain('Card routes are beta review-first. Auto-confirm remains disabled.');
+    expect(response.body).toContain('Validation manuelle en bêta');
     expect(response.body).toContain('name="receiver_identifier"');
     expect(response.body).not.toContain('+79991234567');
     expect(response.body).not.toContain('2202201234567890');

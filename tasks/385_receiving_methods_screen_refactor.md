@@ -1,14 +1,8 @@
-# Task 385 — Receiving methods screen refactor
+# Task 385 — Receiving Methods Screen Refactor
 
-## Status
-- [ ] Refactor "Moyens de réception" screen.
-- [ ] Implement cards for Bank Card and Phone Number.
-- [ ] Ensure full card/phone numbers are masked and never sent in webhooks.
-- [ ] Add the notice about webhook data.
-- [ ] Add UI tests.
+Status: completed
 
-## Requirements
-- UI modern, consistent with dashboard.
-- Clear actions: "Ajouter une carte", "Ajouter un numéro".
-- Status "Validation manuelle en bêta" for card routes.
-- Wording according to instructions.
+Scope:
+- Refactor receiving methods into a separated screen.
+- Show card/phone routes masked only.
+- Preserve create/disable/recommend actions.

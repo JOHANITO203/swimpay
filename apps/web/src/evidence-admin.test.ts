@@ -15,14 +15,14 @@ describe('operator evidence review web surface', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toContain('text/html');
-    expect(response.body).toContain('Evidence operator review');
+    expect(response.body).toContain('Revue des signaux');
     expect(response.body).toContain('pending_operator_review');
     expect(response.body).toContain('approved_for_review_only');
     expect(response.body).toContain('production_trust_requested');
     expect(response.body).toContain('fea43e...99a2ea');
-    expect(response.body).toContain('Review-only evidence is not production trust.');
-    expect(response.body).toContain('Auto-confirm remains disabled.');
-    expect(response.body).toContain('Production trust requires dual-control.');
+    expect(response.body).toContain('confiance production');
+    expect(response.body).toContain('validation automatique reste');
+    expect(response.body).toContain('double contrôle');
     expect(response.body).toContain('bank_evidence.approved_review_only');
     expect(response.body).toContain('bank_evidence.production_trust_requested');
     expect(response.body).toContain('trusted=false');
@@ -56,8 +56,8 @@ describe('operator evidence review web surface', () => {
     });
 
     expect(response.statusCode).toBe(503);
-    expect(response.body).toContain('Evidence API unavailable');
-    expect(response.body).toContain('Check local backend health and admin token configuration.');
+    expect(response.body).toContain('Admin indisponible');
+    expect(response.body).toContain('backend local');
     expect(response.body).not.toContain('api_secret_123');
     expect(response.body).not.toContain(fullCertHash);
     expect(response.body).not.toContain('+79991234567');

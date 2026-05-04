@@ -1,46 +1,137 @@
-# Frontend UI Audit — SwimPay
+# Frontend UI Audit
 
-## 1. Current State Assessment
-The frontend is currently implemented as a Server-Side Rendering (SSR) system within `apps/web/src/index.ts` using Fastify and raw string template literals.
+Date: 2026-05-04
 
-### Key Observations:
-- **Monolithic Rendering**: UI components are not separated. Screens and sub-components are functions returning large HTML strings (e.g., `renderCheckoutPage`, `renderStep`, `renderReceiverBankOptions`).
-- **Mixed Concerns**: Business logic (Fastify routes), data fetching, and UI rendering are all in the same file (`index.ts`).
-- **CSS Management**: Styles are embedded in strings (`baseStyles`, `evidenceStyles`). No CSS framework or preprocessor is used.
-- **Client-side Logic**: Interactivity is handled via a single large `<script>` tag (`checkoutScript`) injected into the HTML.
-- **Design Consistency**: The current UI uses basic CSS with some "teal" accents, but does not follow the "premium fintech" visual grammar described in the requirements (soft shadows, large radii, specific palette).
+## Summary
 
-## 2. Screen Mapping
+The current web frontend is functional but too monolithic for the approved SwimPay visual direction.
 
-| Required Screen (Prompt) | Current Implementation in `apps/web` | Status |
-| :--- | :--- | :--- |
-| **Merchant Onboarding** | None | **Missing** |
-| **Merchant Dashboard** | Basic `/` route | **Placeholder only** |
-| **Receiving Methods** | `renderMerchantReceivingRoutesPage` | **Rudimentary** |
-| **Review Queue** | `renderEvidenceReviewPage` | **Functional but needs redesign** |
-| **Payment Detail** | Partial in Evidence Review | **Needs dedicated screen** |
-| **Connected Site** | None | **Missing** |
-| **Buyer Checkout** | `renderCheckoutPage` / `V2` | **Functional, needs visual pass** |
+The main issue is `apps/web/src/index.ts`, which currently mixes:
+- Fastify route registration;
+- public and admin contracts;
+- API client implementations;
+- merchant page rendering;
+- checkout rendering;
+- admin evidence rendering;
+- status mapping helpers.
 
-## 3. Component Extraction Plan
-To move away from monolithic strings, we will introduce a more structured approach. Since the project currently uses SSR with Fastify, we will maintain this but move to a component-based architecture.
+This makes visual iteration risky because changing one screen can accidentally affect unrelated checkout, admin or API proxy behavior.
 
-### Base Components to Create:
-- `AppShell`: Common wrapper for merchant/admin pages.
-- `CheckoutShell`: Specific wrapper for the buyer flow.
-- `Button`: Primary, secondary, danger variants.
-- `Card`: Soft shadows, 24px-32px radius.
-- `StatusChip`: Semantic badges for states.
-- `StepProgress`: For multi-step onboarding and checkout.
-- `MetricCard`: For dashboard highlights.
-- `CopyField`: Secure copy-to-clipboard component.
+## Existing Screens
 
-## 4. Technical Debt & Risks
-- **No Build Step for Frontend**: Currently just `tsc` for the backend. Moving to a modern framework (React/Vue) would require significant changes to the build pipeline, which might conflict with the "don't break anything" rule.
-- **SSR vs SPA**: The current logic relies on SSR. We should keep the SSR approach to avoid breaking existing state machines and data flows, but clean up the code by separating templates into dedicated files or a template engine (like EJS or simply separate TSX-like functions).
-- **Security**: Must maintain `no-store` headers and ensure PII masking remains intact during refactoring.
+Merchant-facing screens already present:
+- home entry page;
+- merchant onboarding by step;
+- merchant dashboard;
+- receiving methods;
+- review queue;
+- connected site/settings;
+- admin evidence review.
 
-## 5. Next Steps
-1. Create a `ui/` directory in `apps/web/src` to house the new component-based structure.
-2. Implement design tokens (CSS variables) in a central `Styles.ts` or `Theme.ts`.
-3. Progressively replace monolithic `render` functions with the new component hierarchy.
+Buyer checkout screens already present:
+- checkout entry;
+- receiver bank selection;
+- receiving route reveal;
+- payer launcher selection;
+- payment instructions;
+- status summary;
+- buyer claimed paid action.
+
+## Missing or Weak Screens
+
+Screens that exist only as simplified or static surfaces:
+- payment review detail;
+- richer review queue rows;
+- dashboard recent payment cards;
+- connected site developer details mode;
+- mobile bottom navigation on merchant pages;
+- empty/error/action-required states.
+
+## Monolithic Components
+
+Risky files:
+
+### `apps/web/src/index.ts`
+
+Why risky:
+- mixes routing, API clients, types and visual rendering;
+- makes all merchant and checkout screens share one large edit surface;
+- hard to apply the validated mobile-first design grammar screen by screen.
+
+Suggested split:
+- keep server route wiring in `index.ts`;
+- move screen renderers to `apps/web/src/screens`;
+- keep reusable UI in `apps/web/src/ui`;
+- keep API clients later in `apps/web/src/data` if needed.
+
+### `apps/web/src/ui/Components.ts`
+
+Why risky:
+- useful base exists, but components are too generic and inject repeated `<style>` blocks;
+- does not yet provide all design primitives needed by the mockups.
+
+Suggested split:
+- keep small HTML helpers;
+- add focused primitives such as `StatusPanel`, `BottomNav`, `ReviewPaymentCard`, `WebhookStatusCard`, `StepProgress`.
+
+## Current Design System State
+
+`apps/web/src/ui/Theme.ts` already includes the approved palette foundation:
+- deep navy;
+- teal;
+- cyan;
+- mint;
+- white surface;
+- light background;
+- warning/success/danger/muted colors.
+
+It needs stronger mobile layout utilities and more component primitives.
+
+## Refactor Boundary
+
+This realignment must not change:
+- APIs;
+- event names;
+- checkout state machine;
+- merchant review state machine;
+- security logic;
+- copy-details safety;
+- webhook payload rules;
+- auto-confirm gates.
+
+## Proposed Target Structure
+
+```text
+apps/web/src/
+  index.ts
+  screens/
+    CheckoutScreen.ts
+    MerchantScreens.ts
+    EvidenceAdminScreen.ts
+  ui/
+    Theme.ts
+    Components.ts
+```
+
+Future optional split:
+
+```text
+apps/web/src/
+  data/
+    checkout-client.ts
+    merchant-routes-client.ts
+    evidence-client.ts
+  screens/
+    merchant/
+      OnboardingScreens.ts
+      DashboardScreen.ts
+      ReceivingMethodsScreen.ts
+      ReviewQueueScreen.ts
+      ConnectedSiteScreen.ts
+    checkout/
+      CheckoutScreen.ts
+```
+
+## Recommendation
+
+Refactor now only at the render/UI boundary. Keep API clients and business flow stable until the UI surfaces are clean and tested.

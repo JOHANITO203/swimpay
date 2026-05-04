@@ -1,17 +1,12 @@
-# Task 381 — Frontend UI audit and component map
+# Task 381 — Frontend UI Audit and Component Map
 
-## Status
-- [ ] Audit existing frontend in `apps/web`
-- [ ] Identify monolithic components and HTML strings
-- [ ] Map existing screens to the new required screens
-- [ ] Define the component architecture (Atomic Design or similar)
-- [ ] Create `.swimpay-agent/FRONTEND_UI_AUDIT.md`
+Status: completed
 
-## Context
-The current frontend in `apps/web/src/index.ts` uses SSR with large string concatenations. It's difficult to maintain and doesn't follow the new visual grammar.
+Scope:
+- Audit the existing web frontend structure.
+- Identify monolithic render code and missing screen separation.
+- Create `.swimpay-agent/FRONTEND_UI_AUDIT.md`.
 
-## Requirements
-- Do not break existing business logic.
-- Do not change existing APIs or event names.
-- Identify what needs to be extracted into reusable components.
-- Plan the migration from monolithic strings to a structured component system.
+Guardrails:
+- Do not change APIs, state machines, payment decisions or security logic.
+- Do not expose raw PII or forbidden merchant-facing wording.

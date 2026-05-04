@@ -1,23 +1,34 @@
-import {
-  AppShell,
-  Button,
-  Card,
-  CopyField,
-  MetricCard,
-  OptionButton,
-  PageHeader,
-  StatusChip,
-} from './ui/Components.js';
-import { pathToFileURL } from 'node:url';
+﻿import { pathToFileURL } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
+import {
+  renderConnectedSitePage as renderConnectedSiteScreen,
+  renderHomePage as renderHomePageScreen,
+  renderMerchantBanksPage as renderMerchantBanksScreen,
+  renderMerchantDashboard as renderMerchantDashboardScreen,
+  renderMerchantOrderDetailPage as renderMerchantOrderDetailScreen,
+  renderMerchantOrdersPage as renderMerchantOrdersScreen,
+  renderMerchantPaymentDetailPage,
+  renderMerchantReceivingMethodsPage as renderMerchantReceivingMethodsScreen,
+  renderMerchantReviewQueuePage as renderMerchantReviewQueueScreen,
+  renderReceiverPhonePage as renderReceiverPhoneScreen,
+  renderMerchantRoutesUnavailablePage as renderMerchantRoutesUnavailableScreen,
+  renderOnboardingPage as renderOnboardingScreen,
+  renderSettingsPage as renderSettingsScreen,
+  renderTestsPage as renderTestsScreen
+} from './screens/MerchantScreens.js';
+import {
+  renderEvidenceReviewPage as renderEvidenceReviewScreen,
+  renderEvidenceUnavailablePage as renderEvidenceUnavailableScreen
+} from './screens/EvidenceAdminScreen.js';
+import { renderCheckoutPage as renderCheckoutScreen } from './screens/CheckoutScreen.js';
 import {
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
-  V1ReceiverBankOptions,
   type BuyerSafeCheckoutStatus,
   type BuyerSafeReceivingRoute,
   type CheckoutSessionState,
   type PayerBankLauncherOption,
+  type PaymentSessionStatus,
   type ReceiverBankOption,
   type ReceiverIdentifierType,
   type ReceivingRouteRailType,
@@ -143,7 +154,7 @@ export interface MerchantRouteAdminClient {
   updateRoute(routeId: string, patch: Record<string, unknown>): Promise<MerchantRouteAdminRoute>;
 }
 
-interface CheckoutRecipient {
+export interface CheckoutRecipient {
   name: string;
   bank: string;
   accountMasked: string;
@@ -184,6 +195,10 @@ interface CheckoutClaimedPaidResponse {
   official_bank_confirmation: false;
 }
 
+type RouteParams = { routeId: string };
+type PaymentSessionParams = { paymentSessionId: string };
+type MerchantRoutePayload = Record<string, unknown>;
+
 const defaultRecipient: CheckoutRecipient = {
   name: 'Compte marchand',
   bank: 'Banque du marchand',
@@ -200,55 +215,90 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
 
   server.get('/', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
-    return renderHomePage();
+    return renderHomePageScreen();
   });
 
   server.get('/merchant/dashboard', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
-    return renderMerchantDashboard();
+    return renderMerchantDashboardScreen();
+  });
+
+  server.get('/merchant/banks', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderMerchantBanksScreen();
   });
 
   server.get('/merchant/onboarding/:step', async (request, reply) => {
     const params = request.params as { step?: string };
     const step = parseInt(params.step ?? '1', 10);
     reply.type('text/html; charset=utf-8');
-    return renderOnboardingPage(step);
+    return renderOnboardingScreen(step);
   });
 
   server.get('/merchant/receiving-methods', async (_request, reply) => {
     try {
       const routes = await merchantRouteAdminClient.listRoutes();
       reply.type('text/html; charset=utf-8');
-      return renderMerchantReceivingMethodsPage(routes);
+      return renderMerchantReceivingMethodsScreen(routes);
     } catch {
       reply.status(503).type('text/html; charset=utf-8');
-      return renderMerchantRoutesUnavailablePage();
+      return renderMerchantRoutesUnavailableScreen();
     }
   });
 
   server.post('/merchant/receiving-methods', async (request, reply) => {
-    await merchantRouteAdminClient.createRoute(request.body as any);
+    await merchantRouteAdminClient.createRoute((request.body ?? {}) as MerchantRoutePayload);
     return reply.status(303).redirect('/merchant/receiving-methods');
   });
 
   server.post('/merchant/receiving-methods/:routeId/disable', async (request, reply) => {
-    await merchantRouteAdminClient.updateRoute((request.params as any).routeId, { enabled: false });
+    await merchantRouteAdminClient.updateRoute((request.params as RouteParams).routeId, { enabled: false });
     return reply.status(303).redirect('/merchant/receiving-methods');
   });
 
   server.post('/merchant/receiving-methods/:routeId/recommend', async (request, reply) => {
-    await merchantRouteAdminClient.updateRoute((request.params as any).routeId, { recommended: true });
+    await merchantRouteAdminClient.updateRoute((request.params as RouteParams).routeId, { recommended: true });
     return reply.status(303).redirect('/merchant/receiving-methods');
   });
 
   server.get('/merchant/review-queue', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
-    return renderMerchantReviewQueuePage();
+    return renderMerchantReviewQueueScreen();
+  });
+
+  server.get('/merchant/review-queue/:paymentId', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderMerchantPaymentDetailPage();
+  });
+
+  server.get('/merchant/orders', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderMerchantOrdersScreen();
+  });
+
+  server.get('/merchant/orders/:orderId', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderMerchantOrderDetailScreen();
+  });
+
+  server.get('/merchant/receiver-phone', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderReceiverPhoneScreen();
+  });
+
+  server.get('/merchant/tests', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderTestsScreen();
   });
 
   server.get('/merchant/settings', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
-    return renderConnectedSitePage();
+    return renderSettingsScreen();
+  });
+
+  server.get('/merchant/connected-site', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderConnectedSiteScreen();
   });
 
   server.get('/admin/evidence-review', async (_request, reply) => {
@@ -258,10 +308,10 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
         adminEvidenceClient.getAuditEvents()
       ]);
       reply.type('text/html; charset=utf-8');
-      return renderEvidenceReviewPage(dashboard, auditEvents);
+      return renderEvidenceReviewScreen(dashboard, auditEvents);
     } catch {
       reply.status(503).type('text/html; charset=utf-8');
-      return renderEvidenceUnavailablePage();
+      return renderEvidenceUnavailableScreen();
     }
   });
 
@@ -269,21 +319,21 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   server.get('/admin/merchant-receiving-routes', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
     const routes = await merchantRouteAdminClient.listRoutes();
-    return renderMerchantReceivingMethodsPage(routes);
+    return renderMerchantReceivingMethodsScreen(routes);
   });
 
   server.post('/admin/merchant-receiving-routes', async (request, reply) => {
-    await merchantRouteAdminClient.createRoute(request.body as any);
+    await merchantRouteAdminClient.createRoute((request.body ?? {}) as MerchantRoutePayload);
     return reply.status(303).redirect('/admin/merchant-receiving-routes');
   });
 
   server.post('/admin/merchant-receiving-routes/:routeId/disable', async (request, reply) => {
-    await merchantRouteAdminClient.updateRoute((request.params as any).routeId, { enabled: false });
+    await merchantRouteAdminClient.updateRoute((request.params as RouteParams).routeId, { enabled: false });
     return reply.status(303).redirect('/admin/merchant-receiving-routes');
   });
 
   server.post('/admin/merchant-receiving-routes/:routeId/recommend', async (request, reply) => {
-    await merchantRouteAdminClient.updateRoute((request.params as any).routeId, { recommended: true });
+    await merchantRouteAdminClient.updateRoute((request.params as RouteParams).routeId, { recommended: true });
     return reply.status(303).redirect('/admin/merchant-receiving-routes');
   });
 
@@ -293,7 +343,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     if (!paymentSessionId || paymentSessionId === 'any') {
        // Mock for copy-guardrails tests if needed
        if (options.environment === 'test') {
-           return renderCheckoutPage(mockSession('any'), defaultRecipient, [], [], []);
+           const testSession = mockSession('any');
+           return renderCheckoutScreen(testSession, defaultRecipient, [], [], [], mapCheckoutStatus(testSession.status).displayStatus);
        }
        return reply.status(400).send({ error: 'invalid_id' });
     }
@@ -308,7 +359,14 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       : { routes: [] };
 
     reply.type('text/html; charset=utf-8');
-    return renderCheckoutPage(session, options.recipient ?? defaultRecipient, receiverBanks.receiver_banks, receivingRoutes.routes as any, payerBankLaunchers.payer_bank_launchers);
+    return renderCheckoutScreen(
+      session,
+      options.recipient ?? defaultRecipient,
+      receiverBanks.receiver_banks,
+      receivingRoutes.routes,
+      payerBankLaunchers.payer_bank_launchers,
+      mapCheckoutStatus(session.status).displayStatus
+    );
   });
 
   server.get('/checkout/:paymentSessionId/status', async (request, reply) => {
@@ -349,195 +407,10 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.post('/checkout/:paymentSessionId/claimed-paid', async (request, reply) => {
-    return reply.status(202).send(await checkoutSessionProvider.markBuyerClaimedPaid((request.params as any).paymentSessionId));
+    return reply.status(202).send(await checkoutSessionProvider.markBuyerClaimedPaid((request.params as PaymentSessionParams).paymentSessionId));
   });
 
   return server;
-}
-
-// Rendering Functions
-
-function renderHomePage(): string {
-  return AppShell({
-    title: 'Accueil',
-    children: `
-      ${PageHeader({ title: 'SwimPay', eyebrow: 'Plateforme', subtitle: 'Gérez vos paiements et votre configuration.' })}
-      <div class="flex gap-4">
-        <a href="/merchant/onboarding/1" style="text-decoration: none">${Button({ text: 'Onboarding', variant: 'primary' })}</a>
-        <a href="/merchant/dashboard" style="text-decoration: none">${Button({ text: 'Tableau de Bord', variant: 'secondary' })}</a>
-        <a href="/admin/evidence-review" style="text-decoration: none">${Button({ text: 'Administration', variant: 'secondary' })}</a>
-      </div>
-    `
-  });
-}
-
-function renderMerchantDashboard(): string {
-  return AppShell({
-    title: 'Tableau de bord',
-    children: `
-      ${PageHeader({ title: 'Tableau de bord', eyebrow: 'Aperçu' })}
-      <div class="status-banner" style="background: var(--color-mint); padding: 20px; border-radius: var(--radius-card); margin-bottom: 32px; border: 1px solid var(--color-cyan);">
-        <div class="flex items-center gap-4">
-          <div style="width: 12px; height: 12px; background: var(--color-success); border-radius: 50%;"></div>
-          <div>
-            <h3 style="color: var(--color-navy);">SwimPay est prêt</h3>
-            <p class="text-small" style="color: var(--color-navy);">Votre téléphone est connecté et vos paiements peuvent être détectés.</p>
-          </div>
-        </div>
-      </div>
-      <div class="metric-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
-        ${MetricCard({ label: 'À vérifier', value: '3' })}
-        ${MetricCard({ label: 'Validés aujourd’hui', value: '12' })}
-        ${MetricCard({ label: 'Notifications envoyées', value: '15' })}
-        ${MetricCard({ label: 'Téléphone', value: 'Connecté' })}
-      </div>
-      <div class="flex gap-4" style="margin-bottom: 32px;">
-         <a href="/merchant/review-queue" style="text-decoration: none">${Button({ text: 'Voir la file de revue', variant: 'primary' })}</a>
-         <a href="/merchant/receiving-methods" style="text-decoration: none">${Button({ text: 'Gérer les moyens', variant: 'secondary' })}</a>
-      </div>
-      ${Card({ children: '<h3>Derniers paiements détectés</h3><p class="text-muted" style="margin-top: 16px;">Aucun paiement détecté récemment.</p>' })}
-    `
-  });
-}
-
-function renderOnboardingPage(step: number): string {
-  const screens = [
-    { title: 'Recevez vos paiements plus facilement', subtitle: 'SwimPay détecte les paiements reçus, vous aide à les valider et prévient votre site ou votre application.', benefits: [{ title: 'Détection rapide', text: 'Repérez plus vite les paiements reçus.' }, { title: 'Validation simple', text: 'Confirmez ou rejetez en quelques secondes.' }, { title: 'Business connecté', text: 'Votre site ou application reçoit la mise à jour.' }], cta: 'Commencer' },
-    { title: 'Connectez votre téléphone', subtitle: 'SwimPay a besoin d’accéder aux notifications de cet appareil pour fonctionner.', notice: 'SwimPay ne lit pas vos SMS et ne contrôle pas votre banque.', cta: 'Activer l’accès' },
-    { title: 'Choisissez vos banques', subtitle: 'Sélectionnez les banques que vous utilisez pour recevoir vos paiements.', badge: 'Validation manuelle en bêta', cta: 'Continuer' },
-    { title: 'Ajoutez votre moyen de réception', subtitle: 'Vos clients utiliseront ces informations pour vous payer.', options: [{ title: 'Carte bancaire', subtitle: 'Recevez les paiements sur votre carte.' }, { title: 'Numéro de téléphone', subtitle: 'Pratique pour les virements via SBP.' }], cta: 'Ajouter' },
-    { title: 'Vérifiez que tout fonctionne', subtitle: 'Lancez un test avant de recevoir vos premiers paiements.', checklist: ['Téléphone connecté', 'Banque choisie', 'Moyen de réception ajouté', 'Site ou application connecté'], cta: 'Lancer un test' }
-  ];
-  const screen = screens[step - 1];
-  if (!screen) return 'Screen not found';
-  let body = `<div class="flex-col gap-4" style="margin-bottom: 32px;">`;
-  if (step === 1) body += screen.benefits!.map(b => `<div class="benefit"><strong>${b.title}</strong><p class="text-small text-muted">${b.text}</p></div>`).join('');
-  else if (step === 2) body += `<p class="text-small text-muted">${screen.notice}</p>`;
-  else if (step === 3) body += StatusChip({ text: screen.badge, variant: 'info' });
-  else if (step === 4) body += `<div class="option-grid" style="display: grid; gap: 12px;">` + screen.options!.map(o => OptionButton({ title: o.title, subtitle: o.subtitle })).join('') + `</div>`;
-  else if (step === 5) body += screen.checklist!.map(item => `<div class="flex items-center gap-4" style="padding: 12px 0; border-bottom: 1px solid var(--color-border);"><div style="width: 12px; height: 12px; background: var(--color-success); border-radius: 50%;"></div><span>${item}</span></div>`).join('');
-  body += `</div><a href="${step < 5 ? `/merchant/onboarding/${step + 1}` : '/merchant/dashboard'}" style="text-decoration: none;">${Button({ text: screen.cta, variant: 'primary' })}</a>`;
-  return AppShell({ title: screen.title, children: PageHeader({ title: screen.title, subtitle: screen.subtitle }) + body });
-}
-
-function renderMerchantReceivingMethodsPage(routes: MerchantRouteAdminRoute[]): string {
-  return AppShell({
-    title: 'Moyens de réception',
-    children: `
-      ${PageHeader({ title: 'Moyens de réception', subtitle: 'Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer.', eyebrow: 'Configuration' })}
-      <div class="flex-col gap-4">
-        ${Card({ children: '<h3>Ajouter un moyen</h3><div class="flex gap-4" style="margin-top:16px;">' + Button({ text: 'Ajouter une carte', variant: 'secondary' }) + Button({ text: 'Ajouter un numéro', variant: 'secondary' }) + '</div><form style="margin-top:16px;"><input name="receiver_identifier" /></form>' })}
-        ${Card({ children: '<h3>Moyens existants</h3><p>Card routes are beta review-first. Auto-confirm remains disabled.</p>' + renderRoutesTable(routes) })}
-        <p class="text-small text-muted">Les informations complètes ne sont jamais envoyées dans les webhooks.</p>
-      </div>
-    `
-  });
-}
-
-function renderRoutesTable(routes: MerchantRouteAdminRoute[]): string {
-  if (routes.length === 0) return '<p class="empty-state">Aucun moyen configuré.</p>';
-  return `<div class="table-wrap" style="margin-top:16px; border:1px solid var(--color-border); border-radius:var(--radius-input); overflow:hidden;">
-    <table style="width:100%; border-collapse:collapse;">
-      <thead style="background:var(--color-bg);"><tr><th style="padding:12px; text-align:left;">Code</th><th style="padding:12px; text-align:left;">Type</th><th style="padding:12px; text-align:left;">Détail</th><th style="padding:12px; text-align:left;">Statut</th></tr></thead>
-      <tbody>${routes.map(r => `<tr><td style="padding:12px; border-top:1px solid var(--color-border); font-weight:600;">${r.route_code}</td><td style="padding:12px; border-top:1px solid var(--color-border);">${r.rail_type}</td><td style="padding:12px; border-top:1px solid var(--color-border);">${r.receiver_identifier_masked}</td><td style="padding:12px; border-top:1px solid var(--color-border);">${r.enabled ? 'Actif' : 'Inactif'}</td></tr>`).join('')}</tbody>
-    </table>
-  </div>`;
-}
-
-function renderMerchantReviewQueuePage(): string {
-  return AppShell({
-    title: 'Paiements à vérifier',
-    children: `
-      ${PageHeader({ title: 'Paiements à vérifier', subtitle: 'Confirmez uniquement les paiements que vous reconnaissez.', eyebrow: 'Revue' })}
-      <div class="flex gap-4" style="margin-bottom: 24px;">
-        ${['Tous', 'À vérifier', 'Validés', 'Rejetés', 'Expirés'].map(f => Button({ text: f, variant: f === 'À vérifier' ? 'primary' : 'secondary', class: 'btn-small' })).join('')}
-      </div>
-      ${Card({ children: '<p class="text-muted">Aucun paiement en attente de vérification.</p>' })}
-    `
-  });
-}
-
-function renderConnectedSitePage(): string {
-  return AppShell({
-    title: 'Site ou application connecté',
-    children: `
-      ${PageHeader({ title: 'Site ou application connecté', subtitle: 'Votre site ou application reçoit une notification quand un paiement change de statut.', eyebrow: 'Configuration' })}
-      <div class="flex-col gap-4">
-        ${Card({ children: '<div class="flex justify-between items-center" style="margin-bottom:24px;"><div><h3>Connexion active</h3>' + StatusChip({ text: 'Actif', variant: 'success' }) + '</div><p class="text-small text-muted">Dernière notification il y a 3 min.</p></div>' + Button({ text: 'Tester la connexion', variant: 'secondary' }) + '<div style="margin-top:16px;">' + CopyField({ label: 'Clé développeur', value: 'sk_test_123456789', masked: true }) + '</div>' })}
-        <div class="flex gap-4">${Button({ text: 'Voir les derniers envois', variant: 'secondary' })}${Button({ text: 'Détails développeur', variant: 'secondary' })}</div>
-      </div>
-    `
-  });
-}
-
-function renderEvidenceReviewPage(dashboard: BankEvidenceDashboard, auditEvents: AdminAuditEvent[]): string {
-  return AppShell({
-    title: 'Preuves de réception',
-    children: `
-      ${PageHeader({ title: 'Revue des signaux', eyebrow: 'Opérateur', subtitle: 'Vérifiez les signaux de réception.' })}
-      <div class="metric-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:16px; margin-bottom:32px;">
-        ${Object.entries(dashboard.counts_by_status ?? {}).map(([s, c]) => MetricCard({ label: s, value: String(c) })).join('')}
-      </div>
-      ${Card({ children: '<h3>File d’attente</h3>' + (dashboard.review_queue?.length ? '<p>Items present</p>' : '<p class="text-muted">Vide</p>') })}
-    `
-  });
-}
-
-function renderMerchantRoutesUnavailablePage() { return AppShell({ title: 'Erreur', children: 'Service indisponible.' }) }
-function renderEvidenceUnavailablePage() { return AppShell({ title: 'Erreur', children: 'Admin indisponible.' }) }
-
-function renderCheckoutPage(session: CheckoutSession, recipient: CheckoutRecipient, banks: readonly ReceiverBankOption[], routes: readonly BuyerSafeReceivingRoute[], launchers: readonly PayerBankLauncherOption[]): string {
-  const status = mapCheckoutStatus(session.status);
-  const selectedRoute = (routes || []).find(r => r.route_id === session.selected_receiving_route_id);
-  const selectedLauncher = (launchers || []).find(l => l.payer_bank_launcher_id === session.selected_payer_bank_launcher_id);
-  const destinationLabel = selectedRoute ? (selectedRoute.receiver_identifier_type === 'phone' ? 'Téléphone' : 'Carte') : 'Destination';
-
-  return AppShell({
-    title: session.product_name ?? 'Paiement',
-    children: `
-      ${PageHeader({ title: session.product_name ?? 'Paiement', eyebrow: 'SwimPay', subtitle: 'SwimPay recherchera le signal de paiement côté marchand.' })}
-      <div class="checkout-grid" style="display:grid; grid-template-columns: 1fr 340px; gap:32px;">
-        <div class="main">
-          ${Card({ children: `
-            <h3>Instructions</h3>
-            <p class="text-muted">Veuillez effectuer le transfert bancaire.</p>
-            ${selectedRoute ? `<div style="margin-top:16px;">${CopyField({ label: destinationLabel, value: selectedRoute.receiver_identifier_masked, masked: false })}</div>` : ''}
-            ${selectedLauncher ? `<div style="margin-top:16px;"><p class="text-small text-muted">Mode d’envoi : <strong>${selectedLauncher.display_name}</strong></p></div>` : ''}
-            <div style="margin-top:16px;">${Button({ text: "J'ai payé", id: 'paid-button', variant: 'primary' })}</div>
-          ` })}
-
-          ${!session.selected_receiver_bank_id ? `
-            <div style="margin-top:24px;">
-              <h3 style="margin-bottom:16px;">Choisir la banque de reception</h3>
-              <div class="grid gap-4">${banks.map(b => OptionButton({ title: b.display_name, subtitle: `${b.available_route_count} moyens disponibles` })).join('')}</div>
-            </div>` : ''}
-
-          ${session.selected_receiver_bank_id && !session.selected_receiving_route_id ? `
-            <div style="margin-top:24px;">
-              <h3 style="margin-bottom:16px;">Choisir le moyen de réception</h3>
-              <div class="grid gap-4">${routes.map(r => OptionButton({ title: r.display_label, subtitle: r.rail_type })).join('')}</div>
-            </div>` : ''}
-
-          ${session.selected_receiving_route_id && !session.selected_payer_bank_launcher_id ? `
-            <div style="margin-top:24px;">
-              <h3 style="margin-bottom:16px;">Mode d’envoi</h3>
-              <div class="grid gap-4">${launchers.map(l => OptionButton({ title: l.display_name, subtitle: (l as any).launcher_type || 'Transfer' })).join('')}</div>
-            </div>` : ''}
-        </div>
-        <aside>
-          ${Card({ children: `
-            <h3>Résumé</h3>
-            <div class="flex justify-between" style="padding:8px 0;"><span>Montant</span><strong>${session.amount.value} ${session.amount.currency}</strong></div>
-            <div class="flex justify-between" style="padding:8px 0;"><span>Référence</span><strong>${session.reference}</strong></div>
-            <div class="flex justify-between" style="padding:8px 0;"><span>Statut</span>${StatusChip({ text: status.displayStatus, variant: 'info' })}</div>
-          ` })}
-          <div style="margin-top:16px; padding:16px; background:var(--color-mint); border-radius:var(--radius-card); border:1px solid var(--color-cyan);">
-            <p class="text-small" style="color:var(--color-navy);">SwimPay aide le marchand à reconnaître un signal de notification. Ce n’est pas un reçu bancaire officiel.</p>
-          </div>
-        </aside>
-      </div>
-    `
-  });
 }
 
 // Logic & Providers
@@ -565,8 +438,8 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
 export class ApiMerchantRouteAdminClient implements MerchantRouteAdminClient {
   constructor(private url: string, private mchId: string) {}
   async listRoutes() { const r = await fetch(this.url + '/v1/merchant/receiving-routes', { headers: { 'Authorization': `Bearer ${this.mchId}` } }); return (await r.json()).routes || []; }
-  async createRoute(i: any) { return (await fetch(this.url + '/v1/merchant/receiving-routes', { method: 'POST', body: JSON.stringify(i) })).json(); }
-  async updateRoute(id: string, p: any) { return (await fetch(this.url + `/v1/merchant/receiving-routes/${id}`, { method: 'PATCH', body: JSON.stringify(p) })).json(); }
+  async createRoute(input: MerchantRoutePayload) { return (await fetch(this.url + '/v1/merchant/receiving-routes', { method: 'POST', body: JSON.stringify(input) })).json(); }
+  async updateRoute(id: string, patch: MerchantRoutePayload) { return (await fetch(this.url + `/v1/merchant/receiving-routes/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).json(); }
 }
 
 export class ApiAdminEvidenceClient implements AdminEvidenceClient {
@@ -577,7 +450,9 @@ export class ApiAdminEvidenceClient implements AdminEvidenceClient {
 
 export function toCheckoutStatusResponse(s: CheckoutSession): CheckoutStatusResponse {
   const st = mapCheckoutStatus(s.status);
-  const checkout_state = s.checkout_state ?? mapPaymentSessionToCheckoutState(s.status as any);
+  const checkout_state = s.checkout_state ?? mapPaymentSessionToCheckoutState({
+    paymentSessionStatus: toPaymentSessionStatus(s.status)
+  });
   const buyer_safe_status = s.buyer_safe_status ?? mapCheckoutStateToBuyerSafeStatus(checkout_state);
 
   return {
@@ -594,6 +469,12 @@ function mapCheckoutStatus(s: CheckoutStatus): { displayStatus: string; resultSt
   if (s === 'expired') return { displayStatus: 'Commande expirée', resultState: 'expired' };
   if (s === 'rejected') return { displayStatus: 'Rejeté', resultState: 'rejected' };
   return { displayStatus: 'En attente', resultState: 'pending' };
+}
+
+function toPaymentSessionStatus(status: CheckoutStatus): PaymentSessionStatus {
+  if (status === 'payment_instructions_shown') return 'awaiting_payment';
+  if (status === 'fulfilled') return 'manual_confirmed';
+  return status;
 }
 
 function mockSession(id: string): CheckoutSession {
