@@ -1,6 +1,12 @@
 package com.swimpay.receiver
 
 import com.swimpay.receiver.ui.premium.PremiumMerchantRuntime
+import com.swimpay.receiver.ui.premium.PremiumConfigurationUiState
+import com.swimpay.receiver.ui.premium.PremiumConnectedSiteUiState
+import com.swimpay.receiver.ui.premium.PremiumDashboardUiState
+import com.swimpay.receiver.ui.premium.PremiumPaymentDetailUiState
+import com.swimpay.receiver.ui.premium.PremiumReviewsUiState
+import com.swimpay.receiver.ui.premium.PremiumScreenState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -58,7 +64,7 @@ class PremiumMerchantRuntimeContractTest {
                     "bank_display_name": "Sberbank",
                     "receiving_method_masked": "Carte bancaire \u00b7 \u2022\u2022\u2022\u2022 4821",
                     "payment_reference": "TANGO ALFA",
-                    "reason_labels": ["Validation manuelle en bêta", "Référence non visible"],
+                    "reason_labels": ["Validation manuelle en b\u00eata", "R\u00e9f\u00e9rence non visible"],
                     "allowed_actions": ["confirm", "reject_signal", "reject_order"]
                   },
                   "official_bank_confirmation": false
@@ -94,31 +100,22 @@ class PremiumMerchantRuntimeContractTest {
             )
         )
         val session = AuthenticatedMerchantSession.localDev("mch_demo")
-        val runtime = PremiumMerchantRuntime(
-            session = session,
-            dashboardRepository = MerchantDashboardApiRepository(transport),
-            reviewQueueRepository = MerchantReviewQueueApiRepository(transport),
-            paymentDetailRepository = MerchantPaymentDetailApiRepository(transport),
-            reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
-            receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
-            connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
-            configurationTestRepository = MerchantConfigurationTestApiRepository(transport)
-        )
+        val runtime = runtimeWith(session, transport)
 
-        val dashboard = runtime.loadDashboard()
-        val reviews = runtime.loadReviews()
-        val detail = runtime.loadPaymentDetail("rev_01")
-        val connectedSite = runtime.loadConnectedSite()
-        val configuration = runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
+        val dashboard = runtime.loadDashboard() as PremiumScreenState.Content<PremiumDashboardUiState>
+        val reviews = runtime.loadReviews() as PremiumScreenState.Content<PremiumReviewsUiState>
+        val detail = runtime.loadPaymentDetail("rev_01") as PremiumScreenState.Content<PremiumPaymentDetailUiState>
+        val connectedSite = runtime.loadConnectedSite() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+        val configuration = runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady()) as PremiumScreenState.Content<PremiumConfigurationUiState>
 
-        assertTrue(dashboard.usesLiveApi)
-        assertEquals("2", dashboard.metrics.first().value)
-        assertTrue(reviews.usesLiveApi)
-        assertEquals("rev_01", reviews.items.single().reviewId)
-        assertTrue(detail.usesLiveApi)
-        assertTrue(detail.reasons.contains("Validation manuelle en bêta"))
-        assertTrue(connectedSite.usesLiveApi)
-        assertTrue(configuration.usesLiveApi)
+        assertTrue(dashboard.value.usesLiveApi)
+        assertEquals("2", dashboard.value.metrics.first().value)
+        assertTrue(reviews.value.usesLiveApi)
+        assertEquals("rev_01", reviews.value.items.single().reviewId)
+        assertTrue(detail.value.usesLiveApi)
+        assertTrue(detail.value.reasons.any { it.contains("Validation manuelle") })
+        assertTrue(connectedSite.value.usesLiveApi)
+        assertTrue(configuration.value.usesLiveApi)
         assertTrue(runtime.reviewActionsAreBackendOwned)
 
         assertEquals("/v1/android-merchant/dashboard-summary", transport.requests[0].path)
@@ -128,11 +125,11 @@ class PremiumMerchantRuntimeContractTest {
         assertEquals("/v1/android-merchant/configuration-test", transport.requests[4].path)
 
         val visible = listOf(
-            dashboard.recentPayments.map { it.amount + it.detail + it.status },
-            reviews.items.flatMap { listOf(it.amount, it.bank, it.status, it.helper) + it.reasons },
-            detail.summaryRows.flatMap { listOf(it.first, it.second) } + detail.reasons,
-            connectedSite.rows.flatMap { listOf(it.first, it.second) },
-            configuration.checklist + configuration.outcomeTitle + configuration.outcomeText
+            dashboard.value.recentPayments.map { it.amount + it.detail + it.status },
+            reviews.value.items.flatMap { listOf(it.amount, it.bank, it.status, it.helper) + it.reasons },
+            detail.value.summaryRows.flatMap { listOf(it.first, it.second) } + detail.value.reasons,
+            connectedSite.value.rows.flatMap { listOf(it.first, it.second) },
+            configuration.value.checklist + configuration.value.outcomeTitle + configuration.value.outcomeText
         ).flatten().joinToString(" ")
 
         assertFalse(visible.contains("receiver_route_review_only"))
@@ -149,10 +146,76 @@ class PremiumMerchantRuntimeContractTest {
         val dashboard = runtime.loadDashboard()
         val reviews = runtime.loadReviews()
 
-        assertFalse(dashboard.usesLiveApi)
-        assertFalse(reviews.usesLiveApi)
-        assertEquals("Session marchand requise", reviews.safeMessage)
+        assertTrue(dashboard is PremiumScreenState.ActionRequired)
+        assertTrue(reviews is PremiumScreenState.ActionRequired)
+        assertEquals("Session marchand requise", reviews.message)
         assertTrue(runtime.reviewActionsAreBackendOwned)
+    }
+
+    @Test
+    fun premiumRuntimeDoesNotUsePreviewRowsForEmptyOrFailedStates() {
+        val runtime = PremiumMerchantRuntime(
+            session = AuthenticatedMerchantSession.localDev("mch_demo"),
+            dashboardRepository = MerchantDashboardApiRepository(
+                RecordingPremiumTransport(
+                    MerchantApiResponse(
+                        200,
+                        """{"payments_to_review_count":0,"confirmed_today_count":0,"notifications_sent_count":0,"receiver_status":{"display":"Connecté"},"recent_detected_payments":[]}"""
+                    )
+                )
+            ),
+            reviewQueueRepository = MerchantReviewQueueApiRepository(
+                RecordingPremiumTransport(MerchantApiResponse(200, """{"reviews":[]}"""))
+            ),
+            paymentDetailRepository = MerchantPaymentDetailApiRepository(
+                RecordingPremiumTransport(MerchantApiResponse(404, """{"error":{"code":"not_found"}}"""))
+            ),
+            reviewActionsRepository = MerchantReviewActionsApiRepository(RecordingPremiumTransport()),
+            receivingMethodsRepository = MerchantReceivingMethodsApiRepository(
+                RecordingPremiumTransport(MerchantApiResponse(200, """{"routes":[]}"""))
+            ),
+            connectedSiteRepository = MerchantConnectedSiteApiRepository(
+                RecordingPremiumTransport(MerchantApiResponse(503, """{"error":{"code":"offline"}}"""))
+            ),
+            configurationTestRepository = MerchantConfigurationTestApiRepository(
+                RecordingPremiumTransport(MerchantApiResponse(503, """{"error":{"code":"offline"}}"""))
+            )
+        )
+
+        val dashboard = runtime.loadDashboard()
+        val reviews = runtime.loadReviews()
+        val detail = runtime.loadPaymentDetail("rev_missing")
+        val receivingMethods = runtime.loadReceivingMethods()
+        val connectedSite = runtime.loadConnectedSite()
+        val configuration = runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
+
+        assertTrue(dashboard is PremiumScreenState.Empty)
+        assertTrue(reviews is PremiumScreenState.Empty)
+        assertTrue(detail is PremiumScreenState.Error)
+        assertTrue(receivingMethods is PremiumScreenState.Empty)
+        assertTrue(connectedSite is PremiumScreenState.Error)
+        assertTrue(configuration is PremiumScreenState.Error)
+
+        val stateText = listOf(
+            dashboard.title,
+            dashboard.message,
+            reviews.title,
+            reviews.message,
+            detail.title,
+            detail.message,
+            receivingMethods.title,
+            receivingMethods.message,
+            connectedSite.title,
+            connectedSite.message,
+            configuration.title,
+            configuration.message
+        ).joinToString(" ")
+
+        assertFalse(stateText.contains("rev_demo"))
+        assertFalse(stateText.contains("58,41"))
+        assertFalse(stateText.contains("TANGO ALFA"))
+        assertFalse(stateText.contains("official_bank_confirmation", ignoreCase = true))
+        assertFalse(stateText.contains("webhook_secret", ignoreCase = true))
     }
 
     @Test
@@ -168,7 +231,24 @@ class PremiumMerchantRuntimeContractTest {
                 }
                 """.trimIndent()
             ),
-            MerchantApiResponse(404, """{"error":{"code":"not_found"}}"""),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "payment": {
+                    "review_id": "rev_01",
+                    "amount_expected": { "value": "58.41", "currency": "RUB" },
+                    "amount_detected": { "value": "58.41", "currency": "RUB" },
+                    "bank_display_name": "Sberbank",
+                    "receiving_method_masked": "Carte bancaire \u00b7 \u2022\u2022\u2022\u2022 4821",
+                    "payment_reference": "TANGO ALFA",
+                    "reason_labels": ["Validation manuelle en b\u00eata"],
+                    "allowed_actions": ["confirm", "reject_signal", "reject_order"]
+                  },
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            ),
             MerchantApiResponse(
                 200,
                 """
@@ -180,25 +260,33 @@ class PremiumMerchantRuntimeContractTest {
                 }
                 """.trimIndent()
             ),
-            MerchantApiResponse(404, """{"error":{"code":"not_found"}}""")
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "payment": {
+                    "review_id": "rev_02",
+                    "amount_expected": { "value": "129.00", "currency": "RUB" },
+                    "amount_detected": { "value": "129.00", "currency": "RUB" },
+                    "bank_display_name": "T-Bank",
+                    "receiving_method_masked": "T\u00e9l\u00e9phone \u00b7 +7 *** *** 45-67",
+                    "payment_reference": "NOVA KILO",
+                    "reason_labels": ["Validation manuelle en b\u00eata"],
+                    "allowed_actions": ["confirm", "reject_signal", "reject_order"]
+                  },
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
         )
         val session = AuthenticatedMerchantSession.localDev("mch_demo")
-        val runtime = PremiumMerchantRuntime(
-            session = session,
-            dashboardRepository = MerchantDashboardApiRepository(transport),
-            reviewQueueRepository = MerchantReviewQueueApiRepository(transport),
-            paymentDetailRepository = MerchantPaymentDetailApiRepository(transport),
-            reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
-            receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
-            connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
-            configurationTestRepository = MerchantConfigurationTestApiRepository(transport)
-        )
+        val runtime = runtimeWith(session, transport)
 
-        val confirmed = runtime.confirm("rev_01")
-        val signalRejected = runtime.rejectSignal("rev_02")
+        val confirmed = runtime.confirm("rev_01") as PremiumScreenState.Content<PremiumPaymentDetailUiState>
+        val signalRejected = runtime.rejectSignal("rev_02") as PremiumScreenState.Content<PremiumPaymentDetailUiState>
 
-        assertEquals("Validé", confirmed.actionMessage)
-        assertEquals("Signal rejeté", signalRejected.actionMessage)
+        assertEquals("Valid\u00e9", confirmed.value.actionMessage)
+        assertEquals("Signal rejet\u00e9", signalRejected.value.actionMessage)
         assertEquals("/v1/reviews/rev_01/confirm", transport.requests[0].path)
         assertEquals("/v1/reviews/rev_02/reject", transport.requests[2].path)
         assertTrue(transport.requests[2].body.contains("\"scope\":\"signal\""))
@@ -206,6 +294,22 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(MerchantReviewActionsApiRepository(transport).backendOwnsReviewDecisions)
         assertFalse(MerchantReviewActionsApiRepository(transport).sendsDeveloperWebhookDirectly)
     }
+}
+
+private fun runtimeWith(
+    session: AuthenticatedMerchantSession,
+    transport: MerchantApiTransport
+): PremiumMerchantRuntime {
+    return PremiumMerchantRuntime(
+        session = session,
+        dashboardRepository = MerchantDashboardApiRepository(transport),
+        reviewQueueRepository = MerchantReviewQueueApiRepository(transport),
+        paymentDetailRepository = MerchantPaymentDetailApiRepository(transport),
+        reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
+        receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
+        connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
+        configurationTestRepository = MerchantConfigurationTestApiRepository(transport)
+    )
 }
 
 private class RecordingPremiumTransport(

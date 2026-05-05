@@ -109,3 +109,16 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Real-device smoke passed through the connected Samsung device using ADB transport id `3`.
 - Backend/API/contracts/payment/review/notification behavior was not changed.
 - Remaining non-critical follow-up: current dashboard/review/detail screens still need a full state rollout so preview content is not shown during every non-success condition.
+
+## Sprint 7L Android Premium Screen State Rollout
+
+- No code or Android UI critical blocker introduced.
+- Dashboard, review queue, payment detail, orders and menu sub-screens now use typed `PremiumScreenState` surfaces.
+- Empty/error/action-required states no longer fall back to preview payment/order data.
+- Review action buttons are shown only when a real payment detail content state is available.
+- Android review actions remain backend-owned and Android still does not send developer webhooks directly.
+- Targeted and full Android JVM tests passed with in-process Kotlin compilation after an initial local JVM native-memory failure.
+- Real-device ADB install/launch passed on Samsung `SM_S916B` / `R5CWA0FEPZW`.
+- The installed APK mojibake observed through UIAutomator was fixed and revalidated: `Données indisponibles` and `RÉESSAYER` now render correctly.
+- Environment blocker: fresh Docker live checks are currently blocked because `//./pipe/dockerDesktopLinuxEngine` is unavailable from this shell. `docker compose ... config` still renders, but `docker compose ... ps` and `http://localhost:8080/api-health` cannot be freshly verified until Docker Desktop is restarted/recovered.
+- Remaining non-critical follow-up: banks, Receiver health and order detail remain premium placeholder state screens pending dedicated frontend contracts.

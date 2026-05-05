@@ -234,6 +234,36 @@ Recommended scope:
 
 ---
 
+## Latest Android Premium State Work
+
+Sprint 7L Android premium screen state rollout is implemented pending final commit.
+
+Completed:
+
+1. Created tasks 423 through 428 and updated the task queue.
+2. Used multi-agent read-only audits for dashboard/orders, reviews/detail and menu sub-screen state gaps.
+3. Changed `PremiumMerchantRuntime` dashboard, reviews, payment detail, receiving methods, connected site, configuration test and orders loaders to return typed `PremiumScreenState`.
+4. Updated `PremiumMerchantApp` to hold and route typed screen states.
+5. Updated dashboard, orders, settings, receiving methods, connected site, configuration and review screens to render loading/empty/error/action-required states through `PremiumStatePanel`.
+6. Prevented empty/error repository states from showing preview payment/order data.
+7. Added/updated Android tests for the premium state rollout.
+8. Created `.swimpay-agent/ANDROID_PREMIUM_STATE_ROLLOUT_REPORT.md`.
+9. Rebuilt, reinstalled and relaunched the APK on Samsung `SM_S916B` / `R5CWA0FEPZW`.
+10. Fixed and revalidated the visible UTF-8 copy issue reported on-device: `Données indisponibles` and `RÉESSAYER` now render correctly.
+
+Next recommended action:
+
+Recover Docker Desktop/live backend validation, then commit Sprint 7L and run Sprint 7M: Android premium receiving methods and bank management state completion.
+
+Do not do:
+
+- Do not add backend APIs or change existing contracts during Sprint 7M unless explicitly requested.
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not expose raw card, raw phone, raw notification text, webhook secrets or technical merchant jargon.
+
+---
+
 ## Latest Frontend Work
 
 Buyer checkout UX realignment is complete.

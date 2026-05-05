@@ -2,9 +2,6 @@ package com.swimpay.receiver.ui.premium
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.material.icons.automirrored.filled.Help
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +18,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
@@ -45,7 +45,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun PremiumDashboardScreen(state: PremiumDashboardUiState = PremiumDashboardUiState.preview()) {
+fun PremiumDashboardScreen(
+    state: PremiumScreenState<PremiumDashboardUiState> = PremiumScreenState.content(PremiumDashboardUiState.preview())
+) {
+    when (state) {
+        is PremiumScreenState.Content -> PremiumDashboardContent(state.value)
+        else -> PremiumStateList(state)
+    }
+}
+
+@Composable
+private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
     LazyColumn(
         Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(bottom = 22.dp),
@@ -81,11 +91,19 @@ fun PremiumDashboardScreen(state: PremiumDashboardUiState = PremiumDashboardUiSt
 }
 
 @Composable
-private fun MonthlyActivityCard(amount: String, usesLiveApi: Boolean) {
-    PremiumGradientPanel(
-        Modifier.fillMaxWidth().height(214.dp),
-        radius = 42.dp
+private fun PremiumStateList(state: PremiumScreenState<*>) {
+    LazyColumn(
+        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
+        item { PremiumStatePanel(state) }
+    }
+}
+
+@Composable
+private fun MonthlyActivityCard(amount: String, usesLiveApi: Boolean) {
+    PremiumGradientPanel(Modifier.fillMaxWidth().height(214.dp), radius = 42.dp) {
         Column(Modifier.padding(26.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 StatusChip("↗ Activité Mensuelle", StatusTone.Neutral)
@@ -149,7 +167,20 @@ private fun RecentPaymentRow(amount: String, detail: String) {
 }
 
 @Composable
-fun PremiumOrdersScreen() {
+fun PremiumOrdersScreen(
+    state: PremiumScreenState<PremiumOrdersUiState> = PremiumScreenState.empty(
+        "Aucune commande",
+        "Les commandes synchronisées apparaîtront ici."
+    )
+) {
+    when (state) {
+        is PremiumScreenState.Content -> PremiumOrdersContent(state.value)
+        else -> PremiumStateList(state)
+    }
+}
+
+@Composable
+private fun PremiumOrdersContent(state: PremiumOrdersUiState) {
     LazyColumn(
         Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(bottom = 22.dp),
@@ -169,14 +200,14 @@ fun PremiumOrdersScreen() {
                 CircleAction(Icons.Default.FilterList)
             }
         }
-        items(listOf("ord_123" to "58,41 ₽" to "VALIDÉ", "ord_124" to "129,00 ₽" to "EN ATTENTE")) { row ->
-            OrderCard(row.first.first, row.first.second, row.second)
+        items(state.rows) { row ->
+            OrderCard(row.orderId, row.amount, row.status, row.helper)
         }
     }
 }
 
 @Composable
-private fun OrderCard(id: String, amount: String, status: String) {
+private fun OrderCard(id: String, amount: String, status: String, helper: String) {
     Surface(
         Modifier.fillMaxWidth().height(112.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(58.dp)),
         color = PremiumColors.Surface,
@@ -188,7 +219,7 @@ private fun OrderCard(id: String, amount: String, status: String) {
             }
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
                 Text(id, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                Text("Client #12 · Aujourd'hui, 14:20", color = PremiumColors.Ink, fontSize = 12.sp)
+                Text(helper, color = PremiumColors.Ink, fontSize = 12.sp)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(amount, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
@@ -200,8 +231,8 @@ private fun OrderCard(id: String, amount: String, status: String) {
 
 @Composable
 fun PremiumSettingsScreen(
-    connectedSite: PremiumConnectedSiteUiState = PremiumConnectedSiteUiState.preview(),
-    configuration: PremiumConfigurationUiState = PremiumConfigurationUiState.preview()
+    connectedSite: PremiumScreenState<PremiumConnectedSiteUiState> = PremiumScreenState.content(PremiumConnectedSiteUiState.preview()),
+    configuration: PremiumScreenState<PremiumConfigurationUiState> = PremiumScreenState.content(PremiumConfigurationUiState.preview())
 ) {
     LazyColumn(
         Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
@@ -242,51 +273,78 @@ fun PremiumSettingsScreen(
 }
 
 @Composable
-fun PremiumConnectedSiteSummary(state: PremiumConnectedSiteUiState) {
-    PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
-        Column(Modifier.padding(22.dp)) {
-            Text("Site ou application connecté", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-            Text(state.statusTitle, color = if (state.usesLiveApi) PremiumColors.Success else PremiumColors.Muted, fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
-            state.rows.forEach { row ->
-                Text("${row.first} · ${row.second}", color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+fun PremiumConnectedSiteSummary(state: PremiumScreenState<PremiumConnectedSiteUiState>) {
+    when (state) {
+        is PremiumScreenState.Content -> PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
+            Column(Modifier.padding(22.dp)) {
+                Text("Site ou application connecté", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text(state.value.statusTitle, color = if (state.value.usesLiveApi) PremiumColors.Success else PremiumColors.Muted, fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
+                state.value.rows.forEach { row ->
+                    Text("${row.first} · ${row.second}", color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                }
             }
         }
+        else -> PremiumStatePanel(state)
     }
 }
 
 @Composable
-fun PremiumConfigurationSummary(state: PremiumConfigurationUiState) {
-    PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
-        Column(Modifier.padding(22.dp)) {
-            Text("Configuration", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-            Text(state.outcomeTitle, color = if (state.usesLiveApi) PremiumColors.Success else PremiumColors.Muted, fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
-            Text(state.outcomeText, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+fun PremiumConfigurationSummary(state: PremiumScreenState<PremiumConfigurationUiState>) {
+    when (state) {
+        is PremiumScreenState.Content -> PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
+            Column(Modifier.padding(22.dp)) {
+                Text("Configuration", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text(state.value.outcomeTitle, color = if (state.value.usesLiveApi) PremiumColors.Success else PremiumColors.Muted, fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
+                Text(state.value.outcomeText, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+            }
         }
+        else -> PremiumStatePanel(state)
+    }
+}
+
+@Composable
+fun PremiumReceivingMethodsStateScreen(state: PremiumScreenState<PremiumReceivingMethodsUiState>) {
+    when (state) {
+        is PremiumScreenState.Content -> LazyColumn(
+            Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+            contentPadding = PaddingValues(bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Text("Moyens de réception", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            }
+            items(state.value.rows) { row ->
+                PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
+                    val parts = row.split("|")
+                    Column(Modifier.padding(22.dp)) {
+                        Text(parts.getOrNull(0) ?: "Moyen de réception", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                        Text(parts.getOrNull(1) ?: "Identifiant masqué", color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                        StatusChip(parts.getOrNull(2) ?: "Active", StatusTone.Success, Modifier.padding(top = 10.dp))
+                    }
+                }
+            }
+        }
+        else -> PremiumStateList(state)
     }
 }
 
 @Composable
 fun PremiumConnectedSiteStateScreen(
-    state: PremiumConnectedSiteUiState,
+    state: PremiumScreenState<PremiumConnectedSiteUiState>,
     onBack: () -> Unit
 ) {
-    PremiumStandaloneStateScreen(
-        title = "Site ou application connecté",
-        onBack = onBack
-    ) {
+    PremiumStandaloneStateScreen(title = "Site ou application connecté", onBack = onBack) {
         PremiumConnectedSiteSummary(state)
     }
 }
 
 @Composable
 fun PremiumConfigurationStateScreen(
-    state: PremiumConfigurationUiState,
+    state: PremiumScreenState<PremiumConfigurationUiState>,
     onBack: () -> Unit
 ) {
-    PremiumStandaloneStateScreen(
-        title = "Tests",
-        onBack = onBack
-    ) {
+    PremiumStandaloneStateScreen(title = "Tests", onBack = onBack) {
         PremiumConfigurationSummary(state)
     }
 }

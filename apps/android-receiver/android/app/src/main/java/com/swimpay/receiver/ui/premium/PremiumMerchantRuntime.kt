@@ -7,6 +7,7 @@ import com.swimpay.receiver.HttpUrlConnectionMerchantApiTransport
 import com.swimpay.receiver.MerchantApiTransport
 import com.swimpay.receiver.MerchantConfigurationChecklist
 import com.swimpay.receiver.MerchantConfigurationTestApiRepository
+import com.swimpay.receiver.MerchantConfigurationTestOutcome
 import com.swimpay.receiver.MerchantConnectedSiteApiRepository
 import com.swimpay.receiver.MerchantDashboardApiRepository
 import com.swimpay.receiver.MerchantPaymentDetailApiRepository
@@ -14,6 +15,7 @@ import com.swimpay.receiver.MerchantReceivingMethodsApiRepository
 import com.swimpay.receiver.MerchantRepositoryState
 import com.swimpay.receiver.MerchantReviewActionsApiRepository
 import com.swimpay.receiver.MerchantReviewQueueApiRepository
+import com.swimpay.receiver.MerchantScreenRepositoryResult
 
 data class PremiumMetricUiState(
     val value: String,
@@ -121,6 +123,18 @@ data class PremiumReceivingMethodsUiState(
     val safeMessage: String = ""
 )
 
+data class PremiumOrderUiItem(
+    val orderId: String,
+    val amount: String,
+    val status: String,
+    val helper: String
+)
+
+data class PremiumOrdersUiState(
+    val rows: List<PremiumOrderUiItem>,
+    val usesLiveApi: Boolean
+)
+
 data class PremiumConnectedSiteUiState(
     val statusTitle: String,
     val statusText: String,
@@ -174,33 +188,53 @@ class PremiumMerchantRuntime(
     val reviewActionsAreBackendOwned: Boolean
         get() = reviewActionsRepository.backendOwnsReviewDecisions
 
-    fun loadDashboard(): PremiumDashboardUiState {
+    fun loadDashboard(): PremiumScreenState<PremiumDashboardUiState> {
         val result = dashboardRepository.load(session)
-        if (result.state != MerchantRepositoryState.SUCCESS) return PremiumDashboardUiState.preview()
+        if (result.state != MerchantRepositoryState.SUCCESS) {
+            return result.toPremiumState(
+                actionMessage = "Connectez votre session marchand.",
+                errorMessage = "Le tableau de bord est indisponible."
+            )
+        }
         val texts = result.visibleTexts()
         val recent = texts.drop(12).chunked(3).mapNotNull { chunk ->
             val amount = chunk.getOrNull(0) ?: return@mapNotNull null
+            if (!amount.contains("₽") && !amount.contains("RUB", ignoreCase = true)) return@mapNotNull null
             val bank = chunk.getOrNull(1) ?: "Banque choisie"
             val status = chunk.getOrNull(2) ?: "À vérifier"
             PremiumRecentPaymentUiState(amount, "$bank · récemment", status)
-        }.ifEmpty { PremiumDashboardUiState.preview().recentPayments }
-        return PremiumDashboardUiState(
-            readyTitle = texts.getOrNull(1) ?: "SwimPay est prêt",
-            readyText = texts.getOrNull(2) ?: "Votre téléphone est connecté et vos paiements peuvent être détectés.",
-            monthlyAmount = recent.firstOrNull()?.amount ?: PremiumDashboardUiState.preview().monthlyAmount,
-            metrics = listOf(
-                PremiumMetricUiState(texts.getOrNull(4) ?: "0", "À VÉRIFIER"),
-                PremiumMetricUiState(texts.getOrNull(6) ?: "0", "VALIDÉS")
-            ),
-            recentPayments = recent,
-            usesLiveApi = !result.usesMockRepository
+        }
+        val toReview = texts.getOrNull(4) ?: "0"
+        val confirmed = texts.getOrNull(6) ?: "0"
+        if (recent.isEmpty() && toReview == "0" && confirmed == "0") {
+            return PremiumScreenState.empty(
+                title = "Aucune activité",
+                message = "Les paiements détectés apparaîtront ici."
+            )
+        }
+        return PremiumScreenState.content(
+            PremiumDashboardUiState(
+                readyTitle = texts.getOrNull(1) ?: "SwimPay est prêt",
+                readyText = texts.getOrNull(2) ?: "Votre téléphone est connecté et vos paiements peuvent être détectés.",
+                monthlyAmount = recent.firstOrNull()?.amount ?: "0,00 ₽",
+                metrics = listOf(
+                    PremiumMetricUiState(toReview, "À VÉRIFIER"),
+                    PremiumMetricUiState(confirmed, "VALIDÉS")
+                ),
+                recentPayments = recent,
+                usesLiveApi = !result.usesMockRepository
+            )
         )
     }
 
-    fun loadReviews(): PremiumReviewsUiState {
+    fun loadReviews(): PremiumScreenState<PremiumReviewsUiState> {
         val result = reviewQueueRepository.list(session)
-        if (result.state != MerchantRepositoryState.SUCCESS) {
-            return PremiumReviewsUiState.preview().copy(safeMessage = result.safeMessage)
+        when (result.state) {
+            MerchantRepositoryState.ACTION_REQUIRED -> return PremiumScreenState.actionRequired("Action requise", result.safeMessage.ifBlank { "Session marchand requise" })
+            MerchantRepositoryState.EMPTY -> return PremiumScreenState.empty("Aucun paiement À vérifier", "Les nouveaux paiements apparaîtront ici.")
+            MerchantRepositoryState.ERROR -> return PremiumScreenState.error("Revue indisponible", result.safeMessage.ifBlank { "Réessayez dans quelques instants." })
+            MerchantRepositoryState.LOADING -> return PremiumScreenState.loading()
+            MerchantRepositoryState.SUCCESS -> Unit
         }
         val items = result.items.map {
             PremiumReviewUiItem(
@@ -213,89 +247,123 @@ class PremiumMerchantRuntime(
                 valid = it.statusLabel.equals("Validé", ignoreCase = true)
             )
         }
-        return PremiumReviewsUiState(
-            items = items.ifEmpty { PremiumReviewsUiState.preview().items },
-            usesLiveApi = true
-        )
+        if (items.isEmpty()) {
+            return PremiumScreenState.empty("Aucun paiement À vérifier", "Les nouveaux paiements apparaîtront ici.")
+        }
+        return PremiumScreenState.content(PremiumReviewsUiState(items = items, usesLiveApi = true))
     }
 
-    fun loadPaymentDetail(reviewId: String): PremiumPaymentDetailUiState {
+    fun loadPaymentDetail(reviewId: String): PremiumScreenState<PremiumPaymentDetailUiState> {
         val result = paymentDetailRepository.load(session, reviewId)
-        if (result.state != MerchantRepositoryState.SUCCESS) return PremiumPaymentDetailUiState.preview(reviewId)
+        if (result.state != MerchantRepositoryState.SUCCESS) {
+            return result.toPremiumState(
+                actionMessage = "Connectez votre session marchand.",
+                errorTitle = "Paiement indisponible",
+                errorMessage = "Ce paiement ne peut pas être affiché pour le moment."
+            )
+        }
         val texts = result.visibleTexts()
-        return PremiumPaymentDetailUiState(
-            reviewId = reviewId,
-            statusTitle = texts.getOrNull(1) ?: "À vérifier",
-            statusText = texts.getOrNull(2) ?: "Ce paiement nécessite une validation manuelle.",
-            summaryRows = listOf(
-                (texts.getOrNull(3) ?: "Montant attendu") to (texts.getOrNull(4) ?: "0,00 ₽"),
-                (texts.getOrNull(5) ?: "Montant détecté") to (texts.getOrNull(6) ?: "0,00 ₽"),
-                (texts.getOrNull(7) ?: "Banque") to (texts.getOrNull(8) ?: "Banque choisie"),
-                (texts.getOrNull(9) ?: "Moyen de réception") to (texts.getOrNull(10) ?: "Moyen de réception"),
-                (texts.getOrNull(11) ?: "Référence") to (texts.getOrNull(12) ?: "<REFERENCE>"),
-                (texts.getOrNull(13) ?: "Signal reçu") to (texts.getOrNull(14) ?: "Récemment")
-            ),
-            reasons = texts.drop(16).takeWhile { it !in REVIEW_ACTION_LABELS }.ifEmpty {
-                listOf("Validation manuelle en bêta")
-            },
-            usesLiveApi = !result.usesMockRepository
+        return PremiumScreenState.content(
+            PremiumPaymentDetailUiState(
+                reviewId = reviewId,
+                statusTitle = texts.getOrNull(1) ?: "À vérifier",
+                statusText = texts.getOrNull(2) ?: "Ce paiement nécessite une validation manuelle.",
+                summaryRows = listOf(
+                    (texts.getOrNull(3) ?: "Montant attendu") to (texts.getOrNull(4) ?: "0,00 ₽"),
+                    (texts.getOrNull(5) ?: "Montant détecté") to (texts.getOrNull(6) ?: "0,00 ₽"),
+                    (texts.getOrNull(7) ?: "Banque") to (texts.getOrNull(8) ?: "Banque choisie"),
+                    (texts.getOrNull(9) ?: "Moyen de réception") to (texts.getOrNull(10) ?: "Moyen de réception"),
+                    (texts.getOrNull(11) ?: "Référence") to (texts.getOrNull(12) ?: "<REFERENCE>"),
+                    (texts.getOrNull(13) ?: "Signal reçu") to (texts.getOrNull(14) ?: "Récemment")
+                ),
+                reasons = texts.drop(16).takeWhile { it !in REVIEW_ACTION_LABELS }.ifEmpty {
+                    listOf("Validation manuelle en bêta")
+                },
+                usesLiveApi = !result.usesMockRepository
+            )
         )
     }
 
-    fun confirm(reviewId: String): PremiumPaymentDetailUiState {
+    fun confirm(reviewId: String): PremiumScreenState<PremiumPaymentDetailUiState> {
         val result = reviewActionsRepository.confirm(session, reviewId)
-        return loadPaymentDetail(reviewId).copy(actionMessage = result.safeMessage)
+        return loadPaymentDetail(reviewId).withActionMessage(result.safeMessage)
     }
 
-    fun rejectSignal(reviewId: String): PremiumPaymentDetailUiState {
+    fun rejectSignal(reviewId: String): PremiumScreenState<PremiumPaymentDetailUiState> {
         val result = reviewActionsRepository.rejectSignal(session, reviewId)
-        return loadPaymentDetail(reviewId).copy(actionMessage = result.safeMessage)
+        return loadPaymentDetail(reviewId).withActionMessage(result.safeMessage)
     }
 
-    fun rejectOrder(reviewId: String): PremiumPaymentDetailUiState {
+    fun rejectOrder(reviewId: String): PremiumScreenState<PremiumPaymentDetailUiState> {
         val result = reviewActionsRepository.rejectOrder(session, reviewId)
-        return loadPaymentDetail(reviewId).copy(actionMessage = result.safeMessage)
+        return loadPaymentDetail(reviewId).withActionMessage(result.safeMessage)
     }
 
-    fun loadReceivingMethods(): PremiumReceivingMethodsUiState {
+    fun loadReceivingMethods(): PremiumScreenState<PremiumReceivingMethodsUiState> {
         val result = receivingMethodsRepository.list(session)
-        return PremiumReceivingMethodsUiState(
-            rows = result.items.map { "${it.title}|${it.subtitle}|${it.status}" },
-            usesLiveApi = true,
-            safeMessage = result.safeMessage
-        )
+        return when (result.state) {
+            MerchantRepositoryState.SUCCESS -> PremiumScreenState.content(
+                PremiumReceivingMethodsUiState(
+                    rows = result.items.map { "${it.title}|${it.subtitle}|${it.status}" },
+                    usesLiveApi = true,
+                    safeMessage = result.safeMessage
+                )
+            )
+            MerchantRepositoryState.EMPTY -> PremiumScreenState.empty("Aucun moyen de réception", "Ajoutez une carte ou un numéro pour commencer.")
+            MerchantRepositoryState.ACTION_REQUIRED -> PremiumScreenState.actionRequired("Action requise", result.safeMessage.ifBlank { "Session marchand requise" })
+            MerchantRepositoryState.ERROR -> PremiumScreenState.error("Moyens indisponibles", result.safeMessage.ifBlank { "Réessayez dans quelques instants." })
+            MerchantRepositoryState.LOADING -> PremiumScreenState.loading()
+        }
     }
 
-    fun loadConnectedSite(): PremiumConnectedSiteUiState {
+    fun loadConnectedSite(): PremiumScreenState<PremiumConnectedSiteUiState> {
         val result = connectedSiteRepository.load(session, developerDetailsEnabled = false)
-        if (result.state != MerchantRepositoryState.SUCCESS) return PremiumConnectedSiteUiState.preview()
+        if (result.state != MerchantRepositoryState.SUCCESS) {
+            return result.toPremiumState(
+                actionMessage = "Connectez votre site ou application.",
+                errorMessage = "Votre site n'a pas répondu au dernier test."
+            )
+        }
         val texts = result.visibleTexts()
-        return PremiumConnectedSiteUiState(
-            statusTitle = texts.getOrNull(2) ?: "Action requise",
-            statusText = "Votre site ou application reçoit une notification quand un paiement change de statut.",
-            rows = listOf(
-                (texts.getOrNull(3) ?: "URL de notification") to (texts.getOrNull(4) ?: "Non configurée"),
-                (texts.getOrNull(5) ?: "Statut") to (texts.getOrNull(6) ?: "Action requise")
-            ),
-            usesLiveApi = !result.usesMockRepository
+        return PremiumScreenState.content(
+            PremiumConnectedSiteUiState(
+                statusTitle = texts.getOrNull(2) ?: "Action requise",
+                statusText = "Votre site ou application reçoit une notification quand un paiement change de statut.",
+                rows = listOf(
+                    (texts.getOrNull(3) ?: "URL de notification") to (texts.getOrNull(4) ?: "Non configurée"),
+                    (texts.getOrNull(5) ?: "Statut") to (texts.getOrNull(6) ?: "Action requise")
+                ),
+                usesLiveApi = !result.usesMockRepository
+            )
         )
     }
 
-    fun runConfigurationTest(checklist: MerchantConfigurationChecklist): PremiumConfigurationUiState {
+    fun runConfigurationTest(checklist: MerchantConfigurationChecklist): PremiumScreenState<PremiumConfigurationUiState> {
         val result = configurationTestRepository.run(session, checklist)
+        when (result.outcome) {
+            MerchantConfigurationTestOutcome.ACTION_REQUIRED -> return PremiumScreenState.actionRequired("Action requise", "Vérifiez les étapes avant de continuer.")
+            MerchantConfigurationTestOutcome.ERROR -> return PremiumScreenState.error("Test indisponible", "Réessayez dans quelques instants.")
+            MerchantConfigurationTestOutcome.READY -> Unit
+        }
         val texts = result.visibleTexts()
-        return PremiumConfigurationUiState(
-            checklist = texts.take(MerchantConfigurationChecklist.REQUIRED_LABELS.size).ifEmpty {
-                MerchantConfigurationChecklist.REQUIRED_LABELS
-            },
-            outcomeTitle = if (texts.contains("SwimPay est prêt")) "SwimPay est prêt" else "Action requise",
-            outcomeText = if (texts.contains("SwimPay est prêt")) {
-                "Votre configuration fonctionne pour la bêta."
-            } else {
-                "Vérifiez les étapes avant de recevoir vos premiers paiements."
-            },
-            usesLiveApi = !result.usesMockRepository && !result.confirmsRealPayment
+        return PremiumScreenState.content(
+            PremiumConfigurationUiState(
+                checklist = texts.take(MerchantConfigurationChecklist.REQUIRED_LABELS.size).ifEmpty {
+                    MerchantConfigurationChecklist.REQUIRED_LABELS
+                },
+                outcomeTitle = if (texts.contains("SwimPay est prêt")) "SwimPay est prêt" else "Action requise",
+                outcomeText = if (texts.contains("SwimPay est prêt")) {
+                    "Votre configuration fonctionne pour la bêta."
+                } else {
+                    "Vérifiez les étapes avant de recevoir vos premiers paiements."
+                },
+                usesLiveApi = !result.usesMockRepository && !result.confirmsRealPayment
+            )
         )
+    }
+
+    fun loadOrders(): PremiumScreenState<PremiumOrdersUiState> {
+        return PremiumScreenState.empty("Aucune commande", "Les commandes synchronisées apparaîtront ici.")
     }
 
     companion object {
@@ -346,6 +414,42 @@ class PremiumMerchantRuntime(
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport)
             )
         }
+    }
+}
+
+private fun <T> MerchantScreenRepositoryResult.toPremiumState(
+    actionMessage: String,
+    errorTitle: String = "Données indisponibles",
+    errorMessage: String = "Réessayez dans quelques instants."
+): PremiumScreenState<T> {
+    return when (state) {
+        MerchantRepositoryState.ACTION_REQUIRED -> PremiumScreenState.actionRequired(
+            title = "Action requise",
+            message = visibleTexts().getOrNull(1) ?: actionMessage
+        )
+        MerchantRepositoryState.EMPTY -> PremiumScreenState.empty(
+            title = "Aucune donnée",
+            message = "Les informations apparaîtront ici."
+        )
+        MerchantRepositoryState.ERROR -> PremiumScreenState.error(
+            title = errorTitle,
+            message = safeMessage.ifBlank { errorMessage }
+        )
+        MerchantRepositoryState.LOADING -> PremiumScreenState.loading()
+        MerchantRepositoryState.SUCCESS -> PremiumScreenState.error(message = errorMessage)
+    }
+}
+
+private fun PremiumScreenState<PremiumPaymentDetailUiState>.withActionMessage(
+    actionMessage: String
+): PremiumScreenState<PremiumPaymentDetailUiState> {
+    return when (this) {
+        is PremiumScreenState.Content -> PremiumScreenState.content(value.copy(actionMessage = actionMessage))
+        is PremiumScreenState.ActionRequired -> copy(message = actionMessage.ifBlank { message })
+        is PremiumScreenState.Empty -> copy(message = actionMessage.ifBlank { message })
+        is PremiumScreenState.Error -> copy(message = actionMessage.ifBlank { message })
+        is PremiumScreenState.Loading -> this
+        is PremiumScreenState.Offline -> copy(message = actionMessage.ifBlank { message })
     }
 }
 

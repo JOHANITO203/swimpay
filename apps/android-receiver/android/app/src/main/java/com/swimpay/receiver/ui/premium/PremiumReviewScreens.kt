@@ -39,8 +39,19 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun PremiumReviewsScreen(
-    state: PremiumReviewsUiState = PremiumReviewsUiState.preview(),
+    state: PremiumScreenState<PremiumReviewsUiState> = PremiumScreenState.content(PremiumReviewsUiState.preview()),
     onOpenReview: (String) -> Unit = {}
+) {
+    when (state) {
+        is PremiumScreenState.Content -> PremiumReviewsContent(state.value, onOpenReview)
+        else -> PremiumReviewsState(state)
+    }
+}
+
+@Composable
+private fun PremiumReviewsContent(
+    state: PremiumReviewsUiState,
+    onOpenReview: (String) -> Unit
 ) {
     LazyColumn(
         Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
@@ -62,6 +73,21 @@ fun PremiumReviewsScreen(
             }
         }
         items(state.items) { item -> ReviewPaymentCard(item, onOpenReview) }
+    }
+}
+
+@Composable
+private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>) {
+    LazyColumn(
+        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        item {
+            Text("Signalements Reçus", color = PremiumColors.Ink, fontSize = 23.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
+            Text("Confirmez les paiements détectés par votre terminal Android.", color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 20.sp)
+        }
+        item { PremiumStatePanel(state) }
     }
 }
 
@@ -99,11 +125,31 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
 
 @Composable
 fun PremiumPaymentDetailScreen(
-    state: PremiumPaymentDetailUiState = PremiumPaymentDetailUiState.preview(),
+    state: PremiumScreenState<PremiumPaymentDetailUiState> = PremiumScreenState.content(PremiumPaymentDetailUiState.preview()),
     onBack: () -> Unit = {},
     onConfirm: () -> Unit = {},
     onRejectSignal: () -> Unit = {},
     onRejectOrder: () -> Unit = {}
+) {
+    when (state) {
+        is PremiumScreenState.Content -> PremiumPaymentDetailContent(
+            state = state.value,
+            onBack = onBack,
+            onConfirm = onConfirm,
+            onRejectSignal = onRejectSignal,
+            onRejectOrder = onRejectOrder
+        )
+        else -> PremiumPaymentDetailState(state, onBack)
+    }
+}
+
+@Composable
+private fun PremiumPaymentDetailContent(
+    state: PremiumPaymentDetailUiState,
+    onBack: () -> Unit,
+    onConfirm: () -> Unit,
+    onRejectSignal: () -> Unit,
+    onRejectOrder: () -> Unit
 ) {
     Column(
         Modifier
@@ -176,6 +222,31 @@ fun PremiumPaymentDetailScreen(
                         .padding(vertical = 12.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PremiumPaymentDetailState(
+    state: PremiumScreenState<PremiumPaymentDetailUiState>,
+    onBack: () -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(PremiumColors.Background)
+            .statusBarsPadding()
+            .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
+    ) {
+        Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
+            CircleAction(Icons.Default.ArrowBack, onClick = onBack)
+            Text("Vérifier ce paiement", modifier = Modifier.weight(1f), color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
+        }
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            item { PremiumStatePanel(state) }
         }
     }
 }

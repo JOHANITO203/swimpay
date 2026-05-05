@@ -1901,3 +1901,24 @@ Safety checks:
 - Final validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps, API health, Android JVM tests and Android debug APK build.
 - Installed and launched the debug APK on the connected Samsung device; UIAutomator showed the premium shell and typed bottom navigation.
 - No backend/API/contracts/workers/database/payment/review logic, real notification capture, SMS, Accessibility scraping, raw PII exposure or auto-confirmation behavior was changed.
+
+## 2026-05-05T06:30:00+03:00 - Sprint 7L Android Premium Screen State Rollout
+
+- Created tasks 423 through 428 and updated the task queue to Sprint 7L.
+- Used multi-agent read-only audits for dashboard/orders, review/detail and menu sub-screen state gaps.
+- Added typed state rollout across `PremiumMerchantRuntime`, `PremiumMerchantApp`, dashboard, orders, settings, receiving methods, connected site, configuration, review queue and payment detail screens.
+- Dashboard empty/error/action-required states no longer show preview recent payments.
+- Review queue empty/error/action-required states no longer show preview review rows.
+- Missing payment detail now renders a safe error state instead of fake payment detail content.
+- Orders no longer use the static demo order list; the screen renders a typed empty state until a live order contract is defined.
+- Connected site, configuration test and receiving methods now render typed content or state panels.
+- Added/updated Android tests proving preview rows are not used for non-success states and review actions remain backend-owned.
+- Initial targeted Android test run hit local JVM native-memory exhaustion; rerun with in-process Kotlin compilation passed.
+- Full Android JVM tests passed.
+- Real-device ADB install/launch passed on Samsung `SM_S916B` / `R5CWA0FEPZW`.
+- UIAutomator initially confirmed installed-APK mojibake (`Donn?es indisponibles`).
+- Rebuilt and reinstalled the APK with corrected UTF-8 premium UI strings.
+- UIAutomator and screenshot verification now show `Données indisponibles` and `RÉESSAYER` correctly.
+- Fresh root validation passed for android doctor, typecheck, lint, tests, build and Compose config.
+- Fresh Docker live validation is blocked because Docker Desktop's Linux engine pipe is currently unavailable from this shell; `compose ps` and `/api-health` could not be verified in this final pass.
+- No backend/API/contracts/workers/database/payment/review logic, real notification capture, SMS, Accessibility scraping, raw PII exposure or auto-confirmation behavior was changed.

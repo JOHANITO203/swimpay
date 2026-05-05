@@ -1,7 +1,7 @@
 package com.swimpay.receiver.ui.premium
 
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,11 +20,13 @@ fun PremiumMerchantApp(
     var route by remember(onboardingCompletionStore) {
         mutableStateOf(PremiumNavigation.initialRoute(onboardingCompletionStore.isCompleted()))
     }
-    var dashboardState by remember { mutableStateOf(PremiumDashboardUiState.preview()) }
-    var reviewsState by remember { mutableStateOf(PremiumReviewsUiState.preview()) }
-    var paymentDetailState by remember { mutableStateOf(PremiumPaymentDetailUiState.preview()) }
-    var connectedSiteState by remember { mutableStateOf(PremiumConnectedSiteUiState.preview()) }
-    var configurationState by remember { mutableStateOf(PremiumConfigurationUiState.preview()) }
+    var dashboardState by remember { mutableStateOf<PremiumScreenState<PremiumDashboardUiState>>(PremiumScreenState.loading()) }
+    var reviewsState by remember { mutableStateOf<PremiumScreenState<PremiumReviewsUiState>>(PremiumScreenState.loading()) }
+    var paymentDetailState by remember { mutableStateOf<PremiumScreenState<PremiumPaymentDetailUiState>>(PremiumScreenState.loading()) }
+    var connectedSiteState by remember { mutableStateOf<PremiumScreenState<PremiumConnectedSiteUiState>>(PremiumScreenState.loading()) }
+    var configurationState by remember { mutableStateOf<PremiumScreenState<PremiumConfigurationUiState>>(PremiumScreenState.loading()) }
+    var receivingMethodsState by remember { mutableStateOf<PremiumScreenState<PremiumReceivingMethodsUiState>>(PremiumScreenState.loading()) }
+    var ordersState by remember { mutableStateOf<PremiumScreenState<PremiumOrdersUiState>>(PremiumScreenState.loading()) }
 
     LaunchedEffect(route) {
         when (val currentRoute = route) {
@@ -32,17 +34,20 @@ fun PremiumMerchantApp(
                 when (currentRoute.tab) {
                     PremiumMainTab.Home -> dashboardState = withContext(Dispatchers.IO) { runtime.loadDashboard() }
                     PremiumMainTab.Reviews -> reviewsState = withContext(Dispatchers.IO) { runtime.loadReviews() }
+                    PremiumMainTab.Orders -> ordersState = withContext(Dispatchers.IO) { runtime.loadOrders() }
                     PremiumMainTab.Menu -> {
                         connectedSiteState = withContext(Dispatchers.IO) { runtime.loadConnectedSite() }
                         configurationState = withContext(Dispatchers.IO) {
                             runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
                         }
                     }
-                    PremiumMainTab.Orders -> Unit
                 }
             }
             is PremiumRoute.PaymentDetail -> {
                 paymentDetailState = withContext(Dispatchers.IO) { runtime.loadPaymentDetail(currentRoute.reviewId) }
+            }
+            PremiumRoute.ReceivingMethods -> {
+                receivingMethodsState = withContext(Dispatchers.IO) { runtime.loadReceivingMethods() }
             }
             PremiumRoute.ConnectedSite -> {
                 connectedSiteState = withContext(Dispatchers.IO) { runtime.loadConnectedSite() }
@@ -54,7 +59,6 @@ fun PremiumMerchantApp(
             }
             PremiumRoute.Landing,
             PremiumRoute.Onboarding,
-            PremiumRoute.ReceivingMethods,
             PremiumRoute.Banks,
             PremiumRoute.ReceiverHealth,
             is PremiumRoute.OrderDetail -> Unit
@@ -98,32 +102,54 @@ fun PremiumMerchantApp(
                             route = PremiumNavigation.openReview(it)
                         }
                     )
-                    PremiumMainTab.Orders -> PremiumOrdersScreen()
+                    PremiumMainTab.Orders -> PremiumOrdersScreen(ordersState)
                     PremiumMainTab.Menu -> PremiumSettingsScreen(connectedSiteState, configurationState)
                 }
             }
         )
-        PremiumRoute.ConnectedSite -> {
-            PremiumConnectedSiteStateScreen(connectedSiteState) {
-                route = PremiumRoute.Main(PremiumMainTab.Menu)
-            }
+        PremiumRoute.ReceivingMethods -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Menu,
+            onTab = { route = PremiumRoute.Main(it) },
+            content = { PremiumReceivingMethodsStateScreen(receivingMethodsState) }
+        )
+        PremiumRoute.ConnectedSite -> PremiumConnectedSiteStateScreen(connectedSiteState) {
+            route = PremiumRoute.Main(PremiumMainTab.Menu)
         }
-        PremiumRoute.ConfigurationTest -> {
-            PremiumConfigurationStateScreen(configurationState) {
-                route = PremiumRoute.Main(PremiumMainTab.Menu)
-            }
+        PremiumRoute.ConfigurationTest -> PremiumConfigurationStateScreen(configurationState) {
+            route = PremiumRoute.Main(PremiumMainTab.Menu)
         }
-        PremiumRoute.ReceivingMethods,
-        PremiumRoute.Banks,
-        PremiumRoute.ReceiverHealth,
-        is PremiumRoute.OrderDetail -> PremiumAppShell(
+        PremiumRoute.Banks -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
             content = {
                 PremiumStatePanel(
-                    state = PremiumScreenState.actionRequired<Unit>(
-                        title = "Action nécessaire",
-                        message = "Cet écran sera disponible dans la prochaine étape."
+                    PremiumScreenState.actionRequired<Unit>(
+                        title = "Banques",
+                        message = "La gestion des banques arrive dans la prochaine étape."
+                    )
+                )
+            }
+        )
+        PremiumRoute.ReceiverHealth -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Menu,
+            onTab = { route = PremiumRoute.Main(it) },
+            content = {
+                PremiumStatePanel(
+                    PremiumScreenState.actionRequired<Unit>(
+                        title = "Téléphone Receiver",
+                        message = "Vérifiez l'accès notifications avant de recevoir des paiements."
+                    )
+                )
+            }
+        )
+        is PremiumRoute.OrderDetail -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Orders,
+            onTab = { route = PremiumRoute.Main(it) },
+            content = {
+                PremiumStatePanel(
+                    PremiumScreenState.empty<Unit>(
+                        title = "Commande indisponible",
+                        message = "Cette commande n'est pas encore disponible sur ce téléphone."
                     )
                 )
             }
