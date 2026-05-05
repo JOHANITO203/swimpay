@@ -3,6 +3,8 @@ package com.swimpay.receiver.ui.premium
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,10 +28,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.SignalWifiOff
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Water
 import androidx.compose.material3.Icon
@@ -62,8 +66,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun PremiumAppShell(
-    selectedTab: Int,
-    onTab: (Int) -> Unit,
+    selectedTab: PremiumMainTab,
+    onTab: (PremiumMainTab) -> Unit,
     content: @Composable () -> Unit
 ) {
     Box(Modifier.fillMaxSize().background(PremiumColors.Surface)) {
@@ -106,12 +110,12 @@ fun PremiumTopChrome() {
 }
 
 @Composable
-fun PremiumBottomNav(selected: Int, onTab: (Int) -> Unit) {
+fun PremiumBottomNav(selected: PremiumMainTab, onTab: (PremiumMainTab) -> Unit) {
     val tabs = listOf(
-        Triple(Icons.Default.Home, "HOME", "Accueil"),
-        Triple(Icons.Default.ReceiptLong, "REVUES", "Revues"),
-        Triple(Icons.Default.ShoppingCart, "VENTES", "Ventes"),
-        Triple(Icons.Default.MoreHoriz, "MENU", "Menu"),
+        PremiumMainTab.Home to Icons.Default.Home,
+        PremiumMainTab.Reviews to Icons.AutoMirrored.Filled.ReceiptLong,
+        PremiumMainTab.Orders to Icons.Default.ShoppingCart,
+        PremiumMainTab.Menu to Icons.Default.MoreHoriz,
     )
     Box(
         Modifier
@@ -127,11 +131,11 @@ fun PremiumBottomNav(selected: Int, onTab: (Int) -> Unit) {
             shape = RoundedCornerShape(30.dp)
         ) {
             Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
-                tabs.forEachIndexed { index, item ->
-                    val active = selected == index
+                tabs.forEach { item ->
+                    val active = selected == item.first
                     Column(
                         Modifier
-                            .premiumTap { onTab(index) }
+                            .premiumTap { onTab(item.first) }
                             .padding(horizontal = 6.dp, vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -144,10 +148,10 @@ fun PremiumBottomNav(selected: Int, onTab: (Int) -> Unit) {
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(item.first, null, tint = if (active) PremiumColors.Surface else Color(0xFF3E4654), modifier = Modifier.size(22.dp))
+                            Icon(item.second, item.first.accessibilityLabel, tint = if (active) PremiumColors.Surface else Color(0xFF3E4654), modifier = Modifier.size(22.dp))
                         }
                         Text(
-                            item.second,
+                            item.first.navLabel,
                             color = if (active) PremiumColors.Blue else Color(0xFF444444),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
@@ -155,6 +159,38 @@ fun PremiumBottomNav(selected: Int, onTab: (Int) -> Unit) {
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun <T> PremiumStatePanel(
+    state: PremiumScreenState<T>,
+    modifier: Modifier = Modifier,
+    onAction: () -> Unit = {}
+) {
+    val icon = when (state) {
+        is PremiumScreenState.ActionRequired -> Icons.Default.Info
+        is PremiumScreenState.Empty -> Icons.Default.Info
+        is PremiumScreenState.Error -> Icons.Default.ErrorOutline
+        is PremiumScreenState.Loading -> Icons.Default.HourglassEmpty
+        is PremiumScreenState.Offline -> Icons.Default.SignalWifiOff
+        is PremiumScreenState.Content -> Icons.Default.CheckCircle
+    }
+    PremiumCard(modifier.fillMaxWidth(), radius = PremiumRadius.Card) {
+        Column(
+            Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(Modifier.size(58.dp).background(PremiumColors.Mint, RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = PremiumColors.Blue, modifier = Modifier.size(28.dp))
+            }
+            Text(state.title, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
+            Text(state.message, color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+            state.actionLabel?.let {
+                PremiumOutlineButton(it, Modifier.padding(top = 4.dp), onAction)
             }
         }
     }
@@ -401,5 +437,5 @@ fun ItalicReadyTitle() {
 
 @Composable
 fun Chevron() {
-    Icon(Icons.Default.KeyboardArrowRight, null, tint = Color(0xFFB7B7B7))
+    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color(0xFFB7B7B7))
 }

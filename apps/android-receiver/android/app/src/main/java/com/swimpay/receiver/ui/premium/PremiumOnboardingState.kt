@@ -8,15 +8,6 @@ interface PremiumOnboardingCompletionStore {
     fun clear()
 }
 
-object PremiumOnboardingNavigation {
-    const val ROUTE_LANDING = "landing"
-    const val ROUTE_MAIN = "main"
-
-    fun initialRoute(onboardingCompleted: Boolean): String {
-        return if (onboardingCompleted) ROUTE_MAIN else ROUTE_LANDING
-    }
-}
-
 class InMemoryPremiumOnboardingStateStore(
     private var completed: Boolean = false
 ) : PremiumOnboardingCompletionStore {

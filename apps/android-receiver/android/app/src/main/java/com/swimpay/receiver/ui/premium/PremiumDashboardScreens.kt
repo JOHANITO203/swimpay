@@ -2,6 +2,9 @@ package com.swimpay.receiver.ui.premium
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,8 +26,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Help
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Security
@@ -168,7 +169,7 @@ fun PremiumOrdersScreen() {
                 CircleAction(Icons.Default.FilterList)
             }
         }
-        items(listOf("ord_123" to "58,41 ₽" to "CONFIRMÉ", "ord_124" to "129,00 ₽" to "EN ATTENTE")) { row ->
+        items(listOf("ord_123" to "58,41 ₽" to "VALIDÉ", "ord_124" to "129,00 ₽" to "EN ATTENTE")) { row ->
             OrderCard(row.first.first, row.first.second, row.second)
         }
     }
@@ -191,7 +192,7 @@ private fun OrderCard(id: String, amount: String, status: String) {
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(amount, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                StatusChip(status, if (status == "CONFIRMÉ") StatusTone.Success else StatusTone.Warning)
+                StatusChip(status, if (status == "VALIDÉ") StatusTone.Success else StatusTone.Warning)
             }
         }
     }
@@ -230,7 +231,7 @@ fun PremiumSettingsScreen(
         item {
             SettingsGroup("SUPPORT & SÉCURITÉ", listOf(
                 Icons.Default.Security to "Centre de Sécurité",
-                Icons.Default.Help to "Aide & Assistance",
+                Icons.AutoMirrored.Filled.Help to "Aide & Assistance",
                 Icons.Default.Description to "Conditions Générales"
             ))
         }
@@ -241,7 +242,7 @@ fun PremiumSettingsScreen(
 }
 
 @Composable
-private fun PremiumConnectedSiteSummary(state: PremiumConnectedSiteUiState) {
+fun PremiumConnectedSiteSummary(state: PremiumConnectedSiteUiState) {
     PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
         Column(Modifier.padding(22.dp)) {
             Text("Site ou application connecté", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
@@ -254,13 +255,60 @@ private fun PremiumConnectedSiteSummary(state: PremiumConnectedSiteUiState) {
 }
 
 @Composable
-private fun PremiumConfigurationSummary(state: PremiumConfigurationUiState) {
+fun PremiumConfigurationSummary(state: PremiumConfigurationUiState) {
     PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
         Column(Modifier.padding(22.dp)) {
             Text("Configuration", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
             Text(state.outcomeTitle, color = if (state.usesLiveApi) PremiumColors.Success else PremiumColors.Muted, fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
             Text(state.outcomeText, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
         }
+    }
+}
+
+@Composable
+fun PremiumConnectedSiteStateScreen(
+    state: PremiumConnectedSiteUiState,
+    onBack: () -> Unit
+) {
+    PremiumStandaloneStateScreen(
+        title = "Site ou application connecté",
+        onBack = onBack
+    ) {
+        PremiumConnectedSiteSummary(state)
+    }
+}
+
+@Composable
+fun PremiumConfigurationStateScreen(
+    state: PremiumConfigurationUiState,
+    onBack: () -> Unit
+) {
+    PremiumStandaloneStateScreen(
+        title = "Tests",
+        onBack = onBack
+    ) {
+        PremiumConfigurationSummary(state)
+    }
+}
+
+@Composable
+private fun PremiumStandaloneStateScreen(
+    title: String,
+    onBack: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    LazyColumn(
+        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        item {
+            Row(Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircleAction(Icons.AutoMirrored.Filled.KeyboardArrowLeft, onClick = onBack)
+                Text(title, color = PremiumColors.Ink, fontSize = 23.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 12.dp))
+            }
+        }
+        item { content() }
     }
 }
 
@@ -276,7 +324,7 @@ private fun SettingsGroup(title: String, rows: List<Pair<ImageVector, String>>) 
                             Icon(row.first, null, tint = Color(0xFF555555))
                         }
                         Text(row.second, modifier = Modifier.weight(1f).padding(start = 28.dp), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                        Icon(Icons.Default.KeyboardArrowRight, null, tint = Color(0xFFD0D0D0))
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color(0xFFD0D0D0))
                     }
                     if (index < rows.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line))
                 }

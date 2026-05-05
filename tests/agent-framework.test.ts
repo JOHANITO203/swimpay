@@ -40,14 +40,16 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 7J Android frontend source-of-truth tasks in the approved order', () => {
+  test('task queue lists Sprint 7K Android premium navigation tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '413_android_frontend_legacy_reference_audit',
-      '414_android_frontend_legacy_purge',
-      '415_android_premium_visual_tests_replacement',
-      '416_android_frontend_source_of_truth_report'
+      '417_android_premium_navigation_model',
+      '418_android_premium_screen_state_model',
+      '419_android_premium_state_visual_components',
+      '420_android_premium_subscreen_navigation_foundation',
+      '421_android_premium_navigation_state_tests',
+      '422_android_premium_navigation_report'
     ];
 
     let previousIndex = -1;

@@ -3,7 +3,6 @@ package com.swimpay.receiver.ui.premium
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -19,79 +18,114 @@ fun PremiumMerchantApp(
     onOpenNotificationSettings: () -> Unit = {}
 ) {
     var route by remember(onboardingCompletionStore) {
-        mutableStateOf(
-            PremiumOnboardingNavigation.initialRoute(onboardingCompletionStore.isCompleted())
-        )
+        mutableStateOf(PremiumNavigation.initialRoute(onboardingCompletionStore.isCompleted()))
     }
-    var tab by remember { mutableIntStateOf(0) }
-    var selectedReviewId by remember { mutableStateOf("rev_demo_1") }
     var dashboardState by remember { mutableStateOf(PremiumDashboardUiState.preview()) }
     var reviewsState by remember { mutableStateOf(PremiumReviewsUiState.preview()) }
     var paymentDetailState by remember { mutableStateOf(PremiumPaymentDetailUiState.preview()) }
     var connectedSiteState by remember { mutableStateOf(PremiumConnectedSiteUiState.preview()) }
     var configurationState by remember { mutableStateOf(PremiumConfigurationUiState.preview()) }
 
-    LaunchedEffect(route, tab, selectedReviewId) {
-        if (route == PremiumOnboardingNavigation.ROUTE_MAIN) {
-            when (tab) {
-                0 -> dashboardState = withContext(Dispatchers.IO) { runtime.loadDashboard() }
-                1 -> reviewsState = withContext(Dispatchers.IO) { runtime.loadReviews() }
-                3 -> {
-                    connectedSiteState = withContext(Dispatchers.IO) { runtime.loadConnectedSite() }
-                    configurationState = withContext(Dispatchers.IO) {
-                        runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
+    LaunchedEffect(route) {
+        when (val currentRoute = route) {
+            is PremiumRoute.Main -> {
+                when (currentRoute.tab) {
+                    PremiumMainTab.Home -> dashboardState = withContext(Dispatchers.IO) { runtime.loadDashboard() }
+                    PremiumMainTab.Reviews -> reviewsState = withContext(Dispatchers.IO) { runtime.loadReviews() }
+                    PremiumMainTab.Menu -> {
+                        connectedSiteState = withContext(Dispatchers.IO) { runtime.loadConnectedSite() }
+                        configurationState = withContext(Dispatchers.IO) {
+                            runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
+                        }
                     }
+                    PremiumMainTab.Orders -> Unit
                 }
             }
-        }
-        if (route == "payment_detail") {
-            paymentDetailState = withContext(Dispatchers.IO) { runtime.loadPaymentDetail(selectedReviewId) }
+            is PremiumRoute.PaymentDetail -> {
+                paymentDetailState = withContext(Dispatchers.IO) { runtime.loadPaymentDetail(currentRoute.reviewId) }
+            }
+            PremiumRoute.ConnectedSite -> {
+                connectedSiteState = withContext(Dispatchers.IO) { runtime.loadConnectedSite() }
+            }
+            PremiumRoute.ConfigurationTest -> {
+                configurationState = withContext(Dispatchers.IO) {
+                    runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
+                }
+            }
+            PremiumRoute.Landing,
+            PremiumRoute.Onboarding,
+            PremiumRoute.ReceivingMethods,
+            PremiumRoute.Banks,
+            PremiumRoute.ReceiverHealth,
+            is PremiumRoute.OrderDetail -> Unit
         }
     }
 
-    when (route) {
-        PremiumOnboardingNavigation.ROUTE_LANDING -> PremiumLandingScreen { route = "onboarding" }
-        "onboarding" -> PremiumOnboardingFlow(
+    when (val currentRoute = route) {
+        PremiumRoute.Landing -> PremiumLandingScreen { route = PremiumRoute.Onboarding }
+        PremiumRoute.Onboarding -> PremiumOnboardingFlow(
             notificationAccessEnabled = notificationAccessEnabled,
             openNotificationSettings = onOpenNotificationSettings,
             onDone = {
                 onboardingCompletionStore.markCompleted()
-                tab = 0
-                route = PremiumOnboardingNavigation.ROUTE_MAIN
+                route = PremiumNavigation.afterOnboarding()
             }
         )
-        "payment_detail" -> PremiumPaymentDetailScreen(
+        is PremiumRoute.PaymentDetail -> PremiumPaymentDetailScreen(
             state = paymentDetailState,
             onBack = {
-                tab = 1
-                route = PremiumOnboardingNavigation.ROUTE_MAIN
+                route = PremiumNavigation.backFromPaymentDetail()
             },
             onConfirm = {
-                paymentDetailState = runtime.confirm(selectedReviewId)
+                paymentDetailState = runtime.confirm(currentRoute.reviewId)
             },
             onRejectSignal = {
-                paymentDetailState = runtime.rejectSignal(selectedReviewId)
+                paymentDetailState = runtime.rejectSignal(currentRoute.reviewId)
             },
             onRejectOrder = {
-                paymentDetailState = runtime.rejectOrder(selectedReviewId)
+                paymentDetailState = runtime.rejectOrder(currentRoute.reviewId)
             }
         )
-        PremiumOnboardingNavigation.ROUTE_MAIN -> PremiumAppShell(
-            selectedTab = tab,
-            onTab = { tab = it },
+        is PremiumRoute.Main -> PremiumAppShell(
+            selectedTab = currentRoute.tab,
+            onTab = { route = PremiumRoute.Main(it) },
             content = {
-                when (tab) {
-                    0 -> PremiumDashboardScreen(dashboardState)
-                    1 -> PremiumReviewsScreen(
+                when (currentRoute.tab) {
+                    PremiumMainTab.Home -> PremiumDashboardScreen(dashboardState)
+                    PremiumMainTab.Reviews -> PremiumReviewsScreen(
                         state = reviewsState,
                         onOpenReview = {
-                            selectedReviewId = it
-                            route = "payment_detail"
+                            route = PremiumNavigation.openReview(it)
                         }
                     )
-                    2 -> PremiumOrdersScreen()
-                    else -> PremiumSettingsScreen(connectedSiteState, configurationState)
+                    PremiumMainTab.Orders -> PremiumOrdersScreen()
+                    PremiumMainTab.Menu -> PremiumSettingsScreen(connectedSiteState, configurationState)
                 }
+            }
+        )
+        PremiumRoute.ConnectedSite -> {
+            PremiumConnectedSiteStateScreen(connectedSiteState) {
+                route = PremiumRoute.Main(PremiumMainTab.Menu)
+            }
+        }
+        PremiumRoute.ConfigurationTest -> {
+            PremiumConfigurationStateScreen(configurationState) {
+                route = PremiumRoute.Main(PremiumMainTab.Menu)
+            }
+        }
+        PremiumRoute.ReceivingMethods,
+        PremiumRoute.Banks,
+        PremiumRoute.ReceiverHealth,
+        is PremiumRoute.OrderDetail -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Menu,
+            onTab = { route = PremiumRoute.Main(it) },
+            content = {
+                PremiumStatePanel(
+                    state = PremiumScreenState.actionRequired<Unit>(
+                        title = "Action nécessaire",
+                        message = "Cet écran sera disponible dans la prochaine étape."
+                    )
+                )
             }
         )
     }
