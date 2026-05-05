@@ -46,7 +46,9 @@ fun PremiumMerchantApp(
         when (val currentRoute = route) {
             is PremiumRoute.Main -> {
                 when (currentRoute.tab) {
-                    PremiumMainTab.Home -> dashboardState = withContext(Dispatchers.IO) { runtime.loadDashboard() }
+                    PremiumMainTab.Home -> dashboardState = withContext(Dispatchers.IO) {
+                        runtime.loadDashboard(notificationAccessEnabled)
+                    }
                     PremiumMainTab.Reviews -> reviewsState = withContext(Dispatchers.IO) { runtime.loadReviews() }
                     PremiumMainTab.Orders -> ordersState = withContext(Dispatchers.IO) { runtime.loadOrders() }
                     PremiumMainTab.Menu -> {
@@ -171,8 +173,8 @@ fun PremiumMerchantApp(
             content = {
                 PremiumStatePanel(
                     PremiumScreenState.empty<Unit>(
-                        title = "Commande indisponible",
-                        message = "Cette commande n'est pas encore disponible sur ce téléphone."
+                        title = "Commande à synchroniser",
+                        message = "Les détails seront synchronisés dès que SwimPay sera connecté."
                     )
                 )
             }

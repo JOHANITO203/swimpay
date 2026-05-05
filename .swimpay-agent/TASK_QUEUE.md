@@ -6,6 +6,22 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `434_android_local_merchant_state_audit` - status: completed - source: `tasks/434_android_local_merchant_state_audit.md`
+- [x] `435_android_receiving_methods_local_count` - status: completed - source: `tasks/435_android_receiving_methods_local_count.md`
+- [x] `436_android_ventes_local_state_refinement` - status: completed - source: `tasks/436_android_ventes_local_state_refinement.md`
+- [x] `437_android_local_state_ui_copy_tests` - status: completed - source: `tasks/437_android_local_state_ui_copy_tests.md`
+- [x] `438_android_local_merchant_state_closeout` - status: completed - source: `tasks/438_android_local_merchant_state_closeout.md`
+
+## Previous Queue
+
+- [x] `425_android_data_hydration_audit` - status: completed - source: `tasks/425_android_data_hydration_audit.md`
+- [x] `426_android_dashboard_lively_empty_states` - status: completed - source: `tasks/426_android_dashboard_lively_empty_states.md`
+- [x] `427_android_local_system_state_cards` - status: completed - source: `tasks/427_android_local_system_state_cards.md`
+- [x] `428_android_backend_state_fallbacks` - status: completed - source: `tasks/428_android_backend_state_fallbacks.md`
+- [x] `429_android_webhook_optional_state` - status: completed - source: `tasks/429_android_webhook_optional_state.md`
+- [x] `430_android_hydration_tests` - status: completed - source: `tasks/430_android_hydration_tests.md`
+- [x] `431_android_hydration_closeout_report` - status: completed - source: `tasks/431_android_hydration_closeout_report.md`
+
 - [x] `425_android_onboarding_flow_inventory` - status: completed - source: `tasks/425_android_onboarding_flow_inventory.md`
 - [x] `426_android_onboarding_step_model` - status: completed - source: `tasks/426_android_onboarding_step_model.md`
 - [x] `427_android_bank_target_lock_probe_for_onboarding` - status: completed - source: `tasks/427_android_bank_target_lock_probe_for_onboarding.md`
@@ -14,8 +30,6 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `430_android_onboarding_configuration_test_flow` - status: completed - source: `tasks/430_android_onboarding_configuration_test_flow.md`
 - [x] `431_android_onboarding_tests` - status: completed - source: `tasks/431_android_onboarding_tests.md`
 - [x] `432_android_onboarding_closeout` - status: completed - source: `tasks/432_android_onboarding_closeout.md`
-
-## Previous Queue
 
 - [x] `413_android_premium_source_of_truth_cleanup` - status: completed - source: `tasks/413_android_premium_source_of_truth_cleanup.md`
 - [x] `414_android_bank_target_lock_model` - status: completed - source: `tasks/414_android_bank_target_lock_model.md`

@@ -44,8 +44,8 @@ class PremiumNavigationStateTest {
             PremiumScreenState.loading<String>(),
             PremiumScreenState.empty("Aucun paiement à vérifier", "Les nouveaux paiements apparaîtront ici."),
             PremiumScreenState.actionRequired("Action nécessaire", "Le téléphone n’est pas connecté."),
-            PremiumScreenState.error("Données indisponibles", "Réessayez dans quelques instants."),
-            PremiumScreenState.offline("Hors ligne", "Vérifiez la connexion de ce téléphone.")
+            PremiumScreenState.error("Connexion en attente", "Les données seront synchronisées dès que SwimPay sera connecté."),
+            PremiumScreenState.offline("Connexion en attente", "Les données seront synchronisées dès que SwimPay sera connecté.")
         )
         val rendered = states.joinToString(" ") { it.title + " " + it.message + " " + (it.actionLabel ?: "") }
 

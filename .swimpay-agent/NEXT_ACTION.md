@@ -2,6 +2,54 @@
 
 generated_at: 2026-05-05T00:00:00+03:00
 
+## Latest Android Data Hydration Pass
+
+Completed:
+
+1. Audited why Android premium screens showed unavailable data too often.
+2. Kept the scope frontend-only under `ui/premium`.
+3. Made Accueil render local/system state cards independently of webhook delivery history.
+4. Replaced dead dashboard empty states with `Aucun paiement détecté pour le moment` and `Lancez un test`.
+5. Replaced empty review copy with `Aucun paiement à confirmer`.
+6. Made connected-site/webhook missing state optional.
+7. Added backend synchronization fallback copy.
+8. Added Android hydration guardrail tests.
+
+Next recommended action:
+
+Run a real-device visual pass after reinstalling the APK, then add a lightweight local receiving-method count to Accueil if the merchant still sees `À vérifier` too often.
+
+Do not do:
+
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not add SMS, Accessibility scraping, `QUERY_ALL_PACKAGES` or broad app enumeration.
+- Do not expose raw card, raw phone, raw notification text, package/cert, HMAC or webhook secrets.
+- Do not change backend APIs or payment/review logic for visual hydration.
+
+## Latest Android Local Merchant State Refinement
+
+Completed:
+
+1. Audited local Android premium merchant state sources.
+2. Kept the scope Android premium frontend/runtime only.
+3. Reused the existing receiving-routes repository for the Accueil `Moyens de réception` card.
+4. Replaced `À vérifier` with `1 actif`, `N actifs`, `À ajouter` or `Connexion en attente`.
+5. Refined Ventes to show a local intentional empty state without fake live sales.
+6. Added Android JVM tests for receiving-method count, Ventes copy, webhook-optional behavior, no raw PII and no forbidden jargon.
+
+Next recommended action:
+
+Add a tiny persisted local merchant summary so Accueil can show `Configuré` for receiving methods even when the backend is temporarily unreachable after onboarding.
+
+Do not do:
+
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not add SMS, Accessibility scraping, `QUERY_ALL_PACKAGES` or broad app enumeration.
+- Do not expose raw card, raw phone, raw notification text, package/cert, HMAC or webhook secrets.
+- Do not change backend APIs or payment/review logic for this local-state refinement.
+
 ## Latest Android Onboarding Full Implementation
 
 Sprint 7K Android onboarding full implementation passed validation.

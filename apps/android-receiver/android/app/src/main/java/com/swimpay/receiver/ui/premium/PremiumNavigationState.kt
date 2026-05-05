@@ -113,14 +113,14 @@ sealed interface PremiumScreenState<out T> {
         ): PremiumScreenState<T> = ActionRequired(title, message, actionLabel)
 
         fun <T> error(
-            title: String = "Données indisponibles",
-            message: String = "Réessayez dans quelques instants.",
+            title: String = "Connexion en attente",
+            message: String = "Les données seront synchronisées dès que SwimPay sera connecté.",
             actionLabel: String? = "Réessayer"
         ): PremiumScreenState<T> = Error(title, message, actionLabel)
 
         fun <T> offline(
-            title: String = "Hors ligne",
-            message: String = "Vérifiez la connexion de ce téléphone.",
+            title: String = "Connexion en attente",
+            message: String = "Les données seront synchronisées dès que SwimPay sera connecté.",
             actionLabel: String? = "Réessayer"
         ): PremiumScreenState<T> = Offline(title, message, actionLabel)
     }

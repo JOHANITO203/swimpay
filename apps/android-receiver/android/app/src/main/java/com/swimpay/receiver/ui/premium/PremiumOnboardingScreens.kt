@@ -532,7 +532,7 @@ private fun BankSearchStatusCard(
         )
         is PremiumScreenState.Error,
         is PremiumScreenState.Offline -> Quadruple(
-            "Recherche indisponible",
+            "Recherche à relancer",
             "Réessayez dans quelques instants.",
             Icons.Default.AccountBalance,
             PremiumColors.Warning
@@ -585,7 +585,7 @@ private fun BankRows(
         is PremiumScreenState.Empty -> OnboardingInfoCard("Aucune banque détectée", "Vous pourrez continuer et configurer une banque plus tard.")
         is PremiumScreenState.ActionRequired -> OnboardingInfoCard(bankTargetsState.title, bankTargetsState.message)
         is PremiumScreenState.Error,
-        is PremiumScreenState.Offline -> OnboardingInfoCard("Recherche indisponible", "Réessayez dans quelques instants.")
+        is PremiumScreenState.Offline -> OnboardingInfoCard("Recherche à relancer", "Réessayez dans quelques instants.")
     }
 }
 

@@ -1,5 +1,25 @@
 # Blockers
 
+## Android Local Merchant State Refinement
+
+- No critical blocker introduced.
+- Accueil now derives the `Moyens de réception` card from the existing receiving-routes repository.
+- `Moyens de réception` values are now `1 actif`, `N actifs`, `À ajouter` or `Connexion en attente`, instead of the conservative `À vérifier`.
+- Ventes now presents an intentional local empty state and does not invent fake live sales/orders.
+- No backend APIs, contracts, workers, database, payment logic, review logic, notification capture, webhooks or auto-confirmation behavior were changed.
+- Remaining non-critical limitation: if the receiving-method repository is unreachable and no persisted local summary exists, Accueil correctly shows `Connexion en attente`.
+
+## Android Data Hydration
+
+- No critical blocker introduced.
+- Android premium screens no longer use generic `Données indisponibles` copy in the active `ui/premium` source.
+- Accueil now remains alive from local/system state even when dashboard backend hydration is unavailable.
+- Webhook/connected-site state is optional and no longer blocks the rest of the merchant console.
+- Backend offline states use merchant-friendly synchronization copy.
+- No backend APIs, contracts, workers, database, payment logic, notification capture, webhooks or auto-confirmation behavior were changed.
+- Remaining non-critical limitation: Accueil receiving-method count is conservative until a lightweight local/live count is wired.
+- Non-critical device QA limitation: `adb devices -l` returned no connected authorized device during this hydration pass, so install/launch/UIAutomator smoke was not run.
+
 ## Sprint 7K Android Onboarding Full Implementation
 
 - No critical blocker introduced.

@@ -30,6 +30,12 @@ data class PremiumMetricUiState(
     val trend: String = ""
 )
 
+data class PremiumLocalSystemUiState(
+    val title: String,
+    val value: String,
+    val helper: String = ""
+)
+
 data class PremiumRecentPaymentUiState(
     val amount: String,
     val detail: String,
@@ -42,8 +48,27 @@ data class PremiumDashboardUiState(
     val monthlyAmount: String,
     val metrics: List<PremiumMetricUiState>,
     val recentPayments: List<PremiumRecentPaymentUiState>,
-    val usesLiveApi: Boolean
+    val usesLiveApi: Boolean,
+    val localSystemCards: List<PremiumLocalSystemUiState> = emptyList(),
+    val backendNoticeTitle: String = "",
+    val backendNoticeText: String = "",
+    val emptyPaymentsTitle: String = "Aucun paiement détecté pour le moment",
+    val emptyPaymentsAction: String = "Lancez un test"
 ) {
+    fun visibleTexts(): List<String> {
+        return listOf(
+            readyTitle,
+            readyText,
+            monthlyAmount,
+            backendNoticeTitle,
+            backendNoticeText,
+            emptyPaymentsTitle,
+            emptyPaymentsAction
+        ) + metrics.flatMap { listOf(it.value, it.label, it.trend) } +
+            localSystemCards.flatMap { listOf(it.title, it.value, it.helper) } +
+            recentPayments.flatMap { listOf(it.amount, it.detail, it.status) }
+    }
+
     companion object {
         fun preview(): PremiumDashboardUiState {
             return PremiumDashboardUiState(
@@ -59,7 +84,12 @@ data class PremiumDashboardUiState(
                     PremiumRecentPaymentUiState("129,00 ₽", "T-Bank · Il y a 8 min", "Validé"),
                     PremiumRecentPaymentUiState("45,00 ₽", "Alfa-Bank · Il y a 12 min", "En attente")
                 ),
-                usesLiveApi = false
+                usesLiveApi = false,
+                localSystemCards = defaultLocalSystemCards(
+                    notificationAccessEnabled = true,
+                    detectedBankCount = 3,
+                    receivingMethodsValue = "Connexion en attente"
+                )
             )
         }
     }
@@ -196,10 +226,15 @@ data class PremiumOrderUiItem(
 
 data class PremiumOrdersUiState(
     val rows: List<PremiumOrderUiItem>,
-    val usesLiveApi: Boolean
+    val usesLiveApi: Boolean,
+    val emptyTitle: String = "Aucune vente confirmée",
+    val emptyMessage: String = "Vos ventes apparaîtront ici après confirmation des paiements.",
+    val primaryActionLabel: String = "Lancer un test",
+    val secondaryActionLabel: String = "Voir les paiements à confirmer"
 ) {
     fun visibleTexts(): List<String> {
-        return rows.flatMap { listOf(it.orderId, it.amount, it.status, it.helper) }
+        return listOf(emptyTitle, emptyMessage, primaryActionLabel, secondaryActionLabel) +
+            rows.flatMap { listOf(it.orderId, it.amount, it.status, it.helper) }
     }
 }
 
@@ -257,12 +292,25 @@ class PremiumMerchantRuntime(
     val reviewActionsAreBackendOwned: Boolean
         get() = reviewActionsRepository.backendOwnsReviewDecisions
 
-    fun loadDashboard(): PremiumScreenState<PremiumDashboardUiState> {
+    fun loadDashboard(notificationAccessEnabled: Boolean = true): PremiumScreenState<PremiumDashboardUiState> {
+        val detectedBankCount = detectedSupportedBankCount()
         val result = dashboardRepository.load(session)
+        val receivingMethodsValue = receivingMethodsDashboardValue()
         if (result.state != MerchantRepositoryState.SUCCESS) {
-            return result.toPremiumState(
-                actionMessage = "Connectez votre session marchand.",
-                errorMessage = "Le tableau de bord est indisponible."
+            return PremiumScreenState.content(
+                livelyDashboardFallback(
+                    notificationAccessEnabled = notificationAccessEnabled,
+                    detectedBankCount = detectedBankCount,
+                    receivingMethodsValue = receivingMethodsValue,
+                    noticeTitle = when (result.state) {
+                        MerchantRepositoryState.LOADING -> "Chargement"
+                        else -> "Connexion en attente"
+                    },
+                    noticeText = when (result.state) {
+                        MerchantRepositoryState.LOADING -> "Préparation de l'écran."
+                        else -> "Les données seront synchronisées dès que SwimPay sera connecté."
+                    }
+                )
             )
         }
         val texts = result.visibleTexts()
@@ -275,12 +323,6 @@ class PremiumMerchantRuntime(
         }
         val toReview = texts.getOrNull(4) ?: "0"
         val confirmed = texts.getOrNull(6) ?: "0"
-        if (recent.isEmpty() && toReview == "0" && confirmed == "0") {
-            return PremiumScreenState.empty(
-                title = "Aucune activité",
-                message = "Les paiements détectés apparaîtront ici."
-            )
-        }
         return PremiumScreenState.content(
             PremiumDashboardUiState(
                 readyTitle = texts.getOrNull(1) ?: "SwimPay est prêt",
@@ -291,7 +333,12 @@ class PremiumMerchantRuntime(
                     PremiumMetricUiState(confirmed, "CONFIRMÉS")
                 ),
                 recentPayments = recent,
-                usesLiveApi = !result.usesMockRepository
+                usesLiveApi = !result.usesMockRepository,
+                localSystemCards = defaultLocalSystemCards(
+                    notificationAccessEnabled = notificationAccessEnabled,
+                    detectedBankCount = detectedBankCount,
+                    receivingMethodsValue = receivingMethodsValue
+                )
             )
         )
     }
@@ -300,8 +347,8 @@ class PremiumMerchantRuntime(
         val result = reviewQueueRepository.list(session)
         when (result.state) {
             MerchantRepositoryState.ACTION_REQUIRED -> return PremiumScreenState.actionRequired("Action requise", result.safeMessage.ifBlank { "Session marchand requise" })
-            MerchantRepositoryState.EMPTY -> return PremiumScreenState.empty("Aucun paiement À vérifier", "Les nouveaux paiements apparaîtront ici.")
-            MerchantRepositoryState.ERROR -> return PremiumScreenState.error("Revue indisponible", result.safeMessage.ifBlank { "Réessayez dans quelques instants." })
+            MerchantRepositoryState.EMPTY -> return PremiumScreenState.empty("Aucun paiement à confirmer", "Les nouveaux paiements apparaîtront ici.")
+            MerchantRepositoryState.ERROR -> return PremiumScreenState.offline()
             MerchantRepositoryState.LOADING -> return PremiumScreenState.loading()
             MerchantRepositoryState.SUCCESS -> Unit
         }
@@ -317,7 +364,7 @@ class PremiumMerchantRuntime(
             )
         }
         if (items.isEmpty()) {
-            return PremiumScreenState.empty("Aucun paiement À vérifier", "Les nouveaux paiements apparaîtront ici.")
+            return PremiumScreenState.empty("Aucun paiement à confirmer", "Les nouveaux paiements apparaîtront ici.")
         }
         return PremiumScreenState.content(PremiumReviewsUiState(items = items, usesLiveApi = true))
     }
@@ -327,7 +374,7 @@ class PremiumMerchantRuntime(
         if (result.state != MerchantRepositoryState.SUCCESS) {
             return result.toPremiumState(
                 actionMessage = "Connectez votre session marchand.",
-                errorTitle = "Paiement indisponible",
+                errorTitle = "Paiement à synchroniser",
                 errorMessage = "Ce paiement ne peut pas être affiché pour le moment."
             )
         }
@@ -380,7 +427,7 @@ class PremiumMerchantRuntime(
             )
             MerchantRepositoryState.EMPTY -> PremiumScreenState.empty("Aucun moyen de réception", "Ajoutez une carte ou un numéro pour commencer.")
             MerchantRepositoryState.ACTION_REQUIRED -> PremiumScreenState.actionRequired("Action requise", result.safeMessage.ifBlank { "Session marchand requise" })
-            MerchantRepositoryState.ERROR -> PremiumScreenState.error("Moyens indisponibles", result.safeMessage.ifBlank { "Réessayez dans quelques instants." })
+            MerchantRepositoryState.ERROR -> PremiumScreenState.offline()
             MerchantRepositoryState.LOADING -> PremiumScreenState.loading()
         }
     }
@@ -460,6 +507,20 @@ class PremiumMerchantRuntime(
 
     fun loadConnectedSite(): PremiumScreenState<PremiumConnectedSiteUiState> {
         val result = connectedSiteRepository.load(session, developerDetailsEnabled = false)
+        if (result.state == MerchantRepositoryState.EMPTY || result.state == MerchantRepositoryState.ERROR) {
+            return PremiumScreenState.content(
+                PremiumConnectedSiteUiState(
+                    statusTitle = "Site ou application à configurer",
+                    statusText = "Vous pouvez continuer à utiliser SwimPay. Les mises à jour automatiques seront disponibles après connexion.",
+                    rows = listOf(
+                        "URL de notification" to "À configurer",
+                        "Statut" to "Optionnel"
+                    ),
+                    usesLiveApi = false,
+                    safeMessage = result.safeMessage
+                )
+            )
+        }
         if (result.state != MerchantRepositoryState.SUCCESS) {
             return result.toPremiumState(
                 actionMessage = "Connectez votre site ou application.",
@@ -484,7 +545,7 @@ class PremiumMerchantRuntime(
         val result = configurationTestRepository.run(session, checklist)
         when (result.outcome) {
             MerchantConfigurationTestOutcome.ACTION_REQUIRED -> return PremiumScreenState.actionRequired("Action requise", "Vérifiez les étapes avant de continuer.")
-            MerchantConfigurationTestOutcome.ERROR -> return PremiumScreenState.error("Test indisponible", "Réessayez dans quelques instants.")
+            MerchantConfigurationTestOutcome.ERROR -> return PremiumScreenState.offline()
             MerchantConfigurationTestOutcome.READY -> Unit
         }
         val texts = result.visibleTexts()
@@ -511,6 +572,67 @@ class PremiumMerchantRuntime(
                 usesLiveApi = false
             )
         )
+    }
+
+    private fun detectedSupportedBankCount(): Int {
+        return BankTargetLock.resolveTargets(
+            probe = bankPackageProbe,
+            selectedBankProfileIds = emptySet(),
+            enabledBankProfileIds = emptySet(),
+            listenerReady = true
+        ).count { state ->
+            state.visibleStatus == BankTargetVisibleStatus.DETECTED ||
+                state.visibleStatus == BankTargetVisibleStatus.ENABLED
+        }
+    }
+
+    private fun livelyDashboardFallback(
+        notificationAccessEnabled: Boolean,
+        detectedBankCount: Int,
+        receivingMethodsValue: String,
+        noticeTitle: String,
+        noticeText: String
+    ): PremiumDashboardUiState {
+        return PremiumDashboardUiState(
+            readyTitle = "SwimPay Intelligence",
+            readyText = if (notificationAccessEnabled) {
+                "Votre téléphone est connecté et prêt à écouter les banques activées."
+            } else {
+                "Activez l'accès notifications pour lancer l'écoute intelligente."
+            },
+            monthlyAmount = "0,00 ₽",
+            metrics = listOf(
+                PremiumMetricUiState("0", "À CONFIRMER"),
+                PremiumMetricUiState("0", "CONFIRMÉS")
+            ),
+            recentPayments = emptyList(),
+            usesLiveApi = false,
+            localSystemCards = defaultLocalSystemCards(
+                notificationAccessEnabled = notificationAccessEnabled,
+                detectedBankCount = detectedBankCount,
+                receivingMethodsValue = receivingMethodsValue
+            ),
+            backendNoticeTitle = noticeTitle,
+            backendNoticeText = noticeText
+        )
+    }
+
+    private fun receivingMethodsDashboardValue(): String {
+        val result = receivingMethodsRepository.list(session)
+        return when (result.state) {
+            MerchantRepositoryState.SUCCESS -> {
+                val activeCount = result.items.count { it.status.equals("Active", ignoreCase = true) }
+                when (activeCount) {
+                    0 -> "À ajouter"
+                    1 -> "1 actif"
+                    else -> "$activeCount actifs"
+                }
+            }
+            MerchantRepositoryState.EMPTY -> "À ajouter"
+            MerchantRepositoryState.ERROR,
+            MerchantRepositoryState.ACTION_REQUIRED,
+            MerchantRepositoryState.LOADING -> "Connexion en attente"
+        }
     }
 
     companion object {
@@ -568,6 +690,22 @@ class PremiumMerchantRuntime(
     }
 }
 
+private fun defaultLocalSystemCards(
+    notificationAccessEnabled: Boolean,
+    detectedBankCount: Int,
+    receivingMethodsValue: String
+): List<PremiumLocalSystemUiState> {
+    val bankValue = if (detectedBankCount > 0) "$detectedBankCount détectées" else "À configurer"
+    return listOf(
+        PremiumLocalSystemUiState("SwimPay Intelligence", if (notificationAccessEnabled) "Prête" else "Action requise"),
+        PremiumLocalSystemUiState("Téléphone connecté", if (notificationAccessEnabled) "Connecté" else "À connecter"),
+        PremiumLocalSystemUiState("Notifications activées", if (notificationAccessEnabled) "Activées" else "Action requise"),
+        PremiumLocalSystemUiState("Dernière activité", if (notificationAccessEnabled) "Il y a quelques instants" else "En attente"),
+        PremiumLocalSystemUiState("Banques actives", bankValue),
+        PremiumLocalSystemUiState("Moyens de réception", receivingMethodsValue)
+    )
+}
+
 private fun defaultBankPackageProbe(): ExactPackageProbe {
     return StaticExactPackageProbe(
         detectedPackages = setOf(
@@ -591,8 +729,8 @@ class StaticExactPackageProbe(
 
 private fun <T> MerchantScreenRepositoryResult.toPremiumState(
     actionMessage: String,
-    errorTitle: String = "Données indisponibles",
-    errorMessage: String = "Réessayez dans quelques instants."
+    errorTitle: String = "Connexion en attente",
+    errorMessage: String = "Les données seront synchronisées dès que SwimPay sera connecté."
 ): PremiumScreenState<T> {
     return when (state) {
         MerchantRepositoryState.ACTION_REQUIRED -> PremiumScreenState.actionRequired(
@@ -603,7 +741,7 @@ private fun <T> MerchantScreenRepositoryResult.toPremiumState(
             title = "Aucune donnée",
             message = "Les informations apparaîtront ici."
         )
-        MerchantRepositoryState.ERROR -> PremiumScreenState.error(
+        MerchantRepositoryState.ERROR -> PremiumScreenState.offline(
             title = errorTitle,
             message = safeMessage.ifBlank { errorMessage }
         )
@@ -639,7 +777,7 @@ private fun MerchantReceivingMethodMutationResult.toPremiumMutationState(
     return when (state) {
         MerchantRepositoryState.SUCCESS -> PremiumScreenState.content(mutation)
         MerchantRepositoryState.ACTION_REQUIRED -> PremiumScreenState.actionRequired("Action requise", mutation.message)
-        MerchantRepositoryState.ERROR -> PremiumScreenState.error("Moyen indisponible", mutation.message)
+        MerchantRepositoryState.ERROR -> PremiumScreenState.offline("Action en attente", mutation.message)
         MerchantRepositoryState.EMPTY -> PremiumScreenState.empty("Aucun moyen de réception", "Ajoutez une carte ou un numéro pour commencer.")
         MerchantRepositoryState.LOADING -> PremiumScreenState.loading()
     }

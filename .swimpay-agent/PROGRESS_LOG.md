@@ -1,5 +1,16 @@
 # Progress Log
 
+## 2026-05-05 — Android Local Merchant State Refinement
+
+- Created tasks 434 through 438 and updated the active task queue.
+- Created `.swimpay-agent/ANDROID_LOCAL_MERCHANT_STATE_AUDIT.md`.
+- Created `.swimpay-agent/ANDROID_LOCAL_MERCHANT_STATE_REFINEMENT_REPORT.md`.
+- Updated Accueil local cards so `Moyens de réception` now uses receiving-routes repository state.
+- Added count/action values: `1 actif`, `N actifs`, `À ajouter`, `Connexion en attente`.
+- Refined Ventes empty/local state and removed fake-live sales metrics for non-live data.
+- Added Android JVM tests for local merchant state, Ventes safety and merchant copy guardrails.
+- Backend APIs, contracts, payment logic, review logic, notification capture, webhooks and auto-confirmation were not changed.
+
 ## 2026-05-05T00:00:00+03:00 - Sprint 7J Android Frontend Source-of-truth Cleanup
 
 - Created tasks 413 through 416 and updated `.swimpay-agent/TASK_QUEUE.md`.
@@ -1976,3 +1987,17 @@ Safety checks:
 - Debug APK build passed.
 - ADB was available, but no connected authorized device was listed, so install/launch smoke was not run in this pass.
 - Backend APIs, contracts, workers, database, payment/review logic, real notification capture, SMS, Accessibility scraping, raw PII exposure and auto-confirmation were not changed.
+# 2026-05-05T00:00:00+03:00 - Android Data Hydration Pass
+
+- Created tasks 425 through 431 and updated the task queue.
+- Audited Android premium hydration paths and documented findings in `.swimpay-agent/ANDROID_DATA_HYDRATION_AUDIT.md`.
+- Confirmed the main dead-state sources were dashboard/backend failure, generic `PremiumScreenState.error()` copy and webhook/business state being treated as required.
+- Added local/system dashboard cards for SwimPay Intelligence, phone connection, Notification Access, last activity, active banks and receiving methods.
+- Changed dashboard backend failure to a live content fallback with `Connexion en attente`.
+- Changed no-payment copy to `Aucun paiement détecté pour le moment` and `Lancez un test`.
+- Changed review empty state to `Aucun paiement à confirmer`.
+- Changed sales empty state to `Vos ventes apparaîtront ici après validation des paiements.`
+- Made connected-site/webhook missing state optional with merchant-friendly setup copy.
+- Removed generic visible `indisponible` copy from active premium UI source.
+- Added Android hydration tests and updated premium runtime contract tests.
+- No backend APIs, contracts, payment/review logic, notification processing, real bank capture, SMS, Accessibility scraping, raw PII exposure or auto-confirmation behavior was changed.

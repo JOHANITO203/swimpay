@@ -70,8 +70,31 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
                     Text(state.readyTitle, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
                     Text(state.readyText, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
                     StatusChip("SwimPay Intelligence", StatusTone.Info, Modifier.padding(top = 4.dp))
-                    Text("Téléphone connecté · Notifications activées", color = PremiumColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Black)
-                    Text("Dernière activité : il y a 12 s", color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        if (state.backendNoticeTitle.isNotBlank()) {
+            item {
+                PremiumStatePanel(
+                    PremiumScreenState.offline<Unit>(
+                        title = state.backendNoticeTitle,
+                        message = state.backendNoticeText.ifBlank {
+                            "Les données seront synchronisées dès que SwimPay sera connecté."
+                        },
+                        actionLabel = null
+                    )
+                )
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                state.localSystemCards.chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        row.forEach { card ->
+                            LocalSystemCard(card, Modifier.weight(1f))
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
                 }
             }
         }
@@ -104,8 +127,38 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
                 Text("Voir tout", color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 13.sp)
             }
         }
-        items(state.recentPayments) {
-            RecentPaymentRow(it.amount, it.detail)
+        if (state.recentPayments.isEmpty()) {
+            item {
+                PremiumStatePanel(
+                    PremiumScreenState.empty<Unit>(
+                        title = state.emptyPaymentsTitle,
+                        message = "Les paiements reconnus par SwimPay apparaîtront ici.",
+                        actionLabel = state.emptyPaymentsAction
+                    )
+                )
+            }
+        } else {
+            items(state.recentPayments) {
+                RecentPaymentRow(it.amount, it.detail)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocalSystemCard(state: PremiumLocalSystemUiState, modifier: Modifier) {
+    Surface(
+        modifier.height(96.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(28.dp)),
+        color = PremiumColors.Surface,
+        shadowElevation = 3.dp,
+        shape = RoundedCornerShape(28.dp)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.Center) {
+            Text(state.title, color = PremiumColors.Muted, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Black)
+            Text(state.value, color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 4.dp))
+            if (state.helper.isNotBlank()) {
+                Text(state.helper, color = PremiumColors.Muted, fontSize = 10.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -210,11 +263,13 @@ private fun PremiumOrdersContent(state: PremiumOrdersUiState) {
             Text("Ventes confirmées", color = PremiumColors.Ink, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.Black)
             Text("Suivez les commandes reliées aux paiements confirmés.", color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(24.dp))
-            SalesMetricCard("0", "VENTES CONFIRMÉES", Icons.Default.CheckCircle)
+            val syncedValue = if (state.usesLiveApi) "0" else "—"
+            val syncedAmount = if (state.usesLiveApi) "0,00 ₽" else "—"
+            SalesMetricCard(syncedValue, "VENTES CONFIRMÉES", Icons.Default.CheckCircle)
             Spacer(Modifier.height(12.dp))
-            SalesMetricCard("0,00 ₽", "MONTANT CONFIRMÉ", Icons.Default.ShoppingCart)
+            SalesMetricCard(syncedAmount, "MONTANT CONFIRMÉ", Icons.Default.ShoppingCart)
             Spacer(Modifier.height(12.dp))
-            SalesMetricCard("0", "ÉCHECS", Icons.Default.Security)
+            SalesMetricCard(syncedValue, "ÉCHECS", Icons.Default.Security)
             Spacer(Modifier.height(12.dp))
             SalesMetricCard("—", "TAUX DE CONFIRMATION", Icons.Default.Visibility)
             Spacer(Modifier.height(18.dp))
@@ -243,9 +298,17 @@ private fun PremiumOrdersContent(state: PremiumOrdersUiState) {
             item {
                 PremiumStatePanel(
                     PremiumScreenState.empty<Unit>(
-                        title = "Aucune vente synchronisée",
-                        message = "Les ventes confirmées apparaîtront ici après validation."
+                        title = state.emptyTitle,
+                        message = state.emptyMessage,
+                        actionLabel = state.primaryActionLabel
                     )
+                )
+                Text(
+                    state.secondaryActionLabel,
+                    color = PremiumColors.Blue,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(top = 10.dp, start = 8.dp)
                 )
             }
         }

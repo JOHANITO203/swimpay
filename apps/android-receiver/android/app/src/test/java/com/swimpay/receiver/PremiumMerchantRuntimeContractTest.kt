@@ -45,6 +45,23 @@ class PremiumMerchantRuntimeContractTest {
                 200,
                 """
                 {
+                  "routes": [
+                    {
+                      "route_id": "route_card",
+                      "bank_profile_id": "sber_ru",
+                      "rail_type": "card_transfer",
+                      "receiver_identifier_masked": "•••• 4821",
+                      "enabled": true,
+                      "recommended": true
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
                   "reviews": [
                     {
                       "review_id": "rev_01",
@@ -124,10 +141,11 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(runtime.reviewActionsAreBackendOwned)
 
         assertEquals("/v1/android-merchant/dashboard-summary", transport.requests[0].path)
-        assertEquals("/v1/reviews", transport.requests[1].path)
-        assertEquals("/v1/android-merchant/payments/rev_01", transport.requests[2].path)
-        assertEquals("/v1/android-merchant/connected-site", transport.requests[3].path)
-        assertEquals("/v1/android-merchant/configuration-test", transport.requests[4].path)
+        assertEquals("/v1/merchant/receiving-routes", transport.requests[1].path)
+        assertEquals("/v1/reviews", transport.requests[2].path)
+        assertEquals("/v1/android-merchant/payments/rev_01", transport.requests[3].path)
+        assertEquals("/v1/android-merchant/connected-site", transport.requests[4].path)
+        assertEquals("/v1/android-merchant/configuration-test", transport.requests[5].path)
 
         val visible = listOf(
             dashboard.value.recentPayments.map { it.amount + it.detail + it.status },
@@ -151,7 +169,7 @@ class PremiumMerchantRuntimeContractTest {
         val dashboard = runtime.loadDashboard()
         val reviews = runtime.loadReviews()
 
-        assertTrue(dashboard is PremiumScreenState.ActionRequired)
+        assertTrue(dashboard is PremiumScreenState.Content<*>)
         assertTrue(reviews is PremiumScreenState.ActionRequired)
         assertEquals("Session marchand requise", reviews.message)
         assertTrue(runtime.reviewActionsAreBackendOwned)
@@ -177,7 +195,10 @@ class PremiumMerchantRuntimeContractTest {
             ),
             reviewActionsRepository = MerchantReviewActionsApiRepository(RecordingPremiumTransport()),
             receivingMethodsRepository = MerchantReceivingMethodsApiRepository(
-                RecordingPremiumTransport(MerchantApiResponse(200, """{"routes":[]}"""))
+                RecordingPremiumTransport(
+                    MerchantApiResponse(200, """{"routes":[]}"""),
+                    MerchantApiResponse(200, """{"routes":[]}""")
+                )
             ),
             connectedSiteRepository = MerchantConnectedSiteApiRepository(
                 RecordingPremiumTransport(MerchantApiResponse(503, """{"error":{"code":"offline"}}"""))
@@ -194,24 +215,23 @@ class PremiumMerchantRuntimeContractTest {
         val connectedSite = runtime.loadConnectedSite()
         val configuration = runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
 
-        assertTrue(dashboard is PremiumScreenState.Empty)
+        assertTrue(dashboard is PremiumScreenState.Content<*>)
         assertTrue(reviews is PremiumScreenState.Empty)
-        assertTrue(detail is PremiumScreenState.Error)
+        assertTrue(detail is PremiumScreenState.Offline)
         assertTrue(receivingMethods is PremiumScreenState.Empty)
-        assertTrue(connectedSite is PremiumScreenState.Error)
-        assertTrue(configuration is PremiumScreenState.Error)
+        assertTrue(connectedSite is PremiumScreenState.Content<*>)
+        assertTrue(configuration is PremiumScreenState.Offline)
 
         val stateText = listOf(
-            dashboard.title,
-            dashboard.message,
+            (dashboard as PremiumScreenState.Content).value.visibleTexts().joinToString(" "),
             reviews.title,
             reviews.message,
             detail.title,
             detail.message,
             receivingMethods.title,
             receivingMethods.message,
-            connectedSite.title,
-            connectedSite.message,
+            (connectedSite as PremiumScreenState.Content).value.statusTitle,
+            connectedSite.value.statusText,
             configuration.title,
             configuration.message
         ).joinToString(" ")
@@ -357,9 +377,17 @@ class PremiumMerchantRuntimeContractTest {
         assertFalse(orders.value.usesLiveApi)
         assertTrue(orders.value.rows.isEmpty())
         val visible = orders.value.visibleTexts().joinToString(" ")
+        assertTrue(visible.contains("Aucune vente confirmée"))
+        assertTrue(visible.contains("Vos ventes apparaîtront ici après confirmation des paiements."))
+        assertTrue(visible.contains("Lancer un test"))
+        assertTrue(visible.contains("Voir les paiements à confirmer"))
         assertFalse(visible.contains("ord_123"))
         assertFalse(visible.contains("ord_124"))
         assertFalse(visible.contains("Client #"))
+        assertFalse(visible.contains("58,41"))
+        assertFalse(visible.contains("129,00"))
+        assertFalse(visible.contains("official_bank_confirmation", ignoreCase = true))
+        assertFalse(visible.contains("auto-confirmation", ignoreCase = true))
     }
 
     @Test
