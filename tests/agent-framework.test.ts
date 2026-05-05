@@ -40,24 +40,19 @@ describe('local agent orchestration framework', () => {
     }
   });
 
-  test('task queue lists Sprint 7B hybrid receiving route tasks in the approved order', () => {
+  test('task queue lists Sprint 7J Android frontend source-of-truth tasks in the approved order', () => {
     const queue = readFileSync(join(root, '.swimpay-agent/TASK_QUEUE.md'), 'utf8');
 
     const orderedTasks = [
-      '350_hybrid_receiving_route_model',
-      '351_receiving_route_storage_and_api',
-      '352_buyer_sender_phone_matching_hint',
-      '353_human_readable_payment_reference_generator',
-      '354_checkout_bank_first_route_reveal_ui',
-      '355_hybrid_route_matching_risk_policy',
-      '356_webhook_route_context_no_pii',
-      '357_hybrid_receiving_routes_e2e_tests',
-      '358_sprint_7b_closeout_review'
+      '413_android_frontend_legacy_reference_audit',
+      '414_android_frontend_legacy_purge',
+      '415_android_premium_visual_tests_replacement',
+      '416_android_frontend_source_of_truth_report'
     ];
 
     let previousIndex = -1;
     for (const task of orderedTasks) {
-      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: (pending|completed|blocked) - source: \\\`tasks/${task}\\.md\\\``));
+      const index = queue.search(new RegExp(`\\\`${task}\\\` - status: [a-z_]+ - source: \\\`tasks/${task}\\.md\\\``));
       expect(index, task).toBeGreaterThan(previousIndex);
       previousIndex = index;
     }

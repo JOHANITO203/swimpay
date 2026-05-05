@@ -2,6 +2,68 @@
 
 generated_at: 2026-05-04T23:58:46+03:00
 
+## Latest Sprint 7J Cleanup
+
+Android frontend source-of-truth cleanup is complete pending final validation/commit.
+
+Completed:
+
+1. Created Sprint 7J tasks 413 through 416.
+2. Updated `.swimpay-agent/TASK_QUEUE.md`.
+3. Created `.swimpay-agent/ANDROID_FRONTEND_LEGACY_REFERENCE_AUDIT.md`.
+4. Deleted confirmed-dead legacy visual files under `ui/screens/*`.
+5. Deleted legacy visual renderer/model files:
+   - `AndroidMerchantScreenRenderer.kt`
+   - `AndroidMerchantViewComponents.kt`
+   - `AndroidMerchantVisualDesign.kt`
+6. Replaced legacy visual architecture assertions with premium-source assertions.
+7. Created `.swimpay-agent/ANDROID_FRONTEND_SOURCE_OF_TRUTH_REPORT.md`.
+
+Next recommended action:
+
+Run Sprint 7K — Android Premium Navigation and State Foundation.
+
+Do not do:
+
+- Do not reintroduce `ui/screens/*`.
+- Do not bypass `PremiumMerchantRuntime`.
+- Do not delete `AndroidMerchantApiWiring.kt` or `AndroidMerchantUiModels.kt`.
+- Do not change backend APIs, payment logic, notification processing or auto-confirmation during frontend navigation work.
+
+## Latest Android Frontend Planning
+
+Multi-agent Android frontend audit completed.
+
+Created:
+
+- `.swimpay-agent/ANDROID_FRONTEND_SUBSCREENS_MULTI_AGENT_REPORT.md`
+
+Findings:
+
+1. The active Android merchant frontend source of truth is `ui/premium`, mounted through `MainActivity -> PremiumMerchantApp -> PremiumMerchantRuntime`.
+2. Legacy/mock frontend files under `ui/screens/*` are not referenced by the active app and are candidates for deletion after build/test.
+3. `AndroidMerchantApiWiring.kt`, `AndroidMerchantUiModels.kt`, `PremiumMerchantRuntime.kt`, `MainActivity.kt`, manifest guardrails and Android tests must be preserved.
+4. The next safe frontend wave should be split into sprints:
+   - Sprint 7J: source-of-truth cleanup and legacy purge.
+   - Sprint 7K: typed navigation and reusable state components.
+   - Sprint 7L: onboarding and dashboard completion.
+   - Sprint 7M: receiving methods and bank management.
+   - Sprint 7N: reviews and orders.
+   - Sprint 7O: connected site, receiver health and configuration test.
+   - Sprint 7P: real-device visual QA and responsive hardening.
+
+Recommended next action:
+
+Start Sprint 7J before continuing real-notification shadow testing.
+
+Do not do:
+
+- Do not delete `AndroidMerchantApiWiring.kt`.
+- Do not delete `AndroidMerchantUiModels.kt`.
+- Do not bypass `PremiumMerchantRuntime`.
+- Do not change backend APIs, payment logic, notification processing or auto-confirmation.
+- Do not capture real bank notifications during frontend cleanup.
+
 ## Latest Android Onboarding Fix
 
 Android premium onboarding now uses real Notification Listener Access state and persists onboarding completion.
@@ -93,6 +155,45 @@ Run a final real-device/browser visual review from the user-facing app shell, th
 - Do not enable auto-confirmation.
 - Do not expose raw card/phone or raw notification text.
 - Do not claim official bank confirmation.
+
+---
+
+## Latest Android Frontend Cleanup
+
+Sprint 7J Android frontend source-of-truth cleanup is complete.
+
+Completed:
+
+1. Created tasks 413 through 416 and updated the task queue.
+2. Created `.swimpay-agent/ANDROID_FRONTEND_LEGACY_REFERENCE_AUDIT.md`.
+3. Deleted confirmed-dead legacy Android visual files under `ui/screens`.
+4. Deleted old mock visual files:
+   - `AndroidMerchantScreenRenderer.kt`;
+   - `AndroidMerchantViewComponents.kt`;
+   - `AndroidMerchantVisualDesign.kt`.
+5. Replaced legacy visual tests with premium source-of-truth tests.
+6. Created `.swimpay-agent/ANDROID_FRONTEND_SOURCE_OF_TRUTH_REPORT.md`.
+7. Installed and launched the debug APK on the connected Samsung device.
+
+## Next Recommended Action
+
+Run Sprint 7K: Android Premium Navigation and State Foundation.
+
+Recommended scope:
+
+- typed premium route tree;
+- typed bottom-tab model;
+- reusable loading/empty/error/action-required states;
+- sub-screen navigation for receiving methods, banks, orders, connected site, receiver health and configuration test;
+- no backend/API/payment behavior changes.
+
+## Do Not Do
+
+- Do not reintroduce `ui/screens` as a visual source.
+- Do not delete runtime/API/model/notification guardrail files.
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not expose raw PII.
 
 ---
 

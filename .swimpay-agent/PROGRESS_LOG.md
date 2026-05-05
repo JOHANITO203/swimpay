@@ -1,5 +1,29 @@
 # Progress Log
 
+## 2026-05-05T00:00:00+03:00 - Sprint 7J Android Frontend Source-of-truth Cleanup
+
+- Created tasks 413 through 416 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Created `.swimpay-agent/ANDROID_FRONTEND_LEGACY_REFERENCE_AUDIT.md`.
+- Replaced old visual architecture test coverage with premium-source-of-truth assertions in `AndroidMerchantVisualArchitectureTest.kt`.
+- Verified the new test failed before purge because legacy files were still present.
+- Deleted confirmed-dead legacy visual files under `ui/screens/*`.
+- Deleted `AndroidMerchantScreenRenderer.kt`, `AndroidMerchantViewComponents.kt` and `AndroidMerchantVisualDesign.kt`.
+- Preserved `MainActivity.kt`, `PremiumMerchantApp.kt`, `PremiumMerchantRuntime.kt`, `AndroidMerchantApiWiring.kt`, `AndroidMerchantUiModels.kt`, `NotificationAccessStatusReader.kt`, `ReceiverOnboardingReadiness.kt` and `AndroidManifest.xml`.
+- Created `.swimpay-agent/ANDROID_FRONTEND_SOURCE_OF_TRUTH_REPORT.md`.
+- No backend, API, contracts, payment logic, review logic, Android notification processing, real bank notification capture, installed-app enumeration, raw PII exposure or auto-confirmation behavior was changed.
+
+## 2026-05-05T00:00:00+03:00 - Android Frontend Sub-screens Multi-agent Audit
+
+- Ran a multi-agent audit for the Android merchant frontend source of truth, legacy/mock UI, and API/contract guardrails.
+- Confirmed the active Android app path is `MainActivity -> PremiumMerchantApp -> PremiumMerchantRuntime`.
+- Confirmed `ui/premium` should become the only visual source of truth.
+- Confirmed `ui/screens/*` is not referenced by the active app and is a safe purge candidate after build/test.
+- Identified medium-risk legacy files that need test replacement before deletion: `AndroidMerchantScreenRenderer.kt`, `AndroidMerchantViewComponents.kt`, `AndroidMerchantVisualDesign.kt`.
+- Confirmed `AndroidMerchantApiWiring.kt`, `AndroidMerchantUiModels.kt`, `PremiumMerchantRuntime.kt`, manifest permission guardrails and Android tests must be preserved.
+- Created `.swimpay-agent/ANDROID_FRONTEND_SUBSCREENS_MULTI_AGENT_REPORT.md`.
+- Proposed Sprint 7J through 7P to split cleanup, typed navigation, sub-screens, states, operational screens and device QA.
+- No backend, API, contracts, payment logic, Android notification processing, real bank notification capture, raw PII exposure or auto-confirmation behavior was changed.
+
 ## 2026-05-04T23:58:46+03:00 - Sprint 7I Sberbank Shadow Preflight
 
 - Created Sprint 7I tasks 407 through 412 and updated `.swimpay-agent/TASK_QUEUE.md`.
@@ -1848,3 +1872,18 @@ Safety checks:
 - Root validation passed: android doctor, typecheck, lint, tests, build, Compose config, Compose ps and API health.
 - ADB currently lists no connected devices, so APK install/launch was not possible in this pass.
 - No backend/API/contracts/workers/database/payment logic, real notification capture, SMS, Accessibility scraping, raw notification storage or auto-confirmation behavior was changed.
+
+## 2026-05-05T04:20:00+03:00 - Sprint 7J Android Frontend Source-of-truth Cleanup
+
+- Created tasks 413 through 416 and updated the task queue to Sprint 7J.
+- Audited references to `ui/screens`, `AndroidMerchantScreenRenderer`, `AndroidMerchantViewComponents` and `AndroidMerchantVisualDesign`.
+- Confirmed active Android merchant UI path remains `MainActivity -> PremiumMerchantApp -> PremiumMerchantRuntime`.
+- Created `.swimpay-agent/ANDROID_FRONTEND_LEGACY_REFERENCE_AUDIT.md`.
+- Deleted confirmed-dead legacy visual Kotlin files under `apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ui/screens`.
+- Deleted legacy mock visual files `AndroidMerchantScreenRenderer.kt`, `AndroidMerchantViewComponents.kt` and `AndroidMerchantVisualDesign.kt`.
+- Preserved `MainActivity.kt`, `PremiumMerchantApp.kt`, `PremiumMerchantRuntime.kt`, `AndroidMerchantApiWiring.kt`, `AndroidMerchantUiModels.kt`, `NotificationAccessStatusReader.kt`, `ReceiverOnboardingReadiness.kt` and `AndroidManifest.xml`.
+- Replaced old visual architecture assertions with premium source-of-truth tests.
+- Verified with red/green evidence: the replacement test failed before purge and passed after purge.
+- Validation passed: android doctor, typecheck, lint, tests, build, Compose config, Android JVM tests and Android debug APK build.
+- Installed and launched the debug APK on Samsung `SM_S916B` / `R5CWA0FEPZW`; UIAutomator dump showed the premium shell and bottom tabs.
+- No backend/API/contracts/workers/database/payment/review logic, real notification capture, SMS, Accessibility scraping, raw PII exposure or auto-confirmation behavior was changed.

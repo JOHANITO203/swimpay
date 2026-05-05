@@ -1,34 +1,35 @@
 package com.swimpay.receiver
 
 import java.io.File
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AndroidMerchantVisualArchitectureTest {
     @Test
-    fun visualLayerHasSeparatedScreensAndPremiumFintechTokens() {
-        assertEquals(AndroidMerchantColors.DEEP_NAVY, AndroidMerchantColors.DEEP_NAVY)
-        assertEquals(AndroidMerchantColors.TEAL, AndroidMerchantColors.TEAL)
-        assertEquals(AndroidMerchantColors.CYAN, AndroidMerchantColors.CYAN)
-        assertEquals(28, AndroidMerchantSpacing.CARD_RADIUS_DP)
-        assertEquals(22, AndroidMerchantSpacing.BUTTON_RADIUS_DP)
+    fun premiumUiIsTheOnlyAndroidMerchantVisualSourceOfTruth() {
+        val premiumDir = File("src/main/java/com/swimpay/receiver/ui/premium")
+        val legacyScreensDir = File("src/main/java/com/swimpay/receiver/ui/screens")
+        val legacyRenderer = File("src/main/java/com/swimpay/receiver/AndroidMerchantScreenRenderer.kt")
+        val legacyViewComponents = File("src/main/java/com/swimpay/receiver/AndroidMerchantViewComponents.kt")
+        val legacyVisualDesign = File("src/main/java/com/swimpay/receiver/AndroidMerchantVisualDesign.kt")
 
-        val screens = AndroidMerchantVisualScreen.entries.map { it.name }
-        assertTrue(screens.containsAll(listOf(
-            "WELCOME",
-            "CONNECT_PHONE",
-            "CHOOSE_BANKS",
-            "ADD_RECEIVING_METHOD",
-            "TEST_CONFIGURATION",
-            "DASHBOARD",
-            "RECEIVING_METHODS",
-            "REVIEW_QUEUE",
-            "PAYMENT_DETAIL",
-            "CONNECTED_SITE",
-            "RECEIVER_HEALTH"
-        )))
+        assertTrue(premiumDir.exists())
+        assertTrue(File(premiumDir, "PremiumMerchantApp.kt").exists())
+        assertTrue(File(premiumDir, "PremiumComponents.kt").exists())
+        assertTrue(File(premiumDir, "PremiumOnboardingScreens.kt").exists())
+        assertTrue(File(premiumDir, "PremiumDashboardScreens.kt").exists())
+        assertTrue(File(premiumDir, "PremiumReviewScreens.kt").exists())
+        assertTrue(File(premiumDir, "PremiumDesignTokens.kt").exists())
+        val legacyScreenFiles = if (legacyScreensDir.exists()) {
+            legacyScreensDir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        } else {
+            emptyList()
+        }
+        assertTrue("legacy ui/screens package must not contain Kotlin visual files", legacyScreenFiles.isEmpty())
+        assertFalse("legacy renderer must be removed", legacyRenderer.exists())
+        assertFalse("legacy view components must be removed", legacyViewComponents.exists())
+        assertFalse("legacy visual design must be removed", legacyVisualDesign.exists())
     }
 
     @Test
@@ -39,6 +40,7 @@ class AndroidMerchantVisualArchitectureTest {
         val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
         val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
         val premiumReviews = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumReviewScreens.kt").readText()
+        val premiumRuntime = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantRuntime.kt").readText()
         val readiness = File("src/main/java/com/swimpay/receiver/ReceiverOnboardingReadiness.kt").readText()
         val theme = File("src/main/java/com/swimpay/receiver/ui/theme/Theme.kt").readText()
 
@@ -51,6 +53,9 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumApp.contains("PremiumOnboardingNavigation.initialRoute"))
         assertTrue(premiumApp.contains("markCompleted"))
         assertFalse(premiumApp.contains("""mutableStateOf("landing")"""))
+        assertFalse(premiumApp.contains("AndroidMerchantScreenRenderer"))
+        assertFalse(premiumApp.contains("AndroidMerchantViewComponents"))
+        assertFalse(premiumApp.contains("ui.screens"))
         assertTrue(premiumOnboarding.contains("fun PremiumLandingScreen"))
         assertTrue(premiumOnboarding.contains("fun PremiumOnboardingFlow"))
         assertTrue(premiumOnboarding.contains("openNotificationSettings"))
@@ -65,10 +70,22 @@ class AndroidMerchantVisualArchitectureTest {
         assertFalse(premiumOnboarding.contains("ALGORITHME DE CONFIANCE", ignoreCase = true))
         assertTrue(premiumComponents.contains("fun PremiumAppShell"))
         assertTrue(premiumComponents.contains("fun PremiumBottomNav"))
+        assertTrue(premiumComponents.contains("HOME"))
+        assertTrue(premiumComponents.contains("REVUES"))
+        assertTrue(premiumComponents.contains("VENTES"))
+        assertTrue(premiumComponents.contains("MENU"))
         assertTrue(premiumDashboard.contains("fun PremiumDashboardScreen"))
         assertTrue(premiumReviews.contains("fun PremiumReviewsScreen"))
         assertTrue(premiumDashboard.contains("fun PremiumOrdersScreen"))
         assertTrue(premiumDashboard.contains("fun PremiumSettingsScreen"))
+        assertTrue(premiumReviews.contains("onConfirm"))
+        assertTrue(premiumReviews.contains("onRejectSignal"))
+        assertTrue(premiumReviews.contains("onRejectOrder"))
+        assertTrue(premiumRuntime.contains("fun rejectSignal"))
+        assertTrue(premiumRuntime.contains("fun rejectOrder"))
+        assertTrue(premiumRuntime.contains("fun disconnected()"))
+        assertTrue(premiumRuntime.contains("NoopMerchantApiTransport"))
+        assertFalse(premiumRuntime.contains("sendsDeveloperWebhookDirectly = true"))
         assertTrue(theme.contains("fun SwimPayMerchantTheme("))
     }
 
@@ -83,5 +100,33 @@ class AndroidMerchantVisualArchitectureTest {
         }
         assertFalse(merchantText.contains("confirmation bancaire officielle", ignoreCase = true))
         assertFalse(merchantText.contains("auto-confirm", ignoreCase = true))
+    }
+
+    @Test
+    fun premiumSourceDoesNotExposeRawPiiSecretsOrOfficialBankConfirmationClaims() {
+        val premiumText = File("src/main/java/com/swimpay/receiver/ui/premium")
+            .walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .joinToString("\n") { it.readText() }
+
+        val forbiddenPublicTerms = listOf(
+            "package/cert",
+            "TO_VERIFY",
+            "approved_for_review_only",
+            "webhook_secret",
+            "raw notification",
+            "raw_notification",
+            "confirmation bancaire officielle",
+            "bank_confirmed",
+            "psp_confirmed",
+            "guaranteed_payment"
+        )
+
+        forbiddenPublicTerms.forEach { term ->
+            assertFalse("premium UI exposed forbidden term $term", premiumText.contains(term, ignoreCase = true))
+        }
+        assertFalse(premiumText.contains("official_bank_confirmation = true", ignoreCase = true))
+        assertFalse(premiumText.contains("2200123412344821"))
+        assertFalse(premiumText.contains("+79991234567"))
     }
 }

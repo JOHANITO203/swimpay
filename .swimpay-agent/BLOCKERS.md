@@ -1,5 +1,13 @@
 # Blockers
 
+## Sprint 7J Android Frontend Source-of-truth Cleanup
+
+- No critical blocker introduced.
+- Legacy Android merchant visual source files have been purged from the active source tree.
+- `ui/premium` is now the Android merchant visual source of truth.
+- Remaining non-critical follow-up: local empty directory `ui/screens` may still exist on disk but contains no Kotlin source files and is not tracked by git.
+- Next recommended sprint is Sprint 7K: typed premium navigation and reusable screen-state foundation.
+
 Current Sprint 7I live-capture gate:
 
 - No current critical blocker for frontend/Android UI validation.
@@ -81,3 +89,13 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Android Emulator command and AVDs are not configured; real device `R5CWA0FEPZW` is available through adb.
 - Real bank notifications remain out of scope until the explicit real-notification shadow consent gate is used.
 - Real-bank auto-confirmation remains disabled.
+
+## Sprint 7J Android Frontend Source-of-truth Cleanup
+
+- No critical blocker introduced.
+- `ui/premium` is now the only active Android merchant visual source of truth.
+- Legacy `ui/screens` Kotlin files and old mock visual renderer/component/design files were deleted.
+- Preserved runtime/API/guardrail files remain in place.
+- Validation passed: android doctor, typecheck, lint, tests, build, Compose config, Android JVM tests, Android APK build.
+- Real-device smoke passed on Samsung `SM_S916B` / `R5CWA0FEPZW` via SDK ADB transport.
+- Remaining non-critical limitation: ADB is not in PATH; use `C:\Users\Lenovo\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
