@@ -27,7 +27,7 @@ enum class PremiumMainTab(
 
 object PremiumNavigation {
     fun initialRoute(onboardingCompleted: Boolean): PremiumRoute {
-        return if (onboardingCompleted) PremiumRoute.Main(PremiumMainTab.Home) else PremiumRoute.Landing
+        return if (onboardingCompleted) PremiumRoute.Main(PremiumMainTab.Home) else PremiumRoute.Onboarding
     }
 
     fun afterOnboarding(): PremiumRoute = PremiumRoute.Main(PremiumMainTab.Home)

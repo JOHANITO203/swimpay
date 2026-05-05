@@ -197,7 +197,11 @@ data class PremiumOrderUiItem(
 data class PremiumOrdersUiState(
     val rows: List<PremiumOrderUiItem>,
     val usesLiveApi: Boolean
-)
+) {
+    fun visibleTexts(): List<String> {
+        return rows.flatMap { listOf(it.orderId, it.amount, it.status, it.helper) }
+    }
+}
 
 data class PremiumConnectedSiteUiState(
     val statusTitle: String,
@@ -247,7 +251,8 @@ class PremiumMerchantRuntime(
     private val reviewActionsRepository: MerchantReviewActionsApiRepository,
     private val receivingMethodsRepository: MerchantReceivingMethodsApiRepository,
     private val connectedSiteRepository: MerchantConnectedSiteApiRepository,
-    private val configurationTestRepository: MerchantConfigurationTestApiRepository
+    private val configurationTestRepository: MerchantConfigurationTestApiRepository,
+    private val bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe()
 ) {
     val reviewActionsAreBackendOwned: Boolean
         get() = reviewActionsRepository.backendOwnsReviewDecisions
@@ -395,13 +400,7 @@ class PremiumMerchantRuntime(
     }
 
     fun loadBanks(
-        probe: ExactPackageProbe = StaticExactPackageProbe(
-            detectedPackages = setOf(
-                "ru.sberbankmobile",
-                "com.idamob.tinkoff.android",
-                "ru.alfabank.mobile.android"
-            )
-        ),
+        probe: ExactPackageProbe = bankPackageProbe,
         enabledBankProfileIds: Set<String> = emptySet()
     ): PremiumScreenState<PremiumBanksUiState> {
         val targets = BankTargetLock.resolveTargets(
@@ -508,10 +507,7 @@ class PremiumMerchantRuntime(
     fun loadOrders(): PremiumScreenState<PremiumOrdersUiState> {
         return PremiumScreenState.content(
             PremiumOrdersUiState(
-                rows = listOf(
-                    PremiumOrderUiItem("ord_123", "58,41 ₽", "CONFIRMÉ", "Client #12 · Aujourd'hui, 14:20"),
-                    PremiumOrderUiItem("ord_124", "129,00 ₽", "EN ATTENTE", "Client #13 · Aujourd'hui, 14:15")
-                ),
+                rows = emptyList(),
                 usesLiveApi = false
             )
         )
@@ -526,7 +522,8 @@ class PremiumMerchantRuntime(
 
         fun localDev(
             baseUrl: String = DebugBackendConfig.DEFAULT_BASE_URL,
-            merchantId: String = "mch_demo"
+            merchantId: String = "mch_demo",
+            bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe()
         ): PremiumMerchantRuntime {
             val transport: MerchantApiTransport = HttpUrlConnectionMerchantApiTransport(baseUrl)
             return PremiumMerchantRuntime(
@@ -537,16 +534,18 @@ class PremiumMerchantRuntime(
                 reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
                 receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
-                configurationTestRepository = MerchantConfigurationTestApiRepository(transport)
+                configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
+                bankPackageProbe = bankPackageProbe
             )
         }
 
         fun forAppBuild(
             baseUrl: String = DebugBackendConfig.DEFAULT_BASE_URL,
-            merchantId: String = "mch_demo"
+            merchantId: String = "mch_demo",
+            bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe()
         ): PremiumMerchantRuntime {
             return if (BuildConfig.DEBUG) {
-                localDev(baseUrl = baseUrl, merchantId = merchantId)
+                localDev(baseUrl = baseUrl, merchantId = merchantId, bankPackageProbe = bankPackageProbe)
             } else {
                 disconnected()
             }
@@ -562,10 +561,21 @@ class PremiumMerchantRuntime(
                 reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
                 receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
-                configurationTestRepository = MerchantConfigurationTestApiRepository(transport)
+                configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
+                bankPackageProbe = StaticExactPackageProbe(emptySet())
             )
         }
     }
+}
+
+private fun defaultBankPackageProbe(): ExactPackageProbe {
+    return StaticExactPackageProbe(
+        detectedPackages = setOf(
+            "ru.sberbankmobile",
+            "com.idamob.tinkoff.android",
+            "ru.alfabank.mobile.android"
+        )
+    )
 }
 
 class StaticExactPackageProbe(

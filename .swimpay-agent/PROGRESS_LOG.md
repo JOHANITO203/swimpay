@@ -1921,6 +1921,20 @@ Safety checks:
 - Fresh Docker live checks remain blocked because `//./pipe/dockerDesktopLinuxEngine` is unavailable from this shell, so `compose ps` and `/api-health` could not be freshly verified.
 - Backend APIs, contracts, workers, database, payment/review logic, real notification capture, SMS, Accessibility scraping, raw PII exposure and auto-confirmation were not changed.
 
+## 2026-05-05T16:20:00+03:00 - Android Onboarding Full Implementation
+
+- Scoped work to Android onboarding only under `ui/premium`.
+- Audited the active onboarding path and documented it in `.swimpay-agent/ANDROID_ONBOARDING_FLOW_INVENTORY.md`.
+- Implemented the operator correction to merge compatible-bank search and bank selection into one onboarding step.
+- Updated the typed onboarding sequence to six screens: Welcome, Notification Access, Compatible Bank Detection + Bank Selection, Receiving Method, Site or Application Connection and Configuration Test.
+- Removed the extra landing-first route for incomplete onboarding; incomplete onboarding now opens directly at the approved Welcome step.
+- Added a soft bank search status card and selectable detected-bank rows.
+- Preserved exact-package Bank Target Lock behavior only for supported V1 bank packages.
+- Kept Notification Access as a real Android Notification Listener settings gate.
+- Kept site/application connection skippable and configuration test adaptive.
+- Kept configuration test non-confirming; Android still does not emit developer webhooks or confirm payments.
+- Updated Android JVM/static tests for the merged onboarding step and initial onboarding route.
+
 ## 2026-05-05T06:30:00+03:00 - Sprint 7L Android Premium Screen State Rollout
 
 - Created tasks 423 through 428 and updated the task queue to Sprint 7L.

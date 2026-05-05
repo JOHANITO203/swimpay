@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -201,25 +202,23 @@ fun PremiumOrdersScreen(
 @Composable
 private fun PremiumOrdersContent(state: PremiumOrdersUiState) {
     LazyColumn(
-        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 22.dp),
+        Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(bottom = 34.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         item {
             Text("Ventes confirmées", color = PremiumColors.Ink, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.Black)
             Text("Suivez les commandes reliées aux paiements confirmés.", color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(24.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                BentoMetricCard("24", "CONFIRMÉES", "", Icons.Default.CheckCircle, Modifier.weight(1f))
-                BentoMetricCard("1 482 000 ₽", "MONTANT CONFIRMÉ", "", Icons.Default.ShoppingCart, Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                BentoMetricCard("0", "ÉCHECS", "", Icons.Default.Security, Modifier.weight(1f))
-                BentoMetricCard("98%", "TAUX DE CONFIRMATION", "", Icons.Default.Visibility, Modifier.weight(1f))
-            }
+            SalesMetricCard("0", "VENTES CONFIRMÉES", Icons.Default.CheckCircle)
+            Spacer(Modifier.height(12.dp))
+            SalesMetricCard("0,00 ₽", "MONTANT CONFIRMÉ", Icons.Default.ShoppingCart)
+            Spacer(Modifier.height(12.dp))
+            SalesMetricCard("0", "ÉCHECS", Icons.Default.Security)
+            Spacer(Modifier.height(12.dp))
+            SalesMetricCard("—", "TAUX DE CONFIRMATION", Icons.Default.Visibility)
             Spacer(Modifier.height(18.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 StatusChip("Aujourd'hui", StatusTone.Info)
                 StatusChip("7 jours", StatusTone.Neutral)
                 StatusChip("30 jours", StatusTone.Neutral)
@@ -239,6 +238,36 @@ private fun PremiumOrdersContent(state: PremiumOrdersUiState) {
         }
         items(state.rows) { row ->
             OrderCard(row.orderId, row.amount, row.status, row.helper)
+        }
+        if (state.rows.isEmpty()) {
+            item {
+                PremiumStatePanel(
+                    PremiumScreenState.empty<Unit>(
+                        title = "Aucune vente synchronisée",
+                        message = "Les ventes confirmées apparaîtront ici après validation."
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SalesMetricCard(value: String, label: String, icon: ImageVector) {
+    Surface(
+        Modifier.fillMaxWidth().height(92.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(30.dp)),
+        color = PremiumColors.Surface,
+        shadowElevation = 4.dp,
+        shape = RoundedCornerShape(30.dp)
+    ) {
+        Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.size(42.dp).background(Color(0xFFEAF3FF), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = PremiumColors.Blue, modifier = Modifier.size(22.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(value, color = PremiumColors.Ink, fontSize = 22.sp, lineHeight = 25.sp, fontWeight = FontWeight.Black)
+                Text(label, color = PremiumColors.Muted, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Black)
+            }
         }
     }
 }
@@ -390,28 +419,30 @@ fun PremiumReceivingMethodsStateScreen(state: PremiumScreenState<PremiumReceivin
 fun PremiumBanksStateScreen(state: PremiumScreenState<PremiumBanksUiState>) {
     when (state) {
         is PremiumScreenState.Content -> LazyColumn(
-            Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = 22.dp),
+            Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+            contentPadding = PaddingValues(bottom = 34.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
                 Text("Recherche des banques compatibles", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text("SwimPay recherche uniquement les banques compatibles.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+                Text("SwimPay vérifie uniquement les banques compatibles sur ce téléphone.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
             }
             items(state.value.items) { bank ->
                 PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
-                    Row(Modifier.padding(22.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(46.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                            Text(bank.displayName.take(1), color = PremiumColors.Blue, fontWeight = FontWeight.Black)
-                        }
-                        Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                            Text(bank.displayName, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                            Text("${bank.displayName} ${bank.status.lowercase()}", color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                            if (bank.canActivate && !bank.enabled) {
-                                Text("Activer", color = PremiumColors.Blue, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 6.dp))
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(46.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                                Text(bank.displayName.take(1), color = PremiumColors.Blue, fontWeight = FontWeight.Black)
                             }
+                            Column(Modifier.weight(1f).padding(start = 16.dp)) {
+                                Text(bank.displayName, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                                Text(bank.helper, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            StatusChip(bank.status, if (bank.enabled) StatusTone.Success else if (bank.canActivate) StatusTone.Info else StatusTone.Neutral)
                         }
-                        StatusChip(bank.status, if (bank.enabled) StatusTone.Success else StatusTone.Warning)
+                        if (bank.canActivate && !bank.enabled) {
+                            Text("Activer cette banque", color = PremiumColors.Blue, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                        }
                     }
                 }
             }
@@ -427,8 +458,8 @@ fun PremiumReceiverHealthStateScreen(
 ) {
     when (state) {
         is PremiumScreenState.Content -> LazyColumn(
-            Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = 22.dp),
+            Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+            contentPadding = PaddingValues(bottom = 34.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -448,9 +479,9 @@ fun PremiumReceiverHealthStateScreen(
             }
             items(state.value.rows) { row ->
                 PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
-                    Row(Modifier.padding(18.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(row.first, color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text(row.second, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                    Row(Modifier.padding(18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(row.first, modifier = Modifier.weight(1f), color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(row.second, color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -465,8 +496,8 @@ fun PremiumReceiverHealthStateScreen(
 @Composable
 fun PremiumConfirmationModeScreen() {
     LazyColumn(
-        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 22.dp),
+        Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(bottom = 34.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -478,7 +509,7 @@ fun PremiumConfirmationModeScreen() {
                 Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Manuel — Activé", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
                     Text("Chaque paiement doit être confirmé par vous.", color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    StatusChip("Validation manuelle", StatusTone.Success)
+                    StatusChip("Confirmation manuelle", StatusTone.Success)
                 }
             }
         }
@@ -517,8 +548,8 @@ fun PremiumSecurityScreen() {
         "Sessions connectées"
     )
     LazyColumn(
-        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 22.dp),
+        Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(bottom = 34.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -531,7 +562,7 @@ fun PremiumSecurityScreen() {
                     Box(Modifier.size(42.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.Security, null, tint = PremiumColors.Blue)
                     }
-                    Text(label, modifier = Modifier.weight(1f).padding(start = 14.dp), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                    Text(label, modifier = Modifier.weight(1f).padding(start = 14.dp), color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
                     StatusChip("À configurer", StatusTone.Neutral)
                 }
             }

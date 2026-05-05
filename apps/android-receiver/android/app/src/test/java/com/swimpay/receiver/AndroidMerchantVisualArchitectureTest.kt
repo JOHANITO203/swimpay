@@ -45,7 +45,7 @@ class AndroidMerchantVisualArchitectureTest {
         val theme = File("src/main/java/com/swimpay/receiver/ui/theme/Theme.kt").readText()
 
         assertTrue(mainActivity.contains("setContent"))
-        assertTrue(mainActivity.contains("PremiumMerchantRuntime.forAppBuild()"))
+        assertTrue(mainActivity.contains("PremiumMerchantRuntime.forAppBuild("))
         assertTrue(mainActivity.contains("PremiumMerchantApp("))
         assertTrue(mainActivity.contains("NotificationAccessStatusReader"))
         assertTrue(mainActivity.contains("SharedPreferencesPremiumOnboardingStateStore"))
@@ -64,12 +64,17 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumOnboarding.contains("fun PremiumLandingScreen"))
         assertTrue(premiumOnboarding.contains("fun PremiumOnboardingFlow"))
         assertTrue(premiumOnboarding.contains("openNotificationSettings"))
-        assertTrue(premiumOnboarding.contains("OUVRIR LES REGLAGES NOTIFICATIONS"))
-        assertTrue(premiumOnboarding.contains("Cherchez SwimPay"))
-        assertTrue(premiumOnboarding.contains("Revenez dans SwimPay"))
+        assertTrue(premiumOnboarding.contains("Recevez vos paiements plus facilement"))
+        assertTrue(premiumOnboarding.contains("Connectez votre téléphone"))
+        assertTrue(premiumOnboarding.contains("Activer l’accès"))
+        assertTrue(premiumOnboarding.contains("SwimPay recherche uniquement les banques compatibles."))
+        assertTrue(premiumOnboarding.contains("Activer ces banques"))
+        assertTrue(premiumOnboarding.contains("Connectez votre site ou application"))
+        assertTrue(premiumOnboarding.contains("Tester sans site connecté"))
         assertTrue(readiness.contains("Settings.EXTRA_APP_PACKAGE"))
         assertTrue(mainActivity.contains("NotificationListenerSettingsAction.createIntent(packageName)"))
         assertFalse(premiumOnboarding.contains("paiements automatiques", ignoreCase = true))
+        assertFalse(premiumOnboarding.contains("Profil Marchand", ignoreCase = true))
         assertFalse(premiumOnboarding.contains("Policy Engine", ignoreCase = true))
         assertFalse(premiumOnboarding.contains("AI (EXPERT)", ignoreCase = true))
         assertFalse(premiumOnboarding.contains("ALGORITHME DE CONFIANCE", ignoreCase = true))
@@ -140,7 +145,6 @@ class AndroidMerchantVisualArchitectureTest {
             "TO_VERIFY",
             "approved_for_review_only",
             "webhook_secret",
-            "SBP",
             "Activer lâ€™accÃ¨s",
             "Activer lÃ¢â‚¬â„¢accÃƒÂ¨s",
             "raw notification",
@@ -162,6 +166,7 @@ class AndroidMerchantVisualArchitectureTest {
     @Test
     fun premiumOperatingModelUsesIaConfirmationCopyWithoutEnablingAndroidDecisioning() {
         val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
         val receiverBoundaries = File("src/main/java/com/swimpay/receiver/ReceiverBoundaries.kt").readText()
         val apiWiring = File("src/main/java/com/swimpay/receiver/AndroidMerchantApiWiring.kt").readText()
 
@@ -171,8 +176,31 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumDashboard.contains("IA en apprentissage"))
         assertTrue(premiumDashboard.contains("7 / 10 paiements confirmés"))
         assertTrue(premiumDashboard.contains("Activer la confirmation IA"))
+        assertTrue(premiumOnboarding.contains("Confirmation simple"))
+        assertTrue(premiumOnboarding.contains("Confirmez ou rejetez en quelques secondes."))
+        assertTrue(premiumOnboarding.contains("Vérifiez que tout fonctionne"))
+        assertFalse(premiumOnboarding.contains("CONFIRMATION MANUELLE"))
+        assertFalse(premiumOnboarding.contains("IA PLUS TARD"))
+        assertFalse(premiumOnboarding.contains("FINALISER LA CONFIGURATION"))
+        assertFalse(premiumOnboarding.contains("MODE DE VALIDATION", ignoreCase = true))
+        assertFalse(premiumOnboarding.contains("REVUE HUMAINE", ignoreCase = true))
+        assertFalse(premiumOnboarding.contains("FINALISER LE LINK", ignoreCase = true))
         assertFalse(premiumDashboard.contains("auto-confirm bancaire", ignoreCase = true))
         assertTrue(receiverBoundaries.contains("androidConfirmsPayments: Boolean = false"))
         assertTrue(apiWiring.contains("sendsDeveloperWebhookDirectly: Boolean = false"))
+    }
+
+    @Test
+    fun onboardingBankDetectionUsesRuntimeTargetLockInsteadOfStaticStatuses() {
+        val premiumApp = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
+        val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
+        val mainActivity = File("src/main/java/com/swimpay/receiver/MainActivity.kt").readText()
+
+        assertTrue(premiumApp.contains("runtime.loadBanks()"))
+        assertTrue(premiumApp.contains("bankTargetsState = banksState"))
+        assertTrue(premiumOnboarding.contains("bankTargetsState: PremiumScreenState<PremiumBanksUiState>"))
+        assertFalse(premiumOnboarding.contains("\"Sberbank\" to \"Détectée\""))
+        assertFalse(premiumOnboarding.contains("\"VTB\" to \"Non détectée\""))
+        assertTrue(mainActivity.contains("PackageManagerExactPackageProbe(this)"))
     }
 }

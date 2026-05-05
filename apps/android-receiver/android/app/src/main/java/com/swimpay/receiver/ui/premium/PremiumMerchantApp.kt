@@ -78,10 +78,12 @@ fun PremiumMerchantApp(
                 }
             }
             PremiumRoute.Landing,
-            PremiumRoute.Onboarding,
             PremiumRoute.ConfirmationMode,
             PremiumRoute.Security,
             is PremiumRoute.OrderDetail -> Unit
+            PremiumRoute.Onboarding -> {
+                banksState = withContext(Dispatchers.IO) { runtime.loadBanks() }
+            }
         }
     }
 
@@ -89,6 +91,7 @@ fun PremiumMerchantApp(
         PremiumRoute.Landing -> PremiumLandingScreen { route = PremiumRoute.Onboarding }
         PremiumRoute.Onboarding -> PremiumOnboardingFlow(
             notificationAccessEnabled = notificationAccessEnabled,
+            bankTargetsState = banksState,
             openNotificationSettings = onOpenNotificationSettings,
             onDone = {
                 onboardingCompletionStore.markCompleted()

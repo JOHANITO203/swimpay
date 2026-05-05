@@ -19,7 +19,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         notificationAccessStatusReader = NotificationAccessStatusReader(this)
         notificationAccessEnabled = notificationAccessStatusReader.isEnabled()
-        val runtime = PremiumMerchantRuntime.forAppBuild()
+        val runtime = PremiumMerchantRuntime.forAppBuild(
+            bankPackageProbe = PackageManagerExactPackageProbe(this)
+        )
         val onboardingCompletionStore = SharedPreferencesPremiumOnboardingStateStore(this)
         setContent {
             SwimPayMerchantTheme {

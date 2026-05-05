@@ -11,11 +11,11 @@ import org.junit.Test
 
 class PremiumOnboardingStateTest {
     @Test
-    fun incompleteOnboardingStartsAtLandingAndCompletedStartsAtMain() {
+    fun incompleteOnboardingStartsAtApprovedOnboardingAndCompletedStartsAtMain() {
         val store = InMemoryPremiumOnboardingStateStore(completed = false)
 
         assertFalse(store.isCompleted())
-        assertEquals(PremiumRoute.Landing, PremiumNavigation.initialRoute(store.isCompleted()))
+        assertEquals(PremiumRoute.Onboarding, PremiumNavigation.initialRoute(store.isCompleted()))
 
         store.markCompleted()
 

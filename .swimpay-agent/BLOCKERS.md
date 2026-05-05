@@ -1,5 +1,17 @@
 # Blockers
 
+## Sprint 7K Android Onboarding Full Implementation
+
+- No critical blocker introduced.
+- Android onboarding is now scoped to the active `ui/premium` source of truth.
+- Compatible-bank search and bank selection were merged into one faster onboarding step per operator correction.
+- Bank Target Lock remains exact-package only for the five V1 supported banks.
+- No `QUERY_ALL_PACKAGES`, SMS permission, Accessibility service or broad installed-app enumeration was added.
+- Notification Access remains a real Android Notification Listener gate and blocks continuation until enabled.
+- Site/application connection is skippable; configuration test adapts to connected vs later configuration.
+- Configuration test remains non-confirming and does not emit developer webhooks from Android.
+- Real bank notifications were not processed and auto-confirmation remains disabled.
+
 ## Sprint 7K Android Premium Merchant Operating Model
 
 - No critical blocker introduced.

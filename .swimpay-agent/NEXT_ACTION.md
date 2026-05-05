@@ -2,6 +2,41 @@
 
 generated_at: 2026-05-05T00:00:00+03:00
 
+## Latest Android Onboarding Full Implementation
+
+Sprint 7K Android onboarding full implementation passed validation.
+
+Completed:
+
+1. Audited the active onboarding path.
+2. Kept `MainActivity -> PremiumMerchantApp -> PremiumMerchantRuntime` as the active path.
+3. Kept `ui/premium` as the active visual source.
+4. Replaced the extra landing-first behavior with direct onboarding when onboarding is incomplete.
+5. Implemented the corrected six-step onboarding sequence:
+   - Welcome;
+   - Notification Access;
+   - Compatible Bank Detection + Bank Selection;
+   - Receiving Method;
+   - Site or Application Connection;
+   - Configuration Test.
+6. Merged compatible-bank search and bank selection into one soft UI step.
+7. Preserved exact-package Bank Target Lock behavior only for supported V1 banks.
+8. Kept Notification Access as a real Android settings gate.
+9. Made site/application connection skippable.
+10. Kept configuration test non-confirming and Android-owned only as readiness UI.
+
+Next recommended action:
+
+Do a user visual pass through onboarding on the device, then continue with onboarding visual micro-polish only if spacing/readability issues remain.
+
+Do not do:
+
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not add SMS, Accessibility scraping, `QUERY_ALL_PACKAGES` or broad app enumeration.
+- Do not expose raw card, raw phone, raw notification text, package/cert, HMAC or webhook secrets.
+- Do not change backend APIs or payment/review logic.
+
 ## Latest Sprint 7K Android Premium Merchant Operating Model
 
 Sprint 7K is implemented and code validated pending commit.

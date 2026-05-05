@@ -282,17 +282,26 @@ fun PremiumIconTile(icon: ImageVector, size: Dp, tint: Color = PremiumColors.Cya
 }
 
 @Composable
-fun PremiumPrimaryButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun PremiumPrimaryButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    val buttonModifier = modifier
+        .fillMaxWidth()
+        .height(58.dp)
+        .clip(RoundedCornerShape(22.dp))
+        .background(
+            if (enabled) {
+                Brush.linearGradient(listOf(PremiumColors.Navy, Color(0xFF101C34)))
+            } else {
+                Brush.linearGradient(listOf(Color(0xFFD7E3EA), Color(0xFFC8D6DF)))
+            },
+            RoundedCornerShape(22.dp)
+        )
     Box(
-        modifier
-            .fillMaxWidth()
-            .height(58.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(
-                Brush.linearGradient(listOf(PremiumColors.Navy, Color(0xFF101C34))),
-                RoundedCornerShape(22.dp)
-            )
-            .premiumTap(onClick),
+        if (enabled) buttonModifier.premiumTap(onClick) else buttonModifier,
         contentAlignment = Alignment.Center
     ) {
         Text(text.uppercase(), color = PremiumColors.Surface, fontWeight = FontWeight.Black, fontSize = 13.sp, letterSpacing = 1.5.sp)

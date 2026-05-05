@@ -177,13 +177,13 @@ Added/updated Android JVM/static checks for:
 - Android targeted JVM tests: passed after setting local SDK env.
 - Root validation passed: `npm run android:doctor`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, Compose config.
 - Android validation passed: `:app:testDebugUnitTest`, `:app:assembleDebug`.
-- ADB device smoke was not run because `adb devices -l` returned no connected authorized device in this shell.
+- Real-device smoke passed on Samsung `SM_S916B` / `R5CWA0FEPZW`: APK install succeeded, `MainActivity` launched, UIAutomator showed the premium shell with `Accueil`, `Revue`, `Ventes`, `MENU`, and UTF-8 copy rendered correctly (`Données indisponibles`, `RÉESSAYER`).
 
 ## Blockers
 
 - No critical product/security blocker introduced.
 - Android SDK env must be set to `C:\Users\Lenovo\AppData\Local\Android\Sdk` for Gradle commands in this shell.
-- Non-critical device blocker: ADB is available, but no device was listed during this pass.
+- No active device blocker after retry; device smoke passed on `R5CWA0FEPZW`.
 
 ## Next Recommended Sprint
 

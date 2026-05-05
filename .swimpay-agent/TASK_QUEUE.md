@@ -6,6 +6,17 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `425_android_onboarding_flow_inventory` - status: completed - source: `tasks/425_android_onboarding_flow_inventory.md`
+- [x] `426_android_onboarding_step_model` - status: completed - source: `tasks/426_android_onboarding_step_model.md`
+- [x] `427_android_bank_target_lock_probe_for_onboarding` - status: completed - source: `tasks/427_android_bank_target_lock_probe_for_onboarding.md`
+- [x] `428_android_onboarding_screens_full_activation` - status: completed - source: `tasks/428_android_onboarding_screens_full_activation.md`
+- [x] `429_android_site_connection_skippable_onboarding_step` - status: completed - source: `tasks/429_android_site_connection_skippable_onboarding_step.md`
+- [x] `430_android_onboarding_configuration_test_flow` - status: completed - source: `tasks/430_android_onboarding_configuration_test_flow.md`
+- [x] `431_android_onboarding_tests` - status: completed - source: `tasks/431_android_onboarding_tests.md`
+- [x] `432_android_onboarding_closeout` - status: completed - source: `tasks/432_android_onboarding_closeout.md`
+
+## Previous Queue
+
 - [x] `413_android_premium_source_of_truth_cleanup` - status: completed - source: `tasks/413_android_premium_source_of_truth_cleanup.md`
 - [x] `414_android_bank_target_lock_model` - status: completed - source: `tasks/414_android_bank_target_lock_model.md`
 - [x] `415_android_supported_bank_probe_ui` - status: completed - source: `tasks/415_android_supported_bank_probe_ui.md`
@@ -18,8 +29,6 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `422_android_security_screen` - status: completed - source: `tasks/422_android_security_screen.md`
 - [x] `423_android_premium_operating_model_tests` - status: completed - source: `tasks/423_android_premium_operating_model_tests.md`
 - [x] `424_android_premium_operating_model_closeout` - status: completed - source: `tasks/424_android_premium_operating_model_closeout.md`
-
-## Previous Queue
 
 - [x] `429_android_premium_receiving_method_substates` - status: completed - source: `tasks/429_android_premium_receiving_method_substates.md`
 - [x] `430_android_premium_bank_management_states` - status: completed - source: `tasks/430_android_premium_bank_management_states.md`

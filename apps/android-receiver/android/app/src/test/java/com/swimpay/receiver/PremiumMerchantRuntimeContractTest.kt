@@ -4,6 +4,7 @@ import com.swimpay.receiver.ui.premium.PremiumMerchantRuntime
 import com.swimpay.receiver.ui.premium.PremiumConfigurationUiState
 import com.swimpay.receiver.ui.premium.PremiumConnectedSiteUiState
 import com.swimpay.receiver.ui.premium.PremiumDashboardUiState
+import com.swimpay.receiver.ui.premium.PremiumOrdersUiState
 import com.swimpay.receiver.ui.premium.PremiumPaymentDetailUiState
 import com.swimpay.receiver.ui.premium.PremiumBanksUiState
 import com.swimpay.receiver.ui.premium.PremiumReceiverHealthUiState
@@ -345,6 +346,20 @@ class PremiumMerchantRuntimeContractTest {
         assertFalse(visible.contains("cert", ignoreCase = true))
         assertFalse(visible.contains("official_bank_confirmation", ignoreCase = true))
         assertFalse(visible.contains("SBP", ignoreCase = true))
+    }
+
+    @Test
+    fun premiumRuntimeDoesNotInventSalesRowsWhenOrdersApiIsNotReady() {
+        val runtime = PremiumMerchantRuntime.disconnected()
+
+        val orders = runtime.loadOrders() as PremiumScreenState.Content<PremiumOrdersUiState>
+
+        assertFalse(orders.value.usesLiveApi)
+        assertTrue(orders.value.rows.isEmpty())
+        val visible = orders.value.visibleTexts().joinToString(" ")
+        assertFalse(visible.contains("ord_123"))
+        assertFalse(visible.contains("ord_124"))
+        assertFalse(visible.contains("Client #"))
     }
 
     @Test

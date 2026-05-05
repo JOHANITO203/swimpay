@@ -12,7 +12,7 @@ import org.junit.Test
 class PremiumNavigationStateTest {
     @Test
     fun premiumNavigationUsesTypedRoutesAndTabs() {
-        assertEquals(PremiumRoute.Landing, PremiumNavigation.initialRoute(onboardingCompleted = false))
+        assertEquals(PremiumRoute.Onboarding, PremiumNavigation.initialRoute(onboardingCompleted = false))
         assertEquals(PremiumRoute.Main(PremiumMainTab.Home), PremiumNavigation.initialRoute(onboardingCompleted = true))
         assertEquals(PremiumRoute.Main(PremiumMainTab.Home), PremiumNavigation.afterOnboarding())
 
