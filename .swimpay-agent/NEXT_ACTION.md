@@ -2,6 +2,35 @@
 
 generated_at: 2026-05-05T00:00:00+03:00
 
+## Latest Sprint 7K Android Premium Merchant Operating Model
+
+Sprint 7K is implemented and code validated pending commit.
+
+Completed:
+
+1. Created tasks 413 through 424 and updated the task queue.
+2. Kept `ui/premium` as the Android merchant visual source of truth.
+3. Added Bank Target Lock with exact supported package probing only.
+4. Added debug/operator-scoped exact manifest visibility for the five supported V1 bank packages without `QUERY_ALL_PACKAGES`.
+5. Added premium bank detection labels: `Détectée`, `Non détectée`, `Activée`, `À configurer`.
+6. Updated premium navigation to include Accueil, Revue, Ventes, Menu, Mode de confirmation and Sécurité.
+7. Updated Accueil, Revue, Ventes and Menu surfaces around the premium merchant operating model.
+8. Added display-only Mode de confirmation screen using IA wording.
+9. Added display-only Sécurité screen.
+10. Added Android JVM/static tests for Bank Target Lock, navigation, safety and copy guardrails.
+
+Next recommended action:
+
+Commit `sprint 7K: android premium merchant operating model`, then reconnect/authorize the device for ADB smoke and continue with a focused Bank Target Lock activation/sub-state sprint.
+
+Do not do:
+
+- Do not process real bank notifications during frontend/model consolidation.
+- Do not enable auto-confirmation.
+- Do not add SMS, Accessibility scraping, `QUERY_ALL_PACKAGES` or broad app enumeration.
+- Do not expose raw card, raw phone, raw notification text, package/cert, HMAC or webhook secrets.
+- Do not change backend APIs or payment/review logic.
+
 ## Latest Sprint 7M Android Premium Sub-screen State Work
 
 Sprint 7M is implemented and code/device validated, with Docker live health blocked by the local Docker Desktop pipe.

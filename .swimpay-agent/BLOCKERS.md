@@ -1,5 +1,20 @@
 # Blockers
 
+## Sprint 7K Android Premium Merchant Operating Model
+
+- No critical blocker introduced.
+- `ui/premium` remains the active Android merchant visual source of truth.
+- Bank Target Lock was added with exact supported package probing only.
+- No `QUERY_ALL_PACKAGES`, SMS permission, Accessibility service or broad installed-app enumeration was added.
+- Premium navigation now covers Accueil, Revue, Ventes, Menu, Mode de confirmation and Sécurité.
+- Accueil, Revue, Ventes, Menu, Mode de confirmation and Sécurité were aligned to the premium operating model.
+- Mode de confirmation uses `IA` wording and remains display-only; real-bank auto-confirmation remains disabled.
+- Android still does not confirm orders directly and does not send developer webhooks directly.
+- Android targeted JVM tests passed after setting `ANDROID_HOME` / `ANDROID_SDK_ROOT` to the local SDK path.
+- Root validation passed: android doctor, typecheck, lint, tests, build and Compose config.
+- Android validation passed: full debug JVM tests and debug APK build.
+- Non-critical device blocker: ADB is available, but `adb devices -l` returned no connected authorized device in this shell, so install/launch smoke was not run.
+
 ## Sprint 7M Android Premium Sub-screen States
 
 - No critical blocker introduced.

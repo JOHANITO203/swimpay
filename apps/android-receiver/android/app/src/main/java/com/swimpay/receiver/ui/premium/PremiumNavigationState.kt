@@ -10,6 +10,8 @@ sealed interface PremiumRoute {
     data object ConnectedSite : PremiumRoute
     data object ReceiverHealth : PremiumRoute
     data object ConfigurationTest : PremiumRoute
+    data object ConfirmationMode : PremiumRoute
+    data object Security : PremiumRoute
     data class OrderDetail(val orderId: String) : PremiumRoute
 }
 
@@ -17,9 +19,9 @@ enum class PremiumMainTab(
     val navLabel: String,
     val accessibilityLabel: String
 ) {
-    Home("HOME", "Accueil"),
-    Reviews("REVUES", "Revues"),
-    Orders("VENTES", "Ventes"),
+    Home("Accueil", "Accueil"),
+    Reviews("Revue", "Revue"),
+    Orders("Ventes", "Ventes"),
     Menu("MENU", "Menu")
 }
 
@@ -43,6 +45,10 @@ object PremiumNavigation {
     fun openConnectedSite(): PremiumRoute = PremiumRoute.ConnectedSite
 
     fun openConfigurationTest(): PremiumRoute = PremiumRoute.ConfigurationTest
+
+    fun openConfirmationMode(): PremiumRoute = PremiumRoute.ConfirmationMode
+
+    fun openSecurity(): PremiumRoute = PremiumRoute.Security
 }
 
 sealed interface PremiumScreenState<out T> {

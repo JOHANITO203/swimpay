@@ -24,6 +24,8 @@ class PremiumNavigationStateTest {
         assertEquals(PremiumRoute.ReceiverHealth, PremiumNavigation.openReceiverHealth())
         assertEquals(PremiumRoute.ConnectedSite, PremiumNavigation.openConnectedSite())
         assertEquals(PremiumRoute.ConfigurationTest, PremiumNavigation.openConfigurationTest())
+        assertEquals(PremiumRoute.ConfirmationMode, PremiumNavigation.openConfirmationMode())
+        assertEquals(PremiumRoute.Security, PremiumNavigation.openSecurity())
     }
 
     @Test
@@ -32,8 +34,8 @@ class PremiumNavigationStateTest {
             listOf(PremiumMainTab.Home, PremiumMainTab.Reviews, PremiumMainTab.Orders, PremiumMainTab.Menu),
             PremiumMainTab.entries
         )
-        assertEquals(listOf("HOME", "REVUES", "VENTES", "MENU"), PremiumMainTab.entries.map { it.navLabel })
-        assertEquals(listOf("Accueil", "Revues", "Ventes", "Menu"), PremiumMainTab.entries.map { it.accessibilityLabel })
+        assertEquals(listOf("Accueil", "Revue", "Ventes", "MENU"), PremiumMainTab.entries.map { it.navLabel })
+        assertEquals(listOf("Accueil", "Revue", "Ventes", "Menu"), PremiumMainTab.entries.map { it.accessibilityLabel })
     }
 
     @Test

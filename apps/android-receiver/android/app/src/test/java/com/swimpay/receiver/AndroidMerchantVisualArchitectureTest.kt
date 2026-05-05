@@ -93,10 +93,14 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumDashboard.contains("fun PremiumReceivingMethodsStateScreen"))
         assertTrue(premiumDashboard.contains("fun PremiumBanksStateScreen"))
         assertTrue(premiumDashboard.contains("fun PremiumReceiverHealthStateScreen"))
+        assertTrue(premiumDashboard.contains("fun PremiumConfirmationModeScreen"))
+        assertTrue(premiumDashboard.contains("fun PremiumSecurityScreen"))
         assertTrue(premiumDashboard.contains("onNavigate"))
         assertTrue(premiumApp.contains("PremiumNavigation.openReceivingMethods()"))
         assertTrue(premiumApp.contains("PremiumNavigation.openBanks()"))
         assertTrue(premiumApp.contains("PremiumNavigation.openReceiverHealth()"))
+        assertTrue(premiumApp.contains("PremiumNavigation.openConfirmationMode()"))
+        assertTrue(premiumApp.contains("PremiumNavigation.openSecurity()"))
         assertTrue(premiumReviews.contains("onConfirm"))
         assertTrue(premiumReviews.contains("onRejectSignal"))
         assertTrue(premiumReviews.contains("onRejectOrder"))
@@ -153,5 +157,22 @@ class AndroidMerchantVisualArchitectureTest {
         assertFalse(premiumText.contains("official_bank_confirmation = true", ignoreCase = true))
         assertFalse(premiumText.contains("2200123412344821"))
         assertFalse(premiumText.contains("+79991234567"))
+    }
+
+    @Test
+    fun premiumOperatingModelUsesIaConfirmationCopyWithoutEnablingAndroidDecisioning() {
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val receiverBoundaries = File("src/main/java/com/swimpay/receiver/ReceiverBoundaries.kt").readText()
+        val apiWiring = File("src/main/java/com/swimpay/receiver/AndroidMerchantApiWiring.kt").readText()
+
+        assertTrue(premiumDashboard.contains("Manuel — Activé"))
+        assertTrue(premiumDashboard.contains("Assisté — Disponible"))
+        assertTrue(premiumDashboard.contains("IA — Verrouillé"))
+        assertTrue(premiumDashboard.contains("IA en apprentissage"))
+        assertTrue(premiumDashboard.contains("7 / 10 paiements confirmés"))
+        assertTrue(premiumDashboard.contains("Activer la confirmation IA"))
+        assertFalse(premiumDashboard.contains("auto-confirm bancaire", ignoreCase = true))
+        assertTrue(receiverBoundaries.contains("androidConfirmsPayments: Boolean = false"))
+        assertTrue(apiWiring.contains("sendsDeveloperWebhookDirectly: Boolean = false"))
     }
 }

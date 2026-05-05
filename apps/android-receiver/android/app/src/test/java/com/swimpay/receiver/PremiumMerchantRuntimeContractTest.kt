@@ -331,7 +331,9 @@ class PremiumMerchantRuntimeContractTest {
 
         val banks = runtime.loadBanks() as PremiumScreenState.Content<PremiumBanksUiState>
         assertEquals(listOf("Sberbank", "T-Bank", "VTB", "Alfa-Bank", "Gazprombank"), banks.value.items.map { it.displayName })
-        assertTrue(banks.value.items.all { it.status in setOf("Activée", "À configurer", "En pause") })
+        assertTrue(banks.value.items.all { it.status in setOf("Détectée", "Non détectée", "Activée", "À configurer") })
+        assertTrue(banks.value.items.filter { it.status == "Détectée" }.all { it.canActivate })
+        assertTrue(banks.value.items.filter { it.status == "Non détectée" }.none { it.canActivate })
 
         val health = runtime.loadReceiverHealth(notificationAccessEnabled = false) as PremiumScreenState.Content<PremiumReceiverHealthUiState>
         assertEquals("Action nécessaire", health.value.statusTitle)

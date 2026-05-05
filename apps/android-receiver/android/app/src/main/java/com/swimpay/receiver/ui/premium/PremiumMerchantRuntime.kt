@@ -1,8 +1,11 @@
 package com.swimpay.receiver.ui.premium
 
 import com.swimpay.receiver.AuthenticatedMerchantSession
+import com.swimpay.receiver.BankTargetLock
+import com.swimpay.receiver.BankTargetVisibleStatus
 import com.swimpay.receiver.BuildConfig
 import com.swimpay.receiver.DebugBackendConfig
+import com.swimpay.receiver.ExactPackageProbe
 import com.swimpay.receiver.HttpUrlConnectionMerchantApiTransport
 import com.swimpay.receiver.MerchantApiTransport
 import com.swimpay.receiver.MerchantConfigurationChecklist
@@ -48,8 +51,8 @@ data class PremiumDashboardUiState(
                 readyText = "Votre téléphone est connecté et vos paiements peuvent être détectés.",
                 monthlyAmount = "1 482 000 ₽",
                 metrics = listOf(
-                    PremiumMetricUiState("7", "À VÉRIFIER", "+2"),
-                    PremiumMetricUiState("24", "VALIDÉS", "+84%")
+                    PremiumMetricUiState("7", "À CONFIRMER", "+2"),
+                    PremiumMetricUiState("24", "CONFIRMÉS", "+84%")
                 ),
                 recentPayments = listOf(
                     PremiumRecentPaymentUiState("58,41 ₽", "Sberbank · Il y a 2 min", "À vérifier"),
@@ -161,7 +164,8 @@ data class PremiumBankUiItem(
     val displayName: String,
     val status: String,
     val helper: String,
-    val enabled: Boolean
+    val enabled: Boolean,
+    val canActivate: Boolean = false
 ) {
     fun visibleTexts(): List<String> = listOf(displayName, status, helper)
 }
@@ -278,8 +282,8 @@ class PremiumMerchantRuntime(
                 readyText = texts.getOrNull(2) ?: "Votre téléphone est connecté et vos paiements peuvent être détectés.",
                 monthlyAmount = recent.firstOrNull()?.amount ?: "0,00 ₽",
                 metrics = listOf(
-                    PremiumMetricUiState(toReview, "À VÉRIFIER"),
-                    PremiumMetricUiState(confirmed, "VALIDÉS")
+                    PremiumMetricUiState(toReview, "À CONFIRMER"),
+                    PremiumMetricUiState(confirmed, "CONFIRMÉS")
                 ),
                 recentPayments = recent,
                 usesLiveApi = !result.usesMockRepository
@@ -390,16 +394,39 @@ class PremiumMerchantRuntime(
         return receivingMethodsRepository.markRecommended(session, routeId).toPremiumMutationState("Défini par défaut")
     }
 
-    fun loadBanks(): PremiumScreenState<PremiumBanksUiState> {
+    fun loadBanks(
+        probe: ExactPackageProbe = StaticExactPackageProbe(
+            detectedPackages = setOf(
+                "ru.sberbankmobile",
+                "com.idamob.tinkoff.android",
+                "ru.alfabank.mobile.android"
+            )
+        ),
+        enabledBankProfileIds: Set<String> = emptySet()
+    ): PremiumScreenState<PremiumBanksUiState> {
+        val targets = BankTargetLock.resolveTargets(
+            probe = probe,
+            selectedBankProfileIds = enabledBankProfileIds,
+            enabledBankProfileIds = enabledBankProfileIds,
+            listenerReady = true
+        )
         return PremiumScreenState.content(
             PremiumBanksUiState(
-                items = listOf(
-                    PremiumBankUiItem("sber_ru", "Sberbank", "Activée", "Validation manuelle en bêta", true),
-                    PremiumBankUiItem("tbank_ru", "T-Bank", "Activée", "Validation manuelle en bêta", true),
-                    PremiumBankUiItem("vtb_ru", "VTB", "À configurer", "Ajoutez un moyen de réception", false),
-                    PremiumBankUiItem("alfa_ru", "Alfa-Bank", "En pause", "Peut être réactivée", false),
-                    PremiumBankUiItem("gazprombank_ru", "Gazprombank", "À configurer", "Ajoutez un moyen de réception", false)
-                )
+                items = targets.map { state ->
+                    PremiumBankUiItem(
+                        bankProfileId = state.bankProfileId,
+                        displayName = state.displayName,
+                        status = state.visibleStatus.label,
+                        helper = when (state.visibleStatus) {
+                            BankTargetVisibleStatus.ENABLED -> "SwimPay Intelligence activée"
+                            BankTargetVisibleStatus.DETECTED -> "Peut être activée"
+                            BankTargetVisibleStatus.NOT_DETECTED -> "Installez l'application bancaire"
+                            BankTargetVisibleStatus.CONFIGURE -> "À configurer"
+                        },
+                        enabled = state.visibleStatus == BankTargetVisibleStatus.ENABLED,
+                        canActivate = state.canActivate
+                    )
+                }
             )
         )
     }
@@ -479,7 +506,15 @@ class PremiumMerchantRuntime(
     }
 
     fun loadOrders(): PremiumScreenState<PremiumOrdersUiState> {
-        return PremiumScreenState.empty("Aucune commande", "Les commandes synchronisées apparaîtront ici.")
+        return PremiumScreenState.content(
+            PremiumOrdersUiState(
+                rows = listOf(
+                    PremiumOrderUiItem("ord_123", "58,41 ₽", "CONFIRMÉ", "Client #12 · Aujourd'hui, 14:20"),
+                    PremiumOrderUiItem("ord_124", "129,00 ₽", "EN ATTENTE", "Client #13 · Aujourd'hui, 14:15")
+                ),
+                usesLiveApi = false
+            )
+        )
     }
 
     companion object {
@@ -530,6 +565,17 @@ class PremiumMerchantRuntime(
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport)
             )
         }
+    }
+}
+
+class StaticExactPackageProbe(
+    private val detectedPackages: Set<String>
+) : ExactPackageProbe {
+    override fun isInstalled(packageName: String): Boolean {
+        require(BankTargetLock.isSupportedPackage(packageName)) {
+            "Only supported bank packages can be probed"
+        }
+        return packageName in detectedPackages
     }
 }
 

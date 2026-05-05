@@ -59,8 +59,8 @@ private fun PremiumReviewsContent(
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         item {
-            Text("Signalements Reçus", color = PremiumColors.Ink, fontSize = 23.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
-            Text("Confirmez les paiements détectés par votre terminal Android.", color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 20.sp)
+            Text("Paiements à confirmer", color = PremiumColors.Ink, fontSize = 23.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
+            Text("Confirmez uniquement les paiements que vous reconnaissez.", color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 20.sp)
             Spacer(Modifier.height(28.dp))
             Row(
                 Modifier.fillMaxWidth(),
@@ -68,8 +68,9 @@ private fun PremiumReviewsContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 FilterLabel(Icons.Default.GridView, "Tout", false, Modifier.weight(1f))
-                FilterLabel(Icons.Default.Sync, "Vérification", true, Modifier.weight(1.35f))
-                FilterLabel(Icons.Default.CheckCircle, "Validés", false, Modifier.weight(1f))
+                FilterLabel(Icons.Default.Sync, "À confirmer", true, Modifier.weight(1.35f))
+                FilterLabel(Icons.Default.CheckCircle, "Confirmés", false, Modifier.weight(1f))
+                FilterLabel(Icons.Default.WarningAmber, "Rejetés", false, Modifier.weight(1f))
             }
         }
         items(state.items) { item -> ReviewPaymentCard(item, onOpenReview) }
@@ -84,8 +85,8 @@ private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         item {
-            Text("Signalements Reçus", color = PremiumColors.Ink, fontSize = 23.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
-            Text("Confirmez les paiements détectés par votre terminal Android.", color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 20.sp)
+            Text("Paiements à confirmer", color = PremiumColors.Ink, fontSize = 23.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
+            Text("Confirmez uniquement les paiements que vous reconnaissez.", color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 20.sp)
         }
         item { PremiumStatePanel(state) }
     }

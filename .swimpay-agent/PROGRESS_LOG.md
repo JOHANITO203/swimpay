@@ -1941,3 +1941,24 @@ Safety checks:
 - Fresh root validation passed for android doctor, typecheck, lint, tests, build and Compose config.
 - Fresh Docker live validation is blocked because Docker Desktop's Linux engine pipe is currently unavailable from this shell; `compose ps` and `/api-health` could not be verified in this final pass.
 - No backend/API/contracts/workers/database/payment/review logic, real notification capture, SMS, Accessibility scraping, raw PII exposure or auto-confirmation behavior was changed.
+## 2026-05-05T00:00:00+03:00 - Sprint 7K Android Premium Merchant Operating Model
+
+- Created tasks 413 through 424 and updated the task queue to the Android premium operating model order.
+- Kept the active Android merchant visual path as `MainActivity -> PremiumMerchantApp -> PremiumMerchantRuntime`.
+- Added `BankTargetLock` with exact supported bank target packages only.
+- Added debug/operator-scoped Android manifest package visibility for the five V1 banks without `QUERY_ALL_PACKAGES`.
+- Added internal bank target states and merchant-safe labels: `Détectée`, `Non détectée`, `Activée`, `À configurer`.
+- Updated premium bank screens to present compatible bank detection without package/cert details.
+- Updated premium bottom navigation labels to `Accueil`, `Revue`, `Ventes`, `MENU`.
+- Added typed premium routes for `Mode de confirmation` and `Sécurité`.
+- Updated dashboard language to `Paiements suivis`, `SwimPay Intelligence`, `À confirmer`, `Confirmés`, `Rejetés`, `Banques actives` and `Historique récent`.
+- Updated review screen copy to `Paiements à confirmer` with separate confirm/signal-reject/order-reject actions.
+- Updated Ventes to show sales traceability metrics and timeframe filters without adding backend APIs.
+- Reorganized Menu into Paiements, Business, Application and Aide sections.
+- Added display-only `Mode de confirmation` screen with `Manuel`, `Assisté` and `IA` wording.
+- Added display-only `Sécurité` screen for passcode/password/PIN/biometric/session settings.
+- Added Android tests for Bank Target Lock exact probing, no broad enumeration, manifest guardrails, premium navigation, IA copy and Android decision boundaries.
+- Targeted and full Android JVM tests passed after setting local SDK env variables.
+- Debug APK build passed.
+- ADB was available, but no connected authorized device was listed, so install/launch smoke was not run in this pass.
+- Backend APIs, contracts, workers, database, payment/review logic, real notification capture, SMS, Accessibility scraping, raw PII exposure and auto-confirmation were not changed.

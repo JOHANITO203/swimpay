@@ -36,6 +36,8 @@ fun PremiumMerchantApp(
             PremiumRoute.ReceiverHealth -> PremiumNavigation.openReceiverHealth()
             PremiumRoute.ConnectedSite -> PremiumNavigation.openConnectedSite()
             PremiumRoute.ConfigurationTest -> PremiumNavigation.openConfigurationTest()
+            PremiumRoute.ConfirmationMode -> PremiumNavigation.openConfirmationMode()
+            PremiumRoute.Security -> PremiumNavigation.openSecurity()
             else -> target
         }
     }
@@ -77,6 +79,8 @@ fun PremiumMerchantApp(
             }
             PremiumRoute.Landing,
             PremiumRoute.Onboarding,
+            PremiumRoute.ConfirmationMode,
+            PremiumRoute.Security,
             is PremiumRoute.OrderDetail -> Unit
         }
     }
@@ -138,6 +142,16 @@ fun PremiumMerchantApp(
         PremiumRoute.ConfigurationTest -> PremiumConfigurationStateScreen(configurationState) {
             route = PremiumRoute.Main(PremiumMainTab.Menu)
         }
+        PremiumRoute.ConfirmationMode -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Menu,
+            onTab = { route = PremiumRoute.Main(it) },
+            content = { PremiumConfirmationModeScreen() }
+        )
+        PremiumRoute.Security -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Menu,
+            onTab = { route = PremiumRoute.Main(it) },
+            content = { PremiumSecurityScreen() }
+        )
         PremiumRoute.Banks -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },

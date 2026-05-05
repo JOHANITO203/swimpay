@@ -62,6 +62,18 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
         contentPadding = PaddingValues(bottom = 22.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        item {
+            Text("Accueil", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            PremiumCard(Modifier.fillMaxWidth().padding(top = 12.dp), radius = 32.dp, color = Color(0xFFF7FDFF)) {
+                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(state.readyTitle, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text(state.readyText, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
+                    StatusChip("SwimPay Intelligence", StatusTone.Info, Modifier.padding(top = 4.dp))
+                    Text("Téléphone connecté · Notifications activées", color = PremiumColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                    Text("Dernière activité : il y a 12 s", color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
         item { MonthlyActivityCard(state.monthlyAmount, state.usesLiveApi) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -72,16 +84,22 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
             }
         }
         item {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                BentoMetricCard("0", "REJETÉS", "", Icons.Default.Security, Modifier.weight(1f))
+                BentoMetricCard("5", "BANQUES ACTIVES", "", Icons.Default.AccountBalance, Modifier.weight(1f))
+            }
+        }
+        item {
             PremiumCard(Modifier.fillMaxWidth().height(260.dp), radius = 70.dp) {
                 Column(Modifier.padding(30.dp)) {
-                    Text("TENDANCES DES PAIEMENTS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    Text("PAIEMENTS CONFIRMÉS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
                     TrendLine(Modifier.fillMaxWidth().height(170.dp).padding(top = 24.dp))
                 }
             }
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("PAIEMENTS RÉCENTS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                Text("HISTORIQUE RÉCENT", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
                 Text("Voir tout", color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 13.sp)
             }
         }
@@ -107,8 +125,8 @@ private fun MonthlyActivityCard(amount: String, usesLiveApi: Boolean) {
     PremiumGradientPanel(Modifier.fillMaxWidth().height(214.dp), radius = 42.dp) {
         Column(Modifier.padding(26.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatusChip("↗ Activité Mensuelle", StatusTone.Neutral)
-                Text(if (usesLiveApi) "LIVE FEED" else "DEV FEED", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black, fontSize = 13.sp)
+                StatusChip("Paiements suivis", StatusTone.Neutral)
+                Text("Aujourd'hui", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black, fontSize = 13.sp)
             }
             Spacer(Modifier.height(30.dp))
             Text(amount, color = Color.White, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black)
@@ -188,7 +206,25 @@ private fun PremiumOrdersContent(state: PremiumOrdersUiState) {
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         item {
-            Text("Historique des transactions e-commerce synchronisées.", color = PremiumColors.Ink, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
+            Text("Ventes confirmées", color = PremiumColors.Ink, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.Black)
+            Text("Suivez les commandes reliées aux paiements confirmés.", color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(24.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BentoMetricCard("24", "CONFIRMÉES", "", Icons.Default.CheckCircle, Modifier.weight(1f))
+                BentoMetricCard("1 482 000 ₽", "MONTANT CONFIRMÉ", "", Icons.Default.ShoppingCart, Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BentoMetricCard("0", "ÉCHECS", "", Icons.Default.Security, Modifier.weight(1f))
+                BentoMetricCard("98%", "TAUX DE CONFIRMATION", "", Icons.Default.Visibility, Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusChip("Aujourd'hui", StatusTone.Info)
+                StatusChip("7 jours", StatusTone.Neutral)
+                StatusChip("30 jours", StatusTone.Neutral)
+                StatusChip("Tout", StatusTone.Neutral)
+            }
             Spacer(Modifier.height(24.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
@@ -254,18 +290,30 @@ fun PremiumSettingsScreen(
         item { PremiumConnectedSiteSummary(connectedSite) }
         item { PremiumConfigurationSummary(configuration) }
         item {
-            SettingsGroup("INFRASTRUCTURE", listOf(
-                PremiumSettingsRow(Icons.Default.PhoneAndroid, "Paramètres Android") { onNavigate(PremiumNavigation.openReceiverHealth()) },
-                PremiumSettingsRow(Icons.Default.CreditCard, "Canaux de Paiement") { onNavigate(PremiumNavigation.openReceivingMethods()) },
-                PremiumSettingsRow(Icons.Default.AccountBalance, "Comptes Bancaires") { onNavigate(PremiumNavigation.openBanks()) },
-                PremiumSettingsRow(Icons.Default.Link, "Développeur & API") { onNavigate(PremiumNavigation.openConnectedSite()) }
+            SettingsGroup("PAIEMENTS", listOf(
+                PremiumSettingsRow(Icons.Default.AccountBalance, "Banques") { onNavigate(PremiumNavigation.openBanks()) },
+                PremiumSettingsRow(Icons.Default.CreditCard, "Moyens de réception") { onNavigate(PremiumNavigation.openReceivingMethods()) },
+                PremiumSettingsRow(Icons.Default.CheckCircle, "Mode de confirmation") { onNavigate(PremiumNavigation.openConfirmationMode()) }
             ))
         }
         item {
-            SettingsGroup("SUPPORT & SÉCURITÉ", listOf(
-                PremiumSettingsRow(Icons.Default.Security, "Centre de Sécurité"),
-                PremiumSettingsRow(Icons.AutoMirrored.Filled.Help, "Aide & Assistance"),
-                PremiumSettingsRow(Icons.Default.Description, "Conditions Générales")
+            SettingsGroup("BUSINESS", listOf(
+                PremiumSettingsRow(Icons.Default.Link, "Site ou application") { onNavigate(PremiumNavigation.openConnectedSite()) },
+                PremiumSettingsRow(Icons.Default.ShoppingCart, "Ventes") { onNavigate(PremiumRoute.Main(PremiumMainTab.Orders)) },
+                PremiumSettingsRow(Icons.Default.PhoneAndroid, "Notifications") { onNavigate(PremiumNavigation.openReceiverHealth()) }
+            ))
+        }
+        item {
+            SettingsGroup("APPLICATION", listOf(
+                PremiumSettingsRow(Icons.Default.Visibility, "Apparence"),
+                PremiumSettingsRow(Icons.Default.Description, "Langue"),
+                PremiumSettingsRow(Icons.Default.Security, "Sécurité") { onNavigate(PremiumNavigation.openSecurity()) }
+            ))
+        }
+        item {
+            SettingsGroup("AIDE", listOf(
+                PremiumSettingsRow(Icons.AutoMirrored.Filled.Help, "Centre d’aide"),
+                PremiumSettingsRow(Icons.Default.Description, "Contacter le support")
             ))
         }
         item {
@@ -347,8 +395,8 @@ fun PremiumBanksStateScreen(state: PremiumScreenState<PremiumBanksUiState>) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text("Banques", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text("Sélectionnez les banques que vos clients pourront choisir au paiement.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+                Text("Recherche des banques compatibles", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text("SwimPay recherche uniquement les banques compatibles.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
             }
             items(state.value.items) { bank ->
                 PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
@@ -358,7 +406,10 @@ fun PremiumBanksStateScreen(state: PremiumScreenState<PremiumBanksUiState>) {
                         }
                         Column(Modifier.weight(1f).padding(start = 16.dp)) {
                             Text(bank.displayName, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                            Text(bank.helper, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("${bank.displayName} ${bank.status.lowercase()}", color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            if (bank.canActivate && !bank.enabled) {
+                                Text("Activer", color = PremiumColors.Blue, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 6.dp))
+                            }
                         }
                         StatusChip(bank.status, if (bank.enabled) StatusTone.Success else StatusTone.Warning)
                     }
@@ -408,6 +459,83 @@ fun PremiumReceiverHealthStateScreen(
             }
         }
         else -> PremiumStateList(state)
+    }
+}
+
+@Composable
+fun PremiumConfirmationModeScreen() {
+    LazyColumn(
+        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text("Mode de confirmation", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text("Choisissez le niveau d'aide pour vérifier vos paiements.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+        }
+        item {
+            PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = Color(0xFFF7FDFF)) {
+                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Manuel — Activé", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text("Chaque paiement doit être confirmé par vous.", color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    StatusChip("Validation manuelle", StatusTone.Success)
+                }
+            }
+        }
+        item {
+            PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
+                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Assisté — Disponible", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text("SwimPay prépare les indices, vous décidez.", color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    StatusChip("Disponible", StatusTone.Info)
+                }
+            }
+        }
+        item {
+            PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
+                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("IA — Verrouillé", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text("IA en apprentissage", color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("7 / 10 paiements confirmés", color = PremiumColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                    StatusChip("Activer la confirmation IA", StatusTone.Neutral)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PremiumSecurityScreen() {
+    val rows = listOf(
+        "Code d’accès",
+        "Mot de passe",
+        "Code PIN",
+        "Biométrie",
+        "Empreinte",
+        "Reconnaissance faciale",
+        "Verrouillage automatique",
+        "Sessions connectées"
+    )
+    LazyColumn(
+        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text("Sécurité", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text("Protégez l’accès à votre terminal marchand.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+        }
+        items(rows) { label ->
+            PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
+                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(42.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Security, null, tint = PremiumColors.Blue)
+                    }
+                    Text(label, modifier = Modifier.weight(1f).padding(start = 14.dp), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                    StatusChip("À configurer", StatusTone.Neutral)
+                }
+            }
+        }
     }
 }
 

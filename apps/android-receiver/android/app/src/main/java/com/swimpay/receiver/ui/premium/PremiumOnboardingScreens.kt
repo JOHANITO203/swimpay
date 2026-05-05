@@ -217,14 +217,20 @@ private fun AuthorizationStep(
 private fun BankSourcesStep(onBack: () -> Unit, onNext: () -> Unit) {
     OnboardingShell("BANQUES", 2, onBack) {
         PremiumTitle(
-            "Sources de signaux",
-            "Activez la détection sur vos comptes bancaires professionnels\nou personnels."
+            "Recherche des banques compatibles",
+            "SwimPay recherche uniquement les banques compatibles."
         )
-        listOf("Sberbank", "T-Bank", "VTB", "Alfa-Bank", "Gazprombank").forEachIndexed { index, bank ->
-            BankSourceRow(bank, selected = index == 0)
+        listOf(
+            "Sberbank" to "Détectée",
+            "T-Bank" to "Détectée",
+            "Alfa-Bank" to "Détectée",
+            "VTB" to "Non détectée",
+            "Gazprombank" to "Non détectée"
+        ).forEach { bank ->
+            BankSourceRow(bank.first, bank.second, selected = bank.second == "Détectée")
         }
         Spacer(Modifier.height(18.dp))
-        PremiumPrimaryButton("CONFIRMER LES SOURCES", onClick = onNext)
+        PremiumPrimaryButton("ACTIVER LES BANQUES", onClick = onNext)
     }
 }
 
@@ -365,7 +371,7 @@ private fun NumberedStep(number: Int, text: String) {
 }
 
 @Composable
-private fun BankSourceRow(name: String, selected: Boolean) {
+private fun BankSourceRow(name: String, status: String, selected: Boolean) {
     PremiumCard(
         Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap {},
         radius = 30.dp,
@@ -377,7 +383,7 @@ private fun BankSourceRow(name: String, selected: Boolean) {
             }
             Column(Modifier.weight(1f).padding(start = 18.dp)) {
                 Text(name, color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                Text("COMPATIBLE WEBHOOK", color = PremiumColors.SoftText, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                Text(status.uppercase(), color = PremiumColors.SoftText, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
             }
             Box(
                 Modifier
