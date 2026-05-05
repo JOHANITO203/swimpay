@@ -1,5 +1,17 @@
 # Blockers
 
+## Sprint 7M Android Premium Sub-screen States
+
+- No critical blocker introduced.
+- Receiving methods, banks and Receiver health now have dedicated premium typed state screens.
+- Settings menu rows now navigate to typed premium sub-screens instead of inert placeholders.
+- Merchant-facing `SBP` wording was removed from Android premium receiving-method UI copy.
+- Targeted Android JVM tests for premium navigation/runtime/visual/copy guardrails passed.
+- Root code validation passed: android doctor, typecheck, lint, tests, build and Compose config.
+- Android validation passed: full JVM tests and debug APK build.
+- Real-device smoke passed on Samsung `SM_S916B` / `R5CWA0FEPZW`; UIAutomator confirmed the new `Banques` sub-screen.
+- Non-critical environment blocker: Docker Desktop Linux engine pipe is unavailable from this shell, so fresh `compose ps` and `/api-health` live checks could not be completed.
+
 ## Sprint 7J Android Frontend Source-of-truth Cleanup
 
 - No critical blocker introduced.

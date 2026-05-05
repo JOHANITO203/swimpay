@@ -90,6 +90,13 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumReviews.contains("PremiumStatePanel"))
         assertTrue(premiumDashboard.contains("fun PremiumOrdersScreen"))
         assertTrue(premiumDashboard.contains("fun PremiumSettingsScreen"))
+        assertTrue(premiumDashboard.contains("fun PremiumReceivingMethodsStateScreen"))
+        assertTrue(premiumDashboard.contains("fun PremiumBanksStateScreen"))
+        assertTrue(premiumDashboard.contains("fun PremiumReceiverHealthStateScreen"))
+        assertTrue(premiumDashboard.contains("onNavigate"))
+        assertTrue(premiumApp.contains("PremiumNavigation.openReceivingMethods()"))
+        assertTrue(premiumApp.contains("PremiumNavigation.openBanks()"))
+        assertTrue(premiumApp.contains("PremiumNavigation.openReceiverHealth()"))
         assertTrue(premiumReviews.contains("onConfirm"))
         assertTrue(premiumReviews.contains("onRejectSignal"))
         assertTrue(premiumReviews.contains("onRejectOrder"))
@@ -129,6 +136,9 @@ class AndroidMerchantVisualArchitectureTest {
             "TO_VERIFY",
             "approved_for_review_only",
             "webhook_secret",
+            "SBP",
+            "Activer lâ€™accÃ¨s",
+            "Activer lÃ¢â‚¬â„¢accÃƒÂ¨s",
             "raw notification",
             "raw_notification",
             "confirmation bancaire officielle",

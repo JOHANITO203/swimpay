@@ -914,6 +914,7 @@ private fun reviewPolicyFor(type: ReceivingMethodType): String {
 }
 
 private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
+    val routeId = extractString(this, "route_id").orEmpty()
     val railType = extractString(this, "rail_type") ?: return null
     val bankProfileId = extractString(this, "bank_profile_id").orEmpty()
     val masked = extractString(this, "receiver_identifier_masked").orEmpty()
@@ -930,9 +931,10 @@ private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
         if (!recommended) add("Définir par défaut")
     }
     return MerchantReceivingMethodDisplay(
+        routeId = routeId,
         title = type.merchantLabel,
         subtitle = "${bankDisplayNameFor(bankProfileId)} · $masked",
-        helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour SBP" else null,
+        helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements par numéro" else null,
         status = if (enabled) "Active" else "Désactivée",
         actions = actions
     )

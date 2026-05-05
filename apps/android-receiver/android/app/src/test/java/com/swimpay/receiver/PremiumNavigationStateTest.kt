@@ -19,6 +19,11 @@ class PremiumNavigationStateTest {
         val detail = PremiumNavigation.openReview("rev_42")
         assertEquals(PremiumRoute.PaymentDetail("rev_42"), detail)
         assertEquals(PremiumRoute.Main(PremiumMainTab.Reviews), PremiumNavigation.backFromPaymentDetail())
+        assertEquals(PremiumRoute.ReceivingMethods, PremiumNavigation.openReceivingMethods())
+        assertEquals(PremiumRoute.Banks, PremiumNavigation.openBanks())
+        assertEquals(PremiumRoute.ReceiverHealth, PremiumNavigation.openReceiverHealth())
+        assertEquals(PremiumRoute.ConnectedSite, PremiumNavigation.openConnectedSite())
+        assertEquals(PremiumRoute.ConfigurationTest, PremiumNavigation.openConfigurationTest())
     }
 
     @Test

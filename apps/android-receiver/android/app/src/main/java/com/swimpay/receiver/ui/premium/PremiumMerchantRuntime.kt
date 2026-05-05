@@ -12,10 +12,14 @@ import com.swimpay.receiver.MerchantConnectedSiteApiRepository
 import com.swimpay.receiver.MerchantDashboardApiRepository
 import com.swimpay.receiver.MerchantPaymentDetailApiRepository
 import com.swimpay.receiver.MerchantReceivingMethodsApiRepository
+import com.swimpay.receiver.MerchantReceivingMethodDisplay
+import com.swimpay.receiver.MerchantReceivingMethodMutationResult
+import com.swimpay.receiver.MerchantReceivingMethodSubmission
 import com.swimpay.receiver.MerchantRepositoryState
 import com.swimpay.receiver.MerchantReviewActionsApiRepository
 import com.swimpay.receiver.MerchantReviewQueueApiRepository
 import com.swimpay.receiver.MerchantScreenRepositoryResult
+import com.swimpay.receiver.ReceiverStatusViewModel
 
 data class PremiumMetricUiState(
     val value: String,
@@ -117,11 +121,67 @@ data class PremiumPaymentDetailUiState(
     }
 }
 
+data class PremiumReceivingMethodUiItem(
+    val routeId: String,
+    val title: String,
+    val subtitle: String,
+    val helper: String?,
+    val badge: String?,
+    val status: String,
+    val enabled: Boolean,
+    val recommended: Boolean,
+    val actions: List<String>
+) {
+    fun visibleTexts(): List<String> = buildList {
+        add(title)
+        add(subtitle)
+        helper?.let { add(it) }
+        badge?.let { add(it) }
+        add(status)
+        addAll(actions)
+    }
+}
+
 data class PremiumReceivingMethodsUiState(
-    val rows: List<String>,
+    val items: List<PremiumReceivingMethodUiItem>,
     val usesLiveApi: Boolean,
     val safeMessage: String = ""
 )
+
+data class PremiumReceivingMethodMutationUiState(
+    val item: PremiumReceivingMethodUiItem?,
+    val clearedRawIdentifier: String,
+    val message: String
+) {
+    fun visibleTexts(): List<String> = (item?.visibleTexts() ?: emptyList()) + message
+}
+
+data class PremiumBankUiItem(
+    val bankProfileId: String,
+    val displayName: String,
+    val status: String,
+    val helper: String,
+    val enabled: Boolean
+) {
+    fun visibleTexts(): List<String> = listOf(displayName, status, helper)
+}
+
+data class PremiumBanksUiState(
+    val items: List<PremiumBankUiItem>
+) {
+    fun visibleTexts(): List<String> = items.flatMap { it.visibleTexts() }
+}
+
+data class PremiumReceiverHealthUiState(
+    val statusTitle: String,
+    val statusText: String,
+    val rows: List<Pair<String, String>>,
+    val notices: List<String>
+) {
+    fun visibleTexts(): List<String> {
+        return listOf(statusTitle, statusText) + rows.flatMap { listOf(it.first, it.second) } + notices
+    }
+}
 
 data class PremiumOrderUiItem(
     val orderId: String,
@@ -304,7 +364,7 @@ class PremiumMerchantRuntime(
         return when (result.state) {
             MerchantRepositoryState.SUCCESS -> PremiumScreenState.content(
                 PremiumReceivingMethodsUiState(
-                    rows = result.items.map { "${it.title}|${it.subtitle}|${it.status}" },
+                    items = result.items.map { it.toPremiumItem() },
                     usesLiveApi = true,
                     safeMessage = result.safeMessage
                 )
@@ -314,6 +374,62 @@ class PremiumMerchantRuntime(
             MerchantRepositoryState.ERROR -> PremiumScreenState.error("Moyens indisponibles", result.safeMessage.ifBlank { "Réessayez dans quelques instants." })
             MerchantRepositoryState.LOADING -> PremiumScreenState.loading()
         }
+    }
+
+    fun createReceivingMethod(
+        submission: MerchantReceivingMethodSubmission
+    ): PremiumScreenState<PremiumReceivingMethodMutationUiState> {
+        return receivingMethodsRepository.create(session, submission).toPremiumMutationState("Moyen ajouté")
+    }
+
+    fun disableReceivingMethod(routeId: String): PremiumScreenState<PremiumReceivingMethodMutationUiState> {
+        return receivingMethodsRepository.disable(session, routeId).toPremiumMutationState("Moyen désactivé")
+    }
+
+    fun markReceivingMethodRecommended(routeId: String): PremiumScreenState<PremiumReceivingMethodMutationUiState> {
+        return receivingMethodsRepository.markRecommended(session, routeId).toPremiumMutationState("Défini par défaut")
+    }
+
+    fun loadBanks(): PremiumScreenState<PremiumBanksUiState> {
+        return PremiumScreenState.content(
+            PremiumBanksUiState(
+                items = listOf(
+                    PremiumBankUiItem("sber_ru", "Sberbank", "Activée", "Validation manuelle en bêta", true),
+                    PremiumBankUiItem("tbank_ru", "T-Bank", "Activée", "Validation manuelle en bêta", true),
+                    PremiumBankUiItem("vtb_ru", "VTB", "À configurer", "Ajoutez un moyen de réception", false),
+                    PremiumBankUiItem("alfa_ru", "Alfa-Bank", "En pause", "Peut être réactivée", false),
+                    PremiumBankUiItem("gazprombank_ru", "Gazprombank", "À configurer", "Ajoutez un moyen de réception", false)
+                )
+            )
+        )
+    }
+
+    fun loadReceiverHealth(notificationAccessEnabled: Boolean): PremiumScreenState<PremiumReceiverHealthUiState> {
+        val health = ReceiverStatusViewModel().buildState(
+            notificationAccessEnabled = notificationAccessEnabled,
+            listenerConnected = notificationAccessEnabled,
+            allowedBanksCount = 5,
+            trustedBanksCount = 0,
+            queueLength = 0,
+            backendReachable = session.isAuthenticated
+        )
+        return PremiumScreenState.content(
+            PremiumReceiverHealthUiState(
+                statusTitle = if (health.notificationAccessEnabled && health.listenerConnected) "Téléphone connecté" else "Action nécessaire",
+                statusText = if (health.notificationAccessEnabled && health.listenerConnected) {
+                    "Ce téléphone peut détecter les paiements reçus."
+                } else {
+                    "Activez l'accès notifications pour continuer."
+                },
+                rows = listOf(
+                    "Accès notifications" to if (health.notificationAccessEnabled) "Activé" else "Action requise",
+                    "Banques surveillées" to "${health.allowedBanksCount} banques",
+                    "File d'envoi" to if (health.queueLength == 0) "OK" else "À vérifier",
+                    "Dernière synchronisation" to if (health.backendReachable) "Il y a quelques instants" else "Hors ligne"
+                ),
+                notices = listOf("SwimPay ne lit pas vos SMS et ne contrôle pas votre banque.")
+            )
+        )
     }
 
     fun loadConnectedSite(): PremiumScreenState<PremiumConnectedSiteUiState> {
@@ -437,6 +553,39 @@ private fun <T> MerchantScreenRepositoryResult.toPremiumState(
         )
         MerchantRepositoryState.LOADING -> PremiumScreenState.loading()
         MerchantRepositoryState.SUCCESS -> PremiumScreenState.error(message = errorMessage)
+    }
+}
+
+private fun MerchantReceivingMethodDisplay.toPremiumItem(): PremiumReceivingMethodUiItem {
+    val enabled = status.equals("Active", ignoreCase = true)
+    val recommended = !actions.contains("Définir par défaut")
+    return PremiumReceivingMethodUiItem(
+        routeId = routeId,
+        title = title,
+        subtitle = subtitle,
+        helper = helper,
+        badge = badge,
+        status = status,
+        enabled = enabled,
+        recommended = recommended,
+        actions = actions
+    )
+}
+
+private fun MerchantReceivingMethodMutationResult.toPremiumMutationState(
+    successMessage: String
+): PremiumScreenState<PremiumReceivingMethodMutationUiState> {
+    val mutation = PremiumReceivingMethodMutationUiState(
+        item = display?.toPremiumItem(),
+        clearedRawIdentifier = clearedSubmission.rawIdentifier,
+        message = safeMessage.ifBlank { successMessage }
+    )
+    return when (state) {
+        MerchantRepositoryState.SUCCESS -> PremiumScreenState.content(mutation)
+        MerchantRepositoryState.ACTION_REQUIRED -> PremiumScreenState.actionRequired("Action requise", mutation.message)
+        MerchantRepositoryState.ERROR -> PremiumScreenState.error("Moyen indisponible", mutation.message)
+        MerchantRepositoryState.EMPTY -> PremiumScreenState.empty("Aucun moyen de réception", "Ajoutez une carte ou un numéro pour commencer.")
+        MerchantRepositoryState.LOADING -> PremiumScreenState.loading()
     }
 }
 

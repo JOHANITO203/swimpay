@@ -6,14 +6,21 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `429_android_premium_receiving_method_substates` - status: completed - source: `tasks/429_android_premium_receiving_method_substates.md`
+- [x] `430_android_premium_bank_management_states` - status: completed - source: `tasks/430_android_premium_bank_management_states.md`
+- [x] `431_android_premium_receiver_health_states` - status: completed - source: `tasks/431_android_premium_receiver_health_states.md`
+- [x] `432_android_premium_settings_subscreen_navigation` - status: completed - source: `tasks/432_android_premium_settings_subscreen_navigation.md`
+- [x] `433_android_premium_copy_and_encoding_guardrails` - status: completed - source: `tasks/433_android_premium_copy_and_encoding_guardrails.md`
+- [x] `434_android_premium_7m_validation_report` - status: completed - source: `tasks/434_android_premium_7m_validation_report.md`
+
+## Recently Completed / Blocked
+
 - [x] `423_android_premium_dashboard_state_rollout` - status: completed - source: `tasks/423_android_premium_dashboard_state_rollout.md`
 - [x] `424_android_premium_reviews_state_rollout` - status: completed - source: `tasks/424_android_premium_reviews_state_rollout.md`
 - [x] `425_android_premium_payment_detail_state_rollout` - status: completed - source: `tasks/425_android_premium_payment_detail_state_rollout.md`
 - [x] `426_android_premium_orders_state_rollout` - status: completed - source: `tasks/426_android_premium_orders_state_rollout.md`
 - [x] `427_android_premium_menu_subscreen_state_rollout` - status: completed - source: `tasks/427_android_premium_menu_subscreen_state_rollout.md`
 - [x] `428_android_premium_state_rollout_report` - status: completed - source: `tasks/428_android_premium_state_rollout_report.md`
-
-## Recently Completed / Blocked
 
 - [x] `417_android_premium_navigation_model` - status: completed - source: `tasks/417_android_premium_navigation_model.md`
 - [x] `418_android_premium_screen_state_model` - status: completed - source: `tasks/418_android_premium_screen_state_model.md`

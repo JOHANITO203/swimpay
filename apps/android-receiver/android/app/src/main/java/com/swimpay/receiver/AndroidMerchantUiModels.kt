@@ -97,6 +97,7 @@ enum class ReceivingMethodType(
 }
 
 data class MerchantReceivingMethodDisplay(
+    val routeId: String = "",
     val title: String,
     val subtitle: String,
     val helper: String? = null,
@@ -118,7 +119,7 @@ data class MerchantReceivingMethodDisplay(
     companion object {
         fun masked(title: String, subtitle: String): MerchantReceivingMethodDisplay {
             val helper = if (title == ReceivingMethodType.PHONE_TRANSFER.merchantLabel) {
-                "Pratique pour SBP"
+                "Pratique pour les virements par numéro"
             } else {
                 null
             }
@@ -148,7 +149,7 @@ data class MerchantReceivingMethodDisplay(
             return MerchantReceivingMethodDisplay(
                 title = type.merchantLabel,
                 subtitle = "$bankDisplayName · $maskedIdentifier",
-                helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour SBP" else null,
+                helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements par numéro" else null,
                 status = if (enabled) "Active" else "Désactivée",
                 actions = actions.ifEmpty { listOf("Modifier") }
             )
@@ -282,7 +283,7 @@ class AndroidMerchantUiCatalog {
                 "Carte bancaire",
                 "Recevez les paiements sur votre carte.",
                 "Numéro de téléphone",
-                "Pratique pour les virements via SBP.",
+                "Pratique pour les virements par numéro.",
                 selectedText
             )
         )

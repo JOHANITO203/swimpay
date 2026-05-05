@@ -57,7 +57,6 @@ class MainActivity : ComponentActivity() {
         "refreshBackendStatus",
         "AndroidOutboxStorageFactory",
         "Activer l’accès",
-        "Activer lâ€™accÃ¨s",
         "NotificationListenerSettingsAction.createIntent()",
         "chooseBanksScreen",
         "merchantCatalog",

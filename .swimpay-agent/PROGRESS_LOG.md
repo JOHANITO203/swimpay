@@ -1902,6 +1902,25 @@ Safety checks:
 - Installed and launched the debug APK on the connected Samsung device; UIAutomator showed the premium shell and typed bottom navigation.
 - No backend/API/contracts/workers/database/payment/review logic, real notification capture, SMS, Accessibility scraping, raw PII exposure or auto-confirmation behavior was changed.
 
+## 2026-05-05T00:00:00+03:00 - Sprint 7M Android Premium Sub-screen States
+
+- Created tasks 429 through 434 and updated the task queue to Sprint 7M.
+- Continued in multi-agent mode with read-only audits for receiving methods/banks, Receiver health/settings and Android copy guardrails.
+- Added typed premium receiving-method UI rows with route id, masked subtitle, helper, badge, status, enabled/recommended flags and allowed actions.
+- Added safe mutation states for receiving-method create, disable and mark-recommended flows; raw card/phone input is not retained in visible state after save.
+- Added dedicated premium bank-management states for the five V1 banks using only merchant-safe labels: `Activée`, `À configurer` and `En pause`.
+- Added dedicated premium Receiver-health state screen with Notification Access state, selected bank count, outbox/sync rows and a settings action.
+- Wired premium settings rows to typed sub-screen navigation helpers.
+- Removed merchant-facing `SBP` copy from premium receiving-method UI and added tests to keep it out of visible merchant copy.
+- Removed a stale mojibake marker from `MainActivity`.
+- Targeted Android JVM tests passed for premium navigation, runtime state contracts, visual architecture and merchant copy guardrails.
+- Created `.swimpay-agent/ANDROID_PREMIUM_SUBSCREEN_STATES_REPORT.md`.
+- Root validation passed: `npm run android:doctor`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` and Compose config.
+- Android validation passed: full debug JVM tests and debug APK build.
+- Real-device ADB install/launch passed on Samsung `SM_S916B` / `R5CWA0FEPZW`; UIAutomator confirmed the premium menu and `Banques` sub-screen.
+- Fresh Docker live checks remain blocked because `//./pipe/dockerDesktopLinuxEngine` is unavailable from this shell, so `compose ps` and `/api-health` could not be freshly verified.
+- Backend APIs, contracts, workers, database, payment/review logic, real notification capture, SMS, Accessibility scraping, raw PII exposure and auto-confirmation were not changed.
+
 ## 2026-05-05T06:30:00+03:00 - Sprint 7L Android Premium Screen State Rollout
 
 - Created tasks 423 through 428 and updated the task queue to Sprint 7L.

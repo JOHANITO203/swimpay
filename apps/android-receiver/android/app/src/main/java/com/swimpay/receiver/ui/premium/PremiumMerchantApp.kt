@@ -27,6 +27,18 @@ fun PremiumMerchantApp(
     var configurationState by remember { mutableStateOf<PremiumScreenState<PremiumConfigurationUiState>>(PremiumScreenState.loading()) }
     var receivingMethodsState by remember { mutableStateOf<PremiumScreenState<PremiumReceivingMethodsUiState>>(PremiumScreenState.loading()) }
     var ordersState by remember { mutableStateOf<PremiumScreenState<PremiumOrdersUiState>>(PremiumScreenState.loading()) }
+    var banksState by remember { mutableStateOf<PremiumScreenState<PremiumBanksUiState>>(PremiumScreenState.loading()) }
+    var receiverHealthState by remember { mutableStateOf<PremiumScreenState<PremiumReceiverHealthUiState>>(PremiumScreenState.loading()) }
+    val navigateFromMenu: (PremiumRoute) -> Unit = { target ->
+        route = when (target) {
+            PremiumRoute.ReceivingMethods -> PremiumNavigation.openReceivingMethods()
+            PremiumRoute.Banks -> PremiumNavigation.openBanks()
+            PremiumRoute.ReceiverHealth -> PremiumNavigation.openReceiverHealth()
+            PremiumRoute.ConnectedSite -> PremiumNavigation.openConnectedSite()
+            PremiumRoute.ConfigurationTest -> PremiumNavigation.openConfigurationTest()
+            else -> target
+        }
+    }
 
     LaunchedEffect(route) {
         when (val currentRoute = route) {
@@ -49,6 +61,12 @@ fun PremiumMerchantApp(
             PremiumRoute.ReceivingMethods -> {
                 receivingMethodsState = withContext(Dispatchers.IO) { runtime.loadReceivingMethods() }
             }
+            PremiumRoute.Banks -> {
+                banksState = withContext(Dispatchers.IO) { runtime.loadBanks() }
+            }
+            PremiumRoute.ReceiverHealth -> {
+                receiverHealthState = withContext(Dispatchers.IO) { runtime.loadReceiverHealth(notificationAccessEnabled) }
+            }
             PremiumRoute.ConnectedSite -> {
                 connectedSiteState = withContext(Dispatchers.IO) { runtime.loadConnectedSite() }
             }
@@ -59,8 +77,6 @@ fun PremiumMerchantApp(
             }
             PremiumRoute.Landing,
             PremiumRoute.Onboarding,
-            PremiumRoute.Banks,
-            PremiumRoute.ReceiverHealth,
             is PremiumRoute.OrderDetail -> Unit
         }
     }
@@ -103,7 +119,11 @@ fun PremiumMerchantApp(
                         }
                     )
                     PremiumMainTab.Orders -> PremiumOrdersScreen(ordersState)
-                    PremiumMainTab.Menu -> PremiumSettingsScreen(connectedSiteState, configurationState)
+                    PremiumMainTab.Menu -> PremiumSettingsScreen(
+                        connectedSite = connectedSiteState,
+                        configuration = configurationState,
+                        onNavigate = navigateFromMenu
+                    )
                 }
             }
         )
@@ -121,26 +141,12 @@ fun PremiumMerchantApp(
         PremiumRoute.Banks -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
-            content = {
-                PremiumStatePanel(
-                    PremiumScreenState.actionRequired<Unit>(
-                        title = "Banques",
-                        message = "La gestion des banques arrive dans la prochaine étape."
-                    )
-                )
-            }
+            content = { PremiumBanksStateScreen(banksState) }
         )
         PremiumRoute.ReceiverHealth -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
-            content = {
-                PremiumStatePanel(
-                    PremiumScreenState.actionRequired<Unit>(
-                        title = "Téléphone Receiver",
-                        message = "Vérifiez l'accès notifications avant de recevoir des paiements."
-                    )
-                )
-            }
+            content = { PremiumReceiverHealthStateScreen(receiverHealthState, onOpenNotificationSettings) }
         )
         is PremiumRoute.OrderDetail -> PremiumAppShell(
             selectedTab = PremiumMainTab.Orders,

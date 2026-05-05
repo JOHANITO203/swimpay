@@ -1,6 +1,34 @@
 # Next Action
 
-generated_at: 2026-05-04T23:58:46+03:00
+generated_at: 2026-05-05T00:00:00+03:00
+
+## Latest Sprint 7M Android Premium Sub-screen State Work
+
+Sprint 7M is implemented and code/device validated, with Docker live health blocked by the local Docker Desktop pipe.
+
+Completed:
+
+1. Created tasks 429 through 434 and updated the task queue.
+2. Used multi-agent read-only audits for receiving methods, bank management, Receiver health, settings navigation and copy guardrails.
+3. Added typed premium receiving-method rows and safe mutation state models.
+4. Added dedicated premium bank-management and Receiver-health state screens.
+5. Routed settings menu rows through explicit `PremiumNavigation` helper functions.
+6. Removed merchant-facing `SBP` receiving-method wording from premium UI copy.
+7. Added Android JVM tests for sub-screen states, safe copy, navigation helpers and forbidden wording.
+8. Created `.swimpay-agent/ANDROID_PREMIUM_SUBSCREEN_STATES_REPORT.md`.
+9. Validated android doctor, typecheck, lint, tests, build, Compose config, Android JVM tests and Android debug APK build.
+10. Installed and launched the APK on Samsung `SM_S916B` / `R5CWA0FEPZW`; UIAutomator confirmed the premium menu and `Banques` sub-screen.
+
+Next recommended action:
+
+Recover Docker Desktop live health validation, then run Sprint 7N: Android premium order-detail and deeper operational sub-states.
+
+Do not do:
+
+- Do not change backend APIs or payment/review logic during this frontend pass.
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not expose raw card, raw phone, raw notification text, package/cert, HMAC or webhook secrets.
 
 ## Latest Sprint 7J Cleanup
 

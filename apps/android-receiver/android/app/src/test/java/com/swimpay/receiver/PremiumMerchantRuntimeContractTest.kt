@@ -5,6 +5,10 @@ import com.swimpay.receiver.ui.premium.PremiumConfigurationUiState
 import com.swimpay.receiver.ui.premium.PremiumConnectedSiteUiState
 import com.swimpay.receiver.ui.premium.PremiumDashboardUiState
 import com.swimpay.receiver.ui.premium.PremiumPaymentDetailUiState
+import com.swimpay.receiver.ui.premium.PremiumBanksUiState
+import com.swimpay.receiver.ui.premium.PremiumReceiverHealthUiState
+import com.swimpay.receiver.ui.premium.PremiumReceivingMethodMutationUiState
+import com.swimpay.receiver.ui.premium.PremiumReceivingMethodsUiState
 import com.swimpay.receiver.ui.premium.PremiumReviewsUiState
 import com.swimpay.receiver.ui.premium.PremiumScreenState
 import org.junit.Assert.assertEquals
@@ -216,6 +220,129 @@ class PremiumMerchantRuntimeContractTest {
         assertFalse(stateText.contains("TANGO ALFA"))
         assertFalse(stateText.contains("official_bank_confirmation", ignoreCase = true))
         assertFalse(stateText.contains("webhook_secret", ignoreCase = true))
+    }
+
+    @Test
+    fun premiumRuntimeReceivingMethodsExposeTypedRowsAndSafeMutations() {
+        val transport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "routes": [
+                    {
+                      "route_id": "route_card",
+                      "bank_profile_id": "sber_ru",
+                      "rail_type": "card_transfer",
+                      "receiver_identifier_masked": "\u2022\u2022\u2022\u2022 4821",
+                      "enabled": true,
+                      "recommended": true
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                201,
+                """
+                {
+                  "route": {
+                    "route_id": "route_phone",
+                    "bank_profile_id": "tbank_ru",
+                    "rail_type": "phone_transfer",
+                    "receiver_identifier_masked": "+7 *** *** 45-67",
+                    "enabled": true,
+                    "recommended": false
+                  }
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "route": {
+                    "route_id": "route_card",
+                    "bank_profile_id": "sber_ru",
+                    "rail_type": "card_transfer",
+                    "receiver_identifier_masked": "\u2022\u2022\u2022\u2022 4821",
+                    "enabled": false,
+                    "recommended": true
+                  }
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "route": {
+                    "route_id": "route_phone",
+                    "bank_profile_id": "tbank_ru",
+                    "rail_type": "phone_transfer",
+                    "receiver_identifier_masked": "+7 *** *** 45-67",
+                    "enabled": true,
+                    "recommended": true
+                  }
+                }
+                """.trimIndent()
+            )
+        )
+        val runtime = runtimeWith(AuthenticatedMerchantSession.localDev("mch_demo"), transport)
+
+        val methods = runtime.loadReceivingMethods() as PremiumScreenState.Content<PremiumReceivingMethodsUiState>
+        val item = methods.value.items.single()
+        assertEquals("route_card", item.routeId)
+        assertEquals("Carte bancaire", item.title)
+        assertEquals("Sberbank · •••• 4821", item.subtitle)
+        assertTrue(item.enabled)
+        assertTrue(item.recommended)
+        assertTrue(item.actions.contains("Modifier"))
+        assertTrue(item.actions.contains("Désactiver"))
+
+        val created = runtime.createReceivingMethod(
+            MerchantReceivingMethodSubmission(
+                bankProfileId = "tbank_ru",
+                type = ReceivingMethodType.PHONE_TRANSFER,
+                rawIdentifier = "+79991234567",
+                routeCode = "tb_phone",
+                displayLabel = "T-Bank"
+            )
+        ) as PremiumScreenState.Content<PremiumReceivingMethodMutationUiState>
+        assertEquals("", created.value.clearedRawIdentifier)
+        assertEquals("route_phone", created.value.item?.routeId)
+        assertFalse(created.value.visibleTexts().joinToString(" ").contains("+79991234567"))
+        assertFalse(created.value.visibleTexts().joinToString(" ").contains("SBP", ignoreCase = true))
+
+        val disabled = runtime.disableReceivingMethod("route_card") as PremiumScreenState.Content<PremiumReceivingMethodMutationUiState>
+        assertEquals("Désactivée", disabled.value.item?.status)
+        val recommended = runtime.markReceivingMethodRecommended("route_phone") as PremiumScreenState.Content<PremiumReceivingMethodMutationUiState>
+        assertTrue(recommended.value.item?.recommended == true)
+
+        assertEquals("/v1/merchant/receiving-routes", transport.requests[0].path)
+        assertEquals("POST", transport.requests[1].method)
+        assertEquals("/v1/merchant/receiving-routes/route_card", transport.requests[2].path)
+        assertEquals("/v1/merchant/receiving-routes/route_phone", transport.requests[3].path)
+    }
+
+    @Test
+    fun premiumRuntimeProvidesBankAndReceiverHealthStatesWithoutBackendJargon() {
+        val runtime = PremiumMerchantRuntime.disconnected()
+
+        val banks = runtime.loadBanks() as PremiumScreenState.Content<PremiumBanksUiState>
+        assertEquals(listOf("Sberbank", "T-Bank", "VTB", "Alfa-Bank", "Gazprombank"), banks.value.items.map { it.displayName })
+        assertTrue(banks.value.items.all { it.status in setOf("Activée", "À configurer", "En pause") })
+
+        val health = runtime.loadReceiverHealth(notificationAccessEnabled = false) as PremiumScreenState.Content<PremiumReceiverHealthUiState>
+        assertEquals("Action nécessaire", health.value.statusTitle)
+        assertTrue(health.value.rows.any { it.first == "Accès notifications" && it.second == "Action requise" })
+        assertTrue(health.value.rows.any { it.first == "Banques surveillées" })
+
+        val visible = (banks.value.visibleTexts() + health.value.visibleTexts()).joinToString(" ")
+        assertFalse(visible.contains("package", ignoreCase = true))
+        assertFalse(visible.contains("cert", ignoreCase = true))
+        assertFalse(visible.contains("official_bank_confirmation", ignoreCase = true))
+        assertFalse(visible.contains("SBP", ignoreCase = true))
     }
 
     @Test

@@ -33,6 +33,16 @@ object PremiumNavigation {
     fun openReview(reviewId: String): PremiumRoute = PremiumRoute.PaymentDetail(reviewId)
 
     fun backFromPaymentDetail(): PremiumRoute = PremiumRoute.Main(PremiumMainTab.Reviews)
+
+    fun openReceivingMethods(): PremiumRoute = PremiumRoute.ReceivingMethods
+
+    fun openBanks(): PremiumRoute = PremiumRoute.Banks
+
+    fun openReceiverHealth(): PremiumRoute = PremiumRoute.ReceiverHealth
+
+    fun openConnectedSite(): PremiumRoute = PremiumRoute.ConnectedSite
+
+    fun openConfigurationTest(): PremiumRoute = PremiumRoute.ConfigurationTest
 }
 
 sealed interface PremiumScreenState<out T> {

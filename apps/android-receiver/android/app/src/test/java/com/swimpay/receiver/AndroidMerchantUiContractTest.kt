@@ -48,7 +48,7 @@ class AndroidMerchantUiContractTest {
         assertTrue(method.visibleTexts().contains("Carte bancaire"))
         assertTrue(method.visibleTexts().contains("Recevez les paiements sur votre carte."))
         assertTrue(method.visibleTexts().contains("Numéro de téléphone"))
-        assertTrue(method.visibleTexts().contains("Pratique pour les virements via SBP."))
+        assertTrue(method.visibleTexts().contains("Pratique pour les virements par numéro."))
         assertEquals("Ajouter", method.primaryAction)
 
         val testScreen = catalog.configurationTestScreen(MerchantConfigurationChecklist.allReady())
@@ -71,6 +71,7 @@ class AndroidMerchantUiContractTest {
         assertFalse(merchantText.contains("confirmera automatiquement", ignoreCase = true))
         assertFalse(merchantText.contains("bank_confirmed", ignoreCase = true))
         assertFalse(merchantText.contains("psp_confirmed", ignoreCase = true))
+        assertFalse(merchantText.contains("SBP", ignoreCase = true))
     }
 
     @Test
