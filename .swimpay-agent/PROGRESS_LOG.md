@@ -2134,5 +2134,8 @@ Safety checks:
 - Added `tests/sdk-android-product-truth.test.ts`.
 - Guardrails prove the merchant Android helper has no Receiver imports, NotificationListener usage, SMS, Accessibility, `QUERY_ALL_PACKAGES`, broad app enumeration, bank package probing, secret key usage, webhook handling or local payment fulfillment.
 - Validation passed: targeted SDK Android guardrail test, android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
-- Docker live checks were blocked by local Docker Desktop pipe availability; `/api-health` was not reachable from this shell.
+- Docker live checks initially were blocked by local Docker Desktop pipe availability.
+- After Docker was restarted, `docker version`, `docker compose version`, Compose `up -d`, Compose `ps` and `/api-health` passed.
+- Compose shows Postgres, Valkey, NATS, API, web, signal worker, job worker and proxy healthy.
+- `/api-health` returned `200 OK` with database, NATS and Valkey `ok`.
 - The SwimPay Receiver app and payment runtime were not modified.

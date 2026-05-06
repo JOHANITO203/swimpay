@@ -157,13 +157,13 @@ Not run:
 
 - Android Receiver Gradle build/test, because Sprint 9C did not modify the Receiver app or Android Gradle package.
 
-Blocked live environment check:
+Live environment revalidation:
 
-- `docker version` could reach the Docker CLI but not the Docker Desktop engine pipe.
-- `docker compose --env-file .env.example -f infra/docker-compose.yml ps` failed with missing `//./pipe/dockerDesktopLinuxEngine`.
-- `Invoke-WebRequest -UseBasicParsing http://localhost:8080/api-health` could not connect.
-
-This is a local Docker Desktop availability issue, not an SDK code failure.
+- `docker version` passed after Docker Desktop was restarted.
+- `docker compose version` passed.
+- `docker compose --env-file .env.example -f infra/docker-compose.yml up -d` started the local stack.
+- `docker compose --env-file .env.example -f infra/docker-compose.yml ps` shows Postgres, Valkey, NATS, API, web, signal worker, job worker and proxy healthy.
+- `Invoke-WebRequest -UseBasicParsing http://localhost:8080/api-health` returned `200 OK` with database, NATS and Valkey `ok`.
 
 ## Remaining Gaps
 
