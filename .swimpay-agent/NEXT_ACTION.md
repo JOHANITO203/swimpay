@@ -45,6 +45,30 @@ Do not do:
 - Do not add public fulfillment webhooks for internal signal/review events.
 - Do not enable auto-confirmation or claim official bank confirmation.
 
+## Latest Sprint 9F Developer Integration Wizard Live UX Wiring
+
+Completed:
+
+1. Created Sprint 9F task files 512 through 518 and updated the task queue.
+2. Added a server-side `MerchantIntegrationClient` seam to the web app.
+3. Wired `/merchant/developer-integration` to Sprint 9E live lifecycle endpoints.
+4. Added form actions for key generation/rotation, webhook secret rotation, webhook URL save, webhook test and delivery retry.
+5. Rendered live Merchant ID, public key, masked secrets, webhook URL/status, public events and delivery history.
+6. Kept one-time raw secrets limited to immediate action responses.
+7. Updated web guardrail tests and product-truth docs tests.
+
+Next recommended action:
+
+Run Sprint 9G for production merchant session/auth hardening and final browser QA of the live Developer Integration Wizard. Replace local/dev bearer assumptions with the intended authenticated merchant session boundary.
+
+Do not do:
+
+- Do not put secret keys in browser or Android snippets.
+- Do not expose webhook secrets after the show-once lifecycle response.
+- Do not expose raw webhook payloads in delivery history.
+- Do not add public fulfillment webhooks for internal signal/review events.
+- Do not enable auto-confirmation or claim official bank confirmation.
+
 Do not do:
 
 - Do not put secret keys in browser or Android snippets.

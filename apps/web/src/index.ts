@@ -101,6 +101,7 @@ export interface WebServerOptions {
   adminEvidenceClient?: AdminEvidenceClient | undefined;
   adminIntelligenceClient?: AdminIntelligenceClient | undefined;
   merchantRouteAdminClient?: MerchantRouteAdminClient | undefined;
+  merchantIntegrationClient?: MerchantIntegrationClient | null | undefined;
   recipient?: CheckoutRecipient | undefined;
 }
 
@@ -229,6 +230,67 @@ export interface MerchantRouteAdminClient {
   updateRoute(routeId: string, patch: Record<string, unknown>): Promise<MerchantRouteAdminRoute>;
 }
 
+export interface MerchantIntegrationClient {
+  getIntegration(): Promise<MerchantIntegrationPayload>;
+  ensureKeys(): Promise<MerchantIntegrationPayload>;
+  rotateKeys(): Promise<MerchantIntegrationPayload>;
+  rotateWebhookSecret(): Promise<MerchantIntegrationPayload>;
+  updateWebhookUrl(webhookUrl: string): Promise<MerchantIntegrationPayload>;
+  testWebhook(): Promise<MerchantWebhookTestPayload>;
+  listDeliveries(): Promise<MerchantWebhookDeliveryPayload[]>;
+  retryDelivery(deliveryId: string): Promise<MerchantWebhookRetryPayload>;
+}
+
+export interface MerchantIntegrationPayload {
+  merchant_id: string;
+  public_key: string;
+  secret_key_masked?: string | null | undefined;
+  secret_key_once?: string | undefined;
+  secret_key_show_once?: boolean | undefined;
+  secret_key_created_at?: string | null | undefined;
+  secret_key_last_rotated_at?: string | null | undefined;
+  webhook_secret_masked?: string | null | undefined;
+  webhook_secret_once?: string | undefined;
+  webhook_secret_show_once?: boolean | undefined;
+  webhook_secret_created_at?: string | null | undefined;
+  webhook_secret_last_rotated_at?: string | null | undefined;
+  webhook_url?: string | null | undefined;
+  webhook_status?: 'not_configured' | 'active' | 'problem' | string | undefined;
+  integration_type?: 'web' | 'android' | 'both' | string | undefined;
+  public_webhook_events?: string[] | undefined;
+  payment_confirmed_after_manual_confirmation?: boolean | undefined;
+  official_bank_confirmation?: false | undefined;
+}
+
+export interface MerchantWebhookDeliveryPayload {
+  event_id: string;
+  event_type: string;
+  delivery_id: string;
+  status: string;
+  attempts: number;
+  last_http_status?: number | null | undefined;
+  created_at: string;
+  delivered_at?: string | null | undefined;
+  next_retry_at?: string | null | undefined;
+  safe_error_summary?: string | null | undefined;
+}
+
+export interface MerchantWebhookTestPayload {
+  status: 'test_queued' | 'action_required' | string;
+  delivery_id?: string | undefined;
+  event_id?: string | undefined;
+  safe_status: string;
+  test_only: true;
+  triggers_fulfillment: false;
+  official_bank_confirmation: false;
+}
+
+export interface MerchantWebhookRetryPayload {
+  status: 'retry_queued' | 'not_found' | 'not_retryable' | string;
+  delivery_id?: string | undefined;
+  replay_of_delivery_id?: string | undefined;
+}
+
 export interface CheckoutRecipient {
   name: string;
   bank: string;
@@ -282,12 +344,18 @@ const defaultRecipient: CheckoutRecipient = {
 
 export function buildWebServer(options: WebServerOptions): FastifyInstance {
   const server = Fastify({ logger: true });
+  server.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_request, body, done) => {
+    done(null, Object.fromEntries(new URLSearchParams(String(body))));
+  });
   const apiBaseUrl = process.env.API_BASE_URL ?? 'http://localhost:3000';
   const checkoutMerchantId = process.env.CHECKOUT_MERCHANT_ID ?? 'mch_dev';
   const checkoutSessionProvider = options.checkoutSessionProvider ?? new ApiCheckoutSessionProvider(apiBaseUrl, checkoutMerchantId);
   const adminEvidenceClient = options.adminEvidenceClient ?? new ApiAdminEvidenceClient(apiBaseUrl, process.env.SWIMPAY_ADMIN_TOKEN ?? 'change_me');
   const adminIntelligenceClient = options.adminIntelligenceClient ?? new ApiAdminIntelligenceClient(apiBaseUrl, process.env.SWIMPAY_ADMIN_TOKEN ?? 'change_me');
   const merchantRouteAdminClient = options.merchantRouteAdminClient ?? new ApiMerchantRouteAdminClient(apiBaseUrl, checkoutMerchantId);
+  const merchantIntegrationClient = options.merchantIntegrationClient === undefined
+    ? createDefaultMerchantIntegrationClient(apiBaseUrl, checkoutMerchantId, options.environment)
+    : options.merchantIntegrationClient;
 
   server.get('/', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
@@ -379,7 +447,52 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
 
   server.get('/merchant/developer-integration', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
-    return renderDeveloperIntegrationWizardScreen();
+    return renderMerchantIntegrationWizard(merchantIntegrationClient);
+  });
+
+  server.post('/merchant/developer-integration/keys', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderMerchantIntegrationAction(merchantIntegrationClient, (client) => client.ensureKeys(), 'Clé secrète créée.');
+  });
+
+  server.post('/merchant/developer-integration/keys/rotate', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderMerchantIntegrationAction(merchantIntegrationClient, (client) => client.rotateKeys(), 'Clé secrète renouvelée.');
+  });
+
+  server.post('/merchant/developer-integration/webhook-secret/rotate', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderMerchantIntegrationAction(merchantIntegrationClient, (client) => client.rotateWebhookSecret(), 'Secret webhook renouvelé.');
+  });
+
+  server.post('/merchant/developer-integration/webhook-url', async (request, reply) => {
+    const body = (request.body ?? {}) as { webhook_url?: unknown };
+    const webhookUrl = typeof body.webhook_url === 'string' ? body.webhook_url : '';
+    reply.type('text/html; charset=utf-8');
+    return renderMerchantIntegrationAction(
+      merchantIntegrationClient,
+      (client) => client.updateWebhookUrl(webhookUrl),
+      'URL webhook enregistrée.'
+    );
+  });
+
+  server.post('/merchant/developer-integration/test-webhook', async (_request, reply) => {
+    if (!merchantIntegrationClient) {
+      return reply.status(303).redirect('/merchant/developer-integration?result=unavailable');
+    }
+    await merchantIntegrationClient.testWebhook().catch(() => null);
+    return reply.status(303).redirect('/merchant/developer-integration?result=test-webhook');
+  });
+
+  server.post('/merchant/developer-integration/webhook-deliveries/:deliveryId/retry', async (request, reply) => {
+    if (!merchantIntegrationClient) {
+      return reply.status(303).redirect('/merchant/developer-integration?result=unavailable');
+    }
+    const deliveryId = (request.params as { deliveryId?: string }).deliveryId;
+    if (deliveryId) {
+      await merchantIntegrationClient.retryDelivery(deliveryId).catch(() => null);
+    }
+    return reply.status(303).redirect('/merchant/developer-integration?result=retry');
   });
 
   server.get('/admin/evidence-review', async (_request, reply) => {
@@ -513,6 +626,45 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   return server;
 }
 
+async function renderMerchantIntegrationWizard(client: MerchantIntegrationClient | null): Promise<string> {
+  if (!client) {
+    return renderDeveloperIntegrationWizardScreen({ unavailable: true, integration: null, deliveries: [] });
+  }
+  try {
+    const [integration, deliveries] = await Promise.all([client.getIntegration(), client.listDeliveries()]);
+    return renderDeveloperIntegrationWizardScreen({ integration, deliveries });
+  } catch {
+    return renderDeveloperIntegrationWizardScreen({ unavailable: true, integration: null, deliveries: [] });
+  }
+}
+
+async function renderMerchantIntegrationAction(
+  client: MerchantIntegrationClient | null,
+  action: (client: MerchantIntegrationClient) => Promise<MerchantIntegrationPayload>,
+  actionMessage: string
+): Promise<string> {
+  if (!client) {
+    return renderDeveloperIntegrationWizardScreen({
+      unavailable: true,
+      integration: null,
+      deliveries: [],
+      actionMessage: 'Service momentanément indisponible.'
+    });
+  }
+  try {
+    const integration = await action(client);
+    const deliveries = await client.listDeliveries().catch(() => []);
+    return renderDeveloperIntegrationWizardScreen({ integration, deliveries, actionMessage });
+  } catch {
+    return renderDeveloperIntegrationWizardScreen({
+      unavailable: true,
+      integration: null,
+      deliveries: [],
+      actionMessage: 'Action non enregistrée. Réessayez plus tard.'
+    });
+  }
+}
+
 // Logic & Providers
 
 export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
@@ -541,6 +693,78 @@ export class ApiMerchantRouteAdminClient implements MerchantRouteAdminClient {
   async listRoutes() { const r = await fetch(this.url + '/v1/merchant/receiving-routes', { headers: { 'Authorization': `Bearer ${this.mchId}` } }); return (await r.json()).routes || []; }
   async createRoute(input: MerchantRoutePayload) { return (await fetch(this.url + '/v1/merchant/receiving-routes', { method: 'POST', body: JSON.stringify(input) })).json(); }
   async updateRoute(id: string, patch: MerchantRoutePayload) { return (await fetch(this.url + `/v1/merchant/receiving-routes/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).json(); }
+}
+
+export class ApiMerchantIntegrationClient implements MerchantIntegrationClient {
+  constructor(private url: string, private bearerToken: string) {}
+
+  async getIntegration(): Promise<MerchantIntegrationPayload> {
+    return this.request<MerchantIntegrationPayload>('/v1/merchant/integration');
+  }
+
+  async ensureKeys(): Promise<MerchantIntegrationPayload> {
+    return this.request<MerchantIntegrationPayload>('/v1/merchant/integration/keys', { method: 'POST' });
+  }
+
+  async rotateKeys(): Promise<MerchantIntegrationPayload> {
+    return this.request<MerchantIntegrationPayload>('/v1/merchant/integration/keys/rotate', { method: 'POST' });
+  }
+
+  async rotateWebhookSecret(): Promise<MerchantIntegrationPayload> {
+    return this.request<MerchantIntegrationPayload>('/v1/merchant/integration/webhook-secret/rotate', { method: 'POST' });
+  }
+
+  async updateWebhookUrl(webhookUrl: string): Promise<MerchantIntegrationPayload> {
+    return this.request<MerchantIntegrationPayload>('/v1/merchant/integration/webhook-url', {
+      method: 'PUT',
+      body: JSON.stringify({ webhook_url: webhookUrl })
+    });
+  }
+
+  async testWebhook(): Promise<MerchantWebhookTestPayload> {
+    return this.request<MerchantWebhookTestPayload>('/v1/merchant/integration/test-webhook', { method: 'POST' });
+  }
+
+  async listDeliveries(): Promise<MerchantWebhookDeliveryPayload[]> {
+    const response = await this.request<{ deliveries?: MerchantWebhookDeliveryPayload[] }>('/v1/merchant/integration/webhook-deliveries');
+    return response.deliveries ?? [];
+  }
+
+  async retryDelivery(deliveryId: string): Promise<MerchantWebhookRetryPayload> {
+    return this.request<MerchantWebhookRetryPayload>(
+      `/v1/merchant/integration/webhook-deliveries/${encodeURIComponent(deliveryId)}/retry`,
+      { method: 'POST' }
+    );
+  }
+
+  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const headers = new Headers(init.headers);
+    headers.set('Authorization', `Bearer ${this.bearerToken}`);
+    headers.set('Accept', 'application/json');
+    if (init.body) {
+      headers.set('Content-Type', 'application/json');
+    }
+    const response = await fetch(this.url + path, { ...init, headers });
+    if (!response.ok) {
+      throw new Error(`Merchant integration API returned ${response.status}`);
+    }
+    return response.json() as Promise<T>;
+  }
+}
+
+function createDefaultMerchantIntegrationClient(
+  apiBaseUrl: string,
+  checkoutMerchantId: string,
+  environment: string
+): MerchantIntegrationClient | null {
+  const explicitToken = process.env.MERCHANT_INTEGRATION_BEARER_TOKEN;
+  if (explicitToken) {
+    return new ApiMerchantIntegrationClient(apiBaseUrl, explicitToken);
+  }
+  if (environment === 'production') {
+    return null;
+  }
+  return new ApiMerchantIntegrationClient(apiBaseUrl, `test_${checkoutMerchantId}`);
 }
 
 export class ApiAdminEvidenceClient implements AdminEvidenceClient {

@@ -1,5 +1,10 @@
 # Blockers
 
+## Sprint 9F Developer Integration Wizard Live UX Wiring
+
+- No critical blocker.
+- Remaining limitation: production merchant session/auth hardening is still needed; the web live client uses the current server-side bearer seam.
+
 ## Sprint 9E Developer Integration Backend Lifecycle
 
 - No critical product blocker introduced.

@@ -16,7 +16,7 @@ import {
   SwimPayBrand,
   escapeHtml
 } from '../ui/Components.js';
-import type { MerchantRouteAdminRoute } from '../index.js';
+import type { MerchantIntegrationPayload, MerchantRouteAdminRoute, MerchantWebhookDeliveryPayload } from '../index.js';
 
 const bankOptions = [
   ['Sberbank', 'S', 'Activée'],
@@ -387,7 +387,107 @@ export function renderConnectedSitePage(): string {
   });
 }
 
-export function renderDeveloperIntegrationWizardPage(): string {
+export function renderDeveloperIntegrationWizardPage(params: {
+  integration?: MerchantIntegrationPayload | null;
+  deliveries?: MerchantWebhookDeliveryPayload[];
+  unavailable?: boolean;
+  actionMessage?: string;
+} = {}): string {
+  const integration = params.integration ?? null;
+  const deliveries = params.deliveries ?? [];
+  const webhookUrl = integration?.webhook_url ?? '';
+  const webhookStatus = toWebhookStatusLabel(integration?.webhook_status);
+  const secretKeyMasked = integration?.secret_key_masked ?? 'Non créée';
+  const webhookSecretMasked = integration?.webhook_secret_masked ?? 'Non créé';
+  const publicEvents = integration?.public_webhook_events ?? ['payment.confirmed', 'payment.rejected', 'payment.expired'];
+  return AppShell({
+    title: 'Intégration développeur',
+    children: `<section class="screen merchant-screen"><div class="screen-content">
+      ${SwimPayBrand()}
+      ${PageHeader({
+        title: 'Site ou application connecté',
+        subtitle: 'Connectez SwimPay à votre site ou votre application pour recevoir les mises à jour de paiement.'
+      })}
+      ${params.unavailable ? StatusPanel({
+        title: 'Connexion en attente',
+        text: 'Les informations développeur seront synchronisées dès que SwimPay sera connecté.',
+        variant: 'warning',
+        icon: '!'
+      }) : ''}
+      ${params.actionMessage ? StatusPanel({ title: 'Mise à jour', text: params.actionMessage, variant: 'info', icon: 'i' }) : ''}
+      ${integration?.secret_key_once ? renderOneTimeSecret('Clé secrète à copier maintenant', integration.secret_key_once) : ''}
+      ${integration?.webhook_secret_once ? renderOneTimeSecret('Secret webhook à copier maintenant', integration.webhook_secret_once) : ''}
+      <div style="margin-bottom:22px;">${Button({ text: 'Configurer l’intégration', variant: 'primary', class: 'btn-wide' })}</div>
+      ${Card({
+        children: `<h2 class="section-title" style="margin-top:0;">Quel type de projet utilisez-vous ?</h2>
+          <div class="two-col">
+            ${OptionButton({ title: 'Site web', subtitle: 'Pour une boutique ou un checkout web.', icon: 'W' })}
+            ${OptionButton({ title: 'Application Android', subtitle: 'Pour une application mobile ou un APK.', icon: 'A' })}
+          </div>
+          <p class="muted" style="margin:18px 0 0;">V1 prend en charge les intégrations Web et Android.</p>`
+      })}
+      ${Card({
+        children: `<h2 class="section-title" style="margin-top:0;">Clés SwimPay</h2>
+          ${developerField('Merchant ID', integration?.merchant_id ?? 'Connexion en attente')}
+          ${developerField('Clé publique', integration?.public_key ?? 'Connexion en attente')}
+          ${developerField('Clé secrète', secretKeyMasked)}
+          ${developerField('Secret webhook', webhookSecretMasked)}
+          <div class="cluster" style="margin:18px 0;">
+            <form method="post" action="/merchant/developer-integration/keys">${Button({ text: secretKeyMasked === 'Non créée' ? 'Créer la clé' : 'Voir la clé masquée', variant: 'secondary', class: 'btn-small', type: 'submit' })}</form>
+            <form method="post" action="/merchant/developer-integration/keys/rotate">${Button({ text: 'Renouveler la clé', variant: 'secondary', class: 'btn-small', type: 'submit' })}</form>
+            <form method="post" action="/merchant/developer-integration/webhook-secret/rotate">${Button({ text: 'Renouveler le secret webhook', variant: 'secondary', class: 'btn-small', type: 'submit' })}</form>
+          </div>
+          <p class="safe-note" style="margin-top:18px;">${IconBubble({ icon: 'S', tone: 'muted' })}<span>Gardez vos clés secrètes côté serveur.</span></p>
+          <p class="safe-note" style="margin-top:10px;">${IconBubble({ icon: 'A', tone: 'warning' })}<span>Ne placez jamais la clé secrète dans une application Android.</span></p>`
+      })}
+      ${Card({
+        children: `<h2 class="section-title" style="margin-top:0;">Webhook</h2>
+          <form method="post" action="/merchant/developer-integration/webhook-url" class="route-create-form">
+            <label class="muted" for="webhook_url">Webhook URL</label>
+            <input id="webhook_url" name="webhook_url" value="${escapeHtml(webhookUrl)}" placeholder="https://merchant.example/webhooks/swimpay" autocomplete="off">
+            <div style="margin-top:12px;">${Button({ text: 'Enregistrer', variant: 'secondary', class: 'btn-small', type: 'submit' })}</div>
+          </form>
+          ${developerField('Status', webhookStatus)}
+          ${developerField('Événements publics', publicEvents.join(', '))}
+          <div class="cluster" style="margin:18px 0;">
+            <form method="post" action="/merchant/developer-integration/test-webhook">${Button({ text: 'Tester la connexion', variant: 'primary', class: 'btn-small', type: 'submit' })}</form>
+          </div>
+          <div class="cluster">
+            ${StatusChip({ text: 'Connexion réussie', variant: 'success' })}
+            ${StatusChip({ text: 'Action nécessaire', variant: 'warning' })}
+            ${StatusChip({ text: 'Signature non vérifiée', variant: 'danger' })}
+            ${StatusChip({ text: 'Endpoint indisponible', variant: 'muted' })}
+          </div>
+          <p class="muted" style="margin-top:16px;">Le test est envoyé par SwimPay avec un marqueur de test et ne déclenche aucun traitement de commande.</p>`
+      })}
+      ${renderWebIntegrationSnippets()}
+      ${renderAndroidIntegrationSnippets()}
+      ${renderWebhookDeliveryHistory(deliveries)}
+      <p class="safe-note" style="margin-top:26px;">${IconBubble({ icon: 'V', tone: 'teal' })}<span>payment.confirmed est envoyé après manual confirmation du marchand. official_bank_confirmation=false.</span></p>
+      ${BottomNav({ active: 'more' })}
+    </div></section>`
+  });
+}
+
+function renderDeveloperIntegrationWizardPageStatic(params: {
+  integration?: MerchantIntegrationPayload | null;
+  deliveries?: MerchantWebhookDeliveryPayload[];
+  unavailable?: boolean;
+  actionMessage?: string;
+} = {}): string {
+  const integration = params.integration ?? null;
+  const deliveries = params.deliveries ?? [];
+  const webhookUrl = integration?.webhook_url ?? '';
+  const webhookStatus = toWebhookStatusLabel(integration?.webhook_status);
+  const secretKeyMasked = integration?.secret_key_masked ?? 'Non créée';
+  const webhookSecretMasked = integration?.webhook_secret_masked ?? 'Non créé';
+  const publicEvents = integration?.public_webhook_events ?? ['payment.confirmed', 'payment.rejected', 'payment.expired'];
+  void deliveries;
+  void webhookUrl;
+  void webhookStatus;
+  void secretKeyMasked;
+  void webhookSecretMasked;
+  void publicEvents;
   return AppShell({
     title: 'Intégration développeur',
     children: `<section class="screen merchant-screen"><div class="screen-content">
@@ -439,6 +539,8 @@ export function renderDeveloperIntegrationWizardPage(): string {
     </div></section>`
   });
 }
+
+void renderDeveloperIntegrationWizardPageStatic;
 
 export function renderReceiverPhonePage(): string {
   return AppShell({
@@ -535,6 +637,29 @@ function developerField(label: string, value: string): string {
   </div>`;
 }
 
+function renderOneTimeSecret(title: string, secret: string): string {
+  return StatusPanel({
+    title,
+    text: `Copiez cette valeur maintenant. Elle ne sera plus affichée ensuite. ${secret}`,
+    variant: 'warning',
+    icon: '!'
+  });
+}
+
+function toWebhookStatusLabel(status: string | null | undefined): string {
+  if (status === 'active') return 'Connexion active';
+  if (status === 'problem') return 'Action nécessaire';
+  if (status === 'not_configured') return 'À configurer';
+  return 'Connexion en attente';
+}
+
+function toDeliveryStatusLabel(status: string): string {
+  if (status === 'delivered' || status === 'sent') return 'Envoyé';
+  if (status === 'pending') return 'En attente';
+  if (status === 'failed' || status === 'dead') return 'Action nécessaire';
+  return status;
+}
+
 function renderSnippet(title: string, code: string): string {
   return `<div style="margin-top:18px;">
     <h3 style="font-size:18px;color:var(--color-navy);margin:0 0 10px;">${escapeHtml(title)}</h3>
@@ -625,7 +750,28 @@ override fun onNewIntent(intent: Intent) {
   });
 }
 
-function renderWebhookDeliveryHistory(): string {
+function renderWebhookDeliveryHistory(deliveries: MerchantWebhookDeliveryPayload[] = []): string {
+  if (deliveries.length > 0) {
+    return Card({
+      children: `<h2 class="section-title" style="margin-top:0;">Derniers événements</h2>
+        <div class="stack">
+          ${deliveries.map((delivery) => `<div class="split" style="gap:18px;border-bottom:1px solid rgba(225,232,237,0.75);padding:12px 0;">
+            <div>
+              <strong style="color:var(--color-navy);">${escapeHtml(delivery.event_type)}</strong>
+              <p class="muted" style="margin:4px 0 0;">Créé ${escapeHtml(delivery.created_at)} · Livré ${escapeHtml(delivery.delivered_at ?? 'En attente')}</p>
+              ${delivery.safe_error_summary ? `<p class="muted" style="margin:4px 0 0;">${escapeHtml(delivery.safe_error_summary)}</p>` : ''}
+            </div>
+            <div style="text-align:right;">
+              ${StatusChip({ text: toDeliveryStatusLabel(delivery.status), variant: delivery.status === 'delivered' || delivery.status === 'sent' ? 'success' : 'warning' })}
+              <p class="muted" style="margin:6px 0 0;">${escapeHtml(String(delivery.attempts))} tentative(s) · HTTP ${escapeHtml(String(delivery.last_http_status ?? '—'))}</p>
+              <form method="post" action="/merchant/developer-integration/webhook-deliveries/${escapeHtml(delivery.delivery_id)}/retry" style="margin-top:8px;">${Button({ text: 'Réessayer', variant: 'secondary', class: 'btn-small', type: 'submit' })}</form>
+              <p class="muted" style="margin:6px 0 0;">event id: ${escapeHtml(delivery.event_id)}</p>
+            </div>
+          </div>`).join('')}
+        </div>`
+    });
+  }
+
   const rows = [
     ['payment.confirmed', 'Envoyé', 'Aujourd’hui, 14:20', 'Aujourd’hui, 14:20', '1', '200'],
     ['payment.rejected', 'Envoyé', 'Aujourd’hui, 13:10', 'Aujourd’hui, 13:11', '1', '200'],

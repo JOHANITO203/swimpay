@@ -6,6 +6,16 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `512_developer_wizard_live_inventory` - status: completed - source: `tasks/512_developer_wizard_live_inventory.md`
+- [x] `513_merchant_integration_web_client` - status: completed - source: `tasks/513_merchant_integration_web_client.md`
+- [x] `514_developer_wizard_live_credentials` - status: completed - source: `tasks/514_developer_wizard_live_credentials.md`
+- [x] `515_developer_wizard_webhook_actions` - status: completed - source: `tasks/515_developer_wizard_webhook_actions.md`
+- [x] `516_developer_wizard_live_guardrails` - status: completed - source: `tasks/516_developer_wizard_live_guardrails.md`
+- [x] `517_developer_wizard_live_docs` - status: completed - source: `tasks/517_developer_wizard_live_docs.md`
+- [x] `518_developer_wizard_live_closeout` - status: completed - source: `tasks/518_developer_wizard_live_closeout.md`
+
+## Previous Queue
+
 - [x] `502_developer_integration_backend_inventory` - status: completed - source: `tasks/502_developer_integration_backend_inventory.md`
 - [x] `503_merchant_integration_credentials_model` - status: completed - source: `tasks/503_merchant_integration_credentials_model.md`
 - [x] `504_api_key_public_key_lifecycle` - status: completed - source: `tasks/504_api_key_public_key_lifecycle.md`
@@ -16,8 +26,6 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `509_wizard_backend_wiring` - status: completed - source: `tasks/509_wizard_backend_wiring.md`
 - [x] `510_developer_backend_guardrails` - status: completed - source: `tasks/510_developer_backend_guardrails.md`
 - [x] `511_developer_backend_lifecycle_closeout` - status: completed - source: `tasks/511_developer_backend_lifecycle_closeout.md`
-
-## Previous Queue
 
 - [x] `494_developer_wizard_inventory` - status: completed - source: `tasks/494_developer_wizard_inventory.md`
 - [x] `495_integration_type_selector` - status: completed - source: `tasks/495_integration_type_selector.md`

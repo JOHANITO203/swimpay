@@ -18,9 +18,9 @@ confirmation system.
 5. Buyer optionally selects a payer bank launcher for convenience.
 6. Buyer manually pays through their own bank app or manual transfer flow.
 7. SwimPay searches for a merchant-side notification signal.
-8. A detected signal routes to review or controlled release according to policy.
-9. Merchant receives signed webhook events and releases fulfillment only after
-   the configured review/release step.
+8. A detected signal routes to merchant review when required.
+9. Merchant receives signed public webhook events only after manual confirmation
+   or terminal rejection/expiry.
 
 ## Receiver Bank vs Payer Bank Launcher
 
@@ -52,13 +52,21 @@ The expected developer flow is:
 ```text
 create order
   -> redirect buyer to checkout_url
-  -> receive payment.signal_detected webhook when a notification signal is observed
-  -> receive payment.needs_review webhook when review is required
-  -> receive payment.confirmed webhook only after manual review or controlled release
+  -> SwimPay may create an internal merchant review when a matching notification signal is observed
+  -> receive payment.confirmed webhook only after merchant manual confirmation
+  -> or receive payment.rejected / payment.expired terminal events
 ```
 
 During private beta, real-bank paths are review-first. A buyer clicking `I paid`
 is only a buyer claim and must not be treated as payment confirmation.
+
+Public V1 fulfillment webhooks are limited to:
+
+- `payment.confirmed`
+- `payment.rejected`
+- `payment.expired`
+
+Internal signal and review events are not public fulfillment webhooks.
 
 ## Public Webhook Disclosure
 
@@ -68,48 +76,6 @@ Every public payment event must include the notification-signal disclosure:
 {
   "confirmation_type": "notification_signal",
   "official_bank_confirmation": false
-}
-```
-
-Example `payment.signal_detected` payload:
-
-```json
-{
-  "event_type": "payment.signal_detected",
-  "order_id": "ord_test_123",
-  "payment_session_id": "ps_test_123",
-  "amount_minor": 13700,
-  "currency": "RUB",
-  "receiver_route_code": "SBER-PHONE",
-  "rail_type": "phone_transfer",
-  "payment_reference": "TANGO ALFA",
-  "receiver_bank_id": "sber_ru",
-  "confirmation_type": "notification_signal",
-  "official_bank_confirmation": false,
-  "decision": "signal_detected",
-  "review_required": true,
-  "reason_codes": ["review_only_bank_profile", "merchant_notification_signal"]
-}
-```
-
-Example `payment.needs_review` payload:
-
-```json
-{
-  "event_type": "payment.needs_review",
-  "order_id": "ord_test_123",
-  "payment_session_id": "ps_test_123",
-  "review_id": "rev_test_123",
-  "amount_minor": 13700,
-  "currency": "RUB",
-  "receiver_route_code": "SBER-PHONE",
-  "rail_type": "phone_transfer",
-  "payment_reference": "TANGO ALFA",
-  "receiver_bank_id": "sber_ru",
-  "confirmation_type": "notification_signal",
-  "official_bank_confirmation": false,
-  "decision": "needs_review",
-  "reason_codes": ["review_only_bank_profile"]
 }
 ```
 
@@ -167,10 +133,8 @@ The merchant plugin should:
 2. Verify the signature with the configured webhook secret.
 3. Reject stale timestamps according to merchant policy.
 4. Deduplicate by `SwimPay-Event-Id`.
-5. Treat `payment.signal_detected` and `payment.needs_review` as review events,
-   not fulfillment release events.
-6. Release fulfillment only after the merchant-approved review/release policy
-   emits `payment.confirmed`.
+5. Release fulfillment only after the merchant-approved review policy emits
+   `payment.confirmed`.
 
 ## Forbidden Plugin Behavior
 
@@ -180,8 +144,7 @@ Merchant plugins must not:
 - claim official bank confirmation;
 - treat payer launcher selection as proof of payment;
 - release product on `buyer_claimed_paid`;
-- release product on `payment.signal_detected` unless a future explicit
-  controlled-release policy allows it;
+- release product on internal signal or review concepts;
 - store raw phone numbers or raw notification text from SwimPay payloads;
 - ask SwimPay to read SMS or scrape bank apps.
 

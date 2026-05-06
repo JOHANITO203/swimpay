@@ -2190,3 +2190,16 @@ Safety checks:
 - Added `apps/api/src/developer-integration.test.ts` guardrails for secret masking, URL validation, delivery history sanitization, public event scope and product truth.
 - Created `.swimpay-agent/DEVELOPER_BACKEND_LIFECYCLE_REPORT.md`.
 - Sprint 9D live Docker validation is now passing.
+# 2026-05-07T01:45:00+03:00 - Sprint 9F Developer Integration Wizard Live UX Wiring
+
+- Created Sprint 9F task files 512 through 518.
+- Added `.swimpay-agent/DEVELOPER_WIZARD_LIVE_INVENTORY.md`.
+- Added a server-side `MerchantIntegrationClient` seam to `apps/web/src/index.ts`.
+- Wired `/merchant/developer-integration` to live Sprint 9E lifecycle endpoints with a safe unavailable fallback.
+- Added web form actions for key generation/rotation, webhook secret rotation, webhook URL save, backend-owned webhook test and delivery retry.
+- Updated the wizard renderer to display live Merchant ID, public key, masked secrets, webhook URL/status, public V1 events and delivery history.
+- Kept one-time raw secrets visible only in immediate create/rotate action responses.
+- Updated `apps/web/src/developer-wizard.test.ts` for live data, fallback, action routes and snippet/delivery guardrails.
+- Cleaned `docs/DEVELOPER_PLUGIN_INTEGRATION.md` so internal signal/review concepts are not presented as public fulfillment webhooks.
+- Extended `tests/product-truth-docs.test.ts` to guard that doc.
+- Created `.swimpay-agent/DEVELOPER_WIZARD_LIVE_UX_REPORT.md`.

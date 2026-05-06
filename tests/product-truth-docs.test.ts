@@ -11,6 +11,7 @@ function readDoc(path: string): string {
 describe('product truth SDK-facing docs', () => {
   it('documents public webhooks as post-manual-confirmation outcomes only', () => {
     const webhooks = readDoc('docs/12_WEBHOOKS.md');
+    const developerPlugin = readDoc('docs/DEVELOPER_PLUGIN_INTEGRATION.md');
 
     expect(webhooks).toContain('Webhooks');
     expect(webhooks).toContain('manual confirmation');
@@ -20,6 +21,13 @@ describe('product truth SDK-facing docs', () => {
     expect(webhooks).not.toContain('payment.needs_review');
     expect(webhooks).not.toContain('"decision": "auto_confirmed"');
     expect(webhooks).not.toContain('"official_bank_confirmation": true');
+
+    expect(developerPlugin).toContain('payment.confirmed');
+    expect(developerPlugin).toContain('payment.rejected');
+    expect(developerPlugin).toContain('payment.expired');
+    expect(developerPlugin).not.toContain('payment.signal_detected');
+    expect(developerPlugin).not.toContain('payment.needs_review');
+    expect(developerPlugin).not.toContain('"official_bank_confirmation": true');
   });
 
   it('keeps order creation and checkout docs free from V1 auto-confirm examples', () => {
