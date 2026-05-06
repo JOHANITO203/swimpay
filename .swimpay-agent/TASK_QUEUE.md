@@ -6,6 +6,19 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `502_developer_integration_backend_inventory` - status: completed - source: `tasks/502_developer_integration_backend_inventory.md`
+- [x] `503_merchant_integration_credentials_model` - status: completed - source: `tasks/503_merchant_integration_credentials_model.md`
+- [x] `504_api_key_public_key_lifecycle` - status: completed - source: `tasks/504_api_key_public_key_lifecycle.md`
+- [x] `505_webhook_secret_lifecycle` - status: completed - source: `tasks/505_webhook_secret_lifecycle.md`
+- [x] `506_webhook_url_save_update` - status: completed - source: `tasks/506_webhook_url_save_update.md`
+- [x] `507_merchant_scoped_delivery_history` - status: completed - source: `tasks/507_merchant_scoped_delivery_history.md`
+- [x] `508_webhook_test_and_retry_backend` - status: completed - source: `tasks/508_webhook_test_and_retry_backend.md`
+- [x] `509_wizard_backend_wiring` - status: completed - source: `tasks/509_wizard_backend_wiring.md`
+- [x] `510_developer_backend_guardrails` - status: completed - source: `tasks/510_developer_backend_guardrails.md`
+- [x] `511_developer_backend_lifecycle_closeout` - status: completed - source: `tasks/511_developer_backend_lifecycle_closeout.md`
+
+## Previous Queue
+
 - [x] `494_developer_wizard_inventory` - status: completed - source: `tasks/494_developer_wizard_inventory.md`
 - [x] `495_integration_type_selector` - status: completed - source: `tasks/495_integration_type_selector.md`
 - [x] `496_credentials_webhook_config` - status: completed - source: `tasks/496_credentials_webhook_config.md`
@@ -14,8 +27,6 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `499_webhook_test_and_delivery_history` - status: completed - source: `tasks/499_webhook_test_and_delivery_history.md`
 - [x] `500_developer_wizard_guardrails` - status: completed - source: `tasks/500_developer_wizard_guardrails.md`
 - [x] `501_developer_wizard_closeout` - status: completed - source: `tasks/501_developer_wizard_closeout.md`
-
-## Previous Queue
 
 - [x] `486_sdk_android_package_inventory` - status: completed - source: `tasks/486_sdk_android_package_inventory.md`
 - [x] `487_swimpay_android_checkout_helper` - status: completed - source: `tasks/487_swimpay_android_checkout_helper.md`

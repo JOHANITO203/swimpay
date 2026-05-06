@@ -2,6 +2,7 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import pg from 'pg';
 import { PUBLIC_EVENT_SIGNAL_DISCLOSURE } from '@swimpay/events';
 import { MetricNames, type MetricsRegistry } from '@swimpay/observability';
+import { decryptSecret } from '@swimpay/security';
 
 const { Pool } = pg;
 
@@ -542,14 +543,16 @@ export class InMemoryWebhookRepository implements WebhookRepository {
 
 export class PgWebhookRepository implements WebhookRepository {
   private readonly pool: pg.Pool;
+  private readonly secretEncryptionKey: string;
 
-  public constructor(connectionString: string) {
+  public constructor(connectionString: string, secretEncryptionKey = process.env.WEBHOOK_SECRET_ENCRYPTION_KEY ?? 'local_dev_webhook_secret_encryption_key') {
     this.pool = new Pool({ connectionString, max: 4 });
+    this.secretEncryptionKey = secretEncryptionKey;
   }
 
   public async listActiveEndpoints(merchantId: string, eventType: PublicWebhookEventType): Promise<WebhookEndpoint[]> {
     const result = await this.pool.query(
-      `SELECT id, merchant_id, url, secret_hash, enabled_events, status
+      `SELECT id, merchant_id, url, secret_hash, secret_encrypted, enabled_events, status
        FROM webhook_endpoints
        WHERE merchant_id = $1
          AND status = 'active'
@@ -557,7 +560,7 @@ export class PgWebhookRepository implements WebhookRepository {
       [merchantId, eventType]
     );
 
-    return result.rows.map((row) => toEndpoint(row as WebhookEndpointRow));
+    return result.rows.map((row) => toEndpoint(row as WebhookEndpointRow, this.secretEncryptionKey));
   }
 
   public async createDelivery(input: WebhookDeliveryCreateInput): Promise<WebhookDeliveryCreateResult> {
@@ -743,7 +746,7 @@ export class PgWebhookRepository implements WebhookRepository {
 
   public async getDelivery(deliveryId: string): Promise<WebhookDelivery | null> {
     const result = await this.pool.query(
-      `SELECT d.*, e.url, e.secret_hash, e.enabled_events, e.status AS endpoint_status
+      `SELECT d.*, e.url, e.secret_hash, e.secret_encrypted, e.enabled_events, e.status AS endpoint_status
        FROM webhook_deliveries d
        JOIN webhook_endpoints e ON e.id = d.endpoint_id
        WHERE d.id = $1`,
@@ -790,16 +793,16 @@ export class PgWebhookRepository implements WebhookRepository {
     }
 
     if (row.url && row.secret_hash && row.endpoint_status) {
-      return toDelivery(row, toEndpoint(row as WebhookEndpointRow));
+      return toDelivery(row, toEndpoint(row as WebhookEndpointRow, this.secretEncryptionKey));
     }
 
     const endpointResult = await this.pool.query(
-      `SELECT id, merchant_id, url, secret_hash, enabled_events, status
+      `SELECT id, merchant_id, url, secret_hash, secret_encrypted, enabled_events, status
        FROM webhook_endpoints
        WHERE id = $1`,
       [row.endpoint_id]
     );
-    const endpoint = toEndpoint(endpointResult.rows[0] as WebhookEndpointRow);
+    const endpoint = toEndpoint(endpointResult.rows[0] as WebhookEndpointRow, this.secretEncryptionKey);
     return toDelivery(row, endpoint);
   }
 
@@ -978,6 +981,7 @@ interface WebhookEndpointRow {
   merchant_id: string;
   url: string;
   secret_hash: string;
+  secret_encrypted?: string | null | undefined;
   enabled_events: PublicWebhookEventType[];
   status: WebhookEndpoint['status'];
   endpoint_status?: WebhookEndpoint['status'] | undefined;
@@ -1003,16 +1007,17 @@ interface WebhookDeliveryRow {
   replay_of_delivery_id?: string | null | undefined;
   url?: string | undefined;
   secret_hash?: string | undefined;
+  secret_encrypted?: string | null | undefined;
   enabled_events?: PublicWebhookEventType[] | undefined;
   endpoint_status?: WebhookEndpoint['status'] | undefined;
 }
 
-function toEndpoint(row: WebhookEndpointRow): WebhookEndpoint {
+function toEndpoint(row: WebhookEndpointRow, secretEncryptionKey?: string): WebhookEndpoint {
   return {
     id: row.id,
     merchantId: row.merchant_id,
     url: row.url,
-    secret: row.secret_hash,
+    secret: row.secret_encrypted ? decryptSecret(row.secret_encrypted, secretEncryptionKey ?? '') : row.secret_hash,
     enabledEvents: Array.isArray(row.enabled_events) ? row.enabled_events : [],
     status: row.endpoint_status ?? row.status
   };

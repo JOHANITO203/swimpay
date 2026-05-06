@@ -2175,4 +2175,18 @@ Safety checks:
 - Started Compose services with `docker compose --env-file .env.example -f infra/docker-compose.yml up -d --no-build`.
 - Verified Compose services healthy: Postgres, Valkey, NATS, API, web, signal worker, job worker and proxy.
 - Verified `http://localhost:8080/api-health` returns database, NATS and Valkey `ok`.
+
+# 2026-05-06T23:58:00+03:00 - Sprint 9E Developer Integration Backend Lifecycle
+
+- Created tasks 502 through 511 and updated the active task queue.
+- Created `.swimpay-agent/DEVELOPER_BACKEND_LIFECYCLE_INVENTORY.md`.
+- Added `merchant_integrations` migration for merchant-scoped developer integration lifecycle state.
+- Added `apps/api/src/developer-integration.ts`.
+- Added endpoints under `/v1/merchant/integration` for read model, key creation/rotation, webhook secret rotation, webhook URL save/update, test webhook, delivery history and retry.
+- Added show-once lifecycle behavior for secret key and webhook secret.
+- Added encrypted webhook secret material for backend-owned signing while keeping normal reads masked.
+- Added merchant-scoped delivery history limited to `payment.confirmed`, `payment.rejected` and `payment.expired`.
+- Added backend-owned test webhook/retry behavior that does not trigger fulfillment.
+- Added `apps/api/src/developer-integration.test.ts` guardrails for secret masking, URL validation, delivery history sanitization, public event scope and product truth.
+- Created `.swimpay-agent/DEVELOPER_BACKEND_LIFECYCLE_REPORT.md`.
 - Sprint 9D live Docker validation is now passing.

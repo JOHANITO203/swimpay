@@ -1,5 +1,17 @@
 # Blockers
 
+## Sprint 9E Developer Integration Backend Lifecycle
+
+- No critical product blocker introduced.
+- Merchant-scoped developer integration lifecycle endpoints were added under `/v1/merchant/integration`.
+- Normal credential reads return masked secret key and masked webhook secret only.
+- Secret key and webhook secret creation/rotation use explicit show-once response fields.
+- Webhook URL persistence validates HTTPS in production and allows localhost only outside production.
+- Merchant delivery history is scoped to public V1 events only: `payment.confirmed`, `payment.rejected`, `payment.expired`.
+- Backend-owned webhook test/retry endpoints were added and do not trigger fulfillment.
+- Webhook secret material is encrypted for backend-owned signing and hashed for lifecycle/audit checks.
+- Remaining non-critical limitation: the existing wizard can still render safe fallback content if backend lifecycle APIs are unavailable.
+
 ## Sprint 9D Developer Integration Wizard Production Readiness
 
 - No critical product blocker introduced.

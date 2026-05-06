@@ -34,6 +34,13 @@ import {
   type OperatorRole
 } from '@swimpay/security';
 import {
+  createDefaultMerchantIntegrationRepository,
+  parseDeliveryLimit,
+  toMerchantIntegrationResponse,
+  validateWebhookUrl,
+  type MerchantIntegrationRepository
+} from './developer-integration.js';
+import {
   buildMerchantReceivingRouteRecord,
   buildOrderCreateInput,
   formatAmountMinor,
@@ -167,6 +174,7 @@ export interface ApiServerOptions {
   adminRepository?: AdminRepository;
   bankEvidenceRepository?: BankEvidenceRepository;
   intelligenceRepository?: IntelligenceRepository | null;
+  merchantIntegrationRepository?: MerchantIntegrationRepository | null;
   eventPublisher?: InternalEventPublisher;
   phoneHmacSecret?: string;
   checkoutBaseUrl?: string;
@@ -258,6 +266,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const adminRepository = options.adminRepository ?? createDefaultAdminRepository(process.env);
   const bankEvidenceRepository = options.bankEvidenceRepository ?? createDefaultBankEvidenceRepository(process.env);
   const intelligenceRepository = options.intelligenceRepository ?? createDefaultIntelligenceRepository(process.env, options.environment);
+  const merchantIntegrationRepository =
+    options.merchantIntegrationRepository ?? createDefaultMerchantIntegrationRepository(process.env);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const metrics = options.metrics ?? defaultMetricsRegistry;
   const phoneHmacSecret = options.phoneHmacSecret ?? process.env.PHONE_HMAC_SECRET ?? 'local_dev_phone_hmac_secret';
@@ -355,6 +365,130 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       official_bank_confirmation: false,
       creates_payment_review: false
     });
+  });
+
+  server.get('/v1/merchant/integration', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+    }
+    if (!merchantIntegrationRepository) {
+      return reply.status(503).send(developerIntegrationUnavailableError());
+    }
+
+    return reply.status(200).send(
+      toMerchantIntegrationResponse(await merchantIntegrationRepository.getIntegration(merchantId, clock().toISOString()))
+    );
+  });
+
+  server.post('/v1/merchant/integration/keys', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+    }
+    if (!merchantIntegrationRepository) {
+      return reply.status(503).send(developerIntegrationUnavailableError());
+    }
+
+    return reply.status(201).send(
+      toMerchantIntegrationResponse(await merchantIntegrationRepository.ensureApiKey(merchantId, clock().toISOString()))
+    );
+  });
+
+  server.post('/v1/merchant/integration/keys/rotate', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+    }
+    if (!merchantIntegrationRepository) {
+      return reply.status(503).send(developerIntegrationUnavailableError());
+    }
+
+    return reply.status(201).send(
+      toMerchantIntegrationResponse(await merchantIntegrationRepository.rotateApiKey(merchantId, clock().toISOString()))
+    );
+  });
+
+  server.post('/v1/merchant/integration/webhook-secret/rotate', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+    }
+    if (!merchantIntegrationRepository) {
+      return reply.status(503).send(developerIntegrationUnavailableError());
+    }
+
+    return reply.status(201).send(
+      toMerchantIntegrationResponse(await merchantIntegrationRepository.rotateWebhookSecret(merchantId, clock().toISOString()))
+    );
+  });
+
+  server.put('/v1/merchant/integration/webhook-url', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+    }
+    if (!merchantIntegrationRepository) {
+      return reply.status(503).send(developerIntegrationUnavailableError());
+    }
+    const body = request.body as { webhook_url?: unknown } | null;
+    const webhookUrl = validateWebhookUrl(body?.webhook_url, options.environment);
+    if (!webhookUrl.valid) {
+      return reply.status(400).send(invalidRequest(webhookUrl.message, { field: 'webhook_url' }));
+    }
+
+    return reply.status(200).send(
+      toMerchantIntegrationResponse(
+        await merchantIntegrationRepository.updateWebhookUrl(merchantId, webhookUrl.value, clock().toISOString())
+      )
+    );
+  });
+
+  server.post('/v1/merchant/integration/test-webhook', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+    }
+    if (!merchantIntegrationRepository) {
+      return reply.status(503).send(developerIntegrationUnavailableError());
+    }
+
+    return reply.status(202).send(await merchantIntegrationRepository.enqueueTestWebhook(merchantId, clock().toISOString()));
+  });
+
+  server.get('/v1/merchant/integration/webhook-deliveries', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+    }
+    if (!merchantIntegrationRepository) {
+      return reply.status(503).send(developerIntegrationUnavailableError());
+    }
+    const query = request.query as { limit?: string };
+
+    return reply.status(200).send({
+      deliveries: await merchantIntegrationRepository.listDeliveries(merchantId, parseDeliveryLimit(query.limit)),
+      public_webhook_events: ['payment.confirmed', 'payment.rejected', 'payment.expired'],
+      raw_payload_included: false,
+      official_bank_confirmation: false
+    });
+  });
+
+  server.post('/v1/merchant/integration/webhook-deliveries/:id/retry', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+    }
+    if (!merchantIntegrationRepository) {
+      return reply.status(503).send(developerIntegrationUnavailableError());
+    }
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Delivery id is required.', {}));
+    }
+
+    const result = await merchantIntegrationRepository.retryDelivery(merchantId, params.id, clock().toISOString());
+    return reply.status(result.status === 'not_found' ? 404 : 202).send(result);
   });
 
   server.post('/v1/orders', async (request, reply) => {
@@ -3254,6 +3388,16 @@ function intelligenceRepositoryUnavailableError() {
     error: {
       code: 'service_unavailable',
       message: 'Intelligence repository is not configured.',
+      details: {}
+    }
+  };
+}
+
+function developerIntegrationUnavailableError() {
+  return {
+    error: {
+      code: 'service_unavailable',
+      message: 'Developer integration repository is not configured.',
       details: {}
     }
   };

@@ -20,6 +20,31 @@ Next recommended action:
 
 Run Sprint 9E for Developer Integration Backend Lifecycle: merchant-scoped credentials, safe show-once secret handling, webhook URL persistence, delivery history and backend-owned retry/test endpoints.
 
+## Latest Sprint 9E Developer Integration Backend Lifecycle
+
+Completed:
+
+1. Created Sprint 9E task files 502 through 511 and updated the task queue.
+2. Added merchant-scoped integration credentials read model.
+3. Added secret key generate/rotate lifecycle with show-once responses.
+4. Added webhook secret generate/rotate lifecycle with show-once responses.
+5. Added webhook URL save/update validation.
+6. Added merchant-scoped delivery history.
+7. Added backend-owned webhook test and retry endpoints.
+8. Added backend guardrail tests for secret masking, public event scope and product truth.
+
+Next recommended action:
+
+Run Sprint 9F for Developer Integration Wizard live UX wiring and credential lifecycle polish: connect the visual wizard controls to the Sprint 9E lifecycle endpoints, add forms for webhook URL save/test/retry, and keep show-once secret reveal UX explicit and safe.
+
+Do not do:
+
+- Do not put secret keys in browser or Android snippets.
+- Do not expose webhook secrets after the show-once lifecycle response.
+- Do not expose raw webhook payloads in delivery history.
+- Do not add public fulfillment webhooks for internal signal/review events.
+- Do not enable auto-confirmation or claim official bank confirmation.
+
 Do not do:
 
 - Do not put secret keys in browser or Android snippets.

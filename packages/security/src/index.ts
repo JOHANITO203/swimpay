@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 export const OperatorRoles = {
   OWNER: 'owner',
@@ -170,6 +170,28 @@ export function verifyWebhookSecret(secret: string, storedHash: string, salt = '
   return timingSafeStringEqual(hashWebhookSecret(secret, salt), storedHash);
 }
 
+export function encryptSecret(secret: string, encryptionKey: string): string {
+  const key = deriveEncryptionKey(encryptionKey);
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const ciphertext = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `enc_v1:${iv.toString('base64url')}:${authTag.toString('base64url')}:${ciphertext.toString('base64url')}`;
+}
+
+export function decryptSecret(encryptedSecret: string, encryptionKey: string): string {
+  const [version, iv, authTag, ciphertext] = encryptedSecret.split(':');
+  if (version !== 'enc_v1' || !iv || !authTag || !ciphertext) {
+    throw new Error('Unsupported encrypted secret format.');
+  }
+  const decipher = createDecipheriv('aes-256-gcm', deriveEncryptionKey(encryptionKey), Buffer.from(iv, 'base64url'));
+  decipher.setAuthTag(Buffer.from(authTag, 'base64url'));
+  return Buffer.concat([
+    decipher.update(Buffer.from(ciphertext, 'base64url')),
+    decipher.final()
+  ]).toString('utf8');
+}
+
 export const FASTIFY_REDACTION_PATHS = [
   'req.headers.authorization',
   'req.headers.cookie',
@@ -226,6 +248,10 @@ export function redactLogValue<T>(value: T): T {
 function hashSecret(value: string, salt: string, prefix: string): string {
   const digest = createHash('sha256').update(`${salt}:${value}`, 'utf8').digest('hex');
   return `${prefix}:${digest}`;
+}
+
+function deriveEncryptionKey(encryptionKey: string): Buffer {
+  return createHash('sha256').update(encryptionKey, 'utf8').digest();
 }
 
 function timingSafeStringEqual(left: string, right: string): boolean {
