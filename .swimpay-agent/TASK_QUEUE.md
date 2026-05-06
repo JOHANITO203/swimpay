@@ -6,6 +6,17 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `494_developer_wizard_inventory` - status: completed - source: `tasks/494_developer_wizard_inventory.md`
+- [x] `495_integration_type_selector` - status: completed - source: `tasks/495_integration_type_selector.md`
+- [x] `496_credentials_webhook_config` - status: completed - source: `tasks/496_credentials_webhook_config.md`
+- [x] `497_web_sdk_snippets_surface` - status: completed - source: `tasks/497_web_sdk_snippets_surface.md`
+- [x] `498_android_sdk_snippets_surface` - status: completed - source: `tasks/498_android_sdk_snippets_surface.md`
+- [x] `499_webhook_test_and_delivery_history` - status: completed - source: `tasks/499_webhook_test_and_delivery_history.md`
+- [x] `500_developer_wizard_guardrails` - status: completed - source: `tasks/500_developer_wizard_guardrails.md`
+- [x] `501_developer_wizard_closeout` - status: completed - source: `tasks/501_developer_wizard_closeout.md`
+
+## Previous Queue
+
 - [x] `486_sdk_android_package_inventory` - status: completed - source: `tasks/486_sdk_android_package_inventory.md`
 - [x] `487_swimpay_android_checkout_helper` - status: completed - source: `tasks/487_swimpay_android_checkout_helper.md`
 - [x] `488_android_checkout_return_handling` - status: completed - source: `tasks/488_android_checkout_return_handling.md`
@@ -14,8 +25,6 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `491_android_sdk_quickstart_examples` - status: completed - source: `tasks/491_android_sdk_quickstart_examples.md`
 - [x] `492_android_sdk_product_truth_guardrails` - status: completed - source: `tasks/492_android_sdk_product_truth_guardrails.md`
 - [x] `493_android_sdk_closeout` - status: completed - source: `tasks/493_android_sdk_closeout.md`
-
-## Previous Queue
 
 - [x] `476_sdk_web_package_inventory` - status: completed - source: `tasks/476_sdk_web_package_inventory.md`
 - [x] `477_swimpay_node_sdk_client` - status: completed - source: `tasks/477_swimpay_node_sdk_client.md`

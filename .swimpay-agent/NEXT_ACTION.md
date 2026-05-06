@@ -2,6 +2,32 @@
 
 generated_at: 2026-05-06T00:00:00+03:00
 
+## Latest Sprint 9D Developer Integration Wizard
+
+Completed:
+
+1. Created Sprint 9D task files 494 through 501 and completed the task queue.
+2. Created `.swimpay-agent/DEVELOPER_WIZARD_INVENTORY.md`.
+3. Added `/merchant/developer-integration`.
+4. Added Web/Android-only integration selection.
+5. Added masked credentials and webhook configuration states.
+6. Added safe `@swimpay/node` Web snippets.
+7. Added safe `@swimpay/android` Android snippets.
+8. Added safe public V1 webhook delivery history.
+9. Added wizard guardrail tests.
+
+Next recommended action:
+
+Run Sprint 9E for Developer Integration Backend Lifecycle: merchant-scoped credentials, safe show-once secret handling, webhook URL persistence, delivery history and backend-owned retry/test endpoints.
+
+Do not do:
+
+- Do not put secret keys in browser or Android snippets.
+- Do not add public fulfillment webhooks for internal signal/review events.
+- Do not enable auto-confirmation.
+- Do not claim official bank confirmation.
+- Do not make Android handle webhooks or local fulfillment.
+
 ## Latest Sprint 9C Android Merchant SDK Production Helper
 
 Completed:

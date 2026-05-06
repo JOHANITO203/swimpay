@@ -1,5 +1,20 @@
 # Blockers
 
+## Sprint 9D Developer Integration Wizard Production Readiness
+
+- No critical product blocker introduced.
+- Merchant-facing Developer Integration Wizard now exists at `/merchant/developer-integration`.
+- Wizard is limited to V1 Web and Android integration types.
+- Secret key and webhook secret are masked in the UI.
+- Web snippets use `@swimpay/node` and server-side order creation/webhook verification.
+- Android snippets use `@swimpay/android` and keep checkout opening/return parsing separate from backend order status and webhook handling.
+- Public delivery history uses only V1 public events: `payment.confirmed`, `payment.rejected`, `payment.expired`.
+- Product truth guardrails protect against secret keys in browser/Android snippets, auto-confirm examples, official bank confirmation claims and public fulfillment from internal signal/review events.
+- Remaining non-critical backend lifecycle gap: the wizard is not yet backed by a merchant-scoped credential lifecycle, webhook URL persistence, delivery history or retry endpoint.
+- Live Docker validation blocker resolved after Docker recovery and sequential builds.
+- `COMPOSE_PARALLEL_LIMIT=1 docker compose ... build ...` passed for the Node images, `docker compose ... up -d --no-build` passed, Compose services are healthy, and `/api-health` returns database, NATS and Valkey `ok`.
+- Non-critical local environment note: parallel Compose rebuilds can still destabilize Docker Desktop/BuildKit on this 4 GB Docker engine; use sequential builds for local validation.
+
 ## Sprint 9B SDK Web Production Readiness
 
 - No critical product blocker introduced.

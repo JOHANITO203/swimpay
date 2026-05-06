@@ -2,6 +2,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   renderConnectedSitePage as renderConnectedSiteScreen,
+  renderDeveloperIntegrationWizardPage as renderDeveloperIntegrationWizardScreen,
   renderHomePage as renderHomePageScreen,
   renderMerchantBanksPage as renderMerchantBanksScreen,
   renderMerchantDashboard as renderMerchantDashboardScreen,
@@ -374,6 +375,11 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   server.get('/merchant/connected-site', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
     return renderConnectedSiteScreen();
+  });
+
+  server.get('/merchant/developer-integration', async (_request, reply) => {
+    reply.type('text/html; charset=utf-8');
+    return renderDeveloperIntegrationWizardScreen();
   });
 
   server.get('/admin/evidence-review', async (_request, reply) => {

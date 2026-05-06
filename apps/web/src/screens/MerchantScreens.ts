@@ -381,6 +381,60 @@ export function renderConnectedSitePage(): string {
         `
       })}
       <p style="text-align:center;margin-top:22px;"><a href="#" style="color:var(--color-teal);font-weight:800;text-decoration:none;">Afficher les détails développeur</a></p>
+      <p style="text-align:center;margin-top:16px;"><a href="/merchant/developer-integration" style="text-decoration:none;">${Button({ text: 'Configurer l’intégration', variant: 'primary', class: 'btn-wide' })}</a></p>
+      ${BottomNav({ active: 'more' })}
+    </div></section>`
+  });
+}
+
+export function renderDeveloperIntegrationWizardPage(): string {
+  return AppShell({
+    title: 'Intégration développeur',
+    children: `<section class="screen merchant-screen"><div class="screen-content">
+      ${SwimPayBrand()}
+      ${PageHeader({
+        title: 'Site ou application connecté',
+        subtitle: 'Connectez SwimPay à votre site ou votre application pour recevoir les mises à jour de paiement.'
+      })}
+      <div style="margin-bottom:22px;">${Button({ text: 'Configurer l’intégration', variant: 'primary', class: 'btn-wide' })}</div>
+      ${Card({
+        children: `<h2 class="section-title" style="margin-top:0;">Quel type de projet utilisez-vous ?</h2>
+          <div class="two-col">
+            ${OptionButton({ title: 'Site web', subtitle: 'Pour une boutique ou un checkout web.', icon: 'W' })}
+            ${OptionButton({ title: 'Application Android', subtitle: 'Pour une application mobile ou un APK.', icon: 'A' })}
+          </div>
+          <p class="muted" style="margin:18px 0 0;">V1 prend en charge les intégrations Web et Android.</p>`
+      })}
+      ${Card({
+        children: `<h2 class="section-title" style="margin-top:0;">Clés SwimPay</h2>
+          ${developerField('Merchant ID', 'mch_live_••••1234')}
+          ${developerField('Clé publique', 'pk_live_••••8X2A')}
+          ${developerField('Clé secrète', '•••• •••• ••••')}
+          ${developerField('Secret webhook', '•••• •••• ••••')}
+          <p class="safe-note" style="margin-top:18px;">${IconBubble({ icon: 'S', tone: 'muted' })}<span>Gardez vos clés secrètes côté serveur.</span></p>
+          <p class="safe-note" style="margin-top:10px;">${IconBubble({ icon: 'A', tone: 'warning' })}<span>Ne placez jamais la clé secrète dans une application Android.</span></p>`
+      })}
+      ${Card({
+        children: `<h2 class="section-title" style="margin-top:0;">Webhook</h2>
+          ${developerField('Webhook URL', 'https://merchant.example/webhooks/swimpay')}
+          ${developerField('Status', 'Connexion active')}
+          ${developerField('Last test result', 'Connexion réussie')}
+          <div class="cluster" style="margin:18px 0;">
+            ${Button({ text: 'Enregistrer', variant: 'secondary', class: 'btn-small' })}
+            ${Button({ text: 'Tester la connexion', variant: 'primary', class: 'btn-small' })}
+          </div>
+          <div class="cluster">
+            ${StatusChip({ text: 'Connexion réussie', variant: 'success' })}
+            ${StatusChip({ text: 'Action nécessaire', variant: 'warning' })}
+            ${StatusChip({ text: 'Signature non vérifiée', variant: 'danger' })}
+            ${StatusChip({ text: 'Endpoint indisponible', variant: 'muted' })}
+          </div>
+          <p class="muted" style="margin-top:16px;">Le test est envoyé par SwimPay avec un marqueur de test et ne déclenche aucun traitement de commande.</p>`
+      })}
+      ${renderWebIntegrationSnippets()}
+      ${renderAndroidIntegrationSnippets()}
+      ${renderWebhookDeliveryHistory()}
+      <p class="safe-note" style="margin-top:26px;">${IconBubble({ icon: 'V', tone: 'teal' })}<span>payment.confirmed est envoyé après manual confirmation du marchand. official_bank_confirmation=false.</span></p>
       ${BottomNav({ active: 'more' })}
     </div></section>`
   });
@@ -440,6 +494,7 @@ export function renderSettingsPage(): string {
       ${PageHeader({ title: 'Paramètres' })}
       <div class="stack">
         ${sections.map((section) => Card({ children: `<div class="split"><div class="cluster">${IconBubble({ icon: section.slice(0, 1) })}<strong style="font-size:20px;color:var(--color-navy);">${section}</strong></div><span style="color:var(--color-teal);font-size:30px;">›</span></div>` })).join('')}
+        ${Card({ children: `<a href="/merchant/developer-integration" style="text-decoration:none;color:inherit;"><div class="split"><div class="cluster">${IconBubble({ icon: 'I' })}<strong style="font-size:20px;color:var(--color-navy);">Intégration développeur</strong></div><span style="color:var(--color-teal);font-size:30px;">›</span></div></a>` })}
         ${Card({ children: `<h3>Validation manuelle activée</h3><p class="muted">Les paiements doivent être confirmés avant notification finale.</p>` })}
       </div>
       ${BottomNav({ active: 'more' })}
@@ -471,6 +526,132 @@ function settingsAction(title: string, subtitle: string, icon: string): string {
     <span class="cluster">${IconBubble({ icon })}<span><strong>${title}</strong><small class="muted" style="display:block;">${subtitle}</small></span></span>
     <span style="color:var(--color-teal);font-size:30px;">›</span>
   </div>`;
+}
+
+function developerField(label: string, value: string): string {
+  return `<div class="split" style="padding:12px 0;border-bottom:1px solid rgba(225,232,237,0.75);">
+    <span class="muted">${escapeHtml(label)}</span>
+    <strong style="color:var(--color-navy);text-align:right;">${escapeHtml(value)}</strong>
+  </div>`;
+}
+
+function renderSnippet(title: string, code: string): string {
+  return `<div style="margin-top:18px;">
+    <h3 style="font-size:18px;color:var(--color-navy);margin:0 0 10px;">${escapeHtml(title)}</h3>
+    <pre style="white-space:pre-wrap;overflow:auto;border-radius:24px;background:#071B33;color:#F7FBFC;padding:18px;font-size:13px;line-height:1.55;"><code>${escapeHtml(code)}</code></pre>
+  </div>`;
+}
+
+function renderWebIntegrationSnippets(): string {
+  const install = 'npm install @swimpay/node';
+  const createOrder = `import { SwimPay } from "@swimpay/node";
+
+const swimpay = new SwimPay({
+  secretKey: process.env.SWIMPAY_SECRET_KEY!,
+  apiBaseUrl: process.env.SWIMPAY_API_BASE_URL
+});
+
+const checkout = await swimpay.orders.create({
+  externalOrderId: order.id,
+  amountMinor: order.amountMinor,
+  currency: "RUB",
+  returnUrl: "https://merchant.example/orders/" + order.id
+}, {
+  idempotencyKey: order.id
+});
+
+return checkout.checkoutUrl;`;
+  const redirect = `// Browser/frontend: redirect only.
+window.location.href = checkout.checkoutUrl;`;
+  const verify = `const event = swimpay.webhooks.verify(
+  req.body,
+  req.headers,
+  process.env.SWIMPAY_WEBHOOK_SECRET!
+);
+
+switch (event.type) {
+  case "payment.confirmed":
+    // Fulfill after merchant manual confirmation.
+    break;
+  case "payment.rejected":
+  case "payment.expired":
+    break;
+}`;
+
+  return Card({
+    children: `<section id="web-integration-snippets">
+      <h2 class="section-title" style="margin-top:0;">Intégration Web</h2>
+      <p class="muted">Utilisez le SDK serveur @swimpay/node pour créer les commandes et vérifier les événements.</p>
+      ${renderSnippet('Installation', install)}
+      <section data-snippet="web-server">
+        ${renderSnippet('Créer une commande côté serveur', createOrder)}
+        ${renderSnippet('Vérifier les événements', verify)}
+      </section>
+      <section data-snippet="web-browser">
+        ${renderSnippet('Rediriger vers checkout_url', redirect)}
+      </section>
+    </section>`
+  });
+}
+
+function renderAndroidIntegrationSnippets(): string {
+  const flow = 'Application Android → votre backend → SwimPay → checkout_url → retour app → votre backend vérifie le statut';
+  const kotlin = `val checkoutUrl = merchantBackend.createSwimPayCheckout(orderId)
+
+SwimPayCheckout.open(
+  activity = this,
+  checkoutUrl = checkoutUrl
+)
+
+override fun onNewIntent(intent: Intent) {
+  super.onNewIntent(intent)
+  val result = SwimPayCheckout.parseReturnIntent(intent)
+  if (result != null) {
+    // Ne validez pas localement.
+    refreshOrderStatusFromBackend()
+  }
+}`;
+
+  return Card({
+    children: `<section id="android-integration-snippets">
+      <h2 class="section-title" style="margin-top:0;">Intégration Android</h2>
+      <p class="muted">${escapeHtml(flow)}</p>
+      <p class="safe-note" style="margin-top:14px;">${IconBubble({ icon: 'A', tone: 'warning' })}<span>Votre application Android ne doit jamais contenir la clé secrète SwimPay.</span></p>
+      <p class="muted" style="margin-top:10px;">Après le retour, rafraîchissez le statut depuis votre backend.</p>
+      <section data-snippet="android">
+        ${renderSnippet('Ouvrir checkout_url et gérer le retour app', kotlin)}
+      </section>
+    </section>`
+  });
+}
+
+function renderWebhookDeliveryHistory(): string {
+  const rows = [
+    ['payment.confirmed', 'Envoyé', 'Aujourd’hui, 14:20', 'Aujourd’hui, 14:20', '1', '200'],
+    ['payment.rejected', 'Envoyé', 'Aujourd’hui, 13:10', 'Aujourd’hui, 13:11', '1', '200'],
+    ['payment.expired', 'Action nécessaire', 'Hier, 18:05', '—', '3', '503']
+  ] as const;
+
+  return Card({
+    children: `<h2 class="section-title" style="margin-top:0;">Derniers événements</h2>
+      <div class="stack">
+        ${rows.map(([type, status, createdAt, deliveredAt, attempts, httpStatus]) => `<div class="split" style="gap:18px;border-bottom:1px solid rgba(225,232,237,0.75);padding:12px 0;">
+          <div>
+            <strong style="color:var(--color-navy);">${type}</strong>
+            <p class="muted" style="margin:4px 0 0;">Créé ${createdAt} · Livré ${deliveredAt}</p>
+          </div>
+          <div style="text-align:right;">
+            ${StatusChip({ text: status, variant: status === 'Envoyé' ? 'success' : 'warning' })}
+            <p class="muted" style="margin:6px 0 0;">${attempts} tentative(s) · HTTP ${httpStatus}</p>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="cluster" style="margin-top:18px;">
+        ${Button({ text: 'Voir détail', variant: 'secondary', class: 'btn-small' })}
+        ${Button({ text: 'Réessayer', variant: 'secondary', class: 'btn-small' })}
+        ${Button({ text: 'Copier event id', variant: 'ghost', class: 'btn-small' })}
+      </div>`
+  });
 }
 
 function renderConfigurationState(state: UiStateVariant): string {

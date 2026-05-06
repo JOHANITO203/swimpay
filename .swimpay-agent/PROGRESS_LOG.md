@@ -2139,3 +2139,40 @@ Safety checks:
 - Compose shows Postgres, Valkey, NATS, API, web, signal worker, job worker and proxy healthy.
 - `/api-health` returned `200 OK` with database, NATS and Valkey `ok`.
 - The SwimPay Receiver app and payment runtime were not modified.
+
+# 2026-05-06T19:55:00+03:00 - Sprint 9D Developer Integration Wizard Production Readiness
+
+- Created tasks 494 through 501 and updated the active task queue.
+- Created `.swimpay-agent/DEVELOPER_WIZARD_INVENTORY.md`.
+- Added `/merchant/developer-integration` in the web merchant app.
+- Added Web/Android-only integration selection.
+- Added masked credentials and webhook configuration states.
+- Added safe Web snippets based on `@swimpay/node`: install, server-side order creation, checkout redirect, webhook verification and idempotency.
+- Added safe Android snippets based on `@swimpay/android`: checkout opening, return parsing and backend status refresh.
+- Added safe public V1 webhook delivery history for `payment.confirmed`, `payment.rejected` and `payment.expired`.
+- Added `apps/web/src/developer-wizard.test.ts` for wizard rendering and product truth guardrails.
+- Created `.swimpay-agent/DEVELOPER_INTEGRATION_WIZARD_REPORT.md`.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Live Docker validation is blocked by local Docker Desktop/containerd state: Docker CLI responds, but Compose build fails with BuildKit I/O errors on `metadata_v2.db`, and `up --no-build` / `ps` timed out.
+- After the user restarted Docker again, Docker CLI and Compose still responded, but Compose build again failed with BuildKit/containerd EIO writes in `metadata_v2.db` and overlayfs build outputs.
+- No backend payment runtime, Android Receiver notification processing, contracts, workers, database, real notification capture, LLM logic, SMS, Accessibility scraping, broad app enumeration or auto-confirmation behavior was changed.
+
+# 2026-05-06T23:30:00+03:00 - Sprint 9D Docker Recovery And Live Validation
+
+- Audited Docker containers, images and volumes before cleanup.
+- Preserved all SwimPay containers/images and volumes:
+  - `infra-swimpay-*`;
+  - `swimpay-*`;
+  - `infra_postgres_data`;
+  - `infra_valkey_data`;
+  - `infra_nats_data`;
+  - `infra_caddy_data`;
+  - `infra_caddy_config`.
+- Did not remove ambiguous `backend_pgdata`.
+- BuildKit cache prune reported `0B`, and `docker system df -v` now reports normally.
+- Diagnosed remaining Docker instability as parallel BuildKit pressure on the local 4 GB Docker Desktop engine.
+- Rebuilt SwimPay images sequentially with `COMPOSE_PARALLEL_LIMIT=1`.
+- Started Compose services with `docker compose --env-file .env.example -f infra/docker-compose.yml up -d --no-build`.
+- Verified Compose services healthy: Postgres, Valkey, NATS, API, web, signal worker, job worker and proxy.
+- Verified `http://localhost:8080/api-health` returns database, NATS and Valkey `ok`.
+- Sprint 9D live Docker validation is now passing.
