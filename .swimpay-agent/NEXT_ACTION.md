@@ -2,6 +2,35 @@
 
 generated_at: 2026-05-06T00:00:00+03:00
 
+## Latest Sprint 8C Durable Intelligence Feedback Persistence
+
+Completed:
+
+1. Closed the Sprint 8C persistence audit for passive Intelligence feedback and unknown-shape monitoring.
+2. Added durable PostgreSQL-backed feedback/unknown-shape persistence.
+3. Added the `IntelligenceRepository` seam with PostgreSQL persistence and local/test fallback.
+4. Kept `POST /v1/intelligence/feedback` and `GET /v1/intelligence/unknown-shapes` safe and non-mutating.
+5. Added read-only operator endpoints for Intelligence feedback and unknown-shape monitoring.
+6. Added the web operator Intelligence monitoring surface.
+7. Preserved explicit contract flags: `official_bank_confirmation=false`, `mutates_runtime_rules=false`, `promotes_profile=false` and `auto_confirm_allowed=false`.
+8. Confirmed feedback and unknown-shape observations remain supervised monitoring input only.
+9. Validated Docker live health and live persistence/admin endpoints after Docker was resumed.
+10. Created Sprint 8C audit and closeout reports.
+
+Next recommended action:
+
+Run Sprint 8D for retention/operations policy around durable Intelligence records: retention windows, redacted export boundaries, operator metrics and cleanup jobs. Keep runtime rules static and review-first.
+
+Do not do:
+
+- Do not process real bank notifications without explicit consent.
+- Do not enable auto-confirmation.
+- Do not add LLM calls, SMS, Accessibility scraping, bank app scraping, `QUERY_ALL_PACKAGES` or broad app enumeration.
+- Do not store raw notification text or expose raw PII.
+- Do not mutate classifier rules from feedback automatically.
+- Do not promote bank profiles from feedback automatically.
+- Do not create payment reviews or payment webhooks from feedback alone.
+
 ## Latest Sprint 8B Payment-Intent-Bound Intelligence
 
 Completed:

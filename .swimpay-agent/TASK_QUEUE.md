@@ -6,6 +6,16 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `460_intelligence_persistence_gap_audit` - status: completed - source: `tasks/460_intelligence_persistence_gap_audit.md`
+- [x] `461_durable_intelligence_feedback_storage` - status: completed - source: `tasks/461_durable_intelligence_feedback_storage.md`
+- [x] `462_intelligence_repository_and_apis` - status: completed - source: `tasks/462_intelligence_repository_and_apis.md`
+- [x] `463_operator_intelligence_readonly_surfaces` - status: completed - source: `tasks/463_operator_intelligence_readonly_surfaces.md`
+- [x] `464_intent_bound_learning_contract_guardrails` - status: completed - source: `tasks/464_intent_bound_learning_contract_guardrails.md`
+- [x] `465_intelligence_persistence_readonly_tests` - status: completed - source: `tasks/465_intelligence_persistence_readonly_tests.md`
+- [x] `466_sprint_8c_intelligence_persistence_closeout` - status: completed - source: `tasks/466_sprint_8c_intelligence_persistence_closeout.md`
+
+## Previous Queue
+
 - [x] `450_swimpay_intelligence_gap_audit` - status: completed - source: `tasks/450_swimpay_intelligence_gap_audit.md`
 - [x] `451_buyer_checkout_recognition_hints` - status: completed - source: `tasks/451_buyer_checkout_recognition_hints.md`
 - [x] `452_payment_intent_builder_reconciliation_amount` - status: completed - source: `tasks/452_payment_intent_builder_reconciliation_amount.md`
@@ -16,8 +26,6 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `457_intent_bound_passive_learning_context` - status: completed - source: `tasks/457_intent_bound_passive_learning_context.md`
 - [x] `458_payment_intent_fraud_error_guard_tests` - status: completed - source: `tasks/458_payment_intent_fraud_error_guard_tests.md`
 - [x] `459_sprint_8b_payment_intent_bound_closeout` - status: completed - source: `tasks/459_sprint_8b_payment_intent_bound_closeout.md`
-
-## Previous Queue
 
 - [x] `439_android_bank_notification_agent_v1_model` - status: completed - source: `tasks/439_android_bank_notification_agent_v1_model.md`
 - [x] `440_android_direction_aware_shape_hasher` - status: completed - source: `tasks/440_android_direction_aware_shape_hasher.md`

@@ -119,41 +119,18 @@ import {
   type BankEvidenceListFilters,
   type BankEvidenceRepository
 } from './bank-evidence.js';
+import {
+  buildIntelligenceFeedbackRecord,
+  createDefaultIntelligenceRepository,
+  toIntelligenceFeedbackResponse,
+  toUnknownShapeResponse,
+  type IntelligenceRepository
+} from './intelligence.js';
 
 const { Pool } = pg;
 const COPY_DETAILS_RATE_LIMIT_MAX = 3;
 const COPY_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const COPY_DETAILS_REVEAL_TTL_MS = 2 * 60 * 1000;
-
-interface IntelligenceFeedbackRecord {
-  feedback_id: string;
-  merchant_id: string;
-  shape_hash: string;
-  bank_profile_id: string;
-  package_name: string;
-  profile_version: string;
-  classification_guess: string;
-  human_label: string;
-  feedback: string;
-  timestamp: string;
-  review_status: 'pending';
-  mutates_runtime_rules: false;
-  promotes_profile: false;
-  official_bank_confirmation: false;
-}
-
-interface UnknownShapeRecord {
-  shape_hash: string;
-  bank_profile_id: string;
-  package_name: string;
-  profile_version: string;
-  classification_guess: 'unknown';
-  seen_count: number;
-  first_seen_at: string;
-  last_seen_at: string;
-  review_status: 'pending';
-  read_only: true;
-}
 
 export type {
   CreateOrderWithSessionInput,
@@ -189,6 +166,7 @@ export interface ApiServerOptions {
   reviewRepository?: ReviewRepository;
   adminRepository?: AdminRepository;
   bankEvidenceRepository?: BankEvidenceRepository;
+  intelligenceRepository?: IntelligenceRepository | null;
   eventPublisher?: InternalEventPublisher;
   phoneHmacSecret?: string;
   checkoutBaseUrl?: string;
@@ -279,6 +257,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const reviewRepository = options.reviewRepository ?? createDefaultReviewRepository(process.env);
   const adminRepository = options.adminRepository ?? createDefaultAdminRepository(process.env);
   const bankEvidenceRepository = options.bankEvidenceRepository ?? createDefaultBankEvidenceRepository(process.env);
+  const intelligenceRepository = options.intelligenceRepository ?? createDefaultIntelligenceRepository(process.env, options.environment);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const metrics = options.metrics ?? defaultMetricsRegistry;
   const phoneHmacSecret = options.phoneHmacSecret ?? process.env.PHONE_HMAC_SECRET ?? 'local_dev_phone_hmac_secret';
@@ -295,8 +274,6 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const clock = options.clock ?? (() => new Date());
   const startedAt = options.startedAt ?? new Date();
   const copyDetailsLimiter = new Map<string, { windowStartedAtMs: number; count: number }>();
-  const intelligenceFeedback = new Map<string, IntelligenceFeedbackRecord>();
-  const unknownShapeMonitoring = new Map<string, UnknownShapeRecord>();
 
   server.addHook('onRequest', async (request, reply) => {
     const incoming = Array.isArray(request.headers['x-correlation-id'])
@@ -343,44 +320,18 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (!body.valid) {
       return reply.status(400).send(receiverContractError(body.code, body.field));
     }
-
-    const feedbackId = randomUUID();
-    const record: IntelligenceFeedbackRecord = {
-      feedback_id: feedbackId,
-      merchant_id: merchantId,
-      shape_hash: body.value.shape_hash,
-      bank_profile_id: body.value.bank_profile_id,
-      package_name: body.value.package_name,
-      profile_version: body.value.profile_version,
-      classification_guess: body.value.classification_guess,
-      human_label: body.value.human_label,
-      feedback: body.value.feedback,
-      timestamp: body.value.timestamp,
-      review_status: 'pending',
-      mutates_runtime_rules: false,
-      promotes_profile: false,
-      official_bank_confirmation: false
-    };
-    intelligenceFeedback.set(feedbackId, record);
-
-    if (body.value.classification_guess === 'unknown') {
-      const key = `${merchantId}:${body.value.shape_hash}:${body.value.bank_profile_id}:${body.value.package_name}`;
-      const existing = unknownShapeMonitoring.get(key);
-      unknownShapeMonitoring.set(key, {
-        shape_hash: body.value.shape_hash,
-        bank_profile_id: body.value.bank_profile_id,
-        package_name: body.value.package_name,
-        profile_version: body.value.profile_version,
-        classification_guess: 'unknown',
-        seen_count: (existing?.seen_count ?? 0) + 1,
-        first_seen_at: existing?.first_seen_at ?? body.value.timestamp,
-        last_seen_at: body.value.timestamp,
-        review_status: 'pending',
-        read_only: true
-      });
+    if (!intelligenceRepository) {
+      return reply.status(503).send(intelligenceRepositoryUnavailableError());
     }
 
-    return reply.status(202).send(record);
+    const record = buildIntelligenceFeedbackRecord({
+      feedbackId: randomUUID(),
+      merchantId,
+      request: body.value
+    });
+    const stored = await intelligenceRepository.storeFeedback(record);
+
+    return reply.status(202).send(toIntelligenceFeedbackResponse(stored));
   });
 
   server.get('/v1/intelligence/unknown-shapes', async (request, reply) => {
@@ -392,15 +343,17 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         })
       );
     }
+    if (!intelligenceRepository) {
+      return reply.status(503).send(intelligenceRepositoryUnavailableError());
+    }
 
     return reply.status(200).send({
-      unknown_shapes: Array.from(unknownShapeMonitoring.entries())
-        .filter(([key]) => key.startsWith(`${merchantId}:`))
-        .map(([, record]) => record),
+      unknown_shapes: (await intelligenceRepository.listUnknownShapes(merchantId)).map(toUnknownShapeResponse),
       read_only: true,
       mutates_runtime_rules: false,
       promotes_profile: false,
-      official_bank_confirmation: false
+      official_bank_confirmation: false,
+      creates_payment_review: false
     });
   });
 
@@ -1594,6 +1547,63 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     );
 
     return reply.status(200).send(toReviewActionResponse(result));
+  });
+
+  server.get('/v1/admin/intelligence/feedback', async (request, reply) => {
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
+    }
+    if (!intelligenceRepository) {
+      return reply.status(503).send(intelligenceRepositoryUnavailableError());
+    }
+
+    const query = request.query as { limit?: string; merchant_id?: string };
+    const feedback = await intelligenceRepository.listFeedback({
+      merchantId: typeof query.merchant_id === 'string' && query.merchant_id.trim().length > 0 ? query.merchant_id.trim() : undefined,
+      limit: parseAdminLimit(query.limit)
+    });
+
+    return reply.status(200).send({
+      feedback: feedback.map(toIntelligenceFeedbackResponse),
+      read_only: true,
+      mutates_runtime_rules: false,
+      promotes_profile: false,
+      official_bank_confirmation: false,
+      creates_payment_review: false
+    });
+  });
+
+  server.get('/v1/admin/intelligence/unknown-shapes', async (request, reply) => {
+    const operator = requireAdminPermission({
+      request,
+      reply,
+      adminAuth,
+      permission: OperatorPermissions.VIEW_BANK_TEMPLATES
+    });
+    if (!operator) {
+      return reply;
+    }
+    if (!intelligenceRepository) {
+      return reply.status(503).send(intelligenceRepositoryUnavailableError());
+    }
+
+    const query = request.query as { merchant_id?: string };
+    const merchantId = typeof query.merchant_id === 'string' && query.merchant_id.trim().length > 0 ? query.merchant_id.trim() : undefined;
+
+    return reply.status(200).send({
+      unknown_shapes: (await intelligenceRepository.listUnknownShapes(merchantId)).map(toUnknownShapeResponse),
+      read_only: true,
+      mutates_runtime_rules: false,
+      promotes_profile: false,
+      official_bank_confirmation: false,
+      creates_payment_review: false
+    });
   });
 
   server.get('/v1/admin/bank-profiles', async (request, reply) => {
@@ -3234,6 +3244,16 @@ function adminRepositoryUnavailableError() {
     error: {
       code: 'service_unavailable',
       message: 'Admin repository is not configured.',
+      details: {}
+    }
+  };
+}
+
+function intelligenceRepositoryUnavailableError() {
+  return {
+    error: {
+      code: 'service_unavailable',
+      message: 'Intelligence repository is not configured.',
       details: {}
     }
   };

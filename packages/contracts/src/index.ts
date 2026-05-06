@@ -428,6 +428,27 @@ export interface IntentBoundLearningMetadata extends IntentBoundLearningMetadata
   promotes_profile: false;
 }
 
+export interface UnknownShapeMonitoringRecordInput {
+  shape_hash: string;
+  bank_profile_id: string;
+  package_name: string;
+  profile_version: string;
+  seen_count: number;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
+export interface UnknownShapeMonitoringRecord extends UnknownShapeMonitoringRecordInput {
+  classification_guess: 'unknown';
+  review_status: 'pending';
+  learning_context: 'background_observation';
+  read_only: true;
+  mutates_runtime_rules: false;
+  promotes_profile: false;
+  official_bank_confirmation: false;
+  creates_payment_review: false;
+}
+
 export function deriveBuyerRecognitionHints(
   input: BuyerRecognitionHintInput,
   options: BuyerRecognitionHintDerivationOptions
@@ -521,6 +542,22 @@ export function buildIntentBoundLearningMetadata(
       input.active_payment_intent_present || input.review_created ? 'intent_bound_feedback' : 'background_observation',
     mutates_runtime_rules: false,
     promotes_profile: false
+  };
+}
+
+export function buildUnknownShapeMonitoringRecord(
+  input: UnknownShapeMonitoringRecordInput
+): UnknownShapeMonitoringRecord {
+  return {
+    ...input,
+    classification_guess: 'unknown',
+    review_status: 'pending',
+    learning_context: 'background_observation',
+    read_only: true,
+    mutates_runtime_rules: false,
+    promotes_profile: false,
+    official_bank_confirmation: false,
+    creates_payment_review: false
   };
 }
 
@@ -721,8 +758,11 @@ export interface IntelligenceFeedbackRequest {
   feedback: IntelligenceFeedbackAction;
   timestamp: string;
   review_status: IntelligenceFeedbackReviewStatus;
+  learning_metadata: IntentBoundLearningMetadata;
   mutates_runtime_rules: false;
   promotes_profile: false;
+  official_bank_confirmation: false;
+  creates_payment_review: false;
 }
 
 export type IntelligenceFeedbackValidationResult =
@@ -1379,8 +1419,11 @@ export function validateAndroidReceiverSignalUploadRequest(
   }
 
   const rawField = findForbiddenReceiverRawField(body);
-  if (rawField?.kind === 'phone') {
+  if (rawField?.kind === 'phone' || rawField?.kind === 'card') {
     return { valid: false, code: AndroidReceiverErrorCodes.RAW_PHONE_REJECTED, field: rawField.field };
+  }
+  if (rawField?.kind === 'credential') {
+    return invalidAndroidReceiverPayload(rawField.field);
   }
   if (rawField?.kind === 'notification') {
     return { valid: false, code: AndroidReceiverErrorCodes.RAW_NOTIFICATION_REJECTED, field: rawField.field };
@@ -1528,8 +1571,11 @@ export function validateIntelligenceFeedbackRequest(body: unknown): Intelligence
   }
 
   const rawField = findForbiddenReceiverRawField(body);
-  if (rawField?.kind === 'phone') {
+  if (rawField?.kind === 'phone' || rawField?.kind === 'card') {
     return { valid: false, code: AndroidReceiverErrorCodes.RAW_PHONE_REJECTED, field: rawField.field };
+  }
+  if (rawField?.kind === 'credential') {
+    return invalidAndroidReceiverPayload(rawField.field);
   }
   if (rawField?.kind === 'notification') {
     return { valid: false, code: AndroidReceiverErrorCodes.RAW_NOTIFICATION_REJECTED, field: rawField.field };
@@ -1559,6 +1605,16 @@ export function validateIntelligenceFeedbackRequest(body: unknown): Intelligence
     return invalidAndroidReceiverPayload('bank_profile_id');
   }
 
+  const learningMetadata = validateIntentBoundLearningMetadata(
+    body.learning_metadata,
+    profile.version,
+    String(body.shape_hash).trim(),
+    body.classification_guess as IntelligenceNotificationCategory
+  );
+  if (!learningMetadata.valid) {
+    return invalidAndroidReceiverPayload(learningMetadata.field);
+  }
+
   return {
     valid: true,
     value: {
@@ -1571,9 +1627,72 @@ export function validateIntelligenceFeedbackRequest(body: unknown): Intelligence
       feedback: body.feedback as IntelligenceFeedbackAction,
       timestamp: new Date(String(body.timestamp)).toISOString(),
       review_status: 'pending',
+      learning_metadata: learningMetadata.value,
       mutates_runtime_rules: false,
-      promotes_profile: false
+      promotes_profile: false,
+      official_bank_confirmation: false,
+      creates_payment_review: false
     }
+  };
+}
+
+function validateIntentBoundLearningMetadata(
+  value: unknown,
+  profileVersion: string,
+  shapeHash: string,
+  classificationGuess: IntelligenceNotificationCategory
+): { valid: true; value: IntentBoundLearningMetadata } | { valid: false; field: string } {
+  if (value === undefined || value === null) {
+    return {
+      valid: true,
+      value: buildIntentBoundLearningMetadata({
+        intent_relation: classificationGuess === 'unknown' ? 'unknown_activity' : 'unrelated_bank_activity',
+        active_payment_intent_present: false,
+        collision_detected: false,
+        payment_window_status: 'none',
+        review_created: false,
+        profile_version: profileVersion,
+        shape_hash: shapeHash
+      })
+    };
+  }
+
+  if (!isPlainRecord(value)) {
+    return { valid: false, field: 'learning_metadata' };
+  }
+  if (!PaymentIntentRelations.includes(value.intent_relation as PaymentIntentRelation)) {
+    return { valid: false, field: 'learning_metadata.intent_relation' };
+  }
+  if (!['active', 'expired', 'none'].includes(String(value.payment_window_status))) {
+    return { valid: false, field: 'learning_metadata.payment_window_status' };
+  }
+  for (const field of ['active_payment_intent_present', 'collision_detected', 'review_created'] as const) {
+    if (typeof value[field] !== 'boolean') {
+      return { valid: false, field: `learning_metadata.${field}` };
+    }
+  }
+  if (value.profile_version !== profileVersion) {
+    return { valid: false, field: 'learning_metadata.profile_version' };
+  }
+  if (value.shape_hash !== shapeHash) {
+    return { valid: false, field: 'learning_metadata.shape_hash' };
+  }
+
+  const activePaymentIntentPresent = value.active_payment_intent_present;
+  const collisionDetected = value.collision_detected;
+  const reviewCreated = value.review_created;
+
+  return {
+    valid: true,
+    value: buildIntentBoundLearningMetadata({
+      intent_relation: value.intent_relation as PaymentIntentRelation,
+      active_payment_intent_present: activePaymentIntentPresent as boolean,
+      collision_detected: collisionDetected as boolean,
+      payment_window_status: value.payment_window_status as PaymentWindowStatus,
+      review_created: reviewCreated as boolean,
+      profile_version: value.profile_version,
+      shape_hash: value.shape_hash
+    })
   };
 }
 
@@ -1684,7 +1803,7 @@ function containsRawPhoneLikeValue(value: unknown): boolean {
 
 function findForbiddenReceiverRawField(
   value: unknown
-): { kind: 'phone' | 'notification'; field: string } | null {
+): { kind: 'phone' | 'notification' | 'card' | 'credential'; field: string } | null {
   if (Array.isArray(value)) {
     for (const item of value) {
       const nested = findForbiddenReceiverRawField(item);
@@ -1702,6 +1821,12 @@ function findForbiddenReceiverRawField(
   for (const [key, nested] of Object.entries(value)) {
     if (isForbiddenRawPhoneField(key)) {
       return { kind: 'phone', field: key };
+    }
+    if (isForbiddenRawCardField(key)) {
+      return { kind: 'card', field: key };
+    }
+    if (isForbiddenBankCredentialField(key)) {
+      return { kind: 'credential', field: key };
     }
     if (isForbiddenRawNotificationField(key)) {
       return { kind: 'notification', field: key };
@@ -1721,6 +1846,14 @@ function isForbiddenRawPhoneField(key: string): boolean {
 
 function isForbiddenRawNotificationField(key: string): boolean {
   return /^(notification_text|raw_notification|raw_notification_text|raw_text|raw_body|raw_title)$/iu.test(key);
+}
+
+function isForbiddenRawCardField(key: string): boolean {
+  return /^(raw_card|card_number|buyer_source_card_number|source_card|source_card_number|pan|card_pan)$/iu.test(key);
+}
+
+function isForbiddenBankCredentialField(key: string): boolean {
+  return /^(cvv|cvc|security_code|expiration|expiry|exp_month|exp_year|pin|sms_code|bank_password|password)$/iu.test(key);
 }
 
 function stableStringify(value: unknown): string {

@@ -1,5 +1,18 @@
 # Blockers
 
+## Sprint 8C Durable Intelligence Feedback Persistence
+
+- No critical blocker introduced.
+- Sprint 8C closes the previous durable persistence gap for passive Intelligence feedback and unknown-shape monitoring.
+- Operator Intelligence monitoring remains read-only.
+- Feedback and unknown-shape observations do not create payment reviews, emit payment webhooks, mutate classifier rules, promote bank profiles or auto-confirm orders.
+- Durable Intelligence records must remain limited to redacted/safe metadata, shape hashes, masked values, counters, timestamps, relation metadata and reason codes.
+- Raw notification title/body/text, raw phone, raw card, SMS content, bank credentials and unredacted buyer PII remain forbidden.
+- Safety posture preserved: no LLM in payment decisions, no auto-confirmation, no raw notification text/PII, no runtime rule mutation and no official bank confirmation claim.
+- Fresh validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Compose service health, `/api-health`, live feedback persistence endpoint, live unknown-shapes monitoring endpoint and live read-only admin Intelligence endpoints.
+- The local Postgres volume predated migration `008`; the additive migration was applied manually with `psql` during validation.
+- Device availability was confirmed through local SDK ADB on Samsung `SM_S916B` / `R5CWA0FEPZW`; Android source was not changed in Sprint 8C, so no APK install was required for this backend/web persistence sprint.
+
 ## Sprint 8B Payment-Intent-Bound SwimPay Intelligence
 
 - No critical blocker introduced.

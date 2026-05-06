@@ -2049,3 +2049,25 @@ Safety checks:
 - Targeted tests and typecheck passed before full final validation.
 - No real bank notifications were processed.
 - No LLM, SMS, Accessibility scraping, broad package enumeration, raw notification storage or auto-confirmation was added.
+
+## 2026-05-06T13:20:00+03:00 - Sprint 8C Durable Intelligence Feedback Persistence Closeout
+
+- Created `.swimpay-agent/SPRINT_8C_INTELLIGENCE_PERSISTENCE_AUDIT.md`.
+- Created `.swimpay-agent/SPRINT_8C_INTELLIGENCE_PERSISTENCE_REPORT.md`.
+- Added durable PostgreSQL persistence for Intelligence feedback and unknown-shape monitoring.
+- Added the API `IntelligenceRepository` seam with PostgreSQL persistence and local/test fallback.
+- Added read-only operator Intelligence API endpoints.
+- Added the web operator Intelligence monitoring surface.
+- Extended Intelligence feedback contracts with intent-bound learning metadata and raw-card/credential guardrails.
+- Added unknown-shape monitoring contract helpers.
+- Added/updated contract, API and web tests for durable persistence, read-only monitoring, safe flags and safe rendering.
+- Updated agent tracking for current task, next action and blockers.
+- Documented durable passive Intelligence feedback and unknown-shape monitoring boundaries.
+- Documented read-only operator Intelligence monitoring boundaries.
+- Preserved explicit safety flags: `official_bank_confirmation=false`, `mutates_runtime_rules=false`, `promotes_profile=false` and `auto_confirm_allowed=false`.
+- Confirmed feedback and unknown-shape observations do not create payment reviews, emit payment webhooks, mutate classifier rules, promote bank profiles or auto-confirm orders.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Compose ps, `/api-health`, live feedback persistence endpoint and read-only admin Intelligence endpoints.
+- The existing local Postgres volume predated migration `008`, so `008_intelligence_feedback.sql` was applied manually through `psql` as an additive local-volume migration.
+- ADB detected Samsung `SM_S916B` / `R5CWA0FEPZW`; Android source was not changed in this sprint.
+- No real bank notifications were processed.
+- No LLM, SMS, Accessibility scraping, bank app scraping, raw notification text/PII storage, runtime rule mutation or auto-confirmation was added.

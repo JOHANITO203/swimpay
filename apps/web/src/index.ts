@@ -20,6 +20,10 @@ import {
   renderEvidenceReviewPage as renderEvidenceReviewScreen,
   renderEvidenceUnavailablePage as renderEvidenceUnavailableScreen
 } from './screens/EvidenceAdminScreen.js';
+import {
+  renderIntelligenceReviewPage as renderIntelligenceReviewScreen,
+  renderIntelligenceUnavailablePage as renderIntelligenceUnavailableScreen
+} from './screens/IntelligenceAdminScreen.js';
 import { renderCheckoutPage as renderCheckoutScreen } from './screens/CheckoutScreen.js';
 import {
   mapCheckoutStateToBuyerSafeStatus,
@@ -94,6 +98,7 @@ export interface WebServerOptions {
   environment: string;
   checkoutSessionProvider?: CheckoutSessionProvider | undefined;
   adminEvidenceClient?: AdminEvidenceClient | undefined;
+  adminIntelligenceClient?: AdminIntelligenceClient | undefined;
   merchantRouteAdminClient?: MerchantRouteAdminClient | undefined;
   recipient?: CheckoutRecipient | undefined;
 }
@@ -101,6 +106,11 @@ export interface WebServerOptions {
 export interface AdminEvidenceClient {
   getDashboard(): Promise<BankEvidenceDashboard>;
   getAuditEvents(): Promise<AdminAuditEvent[]>;
+}
+
+export interface AdminIntelligenceClient {
+  getFeedback(): Promise<AdminIntelligenceFeedbackResponse>;
+  getUnknownShapes(): Promise<AdminIntelligenceUnknownShapesResponse>;
 }
 
 export interface BankEvidenceDashboard {
@@ -132,6 +142,69 @@ export interface AdminAuditEvent {
   actorId?: string | undefined;
   payloadRedacted?: Record<string, unknown> | undefined;
   createdAt?: string | undefined;
+}
+
+export interface AdminIntelligenceFeedbackResponse {
+  feedback?: IntelligenceFeedbackRow[] | undefined;
+  read_only?: boolean | undefined;
+  mutates_runtime_rules?: boolean | undefined;
+  promotes_profile?: boolean | undefined;
+  official_bank_confirmation?: boolean | undefined;
+}
+
+export interface AdminIntelligenceUnknownShapesResponse {
+  unknown_shapes?: IntelligenceUnknownShapeRow[] | undefined;
+  read_only?: boolean | undefined;
+  mutates_runtime_rules?: boolean | undefined;
+  promotes_profile?: boolean | undefined;
+  official_bank_confirmation?: boolean | undefined;
+}
+
+export interface IntelligenceFeedbackRow {
+  feedback_id?: string | undefined;
+  merchant_id?: string | undefined;
+  shape_hash?: string | undefined;
+  bank_profile_id?: string | undefined;
+  package_name?: string | undefined;
+  profile_version?: string | undefined;
+  classification_guess?: string | undefined;
+  human_label?: string | undefined;
+  feedback?: string | undefined;
+  timestamp?: string | undefined;
+  review_status?: string | undefined;
+  learning_metadata?: IntelligenceLearningMetadata | undefined;
+  mutates_runtime_rules?: boolean | undefined;
+  promotes_profile?: boolean | undefined;
+  official_bank_confirmation?: boolean | undefined;
+}
+
+export interface IntelligenceUnknownShapeRow {
+  shape_hash?: string | undefined;
+  bank_profile_id?: string | undefined;
+  package_name?: string | undefined;
+  profile_version?: string | undefined;
+  classification_guess?: string | undefined;
+  seen_count?: number | undefined;
+  first_seen_at?: string | undefined;
+  last_seen_at?: string | undefined;
+  review_status?: string | undefined;
+  learning_context?: string | undefined;
+  read_only?: boolean | undefined;
+  mutates_runtime_rules?: boolean | undefined;
+  promotes_profile?: boolean | undefined;
+  official_bank_confirmation?: boolean | undefined;
+  creates_payment_review?: boolean | undefined;
+}
+
+export interface IntelligenceLearningMetadata {
+  learning_context?: string | undefined;
+  intent_relation?: string | undefined;
+  active_payment_intent_present?: boolean | undefined;
+  collision_detected?: boolean | undefined;
+  payment_window_status?: string | undefined;
+  review_created?: boolean | undefined;
+  profile_version?: string | undefined;
+  shape_hash?: string | undefined;
 }
 
 export interface MerchantRouteAdminRoute {
@@ -212,6 +285,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   const checkoutMerchantId = process.env.CHECKOUT_MERCHANT_ID ?? 'mch_dev';
   const checkoutSessionProvider = options.checkoutSessionProvider ?? new ApiCheckoutSessionProvider(apiBaseUrl, checkoutMerchantId);
   const adminEvidenceClient = options.adminEvidenceClient ?? new ApiAdminEvidenceClient(apiBaseUrl, process.env.SWIMPAY_ADMIN_TOKEN ?? 'change_me');
+  const adminIntelligenceClient = options.adminIntelligenceClient ?? new ApiAdminIntelligenceClient(apiBaseUrl, process.env.SWIMPAY_ADMIN_TOKEN ?? 'change_me');
   const merchantRouteAdminClient = options.merchantRouteAdminClient ?? new ApiMerchantRouteAdminClient(apiBaseUrl, checkoutMerchantId);
 
   server.get('/', async (_request, reply) => {
@@ -313,6 +387,20 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     } catch {
       reply.status(503).type('text/html; charset=utf-8');
       return renderEvidenceUnavailableScreen();
+    }
+  });
+
+  server.get('/admin/intelligence-review', async (_request, reply) => {
+    try {
+      const [feedback, unknownShapes] = await Promise.all([
+        adminIntelligenceClient.getFeedback(),
+        adminIntelligenceClient.getUnknownShapes()
+      ]);
+      reply.type('text/html; charset=utf-8');
+      return renderIntelligenceReviewScreen(feedback, unknownShapes);
+    } catch {
+      reply.status(503).type('text/html; charset=utf-8');
+      return renderIntelligenceUnavailableScreen();
     }
   });
 
@@ -453,6 +541,12 @@ export class ApiAdminEvidenceClient implements AdminEvidenceClient {
   constructor(private url: string, private tkn: string) {}
   async getDashboard() { return (await fetch(this.url + '/v1/admin/bank-evidence/review-dashboard', { headers: { 'Authorization': `Bearer ${this.tkn}` } })).json(); }
   async getAuditEvents() { return (await fetch(this.url + '/v1/admin/audit-events', { headers: { 'Authorization': `Bearer ${this.tkn}` } })).json(); }
+}
+
+export class ApiAdminIntelligenceClient implements AdminIntelligenceClient {
+  constructor(private url: string, private tkn: string) {}
+  async getFeedback() { return (await fetch(this.url + '/v1/admin/intelligence/feedback', { headers: { 'Authorization': `Bearer ${this.tkn}` } })).json(); }
+  async getUnknownShapes() { return (await fetch(this.url + '/v1/admin/intelligence/unknown-shapes', { headers: { 'Authorization': `Bearer ${this.tkn}` } })).json(); }
 }
 
 export function toCheckoutStatusResponse(s: CheckoutSession): CheckoutStatusResponse {
