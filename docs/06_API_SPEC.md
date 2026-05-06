@@ -38,18 +38,16 @@ Errors must use:
 
 Creates an order and a payment session.
 
+The merchant backend must call this endpoint. Buyer-facing web or Android clients must not contain the merchant secret key.
+
 ### Request
 
 ```json
 {
   "external_id": "order_888",
   "amount": {
-    "value": "137.00",
+    "value": "1390.00",
     "currency": "RUB"
-  },
-  "buyer": {
-    "bank_phone": "+79991234567",
-    "name": "Ivan"
   },
   "product": {
     "id": "premium_pack",
@@ -57,7 +55,6 @@ Creates an order and a payment session.
     "risk_level": "low"
   },
   "expires_in_seconds": 900,
-  "auto_confirm": true,
   "metadata": {
     "source": "merchant_checkout"
   }
@@ -70,26 +67,91 @@ Creates an order and a payment session.
 {
   "order_id": "ord_01",
   "payment_session_id": "ps_01",
-  "status": "receiver_arming",
+  "status": "payment_session_created",
   "checkout_url": "https://pay.swimpay.app/checkout/ps_01",
-  "amount": {
-    "value": "137.00",
+  "display_price": {
+    "value": "1390.00",
     "currency": "RUB"
   },
-  "reference": "SWP-A8K2",
+  "expected_payment_amount": {
+    "value": "1390.35",
+    "currency": "RUB"
+  },
+  "reconciliation_delta": {
+    "value": "0.35",
+    "currency": "RUB"
+  },
+  "reference": "TANGO ALFA",
   "expires_at": "2026-05-01T21:15:00Z"
 }
 ```
 
 ### Behavior
 
-- Normalize buyer phone.
-- Store buyer phone HMAC.
-- Store masked phone.
 - Generate payment session.
-- Generate reference code.
+- Generate human-readable payment reference.
+- Compute a bounded reconciliation amount when policy enables it.
+- Return the exact expected amount the buyer must send.
 - Emit `order.created` and `payment_session.created`.
-- Request Receiver Armed Mode when receiver is healthy.
+- Do not arm the Receiver yet.
+- Do not confirm payment.
+- Do not enable auto-confirmation in V1.
+
+Buyer recognition hints are collected in hosted checkout before payment instructions. Recognition hints are for matching only and must not include CVV, expiration date, PIN, SMS code or bank password.
+
+Safe derived fields may include:
+
+- buyer phone HMAC and masked value;
+- buyer source card encrypted value, HMAC, masked value and last4.
+
+Raw buyer source card and raw phone values must not be logged, rendered in merchant UI or sent in webhooks.
+
+## POST `/v1/checkout/{payment_session_id}/continue-to-bank`
+
+Arms the merchant Receiver after the buyer chooses to continue to their bank.
+
+This is the required bank launcher step. Opening a bank app does not prove payment.
+
+### Response
+
+```json
+{
+  "payment_session_id": "ps_01",
+  "status": "receiver_armed",
+  "receiver_armed": true,
+  "bank_launch_attempted": true,
+  "fallback_copy": "Copiez les details et ouvrez votre banque manuellement."
+}
+```
+
+### Behavior
+
+- Transition the payment session/order to `receiver_armed` when allowed.
+- Write an audit event.
+- Do not confirm payment.
+- Do not send developer webhooks.
+
+## POST `/v1/checkout/{payment_session_id}/claimed-paid`
+
+Records that the buyer clicked `J'ai paye`.
+
+### Response
+
+```json
+{
+  "payment_session_id": "ps_01",
+  "status": "buyer_claimed_paid",
+  "buyer_claimed_paid": true,
+  "safe_status": "searching_signal"
+}
+```
+
+### Behavior
+
+- `J'ai paye` is not payment proof.
+- It never confirms an order.
+- It never sends developer webhooks.
+- SwimPay still waits for a merchant-side bank notification signal and merchant manual confirmation.
 
 ## GET `/v1/orders/{order_id}`
 
@@ -338,9 +400,11 @@ Creates webhook endpoint.
 ```json
 {
   "url": "https://merchant.example/webhooks/swimpay",
-  "enabled_events": ["payment.confirmed", "payment.needs_review", "order.expired"]
+  "enabled_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
 }
 ```
+
+V1 public webhook endpoints are for post-review or terminal outcomes only. Internal signal/review states must not be used by merchant systems to release goods.
 
 ## GET `/v1/webhook-deliveries`
 

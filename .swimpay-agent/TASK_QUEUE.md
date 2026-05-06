@@ -6,6 +6,35 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `476_sdk_web_package_inventory` - status: completed - source: `tasks/476_sdk_web_package_inventory.md`
+- [x] `477_swimpay_node_sdk_client` - status: completed - source: `tasks/477_swimpay_node_sdk_client.md`
+- [x] `478_swimpay_node_orders_create` - status: completed - source: `tasks/478_swimpay_node_orders_create.md`
+- [x] `479_swimpay_webhook_verifier` - status: completed - source: `tasks/479_swimpay_webhook_verifier.md`
+- [x] `480_swimpay_public_webhook_types` - status: completed - source: `tasks/480_swimpay_public_webhook_types.md`
+- [x] `481_swimpay_sdk_errors_idempotency` - status: completed - source: `tasks/481_swimpay_sdk_errors_idempotency.md`
+- [x] `482_swimpay_web_helper_or_snippets` - status: completed - source: `tasks/482_swimpay_web_helper_or_snippets.md`
+- [x] `483_sdk_web_quickstart_examples` - status: completed - source: `tasks/483_sdk_web_quickstart_examples.md`
+- [x] `484_sdk_web_product_truth_guardrails` - status: completed - source: `tasks/484_sdk_web_product_truth_guardrails.md`
+- [x] `485_sdk_web_closeout` - status: completed - source: `tasks/485_sdk_web_closeout.md`
+
+## Previous Queue
+
+- [x] `469_product_truth_public_event_taxonomy` - status: completed - source: `tasks/469_product_truth_public_event_taxonomy.md`
+- [x] `470_api_spec_payment_intent_alignment` - status: completed - source: `tasks/470_api_spec_payment_intent_alignment.md`
+- [x] `471_runtime_docs_manual_confirm_v1` - status: completed - source: `tasks/471_runtime_docs_manual_confirm_v1.md`
+- [x] `472_product_truth_guardrail_tests` - status: completed - source: `tasks/472_product_truth_guardrail_tests.md`
+- [x] `473_product_truth_cleanup_closeout` - status: completed - source: `tasks/473_product_truth_cleanup_closeout.md`
+
+- [x] `460_sdk_receiver_prod_readiness_inventory` - status: completed - source: `tasks/460_sdk_receiver_prod_readiness_inventory.md`
+- [x] `461_sdk_web_current_state_audit` - status: completed - source: `tasks/461_sdk_web_current_state_audit.md`
+- [x] `462_sdk_android_current_state_audit` - status: completed - source: `tasks/462_sdk_android_current_state_audit.md`
+- [x] `463_developer_integration_wizard_audit` - status: completed - source: `tasks/463_developer_integration_wizard_audit.md`
+- [x] `464_receiver_intelligence_prod_readiness_audit` - status: completed - source: `tasks/464_receiver_intelligence_prod_readiness_audit.md`
+- [x] `465_secondary_surfaces_hydration_audit` - status: completed - source: `tasks/465_secondary_surfaces_hydration_audit.md`
+- [x] `466_product_truth_contradiction_audit` - status: completed - source: `tasks/466_product_truth_contradiction_audit.md`
+- [x] `467_vps_production_readiness_audit` - status: completed - source: `tasks/467_vps_production_readiness_audit.md`
+- [x] `468_prod_readiness_audit_closeout` - status: completed - source: `tasks/468_prod_readiness_audit_closeout.md`
+
 - [x] `460_intelligence_persistence_gap_audit` - status: completed - source: `tasks/460_intelligence_persistence_gap_audit.md`
 - [x] `461_durable_intelligence_feedback_storage` - status: completed - source: `tasks/461_durable_intelligence_feedback_storage.md`
 - [x] `462_intelligence_repository_and_apis` - status: completed - source: `tasks/462_intelligence_repository_and_apis.md`
@@ -13,8 +42,6 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `464_intent_bound_learning_contract_guardrails` - status: completed - source: `tasks/464_intent_bound_learning_contract_guardrails.md`
 - [x] `465_intelligence_persistence_readonly_tests` - status: completed - source: `tasks/465_intelligence_persistence_readonly_tests.md`
 - [x] `466_sprint_8c_intelligence_persistence_closeout` - status: completed - source: `tasks/466_sprint_8c_intelligence_persistence_closeout.md`
-
-## Previous Queue
 
 - [x] `450_swimpay_intelligence_gap_audit` - status: completed - source: `tasks/450_swimpay_intelligence_gap_audit.md`
 - [x] `451_buyer_checkout_recognition_hints` - status: completed - source: `tasks/451_buyer_checkout_recognition_hints.md`

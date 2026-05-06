@@ -1,78 +1,99 @@
 # Signal Runtime Pipeline
 
-Task 027 wires the durable signal-worker path from `signal.received` into deterministic parsing, matching, decision recording, review creation and webhook delivery requests.
+The durable signal-worker path consumes redacted receiver signals and turns them into backend-owned decisions.
+
+V1 is payment-intent-bound and manual-confirmation-first:
+
+- no active payment intent means no merchant payment review;
+- negative notification categories never create payment reviews;
+- `Matching 100 %` is merchant review copy only;
+- merchant manual confirmation is required before fulfillment webhook delivery;
+- auto-confirmation is disabled for V1 public release.
 
 ## Runtime Flow
 
 ```text
 signal.received
 -> load notification_signals row from PostgreSQL
--> parse redacted notification text when present
--> score signal quality
--> search candidate payment sessions
--> run matching-core decision gates
--> create review, reject, or auto-confirm
--> request webhook delivery
+-> parse redacted notification fields
+-> classify direction/category
+-> run Payment Intent Gate
+-> create merchant review only for intent-bound candidates
+-> wait for merchant manual confirmation or rejection
+-> request public webhook only after confirmation or terminal outcome
 ```
 
 PostgreSQL remains the source of truth for decisions. NATS JetStream triggers processing and carries internal events, but final state changes are protected by database writes and unique constraints.
 
-The API keeps its existing internal event publisher interface, but NATS-backed publishing now serializes those events as JetStream-compatible envelopes on subjects such as `signal.received`.
-
 ## Parser Behavior
 
-The pipeline uses `@swimpay/bank-templates` deterministic parser logic. Negative gates run before incoming classification:
+The pipeline uses deterministic parser logic. Negative gates run before incoming classification:
 
-- cashback -> rejected as a customer payment
-- refund -> rejected as a customer payment
-- outgoing payment/transfer -> rejected
-- promo -> rejected
-- failed transfer -> rejected
-- unknown or ambiguous direction -> review
+- cashback -> not a customer payment candidate;
+- refund -> not a customer payment candidate;
+- outgoing payment/transfer -> not a customer payment candidate;
+- promo -> ignored for payment review;
+- failed transfer -> not a paid order;
+- unknown or ambiguous direction -> cautious handling through the Payment Intent Gate.
 
-The parser works only on redacted notification fields if they are available. Raw notification text is not stored or required by this runtime.
+The parser works only on redacted notification fields. Raw notification text is not stored or required by this runtime.
 
-## Matching and Decision Rules
+## Payment Intent Gate
 
-Candidate sessions must belong to the same merchant, match exact amount and currency, be inside the valid time window, and remain active. Matching-core then evaluates identity, collisions and trust context.
+Payment Intent Gate sits between classifier output and review creation.
 
-Auto-confirmation is allowed only for a strict synthetic trusted case:
+Inputs include:
 
-- active order and payment session
-- exact amount and currency
-- `incoming_customer_transfer`
-- exact phone HMAC or reference HMAC match
-- no collision
-- trusted device
-- trusted or trusted-low-amount bank profile
-- verified bank app metadata
-- trusted template
-- unique signal/event/hash protected by PostgreSQL constraints
-- score at or above the matching threshold
+- bank profile/package;
+- classification;
+- amount/currency;
+- shape hash;
+- reference or sender phone HMAC if available;
+- receiving route if known;
+- observed time;
+- active payment intents and expiry windows.
 
-Amount-only signals never auto-confirm. `TO_VERIFY` or `pending_verification` bank package/certificate metadata cannot auto-confirm and routes to review.
+Outputs include:
+
+- `expected_payment_candidate`;
+- `ambiguous_activity`;
+- `late_payment_candidate`;
+- `unrelated_bank_activity`;
+- `negative_activity`;
+- `unknown_activity`.
+
+Review creation is allowed only for:
+
+- expected payment candidate;
+- ambiguous activity with an active payment intent;
+- late payment candidate when policy allows review.
+
+Review creation is not allowed for:
+
+- unrelated bank activity;
+- negative activity;
+- unknown activity without active payment intent.
 
 ## Review Path
 
-`needs_review` creates or reuses one open review item for the signal. Review payloads include safe reason codes such as:
+The review path creates or reuses one open review item for the signal and payment intent.
 
-- `bank_app_unverified`
-- `bank_profile_untrusted`
-- `template_untrusted`
-- `amount_collision`
-- `ambiguous_direction`
-- `amount_only_never_auto_confirm`
-- `no_candidate`
+Merchant copy may show:
 
-The runtime publishes `decision.needs_review` and `review.created`, writes redacted audit events, and requests a `payment.needs_review` webhook delivery.
+- `Nouveau paiement detecte`;
+- `Matching 100 %`;
+- `Veuillez confirmer ce paiement.`;
+- or a more cautious `Paiement a verifier`.
 
-If the merchant later rejects that review, task 028 semantics apply. The default rejection scope rejects only the review and linked signal; it does not reject the order or payment session automatically.
+This copy does not confirm payment.
 
-## Auto-Confirm Path
+If the merchant rejects the signal with signal scope, the order remains unchanged. Explicit order rejection is a separate action.
 
-The runtime updates orders and payment sessions to `auto_confirmed` only through the repository transaction. Existing partial unique indexes still prevent confirming the same order or using the same signal twice.
+## Public Webhook Path
 
-The public webhook payload includes:
+Public fulfillment webhooks are requested only after merchant manual confirmation or explicit terminal outcome.
+
+Every public payment webhook includes:
 
 ```json
 {
@@ -83,18 +104,23 @@ The public webhook payload includes:
 
 No official bank confirmation behavior or wording is introduced.
 
-## Rejected Path
+## Disabled V1 Auto-confirmation
 
-Unsafe signals are preserved and marked rejected instead of deleted. The runtime publishes `decision.rejected`, writes redacted audit events, and requests a `payment.rejected` webhook if endpoints are configured.
+Older internal architecture contains auto-confirmation states and future policy concepts. For current V1 production readiness, runtime behavior must remain manual-confirmation-first.
+
+Any future automation must be explicitly re-enabled by policy, tests and product approval. Feedback or unknown-shape monitoring must not mutate runtime rules automatically.
 
 ## Idempotency
 
-Reprocessing the same `signal.received` event first checks existing signal decisions. Repeated processing returns the existing decision and avoids duplicate review items, duplicate normal webhook event requests, and double confirmation. PostgreSQL constraints remain the final protection.
+Reprocessing the same `signal.received` event first checks existing signal decisions. Repeated processing returns the existing decision and avoids duplicate review items, duplicate webhook event requests and double confirmation.
+
+PostgreSQL constraints remain the final protection.
 
 ## Limitations
 
-- The worker does not implement Android Receiver logic.
-- It does not verify real bank package names or certificate fingerprints.
-- It does not promote bank templates or bank profiles.
-- It does not implement PSP, SBP, SMS reading, bank app scraping, or official bank confirmation.
-- PostgreSQL integration tests remain a future task; current coverage is unit/in-process runtime behavior.
+- The worker does not implement Android Receiver UI logic.
+- It does not scrape bank apps.
+- It does not read SMS.
+- It does not use Accessibility scraping.
+- It does not promote bank templates or bank profiles automatically.
+- It does not implement PSP, SBP official rail, wallet behavior or official bank confirmation.

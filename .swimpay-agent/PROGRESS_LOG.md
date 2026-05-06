@@ -1,5 +1,37 @@
 # Progress Log
 
+## 2026-05-06 - Product Truth Cleanup Before SDK
+
+- Created tasks 469 through 473 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Rewrote `docs/12_WEBHOOKS.md` so public V1 webhooks are post-review or terminal outcomes only.
+- Updated `docs/06_API_SPEC.md` to remove `auto_confirm` examples and document `continue-to-bank` / `claimed-paid` semantics.
+- Rewrote `docs/01_PRODUCT_REQUIREMENTS.md` around payment-intent-bound manual-confirmation V1.
+- Rewrote `docs/SIGNAL_RUNTIME_PIPELINE.md` around Payment Intent Gate and manual confirmation.
+- Added `tests/product-truth-docs.test.ts` for SDK-facing documentation guardrails.
+- Ran validation successfully: targeted product-truth test, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Docker live `ps` and `/api-health` are blocked because the Docker Desktop Linux engine pipe is unavailable in this shell and no local API server is reachable.
+- No backend implementation, Android notification processing, payment runtime, database schema, workers or contracts were changed.
+
+## 2026-05-06 - Production Readiness Audit Before SDK / Receiver Hardening
+
+- Created tasks 460 through 468 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Created `.swimpay-agent/PROD_READINESS_INVENTORY.md`.
+- Created `.swimpay-agent/SDK_WEB_AUDIT.md`.
+- Created `.swimpay-agent/SDK_ANDROID_AUDIT.md`.
+- Created `.swimpay-agent/DEVELOPER_INTEGRATION_WIZARD_AUDIT.md`.
+- Created `.swimpay-agent/RECEIVER_INTELLIGENCE_PROD_AUDIT.md`.
+- Created `.swimpay-agent/SECONDARY_SURFACES_HYDRATION_AUDIT.md`.
+- Created `.swimpay-agent/PRODUCT_TRUTH_CONTRADICTION_AUDIT.md`.
+- Created `.swimpay-agent/VPS_PRODUCTION_READINESS_AUDIT.md`.
+- Created `.swimpay-agent/PROD_READINESS_AUDIT_REPORT.md`.
+- Confirmed SDK Web and SDK Android are not yet packaged production SDKs.
+- Confirmed Receiver/Intelligence foundations are aligned but still need production hardening.
+- Identified stale docs/tests around auto-confirmation and pre-confirmation public webhooks.
+- Ran validation: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Android JVM tests and Android debug APK build passed.
+- Installed and launched the debug APK on Samsung `SM_S916B` via ADB transport id `2`, then captured a UIAutomator dump.
+- Docker live health was not available because no Compose services were running; `/api-health` refused the connection.
+- No backend API, payment logic, Android notification processing, contracts, workers or state machines were changed.
+
 ## 2026-05-06 - Sprint 8B Payment-Intent-Bound SwimPay Intelligence
 
 - Created tasks 450 through 459 and updated the active task queue.
@@ -2071,3 +2103,19 @@ Safety checks:
 - ADB detected Samsung `SM_S916B` / `R5CWA0FEPZW`; Android source was not changed in this sprint.
 - No real bank notifications were processed.
 - No LLM, SMS, Accessibility scraping, bank app scraping, raw notification text/PII storage, runtime rule mutation or auto-confirmation was added.
+# 2026-05-06T00:00:00+03:00 - Sprint 9B SDK Web Production Readiness
+
+- Created tasks 476 through 485 and updated the active task queue.
+- Created `.swimpay-agent/SDK_WEB_PACKAGE_INVENTORY.md`.
+- Added `packages/swimpay-node` as the `@swimpay/node` SDK package.
+- Added the `SwimPay` client with server-side `secretKey` and optional `apiBaseUrl`.
+- Added `swimpay.orders.create` with positive minor-unit amount validation, uppercase currency validation, idempotency header support and unsafe-field rejection.
+- Added typed SDK errors with sanitized safe details.
+- Added raw-body webhook verification using SwimPay's HMAC-SHA256 `timestamp.rawPayload` signature method.
+- Added public V1 webhook parser for `payment.confirmed`, `payment.rejected` and `payment.expired` only.
+- Added SDK guardrails rejecting public `payment.signal_detected` and `payment.needs_review` fulfillment parsing.
+- Added `docs/SDK_WEB_QUICKSTART.md`.
+- Added `examples/web-node-basic`.
+- Added product truth tests for SDK-facing docs/examples.
+- No backend payment runtime, Android notification processing, contracts, workers, real notification capture, LLM logic, SMS/Accessibility access, broad enumeration or auto-confirmation behavior was changed.
+- Docker live validation passed after Docker Desktop was restarted and Compose services were started: Postgres, Valkey, NATS, API, web and proxy are healthy, and `/api-health` reports database, NATS and Valkey `ok`.

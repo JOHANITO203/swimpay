@@ -1,5 +1,38 @@
 # Blockers
 
+## Sprint 9B SDK Web Production Readiness
+
+- No critical product blocker introduced.
+- `@swimpay/node` was added under `packages/swimpay-node`.
+- SDK Web supports server-side order creation, idempotency, typed errors, raw-body webhook verification and public V1 event parsing.
+- SDK public webhook parser accepts only `payment.confirmed`, `payment.rejected` and `payment.expired`.
+- SDK rejects public fulfillment parsing for internal signal/review event types.
+- Product truth guardrails protect SDK-facing docs/examples from auto-confirmation claims, official bank confirmation claims, unsafe client-side secret snippets and unsafe payment release semantics.
+- Docker live validation passed after Docker Desktop was restarted and Compose services were started: Postgres, Valkey, NATS, API, web and proxy are healthy, and `/api-health` reports database, NATS and Valkey `ok`.
+- Remaining product follow-up: no separate browser package was created; Sprint 9B uses a safe redirect snippet only.
+
+## Product Truth Cleanup Before SDK
+
+- No critical blocker introduced.
+- SDK-facing docs now state public V1 webhooks are post-review or terminal outcomes only.
+- `docs/06_API_SPEC.md` no longer contains `auto_confirm` order examples.
+- `docs/12_WEBHOOKS.md` no longer documents public `payment.signal_detected` or `payment.needs_review` fulfillment webhooks.
+- Guardrail test added for SDK-facing docs.
+- Remaining non-critical limitation: broader architecture/history docs still contain future/historical auto-confirmation concepts and need a separate docs taxonomy pass before public documentation release.
+- Local Docker live validation is blocked in this shell: Docker Desktop Linux engine pipe is unavailable, and `/api-health` is not reachable.
+
+## Production Readiness Audit Before SDK / Receiver Hardening
+
+- No critical blocker introduced by the audit.
+- Audit-only sprint completed without changing backend APIs, payment logic, Android notification processing, contracts or state machines.
+- SDK Web is partially ready but no packaged production SDK/helper exists yet.
+- SDK Android is missing as a merchant integration helper; the existing Android app is the Receiver, not the merchant SDK.
+- Developer Integration Wizard is prototype-level and missing Web/Android-only key/secret/snippet lifecycle.
+- Receiver/Intelligence is architecturally aligned after Sprints 8A/8B/8C but still needs production hardening around receiver key lifecycle, real multi-bank validation, retention and stale docs/tests.
+- Product truth contradictions remain in docs/tests around auto-confirmation, public `payment.signal_detected` / `payment.needs_review` webhook semantics and old `auto_confirm` examples.
+- VPS deployment is plausible for 4 GB RAM but not production-ready until env, HTTPS, backup/restore, migration, monitoring and retention are hardened.
+- Validation note: code/build validations passed, Android APK installed/launched on the connected device, but live `/api-health` validation is blocked because Compose services are not running (`docker compose ... ps` returned no services).
+
 ## Sprint 8C Durable Intelligence Feedback Persistence
 
 - No critical blocker introduced.

@@ -2,6 +2,74 @@
 
 generated_at: 2026-05-06T00:00:00+03:00
 
+## Latest Sprint 9B SDK Web Production Readiness
+
+Completed:
+
+1. Created `@swimpay/node` under `packages/swimpay-node`.
+2. Added server-side SwimPay client construction.
+3. Added `swimpay.orders.create` with safe payload validation and idempotency header support.
+4. Added raw-body webhook verification using the existing SwimPay HMAC signature scheme.
+5. Added typed public webhook parsing for `payment.confirmed`, `payment.rejected` and `payment.expired`.
+6. Added typed SDK errors that avoid leaking secrets.
+7. Added SDK quickstart docs and a minimal Node example.
+8. Added product truth guardrail tests for SDK-facing docs/examples.
+
+Next recommended action:
+
+Start Sprint 9C for Android merchant SDK/helper and Developer Integration Wizard production readiness. Keep Android snippets secret-free and ensure mobile apps call merchant backends rather than SwimPay with a merchant secret.
+
+Do not do:
+
+- Do not add a secret key to browser or Android code.
+- Do not expose internal signal/review events as fulfillment webhooks.
+- Do not enable auto-confirmation.
+- Do not process real bank notifications.
+- Do not add LLM, SMS, Accessibility scraping or broad app enumeration.
+
+## Latest Product Truth Cleanup
+
+Completed:
+
+1. Cleaned public webhook docs for manual-confirm-only V1.
+2. Cleaned API spec order and checkout examples for payment-intent-bound receiver arming.
+3. Updated product requirements and signal runtime docs.
+4. Added SDK-facing product truth guardrail tests.
+
+Next recommended action:
+
+Start SDK Web production readiness: create a small server-side helper package or exported helpers for order creation, webhook verification, typed webhook events and safe examples. Keep Android SDK work separate and keep secret keys out of APKs.
+
+Do not do:
+
+- Do not enable auto-confirmation.
+- Do not treat `J'ai paye` as confirmation.
+- Do not publish signal/review internal events as fulfillment webhooks.
+- Do not process real bank notifications.
+- Do not add LLM, SMS, Accessibility scraping or broad installed-app enumeration.
+
+## Latest Production Readiness Audit
+
+Completed:
+
+1. Created tasks 460 through 468 and updated the active task queue.
+2. Audited SDK Web, SDK Android, Developer Integration Wizard, webhooks, checkout, Android Receiver, SwimPay Intelligence, secondary surfaces and VPS readiness.
+3. Created production readiness reports under `.swimpay-agent/`.
+4. Confirmed Sprint 8A/8B/8C Intelligence work should be preserved.
+5. Identified product truth contradictions that must be cleaned before SDK publication.
+
+Next recommended action:
+
+Run a product truth cleanup sprint before SDK implementation. First split public merchant webhooks from internal events, remove or future-gate V1 auto-confirm docs/tests, update API examples around buyer recognition hints and receiver arming, then build SDK Web on top of that cleaned contract.
+
+Do not do:
+
+- Do not process real bank notifications without explicit consent.
+- Do not enable auto-confirmation.
+- Do not publish SDK docs while public webhook semantics still conflict with manual-confirm-only V1.
+- Do not put a SwimPay secret key in any Android APK or Android snippet.
+- Do not add LLM, SMS, Accessibility scraping, bank app scraping, `QUERY_ALL_PACKAGES` or broad installed-app enumeration.
+
 ## Latest Sprint 8C Durable Intelligence Feedback Persistence
 
 Completed:

@@ -1,12 +1,33 @@
-# 12 — Webhooks
+# 12 - Webhooks
 
 ## Purpose
 
-Webhooks notify developer systems when SwimPay detects, reviews, confirms or rejects payment signals.
+Public webhooks notify developer systems when a merchant-visible payment outcome is ready for the merchant's system.
 
-## Public event rule
+For V1, fulfillment webhooks are post-review only:
 
-Every payment event must include:
+- `payment.confirmed`
+- `payment.rejected`
+- `payment.expired`
+
+Internal signal and review events may still exist inside SwimPay, but they are not public fulfillment webhooks and must not be used by merchant systems to release goods.
+
+## Product Truth
+
+SwimPay is a Payment Signal Engine.
+
+SwimPay is not a bank, PSP, wallet or official bank confirmation system. A notification signal is operational evidence for merchant review, not official bank confirmation.
+
+V1 rules:
+
+- `Continuer vers ma banque` arms the Receiver.
+- `J'ai paye` never confirms payment.
+- `Matching 100 %` is strong merchant review copy only.
+- Merchant manual confirmation remains required.
+- Webhooks for fulfillment fire only after merchant confirmation or explicit terminal outcome.
+- Auto-confirmation is disabled for V1 public release.
+
+Every public payment webhook must include:
 
 ```json
 {
@@ -20,31 +41,15 @@ Every payment event must include:
 ```text
 SwimPay-Event-Id: evt_01
 SwimPay-Timestamp: 2026-05-01T21:02:03Z
-SwimPay-Signature: hmac_sha256_signature
+SwimPay-Signature: sha256=hmac_sha256_signature
 SwimPay-Delivery-Id: del_01
 ```
 
-## Events
-
-### `payment.signal_detected`
-
-```json
-{
-  "id": "evt_01",
-  "type": "payment.signal_detected",
-  "created_at": "2026-05-01T21:02:00Z",
-  "data": {
-    "order_id": "ord_01",
-    "payment_session_id": "ps_01",
-    "signal_id": "sig_01",
-    "confirmation_type": "notification_signal",
-    "official_bank_confirmation": false,
-    "signal_quality": 90
-  }
-}
-```
+## Public Events
 
 ### `payment.confirmed`
+
+Emitted only after merchant manual confirmation in V1.
 
 ```json
 {
@@ -57,51 +62,69 @@ SwimPay-Delivery-Id: del_01
     "payment_session_id": "ps_01",
     "confirmation_type": "notification_signal",
     "official_bank_confirmation": false,
-    "confidence_score": 94,
-    "decision": "auto_confirmed",
-    "reasons": [
-      "amount_exact",
-      "sender_phone_exact",
-      "trusted_bank_profile",
-      "trusted_device",
-      "trusted_template",
-      "no_collision"
-    ]
-  }
-}
-```
-
-### `payment.needs_review`
-
-```json
-{
-  "id": "evt_03",
-  "type": "payment.needs_review",
-  "created_at": "2026-05-01T21:02:03Z",
-  "data": {
-    "order_id": "ord_01",
-    "payment_session_id": "ps_01",
-    "confirmation_type": "notification_signal",
-    "official_bank_confirmation": false,
-    "reason_codes": ["phone_missing", "reference_missing", "amount_collision"]
+    "decision": "manual_confirmed",
+    "review_id": "rev_01",
+    "amount": {
+      "value": "137.00",
+      "currency": "RUB"
+    },
+    "payment_reference": "TANGO ALFA"
   }
 }
 ```
 
 ### `payment.rejected`
 
-Task 028 does not emit this webhook for default signal-scope review rejection. Signal-scope rejection is an internal review/signal outcome only.
-
-Future explicit order-scope or payment-session-scope rejection webhooks may use this event if product policy requires it. Any public rejection payload must include:
+Emitted only for explicit order/payment rejection, not for default signal-scope rejection.
 
 ```json
 {
-  "confirmation_type": "notification_signal",
-  "official_bank_confirmation": false
+  "id": "evt_03",
+  "type": "payment.rejected",
+  "created_at": "2026-05-01T21:05:03Z",
+  "data": {
+    "order_id": "ord_01",
+    "external_id": "order_888",
+    "payment_session_id": "ps_01",
+    "confirmation_type": "notification_signal",
+    "official_bank_confirmation": false,
+    "decision": "manual_rejected",
+    "review_id": "rev_01"
+  }
 }
 ```
 
-### `order.expired`
+### `payment.expired`
+
+Emitted when the payment session expires without a confirmed payment.
+
+```json
+{
+  "id": "evt_04",
+  "type": "payment.expired",
+  "created_at": "2026-05-01T21:15:00Z",
+  "data": {
+    "order_id": "ord_01",
+    "external_id": "order_888",
+    "payment_session_id": "ps_01",
+    "confirmation_type": "notification_signal",
+    "official_bank_confirmation": false,
+    "decision": "expired"
+  }
+}
+```
+
+## Non-fulfillment Internal Events
+
+The following concepts are internal operational events in V1:
+
+- signal detected;
+- matching started;
+- payment needs merchant review;
+- feedback collected;
+- unknown notification shape observed.
+
+Developer systems must not release goods based on these internal states.
 
 ## Retry policy
 
@@ -132,14 +155,12 @@ cancelled
 
 ## Idempotency
 
-Developer systems must use `SwimPay-Event-Id` as idempotency key.
+Developer systems must use `SwimPay-Event-Id` as the idempotency key.
 
 Webhook worker must not create duplicate active deliveries for the same endpoint/event pair.
 
 ## Replay
 
-Dashboard/API must support manual webhook replay.
+Dashboard/API may support manual webhook replay.
 
-Replay must keep original event id but create a new delivery id.
-
-Task 026 implements the internal replay helper and durable model. Admin/API exposure must remain RBAC-protected by `replay_webhooks` when surfaced.
+Replay keeps the original event id but creates a new delivery id. Admin/API exposure must remain RBAC-protected.
