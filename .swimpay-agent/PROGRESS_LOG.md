@@ -2119,3 +2119,20 @@ Safety checks:
 - Added product truth tests for SDK-facing docs/examples.
 - No backend payment runtime, Android notification processing, contracts, workers, real notification capture, LLM logic, SMS/Accessibility access, broad enumeration or auto-confirmation behavior was changed.
 - Docker live validation passed after Docker Desktop was restarted and Compose services were started: Postgres, Valkey, NATS, API, web and proxy are healthy, and `/api-health` reports database, NATS and Valkey `ok`.
+
+# 2026-05-06T00:00:00+03:00 - Sprint 9C Android Merchant SDK Production Helper
+
+- Created tasks 486 through 493 and updated the active task queue.
+- Created `.swimpay-agent/SDK_ANDROID_PACKAGE_INVENTORY.md`.
+- Added `packages/swimpay-android` as source-only `@swimpay/android`.
+- Added Kotlin helper `com.swimpay.sdk.SwimPayCheckout`.
+- Added checkout URL validation, Custom Tabs launch path and `ACTION_VIEW` browser fallback.
+- Added return/deep-link parsing with typed non-confirming statuses.
+- Added safe Android SDK models and errors.
+- Added `docs/SDK_ANDROID_QUICKSTART.md`.
+- Added `examples/android-merchant-basic`.
+- Added `tests/sdk-android-product-truth.test.ts`.
+- Guardrails prove the merchant Android helper has no Receiver imports, NotificationListener usage, SMS, Accessibility, `QUERY_ALL_PACKAGES`, broad app enumeration, bank package probing, secret key usage, webhook handling or local payment fulfillment.
+- Validation passed: targeted SDK Android guardrail test, android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Docker live checks were blocked by local Docker Desktop pipe availability; `/api-health` was not reachable from this shell.
+- The SwimPay Receiver app and payment runtime were not modified.

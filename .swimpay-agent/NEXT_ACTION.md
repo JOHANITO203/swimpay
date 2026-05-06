@@ -2,6 +2,30 @@
 
 generated_at: 2026-05-06T00:00:00+03:00
 
+## Latest Sprint 9C Android Merchant SDK Production Helper
+
+Completed:
+
+1. Created `@swimpay/android` under `packages/swimpay-android`.
+2. Added Kotlin source helper `com.swimpay.sdk.SwimPayCheckout`.
+3. Added checkout URL validation, Custom Tabs launch and `ACTION_VIEW` fallback.
+4. Added return/deep-link parsing with non-confirming typed statuses.
+5. Added safe SDK models and errors.
+6. Added Android merchant quickstart docs and a minimal example.
+7. Added static guardrail tests proving the helper is separate from the Receiver and contains no secret/webhook/notification-processing behavior.
+
+Next recommended action:
+
+Start Sprint 9D for Developer Integration Wizard production readiness: integration type selection, webhook URL setup, secret masking/show-once behavior, test webhook and safe Web/Android snippets.
+
+Do not do:
+
+- Do not put SwimPay secrets in Android APK or browser snippets.
+- Do not make Android return/deep-link status a payment confirmation.
+- Do not add webhook handling to the merchant Android SDK.
+- Do not modify Receiver notification processing during SDK work.
+- Do not enable auto-confirmation or claim official bank confirmation.
+
 ## Latest Sprint 9B SDK Web Production Readiness
 
 Completed:

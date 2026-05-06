@@ -1,0 +1,11 @@
+{
+  "name": "@swimpay/android",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Production-safe Android merchant checkout helper for SwimPay V1.",
+  "license": "UNLICENSED",
+  "files": [
+    "README.md",
+    "src"
+  ]
+}

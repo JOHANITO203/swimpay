@@ -6,6 +6,17 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `486_sdk_android_package_inventory` - status: completed - source: `tasks/486_sdk_android_package_inventory.md`
+- [x] `487_swimpay_android_checkout_helper` - status: completed - source: `tasks/487_swimpay_android_checkout_helper.md`
+- [x] `488_android_checkout_return_handling` - status: completed - source: `tasks/488_android_checkout_return_handling.md`
+- [x] `489_android_sdk_errors_and_models` - status: completed - source: `tasks/489_android_sdk_errors_and_models.md`
+- [x] `490_android_sdk_receiver_separation_guardrails` - status: completed - source: `tasks/490_android_sdk_receiver_separation_guardrails.md`
+- [x] `491_android_sdk_quickstart_examples` - status: completed - source: `tasks/491_android_sdk_quickstart_examples.md`
+- [x] `492_android_sdk_product_truth_guardrails` - status: completed - source: `tasks/492_android_sdk_product_truth_guardrails.md`
+- [x] `493_android_sdk_closeout` - status: completed - source: `tasks/493_android_sdk_closeout.md`
+
+## Previous Queue
+
 - [x] `476_sdk_web_package_inventory` - status: completed - source: `tasks/476_sdk_web_package_inventory.md`
 - [x] `477_swimpay_node_sdk_client` - status: completed - source: `tasks/477_swimpay_node_sdk_client.md`
 - [x] `478_swimpay_node_orders_create` - status: completed - source: `tasks/478_swimpay_node_orders_create.md`
@@ -16,8 +27,6 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [x] `483_sdk_web_quickstart_examples` - status: completed - source: `tasks/483_sdk_web_quickstart_examples.md`
 - [x] `484_sdk_web_product_truth_guardrails` - status: completed - source: `tasks/484_sdk_web_product_truth_guardrails.md`
 - [x] `485_sdk_web_closeout` - status: completed - source: `tasks/485_sdk_web_closeout.md`
-
-## Previous Queue
 
 - [x] `469_product_truth_public_event_taxonomy` - status: completed - source: `tasks/469_product_truth_public_event_taxonomy.md`
 - [x] `470_api_spec_payment_intent_alignment` - status: completed - source: `tasks/470_api_spec_payment_intent_alignment.md`

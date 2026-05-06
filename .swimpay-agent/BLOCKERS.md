@@ -223,6 +223,13 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Real bank notifications remain out of scope until the explicit real-notification shadow consent gate is used.
 - Real-bank auto-confirmation remains disabled.
 
+## Sprint 9C Android SDK Helper
+
+- No SDK code critical blocker introduced.
+- `@swimpay/android` is source-only in this sprint; Maven/Gradle publication remains a future packaging task.
+- Docker Desktop is not reachable from this shell for live checks: `//./pipe/dockerDesktopLinuxEngine` is missing.
+- `docker compose ... config` passed, but `docker compose ... ps` and `http://localhost:8080/api-health` could not be freshly verified until Docker Desktop is reachable again.
+
 ## Sprint 7J Android Frontend Source-of-truth Cleanup
 
 - No critical blocker introduced.
