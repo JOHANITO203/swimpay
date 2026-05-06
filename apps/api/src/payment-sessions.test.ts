@@ -252,6 +252,20 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     return { kind: 'updated' as const, order: result.order, paymentSession: result.paymentSession };
   }
 
+  async markReceiverArmed(input: Parameters<OrderRepository['markReceiverArmed']>[0]) {
+    const result = this.requireMutableSession(input.merchantId, input.paymentSessionId, input.now);
+    if (result.kind !== 'ok') {
+      return result;
+    }
+
+    result.paymentSession.status = 'receiver_armed';
+    result.paymentSession.updatedAt = input.now;
+    result.order.status = 'receiver_armed';
+    result.order.updatedAt = input.now;
+    this.auditEvents.push({ eventType: 'checkout.continue_to_bank', objectId: input.paymentSessionId });
+    return { kind: 'updated' as const, order: result.order, paymentSession: result.paymentSession };
+  }
+
   async markBuyerClaimedPaid(input: Parameters<OrderRepository['markBuyerClaimedPaid']>[0]) {
     const result = this.requireMutableSession(input.merchantId, input.paymentSessionId, input.now);
     if (result.kind !== 'ok') {
@@ -810,6 +824,11 @@ describe('payment session api', () => {
       payload: { payer_bank_launcher_id: 'tbank_ru' }
     });
 
+    const continueToBank = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/continue-to-bank',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
     const instructions = await server.inject({
       method: 'POST',
       url: '/v1/checkout/ps_session_01/payment-instructions-shown',
@@ -821,6 +840,14 @@ describe('payment session api', () => {
       headers: { authorization: 'Bearer test_mch_01' }
     });
 
+    expect(continueToBank.statusCode).toBe(200);
+    expect(continueToBank.json()).toMatchObject({
+      status: 'receiver_armed',
+      receiver_status: 'armed',
+      buyer_safe_status: 'awaiting_payment',
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
     expect(instructions.statusCode).toBe(200);
     expect(instructions.json()).toMatchObject({
       checkout_state: 'awaiting_payment',
@@ -837,6 +864,7 @@ describe('payment session api', () => {
     expect(repository.paymentSessions.get('ps_session_01')?.status).toBe('buyer_claimed_paid');
     expect(repository.orders.get('ord_session_01')?.status).toBe('buyer_claimed_paid');
     expect(repository.orders.get('ord_session_01')?.status).not.toBe('manual_confirmed');
+    expect(repository.auditEvents.map((event) => event.eventType)).toContain('checkout.continue_to_bank');
   });
 
   test('rejects checkout mutations after expiry', async () => {

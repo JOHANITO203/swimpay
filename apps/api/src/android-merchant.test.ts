@@ -471,6 +471,10 @@ class FakeOrderRepository implements OrderRepository {
     return { kind: 'updated', order: this.order, paymentSession: this.paymentSession };
   }
 
+  public async markReceiverArmed(): Promise<PaymentSessionCheckoutMutationResult> {
+    return { kind: 'updated', order: this.order, paymentSession: this.paymentSession };
+  }
+
   public async markBuyerClaimedPaid(): Promise<PaymentSessionCheckoutMutationResult> {
     return { kind: 'updated', order: this.order, paymentSession: this.paymentSession };
   }

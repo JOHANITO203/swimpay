@@ -337,9 +337,24 @@ describe('signal runtime processor', () => {
 
     const result = await processor.processSignalReceived({ signalId: 'sig_01' });
 
-    expect(result.decision).toBe('needs_review');
-    expect(repository.reviews[0]?.reasonCodes).toContain('no_candidate');
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toContain('no_active_payment_intent_no_review');
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.webhookEvents).toHaveLength(0);
     expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
+  });
+
+  it('does not create payment review for unrelated bank activity without an active intent', async () => {
+    const { processor, repository } = createProcessor({
+      sessions: []
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toContain('no_active_payment_intent_no_review');
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.webhookEvents).toHaveLength(0);
   });
 
   it('is idempotent for repeated signal events', async () => {

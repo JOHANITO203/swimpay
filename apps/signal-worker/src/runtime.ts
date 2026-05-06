@@ -241,6 +241,15 @@ export class SignalRuntimeProcessor {
     }
 
     if (parsed.directionLabel === 'unknown' || parsed.directionLabel === 'unknown_ambiguous_direction') {
+      if (!candidates[0]) {
+        return this.ignoreUnrelatedSignal({
+          signal: hydratedSignal,
+          parsed,
+          now,
+          reasonCodes: uniqueReasonCodes([...parsed.reasonCodes, 'unknown_without_active_payment_intent']),
+          score: parsed.signalQuality
+        });
+      }
       return this.reviewSignal({
         signal: hydratedSignal,
         parsed,
@@ -301,6 +310,16 @@ export class SignalRuntimeProcessor {
         parsed,
         now,
         reasonCodes,
+        score: match.score
+      });
+    }
+
+    if (match.decision === 'wait' && !match.selected) {
+      return this.ignoreUnrelatedSignal({
+        signal: hydratedSignal,
+        parsed,
+        now,
+        reasonCodes: uniqueReasonCodes([...reasonCodes, 'no_active_payment_intent_no_review']),
         score: match.score
       });
     }
@@ -452,6 +471,35 @@ export class SignalRuntimeProcessor {
     ) {
       this.options.metrics?.increment(MetricNames.UNTRUSTED_BANK_REVIEW_TOTAL);
     }
+    return result;
+  }
+
+  private async ignoreUnrelatedSignal(input: {
+    signal: SignalRuntimeSignal;
+    parsed: ParsedSignalRuntimeFields;
+    now: string;
+    reasonCodes: string[];
+    score: number;
+  }): Promise<SignalRuntimeResult> {
+    const result: SignalRuntimeResult = {
+      signalId: input.signal.id,
+      decision: 'rejected',
+      score: input.score,
+      collisionDetected: false,
+      reasonCodes: input.reasonCodes
+    };
+    await this.options.repository.recordRejected({
+      signal: input.signal,
+      parsed: input.parsed,
+      now: input.now,
+      result
+    });
+    await this.writeAudit(EventTypes.DECISION_REJECTED, input.signal, input.now, {
+      reason_codes: input.reasonCodes,
+      payment_review_created: false,
+      merchant_payment_notification_created: false,
+      ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+    });
     return result;
   }
 

@@ -6,6 +6,8 @@ export const MATCHING_CORE_FOUNDATION = {
 
 export type DirectionLabel =
   | 'incoming_customer_transfer'
+  | 'incoming_card_transfer'
+  | 'incoming_sbp_transfer'
   | 'incoming_cashback'
   | 'incoming_refund'
   | 'outgoing_payment'
@@ -79,6 +81,90 @@ export interface MatchDecisionOutput {
   reasonCodes: string[];
 }
 
+export type PaymentIntentGateClassification =
+  | 'incoming_customer_transfer'
+  | 'incoming_card_transfer'
+  | 'incoming_sbp_transfer'
+  | 'cashback'
+  | 'refund'
+  | 'outgoing_payment'
+  | 'outgoing_transfer'
+  | 'failed_transfer'
+  | 'promo'
+  | 'balance_update'
+  | 'system_notice'
+  | 'unknown';
+
+export type PaymentIntentRelation =
+  | 'expected_payment_candidate'
+  | 'ambiguous_activity'
+  | 'unrelated_bank_activity'
+  | 'negative_activity'
+  | 'unknown_activity'
+  | 'late_payment_candidate';
+
+export interface PaymentIntentGateSignal {
+  merchantId: string;
+  bankProfileId?: string | undefined;
+  packageName?: string | undefined;
+  classification: PaymentIntentGateClassification;
+  amountMinor?: number | undefined;
+  currency?: string | undefined;
+  shapeHash: string;
+  referenceHmac?: string | undefined;
+  senderPhoneHmac?: string | undefined;
+  receivingRouteId?: string | undefined;
+  observedAt: string;
+}
+
+export interface PaymentIntentGateIntent {
+  orderId: string;
+  paymentSessionId: string;
+  merchantId: string;
+  expectedPaymentAmountMinor: number;
+  displayPriceMinor: number;
+  reconciliationDeltaMinor: number;
+  currency: string;
+  generatedReference: string;
+  referenceHmac?: string | undefined;
+  selectedReceiverBankProfileId: string;
+  selectedReceivingRouteId?: string | undefined;
+  selectedReceivingMethod: 'phone_transfer' | 'card_transfer';
+  buyerFirstName: string;
+  buyerLastName: string;
+  buyerPhoneHmac?: string | undefined;
+  buyerPhoneMasked?: string | undefined;
+  buyerSourceCardHmac?: string | undefined;
+  buyerSourceCardMasked?: string | undefined;
+  buyerSourceCardLast4?: string | undefined;
+  status: string;
+  validFrom: string;
+  expiresAt: string;
+}
+
+export interface PaymentIntentGateReviewCopy {
+  title: string;
+  label: string;
+  text: string;
+}
+
+export interface PaymentIntentGateDecision {
+  intentRelation: PaymentIntentRelation;
+  selectedIntent?: PaymentIntentGateIntent | undefined;
+  reviewCreationAllowed: boolean;
+  autoConfirmAllowed: false;
+  collisionDetected: boolean;
+  paymentWindowStatus: 'active' | 'expired' | 'none';
+  reasonCodes: string[];
+  reviewCopy: PaymentIntentGateReviewCopy;
+}
+
+export interface EvaluatePaymentIntentGateInput {
+  signal: PaymentIntentGateSignal;
+  activePaymentIntents: PaymentIntentGateIntent[];
+  allowLatePaymentReview?: boolean | undefined;
+}
+
 const ACTIVE_SESSION_STATUSES = new Set([
   'receiver_arming',
   'receiver_armed',
@@ -99,6 +185,23 @@ const NEGATIVE_DIRECTIONS = new Set<DirectionLabel>([
   'balance_update',
   'unknown',
   'unknown_ambiguous_direction'
+]);
+
+const PAYMENT_INTENT_GATE_NEGATIVE_CATEGORIES = new Set<PaymentIntentGateClassification>([
+  'cashback',
+  'refund',
+  'outgoing_payment',
+  'outgoing_transfer',
+  'failed_transfer',
+  'promo',
+  'balance_update',
+  'system_notice'
+]);
+
+const PAYMENT_INTENT_GATE_INCOMING_CATEGORIES = new Set<PaymentIntentGateClassification>([
+  'incoming_customer_transfer',
+  'incoming_card_transfer',
+  'incoming_sbp_transfer'
 ]);
 
 export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecisionOutput {
@@ -416,4 +519,271 @@ function hasReferenceMatch(signal: MatchingSignal, session: MatchingCandidateSes
 function isObservedInsideWindow(observedAt: string, validFrom: string, validUntil: string): boolean {
   const observed = Date.parse(observedAt);
   return observed >= Date.parse(validFrom) && observed <= Date.parse(validUntil);
+}
+
+export function evaluatePaymentIntentGate(input: EvaluatePaymentIntentGateInput): PaymentIntentGateDecision {
+  const baseReasons = ['auto_confirm_disabled_v1', 'manual_confirmation_required'];
+  if (PAYMENT_INTENT_GATE_NEGATIVE_CATEGORIES.has(input.signal.classification)) {
+    return gateDecision({
+      intentRelation: 'negative_activity',
+      reviewCreationAllowed: false,
+      collisionDetected: false,
+      paymentWindowStatus: 'none',
+      reasonCodes: ['negative_activity_never_review', ...baseReasons]
+    });
+  }
+
+  const merchantIntents = input.activePaymentIntents.filter((intent) => intent.merchantId === input.signal.merchantId);
+  const activeBankCandidates = merchantIntents.filter(
+    (intent) =>
+      isPaymentIntentActive(intent.status) &&
+      isInsidePaymentIntentWindow(input.signal.observedAt, intent) &&
+      isReceiverBankMatch(input.signal, intent)
+  );
+  const activeCandidates = activeBankCandidates.filter((intent) => isAmountRelated(input.signal, intent));
+  const expiredCandidates = merchantIntents.filter(
+    (intent) =>
+      isReceiverBankMatch(input.signal, intent) &&
+      isExpiredPaymentIntent(input.signal.observedAt, intent) &&
+      isExactAmountAndCurrency(input.signal, intent)
+  );
+
+  if (input.signal.classification === 'unknown') {
+    if (activeCandidates.length > 0) {
+      return selectAmbiguousGateDecision({
+        signal: input.signal,
+        candidates: activeCandidates,
+        intentRelation: 'unknown_activity',
+        reasonCodes: ['unknown_classification_with_active_intent', ...baseReasons]
+      });
+    }
+
+    return gateDecision({
+      intentRelation: 'unknown_activity',
+      reviewCreationAllowed: false,
+      collisionDetected: false,
+      paymentWindowStatus: 'none',
+      reasonCodes: ['unknown_without_active_intent', ...baseReasons]
+    });
+  }
+
+  if (activeCandidates.length === 0) {
+    const hasBankMismatch = merchantIntents.some((intent) => isPaymentIntentActive(intent.status) && !isReceiverBankMatch(input.signal, intent));
+    if (expiredCandidates.length > 0 && (input.allowLatePaymentReview ?? true)) {
+      return selectAmbiguousGateDecision({
+        signal: input.signal,
+        candidates: expiredCandidates,
+        intentRelation: 'late_payment_candidate',
+        reasonCodes: ['payment_window_expired', ...baseReasons],
+        paymentWindowStatus: 'expired'
+      });
+    }
+
+    return gateDecision({
+      intentRelation: 'unrelated_bank_activity',
+      reviewCreationAllowed: false,
+      collisionDetected: false,
+      paymentWindowStatus: 'none',
+      reasonCodes: [hasBankMismatch ? 'receiver_bank_mismatch' : 'no_active_payment_intent', ...baseReasons]
+    });
+  }
+
+  const exactCandidates = activeCandidates.filter((intent) => isExactAmountAndCurrency(input.signal, intent));
+  const candidatePool = exactCandidates.length > 0 ? exactCandidates : activeCandidates;
+  const selected = selectBestIntent(input.signal, candidatePool);
+  const identityMatchCount = candidatePool.filter((intent) => hasGateIdentityMatch(input.signal, intent)).length;
+  const collisionDetected = candidatePool.length > 1 && identityMatchCount !== 1;
+  const routeExact = hasGateRouteMatch(input.signal, selected);
+  const amountExact = isExactAmountAndCurrency(input.signal, selected);
+  const referenceExact = hasGateReferenceMatch(input.signal, selected);
+  const senderPhoneExact = hasGateSenderPhoneMatch(input.signal, selected);
+  const strongIdentity = referenceExact || senderPhoneExact;
+  const incoming = PAYMENT_INTENT_GATE_INCOMING_CATEGORIES.has(input.signal.classification);
+
+  const reasons = new Set<string>([
+    'active_payment_intent_present',
+    'receiver_bank_exact',
+    ...baseReasons
+  ]);
+  reasons.add(amountExact ? 'expected_amount_exact' : 'expected_amount_mismatch');
+  if (!amountExact && input.signal.amountMinor === selected.displayPriceMinor) {
+    reasons.add('display_amount_only_mismatch');
+  }
+  if (input.signal.currency === selected.currency) {
+    reasons.add('currency_exact');
+  }
+  reasons.add(routeExact ? 'receiving_route_exact' : 'receiving_route_unclear');
+  if (referenceExact) {
+    reasons.add('reference_exact');
+  }
+  if (senderPhoneExact) {
+    reasons.add('buyer_identity_hint_exact');
+  }
+  if (!strongIdentity) {
+    reasons.add('weak_identity_evidence');
+  }
+  if (!referenceExact && !senderPhoneExact) {
+    reasons.add('amount_only');
+  }
+  if (collisionDetected) {
+    reasons.add('collision_detected');
+  }
+
+  const expected =
+    incoming &&
+    amountExact &&
+    routeExact &&
+    strongIdentity &&
+    !collisionDetected;
+
+  return gateDecision({
+    intentRelation: expected ? 'expected_payment_candidate' : 'ambiguous_activity',
+    selectedIntent: selected,
+    reviewCreationAllowed: true,
+    collisionDetected,
+    paymentWindowStatus: 'active',
+    reasonCodes: [...reasons]
+  });
+}
+
+function selectAmbiguousGateDecision(input: {
+  signal: PaymentIntentGateSignal;
+  candidates: PaymentIntentGateIntent[];
+  intentRelation: PaymentIntentRelation;
+  reasonCodes: string[];
+  paymentWindowStatus?: 'active' | 'expired' | 'none' | undefined;
+}): PaymentIntentGateDecision {
+  const selected = selectBestIntent(input.signal, input.candidates);
+  const identityMatchCount = input.candidates.filter((intent) => hasGateIdentityMatch(input.signal, intent)).length;
+  const collisionDetected = input.candidates.length > 1 && identityMatchCount !== 1;
+  const reasons = new Set(input.reasonCodes);
+  if (collisionDetected) {
+    reasons.add('collision_detected');
+  }
+  if (!hasGateIdentityMatch(input.signal, selected)) {
+    reasons.add('weak_identity_evidence');
+  }
+  if (!input.signal.referenceHmac && !input.signal.senderPhoneHmac) {
+    reasons.add('amount_only');
+  }
+
+  return gateDecision({
+    intentRelation: input.intentRelation,
+    selectedIntent: selected,
+    reviewCreationAllowed: true,
+    collisionDetected,
+    paymentWindowStatus: input.paymentWindowStatus ?? 'active',
+    reasonCodes: [...reasons]
+  });
+}
+
+function gateDecision(input: {
+  intentRelation: PaymentIntentRelation;
+  selectedIntent?: PaymentIntentGateIntent | undefined;
+  reviewCreationAllowed: boolean;
+  collisionDetected: boolean;
+  paymentWindowStatus: 'active' | 'expired' | 'none';
+  reasonCodes: string[];
+}): PaymentIntentGateDecision {
+  return {
+    intentRelation: input.intentRelation,
+    selectedIntent: input.selectedIntent,
+    reviewCreationAllowed: input.reviewCreationAllowed,
+    autoConfirmAllowed: false,
+    collisionDetected: input.collisionDetected,
+    paymentWindowStatus: input.paymentWindowStatus,
+    reasonCodes: unique(input.reasonCodes),
+    reviewCopy: reviewCopyForRelation(input.intentRelation)
+  };
+}
+
+function reviewCopyForRelation(relation: PaymentIntentRelation): PaymentIntentGateReviewCopy {
+  if (relation === 'expected_payment_candidate') {
+    return {
+      title: 'Nouveau paiement détecté',
+      label: 'Matching 100 %',
+      text: 'Veuillez confirmer ce paiement.'
+    };
+  }
+
+  return {
+    title: 'Paiement à vérifier',
+    label: 'Paiement à vérifier',
+    text: 'Certains éléments correspondent, mais une confirmation est nécessaire.'
+  };
+}
+
+function selectBestIntent(
+  signal: PaymentIntentGateSignal,
+  candidates: PaymentIntentGateIntent[]
+): PaymentIntentGateIntent {
+  const selected = [...candidates].sort((left, right) => gateIntentScore(signal, right) - gateIntentScore(signal, left))[0];
+  if (!selected) {
+    throw new Error('Payment Intent Gate requires at least one candidate to select.');
+  }
+  return selected;
+}
+
+function gateIntentScore(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): number {
+  let score = 0;
+  if (isExactAmountAndCurrency(signal, intent)) {
+    score += 30;
+  }
+  if (hasGateRouteMatch(signal, intent)) {
+    score += 20;
+  }
+  if (hasGateReferenceMatch(signal, intent)) {
+    score += 30;
+  }
+  if (hasGateSenderPhoneMatch(signal, intent)) {
+    score += 20;
+  }
+  return score;
+}
+
+function isAmountRelated(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
+  return (
+    signal.currency === intent.currency &&
+    (signal.amountMinor === intent.expectedPaymentAmountMinor || signal.amountMinor === intent.displayPriceMinor)
+  );
+}
+
+function isExactAmountAndCurrency(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
+  return signal.amountMinor === intent.expectedPaymentAmountMinor && signal.currency === intent.currency;
+}
+
+function hasGateRouteMatch(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
+  return Boolean(signal.receivingRouteId && intent.selectedReceivingRouteId && signal.receivingRouteId === intent.selectedReceivingRouteId);
+}
+
+function hasGateIdentityMatch(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
+  return hasGateReferenceMatch(signal, intent) || hasGateSenderPhoneMatch(signal, intent);
+}
+
+function hasGateReferenceMatch(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
+  return Boolean(signal.referenceHmac && intent.referenceHmac && signal.referenceHmac === intent.referenceHmac);
+}
+
+function hasGateSenderPhoneMatch(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
+  return Boolean(signal.senderPhoneHmac && intent.buyerPhoneHmac && signal.senderPhoneHmac === intent.buyerPhoneHmac);
+}
+
+function isReceiverBankMatch(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
+  return Boolean(signal.bankProfileId && signal.bankProfileId === intent.selectedReceiverBankProfileId);
+}
+
+function isPaymentIntentActive(status: string): boolean {
+  return ACTIVE_SESSION_STATUSES.has(status);
+}
+
+function isInsidePaymentIntentWindow(observedAt: string, intent: PaymentIntentGateIntent): boolean {
+  return isObservedInsideWindow(observedAt, intent.validFrom, intent.expiresAt);
+}
+
+function isExpiredPaymentIntent(observedAt: string, intent: PaymentIntentGateIntent): boolean {
+  return Date.parse(observedAt) > Date.parse(intent.expiresAt);
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
 }

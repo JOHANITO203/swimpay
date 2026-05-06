@@ -6,13 +6,36 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `450_swimpay_intelligence_gap_audit` - status: completed - source: `tasks/450_swimpay_intelligence_gap_audit.md`
+- [x] `451_buyer_checkout_recognition_hints` - status: completed - source: `tasks/451_buyer_checkout_recognition_hints.md`
+- [x] `452_payment_intent_builder_reconciliation_amount` - status: completed - source: `tasks/452_payment_intent_builder_reconciliation_amount.md`
+- [x] `453_receiver_armed_bank_launcher_flow` - status: completed - source: `tasks/453_receiver_armed_bank_launcher_flow.md`
+- [x] `454_payment_intent_gate_model` - status: completed - source: `tasks/454_payment_intent_gate_model.md`
+- [x] `455_payment_intent_gate_runtime_integration` - status: completed - source: `tasks/455_payment_intent_gate_runtime_integration.md`
+- [x] `456_merchant_review_matching_copy` - status: completed - source: `tasks/456_merchant_review_matching_copy.md`
+- [x] `457_intent_bound_passive_learning_context` - status: completed - source: `tasks/457_intent_bound_passive_learning_context.md`
+- [x] `458_payment_intent_fraud_error_guard_tests` - status: completed - source: `tasks/458_payment_intent_fraud_error_guard_tests.md`
+- [x] `459_sprint_8b_payment_intent_bound_closeout` - status: completed - source: `tasks/459_sprint_8b_payment_intent_bound_closeout.md`
+
+## Previous Queue
+
+- [x] `439_android_bank_notification_agent_v1_model` - status: completed - source: `tasks/439_android_bank_notification_agent_v1_model.md`
+- [x] `440_android_direction_aware_shape_hasher` - status: completed - source: `tasks/440_android_direction_aware_shape_hasher.md`
+- [x] `441_static_bank_profile_distribution` - status: completed - source: `tasks/441_static_bank_profile_distribution.md`
+- [x] `442_android_deterministic_parser_classifier` - status: completed - source: `tasks/442_android_deterministic_parser_classifier.md`
+- [x] `443_redacted_signal_upload_contract` - status: completed - source: `tasks/443_redacted_signal_upload_contract.md`
+- [x] `444_passive_feedback_collector` - status: completed - source: `tasks/444_passive_feedback_collector.md`
+- [x] `445_unknown_shape_monitoring_readonly` - status: completed - source: `tasks/445_unknown_shape_monitoring_readonly.md`
+- [x] `446_local_drift_guard_minimal` - status: completed - source: `tasks/446_local_drift_guard_minimal.md`
+- [x] `447_five_bank_regression_fixtures` - status: completed - source: `tasks/447_five_bank_regression_fixtures.md`
+- [x] `448_learning_safety_guardrails` - status: completed - source: `tasks/448_learning_safety_guardrails.md`
+- [x] `449_sprint_8a_closeout_review` - status: completed - source: `tasks/449_sprint_8a_closeout_review.md`
+
 - [x] `434_android_local_merchant_state_audit` - status: completed - source: `tasks/434_android_local_merchant_state_audit.md`
 - [x] `435_android_receiving_methods_local_count` - status: completed - source: `tasks/435_android_receiving_methods_local_count.md`
 - [x] `436_android_ventes_local_state_refinement` - status: completed - source: `tasks/436_android_ventes_local_state_refinement.md`
 - [x] `437_android_local_state_ui_copy_tests` - status: completed - source: `tasks/437_android_local_state_ui_copy_tests.md`
 - [x] `438_android_local_merchant_state_closeout` - status: completed - source: `tasks/438_android_local_merchant_state_closeout.md`
-
-## Previous Queue
 
 - [x] `425_android_data_hydration_audit` - status: completed - source: `tasks/425_android_data_hydration_audit.md`
 - [x] `426_android_dashboard_lively_empty_states` - status: completed - source: `tasks/426_android_dashboard_lively_empty_states.md`

@@ -106,8 +106,12 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Téléphone');
     expect(response.body).toContain('+7 *** *** **67');
     expect(response.body).toContain('Votre numéro d');
-    expect(response.body).toContain('Ouvrir ma banque');
+    expect(response.body).toContain('Continuer vers ma banque');
     expect(response.body).toContain('J&#39;ai payé');
+    expect(response.body).toContain('Ces informations servent uniquement');
+    expect(response.body).toContain('SwimPay ne débite pas votre carte.');
+    expect(response.body).toContain('Envoyez exactement ce montant.');
+    expect(response.body).toContain('Sans ces informations, la validation peut prendre plus de temps.');
     expect(response.body).toContain('Paiement en attente');
     expect(response.body).toContain('Effectuez le paiement dans votre application bancaire.');
     expect(response.body).toContain('Continuer sur mobile');
@@ -150,10 +154,14 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Copier');
     expect(response.body).toContain('137.00 RUB');
     expect(response.body).toContain('TANGO ALFA');
-    expect(response.body).toContain('Ouvrir ma banque');
+    expect(response.body).toContain('Continuer vers ma banque');
     expect(response.body).toContain('J&#39;ai payé');
+    expect(response.body).toContain('Carte source');
     expect(response.body).not.toContain('2202201234567890');
     expect(response.body).not.toContain('+79991234567');
+    expect(response.body).not.toContain('CVV');
+    expect(response.body).not.toContain('SMS code');
+    expect(response.body).not.toContain('bank password');
   });
 
   it.each([
@@ -352,6 +360,39 @@ describe('hosted checkout web foundation', () => {
       official_bank_confirmation: false
     });
   });
+
+  it('arms the receiver when buyer continues to bank without confirming payment', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_card',
+      selected_payer_bank_launcher_id: 'other_manual',
+      checkout_state: 'payment_instructions',
+      buyer_safe_status: 'awaiting_payment'
+    };
+    const server = buildWebServer({
+      environment: 'test',
+      checkoutSessionProvider: provider
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/checkout/ps_01/continue-to-bank'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      payment_session_id: 'ps_01',
+      status: 'receiver_armed',
+      checkout_state: 'awaiting_payment',
+      buyer_safe_status: 'awaiting_payment',
+      official_bank_confirmation: false
+    });
+    expect(provider.session.status).toBe('receiver_armed');
+    expect(provider.session.status).not.toBe('manual_confirmed');
+  });
 });
 
 class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
@@ -507,6 +548,16 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
       ...this.session,
       status: 'awaiting_payment',
       payment_instructions_shown_at: '2026-05-02T10:01:00.000Z',
+      checkout_state: 'awaiting_payment',
+      buyer_safe_status: 'awaiting_payment'
+    };
+    return this.session;
+  }
+
+  public async markReceiverArmed() {
+    this.session = {
+      ...this.session,
+      status: 'receiver_armed',
       checkout_state: 'awaiting_payment',
       buyer_safe_status: 'awaiting_payment'
     };

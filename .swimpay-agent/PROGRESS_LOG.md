@@ -1,5 +1,35 @@
 # Progress Log
 
+## 2026-05-06 - Sprint 8B Payment-Intent-Bound SwimPay Intelligence
+
+- Created tasks 450 through 459 and updated the active task queue.
+- Created `.swimpay-agent/SWIMPAY_INTELLIGENCE_GAP_AUDIT.md`.
+- Preserved Sprint 8A deterministic/non-LLM/privacy-first Intelligence foundation.
+- Added buyer recognition hint contracts for first name, last name, phone HMAC/mask and source-card encrypted/HMAC/masked/last4 derivation.
+- Added bounded reconciliation amount/payment intent builder with buyer-visible exact expected amount.
+- Added required `Continuer vers ma banque` receiver-arming flow and audit event without confirmation semantics.
+- Added Payment Intent Gate relations and runtime integration so no active payment intent creates no merchant payment review.
+- Added strong/ambiguous merchant review copy while keeping `Matching 100 %` manual-review-only.
+- Added intent-bound passive learning metadata and fraud/error guard tests.
+- Ran fresh validation: android doctor, typecheck, lint, full Vitest suite, build, Compose config, Android JVM tests and Android debug APK build.
+- Reconnected Samsung `SM_S916B` / `R5CWA0FEPZW`, installed the debug APK, launched it and captured a UIAutomator smoke dump.
+- Docker live validation passed after Docker restart and Compose startup: Postgres, Valkey, NATS, API, web and proxy are healthy, and `/api-health` returns database, NATS and Valkey `ok`.
+- No real bank notifications were processed; no LLM, SMS, Accessibility scraping, raw notification storage or auto-confirmation behavior was added.
+
+## 2026-05-06 - Sprint 8A Deterministic Bank Notification Agent V1
+
+- Created tasks 439 through 449 and updated the active task queue.
+- Added deterministic Android `BankNotificationAgentV1` models and orchestration without Android-side payment confirmation.
+- Added direction-aware shape hashing that preserves incoming/outgoing/negative-category semantics while removing personal data.
+- Added static five-bank Intelligence V1 profile distribution for Sberbank, T-Bank, VTB, Alfa-Bank and Gazprombank.
+- Added deterministic parser/classifier output with `autoConfirmAllowed=false` for every category.
+- Extended the redacted receiver signal contract additively with safe Intelligence V1 metadata.
+- Added passive feedback validation and backend ingestion through `POST /v1/intelligence/feedback`.
+- Added read-only unknown shape monitoring through `GET /v1/intelligence/unknown-shapes`.
+- Added local drift guard behavior that routes to more cautious local review mode without disabling banks or mutating profiles.
+- Added five-bank synthetic/redacted regression fixtures and safety guardrail tests.
+- Real bank notifications were not processed; no LLM, SMS, Accessibility scraping, raw notification storage or auto-confirmation behavior was added.
+
 ## 2026-05-05 — Android Local Merchant State Refinement
 
 - Created tasks 434 through 438 and updated the active task queue.
@@ -2001,3 +2031,21 @@ Safety checks:
 - Removed generic visible `indisponible` copy from active premium UI source.
 - Added Android hydration tests and updated premium runtime contract tests.
 - No backend APIs, contracts, payment/review logic, notification processing, real bank capture, SMS, Accessibility scraping, raw PII exposure or auto-confirmation behavior was changed.
+# 2026-05-06T11:30:00+03:00 - Sprint 8B Payment-Intent-Bound SwimPay Intelligence
+
+- Created tasks 450 through 459 and updated the task queue to Sprint 8B.
+- Created `.swimpay-agent/SWIMPAY_INTELLIGENCE_GAP_AUDIT.md`.
+- Created `.swimpay-agent/SPRINT_8B_PAYMENT_INTENT_BOUND_REPORT.md`.
+- Preserved Sprint 8A deterministic/non-LLM/static-profile Intelligence foundation.
+- Added buyer recognition hint contracts for first name, last name, phone HMAC/masked and source-card encrypted/HMAC/masked/last4.
+- Added card credential guardrails rejecting CVV, expiry, PIN, SMS code and bank password fields.
+- Added bounded payment-intent reconciliation amount builder where the buyer-visible expected amount equals the matching amount.
+- Added Payment Intent Gate relations and deterministic evaluation.
+- Added matching-core tests for expected, ambiguous, unrelated, negative, unknown, late and collision cases.
+- Added `continue-to-bank` checkout/API flow to arm the receiver through existing `receiver_armed` state.
+- Updated hosted checkout instructions with recognition-hint copy and primary `Continuer vers ma banque` action.
+- Updated signal runtime so unmatched/no-active-intent activity does not create merchant payment review or payment webhook.
+- Added intent-bound learning metadata helpers.
+- Targeted tests and typecheck passed before full final validation.
+- No real bank notifications were processed.
+- No LLM, SMS, Accessibility scraping, broad package enumeration, raw notification storage or auto-confirmation was added.

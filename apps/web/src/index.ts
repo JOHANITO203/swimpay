@@ -85,6 +85,7 @@ export interface CheckoutSessionProvider {
   saveBuyerSenderPhoneHint(paymentSessionId: string, buyerSenderPhone: string): Promise<CheckoutSession>;
   getPayerBankLaunchers(paymentSessionId: string): Promise<PayerBankLaunchersPayload>;
   selectPayerBankLauncher(paymentSessionId: string, payerBankLauncherId: string): Promise<CheckoutSession>;
+  markReceiverArmed(paymentSessionId: string): Promise<CheckoutSession>;
   markPaymentInstructionsShown(paymentSessionId: string): Promise<CheckoutSession>;
   markBuyerClaimedPaid(paymentSessionId: string): Promise<CheckoutClaimedPaidResponse>;
 }
@@ -406,6 +407,11 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     return reply.status(200).send(toCheckoutStatusResponse(session!));
   });
 
+  server.post('/checkout/:paymentSessionId/continue-to-bank', async (request, reply) => {
+    const session = await checkoutSessionProvider.markReceiverArmed((request.params as PaymentSessionParams).paymentSessionId);
+    return reply.status(200).send(toCheckoutStatusResponse(session));
+  });
+
   server.post('/checkout/:paymentSessionId/claimed-paid', async (request, reply) => {
     return reply.status(202).send(await checkoutSessionProvider.markBuyerClaimedPaid((request.params as PaymentSessionParams).paymentSessionId));
   });
@@ -431,6 +437,7 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
   async saveBuyerSenderPhoneHint(id: string, ph: string) { return this.f<CheckoutSession>(`/v1/checkout/${id}/buyer-sender-phone`, { method: 'POST', body: JSON.stringify({ buyer_sender_phone: ph }) }); }
   async getPayerBankLaunchers(id: string) { return this.f<PayerBankLaunchersPayload>(`/v1/checkout/${id}/payer-bank-launchers`); }
   async selectPayerBankLauncher(id: string, lId: string) { return this.f<CheckoutSession>(`/v1/checkout/${id}/payer-bank-launcher`, { method: 'POST', body: JSON.stringify({ payer_bank_launcher_id: lId }) }); }
+  async markReceiverArmed(id: string) { return this.f<CheckoutSession>(`/v1/checkout/${id}/continue-to-bank`, { method: 'POST' }); }
   async markPaymentInstructionsShown(id: string) { return this.f<CheckoutSession>(`/v1/checkout/${id}/payment-instructions-shown`, { method: 'POST' }); }
   async markBuyerClaimedPaid(id: string) { return this.f<CheckoutClaimedPaidResponse>(`/v1/checkout/${id}/claimed-paid`, { method: 'POST' }); }
 }

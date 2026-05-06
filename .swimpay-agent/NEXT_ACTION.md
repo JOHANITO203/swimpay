@@ -1,6 +1,59 @@
 # Next Action
 
-generated_at: 2026-05-05T00:00:00+03:00
+generated_at: 2026-05-06T00:00:00+03:00
+
+## Latest Sprint 8B Payment-Intent-Bound Intelligence
+
+Completed:
+
+1. Preserved Sprint 8A deterministic Intelligence foundation.
+2. Added payment-intent gap audit.
+3. Added buyer recognition hint contracts with safe phone/source-card derivation.
+4. Added bounded reconciliation amount model.
+5. Added required `Continuer vers ma banque` receiver-arming flow.
+6. Added Payment Intent Gate model and tests.
+7. Updated runtime behavior so no active intent creates no merchant payment review.
+8. Added merchant review copy for strong and ambiguous matches.
+9. Added intent-bound passive learning metadata.
+10. Added fraud/error guard tests.
+11. Reconnected Samsung `SM_S916B` / `R5CWA0FEPZW`, installed the debug APK, launched the app and captured a UIAutomator smoke dump.
+
+Next recommended action:
+
+Run Sprint 8C for durable intent-bound feedback/unknown-shape persistence and operator read-only learning surfaces. Keep runtime static, deterministic, non-LLM and review-first.
+
+Do not do:
+
+- Do not process real bank notifications without explicit consent.
+- Do not enable auto-confirmation.
+- Do not add LLM calls, SMS, Accessibility scraping, `QUERY_ALL_PACKAGES` or broad app enumeration.
+- Do not store raw notification text or expose raw PII.
+- Do not mutate classifier rules from feedback automatically.
+
+## Latest Sprint 8A Deterministic Notification Agent
+
+Completed:
+
+1. Added deterministic Android-side bank notification agent models.
+2. Added direction-aware shape hashing with personal data removed from canonical shapes.
+3. Added static, versioned profiles for the five V1 banks.
+4. Added deterministic parser/classifier behavior with `autoConfirmAllowed=false`.
+5. Extended redacted receiver signal contracts with safe Intelligence V1 metadata.
+6. Added passive feedback ingestion and read-only unknown shape monitoring.
+7. Added local drift guard that becomes more cautious without mutating profiles or disabling banks.
+8. Added synthetic/redacted five-bank regression fixtures and safety guardrails.
+
+Next recommended action:
+
+Run Sprint 8B for durable persistence and operator review surfaces for passive feedback/unknown shapes, still using synthetic/redacted data unless explicit real-notification consent is recorded.
+
+Do not do:
+
+- Do not process real bank notifications without explicit consent.
+- Do not enable auto-confirmation.
+- Do not add LLM calls, SMS, Accessibility scraping, `QUERY_ALL_PACKAGES` or broad app enumeration.
+- Do not store raw notification text or expose raw PII.
+- Do not mutate classifier rules from feedback automatically.
 
 ## Latest Android Data Hydration Pass
 

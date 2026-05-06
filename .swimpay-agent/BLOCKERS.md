@@ -1,5 +1,33 @@
 # Blockers
 
+## Sprint 8B Payment-Intent-Bound SwimPay Intelligence
+
+- No critical blocker introduced.
+- Sprint 8A deterministic/non-LLM/privacy-first Intelligence foundation is preserved.
+- Payment Intent Gate now makes active buyer checkout intent mandatory before merchant payment review creation.
+- No active payment intent now results in no payment review and no merchant payment webhook for unrelated bank activity.
+- Negative categories remain blocked from review creation.
+- `Matching 100 %` is merchant review copy only; it still requires manual confirmation.
+- `Continuer vers ma banque` arms the receiver through `receiver_armed` and does not confirm payment.
+- `J'ai payé` remains non-confirming.
+- Buyer source card is modeled only as a recognition hint with encrypted/HMAC/masked/last4 outputs; CVV, expiry, PIN, SMS code and bank password fields are rejected.
+- No backend payment confirmation, webhook ownership, notification capture, raw PII policy, SMS/Accessibility guardrail, LLM rule or auto-confirmation rule was weakened.
+- Fresh code validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Android JVM tests and Android debug APK build.
+- Docker live blocker resolved after Docker restart and Compose service startup: final `docker compose ... ps` shows Postgres, Valkey, NATS, API, web and proxy healthy, and `/api-health` returns HTTP 200 with database, NATS and Valkey `ok`.
+- Device smoke blocker resolved after reconnect: `R5CWA0FEPZW` / Samsung `SM_S916B` was detected, APK install passed, app launch passed, and UIAutomator confirmed the premium shell.
+
+## Sprint 8A Deterministic Bank Notification Agent V1
+
+- No critical blocker introduced.
+- Intelligence V1 is deterministic, static-profile based and non-LLM.
+- Android filters only enabled supported bank targets and does not enumerate installed apps broadly.
+- Receiver signal upload accepts only redacted Intelligence V1 metadata and rejects raw notification text or `auto_confirm_allowed=true`.
+- Passive feedback and unknown shape monitoring are read-only/supervised and do not mutate classifier rules or promote profiles.
+- Real bank notifications were not processed in this sprint.
+- Auto-confirmation remains disabled for Intelligence V1 outputs.
+- Remaining non-critical limitation: feedback/unknown shape monitoring uses in-memory API storage in the local server foundation; durable storage can be added in a later backend persistence sprint.
+- Environment blocker: Docker Desktop Linux engine pipe is unavailable from this shell, so fresh `compose ps` and `/api-health` live checks are blocked even though Compose config validation passed.
+
 ## Android Local Merchant State Refinement
 
 - No critical blocker introduced.

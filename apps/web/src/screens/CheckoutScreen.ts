@@ -179,12 +179,26 @@ function renderInstructions(
 
   const isPhone = selectedRoute.rail_type === 'phone_transfer';
   const destinationLabel = isPhone ? 'Téléphone' : 'Carte';
+  const launcherNote = selectedLauncher
+    ? `<p class="launcher-note">Continuer avec <strong>${escapeHtml(selectedLauncher.display_name)}</strong>. Si l'ouverture échoue, copiez les détails et ouvrez votre banque manuellement.</p>`
+    : '';
 
   return Card({
     class: 'payment-instructions-card',
     children: `<div class="checkout-section-head">
       <h2>Envoyez le paiement</h2>
       <p>SwimPay suit le signal côté marchand.</p>
+    </div>
+    <div class="recognition-hints">
+      <p>Ces informations servent uniquement à reconnaître votre paiement.</p>
+      <p>SwimPay ne débite pas votre carte.</p>
+      <div class="recognition-grid">
+        <label>Prénom<input name="buyer_first_name" autocomplete="given-name"></label>
+        <label>Nom<input name="buyer_last_name" autocomplete="family-name"></label>
+        <label>Téléphone<input name="buyer_phone" type="tel" autocomplete="tel"></label>
+        <label>Carte source<input name="buyer_source_card_number" inputmode="numeric" autocomplete="cc-number"></label>
+      </div>
+      <small>Sans ces informations, la validation peut prendre plus de temps.</small>
     </div>
     <div class="instruction-destination">
       <span class="method-icon">${isPhone ? 'Tel' : 'Card'}</span>
@@ -198,10 +212,13 @@ function renderInstructions(
       ${CopyField({ label: 'Montant', value: `${session.amount.value} ${session.amount.currency}`, masked: false })}
       ${CopyField({ label: 'Référence', value: session.reference, masked: false })}
     </div>
+    <p class="instruction-note">Envoyez exactement ce montant. Ajoutez cette référence pour que votre commande soit reconnue.</p>
     ${isPhone ? `<label class="sender-phone-field">Votre numéro d’envoi<input type="tel" placeholder="+7 *** *** **67" autocomplete="tel"></label>` : ''}
-    ${selectedLauncher ? `<p class="launcher-note">Ouvrir votre banque avec <strong>${escapeHtml(selectedLauncher.display_name)}</strong>, ou copiez les détails manuellement.</p>` : ''}
+    ${launcherNote}
     <div class="instruction-actions">
-      ${Button({ text: 'Ouvrir ma banque', variant: 'secondary' })}
+      <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/continue-to-bank">
+        ${Button({ text: 'Continuer vers ma banque', variant: 'secondary', type: 'submit' })}
+      </form>
       <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/claimed-paid">
         ${Button({ text: "J'ai payé", id: 'paid-button', variant: 'primary', type: 'submit' })}
       </form>
@@ -324,6 +341,24 @@ function buyerCheckoutStyles(): string {
     .instruction-destination small { color: var(--color-muted); font-weight:700; }
     .instruction-destination strong { color: var(--color-navy); font-size:24px; overflow-wrap: anywhere; }
     .instruction-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:14px; }
+    .recognition-hints {
+      display:flex; flex-direction:column; gap:10px;
+      margin-bottom:18px; padding:18px;
+      border-radius:24px; background: var(--color-mint);
+      border:1px solid rgba(35,199,201,0.26);
+    }
+    .recognition-hints p { margin:0; color:var(--color-navy); font-weight:800; }
+    .recognition-hints small { color:var(--color-muted); font-weight:700; }
+    .recognition-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; }
+    .recognition-grid label {
+      display:flex; flex-direction:column; gap:7px;
+      color:var(--color-muted); font-size:13px; font-weight:900;
+    }
+    .recognition-grid input {
+      min-height:48px; border-radius:18px; border:1px solid rgba(225,232,237,0.9);
+      padding:12px 14px; color:var(--color-navy); background:white; min-width:0;
+    }
+    .instruction-note { color: var(--color-navy); font-weight: 800; margin: 14px 0 0; }
     .sender-phone-field {
       display:flex; flex-direction:column; gap:8px; margin-top:16px;
       color: var(--color-muted); font-weight: 800;
@@ -382,7 +417,7 @@ function buyerCheckoutStyles(): string {
     @media (max-width: 620px) {
       .buyer-checkout .brand { margin-bottom: 28px; }
       .checkout-hero-card, .payment-instructions-card { padding:22px; }
-      .benefit-grid, .instruction-grid, .instruction-actions { grid-template-columns: 1fr; }
+      .benefit-grid, .instruction-grid, .instruction-actions, .recognition-grid { grid-template-columns: 1fr; }
       .buyer-state-panel { align-items:flex-start; }
       .instruction-destination { align-items:flex-start; flex-wrap: wrap; }
       .instruction-destination strong { font-size:20px; }

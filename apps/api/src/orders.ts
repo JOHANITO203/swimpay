@@ -201,6 +201,7 @@ export interface OrderRepository {
   selectReceivingRoute(input: SelectReceivingRouteInput): Promise<PaymentSessionCheckoutMutationResult>;
   selectPayerBankLauncher(input: SelectPayerBankLauncherInput): Promise<PaymentSessionCheckoutMutationResult>;
   saveBuyerSenderPhoneHint(input: SaveBuyerSenderPhoneHintInput): Promise<PaymentSessionCheckoutMutationResult>;
+  markReceiverArmed(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
   markPaymentInstructionsShown(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
   markBuyerClaimedPaid(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
 }
@@ -758,6 +759,35 @@ export class PgOrderRepository implements OrderRepository {
       payload: {
         buyer_sender_phone_masked: input.buyerSenderPhoneMasked,
         does_not_confirm_payment: true
+      }
+    });
+  }
+
+  public async markReceiverArmed(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult> {
+    return this.mutateCheckoutSession({
+      input,
+      auditEventType: 'checkout.continue_to_bank',
+      apply: async (client) => {
+        await client.query(
+          `UPDATE payment_sessions
+           SET status = 'receiver_armed',
+               updated_at = $3
+           WHERE merchant_id = $1 AND id = $2`,
+          [input.merchantId, input.paymentSessionId, input.now]
+        );
+        await client.query(
+          `UPDATE orders
+           SET status = 'receiver_armed', updated_at = $3
+           WHERE merchant_id = $1
+             AND id = (SELECT order_id FROM payment_sessions WHERE merchant_id = $1 AND id = $2)`,
+          [input.merchantId, input.paymentSessionId, input.now]
+        );
+      },
+      payload: {
+        receiver_status: 'armed',
+        bank_launcher_attempted: true,
+        does_not_confirm_payment: true,
+        auto_confirm_enabled: false
       }
     });
   }

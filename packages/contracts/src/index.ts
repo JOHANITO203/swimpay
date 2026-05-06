@@ -326,6 +326,231 @@ export function isCheckoutStatePaymentConfirming(state: CheckoutSessionState): b
   return state === 'confirmed';
 }
 
+export interface BuyerRecognitionHintInput {
+  buyer_first_name: string;
+  buyer_last_name: string;
+  buyer_phone: string;
+  buyer_source_card_number: string;
+  [key: string]: unknown;
+}
+
+export interface BuyerRecognitionHints {
+  buyer_first_name: string;
+  buyer_last_name: string;
+  buyer_phone_hmac: string;
+  buyer_phone_masked: string;
+  buyer_source_card_encrypted: string;
+  buyer_source_card_hmac: string;
+  buyer_source_card_masked: string;
+  buyer_source_card_last4: string;
+}
+
+export interface BuyerRecognitionHintDerivationOptions {
+  merchant_id: string;
+  hmac(scope: string, normalizedValue: string): string;
+  encrypt(scope: string, normalizedValue: string): string;
+}
+
+export interface BuildPaymentIntentInput {
+  order_id: string;
+  payment_session_id: string;
+  merchant_id: string;
+  display_price_minor: number;
+  reconciliation_delta_minor: number;
+  max_reconciliation_delta_minor: number;
+  currency: string;
+  generated_reference: string;
+  selected_receiver_bank: string;
+  selected_receiving_method: ReceivingRouteRailType;
+  buyer_hints: BuyerRecognitionHints;
+  expires_at: string;
+  status: PaymentSessionStatus;
+}
+
+export interface PaymentIntent {
+  order_id: string;
+  payment_session_id: string;
+  merchant_id: string;
+  display_price_minor: number;
+  expected_payment_amount_minor: number;
+  buyer_visible_expected_amount_minor: number;
+  matching_amount_minor: number;
+  reconciliation_delta_minor: number;
+  currency: string;
+  generated_reference: string;
+  selected_receiver_bank: string;
+  selected_receiving_method: ReceivingRouteRailType;
+  buyer_first_name: string;
+  buyer_last_name: string;
+  buyer_phone_hmac: string;
+  buyer_phone_masked: string;
+  buyer_source_card_encrypted: string;
+  buyer_source_card_hmac: string;
+  buyer_source_card_masked: string;
+  buyer_source_card_last4: string;
+  expires_at: string;
+  status: PaymentSessionStatus;
+}
+
+export const PaymentIntentRelations = [
+  'expected_payment_candidate',
+  'ambiguous_activity',
+  'unrelated_bank_activity',
+  'negative_activity',
+  'unknown_activity',
+  'late_payment_candidate'
+] as const;
+
+export type PaymentIntentRelation = (typeof PaymentIntentRelations)[number];
+
+export type PaymentWindowStatus = 'active' | 'expired' | 'none';
+export type LearningContext = 'intent_bound_feedback' | 'background_observation';
+
+export interface MerchantReviewMatchingCopy {
+  title: string;
+  label: string;
+  text: string;
+}
+
+export interface IntentBoundLearningMetadataInput {
+  intent_relation: PaymentIntentRelation;
+  active_payment_intent_present: boolean;
+  collision_detected: boolean;
+  payment_window_status: PaymentWindowStatus;
+  review_created: boolean;
+  profile_version: string;
+  shape_hash: string;
+}
+
+export interface IntentBoundLearningMetadata extends IntentBoundLearningMetadataInput {
+  learning_context: LearningContext;
+  mutates_runtime_rules: false;
+  promotes_profile: false;
+}
+
+export function deriveBuyerRecognitionHints(
+  input: BuyerRecognitionHintInput,
+  options: BuyerRecognitionHintDerivationOptions
+): BuyerRecognitionHints {
+  assertNoProhibitedBuyerCredentialFields(input);
+  const firstName = input.buyer_first_name.trim();
+  const lastName = input.buyer_last_name.trim();
+  const normalizedPhone = normalizeDigits(input.buyer_phone);
+  const normalizedCard = normalizeDigits(input.buyer_source_card_number);
+
+  if (!firstName || !lastName || normalizedPhone.length < 8 || normalizedCard.length < 4) {
+    throw new Error('Buyer recognition hints are incomplete.');
+  }
+
+  return {
+    buyer_first_name: firstName,
+    buyer_last_name: lastName,
+    buyer_phone_hmac: options.hmac(`${options.merchant_id}:phone`, normalizedPhone),
+    buyer_phone_masked: maskBuyerPhone(input.buyer_phone),
+    buyer_source_card_encrypted: options.encrypt(`${options.merchant_id}:source_card`, normalizedCard),
+    buyer_source_card_hmac: options.hmac(`${options.merchant_id}:source_card`, normalizedCard),
+    buyer_source_card_masked: maskBuyerSourceCard(input.buyer_source_card_number),
+    buyer_source_card_last4: normalizedCard.slice(-4)
+  };
+}
+
+export function buildPaymentIntent(input: BuildPaymentIntentInput): PaymentIntent {
+  if (!Number.isInteger(input.display_price_minor) || input.display_price_minor <= 0) {
+    throw new Error('Display price must be a positive minor-unit integer.');
+  }
+  if (
+    !Number.isInteger(input.reconciliation_delta_minor) ||
+    Math.abs(input.reconciliation_delta_minor) > input.max_reconciliation_delta_minor
+  ) {
+    throw new Error('Reconciliation delta exceeds configured bounds.');
+  }
+
+  const expectedPaymentAmountMinor = input.display_price_minor + input.reconciliation_delta_minor;
+  if (expectedPaymentAmountMinor <= 0) {
+    throw new Error('Expected payment amount must be positive.');
+  }
+
+  return {
+    order_id: input.order_id,
+    payment_session_id: input.payment_session_id,
+    merchant_id: input.merchant_id,
+    display_price_minor: input.display_price_minor,
+    expected_payment_amount_minor: expectedPaymentAmountMinor,
+    buyer_visible_expected_amount_minor: expectedPaymentAmountMinor,
+    matching_amount_minor: expectedPaymentAmountMinor,
+    reconciliation_delta_minor: input.reconciliation_delta_minor,
+    currency: input.currency,
+    generated_reference: input.generated_reference,
+    selected_receiver_bank: input.selected_receiver_bank,
+    selected_receiving_method: input.selected_receiving_method,
+    buyer_first_name: input.buyer_hints.buyer_first_name,
+    buyer_last_name: input.buyer_hints.buyer_last_name,
+    buyer_phone_hmac: input.buyer_hints.buyer_phone_hmac,
+    buyer_phone_masked: input.buyer_hints.buyer_phone_masked,
+    buyer_source_card_encrypted: input.buyer_hints.buyer_source_card_encrypted,
+    buyer_source_card_hmac: input.buyer_hints.buyer_source_card_hmac,
+    buyer_source_card_masked: input.buyer_hints.buyer_source_card_masked,
+    buyer_source_card_last4: input.buyer_hints.buyer_source_card_last4,
+    expires_at: new Date(input.expires_at).toISOString(),
+    status: input.status
+  };
+}
+
+export function buildMerchantReviewMatchingCopy(relation: PaymentIntentRelation): MerchantReviewMatchingCopy {
+  if (relation === 'expected_payment_candidate') {
+    return {
+      title: 'Nouveau paiement détecté',
+      label: 'Matching 100 %',
+      text: 'Veuillez confirmer ce paiement.'
+    };
+  }
+
+  return {
+    title: 'Paiement à vérifier',
+    label: 'Paiement à vérifier',
+    text: 'Certains éléments correspondent, mais une confirmation est nécessaire.'
+  };
+}
+
+export function buildIntentBoundLearningMetadata(
+  input: IntentBoundLearningMetadataInput
+): IntentBoundLearningMetadata {
+  return {
+    ...input,
+    learning_context:
+      input.active_payment_intent_present || input.review_created ? 'intent_bound_feedback' : 'background_observation',
+    mutates_runtime_rules: false,
+    promotes_profile: false
+  };
+}
+
+export function maskBuyerSourceCard(value: string): string {
+  const digits = normalizeDigits(value);
+  if (digits.length <= 4) {
+    return `**** ${digits.slice(-4)}`;
+  }
+  if (digits.length < 8) {
+    return `**** ${digits.slice(-4)}`;
+  }
+  return `${digits.slice(0, 4)} **** **** ${digits.slice(-4)}`;
+}
+
+export function maskBuyerPhone(value: string): string {
+  const digits = normalizeDigits(value);
+  return `+7 *** *** **${digits.slice(-2).padStart(2, '*')}`;
+}
+
+function assertNoProhibitedBuyerCredentialFields(input: Record<string, unknown>): void {
+  const forbidden = /^(cvv|cvc|security_code|expiration|expiry|exp_month|exp_year|pin|sms_code|bank_password|password)$/iu;
+  if (Object.keys(input).some((key) => forbidden.test(key))) {
+    throw new Error('Buyer recognition hints must not include card secrets or bank credentials.');
+  }
+}
+
+function normalizeDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
 function receiverBank(bankProfileId: string, displayName: string): ReceiverBankOption {
   return {
     receiver_bank_id: bankProfileId,
@@ -398,17 +623,111 @@ export type BankProfileStatus = (typeof BankProfileStatuses)[number];
 
 export const DirectionLabels = [
   'incoming_customer_transfer',
+  'incoming_card_transfer',
+  'incoming_sbp_transfer',
   'incoming_cashback',
   'incoming_refund',
   'outgoing_payment',
+  'outgoing_transfer',
   'failed_transfer',
   'promo',
   'balance_update',
+  'system_notice',
   'unknown',
   'unknown_ambiguous_direction'
 ] as const;
 
 export type DirectionLabel = (typeof DirectionLabels)[number];
+
+export const IntelligenceNotificationCategories = [
+  'incoming_customer_transfer',
+  'incoming_card_transfer',
+  'incoming_sbp_transfer',
+  'cashback',
+  'refund',
+  'outgoing_payment',
+  'outgoing_transfer',
+  'failed_transfer',
+  'promo',
+  'balance_update',
+  'system_notice',
+  'unknown'
+] as const;
+
+export type IntelligenceNotificationCategory = (typeof IntelligenceNotificationCategories)[number];
+
+export const IntelligenceFeedbackActions = ['correct', 'corrected', 'ignored'] as const;
+export type IntelligenceFeedbackAction = (typeof IntelligenceFeedbackActions)[number];
+
+export const IntelligenceFeedbackReviewStatuses = ['pending', 'accepted', 'rejected', 'duplicate'] as const;
+export type IntelligenceFeedbackReviewStatus = (typeof IntelligenceFeedbackReviewStatuses)[number];
+
+export interface StaticBankProfileV1 {
+  bank_profile_id: string;
+  display_name: string;
+  package_name: string;
+  version: 'intelligence-v1';
+  profile_signature: string;
+  extraction_rules: readonly string[];
+  keyword_lists: Record<string, readonly string[]>;
+  negative_gates: readonly IntelligenceNotificationCategory[];
+  classification_rules: readonly string[];
+  official_bank_confirmation: false;
+  auto_confirm_enabled: false;
+}
+
+function staticBankProfile(bankProfileId: string, displayName: string, packageName: string): StaticBankProfileV1 {
+  return {
+    bank_profile_id: bankProfileId,
+    display_name: displayName,
+    package_name: packageName,
+    version: 'intelligence-v1',
+    profile_signature: `profile_v1:${bankProfileId}:static`,
+    extraction_rules: ['amount_minor', 'currency', 'sender_hint_hmac_optional', 'reference_hmac_optional'],
+    keyword_lists: {
+      incoming: ['incoming', 'received', 'pоступление', 'поступление', 'зачисление'],
+      card: ['card', 'карта', 'карт'],
+      sbp: ['sbp', 'сбп'],
+      cashback: ['cashback', 'кэшбэк', 'кешбэк'],
+      refund: ['refund', 'возврат'],
+      outgoing: ['outgoing', 'списание', 'перевод отправлен'],
+      failed: ['failed', 'отклонен', 'отклонён', 'не выполнен'],
+      promo: ['promo', 'акция', 'скидка'],
+      balance: ['balance', 'баланс', 'остаток'],
+      system: ['security', 'login', 'system', 'система', 'вход']
+    },
+    negative_gates: ['cashback', 'refund', 'outgoing_payment', 'outgoing_transfer', 'failed_transfer', 'promo', 'unknown'],
+    classification_rules: ['keyword_negative_gates_first', 'incoming_direction_required', 'amount_only_needs_review'],
+    official_bank_confirmation: false,
+    auto_confirm_enabled: false
+  };
+}
+
+export const V1StaticBankProfiles: readonly StaticBankProfileV1[] = [
+  staticBankProfile('sber_ru', 'Sberbank', 'ru.sberbankmobile'),
+  staticBankProfile('tbank_ru', 'T-Bank', 'com.idamob.tinkoff.android'),
+  staticBankProfile('vtb_ru', 'VTB', 'ru.vtb24.mobilebanking.android'),
+  staticBankProfile('alfa_ru', 'Alfa-Bank', 'ru.alfabank.mobile.android'),
+  staticBankProfile('gazprombank_ru', 'Gazprombank', 'ru.gazprombank.android.mobilebank.app')
+] as const;
+
+export interface IntelligenceFeedbackRequest {
+  shape_hash: string;
+  bank_profile_id: string;
+  package_name: string;
+  profile_version: string;
+  classification_guess: IntelligenceNotificationCategory;
+  human_label: IntelligenceNotificationCategory;
+  feedback: IntelligenceFeedbackAction;
+  timestamp: string;
+  review_status: IntelligenceFeedbackReviewStatus;
+  mutates_runtime_rules: false;
+  promotes_profile: false;
+}
+
+export type IntelligenceFeedbackValidationResult =
+  | { valid: true; value: IntelligenceFeedbackRequest }
+  | { valid: false; code: AndroidReceiverErrorCode; field?: string };
 
 export const Decisions = ['auto_confirmed', 'needs_review', 'rejected', 'wait'] as const;
 export type Decision = (typeof Decisions)[number];
@@ -692,6 +1011,12 @@ export interface AndroidReceiverSignalUploadRequest extends AndroidSignalCoalesc
   reference_hmac?: string;
   reference_code_masked?: string;
   direction_hint?: DirectionLabel;
+  shape_hash?: string;
+  profile_version?: string;
+  classification?: IntelligenceNotificationCategory;
+  confidence?: number;
+  reason_codes?: string[];
+  auto_confirm_allowed?: false;
   parser_hint?: string;
   signal_quality_hint?: number;
   redacted_title?: string;
@@ -1065,6 +1390,10 @@ export function validateAndroidReceiverSignalUploadRequest(
     return { valid: false, code: AndroidReceiverErrorCodes.RAW_NOTIFICATION_REJECTED, field: 'raw_text_present' };
   }
 
+  if (body.auto_confirm_allowed !== undefined && body.auto_confirm_allowed !== false) {
+    return invalidAndroidReceiverPayload('auto_confirm_allowed');
+  }
+
   if (!isNonEmptyString(body.signature)) {
     return { valid: false, code: AndroidReceiverErrorCodes.SIGNATURE_MISSING, field: 'signature' };
   }
@@ -1118,6 +1447,14 @@ export function validateAndroidReceiverSignalUploadRequest(
     return invalidAndroidReceiverPayload('direction_hint');
   }
 
+  if (body.classification !== undefined && !IntelligenceNotificationCategories.includes(body.classification as IntelligenceNotificationCategory)) {
+    return invalidAndroidReceiverPayload('classification');
+  }
+
+  if (body.confidence !== undefined && (!Number.isInteger(body.confidence) || Number(body.confidence) < 0 || Number(body.confidence) > 100)) {
+    return invalidAndroidReceiverPayload('confidence');
+  }
+
   const value: AndroidReceiverSignalUploadRequest = {
     event_id: String(body.event_id).trim(),
     merchant_id: String(body.merchant_id).trim(),
@@ -1158,6 +1495,18 @@ export function validateAndroidReceiverSignalUploadRequest(
   if (typeof body.direction_hint === 'string') {
     value.direction_hint = body.direction_hint as DirectionLabel;
   }
+  assignIfDefined(value, 'shape_hash', optionalString(body.shape_hash));
+  assignIfDefined(value, 'profile_version', optionalString(body.profile_version));
+  if (typeof body.classification === 'string') {
+    value.classification = body.classification as IntelligenceNotificationCategory;
+  }
+  if (typeof body.confidence === 'number') {
+    value.confidence = body.confidence;
+  }
+  assignIfDefined(value, 'reason_codes', optionalStringArray(body.reason_codes));
+  if (body.auto_confirm_allowed === false) {
+    value.auto_confirm_allowed = false;
+  }
   assignIfDefined(value, 'parser_hint', optionalString(body.parser_hint));
   if (typeof body.signal_quality_hint === 'number') {
     value.signal_quality_hint = body.signal_quality_hint;
@@ -1170,6 +1519,61 @@ export function validateAndroidReceiverSignalUploadRequest(
     value,
     package_verification_trust:
       body.package_name === 'TO_VERIFY' || body.package_cert_sha256 === 'TO_VERIFY' ? 'untrusted' : 'trusted'
+  };
+}
+
+export function validateIntelligenceFeedbackRequest(body: unknown): IntelligenceFeedbackValidationResult {
+  if (!isPlainRecord(body)) {
+    return invalidAndroidReceiverPayload();
+  }
+
+  const rawField = findForbiddenReceiverRawField(body);
+  if (rawField?.kind === 'phone') {
+    return { valid: false, code: AndroidReceiverErrorCodes.RAW_PHONE_REJECTED, field: rawField.field };
+  }
+  if (rawField?.kind === 'notification') {
+    return { valid: false, code: AndroidReceiverErrorCodes.RAW_NOTIFICATION_REJECTED, field: rawField.field };
+  }
+
+  for (const field of ['shape_hash', 'bank_profile_id', 'package_name', 'profile_version', 'timestamp']) {
+    if (!isNonEmptyString(body[field])) {
+      return invalidAndroidReceiverPayload(field);
+    }
+  }
+
+  if (!IntelligenceNotificationCategories.includes(body.classification_guess as IntelligenceNotificationCategory)) {
+    return invalidAndroidReceiverPayload('classification_guess');
+  }
+  if (!IntelligenceNotificationCategories.includes(body.human_label as IntelligenceNotificationCategory)) {
+    return invalidAndroidReceiverPayload('human_label');
+  }
+  if (!IntelligenceFeedbackActions.includes(body.feedback as IntelligenceFeedbackAction)) {
+    return invalidAndroidReceiverPayload('feedback');
+  }
+  if (!isIsoDateString(body.timestamp)) {
+    return { valid: false, code: AndroidReceiverErrorCodes.TIMESTAMP_OUT_OF_RANGE, field: 'timestamp' };
+  }
+
+  const profile = V1StaticBankProfiles.find((candidate) => candidate.bank_profile_id === body.bank_profile_id);
+  if (!profile || profile.package_name !== body.package_name || profile.version !== body.profile_version) {
+    return invalidAndroidReceiverPayload('bank_profile_id');
+  }
+
+  return {
+    valid: true,
+    value: {
+      shape_hash: String(body.shape_hash).trim(),
+      bank_profile_id: profile.bank_profile_id,
+      package_name: profile.package_name,
+      profile_version: profile.version,
+      classification_guess: body.classification_guess as IntelligenceNotificationCategory,
+      human_label: body.human_label as IntelligenceNotificationCategory,
+      feedback: body.feedback as IntelligenceFeedbackAction,
+      timestamp: new Date(String(body.timestamp)).toISOString(),
+      review_status: 'pending',
+      mutates_runtime_rules: false,
+      promotes_profile: false
+    }
   };
 }
 

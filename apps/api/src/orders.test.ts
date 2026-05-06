@@ -149,6 +149,16 @@ class InMemoryOrderRepository implements OrderRepository {
     return { kind: 'updated' as const, ...found };
   }
 
+  async markReceiverArmed(input: Parameters<OrderRepository['markReceiverArmed']>[0]) {
+    const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
+    if ('kind' in found) {
+      return found;
+    }
+    found.paymentSession.status = 'receiver_armed';
+    found.order.status = 'receiver_armed';
+    return { kind: 'updated' as const, ...found };
+  }
+
   async markBuyerClaimedPaid(input: Parameters<OrderRepository['markBuyerClaimedPaid']>[0]) {
     const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
     if ('kind' in found) {

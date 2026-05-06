@@ -77,6 +77,7 @@ export interface CheckoutStatusResponse {
   };
   reference: string;
   expires_at: string;
+  receiver_status: ReceiverStatus;
   selected_receiver_bank_id?: string | undefined;
   selected_receiving_route_id?: string | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
@@ -210,6 +211,7 @@ export function toCheckoutStatusResponse(params: {
     amount: read.amount,
     reference: read.reference,
     expires_at: read.expires_at,
+    receiver_status: read.receiver_status,
     selected_receiver_bank_id: read.selected_receiver_bank_id,
     selected_receiving_route_id: read.selected_receiving_route_id,
     selected_payer_bank_launcher_id: read.selected_payer_bank_launcher_id,

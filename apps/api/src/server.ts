@@ -13,8 +13,10 @@ import {
 } from '@swimpay/observability';
 import {
   ReceivingRouteRailTypes,
+  V1StaticBankProfiles,
   getPayerBankLauncherOption,
   getReceiverBankOption,
+  validateIntelligenceFeedbackRequest,
   type ReceivingRouteRailType
 } from '@swimpay/contracts';
 import {
@@ -122,6 +124,36 @@ const { Pool } = pg;
 const COPY_DETAILS_RATE_LIMIT_MAX = 3;
 const COPY_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const COPY_DETAILS_REVEAL_TTL_MS = 2 * 60 * 1000;
+
+interface IntelligenceFeedbackRecord {
+  feedback_id: string;
+  merchant_id: string;
+  shape_hash: string;
+  bank_profile_id: string;
+  package_name: string;
+  profile_version: string;
+  classification_guess: string;
+  human_label: string;
+  feedback: string;
+  timestamp: string;
+  review_status: 'pending';
+  mutates_runtime_rules: false;
+  promotes_profile: false;
+  official_bank_confirmation: false;
+}
+
+interface UnknownShapeRecord {
+  shape_hash: string;
+  bank_profile_id: string;
+  package_name: string;
+  profile_version: string;
+  classification_guess: 'unknown';
+  seen_count: number;
+  first_seen_at: string;
+  last_seen_at: string;
+  review_status: 'pending';
+  read_only: true;
+}
 
 export type {
   CreateOrderWithSessionInput,
@@ -263,6 +295,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const clock = options.clock ?? (() => new Date());
   const startedAt = options.startedAt ?? new Date();
   const copyDetailsLimiter = new Map<string, { windowStartedAtMs: number; count: number }>();
+  const intelligenceFeedback = new Map<string, IntelligenceFeedbackRecord>();
+  const unknownShapeMonitoring = new Map<string, UnknownShapeRecord>();
 
   server.addHook('onRequest', async (request, reply) => {
     const incoming = Array.isArray(request.headers['x-correlation-id'])
@@ -286,6 +320,89 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       now: clock
     }) as HealthResponse
   );
+
+  server.get('/v1/intelligence/bank-profiles', async () => ({
+    profiles: V1StaticBankProfiles,
+    count: V1StaticBankProfiles.length,
+    profile_mode: 'static_controlled_v1',
+    feedback_mutates_runtime_rules: false,
+    official_bank_confirmation: false
+  }));
+
+  server.post('/v1/intelligence/feedback', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for intelligence feedback.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+
+    const body = validateIntelligenceFeedbackRequest(request.body);
+    if (!body.valid) {
+      return reply.status(400).send(receiverContractError(body.code, body.field));
+    }
+
+    const feedbackId = randomUUID();
+    const record: IntelligenceFeedbackRecord = {
+      feedback_id: feedbackId,
+      merchant_id: merchantId,
+      shape_hash: body.value.shape_hash,
+      bank_profile_id: body.value.bank_profile_id,
+      package_name: body.value.package_name,
+      profile_version: body.value.profile_version,
+      classification_guess: body.value.classification_guess,
+      human_label: body.value.human_label,
+      feedback: body.value.feedback,
+      timestamp: body.value.timestamp,
+      review_status: 'pending',
+      mutates_runtime_rules: false,
+      promotes_profile: false,
+      official_bank_confirmation: false
+    };
+    intelligenceFeedback.set(feedbackId, record);
+
+    if (body.value.classification_guess === 'unknown') {
+      const key = `${merchantId}:${body.value.shape_hash}:${body.value.bank_profile_id}:${body.value.package_name}`;
+      const existing = unknownShapeMonitoring.get(key);
+      unknownShapeMonitoring.set(key, {
+        shape_hash: body.value.shape_hash,
+        bank_profile_id: body.value.bank_profile_id,
+        package_name: body.value.package_name,
+        profile_version: body.value.profile_version,
+        classification_guess: 'unknown',
+        seen_count: (existing?.seen_count ?? 0) + 1,
+        first_seen_at: existing?.first_seen_at ?? body.value.timestamp,
+        last_seen_at: body.value.timestamp,
+        review_status: 'pending',
+        read_only: true
+      });
+    }
+
+    return reply.status(202).send(record);
+  });
+
+  server.get('/v1/intelligence/unknown-shapes', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization);
+    if (!merchantId) {
+      return reply.status(401).send(
+        invalidRequest('A test merchant bearer token is required for unknown shape monitoring.', {
+          authorization: 'Bearer test_<merchant_id>'
+        })
+      );
+    }
+
+    return reply.status(200).send({
+      unknown_shapes: Array.from(unknownShapeMonitoring.entries())
+        .filter(([key]) => key.startsWith(`${merchantId}:`))
+        .map(([, record]) => record),
+      read_only: true,
+      mutates_runtime_rules: false,
+      promotes_profile: false,
+      official_bank_confirmation: false
+    });
+  });
 
   server.post('/v1/orders', async (request, reply) => {
     const merchantId = parseMerchantId(request.headers.authorization);
@@ -889,6 +1006,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
   server.post('/v1/checkout/:id/payment-instructions-shown', async (request, reply) => {
     const result = await mutateSimpleCheckoutAction({ request, reply, repository, idGenerator, clock, action: 'instructions' });
+    if (!result) {
+      return reply;
+    }
+    return reply.status(200).send(buildCheckoutActionResponse({ ...result, now: clock() }));
+  });
+
+  server.post('/v1/checkout/:id/continue-to-bank', async (request, reply) => {
+    const result = await mutateSimpleCheckoutAction({ request, reply, repository, idGenerator, clock, action: 'receiver_armed' });
     if (!result) {
       return reply;
     }
@@ -2126,7 +2251,7 @@ async function mutateSimpleCheckoutAction(params: {
   repository: OrderRepository | null;
   idGenerator: IdGenerator;
   clock: () => Date;
-  action: 'instructions' | 'claimed_paid';
+  action: 'instructions' | 'receiver_armed' | 'claimed_paid';
 }) {
   const merchantId = parseMerchantId(params.request.headers.authorization);
   if (!merchantId) {
@@ -2165,7 +2290,7 @@ async function mutateSimpleCheckoutAction(params: {
     return null;
   }
   if (
-    params.action === 'instructions' &&
+    (params.action === 'instructions' || params.action === 'receiver_armed') &&
     (!loaded.paymentSession.selectedReceivingRouteId || !loaded.paymentSession.selectedPayerBankLauncherId)
   ) {
     params.reply.status(409).send({
@@ -2177,10 +2302,7 @@ async function mutateSimpleCheckoutAction(params: {
     });
     return null;
   }
-  const result =
-    params.action === 'instructions'
-      ? await params.repository.markPaymentInstructionsShown(input)
-      : await params.repository.markBuyerClaimedPaid(input);
+  const result = await mutateCheckoutActionRepository(params.repository, params.action, input);
   switch (result.kind) {
     case 'updated':
       return result;
@@ -2202,6 +2324,21 @@ async function mutateSimpleCheckoutAction(params: {
         }
       });
       return null;
+  }
+}
+
+function mutateCheckoutActionRepository(
+  repository: OrderRepository,
+  action: 'instructions' | 'receiver_armed' | 'claimed_paid',
+  input: Parameters<OrderRepository['markPaymentInstructionsShown']>[0]
+) {
+  switch (action) {
+    case 'instructions':
+      return repository.markPaymentInstructionsShown(input);
+    case 'receiver_armed':
+      return repository.markReceiverArmed(input);
+    case 'claimed_paid':
+      return repository.markBuyerClaimedPaid(input);
   }
 }
 
