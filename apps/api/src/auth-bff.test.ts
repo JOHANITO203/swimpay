@@ -264,6 +264,24 @@ describe('Auth BFF foundation', () => {
     expect(created.statusCode).toBe(201);
     expect(orderRepository.orders.get('ord_auth_01')?.merchantId).toBe('55555555-5555-4555-8555-555555555555');
     expect(created.body).not.toContain('sk_live_server_only');
+
+    const autoConfirm = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer sk_live_server_only' },
+      payload: { ...validOrderPayload(), external_id: 'ORDER_AUTH_02', auto_confirm: true }
+    });
+    expect(autoConfirm.statusCode).toBe(400);
+    expect(autoConfirm.json().error.message).toContain('auto_confirm');
+
+    const camelAutoConfirm = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer sk_live_server_only' },
+      payload: { ...validOrderPayload(), external_id: 'ORDER_AUTH_03', autoConfirm: true }
+    });
+    expect(camelAutoConfirm.statusCode).toBe(400);
+    expect(camelAutoConfirm.json().error.message).toContain('autoConfirm');
   });
 });
 

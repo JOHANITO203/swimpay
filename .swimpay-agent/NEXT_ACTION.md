@@ -1,6 +1,38 @@
 # Next Action
 
-generated_at: 2026-05-07T10:55:00+03:00
+generated_at: 2026-05-07T13:25:00+03:00
+
+## Latest Sprint 9K Production-mode Staging / VPS Validation
+
+Completed so far:
+
+1. Created Sprint 9K task files 546 through 555 and updated the task queue.
+2. Created `.swimpay-agent/PROD_MODE_STAGING_INVENTORY.md`.
+3. Added production-mode guardrail tests for BFF/CSRF, stored API keys and Receiver register/heartbeat.
+4. Rejected `auto_confirm` and `autoConfirm` on `/v1/orders`.
+5. Hardened Receiver registration and heartbeat to use BFF active merchant context + CSRF in production mode.
+6. Added `docs/PRODUCTION_ENVIRONMENT.md`.
+7. Added `scripts/seed-staging-auth-bff.mjs` for explicit synthetic staging identity/API-key/session seed.
+8. Created `.swimpay-agent/VPS_STAGING_READINESS_AUDIT.md`.
+9. Created `.swimpay-agent/PROD_MODE_STAGING_VALIDATION_REPORT.md`.
+
+Next recommended action:
+
+Run Sprint 9L on the VPS with synthetic data only:
+
+- configure HTTPS staging URL and Google OAuth redirect;
+- inject secrets outside git;
+- run additive migrations;
+- run the staging seed script with explicit confirmation;
+- smoke BFF `/v1/me`, SDK order creation, Receiver registration/heartbeat and signed synthetic signal upload through the staging URL.
+
+Do not do:
+
+- Do not deploy public production yet.
+- Do not process real bank notifications.
+- Do not use real customer data.
+- Do not enable auto-confirmation.
+- Do not introduce LLM logic, SMS, Accessibility or broad app enumeration.
 
 ## Latest Sprint 9J Auth BFF Foundation
 

@@ -1321,10 +1321,11 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/receiver-devices/register', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization, {
-      allowTestBearer: options.environment !== 'production'
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.RECEIVER_CONFIGURE, {
+      requireCsrf: true
     });
-    if (!merchantId) {
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(
         invalidRequest('An authenticated merchant session is required for receiver device registration.', {})
       );
@@ -1347,7 +1348,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     const input = buildReceiverDeviceCreateInput({
       body: body.value,
-      merchantId,
+      merchantId: merchantContext.merchantId,
       deviceId: receiverDeviceIdGenerator(),
       auditEventId: idGenerator.auditEventId(),
       now: clock()
@@ -1369,17 +1370,18 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return reply.status(201).send(
       buildReceiverRegistrationResponse({
         device,
-        merchantId,
+        merchantId: merchantContext.merchantId,
         serverTime: clock().toISOString()
       })
     );
   });
 
   server.post('/v1/receiver-devices/heartbeat', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization, {
-      allowTestBearer: options.environment !== 'production'
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.RECEIVER_CONFIGURE, {
+      requireCsrf: true
     });
-    if (!merchantId) {
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(
         invalidRequest('An authenticated merchant session is required for receiver heartbeat.', {})
       );
@@ -1402,7 +1404,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     const heartbeatAt = clock().toISOString();
     const device = await receiverDeviceRepository.updateHeartbeat({
-      merchantId,
+      merchantId: merchantContext.merchantId,
       deviceId: body.value.device_id,
       notificationAccessStatus: body.value.notification_access,
       listenerConnected: body.value.listener_connected,

@@ -1,6 +1,18 @@
 import { describe, expect, test } from 'vitest';
 import { InMemoryMetricsRegistry, MetricNames } from '@swimpay/observability';
 import { buildApiServer } from './server.js';
+import {
+  BFF_SESSION_COOKIE_NAME,
+  CSRF_HEADER_NAME,
+  InMemoryAuthBffRepository,
+  MerchantRoles,
+  buildSessionCookieOptions,
+  createCsrfToken,
+  createOpaqueSessionToken,
+  hashBffSessionToken,
+  hashCsrfToken,
+  serializeSessionCookie
+} from './auth-bff.js';
 import { deriveReceiverDeviceOperationalStatus } from './receiver-devices.js';
 import type {
   CreateReceiverDeviceInput,
@@ -77,6 +89,66 @@ function buildReceiverServer(repository: InMemoryReceiverDeviceRepository, metri
   });
 }
 
+async function createProductionReceiverServerWithSession(repository: InMemoryReceiverDeviceRepository) {
+  const authBffRepository = new InMemoryAuthBffRepository();
+  const sessionToken = createOpaqueSessionToken();
+  const csrfToken = createCsrfToken();
+  const now = '2026-05-02T11:00:00.000Z';
+  const userId = '11111111-1111-4111-8111-111111111111';
+  const merchantId = '22222222-2222-4222-8222-222222222222';
+
+  authBffRepository.seedUser({
+    id: userId,
+    googleSub: 'google-user-01',
+    email: 'owner@example.com',
+    name: 'Owner',
+    avatarUrl: null,
+    status: 'active',
+    lastLoginAt: now
+  });
+  authBffRepository.seedMembership({
+    id: 'membership-01',
+    merchantId,
+    userId,
+    role: MerchantRoles.OWNER,
+    status: 'active'
+  });
+  await authBffRepository.createSession({
+    sessionIdHash: hashBffSessionToken(sessionToken),
+    csrfSecretHash: hashCsrfToken(csrfToken),
+    userId,
+    activeMerchantId: merchantId,
+    expiresAt: '2026-05-09T11:00:00.000Z',
+    now
+  });
+
+  const server = buildApiServer({
+    environment: 'production',
+    authBffRepository,
+    receiverDeviceRepository: repository,
+    idGenerator: {
+      orderId: () => 'ord_unused',
+      paymentSessionId: () => 'ps_unused',
+      auditEventId: () => 'aud_receiver_01',
+      referenceCode: () => 'SWP-UNUSED'
+    },
+    receiverDeviceIdGenerator: () => 'prod_receiver_01',
+    clock: () => new Date(now),
+    healthChecks: {
+      database: async () => 'skipped',
+      nats: async () => 'skipped',
+      valkey: async () => 'skipped'
+    }
+  });
+
+  return {
+    server,
+    merchantId,
+    csrfToken,
+    cookie: serializeSessionCookie(sessionToken, buildSessionCookieOptions('production'))
+  };
+}
+
 describe('receiver device api', () => {
   test('rejects local test bearer receiver registration in production', async () => {
     const repository = new InMemoryReceiverDeviceRepository();
@@ -110,6 +182,69 @@ describe('receiver device api', () => {
     expect(response.statusCode).toBe(401);
     expect(response.body).not.toContain('Bearer test_');
     expect(repository.devices.size).toBe(0);
+  });
+
+  test('registers and heartbeats a receiver through production BFF session with CSRF', async () => {
+    const repository = new InMemoryReceiverDeviceRepository();
+    const { server, cookie, csrfToken, merchantId } = await createProductionReceiverServerWithSession(repository);
+
+    expect(cookie).toContain(`${BFF_SESSION_COOKIE_NAME}=`);
+    expect(cookie).toContain('Secure');
+    expect(cookie).toContain('HttpOnly');
+
+    const blocked = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver-devices/register',
+      headers: { cookie },
+      payload: {
+        device_name: 'Merchant Phone',
+        public_key: 'base64_public_key'
+      }
+    });
+    expect(blocked.statusCode).toBe(403);
+
+    const registered = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver-devices/register',
+      headers: { cookie, [CSRF_HEADER_NAME]: csrfToken },
+      payload: {
+        device_name: 'Merchant Phone',
+        public_key: 'base64_public_key',
+        app_version: '1.0.0',
+        android_version: '15',
+        selected_banks: ['sber_ru']
+      }
+    });
+    expect(registered.statusCode).toBe(201);
+    expect(registered.json()).toMatchObject({
+      device_id: 'prod_receiver_01',
+      merchant_id: merchantId
+    });
+    expect(registered.body).not.toContain('base64_public_key');
+
+    const heartbeat = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver-devices/heartbeat',
+      headers: { cookie, [CSRF_HEADER_NAME]: csrfToken },
+      payload: {
+        device_id: 'prod_receiver_01',
+        notification_access_enabled: true,
+        listener_connected: true,
+        allowed_bank_profile_ids: ['sber_ru'],
+        queue_length: 0,
+        last_signal_observed_at: null,
+        app_version: '1.0.1',
+        android_version: '15',
+        timestamp: '2026-05-02T11:00:00.000Z',
+        signature: 'heartbeat_signature'
+      }
+    });
+    expect(heartbeat.statusCode).toBe(200);
+    expect(heartbeat.json()).toMatchObject({
+      device_id: 'prod_receiver_01',
+      status: 'active',
+      receiver_mode: 'active'
+    });
   });
 
   test('maps unknown merchant receiver registration storage failures to authenticated merchant errors', async () => {

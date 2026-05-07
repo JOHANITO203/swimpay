@@ -2278,3 +2278,17 @@ Safety checks:
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Android JVM tests and Android debug APK build.
 - Device QA passed on `R5CWA0FEPZW`: APK install, app launch and UIAutomator dump.
 - Docker live validation initially hit a local Docker Desktop pipe outage, then passed after Docker restart with sequential Compose build/up, healthy services and `/api-health` reporting database, NATS and Valkey `ok`.
+
+# 2026-05-07T13:25:00+03:00 - Sprint 9K Production-mode Staging / VPS Validation
+
+- Created Sprint 9K task files 546 through 555 and updated the active task queue.
+- Created `.swimpay-agent/PROD_MODE_STAGING_INVENTORY.md`.
+- Added production-mode tests for BFF session/CSRF, stored API key order creation and Receiver register/heartbeat through BFF active merchant context.
+- Updated `/v1/orders` validation to reject `auto_confirm` and `autoConfirm`.
+- Updated `/v1/receiver-devices/register` and `/v1/receiver-devices/heartbeat` to use BFF active merchant context with CSRF in production mode while preserving local dev bearer behavior outside production.
+- Added safe production/staging env placeholders to `.env.example` and `.env.production.example`.
+- Created `docs/PRODUCTION_ENVIRONMENT.md`.
+- Added explicit opt-in synthetic staging seed script `scripts/seed-staging-auth-bff.mjs`.
+- Created `.swimpay-agent/VPS_STAGING_READINESS_AUDIT.md`.
+- Created `.swimpay-agent/PROD_MODE_STAGING_VALIDATION_REPORT.md`.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, sequential Compose build/up, healthy services and `/api-health` with database, NATS and Valkey `ok`.

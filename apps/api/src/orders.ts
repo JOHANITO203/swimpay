@@ -1154,6 +1154,17 @@ export function validateCreateOrderBody(body: unknown): CreateOrderRequestBody |
     return invalidRequest('Order request body must be a JSON object.', {});
   }
 
+  if ('auto_confirm' in body) {
+    return invalidRequest('auto_confirm is not supported in SwimPay V1 order creation.', {
+      field: 'auto_confirm'
+    });
+  }
+  if ('autoConfirm' in body) {
+    return invalidRequest('autoConfirm is not supported in SwimPay V1 order creation.', {
+      field: 'autoConfirm'
+    });
+  }
+
   const candidate = body as Partial<CreateOrderRequestBody>;
   const amount = candidate.amount;
 

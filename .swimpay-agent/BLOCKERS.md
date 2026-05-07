@@ -1,5 +1,16 @@
 # Blockers
 
+## Sprint 9K Production-mode Staging / VPS Validation
+
+- No critical code blocker introduced.
+- Production-mode SDK order creation now rejects `auto_confirm` and `autoConfirm` inputs explicitly.
+- Receiver registration and heartbeat now support production BFF active merchant context with CSRF and continue to reject local `Bearer test_*` merchant bearers in production mode.
+- Safe production/staging env contract is documented in `docs/PRODUCTION_ENVIRONMENT.md`.
+- Staging identity seeding is available through an explicit opt-in synthetic script: `scripts/seed-staging-auth-bff.mjs`.
+- Full local validation passed: android doctor, typecheck, lint, full tests, build, Compose config, sequential Compose build/up, service health and `/api-health`.
+- Remaining non-critical limitation: Google OAuth token exchange is still a fail-closed provider seam; local credentials are configured but full live OAuth exchange remains Sprint 9L.
+- Remaining non-critical limitation: real VPS production-mode staging was not deployed or migrated in this sprint; this requires explicit operator approval and external secret handling.
+
 ## Sprint 9J Auth BFF Merchant/Admin Foundation
 
 - No critical code blocker introduced.

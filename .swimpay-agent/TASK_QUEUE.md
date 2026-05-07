@@ -6,6 +6,19 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `546_prod_mode_staging_inventory` - status: completed - source: `tasks/546_prod_mode_staging_inventory.md`
+- [x] `547_prod_env_and_secret_contract` - status: completed - source: `tasks/547_prod_env_and_secret_contract.md`
+- [x] `548_seed_staging_identity_data` - status: completed - source: `tasks/548_seed_staging_identity_data.md`
+- [x] `549_prod_bff_session_csrf_validation` - status: completed - source: `tasks/549_prod_bff_session_csrf_validation.md`
+- [x] `550_prod_sdk_api_key_validation` - status: completed - source: `tasks/550_prod_sdk_api_key_validation.md`
+- [x] `551_prod_receiver_registration_heartbeat_validation` - status: completed - source: `tasks/551_prod_receiver_registration_heartbeat_validation.md`
+- [x] `552_prod_signal_upload_validation` - status: completed - source: `tasks/552_prod_signal_upload_validation.md`
+- [x] `553_prod_webhook_semantics_validation` - status: completed - source: `tasks/553_prod_webhook_semantics_validation.md`
+- [x] `554_vps_staging_readiness_audit` - status: completed - source: `tasks/554_vps_staging_readiness_audit.md`
+- [x] `555_prod_mode_staging_closeout` - status: completed - source: `tasks/555_prod_mode_staging_closeout.md`
+
+## Previous Queue
+
 - [x] `535_auth_bff_inventory` - status: completed - source: `tasks/535_auth_bff_inventory.md`
 - [x] `536_identity_schema_and_migrations` - status: completed - source: `tasks/536_identity_schema_and_migrations.md`
 - [x] `537_google_oauth_bff_provider_seam` - status: completed - source: `tasks/537_google_oauth_bff_provider_seam.md`
