@@ -798,6 +798,8 @@ function templateStatusAuditEventType(status: AdminTemplateStatusActionInput['st
       return AdminAuditEventTypes.TEMPLATE_REVIEW_ONLY;
     case 'disabled':
       return AdminAuditEventTypes.TEMPLATE_DISABLED;
+    default:
+      throw new Error(`Unsupported template status audit event: ${status}`);
   }
 }
 
