@@ -1,5 +1,17 @@
 # Blockers
 
+## REAL-1 Real Staging Integration Test
+
+- Prepared: real staging integration inventory, VPS/domain deploy plan, staging secret contract, migration/seed report, Google OAuth report, Android Receiver staging setup report, real capture report, manual review/webhook report, observability report and closeout report.
+- Prepared: minimal external merchant staging app under `examples/real-staging-merchant` using `@swimpay/node`, with SDK order creation and verified final webhook fulfillment behavior.
+- Local validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Android JVM tests, Android debug APK build and non-notification device install/launch/UI dump.
+- Blocked: `staging.swimpay.pro` DNS/HTTPS was not usable from this shell; `/api-health` did not return a staging health response.
+- Blocked: no VPS access/session, staging env file, real staging secrets, Google OAuth credentials, staging API key or webhook secret were available in the workspace.
+- Blocked: Docker Desktop Linux engine is unavailable locally, so local Compose runtime `ps` could not run.
+- Blocked: Android Receiver could not be registered against staging because staging API and credentials were unavailable.
+- Not executed: real bank notification capture, manual merchant review and real staging webhook delivery.
+- Safety preserved: no real bank notification was captured in this session, no raw notification text was stored/uploaded, no auto-confirmation was enabled and public webhook semantics were not changed.
+
 ## CR-4 Android Receiver Real Runtime Readiness
 
 - Resolved: Android Receiver runtime package gating now accepts only explicitly enabled supported bank targets outside debug.

@@ -2,7 +2,15 @@
 
 This document defines the production-mode staging contract for SwimPay V1.
 
-SwimPay production-mode staging must use synthetic data until a real production deployment is explicitly approved. Do not process real bank notifications during this validation phase.
+SwimPay production-mode staging initially used synthetic data only. As of Real Staging Integration, operator-owned real notification testing is allowed only inside the controlled staging scope:
+
+- staging domain only, not public production;
+- operator-owned device and bank account only;
+- one small test payment context at a time;
+- no customer data;
+- no auto-confirmation;
+- no raw notification title/body/text storage or upload;
+- public fulfillment webhooks only after merchant manual confirmation.
 
 ## Required Runtime Shape
 
@@ -88,4 +96,3 @@ For a 4 GB VPS:
 - run migrations before service rollout;
 - expose only HTTPS through Caddy or Nginx;
 - monitor disk, memory, Postgres, NATS and Valkey health.
-

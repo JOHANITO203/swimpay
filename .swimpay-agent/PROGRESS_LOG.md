@@ -1,5 +1,24 @@
 # Progress Log
 
+## 2026-05-08 - REAL-1 Real Staging Integration Test
+
+- Created tasks 601 through 611 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Audited real staging readiness across Compose, env templates, production env docs, migrations, seed script, Auth BFF, Google OAuth seam, SDK Web, Android Receiver, Developer Integration Wizard, webhook worker, signal worker and proxy assumptions.
+- Created `.swimpay-agent/REAL_STAGING_INTEGRATION_INVENTORY.md`.
+- Created `.swimpay-agent/VPS_DOMAIN_STAGING_DEPLOY_PLAN.md` for `staging.swimpay.pro`.
+- Created `.swimpay-agent/STAGING_ENV_SECRET_CONTRACT.md` without committing real secrets.
+- Created `.swimpay-agent/STAGING_MIGRATION_AND_SEED_REPORT.md`.
+- Added `examples/real-staging-merchant`, a minimal external merchant app with `POST /create-order`, `GET /orders/:id/status` and `POST /webhooks/swimpay`.
+- Added `tests/real-staging-external-app.test.ts` for SDK order creation and final-event webhook fulfillment guardrails.
+- Updated `docs/PRODUCTION_ENVIRONMENT.md` to allow controlled operator-owned real staging while preserving no public production and no auto-confirmation.
+- Created Google OAuth, Android Receiver staging setup, real bank notification capture, manual review/webhook and observability reports.
+- Created `.swimpay-agent/REAL_STAGING_INTEGRATION_REPORT.md`.
+- Local validation passed: targeted real staging external app test, android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Android JVM tests and Android debug APK build.
+- Device smoke passed with SDK ADB path on Samsung `SM-S916B` / `R5CWA0FEPZW`: install, launch and UIAutomator dump.
+- Staging execution blocked: no reachable `staging.swimpay.pro` health response, no VPS/session, no staging secrets, no Google OAuth credentials, no staging API key/webhook secret and local Docker engine unavailable.
+- No real bank notification was captured in this session.
+- No raw notification text was stored/uploaded, no customer data was used, no auto-confirmation was enabled and no public webhook semantics changed.
+
 ## 2026-05-08 - CR-4 Android Receiver Real Runtime Readiness
 
 - Created tasks 585 through 591 and updated `.swimpay-agent/TASK_QUEUE.md`.

@@ -2,6 +2,49 @@
 
 generated_at: 2026-05-08T00:00:00+03:00
 
+## Latest REAL-1 Real Staging Integration Test
+
+Completed locally:
+
+1. Created tasks 601 through 611 and updated the active task queue.
+2. Created real staging inventory, VPS/domain plan, env secret contract, migration/seed report, OAuth report, Android setup report, real capture report, manual review/webhook report, observability report and closeout report.
+3. Added `examples/real-staging-merchant`, a minimal external merchant staging app using `@swimpay/node`.
+4. Added `tests/real-staging-external-app.test.ts` for SDK/webhook fulfillment guardrails.
+5. Updated `docs/PRODUCTION_ENVIRONMENT.md` to distinguish controlled operator-owned real staging from public production.
+
+Blocked externally:
+
+- `staging.swimpay.pro` was not reachable as a healthy HTTPS staging host from this shell.
+- No VPS access, staging env file, real secrets, Google OAuth staging credentials, staging API key or webhook secret were available.
+- Docker Desktop Linux engine was unavailable locally for runtime `ps`.
+- Receiver staging registration, real bank notification capture, manual review and webhook delivery were not executed.
+
+Next recommended action:
+
+Run REAL-2: operator-assisted VPS staging bring-up.
+
+Required operator inputs:
+
+- VPS SSH/session or deployment runner;
+- DNS A record `staging.swimpay.pro -> <VPS IPv4>`;
+- ignored staging env file with real secrets;
+- Google OAuth staging app credentials;
+- external app public URL;
+- final capture-start command only after staging health, receiver registration and active payment intent are verified.
+
+Do not do:
+
+- Do not start public production.
+- Do not use customer data.
+- Do not capture real notifications until staging receiver heartbeat passes and the operator gives the final capture-start command.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not expose raw notification text, raw phone/card values or secrets.
+
+---
+
+generated_at: 2026-05-08T00:00:00+03:00
+
 ## Latest CR-4 Android Receiver Real Runtime Readiness
 
 Completed:

@@ -6,6 +6,20 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `601_real_staging_integration_inventory` - status: completed - source: `tasks/601_real_staging_integration_inventory.md`
+- [x] `602_vps_domain_staging_deploy_plan` - status: completed - source: `tasks/602_vps_domain_staging_deploy_plan.md`
+- [x] `603_env_secrets_and_oauth_staging` - status: completed - source: `tasks/603_env_secrets_and_oauth_staging.md`
+- [x] `604_database_migration_and_seed_staging` - status: completed_blocked_external_staging - source: `tasks/604_database_migration_and_seed_staging.md`
+- [x] `605_external_app_sdk_integration_real_staging` - status: completed_local_harness_ready - source: `tasks/605_external_app_sdk_integration_real_staging.md`
+- [x] `606_google_oauth_live_staging_validation` - status: blocked_missing_external_credentials - source: `tasks/606_google_oauth_live_staging_validation.md`
+- [x] `607_android_receiver_real_device_staging_setup` - status: completed_local_device_smoke_blocked_staging_registration - source: `tasks/607_android_receiver_real_device_staging_setup.md`
+- [ ] `608_real_bank_notification_capture_test` - status: blocked_until_staging_ready_and_final_operator_capture_start - source: `tasks/608_real_bank_notification_capture_test.md`
+- [ ] `609_manual_review_and_webhook_staging_flow` - status: blocked_until_staging_order_receiver_and_real_signal_exist - source: `tasks/609_manual_review_and_webhook_staging_flow.md`
+- [ ] `610_real_staging_observability_and_logs` - status: blocked_until_staging_stack_runs - source: `tasks/610_real_staging_observability_and_logs.md`
+- [x] `611_real_staging_integration_closeout` - status: completed_with_external_blockers - source: `tasks/611_real_staging_integration_closeout.md`
+
+## Previous Queue
+
 - [x] `585_android_receiver_real_runtime_inventory` - status: completed - source: `tasks/585_android_receiver_real_runtime_inventory.md`
 - [x] `586_bank_target_lock_non_debug_runtime` - status: completed - source: `tasks/586_bank_target_lock_non_debug_runtime.md`
 - [x] `587_notification_listener_redaction_path` - status: completed - source: `tasks/587_notification_listener_redaction_path.md`
