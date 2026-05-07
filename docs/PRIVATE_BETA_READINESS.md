@@ -22,7 +22,7 @@ Merchant-facing wording for beta:
 - outbox offline/online works;
 - no raw PII exposure;
 - admin RBAC works;
-- no auto-confirm on real banks;
+- no automatic confirmation on real banks;
 - backup/restore documented;
 - merchant permission wording is understandable.
 
@@ -38,7 +38,7 @@ Merchant-facing wording for beta:
 - merchant cannot understand Notification Listener Access wording;
 - package/cert evidence unclear;
 - any flow implies official bank confirmation;
-- any real bank flow enables auto-confirm.
+- any real bank flow bypasses merchant manual confirmation.
 
 ## Current Readiness Snapshot
 
@@ -55,8 +55,8 @@ Payment Signal Engine architecture:
 - buyer selects a payer-bank launcher or manual transfer fallback;
 - buyer sees amount/reference copy actions;
 - buyer may click `I paid`, which does not confirm payment;
-- review-only bank signals emit `payment.signal_detected` and `payment.needs_review`;
-- `payment.confirmed` is emitted only after manual review or controlled release.
+- review-only bank signals create merchant review items only when an active payment intent matches;
+- `payment.confirmed` is emitted only after merchant manual confirmation.
 
 Buyer-facing copy must say:
 
@@ -85,7 +85,7 @@ No-go criteria added for Sprint 7B:
 - bank selection step shows raw card or phone;
 - webhook/audit/log includes raw card or raw phone;
 - payer launcher choice affects matching or confirmation;
-- route policy enables broad auto-confirm for real bank notifications.
+- route policy bypasses merchant manual confirmation for real bank notifications.
 
 ## Sprint 7C Copy and Admin Readiness
 

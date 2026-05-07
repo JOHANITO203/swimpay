@@ -66,7 +66,7 @@ function getCheckoutStep(session: CheckoutSession): BuyerCheckoutStep {
 }
 
 function isTerminalBuyerState(session: CheckoutSession): boolean {
-  return ['expired', 'rejected', 'manual_confirmed', 'auto_confirmed', 'fulfilled'].includes(session.status);
+  return ['expired', 'rejected', 'manual_confirmed', 'fulfilled'].includes(session.status);
 }
 
 function renderBuyerIntro(step: BuyerCheckoutStep): string {
@@ -246,7 +246,7 @@ function checkoutStateView(session: CheckoutSession): CheckoutStateView {
   if (session.status === 'rejected' || safe === 'not_validated') {
     return { title: 'Paiement non validé', text: 'Veuillez réessayer ou contacter le marchand.', tone: 'danger', icon: 'Stop' };
   }
-  if (session.status === 'manual_confirmed' || session.status === 'auto_confirmed' || session.status === 'fulfilled' || safe === 'confirmed') {
+  if (session.status === 'manual_confirmed' || session.status === 'fulfilled' || safe === 'confirmed') {
     return { title: 'Paiement validé', text: 'Votre commande peut maintenant être traitée.', tone: 'success', icon: 'OK' };
   }
   if (session.status === 'needs_review' || session.status === 'matching' || safe === 'needs_review') {

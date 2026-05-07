@@ -141,8 +141,7 @@ function createReviewOnlyRuntime() {
       eventId: () => `evt_checkout_${repository.publishedEvents.length + 1}`,
       matchId: () => `match_checkout_${repository.matches.length + 1}`,
       reviewId: () => `rev_checkout_${repository.reviews.length + 1}`,
-      auditEventId: () => `audit_checkout_${repository.auditEvents.length + 1}`,
-      webhookEventId: () => `wh_checkout_${repository.webhookEvents.length + 1}`
+      auditEventId: () => `audit_checkout_${repository.auditEvents.length + 1}`
     }
   });
 

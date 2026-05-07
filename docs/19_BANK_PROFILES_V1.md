@@ -64,11 +64,11 @@ extractors:
   reference: enabled
   sender_name: weak_signal
 
-auto_confirm:
+review_gate:
   require_amount_exact: true
   require_phone_or_reference: true
   require_no_collision: true
-  initial_max_amount_minor: 500000
+  merchant_manual_confirmation_required: true
 ```
 
 ## Initial statuses
@@ -110,9 +110,10 @@ Inputs:
 - phone/reference visibility;
 - amount extraction success.
 
-## Auto-confirm allowed only when
+## Strong match review allowed only when
 
 - bank profile is `trusted_low_amount` or `trusted`;
 - template reliable;
 - device trusted;
 - matching hard gates pass.
+- merchant manual confirmation remains required.

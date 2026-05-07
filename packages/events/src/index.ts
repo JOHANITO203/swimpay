@@ -31,7 +31,6 @@ export const EventTypes = {
   MATCH_CANDIDATES_FOUND: 'match.candidates_found',
   MATCH_COLLISION_DETECTED: 'match.collision_detected',
   MATCH_SCORED: 'match.scored',
-  DECISION_AUTO_CONFIRMED: 'decision.auto_confirmed',
   DECISION_NEEDS_REVIEW: 'decision.needs_review',
   DECISION_REJECTED: 'decision.rejected',
   REVIEW_CREATED: 'review.created',

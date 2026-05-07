@@ -212,14 +212,14 @@ export class PgReviewRepository implements ReviewRepository {
       await client.query(
         `UPDATE orders
          SET status = $1, updated_at = $2
-         WHERE merchant_id = $3 AND id = $4 AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
+         WHERE merchant_id = $3 AND id = $4 AND status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
         ['needs_review', input.review.createdAt, input.review.merchantId, input.review.orderId]
       );
 
       await client.query(
         `UPDATE payment_sessions
          SET status = $1, updated_at = $2
-         WHERE merchant_id = $3 AND id = $4 AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'rejected', 'expired')`,
+         WHERE merchant_id = $3 AND id = $4 AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
         ['needs_review', input.review.createdAt, input.review.merchantId, input.review.paymentSessionId]
       );
 
@@ -368,7 +368,7 @@ export class PgReviewRepository implements ReviewRepository {
         await client.query(
           `UPDATE payment_sessions
            SET status = 'rejected', updated_at = $3
-           WHERE merchant_id = $1 AND id = $2 AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'rejected', 'expired')`,
+           WHERE merchant_id = $1 AND id = $2 AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
           [input.merchantId, review.payment_session_id, input.createdAt]
         );
       }
@@ -378,7 +378,7 @@ export class PgReviewRepository implements ReviewRepository {
         await client.query(
           `UPDATE orders
            SET status = 'rejected', updated_at = $3
-           WHERE merchant_id = $1 AND id = $2 AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
+           WHERE merchant_id = $1 AND id = $2 AND status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
           [input.merchantId, review.order_id, input.createdAt]
         );
       }
@@ -513,7 +513,7 @@ export class PgReviewRepository implements ReviewRepository {
         const duplicateConfirmed = await client.query(
           `SELECT id FROM signal_matches
            WHERE (order_id = $1 OR signal_id = $2)
-             AND decision IN ('auto_confirmed', 'manual_confirmed')
+             AND decision = 'manual_confirmed'
            LIMIT 1`,
           [review.order_id, review.signal_id]
         );

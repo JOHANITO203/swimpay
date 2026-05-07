@@ -12,12 +12,13 @@ describe('foundation packages', () => {
     expect(EventTypes.ORDER_CREATED).toBe('order.created');
     expect(EventTypes.SIGNAL_RECEIVED).toBe('signal.received');
     expect(EventTypes.DECISION_NEEDS_REVIEW).toBe('decision.needs_review');
+    expect(EventTypes).not.toHaveProperty('DECISION_AUTO_CONFIRMED');
     expect(EventTypes.WEBHOOK_FAILED).toBe('webhook.failed');
   });
 
   test('defines order and payment session statuses from the docs', () => {
     expect(OrderStatuses).toContain('created');
-    expect(OrderStatuses).toContain('auto_confirmed');
+    expect(OrderStatuses).not.toContain('auto_confirmed');
     expect(OrderStatuses).toContain('fulfilled');
     expect(PaymentSessionStatuses).toContain('receiver_armed');
     expect(PaymentSessionStatuses).toContain('needs_review');

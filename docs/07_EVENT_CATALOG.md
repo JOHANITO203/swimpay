@@ -227,17 +227,6 @@ Consumers:
 
 - decision engine.
 
-### `decision.auto_confirmed`
-
-Producer: decision engine.
-
-Consumers:
-
-- order module;
-- webhook worker;
-- audit module;
-- dashboard.
-
 ### `decision.needs_review`
 
 Producer: decision engine.

@@ -34,7 +34,7 @@ Use:
 Never use:
 
 - `bank_confirmed`;
-- `official_bank_confirmation = true`;
+- truthy official bank confirmation flags;
 - `guaranteed_payment`;
 - `psp_confirmed`.
 
@@ -123,7 +123,6 @@ Allowed order states:
 - `signal_detected`;
 - `matching`;
 - `needs_review`;
-- `auto_confirmed`;
 - `manual_confirmed`;
 - `rejected`;
 - `expired`;
@@ -131,30 +130,17 @@ Allowed order states:
 
 Every state transition must create an audit event.
 
-## Auto-confirmation rules
+## V1 confirmation rules
 
-Auto-confirm only if all conditions are true:
+V1 is manual-confirmation-only.
 
-- order is pending/active;
-- payment session is active;
-- amount is exact;
-- currency is exact;
-- direction is `incoming_customer_transfer`;
-- sender phone exact OR reference exact;
-- no collision;
-- device is trusted;
-- bank profile is `trusted_low_amount` or `trusted`;
-- template is reliable;
-- `event_id` is unique;
-- `notification_hash` is unique;
-- signal was not used before.
+Strong matches create `needs_review` for the merchant. They never confirm a payment automatically.
 
-Otherwise create `needs_review` or `rejected`.
+Always create `needs_review` or `rejected`.
 
-Never auto-confirm on amount alone.
+Never confirm automatically on:
 
-Never auto-confirm:
-
+- amount alone;
 - cashback;
 - refund;
 - promo;

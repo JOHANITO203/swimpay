@@ -12,7 +12,6 @@ export const OrderStatuses = [
   'signal_detected',
   'matching',
   'needs_review',
-  'auto_confirmed',
   'manual_confirmed',
   'rejected',
   'expired',
@@ -30,7 +29,6 @@ export const PaymentSessionStatuses = [
   'signal_detected',
   'matching',
   'needs_review',
-  'auto_confirmed',
   'manual_confirmed',
   'rejected',
   'expired'
@@ -203,7 +201,6 @@ export function getPayerBankLauncherOption(payerBankLauncherId: string): PayerBa
 
 export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): CheckoutSessionState {
   switch (input.paymentSessionStatus) {
-    case 'auto_confirmed':
     case 'manual_confirmed':
       return 'confirmed';
     case 'expired':
@@ -769,7 +766,7 @@ export type IntelligenceFeedbackValidationResult =
   | { valid: true; value: IntelligenceFeedbackRequest }
   | { valid: false; code: AndroidReceiverErrorCode; field?: string };
 
-export const Decisions = ['auto_confirmed', 'needs_review', 'rejected', 'wait'] as const;
+export const Decisions = ['needs_review', 'rejected', 'wait'] as const;
 export type Decision = (typeof Decisions)[number];
 
 export const ReviewStatuses = ['open', 'confirmed', 'rejected', 'cancelled'] as const;

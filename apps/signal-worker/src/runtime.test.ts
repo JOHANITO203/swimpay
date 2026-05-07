@@ -98,8 +98,7 @@ function createProcessor(params: {
       eventId: () => `evt_${repository.publishedEvents.length + 1}`,
       matchId: () => `match_${repository.matches.length + 1}`,
       reviewId: () => `review_${repository.reviews.length + 1}`,
-      auditEventId: () => `audit_${repository.auditEvents.length + 1}`,
-      webhookEventId: () => `wh_evt_${repository.webhookEvents.length + 1}`
+      auditEventId: () => `audit_${repository.auditEvents.length + 1}`
     }
   });
 
@@ -165,7 +164,7 @@ describe('signal runtime processor', () => {
     expect(repository.reviews[0]?.reasonCodes).toEqual(
       expect.arrayContaining(['bank_profile_untrusted', 'bank_app_unverified', 'package_cert_to_verify'])
     );
-    expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
+    expect(repository.orders.get('ord_01')?.status).toBe('needs_review');
     expect(repository.webhookEvents).toEqual([]);
   });
 
@@ -175,7 +174,7 @@ describe('signal runtime processor', () => {
     ['outgoing', 'payment 137 RUB to shop', 'outgoing_payment'],
     ['promo', 'promo bonus 137 RUB', 'promo'],
     ['failed', 'failed transfer 137 RUB', 'failed_transfer']
-  ] as const)('never auto-confirms %s notifications', async (_label, text, direction) => {
+  ] as const)('rejects unsafe %s notifications', async (_label, text, direction) => {
     const metrics = new InMemoryMetricsRegistry();
     const { processor, repository } = createProcessor({
       metrics,
@@ -187,12 +186,12 @@ describe('signal runtime processor', () => {
     expect(result.decision).toBe('rejected');
     expect(repository.matches[0]?.decision).toBe('rejected');
     expect(repository.signals[0]?.directionLabel).toBe(direction);
-    expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
+    expect(repository.orders.get('ord_01')?.status).toBe('awaiting_payment');
     expect(metrics.counterValue(MetricNames.SIGNALS_REJECTED_TOTAL)).toBe(1);
     expect(metrics.counterValue(safetyMetricForDirection(direction))).toBe(1);
   });
 
-  it('routes unknown direction to review without auto-confirming', async () => {
+  it('routes unknown direction to review without confirming', async () => {
     const { processor, repository } = createProcessor({
       signal: buildSignal({ titleRedacted: 'Account update 137 RUB', bodyRedacted: '' })
     });
@@ -204,7 +203,7 @@ describe('signal runtime processor', () => {
     expect(repository.orders.get('ord_01')?.status).toBe('needs_review');
   });
 
-  it('never auto-confirms an amount-only signal', async () => {
+  it('routes an amount-only signal to review', async () => {
     const { processor, repository } = createProcessor({
       signal: buildSignal({ titleRedacted: 'Incoming transfer 137 RUB', bodyRedacted: '' }),
       sessions: [buildSession({ buyerPhoneHmac: undefined, referenceHmac: undefined })]
@@ -214,7 +213,7 @@ describe('signal runtime processor', () => {
 
     expect(result.decision).toBe('needs_review');
     expect(repository.reviews[0]?.reasonCodes).toContain('amount_only_never_auto_confirm');
-    expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
+    expect(repository.orders.get('ord_01')?.status).toBe('needs_review');
   });
 
   it('rehearses five-bank synthetic shadow fixtures through review or rejection without official confirmation claims', async () => {
@@ -258,7 +257,7 @@ describe('signal runtime processor', () => {
         const result = await processor.processSignalReceived({ signalId });
 
         expect(result.decision, `${bank.bank_profile_id}/${fixture.category}`).toBe(fixture.expected_decision);
-        expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
+        expect(repository.orders.get('ord_01')?.status).not.toBe('manual_confirmed');
         expect(repository.webhookEvents).toEqual([]);
         expect(JSON.stringify(repository.webhookEvents)).not.toContain('Transfer from +7');
       }
@@ -277,11 +276,10 @@ describe('signal runtime processor', () => {
     expect(repository.reviews).toHaveLength(1);
     expect(repository.webhookEvents).toEqual([]);
     expect(JSON.stringify(repository.auditEvents)).not.toContain('Transfer from +7');
-    expect(metrics.counterValue(MetricNames.SIGNALS_AUTO_CONFIRMED_TOTAL)).toBe(0);
     expect(metrics.counterValue(MetricNames.SIGNALS_NEEDS_REVIEW_TOTAL)).toBe(1);
   });
 
-  it('creates review on collision and does not auto-confirm', async () => {
+  it('creates review on collision and waits for manual confirmation', async () => {
     const { processor, repository } = createProcessor({
       sessions: [
         buildSession({ orderId: 'ord_01', paymentSessionId: 'ps_01' }),
@@ -307,7 +305,7 @@ describe('signal runtime processor', () => {
     expect(result.reasonCodes).toContain('no_active_payment_intent_no_review');
     expect(repository.reviews).toHaveLength(0);
     expect(repository.webhookEvents).toHaveLength(0);
-    expect(repository.orders.get('ord_01')?.status).not.toBe('auto_confirmed');
+    expect(repository.orders.get('ord_01')?.status).toBe('awaiting_payment');
   });
 
   it('does not create payment review for unrelated bank activity without an active intent', async () => {

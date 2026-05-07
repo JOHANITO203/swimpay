@@ -125,7 +125,7 @@ describe('durable worker e2e tests', () => {
     expect(runtime.repository.reviews[0]?.reasonCodes).toEqual(
       expect.arrayContaining(['bank_profile_untrusted', 'bank_app_unverified'])
     );
-    expect(runtime.repository.orders.get('ord_e2e_01')?.status).not.toBe('auto_confirmed');
+    expect(runtime.repository.orders.get('ord_e2e_01')?.status).toBe('needs_review');
     expect(runtime.repository.webhookEvents).toEqual([]);
     expect(runtime.repository.publishedEvents.map((event) => event.type)).toEqual(
       expect.arrayContaining([EventTypes.DECISION_NEEDS_REVIEW, EventTypes.REVIEW_CREATED])
@@ -136,7 +136,7 @@ describe('durable worker e2e tests', () => {
     expectSafePayload(JSON.stringify(runtime.repository.webhookEvents));
   });
 
-  it('keeps amount-only and unsafe signal categories away from auto-confirmation', async () => {
+  it('keeps amount-only and unsafe signal categories away from confirmation', async () => {
     const amountOnly = createRuntimeHarness({
       signal: runtimeSignal({
         id: 'sig_amount_only',
@@ -158,7 +158,7 @@ describe('durable worker e2e tests', () => {
     const amountOnlyResult = await amountOnly.processor.processSignalReceived({ signalId: 'sig_amount_only' });
     expect(amountOnlyResult.decision).toBe('needs_review');
     expect(amountOnly.repository.reviews[0]?.reasonCodes).toContain('amount_only_never_auto_confirm');
-    expect(amountOnly.repository.orders.get('ord_e2e_01')?.status).not.toBe('auto_confirmed');
+    expect(amountOnly.repository.orders.get('ord_e2e_01')?.status).toBe('needs_review');
 
     for (const [label, text, expectedDirection] of [
       ['cashback', 'cashback 137 RUB from store', 'incoming_cashback'],
@@ -182,7 +182,7 @@ describe('durable worker e2e tests', () => {
 
       expect(result.decision).toBe('rejected');
       expect(runtime.repository.signals[0]?.directionLabel).toBe(expectedDirection);
-      expect(runtime.repository.orders.get('ord_e2e_01')?.status).not.toBe('auto_confirmed');
+      expect(runtime.repository.orders.get('ord_e2e_01')?.status).toBe('awaiting_payment');
       expect(runtime.repository.webhookEvents.some((event) => event.type === 'payment.confirmed')).toBe(false);
       expect(runtime.repository.auditEvents.length).toBeGreaterThan(0);
       expectSafePayload(JSON.stringify(runtime.repository.auditEvents));
@@ -545,8 +545,7 @@ function createRuntimeHarness(params: {
       eventId: () => `evt_runtime_${repository.publishedEvents.length + 1}`,
       matchId: () => `match_${repository.matches.length + 1}`,
       reviewId: () => `review_${repository.reviews.length + 1}`,
-      auditEventId: () => `audit_${repository.auditEvents.length + 1}`,
-      webhookEventId: () => `wh_evt_${repository.webhookEvents.length + 1}`
+      auditEventId: () => `audit_${repository.auditEvents.length + 1}`
     }
   });
 

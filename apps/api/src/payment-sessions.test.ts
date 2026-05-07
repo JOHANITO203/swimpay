@@ -445,8 +445,8 @@ describe('payment session api', () => {
     ]);
   });
 
-  test('does not allow direct created to auto_confirmed transition', () => {
-    expect(isPaymentSessionTransitionAllowed('created', 'auto_confirmed')).toBe(false);
+  test('does not allow direct created to manual confirmation transition', () => {
+    expect(isPaymentSessionTransitionAllowed('created', 'manual_confirmed')).toBe(false);
     expect(isPaymentSessionTransitionAllowed('created', 'receiver_arming')).toBe(true);
   });
 

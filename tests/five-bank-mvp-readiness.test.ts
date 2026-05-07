@@ -105,6 +105,6 @@ describe('Phase 6 five-bank MVP readiness foundation', () => {
 
     expect(phasePlan).toContain('production/admin hardening is paused');
     expect(shadowPolicy).toContain('No raw notification text storage by default');
-    expect(betaReadiness).toContain('no auto-confirm on real banks');
+    expect(betaReadiness).toContain('no automatic confirmation on real banks');
   });
 });

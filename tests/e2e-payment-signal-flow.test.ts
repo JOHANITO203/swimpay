@@ -26,7 +26,8 @@ describe('payment signal foundation e2e flow', () => {
       context: trustedContext()
     });
 
-    expect(decision.decision).toBe('auto_confirmed');
+    expect(decision.decision).toBe('needs_review');
+    expect(decision.reasonCodes).toContain('manual_confirmation_required_v1');
     expect(decision.selected?.paymentSessionId).toBe('ps_e2e_01');
     expect(decision.reasonCodes).toContain('sender_phone_exact');
     expect(decision.reasonCodes).toContain('reference_exact');
@@ -78,7 +79,7 @@ describe('payment signal foundation e2e flow', () => {
     });
 
     expect(decision.decision).toBe(expectedDecision);
-    expect(decision.decision).not.toBe('auto_confirmed');
+    expect(decision.decision).not.toBe('manual_confirmed');
   });
 
   it('routes amount collisions to review instead of auto-confirming', () => {

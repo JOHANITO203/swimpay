@@ -26,9 +26,8 @@ const allowedPaymentSessionTransitions: Record<PaymentSessionStatus, PaymentSess
   awaiting_payment: ['buyer_claimed_paid', 'signal_detected', 'expired'],
   buyer_claimed_paid: ['signal_detected', 'expired'],
   signal_detected: ['matching', 'expired'],
-  matching: ['needs_review', 'auto_confirmed', 'manual_confirmed', 'rejected', 'expired'],
+  matching: ['needs_review', 'manual_confirmed', 'rejected', 'expired'],
   needs_review: ['manual_confirmed', 'rejected', 'expired'],
-  auto_confirmed: [],
   manual_confirmed: [],
   rejected: [],
   expired: []
@@ -151,7 +150,6 @@ export function receiverStatusFromPaymentSessionStatus(status: PaymentSessionSta
       return 'waiting';
     case 'needs_review':
       return 'review';
-    case 'auto_confirmed':
     case 'manual_confirmed':
       return 'complete';
     case 'rejected':

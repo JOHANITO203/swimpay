@@ -77,7 +77,6 @@ Current metrics include:
 - `signals_parsed_total`
 - `signals_rejected_total`
 - `signals_needs_review_total`
-- `signals_auto_confirmed_total`
 - `signals_duplicate_total`
 - `unsafe_cashback_blocked_total`
 - `unsafe_refund_blocked_total`
@@ -143,7 +142,7 @@ Current instrumentation covers:
 - receiver signal ingestion and duplicate signal rejection
 - receiver device registration and heartbeat
 - receiver contract rejection and invalid receiver signatures
-- signal parsing, review, reject and auto-confirm decisions
+- signal parsing, review and reject decisions
 - unsafe category blocks
 - amount-only review routing
 - untrusted bank review routing

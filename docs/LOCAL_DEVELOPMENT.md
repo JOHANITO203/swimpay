@@ -692,11 +692,11 @@ Local `.env.example` may use `ADMIN_AUTH_MODE=dev_token`. Production must not. U
 
 - This is a foundation layer only.
 - Signal ingestion stores received signed signals and publishes `signal.received`.
-- The signal worker now processes `signal.received` through deterministic parser, matching, review/reject/auto-confirm decision, audit, and webhook-request foundations.
+- The signal worker now processes `signal.received` through deterministic parser, matching, review/reject decision, audit, and public webhook-request foundations after merchant manual confirmation.
 - Bank parser output and matching-core output are wired into the signal worker for task 027 runtime decisions.
 - Review queue APIs and repository methods exist, and live signal decisions can create review items.
 - Hosted checkout reads backend session state, but API-side buyer identity submission and persistent buyer-claimed-paid transitions are not implemented yet.
-- Webhook delivery core is wired to a tested Postgres-backed delivery loop and the NATS `webhook.delivery_requested` trigger. The signal runtime requests `payment.confirmed`, `payment.needs_review`, or `payment.rejected` delivery records when endpoints are configured.
+- Webhook delivery core is wired to a tested Postgres-backed delivery loop and the NATS `webhook.delivery_requested` trigger. Public fulfillment webhooks are limited to terminal outcomes after merchant manual decision or expiry.
 - Admin console is API-only. It exposes RBAC-protected operator read views, audited bank-template actions, and a guarded bank app metadata verification workflow, but does not implement a browser UI, automated real-world package/cert trust policy, unsafe bulk actions, or a full operator identity provider.
 - Runtime observability is lightweight and in-process. It exposes safe health, metrics and runtime-status JSON only; it does not include a heavy monitoring/log aggregation stack.
 - Raw notifications are not stored by default.

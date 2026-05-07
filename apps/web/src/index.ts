@@ -50,7 +50,6 @@ export type CheckoutStatus =
   | 'signal_detected'
   | 'matching'
   | 'needs_review'
-  | 'auto_confirmed'
   | 'manual_confirmed'
   | 'fulfilled'
   | 'rejected'
@@ -878,7 +877,7 @@ export function toCheckoutStatusResponse(s: CheckoutSession): CheckoutStatusResp
 }
 
 function mapCheckoutStatus(s: CheckoutStatus): { displayStatus: string; resultState: CheckoutStatusResponse['result_state'] } {
-  if (['auto_confirmed', 'manual_confirmed', 'fulfilled'].includes(s)) return { displayStatus: 'Reconnu', resultState: 'recognized' };
+  if (['manual_confirmed', 'fulfilled'].includes(s)) return { displayStatus: 'Reconnu', resultState: 'recognized' };
   if (s === 'needs_review') return { displayStatus: 'Vérification manuelle nécessaire', resultState: 'review' };
   if (s === 'expired') return { displayStatus: 'Commande expirée', resultState: 'expired' };
   if (s === 'rejected') return { displayStatus: 'Rejeté', resultState: 'rejected' };

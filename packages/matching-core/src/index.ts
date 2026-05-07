@@ -18,7 +18,7 @@ export type DirectionLabel =
   | 'unknown'
   | 'unknown_ambiguous_direction';
 
-export type MatchingDecision = 'auto_confirmed' | 'needs_review' | 'rejected' | 'wait';
+export type MatchingDecision = 'needs_review' | 'rejected' | 'wait';
 export type BankProfileTrustStatus = 'learning' | 'shadow_testing' | 'trusted_low_amount' | 'trusted' | 'degraded' | 'review_only' | 'disabled';
 export type TemplateTrustStatus = 'new' | 'learning' | 'shadow_testing' | 'trusted_low_amount' | 'trusted' | 'degraded' | 'review_only' | 'disabled';
 
@@ -274,25 +274,19 @@ export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecis
   }
 
   reasonCodes.add('no_collision');
-  const autoConfirmAllowed = canAutoConfirm({
-    signal: input.signal,
-    candidate: best.candidate,
-    context: input.context,
-    score: best.score
-  });
-
-  if (autoConfirmAllowed) {
-    return {
-      decision: 'auto_confirmed',
-      score: best.score,
-      collisionDetected: false,
-      selected: best.candidate,
-      candidates,
-      reasonCodes: [...reasonCodes]
-    };
+  reasonCodes.add('requires_review');
+  if (
+    isStrongManualReviewCandidate({
+      signal: input.signal,
+      candidate: best.candidate,
+      context: input.context,
+      score: best.score
+    })
+  ) {
+    reasonCodes.add('manual_confirmation_required_v1');
+    reasonCodes.add('strong_match_manual_review');
   }
 
-  reasonCodes.add('requires_review');
   return {
     decision: 'needs_review',
     score: best.score,
@@ -474,7 +468,7 @@ function computeReasonCodes(
   return codes;
 }
 
-function canAutoConfirm(input: {
+function isStrongManualReviewCandidate(input: {
   signal: MatchingSignal;
   candidate: MatchingCandidateSession;
   context: MatchingContext;

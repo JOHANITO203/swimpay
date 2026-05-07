@@ -1,5 +1,15 @@
 # Blockers
 
+## CR-3 Product Truth Contradiction Neutralization
+
+- Resolved: active runtime, contracts, checkout status mapping, review queries, public event constants and metrics no longer contain an active `auto_confirmed` V1 decision/state path.
+- Resolved: strong matches now route to manual review with `manual_confirmation_required_v1`; no active runtime path emits `payment.confirmed` without merchant manual confirmation.
+- Resolved: active docs no longer present public `payment.signal_detected` / `payment.needs_review` fulfillment webhooks.
+- Resolved: new guardrail test protects active runtime and docs against reintroducing `autoConfirm(`, `auto_confirmed`, public internal webhooks or `official_bank_confirmation = true`.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Validation blocker: Docker live smoke could not run because Docker Desktop's Linux engine pipe was unavailable; `/api-health` was unreachable.
+- Remaining non-critical vocabulary debt: inert legacy `auto_confirm*` schema/template/config names remain as disabled compatibility fields and guardrail reason codes. They are not active V1 behavior; a dedicated migration is recommended before a zero-string public audit.
+
 ## CR-2 Runtime Product Truth Enforcement
 
 - Resolved: active `SignalRuntimeProcessor` no longer auto-confirms V1 signals. Trusted exact matches are routed to manual review with `manual_confirmation_required_v1`.

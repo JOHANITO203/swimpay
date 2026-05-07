@@ -17,7 +17,7 @@ Match parsed notification signals to active payment sessions without claiming of
 
 ## Hard gates
 
-Auto-confirm is blocked if any of these are true:
+Create review or reject when any of these are true:
 
 - signature invalid;
 - device unauthorized;
@@ -64,7 +64,7 @@ Collision outcome:
 needs_review
 ```
 
-Never auto-confirm a colliding amount-only signal.
+Never treat a colliding amount-only signal as confirmed.
 
 ## Score rules
 
@@ -91,12 +91,11 @@ Never auto-confirm a colliding amount-only signal.
 -50 template drift
 ```
 
-## Auto-confirm rule
+## Strong match rule
 
-Auto-confirm only if:
+A strong match still creates `needs_review` in V1.
 
 ```text
-hard gates pass
 score >= 90
 amount exact
 currency exact
@@ -109,6 +108,7 @@ template reliable
 signal unique
 order active
 payment session active
+merchant manual confirmation required
 ```
 
 ## Review rule
@@ -159,10 +159,10 @@ All decisions must include reason codes:
 
 ## Critical rule
 
-Never auto-confirm on amount alone.
+Never treat amount alone as confirmation.
 
 ## Runtime wiring
 
-Task 027 wires these rules into `swimpay-signal-worker` for the durable `signal.received` path. The runtime parses only redacted notification fields, keeps phone/reference matching on HMAC values, and refuses auto-confirmation when bank app metadata is `TO_VERIFY` or `pending_verification`.
+The `swimpay-signal-worker` durable `signal.received` path parses only redacted notification fields, keeps phone/reference matching on HMAC values, and creates merchant review instead of confirming payment.
 
-Unknown directions route to review. Negative categories such as cashback, refund, outgoing payment, promo and failed transfer are rejected as customer-payment candidates and never auto-confirm.
+Unknown directions route to review only when intent-bound evidence is present. Negative categories such as cashback, refund, outgoing payment, promo and failed transfer are rejected as customer-payment candidates and never confirm payment.

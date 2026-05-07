@@ -127,7 +127,7 @@ describe('Sprint 6D private beta review queue and webhook rehearsal', () => {
       expect(repository.orders.get(fixtures.order_fixture.order_id)?.status).toBe(
         scenario.expected_order_status_before_review
       );
-      expect(repository.orders.get(fixtures.order_fixture.order_id)?.status).not.toBe('auto_confirmed');
+      expect(repository.orders.get(fixtures.order_fixture.order_id)?.status).not.toBe('manual_confirmed');
       expect(repository.webhookEvents).toEqual([]);
       expect(repository.publishedEvents.map((event) => event.type)).toEqual(
         expect.arrayContaining([EventTypes.DECISION_NEEDS_REVIEW, EventTypes.REVIEW_CREATED])
@@ -227,8 +227,7 @@ function createRuntimeHarness(
       eventId: () => `evt_beta_runtime_${repository.publishedEvents.length + 1}`,
       matchId: () => `match_beta_${repository.matches.length + 1}`,
       reviewId: () => `rev_beta_${repository.reviews.length + 1}`,
-      auditEventId: () => `audit_beta_${repository.auditEvents.length + 1}`,
-      webhookEventId: () => `wh_beta_${repository.webhookEvents.length + 1}`
+      auditEventId: () => `audit_beta_${repository.auditEvents.length + 1}`
     }
   });
 

@@ -253,11 +253,11 @@ WHERE status IN ('pending', 'failed');
 
 CREATE UNIQUE INDEX unique_confirmed_order
 ON signal_matches(order_id)
-WHERE decision IN ('auto_confirmed', 'manual_confirmed');
+WHERE decision = 'manual_confirmed';
 
 CREATE UNIQUE INDEX unique_used_signal_confirmed
 ON signal_matches(signal_id)
-WHERE decision IN ('auto_confirmed', 'manual_confirmed');
+WHERE decision = 'manual_confirmed';
 
 INSERT INTO bank_profiles (id, bank_name, status, auto_confirm_status) VALUES
   ('sber_ru', 'Sberbank', 'learning', 'disabled'),

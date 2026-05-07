@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { parseBankNotification } from '@swimpay/bank-templates';
 import {
@@ -12,7 +12,6 @@ import {
   type BankProfileTrustStatus,
   type MatchingCandidateSession,
   type MatchingContext,
-  type MatchingDecision,
   type MatchingSignal,
   type TemplateTrustStatus
 } from '@swimpay/matching-core';
@@ -20,7 +19,7 @@ import { MetricNames, type MetricsRegistry } from '@swimpay/observability';
 
 const { Pool } = pg;
 
-export type SignalRuntimeDecision = Extract<MatchingDecision, 'auto_confirmed' | 'needs_review' | 'rejected'>;
+export type SignalRuntimeDecision = 'needs_review' | 'rejected';
 
 export interface SignalRuntimeSignal {
   id: string;
@@ -87,14 +86,6 @@ export interface SignalRuntimeReviewItem {
   createdAt: string;
 }
 
-export interface SignalRuntimeWebhookEvent {
-  id: string;
-  type: 'payment.confirmed' | 'payment.rejected' | 'payment.expired';
-  created_at: string;
-  merchant_id: string;
-  data: Record<string, unknown> & typeof PUBLIC_EVENT_SIGNAL_DISCLOSURE;
-}
-
 export interface SignalRuntimeAuditEvent {
   id: string;
   merchantId: string;
@@ -110,7 +101,6 @@ export interface SignalRuntimeIdGenerator {
   matchId(): string;
   reviewId(): string;
   auditEventId(): string;
-  webhookEventId(): string;
 }
 
 export interface SignalRuntimeRepository {
@@ -121,8 +111,6 @@ export interface SignalRuntimeRepository {
   markSignalParsed(input: { signalId: string; parsed: ParsedSignalRuntimeFields; parsedAt: string }): Promise<void>;
   recordRejected(input: RuntimeRecordInput): Promise<void>;
   createReview(input: RuntimeReviewInput): Promise<{ created: boolean; reviewId: string }>;
-  autoConfirm(input: RuntimeAutoConfirmInput): Promise<{ confirmed: boolean; alreadyConfirmed: boolean }>;
-  requestWebhookDelivery(event: SignalRuntimeWebhookEvent): Promise<{ created: number; skippedDuplicates: number }>;
   writeAuditEvent(event: SignalRuntimeAuditEvent): Promise<void>;
   publishInternalEvent(event: InternalEventEnvelope): Promise<void>;
 }
@@ -153,17 +141,11 @@ interface RuntimeReviewInput extends RuntimeRecordInput {
   review: SignalRuntimeReviewItem;
 }
 
-interface RuntimeAutoConfirmInput extends RuntimeRecordInput {
-  selected: SignalRuntimeSessionCandidate;
-  matchId: string;
-}
-
 const DEFAULT_ID_GENERATOR: SignalRuntimeIdGenerator = {
   eventId: () => `evt_${randomUUID()}`,
   matchId: () => randomUUID(),
   reviewId: () => randomUUID(),
-  auditEventId: () => randomUUID(),
-  webhookEventId: () => `wh_evt_${randomUUID()}`
+  auditEventId: () => randomUUID()
 };
 
 const REJECTED_DIRECTIONS = new Set<MatchingSignal['directionLabel']>([
@@ -278,36 +260,19 @@ export class SignalRuntimeProcessor {
       });
     }
 
-    const runtimeDecision = match.decision === 'auto_confirmed' ? 'needs_review' : match.decision;
-    const runtimeReasonCodes = match.decision === 'auto_confirmed'
-      ? uniqueReasonCodes([...reasonCodes, 'manual_confirmation_required_v1'])
-      : reasonCodes;
-
     await this.emitRuntimeEvent(EventTypes.MATCH_SCORED, hydratedSignal, now, {
       signal_id: hydratedSignal.id,
       score: match.score,
-      decision: runtimeDecision,
+      decision: match.decision,
       collision_detected: match.collisionDetected,
-      reason_codes: runtimeReasonCodes
+      reason_codes: reasonCodes
     });
     await this.writeAudit(EventTypes.MATCH_SCORED, hydratedSignal, now, {
       score: match.score,
-      decision: runtimeDecision,
+      decision: match.decision,
       collision_detected: match.collisionDetected,
-      reason_codes: runtimeReasonCodes
+      reason_codes: reasonCodes
     });
-
-    if (match.decision === 'auto_confirmed' && match.selected) {
-      return this.reviewSignal({
-        signal: hydratedSignal,
-        parsed,
-        now,
-        selected: match.selected as SignalRuntimeSessionCandidate,
-        score: match.score,
-        collisionDetected: match.collisionDetected,
-        reasonCodes: runtimeReasonCodes
-      });
-    }
 
     if (match.decision === 'rejected') {
       return this.rejectSignal({
@@ -560,7 +525,7 @@ export class InMemorySignalRuntimeRepository implements SignalRuntimeRepository 
   public readonly sessions: SignalRuntimeSessionCandidate[];
   public readonly matches: SignalRuntimeResult[] = [];
   public readonly reviews: SignalRuntimeReviewItem[] = [];
-  public readonly webhookEvents: SignalRuntimeWebhookEvent[] = [];
+  public readonly webhookEvents: never[] = [];
   public readonly auditEvents: SignalRuntimeAuditEvent[] = [];
   public readonly publishedEvents: InternalEventEnvelope[] = [];
   public readonly orders = new Map<string, { status: string }>();
@@ -642,36 +607,6 @@ export class InMemorySignalRuntimeRepository implements SignalRuntimeRepository 
     }
     this.markSignalStatus(input.signal.id, 'matched');
     return { created: true, reviewId: input.review.id };
-  }
-
-  public async autoConfirm(input: RuntimeAutoConfirmInput): Promise<{ confirmed: boolean; alreadyConfirmed: boolean }> {
-    if (
-      this.matches.some(
-        (match) =>
-          match.decision === 'auto_confirmed' &&
-          (match.signalId === input.signal.id || match.orderId === input.selected.orderId)
-      )
-    ) {
-      return { confirmed: false, alreadyConfirmed: true };
-    }
-
-    this.matches.push(input.result);
-    this.orders.set(input.selected.orderId, { status: 'auto_confirmed' });
-    this.paymentSessions.set(input.selected.paymentSessionId, { status: 'auto_confirmed' });
-    this.markSignalStatus(input.signal.id, 'matched');
-    return { confirmed: true, alreadyConfirmed: false };
-  }
-
-  public async requestWebhookDelivery(event: SignalRuntimeWebhookEvent): Promise<{ created: number; skippedDuplicates: number }> {
-    const existing = this.webhookEvents.find(
-      (item) => item.id === event.id || (item.type === event.type && item.data.signal_id === event.data.signal_id)
-    );
-    if (existing) {
-      return { created: 0, skippedDuplicates: 1 };
-    }
-
-    this.webhookEvents.push(event);
-    return { created: 1, skippedDuplicates: 0 };
   }
 
   public async writeAuditEvent(event: SignalRuntimeAuditEvent): Promise<void> {
@@ -832,7 +767,7 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
           SELECT 1
           FROM signal_matches sm
           WHERE sm.order_id = o.id
-            AND sm.decision IN ('auto_confirmed', 'manual_confirmed')
+            AND sm.decision = 'manual_confirmed'
         ) AS order_already_confirmed
        FROM payment_sessions ps
        JOIN orders o ON o.id = ps.order_id AND o.merchant_id = ps.merchant_id
@@ -843,8 +778,8 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
          AND ps.expected_amount_minor = $2
          AND ps.currency = $3
          AND $4::timestamptz BETWEEN ps.valid_from AND ps.valid_until
-         AND ps.status NOT IN ('auto_confirmed', 'manual_confirmed', 'rejected', 'expired')
-         AND o.status NOT IN ('auto_confirmed', 'manual_confirmed', 'fulfilled', 'rejected', 'expired')
+         AND ps.status NOT IN ('manual_confirmed', 'rejected', 'expired')
+         AND o.status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')
        ORDER BY ps.created_at ASC
        LIMIT 25`,
       [signal.merchantId, signal.amountMinor, signal.currency, signal.observedAt]
@@ -938,7 +873,7 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
           `UPDATE orders
            SET status = 'needs_review', updated_at = $2
            WHERE merchant_id = $1 AND id = $3
-             AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
+             AND status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
           [input.signal.merchantId, input.now, input.result.orderId]
         );
       }
@@ -948,7 +883,7 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
           `UPDATE payment_sessions
            SET status = 'needs_review', updated_at = $2
            WHERE merchant_id = $1 AND id = $3
-             AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'rejected', 'expired')`,
+             AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
           [input.signal.merchantId, input.now, input.result.paymentSessionId]
         );
       }
@@ -962,104 +897,6 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
     } finally {
       client.release();
     }
-  }
-
-  public async autoConfirm(input: RuntimeAutoConfirmInput): Promise<{ confirmed: boolean; alreadyConfirmed: boolean }> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      const duplicate = await client.query(
-        `SELECT id FROM signal_matches
-         WHERE (signal_id = $1 OR order_id = $2)
-           AND decision IN ('auto_confirmed', 'manual_confirmed')
-         LIMIT 1
-         FOR UPDATE`,
-        [input.signal.id, input.selected.orderId]
-      );
-      if (duplicate.rows[0]) {
-        await client.query('ROLLBACK');
-        return { confirmed: false, alreadyConfirmed: true };
-      }
-
-      await client.query(
-        `INSERT INTO signal_matches (
-          id, signal_id, order_id, payment_session_id, score, decision, collision_detected, reasons_json, created_at
-        )
-        VALUES ($1, $2, $3, $4, $5, 'auto_confirmed', false, $6::jsonb, $7)`,
-        [
-          input.matchId,
-          input.signal.id,
-          input.selected.orderId,
-          input.selected.paymentSessionId,
-          input.result.score,
-          JSON.stringify(input.result.reasonCodes),
-          input.now
-        ]
-      );
-      await client.query(
-        `UPDATE orders
-         SET status = 'auto_confirmed', updated_at = $2
-         WHERE merchant_id = $1 AND id = $3
-           AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
-        [input.signal.merchantId, input.now, input.selected.orderId]
-      );
-      await client.query(
-        `UPDATE payment_sessions
-         SET status = 'auto_confirmed', updated_at = $2
-         WHERE merchant_id = $1 AND id = $3
-           AND status NOT IN ('auto_confirmed', 'manual_confirmed', 'rejected', 'expired')`,
-        [input.signal.merchantId, input.now, input.selected.paymentSessionId]
-      );
-      await client.query(`UPDATE notification_signals SET status = 'matched' WHERE id = $1`, [input.signal.id]);
-      await client.query('COMMIT');
-      return { confirmed: true, alreadyConfirmed: false };
-    } catch (error) {
-      await client.query('ROLLBACK');
-      if (isUniqueViolation(error)) {
-        return { confirmed: false, alreadyConfirmed: true };
-      }
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  public async requestWebhookDelivery(event: SignalRuntimeWebhookEvent): Promise<{ created: number; skippedDuplicates: number }> {
-    assertSafeWebhookPayload(event);
-    const endpoints = await this.pool.query(
-      `SELECT id FROM webhook_endpoints
-       WHERE merchant_id = $1
-         AND status = 'active'
-         AND enabled_events ? $2`,
-      [event.merchant_id, event.type]
-    );
-    let created = 0;
-    let skippedDuplicates = 0;
-    const payload = stableStringify(event);
-    const payloadHash = createHmac('sha256', 'swimpay_payload_hash_v1').update(payload).digest('hex');
-
-    for (const row of endpoints.rows as { id: string }[]) {
-      try {
-        await this.pool.query(
-          `INSERT INTO webhook_deliveries (
-            id, merchant_id, endpoint_id, event_id, event_type, payload_hash, payload_json,
-            status, attempt_count, max_attempts, next_retry_at, created_at, updated_at
-          )
-          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6::jsonb, 'pending', 0, 7, $7, $7, $7)`,
-          [event.merchant_id, row.id, event.id, event.type, payloadHash, payload, event.created_at]
-        );
-        created += 1;
-      } catch (error) {
-        if (isUniqueViolation(error)) {
-          skippedDuplicates += 1;
-          continue;
-        }
-        throw error;
-      }
-    }
-
-    return { created, skippedDuplicates };
   }
 
   public async writeAuditEvent(event: SignalRuntimeAuditEvent): Promise<void> {
@@ -1233,55 +1070,8 @@ function uniqueReasonCodes(reasonCodes: string[]): string[] {
   return [...new Set(reasonCodes.filter((code) => code.trim().length > 0))];
 }
 
-function assertSafeWebhookPayload(event: SignalRuntimeWebhookEvent): void {
-  if (containsRawPiiMarker(event.data)) {
-    throw new Error('Signal runtime webhook payload must not expose raw PII.');
-  }
-}
-
-function containsRawPiiMarker(value: unknown): boolean {
-  if (Array.isArray(value)) {
-    return value.some((item) => containsRawPiiMarker(item));
-  }
-
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  for (const [key, nestedValue] of Object.entries(value)) {
-    if (
-      /raw[_-]?(notification|text|phone|card)|notification_raw|phone_raw|raw_phone|buyer_phone$|receiver_(phone|card|identifier)|card_(number|pan)|^pan$/iu.test(
-        key
-      )
-    ) {
-      return true;
-    }
-    if (containsRawPiiMarker(nestedValue)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 function stripUndefined(value: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
-}
-
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value);
-  }
-
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
-  }
-
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
-    .join(',')}}`;
 }
 
 function parseReasonCodes(value: unknown): string[] {
@@ -1311,10 +1101,6 @@ function normalizeTemplateStatus(value: unknown): TemplateTrustStatus | 'unknown
   return ['new', 'learning', 'shadow_testing', 'trusted_low_amount', 'trusted', 'degraded', 'review_only', 'disabled'].includes(String(value))
     ? (String(value) as TemplateTrustStatus)
     : 'unknown';
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === 'object' && 'code' in error && error.code === '23505');
 }
 
 interface SignalRow {

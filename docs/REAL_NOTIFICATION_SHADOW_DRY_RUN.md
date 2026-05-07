@@ -81,7 +81,7 @@ $env:SWIMPAY_RAW_NOTIFICATION_STORAGE="false"
 9. Verify review queue:
 
 - real bank signal routes to review/shadow;
-- order does not become `auto_confirmed`;
+- order does not become `manual_confirmed` without merchant action;
 - shadow prediction, if present, is metadata only.
 
 10. Verify manual-review webhook only after operator action:

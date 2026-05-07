@@ -51,7 +51,6 @@
 - `match.candidates_found`;
 - `match.collision_detected`;
 - `match.scored`;
-- `decision.auto_confirmed`;
 - `decision.needs_review`;
 - `decision.rejected`.
 

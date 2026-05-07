@@ -1,5 +1,39 @@
 # Next Action
 
+generated_at: 2026-05-07T15:35:00+03:00
+
+## Latest CR-3 Product Truth Contradiction Neutralization
+
+Completed:
+
+1. Removed the active `auto_confirmed` decision/state path from matching-core, contracts, payment-session mapping, signal-worker runtime, review queries, event constants and observability metrics.
+2. Routed strong notification matches to manual review with `manual_confirmation_required_v1`.
+3. Removed active runtime direct public signal/review webhook request behavior.
+4. Updated active product docs and operator docs so V1 public fulfillment remains post-manual-confirmation only.
+5. Added `tests/product-truth-runtime-neutralization.test.ts`.
+6. Rebuilt `@swimpay/matching-core` output and validated targeted + full tests.
+
+Next recommended action:
+
+Run CR-4 only if a zero-string cleanup is required before external audit:
+
+- rename inert `auto_confirm*` schema/template/config fields to V1 manual-review vocabulary;
+- keep migrations additive/backward-compatible;
+- do not change payment confirmation behavior.
+
+Otherwise proceed to Android Receiver real-runtime staging smoke with synthetic/redacted signals only.
+
+Do not do:
+
+- Do not start real-world testing yet.
+- Do not deploy public production.
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not introduce LLM logic, SMS, Accessibility, scraping or broad app enumeration.
+- Do not expose secrets or raw PII.
+
+---
+
 generated_at: 2026-05-07T15:10:00+03:00
 
 ## Latest CR-2 Runtime Product Truth Enforcement

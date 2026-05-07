@@ -2326,3 +2326,15 @@ Safety checks:
 - Created `.swimpay-agent/CR2_RUNTIME_PRODUCT_TRUTH_REPORT.md`.
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
 - Docker live smoke could not run because Docker Desktop's `desktop-linux` pipe was unavailable; `/api-health` was not reachable.
+
+# 2026-05-07T15:35:00+03:00 - CR-3 Product Truth Contradiction Neutralization
+
+- Neutralized remaining active V1 contradictions after CR-2.
+- Removed active `auto_confirmed` from matching decisions, contracts, payment-session mapping, checkout mapping, reviews, event constants and observability metrics.
+- Removed active signal-worker auto-confirm and direct public signal/review webhook request methods.
+- Updated active docs including `AGENTS.md`, service spec, event catalog, database schema, matching docs, state machine docs and private-beta docs.
+- Added `tests/product-truth-runtime-neutralization.test.ts`.
+- Updated E2E/runtime/private-beta/foundation tests to assert manual review instead of auto-confirmation.
+- Rebuilt `@swimpay/matching-core` dist output.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Docker live smoke remained blocked by unavailable Docker Desktop Linux engine pipe; `/api-health` was unreachable.

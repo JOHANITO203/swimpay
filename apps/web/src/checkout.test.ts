@@ -263,7 +263,7 @@ describe('hosted checkout web foundation', () => {
     expect(provider.session.selected_receiver_bank_id).toBe('sber_ru');
     expect(provider.session.selected_receiving_route_id).toBe('route_sber_phone');
     expect(provider.session.selected_payer_bank_launcher_id).toBe('other_manual');
-    expect(provider.session.status).not.toBe('auto_confirmed');
+    expect(provider.session.status).not.toBe('manual_confirmed');
     expect(receiverResponse.json().official_bank_confirmation).toBe(false);
     expect(routeResponse.json().official_bank_confirmation).toBe(false);
     expect(launcherResponse.json().official_bank_confirmation).toBe(false);

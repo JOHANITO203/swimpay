@@ -10,12 +10,12 @@ This document defines the V1 schema. Migrations must follow this model unless an
 order_status:
 created, awaiting_buyer_identity, payment_session_created, receiver_arming,
 receiver_armed, payment_instructions_shown, awaiting_payment, buyer_claimed_paid,
-signal_detected, matching, needs_review, auto_confirmed, manual_confirmed,
+signal_detected, matching, needs_review, manual_confirmed,
 rejected, expired, fulfilled
 
 payment_session_status:
 created, receiver_arming, receiver_armed, awaiting_payment, buyer_claimed_paid,
-signal_detected, matching, needs_review, auto_confirmed, manual_confirmed,
+signal_detected, matching, needs_review, manual_confirmed,
 rejected, expired
 
 bank_profile_status:
@@ -26,7 +26,7 @@ incoming_customer_transfer, incoming_cashback, incoming_refund, outgoing_payment
 failed_transfer, promo, balance_update, unknown, unknown_ambiguous_direction
 
 decision:
-auto_confirmed, needs_review, rejected, wait
+needs_review, rejected, wait
 
 review_status:
 open, confirmed, rejected, cancelled
@@ -469,11 +469,11 @@ WHERE status IN ('production_trust_requested', 'production_trust_approved', 'pro
 ```sql
 CREATE UNIQUE INDEX unique_confirmed_order
 ON signal_matches(order_id)
-WHERE decision IN ('auto_confirmed', 'manual_confirmed');
+WHERE decision = 'manual_confirmed';
 
 CREATE UNIQUE INDEX unique_used_signal_confirmed
 ON signal_matches(signal_id)
-WHERE decision IN ('auto_confirmed', 'manual_confirmed');
+WHERE decision = 'manual_confirmed';
 ```
 
 These constraints are mandatory. They prevent double confirmation even if workers race.

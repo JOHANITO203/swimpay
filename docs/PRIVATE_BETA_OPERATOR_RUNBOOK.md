@@ -11,7 +11,7 @@ Review is required in beta.
 ## Setup
 
 1. Create or select a beta merchant in local/dev tooling.
-2. Configure a webhook endpoint for `payment.needs_review`, `payment.confirmed` and `payment.rejected`.
+2. Configure a webhook endpoint for public terminal events: `payment.confirmed`, `payment.rejected` and `payment.expired`.
 3. Install SwimPay Receiver on the merchant Android device.
 4. Enable Android Notification Listener Access.
 5. Select one or more V1 bank profiles in review-only mode.
