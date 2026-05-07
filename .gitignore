@@ -10,6 +10,8 @@ npm-debug.log*
 *.log
 *.pem
 *.key
+client_secret_*.apps.googleusercontent.com*
+client_secret*.json
 *.p12
 *.pfx
 *.crt
