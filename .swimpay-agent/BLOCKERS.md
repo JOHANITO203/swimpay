@@ -1,5 +1,15 @@
 # Blockers
 
+## Sprint 9I Live Receiver Validation
+
+- No critical code blocker introduced.
+- Docker/Compose live stack is reachable and healthy in local development mode.
+- Live Receiver registration now returns a safe 401 for syntactically valid but non-existent local/dev merchant bearers instead of leaking a PostgreSQL foreign-key 500.
+- Live Receiver heartbeat smoke passed and returned `bank_targets_missing` with `configure_bank_targets`.
+- Live signal upload safety smoke rejected `raw_text_present=true` with `raw_notification_rejected`.
+- API Dockerfile now includes `packages/bank-templates` so cache-invalidated API image builds can compile admin imports.
+- Remaining limitation: production-only stale/future timestamp live behavior cannot be honestly validated through the current Compose stack because `/api-health` reports API environment `development`.
+
 ## Sprint 9H Receiver / Intelligence Production Hardening
 
 - No critical code blocker introduced.

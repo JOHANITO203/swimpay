@@ -48,6 +48,14 @@ class InMemoryReceiverDeviceRepository implements ReceiverDeviceRepository {
   }
 }
 
+class ForeignKeyFailingReceiverDeviceRepository extends InMemoryReceiverDeviceRepository {
+  async createReceiverDevice(): Promise<StoredReceiverDeviceRecord> {
+    const error = new Error('insert or update on table "receiver_devices" violates foreign key constraint');
+    (error as Error & { code?: string }).code = '23503';
+    throw error;
+  }
+}
+
 function buildReceiverServer(repository: InMemoryReceiverDeviceRepository, metrics?: InMemoryMetricsRegistry) {
   return buildApiServer({
     environment: 'test',
@@ -101,6 +109,33 @@ describe('receiver device api', () => {
 
     expect(response.statusCode).toBe(401);
     expect(response.body).not.toContain('Bearer test_');
+    expect(repository.devices.size).toBe(0);
+  });
+
+  test('maps unknown merchant receiver registration storage failures to authenticated merchant errors', async () => {
+    const repository = new ForeignKeyFailingReceiverDeviceRepository();
+    const server = buildReceiverServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver-devices/register',
+      headers: { authorization: 'Bearer test_unknown_merchant' },
+      payload: {
+        device_name: 'Merchant Phone',
+        public_key: 'base64_public_key'
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'invalid_request',
+        message: 'An authenticated merchant session is required for receiver device registration.',
+        details: {}
+      }
+    });
+    expect(response.body).not.toContain('foreign key');
+    expect(response.body).not.toContain('receiver_devices');
     expect(repository.devices.size).toBe(0);
   });
 

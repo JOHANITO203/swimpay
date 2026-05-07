@@ -1,5 +1,18 @@
 # Progress Log
 
+## 2026-05-07 - Sprint 9I Live Receiver Validation
+
+- Continued after Sprint 9H commit with a live backend/Android smoke, without real bank notification capture.
+- Verified Docker Compose services and `/api-health`; local API environment is `development`.
+- Live smoke found that a syntactically valid local/dev `Bearer test_<uuid>` with no matching merchant row returned a PostgreSQL foreign-key HTTP 500.
+- Added a regression test and mapped that storage failure to the safe authenticated-merchant 401 response.
+- Rebuilt the API image and fixed the API Dockerfile to include `packages/bank-templates` after cache invalidation exposed the missing workspace copy.
+- Re-ran live registration: invalid local/dev merchant returned safe HTTP 401 without PostgreSQL details.
+- Re-ran live registration/heartbeat with an existing local smoke merchant: registration returned 201 and heartbeat returned `bank_targets_missing` with `configure_bank_targets`.
+- Re-ran live signal upload safety smoke: `raw_text_present=true` returned HTTP 400 `raw_notification_rejected`.
+- Re-ran ADB device check, reverse, app launch and UIAutomator dump on `R5CWA0FEPZW`; premium shell was visible and no raw PII appeared in the dump.
+- Created `.swimpay-agent/SPRINT_9I_LIVE_RECEIVER_VALIDATION_REPORT.md`.
+
 ## 2026-05-07 - Sprint 9H Docker Recovery Validation
 
 - User restarted Docker Desktop and requested continuation.

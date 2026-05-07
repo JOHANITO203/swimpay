@@ -1,6 +1,46 @@
 # Next Action
 
-generated_at: 2026-05-07T09:15:00+03:00
+generated_at: 2026-05-07T09:48:00+03:00
+
+## Latest Sprint 9I Live Receiver Validation
+
+Completed:
+
+1. Revalidated Docker/Compose live stack and `/api-health`.
+2. Ran live Receiver registration smoke through the proxy.
+3. Found and fixed safe error mapping for non-existent local/dev merchant bearers.
+4. Rebuilt the API Docker image after adding the missing `packages/bank-templates` workspace copy.
+5. Ran live Receiver heartbeat smoke and confirmed `bank_targets_missing`.
+6. Ran live signal upload safety smoke and confirmed `raw_notification_rejected`.
+7. Ran ADB reverse, app launch and UIAutomator dump on `R5CWA0FEPZW`.
+8. Created `.swimpay-agent/SPRINT_9I_LIVE_RECEIVER_VALIDATION_REPORT.md`.
+
+Validation:
+
+- Passed: targeted receiver device regression test.
+- Passed: API workspace build.
+- Passed: API Docker image rebuild and API/proxy restart.
+- Passed: `/api-health` with database, NATS and Valkey `ok`.
+- Passed: live registration/heartbeat/raw-upload safety smoke.
+- Passed: ADB device/reverse/launch/UIAutomator dump.
+
+Next recommended action:
+
+Run Sprint 9J production-mode staging/VPS validation:
+
+- configure production-mode API environment;
+- validate receiver registration without local `test_*` bearer seams;
+- validate stale/future signal timestamp rejection in production mode;
+- validate signed redacted signal upload with a production-registered receiver;
+- keep real bank notification capture gated behind explicit consent.
+
+Do not do:
+
+- Do not process real bank notifications without explicit consent.
+- Do not enable auto-confirmation.
+- Do not introduce LLM logic.
+- Do not add SMS, Accessibility or broad app enumeration.
+- Do not change SDK public webhook semantics.
 
 ## Latest Sprint 9H Receiver / Intelligence Production Hardening
 

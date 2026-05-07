@@ -1164,7 +1164,17 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       now: clock()
     });
 
-    const device = await receiverDeviceRepository.createReceiverDevice(input);
+    let device;
+    try {
+      device = await receiverDeviceRepository.createReceiverDevice(input);
+    } catch (error) {
+      if (isPgForeignKeyViolation(error)) {
+        return reply.status(401).send(
+          invalidRequest('An authenticated merchant session is required for receiver device registration.', {})
+        );
+      }
+      throw error;
+    }
     metrics.increment(MetricNames.RECEIVER_REGISTRATIONS_TOTAL);
 
     return reply.status(201).send(
@@ -3011,6 +3021,10 @@ function receiverContractError(code: string, field?: string) {
       details: field ? { field } : {}
     }
   };
+}
+
+function isPgForeignKeyViolation(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && 'code' in error && (error as { code?: unknown }).code === '23503');
 }
 
 function receiverContractErrorMessage(code: string): string {
