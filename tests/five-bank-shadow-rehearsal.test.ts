@@ -33,7 +33,7 @@ interface ShadowFixtureSet {
       title_redacted: string;
       body_redacted: string;
       expected_decision: string;
-      expected_webhook_type?: string;
+      expected_public_webhook_type?: string | null;
       confirmation_type?: string;
       official_bank_confirmation: boolean;
       auto_confirm_expected: boolean;
@@ -73,11 +73,11 @@ describe('Sprint 6C five-bank review-only shadow runtime rehearsal', () => {
         const serialized = JSON.stringify(fixture);
         expect(serialized).toMatch(/<AMOUNT>|<PHONE>|<REFERENCE>|<PERSON>|<CURRENCY>/u);
         expect(serialized).not.toMatch(/\+?\d[\d\s().-]{7,}\d/u);
+        expect(serialized).not.toContain('expected_webhook_type');
+        expect(fixture.expected_public_webhook_type ?? null).toBeNull();
         expect(fixture.official_bank_confirmation).toBe(false);
         expect(fixture.auto_confirm_expected).toBe(false);
-        if (fixture.expected_webhook_type) {
-          expect(fixture.confirmation_type).toBe('notification_signal');
-        }
+        expect(fixture.confirmation_type).toBe('notification_signal');
       }
     }
   });

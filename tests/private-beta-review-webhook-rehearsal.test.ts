@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { hmacSha256 } from '@swimpay/security';
+import { EventTypes } from '@swimpay/events';
 import {
   InMemorySignalRuntimeRepository,
   SignalRuntimeProcessor,
@@ -88,9 +89,7 @@ describe('Sprint 6D private beta review queue and webhook rehearsal', () => {
     expect(fixtures.order_fixture.currency).toBe('RUB');
     expect(fixtures.order_fixture.buyer_phone_hmac).toMatch(/^phone_hmac_/u);
     expect(fixtures.order_fixture.buyer_phone_masked).toContain('***');
-    expect(fixtures.merchant.webhook_endpoint.enabled_events).toEqual(
-      expect.arrayContaining(['payment.confirmed', 'payment.needs_review', 'payment.rejected'])
-    );
+    expect(fixtures.merchant.webhook_endpoint.enabled_events).toEqual(['payment.confirmed', 'payment.rejected', 'payment.expired']);
     expect(fixtures.bank_signal_scenarios.map((scenario) => scenario.bank_profile_id)).toEqual([...fiveBankIds]);
 
     expect(fixtures.order_fixture.buyer_phone_masked).toContain('***');
@@ -129,19 +128,11 @@ describe('Sprint 6D private beta review queue and webhook rehearsal', () => {
         scenario.expected_order_status_before_review
       );
       expect(repository.orders.get(fixtures.order_fixture.order_id)?.status).not.toBe('auto_confirmed');
-      expect(repository.webhookEvents.map((event) => event.type)).toEqual([
-        'payment.signal_detected',
-        'payment.needs_review'
-      ]);
-      const needsReviewWebhook = repository.webhookEvents.find((event) => event.type === 'payment.needs_review');
-      expect(needsReviewWebhook).toMatchObject({
-        type: 'payment.needs_review',
-        data: {
-          official_bank_confirmation: false,
-          confirmation_type: 'notification_signal'
-        }
-      });
-      expect(JSON.stringify(needsReviewWebhook?.data)).not.toContain('raw_notification_text');
+      expect(repository.webhookEvents).toEqual([]);
+      expect(repository.publishedEvents.map((event) => event.type)).toEqual(
+        expect.arrayContaining([EventTypes.DECISION_NEEDS_REVIEW, EventTypes.REVIEW_CREATED])
+      );
+      expect(JSON.stringify(repository.publishedEvents)).not.toContain('raw_notification_text');
     }
   });
 
@@ -191,8 +182,9 @@ describe('Sprint 6D private beta review queue and webhook rehearsal', () => {
     ).toBe(true);
     expect(scenario.expected_default_reject_scope).toBe('signal');
     expect(repository.auditEvents.map((event) => event.eventType)).toEqual(
-      expect.arrayContaining(['review.created', 'webhook.delivery_requested'])
+      expect.arrayContaining(['review.created'])
     );
+    expect(repository.auditEvents.map((event) => event.eventType)).not.toContain('webhook.delivery_requested');
   });
 
   test('documents private beta review-first operations without official confirmation wording', () => {
@@ -305,7 +297,7 @@ function activeEndpoint(fixtures: PrivateBetaFixtureSet): WebhookEndpoint {
     merchantId: fixtures.merchant.merchant_id,
     url: fixtures.merchant.webhook_endpoint.url,
     secret: 'whsec_private_beta_rehearsal',
-    enabledEvents: ['payment.confirmed', 'payment.needs_review', 'payment.rejected'],
+    enabledEvents: ['payment.confirmed', 'payment.rejected', 'payment.expired'],
     status: 'active'
   };
 }

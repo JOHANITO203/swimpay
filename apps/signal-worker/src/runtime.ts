@@ -89,7 +89,7 @@ export interface SignalRuntimeReviewItem {
 
 export interface SignalRuntimeWebhookEvent {
   id: string;
-  type: 'payment.signal_detected' | 'payment.confirmed' | 'payment.needs_review' | 'payment.rejected';
+  type: 'payment.confirmed' | 'payment.rejected' | 'payment.expired';
   created_at: string;
   merchant_id: string;
   data: Record<string, unknown> & typeof PUBLIC_EVENT_SIGNAL_DISCLOSURE;
@@ -278,29 +278,34 @@ export class SignalRuntimeProcessor {
       });
     }
 
+    const runtimeDecision = match.decision === 'auto_confirmed' ? 'needs_review' : match.decision;
+    const runtimeReasonCodes = match.decision === 'auto_confirmed'
+      ? uniqueReasonCodes([...reasonCodes, 'manual_confirmation_required_v1'])
+      : reasonCodes;
+
     await this.emitRuntimeEvent(EventTypes.MATCH_SCORED, hydratedSignal, now, {
       signal_id: hydratedSignal.id,
       score: match.score,
-      decision: match.decision,
+      decision: runtimeDecision,
       collision_detected: match.collisionDetected,
-      reason_codes: reasonCodes
+      reason_codes: runtimeReasonCodes
     });
     await this.writeAudit(EventTypes.MATCH_SCORED, hydratedSignal, now, {
       score: match.score,
-      decision: match.decision,
+      decision: runtimeDecision,
       collision_detected: match.collisionDetected,
-      reason_codes: reasonCodes
+      reason_codes: runtimeReasonCodes
     });
 
     if (match.decision === 'auto_confirmed' && match.selected) {
-      return this.autoConfirmSignal({
+      return this.reviewSignal({
         signal: hydratedSignal,
         parsed,
         now,
         selected: match.selected as SignalRuntimeSessionCandidate,
         score: match.score,
         collisionDetected: match.collisionDetected,
-        reasonCodes
+        reasonCodes: runtimeReasonCodes
       });
     }
 
@@ -333,62 +338,6 @@ export class SignalRuntimeProcessor {
       collisionDetected: match.collisionDetected,
       reasonCodes
     });
-  }
-
-  private async autoConfirmSignal(input: {
-    signal: SignalRuntimeSignal;
-    parsed: ParsedSignalRuntimeFields;
-    now: string;
-    selected: SignalRuntimeSessionCandidate;
-    score: number;
-    collisionDetected: boolean;
-    reasonCodes: string[];
-  }): Promise<SignalRuntimeResult> {
-    const result: SignalRuntimeResult = {
-      signalId: input.signal.id,
-      decision: 'auto_confirmed',
-      score: input.score,
-      collisionDetected: input.collisionDetected,
-      reasonCodes: input.reasonCodes,
-      orderId: input.selected.orderId,
-      paymentSessionId: input.selected.paymentSessionId,
-      ...routeContextFromSession(input.selected)
-    };
-
-    const confirmation = await this.options.repository.autoConfirm({
-      signal: input.signal,
-      parsed: input.parsed,
-      now: input.now,
-      selected: input.selected,
-      matchId: this.idGenerator.matchId(),
-      result
-    });
-
-    if (!confirmation.confirmed && confirmation.alreadyConfirmed) {
-      this.options.metrics?.increment(MetricNames.SIGNALS_DUPLICATE_TOTAL);
-      return {
-        ...result,
-        decision: 'rejected',
-        score: 0,
-        reasonCodes: uniqueReasonCodes([...input.reasonCodes, 'duplicate_signal'])
-      };
-    }
-
-    await this.emitRuntimeEvent(EventTypes.DECISION_AUTO_CONFIRMED, input.signal, input.now, {
-      signal_id: input.signal.id,
-      order_id: input.selected.orderId,
-      payment_session_id: input.selected.paymentSessionId,
-      ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
-    });
-    await this.writeAudit(EventTypes.DECISION_AUTO_CONFIRMED, input.signal, input.now, {
-      order_id: input.selected.orderId,
-      payment_session_id: input.selected.paymentSessionId,
-      reason_codes: input.reasonCodes,
-      ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
-    });
-    await this.createWebhookRequest('payment.confirmed', input.signal, input.now, result);
-    this.options.metrics?.increment(MetricNames.SIGNALS_AUTO_CONFIRMED_TOTAL);
-    return result;
   }
 
   private async reviewSignal(input: {
@@ -429,9 +378,6 @@ export class SignalRuntimeProcessor {
       result,
       review
     });
-    if (input.selected) {
-      await this.createWebhookRequest('payment.signal_detected', input.signal, input.now, result);
-    }
     await this.emitRuntimeEvent(EventTypes.DECISION_NEEDS_REVIEW, input.signal, input.now, {
       signal_id: input.signal.id,
       order_id: input.selected?.orderId,
@@ -456,7 +402,6 @@ export class SignalRuntimeProcessor {
       review_id: created.reviewId,
       reason_code: review.reasonCode
     });
-    await this.createWebhookRequest('payment.needs_review', input.signal, input.now, result);
     this.options.metrics?.increment(MetricNames.SIGNALS_NEEDS_REVIEW_TOTAL);
     if (created.created) {
       this.options.metrics?.increment(MetricNames.REVIEWS_CREATED_TOTAL);
@@ -532,7 +477,6 @@ export class SignalRuntimeProcessor {
       reason_codes: input.reasonCodes,
       ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
     });
-    await this.createWebhookRequest('payment.rejected', input.signal, input.now, result);
     this.options.metrics?.increment(MetricNames.SIGNALS_REJECTED_TOTAL);
     return result;
   }
@@ -558,45 +502,6 @@ export class SignalRuntimeProcessor {
       default:
         return;
     }
-  }
-
-  private async createWebhookRequest(
-    type: SignalRuntimeWebhookEvent['type'],
-    signal: SignalRuntimeSignal,
-    now: string,
-    result: SignalRuntimeResult
-  ): Promise<void> {
-    const event: SignalRuntimeWebhookEvent = {
-      id: this.idGenerator.webhookEventId(),
-      type,
-      created_at: now,
-      merchant_id: signal.merchantId,
-      data: stripUndefined({
-        signal_id: signal.id,
-        order_id: result.orderId,
-        payment_session_id: result.paymentSessionId,
-        receiver_route_code: result.receiverRouteCode,
-        rail_type: result.railType,
-        payment_reference: result.paymentReference,
-        receiver_bank_id: result.receiverBankId,
-        decision: result.decision,
-        reason_codes: result.reasonCodes,
-        score: result.score,
-        ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
-      }) as SignalRuntimeWebhookEvent['data']
-    };
-
-    assertSafeWebhookPayload(event);
-    await this.options.repository.requestWebhookDelivery(event);
-    await this.emitRuntimeEvent(EventTypes.WEBHOOK_DELIVERY_REQUESTED, signal, now, {
-      signal_id: signal.id,
-      event_id: event.id,
-      event_type: event.type
-    });
-    await this.writeAudit(EventTypes.WEBHOOK_DELIVERY_REQUESTED, signal, now, {
-      event_id: event.id,
-      event_type: event.type
-    });
   }
 
   private async emitRuntimeEvent(
@@ -1294,6 +1199,7 @@ function primaryReasonCode(reasonCodes: string[]): string {
         'bank_profile_untrusted',
         'template_untrusted',
         'ambiguous_direction',
+        'manual_confirmation_required_v1',
         'negative_direction',
         'amount_only_never_auto_confirm',
         'no_candidate'

@@ -16,7 +16,7 @@ const phoneHmac = hmacSha256('<PHONE>', 'e2e_phone_secret');
 const referenceHmac = hmacSha256('<REFERENCE>', 'e2e_reference_secret');
 
 describe('payment signal foundation e2e flow', () => {
-  it('covers order session creation, incoming signal matching, and signed webhook delivery after confirm', async () => {
+  it('covers order session matching and signed webhook delivery after manual confirm', async () => {
     const session = createSession();
     const signal = createSignal({ senderPhoneHmac: phoneHmac, referenceHmac });
 
@@ -43,7 +43,7 @@ describe('payment signal foundation e2e flow', () => {
       data: {
         order_id: session.orderId,
         payment_session_id: session.paymentSessionId,
-        decision: decision.decision,
+        decision: 'manual_confirmed',
         reason_codes: decision.reasonCodes
       }
     });
@@ -159,7 +159,7 @@ function activeEndpoint(): WebhookEndpoint {
     merchantId: 'mch_e2e',
     url: 'https://merchant.example/e2e',
     secret: 'whsec_e2e',
-    enabledEvents: ['payment.confirmed', 'payment.needs_review', 'payment.rejected'],
+    enabledEvents: ['payment.confirmed', 'payment.rejected', 'payment.expired'],
     status: 'active'
   };
 }

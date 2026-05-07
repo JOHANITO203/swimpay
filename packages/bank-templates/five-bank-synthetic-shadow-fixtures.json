@@ -19,7 +19,7 @@
           "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
           "expected_decision": "needs_review",
-          "expected_webhook_type": "payment.needs_review",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -30,7 +30,7 @@
           "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Amount observed without usable <PHONE> or <REFERENCE>",
           "expected_decision": "needs_review",
-          "expected_webhook_type": "payment.needs_review",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -41,7 +41,7 @@
           "title_redacted": "Cashback <AMOUNT> <CURRENCY>",
           "body_redacted": "Cashback reward for <PERSON> with <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -52,7 +52,7 @@
           "title_redacted": "Refund <AMOUNT> <CURRENCY>",
           "body_redacted": "Refund to <PERSON> for <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -63,7 +63,7 @@
           "title_redacted": "Payment <AMOUNT> <CURRENCY>",
           "body_redacted": "Payment to recipient for <REFERENCE> from <PERSON>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -74,7 +74,7 @@
           "title_redacted": "Promo bonus <AMOUNT> <CURRENCY>",
           "body_redacted": "Promo message for <PERSON> with <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -85,7 +85,7 @@
           "title_redacted": "Failed transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Transfer from <PERSON> <PHONE> failed for <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -102,7 +102,7 @@
           "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
           "expected_decision": "needs_review",
-          "expected_webhook_type": "payment.needs_review",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -113,7 +113,7 @@
           "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Amount observed without usable <PHONE> or <REFERENCE>",
           "expected_decision": "needs_review",
-          "expected_webhook_type": "payment.needs_review",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -124,7 +124,7 @@
           "title_redacted": "Cashback <AMOUNT> <CURRENCY>",
           "body_redacted": "Cashback reward for <PERSON> with <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -135,7 +135,7 @@
           "title_redacted": "Refund <AMOUNT> <CURRENCY>",
           "body_redacted": "Refund to <PERSON> for <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -146,7 +146,7 @@
           "title_redacted": "Payment <AMOUNT> <CURRENCY>",
           "body_redacted": "Payment to recipient for <REFERENCE> from <PERSON>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -157,7 +157,7 @@
           "title_redacted": "Promo bonus <AMOUNT> <CURRENCY>",
           "body_redacted": "Promo message for <PERSON> with <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -168,7 +168,7 @@
           "title_redacted": "Failed transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Transfer from <PERSON> <PHONE> failed for <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -185,7 +185,7 @@
           "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
           "expected_decision": "needs_review",
-          "expected_webhook_type": "payment.needs_review",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -196,7 +196,7 @@
           "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Amount observed without usable <PHONE> or <REFERENCE>",
           "expected_decision": "needs_review",
-          "expected_webhook_type": "payment.needs_review",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -207,7 +207,7 @@
           "title_redacted": "Cashback <AMOUNT> <CURRENCY>",
           "body_redacted": "Cashback reward for <PERSON> with <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -218,7 +218,7 @@
           "title_redacted": "Refund <AMOUNT> <CURRENCY>",
           "body_redacted": "Refund to <PERSON> for <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -229,7 +229,7 @@
           "title_redacted": "Payment <AMOUNT> <CURRENCY>",
           "body_redacted": "Payment to recipient for <REFERENCE> from <PERSON>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -240,7 +240,7 @@
           "title_redacted": "Promo bonus <AMOUNT> <CURRENCY>",
           "body_redacted": "Promo message for <PERSON> with <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -251,7 +251,7 @@
           "title_redacted": "Failed transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Transfer from <PERSON> <PHONE> failed for <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -268,7 +268,7 @@
           "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
           "expected_decision": "needs_review",
-          "expected_webhook_type": "payment.needs_review",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -279,7 +279,7 @@
           "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Amount observed without usable <PHONE> or <REFERENCE>",
           "expected_decision": "needs_review",
-          "expected_webhook_type": "payment.needs_review",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -290,7 +290,7 @@
           "title_redacted": "Cashback <AMOUNT> <CURRENCY>",
           "body_redacted": "Cashback reward for <PERSON> with <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -301,7 +301,7 @@
           "title_redacted": "Refund <AMOUNT> <CURRENCY>",
           "body_redacted": "Refund to <PERSON> for <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -312,7 +312,7 @@
           "title_redacted": "Payment <AMOUNT> <CURRENCY>",
           "body_redacted": "Payment to recipient for <REFERENCE> from <PERSON>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -323,7 +323,7 @@
           "title_redacted": "Promo bonus <AMOUNT> <CURRENCY>",
           "body_redacted": "Promo message for <PERSON> with <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -334,7 +334,7 @@
           "title_redacted": "Failed transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Transfer from <PERSON> <PHONE> failed for <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -351,7 +351,7 @@
           "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Transfer from <PERSON> <PHONE>. Reference <REFERENCE>",
           "expected_decision": "needs_review",
-          "expected_webhook_type": "payment.needs_review",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -362,7 +362,7 @@
           "title_redacted": "Incoming transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Amount observed without usable <PHONE> or <REFERENCE>",
           "expected_decision": "needs_review",
-          "expected_webhook_type": "payment.needs_review",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -373,7 +373,7 @@
           "title_redacted": "Cashback <AMOUNT> <CURRENCY>",
           "body_redacted": "Cashback reward for <PERSON> with <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -384,7 +384,7 @@
           "title_redacted": "Refund <AMOUNT> <CURRENCY>",
           "body_redacted": "Refund to <PERSON> for <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -395,7 +395,7 @@
           "title_redacted": "Payment <AMOUNT> <CURRENCY>",
           "body_redacted": "Payment to recipient for <REFERENCE> from <PERSON>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -406,7 +406,7 @@
           "title_redacted": "Promo bonus <AMOUNT> <CURRENCY>",
           "body_redacted": "Promo message for <PERSON> with <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false
@@ -417,7 +417,7 @@
           "title_redacted": "Failed transfer <AMOUNT> <CURRENCY>",
           "body_redacted": "Transfer from <PERSON> <PHONE> failed for <REFERENCE>",
           "expected_decision": "rejected",
-          "expected_webhook_type": "payment.rejected",
+          "expected_public_webhook_type": null,
           "confirmation_type": "notification_signal",
           "official_bank_confirmation": false,
           "auto_confirm_expected": false

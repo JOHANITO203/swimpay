@@ -62,37 +62,68 @@ describe('webhook worker foundation', () => {
     });
   });
 
-  it('delivers signal-detected webhooks without implying payment confirmation', async () => {
+  it('rejects internal signal and review events from the public webhook contract', async () => {
     const repository = new InMemoryWebhookRepository({
-      deliveryId: () => 'del_signal_detected'
+      deliveryId: () => 'del_internal'
     });
     repository.endpoints.push(activeEndpoint());
     const httpClient = new FakeWebhookHttpClient([{ status: 200 }]);
     const worker = new WebhookDeliveryWorker({ repository, httpClient });
+
+    for (const type of ['payment.signal_detected', 'payment.needs_review', 'order.expired'] as const) {
+      const event = {
+        id: `evt_${type.replace(/[._]/g, '_')}`,
+        type,
+        created_at: '2026-05-02T10:00:00.000Z',
+        merchant_id: 'mch_01',
+        data: {
+          order_id: 'ord_01',
+          payment_session_id: 'ps_01',
+          confirmation_type: 'notification_signal',
+          official_bank_confirmation: false
+        }
+      };
+
+      await expect(worker.enqueueEvent(event as never)).rejects.toThrow('Unsupported public webhook event type.');
+    }
+
+    expect(repository.deliveries).toHaveLength(0);
+    expect(httpClient.requests).toHaveLength(0);
+  });
+
+  it('does not allow endpoints to subscribe to internal fulfillment event names', async () => {
+    const repository = new InMemoryWebhookRepository({
+      deliveryId: () => 'del_confirmed'
+    });
+    repository.endpoints.push({
+      ...activeEndpoint(),
+      enabledEvents: ['payment.signal_detected', 'payment.needs_review', 'order.expired']
+    } as unknown as WebhookEndpoint);
+    const worker = new WebhookDeliveryWorker({
+      repository,
+      httpClient: new FakeWebhookHttpClient([{ status: 200 }])
+    });
     const event = createPaymentWebhookEvent({
-      eventId: 'evt_signal_detected',
-      type: 'payment.signal_detected',
+      eventId: 'evt_confirmed',
+      type: 'payment.confirmed',
       createdAt: '2026-05-02T10:00:00.000Z',
       merchantId: 'mch_01',
       data: {
         order_id: 'ord_01',
         payment_session_id: 'ps_01',
-        signal_id: 'sig_01',
-        decision: 'needs_review'
+        decision: 'manual_confirmed'
       }
     });
 
-    await worker.enqueueEvent(event);
-    await worker.deliverDue('2026-05-02T10:00:00.000Z');
-
-    expect(repository.deliveries[0]?.status).toBe('delivered');
-    expect(httpClient.requests[0]?.body).toContain('"type":"payment.signal_detected"');
-    expect(httpClient.requests[0]?.body).toContain('"confirmation_type":"notification_signal"');
-    expect(httpClient.requests[0]?.body).toContain('"official_bank_confirmation":false');
+    await expect(repository.listActiveEndpoints('mch_01', 'payment.signal_detected' as never)).resolves.toEqual([]);
+    await expect(repository.listActiveEndpoints('mch_01', 'payment.needs_review' as never)).resolves.toEqual([]);
+    await expect(repository.listActiveEndpoints('mch_01', 'order.expired' as never)).resolves.toEqual([]);
+    await expect(worker.enqueueEvent(event)).resolves.toEqual({ created: 0, skippedDuplicates: 0 });
+    expect(repository.deliveries).toHaveLength(0);
   });
 
   it('signs payloads with required SwimPay headers', () => {
-    const payload = JSON.stringify({ id: 'evt_01', type: 'payment.needs_review' });
+    const payload = JSON.stringify({ id: 'evt_01', type: 'payment.confirmed' });
     const timestamp = '2026-05-02T10:00:00.000Z';
     const signature = signWebhookPayload({
       secret: 'whsec_test',
@@ -129,13 +160,13 @@ describe('webhook worker foundation', () => {
     const worker = new WebhookDeliveryWorker({ repository, httpClient, metrics });
     const event = createPaymentWebhookEvent({
       eventId: 'evt_01',
-      type: 'payment.needs_review',
+      type: 'payment.confirmed',
       createdAt: '2026-05-02T10:00:00.000Z',
       merchantId: 'mch_01',
       data: {
         order_id: 'ord_01',
         payment_session_id: 'ps_01',
-        reason_codes: ['amount_collision']
+        decision: 'manual_confirmed'
       }
     });
 
@@ -185,13 +216,13 @@ describe('webhook worker foundation', () => {
     const worker = new WebhookDeliveryWorker({ repository, httpClient, metrics });
     const event = createPaymentWebhookEvent({
       eventId: 'evt_retry',
-      type: 'payment.needs_review',
+      type: 'payment.rejected',
       createdAt: '2026-05-02T10:00:00.000Z',
       merchantId: 'mch_01',
       data: {
         order_id: 'ord_01',
         payment_session_id: 'ps_01',
-        reason_codes: ['requires_review']
+        reason_codes: ['manual_review_rejected']
       }
     });
 
@@ -230,13 +261,13 @@ describe('webhook worker foundation', () => {
     const worker = new WebhookDeliveryWorker({ repository, httpClient });
     const event = createPaymentWebhookEvent({
       eventId: 'evt_network',
-      type: 'payment.needs_review',
+      type: 'payment.expired',
       createdAt: '2026-05-02T10:00:00.000Z',
       merchantId: 'mch_01',
       data: {
         order_id: 'ord_01',
         payment_session_id: 'ps_01',
-        reason_codes: ['requires_review']
+        reason_codes: ['payment_session_expired']
       }
     });
 
@@ -254,7 +285,7 @@ describe('webhook worker foundation', () => {
     expect(() =>
       createPaymentWebhookEvent({
         eventId: 'evt_raw',
-        type: 'payment.needs_review',
+        type: 'payment.rejected',
         createdAt: '2026-05-02T10:00:00.000Z',
         merchantId: 'mch_01',
         data: {
@@ -266,7 +297,7 @@ describe('webhook worker foundation', () => {
     expect(() =>
       createPaymentWebhookEvent({
         eventId: 'evt_raw_card',
-        type: 'payment.needs_review',
+        type: 'payment.rejected',
         createdAt: '2026-05-02T10:00:00.000Z',
         merchantId: 'mch_01',
         data: {
@@ -320,7 +351,7 @@ function activeEndpoint(): WebhookEndpoint {
     merchantId: 'mch_01',
     url: 'https://merchant.example/swimpay',
     secret: 'whsec_test',
-    enabledEvents: ['payment.signal_detected', 'payment.confirmed', 'payment.needs_review', 'payment.rejected'],
+    enabledEvents: ['payment.confirmed', 'payment.rejected', 'payment.expired'],
     status: 'active'
   };
 }

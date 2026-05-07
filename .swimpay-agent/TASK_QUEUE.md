@@ -6,6 +6,14 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `578_cr2_runtime_product_truth_inventory` - status: completed - source: `tasks/578_cr2_runtime_product_truth_inventory.md`
+- [x] `579_signal_runtime_manual_only_gate` - status: completed - source: `tasks/579_signal_runtime_manual_only_gate.md`
+- [x] `580_public_webhook_taxonomy_enforcement` - status: completed - source: `tasks/580_public_webhook_taxonomy_enforcement.md`
+- [x] `581_cr2_product_truth_guardrails` - status: completed - source: `tasks/581_cr2_product_truth_guardrails.md`
+- [x] `582_cr2_runtime_product_truth_closeout` - status: completed - source: `tasks/582_cr2_runtime_product_truth_closeout.md`
+
+## Previous Queue
+
 - [x] `566_full_code_review_inventory` - status: completed - source: `tasks/566_full_code_review_inventory.md`
 - [x] `567_product_truth_consistency_audit` - status: completed - source: `tasks/567_product_truth_consistency_audit.md`
 - [x] `568_auth_bff_and_tenant_isolation_audit` - status: completed - source: `tasks/568_auth_bff_and_tenant_isolation_audit.md`

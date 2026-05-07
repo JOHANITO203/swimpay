@@ -603,7 +603,7 @@ function buildAdminRepository(
         merchantId: 'mch_01',
         endpointId: 'we_01',
         eventId: 'evt_01',
-        eventType: 'payment.needs_review',
+        eventType: 'payment.rejected',
         status: 'failed',
         attemptCount: 5,
         lastError: 'HTTP 500',

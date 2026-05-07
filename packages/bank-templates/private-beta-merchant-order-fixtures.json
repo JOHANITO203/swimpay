@@ -8,8 +8,8 @@
       "url": "https://merchant.invalid/swimpay/private-beta",
       "enabled_events": [
         "payment.confirmed",
-        "payment.needs_review",
-        "payment.rejected"
+        "payment.rejected",
+        "payment.expired"
       ],
       "secret_storage": "local_test_secret_only"
     }

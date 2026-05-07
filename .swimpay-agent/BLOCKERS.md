@@ -1,9 +1,20 @@
 # Blockers
 
+## CR-2 Runtime Product Truth Enforcement
+
+- Resolved: active `SignalRuntimeProcessor` no longer auto-confirms V1 signals. Trusted exact matches are routed to manual review with `manual_confirmation_required_v1`.
+- Resolved: active signal runtime no longer requests public `payment.signal_detected` or `payment.needs_review` webhooks.
+- Resolved: job-worker public webhook taxonomy is restricted to `payment.confirmed`, `payment.rejected` and `payment.expired`.
+- Resolved: five-bank synthetic shadow fixtures no longer expect public review/reject webhooks.
+- Validation passed for android doctor, typecheck, lint, full tests, build and Compose config.
+- Validation blocker: Docker live smoke could not run in this shell because Docker context `desktop-linux` could not connect to `//./pipe/dockerDesktopLinuxEngine`; `/api-health` was not reachable.
+- Remaining blocker before real-world testing: Android Receiver real bank notification runtime remains not validated for real-condition capture.
+- Remaining blocker before production-mode staging: Google OAuth live exchange and VPS deployment with external secrets remain untested.
+
 ## CR-1 Full Code Review Before Real-World Testing
 
-- Critical: the active signal runtime can still auto-confirm through the legacy matching path. Evidence: `packages/matching-core/src/index.ts` and `apps/signal-worker/src/runtime.ts`. This must be disabled or removed for V1 before any real signal test.
-- Critical: internal review/signal events can still enter the webhook delivery path. Evidence: `apps/signal-worker/src/runtime.ts` requests `payment.signal_detected` / `payment.needs_review`, and `apps/job-worker/src/webhooks.ts` models them as public event types.
+- Resolved by CR-2: the active signal runtime can no longer auto-confirm through the legacy matching path.
+- Resolved by CR-2: internal review/signal events no longer enter the public webhook delivery path from active signal runtime, and job-worker rejects unsupported public event types.
 - Critical: Android Receiver real bank notification runtime is still synthetic/debug-only. Evidence: `ReceiverBoundaries.kt` accepts only the app package in debug, and `SwimPayNotificationListenerService.kt` only enqueues accepted notifications in debug.
 - Critical: Google OAuth remains a fail-closed provider seam; real Google login has not been executed.
 - Critical: real VPS production-mode staging has not been deployed or validated with external secrets, HTTPS, migrations and synthetic smoke.

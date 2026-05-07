@@ -1,5 +1,41 @@
 # Next Action
 
+generated_at: 2026-05-07T15:10:00+03:00
+
+## Latest CR-2 Runtime Product Truth Enforcement
+
+Completed:
+
+1. Created tasks 578 through 582 and updated the active task queue.
+2. Created `.swimpay-agent/CR2_RUNTIME_PRODUCT_TRUTH_INVENTORY.md`.
+3. Disabled active V1 auto-confirm behavior in `SignalRuntimeProcessor` by routing high-confidence matches to manual review with `manual_confirmation_required_v1`.
+4. Removed active runtime-created public signal/review webhooks.
+5. Restricted job-worker public webhooks to `payment.confirmed`, `payment.rejected` and `payment.expired`.
+6. Updated E2E/private-beta/five-bank guardrails so internal review activity does not become public fulfillment webhook traffic.
+7. Created `.swimpay-agent/CR2_RUNTIME_PRODUCT_TRUTH_REPORT.md`.
+
+Next recommended action:
+
+Run Sprint CR-3: Android Receiver real-runtime readiness and synthetic staging smoke.
+
+Required scope:
+
+- remove or isolate dormant repository-level auto-confirm/webhook delivery methods that are no longer called by active runtime;
+- verify Android Receiver Bank Target Lock runtime against exact supported package probes only;
+- validate Notification Access, receiver health and synthetic signed signal upload through staging;
+- keep real notification capture paused until explicit operator consent.
+
+Do not do:
+
+- Do not start real-world testing yet.
+- Do not deploy public production.
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not introduce LLM logic, SMS, Accessibility, scraping or broad app enumeration.
+- Do not expose secrets or raw PII.
+
+---
+
 generated_at: 2026-05-07T14:40:00+03:00
 
 ## Latest CR-1 Full Code Review Before Real-World Testing

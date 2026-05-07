@@ -7,11 +7,11 @@ import { decryptSecret } from '@swimpay/security';
 const { Pool } = pg;
 
 export type PublicWebhookEventType =
-  | 'payment.signal_detected'
   | 'payment.confirmed'
-  | 'payment.needs_review'
   | 'payment.rejected'
-  | 'order.expired';
+  | 'payment.expired';
+
+const PUBLIC_WEBHOOK_EVENT_TYPES = new Set<string>(['payment.confirmed', 'payment.rejected', 'payment.expired']);
 
 export const WEBHOOK_DELIVERY_STATUSES = {
   PENDING: 'pending',
@@ -357,9 +357,15 @@ export class InMemoryWebhookRepository implements WebhookRepository {
   public constructor(private readonly idGenerator: { deliveryId: () => string; auditEventId?: () => string | undefined }) {}
 
   public async listActiveEndpoints(merchantId: string, eventType: PublicWebhookEventType): Promise<WebhookEndpoint[]> {
+    if (!isPublicWebhookEventType(eventType)) {
+      return [];
+    }
+
     return this.endpoints.filter(
       (endpoint) =>
-        endpoint.merchantId === merchantId && endpoint.status === 'active' && endpoint.enabledEvents.includes(eventType)
+        endpoint.merchantId === merchantId &&
+        endpoint.status === 'active' &&
+        endpoint.enabledEvents.some((enabledEvent) => enabledEvent === eventType && isPublicWebhookEventType(enabledEvent))
     );
   }
 
@@ -551,6 +557,10 @@ export class PgWebhookRepository implements WebhookRepository {
   }
 
   public async listActiveEndpoints(merchantId: string, eventType: PublicWebhookEventType): Promise<WebhookEndpoint[]> {
+    if (!isPublicWebhookEventType(eventType)) {
+      return [];
+    }
+
     const result = await this.pool.query(
       `SELECT id, merchant_id, url, secret_hash, secret_encrypted, enabled_events, status
        FROM webhook_endpoints
@@ -829,6 +839,7 @@ export function createPaymentWebhookEvent<TData extends Record<string, unknown>>
   merchantId: string;
   data: TData;
 }): PublicWebhookEvent<TData> {
+  assertPublicWebhookEventType(params.type);
   if (containsRawPiiMarker(params.data)) {
     throw new Error('Webhook event data must not contain raw PII fields.');
   }
@@ -895,9 +906,20 @@ function isDeliveryClaimable(delivery: WebhookDelivery, nowMs: number): boolean 
 }
 
 function assertSafePublicWebhookEvent(event: PublicWebhookEvent): void {
+  assertPublicWebhookEventType(event.type);
   if (containsRawPiiMarker(event.data)) {
     throw new Error('Webhook event data must not contain raw PII fields.');
   }
+}
+
+function assertPublicWebhookEventType(eventType: string): asserts eventType is PublicWebhookEventType {
+  if (!isPublicWebhookEventType(eventType)) {
+    throw new Error('Unsupported public webhook event type.');
+  }
+}
+
+function isPublicWebhookEventType(eventType: string): eventType is PublicWebhookEventType {
+  return PUBLIC_WEBHOOK_EVENT_TYPES.has(eventType);
 }
 
 function signPayloadHash(payload: string): string {

@@ -2312,3 +2312,17 @@ Safety checks:
 - Created `.swimpay-agent/VPS_STAGING_READINESS_AUDIT.md`.
 - Created `.swimpay-agent/PROD_MODE_STAGING_VALIDATION_REPORT.md`.
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, sequential Compose build/up, healthy services and `/api-health` with database, NATS and Valkey `ok`.
+
+# 2026-05-07T15:10:00+03:00 - Sprint CR-2 Runtime Product Truth Enforcement
+
+- Continued from the full code review with multi-agent discipline: runtime, webhook taxonomy and stale E2E fixtures were audited independently before integration.
+- Created CR-2 tasks 578 through 582 and marked them completed.
+- Created `.swimpay-agent/CR2_RUNTIME_PRODUCT_TRUTH_INVENTORY.md`.
+- Updated `apps/signal-worker/src/runtime.ts` so high-confidence `auto_confirmed` matching results are routed to manual review with `manual_confirmation_required_v1`.
+- Removed active runtime-created public `payment.signal_detected`, `payment.needs_review` and reject webhooks from the signal processor.
+- Updated `apps/job-worker/src/webhooks.ts` so public webhook events are restricted to `payment.confirmed`, `payment.rejected` and `payment.expired`.
+- Updated runtime, job-worker, durable E2E, private-beta, checkout-flow and five-bank guardrail tests to enforce final V1 public webhook semantics.
+- Updated five-bank synthetic shadow fixtures to express that no public webhook is expected during review-only shadow processing.
+- Created `.swimpay-agent/CR2_RUNTIME_PRODUCT_TRUTH_REPORT.md`.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Docker live smoke could not run because Docker Desktop's `desktop-linux` pipe was unavailable; `/api-health` was not reachable.

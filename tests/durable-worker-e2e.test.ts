@@ -126,17 +126,10 @@ describe('durable worker e2e tests', () => {
       expect.arrayContaining(['bank_profile_untrusted', 'bank_app_unverified'])
     );
     expect(runtime.repository.orders.get('ord_e2e_01')?.status).not.toBe('auto_confirmed');
-    expect(runtime.repository.webhookEvents.map((event) => event.type)).toEqual([
-      'payment.signal_detected',
-      'payment.needs_review'
-    ]);
-    expect(runtime.repository.webhookEvents.find((event) => event.type === 'payment.needs_review')).toMatchObject({
-      type: 'payment.needs_review',
-      data: {
-        confirmation_type: 'notification_signal',
-        official_bank_confirmation: false
-      }
-    });
+    expect(runtime.repository.webhookEvents).toEqual([]);
+    expect(runtime.repository.publishedEvents.map((event) => event.type)).toEqual(
+      expect.arrayContaining([EventTypes.DECISION_NEEDS_REVIEW, EventTypes.REVIEW_CREATED])
+    );
     expectSafePayload(orderResponse.body);
     expectSafePayload(signalResponse.body);
     expectSafePayload(JSON.stringify(runtime.repository.auditEvents));
@@ -211,7 +204,7 @@ describe('durable worker e2e tests', () => {
     expect(unknown.repository.reviews[0]?.reasonCodes).toContain('ambiguous_direction');
   });
 
-  it('auto-confirms only a trusted synthetic signal and delivers a signed webhook through the job-worker boundary', async () => {
+  it('routes trusted synthetic signal to review and delivers a signed webhook only after manual confirmation', async () => {
     const runtime = createRuntimeHarness({
       signal: runtimeSignal({
         bankProfileId: 'synthetic_test_bank',
@@ -224,25 +217,26 @@ describe('durable worker e2e tests', () => {
 
     const result = await runtime.processor.processSignalReceived({ signalId: 'sig_e2e_01' });
 
-    expect(result.decision).toBe('auto_confirmed');
-    expect(runtime.repository.orders.get('ord_e2e_01')?.status).toBe('auto_confirmed');
-    expect(runtime.repository.paymentSessions.get('ps_e2e_01')?.status).toBe('auto_confirmed');
-    expect(runtime.repository.webhookEvents).toHaveLength(1);
-    expect(runtime.repository.webhookEvents[0]).toMatchObject({
-      type: 'payment.confirmed',
-      data: {
-        confirmation_type: 'notification_signal',
-        official_bank_confirmation: false,
-        order_id: 'ord_e2e_01',
-        payment_session_id: 'ps_e2e_01'
-      }
+    expect(result.decision).toBe('needs_review');
+    expect(result.reasonCodes).toContain('manual_confirmation_required_v1');
+    expect(runtime.repository.orders.get('ord_e2e_01')?.status).toBe('needs_review');
+    expect(runtime.repository.paymentSessions.get('ps_e2e_01')?.status).toBe('needs_review');
+    expect(runtime.repository.reviews).toHaveLength(1);
+    expect(runtime.repository.webhookEvents).toEqual([]);
+
+    const manualConfirmedWebhook = paymentWebhookEvent('evt_manual_confirmed_e2e', 'payment.confirmed', {
+      order_id: 'ord_e2e_01',
+      payment_session_id: 'ps_e2e_01',
+      signal_id: 'sig_e2e_01',
+      review_id: runtime.repository.reviews[0]?.id,
+      decision: 'manual_confirmed'
     });
 
     const webhookRepository = new InMemoryWebhookRepository({ deliveryId: () => 'del_confirmed_01' });
     webhookRepository.endpoints.push(activeEndpoint(['payment.confirmed']));
     const httpClient = new CapturingWebhookHttpClient([{ status: 200 }]);
     const worker = new WebhookDeliveryWorker({ repository: webhookRepository, httpClient });
-    const enqueueResult = await worker.enqueueEvent(runtime.repository.webhookEvents[0] as PublicWebhookEvent);
+    const enqueueResult = await worker.enqueueEvent(manualConfirmedWebhook);
     expect(enqueueResult).toEqual({ created: 1, skippedDuplicates: 0 });
 
     const handler = createWebhookDeliveryRequestedHandler(worker, () => now);
@@ -251,7 +245,7 @@ describe('durable worker e2e tests', () => {
       type: EventTypes.WEBHOOK_DELIVERY_REQUESTED,
       created_at: now,
       source: 'swimpay-signal-worker',
-      data: { event_id: runtime.repository.webhookEvents[0]?.id }
+      data: { event_id: manualConfirmedWebhook.id }
     });
 
     expect(webhookRepository.deliveries[0]).toMatchObject({
@@ -261,7 +255,7 @@ describe('durable worker e2e tests', () => {
     });
     expect(httpClient.requests).toHaveLength(1);
     expect(httpClient.requests[0]?.headers).toMatchObject({
-      'SwimPay-Event-Id': runtime.repository.webhookEvents[0]?.id,
+      'SwimPay-Event-Id': manualConfirmedWebhook.id,
       'SwimPay-Delivery-Id': 'del_confirmed_01',
       'SwimPay-Timestamp': now
     });
@@ -308,10 +302,7 @@ describe('durable worker e2e tests', () => {
 
     await collision.processor.processSignalReceived({ signalId: 'sig_e2e_01' });
     expect(collision.repository.reviews).toHaveLength(1);
-    expect(collision.repository.webhookEvents.map((event) => event.type)).toEqual([
-      'payment.signal_detected',
-      'payment.needs_review'
-    ]);
+    expect(collision.repository.webhookEvents).toEqual([]);
     expect(collision.repository.matches).toHaveLength(1);
 
     const duplicateApi = createApiHarness();
@@ -393,7 +384,7 @@ describe('durable worker e2e tests', () => {
         return () => `del_retry_${++value}`;
       })()
     });
-    repository.endpoints.push(activeEndpoint(['payment.needs_review']));
+    repository.endpoints.push(activeEndpoint(['payment.rejected']));
     const httpClient = new CapturingWebhookHttpClient([
       { status: 503, body: 'temporarily unavailable' },
       { status: 500 },
@@ -405,10 +396,11 @@ describe('durable worker e2e tests', () => {
       { status: 200 }
     ]);
     const worker = new WebhookDeliveryWorker({ repository, httpClient });
-    const event = paymentWebhookEvent('evt_retry_e2e', 'payment.needs_review', {
+    const event = paymentWebhookEvent('evt_retry_e2e', 'payment.rejected', {
       order_id: 'ord_e2e_01',
       payment_session_id: 'ps_e2e_01',
-      reason_codes: ['amount_collision']
+      decision: 'manual_rejected',
+      reason_codes: ['manual_review_rejected']
     });
 
     await worker.enqueueEvent(event);
@@ -431,10 +423,10 @@ describe('durable worker e2e tests', () => {
     });
 
     const successRepository = new InMemoryWebhookRepository({ deliveryId: () => 'del_success_01' });
-    successRepository.endpoints.push(activeEndpoint(['payment.needs_review']));
+    successRepository.endpoints.push(activeEndpoint(['payment.expired']));
     const successClient = new CapturingWebhookHttpClient([{ status: 200 }]);
     const successWorker = new WebhookDeliveryWorker({ repository: successRepository, httpClient: successClient });
-    await successWorker.enqueueEvent(paymentWebhookEvent('evt_success_e2e', 'payment.needs_review', { order_id: 'ord_e2e_02' }));
+    await successWorker.enqueueEvent(paymentWebhookEvent('evt_success_e2e', 'payment.expired', { order_id: 'ord_e2e_02' }));
     await successWorker.processDueDeliveries(now);
 
     expect(successRepository.deliveries[0]).toMatchObject({

@@ -5,6 +5,7 @@ import {
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState
 } from '@swimpay/contracts';
+import { EventTypes } from '@swimpay/events';
 import {
   InMemorySignalRuntimeRepository,
   SignalRuntimeProcessor,
@@ -84,18 +85,12 @@ describe('Sprint 7A PSP-like checkout bank selection flow', () => {
 
     expect(result.decision).toBe('needs_review');
     expect(runtime.repository.orders.get('ord_checkout_01')?.status).toBe('needs_review');
-    expect(runtime.repository.webhookEvents.map((event) => event.type)).toEqual([
-      'payment.signal_detected',
-      'payment.needs_review'
-    ]);
+    expect(runtime.repository.webhookEvents).toEqual([]);
+    expect(runtime.repository.publishedEvents.map((event) => event.type)).toEqual(
+      expect.arrayContaining([EventTypes.DECISION_NEEDS_REVIEW, EventTypes.REVIEW_CREATED])
+    );
     expect(runtime.repository.webhookEvents.some((event) => event.type === 'payment.confirmed')).toBe(false);
-    expect(JSON.stringify(runtime.repository.webhookEvents)).not.toContain('raw_notification_text');
-    for (const event of runtime.repository.webhookEvents) {
-      expect(event.data).toMatchObject({
-        confirmation_type: 'notification_signal',
-        official_bank_confirmation: false
-      });
-    }
+    expect(JSON.stringify(runtime.repository.publishedEvents)).not.toContain('raw_notification_text');
 
     const manualWebhook = createPaymentWebhookEvent({
       eventId: 'evt_checkout_manual_confirm',
@@ -221,7 +216,7 @@ function activeEndpoint(): WebhookEndpoint {
     merchantId: 'mch_checkout',
     url: 'https://merchant.example/swimpay',
     secret: 'whsec_checkout_e2e',
-    enabledEvents: ['payment.signal_detected', 'payment.needs_review', 'payment.confirmed'],
+    enabledEvents: ['payment.confirmed', 'payment.rejected', 'payment.expired'],
     status: 'active'
   };
 }
