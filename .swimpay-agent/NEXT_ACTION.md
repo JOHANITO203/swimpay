@@ -1,5 +1,40 @@
 # Next Action
 
+generated_at: 2026-05-07T14:40:00+03:00
+
+## Latest CR-1 Full Code Review Before Real-World Testing
+
+Completed:
+
+1. Created tasks 566 through 577 and updated the active task queue.
+2. Created the full code review inventory and focused audits for product truth, auth/tenant isolation, payment/review flow, Receiver/Intelligence, webhook/SDK, Android/UI, database/migrations, security/privacy, VPS readiness and test coverage.
+3. Created `.swimpay-agent/FULL_CODE_REVIEW_REPORT.md`.
+4. Confirmed that Sprint 9K was local/staging-guardrail validation only: no VPS production-mode deployment, no live OAuth exchange and no real bank notification capture were executed.
+
+Next recommended action:
+
+Run Sprint CR-2: Runtime product-truth enforcement.
+
+Required scope:
+
+- disable/remove active V1 auto-confirm path in `SignalRuntimeProcessor` and legacy matching runtime use;
+- force active signal processing through the Payment Intent Gate/manual-review path;
+- split internal audit/review events from public merchant webhook delivery;
+- restrict public worker event types to `payment.confirmed`, `payment.rejected` and `payment.expired`;
+- add guardrail tests proving `Matching 100 %`, `receiver_armed` and `J'ai payé` never confirm payment;
+- keep real notification capture and VPS deployment paused until CR-2 blockers are resolved.
+
+Do not do:
+
+- Do not start real-world testing yet.
+- Do not deploy public production.
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not introduce LLM logic, SMS, Accessibility, scraping or broad app enumeration.
+- Do not expose secrets or raw PII.
+
+---
+
 generated_at: 2026-05-07T13:25:00+03:00
 
 ## Latest Sprint 9K Production-mode Staging / VPS Validation

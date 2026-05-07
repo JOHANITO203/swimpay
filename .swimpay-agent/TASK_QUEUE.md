@@ -6,6 +6,21 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `566_full_code_review_inventory` - status: completed - source: `tasks/566_full_code_review_inventory.md`
+- [x] `567_product_truth_consistency_audit` - status: completed - source: `tasks/567_product_truth_consistency_audit.md`
+- [x] `568_auth_bff_and_tenant_isolation_audit` - status: completed - source: `tasks/568_auth_bff_and_tenant_isolation_audit.md`
+- [x] `569_payment_intent_and_review_flow_audit` - status: completed - source: `tasks/569_payment_intent_and_review_flow_audit.md`
+- [x] `570_receiver_intelligence_code_audit` - status: completed - source: `tasks/570_receiver_intelligence_code_audit.md`
+- [x] `571_webhook_and_sdk_contract_audit` - status: completed - source: `tasks/571_webhook_and_sdk_contract_audit.md`
+- [x] `572_android_receiver_and_ui_audit` - status: completed - source: `tasks/572_android_receiver_and_ui_audit.md`
+- [x] `573_database_migrations_and_data_integrity_audit` - status: completed - source: `tasks/573_database_migrations_and_data_integrity_audit.md`
+- [x] `574_security_privacy_and_secret_handling_audit` - status: completed - source: `tasks/574_security_privacy_and_secret_handling_audit.md`
+- [x] `575_vps_deployment_readiness_audit` - status: completed - source: `tasks/575_vps_deployment_readiness_audit.md`
+- [x] `576_test_coverage_and_quality_gates_audit` - status: completed - source: `tasks/576_test_coverage_and_quality_gates_audit.md`
+- [x] `577_full_code_review_closeout` - status: completed - source: `tasks/577_full_code_review_closeout.md`
+
+## Previous Queue
+
 - [x] `546_prod_mode_staging_inventory` - status: completed - source: `tasks/546_prod_mode_staging_inventory.md`
 - [x] `547_prod_env_and_secret_contract` - status: completed - source: `tasks/547_prod_env_and_secret_contract.md`
 - [x] `548_seed_staging_identity_data` - status: completed - source: `tasks/548_seed_staging_identity_data.md`

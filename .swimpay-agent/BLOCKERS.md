@@ -1,5 +1,17 @@
 # Blockers
 
+## CR-1 Full Code Review Before Real-World Testing
+
+- Critical: the active signal runtime can still auto-confirm through the legacy matching path. Evidence: `packages/matching-core/src/index.ts` and `apps/signal-worker/src/runtime.ts`. This must be disabled or removed for V1 before any real signal test.
+- Critical: internal review/signal events can still enter the webhook delivery path. Evidence: `apps/signal-worker/src/runtime.ts` requests `payment.signal_detected` / `payment.needs_review`, and `apps/job-worker/src/webhooks.ts` models them as public event types.
+- Critical: Android Receiver real bank notification runtime is still synthetic/debug-only. Evidence: `ReceiverBoundaries.kt` accepts only the app package in debug, and `SwimPayNotificationListenerService.kt` only enqueues accepted notifications in debug.
+- Critical: Google OAuth remains a fail-closed provider seam; real Google login has not been executed.
+- Critical: real VPS production-mode staging has not been deployed or validated with external secrets, HTTPS, migrations and synthetic smoke.
+- High: BFF/tenant isolation is not yet applied to all merchant/review/receiving routes; several routes still use `parseMerchantId`.
+- High: web merchant forms still use a server-side bearer seam and do not exercise real BFF cookie/CSRF form flow.
+- High: merchant/Android UI still contains demo-looking live payment/review data that must not be shown during real-world testing.
+- Validation blocker: Docker live smoke could not run in this shell because Docker context `desktop-linux` could not connect to `//./pipe/dockerDesktopLinuxEngine`; `/api-health` was not reachable.
+
 ## Sprint 9K Production-mode Staging / VPS Validation
 
 - No critical code blocker introduced.
