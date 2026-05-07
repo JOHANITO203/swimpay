@@ -1,5 +1,42 @@
 # Next Action
 
+generated_at: 2026-05-08T00:00:00+03:00
+
+## Latest CR-4 Android Receiver Real Runtime Readiness
+
+Completed:
+
+1. Created tasks 585 through 591 and updated the active task queue.
+2. Created `.swimpay-agent/ANDROID_RECEIVER_REAL_RUNTIME_INVENTORY.md`.
+3. Added non-debug runtime gating for explicitly enabled supported bank package targets.
+4. Wired accepted listener snapshots through the redaction pipeline before outbox enqueue.
+5. Added runtime outbox enqueue with redacted payloads, local counter, payload hash and signature.
+6. Added `StagingSyntheticNotificationHarness` for safe staging smoke without real notification capture.
+7. Added Android guardrail tests for permissions, package enumeration, redaction boundary, Android-side confirmation separation and activated-bank-only listener entry.
+8. Created `.swimpay-agent/ANDROID_RECEIVER_REAL_RUNTIME_REPORT.md`.
+
+Next recommended action:
+
+Run Sprint CR-5: production-mode staging validation with synthetic data only.
+
+Required scope:
+
+- validate Google OAuth live exchange through staging redirect URLs;
+- run VPS staging with external secrets, HTTPS and migrations;
+- register a staging receiver and send a signed synthetic redacted signal through the staging URL;
+- keep real bank notification capture blocked until explicit operator approval.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not deploy public production.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM logic, SMS, Accessibility, scraping or broad package enumeration.
+- Do not expose secrets, raw notification text or raw PII.
+
+---
+
 generated_at: 2026-05-07T15:35:00+03:00
 
 ## Latest CR-3 Product Truth Contradiction Neutralization

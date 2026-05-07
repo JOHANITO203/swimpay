@@ -1,5 +1,22 @@
 # Progress Log
 
+## 2026-05-08 - CR-4 Android Receiver Real Runtime Readiness
+
+- Created tasks 585 through 591 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Created `.swimpay-agent/ANDROID_RECEIVER_REAL_RUNTIME_INVENTORY.md`.
+- Confirmed the listener path was synthetic/debug-only because runtime package gating accepted only the debug app package and non-debug upload remained fail-safe.
+- Added non-debug runtime package gating through `enabledBankPackages`, backed by the exact V1 bank target list.
+- Updated the notification listener to load runtime config, reject unsupported packages early, process accepted snapshots through the redaction pipeline and enqueue only redacted outbox payloads.
+- Added `ReceiverRuntimeConfigStore` and `ReceiverRuntimeOutboxController`.
+- Added `StagingSyntheticNotificationHarness` for synthetic staging smoke without real bank notification capture.
+- Added `AndroidReceiverRealRuntimeTest` guardrails for activated-bank-only listener entry, redaction, outbox safety, synthetic harness behavior and forbidden Android capabilities.
+- Updated the legacy pipeline package-gate test to match the new immediate unsupported-package ignore reason.
+- Created `.swimpay-agent/ANDROID_RECEIVER_REAL_RUNTIME_REPORT.md`.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Android JVM tests and Android debug APK build.
+- Device QA passed on Samsung `SM-S916B` / `R5CWA0FEPZW`: APK install, app launch and UIAutomator dump succeeded.
+- No real bank notifications were processed.
+- No SMS, Accessibility, scraping, broad package enumeration, raw notification storage/upload, Android-side payment confirmation or public fulfillment callback behavior was added.
+
 ## 2026-05-07 - CR-1 Full Code Review Before Real-World Testing
 
 - Created tasks 566 through 577 and updated `.swimpay-agent/TASK_QUEUE.md`.

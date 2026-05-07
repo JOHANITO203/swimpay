@@ -35,7 +35,11 @@ object AndroidNotificationSnapshotExtractor {
             textLines = textLines,
             tickerText = notification.tickerText?.toString(),
             syntheticDebugOnly = syntheticDebug,
-            bankProfileId = if (syntheticDebug) SyntheticNotificationConstants.BANK_PROFILE_ID else "unknown",
+            bankProfileId = if (syntheticDebug) {
+                SyntheticNotificationConstants.BANK_PROFILE_ID
+            } else {
+                BankTargetLock.bankProfileIdForPackage(sbn.packageName) ?: "unknown"
+            },
             packageCertSha256 = if (syntheticDebug) SyntheticNotificationConstants.CERT_SHA256 else "TO_VERIFY",
             verificationStatus = if (syntheticDebug) {
                 BankPackageVerificationStatus.VERIFIED

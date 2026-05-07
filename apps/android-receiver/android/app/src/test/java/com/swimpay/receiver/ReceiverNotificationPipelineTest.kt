@@ -33,9 +33,9 @@ class ReceiverNotificationPipelineTest {
         )
 
         assertFalse(gate.evaluate(unknown).accepted)
-        assertEquals("package_not_allowed", gate.evaluate(unknown).reason)
+        assertEquals("unsupported_package_ignored", gate.evaluate(unknown).reason)
         assertFalse(gate.evaluate(toVerify).accepted)
-        assertEquals("package_cert_unverified", gate.evaluate(toVerify).reason)
+        assertEquals("unsupported_package_ignored", gate.evaluate(toVerify).reason)
     }
 
     @Test

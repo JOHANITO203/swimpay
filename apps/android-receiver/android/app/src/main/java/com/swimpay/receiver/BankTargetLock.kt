@@ -73,6 +73,10 @@ object BankTargetLock {
         return packageName in supportedPackages
     }
 
+    fun bankProfileIdForPackage(packageName: String): String? {
+        return supportedTargets.firstOrNull { it.packageName == packageName }?.bankProfileId
+    }
+
     fun resolveTargets(
         probe: ExactPackageProbe,
         selectedBankProfileIds: Set<String>,

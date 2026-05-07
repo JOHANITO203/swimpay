@@ -10,7 +10,14 @@ import com.swimpay.receiver.work.SignalUploadWorker
 
 class SwimPayNotificationListenerService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (!ReceiverBoundaries.isRuntimeNotificationAllowed(sbn.packageName, packageName, BuildConfig.DEBUG)) {
+        val runtimeConfig = ReceiverRuntimeConfigStore(this).load()
+        if (!ReceiverBoundaries.isRuntimeNotificationAllowed(
+                packageName = sbn.packageName,
+                appPackageName = packageName,
+                debugEnabled = BuildConfig.DEBUG,
+                enabledBankPackages = runtimeConfig.enabledBankPackages
+            )
+        ) {
             return
         }
 
@@ -20,7 +27,10 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
             debugEnabled = BuildConfig.DEBUG
         )
         val fieldsDetected = AndroidNotificationSnapshotExtractor.detectedFieldCount(snapshot)
-        val result = ReceiverNotificationPipeline(debugEnabled = BuildConfig.DEBUG).process(listOf(snapshot))
+        val result = ReceiverNotificationPipeline(
+            debugEnabled = BuildConfig.DEBUG,
+            enabledBankPackages = runtimeConfig.enabledBankPackages
+        ).process(listOf(snapshot))
 
         Log.i(
             TAG,
@@ -28,16 +38,28 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
                 "post_time=${snapshot.postTime} fields_detected=$fieldsDetected result=${result.nextAction} reason=${result.reason}"
         )
 
-        if (!result.accepted || !BuildConfig.DEBUG) {
+        if (!result.accepted) {
             return
         }
 
-        val controller = DebugReceiverSmokeController(
-            debugEnabled = true,
-            deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(this)),
-            outboxStore = AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(this))
-        )
-        val enqueue = controller.enqueueProcessedNotificationSignal(result)
+        val outboxStore = AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(this))
+        val deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(this))
+        val enqueue = if (BuildConfig.DEBUG) {
+            DebugReceiverSmokeController(
+                debugEnabled = true,
+                deviceStateStore = deviceStateStore,
+                outboxStore = outboxStore
+            ).enqueueProcessedNotificationSignal(result)
+        } else {
+            ReceiverRuntimeOutboxController(
+                merchantId = runtimeConfig.merchantId,
+                signingKey = runtimeConfig.signingKey,
+                deviceStateStore = deviceStateStore,
+                outboxStore = outboxStore
+            ).enqueueProcessedNotificationSignal(result).let {
+                DebugSmokeResult(success = it.success, safeMessage = it.safeMessage)
+            }
+        }
         Log.i(TAG, "outbox_enqueue_success=${enqueue.success} message=${enqueue.safeMessage}")
         SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0)
     }

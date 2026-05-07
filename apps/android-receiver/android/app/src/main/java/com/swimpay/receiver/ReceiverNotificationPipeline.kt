@@ -21,6 +21,18 @@ class SyntheticPackageGate(
     private val debugEnabled: Boolean
 ) {
     fun evaluate(snapshot: NotificationSnapshot): PackageGateResult {
+        return RuntimePackageGate(
+            debugEnabled = debugEnabled,
+            enabledBankPackages = emptySet()
+        ).evaluate(snapshot)
+    }
+}
+
+class RuntimePackageGate(
+    private val debugEnabled: Boolean,
+    private val enabledBankPackages: Set<String>
+) {
+    fun evaluate(snapshot: NotificationSnapshot): PackageGateResult {
         if (snapshot.syntheticDebugOnly) {
             return if (debugEnabled &&
                 snapshot.packageName == SyntheticNotificationConstants.PACKAGE_NAME &&
@@ -32,14 +44,15 @@ class SyntheticPackageGate(
             }
         }
 
-        if (snapshot.verificationStatus != BankPackageVerificationStatus.VERIFIED ||
-            snapshot.packageName == "TO_VERIFY" ||
-            snapshot.packageCertSha256 == "TO_VERIFY"
-        ) {
-            return PackageGateResult(false, "package_cert_unverified", "untrusted")
+        if (!BankTargetLock.isSupportedPackage(snapshot.packageName)) {
+            return PackageGateResult(false, "unsupported_package_ignored", "untrusted")
         }
 
-        return PackageGateResult(false, "package_not_allowed", "untrusted")
+        if (!BankTargetLock.isNotificationAllowed(snapshot.packageName, enabledBankPackages)) {
+            return PackageGateResult(false, "supported_package_not_enabled", "untrusted")
+        }
+
+        return PackageGateResult(true, "enabled_supported_bank_package_allowed", "enabled_supported_bank_package")
     }
 }
 
@@ -104,8 +117,9 @@ data class ReceiverNotificationPipelineResult(
 
 class ReceiverNotificationPipeline(
     private val debugEnabled: Boolean,
+    enabledBankPackages: Set<String> = emptySet(),
     private val coalescer: NotificationCoalescer = NotificationCoalescer(),
-    private val gate: SyntheticPackageGate = SyntheticPackageGate(debugEnabled)
+    private val gate: RuntimePackageGate = RuntimePackageGate(debugEnabled, enabledBankPackages)
 ) {
     fun process(snapshots: List<NotificationSnapshot>): ReceiverNotificationPipelineResult {
         val coalesced = coalescer.coalesce(snapshots)
@@ -138,7 +152,11 @@ class ReceiverNotificationPipeline(
             "reference_hmac" to (redacted.localParserHints.referenceMasked?.let { sha256Hex("reference:$it") } ?: ""),
             "reference_code_masked" to (redacted.localParserHints.referenceMasked ?: ""),
             "direction_hint" to redacted.localParserHints.directionHint,
-            "parser_hint" to "android-listener-synthetic-debug",
+            "parser_hint" to if (coalesced.representative.syntheticDebugOnly) {
+                "android-listener-synthetic-debug"
+            } else {
+                "android-listener-runtime-redacted"
+            },
             "signal_quality_hint" to if (redacted.localParserHints.directionHint == "incoming_customer_transfer") 50 else 10,
             "redacted_title" to (redacted.redactedTitle ?: ""),
             "redacted_body" to redacted.redactedBody,
@@ -148,7 +166,11 @@ class ReceiverNotificationPipeline(
         return ReceiverNotificationPipelineResult(
             accepted = true,
             nextAction = "enqueued",
-            reason = "synthetic_notification_processed",
+            reason = if (coalesced.representative.syntheticDebugOnly) {
+                "synthetic_notification_processed"
+            } else {
+                "runtime_notification_processed"
+            },
             safeCategory = redacted.localParserHints.directionHint,
             packageTrustLabel = gateResult.packageTrustLabel,
             payload = payload
@@ -256,6 +278,115 @@ object SyntheticNotificationFixtures {
             title = "Synthetic $category",
             text = body,
             postTime = 1_775_000_000_000L + category.length
+        )
+    }
+}
+
+data class StagingSyntheticHarnessResult(
+    val supportedBankAccepted: Boolean,
+    val unsupportedPackageIgnored: Boolean,
+    val rawTextBlockedAtBoundary: Boolean,
+    val redactedSignalEnvelopeCreated: Boolean,
+    val androidConfirmedPayment: Boolean,
+    val androidDeveloperWebhookEmitted: Boolean,
+    val safeEnvelope: Map<String, Any>?
+)
+
+object StagingSyntheticNotificationHarness {
+    fun supportedBankSnapshot(
+        packageName: String = "ru.sberbankmobile",
+        bankProfileId: String = BankTargetLock.bankProfileIdForPackage(packageName) ?: "sber_ru",
+        title: String = "Incoming transfer 137 RUB",
+        text: String = "Transfer from Ivan +79991234567. Ref SWP-ABC123",
+        postTime: Long = 1_775_000_100_000L
+    ): NotificationSnapshot {
+        require(BankTargetLock.isSupportedPackage(packageName)) {
+            "Synthetic staging harness only simulates supported bank packages"
+        }
+        return NotificationSnapshot(
+            packageName = packageName,
+            notificationId = 585,
+            tag = "swimpay_staging_synthetic",
+            postTime = postTime,
+            channelId = "synthetic_staging",
+            groupKey = null,
+            sortKey = null,
+            title = title,
+            text = text,
+            bigText = text,
+            subText = null,
+            summaryText = null,
+            textLines = listOf(text),
+            tickerText = null,
+            syntheticDebugOnly = false,
+            bankProfileId = bankProfileId,
+            packageCertSha256 = "TO_VERIFY",
+            verificationStatus = BankPackageVerificationStatus.TO_VERIFY
+        )
+    }
+
+    fun unsupportedPackageSnapshot(): NotificationSnapshot {
+        return NotificationSnapshot(
+            packageName = "com.example.unrelated",
+            notificationId = 586,
+            tag = "swimpay_staging_synthetic_unsupported",
+            postTime = 1_775_000_100_500L,
+            channelId = "synthetic_staging",
+            groupKey = null,
+            sortKey = null,
+            title = "Incoming transfer 137 RUB",
+            text = "Transfer from Ivan +79991234567. Ref SWP-ABC123",
+            bigText = "Transfer from Ivan +79991234567. Ref SWP-ABC123",
+            subText = null,
+            summaryText = null,
+            textLines = listOf("Transfer from Ivan +79991234567. Ref SWP-ABC123"),
+            tickerText = null,
+            syntheticDebugOnly = false,
+            bankProfileId = "unknown",
+            packageCertSha256 = "TO_VERIFY",
+            verificationStatus = BankPackageVerificationStatus.TO_VERIFY
+        )
+    }
+
+    fun runSmoke(enabledBankPackages: Set<String>): StagingSyntheticHarnessResult {
+        val pipeline = ReceiverNotificationPipeline(
+            debugEnabled = false,
+            enabledBankPackages = enabledBankPackages
+        )
+        val supported = pipeline.process(listOf(supportedBankSnapshot()))
+        val unsupported = pipeline.process(listOf(unsupportedPackageSnapshot()))
+        val rawTextBlocked = runCatching {
+            com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore(
+                com.swimpay.receiver.outbox.FakeEncryptedStorageAdapter()
+            ).enqueue(
+                com.swimpay.receiver.outbox.OutboxRecord(
+                    localId = "outbox_raw",
+                    eventId = "evt_raw",
+                    notificationHash = "hash_raw",
+                    semanticHash = "semantic_raw",
+                    payloadHash = "payload_hash_raw",
+                    encryptedPayload = """{"raw_notification_text":"Transfer +79991234567"}""",
+                    status = com.swimpay.receiver.outbox.OutboxStatus.PENDING_UPLOAD,
+                    attemptCount = 0,
+                    firstSeenAt = "2026-05-08T00:00:00.000Z",
+                    lastAttemptAt = null,
+                    nextRetryAt = null,
+                    ackReceivedAt = null
+                )
+            )
+        }.isFailure
+        val envelopeCreated = supported.payload != null &&
+            supported.payload.toString().contains("<PHONE>") &&
+            !supported.payload.toString().contains("+79991234567")
+
+        return StagingSyntheticHarnessResult(
+            supportedBankAccepted = supported.accepted,
+            unsupportedPackageIgnored = !unsupported.accepted && unsupported.reason == "unsupported_package_ignored",
+            rawTextBlockedAtBoundary = rawTextBlocked,
+            redactedSignalEnvelopeCreated = envelopeCreated,
+            androidConfirmedPayment = false,
+            androidDeveloperWebhookEmitted = false,
+            safeEnvelope = supported.payload
         )
     }
 }

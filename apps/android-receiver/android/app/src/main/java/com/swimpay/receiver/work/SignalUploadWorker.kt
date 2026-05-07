@@ -11,6 +11,7 @@ import androidx.work.WorkerParameters
 import android.util.Log
 import com.swimpay.receiver.BuildConfig
 import com.swimpay.receiver.DebugReceiverSmokeController
+import com.swimpay.receiver.DebugSmokeResult
 import com.swimpay.receiver.PersistentDeviceStateStore
 import com.swimpay.receiver.SharedPreferencesDeviceStateStorage
 import com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore
@@ -68,18 +69,22 @@ class SignalUploadWorker(
     override suspend fun doWork(): Result {
         val decision = SignalUploadWorkDecision.fromAttempts(runAttemptCount, ReceiverRetryPolicy(MAX_RETRY_ATTEMPTS))
         if (!decision.shouldRetry) {
-            Result.failure()
-        }
-
-        if (!BuildConfig.DEBUG) {
             return Result.failure()
         }
 
-        val result = DebugReceiverSmokeController(
-            debugEnabled = true,
-            deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(applicationContext)),
-            outboxStore = AndroidEncryptedOutboxStore(AndroidKeystoreOutboxStorageAdapter(applicationContext))
-        ).performAction("flush_outbox")
+        val outboxStore = AndroidEncryptedOutboxStore(AndroidKeystoreOutboxStorageAdapter(applicationContext))
+        val result = if (BuildConfig.DEBUG) {
+            DebugReceiverSmokeController(
+                debugEnabled = true,
+                deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(applicationContext)),
+                outboxStore = outboxStore
+            ).performAction("flush_outbox")
+        } else {
+            DebugSmokeResult(
+                success = outboxStore.dueRecords("9999-12-31T23:59:59.999Z").isEmpty(),
+                safeMessage = "runtime outbox flush requires staging upload transport; no unsafe payload emitted"
+            )
+        }
 
         Log.i("SwimPaySignalWorker", "background outbox flush success=${result.success} message=${result.safeMessage}")
         return if (result.success) Result.success() else Result.retry()

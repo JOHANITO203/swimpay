@@ -6,6 +6,16 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `585_android_receiver_real_runtime_inventory` - status: completed - source: `tasks/585_android_receiver_real_runtime_inventory.md`
+- [x] `586_bank_target_lock_non_debug_runtime` - status: completed - source: `tasks/586_bank_target_lock_non_debug_runtime.md`
+- [x] `587_notification_listener_redaction_path` - status: completed - source: `tasks/587_notification_listener_redaction_path.md`
+- [x] `588_receiver_outbox_real_runtime_safety` - status: completed - source: `tasks/588_receiver_outbox_real_runtime_safety.md`
+- [x] `589_receiver_staging_synthetic_notification_harness` - status: completed - source: `tasks/589_receiver_staging_synthetic_notification_harness.md`
+- [x] `590_android_receiver_real_runtime_guardrails` - status: completed - source: `tasks/590_android_receiver_real_runtime_guardrails.md`
+- [x] `591_android_receiver_real_runtime_closeout` - status: completed - source: `tasks/591_android_receiver_real_runtime_closeout.md`
+
+## Previous Queue
+
 - [x] `578_cr2_runtime_product_truth_inventory` - status: completed - source: `tasks/578_cr2_runtime_product_truth_inventory.md`
 - [x] `579_signal_runtime_manual_only_gate` - status: completed - source: `tasks/579_signal_runtime_manual_only_gate.md`
 - [x] `580_public_webhook_taxonomy_enforcement` - status: completed - source: `tasks/580_public_webhook_taxonomy_enforcement.md`

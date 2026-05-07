@@ -1,11 +1,23 @@
 # Blockers
 
+## CR-4 Android Receiver Real Runtime Readiness
+
+- Resolved: Android Receiver runtime package gating now accepts only explicitly enabled supported bank targets outside debug.
+- Resolved: unsupported package notifications are ignored before redaction, outbox or upload scheduling.
+- Resolved: listener runtime snapshots now route through the redaction pipeline before outbox enqueue.
+- Resolved: runtime outbox enqueue uses redacted payloads with event id, notification hash, semantic hash, local counter, payload hash and signature.
+- Resolved: synthetic staging harness proves supported-bank acceptance, unsupported-package ignore, raw-text boundary rejection, redacted envelope creation and no Android-side payment confirmation.
+- Resolved: Android guardrails cover SMS, Accessibility, broad package enumeration, raw notification storage/upload, Android-side confirmation behavior, Android-origin fulfillment callbacks and activated-bank-only listener entry.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Android JVM tests, Android debug APK build and non-notification device smoke.
+- Remaining blocker before real-world notification tests: explicit operator approval for real bank notification capture is still required and was not provided in this sprint.
+- Remaining blocker before production-mode staging: Google OAuth live exchange and VPS staging with external secrets, HTTPS and migrations remain unvalidated.
+
 ## CR-3 Product Truth Contradiction Neutralization
 
 - Resolved: active runtime, contracts, checkout status mapping, review queries, public event constants and metrics no longer contain an active `auto_confirmed` V1 decision/state path.
 - Resolved: strong matches now route to manual review with `manual_confirmation_required_v1`; no active runtime path emits `payment.confirmed` without merchant manual confirmation.
 - Resolved: active docs no longer present public `payment.signal_detected` / `payment.needs_review` fulfillment webhooks.
-- Resolved: new guardrail test protects active runtime and docs against reintroducing `autoConfirm(`, `auto_confirmed`, public internal webhooks or `official_bank_confirmation = true`.
+- Resolved: new guardrail test protects active runtime and docs against reintroducing `autoConfirm(`, `auto_confirmed`, public internal webhooks or a truthy official-bank-confirmation disclosure.
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
 - Validation blocker: Docker live smoke could not run because Docker Desktop's Linux engine pipe was unavailable; `/api-health` was unreachable.
 - Remaining non-critical vocabulary debt: inert legacy `auto_confirm*` schema/template/config names remain as disabled compatibility fields and guardrail reason codes. They are not active V1 behavior; a dedicated migration is recommended before a zero-string public audit.

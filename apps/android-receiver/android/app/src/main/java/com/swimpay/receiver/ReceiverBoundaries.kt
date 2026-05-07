@@ -8,14 +8,17 @@ object ReceiverBoundaries {
     fun isRuntimeNotificationAllowed(
         packageName: String,
         appPackageName: String,
-        debugEnabled: Boolean
+        debugEnabled: Boolean,
+        enabledBankPackages: Set<String> = emptySet()
     ): Boolean {
         if (packageName.isBlank()) {
             return false
         }
 
-        // The current runnable app only supports the debug synthetic source. Real bank package
-        // allowlisting must be wired through verified bank profiles before production capture.
-        return debugEnabled && packageName == appPackageName
+        if (debugEnabled && packageName == appPackageName) {
+            return true
+        }
+
+        return BankTargetLock.isNotificationAllowed(packageName, enabledBankPackages)
     }
 }
