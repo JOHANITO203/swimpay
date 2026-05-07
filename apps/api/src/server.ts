@@ -41,6 +41,31 @@ import {
   type MerchantIntegrationRepository
 } from './developer-integration.js';
 import {
+  BFF_SESSION_COOKIE_NAME,
+  CSRF_HEADER_NAME,
+  MerchantPermissions,
+  buildSessionCookieOptions,
+  createCsrfToken,
+  createDefaultAuthBffRepository,
+  createDefaultMerchantApiKeyVerifier,
+  createGoogleOAuthProviderSeam,
+  createOpaqueSessionToken,
+  hashBffSessionToken,
+  hashCsrfToken,
+  hasMerchantPermission,
+  merchantPermissionsForRole,
+  parseCookieHeader,
+  serializeExpiredSessionCookie,
+  serializeSessionCookie,
+  verifyCsrfToken,
+  verifyMerchantApiKeyAuthorization,
+  type AuthBffRepository,
+  type BffSessionContext,
+  type MerchantApiKeyVerifier,
+  type MerchantPermission,
+  type MerchantRole
+} from './auth-bff.js';
+import {
   buildMerchantReceivingRouteRecord,
   buildOrderCreateInput,
   formatAmountMinor,
@@ -176,6 +201,8 @@ export interface ApiServerOptions {
   bankEvidenceRepository?: BankEvidenceRepository;
   intelligenceRepository?: IntelligenceRepository | null;
   merchantIntegrationRepository?: MerchantIntegrationRepository | null;
+  authBffRepository?: AuthBffRepository | null;
+  merchantApiKeyVerifier?: MerchantApiKeyVerifier | null;
   eventPublisher?: InternalEventPublisher;
   phoneHmacSecret?: string;
   checkoutBaseUrl?: string;
@@ -269,6 +296,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const intelligenceRepository = options.intelligenceRepository ?? createDefaultIntelligenceRepository(process.env, options.environment);
   const merchantIntegrationRepository =
     options.merchantIntegrationRepository ?? createDefaultMerchantIntegrationRepository(process.env);
+  const authBffRepository = options.authBffRepository ?? createDefaultAuthBffRepository(process.env);
+  const merchantApiKeyVerifier = options.merchantApiKeyVerifier ?? createDefaultMerchantApiKeyVerifier(process.env);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const metrics = options.metrics ?? defaultMetricsRegistry;
   const phoneHmacSecret = options.phoneHmacSecret ?? process.env.PHONE_HMAC_SECRET ?? 'local_dev_phone_hmac_secret';
@@ -282,6 +311,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const androidMerchantDeliveryIdGenerator = options.androidMerchantDeliveryIdGenerator ?? (() => randomUUID());
   const androidMerchantConnectedSite = options.androidMerchantConnectedSite ?? parseAndroidMerchantConnectedSite(process.env);
   const adminAuth = options.adminAuth ?? createDefaultAdminAuthConfig(process.env, options.environment);
+  const googleOAuthProvider = createGoogleOAuthProviderSeam(process.env, options.environment);
   const clock = options.clock ?? (() => new Date());
   const startedAt = options.startedAt ?? new Date();
   const copyDetailsLimiter = new Map<string, { windowStartedAtMs: number; count: number }>();
@@ -292,6 +322,147 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       : request.headers['x-correlation-id'];
     const correlationId = typeof incoming === 'string' && incoming.trim().length > 0 ? incoming.trim() : randomUUID();
     reply.header('X-Correlation-Id', correlationId);
+  });
+
+  async function readBffSessionContext(request: FastifyRequest): Promise<{
+    context: BffSessionContext;
+    sessionTokenHash: string;
+  } | null> {
+    if (!authBffRepository) {
+      return null;
+    }
+    const sessionToken = parseCookieHeader(readHeader(request.headers.cookie), BFF_SESSION_COOKIE_NAME);
+    if (!sessionToken) {
+      return null;
+    }
+    const sessionTokenHash = hashBffSessionToken(sessionToken);
+    const context = await authBffRepository.getSessionByHash(sessionTokenHash, clock().toISOString());
+    return context ? { context, sessionTokenHash } : null;
+  }
+
+  async function requireBffCsrf(request: FastifyRequest, sessionTokenHash: string): Promise<boolean> {
+    if (!authBffRepository) {
+      return false;
+    }
+    const storedHash = await authBffRepository.getCsrfSecretHash(sessionTokenHash);
+    if (!storedHash) {
+      return false;
+    }
+    return verifyCsrfToken(readHeader(request.headers[CSRF_HEADER_NAME]), storedHash);
+  }
+
+  async function resolveMerchantContext(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    permission: MerchantPermission,
+    routeOptions: { requireCsrf?: boolean } = {}
+  ): Promise<{ merchantId: string; source: 'bff_session' | 'dev_test_bearer' } | null> {
+    const session = await readBffSessionContext(request);
+    if (session) {
+      const membership = session.context.activeMembership;
+      if (!membership || !hasMerchantPermission(membership.role, permission)) {
+        reply.status(403).send(invalidRequest('Merchant permission is required.', { permission }));
+        return null;
+      }
+      if (routeOptions.requireCsrf && !(await requireBffCsrf(request, session.sessionTokenHash))) {
+        reply.status(403).send(invalidRequest('A valid CSRF token is required for this merchant action.', {}));
+        return null;
+      }
+      return { merchantId: membership.merchantId, source: 'bff_session' };
+    }
+
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
+    return merchantId ? { merchantId, source: 'dev_test_bearer' } : null;
+  }
+
+  async function resolveSdkMerchantId(request: FastifyRequest): Promise<string | null> {
+    const apiKeyPrincipal = await verifyMerchantApiKeyAuthorization(request.headers.authorization, merchantApiKeyVerifier);
+    if (apiKeyPrincipal) {
+      return apiKeyPrincipal.merchantId;
+    }
+    return parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
+  }
+
+  server.get('/auth/google/start', async (_request, reply) => {
+    if (!googleOAuthProvider.productionReady) {
+      return reply.status(503).send(
+        invalidRequest('Google OAuth provider is not configured for production BFF login.', {
+          reason: googleOAuthProvider.reason
+        })
+      );
+    }
+    if (!googleOAuthProvider.configured) {
+      return reply.status(501).send(
+        invalidRequest('Google OAuth provider seam is available but not configured in this environment.', {
+          provider: 'google',
+          callback_path: googleOAuthProvider.callbackPath
+        })
+      );
+    }
+    return reply.status(501).send(
+      invalidRequest('Google OAuth redirect flow is prepared but not enabled by this local build.', {
+        provider: 'google',
+        authorization_endpoint: googleOAuthProvider.authorizationEndpoint
+      })
+    );
+  });
+
+  server.get('/auth/google/callback', async (_request, reply) =>
+    reply.status(501).send(invalidRequest('Google OAuth callback seam is present; provider exchange is a production follow-up.', {}))
+  );
+
+  server.post('/auth/dev/bootstrap-session', async (request, reply) => {
+    if (options.environment === 'production') {
+      return reply.status(404).send(invalidRequest('Development BFF login is disabled in production.', {}));
+    }
+    if (!authBffRepository) {
+      return reply.status(503).send(invalidRequest('BFF session repository is not configured.', {}));
+    }
+
+    const body = request.body as Record<string, unknown> | null;
+    const userId = asNonEmptyString(body?.user_id) ?? randomUUID();
+    const merchantId = asNonEmptyString(body?.merchant_id) ?? randomUUID();
+    const role = parseMerchantRole(body?.role) ?? 'owner';
+    const now = clock();
+    const sessionToken = createOpaqueSessionToken();
+    const csrfToken = createCsrfToken();
+    const expiresAt = new Date(now.getTime() + buildSessionCookieOptions(options.environment).maxAgeSeconds * 1000).toISOString();
+    const context = await authBffRepository.bootstrapDevSession({
+      userId,
+      merchantId,
+      email: asNonEmptyString(body?.email) ?? 'dev-merchant@swimpay.local',
+      name: asNonEmptyString(body?.name) ?? 'Development Merchant',
+      role,
+      sessionIdHash: hashBffSessionToken(sessionToken),
+      csrfSecretHash: hashCsrfToken(csrfToken),
+      expiresAt,
+      now: now.toISOString()
+    });
+
+    reply.header('Set-Cookie', serializeSessionCookie(sessionToken, buildSessionCookieOptions(options.environment)));
+    return reply.status(201).send(toMeResponse(context, csrfToken));
+  });
+
+  server.get('/v1/me', async (request, reply) => {
+    const session = await readBffSessionContext(request);
+    if (!session) {
+      return reply.status(401).send(invalidRequest('An authenticated BFF session is required.', {}));
+    }
+    return reply.status(200).send(toMeResponse(session.context));
+  });
+
+  server.post('/auth/logout', async (request, reply) => {
+    const session = await readBffSessionContext(request);
+    if (!session) {
+      reply.header('Set-Cookie', serializeExpiredSessionCookie(options.environment));
+      return reply.status(204).send();
+    }
+    if (!(await requireBffCsrf(request, session.sessionTokenHash))) {
+      return reply.status(403).send(invalidRequest('A valid CSRF token is required for logout.', {}));
+    }
+    await authBffRepository?.revokeSession(session.sessionTokenHash, clock().toISOString());
+    reply.header('Set-Cookie', serializeExpiredSessionCookie(options.environment));
+    return reply.status(204).send();
   });
 
   server.get('/health', async (): Promise<HealthResponse> =>
@@ -369,8 +540,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/merchant/integration', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
-    if (!merchantId) {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_READ);
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
@@ -378,13 +550,16 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     return reply.status(200).send(
-      toMerchantIntegrationResponse(await merchantIntegrationRepository.getIntegration(merchantId, clock().toISOString()))
+      toMerchantIntegrationResponse(await merchantIntegrationRepository.getIntegration(merchantContext.merchantId, clock().toISOString()))
     );
   });
 
   server.post('/v1/merchant/integration/keys', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
-    if (!merchantId) {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_KEYS_CREATE, {
+      requireCsrf: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
@@ -392,13 +567,16 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     return reply.status(201).send(
-      toMerchantIntegrationResponse(await merchantIntegrationRepository.ensureApiKey(merchantId, clock().toISOString()))
+      toMerchantIntegrationResponse(await merchantIntegrationRepository.ensureApiKey(merchantContext.merchantId, clock().toISOString()))
     );
   });
 
   server.post('/v1/merchant/integration/keys/rotate', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
-    if (!merchantId) {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_KEYS_ROTATE, {
+      requireCsrf: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
@@ -406,13 +584,16 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     return reply.status(201).send(
-      toMerchantIntegrationResponse(await merchantIntegrationRepository.rotateApiKey(merchantId, clock().toISOString()))
+      toMerchantIntegrationResponse(await merchantIntegrationRepository.rotateApiKey(merchantContext.merchantId, clock().toISOString()))
     );
   });
 
   server.post('/v1/merchant/integration/webhook-secret/rotate', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
-    if (!merchantId) {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_KEYS_ROTATE, {
+      requireCsrf: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
@@ -420,13 +601,16 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     return reply.status(201).send(
-      toMerchantIntegrationResponse(await merchantIntegrationRepository.rotateWebhookSecret(merchantId, clock().toISOString()))
+      toMerchantIntegrationResponse(await merchantIntegrationRepository.rotateWebhookSecret(merchantContext.merchantId, clock().toISOString()))
     );
   });
 
   server.put('/v1/merchant/integration/webhook-url', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
-    if (!merchantId) {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_WEBHOOK_UPDATE, {
+      requireCsrf: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
@@ -440,26 +624,30 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     return reply.status(200).send(
       toMerchantIntegrationResponse(
-        await merchantIntegrationRepository.updateWebhookUrl(merchantId, webhookUrl.value, clock().toISOString())
+        await merchantIntegrationRepository.updateWebhookUrl(merchantContext.merchantId, webhookUrl.value, clock().toISOString())
       )
     );
   });
 
   server.post('/v1/merchant/integration/test-webhook', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
-    if (!merchantId) {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_WEBHOOK_TEST, {
+      requireCsrf: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
       return reply.status(503).send(developerIntegrationUnavailableError());
     }
 
-    return reply.status(202).send(await merchantIntegrationRepository.enqueueTestWebhook(merchantId, clock().toISOString()));
+    return reply.status(202).send(await merchantIntegrationRepository.enqueueTestWebhook(merchantContext.merchantId, clock().toISOString()));
   });
 
   server.get('/v1/merchant/integration/webhook-deliveries', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
-    if (!merchantId) {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_DELIVERY_READ);
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
@@ -468,7 +656,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     const query = request.query as { limit?: string };
 
     return reply.status(200).send({
-      deliveries: await merchantIntegrationRepository.listDeliveries(merchantId, parseDeliveryLimit(query.limit)),
+      deliveries: await merchantIntegrationRepository.listDeliveries(merchantContext.merchantId, parseDeliveryLimit(query.limit)),
       public_webhook_events: ['payment.confirmed', 'payment.rejected', 'payment.expired'],
       raw_payload_included: false,
       official_bank_confirmation: false
@@ -476,8 +664,11 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/merchant/integration/webhook-deliveries/:id/retry', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
-    if (!merchantId) {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_DELIVERY_RETRY, {
+      requireCsrf: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
@@ -488,17 +679,15 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply.status(400).send(invalidRequest('Delivery id is required.', {}));
     }
 
-    const result = await merchantIntegrationRepository.retryDelivery(merchantId, params.id, clock().toISOString());
+    const result = await merchantIntegrationRepository.retryDelivery(merchantContext.merchantId, params.id, clock().toISOString());
     return reply.status(result.status === 'not_found' ? 404 : 202).send(result);
   });
 
   server.post('/v1/orders', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = await resolveSdkMerchantId(request);
     if (!merchantId) {
       return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
+        invalidRequest('A valid merchant API key or authenticated development merchant bearer is required.', {})
       );
     }
 
@@ -2971,6 +3160,56 @@ function parseAdminAuthMode(value: string | undefined, environment: string): Ope
   }
 
   return environment === 'production' ? 'signed_token' : 'dev_token';
+}
+
+function readHeader(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function asNonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function parseMerchantRole(value: unknown): MerchantRole | null {
+  const role = asNonEmptyString(value);
+  return role === 'owner' || role === 'admin' || role === 'developer' || role === 'operator' || role === 'viewer'
+    ? role
+    : null;
+}
+
+function toMeResponse(context: BffSessionContext, csrfToken?: string) {
+  return {
+    user: {
+      id: context.user.id,
+      email: context.user.email,
+      name: context.user.name,
+      avatar_url: context.user.avatarUrl,
+      status: context.user.status,
+      google_sub_present: Boolean(context.user.googleSub)
+    },
+    active_merchant_id: context.session.activeMerchantId,
+    active_membership: context.activeMembership
+      ? {
+          merchant_id: context.activeMembership.merchantId,
+          role: context.activeMembership.role,
+          permissions: merchantPermissionsForRole(context.activeMembership.role)
+        }
+      : null,
+    memberships: context.memberships.map((membership) => ({
+      merchant_id: membership.merchantId,
+      role: membership.role,
+      status: membership.status
+    })),
+    admin_roles: context.adminRoles.map((role) => ({
+      role: role.role,
+      status: role.status
+    })),
+    session: {
+      expires_at: context.session.expiresAt,
+      revoked: Boolean(context.session.revokedAt)
+    },
+    ...(csrfToken ? { csrf_token: csrfToken } : {})
+  };
 }
 
 function parseOperatorRole(value: string | undefined): OperatorRole | undefined {

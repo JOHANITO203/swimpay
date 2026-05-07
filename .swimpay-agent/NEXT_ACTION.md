@@ -1,6 +1,43 @@
 # Next Action
 
-generated_at: 2026-05-07T09:48:00+03:00
+generated_at: 2026-05-07T10:55:00+03:00
+
+## Latest Sprint 9J Auth BFF Foundation
+
+Completed:
+
+1. Created Sprint 9J task files 535 through 545 and updated the task queue.
+2. Created `.swimpay-agent/AUTH_BFF_INVENTORY.md`.
+3. Added additive identity/session migration `010_auth_bff_foundation.sql`.
+4. Added Auth BFF module for sessions, cookies, CSRF, roles, permissions, Google OAuth seam and API key verification.
+5. Added BFF routes for dev bootstrap, `/v1/me`, logout and Google OAuth seam.
+6. Wired Developer Integration lifecycle routes to BFF active merchant context and CSRF for session-backed mutations.
+7. Wired `/v1/orders` to production stored API key verification.
+8. Added Auth BFF tests and updated security/database docs.
+
+Validation so far:
+
+- Passed: `npx vitest run apps/api/src/auth-bff.test.ts`.
+- Passed: `npm run typecheck`.
+
+Next recommended action:
+
+Run full Sprint 9J validation and then Sprint 9K production-mode staging auth validation:
+
+- configure real Google OAuth provider values;
+- seed production-mode merchant membership and API key data;
+- run API in production-mode staging;
+- prove local `test_*` bearers fail closed;
+- prove BFF session + CSRF and stored API key paths work through the proxy.
+
+Do not do:
+
+- Do not deploy production from the local machine.
+- Do not process real bank notifications without explicit consent.
+- Do not enable auto-confirmation.
+- Do not introduce LLM logic.
+- Do not add SMS, Accessibility or broad app enumeration.
+- Do not change SDK public webhook semantics.
 
 ## Latest Sprint 9I Live Receiver Validation
 

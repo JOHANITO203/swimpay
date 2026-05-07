@@ -1,5 +1,20 @@
 # Progress Log
 
+## 2026-05-07 - Sprint 9J Auth BFF Merchant/Admin Foundation
+
+- Created tasks 535 through 545 and updated the active task queue.
+- Created `.swimpay-agent/AUTH_BFF_INVENTORY.md`.
+- Added additive migration `010_auth_bff_foundation.sql` for users, merchant memberships, admin roles and BFF sessions.
+- Added `apps/api/src/auth-bff.ts` for opaque sessions, HttpOnly cookie helpers, CSRF, role/permission mapping, Google OAuth provider seam and stored API key verification.
+- Added BFF endpoints: `/auth/google/start`, `/auth/google/callback`, dev-only `/auth/dev/bootstrap-session`, `/v1/me` and `/auth/logout`.
+- Wired `/v1/merchant/integration*` to authenticated active merchant context when BFF session-backed, with CSRF on BFF POST/PUT/retry mutations.
+- Kept local `Bearer test_*` fallback available only outside production.
+- Wired `/v1/orders` to resolve production merchant identity from stored hashed API keys.
+- Added `apps/api/src/auth-bff.test.ts` for BFF session, CSRF, permission, tenant isolation and API key guardrails.
+- Updated `docs/05_DATABASE_SCHEMA.md` and `docs/11_SECURITY_AND_PRIVACY.md`.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Docker live validation passed with sequential Compose build/up. Migration `010_auth_bff_foundation.sql` was applied to the existing local Postgres volume, Compose services are healthy and `/api-health` reports database, NATS and Valkey `ok`.
+
 ## 2026-05-07 - Sprint 9I Live Receiver Validation
 
 - Continued after Sprint 9H commit with a live backend/Android smoke, without real bank notification capture.

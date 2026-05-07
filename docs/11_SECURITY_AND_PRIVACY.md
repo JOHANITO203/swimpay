@@ -97,6 +97,10 @@ Do not log API keys.
 
 Scopes must be supported.
 
+Sprint 9J adds the Auth BFF foundation. Human dashboard access uses opaque HttpOnly server-side sessions and merchant memberships. SDK/API access uses hashed merchant API keys. Android Receiver access uses receiver device identity and signed signal envelopes. These identities must not be mixed.
+
+Production merchant API requests must verify `Authorization: Bearer sk_...` against stored `api_keys`; local `Bearer test_*` merchant fallbacks are development-only. Merchant web mutations require CSRF when authenticated through a BFF session. The CSRF token is bound to server-side session material and is never a payment confirmation signal.
+
 ## Webhook signatures
 
 Headers:

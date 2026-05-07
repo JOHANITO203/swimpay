@@ -422,6 +422,17 @@ CREATE TABLE audit_events (
 );
 ```
 
+## Auth BFF identity foundation
+
+Sprint 9J adds additive identity/session tables:
+
+- `users`: human identities, keyed by stable `google_sub` when Google OAuth is enabled.
+- `merchant_memberships`: links users to merchants with `owner`, `admin`, `developer`, `operator` and `viewer` roles.
+- `admin_roles`: SwimPay internal operator/admin roles, separate from merchant memberships.
+- `bff_sessions`: opaque server-side HttpOnly dashboard sessions with active merchant context and CSRF material.
+
+The existing `merchants` table remains the tenant source of truth. Sprint 9J adds `business_name` and `owner_user_id` without dropping the legacy `name` column. BFF human sessions, merchant SDK API keys and Android Receiver device keys are separate identity boundaries.
+
 ## Critical indexes
 
 ```sql

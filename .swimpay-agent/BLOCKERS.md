@@ -1,5 +1,15 @@
 # Blockers
 
+## Sprint 9J Auth BFF Merchant/Admin Foundation
+
+- No critical code blocker introduced.
+- Auth BFF foundation is implemented for human dashboard sessions, merchant memberships, permissions, CSRF, and stored API key verification.
+- Developer Integration lifecycle endpoints now prefer authenticated BFF active merchant context and require CSRF for BFF-backed mutations.
+- Local `Bearer test_*` merchant fallback remains development-only and is still rejected in production on hardened developer integration and receiver routes.
+- `/v1/orders` can resolve production merchant identity from stored hashed `api_keys`.
+- Remaining non-critical limitation: Google OAuth is currently a fail-closed provider seam; live Google token exchange requires production OAuth configuration and a follow-up staging sprint.
+- Remaining non-critical limitation: not every legacy merchant/review/receiving route has been migrated to BFF permission helpers yet; Sprint 9J establishes the foundation and hardens the developer integration + SDK order boundary first.
+
 ## Sprint 9I Live Receiver Validation
 
 - No critical code blocker introduced.

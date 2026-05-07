@@ -6,6 +6,20 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `535_auth_bff_inventory` - status: completed - source: `tasks/535_auth_bff_inventory.md`
+- [x] `536_identity_schema_and_migrations` - status: completed - source: `tasks/536_identity_schema_and_migrations.md`
+- [x] `537_google_oauth_bff_provider_seam` - status: completed - source: `tasks/537_google_oauth_bff_provider_seam.md`
+- [x] `538_bff_session_cookie_lifecycle` - status: completed - source: `tasks/538_bff_session_cookie_lifecycle.md`
+- [x] `539_merchant_membership_roles_permissions` - status: completed - source: `tasks/539_merchant_membership_roles_permissions.md`
+- [x] `540_active_merchant_context_and_tenant_isolation` - status: completed - source: `tasks/540_active_merchant_context_and_tenant_isolation.md`
+- [x] `541_csrf_for_merchant_post_forms` - status: completed - source: `tasks/541_csrf_for_merchant_post_forms.md`
+- [x] `542_api_key_verification_against_stored_keys` - status: completed - source: `tasks/542_api_key_verification_against_stored_keys.md`
+- [x] `543_admin_role_boundary` - status: completed - source: `tasks/543_admin_role_boundary.md`
+- [x] `544_auth_bff_guardrails` - status: completed - source: `tasks/544_auth_bff_guardrails.md`
+- [x] `545_auth_bff_closeout` - status: completed - source: `tasks/545_auth_bff_closeout.md`
+
+## Previous Queue
+
 - [x] `525_receiver_intelligence_prod_inventory` - status: completed - source: `tasks/525_receiver_intelligence_prod_inventory.md`
 - [x] `526_receiver_device_key_lifecycle_hardening` - status: completed - source: `tasks/526_receiver_device_key_lifecycle_hardening.md`
 - [x] `527_receiver_registration_and_session_hardening` - status: completed - source: `tasks/527_receiver_registration_and_session_hardening.md`
