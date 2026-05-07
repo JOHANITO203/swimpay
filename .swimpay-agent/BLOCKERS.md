@@ -1,5 +1,18 @@
 # Blockers
 
+## Sprint 9H Receiver / Intelligence Production Hardening
+
+- No critical code blocker introduced.
+- Receiver registration and heartbeat now reject local `Bearer test_*` merchant bearer fallback in production.
+- Receiver heartbeat now derives safe action-required operational states including `notification_access_missing`, `needs_reconnect`, `bank_targets_missing` and `force_review_local`.
+- Production signal upload now rejects stale/future `observed_at` envelopes outside server clock tolerance before ingestion.
+- Signal upload eligibility now rejects inactive/reconnect/access-missing/bank-target-missing/revoked/suspended/disabled receivers.
+- Five-bank synthetic/redacted Payment Intent Gate fixture validation was added.
+- Intelligence retention policy hooks were documented in `docs/INTELLIGENCE_RETENTION_POLICY.md`.
+- Device QA passed on `R5CWA0FEPZW`: APK install, launch and UIAutomator dump succeeded.
+- Docker live validation passed after Docker restart: sequential Compose build/up passed, API, web, signal worker, job worker, Postgres, NATS and Valkey are healthy, proxy is running, and `/api-health` returns database, NATS and Valkey `ok`.
+- Non-critical local environment note: keep using `COMPOSE_PARALLEL_LIMIT=1` / sequential Compose builds on this machine to avoid Docker Desktop/BuildKit pressure.
+
 ## Sprint 9G Developer Wizard Auth Hardening
 
 - No critical product blocker introduced.

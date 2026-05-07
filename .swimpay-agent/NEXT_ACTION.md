@@ -1,6 +1,42 @@
 # Next Action
 
-generated_at: 2026-05-07T02:45:00+03:00
+generated_at: 2026-05-07T09:15:00+03:00
+
+## Latest Sprint 9H Receiver / Intelligence Production Hardening
+
+Completed:
+
+1. Created Sprint 9H task files 525 through 534 and updated the task queue.
+2. Created `.swimpay-agent/RECEIVER_INTELLIGENCE_PROD_INVENTORY.md`.
+3. Hardened receiver registration/heartbeat production auth boundary against local `test_*` bearers.
+4. Added richer receiver operational states and `bank_targets_missing` heartbeat warning/action.
+5. Hardened signal upload eligibility for action-required receiver states.
+6. Added production stale/future `observed_at` rejection before signal ingestion.
+7. Added five-bank synthetic/redacted Payment Intent Gate fixture validation.
+8. Added Receiver/Intelligence production guardrails.
+9. Added `docs/INTELLIGENCE_RETENTION_POLICY.md`.
+10. Updated receiver/security docs.
+
+Validation:
+
+- Passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Android JVM tests and Android debug APK build.
+- Device QA passed on `R5CWA0FEPZW`: install, launch and UIAutomator dump.
+- Docker live validation passed after Docker restart: sequential Compose build/up passed, services are healthy, and `/api-health` returns database, NATS and Valkey `ok`.
+
+Next recommended action:
+
+Run Sprint 9I live receiver validation:
+
+- run live API smoke for production receiver auth rejection and stale signal rejection;
+- rerun Android receiver heartbeat/signal smoke against live backend.
+
+Do not do:
+
+- Do not process real bank notifications without explicit consent.
+- Do not enable auto-confirmation.
+- Do not introduce LLM logic.
+- Do not add SMS, Accessibility or broad app enumeration.
+- Do not change SDK public webhook semantics.
 
 ## Latest Sprint 9G Developer Wizard Auth Hardening
 

@@ -83,6 +83,7 @@ import {
   buildSignalReceivedEvent,
   createDefaultSignalIdGenerator,
   isReceiverDeviceEligibleForSignalUpload,
+  isReceiverSignalObservedAtWithinTolerance,
   NatsEventPublisher,
   NoopEventPublisher,
   PgSignalRepository,
@@ -1131,12 +1132,12 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/receiver-devices/register', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, {
+      allowTestBearer: options.environment !== 'production'
+    });
     if (!merchantId) {
       return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
+        invalidRequest('An authenticated merchant session is required for receiver device registration.', {})
       );
     }
 
@@ -1176,12 +1177,12 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/receiver-devices/heartbeat', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, {
+      allowTestBearer: options.environment !== 'production'
+    });
     if (!merchantId) {
       return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
+        invalidRequest('An authenticated merchant session is required for receiver heartbeat.', {})
       );
     }
 
@@ -1206,6 +1207,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       deviceId: body.value.device_id,
       notificationAccessStatus: body.value.notification_access,
       listenerConnected: body.value.listener_connected,
+      allowedBankProfileIds: body.value.allowed_bank_profile_ids,
+      reportedStatus: body.value.status,
       appVersion: body.value.app_version,
       androidVersion: body.value.android_version,
       heartbeatAt
@@ -1249,6 +1252,17 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       metrics.increment(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL);
       const statusCode = body.code === 'signature_missing' || body.code === 'signature_invalid' ? 401 : 400;
       return reply.status(statusCode).send(receiverContractError(body.code, body.field));
+    }
+
+    if (
+      options.environment === 'production' &&
+      !isReceiverSignalObservedAtWithinTolerance({
+        observedAt: body.value.observed_at,
+        receivedAt: clock()
+      })
+    ) {
+      metrics.increment(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL);
+      return reply.status(400).send(receiverContractError('timestamp_out_of_range', 'observed_at'));
     }
 
     const device = await signalRepository.getReceiverDevice({

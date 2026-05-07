@@ -827,7 +827,17 @@ export interface ReceiverDevice {
   publicKey: string;
   appVersion?: string;
   androidVersion?: string;
-  status: 'pending' | 'active' | 'suspended' | 'revoked';
+  status:
+    | 'pending'
+    | 'active'
+    | 'inactive'
+    | 'degraded'
+    | 'suspended'
+    | 'revoked'
+    | 'needs_reconnect'
+    | 'notification_access_missing'
+    | 'bank_targets_missing'
+    | 'force_review_local';
   trustScore: number;
   notificationAccessStatus: boolean;
   lastLocalCounter: number;
@@ -956,6 +966,7 @@ export const AndroidReceiverWarnings = {
   LISTENER_DISCONNECTED: 'listener_disconnected',
   DEVICE_VERSION_OUTDATED: 'device_version_outdated',
   BANK_PROFILE_UNVERIFIED: 'bank_profile_unverified',
+  BANK_TARGETS_MISSING: 'bank_targets_missing',
   QUEUE_BACKLOG_HIGH: 'queue_backlog_high',
   BATTERY_OPTIMIZATION_RISK: 'battery_optimization_risk'
 } as const;
@@ -1377,6 +1388,9 @@ export function validateAndroidReceiverHeartbeatRequest(
   if (!body.listener_connected) {
     warnings.push(AndroidReceiverWarnings.LISTENER_DISCONNECTED);
   }
+  if (Array.isArray(body.allowed_bank_profile_ids) && body.allowed_bank_profile_ids.length === 0) {
+    warnings.push(AndroidReceiverWarnings.BANK_TARGETS_MISSING);
+  }
   if (typeof body.queue_length === 'number' && body.queue_length >= 50) {
     warnings.push(AndroidReceiverWarnings.QUEUE_BACKLOG_HIGH);
   }
@@ -1391,7 +1405,9 @@ export function validateAndroidReceiverHeartbeatRequest(
   };
   assignIfDefined(value, 'app_version', optionalString(body.app_version));
   assignIfDefined(value, 'android_version', optionalString(body.android_version));
-  assignIfDefined(value, 'allowed_bank_profile_ids', optionalStringArray(body.allowed_bank_profile_ids));
+  if (Array.isArray(body.allowed_bank_profile_ids)) {
+    value.allowed_bank_profile_ids = optionalStringArray(body.allowed_bank_profile_ids) ?? [];
+  }
   if (typeof body.queue_length === 'number') {
     value.queue_length = body.queue_length;
   }

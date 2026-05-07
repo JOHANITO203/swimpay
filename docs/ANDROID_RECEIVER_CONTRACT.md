@@ -67,6 +67,8 @@ Response:
 
 Registration does not automatically trust the device or any bank metadata. The public key is stored for signed signal upload verification. The response does not expose secrets.
 
+In production, receiver registration requires an authenticated merchant context. Local `Bearer test_*` merchant bearers are accepted only by non-production/dev foundations and are rejected in production.
+
 ## Heartbeat
 
 Endpoint:
@@ -117,8 +119,23 @@ Warnings:
 - `regrant_required_after_reinstall`
 - `device_version_outdated`
 - `bank_profile_unverified`
+- `bank_targets_missing`
 - `queue_backlog_high`
 - `battery_optimization_risk`
+
+Operational statuses:
+
+- `pending`
+- `active`
+- `inactive`
+- `degraded`
+- `revoked`
+- `needs_reconnect`
+- `notification_access_missing`
+- `bank_targets_missing`
+- `force_review_local`
+
+`notification_access_missing`, `needs_reconnect`, `bank_targets_missing`, `inactive` and `revoked` are action-required states. These states must not be used as proof of payment. Signal uploads from disabled or action-required devices are rejected by the backend except for explicitly cautious states such as `force_review_local`.
 
 ## Onboarding Readiness
 
@@ -296,6 +313,8 @@ Devices in `suspended`, `revoked` or `disabled` state cannot upload signals.
 - `receiver_outdated`
 
 Persistence-level duplicate responses currently use the existing API error names `duplicate_event_id`, `duplicate_notification_hash`, and `local_counter_regression`.
+
+Production upload hardening rejects stale or future `observed_at` values outside the accepted server clock tolerance before ingestion. This check complements signature verification, monotonic local counters and database uniqueness constraints.
 
 ## Observability
 

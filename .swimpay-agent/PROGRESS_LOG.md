@@ -1,5 +1,15 @@
 # Progress Log
 
+## 2026-05-07 - Sprint 9H Docker Recovery Validation
+
+- User restarted Docker Desktop and requested continuation.
+- Re-ran sequential Compose live validation with `COMPOSE_PARALLEL_LIMIT=1`.
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml build swimpay-api swimpay-web swimpay-signal-worker swimpay-job-worker proxy`.
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml up -d --no-build`.
+- PASS: `docker compose --env-file .env.example -f infra/docker-compose.yml ps`; API, web, signal worker, job worker, Postgres, NATS and Valkey are healthy; proxy is running.
+- PASS: `Invoke-WebRequest -UseBasicParsing http://localhost:8080/api-health`; database, NATS and Valkey returned `ok`.
+- Updated Sprint 9H report, blockers and next action to mark the Docker live blocker resolved.
+
 ## 2026-05-06 - Product Truth Cleanup Before SDK
 
 - Created tasks 469 through 473 and updated `.swimpay-agent/TASK_QUEUE.md`.
@@ -2223,3 +2233,20 @@ Safety checks:
 - Cleaned `docs/DEVELOPER_PLUGIN_INTEGRATION.md` so internal signal/review concepts are not presented as public fulfillment webhooks.
 - Extended `tests/product-truth-docs.test.ts` to guard that doc.
 - Created `.swimpay-agent/DEVELOPER_WIZARD_LIVE_UX_REPORT.md`.
+
+# 2026-05-07T09:12:00+03:00 - Sprint 9H Receiver / Intelligence Production Hardening
+
+- Created tasks 525 through 534 and updated the active task queue.
+- Created `.swimpay-agent/RECEIVER_INTELLIGENCE_PROD_INVENTORY.md`.
+- Hardened `/v1/receiver-devices/register` and `/v1/receiver-devices/heartbeat` so production rejects local `Bearer test_*` merchant bearer fallback.
+- Added receiver operational states: `inactive`, `needs_reconnect`, `notification_access_missing`, `bank_targets_missing` and `force_review_local`.
+- Added heartbeat warning `bank_targets_missing` and required action `configure_bank_targets`.
+- Hardened signal upload eligibility to reject action-required or disabled receiver states.
+- Added production signal observed timestamp tolerance rejection before ingestion.
+- Extended Payment Intent Gate tests with five-bank synthetic/redacted fixture coverage.
+- Added `tests/receiver-intelligence-prod-guardrails.test.ts`.
+- Created `docs/INTELLIGENCE_RETENTION_POLICY.md`.
+- Updated `docs/11_SECURITY_AND_PRIVACY.md` and `docs/ANDROID_RECEIVER_CONTRACT.md`.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Android JVM tests and Android debug APK build.
+- Device QA passed on `R5CWA0FEPZW`: APK install, app launch and UIAutomator dump.
+- Docker live validation initially hit a local Docker Desktop pipe outage, then passed after Docker restart with sequential Compose build/up, healthy services and `/api-health` reporting database, NATS and Valkey `ok`.

@@ -6,6 +6,19 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `525_receiver_intelligence_prod_inventory` - status: completed - source: `tasks/525_receiver_intelligence_prod_inventory.md`
+- [x] `526_receiver_device_key_lifecycle_hardening` - status: completed - source: `tasks/526_receiver_device_key_lifecycle_hardening.md`
+- [x] `527_receiver_registration_and_session_hardening` - status: completed - source: `tasks/527_receiver_registration_and_session_hardening.md`
+- [x] `528_signal_upload_antireplay_outbox_hardening` - status: completed - source: `tasks/528_signal_upload_antireplay_outbox_hardening.md`
+- [x] `529_payment_intent_runtime_safety_audit` - status: completed - source: `tasks/529_payment_intent_runtime_safety_audit.md`
+- [x] `530_five_bank_production_fixture_validation` - status: completed - source: `tasks/530_five_bank_production_fixture_validation.md`
+- [x] `531_receiver_health_and_operational_states` - status: completed - source: `tasks/531_receiver_health_and_operational_states.md`
+- [x] `532_intelligence_retention_policy_hooks` - status: completed - source: `tasks/532_intelligence_retention_policy_hooks.md`
+- [x] `533_receiver_intelligence_guardrails` - status: completed - source: `tasks/533_receiver_intelligence_guardrails.md`
+- [x] `534_receiver_intelligence_prod_closeout` - status: completed - source: `tasks/534_receiver_intelligence_prod_closeout.md`
+
+## Previous Queue
+
 - [x] `519_developer_wizard_auth_inventory` - status: completed - source: `tasks/519_developer_wizard_auth_inventory.md`
 - [x] `520_web_merchant_session_boundary` - status: completed - source: `tasks/520_web_merchant_session_boundary.md`
 - [x] `521_production_no_dev_bearer_guard` - status: completed - source: `tasks/521_production_no_dev_bearer_guard.md`

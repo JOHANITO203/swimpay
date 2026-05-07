@@ -21,7 +21,18 @@ export interface ReceiverSignalDevice {
   status: string;
 }
 
-export type ReceiverSignalDeviceStatus = 'pending' | 'active' | 'degraded' | 'suspended' | 'revoked' | 'disabled';
+export type ReceiverSignalDeviceStatus =
+  | 'pending'
+  | 'active'
+  | 'inactive'
+  | 'degraded'
+  | 'suspended'
+  | 'revoked'
+  | 'disabled'
+  | 'needs_reconnect'
+  | 'notification_access_missing'
+  | 'bank_targets_missing'
+  | 'force_review_local';
 
 export interface ReceiverSignalPayload {
   title_redacted?: string | undefined;
@@ -443,7 +454,22 @@ export function verifyReceiverSignalSignature(
 }
 
 export function isReceiverDeviceEligibleForSignalUpload(device: ReceiverSignalDevice): boolean {
-  return ['pending', 'active', 'degraded'].includes(device.status);
+  return ['pending', 'active', 'degraded', 'force_review_local'].includes(device.status);
+}
+
+export function isReceiverSignalObservedAtWithinTolerance(params: {
+  observedAt: string;
+  receivedAt: Date;
+  toleranceMs?: number | undefined;
+}): boolean {
+  const toleranceMs = params.toleranceMs ?? 15 * 60 * 1000;
+  const observedAtMs = Date.parse(params.observedAt);
+  if (Number.isNaN(observedAtMs)) {
+    return false;
+  }
+
+  const deltaMs = Math.abs(params.receivedAt.getTime() - observedAtMs);
+  return deltaMs <= toleranceMs;
 }
 
 export function buildSignalIngestionInput(params: {

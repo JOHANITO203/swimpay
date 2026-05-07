@@ -1,5 +1,6 @@
 import pg from 'pg';
 import {
+  AndroidReceiverWarnings,
   RequiredAndroidReceiverCapabilities,
   validateAndroidReceiverHeartbeatRequest,
   validateAndroidReceiverRegistrationRequest,
@@ -9,7 +10,17 @@ import {
 
 const { Pool } = pg;
 
-export type ReceiverDeviceStatus = 'pending' | 'active' | 'degraded' | 'suspended' | 'revoked';
+export type ReceiverDeviceStatus =
+  | 'pending'
+  | 'active'
+  | 'inactive'
+  | 'degraded'
+  | 'suspended'
+  | 'revoked'
+  | 'needs_reconnect'
+  | 'notification_access_missing'
+  | 'bank_targets_missing'
+  | 'force_review_local';
 
 export interface StoredReceiverDeviceRecord {
   id: string;
@@ -46,6 +57,8 @@ export interface UpdateReceiverHeartbeatInput {
   deviceId: string;
   notificationAccessStatus: boolean;
   listenerConnected: boolean;
+  allowedBankProfileIds?: string[] | undefined;
+  reportedStatus?: string | undefined;
   appVersion?: string | undefined;
   androidVersion?: string | undefined;
   heartbeatAt: string;
@@ -149,8 +162,12 @@ export class PgReceiverDeviceRepository implements ReceiverDeviceRepository {
   }
 
   public async updateHeartbeat(input: UpdateReceiverHeartbeatInput): Promise<StoredReceiverDeviceRecord | null> {
-    const status: ReceiverDeviceStatus =
-      input.notificationAccessStatus && input.listenerConnected ? 'active' : 'degraded';
+    const status = deriveReceiverDeviceOperationalStatus({
+      notificationAccessStatus: input.notificationAccessStatus,
+      listenerConnected: input.listenerConnected,
+      allowedBankProfileIds: input.allowedBankProfileIds,
+      reportedStatus: input.reportedStatus
+    });
 
     const result = await this.pool.query(
       `UPDATE receiver_devices
@@ -223,10 +240,36 @@ export function validateReceiverHeartbeatBody(body: unknown): ReceiverDeviceVali
       app_version: validation.value.app_version,
       android_version: validation.value.android_version,
       timestamp: validation.value.timestamp,
-      signature: validation.value.signature
+      signature: validation.value.signature,
+      status: (body as Partial<ReceiverHeartbeatBody>).status
     },
     warnings: validation.warnings
   };
+}
+
+export function deriveReceiverDeviceOperationalStatus(input: {
+  notificationAccessStatus: boolean;
+  listenerConnected: boolean;
+  allowedBankProfileIds?: readonly string[] | undefined;
+  reportedStatus?: string | undefined;
+}): ReceiverDeviceStatus {
+  if (input.reportedStatus === 'force_review_local') {
+    return 'force_review_local';
+  }
+
+  if (!input.notificationAccessStatus) {
+    return 'notification_access_missing';
+  }
+
+  if (!input.listenerConnected) {
+    return 'needs_reconnect';
+  }
+
+  if (Array.isArray(input.allowedBankProfileIds) && input.allowedBankProfileIds.length === 0) {
+    return 'bank_targets_missing';
+  }
+
+  return 'active';
 }
 
 export function buildReceiverDeviceCreateInput(params: {
@@ -325,16 +368,19 @@ function normalizeHeartbeatAliases(body: unknown): unknown {
 function receiverRequiredActions(warnings: readonly AndroidReceiverWarning[]): string[] {
   const actions = new Set<string>();
   for (const warning of warnings) {
-    if (warning === 'notification_access_disabled') {
+    if (warning === AndroidReceiverWarnings.NOTIFICATION_ACCESS_DISABLED) {
       actions.add('enable_notification_access');
     }
-    if (warning === 'listener_disconnected') {
+    if (warning === AndroidReceiverWarnings.LISTENER_DISCONNECTED) {
       actions.add('reconnect_notification_listener');
     }
-    if (warning === 'queue_backlog_high') {
+    if (warning === AndroidReceiverWarnings.BANK_TARGETS_MISSING) {
+      actions.add('configure_bank_targets');
+    }
+    if (warning === AndroidReceiverWarnings.QUEUE_BACKLOG_HIGH) {
       actions.add('check_receiver_outbox');
     }
-    if (warning === 'battery_optimization_risk') {
+    if (warning === AndroidReceiverWarnings.BATTERY_OPTIMIZATION_RISK) {
       actions.add('disable_battery_optimization');
     }
   }

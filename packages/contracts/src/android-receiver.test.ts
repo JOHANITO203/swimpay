@@ -76,6 +76,27 @@ describe('android receiver contracts', () => {
     });
   });
 
+  it('marks heartbeat as action-required when no bank targets are enabled', () => {
+    const result = validateAndroidReceiverHeartbeatRequest({
+      device_id: 'dev_01',
+      app_version: '0.1.0',
+      android_version: '15',
+      notification_access_enabled: true,
+      listener_connected: true,
+      allowed_bank_profile_ids: [],
+      queue_length: 0,
+      last_signal_observed_at: null,
+      battery_optimization_ignored: true,
+      timestamp: '2026-05-02T12:01:00.000Z',
+      signature: 'abcdef'
+    });
+
+    expect(result).toMatchObject({
+      valid: true,
+      warnings: ['bank_targets_missing']
+    });
+  });
+
   it('validates a redacted signed signal upload contract', () => {
     const result = validateAndroidReceiverSignalUploadRequest(validSignalUpload());
 

@@ -61,10 +61,12 @@ Backend verifies:
 - device exists;
 - public key matches;
 - signature valid;
-- receiver device is not suspended, revoked or disabled;
+- receiver device is allowed for upload (`pending`, `active`, `degraded` or `force_review_local`);
+- receiver device is not inactive, suspended, revoked, disabled, missing notification access, missing bank targets or awaiting reconnect;
 - event id unique;
 - notification hash unique;
-- local counter increasing.
+- local counter increasing;
+- observed timestamp inside the accepted production clock tolerance.
 
 Current V1 foundation signature algorithm:
 
@@ -81,8 +83,11 @@ Use:
 - `event_id` unique;
 - `notification_hash` unique;
 - `local_counter` monotonic;
+- production observed timestamp tolerance;
 - PostgreSQL unique indexes;
 - optional server nonce/request hash for sensitive operations.
+
+Sprint 9H adds production receiver hardening: local `test_*` merchant bearers are rejected on receiver registration and heartbeat routes in production, heartbeat derives safe operational states such as `notification_access_missing`, `needs_reconnect`, `bank_targets_missing` and `force_review_local`, and production signal uploads reject stale or future observed timestamps before ingestion.
 
 ## API keys
 

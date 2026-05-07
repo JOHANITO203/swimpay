@@ -191,7 +191,14 @@ describe('receiver signal ingestion api', () => {
     expect(metrics.counterValue(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL)).toBe(1);
   });
 
-  it.each(['suspended', 'revoked'] as const)('rejects %s receiver devices', async (status) => {
+  it.each([
+    'inactive',
+    'suspended',
+    'revoked',
+    'needs_reconnect',
+    'notification_access_missing',
+    'bank_targets_missing'
+  ] as const)('rejects %s receiver devices', async (status) => {
     const repository = new FakeSignalRepository();
     repository.device.status = status;
     const metrics = new InMemoryMetricsRegistry();
@@ -212,6 +219,31 @@ describe('receiver signal ingestion api', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json().error.code).toBe('receiver_device_disabled');
+    expect(repository.storedSignals).toEqual([]);
+    expect(metrics.counterValue(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL)).toBe(1);
+  });
+
+  it('rejects stale receiver signal envelopes before ingestion', async () => {
+    const repository = new FakeSignalRepository();
+    const metrics = new InMemoryMetricsRegistry();
+    const server = buildApiServer({
+      environment: 'production',
+      healthChecks: skippedHealthChecks(),
+      signalRepository: repository,
+      eventPublisher: new FakeEventPublisher(),
+      signalIdGenerator: () => 'sig_01',
+      clock: () => new Date('2026-05-02T11:00:00.000Z'),
+      metrics
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver/signals',
+      payload: createValidSignal({ observed_at: '2026-05-02T09:00:00.000Z' })
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe('timestamp_out_of_range');
     expect(repository.storedSignals).toEqual([]);
     expect(metrics.counterValue(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL)).toBe(1);
   });

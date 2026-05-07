@@ -46,6 +46,14 @@ const baseIntent: PaymentIntentGateIntent = {
   expiresAt: '2026-05-06T10:15:00.000Z'
 };
 
+const v1BankTargets = [
+  ['sber_ru', 'ru.sberbankmobile'],
+  ['tbank_ru', 'com.idamob.tinkoff.android'],
+  ['vtb_ru', 'ru.vtb24.mobilebanking.android'],
+  ['alfa_ru', 'ru.alfabank.mobile.android'],
+  ['gazprombank_ru', 'ru.gazprombank.android.mobilebank.app']
+] as const;
+
 describe('payment intent gate', () => {
   it('creates an expected payment candidate only for an active exact intent match', () => {
     const result = evaluatePaymentIntentGate({
@@ -177,5 +185,69 @@ describe('payment intent gate', () => {
     expect(result.reviewCreationAllowed).toBe(true);
     expect(result.reasonCodes).toContain('expected_amount_mismatch');
     expect(result.reasonCodes).toContain('display_amount_only_mismatch');
+  });
+
+  it.each(v1BankTargets)('validates intent-bound fixture outcomes for %s', (bankProfileId, packageName) => {
+    const intent = {
+      ...baseIntent,
+      selectedReceiverBankProfileId: bankProfileId,
+      selectedReceivingRouteId: `route_${bankProfileId}_card`
+    };
+    const signal = {
+      ...baseSignal,
+      bankProfileId,
+      packageName,
+      receivingRouteId: intent.selectedReceivingRouteId
+    };
+
+    const strong = evaluatePaymentIntentGate({
+      signal,
+      activePaymentIntents: [intent]
+    });
+    const noIntent = evaluatePaymentIntentGate({
+      signal,
+      activePaymentIntents: []
+    });
+    const negative = evaluatePaymentIntentGate({
+      signal: { ...signal, classification: 'outgoing_payment' },
+      activePaymentIntents: [intent]
+    });
+    const amountOnly = evaluatePaymentIntentGate({
+      signal: { ...signal, referenceHmac: undefined, senderPhoneHmac: undefined },
+      activePaymentIntents: [intent]
+    });
+    const roundedAmount = evaluatePaymentIntentGate({
+      signal: { ...signal, amountMinor: intent.displayPriceMinor },
+      activePaymentIntents: [intent]
+    });
+    const late = evaluatePaymentIntentGate({
+      signal: { ...signal, observedAt: '2026-05-06T10:18:00.000Z' },
+      activePaymentIntents: [{ ...intent, status: 'expired' }]
+    });
+
+    expect(strong).toMatchObject({
+      intentRelation: 'expected_payment_candidate',
+      reviewCreationAllowed: true,
+      autoConfirmAllowed: false,
+      collisionDetected: false
+    });
+    expect(noIntent).toMatchObject({
+      intentRelation: 'unrelated_bank_activity',
+      reviewCreationAllowed: false
+    });
+    expect(negative).toMatchObject({
+      intentRelation: 'negative_activity',
+      reviewCreationAllowed: false
+    });
+    expect(amountOnly).toMatchObject({
+      intentRelation: 'ambiguous_activity',
+      reviewCreationAllowed: true
+    });
+    expect(roundedAmount.reasonCodes).toContain('display_amount_only_mismatch');
+    expect(late).toMatchObject({
+      intentRelation: 'late_payment_candidate',
+      reviewCreationAllowed: true,
+      autoConfirmAllowed: false
+    });
   });
 });
