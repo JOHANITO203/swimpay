@@ -336,6 +336,13 @@ type RouteParams = { routeId: string };
 type PaymentSessionParams = { paymentSessionId: string };
 type MerchantRoutePayload = Record<string, unknown>;
 
+export interface MerchantServerBearerOptions {
+  environment: string;
+  checkoutMerchantId: string;
+  explicitToken?: string | undefined;
+  allowDevFallback?: boolean | undefined;
+}
+
 const defaultRecipient: CheckoutRecipient = {
   name: 'Compte marchand',
   bank: 'Banque du marchand',
@@ -349,12 +356,19 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
   const apiBaseUrl = process.env.API_BASE_URL ?? 'http://localhost:3000';
   const checkoutMerchantId = process.env.CHECKOUT_MERCHANT_ID ?? 'mch_dev';
+  const merchantServerBearerToken = resolveMerchantServerBearerToken({
+    environment: options.environment,
+    checkoutMerchantId,
+    explicitToken: process.env.MERCHANT_INTEGRATION_BEARER_TOKEN,
+    allowDevFallback: process.env.SWIMPAY_ALLOW_DEV_MERCHANT_SESSION !== 'false'
+  });
   const checkoutSessionProvider = options.checkoutSessionProvider ?? new ApiCheckoutSessionProvider(apiBaseUrl, checkoutMerchantId);
   const adminEvidenceClient = options.adminEvidenceClient ?? new ApiAdminEvidenceClient(apiBaseUrl, process.env.SWIMPAY_ADMIN_TOKEN ?? 'change_me');
   const adminIntelligenceClient = options.adminIntelligenceClient ?? new ApiAdminIntelligenceClient(apiBaseUrl, process.env.SWIMPAY_ADMIN_TOKEN ?? 'change_me');
-  const merchantRouteAdminClient = options.merchantRouteAdminClient ?? new ApiMerchantRouteAdminClient(apiBaseUrl, checkoutMerchantId);
+  const merchantRouteAdminClient = options.merchantRouteAdminClient
+    ?? (merchantServerBearerToken ? new ApiMerchantRouteAdminClient(apiBaseUrl, merchantServerBearerToken) : null);
   const merchantIntegrationClient = options.merchantIntegrationClient === undefined
-    ? createDefaultMerchantIntegrationClient(apiBaseUrl, checkoutMerchantId, options.environment)
+    ? createDefaultMerchantIntegrationClient(apiBaseUrl, merchantServerBearerToken)
     : options.merchantIntegrationClient;
 
   server.get('/', async (_request, reply) => {
@@ -380,6 +394,10 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.get('/merchant/receiving-methods', async (_request, reply) => {
+    if (!merchantRouteAdminClient) {
+      reply.status(503).type('text/html; charset=utf-8');
+      return renderMerchantRoutesUnavailableScreen();
+    }
     try {
       const routes = await merchantRouteAdminClient.listRoutes();
       reply.type('text/html; charset=utf-8');
@@ -391,16 +409,25 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.post('/merchant/receiving-methods', async (request, reply) => {
+    if (!merchantRouteAdminClient) {
+      return reply.status(303).redirect('/merchant/receiving-methods?result=unavailable');
+    }
     await merchantRouteAdminClient.createRoute((request.body ?? {}) as MerchantRoutePayload);
     return reply.status(303).redirect('/merchant/receiving-methods');
   });
 
   server.post('/merchant/receiving-methods/:routeId/disable', async (request, reply) => {
+    if (!merchantRouteAdminClient) {
+      return reply.status(303).redirect('/merchant/receiving-methods?result=unavailable');
+    }
     await merchantRouteAdminClient.updateRoute((request.params as RouteParams).routeId, { enabled: false });
     return reply.status(303).redirect('/merchant/receiving-methods');
   });
 
   server.post('/merchant/receiving-methods/:routeId/recommend', async (request, reply) => {
+    if (!merchantRouteAdminClient) {
+      return reply.status(303).redirect('/merchant/receiving-methods?result=unavailable');
+    }
     await merchantRouteAdminClient.updateRoute((request.params as RouteParams).routeId, { recommended: true });
     return reply.status(303).redirect('/merchant/receiving-methods');
   });
@@ -525,22 +552,35 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
 
   // Keep old path for backward compatibility if needed by existing tests, but redirect
   server.get('/admin/merchant-receiving-routes', async (_request, reply) => {
+    if (!merchantRouteAdminClient) {
+      reply.status(503).type('text/html; charset=utf-8');
+      return renderMerchantRoutesUnavailableScreen();
+    }
     reply.type('text/html; charset=utf-8');
     const routes = await merchantRouteAdminClient.listRoutes();
     return renderMerchantReceivingMethodsScreen(routes);
   });
 
   server.post('/admin/merchant-receiving-routes', async (request, reply) => {
+    if (!merchantRouteAdminClient) {
+      return reply.status(303).redirect('/admin/merchant-receiving-routes?result=unavailable');
+    }
     await merchantRouteAdminClient.createRoute((request.body ?? {}) as MerchantRoutePayload);
     return reply.status(303).redirect('/admin/merchant-receiving-routes');
   });
 
   server.post('/admin/merchant-receiving-routes/:routeId/disable', async (request, reply) => {
+    if (!merchantRouteAdminClient) {
+      return reply.status(303).redirect('/admin/merchant-receiving-routes?result=unavailable');
+    }
     await merchantRouteAdminClient.updateRoute((request.params as RouteParams).routeId, { enabled: false });
     return reply.status(303).redirect('/admin/merchant-receiving-routes');
   });
 
   server.post('/admin/merchant-receiving-routes/:routeId/recommend', async (request, reply) => {
+    if (!merchantRouteAdminClient) {
+      return reply.status(303).redirect('/admin/merchant-receiving-routes?result=unavailable');
+    }
     await merchantRouteAdminClient.updateRoute((request.params as RouteParams).routeId, { recommended: true });
     return reply.status(303).redirect('/admin/merchant-receiving-routes');
   });
@@ -689,10 +729,40 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
 }
 
 export class ApiMerchantRouteAdminClient implements MerchantRouteAdminClient {
-  constructor(private url: string, private mchId: string) {}
-  async listRoutes() { const r = await fetch(this.url + '/v1/merchant/receiving-routes', { headers: { 'Authorization': `Bearer ${this.mchId}` } }); return (await r.json()).routes || []; }
-  async createRoute(input: MerchantRoutePayload) { return (await fetch(this.url + '/v1/merchant/receiving-routes', { method: 'POST', body: JSON.stringify(input) })).json(); }
-  async updateRoute(id: string, patch: MerchantRoutePayload) { return (await fetch(this.url + `/v1/merchant/receiving-routes/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).json(); }
+  constructor(private url: string, private bearerToken: string) {}
+
+  async listRoutes() {
+    const r = await this.request<{ routes?: MerchantRouteAdminRoute[] }>('/v1/merchant/receiving-routes');
+    return r.routes || [];
+  }
+
+  async createRoute(input: MerchantRoutePayload) {
+    return this.request<MerchantRouteAdminRoute>('/v1/merchant/receiving-routes', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    });
+  }
+
+  async updateRoute(id: string, patch: MerchantRoutePayload) {
+    return this.request<MerchantRouteAdminRoute>(`/v1/merchant/receiving-routes/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch)
+    });
+  }
+
+  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const headers = new Headers(init.headers);
+    headers.set('Authorization', `Bearer ${this.bearerToken}`);
+    headers.set('Accept', 'application/json');
+    if (init.body) {
+      headers.set('Content-Type', 'application/json');
+    }
+    const response = await fetch(this.url + path, { ...init, headers });
+    if (!response.ok) {
+      throw new Error(`Merchant route API returned ${response.status}`);
+    }
+    return response.json() as Promise<T>;
+  }
 }
 
 export class ApiMerchantIntegrationClient implements MerchantIntegrationClient {
@@ -752,19 +822,32 @@ export class ApiMerchantIntegrationClient implements MerchantIntegrationClient {
   }
 }
 
-function createDefaultMerchantIntegrationClient(
-  apiBaseUrl: string,
-  checkoutMerchantId: string,
-  environment: string
-): MerchantIntegrationClient | null {
-  const explicitToken = process.env.MERCHANT_INTEGRATION_BEARER_TOKEN;
-  if (explicitToken) {
-    return new ApiMerchantIntegrationClient(apiBaseUrl, explicitToken);
-  }
-  if (environment === 'production') {
+function createDefaultMerchantIntegrationClient(apiBaseUrl: string, bearerToken: string | null): MerchantIntegrationClient | null {
+  if (!bearerToken) {
     return null;
   }
-  return new ApiMerchantIntegrationClient(apiBaseUrl, `test_${checkoutMerchantId}`);
+  return new ApiMerchantIntegrationClient(apiBaseUrl, bearerToken);
+}
+
+export function resolveMerchantServerBearerToken(options: MerchantServerBearerOptions): string | null {
+  const explicitToken = options.explicitToken?.trim();
+  if (explicitToken) {
+    if (options.environment === 'production' && isLocalDevMerchantBearerToken(explicitToken)) {
+      return null;
+    }
+    return explicitToken;
+  }
+
+  if (options.environment === 'production' || options.allowDevFallback === false) {
+    return null;
+  }
+
+  const merchantId = options.checkoutMerchantId.replace(/^test_/u, '');
+  return `test_${merchantId}`;
+}
+
+function isLocalDevMerchantBearerToken(token: string): boolean {
+  return /^test_[A-Za-z0-9_-]+$/u.test(token);
 }
 
 export class ApiAdminEvidenceClient implements AdminEvidenceClient {

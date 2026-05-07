@@ -1,5 +1,15 @@
 # Blockers
 
+## Sprint 9G Developer Wizard Auth Hardening
+
+- No critical product blocker introduced.
+- Developer wizard production mode no longer creates or accepts local `test_*` merchant bearer fallback.
+- `/v1/merchant/integration*` routes reject local `Bearer test_*` tokens when API environment is production.
+- Developer wizard unavailable/auth-required state disables credential, webhook URL, test webhook and retry actions.
+- Receiving-method admin writes now send server-side Authorization and Content-Type headers.
+- Remaining non-critical limitation: full merchant session/cookie/CSRF and production API key verification across all merchant endpoints remain Sprint 9H work.
+- Docker blocker resolved after restart: sequential Compose build/up passed, services are healthy, `/api-health` returns database, NATS and Valkey `ok`, and `/merchant/developer-integration` returns HTTP 200 through the proxy.
+
 ## Sprint 9F Developer Integration Wizard Live UX Wiring
 
 - No critical blocker.

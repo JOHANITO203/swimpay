@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { buildWebServer, type MerchantRouteAdminClient, type MerchantRouteAdminRoute } from './index.js';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  ApiMerchantRouteAdminClient,
+  buildWebServer,
+  type MerchantRouteAdminClient,
+  type MerchantRouteAdminRoute
+} from './index.js';
 
 describe('merchant receiving route admin web surface', () => {
   it('renders masked routes, create form and beta review-first warning without raw identifiers', async () => {
@@ -87,6 +92,34 @@ describe('merchant receiving route admin web surface', () => {
       { routeId: 'route_phone', patch: { enabled: false } },
       { routeId: 'route_card', patch: { recommended: true } }
     ]);
+  });
+
+  it('sends the server-side merchant bearer on receiving-method writes', async () => {
+    const calls: Array<{ url: string; init: RequestInit | undefined }> = [];
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ route_id: 'route_live' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      });
+    }) as typeof fetch;
+    try {
+      const client = new ApiMerchantRouteAdminClient('https://api.example', 'test_mch_dev');
+      await client.createRoute({ route_code: 'SBER-CARD' });
+      await client.updateRoute('route_live', { enabled: false });
+
+      expect(calls).toHaveLength(2);
+      expect(calls[0]?.init?.method).toBe('POST');
+      expect(calls[1]?.init?.method).toBe('PATCH');
+      for (const call of calls) {
+        const headers = new Headers(call.init?.headers);
+        expect(headers.get('Authorization')).toBe('Bearer test_mch_dev');
+        expect(headers.get('Content-Type')).toBe('application/json');
+      }
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
   });
 });
 

@@ -1117,7 +1117,14 @@ function toReceivingRouteAuditPayload(route: StoredMerchantReceivingRouteRecord)
   };
 }
 
-export function parseMerchantId(authorization: string | undefined): string | null {
+export function parseMerchantId(
+  authorization: string | undefined,
+  options: { allowTestBearer?: boolean } = {}
+): string | null {
+  if (options.allowTestBearer === false) {
+    return null;
+  }
+
   const match = authorization?.match(/^Bearer\s+test_([A-Za-z0-9_-]+)$/);
   if (!match) {
     return null;

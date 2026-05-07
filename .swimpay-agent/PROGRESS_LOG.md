@@ -2140,6 +2140,26 @@ Safety checks:
 - `/api-health` returned `200 OK` with database, NATS and Valkey `ok`.
 - The SwimPay Receiver app and payment runtime were not modified.
 
+# 2026-05-07T02:45:00+03:00 - Sprint 9G Developer Wizard Auth Hardening
+
+- Continued in multi-agent mode with three read-only audits:
+  - web merchant session/auth boundary;
+  - API developer integration auth pattern;
+  - guardrail and QA coverage.
+- Created Sprint 9G task files 519 through 525.
+- Created `.swimpay-agent/DEVELOPER_WIZARD_AUTH_INVENTORY.md`.
+- Added `resolveMerchantServerBearerToken` to centralize server-side merchant bearer resolution.
+- Kept local `test_<merchant_id>` fallback only for non-production.
+- Refused explicit local `test_*` bearer tokens in production.
+- Disabled Developer Integration Wizard credential/webhook/test/retry actions in unavailable/auth-required state.
+- Added backend production guard on `/v1/merchant/integration*` routes so local `Bearer test_*` cannot mutate developer lifecycle state in production.
+- Fixed receiving-method admin create/update clients to send Authorization and Content-Type.
+- Added targeted tests for production no-dev-bearer behavior, unavailable wizard actions, receiving-method write headers and API production rejection.
+- Created `.swimpay-agent/DEVELOPER_WIZARD_AUTH_HARDENING_REPORT.md`.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite and TypeScript build.
+- Compose config validation passed.
+- Live Docker validation passed after Docker restart: sequential Compose build/up completed for API, web, job worker and proxy; Compose services are healthy; `/api-health` returns database, NATS and Valkey `ok`; `/merchant/developer-integration` returns HTTP 200 through the proxy.
+
 # 2026-05-06T19:55:00+03:00 - Sprint 9D Developer Integration Wizard Production Readiness
 
 - Created tasks 494 through 501 and updated the active task queue.

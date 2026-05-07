@@ -19,6 +19,21 @@ function buildDeveloperIntegrationServer() {
   return { server, merchantIntegrationRepository };
 }
 
+function buildProductionDeveloperIntegrationServer() {
+  const merchantIntegrationRepository = new InMemoryMerchantIntegrationRepository();
+  const server = buildApiServer({
+    environment: 'production',
+    merchantIntegrationRepository,
+    healthChecks: {
+      database: async () => 'skipped',
+      nats: async () => 'skipped',
+      valkey: async () => 'skipped'
+    },
+    clock: () => new Date('2026-05-06T10:00:00.000Z')
+  });
+  return { server, merchantIntegrationRepository };
+}
+
 describe('developer integration backend lifecycle', () => {
   it('returns a merchant-scoped credential read model without raw secrets', async () => {
     const { server } = buildDeveloperIntegrationServer();
@@ -157,5 +172,28 @@ describe('developer integration backend lifecycle', () => {
 
     expect(response.body).not.toMatch(/payment\.signal_detected|payment\.needs_review|auto_confirm|autoConfirm/iu);
     expect(response.body).not.toMatch(/official_bank_confirmation["']?\s*:\s*true|bank_confirmed|guaranteed_payment/iu);
+  });
+
+  it('rejects local test merchant bearer tokens for developer integration routes in production', async () => {
+    const { server } = buildProductionDeveloperIntegrationServer();
+    const requests = [
+      { method: 'GET', url: '/v1/merchant/integration' },
+      { method: 'POST', url: '/v1/merchant/integration/keys' },
+      { method: 'POST', url: '/v1/merchant/integration/keys/rotate' },
+      { method: 'POST', url: '/v1/merchant/integration/webhook-secret/rotate' },
+      { method: 'PUT', url: '/v1/merchant/integration/webhook-url', payload: { webhook_url: 'https://merchant.example/hooks' } },
+      { method: 'POST', url: '/v1/merchant/integration/test-webhook' },
+      { method: 'GET', url: '/v1/merchant/integration/webhook-deliveries' },
+      { method: 'POST', url: '/v1/merchant/integration/webhook-deliveries/del_failed/retry' }
+    ] as const;
+
+    for (const request of requests) {
+      const response = await server.inject({
+        ...request,
+        headers: merchantHeaders
+      });
+      expect(response.statusCode).toBe(401);
+      expect(response.body).not.toMatch(/sk_test_|whsec_|Bearer test_|payload_json|\+7\d{10}|\b\d{16}\b/u);
+    }
   });
 });

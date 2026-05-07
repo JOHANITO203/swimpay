@@ -1,6 +1,45 @@
 # Next Action
 
-generated_at: 2026-05-06T00:00:00+03:00
+generated_at: 2026-05-07T02:45:00+03:00
+
+## Latest Sprint 9G Developer Wizard Auth Hardening
+
+Completed:
+
+1. Continued Sprint 9G in multi-agent mode.
+2. Created task files 519 through 525 and updated the task queue.
+3. Created `.swimpay-agent/DEVELOPER_WIZARD_AUTH_INVENTORY.md`.
+4. Added a centralized server-side merchant bearer resolver.
+5. Prevented production from using local `test_*` merchant bearer fallback.
+6. Disabled Developer Integration Wizard actions when backend lifecycle auth is unavailable.
+7. Added API production guard for `/v1/merchant/integration*` local bearer rejection.
+8. Fixed receiving-method admin writes to include Authorization and Content-Type.
+9. Added focused guardrail tests.
+
+Validation:
+
+- Code validation passed: android doctor, typecheck, lint, test and build.
+- Compose config validation passed.
+- Live Docker validation passed after Docker restart: sequential Compose build/up passed, services are healthy, `/api-health` returns HTTP 200, and `/merchant/developer-integration` returns HTTP 200 through the proxy.
+
+Next recommended action:
+
+Run Sprint 9H for production merchant auth/session and API key verification:
+
+- add real merchant session/cookie boundary for `/merchant/*`;
+- add CSRF protection for merchant POST forms;
+- verify production API keys against stored `api_keys`;
+- replace process-global merchant identity with authenticated merchant context;
+- add production env/Compose guardrails for merchant auth configuration.
+
+Do not do:
+
+- Do not put secret keys in browser or Android snippets.
+- Do not expose webhook secrets after show-once responses.
+- Do not add public fulfillment webhooks for internal signal/review events.
+- Do not enable auto-confirmation.
+- Do not claim official bank confirmation.
+- Do not make Android handle webhooks or local fulfillment.
 
 ## Latest Sprint 9D Developer Integration Wizard
 

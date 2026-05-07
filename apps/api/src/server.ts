@@ -368,9 +368,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/merchant/integration', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
-      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
       return reply.status(503).send(developerIntegrationUnavailableError());
@@ -382,9 +382,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/merchant/integration/keys', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
-      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
       return reply.status(503).send(developerIntegrationUnavailableError());
@@ -396,9 +396,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/merchant/integration/keys/rotate', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
-      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
       return reply.status(503).send(developerIntegrationUnavailableError());
@@ -410,9 +410,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/merchant/integration/webhook-secret/rotate', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
-      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
       return reply.status(503).send(developerIntegrationUnavailableError());
@@ -424,9 +424,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.put('/v1/merchant/integration/webhook-url', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
-      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
       return reply.status(503).send(developerIntegrationUnavailableError());
@@ -445,9 +445,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/merchant/integration/test-webhook', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
-      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
       return reply.status(503).send(developerIntegrationUnavailableError());
@@ -457,9 +457,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/merchant/integration/webhook-deliveries', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
-      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
       return reply.status(503).send(developerIntegrationUnavailableError());
@@ -475,9 +475,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/merchant/integration/webhook-deliveries/:id/retry', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
-      return reply.status(401).send(invalidRequest('A test merchant bearer token is required for developer integration.', {}));
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
     }
     if (!merchantIntegrationRepository) {
       return reply.status(503).send(developerIntegrationUnavailableError());

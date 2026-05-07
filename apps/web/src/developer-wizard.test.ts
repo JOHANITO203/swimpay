@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildWebServer, type MerchantIntegrationClient, type MerchantIntegrationPayload, type MerchantWebhookDeliveryPayload } from './index.js';
+import {
+  buildWebServer,
+  resolveMerchantServerBearerToken,
+  type MerchantIntegrationClient,
+  type MerchantIntegrationPayload,
+  type MerchantWebhookDeliveryPayload
+} from './index.js';
 
 function extractSection(body: string, id: string): string {
   const match = body.match(new RegExp(`<section[^>]+id="${id}"[\\s\\S]*?<\\/section>`, 'iu'));
@@ -115,9 +121,50 @@ describe('Developer Integration Wizard', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('Connexion en attente');
+    expect(response.body).toContain('disabled aria-disabled="true"');
     expect(response.body).toContain('Intégration Web');
     expect(response.body).toContain('Intégration Android');
     expect(response.body).not.toMatch(/sk_test_|sk_live_[A-Za-z0-9_-]{8,}|whsec_[A-Za-z0-9_-]{8,}/u);
+  });
+
+  it('does not create a local development bearer in production', async () => {
+    expect(resolveMerchantServerBearerToken({
+      environment: 'production',
+      checkoutMerchantId: 'mch_dev'
+    })).toBeNull();
+    expect(resolveMerchantServerBearerToken({
+      environment: 'production',
+      checkoutMerchantId: 'mch_dev',
+      explicitToken: 'test_mch_dev'
+    })).toBeNull();
+    expect(resolveMerchantServerBearerToken({
+      environment: 'test',
+      checkoutMerchantId: 'mch_dev'
+    })).toBe('test_mch_dev');
+  });
+
+  it('keeps production wizard actions unavailable without an approved server token', async () => {
+    const previousToken = process.env.MERCHANT_INTEGRATION_BEARER_TOKEN;
+    process.env.MERCHANT_INTEGRATION_BEARER_TOKEN = 'test_mch_dev';
+    try {
+      const server = buildWebServer({ environment: 'production' });
+      const page = await server.inject({ method: 'GET', url: '/merchant/developer-integration' });
+      const action = await server.inject({ method: 'POST', url: '/merchant/developer-integration/keys' });
+
+      expect(page.statusCode).toBe(200);
+      expect(page.body).toContain('Connexion en attente');
+      expect(page.body).toContain('disabled aria-disabled="true"');
+      expect(page.body).not.toMatch(/sk_test_|secret_key_once|whsec_[A-Za-z0-9_-]{8,}/u);
+      expect(action.statusCode).toBe(200);
+      expect(action.body).toContain('Service momentan');
+      expect(action.body).not.toMatch(/sk_test_|secret_key_once|whsec_[A-Za-z0-9_-]{8,}/u);
+    } finally {
+      if (previousToken === undefined) {
+        delete process.env.MERCHANT_INTEGRATION_BEARER_TOKEN;
+      } else {
+        process.env.MERCHANT_INTEGRATION_BEARER_TOKEN = previousToken;
+      }
+    }
   });
 
   it('shows one-time secrets only on immediate action responses', async () => {

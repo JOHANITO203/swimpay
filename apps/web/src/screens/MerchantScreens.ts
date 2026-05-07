@@ -400,6 +400,7 @@ export function renderDeveloperIntegrationWizardPage(params: {
   const secretKeyMasked = integration?.secret_key_masked ?? 'Non créée';
   const webhookSecretMasked = integration?.webhook_secret_masked ?? 'Non créé';
   const publicEvents = integration?.public_webhook_events ?? ['payment.confirmed', 'payment.rejected', 'payment.expired'];
+  const actionButtonAttr = params.unavailable ? 'disabled aria-disabled="true"' : '';
   return AppShell({
     title: 'Intégration développeur',
     children: `<section class="screen merchant-screen"><div class="screen-content">
@@ -433,9 +434,9 @@ export function renderDeveloperIntegrationWizardPage(params: {
           ${developerField('Clé secrète', secretKeyMasked)}
           ${developerField('Secret webhook', webhookSecretMasked)}
           <div class="cluster" style="margin:18px 0;">
-            <form method="post" action="/merchant/developer-integration/keys">${Button({ text: secretKeyMasked === 'Non créée' ? 'Créer la clé' : 'Voir la clé masquée', variant: 'secondary', class: 'btn-small', type: 'submit' })}</form>
-            <form method="post" action="/merchant/developer-integration/keys/rotate">${Button({ text: 'Renouveler la clé', variant: 'secondary', class: 'btn-small', type: 'submit' })}</form>
-            <form method="post" action="/merchant/developer-integration/webhook-secret/rotate">${Button({ text: 'Renouveler le secret webhook', variant: 'secondary', class: 'btn-small', type: 'submit' })}</form>
+            <form method="post" action="/merchant/developer-integration/keys">${Button({ text: secretKeyMasked === 'Non créée' ? 'Créer la clé' : 'Voir la clé masquée', variant: 'secondary', class: 'btn-small', type: 'submit', attr: actionButtonAttr })}</form>
+            <form method="post" action="/merchant/developer-integration/keys/rotate">${Button({ text: 'Renouveler la clé', variant: 'secondary', class: 'btn-small', type: 'submit', attr: actionButtonAttr })}</form>
+            <form method="post" action="/merchant/developer-integration/webhook-secret/rotate">${Button({ text: 'Renouveler le secret webhook', variant: 'secondary', class: 'btn-small', type: 'submit', attr: actionButtonAttr })}</form>
           </div>
           <p class="safe-note" style="margin-top:18px;">${IconBubble({ icon: 'S', tone: 'muted' })}<span>Gardez vos clés secrètes côté serveur.</span></p>
           <p class="safe-note" style="margin-top:10px;">${IconBubble({ icon: 'A', tone: 'warning' })}<span>Ne placez jamais la clé secrète dans une application Android.</span></p>`
@@ -444,13 +445,13 @@ export function renderDeveloperIntegrationWizardPage(params: {
         children: `<h2 class="section-title" style="margin-top:0;">Webhook</h2>
           <form method="post" action="/merchant/developer-integration/webhook-url" class="route-create-form">
             <label class="muted" for="webhook_url">Webhook URL</label>
-            <input id="webhook_url" name="webhook_url" value="${escapeHtml(webhookUrl)}" placeholder="https://merchant.example/webhooks/swimpay" autocomplete="off">
-            <div style="margin-top:12px;">${Button({ text: 'Enregistrer', variant: 'secondary', class: 'btn-small', type: 'submit' })}</div>
+            <input id="webhook_url" name="webhook_url" value="${escapeHtml(webhookUrl)}" placeholder="https://merchant.example/webhooks/swimpay" autocomplete="off" ${params.unavailable ? 'disabled aria-disabled="true"' : ''}>
+            <div style="margin-top:12px;">${Button({ text: 'Enregistrer', variant: 'secondary', class: 'btn-small', type: 'submit', attr: actionButtonAttr })}</div>
           </form>
           ${developerField('Status', webhookStatus)}
           ${developerField('Événements publics', publicEvents.join(', '))}
           <div class="cluster" style="margin:18px 0;">
-            <form method="post" action="/merchant/developer-integration/test-webhook">${Button({ text: 'Tester la connexion', variant: 'primary', class: 'btn-small', type: 'submit' })}</form>
+            <form method="post" action="/merchant/developer-integration/test-webhook">${Button({ text: 'Tester la connexion', variant: 'primary', class: 'btn-small', type: 'submit', attr: actionButtonAttr })}</form>
           </div>
           <div class="cluster">
             ${StatusChip({ text: 'Connexion réussie', variant: 'success' })}
@@ -462,7 +463,7 @@ export function renderDeveloperIntegrationWizardPage(params: {
       })}
       ${renderWebIntegrationSnippets()}
       ${renderAndroidIntegrationSnippets()}
-      ${renderWebhookDeliveryHistory(deliveries)}
+      ${renderWebhookDeliveryHistory(deliveries, actionButtonAttr)}
       <p class="safe-note" style="margin-top:26px;">${IconBubble({ icon: 'V', tone: 'teal' })}<span>payment.confirmed est envoyé après manual confirmation du marchand. official_bank_confirmation=false.</span></p>
       ${BottomNav({ active: 'more' })}
     </div></section>`
@@ -750,7 +751,7 @@ override fun onNewIntent(intent: Intent) {
   });
 }
 
-function renderWebhookDeliveryHistory(deliveries: MerchantWebhookDeliveryPayload[] = []): string {
+function renderWebhookDeliveryHistory(deliveries: MerchantWebhookDeliveryPayload[] = [], actionButtonAttr = ''): string {
   if (deliveries.length > 0) {
     return Card({
       children: `<h2 class="section-title" style="margin-top:0;">Derniers événements</h2>
@@ -764,7 +765,7 @@ function renderWebhookDeliveryHistory(deliveries: MerchantWebhookDeliveryPayload
             <div style="text-align:right;">
               ${StatusChip({ text: toDeliveryStatusLabel(delivery.status), variant: delivery.status === 'delivered' || delivery.status === 'sent' ? 'success' : 'warning' })}
               <p class="muted" style="margin:6px 0 0;">${escapeHtml(String(delivery.attempts))} tentative(s) · HTTP ${escapeHtml(String(delivery.last_http_status ?? '—'))}</p>
-              <form method="post" action="/merchant/developer-integration/webhook-deliveries/${escapeHtml(delivery.delivery_id)}/retry" style="margin-top:8px;">${Button({ text: 'Réessayer', variant: 'secondary', class: 'btn-small', type: 'submit' })}</form>
+              <form method="post" action="/merchant/developer-integration/webhook-deliveries/${escapeHtml(delivery.delivery_id)}/retry" style="margin-top:8px;">${Button({ text: 'Réessayer', variant: 'secondary', class: 'btn-small', type: 'submit', attr: actionButtonAttr })}</form>
               <p class="muted" style="margin:6px 0 0;">event id: ${escapeHtml(delivery.event_id)}</p>
             </div>
           </div>`).join('')}

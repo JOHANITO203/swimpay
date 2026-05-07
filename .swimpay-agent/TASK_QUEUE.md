@@ -6,6 +6,15 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `519_developer_wizard_auth_inventory` - status: completed - source: `tasks/519_developer_wizard_auth_inventory.md`
+- [x] `520_web_merchant_session_boundary` - status: completed - source: `tasks/520_web_merchant_session_boundary.md`
+- [x] `521_production_no_dev_bearer_guard` - status: completed - source: `tasks/521_production_no_dev_bearer_guard.md`
+- [x] `522_developer_wizard_auth_required_state` - status: completed - source: `tasks/522_developer_wizard_auth_required_state.md`
+- [x] `523_developer_wizard_browser_qa` - status: completed - source: `tasks/523_developer_wizard_browser_qa.md`
+- [x] `524_developer_wizard_auth_guardrails` - status: completed - source: `tasks/524_developer_wizard_auth_guardrails.md`
+- [x] `525_developer_wizard_auth_closeout` - status: completed - source: `tasks/525_developer_wizard_auth_closeout.md`
+## Previous Queue
+
 - [x] `512_developer_wizard_live_inventory` - status: completed - source: `tasks/512_developer_wizard_live_inventory.md`
 - [x] `513_merchant_integration_web_client` - status: completed - source: `tasks/513_merchant_integration_web_client.md`
 - [x] `514_developer_wizard_live_credentials` - status: completed - source: `tasks/514_developer_wizard_live_credentials.md`
