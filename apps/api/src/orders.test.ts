@@ -57,6 +57,16 @@ class InMemoryOrderRepository implements OrderRepository {
     return order ? { order, paymentSession } : null;
   }
 
+  async getCheckoutSessionById(paymentSessionId: string) {
+    const paymentSession = this.paymentSessions.find((session) => session.id === paymentSessionId);
+    if (!paymentSession) {
+      return null;
+    }
+
+    const order = this.orders.get(paymentSession.orderId);
+    return order ? { order, paymentSession } : null;
+  }
+
   async createReceivingRoute(input: Parameters<OrderRepository['createReceivingRoute']>[0]) {
     return { kind: 'created' as const, route: input.route };
   }

@@ -1,5 +1,16 @@
 # Blockers
 
+## REAL-CAPTURE-2 public checkout session fix
+
+- Resolved in code: hosted buyer checkout routes no longer require a development merchant bearer.
+- Resolved in code: public checkout routes now derive merchant scope from `payment_session_id`.
+- Resolved in code: web checkout client no longer injects `Authorization: Bearer <checkout merchant id>`.
+- Guardrail added: `apps/api/src/payment-sessions.test.ts` proves the buyer flow can call payment-session, receiver-bank, receiving-route, bank-launcher and continue-to-bank endpoints without Authorization.
+- Validation passed: android doctor, typecheck, lint, targeted checkout/API/web/worker tests, full Vitest suite, TypeScript build and Compose config.
+- Remaining blocker before SDK/webhook staging proof: fix must be pushed and redeployed to staging.
+- Remaining blocker before real notification capture: active payment intent, active receiving method, synthetic signed APK upload, merchant manual review and final-only webhook rehearsal still need proof.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+
 ## RECEIVER-SIGN-1 staging proof alignment
 
 - Resolved on device: the installed staging APK silently re-registered/aligned the Receiver with the Android Keystore asymmetric public key.

@@ -723,9 +723,11 @@ async function renderMerchantIntegrationAction(
 // Logic & Providers
 
 export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
-  constructor(private url: string, private mchId: string) {}
+  constructor(private url: string, checkoutMerchantId: string) {
+    void checkoutMerchantId;
+  }
   private async f<T>(p: string, i: RequestInit = {}): Promise<T> {
-    const r = await fetch(this.url + p, { ...i, headers: { ...i.headers, 'Authorization': `Bearer ${this.mchId}`, 'Content-Type': 'application/json' } });
+    const r = await fetch(this.url + p, { ...i, headers: { ...i.headers, 'Content-Type': 'application/json' } });
     if (!r.ok) throw new Error('API Error');
     return r.json() as Promise<T>;
   }

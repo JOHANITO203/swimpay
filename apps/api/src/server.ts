@@ -932,15 +932,6 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/payment-sessions/:id', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
-    if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
-    }
-
     if (!repository) {
       return reply.status(503).send({
         error: {
@@ -956,7 +947,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
     }
 
-    const result = await repository.getPaymentSessionById(merchantId, params.id);
+    const result = await repository.getCheckoutSessionById(params.id);
     if (!result) {
       return reply.status(404).send({
         error: {
@@ -1300,16 +1291,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/checkout/:id/receiver-bank', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
-    if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
-    }
-    if (!repository) {
-      return reply.status(503).send(orderRepositoryUnavailableError());
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
     }
     const params = request.params as { id?: string };
     if (!params.id) {
@@ -1326,8 +1310,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       }));
     }
 
-    const result = await repository.selectReceiverBank({
-      merchantId,
+    const result = await repository!.selectReceiverBank({
+      merchantId: loaded.paymentSession.merchantId,
       paymentSessionId: params.id,
       receiverBankId: receiverBank.receiver_bank_id,
       bankProfileId: receiverBank.bank_profile_id,
@@ -1378,16 +1362,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/checkout/:id/receiving-route', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
-    if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
-    }
-    if (!repository) {
-      return reply.status(503).send(orderRepositoryUnavailableError());
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
     }
     const params = request.params as { id?: string };
     if (!params.id) {
@@ -1397,7 +1374,6 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (typeof body?.receiving_route_id !== 'string' || !body.receiving_route_id.trim()) {
       return reply.status(400).send(invalidRequest('receiving_route_id is required.', {}));
     }
-    const loaded = await repository.getPaymentSessionById(merchantId, params.id);
     if (!loaded?.paymentSession.selectedReceiverBankProfileId) {
       return reply.status(404).send({
         error: {
@@ -1407,8 +1383,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         }
       });
     }
-    const visibleRoutes = await repository.listReceivingRoutesForCheckoutBank(
-      merchantId,
+    const visibleRoutes = await repository!.listReceivingRoutesForCheckoutBank(
+      loaded.paymentSession.merchantId,
       params.id,
       loaded.paymentSession.selectedReceiverBankProfileId
     );
@@ -1422,8 +1398,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         }
       });
     }
-    const result = await repository.selectReceivingRoute({
-      merchantId,
+    const result = await repository!.selectReceivingRoute({
+      merchantId: loaded.paymentSession.merchantId,
       paymentSessionId: params.id,
       receivingRouteId: selectedRoute.route_id,
       auditEventId: idGenerator.auditEventId(),
@@ -1436,24 +1412,17 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
   server.get('/v1/checkout/:id/receiving-route/copy-details', async (request, reply) => {
     applyCopyDetailsNoStoreHeaders(reply);
-    const merchantId = parseMerchantId(request.headers.authorization);
-    if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
-    }
-    if (!repository) {
-      return reply.status(503).send(orderRepositoryUnavailableError());
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
     }
     const params = request.params as { id?: string };
     if (!params.id) {
       return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
     }
 
-    const result = await repository.getSelectedReceivingRouteCopyDetails({
-      merchantId,
+    const result = await repository!.getSelectedReceivingRouteCopyDetails({
+      merchantId: loaded.paymentSession.merchantId,
       paymentSessionId: params.id,
       encryptionSecret: phoneHmacSecret,
       now: clock().toISOString()
@@ -1502,8 +1471,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     const now = clock();
-    await repository.recordCheckoutDestinationCopied({
-      merchantId,
+    await repository!.recordCheckoutDestinationCopied({
+      merchantId: loaded.paymentSession.merchantId,
       paymentSessionId: result.paymentSession.id,
       routeId: result.route.route_id,
       railType: result.route.rail_type,
@@ -1523,16 +1492,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/checkout/:id/buyer-sender-phone', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
-    if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
-    }
-    if (!repository) {
-      return reply.status(503).send(orderRepositoryUnavailableError());
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
     }
     const params = request.params as { id?: string };
     if (!params.id) {
@@ -1546,8 +1508,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (!normalizedPhone) {
       return reply.status(400).send(invalidRequest('buyer_sender_phone must be a valid Russian phone number.', {}));
     }
-    const result = await repository.saveBuyerSenderPhoneHint({
-      merchantId,
+    const result = await repository!.saveBuyerSenderPhoneHint({
+      merchantId: loaded.paymentSession.merchantId,
       paymentSessionId: params.id,
       buyerSenderPhoneHmac: hmacSha256(normalizedPhone, phoneHmacSecret),
       buyerSenderPhoneMasked: maskPhone(normalizedPhone),
@@ -1569,16 +1531,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/checkout/:id/payer-bank-launcher', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
-    if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
-    }
-    if (!repository) {
-      return reply.status(503).send(orderRepositoryUnavailableError());
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
     }
     const params = request.params as { id?: string };
     if (!params.id) {
@@ -1594,7 +1549,6 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         payer_bank_launcher_id: body.payer_bank_launcher_id
       }));
     }
-    const loaded = await repository.getPaymentSessionById(merchantId, params.id);
     if (!loaded?.paymentSession.selectedReceivingRouteId) {
       return reply.status(409).send({
         error: {
@@ -1605,8 +1559,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       });
     }
 
-    const result = await repository.selectPayerBankLauncher({
-      merchantId,
+    const result = await repository!.selectPayerBankLauncher({
+      merchantId: loaded.paymentSession.merchantId,
       paymentSessionId: params.id,
       payerBankLauncherId: launcher.payer_bank_launcher_id,
       auditEventId: idGenerator.auditEventId(),
@@ -3033,15 +2987,6 @@ async function loadCheckoutSession(params: {
   reply: FastifyReply;
   repository: OrderRepository | null;
 }): Promise<{ order: StoredOrderRecord; paymentSession: StoredPaymentSessionRecord } | null> {
-  const merchantId = parseMerchantId(params.request.headers.authorization);
-  if (!merchantId) {
-    params.reply.status(401).send(
-      invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-        authorization: 'Bearer test_<merchant_id>'
-      })
-    );
-    return null;
-  }
   if (!params.repository) {
     params.reply.status(503).send(orderRepositoryUnavailableError());
     return null;
@@ -3052,7 +2997,7 @@ async function loadCheckoutSession(params: {
     return null;
   }
 
-  const result = await params.repository.getPaymentSessionById(merchantId, routeParams.id);
+  const result = await params.repository.getCheckoutSessionById(routeParams.id);
   if (!result) {
     params.reply.status(404).send({
       error: {
@@ -3075,17 +3020,12 @@ async function mutateSimpleCheckoutAction(params: {
   clock: () => Date;
   action: 'instructions' | 'receiver_armed' | 'claimed_paid';
 }) {
-  const merchantId = parseMerchantId(params.request.headers.authorization);
-  if (!merchantId) {
-    params.reply.status(401).send(
-      invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-        authorization: 'Bearer test_<merchant_id>'
-      })
-    );
-    return null;
-  }
-  if (!params.repository) {
-    params.reply.status(503).send(orderRepositoryUnavailableError());
+  const loaded = await loadCheckoutSession({
+    request: params.request,
+    reply: params.reply,
+    repository: params.repository
+  });
+  if (!loaded) {
     return null;
   }
   const routeParams = params.request.params as { id?: string };
@@ -3095,22 +3035,11 @@ async function mutateSimpleCheckoutAction(params: {
   }
 
   const input = {
-    merchantId,
+    merchantId: loaded.paymentSession.merchantId,
     paymentSessionId: routeParams.id,
     auditEventId: params.idGenerator.auditEventId(),
     now: params.clock().toISOString()
   };
-  const loaded = await params.repository.getPaymentSessionById(merchantId, routeParams.id);
-  if (!loaded) {
-    params.reply.status(404).send({
-      error: {
-        code: 'not_found',
-        message: 'Payment session was not found.',
-        details: {}
-      }
-    });
-    return null;
-  }
   if (
     (params.action === 'instructions' || params.action === 'receiver_armed') &&
     (!loaded.paymentSession.selectedReceivingRouteId || !loaded.paymentSession.selectedPayerBankLauncherId)
@@ -3124,7 +3053,7 @@ async function mutateSimpleCheckoutAction(params: {
     });
     return null;
   }
-  const result = await mutateCheckoutActionRepository(params.repository, params.action, input);
+  const result = await mutateCheckoutActionRepository(params.repository!, params.action, input);
   switch (result.kind) {
     case 'updated':
       return result;

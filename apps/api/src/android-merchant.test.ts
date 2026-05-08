@@ -845,6 +845,12 @@ class FakeOrderRepository implements OrderRepository {
       : null;
   }
 
+  public async getCheckoutSessionById(paymentSessionId: string): Promise<{ order: StoredOrderRecord; paymentSession: StoredPaymentSessionRecord } | null> {
+    return paymentSessionId === this.paymentSession.id
+      ? { order: this.order, paymentSession: this.paymentSession }
+      : null;
+  }
+
   public async createReceivingRoute(_input: CreateReceivingRouteInput): Promise<CreateReceivingRouteResult> {
     void _input;
     return { kind: 'created', route: this.route };

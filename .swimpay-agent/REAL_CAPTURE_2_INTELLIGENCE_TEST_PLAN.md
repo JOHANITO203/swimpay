@@ -53,11 +53,13 @@ Prepare SwimPay Intelligence for real notification capture by testing each tool 
 - Operator device launches the staging APK.
 - Exact supported-bank visibility is fixed in the main Receiver manifest.
 - Operator device now shows 5 detected supported bank apps.
+- Public buyer checkout API is now code-validated without a development merchant bearer.
 
 ## Current blockers
 
 - Fresh login/create-account/onboarding has not been replayed because app data was preserved.
-- Receiving methods still need configuration.
+- Receiving methods exist and persist, but the active staging merchant method must be verified for the SDK rehearsal.
 - Connected site/webhook remains action-required.
 - Synthetic signed upload from installed staging APK still needs to be run.
+- Public checkout fix must be pushed and redeployed before staging SDK checkout rehearsal.
 - Real notification capture has not started.

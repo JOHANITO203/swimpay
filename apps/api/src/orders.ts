@@ -171,6 +171,10 @@ export interface OrderRepository {
     order: StoredOrderRecord;
       paymentSession: StoredPaymentSessionRecord;
     } | null>;
+  getCheckoutSessionById(paymentSessionId: string): Promise<{
+    order: StoredOrderRecord;
+    paymentSession: StoredPaymentSessionRecord;
+  } | null>;
   createReceivingRoute(input: CreateReceivingRouteInput): Promise<CreateReceivingRouteResult>;
   listReceivingRoutes(merchantId: string): Promise<StoredMerchantReceivingRouteRecord[]>;
   updateReceivingRoute(input: UpdateReceivingRouteInput): Promise<ReceivingRouteMutationResult>;
@@ -434,6 +438,40 @@ export class PgOrderRepository implements OrderRepository {
         amount_minor, currency, status, expires_at, created_at, updated_at
        FROM orders WHERE merchant_id = $1 AND id = $2`,
       [merchantId, paymentSession.orderId]
+    );
+
+    if (orderResult.rowCount === 0) {
+      return null;
+    }
+
+    return {
+      order: toOrder(orderResult.rows[0] as Record<string, string | number | Date | null>),
+      paymentSession
+    };
+  }
+
+  public async getCheckoutSessionById(paymentSessionId: string) {
+    const paymentResult = await this.pool.query(
+      `SELECT id, order_id, merchant_id, expected_amount_minor, currency, buyer_phone_hmac,
+        buyer_phone_masked, buyer_name_hmac, reference_code, reference_hmac, status,
+        selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_receiving_route_id,
+        selected_payer_bank_launcher_id, buyer_sender_phone_hmac, buyer_sender_phone_masked,
+        payment_instructions_shown_at, buyer_claimed_paid_at,
+        valid_from, valid_until, created_at, updated_at
+       FROM payment_sessions WHERE id = $1`,
+      [paymentSessionId]
+    );
+
+    if (paymentResult.rowCount === 0) {
+      return null;
+    }
+
+    const paymentSession = toPaymentSession(paymentResult.rows[0] as Record<string, string | number | Date | null>);
+    const orderResult = await this.pool.query(
+      `SELECT id, merchant_id, external_id, product_id, product_name, product_risk_level,
+        amount_minor, currency, status, expires_at, created_at, updated_at
+       FROM orders WHERE merchant_id = $1 AND id = $2`,
+      [paymentSession.merchantId, paymentSession.orderId]
     );
 
     if (orderResult.rowCount === 0) {

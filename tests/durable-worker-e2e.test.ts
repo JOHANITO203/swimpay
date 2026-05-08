@@ -889,6 +889,16 @@ class E2EOrderRepository implements OrderRepository {
     return order ? { order, paymentSession } : null;
   }
 
+  public async getCheckoutSessionById(paymentSessionId: string) {
+    const paymentSession = this.paymentSessions.find((session) => session.id === paymentSessionId);
+    if (!paymentSession) {
+      return null;
+    }
+
+    const order = this.orders.get(paymentSession.orderId);
+    return order ? { order, paymentSession } : null;
+  }
+
   public async getSelectedReceivingRouteCopyDetails() {
     return { kind: 'not_found' as const };
   }

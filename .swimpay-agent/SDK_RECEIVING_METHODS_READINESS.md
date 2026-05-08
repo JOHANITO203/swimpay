@@ -36,9 +36,8 @@ The SDK and receiving methods contracts are implemented and covered by tests. Li
 | last4 | ready | API test asserts last4. |
 | bank_id | ready | API tests bind bank profile id. |
 | active/inactive | ready | API route update/disable tests exist. |
-| checkout uses active only | partial | Buyer-safe active route flow tested; live staging proof pending. |
+| checkout uses active only | ready with staging proof pending | Buyer-safe active route flow and public checkout progression without dev Authorization are tested; live staging proof pending. |
 
 ## Missing Proof
 
-Live staging external app order creation, hosted checkout route selection and final webhook verification.
-
+Live staging external app order creation, hosted checkout route selection without dev bearer, and final webhook verification after manual confirmation.

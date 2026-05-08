@@ -2424,6 +2424,16 @@ Safety checks:
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
 - Docker live smoke remained blocked by unavailable Docker Desktop Linux engine pipe; `/api-health` was unreachable.
 
+# 2026-05-08T21:14:08+03:00 - REAL-CAPTURE-2 Public Checkout Session Fix
+
+- Found the staging/prod blocker preventing honest SDK checkout rehearsal: public buyer checkout routes still required a development merchant bearer.
+- Added a red/green regression in `apps/api/src/payment-sessions.test.ts` proving buyer checkout progression works from the public payment session id without Authorization.
+- Added `OrderRepository.getCheckoutSessionById(paymentSessionId)` and wired public checkout routes to derive merchant scope from the durable payment session.
+- Removed dev Authorization header injection from the web checkout client.
+- Preserved V1 truth: no auto-confirmation, `J'ai paye` does not confirm, `payment.confirmed` remains manual-confirmation-only, public webhooks remain final-only.
+- Validation passed: android doctor, typecheck, lint, targeted checkout/API/web/worker tests, full Vitest suite, TypeScript build and Compose config.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
 # 2026-05-08T11:45:00+03:00 - INTEL-TRUTH SwimPay Intelligence Source-of-Truth Audit
 
 - Created tasks 612 through 622 and updated `.swimpay-agent/TASK_QUEUE.md`.

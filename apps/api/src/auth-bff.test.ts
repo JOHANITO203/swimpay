@@ -33,6 +33,10 @@ class MinimalOrderRepository implements OrderRepository {
     return null;
   }
 
+  async getCheckoutSessionById() {
+    return null;
+  }
+
   async createReceivingRoute(input: Parameters<OrderRepository['createReceivingRoute']>[0]) {
     return { kind: 'created' as const, route: input.route };
   }

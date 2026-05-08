@@ -1,5 +1,37 @@
 # Next Action
 
+generated_at: 2026-05-08T21:14:08+03:00
+
+## Latest REAL-CAPTURE-2 public checkout session fix
+
+Completed:
+
+1. Found the staging/prod blocker: hosted buyer checkout routes still depended on a development merchant bearer.
+2. Added a regression proving buyer checkout progression works from `payment_session_id` without any Authorization header.
+3. Updated API checkout routes to resolve merchant scope from the durable payment session.
+4. Removed the dev Authorization header from the web checkout client.
+5. Full local validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+6. No real notification was processed.
+
+Next recommended action:
+
+1. Commit and push this fix to `origin/main`.
+2. Redeploy staging through Dokploy.
+3. Run live staging SDK order creation and hosted checkout rehearsal without dev bearer.
+4. Prove active payment intent + active receiving method + synthetic signed Android upload.
+5. Rehearse merchant manual review and final-only webhook delivery.
+6. Ask for explicit operator capture-start command only after those synthetic gates pass.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-08T20:05:48+03:00
 
 ## Latest RECEIVER-SIGN-1 staging upload proof passed

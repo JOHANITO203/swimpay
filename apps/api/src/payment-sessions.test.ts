@@ -69,6 +69,16 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     return order ? { order, paymentSession } : null;
   }
 
+  async getCheckoutSessionById(paymentSessionId: string) {
+    const paymentSession = this.paymentSessions.get(paymentSessionId);
+    if (!paymentSession) {
+      return null;
+    }
+
+    const order = this.orders.get(paymentSession.orderId);
+    return order ? { order, paymentSession } : null;
+  }
+
   async selectReceiverBank(input: Parameters<OrderRepository['selectReceiverBank']>[0]) {
     const result = this.requireMutableSession(input.merchantId, input.paymentSessionId, input.now);
     if (result.kind !== 'ok') {
@@ -509,6 +519,63 @@ describe('payment session api', () => {
       rail_types: ['phone_transfer'],
       recommended_rail_type: 'phone_transfer'
     });
+  });
+
+  test('allows buyer checkout progression from the public payment session id without a dev bearer', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+
+    const session = await server.inject({
+      method: 'GET',
+      url: '/v1/payment-sessions/ps_session_01'
+    });
+    const banks = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/receiver-banks'
+    });
+    const selectedBank = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiver-bank',
+      payload: { receiver_bank_id: 'sber_ru' }
+    });
+    const routes = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/receiver-banks/sber_ru/routes'
+    });
+    const selectedRoute = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiving-route',
+      payload: { receiving_route_id: 'route_1' }
+    });
+    const selectedLauncher = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/payer-bank-launcher',
+      payload: { payer_bank_launcher_id: 'tbank_ru' }
+    });
+    const armed = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/continue-to-bank'
+    });
+
+    expect([
+      session.statusCode,
+      banks.statusCode,
+      selectedBank.statusCode,
+      routes.statusCode,
+      selectedRoute.statusCode,
+      selectedLauncher.statusCode,
+      armed.statusCode
+    ]).toEqual([200, 200, 200, 200, 200, 200, 200]);
+    expect(armed.json()).toMatchObject({
+      status: 'receiver_armed',
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(repository.paymentSessions.get('ps_session_01')?.merchantId).toBe('mch_01');
+    expect(repository.paymentSessions.get('ps_session_01')?.status).toBe('receiver_armed');
+    expect(repository.orders.get('ord_session_01')?.status).not.toBe('manual_confirmed');
   });
 
   test('creates, lists and updates merchant receiving routes without exposing raw identifiers', async () => {
