@@ -70,7 +70,8 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumOnboarding.contains("SwimPay recherche uniquement les banques compatibles."))
         assertTrue(premiumOnboarding.contains("Activer ces banques"))
         assertTrue(premiumOnboarding.contains("Connectez votre site ou application"))
-        assertTrue(premiumOnboarding.contains("Tester sans site connecté"))
+        assertTrue(premiumOnboarding.contains("Lancer le test webhook"))
+        assertFalse(premiumOnboarding.contains("Tester sans site connecté"))
         assertTrue(readiness.contains("Settings.EXTRA_APP_PACKAGE"))
         assertTrue(mainActivity.contains("NotificationListenerSettingsAction.createIntent(packageName)"))
         assertFalse(premiumOnboarding.contains("paiements automatiques", ignoreCase = true))
@@ -106,7 +107,10 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumApp.contains("PremiumNavigation.openReceiverHealth()"))
         assertTrue(premiumApp.contains("PremiumNavigation.openConfirmationMode()"))
         assertTrue(premiumApp.contains("PremiumNavigation.openSecurity()"))
-        assertTrue(premiumReviews.contains("onConfirm"))
+        assertTrue(premiumApp.contains("PremiumSecurityScreen("))
+        assertTrue(premiumApp.contains("route = PremiumNavigation.openAccountRecovery"))
+        assertFalse(premiumReviews.contains("onConfirm"))
+        assertFalse(premiumReviews.contains("Confirmer le paiement"))
         assertTrue(premiumReviews.contains("onRejectSignal"))
         assertTrue(premiumReviews.contains("onRejectOrder"))
         assertTrue(premiumRuntime.contains("fun rejectSignal"))
@@ -145,8 +149,6 @@ class AndroidMerchantVisualArchitectureTest {
             "TO_VERIFY",
             "approved_for_review_only",
             "webhook_secret",
-            "Activer lâ€™accÃ¨s",
-            "Activer lÃ¢â‚¬â„¢accÃƒÂ¨s",
             "raw notification",
             "raw_notification",
             "confirmation bancaire officielle",
@@ -158,9 +160,32 @@ class AndroidMerchantVisualArchitectureTest {
         forbiddenPublicTerms.forEach { term ->
             assertFalse("premium UI exposed forbidden term $term", premiumText.contains(term, ignoreCase = true))
         }
+        listOf("\u00C3", "\u00E2").forEach { mojibakeMarker ->
+            assertFalse("premium UI source contains broken encoding marker", premiumText.contains(mojibakeMarker))
+        }
         assertFalse(premiumText.contains("official_bank_confirmation = true", ignoreCase = true))
         assertFalse(premiumText.contains("2200123412344821"))
         assertFalse(premiumText.contains("+79991234567"))
+    }
+
+    @Test
+    fun googleRecoveryLinkingAppearsOnlyInSecuritySettings() {
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
+        val securitySource = sourceFunction(premiumDashboard, "fun PremiumSecurityScreen")
+        val googleRowSource = sourceFunction(premiumDashboard, "private fun GoogleRecoveryRow")
+
+        assertTrue(securitySource.contains("GoogleRecoveryRow"))
+        assertTrue(premiumDashboard.contains("PremiumGoogleIcon"))
+        assertTrue(googleRowSource.contains("Associer Google"))
+        assertTrue(googleRowSource.contains("récupérer ce profil", ignoreCase = true))
+        assertFalse(googleRowSource.contains("Google requis", ignoreCase = true))
+        assertFalse(googleRowSource.contains("Google obligatoire", ignoreCase = true))
+        assertFalse(googleRowSource.contains("required", ignoreCase = true))
+        assertFalse(premiumOnboarding.contains("Google", ignoreCase = true))
+        listOf("Prénom", "Nom de famille", "first name", "last name").forEach { forbidden ->
+            assertFalse("onboarding must not collect merchant names: $forbidden", premiumOnboarding.contains(forbidden, ignoreCase = true))
+        }
     }
 
     @Test
@@ -178,7 +203,8 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumDashboard.contains("Activer la confirmation IA"))
         assertTrue(premiumOnboarding.contains("Confirmation simple"))
         assertTrue(premiumOnboarding.contains("Confirmez ou rejetez en quelques secondes."))
-        assertTrue(premiumOnboarding.contains("Vérifiez que tout fonctionne"))
+        assertTrue(premiumOnboarding.contains("Test webhook"))
+        assertTrue(premiumOnboarding.contains("déclenché par le backend"))
         assertFalse(premiumOnboarding.contains("CONFIRMATION MANUELLE"))
         assertFalse(premiumOnboarding.contains("IA PLUS TARD"))
         assertFalse(premiumOnboarding.contains("FINALISER LA CONFIGURATION"))
@@ -196,11 +222,18 @@ class AndroidMerchantVisualArchitectureTest {
         val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
         val mainActivity = File("src/main/java/com/swimpay/receiver/MainActivity.kt").readText()
 
-        assertTrue(premiumApp.contains("runtime.loadBanks()"))
+        assertTrue(premiumApp.contains("activeRuntime.loadBanks()"))
         assertTrue(premiumApp.contains("bankTargetsState = banksState"))
         assertTrue(premiumOnboarding.contains("bankTargetsState: PremiumScreenState<PremiumBanksUiState>"))
         assertFalse(premiumOnboarding.contains("\"Sberbank\" to \"Détectée\""))
         assertFalse(premiumOnboarding.contains("\"VTB\" to \"Non détectée\""))
         assertTrue(mainActivity.contains("PackageManagerExactPackageProbe(this)"))
+    }
+
+    private fun sourceFunction(source: String, signature: String): String {
+        val start = source.indexOf(signature)
+        require(start >= 0) { "missing source function $signature" }
+        val nextComposable = source.indexOf("\n@Composable", start + signature.length)
+        return if (nextComposable >= 0) source.substring(start, nextComposable) else source.substring(start)
     }
 }

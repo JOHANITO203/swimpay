@@ -260,6 +260,20 @@ See `docs/SYNTHETIC_NOTIFICATION_TESTING.md`.
 
 ## Phase 4J Receiver Onboarding Gate
 
+Current Android account and onboarding truth is defined in
+`docs/ANDROID_ACCOUNT_AND_ONBOARDING_TRUTH.md`.
+
+When no valid mobile merchant session exists, the app starts with login/create
+account before this receiver onboarding gate. `Créer un compte` creates the
+lightweight merchant account and then starts onboarding. `Se connecter` recovers
+an existing account, including through Google only when the profile was linked
+for recovery. Google is optional recovery/linking and is not a required
+onboarding step.
+
+Personal and business/commerce merchant profile choices have the same app
+rights. They are not Android admin personas, and account creation does not
+collect merchant user first or last names.
+
 The Receiver is not ready merely because Android lets the app show its own notifications. SwimPay tracks two separate Android permission states:
 
 - `app_notifications_permission`: lets SwimPay Receiver show its own app notifications.
@@ -300,6 +314,17 @@ Readiness states:
 - `degraded`
 
 For V1, `TO_VERIFY` and review-only bank selections can reach `ready_review_only`, not an auto-confirm readiness state. Android still does not confirm or auto-confirm payments.
+
+The onboarding `Site ou application` step branches:
+
+- `Configurer plus tard` skips integration setup, shows a brief success state
+  and enters the app.
+- `Ajouter maintenant` continues to integration setup and a backend-owned
+  webhook test only.
+
+The webhook test path must not process real bank notifications, must not confirm
+payment, must not emit `payment.confirmed`, and must not send developer
+webhooks directly from Android.
 
 ## Sprint 4L Package/Certificate Evidence Dry Run
 

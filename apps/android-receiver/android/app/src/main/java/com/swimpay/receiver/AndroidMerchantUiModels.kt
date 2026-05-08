@@ -14,7 +14,7 @@ object MerchantUiLanguageContract {
         "Moyen de réception",
         "Carte bancaire",
         "Numéro de téléphone",
-        "Site ou application connecté",
+        "Webhook configuré",
         "Notification envoyée",
         "Validation manuelle en bêta"
     )
@@ -182,7 +182,7 @@ data class MerchantConfigurationChecklist(
             "Téléphone connecté",
             "Banque choisie",
             "Moyen de réception ajouté",
-            "Site ou application connecté"
+            "Webhook configuré"
         )
 
         fun allReady(): MerchantConfigurationChecklist {
@@ -208,7 +208,6 @@ enum class MerchantReviewAction(
     val label: String,
     val rejectsOrderByDefault: Boolean
 ) {
-    CONFIRM_PAYMENT("Confirmer le paiement", false),
     REJECT_SIGNAL("Rejeter le signal", false),
     REJECT_ORDER("Rejeter la commande", true)
 }
@@ -294,7 +293,7 @@ class AndroidMerchantUiCatalog {
             addAll(MerchantConfigurationChecklist.REQUIRED_LABELS)
             if (checklist.allItemsReady()) {
                 add("SwimPay est prêt")
-                add("Votre configuration fonctionne pour la bêta.")
+                add("Le backend peut envoyer un événement de test vers votre endpoint.")
             } else {
                 if (!checklist.phoneConnected) {
                     add("Action requise")
@@ -306,15 +305,15 @@ class AndroidMerchantUiCatalog {
                 }
                 if (!checklist.connectedSiteReady) {
                     add("Action requise")
-                    add("Connectez votre site ou votre application pour recevoir les mises à jour.")
+                    add("Configurez un webhook pour tester l'envoi backend.")
                 }
             }
         }
         return MerchantUiScreen(
             id = "configuration_test",
-            title = "Vérifiez que tout fonctionne",
-            subtitle = "Lancez un test avant de recevoir vos premiers paiements.",
-            primaryAction = "Lancer un test",
+            title = "Test webhook",
+            subtitle = "Lancez un test backend vers votre endpoint, sans notification réelle ni confirmation de paiement.",
+            primaryAction = "Lancer le test webhook",
             texts = stateTexts
         )
     }
@@ -438,13 +437,8 @@ class AndroidMerchantUiCatalog {
                 "Il y a 2 min",
                 "Pourquoi ce paiement est à vérifier ?"
             ) + reasonCodes.map { it.merchantLabel } + listOf(
-                MerchantReviewAction.CONFIRM_PAYMENT.label,
                 MerchantReviewAction.REJECT_SIGNAL.label,
                 MerchantReviewAction.REJECT_ORDER.label,
-                "Confirmer ce paiement ?",
-                "Votre site ou application sera prévenu après validation.",
-                "Confirmer",
-                "Annuler",
                 "Rejeter ce signal ?",
                 "La commande restera en attente.",
                 "Rejeter la commande ?",
@@ -615,7 +609,6 @@ object AndroidMerchantFrontendContracts {
                 "GET /v1/android-merchant/dashboard-summary",
                 "GET /v1/android-merchant/review-queue",
                 "GET /v1/android-merchant/review-queue/:payment_id",
-                "POST /v1/android-merchant/review-queue/:payment_id/confirm",
                 "POST /v1/android-merchant/review-queue/:payment_id/reject-signal",
                 "POST /v1/android-merchant/review-queue/:payment_id/reject-order",
                 "GET /v1/android-merchant/connected-site",

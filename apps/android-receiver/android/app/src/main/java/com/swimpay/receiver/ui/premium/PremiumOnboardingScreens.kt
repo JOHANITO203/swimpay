@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
 @Composable
 fun PremiumLandingScreen(onStart: () -> Unit) {
@@ -125,6 +126,12 @@ fun PremiumOnboardingFlow(
         }
         state = state.withDetectedBanks(detectedIds).withDefaultDetectedBanksSelected()
     }
+    LaunchedEffect(state.onboardingCompleted, state.skippedConnectedSite) {
+        if (state.onboardingCompleted && state.skippedConnectedSite) {
+            delay(650)
+            onDone()
+        }
+    }
 
     fun moveNext(nextState: PremiumOnboardingSessionState = state) {
         val moved = when (nextState.currentStep) {
@@ -134,7 +141,7 @@ fun PremiumOnboardingFlow(
             else -> nextState.completeAndMoveNext()
         }
         state = moved
-        if (moved.onboardingCompleted) {
+        if (moved.onboardingCompleted && !moved.skippedConnectedSite) {
             onDone()
         }
     }
@@ -354,7 +361,7 @@ private fun ConnectedSiteStep(
     OnboardingShell("Site ou application", PremiumOnboardingStep.CONNECTED_SITE, onBack) {
         PremiumTitle(
             "Connectez votre site ou application",
-            "Recevez une mise à jour quand un paiement est confirmé."
+            "Recevez une mise à jour après votre validation manuelle."
         )
         PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp) {
             Row(
@@ -367,16 +374,16 @@ private fun ConnectedSiteStep(
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (skipped) "À configurer plus tard" else "Site ou application connecté",
+                        if (skipped) "Configuration reportée" else "Prêt à ajouter",
                         color = PremiumColors.Ink,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         if (skipped) {
-                            "Votre site ou application ne recevra pas encore les mises à jour automatiques."
+                            "Vous entrez dans l’app maintenant. Le webhook pourra être ajouté plus tard."
                         } else {
-                            "Ajoutez la connexion maintenant ou continuez plus tard."
+                            "Ajoutez un endpoint pour lancer ensuite un test webhook backend."
                         },
                         color = PremiumColors.Muted,
                         fontSize = 13.sp,
@@ -401,17 +408,18 @@ private fun ConfigurationTestStep(
     onRunTest: () -> Unit
 ) {
     OnboardingShell("Test", PremiumOnboardingStep.CONFIGURATION_TEST, onBack) {
-        PremiumTitle("Vérifiez que tout fonctionne")
+        PremiumTitle(
+            "Test webhook",
+            "Le test est déclenché par le backend vers votre endpoint. Android ne traite aucune notification réelle et ne confirme aucun paiement."
+        )
         ChecklistCard(state)
         Spacer(Modifier.height(22.dp))
         ResultCard(state)
         Spacer(Modifier.height(18.dp))
         if (state.connectedSiteConfigured) {
-            PremiumPrimaryButton("Lancer un test complet", onClick = onRunTest)
+            PremiumPrimaryButton("Lancer le test webhook", onClick = onRunTest)
         } else {
-            PremiumPrimaryButton("Tester sans site connecté", onClick = onRunTest)
-            Spacer(Modifier.height(12.dp))
-            PremiumOutlineButton("Connecter mon site", onClick = onConnectSite)
+            PremiumPrimaryButton("Ajouter maintenant", onClick = onConnectSite)
         }
     }
 }
@@ -693,14 +701,14 @@ private fun ResultCard(state: PremiumOnboardingSessionState) {
     ) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                if (ready) "Réussi" else "Action nécessaire",
+                if (ready) "Webhook prêt" else "Action nécessaire",
                 color = if (ready) PremiumColors.Success else Color(0xFFB45309),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Black
             )
             Text(
                 if (ready) {
-                    "Votre configuration est prête pour la bêta."
+                    "Le backend peut envoyer un événement de test vers votre endpoint configuré."
                 } else {
                     state.configurationResultLabels().filterNot { it == "Réussi" }.joinToString(" · ")
                 },

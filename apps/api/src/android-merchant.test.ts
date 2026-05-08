@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EventTypes, PUBLIC_EVENT_SIGNAL_DISCLOSURE, type EventEnvelope } from '@swimpay/events';
+import {
+  AndroidMerchantAccountAuthPaths,
+  AndroidMerchantDeviceLookupStatuses,
+  AndroidMerchantDeviceProofTypes,
+  AndroidMerchantProfileTypes
+} from '@swimpay/contracts';
+import { InMemoryAuthBffRepository } from './auth-bff.js';
 import {
   buildApiServer,
   type CreateOrderWithSessionInput,
@@ -30,6 +37,346 @@ import type {
 } from './reviews.js';
 
 describe('android merchant mobile backend endpoints', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('rejects raw device identifiers and classifies new, known and recovery-required devices', async () => {
+    const { server } = buildAndroidMerchantServer();
+
+    for (const field of ['imei', 'android_id', 'advertising_id', 'raw_fingerprint', 'phone_number']) {
+      const payload: Record<string, unknown> = {
+        device_proof: safeDeviceProof(`raw-device-${field}`),
+        [field]: `raw-${field}`
+      };
+      const rawDeviceLookup = await server.inject({
+        method: 'POST',
+        url: AndroidMerchantAccountAuthPaths.DEVICE_LOOKUP,
+        payload
+      });
+      expect(rawDeviceLookup.statusCode).toBe(400);
+      expect(rawDeviceLookup.json().error).toMatchObject({
+        code: 'raw_device_identifier_rejected',
+        details: { field }
+      });
+    }
+
+    const newDeviceLookup = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.DEVICE_LOOKUP,
+      payload: {
+        lookup_intent: 'create_account',
+        device_proof: safeDeviceProof('primary-device')
+      }
+    });
+    expect(newDeviceLookup.statusCode).toBe(200);
+    expect(newDeviceLookup.json()).toEqual({
+      device_status: AndroidMerchantDeviceLookupStatuses.NEW_DEVICE,
+      device_id: null,
+      merchant_id: null,
+      recovery_required: false,
+      recovery_options: [],
+      google_required: false,
+      raw_device_identifiers_allowed: false,
+      device_proof_type: AndroidMerchantDeviceProofTypes.INSTALL_KEYPAIR_SIGNED_CHALLENGE
+    });
+
+    const createAccount = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: AndroidMerchantProfileTypes.PERSONAL,
+        device_proof: safeDeviceProof('primary-device')
+      }
+    });
+    expect(createAccount.statusCode).toBe(201);
+
+    const knownDeviceLookup = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.DEVICE_LOOKUP,
+      payload: {
+        lookup_intent: 'create_account',
+        device_proof: safeDeviceProof('primary-device')
+      }
+    });
+    expect(knownDeviceLookup.statusCode).toBe(200);
+    expect(knownDeviceLookup.json()).toMatchObject({
+      device_status: 'known_device',
+      recovery_required: false
+    });
+
+    const recoveryRequiredLookup = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.DEVICE_LOOKUP,
+      payload: {
+        lookup_intent: 'recover_account',
+        device_proof: safeDeviceProof('new-login-device')
+      }
+    });
+    expect(recoveryRequiredLookup.statusCode).toBe(200);
+    expect(recoveryRequiredLookup.json()).toEqual({
+      device_status: AndroidMerchantDeviceLookupStatuses.RECOVERY_REQUIRED,
+      device_id: null,
+      merchant_id: null,
+      recovery_required: true,
+      recovery_options: ['google'],
+      google_required: false,
+      raw_device_identifiers_allowed: false,
+      device_proof_type: AndroidMerchantDeviceProofTypes.INSTALL_KEYPAIR_SIGNED_CHALLENGE
+    });
+  });
+
+  it('creates personal and business accounts with generated handles and equal mobile permissions', async () => {
+    const { server } = buildAndroidMerchantServer();
+
+    const rejectedNames = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        device_proof: safeDeviceProof('named-device')
+      }
+    });
+    expect(rejectedNames.statusCode).toBe(400);
+    expect(rejectedNames.json().error.code).toBe('merchant_identity_name_rejected');
+
+    const invalidProfile = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'admin',
+        device_proof: safeDeviceProof('invalid-profile-device')
+      }
+    });
+    expect(invalidProfile.statusCode).toBe(400);
+    expect(invalidProfile.json().error).toMatchObject({
+      code: 'payload_invalid',
+      details: { field: 'profile_type' }
+    });
+
+    const personal = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('personal-device')
+      }
+    });
+    const business = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'business',
+        business_label: 'Commerce demo',
+        device_proof: safeDeviceProof('business-device')
+      }
+    });
+
+    expect(personal.statusCode).toBe(201);
+    expect(business.statusCode).toBe(201);
+    expect(personal.json().account).toMatchObject({
+      profile_type: 'personal',
+      permission_profile: 'merchant',
+      collected_identity_fields: [],
+      google_required: false
+    });
+    expect(business.json().account).toMatchObject({
+      profile_type: 'business',
+      permission_profile: 'merchant',
+      collected_identity_fields: [],
+      google_required: false
+    });
+    expect(personal.json().account.display_handle).toMatch(/^merchant-[a-f0-9]{8}$/u);
+    expect(business.json().account.display_handle).toMatch(/^merchant-[a-f0-9]{8}$/u);
+    expect(personal.json().account.permissions).toEqual(business.json().account.permissions);
+    expect(personal.json().mobile_session.token).toMatch(/^spm_[A-Za-z0-9_-]+$/u);
+    expect(business.json().mobile_session.token).toMatch(/^spm_[A-Za-z0-9_-]+$/u);
+    expect(personal.body).not.toMatch(/first_name|last_name|admin/iu);
+    expect(business.body).not.toMatch(/first_name|last_name|admin/iu);
+
+    const duplicateDevice = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('personal-device')
+      }
+    });
+    expect(duplicateDevice.statusCode).toBe(409);
+    expect(duplicateDevice.json().error).toMatchObject({
+      details: {
+        device_status: AndroidMerchantDeviceLookupStatuses.KNOWN_DEVICE
+      }
+    });
+  });
+
+  it('accepts Android mobile session bearer tokens for merchant Android surfaces only', async () => {
+    const eventPublisher = new FakeEventPublisher();
+    const { server } = buildAndroidMerchantServer({ eventPublisher });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('mobile-session-auth-device')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    const token = String(created.json().mobile_session.token);
+    const mobileHeaders = { authorization: `Bearer ${token}` };
+
+    const receivingRoutes = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/receiving-routes',
+      headers: mobileHeaders
+    });
+    expect(receivingRoutes.statusCode).toBe(200);
+    expect(receivingRoutes.json()).toMatchObject({
+      official_bank_confirmation: false
+    });
+
+    const dashboard = await server.inject({
+      method: 'GET',
+      url: '/v1/android-merchant/dashboard-summary',
+      headers: mobileHeaders
+    });
+    expect(dashboard.statusCode).toBe(200);
+    expect(dashboard.json()).toMatchObject({
+      payments_to_review_count: 0,
+      official_bank_confirmation: false
+    });
+
+    const configuration = await server.inject({
+      method: 'POST',
+      url: '/v1/android-merchant/configuration-test',
+      headers: mobileHeaders,
+      payload: {
+        receiver_connected: true,
+        notification_access_active: true,
+        connected_site_configured: true
+      }
+    });
+    expect(configuration.statusCode).toBe(200);
+    expect(configuration.json()).toMatchObject({
+      confirms_real_payment: false,
+      emits_payment_confirmed_webhook: false,
+      official_bank_confirmation: false
+    });
+
+    const connectedSiteTest = await server.inject({
+      method: 'POST',
+      url: '/v1/android-merchant/connected-site/test',
+      headers: mobileHeaders
+    });
+    expect(connectedSiteTest.statusCode).toBe(202);
+    expect(connectedSiteTest.json()).toMatchObject({
+      android_sent_webhook_directly: false,
+      official_bank_confirmation: false
+    });
+    expect(eventPublisher.events[0]).toMatchObject({
+      eventType: EventTypes.WEBHOOK_DELIVERY_REQUESTED,
+      merchantId: created.json().account.merchant_id,
+      data: {
+        test_only: true,
+        ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+      }
+    });
+
+    expectSafeAndroidMerchantBody(receivingRoutes.body);
+    expectSafeAndroidMerchantBody(dashboard.body);
+    expectSafeAndroidMerchantBody(configuration.body);
+    expectSafeAndroidMerchantBody(connectedSiteTest.body);
+  });
+
+  it('rejects Android mobile session confirmation attempts and keeps manual confirmation outside Android', async () => {
+    const eventPublisher = new FakeEventPublisher();
+    const { server, reviewRepository } = buildAndroidMerchantServer({ eventPublisher });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('mobile-confirm-block-device')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    const mobileHeaders = { authorization: `Bearer ${String(created.json().mobile_session.token)}` };
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_01/confirm',
+      headers: mobileHeaders,
+      payload: {
+        actor_id: 'android_merchant'
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.message).toMatch(/merchant permission|bearer|session/i);
+    expect(reviewRepository.items.get('rev_01')?.status).toBe('open');
+    expect(eventPublisher.events).toEqual([]);
+  });
+
+  it('keeps Google recovery and linking optional and fails closed when unconfigured', async () => {
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_ID', '');
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_SECRET', '');
+    vi.stubEnv('GOOGLE_OAUTH_REDIRECT_URI', '');
+    const { server } = buildAndroidMerchantServer();
+
+    const recovery = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.GOOGLE_EXCHANGE,
+      payload: { id_token: 'google-id-token-sample', device_proof: safeDeviceProof('google-recovery-device') }
+    });
+    expect(recovery.statusCode).toBe(503);
+    expect(recovery.json().error).toMatchObject({
+      code: 'google_recovery_unconfigured',
+      details: { purpose: 'account_recovery' }
+    });
+    expect(recovery.body).not.toContain('google-id-token-sample');
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('google-link-device')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    const mobileHeaders = { authorization: `Bearer ${String(created.json().mobile_session.token)}` };
+
+    const link = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.GOOGLE_LINK,
+      headers: mobileHeaders,
+      payload: { id_token: 'google-link-token-sample' }
+    });
+    expect(link.statusCode).toBe(503);
+    expect(link.json().error).toMatchObject({
+      code: 'google_recovery_unconfigured',
+      details: { purpose: 'account_recovery_linking' }
+    });
+    expect(link.body).not.toContain('google-link-token-sample');
+  });
+
+  it('requires an Android mobile session before Google profile linking', async () => {
+    const { server } = buildAndroidMerchantServer();
+
+    const unauthenticatedLink = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.GOOGLE_LINK,
+      payload: { id_token: 'google-link-token-sample' }
+    });
+
+    expect(unauthenticatedLink.statusCode).toBe(401);
+    expect(unauthenticatedLink.body).not.toContain('google-link-token-sample');
+  });
+
   it('returns a merchant-safe dashboard summary from reviews and receiving routes', async () => {
     const { server } = buildAndroidMerchantServer();
 
@@ -92,7 +439,7 @@ describe('android merchant mobile backend endpoints', () => {
         payment_reference: 'TANGO ALFA',
         signal_received_at: '2026-05-03T10:00:00.000Z',
         reason_labels: ['Validation manuelle en bêta', 'Référence non visible'],
-        allowed_actions: ['confirm', 'reject_signal', 'reject_order']
+        allowed_actions: ['reject_signal', 'reject_order']
       },
       confirmation_type: 'notification_signal',
       official_bank_confirmation: false
@@ -120,7 +467,7 @@ describe('android merchant mobile backend endpoints', () => {
       payment: {
         id: 'rev_unlinked',
         receiving_method_masked: 'Moyen de réception masqué',
-        allowed_actions: ['confirm', 'reject_signal', 'reject_order']
+        allowed_actions: ['reject_signal', 'reject_order']
       },
       confirmation_type: 'notification_signal',
       official_bank_confirmation: false
@@ -249,6 +596,7 @@ function buildAndroidMerchantServer(params: {
 } = {}) {
   const orderRepository = new FakeOrderRepository();
   const reviewRepository = new FakeReviewRepository();
+  const authBffRepository = new InMemoryAuthBffRepository();
   reviewRepository.items.set('rev_01', openReviewItem());
 
   const eventPublisher = params.eventPublisher ?? new FakeEventPublisher();
@@ -261,6 +609,7 @@ function buildAndroidMerchantServer(params: {
     },
     orderRepository,
     reviewRepository,
+    authBffRepository,
     eventPublisher,
     idGenerator: {
       orderId: () => 'ord_new',
@@ -278,7 +627,15 @@ function buildAndroidMerchantServer(params: {
     ...(params.connectedSite ? { androidMerchantConnectedSite: params.connectedSite } : {})
   });
 
-  return { server, orderRepository, reviewRepository, eventPublisher };
+  return { server, orderRepository, reviewRepository, authBffRepository, eventPublisher };
+}
+
+function safeDeviceProof(suffix: string): Record<string, string> {
+  return {
+    install_public_key: `test-install-public-key-${suffix}`,
+    challenge_id: `challenge-${suffix}`,
+    challenge_signature: `signature-${suffix}`
+  };
 }
 
 function openReviewItem(): ReviewListItem {

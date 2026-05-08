@@ -23,9 +23,9 @@ SwimPay production-mode staging initially used synthetic data only. As of Real S
 - `WEBHOOK_SECRET_ENCRYPTION_KEY`
 - `ADMIN_AUTH_MODE=signed_token`
 - `ADMIN_TOKEN_HMAC_SECRET`
-- `GOOGLE_OAUTH_CLIENT_ID`
-- `GOOGLE_OAUTH_CLIENT_SECRET`
-- `GOOGLE_OAUTH_REDIRECT_URI`
+- `GOOGLE_OAUTH_CLIENT_ID` when Google recovery/linking is enabled
+- `GOOGLE_OAUTH_CLIENT_SECRET` when Google recovery/linking is enabled
+- `GOOGLE_OAUTH_REDIRECT_URI` when Google recovery/linking is enabled
 
 ## Auth Boundaries
 
@@ -45,7 +45,17 @@ SwimPay production-mode staging initially used synthetic data only. As of Real S
 
 ## Google OAuth
 
-Google OAuth identifies the human user only. Merchant access is granted by SwimPay merchant memberships and roles.
+Google OAuth is optional recovery/linking for merchant profiles.
+
+In the Android merchant app, Google belongs to:
+
+- `Se connecter`, for existing account recovery/login;
+- `Paramètres > Sécurité`, for linking or saving a profile for future recovery.
+
+Google must not be required for normal Android account creation and must not be
+a mandatory onboarding step. Merchant access is still granted by SwimPay
+merchant membership and device/session boundaries, not by a Google account
+alone.
 
 Do not commit Google OAuth secrets. Put local/staging credentials in ignored environment files or a server secret store.
 
@@ -64,7 +74,13 @@ Merchant API keys are server-side only. They must be stored hashed and verified 
 
 ## Receiver Signals
 
-Receiver signals must remain signed, redacted and synthetic for production-mode staging. Raw notification title/body/text, raw phone and raw card values are forbidden.
+Receiver signals must remain signed and redacted.
+
+Production-mode staging may process one operator-owned real notification test
+only inside the controlled staging scope. Raw notification title/body/text, raw
+phone and raw card values are still forbidden for storage, upload and logs.
+
+Synthetic receiver tests remain the default for local and repeatable validation.
 
 ## Webhooks
 

@@ -3,6 +3,7 @@ package com.swimpay.receiver
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.Instant
 import java.util.Locale
 
 enum class MerchantRepositoryState {
@@ -20,10 +21,10 @@ data class AuthenticatedMerchantSession(
     val isAuthenticated: Boolean
 ) {
     val merchantStatusLabel: String = if (isAuthenticated) "Connexion active" else "Action requise"
-    val safeModeLabel: String = if (authMode == LOCAL_DEV_AUTH_MODE) {
-        "Session marchand local/dev"
-    } else {
-        "Session marchand non connectée"
+    val safeModeLabel: String = when (authMode) {
+        LOCAL_DEV_AUTH_MODE -> "Session marchand local/dev"
+        MOBILE_AUTH_MODE -> "Session mobile Android"
+        else -> "Session marchand non connectée"
     }
 
     fun authorizationHeader(): String {
@@ -34,8 +35,13 @@ data class AuthenticatedMerchantSession(
         return listOf(merchantStatusLabel, safeModeLabel)
     }
 
+    override fun toString(): String {
+        return "AuthenticatedMerchantSession(merchantId=$merchantId, authMode=$authMode, isAuthenticated=$isAuthenticated)"
+    }
+
     companion object {
         private const val LOCAL_DEV_AUTH_MODE = "local_dev"
+        private const val MOBILE_AUTH_MODE = "android_mobile"
 
         fun missing(): AuthenticatedMerchantSession {
             return AuthenticatedMerchantSession(
@@ -56,6 +62,270 @@ data class AuthenticatedMerchantSession(
                 isAuthenticated = true
             )
         }
+
+        fun mobile(merchantId: String, mobileSessionToken: String): AuthenticatedMerchantSession {
+            val safeMerchantId = merchantId.trim()
+            val safeToken = mobileSessionToken.trim()
+            require(safeMerchantId.isNotBlank()) { "merchantId cannot be blank" }
+            require(safeToken.startsWith("spm_")) { "mobile session token must use spm_ prefix" }
+            return AuthenticatedMerchantSession(
+                merchantId = safeMerchantId,
+                bearerToken = safeToken,
+                authMode = MOBILE_AUTH_MODE,
+                isAuthenticated = true
+            )
+        }
+
+        fun mobile(session: AndroidMerchantMobileSession): AuthenticatedMerchantSession {
+            return mobile(session.merchantId, session.authorizationTokenForRuntime())
+        }
+    }
+}
+
+data class AndroidMerchantDeviceProof(
+    val installPublicKey: String,
+    val challengeId: String,
+    val challengeSignature: String
+) {
+    fun toRequestMap(): Map<String, String> {
+        return mapOf(
+            "install_public_key" to installPublicKey,
+            "challenge_id" to challengeId,
+            "challenge_signature" to challengeSignature
+        )
+    }
+}
+
+interface AndroidMerchantDeviceProofProvider {
+    fun currentProof(): AndroidMerchantDeviceProof
+}
+
+class StaticAndroidMerchantDeviceProofProvider(
+    private val proof: AndroidMerchantDeviceProof
+) : AndroidMerchantDeviceProofProvider {
+    override fun currentProof(): AndroidMerchantDeviceProof = proof
+}
+
+enum class AndroidMerchantDeviceLookupIntent(val wireValue: String) {
+    CREATE_ACCOUNT("create_account"),
+    RECOVER_ACCOUNT("recover_account")
+}
+
+enum class AndroidMerchantDeviceLookupStatus(val wireValue: String) {
+    NEW_DEVICE("new_device"),
+    KNOWN_DEVICE("known_device"),
+    RECOVERY_REQUIRED("recovery_required"),
+    ERROR("error")
+}
+
+enum class AndroidMerchantAccountProfileType(val wireValue: String) {
+    PERSONAL("personal"),
+    BUSINESS("business")
+}
+
+enum class AndroidMerchantAuthResultStatus {
+    SUCCESS,
+    ACTION_REQUIRED,
+    ERROR
+}
+
+data class AndroidMerchantDeviceLookupResult(
+    val status: AndroidMerchantAuthResultStatus,
+    val deviceStatus: AndroidMerchantDeviceLookupStatus,
+    val merchantId: String? = null,
+    val deviceId: String? = null,
+    val recoveryRequired: Boolean = false,
+    val safeMessage: String = ""
+) {
+    fun visibleTexts(): List<String> = listOfNotNull(safeMessage.takeIf { it.isNotBlank() })
+}
+
+class AndroidMerchantMobileSession(
+    val merchantId: String,
+    val userId: String,
+    val displayHandle: String,
+    private val mobileSessionToken: String,
+    val expiresAtEpochMs: Long
+) {
+    init {
+        require(merchantId.isNotBlank()) { "merchantId cannot be blank" }
+        require(userId.isNotBlank()) { "userId cannot be blank" }
+        require(displayHandle.isNotBlank()) { "displayHandle cannot be blank" }
+        require(mobileSessionToken.startsWith("spm_")) { "mobile session token must use spm_ prefix" }
+    }
+
+    fun isValid(nowEpochMs: Long = System.currentTimeMillis()): Boolean = expiresAtEpochMs > nowEpochMs
+
+    fun authorizationTokenForRuntime(): String = mobileSessionToken
+
+    fun visibleTexts(): List<String> = listOf(displayHandle, "Session mobile Android")
+
+    override fun toString(): String {
+        return "AndroidMerchantMobileSession(merchantId=$merchantId, userId=$userId, displayHandle=$displayHandle, expiresAtEpochMs=$expiresAtEpochMs)"
+    }
+}
+
+data class AndroidMerchantAccountCreateResult(
+    val status: AndroidMerchantAuthResultStatus,
+    val mobileSession: AndroidMerchantMobileSession? = null,
+    val safeMessage: String = ""
+) {
+    fun visibleTexts(): List<String> = (mobileSession?.visibleTexts() ?: emptyList()) +
+        listOfNotNull(safeMessage.takeIf { it.isNotBlank() })
+}
+
+object AndroidMerchantAuthApiContract {
+    const val DEVICE_LOOKUP_PATH = "/v1/android-merchant/auth/device-lookup"
+    const val CREATE_ACCOUNT_PATH = "/v1/android-merchant/auth/create-account"
+    const val GOOGLE_EXCHANGE_PATH = "/v1/android-merchant/auth/google/exchange"
+    const val GOOGLE_LINK_PATH = "/v1/android-merchant/auth/google/link"
+}
+
+class AndroidMerchantAuthApiRepository(
+    private val transport: MerchantApiTransport,
+    private val deviceProofProvider: AndroidMerchantDeviceProofProvider
+) {
+    fun lookupDevice(intent: AndroidMerchantDeviceLookupIntent): AndroidMerchantDeviceLookupResult {
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = AndroidMerchantAuthApiContract.DEVICE_LOOKUP_PATH,
+                body = jsonObject(
+                    "lookup_intent" to intent.wireValue,
+                    "device_proof" to deviceProofProvider.currentProof().toRequestMap()
+                )
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return AndroidMerchantDeviceLookupResult(
+                status = AndroidMerchantAuthResultStatus.ERROR,
+                deviceStatus = AndroidMerchantDeviceLookupStatus.ERROR,
+                safeMessage = "Connexion en attente"
+            )
+        }
+        val deviceStatus = when (extractString(response.body, "device_status")) {
+            AndroidMerchantDeviceLookupStatus.KNOWN_DEVICE.wireValue -> AndroidMerchantDeviceLookupStatus.KNOWN_DEVICE
+            AndroidMerchantDeviceLookupStatus.RECOVERY_REQUIRED.wireValue -> AndroidMerchantDeviceLookupStatus.RECOVERY_REQUIRED
+            else -> AndroidMerchantDeviceLookupStatus.NEW_DEVICE
+        }
+        return AndroidMerchantDeviceLookupResult(
+            status = AndroidMerchantAuthResultStatus.SUCCESS,
+            deviceStatus = deviceStatus,
+            merchantId = extractString(response.body, "merchant_id"),
+            deviceId = extractString(response.body, "device_id"),
+            recoveryRequired = extractBoolean(response.body, "recovery_required") == true
+        )
+    }
+
+    fun createAccount(
+        profileType: AndroidMerchantAccountProfileType,
+        businessLabel: String? = null
+    ): AndroidMerchantAccountCreateResult {
+        val bodyEntries = buildList<Pair<String, Any?>> {
+            add("profile_type" to profileType.wireValue)
+            if (!businessLabel.isNullOrBlank()) add("business_label" to businessLabel.trim())
+            add("device_proof" to deviceProofProvider.currentProof().toRequestMap())
+        }
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = AndroidMerchantAuthApiContract.CREATE_ACCOUNT_PATH,
+                body = jsonObject(bodyEntries)
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return AndroidMerchantAccountCreateResult(
+                status = AndroidMerchantAuthResultStatus.ACTION_REQUIRED,
+                safeMessage = "Compte non créé"
+            )
+        }
+        return accountCreateResultFrom(response)
+    }
+
+    private fun accountCreateResultFrom(response: MerchantApiResponse): AndroidMerchantAccountCreateResult {
+        val account = extractObjectValue(response.body, "account").orEmpty()
+        val mobileSession = extractObjectValue(response.body, "mobile_session").orEmpty()
+        val token = extractString(mobileSession, "token")
+        val expiresAt = extractString(mobileSession, "expires_at")
+        val merchantId = extractString(account, "merchant_id")
+        val userId = extractString(account, "user_id")
+        val displayHandle = extractString(account, "display_handle")
+        if (token == null || expiresAt == null || merchantId == null || userId == null || displayHandle == null) {
+            return AndroidMerchantAccountCreateResult(
+                status = AndroidMerchantAuthResultStatus.ERROR,
+                safeMessage = "Session mobile indisponible"
+            )
+        }
+        return AndroidMerchantAccountCreateResult(
+            status = AndroidMerchantAuthResultStatus.SUCCESS,
+            mobileSession = AndroidMerchantMobileSession(
+                merchantId = merchantId,
+                userId = userId,
+                displayHandle = displayHandle,
+                mobileSessionToken = token,
+                expiresAtEpochMs = parseIsoEpochMs(expiresAt)
+            )
+        )
+    }
+
+    fun googleExchange(idToken: String): AndroidMerchantAccountCreateResult {
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = AndroidMerchantAuthApiContract.GOOGLE_EXCHANGE_PATH,
+                body = jsonObject(
+                    "id_token" to idToken,
+                    "device_proof" to deviceProofProvider.currentProof().toRequestMap()
+                )
+            )
+        )
+        return googleResultFrom(response)
+    }
+
+    fun googleLink(session: AuthenticatedMerchantSession, idToken: String): AndroidMerchantAccountCreateResult {
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = AndroidMerchantAuthApiContract.GOOGLE_LINK_PATH,
+                headers = authHeaders(session),
+                body = jsonObject("id_token" to idToken)
+            )
+        )
+        return if (response.statusCode in 200..299) {
+            AndroidMerchantAccountCreateResult(
+                status = AndroidMerchantAuthResultStatus.SUCCESS,
+                safeMessage = "Google associé"
+            )
+        } else {
+            googleRecoveryUnavailableResult()
+        }
+    }
+
+    private fun googleResultFrom(response: MerchantApiResponse): AndroidMerchantAccountCreateResult {
+        return if (response.statusCode in 200..299) {
+            accountCreateResultFrom(response)
+        } else {
+            googleRecoveryUnavailableResult()
+        }
+    }
+
+    private fun googleRecoveryUnavailableResult(): AndroidMerchantAccountCreateResult {
+        return AndroidMerchantAccountCreateResult(
+            status = AndroidMerchantAuthResultStatus.ACTION_REQUIRED,
+            safeMessage = "Récupération Google indisponible"
+        )
+    }
+
+    private fun execute(request: MerchantApiRequest): MerchantApiResponse {
+        return try {
+            transport.execute(request)
+        } catch (_: Exception) {
+            MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
+        }
+    }
+
+    private fun parseIsoEpochMs(value: String): Long {
+        return runCatching { Instant.parse(value).toEpochMilli() }.getOrDefault(0L)
     }
 }
 
@@ -77,8 +347,6 @@ interface MerchantApiTransport {
 
 object AndroidMerchantReviewApiContract {
     const val REVIEW_QUEUE_PATH = "/v1/reviews"
-
-    fun confirmPath(reviewId: String): String = "$REVIEW_QUEUE_PATH/${urlPath(reviewId)}/confirm"
 
     fun rejectPath(reviewId: String): String = "$REVIEW_QUEUE_PATH/${urlPath(reviewId)}/reject"
 }
@@ -394,21 +662,10 @@ class MerchantReviewActionsApiRepository(
     val backendOwnsReviewDecisions: Boolean = true
     val sendsDeveloperWebhookDirectly: Boolean = false
 
-    fun confirm(session: AuthenticatedMerchantSession, reviewId: String): MerchantReviewActionApiResult {
-        return action(
-            session = session,
-            reviewId = reviewId,
-            pathSuffix = "confirm",
-            body = jsonObject("actor_id" to "android_merchant"),
-            fallbackStatus = MerchantReviewActionResultStatus.MANUAL_CONFIRMED
-        )
-    }
-
     fun rejectSignal(session: AuthenticatedMerchantSession, reviewId: String): MerchantReviewActionApiResult {
         return action(
             session = session,
             reviewId = reviewId,
-            pathSuffix = "reject",
             body = jsonObject(
                 "actor_id" to "android_merchant",
                 "scope" to "signal",
@@ -422,7 +679,6 @@ class MerchantReviewActionsApiRepository(
         return action(
             session = session,
             reviewId = reviewId,
-            pathSuffix = "reject",
             body = jsonObject(
                 "actor_id" to "android_merchant",
                 "scope" to "order",
@@ -435,7 +691,6 @@ class MerchantReviewActionsApiRepository(
     private fun action(
         session: AuthenticatedMerchantSession,
         reviewId: String,
-        pathSuffix: String,
         body: String,
         fallbackStatus: MerchantReviewActionResultStatus
     ): MerchantReviewActionApiResult {
@@ -450,11 +705,7 @@ class MerchantReviewActionsApiRepository(
             transport.execute(
                 MerchantApiRequest(
                     method = "POST",
-                    path = when (pathSuffix) {
-                        "confirm" -> AndroidMerchantReviewApiContract.confirmPath(reviewId)
-                        "reject" -> AndroidMerchantReviewApiContract.rejectPath(reviewId)
-                        else -> "${AndroidMerchantReviewApiContract.REVIEW_QUEUE_PATH}/${urlPath(reviewId)}/$pathSuffix"
-                    },
+                    path = AndroidMerchantReviewApiContract.rejectPath(reviewId),
                     headers = authHeaders(session),
                     body = body
                 )
@@ -603,7 +854,6 @@ class MerchantPaymentDetailApiRepository(
                 "Il y a 2 min",
                 "Pourquoi ce paiement est à vérifier ?"
             ) + reasonLabels + listOf(
-                MerchantReviewAction.CONFIRM_PAYMENT.label,
                 MerchantReviewAction.REJECT_SIGNAL.label,
                 MerchantReviewAction.REJECT_ORDER.label
             ),
@@ -657,7 +907,7 @@ class MerchantConnectedSiteApiRepository(
         return MerchantScreenRepositoryResult(
             state = MerchantRepositoryState.SUCCESS,
             texts = listOf(
-                "Site ou application connecté",
+                "Webhook configuré",
                 "Votre site ou application reçoit une notification quand un paiement change de statut.",
                 extractString(response.body, "status_label") ?: "Action nécessaire",
                 "URL de notification",
@@ -764,7 +1014,7 @@ class MerchantConfigurationTestApiRepository(
             .mapNotNull { extractString(it, "label") }
             .ifEmpty { MerchantConfigurationChecklist.REQUIRED_LABELS }
         val resultTexts = if (outcome == MerchantConfigurationTestOutcome.READY) {
-            listOf("SwimPay est prêt", "Votre configuration fonctionne pour la bêta.")
+            listOf("Webhook prêt", "Le backend peut envoyer un événement de test vers votre endpoint.")
         } else {
             listOf("Action requise")
         }

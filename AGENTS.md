@@ -180,6 +180,24 @@ Backend decides.
 
 Never implement final payment confirmation on Android.
 
+## Android merchant account truth
+
+The current Android merchant app account flow is:
+
+- show login/create-account before onboarding when no valid mobile merchant session exists;
+- `Créer un compte` starts onboarding and creates a lightweight merchant account;
+- `Se connecter` recovers an existing account, including through Google when linked;
+- Google is optional recovery/linking only, exposed in login and `Paramètres > Sécurité`, not as a required onboarding step;
+- account creation supports personal and business/commerce profiles with the same app rights;
+- Android UX must not present these profiles as admin personas;
+- do not collect merchant user first names or last names during Android account creation;
+- generate a pseudonym/display handle instead;
+- use privacy-safe device proof for known/new-device detection, never raw device identifiers or broad fingerprint collection;
+- Step 5 `Site ou application` branches: `Configurer plus tard` enters the app after a brief success state, while `Ajouter maintenant` continues to a webhook-test-only path;
+- the onboarding test path is a backend-owned webhook test only and must not confirm payment or send webhooks directly from Android.
+
+See `docs/ANDROID_ACCOUNT_AND_ONBOARDING_TRUTH.md`.
+
 ## Testing rules
 
 Every feature must include tests.

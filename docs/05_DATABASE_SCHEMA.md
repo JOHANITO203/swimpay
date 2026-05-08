@@ -426,12 +426,28 @@ CREATE TABLE audit_events (
 
 Sprint 9J adds additive identity/session tables:
 
-- `users`: human identities, keyed by stable `google_sub` when Google OAuth is enabled.
+- `users`: lightweight merchant account identities. Android account creation must allow pseudonymous users without collecting first or last names.
 - `merchant_memberships`: links users to merchants with `owner`, `admin`, `developer`, `operator` and `viewer` roles.
 - `admin_roles`: SwimPay internal operator/admin roles, separate from merchant memberships.
 - `bff_sessions`: opaque server-side HttpOnly dashboard sessions with active merchant context and CSRF material.
 
 The existing `merchants` table remains the tenant source of truth. Sprint 9J adds `business_name` and `owner_user_id` without dropping the legacy `name` column. BFF human sessions, merchant SDK API keys and Android Receiver device keys are separate identity boundaries.
+
+Android account and onboarding truth is defined in
+`docs/ANDROID_ACCOUNT_AND_ONBOARDING_TRUTH.md`.
+
+Google identity is an optional recovery/linking provider, not the required key
+for normal Android account creation. A `google_sub` can be attached to a user
+only after login/recovery or security linking.
+
+The Android UX supports personal and business/commerce merchant profiles with
+the same app rights. Internally the initial creator can still be represented by
+a merchant membership capable of managing the merchant, but the Android product
+must not present that as an admin persona.
+
+Known/new-device checks should use privacy-safe device proof such as an app
+install keypair and signed challenge. Do not store raw IMEI, raw Android ID,
+advertising ID or broad fingerprint material.
 
 ## Critical indexes
 

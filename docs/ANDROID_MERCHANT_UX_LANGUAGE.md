@@ -22,6 +22,11 @@ The Android app is the merchant Receiver frontend. It must stay simple, operatio
 - Notification envoyée
 - Validation manuelle en bêta
 
+- Créer un compte
+- Se connecter
+- Paramètres
+- Sécurité
+
 ## Forbidden Merchant-facing Terms
 
 These terms may appear only in internal tests, developer screens, API docs, debug panels or engineering documentation. They must not appear in default merchant UI:
@@ -40,6 +45,18 @@ These terms may appear only in internal tests, developer screens, API docs, debu
 - package_name
 
 ## Exact Onboarding Copy
+
+Current account and onboarding truth is defined in
+`docs/ANDROID_ACCOUNT_AND_ONBOARDING_TRUTH.md`.
+
+When no valid mobile merchant session exists, Android shows an account entry
+screen before onboarding. `Créer un compte` starts onboarding. `Se connecter`
+recovers an existing profile. Google appears only in login/recovery and in
+`Paramètres > Sécurité` profile linking; it is not onboarding copy.
+
+The account creation UX may ask whether the merchant wants a personal profile or
+a business/commerce profile. Both choices have the same rights and must not be
+presented as admin roles. Do not ask for merchant user first or last names.
 
 ### Welcome
 
@@ -177,8 +194,16 @@ Checklist:
 CTA:
 
 ```text
-Lancer un test
+Lancer le test webhook
 ```
+
+The onboarding test is webhook-test-only and exists only after `Ajouter
+maintenant` on the site/application step. If the merchant chooses `Configurer
+plus tard`, show a brief success state and enter the app without this test.
+
+Android may request the backend-owned test action, but Android does not send
+developer webhooks directly. The test does not process real bank notifications,
+does not confirm payment and does not emit `payment.confirmed`.
 
 ## Guardrails
 

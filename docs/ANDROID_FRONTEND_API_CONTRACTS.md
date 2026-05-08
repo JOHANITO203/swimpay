@@ -16,6 +16,72 @@ Each screen contract supports:
 
 Android uses an `AuthenticatedMerchantSession` model.
 
+Current account and onboarding truth is defined in
+`docs/ANDROID_ACCOUNT_AND_ONBOARDING_TRUTH.md`.
+
+When no valid mobile merchant session exists, Android starts with an account
+entry boundary before onboarding:
+
+- `Créer un compte` creates a lightweight merchant account and starts onboarding.
+- `Se connecter` recovers an existing account.
+
+The backend should classify known/new device state through a privacy-safe
+device proof such as an app install keypair and signed challenge. Do not rely on
+raw device identifiers, advertising IDs, IMEI, raw Android ID or broad
+fingerprint collection.
+
+Google is optional account recovery/linking only. It appears in login and in
+`Paramètres > Sécurité` for saving or linking a profile. It must not be required
+for normal account creation and must not appear as a mandatory onboarding step.
+
+Android Google sign-in is a recovery/linking surface. The expected client-side
+provider is Android Credential Manager / Sign in with Google, which yields an ID
+token for backend exchange. Android must not persist Google tokens or use Google
+as mandatory onboarding.
+
+Personal and business/commerce profile choices have the same app rights. The
+Android UX must not expose them as admin personas. Account creation does not
+collect merchant user first names or last names; the backend/app should use a
+generated pseudonym/display handle.
+
+### Android Account Endpoints
+
+Backend endpoints:
+
+- `POST /v1/android-merchant/auth/device-lookup`
+- `POST /v1/android-merchant/auth/create-account`
+- `POST /v1/android-merchant/auth/google/exchange`
+- `POST /v1/android-merchant/auth/google/link`
+
+APK backend target:
+
+- default debug builds keep `http://127.0.0.1:8080` for adb reverse/local smoke;
+- staging debug builds can be assembled with
+  `-PswimpayBackendBaseUrl=https://staging.swimpay.pro`;
+- external Android backend URLs must use HTTPS.
+
+`device-lookup` accepts only privacy-safe install proof material. It must not
+accept IMEI, raw Android ID, advertising ID, phone number, contact data or broad
+fingerprint material.
+
+`create-account` creates the lightweight Android merchant account before
+onboarding. It returns a `mobile_session` token with the `spm_` prefix. Android
+stores this mobile session in protected local storage and uses it only as an
+Android merchant session bearer.
+
+`google/exchange` is used by `Se connecter` after the Android Google provider
+returns an ID token. It restores a linked profile or fails closed when Google is
+not configured.
+
+`google/link` is used from `Parametres > Securite` to save a recovery provider
+for an existing mobile profile. It requires an authenticated Android mobile
+session first; unauthenticated linking must return `401`.
+
+The current install proof implementation is privacy-safe but not yet a strong
+anti-replay identity. Production hardening must add server challenge issuance
+and Android Keystore-backed private-key signing before treating device proof as
+strong account recovery evidence.
+
 For local/dev backend calls only, the app can use:
 
 ```text
@@ -56,7 +122,6 @@ Raw reason codes are not displayed in merchant mode.
 
 Backend endpoints:
 
-- `POST /v1/reviews/:id/confirm`
 - `POST /v1/reviews/:id/reject`
 
 Android sends explicit action scope for rejection:
@@ -65,6 +130,9 @@ Android sends explicit action scope for rejection:
 - `order` for `Rejeter la commande`
 
 Android does not directly send developer webhooks; webhook delivery remains backend responsibility after review action processing.
+
+Android mobile sessions do not call the manual confirmation endpoint. Merchant
+manual confirmation remains outside the Android Receiver boundary.
 
 ## Sprint 7F Mobile Endpoints
 
@@ -101,7 +169,16 @@ Backend endpoint:
 
 - `POST /v1/android-merchant/configuration-test`
 
-Runs non-confirming readiness checks and returns merchant-facing checklist labels. It does not confirm real payments and does not emit `payment.confirmed`.
+The onboarding test path is webhook-test-only after the merchant chooses
+`Ajouter maintenant` on the site/application step. Android may request the
+backend-owned webhook test, but Android must not send developer webhooks
+directly.
+
+The test does not process real bank notifications, does not confirm real
+payments and does not emit `payment.confirmed`.
+
+If the merchant chooses `Configurer plus tard`, onboarding skips this test and
+enters the app after a brief success state.
 
 ## Local Android Contracts
 

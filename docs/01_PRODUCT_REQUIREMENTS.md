@@ -27,6 +27,16 @@ The buyer wants to buy a digital product and pay by bank transfer with minimal f
 
 The merchant wants SwimPay to recognize likely bank-transfer payments and present them for fast confirmation.
 
+In the Android merchant app, account creation is lightweight and starts before
+onboarding. The merchant can create either a personal profile or a
+business/commerce profile; both have the same app rights and are not presented
+as admin personas. SwimPay does not collect merchant user first names or last
+names during Android account creation and generates a pseudonym/display handle.
+
+Google is optional recovery/linking only, exposed in login and
+`Paramètres > Sécurité`, not as a required onboarding step. See
+`docs/ANDROID_ACCOUNT_AND_ONBOARDING_TRUTH.md`.
+
 ### Developer
 
 The developer wants an API, checkout URL and signed webhooks that notify their backend when a payment is manually confirmed, rejected or expired.
@@ -104,9 +114,13 @@ Buyer recognition hints must not include CVV, expiration date, PIN, SMS code or 
 
 ```text
 install Receiver App
+-> create account or recover existing account
+-> onboarding
 -> enable Notification Access
 -> activate supported bank targets
 -> configure receiving methods
+-> configure site/application now or later
+-> run backend-owned webhook test if configuring now
 -> create/use orders
 -> review matching payment candidates
 -> confirm or reject

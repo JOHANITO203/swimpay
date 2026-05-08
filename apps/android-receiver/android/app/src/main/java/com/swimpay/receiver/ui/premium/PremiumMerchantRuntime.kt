@@ -271,7 +271,7 @@ data class PremiumConfigurationUiState(
             return PremiumConfigurationUiState(
                 checklist = MerchantConfigurationChecklist.REQUIRED_LABELS,
                 outcomeTitle = "SwimPay est prêt",
-                outcomeText = "Votre configuration fonctionne pour la bêta.",
+                outcomeText = "Le backend peut envoyer un événement de test vers votre endpoint.",
                 usesLiveApi = false
             )
         }
@@ -398,11 +398,6 @@ class PremiumMerchantRuntime(
                 usesLiveApi = !result.usesMockRepository
             )
         )
-    }
-
-    fun confirm(reviewId: String): PremiumScreenState<PremiumPaymentDetailUiState> {
-        val result = reviewActionsRepository.confirm(session, reviewId)
-        return loadPaymentDetail(reviewId).withActionMessage(result.safeMessage)
     }
 
     fun rejectSignal(reviewId: String): PremiumScreenState<PremiumPaymentDetailUiState> {
@@ -554,11 +549,11 @@ class PremiumMerchantRuntime(
                 checklist = texts.take(MerchantConfigurationChecklist.REQUIRED_LABELS.size).ifEmpty {
                     MerchantConfigurationChecklist.REQUIRED_LABELS
                 },
-                outcomeTitle = if (texts.contains("SwimPay est prêt")) "SwimPay est prêt" else "Action requise",
-                outcomeText = if (texts.contains("SwimPay est prêt")) {
-                    "Votre configuration fonctionne pour la bêta."
+                outcomeTitle = if (texts.contains("SwimPay est prêt") || texts.contains("Webhook prêt")) "Webhook prêt" else "Action requise",
+                outcomeText = if (texts.contains("SwimPay est prêt") || texts.contains("Webhook prêt")) {
+                    "Le backend peut envoyer un événement de test vers votre endpoint."
                 } else {
-                    "Vérifiez les étapes avant de recevoir vos premiers paiements."
+                    "Vérifiez les étapes avant de lancer le test webhook."
                 },
                 usesLiveApi = !result.usesMockRepository && !result.confirmsRealPayment
             )
@@ -637,7 +632,6 @@ class PremiumMerchantRuntime(
 
     companion object {
         private val REVIEW_ACTION_LABELS = setOf(
-            "Confirmer le paiement",
             "Rejeter le signal",
             "Rejeter la commande"
         )
@@ -671,6 +665,25 @@ class PremiumMerchantRuntime(
             } else {
                 disconnected()
             }
+        }
+
+        fun mobileSession(
+            mobileSession: PremiumMobileMerchantSession,
+            baseUrl: String = DebugBackendConfig.DEFAULT_BASE_URL,
+            bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe()
+        ): PremiumMerchantRuntime {
+            val transport: MerchantApiTransport = HttpUrlConnectionMerchantApiTransport(baseUrl)
+            return PremiumMerchantRuntime(
+                session = AuthenticatedMerchantSession.mobile(mobileSession.merchantId, mobileSession.authorizationTokenForRuntime()),
+                dashboardRepository = MerchantDashboardApiRepository(transport),
+                reviewQueueRepository = MerchantReviewQueueApiRepository(transport),
+                paymentDetailRepository = MerchantPaymentDetailApiRepository(transport),
+                reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
+                receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
+                connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
+                configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
+                bankPackageProbe = bankPackageProbe
+            )
         }
 
         fun disconnected(): PremiumMerchantRuntime {

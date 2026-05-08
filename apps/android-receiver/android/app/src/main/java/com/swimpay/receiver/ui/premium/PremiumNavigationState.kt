@@ -2,6 +2,13 @@ package com.swimpay.receiver.ui.premium
 
 sealed interface PremiumRoute {
     data object Landing : PremiumRoute
+    data object AccountEntry : PremiumRoute
+    data object AccountProfileChoice : PremiumRoute
+    data object LoginProviderChoice : PremiumRoute
+    data class AccountRecovery(
+        val state: PremiumAccountRecoveryUiState,
+        val returnRoute: PremiumRoute = LoginProviderChoice
+    ) : PremiumRoute
     data object Onboarding : PremiumRoute
     data class Main(val tab: PremiumMainTab = PremiumMainTab.Home) : PremiumRoute
     data class PaymentDetail(val reviewId: String) : PremiumRoute
@@ -26,11 +33,33 @@ enum class PremiumMainTab(
 }
 
 object PremiumNavigation {
-    fun initialRoute(onboardingCompleted: Boolean): PremiumRoute {
+    fun initialRoute(
+        onboardingCompleted: Boolean,
+        mobileMerchantSessionValid: Boolean = false
+    ): PremiumRoute {
+        if (!mobileMerchantSessionValid) return PremiumRoute.AccountEntry
         return if (onboardingCompleted) PremiumRoute.Main(PremiumMainTab.Home) else PremiumRoute.Onboarding
     }
 
     fun afterOnboarding(): PremiumRoute = PremiumRoute.Main(PremiumMainTab.Home)
+
+    fun openAccountProfileChoice(): PremiumRoute = PremiumRoute.AccountProfileChoice
+
+    fun openLoginProviderChoice(): PremiumRoute = PremiumRoute.LoginProviderChoice
+
+    fun afterAccountProfileSelected(profileType: PremiumMerchantProfileType): PremiumRoute {
+        return when (profileType) {
+            PremiumMerchantProfileType.PERSONAL,
+            PremiumMerchantProfileType.COMMERCE -> PremiumRoute.Onboarding
+        }
+    }
+
+    fun openAccountRecovery(
+        state: PremiumAccountRecoveryUiState,
+        returnRoute: PremiumRoute = PremiumRoute.LoginProviderChoice
+    ): PremiumRoute {
+        return PremiumRoute.AccountRecovery(state, returnRoute)
+    }
 
     fun openReview(reviewId: String): PremiumRoute = PremiumRoute.PaymentDetail(reviewId)
 

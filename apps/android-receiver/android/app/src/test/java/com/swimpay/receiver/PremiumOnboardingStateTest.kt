@@ -15,11 +15,25 @@ class PremiumOnboardingStateTest {
         val store = InMemoryPremiumOnboardingStateStore(completed = false)
 
         assertFalse(store.isCompleted())
-        assertEquals(PremiumRoute.Onboarding, PremiumNavigation.initialRoute(store.isCompleted()))
+        assertEquals(PremiumRoute.AccountEntry, PremiumNavigation.initialRoute(store.isCompleted()))
+        assertEquals(
+            PremiumRoute.Onboarding,
+            PremiumNavigation.initialRoute(
+                onboardingCompleted = store.isCompleted(),
+                mobileMerchantSessionValid = true
+            )
+        )
 
         store.markCompleted()
 
         assertTrue(store.isCompleted())
-        assertEquals(PremiumRoute.Main(PremiumMainTab.Home), PremiumNavigation.initialRoute(store.isCompleted()))
+        assertEquals(PremiumRoute.AccountEntry, PremiumNavigation.initialRoute(store.isCompleted()))
+        assertEquals(
+            PremiumRoute.Main(PremiumMainTab.Home),
+            PremiumNavigation.initialRoute(
+                onboardingCompleted = store.isCompleted(),
+                mobileMerchantSessionValid = true
+            )
+        )
     }
 }

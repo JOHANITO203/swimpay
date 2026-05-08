@@ -128,7 +128,6 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
 fun PremiumPaymentDetailScreen(
     state: PremiumScreenState<PremiumPaymentDetailUiState> = PremiumScreenState.content(PremiumPaymentDetailUiState.preview()),
     onBack: () -> Unit = {},
-    onConfirm: () -> Unit = {},
     onRejectSignal: () -> Unit = {},
     onRejectOrder: () -> Unit = {}
 ) {
@@ -136,7 +135,6 @@ fun PremiumPaymentDetailScreen(
         is PremiumScreenState.Content -> PremiumPaymentDetailContent(
             state = state.value,
             onBack = onBack,
-            onConfirm = onConfirm,
             onRejectSignal = onRejectSignal,
             onRejectOrder = onRejectOrder
         )
@@ -148,7 +146,6 @@ fun PremiumPaymentDetailScreen(
 private fun PremiumPaymentDetailContent(
     state: PremiumPaymentDetailUiState,
     onBack: () -> Unit,
-    onConfirm: () -> Unit,
     onRejectSignal: () -> Unit,
     onRejectOrder: () -> Unit
 ) {
@@ -208,8 +205,6 @@ private fun PremiumPaymentDetailContent(
                 }
             }
             item {
-                PremiumBlueButton("Confirmer le paiement", onClick = onConfirm)
-                Spacer(Modifier.height(12.dp))
                 PremiumPrimaryButton("Rejeter le signal", onClick = onRejectSignal)
                 Spacer(Modifier.height(12.dp))
                 Text(

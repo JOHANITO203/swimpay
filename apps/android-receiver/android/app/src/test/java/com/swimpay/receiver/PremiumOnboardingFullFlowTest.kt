@@ -37,7 +37,7 @@ class PremiumOnboardingFullFlowTest {
     }
 
     @Test
-    fun connectedSiteCanBeSkippedAndConfigurationChecklistAdapts() {
+    fun connectedSiteSkipCompletesOnboardingWithoutRunningWebhookTest() {
         val skipped = PremiumOnboardingSessionState(
             currentStep = PremiumOnboardingStep.CONNECTED_SITE,
             notificationAccessEnabled = true,
@@ -46,28 +46,56 @@ class PremiumOnboardingFullFlowTest {
         ).skipConnectedSite()
 
         assertTrue(skipped.canContinueFrom())
+        val completed = skipped.completeAndMoveNext()
+
+        assertTrue(completed.skippedConnectedSite)
+        assertTrue(completed.onboardingCompleted)
+        assertFalse(completed.connectedSiteConfigured)
+        assertFalse(completed.configurationTestRan)
+        assertEquals(PremiumOnboardingStep.CONNECTED_SITE, completed.currentStep)
+        assertTrue(completed.completedSteps.contains(PremiumOnboardingStep.CONNECTED_SITE))
+    }
+
+    @Test
+    fun connectedSiteAddNowContinuesToBackendOwnedWebhookTestOnly() {
+        val readyForSite = PremiumOnboardingSessionState(
+            currentStep = PremiumOnboardingStep.CONNECTED_SITE,
+            notificationAccessEnabled = true,
+            selectedBankIds = setOf("sber_ru"),
+            receivingMethodConfigured = true
+        )
+        val next = readyForSite.connectSite().completeAndMoveNext()
+
+        assertTrue(next.connectedSiteConfigured)
+        assertFalse(next.skippedConnectedSite)
+        assertFalse(next.onboardingCompleted)
+        assertFalse(next.configurationTestRan)
+        assertEquals(PremiumOnboardingStep.CONFIGURATION_TEST, next.currentStep)
+        assertTrue(next.canContinueFrom())
         assertEquals(
             listOf(
-                "Téléphone connecté",
+                "Accès notifications activé",
                 "Banque choisie",
                 "Moyen de réception ajouté",
-                "Site ou application à configurer"
+                "Webhook configuré"
             ),
-            skipped.configurationChecklistLabels()
+            next.configurationChecklistLabels()
         )
-        assertTrue(skipped.configurationResultLabels().contains("Site ou application à configurer"))
+    }
 
-        val connected = skipped.connectSite()
-
-        assertEquals(
-            listOf(
-                "Téléphone connecté",
-                "Banque choisie",
-                "Moyen de réception ajouté",
-                "Site ou application connecté"
-            ),
-            connected.configurationChecklistLabels()
+    @Test
+    fun webhookTestRequiresConnectedSiteConfiguration() {
+        val missingWebhook = PremiumOnboardingSessionState(
+            currentStep = PremiumOnboardingStep.CONFIGURATION_TEST,
+            notificationAccessEnabled = true,
+            selectedBankIds = setOf("sber_ru"),
+            receivingMethodConfigured = true,
+            connectedSiteConfigured = false
         )
+
+        assertFalse(missingWebhook.configurationTestReady)
+        assertFalse(missingWebhook.canContinueFrom())
+        assertTrue(missingWebhook.configurationResultLabels().contains("Webhook à configurer"))
     }
 
     @Test
@@ -82,11 +110,12 @@ class PremiumOnboardingFullFlowTest {
     }
 
     @Test
-    fun receivingMethodAndConfigurationTestDoNotRepresentPaymentConfirmation() {
+    fun receivingMethodAndWebhookTestDoNotRepresentPaymentConfirmation() {
         val ready = PremiumOnboardingSessionState(
             currentStep = PremiumOnboardingStep.CONFIGURATION_TEST,
             notificationAccessEnabled = true,
-            selectedBankIds = setOf("sber_ru")
+            selectedBankIds = setOf("sber_ru"),
+            connectedSiteConfigured = true
         ).withReceivingMethod(PremiumReceivingMethodDraft.CARD_TRANSFER)
 
         assertTrue(ready.configurationTestReady)
@@ -110,8 +139,10 @@ class PremiumOnboardingFullFlowTest {
             "Ajoutez votre moyen de réception",
             "Connectez votre site ou application",
             "Configurer plus tard",
-            "Vérifiez que tout fonctionne",
-            "Tester sans site connecté"
+            "Test webhook",
+            "Lancer le test webhook",
+            "déclenché par le backend",
+            "Pratique pour les virements via SBP."
         )
 
         approvedCopy.forEach { copy ->
@@ -120,6 +151,9 @@ class PremiumOnboardingFullFlowTest {
         assertTrue(source.contains("CompatibleBankSelectionStep"))
         assertFalse(source.contains("CompatibleBankDetectionStep"))
         assertFalse(source.contains("private fun BankSelectionStep("))
+        assertFalse(source.contains("Tester sans site connecté"))
+        assertFalse(source.contains("Lancer un test complet"))
+        assertFalse(source.contains("paiement est confirmé", ignoreCase = true))
     }
 
     @Test

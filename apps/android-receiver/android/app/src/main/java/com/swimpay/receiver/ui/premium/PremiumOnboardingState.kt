@@ -41,7 +41,10 @@ data class PremiumOnboardingSessionState(
     val onboardingCompleted: Boolean = false
 ) {
     val configurationTestReady: Boolean
-        get() = notificationAccessEnabled && selectedBankIds.isNotEmpty() && receivingMethodConfigured
+        get() = notificationAccessEnabled &&
+            selectedBankIds.isNotEmpty() &&
+            receivingMethodConfigured &&
+            connectedSiteConfigured
 
     fun withNotificationAccess(enabled: Boolean): PremiumOnboardingSessionState {
         return copy(notificationAccessEnabled = enabled)
@@ -108,6 +111,13 @@ data class PremiumOnboardingSessionState(
 
     fun completeAndMoveNext(): PremiumOnboardingSessionState {
         val completed = completedSteps + currentStep
+        if (currentStep == PremiumOnboardingStep.CONNECTED_SITE && skippedConnectedSite) {
+            return copy(
+                completedSteps = completed,
+                configurationTestRan = false,
+                onboardingCompleted = true
+            )
+        }
         val nextIndex = PremiumOnboardingStep.requiredSequence.indexOf(currentStep) + 1
         return if (nextIndex >= PremiumOnboardingStep.requiredSequence.size) {
             copy(
@@ -138,13 +148,13 @@ data class PremiumOnboardingSessionState(
 
     fun configurationChecklistLabels(): List<String> {
         return listOf(
-            "Téléphone connecté",
+            "Accès notifications activé",
             "Banque choisie",
             "Moyen de réception ajouté",
             if (connectedSiteConfigured) {
-                "Site ou application connecté"
+                "Webhook configuré"
             } else {
-                "Site ou application à configurer"
+                "Webhook à configurer"
             }
         )
     }
@@ -154,7 +164,7 @@ data class PremiumOnboardingSessionState(
             if (notificationAccessEnabled) add("Réussi") else add("Téléphone non connecté")
             if (selectedBankIds.isNotEmpty()) add("Réussi") else add("Banque à choisir")
             if (receivingMethodConfigured) add("Réussi") else add("Moyen de réception à ajouter")
-            if (connectedSiteConfigured) add("Réussi") else add("Site ou application à configurer")
+            if (connectedSiteConfigured) add("Réussi") else add("Webhook à configurer")
             if (!configurationTestReady) add("Action nécessaire")
         }
     }

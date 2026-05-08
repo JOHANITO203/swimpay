@@ -15,15 +15,46 @@ Sprint 7D adds a merchant-facing Android Receiver frontend with typed screen mod
 
 ### Onboarding
 
+Current account and onboarding truth is defined in
+`docs/ANDROID_ACCOUNT_AND_ONBOARDING_TRUTH.md`.
+
+When no valid mobile merchant session exists, the Android app must show an
+account entry screen before onboarding:
+
+- `Créer un compte`
+- `Se connecter`
+
+`Créer un compte` starts onboarding and creates a lightweight merchant account.
+`Se connecter` recovers an existing account. Google belongs to login/recovery
+and `Paramètres > Sécurité` profile linking; it is not required during account
+creation and must not be a mandatory onboarding step.
+
+The account creation UX supports two profile choices with the same app rights:
+
+- personal merchant profile;
+- business/commerce merchant profile.
+
+These profiles are not presented as admin personas. The app does not collect
+merchant user first names or last names during account creation; it generates a
+pseudonym/display handle.
+
 The onboarding model includes:
 
 1. Welcome.
-2. Connect phone.
-3. Choose banks.
+2. Connect phone / Notification Listener Access.
+3. Choose supported activated banks.
 4. Receiving method setup.
-5. Configuration test.
+5. Site or application choice.
+6. Conditional webhook test.
 
 The Notification Listener Access action opens Android system settings. The app does not bypass Android permission screens.
+
+The `Site ou application` step branches:
+
+- `Configurer plus tard`: mark site/app setup as skipped, show a brief success
+  state, then enter the app.
+- `Ajouter maintenant`: continue to integration setup, then run the webhook
+  test path.
 
 ### Bank Selection
 
@@ -50,6 +81,11 @@ Supported merchant-facing methods:
 - Carte bancaire
 - Numéro de téléphone
 
+The phone receiving-method copy may mention SBP only as merchant-facing
+transfer wording for the Russian market. This is a copy exception, not an SBP
+integration: SwimPay still does not initiate payments, call SBP APIs, read SMS,
+scrape bank apps, or claim official bank confirmation.
+
 After save, Android screen models display only masked identifiers:
 
 - `Sberbank · •••• 4821`
@@ -59,14 +95,27 @@ Full values are not shown after save and are not sent in webhooks.
 
 ### Configuration Test
 
-The configuration test checklist covers:
+The onboarding test path is webhook-test-only and exists only after the merchant
+chooses `Ajouter maintenant` on the site/application step.
+
+The webhook test is backend-owned. Android may request the backend test action,
+but Android must not send developer webhooks directly.
+
+The webhook test does not:
+
+- process real bank notifications;
+- confirm a real payment;
+- emit `payment.confirmed`.
+
+The webhook test checklist covers:
 
 - Téléphone connecté
 - Banque choisie
 - Moyen de réception ajouté
 - Site ou application connecté
 
-The test is a configuration test only. It does not confirm a real payment.
+If the merchant chooses `Configurer plus tard`, this test is skipped during
+onboarding and the merchant enters the app after the brief success state.
 
 ### Dashboard
 

@@ -87,7 +87,7 @@ class PremiumMerchantRuntimeContractTest {
                     "receiving_method_masked": "Carte bancaire \u00b7 \u2022\u2022\u2022\u2022 4821",
                     "payment_reference": "TANGO ALFA",
                     "reason_labels": ["Validation manuelle en b\u00eata", "R\u00e9f\u00e9rence non visible"],
-                    "allowed_actions": ["confirm", "reject_signal", "reject_order"]
+                    "allowed_actions": ["reject_signal", "reject_order"]
                   },
                   "official_bank_confirmation": false
                 }
@@ -114,7 +114,7 @@ class PremiumMerchantRuntimeContractTest {
                     { "label": "T\u00e9l\u00e9phone connect\u00e9", "status": "passed" },
                     { "label": "Banque choisie", "status": "passed" },
                     { "label": "Moyen de r\u00e9ception ajout\u00e9", "status": "passed" },
-                    { "label": "Site ou application connect\u00e9", "status": "passed" }
+                    { "label": "Webhook configur\u00e9", "status": "passed" }
                   ],
                   "official_bank_confirmation": false
                 }
@@ -397,34 +397,6 @@ class PremiumMerchantRuntimeContractTest {
                 200,
                 """
                 {
-                  "review_id": "rev_01",
-                  "status": "confirmed",
-                  "order_status": "manual_confirmed"
-                }
-                """.trimIndent()
-            ),
-            MerchantApiResponse(
-                200,
-                """
-                {
-                  "payment": {
-                    "review_id": "rev_01",
-                    "amount_expected": { "value": "58.41", "currency": "RUB" },
-                    "amount_detected": { "value": "58.41", "currency": "RUB" },
-                    "bank_display_name": "Sberbank",
-                    "receiving_method_masked": "Carte bancaire \u00b7 \u2022\u2022\u2022\u2022 4821",
-                    "payment_reference": "TANGO ALFA",
-                    "reason_labels": ["Validation manuelle en b\u00eata"],
-                    "allowed_actions": ["confirm", "reject_signal", "reject_order"]
-                  },
-                  "official_bank_confirmation": false
-                }
-                """.trimIndent()
-            ),
-            MerchantApiResponse(
-                200,
-                """
-                {
                   "review_id": "rev_02",
                   "status": "rejected",
                   "order_status": "needs_review",
@@ -444,7 +416,7 @@ class PremiumMerchantRuntimeContractTest {
                     "receiving_method_masked": "T\u00e9l\u00e9phone \u00b7 +7 *** *** 45-67",
                     "payment_reference": "NOVA KILO",
                     "reason_labels": ["Validation manuelle en b\u00eata"],
-                    "allowed_actions": ["confirm", "reject_signal", "reject_order"]
+                    "allowed_actions": ["reject_signal", "reject_order"]
                   },
                   "official_bank_confirmation": false
                 }
@@ -454,14 +426,11 @@ class PremiumMerchantRuntimeContractTest {
         val session = AuthenticatedMerchantSession.localDev("mch_demo")
         val runtime = runtimeWith(session, transport)
 
-        val confirmed = runtime.confirm("rev_01") as PremiumScreenState.Content<PremiumPaymentDetailUiState>
         val signalRejected = runtime.rejectSignal("rev_02") as PremiumScreenState.Content<PremiumPaymentDetailUiState>
 
-        assertEquals("Valid\u00e9", confirmed.value.actionMessage)
         assertEquals("Signal rejet\u00e9", signalRejected.value.actionMessage)
-        assertEquals("/v1/reviews/rev_01/confirm", transport.requests[0].path)
-        assertEquals("/v1/reviews/rev_02/reject", transport.requests[2].path)
-        assertTrue(transport.requests[2].body.contains("\"scope\":\"signal\""))
+        assertEquals("/v1/reviews/rev_02/reject", transport.requests[0].path)
+        assertTrue(transport.requests[0].body.contains("\"scope\":\"signal\""))
         assertTrue(runtime.reviewActionsAreBackendOwned)
         assertTrue(MerchantReviewActionsApiRepository(transport).backendOwnsReviewDecisions)
         assertFalse(MerchantReviewActionsApiRepository(transport).sendsDeveloperWebhookDirectly)

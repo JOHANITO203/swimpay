@@ -599,7 +599,7 @@ fun PremiumConfirmationModeScreen() {
 }
 
 @Composable
-fun PremiumSecurityScreen() {
+fun PremiumSecurityScreen(onGoogleRecoveryLink: () -> Unit = {}) {
     val rows = listOf(
         "Code d’accès",
         "Mot de passe",
@@ -619,6 +619,7 @@ fun PremiumSecurityScreen() {
             Text("Sécurité", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
             Text("Protégez l’accès à votre terminal marchand.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
         }
+        item { GoogleRecoveryRow(onGoogleRecoveryLink) }
         items(rows) { label ->
             PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -629,6 +630,25 @@ fun PremiumSecurityScreen() {
                     StatusChip("À configurer", StatusTone.Neutral)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun GoogleRecoveryRow(onClick: () -> Unit) {
+    PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
+        Row(
+            Modifier.fillMaxWidth().premiumTap(onClick).padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(42.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
+                PremiumGoogleIcon()
+            }
+            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                Text("Associer Google", color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+                Text("Enregistrer pour récupérer ce profil plus tard.", color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+            }
+            StatusChip("Optionnel", StatusTone.Info)
         }
     }
 }

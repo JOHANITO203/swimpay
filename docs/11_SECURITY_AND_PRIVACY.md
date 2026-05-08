@@ -101,6 +101,37 @@ Sprint 9J adds the Auth BFF foundation. Human dashboard access uses opaque HttpO
 
 Production merchant API requests must verify `Authorization: Bearer sk_...` against stored `api_keys`; local `Bearer test_*` merchant fallbacks are development-only. Merchant web mutations require CSRF when authenticated through a BFF session. The CSRF token is bound to server-side session material and is never a payment confirmation signal.
 
+## Android account privacy
+
+Current Android account and onboarding truth is defined in
+`docs/ANDROID_ACCOUNT_AND_ONBOARDING_TRUTH.md`.
+
+Android merchant account creation must stay lightweight:
+
+- do not collect merchant user first names or last names during account creation;
+- generate a pseudonym/display handle;
+- keep personal and business/commerce profile choices at the same permission level;
+- do not present Android merchant users as admin personas in onboarding.
+
+Known/new-device detection must use privacy-safe device proof, such as an app
+install keypair and signed server challenge. Do not collect or store raw IMEI,
+raw Android ID, advertising ID or broad fingerprint material.
+
+Current Android account proof status is intentionally limited: the app sends a
+generated install proof boundary, not raw device identifiers. It must not be
+described as production-grade device authentication until a server-issued
+challenge is signed with an Android Keystore-held private key and verified by
+the backend.
+
+Google is optional account recovery/linking only. It can appear in `Se
+connecter` and in `Paramètres > Sécurité`, but it must not be required for
+normal Android account creation or onboarding.
+
+Android Google recovery/linking should use Credential Manager / Sign in with
+Google to obtain an ID token for backend exchange. The app must not store Google
+access tokens as profile data, must not expose tokens in logs/UI, and must not
+collect first names or last names from Google.
+
 ## Webhook signatures
 
 Headers:

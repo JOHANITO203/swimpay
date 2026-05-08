@@ -1,5 +1,15 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import pg from 'pg';
+import {
+  AndroidMerchantDeviceLookupIntents,
+  AndroidMerchantDeviceLookupStatuses,
+  AndroidMerchantDeviceStatuses,
+  AndroidMerchantProfileTypes,
+  type AndroidMerchantDeviceLookupIntent,
+  type AndroidMerchantDeviceLookupStatus,
+  type AndroidMerchantDeviceStatus,
+  type AndroidMerchantProfileType
+} from '@swimpay/contracts';
 import { hashApiKey } from '@swimpay/security';
 
 const { Pool } = pg;
@@ -37,6 +47,20 @@ export const MerchantPermissions = {
 
 export type MerchantPermission = (typeof MerchantPermissions)[keyof typeof MerchantPermissions];
 
+export {
+  AndroidMerchantDeviceLookupIntents,
+  AndroidMerchantDeviceLookupStatuses,
+  AndroidMerchantDeviceStatuses,
+  AndroidMerchantProfileTypes
+};
+
+export type {
+  AndroidMerchantDeviceLookupIntent,
+  AndroidMerchantDeviceLookupStatus,
+  AndroidMerchantDeviceStatus,
+  AndroidMerchantProfileType
+};
+
 export const AdminRoles = {
   SWIMPAY_ADMIN: 'swimpay_admin',
   SUPPORT_OPERATOR: 'support_operator',
@@ -59,6 +83,18 @@ export const AdminPermissions = {
 export type AdminPermission = (typeof AdminPermissions)[keyof typeof AdminPermissions];
 
 const ALL_MERCHANT_PERMISSIONS = Object.values(MerchantPermissions);
+
+const ANDROID_MERCHANT_MOBILE_PERMISSIONS = [
+  MerchantPermissions.PAYMENTS_REVIEW_READ,
+  MerchantPermissions.PAYMENTS_REVIEW_REJECT,
+  MerchantPermissions.RECEIVER_CONFIGURE,
+  MerchantPermissions.RECEIVING_METHODS_READ,
+  MerchantPermissions.RECEIVING_METHODS_WRITE,
+  MerchantPermissions.INTEGRATION_READ,
+  MerchantPermissions.INTEGRATION_WEBHOOK_TEST,
+  MerchantPermissions.SETTINGS_READ,
+  MerchantPermissions.SETTINGS_WRITE
+] as const;
 
 const MERCHANT_ROLE_PERMISSIONS: Record<MerchantRole, readonly MerchantPermission[]> = {
   owner: ALL_MERCHANT_PERMISSIONS,
@@ -142,6 +178,36 @@ export interface BffSessionRecord {
   revokedAt: string | null;
 }
 
+export interface AndroidMerchantDeviceRecord {
+  id: string;
+  userId: string;
+  merchantId: string;
+  deviceProofHash: string;
+  status: AndroidMerchantDeviceStatus;
+  createdAt: string;
+  updatedAt: string;
+  lastSeenAt: string | null;
+}
+
+export interface AndroidMerchantMobileSessionRecord {
+  id: string;
+  userId: string;
+  merchantId: string;
+  deviceId: string;
+  expiresAt: string;
+  revokedAt: string | null;
+}
+
+export interface AndroidMerchantAccountRecord {
+  userId: string;
+  merchantId: string;
+  deviceId: string;
+  profileType: AndroidMerchantProfileType;
+  displayHandle: string;
+  permissions: readonly MerchantPermission[];
+  mobileSession: AndroidMerchantMobileSessionRecord;
+}
+
 export interface BffSessionContext {
   user: BffUser;
   session: BffSessionRecord;
@@ -171,12 +237,47 @@ export interface DevBootstrapSessionInput {
   now: string;
 }
 
+export interface AndroidMerchantDeviceLookupInput {
+  deviceProofHash: string;
+  lookupIntent: AndroidMerchantDeviceLookupIntent;
+  now: string;
+}
+
+export interface AndroidMerchantDeviceLookupResult {
+  deviceStatus: AndroidMerchantDeviceLookupStatus;
+  device: AndroidMerchantDeviceRecord | null;
+}
+
+export interface CreateAndroidMerchantAccountInput {
+  userId: string;
+  merchantId: string;
+  deviceId: string;
+  mobileSessionId: string;
+  mobileSessionHash: string;
+  profileType: AndroidMerchantProfileType;
+  businessLabel: string | null;
+  displayHandle: string;
+  deviceProofHash: string;
+  expiresAt: string;
+  now: string;
+}
+
+export type CreateAndroidMerchantAccountResult =
+  | { kind: 'created'; account: AndroidMerchantAccountRecord }
+  | { kind: 'device_already_registered'; device: AndroidMerchantDeviceRecord };
+
 export interface AuthBffRepository {
   bootstrapDevSession(input: DevBootstrapSessionInput): Promise<BffSessionContext>;
   createSession(input: CreateBffSessionInput): Promise<BffSessionRecord>;
   getSessionByHash(sessionIdHash: string, now: string): Promise<BffSessionContext | null>;
   getCsrfSecretHash(sessionIdHash: string): Promise<string | null>;
   revokeSession(sessionIdHash: string, now: string): Promise<void>;
+  getAndroidMerchantMobileSessionByHash(
+    mobileSessionHash: string,
+    now: string
+  ): Promise<AndroidMerchantMobileSessionRecord | null>;
+  lookupAndroidMerchantDevice(input: AndroidMerchantDeviceLookupInput): Promise<AndroidMerchantDeviceLookupResult>;
+  createAndroidMerchantAccount(input: CreateAndroidMerchantAccountInput): Promise<CreateAndroidMerchantAccountResult>;
 }
 
 export interface MerchantApiKeyPrincipal {
@@ -225,12 +326,28 @@ export function createCsrfToken(): string {
   return `csrf_${randomBytes(32).toString('base64url')}`;
 }
 
+export function createAndroidMerchantMobileSessionToken(): string {
+  return `spm_${randomBytes(32).toString('base64url')}`;
+}
+
 export function hashBffSessionToken(token: string): string {
   return `bff_session_sha256:${sha256(token)}`;
 }
 
 export function hashCsrfToken(token: string): string {
   return `csrf_sha256:${sha256(token)}`;
+}
+
+export function hashAndroidMerchantMobileSessionToken(token: string): string {
+  return `android_mobile_session_sha256:${sha256(token)}`;
+}
+
+export function hashAndroidMerchantDeviceProof(installPublicKey: string): string {
+  return `android_device_proof_sha256:${sha256(installPublicKey)}`;
+}
+
+export function androidMerchantMobilePermissions(): readonly MerchantPermission[] {
+  return ANDROID_MERCHANT_MOBILE_PERMISSIONS;
 }
 
 export function verifyCsrfToken(candidate: string | undefined, storedHash: string): boolean {
@@ -316,6 +433,9 @@ export class InMemoryAuthBffRepository implements AuthBffRepository {
   public readonly memberships = new Map<string, MerchantMembership>();
   public readonly adminRoles = new Map<string, AdminRoleAssignment>();
   public readonly sessions = new Map<string, BffSessionRecord & { csrfSecretHash: string }>();
+  public readonly androidMerchantDevices = new Map<string, AndroidMerchantDeviceRecord>();
+  public readonly androidMerchantSessions = new Map<string, AndroidMerchantMobileSessionRecord>();
+  public readonly androidMerchantAccounts = new Map<string, AndroidMerchantAccountRecord>();
 
   async bootstrapDevSession(input: DevBootstrapSessionInput): Promise<BffSessionContext> {
     const user: BffUser = {
@@ -398,6 +518,116 @@ export class InMemoryAuthBffRepository implements AuthBffRepository {
 
   async getCsrfSecretHash(sessionIdHash: string): Promise<string | null> {
     return this.sessions.get(sessionIdHash)?.csrfSecretHash ?? null;
+  }
+
+  async getAndroidMerchantMobileSessionByHash(
+    mobileSessionHash: string,
+    now: string
+  ): Promise<AndroidMerchantMobileSessionRecord | null> {
+    const session = this.androidMerchantSessions.get(mobileSessionHash);
+    if (!session || session.revokedAt || new Date(session.expiresAt).getTime() <= new Date(now).getTime()) {
+      return null;
+    }
+    const device = [...this.androidMerchantDevices.values()].find(
+      (candidate) =>
+        candidate.id === session.deviceId &&
+        candidate.userId === session.userId &&
+        candidate.merchantId === session.merchantId
+    );
+    if (!device || device.status !== AndroidMerchantDeviceStatuses.ACTIVE) {
+      return null;
+    }
+    return session;
+  }
+
+  async lookupAndroidMerchantDevice(input: AndroidMerchantDeviceLookupInput): Promise<AndroidMerchantDeviceLookupResult> {
+    const device = this.androidMerchantDevices.get(input.deviceProofHash) ?? null;
+    if (device?.status === AndroidMerchantDeviceStatuses.ACTIVE) {
+      const updated: AndroidMerchantDeviceRecord = {
+        ...device,
+        updatedAt: input.now,
+        lastSeenAt: input.now
+      };
+      this.androidMerchantDevices.set(input.deviceProofHash, updated);
+      return {
+        deviceStatus: AndroidMerchantDeviceLookupStatuses.KNOWN_DEVICE,
+        device: updated
+      };
+    }
+    if (device?.status === AndroidMerchantDeviceStatuses.RECOVERY_REQUIRED) {
+      return {
+        deviceStatus: AndroidMerchantDeviceLookupStatuses.RECOVERY_REQUIRED,
+        device
+      };
+    }
+    return {
+      deviceStatus:
+        input.lookupIntent === AndroidMerchantDeviceLookupIntents.RECOVER_ACCOUNT
+          ? AndroidMerchantDeviceLookupStatuses.RECOVERY_REQUIRED
+          : AndroidMerchantDeviceLookupStatuses.NEW_DEVICE,
+      device: null
+    };
+  }
+
+  async createAndroidMerchantAccount(input: CreateAndroidMerchantAccountInput): Promise<CreateAndroidMerchantAccountResult> {
+    const existingDevice = this.androidMerchantDevices.get(input.deviceProofHash);
+    if (existingDevice && existingDevice.status !== AndroidMerchantDeviceStatuses.REVOKED) {
+      return { kind: 'device_already_registered', device: existingDevice };
+    }
+
+    const user: BffUser = {
+      id: input.userId,
+      googleSub: null,
+      email: `mobile-${input.userId}@swimpay.local`,
+      name: input.displayHandle,
+      avatarUrl: null,
+      status: 'active',
+      lastLoginAt: input.now
+    };
+    this.users.set(user.id, user);
+
+    const membership: MerchantMembership = {
+      id: `mem_${input.userId}_${input.merchantId}`,
+      merchantId: input.merchantId,
+      userId: input.userId,
+      role: MerchantRoles.OWNER,
+      status: 'active'
+    };
+    this.memberships.set(membership.id, membership);
+
+    const device: AndroidMerchantDeviceRecord = {
+      id: input.deviceId,
+      userId: input.userId,
+      merchantId: input.merchantId,
+      deviceProofHash: input.deviceProofHash,
+      status: AndroidMerchantDeviceStatuses.ACTIVE,
+      createdAt: input.now,
+      updatedAt: input.now,
+      lastSeenAt: input.now
+    };
+    this.androidMerchantDevices.set(input.deviceProofHash, device);
+
+    const mobileSession: AndroidMerchantMobileSessionRecord = {
+      id: input.mobileSessionId,
+      userId: input.userId,
+      merchantId: input.merchantId,
+      deviceId: input.deviceId,
+      expiresAt: input.expiresAt,
+      revokedAt: null
+    };
+    this.androidMerchantSessions.set(input.mobileSessionHash, mobileSession);
+
+    const account: AndroidMerchantAccountRecord = {
+      userId: input.userId,
+      merchantId: input.merchantId,
+      deviceId: input.deviceId,
+      profileType: input.profileType,
+      displayHandle: input.displayHandle,
+      permissions: androidMerchantMobilePermissions(),
+      mobileSession
+    };
+    this.androidMerchantAccounts.set(input.userId, account);
+    return { kind: 'created', account };
   }
 
   seedUser(user: BffUser): void {
@@ -538,6 +768,163 @@ export class PgAuthBffRepository implements AuthBffRepository {
     );
     return result.rows[0]?.csrf_secret_hash ? String(result.rows[0].csrf_secret_hash) : null;
   }
+
+  async getAndroidMerchantMobileSessionByHash(
+    mobileSessionHash: string,
+    now: string
+  ): Promise<AndroidMerchantMobileSessionRecord | null> {
+    const result = await this.pool.query(
+      `SELECT s.id, s.user_id, s.merchant_id, s.device_id, s.expires_at, s.revoked_at
+       FROM android_merchant_sessions s
+       INNER JOIN android_merchant_devices d ON d.id = s.device_id
+        AND d.user_id = s.user_id
+        AND d.merchant_id = s.merchant_id
+       WHERE s.session_hash = $1
+        AND s.revoked_at IS NULL
+        AND s.expires_at > $2
+        AND d.status = 'active'
+       LIMIT 1`,
+      [mobileSessionHash, now]
+    );
+    return result.rows[0] ? mapAndroidMerchantMobileSessionRow(result.rows[0]) : null;
+  }
+
+  async lookupAndroidMerchantDevice(input: AndroidMerchantDeviceLookupInput): Promise<AndroidMerchantDeviceLookupResult> {
+    const result = await this.pool.query(
+      `SELECT id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at
+       FROM android_merchant_devices
+       WHERE device_proof_hash = $1 AND status <> 'revoked'`,
+      [input.deviceProofHash]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return {
+        deviceStatus:
+          input.lookupIntent === AndroidMerchantDeviceLookupIntents.RECOVER_ACCOUNT
+            ? AndroidMerchantDeviceLookupStatuses.RECOVERY_REQUIRED
+            : AndroidMerchantDeviceLookupStatuses.NEW_DEVICE,
+        device: null
+      };
+    }
+
+    const device = mapAndroidMerchantDeviceRow(row);
+    if (device.status === AndroidMerchantDeviceStatuses.ACTIVE) {
+      const updated = await this.pool.query(
+        `UPDATE android_merchant_devices
+         SET last_seen_at = $2, updated_at = $2
+         WHERE id = $1
+         RETURNING id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at`,
+        [device.id, input.now]
+      );
+      return {
+        deviceStatus: AndroidMerchantDeviceLookupStatuses.KNOWN_DEVICE,
+        device: mapAndroidMerchantDeviceRow(updated.rows[0])
+      };
+    }
+
+    return {
+      deviceStatus: AndroidMerchantDeviceLookupStatuses.RECOVERY_REQUIRED,
+      device
+    };
+  }
+
+  async createAndroidMerchantAccount(input: CreateAndroidMerchantAccountInput): Promise<CreateAndroidMerchantAccountResult> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const existingDevice = await client.query(
+        `SELECT id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at
+         FROM android_merchant_devices
+         WHERE device_proof_hash = $1 AND status <> 'revoked'
+         FOR UPDATE`,
+        [input.deviceProofHash]
+      );
+      if (existingDevice.rows[0]) {
+        await client.query('ROLLBACK');
+        return {
+          kind: 'device_already_registered',
+          device: mapAndroidMerchantDeviceRow(existingDevice.rows[0])
+        };
+      }
+
+      const merchantName =
+        input.profileType === AndroidMerchantProfileTypes.BUSINESS && input.businessLabel
+          ? input.businessLabel
+          : input.displayHandle;
+      await client.query(
+        `INSERT INTO users (id, google_sub, email, name, display_handle, account_origin, status, last_login_at, created_at, updated_at)
+         VALUES ($1, NULL, $2, $3, $3, 'android_mobile', 'active', $4, $4, $4)`,
+        [input.userId, `mobile-${input.userId}@swimpay.local`, input.displayHandle, input.now]
+      );
+      await client.query(
+        `INSERT INTO merchants (
+           id, name, business_name, status, owner_user_id, android_profile_type, android_business_label, created_at, updated_at
+         )
+         VALUES ($1, $2, $2, 'active', $3, $4, $5, $6, $6)`,
+        [input.merchantId, merchantName, input.userId, input.profileType, input.businessLabel, input.now]
+      );
+      await client.query(
+        `INSERT INTO merchant_memberships (merchant_id, user_id, role, status, created_at, updated_at)
+         VALUES ($1, $2, 'owner', 'active', $3, $3)`,
+        [input.merchantId, input.userId, input.now]
+      );
+      const deviceResult = await client.query(
+        `INSERT INTO android_merchant_devices (
+           id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at
+         )
+         VALUES ($1, $2, $3, $4, 'active', $5, $5, $5)
+         RETURNING id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at`,
+        [input.deviceId, input.userId, input.merchantId, input.deviceProofHash, input.now]
+      );
+      const sessionResult = await client.query(
+        `INSERT INTO android_merchant_sessions (
+           id, session_hash, user_id, merchant_id, device_id, expires_at, created_at, updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+         RETURNING id, user_id, merchant_id, device_id, expires_at, revoked_at`,
+        [
+          input.mobileSessionId,
+          input.mobileSessionHash,
+          input.userId,
+          input.merchantId,
+          input.deviceId,
+          input.expiresAt,
+          input.now
+        ]
+      );
+      await client.query('COMMIT');
+      return {
+        kind: 'created',
+        account: {
+          userId: input.userId,
+          merchantId: input.merchantId,
+          deviceId: mapAndroidMerchantDeviceRow(deviceResult.rows[0]).id,
+          profileType: input.profileType,
+          displayHandle: input.displayHandle,
+          permissions: androidMerchantMobilePermissions(),
+          mobileSession: mapAndroidMerchantMobileSessionRow(sessionResult.rows[0])
+        }
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (isPgUniqueViolation(error)) {
+        const existingDevice = await this.lookupAndroidMerchantDevice({
+          deviceProofHash: input.deviceProofHash,
+          lookupIntent: AndroidMerchantDeviceLookupIntents.CREATE_ACCOUNT,
+          now: input.now
+        });
+        if (existingDevice.device) {
+          return {
+            kind: 'device_already_registered',
+            device: existingDevice.device
+          };
+        }
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 export class PgMerchantApiKeyVerifier implements MerchantApiKeyVerifier {
@@ -621,4 +1008,32 @@ function mapAdminRoleRow(row: Record<string, unknown>): AdminRoleAssignment {
     role: String(row.role) as AdminRole,
     status: String(row.status) as 'active' | 'disabled'
   };
+}
+
+function mapAndroidMerchantDeviceRow(row: Record<string, unknown>): AndroidMerchantDeviceRecord {
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    merchantId: String(row.merchant_id),
+    deviceProofHash: String(row.device_proof_hash),
+    status: String(row.status) as AndroidMerchantDeviceStatus,
+    createdAt: new Date(String(row.created_at)).toISOString(),
+    updatedAt: new Date(String(row.updated_at)).toISOString(),
+    lastSeenAt: row.last_seen_at ? new Date(String(row.last_seen_at)).toISOString() : null
+  };
+}
+
+function mapAndroidMerchantMobileSessionRow(row: Record<string, unknown>): AndroidMerchantMobileSessionRecord {
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    merchantId: String(row.merchant_id),
+    deviceId: String(row.device_id),
+    expiresAt: new Date(String(row.expires_at)).toISOString(),
+    revokedAt: row.revoked_at ? new Date(String(row.revoked_at)).toISOString() : null
+  };
+}
+
+function isPgUniqueViolation(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && 'code' in error && (error as { code?: unknown }).code === '23505');
 }

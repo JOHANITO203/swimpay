@@ -12,11 +12,21 @@ import {
   type MetricsRegistry
 } from '@swimpay/observability';
 import {
+  AndroidMerchantAccountAuthPaths,
+  AndroidMerchantAccountErrorCodes,
+  AndroidMerchantRawDeviceIdentifierFields,
+  AndroidMerchantDeviceLookupStatuses,
   ReceivingRouteRailTypes,
   V1StaticBankProfiles,
+  buildAndroidMerchantAccountCreateResponse,
+  buildAndroidMerchantDeviceLookupResponse,
   getPayerBankLauncherOption,
   getReceiverBankOption,
+  validateAndroidMerchantCreateAccountRequest,
+  validateAndroidMerchantDeviceLookupRequest,
   validateIntelligenceFeedbackRequest,
+  type AndroidMerchantAccountCreateResponse,
+  type AndroidMerchantAccountErrorCode,
   type ReceivingRouteRailType
 } from '@swimpay/contracts';
 import {
@@ -45,21 +55,26 @@ import {
   CSRF_HEADER_NAME,
   MerchantPermissions,
   buildSessionCookieOptions,
+  createAndroidMerchantMobileSessionToken,
   createCsrfToken,
   createDefaultAuthBffRepository,
   createDefaultMerchantApiKeyVerifier,
   createGoogleOAuthProviderSeam,
   createOpaqueSessionToken,
+  hashAndroidMerchantDeviceProof,
+  hashAndroidMerchantMobileSessionToken,
   hashBffSessionToken,
   hashCsrfToken,
   hasMerchantPermission,
   merchantPermissionsForRole,
+  parseBearerToken,
   parseCookieHeader,
   serializeExpiredSessionCookie,
   serializeSessionCookie,
   verifyCsrfToken,
   verifyMerchantApiKeyAuthorization,
   type AuthBffRepository,
+  type AndroidMerchantAccountRecord,
   type BffSessionContext,
   type MerchantApiKeyVerifier,
   type MerchantPermission,
@@ -164,6 +179,7 @@ const { Pool } = pg;
 const COPY_DETAILS_RATE_LIMIT_MAX = 3;
 const COPY_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const COPY_DETAILS_REVEAL_TTL_MS = 2 * 60 * 1000;
+const ANDROID_MERCHANT_MOBILE_SESSION_TTL_MS = 60 * 60 * 24 * 30 * 1000;
 
 export type {
   CreateOrderWithSessionInput,
@@ -381,6 +397,42 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return apiKeyPrincipal.merchantId;
     }
     return parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
+  }
+
+  async function resolveAndroidMerchantContext(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<{ merchantId: string; source: 'android_mobile_session' | 'dev_test_bearer' } | null> {
+    const bearerToken = parseBearerToken(request.headers.authorization);
+    if (bearerToken?.startsWith('spm_')) {
+      if (!authBffRepository) {
+        reply.status(503).send(authBffRepositoryUnavailableError());
+        return null;
+      }
+      const mobileSession = await authBffRepository.getAndroidMerchantMobileSessionByHash(
+        hashAndroidMerchantMobileSessionToken(bearerToken),
+        clock().toISOString()
+      );
+      return mobileSession ? { merchantId: mobileSession.merchantId, source: 'android_mobile_session' } : null;
+    }
+
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
+    return merchantId ? { merchantId, source: 'dev_test_bearer' } : null;
+  }
+
+  async function requireAndroidMerchantId(request: FastifyRequest, reply: FastifyReply): Promise<string | null> {
+    const context = await resolveAndroidMerchantContext(request, reply);
+    if (context) {
+      return context.merchantId;
+    }
+    if (!reply.sent) {
+      reply.status(401).send(
+        invalidRequest('An Android merchant mobile session is required for this endpoint.', {
+          authorization: 'Bearer spm_<mobile_session_token>'
+        })
+      );
+    }
+    return null;
   }
 
   server.get('/auth/google/start', async (_request, reply) => {
@@ -839,13 +891,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/merchant/receiving-routes', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
+      return;
     }
     if (!repository) {
       return reply.status(503).send(orderRepositoryUnavailableError());
@@ -893,13 +941,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/merchant/receiving-routes', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
+      return;
     }
     if (!repository) {
       return reply.status(503).send(orderRepositoryUnavailableError());
@@ -912,13 +956,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.patch('/v1/merchant/receiving-routes/:route_id', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
+      return;
     }
     if (!repository) {
       return reply.status(503).send(orderRepositoryUnavailableError());
@@ -1623,13 +1663,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/reviews', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
+      return;
     }
 
     if (!reviewRepository) {
@@ -1646,14 +1682,102 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return reply.status(200).send(toReviewListResponse(reviews));
   });
 
-  server.get('/v1/android-merchant/dashboard-summary', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
-    if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
+  server.post(AndroidMerchantAccountAuthPaths.DEVICE_LOOKUP, async (request, reply) => {
+    if (!authBffRepository) {
+      return reply.status(503).send(authBffRepositoryUnavailableError());
+    }
+    const parsed = validateAndroidMerchantDeviceLookupRequest(request.body);
+    if (!parsed.valid) {
+      return reply.status(400).send(androidMerchantAccountContractError(parsed.code, parsed.field));
+    }
+
+    const result = await authBffRepository.lookupAndroidMerchantDevice({
+      deviceProofHash: hashAndroidMerchantDeviceProof(parsed.value.device_proof.install_public_key),
+      lookupIntent: parsed.value.lookup_intent,
+      now: clock().toISOString()
+    });
+    return reply.status(200).send(
+      buildAndroidMerchantDeviceLookupResponse({
+        device_status: result.deviceStatus,
+        device_id: result.device?.id ?? null,
+        merchant_id: result.device?.merchantId ?? null
+      })
+    );
+  });
+
+  server.post(AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT, async (request, reply) => {
+    if (!authBffRepository) {
+      return reply.status(503).send(authBffRepositoryUnavailableError());
+    }
+    const parsed = validateAndroidMerchantCreateAccountRequest(request.body);
+    if (!parsed.valid) {
+      return reply.status(400).send(androidMerchantAccountContractError(parsed.code, parsed.field));
+    }
+
+    const now = clock();
+    const userId = randomUUID();
+    const merchantId = randomUUID();
+    const deviceId = randomUUID();
+    const mobileSessionId = randomUUID();
+    const mobileSessionToken = createAndroidMerchantMobileSessionToken();
+    const expiresAt = new Date(now.getTime() + ANDROID_MERCHANT_MOBILE_SESSION_TTL_MS).toISOString();
+    const result = await authBffRepository.createAndroidMerchantAccount({
+      userId,
+      merchantId,
+      deviceId,
+      mobileSessionId,
+      mobileSessionHash: hashAndroidMerchantMobileSessionToken(mobileSessionToken),
+      profileType: parsed.value.profile_type,
+      businessLabel: truncateAndroidMerchantBusinessLabel(parsed.value.business_label ?? null),
+      displayHandle: buildAndroidMerchantDisplayHandle(userId),
+      deviceProofHash: hashAndroidMerchantDeviceProof(parsed.value.device_proof.install_public_key),
+      expiresAt,
+      now: now.toISOString()
+    });
+
+    if (result.kind === 'device_already_registered') {
+      return reply.status(409).send(
+        invalidRequest('This Android merchant device proof is already linked to an account.', {
+          device_status: AndroidMerchantDeviceLookupStatuses.KNOWN_DEVICE
         })
       );
+    }
+
+    return reply.status(201).send(toAndroidMerchantAccountCreateResponse(result.account, mobileSessionToken));
+  });
+
+  server.post(AndroidMerchantAccountAuthPaths.GOOGLE_EXCHANGE, async (_request, reply) => {
+    if (!googleOAuthProvider.configured) {
+      return reply.status(503).send(googleRecoveryUnconfiguredError('account_recovery'));
+    }
+    return reply.status(501).send(
+      invalidRequest('Google account recovery exchange is optional and is not enabled by this local build.', {
+        provider: 'google',
+        purpose: 'account_recovery'
+      })
+    );
+  });
+
+  server.post(AndroidMerchantAccountAuthPaths.GOOGLE_LINK, async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (!googleOAuthProvider.configured) {
+      return reply.status(503).send(googleRecoveryUnconfiguredError('account_recovery_linking'));
+    }
+    return reply.status(501).send(
+      invalidRequest('Google account recovery linking is optional and is not enabled by this local build.', {
+        provider: 'google',
+        purpose: 'account_recovery_linking'
+      })
+    );
+  });
+
+  server.get('/v1/android-merchant/dashboard-summary', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
     }
     if (!reviewRepository) {
       return reply.status(503).send({
@@ -1670,13 +1794,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/android-merchant/payments/:id', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
+      return;
     }
     if (!reviewRepository) {
       return reply.status(503).send({
@@ -1709,13 +1829,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/android-merchant/connected-site', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
+      return;
     }
     void merchantId;
     const query = request.query as { developer_mode?: string | boolean | undefined };
@@ -1724,13 +1840,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/android-merchant/connected-site/test', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
+      return;
     }
     const occurredAt = clock().toISOString();
     const deliveryId = androidMerchantDeliveryIdGenerator();
@@ -1758,13 +1870,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/android-merchant/configuration-test', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
+      return;
     }
     if (!repository) {
       return reply.status(503).send(orderRepositoryUnavailableError());
@@ -1783,14 +1891,20 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/reviews/:id/confirm', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
-    if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
+    const context = await resolveMerchantContext(request, reply, MerchantPermissions.PAYMENTS_REVIEW_CONFIRM, {
+      requireCsrf: true
+    });
+    if (!context) {
+      if (!reply.sent) {
+        return reply.status(401).send(
+          invalidRequest('A merchant dashboard session or development bearer token is required for manual confirmation.', {
+            authorization: 'Bearer test_<merchant_id>'
+          })
+        );
+      }
+      return;
     }
+    const { merchantId } = context;
 
     if (!reviewRepository) {
       return reply.status(503).send({
@@ -1841,13 +1955,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/reviews/:id/reject', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {
-      return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
-      );
+      return;
     }
 
     if (!reviewRepository) {
@@ -2733,6 +2843,90 @@ interface AndroidMerchantConnectedSiteConfig {
   status: 'active' | 'problem';
 }
 
+function toAndroidMerchantAccountCreateResponse(
+  account: AndroidMerchantAccountRecord,
+  mobileSessionToken: string
+): AndroidMerchantAccountCreateResponse {
+  return buildAndroidMerchantAccountCreateResponse({
+    user_id: account.userId,
+    merchant_id: account.merchantId,
+    device_id: account.deviceId,
+    profile_type: account.profileType,
+    display_handle: account.displayHandle,
+    permissions: account.permissions,
+    mobile_session_token: mobileSessionToken,
+    mobile_session_expires_at: account.mobileSession.expiresAt
+  });
+}
+
+function buildAndroidMerchantDisplayHandle(userId: string): string {
+  return `merchant-${userId.replaceAll('-', '').slice(0, 8)}`;
+}
+
+function truncateAndroidMerchantBusinessLabel(value: string | null): string | null {
+  return value ? value.slice(0, 80) : null;
+}
+
+function androidMerchantAccountContractError(code: AndroidMerchantAccountErrorCode, field?: string) {
+  if (code === AndroidMerchantAccountErrorCodes.RAW_DEVICE_IDENTIFIER_REJECTED) {
+    return {
+      error: {
+        code,
+        message: 'Raw Android device identifiers are not accepted for merchant device lookup.',
+        details: {
+          field,
+          rejected_fields: AndroidMerchantRawDeviceIdentifierFields
+        }
+      }
+    };
+  }
+
+  if (code === AndroidMerchantAccountErrorCodes.MERCHANT_IDENTITY_NAME_REJECTED) {
+    return {
+      error: {
+        code,
+        message: 'Android account creation does not collect merchant first or last names.',
+        details: {
+          field
+        }
+      }
+    };
+  }
+
+  return {
+    error: {
+      code,
+      message: 'Android merchant account request payload is invalid.',
+      details: {
+        field
+      }
+    }
+  };
+}
+
+function googleRecoveryUnconfiguredError(purpose: 'account_recovery' | 'account_recovery_linking') {
+  return {
+    error: {
+      code: 'google_recovery_unconfigured',
+      message: 'Google is optional recovery only and is not configured for this environment.',
+      details: {
+        provider: 'google',
+        purpose
+      }
+    }
+  };
+}
+
+function authBffRepositoryUnavailableError() {
+  return {
+    error: {
+      code: 'service_unavailable',
+      message: 'Android merchant auth repository is not configured.',
+      details: {}
+    }
+  };
+}
+
 function toAndroidMerchantDashboardSummaryResponse(reviews: ReviewListItem[]): Record<string, unknown> {
   const sorted = sortAndroidMerchantReviews(reviews);
   return {
@@ -2814,7 +3008,7 @@ function toAndroidMerchantPaymentDetailResponse(
         ...review.positiveReasonCodes,
         ...review.negativeReasonCodes
       ]),
-      allowed_actions: ['confirm', 'reject_signal', 'reject_order']
+      allowed_actions: ['reject_signal', 'reject_order']
     },
     ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
   };

@@ -21,6 +21,216 @@ class AndroidMerchantApiWiringTest {
         assertEquals("Bearer test_mch_demo", dev.authorizationHeader())
         assertTrue(dev.safeModeLabel.contains("local/dev"))
         assertFalse(dev.visibleTexts().joinToString(" ").contains("test_mch_demo"))
+
+        val mobile = AuthenticatedMerchantSession.mobile(
+            merchantId = "mch_mobile",
+            mobileSessionToken = "spm_mobile_session_secret"
+        )
+
+        assertTrue(mobile.isAuthenticated)
+        assertEquals("Bearer spm_mobile_session_secret", mobile.authorizationHeader())
+        assertTrue(mobile.safeModeLabel.contains("mobile", ignoreCase = true))
+        assertFalse(mobile.visibleTexts().joinToString(" ").contains("spm_mobile_session_secret"))
+        assertFalse(mobile.toString().contains("spm_mobile_session_secret"))
+    }
+
+    @Test
+    fun androidAuthRepositoryCreatesAccountsWithPrivacySafeDeviceProofOnly() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "device_status": "new_device",
+                  "device_id": null,
+                  "merchant_id": null,
+                  "recovery_required": false,
+                  "recovery_options": [],
+                  "google_required": false,
+                  "raw_device_identifiers_allowed": false,
+                  "device_proof_type": "install_keypair_signed_challenge"
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                201,
+                """
+                {
+                  "account": {
+                    "user_id": "usr_mobile",
+                    "merchant_id": "mch_mobile",
+                    "profile_type": "business",
+                    "display_handle": "merchant-12345678",
+                    "permission_profile": "merchant",
+                    "permissions": ["payments.review.read", "payments.review.reject"],
+                    "collected_identity_fields": [],
+                    "google_required": false
+                  },
+                  "device": {
+                    "device_id": "dev_mobile",
+                    "device_status": "known_device",
+                    "raw_device_identifiers_allowed": false
+                  },
+                  "mobile_session": {
+                    "token": "spm_created_secret",
+                    "token_type": "swimpay_mobile_session",
+                    "expires_at": "2026-06-07T00:00:00.000Z"
+                  },
+                  "onboarding": {
+                    "starts_after_account_creation": true,
+                    "android_confirms_payments": false
+                  }
+                }
+                """.trimIndent()
+            )
+        )
+        val repository = AndroidMerchantAuthApiRepository(
+            transport = transport,
+            deviceProofProvider = StaticAndroidMerchantDeviceProofProvider(
+                AndroidMerchantDeviceProof(
+                    installPublicKey = "install_public_key_demo",
+                    challengeId = "challenge_01",
+                    challengeSignature = "signature_01"
+                )
+            )
+        )
+
+        val lookup = repository.lookupDevice(AndroidMerchantDeviceLookupIntent.CREATE_ACCOUNT)
+        assertEquals(AndroidMerchantDeviceLookupStatus.NEW_DEVICE, lookup.deviceStatus)
+        assertFalse(lookup.recoveryRequired)
+        assertEquals("/v1/android-merchant/auth/device-lookup", transport.requests[0].path)
+        assertTrue(transport.requests[0].body.contains("\"lookup_intent\":\"create_account\""))
+        assertTrue(transport.requests[0].body.contains("\"install_public_key\":\"install_public_key_demo\""))
+        assertTrue(transport.requests[0].body.contains("\"challenge_id\":\"challenge_01\""))
+        assertTrue(transport.requests[0].body.contains("\"challenge_signature\":\"signature_01\""))
+
+        val created = repository.createAccount(AndroidMerchantAccountProfileType.BUSINESS, businessLabel = "Commerce demo")
+        assertEquals(AndroidMerchantAuthResultStatus.SUCCESS, created.status)
+        val session = created.mobileSession
+        requireNotNull(session)
+        assertEquals("mch_mobile", session.merchantId)
+        assertEquals("usr_mobile", session.userId)
+        assertEquals("merchant-12345678", session.displayHandle)
+        assertEquals("Bearer spm_created_secret", AuthenticatedMerchantSession.mobile(session).authorizationHeader())
+        assertTrue(transport.requests[1].body.contains("\"profile_type\":\"business\""))
+        assertFalse(transport.requests[1].body.contains("first_name", ignoreCase = true))
+        assertFalse(transport.requests[1].body.contains("last_name", ignoreCase = true))
+        assertFalse(created.visibleTexts().joinToString(" ").contains("spm_created_secret"))
+        assertFalse(session.toString().contains("spm_created_secret"))
+    }
+
+    @Test
+    fun androidAuthRepositoryTreatsGoogleAsRecoveryOnlyAndFailsClosedSafely() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                503,
+                """
+                {
+                  "error": {
+                    "code": "google_recovery_unconfigured",
+                    "message": "Google recovery is not configured.",
+                    "details": { "purpose": "account_recovery" }
+                  }
+                }
+                """.trimIndent()
+            )
+        )
+        val repository = AndroidMerchantAuthApiRepository(
+            transport = transport,
+            deviceProofProvider = StaticAndroidMerchantDeviceProofProvider(
+                AndroidMerchantDeviceProof(
+                    installPublicKey = "install_public_key_google",
+                    challengeId = "challenge_google",
+                    challengeSignature = "signature_google"
+                )
+            )
+        )
+
+        val recovery = repository.googleExchange("google_id_token_secret")
+
+        assertEquals(AndroidMerchantAuthResultStatus.ACTION_REQUIRED, recovery.status)
+        assertEquals("/v1/android-merchant/auth/google/exchange", transport.requests.single().path)
+        assertTrue(transport.requests.single().body.contains("\"id_token\":\"google_id_token_secret\""))
+        assertFalse(recovery.visibleTexts().joinToString(" ").contains("google_id_token_secret"))
+    }
+
+    @Test
+    fun androidAuthRepositoryRestoresMobileSessionFromGoogleExchangeWhenBackendReturnsOne() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "account": {
+                    "user_id": "usr_recovered",
+                    "merchant_id": "mch_recovered",
+                    "profile_type": "personal",
+                    "display_handle": "merchant-recover",
+                    "permission_profile": "merchant",
+                    "permissions": ["payments.review.read"],
+                    "collected_identity_fields": [],
+                    "google_required": false
+                  },
+                  "device": {
+                    "device_id": "dev_recovered",
+                    "device_status": "known_device",
+                    "raw_device_identifiers_allowed": false
+                  },
+                  "mobile_session": {
+                    "token": "spm_recovered_secret",
+                    "token_type": "swimpay_mobile_session",
+                    "expires_at": "2026-06-07T00:00:00.000Z"
+                  },
+                  "onboarding": {
+                    "starts_after_account_creation": true,
+                    "android_confirms_payments": false
+                  }
+                }
+                """.trimIndent()
+            )
+        )
+        val repository = AndroidMerchantAuthApiRepository(
+            transport = transport,
+            deviceProofProvider = StaticAndroidMerchantDeviceProofProvider(
+                AndroidMerchantDeviceProof(
+                    installPublicKey = "install_public_key_recovery",
+                    challengeId = "challenge_recovery",
+                    challengeSignature = "signature_recovery"
+                )
+            )
+        )
+
+        val recovery = repository.googleExchange("google_id_token_secret")
+
+        assertEquals(AndroidMerchantAuthResultStatus.SUCCESS, recovery.status)
+        val session = recovery.mobileSession
+        requireNotNull(session)
+        assertEquals("mch_recovered", session.merchantId)
+        assertEquals("usr_recovered", session.userId)
+        assertEquals("merchant-recover", session.displayHandle)
+        assertEquals("Bearer spm_recovered_secret", AuthenticatedMerchantSession.mobile(session).authorizationHeader())
+        assertFalse(recovery.visibleTexts().joinToString(" ").contains("spm_recovered_secret"))
+        assertFalse(session.toString().contains("spm_recovered_secret"))
+    }
+
+    @Test
+    fun androidMerchantBackendConfigAcceptsStagingHttpsAndLocalAdbReverseOnly() {
+        assertEquals(
+            "https://staging.swimpay.pro",
+            AndroidMerchantBackendConfig.normalizeBaseUrl(" https://staging.swimpay.pro/ ")
+        )
+        assertEquals(
+            "http://127.0.0.1:8080",
+            AndroidMerchantBackendConfig.normalizeBaseUrl("http://127.0.0.1:8080/")
+        )
+
+        var rejected = false
+        try {
+            AndroidMerchantBackendConfig.normalizeBaseUrl("http://staging.swimpay.pro")
+        } catch (_: IllegalArgumentException) {
+            rejected = true
+        }
+        assertTrue("external Android backend URLs must use HTTPS", rejected)
     }
 
     @Test
@@ -141,19 +351,6 @@ class AndroidMerchantApiWiringTest {
                 200,
                 """
                 {
-                  "review_id": "rev_01",
-                  "status": "confirmed",
-                  "order_id": "ord_01",
-                  "payment_session_id": "ps_01",
-                  "order_status": "manual_confirmed",
-                  "payment_session_status": "manual_confirmed"
-                }
-                """.trimIndent()
-            ),
-            MerchantApiResponse(
-                200,
-                """
-                {
                   "review_id": "rev_02",
                   "status": "rejected",
                   "order_id": "ord_02",
@@ -191,19 +388,15 @@ class AndroidMerchantApiWiringTest {
         assertTrue(queue.items.single().reasonLabels.contains("Référence non visible"))
         assertFalse(queue.visibleTexts().joinToString(" ").contains("receiver_route_review_only"))
 
-        val confirmed = actionsRepository.confirm(session, "rev_01")
-        assertEquals(MerchantReviewActionResultStatus.MANUAL_CONFIRMED, confirmed.status)
-        assertEquals("POST", transport.requests[1].method)
-        assertEquals("/v1/reviews/rev_01/confirm", transport.requests[1].path)
-
         val signalRejected = actionsRepository.rejectSignal(session, "rev_02")
         assertFalse(signalRejected.rejectsOrder)
-        assertEquals("/v1/reviews/rev_02/reject", transport.requests[2].path)
-        assertTrue(transport.requests[2].body.contains("\"scope\":\"signal\""))
+        assertEquals("POST", transport.requests[1].method)
+        assertEquals("/v1/reviews/rev_02/reject", transport.requests[1].path)
+        assertTrue(transport.requests[1].body.contains("\"scope\":\"signal\""))
 
         val orderRejected = actionsRepository.rejectOrder(session, "rev_03")
         assertTrue(orderRejected.rejectsOrder)
-        assertTrue(transport.requests[3].body.contains("\"scope\":\"order\""))
+        assertTrue(transport.requests[2].body.contains("\"scope\":\"order\""))
         assertFalse(actionsRepository.sendsDeveloperWebhookDirectly)
     }
 
@@ -276,7 +469,7 @@ class AndroidMerchantApiWiringTest {
                     "payment_reference": "TANGO ALFA",
                     "signal_received_at": "2026-05-03T10:00:00.000Z",
                     "reason_labels": ["Validation manuelle en b\u00eata", "R\u00e9f\u00e9rence non visible"],
-                    "allowed_actions": ["confirm", "reject_signal", "reject_order"]
+                    "allowed_actions": ["reject_signal", "reject_order"]
                   },
                   "official_bank_confirmation": false
                 }
@@ -318,7 +511,7 @@ class AndroidMerchantApiWiringTest {
                     { "label": "T\u00e9l\u00e9phone connect\u00e9", "status": "passed" },
                     { "label": "Banque choisie", "status": "passed" },
                     { "label": "Moyen de r\u00e9ception ajout\u00e9", "status": "passed" },
-                    { "label": "Site ou application connect\u00e9", "status": "passed" }
+                    { "label": "Webhook configur\u00e9", "status": "passed" }
                   ],
                   "official_bank_confirmation": false
                 }
@@ -336,7 +529,7 @@ class AndroidMerchantApiWiringTest {
         val detail = MerchantPaymentDetailApiRepository(transport).load(session, "rev_01")
         assertEquals(MerchantRepositoryState.SUCCESS, detail.state)
         assertFalse(detail.visibleTexts().joinToString(" ").contains("receiver_route_review_only"))
-        assertTrue(detail.visibleTexts().contains("Confirmer le paiement"))
+        assertFalse(detail.visibleTexts().contains("Confirmer le paiement"))
 
         val connectedSite = MerchantConnectedSiteApiRepository(transport).load(session, developerDetailsEnabled = false)
         assertEquals(MerchantRepositoryState.SUCCESS, connectedSite.state)

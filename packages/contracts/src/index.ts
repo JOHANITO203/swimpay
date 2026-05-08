@@ -913,6 +913,392 @@ export interface AuditEvent {
   createdAt: string;
 }
 
+export const AndroidMerchantAccountAuthPaths = {
+  DEVICE_LOOKUP: '/v1/android-merchant/auth/device-lookup',
+  CREATE_ACCOUNT: '/v1/android-merchant/auth/create-account',
+  GOOGLE_EXCHANGE: '/v1/android-merchant/auth/google/exchange',
+  GOOGLE_LINK: '/v1/android-merchant/auth/google/link'
+} as const;
+
+export type AndroidMerchantAccountAuthPath =
+  (typeof AndroidMerchantAccountAuthPaths)[keyof typeof AndroidMerchantAccountAuthPaths];
+
+export const AndroidMerchantProfileTypes = {
+  PERSONAL: 'personal',
+  BUSINESS: 'business'
+} as const;
+
+export type AndroidMerchantProfileType =
+  (typeof AndroidMerchantProfileTypes)[keyof typeof AndroidMerchantProfileTypes];
+
+export const AndroidMerchantDeviceLookupIntents = {
+  CREATE_ACCOUNT: 'create_account',
+  RECOVER_ACCOUNT: 'recover_account'
+} as const;
+
+export type AndroidMerchantDeviceLookupIntent =
+  (typeof AndroidMerchantDeviceLookupIntents)[keyof typeof AndroidMerchantDeviceLookupIntents];
+
+export const AndroidMerchantDeviceLookupStatuses = {
+  NEW_DEVICE: 'new_device',
+  KNOWN_DEVICE: 'known_device',
+  RECOVERY_REQUIRED: 'recovery_required'
+} as const;
+
+export type AndroidMerchantDeviceLookupStatus =
+  (typeof AndroidMerchantDeviceLookupStatuses)[keyof typeof AndroidMerchantDeviceLookupStatuses];
+
+export const AndroidMerchantDeviceStatuses = {
+  ACTIVE: 'active',
+  RECOVERY_REQUIRED: 'recovery_required',
+  REVOKED: 'revoked'
+} as const;
+
+export type AndroidMerchantDeviceStatus =
+  (typeof AndroidMerchantDeviceStatuses)[keyof typeof AndroidMerchantDeviceStatuses];
+
+export const AndroidMerchantDeviceProofTypes = {
+  INSTALL_KEYPAIR_SIGNED_CHALLENGE: 'install_keypair_signed_challenge'
+} as const;
+
+export type AndroidMerchantDeviceProofType =
+  (typeof AndroidMerchantDeviceProofTypes)[keyof typeof AndroidMerchantDeviceProofTypes];
+
+export const AndroidMerchantPermissionProfiles = {
+  MERCHANT: 'merchant'
+} as const;
+
+export type AndroidMerchantPermissionProfile =
+  (typeof AndroidMerchantPermissionProfiles)[keyof typeof AndroidMerchantPermissionProfiles];
+
+export const AndroidMerchantMobileSessionTokenTypes = {
+  SWIMPAY_MOBILE_SESSION: 'swimpay_mobile_session'
+} as const;
+
+export type AndroidMerchantMobileSessionTokenType =
+  (typeof AndroidMerchantMobileSessionTokenTypes)[keyof typeof AndroidMerchantMobileSessionTokenTypes];
+
+export const AndroidMerchantAccountErrorCodes = {
+  PAYLOAD_INVALID: 'payload_invalid',
+  RAW_DEVICE_IDENTIFIER_REJECTED: 'raw_device_identifier_rejected',
+  MERCHANT_IDENTITY_NAME_REJECTED: 'merchant_identity_name_rejected',
+  GOOGLE_RECOVERY_UNCONFIGURED: 'google_recovery_unconfigured',
+  SERVICE_UNAVAILABLE: 'service_unavailable'
+} as const;
+
+export type AndroidMerchantAccountErrorCode =
+  (typeof AndroidMerchantAccountErrorCodes)[keyof typeof AndroidMerchantAccountErrorCodes];
+
+export const AndroidMerchantRawDeviceIdentifierFields = [
+  'imei',
+  'android_id',
+  'advertising_id',
+  'raw_fingerprint',
+  'phone_number',
+  'raw_phone',
+  'contact_phone'
+] as const;
+
+export type AndroidMerchantRawDeviceIdentifierField = (typeof AndroidMerchantRawDeviceIdentifierFields)[number];
+
+export const AndroidMerchantIdentityNameFields = [
+  'first_name',
+  'last_name',
+  'full_name',
+  'given_name',
+  'family_name',
+  'name'
+] as const;
+
+export type AndroidMerchantIdentityNameField = (typeof AndroidMerchantIdentityNameFields)[number];
+
+export interface AndroidMerchantDeviceProof {
+  install_public_key: string;
+  challenge_id: string;
+  challenge_signature: string;
+}
+
+export interface AndroidMerchantDeviceLookupRequest {
+  lookup_intent: AndroidMerchantDeviceLookupIntent;
+  device_proof: AndroidMerchantDeviceProof;
+}
+
+export interface AndroidMerchantCreateAccountRequest {
+  profile_type: AndroidMerchantProfileType;
+  business_label?: string;
+  device_proof: AndroidMerchantDeviceProof;
+}
+
+export interface AndroidMerchantDeviceLookupResponse {
+  device_status: AndroidMerchantDeviceLookupStatus;
+  device_id: string | null;
+  merchant_id: string | null;
+  recovery_required: boolean;
+  recovery_options: readonly 'google'[];
+  google_required: false;
+  raw_device_identifiers_allowed: false;
+  device_proof_type: AndroidMerchantDeviceProofType;
+}
+
+export interface AndroidMerchantAccountCreateResponse {
+  account: {
+    user_id: string;
+    merchant_id: string;
+    profile_type: AndroidMerchantProfileType;
+    display_handle: string;
+    permission_profile: AndroidMerchantPermissionProfile;
+    permissions: readonly string[];
+    collected_identity_fields: readonly string[];
+    google_required: false;
+  };
+  device: {
+    device_id: string;
+    device_status: typeof AndroidMerchantDeviceLookupStatuses.KNOWN_DEVICE;
+    raw_device_identifiers_allowed: false;
+  };
+  mobile_session: {
+    token: string;
+    token_type: AndroidMerchantMobileSessionTokenType;
+    expires_at: string;
+  };
+  onboarding: {
+    starts_after_account_creation: true;
+    android_confirms_payments: false;
+  };
+}
+
+export type AndroidMerchantAccountValidationResult<T> =
+  | { valid: true; value: T }
+  | { valid: false; code: AndroidMerchantAccountErrorCode; field?: string };
+
+export function validateAndroidMerchantDeviceLookupRequest(
+  body: unknown
+): AndroidMerchantAccountValidationResult<AndroidMerchantDeviceLookupRequest> {
+  if (!isPlainRecord(body)) {
+    return invalidAndroidMerchantAccountPayload();
+  }
+
+  const rawIdentifierField = findRawAndroidMerchantDeviceIdentifierField(body);
+  if (rawIdentifierField) {
+    return {
+      valid: false,
+      code: AndroidMerchantAccountErrorCodes.RAW_DEVICE_IDENTIFIER_REJECTED,
+      field: rawIdentifierField
+    };
+  }
+
+  const deviceProof = parseAndroidMerchantDeviceProofContract(body.device_proof);
+  if (!deviceProof) {
+    return invalidAndroidMerchantAccountPayload('device_proof');
+  }
+
+  return {
+    valid: true,
+    value: {
+      lookup_intent: parseAndroidMerchantDeviceLookupIntentContract(body.lookup_intent),
+      device_proof: deviceProof
+    }
+  };
+}
+
+export function validateAndroidMerchantCreateAccountRequest(
+  body: unknown
+): AndroidMerchantAccountValidationResult<AndroidMerchantCreateAccountRequest> {
+  if (!isPlainRecord(body)) {
+    return invalidAndroidMerchantAccountPayload();
+  }
+
+  const rawIdentifierField = findRawAndroidMerchantDeviceIdentifierField(body);
+  if (rawIdentifierField) {
+    return {
+      valid: false,
+      code: AndroidMerchantAccountErrorCodes.RAW_DEVICE_IDENTIFIER_REJECTED,
+      field: rawIdentifierField
+    };
+  }
+
+  const identityNameField = findAndroidMerchantIdentityNameField(body);
+  if (identityNameField) {
+    return {
+      valid: false,
+      code: AndroidMerchantAccountErrorCodes.MERCHANT_IDENTITY_NAME_REJECTED,
+      field: identityNameField
+    };
+  }
+
+  const profileType = parseAndroidMerchantProfileTypeContract(body.profile_type);
+  if (!profileType) {
+    return invalidAndroidMerchantAccountPayload('profile_type');
+  }
+
+  const deviceProof = parseAndroidMerchantDeviceProofContract(body.device_proof);
+  if (!deviceProof) {
+    return invalidAndroidMerchantAccountPayload('device_proof');
+  }
+
+  const value: AndroidMerchantCreateAccountRequest = {
+    profile_type: profileType,
+    device_proof: deviceProof
+  };
+  assignIfDefined(value, 'business_label', optionalString(body.business_label));
+  return { valid: true, value };
+}
+
+export function buildAndroidMerchantDeviceLookupResponse(input: {
+  device_status: AndroidMerchantDeviceLookupStatus;
+  device_id: string | null;
+  merchant_id: string | null;
+}): AndroidMerchantDeviceLookupResponse {
+  const recoveryRequired = input.device_status === AndroidMerchantDeviceLookupStatuses.RECOVERY_REQUIRED;
+  return {
+    device_status: input.device_status,
+    device_id: input.device_id,
+    merchant_id: input.merchant_id,
+    recovery_required: recoveryRequired,
+    recovery_options: recoveryRequired ? ['google'] : [],
+    google_required: false,
+    raw_device_identifiers_allowed: false,
+    device_proof_type: AndroidMerchantDeviceProofTypes.INSTALL_KEYPAIR_SIGNED_CHALLENGE
+  };
+}
+
+export function buildAndroidMerchantAccountCreateResponse(input: {
+  user_id: string;
+  merchant_id: string;
+  device_id: string;
+  profile_type: AndroidMerchantProfileType;
+  display_handle: string;
+  permissions: readonly string[];
+  mobile_session_token: string;
+  mobile_session_expires_at: string;
+}): AndroidMerchantAccountCreateResponse {
+  return {
+    account: {
+      user_id: input.user_id,
+      merchant_id: input.merchant_id,
+      profile_type: input.profile_type,
+      display_handle: input.display_handle,
+      permission_profile: AndroidMerchantPermissionProfiles.MERCHANT,
+      permissions: [...input.permissions],
+      collected_identity_fields: [],
+      google_required: false
+    },
+    device: {
+      device_id: input.device_id,
+      device_status: AndroidMerchantDeviceLookupStatuses.KNOWN_DEVICE,
+      raw_device_identifiers_allowed: false
+    },
+    mobile_session: {
+      token: input.mobile_session_token,
+      token_type: AndroidMerchantMobileSessionTokenTypes.SWIMPAY_MOBILE_SESSION,
+      expires_at: input.mobile_session_expires_at
+    },
+    onboarding: {
+      starts_after_account_creation: true,
+      android_confirms_payments: false
+    }
+  };
+}
+
+function parseAndroidMerchantDeviceProofContract(value: unknown): AndroidMerchantDeviceProof | null {
+  if (!isPlainRecord(value)) {
+    return null;
+  }
+
+  const installPublicKey = optionalString(value.install_public_key);
+  const challengeId = optionalString(value.challenge_id);
+  const challengeSignature = optionalString(value.challenge_signature);
+  if (!installPublicKey || !challengeId || !challengeSignature) {
+    return null;
+  }
+
+  return {
+    install_public_key: installPublicKey,
+    challenge_id: challengeId,
+    challenge_signature: challengeSignature
+  };
+}
+
+function parseAndroidMerchantDeviceLookupIntentContract(value: unknown): AndroidMerchantDeviceLookupIntent {
+  return value === AndroidMerchantDeviceLookupIntents.RECOVER_ACCOUNT
+    ? AndroidMerchantDeviceLookupIntents.RECOVER_ACCOUNT
+    : AndroidMerchantDeviceLookupIntents.CREATE_ACCOUNT;
+}
+
+function parseAndroidMerchantProfileTypeContract(value: unknown): AndroidMerchantProfileType | null {
+  return value === AndroidMerchantProfileTypes.PERSONAL || value === AndroidMerchantProfileTypes.BUSINESS
+    ? value
+    : null;
+}
+
+function findRawAndroidMerchantDeviceIdentifierField(value: unknown, path = ''): string | null {
+  if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index += 1) {
+      const found = findRawAndroidMerchantDeviceIdentifierField(value[index], `${path}[${index}]`);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  if (!isPlainRecord(value)) {
+    return null;
+  }
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    const normalizedKey = key.trim().toLowerCase();
+    const fieldPath = path ? `${path}.${key}` : key;
+    if ((AndroidMerchantRawDeviceIdentifierFields as readonly string[]).includes(normalizedKey)) {
+      return fieldPath;
+    }
+    const found = findRawAndroidMerchantDeviceIdentifierField(nestedValue, fieldPath);
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+}
+
+function findAndroidMerchantIdentityNameField(value: unknown, path = ''): string | null {
+  if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index += 1) {
+      const found = findAndroidMerchantIdentityNameField(value[index], `${path}[${index}]`);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  if (!isPlainRecord(value)) {
+    return null;
+  }
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    const normalizedKey = key.trim().toLowerCase();
+    const fieldPath = path ? `${path}.${key}` : key;
+    if ((AndroidMerchantIdentityNameFields as readonly string[]).includes(normalizedKey)) {
+      return fieldPath;
+    }
+    const found = findAndroidMerchantIdentityNameField(nestedValue, fieldPath);
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+}
+
+function invalidAndroidMerchantAccountPayload(field?: string) {
+  return {
+    valid: false,
+    code: AndroidMerchantAccountErrorCodes.PAYLOAD_INVALID,
+    ...(field ? { field } : {})
+  } as const;
+}
+
 export const AndroidReceiverCapabilities = {
   NOTIFICATION_ACCESS: 'notification_access',
   SIGNED_SIGNAL_UPLOAD: 'signed_signal_upload',

@@ -52,10 +52,10 @@ class AndroidMerchantUiContractTest {
         assertEquals("Ajouter", method.primaryAction)
 
         val testScreen = catalog.configurationTestScreen(MerchantConfigurationChecklist.allReady())
-        assertEquals("Vérifiez que tout fonctionne", testScreen.title)
-        assertEquals("Lancez un test avant de recevoir vos premiers paiements.", testScreen.subtitle)
+        assertEquals("Test webhook", testScreen.title)
+        assertEquals("Lancez un test backend vers votre endpoint, sans notification réelle ni confirmation de paiement.", testScreen.subtitle)
         assertTrue(testScreen.visibleTexts().containsAll(MerchantConfigurationChecklist.REQUIRED_LABELS))
-        assertEquals("Lancer un test", testScreen.primaryAction)
+        assertEquals("Lancer le test webhook", testScreen.primaryAction)
     }
 
     @Test
@@ -136,7 +136,7 @@ class AndroidMerchantUiContractTest {
         )
         assertTrue(actionRequired.visibleTexts().contains("Action requise"))
         assertTrue(actionRequired.visibleTexts().contains("Ajoutez un moyen de réception pour continuer."))
-        assertTrue(actionRequired.visibleTexts().contains("Connectez votre site ou votre application pour recevoir les mises à jour."))
+        assertTrue(actionRequired.visibleTexts().contains("Configurez un webhook pour tester l'envoi backend."))
 
         val dashboard = catalog.dashboardScreen(receiverReady = true)
         assertEquals("Tableau de bord", dashboard.title)

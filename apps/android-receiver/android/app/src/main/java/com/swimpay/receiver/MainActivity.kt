@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.swimpay.receiver.ui.premium.PremiumMerchantApp
 import com.swimpay.receiver.ui.premium.PremiumMerchantRuntime
+import com.swimpay.receiver.ui.premium.SharedPreferencesPremiumMobileMerchantSessionStore
 import com.swimpay.receiver.ui.premium.SharedPreferencesPremiumOnboardingStateStore
 import com.swimpay.receiver.ui.theme.SwimPayMerchantTheme
 
@@ -19,20 +20,38 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         notificationAccessStatusReader = NotificationAccessStatusReader(this)
         notificationAccessEnabled = notificationAccessStatusReader.isEnabled()
+        val baseUrl = AndroidMerchantBackendConfig.configuredBaseUrl()
+        val bankPackageProbe = PackageManagerExactPackageProbe(this)
         val runtime = PremiumMerchantRuntime.forAppBuild(
-            bankPackageProbe = PackageManagerExactPackageProbe(this)
+            baseUrl = baseUrl,
+            bankPackageProbe = bankPackageProbe
+        )
+        val merchantTransport = HttpUrlConnectionMerchantApiTransport(baseUrl)
+        val accountAuthRepository = AndroidMerchantAuthApiRepository(
+            transport = merchantTransport,
+            deviceProofProvider = SharedPreferencesAndroidMerchantDeviceProofProvider(this)
         )
         val onboardingCompletionStore = SharedPreferencesPremiumOnboardingStateStore(this)
+        val mobileMerchantSessionStore = SharedPreferencesPremiumMobileMerchantSessionStore(this)
         setContent {
             SwimPayMerchantTheme {
-                    PremiumMerchantApp(
-                        runtime = runtime,
-                        onboardingCompletionStore = onboardingCompletionStore,
-                        notificationAccessEnabled = notificationAccessEnabled,
-                        onOpenNotificationSettings = {
-                            startActivity(NotificationListenerSettingsAction.createIntent(packageName))
-                        }
-                    )
+                PremiumMerchantApp(
+                    runtime = runtime,
+                    onboardingCompletionStore = onboardingCompletionStore,
+                    mobileMerchantSessionStore = mobileMerchantSessionStore,
+                    accountAuthRepository = accountAuthRepository,
+                    mobileRuntimeFactory = { mobileSession ->
+                        PremiumMerchantRuntime.mobileSession(
+                            mobileSession = mobileSession,
+                            baseUrl = baseUrl,
+                            bankPackageProbe = bankPackageProbe
+                        )
+                    },
+                    notificationAccessEnabled = notificationAccessEnabled,
+                    onOpenNotificationSettings = {
+                        startActivity(NotificationListenerSettingsAction.createIntent(packageName))
+                    }
+                )
             }
         }
     }

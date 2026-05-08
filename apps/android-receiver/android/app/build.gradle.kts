@@ -4,6 +4,14 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val swimpayBackendBaseUrl = providers.gradleProperty("swimpayBackendBaseUrl")
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_BACKEND_BASE_URL"))
+    .orElse("http://127.0.0.1:8080")
+
+fun String.toBuildConfigString(): String {
+    return "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+}
+
 android {
     namespace = "com.swimpay.receiver"
     compileSdk = 36
@@ -14,6 +22,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField("String", "SWIMPAY_BACKEND_BASE_URL", swimpayBackendBaseUrl.get().toBuildConfigString())
     }
 
     buildFeatures {

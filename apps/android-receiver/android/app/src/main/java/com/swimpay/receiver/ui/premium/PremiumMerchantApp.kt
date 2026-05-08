@@ -5,20 +5,41 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.swimpay.receiver.AndroidMerchantAccountProfileType
+import com.swimpay.receiver.AndroidMerchantAuthApiRepository
+import com.swimpay.receiver.AndroidMerchantAuthResultStatus
+import com.swimpay.receiver.AndroidMerchantDeviceLookupIntent
+import com.swimpay.receiver.AndroidMerchantDeviceLookupStatus
+import com.swimpay.receiver.AuthenticatedMerchantSession
 import com.swimpay.receiver.MerchantConfigurationChecklist
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
 fun PremiumMerchantApp(
     runtime: PremiumMerchantRuntime,
     onboardingCompletionStore: PremiumOnboardingCompletionStore = InMemoryPremiumOnboardingStateStore(),
+    mobileMerchantSessionStore: PremiumMobileMerchantSessionStore = InMemoryPremiumMobileMerchantSessionStore(),
+    accountAuthRepository: AndroidMerchantAuthApiRepository? = null,
+    googleIdTokenProvider: suspend () -> String? = { null },
+    mobileRuntimeFactory: (PremiumMobileMerchantSession) -> PremiumMerchantRuntime = { PremiumMerchantRuntime.mobileSession(it) },
     notificationAccessEnabled: Boolean = true,
     onOpenNotificationSettings: () -> Unit = {}
 ) {
-    var route by remember(onboardingCompletionStore) {
-        mutableStateOf(PremiumNavigation.initialRoute(onboardingCompletionStore.isCompleted()))
+    val scope = rememberCoroutineScope()
+    var activeRuntime by remember(mobileMerchantSessionStore) {
+        mutableStateOf(mobileMerchantSessionStore.currentSession()?.let(mobileRuntimeFactory) ?: runtime)
+    }
+    var route by remember(onboardingCompletionStore, mobileMerchantSessionStore) {
+        mutableStateOf(
+            PremiumNavigation.initialRoute(
+                onboardingCompleted = onboardingCompletionStore.isCompleted(),
+                mobileMerchantSessionValid = mobileMerchantSessionStore.hasValidSession()
+            )
+        )
     }
     var dashboardState by remember { mutableStateOf<PremiumScreenState<PremiumDashboardUiState>>(PremiumScreenState.loading()) }
     var reviewsState by remember { mutableStateOf<PremiumScreenState<PremiumReviewsUiState>>(PremiumScreenState.loading()) }
@@ -42,54 +63,142 @@ fun PremiumMerchantApp(
         }
     }
 
-    LaunchedEffect(route) {
+    LaunchedEffect(route, activeRuntime) {
         when (val currentRoute = route) {
             is PremiumRoute.Main -> {
                 when (currentRoute.tab) {
                     PremiumMainTab.Home -> dashboardState = withContext(Dispatchers.IO) {
-                        runtime.loadDashboard(notificationAccessEnabled)
+                        activeRuntime.loadDashboard(notificationAccessEnabled)
                     }
-                    PremiumMainTab.Reviews -> reviewsState = withContext(Dispatchers.IO) { runtime.loadReviews() }
-                    PremiumMainTab.Orders -> ordersState = withContext(Dispatchers.IO) { runtime.loadOrders() }
+                    PremiumMainTab.Reviews -> reviewsState = withContext(Dispatchers.IO) { activeRuntime.loadReviews() }
+                    PremiumMainTab.Orders -> ordersState = withContext(Dispatchers.IO) { activeRuntime.loadOrders() }
                     PremiumMainTab.Menu -> {
-                        connectedSiteState = withContext(Dispatchers.IO) { runtime.loadConnectedSite() }
+                        connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.loadConnectedSite() }
                         configurationState = withContext(Dispatchers.IO) {
-                            runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
+                            activeRuntime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
                         }
                     }
                 }
             }
             is PremiumRoute.PaymentDetail -> {
-                paymentDetailState = withContext(Dispatchers.IO) { runtime.loadPaymentDetail(currentRoute.reviewId) }
+                paymentDetailState = withContext(Dispatchers.IO) { activeRuntime.loadPaymentDetail(currentRoute.reviewId) }
             }
             PremiumRoute.ReceivingMethods -> {
-                receivingMethodsState = withContext(Dispatchers.IO) { runtime.loadReceivingMethods() }
+                receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
             }
             PremiumRoute.Banks -> {
-                banksState = withContext(Dispatchers.IO) { runtime.loadBanks() }
+                banksState = withContext(Dispatchers.IO) { activeRuntime.loadBanks() }
             }
             PremiumRoute.ReceiverHealth -> {
-                receiverHealthState = withContext(Dispatchers.IO) { runtime.loadReceiverHealth(notificationAccessEnabled) }
+                receiverHealthState = withContext(Dispatchers.IO) { activeRuntime.loadReceiverHealth(notificationAccessEnabled) }
             }
             PremiumRoute.ConnectedSite -> {
-                connectedSiteState = withContext(Dispatchers.IO) { runtime.loadConnectedSite() }
+                connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.loadConnectedSite() }
             }
             PremiumRoute.ConfigurationTest -> {
                 configurationState = withContext(Dispatchers.IO) {
-                    runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
+                    activeRuntime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
                 }
             }
             PremiumRoute.Landing,
+            PremiumRoute.AccountEntry,
+            PremiumRoute.AccountProfileChoice,
+            PremiumRoute.LoginProviderChoice,
+            is PremiumRoute.AccountRecovery,
             PremiumRoute.ConfirmationMode,
             PremiumRoute.Security,
             is PremiumRoute.OrderDetail -> Unit
             PremiumRoute.Onboarding -> {
-                banksState = withContext(Dispatchers.IO) { runtime.loadBanks() }
+                banksState = withContext(Dispatchers.IO) { activeRuntime.loadBanks() }
             }
         }
     }
 
     when (val currentRoute = route) {
+        PremiumRoute.AccountEntry -> PremiumAccountEntryScreen(
+            onCreateAccount = { route = PremiumNavigation.openAccountProfileChoice() },
+            onSignIn = { route = PremiumNavigation.openLoginProviderChoice() }
+        )
+        PremiumRoute.AccountProfileChoice -> PremiumAccountProfileChoiceScreen(
+            onSelectProfile = { profileType ->
+                route = PremiumNavigation.openAccountRecovery(
+                    PremiumAccountRecoveryUiState.creating(),
+                    returnRoute = PremiumRoute.AccountProfileChoice
+                )
+                scope.launch {
+                    val repository = accountAuthRepository
+                    val lookup = withContext(Dispatchers.IO) {
+                        repository?.lookupDevice(AndroidMerchantDeviceLookupIntent.CREATE_ACCOUNT)
+                    }
+                    if (
+                        lookup == null ||
+                        lookup.status == AndroidMerchantAuthResultStatus.ERROR ||
+                        lookup.deviceStatus == AndroidMerchantDeviceLookupStatus.RECOVERY_REQUIRED ||
+                        lookup.deviceStatus == AndroidMerchantDeviceLookupStatus.KNOWN_DEVICE
+                    ) {
+                        route = PremiumNavigation.openAccountRecovery(
+                            PremiumAccountRecoveryUiState.error(
+                                message = if (lookup?.deviceStatus == AndroidMerchantDeviceLookupStatus.KNOWN_DEVICE) {
+                                    "Ce telephone semble deja lie. Utilisez Se connecter."
+                                } else {
+                                    "Impossible de verifier ce telephone pour le moment."
+                                }
+                            ),
+                            returnRoute = PremiumRoute.AccountProfileChoice
+                        )
+                        return@launch
+                    }
+                    val result = withContext(Dispatchers.IO) {
+                        repository?.createAccount(profileType.toAndroidAuthProfileType())
+                    }
+                    if (result?.status == AndroidMerchantAuthResultStatus.SUCCESS && result.mobileSession != null) {
+                        mobileMerchantSessionStore.save(result.mobileSession)
+                        activeRuntime = mobileRuntimeFactory(result.mobileSession)
+                        route = PremiumNavigation.afterAccountProfileSelected(profileType)
+                    } else {
+                        route = PremiumNavigation.openAccountRecovery(
+                            PremiumAccountRecoveryUiState.error(
+                                message = result?.safeMessage ?: "La création du compte sera disponible après connexion au backend."
+                            ),
+                            returnRoute = PremiumRoute.AccountProfileChoice
+                        )
+                    }
+                }
+            },
+            onBack = { route = PremiumRoute.AccountEntry }
+        )
+        PremiumRoute.LoginProviderChoice -> PremiumAccountLoginProviderScreen(
+            onGoogleRecovery = {
+                route = PremiumNavigation.openAccountRecovery(PremiumAccountRecoveryUiState.pending())
+                scope.launch {
+                    val idToken = withContext(Dispatchers.IO) { googleIdTokenProvider() }
+                    val result = if (!idToken.isNullOrBlank()) {
+                        withContext(Dispatchers.IO) { accountAuthRepository?.googleExchange(idToken) }
+                    } else {
+                        null
+                    }
+                    if (result?.status == AndroidMerchantAuthResultStatus.SUCCESS && result.mobileSession != null) {
+                        mobileMerchantSessionStore.save(result.mobileSession)
+                        activeRuntime = mobileRuntimeFactory(result.mobileSession)
+                        route = PremiumNavigation.initialRoute(
+                            onboardingCompleted = onboardingCompletionStore.isCompleted(),
+                            mobileMerchantSessionValid = true
+                        )
+                    } else {
+                        route = PremiumNavigation.openAccountRecovery(
+                            PremiumAccountRecoveryUiState.error(
+                                message = result?.safeMessage ?: "Google sera branche comme moyen de recuperation."
+                            )
+                        )
+                    }
+                }
+            },
+            onBack = { route = PremiumRoute.AccountEntry }
+        )
+        is PremiumRoute.AccountRecovery -> PremiumAccountRecoveryScreen(
+            state = currentRoute.state,
+            onBack = { route = currentRoute.returnRoute }
+        )
         PremiumRoute.Landing -> PremiumLandingScreen { route = PremiumRoute.Onboarding }
         PremiumRoute.Onboarding -> PremiumOnboardingFlow(
             notificationAccessEnabled = notificationAccessEnabled,
@@ -105,14 +214,11 @@ fun PremiumMerchantApp(
             onBack = {
                 route = PremiumNavigation.backFromPaymentDetail()
             },
-            onConfirm = {
-                paymentDetailState = runtime.confirm(currentRoute.reviewId)
-            },
             onRejectSignal = {
-                paymentDetailState = runtime.rejectSignal(currentRoute.reviewId)
+                paymentDetailState = activeRuntime.rejectSignal(currentRoute.reviewId)
             },
             onRejectOrder = {
-                paymentDetailState = runtime.rejectOrder(currentRoute.reviewId)
+                paymentDetailState = activeRuntime.rejectOrder(currentRoute.reviewId)
             }
         )
         is PremiumRoute.Main -> PremiumAppShell(
@@ -155,7 +261,40 @@ fun PremiumMerchantApp(
         PremiumRoute.Security -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
-            content = { PremiumSecurityScreen() }
+            content = {
+                PremiumSecurityScreen(
+                    onGoogleRecoveryLink = {
+                        route = PremiumNavigation.openAccountRecovery(
+                            PremiumAccountRecoveryUiState.pending(),
+                            returnRoute = PremiumRoute.Security
+                        )
+                        scope.launch {
+                            val session = mobileMerchantSessionStore.currentSession()
+                            val idToken = withContext(Dispatchers.IO) { googleIdTokenProvider() }
+                            val result = if (session != null && !idToken.isNullOrBlank()) {
+                                withContext(Dispatchers.IO) {
+                                    accountAuthRepository?.googleLink(AuthenticatedMerchantSession.mobile(session), idToken)
+                                }
+                            } else {
+                                null
+                            }
+                            route = if (result?.status == AndroidMerchantAuthResultStatus.SUCCESS) {
+                                PremiumNavigation.openAccountRecovery(
+                                    PremiumAccountRecoveryUiState.success(),
+                                    returnRoute = PremiumRoute.Security
+                                )
+                            } else {
+                                PremiumNavigation.openAccountRecovery(
+                                    PremiumAccountRecoveryUiState.error(
+                                        message = result?.safeMessage ?: "Google sera disponible apres connexion au backend."
+                                    ),
+                                    returnRoute = PremiumRoute.Security
+                                )
+                            }
+                        }
+                    }
+                )
+            }
         )
         PremiumRoute.Banks -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
@@ -179,5 +318,12 @@ fun PremiumMerchantApp(
                 )
             }
         )
+    }
+}
+
+private fun PremiumMerchantProfileType.toAndroidAuthProfileType(): AndroidMerchantAccountProfileType {
+    return when (this) {
+        PremiumMerchantProfileType.PERSONAL -> AndroidMerchantAccountProfileType.PERSONAL
+        PremiumMerchantProfileType.COMMERCE -> AndroidMerchantAccountProfileType.BUSINESS
     }
 }

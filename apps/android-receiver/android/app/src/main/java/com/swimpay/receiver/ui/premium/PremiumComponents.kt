@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
@@ -278,6 +279,27 @@ fun PremiumIconTile(icon: ImageVector, size: Dp, tint: Color = PremiumColors.Cya
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(size * 0.52f))
+    }
+}
+
+@Composable
+fun PremiumGoogleIcon(modifier: Modifier = Modifier.size(26.dp)) {
+    Canvas(modifier) {
+        val strokeWidth = size.minDimension * 0.16f
+        val arcStyle = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        val inset = strokeWidth / 2f
+        val arcBounds = Size(size.width - strokeWidth, size.height - strokeWidth)
+        drawArc(Color(0xFF4285F4), startAngle = -35f, sweepAngle = 105f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
+        drawArc(Color(0xFF34A853), startAngle = 70f, sweepAngle = 70f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
+        drawArc(Color(0xFFFBBC05), startAngle = 140f, sweepAngle = 75f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
+        drawArc(Color(0xFFEA4335), startAngle = 215f, sweepAngle = 110f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
+        drawLine(
+            Color(0xFF4285F4),
+            start = Offset(size.width * 0.52f, size.height * 0.52f),
+            end = Offset(size.width * 0.88f, size.height * 0.52f),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round
+        )
     }
 }
 
