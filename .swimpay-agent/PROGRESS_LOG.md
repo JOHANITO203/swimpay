@@ -2444,6 +2444,16 @@ Safety checks:
 - Validation passed: android doctor, typecheck, lint, targeted checkout/API/web/worker tests, full Vitest suite, TypeScript build and Compose config.
 - No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
 
+# 2026-05-08T22:00:00+03:00 - Developer Integration Wizard staging flow
+
+- Verified backend Developer Integration lifecycle: API key show-once, webhook secret show-once, webhook URL save, safe test webhook, delivery history and retry.
+- Added a wizard export block for external merchant app staging values: `SWIMPAY_STAGING_API_BASE_URL`, `SWIMPAY_STAGING_SECRET_KEY`, `SWIMPAY_STAGING_WEBHOOK_SECRET`, `SWIMPAY_WEBHOOK_URL`, `EXTERNAL_APP_BASE_URL` and `SWIMPAY_PUBLIC_WEBHOOK_EVENTS`.
+- Kept raw keys/secrets show-once only; normal reads render masked values.
+- Preserved safe Web and Android snippets: secrets stay server-side, Android opens `checkout_url` only and never handles webhooks or fulfillment.
+- Added regression coverage in `apps/web/src/developer-wizard.test.ts`.
+- Targeted validation passed for the web wizard, backend developer integration and TypeScript typecheck.
+- No real bank notification was processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
 # 2026-05-08T11:45:00+03:00 - INTEL-TRUTH SwimPay Intelligence Source-of-Truth Audit
 
 - Created tasks 612 through 622 and updated `.swimpay-agent/TASK_QUEUE.md`.

@@ -477,6 +477,7 @@ export function renderDeveloperIntegrationWizardPage(params: {
       })}
       ${renderWebIntegrationSnippets()}
       ${renderAndroidIntegrationSnippets()}
+      ${renderExternalAppExport(integration, publicEvents)}
       ${renderWebhookDeliveryHistory(deliveries, actionButtonAttr)}
       <p class="safe-note" style="margin-top:26px;">${IconBubble({ icon: 'V', tone: 'teal' })}<span>payment.confirmed est envoyé après manual confirmation du marchand. official_bank_confirmation=false.</span></p>
       ${BottomNav({ active: 'more' })}
@@ -548,6 +549,7 @@ function renderDeveloperIntegrationWizardPageStatic(params: {
       })}
       ${renderWebIntegrationSnippets()}
       ${renderAndroidIntegrationSnippets()}
+      ${renderExternalAppExport(integration, publicEvents)}
       ${renderWebhookDeliveryHistory()}
       <p class="safe-note" style="margin-top:26px;">${IconBubble({ icon: 'V', tone: 'teal' })}<span>payment.confirmed est envoyé après manual confirmation du marchand. official_bank_confirmation=false.</span></p>
       ${BottomNav({ active: 'more' })}
@@ -761,6 +763,28 @@ override fun onNewIntent(intent: Intent) {
       <section data-snippet="android">
         ${renderSnippet('Ouvrir checkout_url et gérer le retour app', kotlin)}
       </section>
+    </section>`
+  });
+}
+
+function renderExternalAppExport(integration: MerchantIntegrationPayload | null, publicEvents: string[]): string {
+  const apiBaseUrl = integration?.api_base_url ?? 'https://staging.swimpay.pro';
+  const secretKey = integration?.secret_key_once ?? integration?.secret_key_masked ?? '<create-api-key-show-once>';
+  const webhookSecret = integration?.webhook_secret_once ?? integration?.webhook_secret_masked ?? '<create-webhook-secret-show-once>';
+  const webhookUrl = integration?.webhook_url ?? 'https://<merchant-staging-endpoint>/webhooks/swimpay';
+  const env = `SWIMPAY_STAGING_API_BASE_URL=${apiBaseUrl}
+SWIMPAY_STAGING_SECRET_KEY=${secretKey}
+SWIMPAY_STAGING_WEBHOOK_SECRET=${webhookSecret}
+SWIMPAY_WEBHOOK_URL=${webhookUrl}
+EXTERNAL_APP_BASE_URL=https://<merchant-staging-endpoint>
+SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicEvents.join(',')}`;
+
+  return Card({
+    children: `<section id="external-app-export">
+      <h2 class="section-title" style="margin-top:0;">Variables staging pour app externe</h2>
+      <p class="muted">Utilisez ce bloc pour brancher une application marchande de test. Les secrets complets sont affiches seulement juste apres creation ou rotation.</p>
+      ${renderSnippet('Env staging', env)}
+      <p class="safe-note" style="margin-top:14px;">${IconBubble({ icon: 'S', tone: 'muted' })}<span>Conservez ces valeurs cote serveur. Une app Android externe ne doit recevoir que checkout_url et le resultat de retour.</span></p>
     </section>`
   });
 }

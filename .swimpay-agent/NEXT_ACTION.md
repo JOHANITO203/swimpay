@@ -1,5 +1,41 @@
 # Next Action
 
+generated_at: 2026-05-08T22:00:00+03:00
+
+## Latest Developer Integration Wizard staging flow
+
+Completed:
+
+1. Verified the backend lifecycle for merchant API key, webhook secret, webhook URL, safe test webhook and delivery history.
+2. Verified the wizard keeps raw API keys/webhook secrets show-once only and masked on normal reads.
+3. Added a staging export block for external merchant apps:
+   - `SWIMPAY_STAGING_API_BASE_URL`
+   - `SWIMPAY_STAGING_SECRET_KEY`
+   - `SWIMPAY_STAGING_WEBHOOK_SECRET`
+   - `SWIMPAY_WEBHOOK_URL`
+   - `EXTERNAL_APP_BASE_URL`
+   - `SWIMPAY_PUBLIC_WEBHOOK_EVENTS`
+4. Verified Web snippets are server-side only for secrets and Android snippets contain no secrets/webhook handling.
+5. No real notification was processed and no webhook/payment semantics changed.
+
+Next recommended action:
+
+1. Finish root validation for this wizard export patch.
+2. Commit and push to `origin/main`.
+3. Redeploy staging through Dokploy.
+4. In the staging wizard, create/rotate the API key and webhook secret, then copy the show-once values into the external merchant app env without pasting them into chat.
+5. Relaunch the SDK/webhook rehearsal.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-08T21:53:31+03:00
 
 ## Latest REAL-CAPTURE-2 staging synthetic upload proof rerun

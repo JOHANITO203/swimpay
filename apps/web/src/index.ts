@@ -258,6 +258,7 @@ export interface MerchantIntegrationClient {
 
 export interface MerchantIntegrationPayload {
   merchant_id: string;
+  api_base_url?: string | undefined;
   public_key: string;
   secret_key_masked?: string | null | undefined;
   secret_key_once?: string | undefined;
@@ -853,26 +854,26 @@ export class ApiMerchantIntegrationClient implements MerchantIntegrationClient {
   constructor(private url: string, private bearerToken: string) {}
 
   async getIntegration(): Promise<MerchantIntegrationPayload> {
-    return this.request<MerchantIntegrationPayload>('/v1/merchant/integration');
+    return this.withApiBaseUrl(await this.request<MerchantIntegrationPayload>('/v1/merchant/integration'));
   }
 
   async ensureKeys(): Promise<MerchantIntegrationPayload> {
-    return this.request<MerchantIntegrationPayload>('/v1/merchant/integration/keys', { method: 'POST' });
+    return this.withApiBaseUrl(await this.request<MerchantIntegrationPayload>('/v1/merchant/integration/keys', { method: 'POST' }));
   }
 
   async rotateKeys(): Promise<MerchantIntegrationPayload> {
-    return this.request<MerchantIntegrationPayload>('/v1/merchant/integration/keys/rotate', { method: 'POST' });
+    return this.withApiBaseUrl(await this.request<MerchantIntegrationPayload>('/v1/merchant/integration/keys/rotate', { method: 'POST' }));
   }
 
   async rotateWebhookSecret(): Promise<MerchantIntegrationPayload> {
-    return this.request<MerchantIntegrationPayload>('/v1/merchant/integration/webhook-secret/rotate', { method: 'POST' });
+    return this.withApiBaseUrl(await this.request<MerchantIntegrationPayload>('/v1/merchant/integration/webhook-secret/rotate', { method: 'POST' }));
   }
 
   async updateWebhookUrl(webhookUrl: string): Promise<MerchantIntegrationPayload> {
-    return this.request<MerchantIntegrationPayload>('/v1/merchant/integration/webhook-url', {
+    return this.withApiBaseUrl(await this.request<MerchantIntegrationPayload>('/v1/merchant/integration/webhook-url', {
       method: 'PUT',
       body: JSON.stringify({ webhook_url: webhookUrl })
-    });
+    }));
   }
 
   async testWebhook(): Promise<MerchantWebhookTestPayload> {
@@ -889,6 +890,10 @@ export class ApiMerchantIntegrationClient implements MerchantIntegrationClient {
       `/v1/merchant/integration/webhook-deliveries/${encodeURIComponent(deliveryId)}/retry`,
       { method: 'POST' }
     );
+  }
+
+  private withApiBaseUrl(payload: MerchantIntegrationPayload): MerchantIntegrationPayload {
+    return { ...payload, api_base_url: this.url };
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {

@@ -1,5 +1,14 @@
 # Blockers
 
+## Developer Integration Wizard staging flow
+
+- Resolved in code: wizard now exposes an external-app staging env block for SDK/webhook rehearsal values.
+- Resolved in code: API key and webhook secret remain show-once on create/rotate and masked on normal reads.
+- Resolved in code: Web snippets keep secrets server-side; Android snippets contain no secrets, no webhook handling and no local fulfillment.
+- Remaining blocker before SDK/webhook rehearsal: deploy this patch to staging, then copy the show-once API key and webhook secret into the external merchant app env outside chat.
+- Remaining blocker before real notification capture: SDK order, hosted checkout route selection, active payment intent, manual review and final-only webhook delivery still need synthetic proof.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+
 ## REAL-CAPTURE-2 staging synthetic upload proof rerun
 
 - Resolved again on installed APK: synthetic redacted signed upload to staging passed.

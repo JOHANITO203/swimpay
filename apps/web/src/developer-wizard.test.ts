@@ -184,6 +184,33 @@ describe('Developer Integration Wizard', () => {
     expect(normalRead.body).not.toContain('webhook_secret_once');
   });
 
+  it('renders exportable staging values for an external merchant app', async () => {
+    const client = new FakeMerchantIntegrationClient({
+      api_base_url: 'https://staging.swimpay.pro'
+    });
+    const server = buildWebServer({ environment: 'test', merchantIntegrationClient: client });
+
+    const page = await server.inject({ method: 'GET', url: '/merchant/developer-integration' });
+    const created = await server.inject({ method: 'POST', url: '/merchant/developer-integration/keys' });
+    const webhookRotated = await server.inject({ method: 'POST', url: '/merchant/developer-integration/webhook-secret/rotate' });
+    const exportBlock = extractSection(page.body, 'external-app-export');
+    const createdExportBlock = extractSection(created.body, 'external-app-export');
+    const rotatedExportBlock = extractSection(webhookRotated.body, 'external-app-export');
+
+    expect(exportBlock).toContain('Variables staging pour app externe');
+    expect(exportBlock).toContain('SWIMPAY_STAGING_API_BASE_URL=https://staging.swimpay.pro');
+    expect(exportBlock).toContain('SWIMPAY_STAGING_SECRET_KEY=sk_live_');
+    expect(exportBlock).toContain('SWIMPAY_STAGING_WEBHOOK_SECRET=whsec_');
+    expect(exportBlock).toContain('SWIMPAY_WEBHOOK_URL=https://merchant.example/webhooks/swimpay');
+    expect(exportBlock).toContain('EXTERNAL_APP_BASE_URL=https://&lt;merchant-staging-endpoint&gt;');
+    expect(exportBlock).toContain('payment.confirmed,payment.rejected,payment.expired');
+
+    expect(createdExportBlock).toContain('SWIMPAY_STAGING_SECRET_KEY=sk_test_show_once_secret_value');
+    expect(rotatedExportBlock).toContain('SWIMPAY_STAGING_WEBHOOK_SECRET=whsec_rotated_secret_value');
+    expect(page.body).not.toContain('sk_test_show_once_secret_value');
+    expect(page.body).not.toContain('whsec_rotated_secret_value');
+  });
+
   it('wires webhook URL save, test webhook and delivery retry through the client', async () => {
     const client = new FakeMerchantIntegrationClient();
     const server = buildWebServer({ environment: 'test', merchantIntegrationClient: client });
