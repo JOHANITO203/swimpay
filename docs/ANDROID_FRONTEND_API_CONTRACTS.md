@@ -56,17 +56,24 @@ Backend endpoints:
 APK backend target:
 
 - default debug builds keep `http://127.0.0.1:8080` for adb reverse/local smoke;
-- staging debug builds can be assembled with
-  `-PswimpayBackendBaseUrl=https://staging.swimpay.pro`;
+- staging builds default to `https://staging.swimpay.pro` without extra Gradle
+  flags;
+- staging backend overrides must use `-PswimpayStagingBackendBaseUrl=<https-url>`
+  or `SWIMPAY_ANDROID_STAGING_BACKEND_BASE_URL`;
+- staging builds fail fast if the backend target is localhost or non-HTTPS;
 - external Android backend URLs must use HTTPS.
 
 APK Google recovery target:
 
 - the Android app reads the Google server/web client ID from
-  `-PswimpayGoogleServerClientId=<web-client-id>` or
+  build config;
+- staging builds default to the configured staging/web OAuth client ID and can
+  be overridden with `-PswimpayStagingGoogleServerClientId=<web-client-id>` or
+  `SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID`;
+- debug builds can still use `-PswimpayGoogleServerClientId=<web-client-id>` or
   `SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID`;
-- if the client ID is absent, Google recovery/linking fails closed before
-  opening the Credential Manager flow;
+- if the client ID is absent in a non-staging build, Google recovery/linking
+  fails closed before opening the Credential Manager flow;
 - the Google ID token is temporary request data only and must not be stored,
   logged or used as profile data.
 

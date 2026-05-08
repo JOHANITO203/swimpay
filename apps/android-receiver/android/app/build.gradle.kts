@@ -12,6 +12,14 @@ val swimpayGoogleServerClientId = providers.gradleProperty("swimpayGoogleServerC
     .orElse(providers.environmentVariable("SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID"))
     .orElse("")
 
+val stagingSwimpayBackendBaseUrl = providers.gradleProperty("swimpayStagingBackendBaseUrl")
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_STAGING_BACKEND_BASE_URL"))
+    .orElse("https://staging.swimpay.pro")
+
+val stagingSwimpayGoogleServerClientId = providers.gradleProperty("swimpayStagingGoogleServerClientId")
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID"))
+    .orElse("983049539084-8k91arvoocd6d1q8fbjq1auvmigkeg6u.apps.googleusercontent.com")
+
 fun String.toBuildConfigString(): String {
     return "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 }
@@ -36,6 +44,8 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             isDebuggable = false
             matchingFallbacks += listOf("debug")
+            buildConfigField("String", "SWIMPAY_BACKEND_BASE_URL", stagingSwimpayBackendBaseUrl.get().toBuildConfigString())
+            buildConfigField("String", "SWIMPAY_GOOGLE_SERVER_CLIENT_ID", stagingSwimpayGoogleServerClientId.get().toBuildConfigString())
         }
     }
 
@@ -77,4 +87,28 @@ tasks.withType<Test>().configureEach {
     maxParallelForks = 1
     forkEvery = 0
     jvmArgs = listOf("-Xmx256m")
+}
+
+tasks.register("validateStagingBuildConfig") {
+    doLast {
+        val backend = stagingSwimpayBackendBaseUrl.get().trim().trimEnd('/')
+        val googleClientId = stagingSwimpayGoogleServerClientId.get().trim()
+
+        require(backend.startsWith("https://")) {
+            "Staging Android backend must use HTTPS."
+        }
+        require(!backend.contains("127.0.0.1") && !backend.contains("localhost")) {
+            "Staging Android backend must not target localhost."
+        }
+        require(googleClientId.isNotBlank()) {
+            "Staging Android Google server client ID must be configured."
+        }
+        require(googleClientId.endsWith(".apps.googleusercontent.com")) {
+            "Staging Android Google server client ID must be a Google OAuth client ID."
+        }
+    }
+}
+
+tasks.matching { it.name == "preStagingBuild" }.configureEach {
+    dependsOn("validateStagingBuildConfig")
 }

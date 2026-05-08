@@ -217,6 +217,23 @@ describe('android Gradle wrapper and build validation', () => {
     expect(appBuild).toContain('matchingFallbacks += listOf("debug")');
   });
 
+  it('makes staging APK builds target the VPS backend without manual Gradle flags', () => {
+    const appBuild = readAndroid('app/build.gradle.kts');
+
+    expect(appBuild).toContain('stagingSwimpayBackendBaseUrl');
+    expect(appBuild).toContain('SWIMPAY_ANDROID_STAGING_BACKEND_BASE_URL');
+    expect(appBuild).toContain('https://staging.swimpay.pro');
+    expect(appBuild).toContain('stagingSwimpayGoogleServerClientId');
+    expect(appBuild).toContain('SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID');
+    expect(appBuild).toContain('983049539084-8k91arvoocd6d1q8fbjq1auvmigkeg6u.apps.googleusercontent.com');
+    expect(appBuild).toMatch(/create\("staging"\)[\s\S]*buildConfigField\("String",\s*"SWIMPAY_BACKEND_BASE_URL",\s*stagingSwimpayBackendBaseUrl\.get\(\)\.toBuildConfigString\(\)\)/u);
+    expect(appBuild).toMatch(/create\("staging"\)[\s\S]*buildConfigField\("String",\s*"SWIMPAY_GOOGLE_SERVER_CLIENT_ID",\s*stagingSwimpayGoogleServerClientId\.get\(\)\.toBuildConfigString\(\)\)/u);
+    expect(appBuild).toContain('validateStagingBuildConfig');
+    expect(appBuild).toContain('preStagingBuild');
+    expect(appBuild).toContain('backend.contains("127.0.0.1")');
+    expect(appBuild).toContain('googleClientId.isNotBlank()');
+  });
+
   it('declares exact non-debug package visibility for supported bank detection', () => {
     const mainManifest = readAndroid('app/src/main/AndroidManifest.xml');
     const supportedPackages = [
