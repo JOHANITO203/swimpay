@@ -206,6 +206,40 @@ describe('android Gradle wrapper and build validation', () => {
     expect(activity).toContain('AndroidGoogleIdTokenProvider(this)');
     expect(activity).toContain('googleIdTokenProvider = googleIdTokenProvider::requestIdToken');
   });
+
+  it('defines an installable staging build that exercises non-debug runtime paths', () => {
+    const appBuild = readAndroid('app/build.gradle.kts');
+
+    expect(appBuild).toContain('create("staging")');
+    expect(appBuild).toContain('initWith(getByName("debug"))');
+    expect(appBuild).toContain('signingConfig = signingConfigs.getByName("debug")');
+    expect(appBuild).toContain('isDebuggable = false');
+    expect(appBuild).toContain('matchingFallbacks += listOf("debug")');
+  });
+
+  it('declares exact non-debug package visibility for supported bank detection', () => {
+    const mainManifest = readAndroid('app/src/main/AndroidManifest.xml');
+    const supportedPackages = [
+      'ru.sberbankmobile',
+      'com.idamob.tinkoff.android',
+      'ru.vtb24.mobilebanking.android',
+      'ru.alfabank.mobile.android',
+      'ru.gazprombank.android.mobilebank.app'
+    ];
+
+    expect(mainManifest).toContain('<queries>');
+    for (const packageName of supportedPackages) {
+      expect(mainManifest).toContain(`<package android:name="${packageName}" />`);
+    }
+    expect(mainManifest).not.toMatch(/QUERY_ALL_PACKAGES|getInstalledPackages|getInstalledApplications|queryIntentActivities/u);
+  });
+
+  it('allocates enough Gradle metaspace for staging lint and release-like builds', () => {
+    const gradleProperties = readAndroid('gradle.properties');
+
+    expect(gradleProperties).toContain('org.gradle.jvmargs=');
+    expect(gradleProperties).toContain('-XX:MaxMetaspaceSize=512m');
+  });
 });
 
 describe('android emulator smoke validation', () => {
@@ -658,7 +692,7 @@ describe('android device-side network smoke wiring', () => {
     }
   });
 
-  it('hardens Sprint 4R package visibility with exact debug queries and safe operator messages', () => {
+  it('hardens package visibility with exact supported-bank queries and safe operator messages', () => {
     const mainManifest = readAndroid('app/src/main/AndroidManifest.xml');
     const debugManifest = readAndroid('app/src/debug/AndroidManifest.xml');
     const evidence = readAndroid('app/src/main/java/com/swimpay/receiver/BankPackageEvidence.kt');
@@ -666,10 +700,19 @@ describe('android device-side network smoke wiring', () => {
     const controller = readAndroid('app/src/main/java/com/swimpay/receiver/DebugReceiverSmokeController.kt');
     const policy = readFileSync(join(root, 'docs/ANDROID_PACKAGE_VISIBILITY_POLICY.md'), 'utf8');
     const report = readFileSync(join(root, '.swimpay-agent/SPRINT_4R_REPORT.md'), 'utf8');
+    const supportedPackages = [
+      'ru.sberbankmobile',
+      'com.idamob.tinkoff.android',
+      'ru.vtb24.mobilebanking.android',
+      'ru.alfabank.mobile.android',
+      'ru.gazprombank.android.mobilebank.app'
+    ];
 
-    expect(debugManifest).toContain('<queries>');
-    expect(debugManifest).toContain('<package android:name="ru.sberbankmobile" />');
-    expect(mainManifest).not.toContain('ru.sberbankmobile');
+    expect(mainManifest).toContain('<queries>');
+    for (const packageName of supportedPackages) {
+      expect(mainManifest).toContain(`<package android:name="${packageName}" />`);
+    }
+    expect(debugManifest).not.toContain('<queries>');
     expect(`${mainManifest}\n${debugManifest}`).not.toContain('QUERY_ALL_PACKAGES');
 
     expect(evidence).toContain('PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED');
@@ -680,6 +723,7 @@ describe('android device-side network smoke wiring', () => {
     expect(collector).toContain('package_not_visible_or_not_declared');
     expect(`${collector}\n${controller}`).not.toMatch(/getInstalledPackages|getInstalledApplications|queryIntentActivities/iu);
     expect(policy).toContain('QUERY_ALL_PACKAGES');
+    expect(policy).toContain('exact V1 supported-bank package visibility');
     expect(policy).toContain('collected evidence starts as `pending_operator_review`');
     expect(report).toContain('status: PASS');
     expect(report).toContain('PACKAGE_NOT_VISIBLE_OR_NOT_DECLARED');

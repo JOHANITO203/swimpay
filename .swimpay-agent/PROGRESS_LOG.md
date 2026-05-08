@@ -2401,3 +2401,29 @@ Safety checks:
 - Hardened main Compose defaults toward staging/prod-safe auth and kept local dev opt-in explicit in `.env.example`.
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
 - No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
+# 2026-05-08T13:51:40+03:00 - REAL-CAPTURE-1 staging APK/device gate
+
+- Created tasks 628 through 634 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Added Android `staging` build type using debug signing for installability and `isDebuggable=false` for non-debug runtime validation.
+- Added Android guardrail coverage for the staging build type and Gradle metaspace.
+- Increased Android Gradle metaspace to let `lintVitalAnalyzeStaging` complete.
+- Built `app-staging.apk` against `https://staging.swimpay.pro` with the configured Google server client ID.
+- Installed and launched the staging APK on the operator Samsung device over ADB Wi-Fi.
+- Verified `https://staging.swimpay.pro/api-health` returns database, NATS and Valkey `ok`.
+- Verified a clean app relaunch produced no SwimPay crash entries.
+- Observed existing app state opens directly to a merchant dashboard; login/create-account/onboarding was not replayed because app data was preserved.
+- Observed Android dashboard still shows banks to configure and receiving methods to add; Menu shows connected-site/webhook configuration action required.
+- Created `.swimpay-agent/REAL_CAPTURE_1_REPORT.md`.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
+# 2026-05-08T14:06:07+03:00 - REAL-CAPTURE-2 Intelligence test ladder prepared
+
+- Fixed Android staging/non-debug supported-bank detection by declaring exact V1 supported-bank package visibility in the main Receiver manifest.
+- Rebuilt, reinstalled and relaunched the staging APK on the operator device; UIAutomator confirmed 5 detected supported bank apps.
+- Kept package visibility exact and narrow: no `QUERY_ALL_PACKAGES`, no broad installed-app enumeration, no SMS, no Accessibility and no scraping.
+- Updated Android package-visibility policy and guardrail tests to require exact main-manifest queries while keeping debug manifest free of duplicate query declarations.
+- Created tasks 635 through 644 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Created `.swimpay-agent/REAL_CAPTURE_2_INTELLIGENCE_TEST_PLAN.md` with sequential tool tests, combined synthetic E2E, metrics and a final real-notification capture gate.
+- Validation passed: Android staging unit tests with explicit `ANDROID_HOME`, targeted Android runnable-app Vitest guardrails, prior full root validation and staging APK install/device proof.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.

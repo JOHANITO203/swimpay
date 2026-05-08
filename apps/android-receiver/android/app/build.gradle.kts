@@ -30,6 +30,15 @@ android {
         buildConfigField("String", "SWIMPAY_GOOGLE_SERVER_CLIENT_ID", swimpayGoogleServerClientId.get().toBuildConfigString())
     }
 
+    buildTypes {
+        create("staging") {
+            initWith(getByName("debug"))
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            matchingFallbacks += listOf("debug")
+        }
+    }
+
     buildFeatures {
         buildConfig = true
         compose = true

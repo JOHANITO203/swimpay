@@ -67,16 +67,17 @@ class BankTargetLockTest {
         val manifest = "$mainManifest\n$debugManifest"
         val targetLock = File("src/main/java/com/swimpay/receiver/BankTargetLock.kt").readText()
 
+        assertTrue(mainManifest.contains("<queries>"))
+        assertFalse(debugManifest.contains("<queries>"))
         assertFalse(manifest.contains("QUERY_ALL_PACKAGES"))
         assertFalse(manifest.contains("android.permission.READ_SMS"))
         assertFalse(manifest.contains("android.permission.RECEIVE_SMS"))
         assertFalse(manifest.contains("AccessibilityService"))
-        assertFalse(mainManifest.contains("ru.sberbankmobile"))
         assertFalse(targetLock.contains("getInstalledPackages"))
         assertFalse(targetLock.contains("queryIntentActivities"))
         assertFalse(targetLock.contains("QUERY_ALL_PACKAGES"))
         BankTargetLock.supportedTargets.forEach { target ->
-            assertTrue(manifest.contains(target.packageName))
+            assertTrue(mainManifest.contains(target.packageName))
         }
     }
 

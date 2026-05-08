@@ -1,5 +1,76 @@
 # Next Action
 
+generated_at: 2026-05-08T14:06:07+03:00
+
+## Latest REAL-CAPTURE-2 Intelligence test ladder
+
+Planned:
+
+1. Created tasks 635 through 644 and updated the active task queue.
+2. Created `.swimpay-agent/REAL_CAPTURE_2_INTELLIGENCE_TEST_PLAN.md`.
+3. Defined sequential tool tests for bank detection, receiver auth/heartbeat, notification access gate, redaction/outbox/upload, backend Payment Intent Gate, SDK/webhook rehearsal and combined synthetic E2E.
+4. Defined timing/queue/retry metrics for each stage.
+5. Preserved a final explicit operator capture-start gate before any real bank notification capture.
+
+Current confirmed evidence:
+
+- Staging APK is installable and non-debuggable.
+- Staging API health is reachable over HTTPS.
+- Exact supported-bank visibility is fixed in the main Android manifest.
+- The operator device now shows 5 detected supported bank apps.
+
+Next recommended action:
+
+Run task 635, then task 636. Bank detection is already fixed and should be recorded as the first REAL-CAPTURE-2 metric checkpoint before moving to receiver registration/heartbeat.
+
+Do not do:
+
+- Do not process real bank notifications before all synthetic gates pass and the final capture-start command is given.
+- Do not clear app data unless the operator explicitly approves it.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
+## Latest REAL-CAPTURE-1 staging APK/device gate
+
+Completed:
+
+1. Created tasks 628 through 634 and updated the active task queue.
+2. Added an installable Android `staging` build type for non-debug runtime validation.
+3. Added a guardrail test for the staging build type and Gradle metaspace.
+4. Built the staging APK with `https://staging.swimpay.pro` and configured Google server client ID.
+5. Fixed Gradle metaspace so `lintVitalAnalyzeStaging` passes without being excluded.
+6. Installed and launched the staging APK on the operator Samsung device.
+7. Verified staging API health over HTTPS.
+8. Verified a clean Android relaunch has no SwimPay crash entries.
+9. Created `.swimpay-agent/REAL_CAPTURE_1_REPORT.md`.
+
+Current blockers:
+
+- The device preserved existing app data, so login/create-account/onboarding was not replayed.
+- Android visible state still shows receiving methods to add.
+- Android Menu shows connected-site/webhook configuration as action-required.
+- Signed synthetic signal upload from the installed staging APK was not executed.
+- Real notification capture remains gated and has not started.
+
+Next recommended action:
+
+Run `REAL-CAPTURE-2`: operator-assisted Android staging account reset or in-app receiver refresh, then prove receiver registration/heartbeat, supported-bank activation and signed synthetic upload from the installed APK before the final real-notification capture-start gate.
+
+Do not do:
+
+- Do not process real bank notifications before the final capture-start command.
+- Do not clear app data unless the operator explicitly approves it.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-08T13:05:00+03:00
 
 ## Latest staging-prod Android upload hardening

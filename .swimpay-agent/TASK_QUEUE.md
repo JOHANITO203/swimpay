@@ -6,6 +6,29 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [ ] `635_real_capture_2_intelligence_tool_inventory` - status: pending - source: `tasks/635_real_capture_2_intelligence_tool_inventory.md`
+- [ ] `636_real_capture_2_bank_detection_device_metrics` - status: pending - source: `tasks/636_real_capture_2_bank_detection_device_metrics.md`
+- [ ] `637_real_capture_2_receiver_auth_registration_heartbeat` - status: pending - source: `tasks/637_real_capture_2_receiver_auth_registration_heartbeat.md`
+- [ ] `638_real_capture_2_notification_access_and_gate` - status: pending - source: `tasks/638_real_capture_2_notification_access_and_gate.md`
+- [ ] `639_real_capture_2_redaction_outbox_upload_smoke` - status: pending - source: `tasks/639_real_capture_2_redaction_outbox_upload_smoke.md`
+- [ ] `640_real_capture_2_backend_intent_gate_metrics` - status: pending - source: `tasks/640_real_capture_2_backend_intent_gate_metrics.md`
+- [ ] `641_real_capture_2_sdk_order_and_webhook_rehearsal` - status: pending - source: `tasks/641_real_capture_2_sdk_order_and_webhook_rehearsal.md`
+- [ ] `642_real_capture_2_combined_synthetic_e2e_metrics` - status: pending - source: `tasks/642_real_capture_2_combined_synthetic_e2e_metrics.md`
+- [ ] `643_real_capture_2_real_notification_capture_gate` - status: gated_not_started - source: `tasks/643_real_capture_2_real_notification_capture_gate.md`
+- [ ] `644_real_capture_2_closeout` - status: pending - source: `tasks/644_real_capture_2_closeout.md`
+
+## Previous Queue
+
+- [x] `628_real_capture_1_inventory` - status: completed - source: `tasks/628_real_capture_1_inventory.md`
+- [x] `629_android_staging_installable_non_debug_apk` - status: completed - source: `tasks/629_android_staging_installable_non_debug_apk.md`
+- [x] `630_android_staging_login_onboarding_receiver_registration` - status: blocked_existing_device_state - source: `tasks/630_android_staging_login_onboarding_receiver_registration.md`
+- [x] `631_staging_receiver_heartbeat_and_signal_upload_smoke` - status: blocked_until_receiver_webhook_configured - source: `tasks/631_staging_receiver_heartbeat_and_signal_upload_smoke.md`
+- [ ] `632_real_notification_capture_operator_gate` - status: gated_not_started - source: `tasks/632_real_notification_capture_operator_gate.md`
+- [ ] `633_manual_review_webhook_staging_proof` - status: blocked_until_safe_signal_and_manual_review - source: `tasks/633_manual_review_webhook_staging_proof.md`
+- [x] `634_real_capture_1_closeout` - status: completed_with_blockers - source: `tasks/634_real_capture_1_closeout.md`
+
+## Previous Queue
+
 - [x] `623_android_non_debug_signal_upload_transport` - status: completed - source: `tasks/623_android_non_debug_signal_upload_transport.md`
 - [x] `624_android_auth_login_onboarding_truth_hardening` - status: completed - source: `tasks/624_android_auth_login_onboarding_truth_hardening.md`
 - [x] `625_admin_auto_confirm_vocabulary_neutralization` - status: completed - source: `tasks/625_admin_auto_confirm_vocabulary_neutralization.md`

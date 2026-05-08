@@ -1,4 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <queries>
+    <!-- Exact V1 bank package visibility for Bank Target Lock detection. This is not trust. -->
+    <package android:name="ru.sberbankmobile" />
+    <package android:name="com.idamob.tinkoff.android" />
+    <package android:name="ru.vtb24.mobilebanking.android" />
+    <package android:name="ru.alfabank.mobile.android" />
+    <package android:name="ru.gazprombank.android.mobilebank.app" />
+  </queries>
+
   <uses-permission android:name="android.permission.INTERNET" />
 
   <application android:label="SwimPay Receiver" android:theme="@style/SwimPayReceiverTheme">

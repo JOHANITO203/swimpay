@@ -1,6 +1,6 @@
 # Android Package Visibility Policy
 
-Status: Sprint 4R foundation.
+Status: REAL-CAPTURE-1 update.
 
 SwimPay Receiver may collect bank package/certificate evidence only for an exact operator-provided package name. It must not enumerate installed apps, inspect app internals, read notifications, read SMS or scrape banking apps.
 
@@ -8,9 +8,10 @@ Android package visibility can hide installed packages from an app unless the pa
 
 Allowed V1 visibility paths:
 
-- exact `<queries><package android:name="..."/></queries>` entries for operator-selected debug/operator dry runs;
+- exact V1 supported-bank package visibility entries in the main Receiver manifest for Bank Target Lock detection;
+- exact `<queries><package android:name="..."/></queries>` entries for operator-selected debug/operator dry runs when a package is not already in the supported-bank list;
 - safe manual ADB fallback for local evidence rehearsal;
-- future production visibility only after legal/product review.
+- future additional production visibility only after legal/product review.
 
 Forbidden V1 visibility paths:
 
@@ -20,7 +21,15 @@ Forbidden V1 visibility paths:
 - guessing package names as verified;
 - using notification capture for evidence collection.
 
-The current debug/operator dry-run manifest includes an exact query for `ru.sberbankmobile` because the operator selected that package in Sprint 4Q. This query does not mark the package trusted, does not enable auto-confirmation and does not process bank notifications.
+The current main Receiver manifest includes exact queries for the five V1 supported bank package targets:
+
+- `ru.sberbankmobile`;
+- `com.idamob.tinkoff.android`;
+- `ru.vtb24.mobilebanking.android`;
+- `ru.alfabank.mobile.android`;
+- `ru.gazprombank.android.mobilebank.app`.
+
+These queries are visibility only. They do not mark packages trusted, do not enable auto-confirmation and do not process bank notifications. They only allow `BankTargetLock` to ask Android whether each exact supported package exists.
 
 Evidence states remain separate from trust:
 

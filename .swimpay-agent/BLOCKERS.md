@@ -1,5 +1,31 @@
 # Blockers
 
+## REAL-CAPTURE-2 Intelligence test ladder
+
+- Planned: tasks 635 through 644 define the ordered SwimPay Intelligence test ladder from tool inventory to combined synthetic E2E and final real-notification gate.
+- Resolved: Android staging/non-debug Bank Target Lock can now detect exact supported-bank apps; the operator device shows 5 detected supported bank apps.
+- Blocked: fresh login/create-account/onboarding still has not been replayed because app data was preserved.
+- Blocked: receiver registration/heartbeat needs a dedicated staging proof step.
+- Blocked: receiving methods and connected-site/webhook configuration are still action-required before full SDK fulfillment proof.
+- Blocked: synthetic signed signal upload from the installed staging APK still needs to be executed and timed.
+- Gated: real notification capture has not started and requires all synthetic gates plus a final explicit operator capture-start command.
+
+## REAL-CAPTURE-1 staging APK/device gate
+
+- Resolved: created an installable Android `staging` build type that is installable with debug signing but runs with `isDebuggable=false`.
+- Resolved: staging APK builds against `https://staging.swimpay.pro` with the configured Google server client ID.
+- Resolved: staging Android build now passes full `lintVitalAnalyzeStaging` after increasing Gradle metaspace.
+- Resolved: staging APK installed and launched on the operator Samsung device over ADB Wi-Fi.
+- Resolved: staging API health is reachable over HTTPS and reports database, NATS and Valkey `ok`.
+- Resolved: clean relaunch produced no SwimPay crash entries in Android crash log buffer.
+- Resolved: Android staging/non-debug bank package visibility now declares exact V1 supported-bank package queries in the main manifest; the operator device shows 5 detected supported bank apps.
+- Blocked: existing device data opens directly to an existing dashboard, so login/create-account/onboarding was not replayed; clearing app data needs explicit operator approval.
+- Blocked: Android dashboard still shows receiving methods to add.
+- Blocked: Menu shows connected-site/webhook configuration as action-required, so full SDK/webhook staging fulfillment is not ready from this device state.
+- Blocked: signed synthetic signal upload from the installed staging APK was not executed in this pass.
+- Gated: real notification capture has not started and still requires a final explicit capture-start command after receiver heartbeat, supported bank target, active payment intent and webhook endpoint are verified.
+- Not executed: real bank notification capture, manual review, webhook fulfillment, auto-confirmation, public production deployment, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+
 ## Staging-prod Android upload hardening
 
 - Resolved: non-debug Android Receiver now has a real safe upload path from encrypted redacted outbox payloads to `/v1/receiver/signals`.
