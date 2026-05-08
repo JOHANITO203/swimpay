@@ -100,9 +100,23 @@ Notification Listener Access remains mandatory for receiver detection. The app m
 
 ## Receiving Method Copy
 
-The receiving method screen keeps the existing phone option copy that mentions SBP as merchant-facing Russian transfer wording.
+The receiving method screen may mention SBP in the phone option because Russian merchants and buyers commonly understand phone-number bank transfers through SBP wording.
 
-This is a copy exception only. It does not add SBP integration, payment initiation, bank APIs, SMS reading or official bank confirmation.
+This is a copy/language exception only. It does not add SBP integration, payment initiation, bank APIs, SMS reading, PSP behavior, auto-confirmation or official bank confirmation.
+
+The technical contract remains `phone_transfer`, not `sbp_transfer`.
+
+The receiving method onboarding step is not a simple preference toggle. It must
+collect a supported bank, a receiving rail (`card_transfer` or
+`phone_transfer`) and the temporary identifier needed to create the merchant
+receiving method. Completion of this step must persist the method through the
+backend receiving-methods API before onboarding can be treated as complete. The
+same method must remain manageable later from `Menu > Moyens de réception`.
+
+Raw card or phone input is temporary entry data only. It must be sent only to
+the backend receiving-method creation endpoint for normalization, HMAC/masking
+and storage policy enforcement. Android must clear the raw input after
+submission and must never display saved raw card or phone values.
 
 ## Site Or Application Branch
 

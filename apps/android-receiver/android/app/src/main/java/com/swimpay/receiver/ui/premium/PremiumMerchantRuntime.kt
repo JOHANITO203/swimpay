@@ -420,7 +420,7 @@ class PremiumMerchantRuntime(
                     safeMessage = result.safeMessage
                 )
             )
-            MerchantRepositoryState.EMPTY -> PremiumScreenState.empty("Aucun moyen de réception", "Ajoutez une carte ou un numéro pour commencer.")
+            MerchantRepositoryState.EMPTY -> PremiumScreenState.empty("Aucun moyen de réception", "Ajoutez une carte ou un téléphone SBP pour commencer.")
             MerchantRepositoryState.ACTION_REQUIRED -> PremiumScreenState.actionRequired("Action requise", result.safeMessage.ifBlank { "Session marchand requise" })
             MerchantRepositoryState.ERROR -> PremiumScreenState.offline()
             MerchantRepositoryState.LOADING -> PremiumScreenState.loading()
@@ -791,7 +791,7 @@ private fun MerchantReceivingMethodMutationResult.toPremiumMutationState(
         MerchantRepositoryState.SUCCESS -> PremiumScreenState.content(mutation)
         MerchantRepositoryState.ACTION_REQUIRED -> PremiumScreenState.actionRequired("Action requise", mutation.message)
         MerchantRepositoryState.ERROR -> PremiumScreenState.offline("Action en attente", mutation.message)
-        MerchantRepositoryState.EMPTY -> PremiumScreenState.empty("Aucun moyen de réception", "Ajoutez une carte ou un numéro pour commencer.")
+        MerchantRepositoryState.EMPTY -> PremiumScreenState.empty("Aucun moyen de réception", "Ajoutez une carte ou un téléphone SBP pour commencer.")
         MerchantRepositoryState.LOADING -> PremiumScreenState.loading()
     }
 }

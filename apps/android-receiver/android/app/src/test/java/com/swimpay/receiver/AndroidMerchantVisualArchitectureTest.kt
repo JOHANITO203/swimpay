@@ -230,6 +230,44 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(mainActivity.contains("PackageManagerExactPackageProbe(this)"))
     }
 
+    @Test
+    fun premiumReceivingMethodComposeExposesOperationalDraftWithoutRawSavedDisplay() {
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
+        val premiumApp = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
+        val receivingSource = sourceFunction(premiumDashboard, "fun PremiumReceivingMethodsStateScreen")
+        val onboardingSource = sourceFunction(premiumOnboarding, "private fun ReceivingMethodDetailsStep")
+
+        assertTrue(receivingSource.contains("onSaveDraft"))
+        assertTrue(receivingSource.contains("Ajouter une carte"))
+        assertTrue(receivingSource.contains("Ajoutez téléphone SBP"))
+        assertTrue(receivingSource.contains("ReceivingMethodActionButton"))
+        assertTrue(receivingSource.contains("Choisir la banque"))
+        assertTrue(premiumDashboard.contains("Sberbank"))
+        assertTrue(premiumDashboard.contains("T-Bank"))
+        assertTrue(premiumDashboard.contains("VTB"))
+        assertTrue(premiumDashboard.contains("Alfa-Bank"))
+        assertTrue(premiumDashboard.contains("Gazprombank"))
+        assertTrue(receivingSource.contains("Identifiant utilisé seulement pour l'enregistrement"))
+        assertTrue(receivingSource.contains("Enregistrer"))
+        assertTrue(receivingSource.contains("Les informations complètes ne sont jamais envoyées dans les webhooks."))
+        assertTrue(receivingSource.contains("clearDraftSignal"))
+        assertTrue(receivingSource.contains("LaunchedEffect(clearDraftSignal)"))
+        assertFalse(receivingSource.contains("identifierInput = cleared.rawIdentifierInput"))
+        assertFalse(receivingSource.contains("rawIdentifier)"))
+        assertFalse(receivingSource.contains("payment.confirmed"))
+        assertTrue(premiumApp.contains("createReceivingMethod("))
+        assertTrue(premiumApp.contains("loadReceivingMethods()"))
+
+        assertTrue(onboardingSource.contains("selectedBankDisplayName"))
+        assertTrue(onboardingSource.contains("Carte bancaire"))
+        assertTrue(onboardingSource.contains("Numéro de téléphone"))
+        assertTrue(onboardingSource.contains("Choisir la banque"))
+        assertTrue(onboardingSource.contains("Enregistrer et continuer"))
+        assertTrue(onboardingSource.contains("Pratique pour les virements via SBP."))
+        assertFalse(onboardingSource.contains("sbp_transfer"))
+    }
+
     private fun sourceFunction(source: String, signature: String): String {
         val start = source.indexOf(signature)
         require(start >= 0) { "missing source function $signature" }

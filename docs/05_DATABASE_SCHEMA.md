@@ -138,7 +138,9 @@ CREATE TABLE merchant_receiving_routes (
   rail_type TEXT NOT NULL CHECK (rail_type IN ('phone_transfer', 'card_transfer')),
   receiver_identifier_type TEXT NOT NULL CHECK (receiver_identifier_type IN ('phone', 'card')),
   receiver_identifier_encrypted TEXT NOT NULL,
+  receiver_identifier_hmac TEXT,
   receiver_identifier_masked TEXT NOT NULL,
+  receiver_identifier_last4 TEXT,
   route_code TEXT NOT NULL,
   display_label TEXT NOT NULL,
   enabled BOOLEAN NOT NULL DEFAULT true,
@@ -153,6 +155,16 @@ CREATE TABLE merchant_receiving_routes (
 
 `receiver_identifier_encrypted` is protected storage. Public API, webhook, audit
 and log surfaces must use masked route details only.
+
+The merchant-facing API exposes these rows as receiving methods via
+`/v1/merchant/receiving-methods`. The public response shape returns only
+`id`, `type`, `bank_id`, `label`, `masked_value`, `last4`, `status` and
+`is_default`; it never returns `receiver_identifier_encrypted`,
+`receiver_identifier_hmac` or the raw card/phone value.
+
+Migration `011_receiving_route_hmac_last4.sql` adds HMAC and last4 fields plus a
+partial uniqueness index on `(merchant_id, rail_type, receiver_identifier_hmac)`
+for deduplication without raw destination storage.
 
 Checkout selection fields are buyer-flow state only. Receiver-bank selection means the
 merchant-side receiving bank chosen for detection and review routing. Payer-bank

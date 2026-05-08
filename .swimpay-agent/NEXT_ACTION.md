@@ -1214,3 +1214,22 @@ Then do a small visual-only spacing/QR polish pass if screenshots reveal layout 
 - Do not enable auto-confirmation.
 - Do not expose raw card/phone or raw notification text.
 - Do not claim official bank confirmation.
+
+---
+
+## Latest Receiving Methods Work
+
+Merchant receiving methods are implemented and local validation passed.
+
+Next recommended action:
+
+1. Apply migration `011_receiving_route_hmac_last4.sql` on staging before redeploy testing.
+2. Reinstall Android APK and replay: login/create account -> onboarding -> add card/phone method -> Menu > Moyens de reception.
+3. Continue with checkout staging E2E once at least one active receiving method exists.
+
+Do not do:
+
+- Do not process real bank notifications in this receiving-method validation pass.
+- Do not enable auto-confirmation.
+- Do not expose raw card/phone, CVV, expiry, PIN, SMS code or bank credentials.
+- Do not claim official bank confirmation.

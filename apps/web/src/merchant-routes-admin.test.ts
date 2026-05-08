@@ -25,7 +25,10 @@ describe('merchant receiving route admin web surface', () => {
     expect(response.body).toContain('+7 *** *** **67');
     expect(response.body).toContain('2202 **** **** 7890');
     expect(response.body).toContain('Validation manuelle en bêta');
-    expect(response.body).toContain('name="receiver_identifier"');
+    expect(response.body).toContain('name="bank_id"');
+    expect(response.body).toContain('name="value"');
+    expect(response.body).toContain('Ajouter une carte');
+    expect(response.body).toContain('Ajouter telephone SBP');
     expect(response.body).not.toContain('+79991234567');
     expect(response.body).not.toContain('2202201234567890');
     expect(response.body).not.toMatch(/confirmee? par la banque/i);
@@ -44,13 +47,11 @@ describe('merchant receiving route admin web surface', () => {
       url: '/admin/merchant-receiving-routes',
       headers: { 'content-type': 'application/json' },
       payload: {
-        bank_profile_id: 'tbank_ru',
-        rail_type: 'phone_transfer',
-        receiver_identifier: '+7 (900) 111-22-33',
-        route_code: 'TBANK-PHONE',
-        display_label: 'T-Bank phone',
-        recommended: true,
-        fees_hint: 'Manual transfer'
+        bank_id: 'tbank_ru',
+        type: 'phone',
+        value: '+7 (900) 111-22-33',
+        label: 'T-Bank phone',
+        is_default: true
       }
     });
     const page = await server.inject({
@@ -60,12 +61,12 @@ describe('merchant receiving route admin web surface', () => {
 
     expect(create.statusCode).toBe(303);
     expect(client.createdRoutes[0]).toMatchObject({
-      bank_profile_id: 'tbank_ru',
-      rail_type: 'phone_transfer',
-      receiver_identifier: '+7 (900) 111-22-33',
-      route_code: 'TBANK-PHONE'
+      bank_id: 'tbank_ru',
+      type: 'phone',
+      value: '+7 (900) 111-22-33',
+      label: 'T-Bank phone'
     });
-    expect(page.body).toContain('TBANK-PHONE');
+    expect(page.body).toContain('T-Bank phone');
     expect(page.body).toContain('+7 *** *** **33');
     expect(page.body).not.toContain('+7 (900) 111-22-33');
   });
@@ -99,7 +100,17 @@ describe('merchant receiving route admin web surface', () => {
     const previousFetch = globalThis.fetch;
     globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       calls.push({ url: String(url), init });
-      return new Response(JSON.stringify({ route_id: 'route_live' }), {
+      return new Response(JSON.stringify({
+        method: {
+          id: 'route_live',
+          type: 'card',
+          bank_id: 'sber_ru',
+          label: 'SBER-CARD',
+          masked_value: '2202 **** **** 7890',
+          status: 'active',
+          is_default: false
+        }
+      }), {
         status: 200,
         headers: { 'content-type': 'application/json' }
       });
@@ -111,12 +122,14 @@ describe('merchant receiving route admin web surface', () => {
 
       expect(calls).toHaveLength(2);
       expect(calls[0]?.init?.method).toBe('POST');
-      expect(calls[1]?.init?.method).toBe('PATCH');
-      for (const call of calls) {
-        const headers = new Headers(call.init?.headers);
-        expect(headers.get('Authorization')).toBe('Bearer test_mch_dev');
-        expect(headers.get('Content-Type')).toBe('application/json');
-      }
+      expect(calls[0]?.url).toBe('https://api.example/v1/merchant/receiving-methods');
+      expect(calls[1]?.init?.method).toBe('POST');
+      expect(calls[1]?.url).toBe('https://api.example/v1/merchant/receiving-methods/route_live/disable');
+      const writeHeaders = new Headers(calls[0]?.init?.headers);
+      const disableHeaders = new Headers(calls[1]?.init?.headers);
+      expect(writeHeaders.get('Authorization')).toBe('Bearer test_mch_dev');
+      expect(writeHeaders.get('Content-Type')).toBe('application/json');
+      expect(disableHeaders.get('Authorization')).toBe('Bearer test_mch_dev');
     } finally {
       globalThis.fetch = previousFetch;
     }
@@ -164,16 +177,15 @@ class FakeMerchantRouteAdminClient implements MerchantRouteAdminClient {
     this.createdRoutes.push(input);
     const route: MerchantRouteAdminRoute = {
       route_id: 'route_tbank_phone',
-      bank_profile_id: String(input.bank_profile_id),
+      bank_profile_id: String(input.bank_id),
       rail_type: 'phone_transfer',
       receiver_identifier_type: 'phone',
       receiver_identifier_masked: '+7 *** *** **33',
-      route_code: String(input.route_code),
-      display_label: String(input.display_label),
+      route_code: String(input.label),
+      display_label: String(input.label),
       enabled: true,
-      recommended: Boolean(input.recommended),
+      recommended: Boolean(input.is_default),
       review_policy: 'eligible_low_risk_later',
-      fees_hint: typeof input.fees_hint === 'string' ? input.fees_hint : undefined,
       updated_at: '2026-05-02T10:01:00.000Z'
     };
     this.routes = [...this.routes, route];

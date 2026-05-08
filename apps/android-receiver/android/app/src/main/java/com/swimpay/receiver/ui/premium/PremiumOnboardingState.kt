@@ -1,6 +1,8 @@
 package com.swimpay.receiver.ui.premium
 
 import android.content.Context
+import com.swimpay.receiver.MerchantReceivingMethodSubmission
+import com.swimpay.receiver.ReceivingMethodType
 
 enum class PremiumOnboardingStep {
     WELCOME,
@@ -36,6 +38,7 @@ data class PremiumOnboardingSessionState(
     val selectedBankIds: Set<String> = emptySet(),
     val receivingMethodConfigured: Boolean = false,
     val receivingMethodDraft: PremiumReceivingMethodDraft? = null,
+    val receivingMethodSubmission: MerchantReceivingMethodSubmission? = null,
     val connectedSiteConfigured: Boolean = false,
     val configurationTestRan: Boolean = false,
     val onboardingCompleted: Boolean = false
@@ -75,8 +78,20 @@ data class PremiumOnboardingSessionState(
 
     fun withReceivingMethod(method: PremiumReceivingMethodDraft): PremiumOnboardingSessionState {
         return copy(
+            receivingMethodConfigured = false,
+            receivingMethodDraft = method,
+            receivingMethodSubmission = null
+        )
+    }
+
+    fun withReceivingMethod(submission: MerchantReceivingMethodSubmission): PremiumOnboardingSessionState {
+        return copy(
             receivingMethodConfigured = true,
-            receivingMethodDraft = method
+            receivingMethodDraft = when (submission.type) {
+                ReceivingMethodType.CARD_TRANSFER -> PremiumReceivingMethodDraft.CARD_TRANSFER
+                ReceivingMethodType.PHONE_TRANSFER -> PremiumReceivingMethodDraft.PHONE_TRANSFER
+            },
+            receivingMethodSubmission = submission
         )
     }
 
@@ -103,7 +118,7 @@ data class PremiumOnboardingSessionState(
             PremiumOnboardingStep.WELCOME -> true
             PremiumOnboardingStep.NOTIFICATION_ACCESS -> notificationAccessEnabled
             PremiumOnboardingStep.COMPATIBLE_BANK_SELECTION -> selectedBankIds.isNotEmpty()
-            PremiumOnboardingStep.RECEIVING_METHOD -> receivingMethodConfigured
+            PremiumOnboardingStep.RECEIVING_METHOD -> receivingMethodConfigured && receivingMethodSubmission != null
             PremiumOnboardingStep.CONNECTED_SITE -> connectedSiteConfigured || skippedConnectedSite
             PremiumOnboardingStep.CONFIGURATION_TEST -> configurationTestReady
         }

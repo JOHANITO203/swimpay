@@ -458,3 +458,9 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - The installed APK mojibake observed through UIAutomator was fixed and revalidated: `Données indisponibles` and `RÉESSAYER` now render correctly.
 - Environment blocker: fresh Docker live checks are currently blocked because `//./pipe/dockerDesktopLinuxEngine` is unavailable from this shell. `docker compose ... config` still renders, but `docker compose ... ps` and `http://localhost:8080/api-health` cannot be freshly verified until Docker Desktop is restarted/recovered.
 - Remaining non-critical follow-up: banks, Receiver health and order detail remain premium placeholder state screens pending dedicated frontend contracts.
+
+## Receiving Methods Feature
+
+- No critical product blocker found in the local receiving-method implementation.
+- Staging/VPS blocker: apply additive migration `011_receiving_route_hmac_last4.sql` before depending on `/v1/merchant/receiving-methods` create/list responses in staging.
+- Real-notification testing remains blocked until the operator explicitly starts a controlled real-notification capture scenario; this sprint did not process real bank notifications.

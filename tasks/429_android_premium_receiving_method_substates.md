@@ -16,5 +16,5 @@ Guardrails:
 - no backend/API/contract changes
 - no payment logic changes
 - no raw card/phone in visible state after submit
-- no SBP wording in premium merchant UI
+- SBP wording is allowed only as copy for `phone_transfer`; no SBP integration, API, payment initiation or official confirmation claim
 - no auto-confirm language

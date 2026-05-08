@@ -223,6 +223,22 @@ export interface MerchantRouteAdminRoute {
   updated_at?: string | undefined;
 }
 
+interface MerchantReceivingMethodApiPayload {
+  id?: string | undefined;
+  route_id?: string | undefined;
+  type?: 'card' | 'phone' | undefined;
+  bank_id?: string | undefined;
+  bank_profile_id?: string | undefined;
+  label?: string | undefined;
+  masked_value?: string | undefined;
+  receiver_identifier_masked?: string | undefined;
+  last4?: string | undefined;
+  status?: 'active' | 'inactive' | 'pending_verification' | undefined;
+  is_default?: boolean | undefined;
+  created_at?: string | undefined;
+  updated_at?: string | undefined;
+}
+
 export interface MerchantRouteAdminClient {
   listRoutes(): Promise<MerchantRouteAdminRoute[]>;
   createRoute(input: Record<string, unknown>): Promise<MerchantRouteAdminRoute>;
@@ -727,26 +743,93 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
   async markBuyerClaimedPaid(id: string) { return this.f<CheckoutClaimedPaidResponse>(`/v1/checkout/${id}/claimed-paid`, { method: 'POST' }); }
 }
 
+function toMerchantRouteAdminRoute(method: MerchantReceivingMethodApiPayload): MerchantRouteAdminRoute {
+  const type = method.type ?? 'card';
+  const label = method.label ?? (type === 'phone' ? 'Telephone SBP' : 'Carte bancaire');
+  return {
+    route_id: method.id ?? method.route_id ?? '',
+    bank_profile_id: method.bank_id ?? method.bank_profile_id ?? '',
+    rail_type: type === 'phone' ? 'phone_transfer' : 'card_transfer',
+    receiver_identifier_type: type === 'phone' ? 'phone' : 'card',
+    receiver_identifier_masked: method.masked_value ?? method.receiver_identifier_masked ?? '',
+    route_code: label,
+    display_label: label,
+    enabled: method.status !== 'inactive',
+    recommended: Boolean(method.is_default),
+    review_policy: type === 'phone' ? 'eligible_low_risk_later' : 'review_first',
+    updated_at: method.updated_at ?? method.created_at
+  };
+}
+
+function toReceivingMethodCreatePayload(input: MerchantRoutePayload): MerchantRoutePayload {
+  const railType = String(input.rail_type ?? '');
+  const type = input.type === 'phone' || railType === 'phone_transfer' ? 'phone' : 'card';
+  return {
+    type,
+    value: input.value ?? input.receiver_identifier,
+    bank_id: input.bank_id ?? input.bank_profile_id,
+    label: input.label ?? input.display_label,
+    is_default: input.is_default ?? input.recommended,
+    status: input.status ?? (input.enabled === false ? 'inactive' : 'active')
+  };
+}
+
+function toReceivingMethodPatchPayload(input: MerchantRoutePayload): MerchantRoutePayload {
+  const patch: MerchantRoutePayload = {};
+  if (input.enabled === false || input.status === 'inactive') {
+    patch.status = 'inactive';
+  } else if (input.enabled === true || input.status === 'active') {
+    patch.status = 'active';
+  }
+  if (input.recommended === true || input.is_default === true) {
+    patch.is_default = true;
+  } else if (input.recommended === false || input.is_default === false) {
+    patch.is_default = false;
+  }
+  if (typeof input.display_label === 'string' || typeof input.label === 'string') {
+    patch.label = input.label ?? input.display_label;
+  }
+  return patch;
+}
+
 export class ApiMerchantRouteAdminClient implements MerchantRouteAdminClient {
   constructor(private url: string, private bearerToken: string) {}
 
   async listRoutes() {
-    const r = await this.request<{ routes?: MerchantRouteAdminRoute[] }>('/v1/merchant/receiving-routes');
+    const r = await this.request<{ methods?: MerchantReceivingMethodApiPayload[]; routes?: MerchantRouteAdminRoute[] }>(
+      '/v1/merchant/receiving-methods'
+    );
+    if (Array.isArray(r.methods)) {
+      return r.methods.map(toMerchantRouteAdminRoute);
+    }
     return r.routes || [];
   }
 
   async createRoute(input: MerchantRoutePayload) {
-    return this.request<MerchantRouteAdminRoute>('/v1/merchant/receiving-routes', {
+    const response = await this.request<{ method?: MerchantReceivingMethodApiPayload; route?: MerchantRouteAdminRoute }>(
+      '/v1/merchant/receiving-methods',
+      {
       method: 'POST',
-      body: JSON.stringify(input)
-    });
+        body: JSON.stringify(toReceivingMethodCreatePayload(input))
+      }
+    );
+    return response.method ? toMerchantRouteAdminRoute(response.method) : response.route!;
   }
 
   async updateRoute(id: string, patch: MerchantRoutePayload) {
-    return this.request<MerchantRouteAdminRoute>(`/v1/merchant/receiving-routes/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(patch)
-    });
+    const productPatch = toReceivingMethodPatchPayload(patch);
+    const actionOnly = productPatch.status === 'inactive' || productPatch.is_default === true;
+    const path = productPatch.status === 'inactive'
+      ? `/v1/merchant/receiving-methods/${encodeURIComponent(id)}/disable`
+      : productPatch.is_default === true
+        ? `/v1/merchant/receiving-methods/${encodeURIComponent(id)}/set-default`
+        : `/v1/merchant/receiving-methods/${encodeURIComponent(id)}`;
+    const init: RequestInit = { method: actionOnly ? 'POST' : 'PATCH' };
+    if (!actionOnly) {
+      init.body = JSON.stringify(productPatch);
+    }
+    const response = await this.request<{ method?: MerchantReceivingMethodApiPayload; route?: MerchantRouteAdminRoute }>(path, init);
+    return response.method ? toMerchantRouteAdminRoute(response.method) : response.route!;
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {

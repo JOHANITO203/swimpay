@@ -4,7 +4,7 @@ Scope: frontend-only Android premium UI and tests.
 
 Strengthen tests for:
 
-- no SBP wording in merchant UI
+- SBP wording is allowed only as copy for `phone_transfer`; no SBP integration, API, payment initiation or official confirmation claim
 - no mojibake/encoding artifacts in premium UI source
 - no forbidden confirmation claims
 - no raw phone/card/notification text

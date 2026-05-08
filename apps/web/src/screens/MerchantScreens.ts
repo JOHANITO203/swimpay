@@ -183,12 +183,26 @@ export function renderMerchantReceivingMethodsPage(routes: MerchantRouteAdminRou
         title: 'Moyens de réception',
         subtitle: 'Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer.'
       })}
-      <div class="two-col" style="margin-bottom:22px;">
-        ${Button({ text: 'Ajouter une carte', variant: 'secondary' })}
-        ${Button({ text: 'Ajouter un numéro', variant: 'secondary' })}
-      </div>
       <form method="post" action="/merchant/receiving-methods" class="route-create-form">
-        <input name="receiver_identifier" placeholder="Saisie réservée à la création" autocomplete="off">
+        <label>Banque
+          <select name="bank_id" required>
+            <option value="sber_ru">Sberbank</option>
+            <option value="tbank_ru">T-Bank</option>
+            <option value="vtb_ru">VTB</option>
+            <option value="alfa_ru">Alfa-Bank</option>
+            <option value="gazprombank_ru">Gazprombank</option>
+          </select>
+        </label>
+        <label>Coordonnee de reception
+          <input name="value" placeholder="Carte ou telephone +7" autocomplete="off" inputmode="numeric" required>
+        </label>
+        <label>Nom court
+          <input name="label" placeholder="Carte principale, telephone T-Bank" autocomplete="off">
+        </label>
+        <div class="two-col" style="margin-top:14px;">
+          <button class="btn secondary" type="submit" name="type" value="card">${IconBubble({ icon: 'C' })}<span>Ajouter une carte</span></button>
+          <button class="btn secondary" type="submit" name="type" value="phone">${IconBubble({ icon: 'SBP' })}<span>Ajouter telephone SBP</span></button>
+        </div>
       </form>
       <div class="stack">
         ${routes.length > 0 ? routes.map(renderReceivingMethodCard).join('') : EmptyState({

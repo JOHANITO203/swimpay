@@ -16,11 +16,29 @@ It is not:
 - a bank;
 - a PSP;
 - official bank confirmation;
+- an SBP integration;
 - a payment initiator;
 - a wallet;
 - SMS reading;
 - bank app scraping;
 - an LLM payment decision system.
+
+## SBP Language Exception
+
+Russian users understand phone-number bank transfers through the SBP habit and vocabulary. SwimPay may use SBP wording in merchant/buyer-facing copy for the `phone_transfer` receiving method so users recognize the expected payment action.
+
+This is a language exception only. It does not create SBP integration behavior, payment initiation, bank APIs, SMS reading, official bank confirmation, PSP behavior or auto-confirmation.
+
+Allowed meaning:
+- `phone_transfer` can be described as a phone-number transfer via SBP in UI copy.
+- SBP wording helps the user understand which familiar bank transfer flow to use.
+- Runtime signals remain notification-based and review-only in V1.
+
+Forbidden meaning:
+- SwimPay must not claim to be connected to SBP.
+- SwimPay must not call SBP APIs.
+- SwimPay must not initiate or guarantee a transfer.
+- SwimPay must not emit official bank confirmation.
 
 ## 2. Product Truth
 
@@ -228,4 +246,3 @@ Future work must preserve:
 - final-only public webhooks;
 - official_bank_confirmation=false;
 - redacted-only evidence boundaries.
-

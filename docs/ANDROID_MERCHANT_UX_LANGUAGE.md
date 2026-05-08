@@ -169,6 +169,7 @@ Ajouter
 ```
 
 This copy does not add SBP integration behavior. SwimPay still does not initiate payment rails and does not process SMS.
+SBP wording is allowed here only as familiar Russian transfer language for `phone_transfer`; the technical contract remains notification-signal-based and manual-confirmation-only.
 
 ### Configuration Test
 

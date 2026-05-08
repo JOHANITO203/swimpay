@@ -90,6 +90,7 @@ import {
   invalidRequest,
   parseMerchantId,
   PgOrderRepository,
+  receiverIdentifierTypeForRail,
   validateCreateOrderBody,
   type IdGenerator,
   type OrderCreateResponse,
@@ -1021,6 +1022,15 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         }
       });
     }
+    if (result.kind === 'duplicate_receiver_identifier') {
+      return reply.status(409).send({
+        error: {
+          code: 'duplicate_receiving_method',
+          message: 'Receiving method already exists for this merchant.',
+          details: { rail_type: body.rail_type }
+        }
+      });
+    }
     return reply.status(201).send({
       route: toMerchantReceivingRouteResponse(result.route),
       official_bank_confirmation: false
@@ -1076,6 +1086,205 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
     return reply.status(200).send({
       route: toMerchantReceivingRouteResponse(result.route),
+      official_bank_confirmation: false
+    });
+  });
+
+  server.get('/v1/merchant/receiving-methods', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const routes = await repository.listReceivingRoutes(merchantId);
+    return reply.status(200).send({
+      methods: routes.map((route) => toMerchantReceivingMethodResponse(route)),
+      official_bank_confirmation: false
+    });
+  });
+
+  server.post('/v1/merchant/receiving-methods', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+
+    const body = validateReceivingMethodCreateBody(request.body);
+    if ('error' in body) {
+      return reply.status(400).send(body);
+    }
+
+    const routeId = receivingRouteIdGenerator();
+    const now = clock().toISOString();
+    const route = buildMerchantReceivingRouteRecord({
+      routeId,
+      merchantId,
+      bankProfileId: body.bank_id,
+      railType: body.type === 'phone' ? 'phone_transfer' : 'card_transfer',
+      receiverIdentifier: body.value,
+      routeCode: buildReceivingMethodRouteCode({
+        bankId: body.bank_id,
+        type: body.type,
+        last4: body.last4,
+        routeId
+      }),
+      displayLabel: body.label ?? buildReceivingMethodDefaultLabel(body.bank_id, body.type),
+      enabled: body.status !== 'inactive',
+      recommended: body.is_default,
+      reviewPolicy: body.type === 'phone' ? 'eligible_low_risk_later' : 'review_first',
+      encryptionSecret: phoneHmacSecret,
+      now
+    });
+    if ('error' in route) {
+      return reply.status(400).send(route);
+    }
+
+    const result = await repository.createReceivingRoute({
+      route,
+      auditEventId: idGenerator.auditEventId()
+    });
+    if (result.kind === 'duplicate_route_code') {
+      return reply.status(409).send({
+        error: {
+          code: 'duplicate_route_code',
+          message: 'Receiving route code already exists for this merchant.',
+          details: {}
+        }
+      });
+    }
+    if (result.kind === 'duplicate_receiver_identifier') {
+      return reply.status(409).send({
+        error: {
+          code: 'duplicate_receiving_method',
+          message: 'Receiving method already exists for this merchant.',
+          details: { type: body.type }
+        }
+      });
+    }
+
+    return reply.status(201).send({
+      method: toMerchantReceivingMethodResponse(result.route),
+      official_bank_confirmation: false
+    });
+  });
+
+  server.patch('/v1/merchant/receiving-methods/:method_id', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { method_id?: string };
+    if (!params.method_id) {
+      return reply.status(400).send(invalidRequest('Receiving method id is required.', {}));
+    }
+    const body = validateReceivingMethodPatchBody(request.body);
+    if ('error' in body) {
+      return reply.status(400).send(body);
+    }
+    const routePatch: Partial<Pick<StoredMerchantReceivingRouteRecord, 'enabled' | 'recommended' | 'display_label'>> = {};
+    if (body.status) {
+      routePatch.enabled = body.status === 'active';
+    }
+    if (body.is_default !== undefined) {
+      routePatch.recommended = body.is_default;
+    }
+    if (body.label !== undefined) {
+      routePatch.display_label = body.label;
+    }
+    const result = await repository.updateReceivingRoute({
+      merchantId,
+      routeId: params.method_id,
+      patch: routePatch,
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    if (result.kind === 'not_found') {
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Receiving method was not found.',
+          details: { id: params.method_id }
+        }
+      });
+    }
+    return reply.status(200).send({
+      method: toMerchantReceivingMethodResponse(result.route),
+      official_bank_confirmation: false
+    });
+  });
+
+  server.post('/v1/merchant/receiving-methods/:method_id/disable', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { method_id?: string };
+    if (!params.method_id) {
+      return reply.status(400).send(invalidRequest('Receiving method id is required.', {}));
+    }
+    const result = await repository.updateReceivingRoute({
+      merchantId,
+      routeId: params.method_id,
+      patch: { enabled: false },
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    if (result.kind === 'not_found') {
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Receiving method was not found.',
+          details: { id: params.method_id }
+        }
+      });
+    }
+    return reply.status(200).send({
+      method: toMerchantReceivingMethodResponse(result.route),
+      official_bank_confirmation: false
+    });
+  });
+
+  server.post('/v1/merchant/receiving-methods/:method_id/set-default', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { method_id?: string };
+    if (!params.method_id) {
+      return reply.status(400).send(invalidRequest('Receiving method id is required.', {}));
+    }
+    const result = await repository.updateReceivingRoute({
+      merchantId,
+      routeId: params.method_id,
+      patch: { recommended: true },
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    if (result.kind === 'not_found') {
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Receiving method was not found.',
+          details: { id: params.method_id }
+        }
+      });
+    }
+    return reply.status(200).send({
+      method: toMerchantReceivingMethodResponse(result.route),
       official_bank_confirmation: false
     });
   });
@@ -3386,6 +3595,7 @@ function isCopyDetailsRateLimited(
 interface ReceivingRouteCreateBody {
   bank_profile_id: string;
   rail_type: ReceivingRouteRailType;
+  receiver_identifier_type?: StoredMerchantReceivingRouteRecord['receiver_identifier_type'] | undefined;
   receiver_identifier: string;
   route_code: string;
   display_label: string;
@@ -3399,12 +3609,30 @@ function validateReceivingRouteCreateBody(body: unknown): ReceivingRouteCreateBo
   if (!body || typeof body !== 'object') {
     return invalidRequest('Receiving route request body must be a JSON object.', {});
   }
+  const forbiddenField = findForbiddenReceivingCredentialField(body);
+  if (forbiddenField) {
+    return invalidRequest('Receiving route must not include card secrets or bank credentials.', { field: forbiddenField });
+  }
   const candidate = body as Partial<Record<keyof ReceivingRouteCreateBody, unknown>>;
+  if ('bank_profile_ids' in body) {
+    return invalidRequest('Receiving route must target exactly one V1 bank profile.', { field: 'bank_profile_ids' });
+  }
   if (typeof candidate.bank_profile_id !== 'string' || !candidate.bank_profile_id.trim()) {
     return invalidRequest('bank_profile_id is required.', {});
   }
   if (typeof candidate.rail_type !== 'string' || !ReceivingRouteRailTypes.includes(candidate.rail_type as ReceivingRouteRailType)) {
-    return invalidRequest('rail_type must be phone_transfer or card_transfer.', {});
+    return invalidRequest('rail_type must be phone_transfer or card_transfer.', { rail_type: candidate.rail_type });
+  }
+  const railType = candidate.rail_type as ReceivingRouteRailType;
+  if ('receiver_identifier_type' in candidate && candidate.receiver_identifier_type !== undefined) {
+    const expectedReceiverIdentifierType = receiverIdentifierTypeForRail(railType);
+    if (candidate.receiver_identifier_type !== expectedReceiverIdentifierType) {
+      return invalidRequest('receiver_identifier_type must match rail_type.', {
+        rail_type: railType,
+        receiver_identifier_type: candidate.receiver_identifier_type,
+        expected_receiver_identifier_type: expectedReceiverIdentifierType
+      });
+    }
   }
   if (typeof candidate.receiver_identifier !== 'string' || !candidate.receiver_identifier.trim()) {
     return invalidRequest('receiver_identifier is required.', {});
@@ -3418,7 +3646,8 @@ function validateReceivingRouteCreateBody(body: unknown): ReceivingRouteCreateBo
 
   return {
     bank_profile_id: candidate.bank_profile_id.trim(),
-    rail_type: candidate.rail_type as ReceivingRouteRailType,
+    rail_type: railType,
+    receiver_identifier_type: receiverIdentifierTypeForRail(railType),
     receiver_identifier: candidate.receiver_identifier.trim(),
     route_code: candidate.route_code.trim(),
     display_label: candidate.display_label.trim(),
@@ -3430,6 +3659,140 @@ function validateReceivingRouteCreateBody(body: unknown): ReceivingRouteCreateBo
         : undefined,
     fees_hint: typeof candidate.fees_hint === 'string' && candidate.fees_hint.trim() ? candidate.fees_hint.trim() : undefined
   };
+}
+
+interface ReceivingMethodCreateBody {
+  type: 'card' | 'phone';
+  value: string;
+  bank_id: string;
+  label?: string | undefined;
+  is_default?: boolean | undefined;
+  status?: 'active' | 'inactive' | undefined;
+  last4: string;
+}
+
+function validateReceivingMethodCreateBody(body: unknown): ReceivingMethodCreateBody | ReturnType<typeof invalidRequest> {
+  if (!body || typeof body !== 'object') {
+    return invalidRequest('Receiving method request body must be a JSON object.', {});
+  }
+  const forbiddenField = findForbiddenReceivingCredentialField(body);
+  if (forbiddenField) {
+    return invalidRequest('Receiving method must not include card secrets or bank credentials.', { field: forbiddenField });
+  }
+  const candidate = body as {
+    type?: unknown;
+    value?: unknown;
+    bank_id?: unknown;
+    label?: unknown;
+    is_default?: unknown;
+    status?: unknown;
+  };
+  if (candidate.type !== 'card' && candidate.type !== 'phone') {
+    return invalidRequest('type must be card or phone.', { type: candidate.type });
+  }
+  if (typeof candidate.bank_id !== 'string' || !candidate.bank_id.trim()) {
+    return invalidRequest('bank_id is required.', {});
+  }
+  if (typeof candidate.value !== 'string' || !candidate.value.trim()) {
+    return invalidRequest('value is required.', {});
+  }
+  const normalizedValue = normalizeReceivingMethodValue(candidate.type, candidate.value);
+  if (!normalizedValue) {
+    return invalidRequest('Receiving method value is not valid for the selected type.', { type: candidate.type });
+  }
+  if (candidate.status !== undefined && candidate.status !== 'active' && candidate.status !== 'inactive') {
+    return invalidRequest('status must be active or inactive.', { status: candidate.status });
+  }
+
+  const label = typeof candidate.label === 'string' && candidate.label.trim()
+    ? candidate.label.trim()
+    : undefined;
+  return {
+    type: candidate.type,
+    value: candidate.value.trim(),
+    bank_id: candidate.bank_id.trim(),
+    label,
+    is_default: typeof candidate.is_default === 'boolean' ? candidate.is_default : undefined,
+    status: candidate.status,
+    last4: normalizedValue.replace(/\D/g, '').slice(-4)
+  };
+}
+
+interface ReceivingMethodPatchBody {
+  label?: string | undefined;
+  status?: 'active' | 'inactive' | undefined;
+  is_default?: boolean | undefined;
+}
+
+function validateReceivingMethodPatchBody(body: unknown): ReceivingMethodPatchBody | ReturnType<typeof invalidRequest> {
+  if (!body || typeof body !== 'object') {
+    return invalidRequest('Receiving method patch body must be a JSON object.', {});
+  }
+  const forbiddenField = findForbiddenReceivingCredentialField(body);
+  if (forbiddenField) {
+    return invalidRequest('Receiving method must not include card secrets or bank credentials.', { field: forbiddenField });
+  }
+  const candidate = body as { label?: unknown; status?: unknown; is_default?: unknown };
+  const patch: ReceivingMethodPatchBody = {};
+  if (typeof candidate.label === 'string') {
+    const label = candidate.label.trim();
+    if (!label) {
+      return invalidRequest('label cannot be blank.', {});
+    }
+    patch.label = label;
+  }
+  if (candidate.status !== undefined) {
+    if (candidate.status !== 'active' && candidate.status !== 'inactive') {
+      return invalidRequest('status must be active or inactive.', { status: candidate.status });
+    }
+    patch.status = candidate.status;
+  }
+  if (typeof candidate.is_default === 'boolean') {
+    patch.is_default = candidate.is_default;
+  }
+  return patch;
+}
+
+function normalizeReceivingMethodValue(type: 'card' | 'phone', value: string): string | null {
+  if (type === 'phone') {
+    return normalizeRussianPhone(value);
+  }
+  const digits = value.replace(/\D/g, '');
+  if (digits.length < 13 || digits.length > 19) {
+    return null;
+  }
+  return digits;
+}
+
+function findForbiddenReceivingCredentialField(value: unknown): string | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const forbidden = /^(cvv|cvc|security_code|expiration|expiry|exp_month|exp_year|pin|sms_code|bank_password|password)$/iu;
+  for (const [key, nested] of Object.entries(value)) {
+    if (forbidden.test(key)) {
+      return key;
+    }
+    const child = findForbiddenReceivingCredentialField(nested);
+    if (child) {
+      return child;
+    }
+  }
+  return null;
+}
+
+function buildReceivingMethodRouteCode(input: {
+  bankId: string;
+  type: 'card' | 'phone';
+  last4: string;
+  routeId: string;
+}): string {
+  return `${input.bankId}-${input.type}-${input.last4}-${input.routeId}`;
+}
+
+function buildReceivingMethodDefaultLabel(bankId: string, type: 'card' | 'phone'): string {
+  const bank = V1StaticBankProfiles.find((profile) => profile.bank_profile_id === bankId)?.display_name ?? bankId;
+  return type === 'phone' ? `${bank} telephone` : `${bank} card`;
 }
 
 function validateReceivingRoutePatchBody(
@@ -3471,6 +3834,7 @@ function toMerchantReceivingRouteResponse(route: StoredMerchantReceivingRouteRec
     rail_type: route.rail_type,
     receiver_identifier_type: route.receiver_identifier_type,
     receiver_identifier_masked: route.receiver_identifier_masked,
+    receiver_identifier_last4: route.receiver_identifier_last4,
     route_code: route.route_code,
     display_label: route.display_label,
     enabled: route.enabled,
@@ -3480,6 +3844,26 @@ function toMerchantReceivingRouteResponse(route: StoredMerchantReceivingRouteRec
     created_at: route.created_at,
     updated_at: route.updated_at,
     auto_confirm_enabled: false,
+    official_bank_confirmation: false
+  };
+}
+
+function toMerchantReceivingMethodResponse(route: StoredMerchantReceivingRouteRecord): Record<string, unknown> {
+  const type = route.rail_type === 'phone_transfer' ? 'phone' : 'card';
+  return {
+    id: route.route_id,
+    route_id: route.route_id,
+    type,
+    bank_id: route.bank_profile_id,
+    bank_profile_id: route.bank_profile_id,
+    label: route.display_label,
+    masked_value: route.receiver_identifier_masked,
+    last4: route.receiver_identifier_last4,
+    status: route.enabled ? 'active' : 'inactive',
+    is_default: route.recommended,
+    created_at: route.created_at,
+    updated_at: route.updated_at,
+    confirmation_type: 'notification_signal',
     official_bank_confirmation: false
   };
 }

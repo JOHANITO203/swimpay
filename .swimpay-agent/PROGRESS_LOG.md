@@ -2427,3 +2427,15 @@ Safety checks:
 - Created `.swimpay-agent/REAL_CAPTURE_2_INTELLIGENCE_TEST_PLAN.md` with sequential tool tests, combined synthetic E2E, metrics and a final real-notification capture gate.
 - Validation passed: Android staging unit tests with explicit `ANDROID_HOME`, targeted Android runnable-app Vitest guardrails, prior full root validation and staging APK install/device proof.
 - No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
+# 2026-05-08T17:10:00+03:00 - Receiving Methods Business Primitive
+
+- Implemented product-facing `/v1/merchant/receiving-methods` API over existing durable receiving-route storage.
+- Added additive migration `011_receiving_route_hmac_last4.sql` for destination HMAC/last4 and dedupe.
+- Added backend validation rejecting invalid card/phone values and credential fields such as CVV, expiry, PIN, SMS code and passwords.
+- Android onboarding and `Menu > Moyens de reception` now submit/list/disable/default receiving methods through the product API.
+- Android raw draft input is cleared only after successful backend persistence.
+- Web merchant receiving-method surface now writes to the product API and exposes real bank/type/value/label fields.
+- Checkout remains route/method-selection based and still blocks instructions until an active method is selected.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
+- No real bank notification was processed, no auto-confirmation was enabled and no public webhook semantics changed.

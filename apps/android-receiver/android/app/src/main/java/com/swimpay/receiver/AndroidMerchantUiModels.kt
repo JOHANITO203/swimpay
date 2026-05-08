@@ -119,7 +119,7 @@ data class MerchantReceivingMethodDisplay(
     companion object {
         fun masked(title: String, subtitle: String): MerchantReceivingMethodDisplay {
             val helper = if (title == ReceivingMethodType.PHONE_TRANSFER.merchantLabel) {
-                "Pratique pour les virements par numéro"
+                "Pratique pour les virements via SBP"
             } else {
                 null
             }
@@ -149,7 +149,7 @@ data class MerchantReceivingMethodDisplay(
             return MerchantReceivingMethodDisplay(
                 title = type.merchantLabel,
                 subtitle = "$bankDisplayName · $maskedIdentifier",
-                helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements par numéro" else null,
+                helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements via SBP" else null,
                 status = if (enabled) "Active" else "Désactivée",
                 actions = actions.ifEmpty { listOf("Modifier") }
             )
@@ -282,7 +282,7 @@ class AndroidMerchantUiCatalog {
                 "Carte bancaire",
                 "Recevez les paiements sur votre carte.",
                 "Numéro de téléphone",
-                "Pratique pour les virements par numéro.",
+                "Pratique pour les virements via SBP.",
                 selectedText
             )
         )
@@ -367,7 +367,7 @@ class AndroidMerchantUiCatalog {
         val emptyTexts = if (methods.isEmpty()) {
             listOf(
                 "Aucun moyen de réception",
-                "Ajoutez une carte ou un numéro pour commencer à recevoir des paiements.",
+                "Ajoutez une carte ou un téléphone SBP pour commencer à recevoir des paiements.",
                 "Ajouter un moyen"
             )
         } else {
@@ -379,7 +379,7 @@ class AndroidMerchantUiCatalog {
             subtitle = "Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer.",
             texts = listOf(
                 "Ajouter une carte",
-                "Ajouter un numéro",
+                "Ajoutez téléphone SBP",
                 "Les informations complètes ne sont jamais envoyées dans les webhooks."
             ) + emptyTexts,
             methodRows = methods

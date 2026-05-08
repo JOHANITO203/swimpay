@@ -71,12 +71,17 @@ V1 forbidden items:
 - no Kubernetes;
 - no Kafka;
 - no LLM in payment decisions;
-- no SBP;
+- no SBP integration, API calls or payment initiation;
 - no PSP;
 - no SMS reading;
 - no bank app scraping;
 - no hidden data collection;
 - no iOS Receiver App.
+
+SBP wording is allowed only as user-facing copy for the `phone_transfer`
+receiving method, because Russian users recognize phone-number transfers by
+that habit. This wording never means SwimPay integrates with SBP, initiates
+payments, receives official bank confirmation or auto-confirms orders.
 
 ## Architecture style
 

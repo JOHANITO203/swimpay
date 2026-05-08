@@ -3,6 +3,7 @@ package com.swimpay.receiver
 import com.swimpay.receiver.ui.premium.PremiumOnboardingSessionState
 import com.swimpay.receiver.ui.premium.PremiumOnboardingStep
 import com.swimpay.receiver.ui.premium.PremiumReceivingMethodDraft
+import com.swimpay.receiver.MerchantReceivingMethodDraft as MerchantReceivingRouteDraft
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -111,17 +112,46 @@ class PremiumOnboardingFullFlowTest {
 
     @Test
     fun receivingMethodAndWebhookTestDoNotRepresentPaymentConfirmation() {
+        val submission = MerchantReceivingRouteDraft(
+            bankProfileId = "sber_ru",
+            type = ReceivingMethodType.CARD_TRANSFER,
+            rawIdentifierInput = "2200123412344821"
+        ).toSubmission()
         val ready = PremiumOnboardingSessionState(
             currentStep = PremiumOnboardingStep.CONFIGURATION_TEST,
             notificationAccessEnabled = true,
             selectedBankIds = setOf("sber_ru"),
             connectedSiteConfigured = true
-        ).withReceivingMethod(PremiumReceivingMethodDraft.CARD_TRANSFER)
+        ).withReceivingMethod(submission)
 
         assertTrue(ready.configurationTestReady)
         assertTrue(ready.canContinueFrom())
         assertFalse(ready.withConfigurationTestRan().onboardingCompleted)
         assertTrue(ready.completeAndMoveNext().onboardingCompleted)
+    }
+
+    @Test
+    fun receivingMethodStepRequiresPersistentSubmissionNotJustChoice() {
+        val choiceOnly = PremiumOnboardingSessionState(
+            currentStep = PremiumOnboardingStep.RECEIVING_METHOD,
+            notificationAccessEnabled = true,
+            selectedBankIds = setOf("sber_ru")
+        ).withReceivingMethod(PremiumReceivingMethodDraft.CARD_TRANSFER)
+
+        assertFalse(choiceOnly.receivingMethodConfigured)
+        assertFalse(choiceOnly.canContinueFrom())
+
+        val submission = MerchantReceivingRouteDraft(
+            bankProfileId = "sber_ru",
+            type = ReceivingMethodType.PHONE_TRANSFER,
+            rawIdentifierInput = "+79991234567"
+        ).toSubmission()
+        val configured = choiceOnly.withReceivingMethod(submission)
+
+        assertTrue(configured.receivingMethodConfigured)
+        assertTrue(configured.canContinueFrom())
+        assertEquals(submission, configured.receivingMethodSubmission)
+        assertEquals(PremiumReceivingMethodDraft.PHONE_TRANSFER, configured.receivingMethodDraft)
     }
 
     @Test

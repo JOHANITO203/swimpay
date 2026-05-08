@@ -141,7 +141,7 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(runtime.reviewActionsAreBackendOwned)
 
         assertEquals("/v1/android-merchant/dashboard-summary", transport.requests[0].path)
-        assertEquals("/v1/merchant/receiving-routes", transport.requests[1].path)
+        assertEquals("/v1/merchant/receiving-methods", transport.requests[1].path)
         assertEquals("/v1/reviews", transport.requests[2].path)
         assertEquals("/v1/android-merchant/payments/rev_01", transport.requests[3].path)
         assertEquals("/v1/android-merchant/connected-site", transport.requests[4].path)
@@ -218,7 +218,9 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(dashboard is PremiumScreenState.Content<*>)
         assertTrue(reviews is PremiumScreenState.Empty)
         assertTrue(detail is PremiumScreenState.Offline)
-        assertTrue(receivingMethods is PremiumScreenState.Empty)
+        assertTrue(receivingMethods is PremiumScreenState.Content<*>)
+        val receivingMethodsContent = receivingMethods as PremiumScreenState.Content<PremiumReceivingMethodsUiState>
+        assertTrue(receivingMethodsContent.value.items.isEmpty())
         assertTrue(connectedSite is PremiumScreenState.Content<*>)
         assertTrue(configuration is PremiumScreenState.Offline)
 
@@ -228,8 +230,7 @@ class PremiumMerchantRuntimeContractTest {
             reviews.message,
             detail.title,
             detail.message,
-            receivingMethods.title,
-            receivingMethods.message,
+            receivingMethodsContent.value.safeMessage,
             (connectedSite as PremiumScreenState.Content).value.statusTitle,
             connectedSite.value.statusText,
             configuration.title,
@@ -241,6 +242,23 @@ class PremiumMerchantRuntimeContractTest {
         assertFalse(stateText.contains("TANGO ALFA"))
         assertFalse(stateText.contains("official_bank_confirmation", ignoreCase = true))
         assertFalse(stateText.contains("webhook_secret", ignoreCase = true))
+    }
+
+    @Test
+    fun emptyReceivingMethodsStillReturnEditableContentState() {
+        val runtime = runtimeWith(
+            AuthenticatedMerchantSession.localDev("mch_demo"),
+            RecordingPremiumTransport(
+                MerchantApiResponse(200, """{"routes":[]}""")
+            )
+        )
+
+        val receivingMethods = runtime.loadReceivingMethods()
+
+        assertTrue(receivingMethods is PremiumScreenState.Content<PremiumReceivingMethodsUiState>)
+        val content = receivingMethods as PremiumScreenState.Content<PremiumReceivingMethodsUiState>
+        assertTrue(content.value.usesLiveApi)
+        assertTrue(content.value.items.isEmpty())
     }
 
     @Test
@@ -333,17 +351,18 @@ class PremiumMerchantRuntimeContractTest {
         assertEquals("", created.value.clearedRawIdentifier)
         assertEquals("route_phone", created.value.item?.routeId)
         assertFalse(created.value.visibleTexts().joinToString(" ").contains("+79991234567"))
-        assertFalse(created.value.visibleTexts().joinToString(" ").contains("SBP", ignoreCase = true))
+        assertFalse(created.value.visibleTexts().joinToString(" ").contains("sbp_transfer", ignoreCase = true))
 
         val disabled = runtime.disableReceivingMethod("route_card") as PremiumScreenState.Content<PremiumReceivingMethodMutationUiState>
         assertEquals("Désactivée", disabled.value.item?.status)
         val recommended = runtime.markReceivingMethodRecommended("route_phone") as PremiumScreenState.Content<PremiumReceivingMethodMutationUiState>
         assertTrue(recommended.value.item?.recommended == true)
 
-        assertEquals("/v1/merchant/receiving-routes", transport.requests[0].path)
+        assertEquals("/v1/merchant/receiving-methods", transport.requests[0].path)
         assertEquals("POST", transport.requests[1].method)
-        assertEquals("/v1/merchant/receiving-routes/route_card", transport.requests[2].path)
-        assertEquals("/v1/merchant/receiving-routes/route_phone", transport.requests[3].path)
+        assertEquals("/v1/merchant/receiving-methods", transport.requests[1].path)
+        assertEquals("/v1/merchant/receiving-methods/route_card/disable", transport.requests[2].path)
+        assertEquals("/v1/merchant/receiving-methods/route_phone/set-default", transport.requests[3].path)
     }
 
     @Test

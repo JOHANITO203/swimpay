@@ -11,7 +11,9 @@ interface TestReceivingRoute {
   rail_type: 'phone_transfer' | 'card_transfer';
   receiver_identifier_type: 'phone' | 'card';
   receiver_identifier_encrypted: string;
+  receiver_identifier_hmac: string;
   receiver_identifier_masked: string;
+  receiver_identifier_last4: string;
   route_code: string;
   display_label: string;
   enabled: boolean;
@@ -99,10 +101,14 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     auditEventId: string;
   }) {
     const duplicate = [...this.receivingRoutes.values()].find(
-      (route) => route.merchant_id === input.route.merchant_id && route.route_code === input.route.route_code
+      (route) =>
+        route.merchant_id === input.route.merchant_id &&
+        (route.route_code === input.route.route_code || route.receiver_identifier_hmac === input.route.receiver_identifier_hmac)
     );
     if (duplicate) {
-      return { kind: 'duplicate_route_code' as const };
+      return duplicate.receiver_identifier_hmac === input.route.receiver_identifier_hmac
+        ? { kind: 'duplicate_receiver_identifier' as const }
+        : { kind: 'duplicate_route_code' as const };
     }
     this.receivingRoutes.set(input.route.route_id, input.route);
     this.auditEvents.push({ eventType: 'merchant_receiving_route.created', objectId: input.route.route_id });
@@ -123,6 +129,13 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     const route = this.receivingRoutes.get(input.routeId);
     if (!route || route.merchant_id !== input.merchantId) {
       return { kind: 'not_found' as const };
+    }
+    if (input.patch.recommended) {
+      for (const existingRoute of this.receivingRoutes.values()) {
+        if (existingRoute.merchant_id === input.merchantId && existingRoute.rail_type === route.rail_type && existingRoute.route_id !== input.routeId) {
+          existingRoute.recommended = false;
+        }
+      }
     }
     Object.assign(route, input.patch, { updated_at: input.now });
     this.auditEvents.push({ eventType: 'merchant_receiving_route.updated', objectId: input.routeId });
@@ -537,6 +550,184 @@ describe('payment session api', () => {
     expect(repository.auditEvents.map((event) => event.eventType)).toEqual(
       expect.arrayContaining(['merchant_receiving_route.created', 'merchant_receiving_route.updated'])
     );
+  });
+
+  test('creates product receiving methods through the merchant-facing alias with masked output and internal hmac', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+
+    const created = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        type: 'card',
+        value: '2202 2012 3456 4821',
+        bank_id: 'sber_ru',
+        label: 'Carte principale',
+        is_default: true
+      }
+    });
+    const listed = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/receiving-methods',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      method: {
+        id: 'route_1',
+        type: 'card',
+        bank_id: 'sber_ru',
+        label: 'Carte principale',
+        masked_value: '2202 **** **** 4821',
+        last4: '4821',
+        status: 'active',
+        is_default: true,
+        official_bank_confirmation: false
+      },
+      official_bank_confirmation: false
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().methods).toEqual([
+      expect.objectContaining({
+        id: 'route_1',
+        type: 'card',
+        bank_id: 'sber_ru',
+        masked_value: '2202 **** **** 4821',
+        last4: '4821',
+        status: 'active',
+        is_default: true
+      })
+    ]);
+    expect(JSON.stringify([created.json(), listed.json()])).not.toContain('2202201234564821');
+    expect(JSON.stringify(repository.receivingRoutes)).not.toContain('2202201234564821');
+    expect((repository.receivingRoutes.get('route_1') as unknown as { receiver_identifier_hmac?: string }).receiver_identifier_hmac).toMatch(/^hmac_sha256:/u);
+  });
+
+  test('rejects receiving method card secrets and invalid merchant destinations without persisting raw values', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+
+    const withCvv = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        type: 'card',
+        value: '2202 2012 3456 4821',
+        bank_id: 'sber_ru',
+        cvv: '123'
+      }
+    });
+    const withExpiry = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        type: 'card',
+        value: '2202 2012 3456 4821',
+        bank_id: 'sber_ru',
+        expiry: '12/30'
+      }
+    });
+    const invalidCard = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        type: 'card',
+        value: '4242',
+        bank_id: 'sber_ru'
+      }
+    });
+    const invalidPhone = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        type: 'phone',
+        value: '12345',
+        bank_id: 'sber_ru'
+      }
+    });
+
+    expect([withCvv.statusCode, withExpiry.statusCode, invalidCard.statusCode, invalidPhone.statusCode]).toEqual([400, 400, 400, 400]);
+    expect(withCvv.json().error.details).toMatchObject({ field: 'cvv' });
+    expect(withExpiry.json().error.details).toMatchObject({ field: 'expiry' });
+    expect(invalidCard.json().error.details).toMatchObject({ type: 'card' });
+    expect(invalidPhone.json().error.details).toMatchObject({ type: 'phone' });
+    expect(repository.receivingRoutes.size).toBe(0);
+    expect(JSON.stringify([withCvv.json(), withExpiry.json(), invalidCard.json(), invalidPhone.json()])).not.toContain('2202201234564821');
+    expect(JSON.stringify(repository.auditEvents)).not.toContain('2202201234564821');
+  });
+
+  test('rejects receiving routes with multi-bank, SBP or rail/type mismatch contract inputs', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+
+    const multiBank = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        bank_profile_id: 'sber_ru',
+        bank_profile_ids: ['sber_ru', 'tbank_ru'],
+        rail_type: 'phone_transfer',
+        receiver_identifier: '+7 (999) 123-45-67',
+        route_code: 'SBER-PHONE',
+        display_label: 'Sberbank telephone'
+      }
+    });
+    const sbpRail = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        bank_profile_id: 'sber_ru',
+        rail_type: 'sbp',
+        receiver_identifier: '+7 (999) 123-45-67',
+        route_code: 'SBER-SBP',
+        display_label: 'Sberbank SBP'
+      }
+    });
+    const mismatchedType = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        bank_profile_id: 'sber_ru',
+        rail_type: 'phone_transfer',
+        receiver_identifier_type: 'card',
+        receiver_identifier: '+7 (999) 123-45-67',
+        route_code: 'SBER-MISMATCH',
+        display_label: 'Sberbank mismatch'
+      }
+    });
+
+    expect(multiBank.statusCode).toBe(400);
+    expect(multiBank.json().error).toMatchObject({
+      code: 'invalid_request',
+      details: { field: 'bank_profile_ids' }
+    });
+    expect(sbpRail.statusCode).toBe(400);
+    expect(sbpRail.json().error).toMatchObject({
+      code: 'invalid_request',
+      details: { rail_type: 'sbp' }
+    });
+    expect(sbpRail.body).not.toMatch(/SBP integration|official bank confirmation|auto-confirm/iu);
+    expect(mismatchedType.statusCode).toBe(400);
+    expect(mismatchedType.json().error).toMatchObject({
+      code: 'invalid_request',
+      details: {
+        rail_type: 'phone_transfer',
+        receiver_identifier_type: 'card',
+        expected_receiver_identifier_type: 'phone'
+      }
+    });
+    expect(repository.receivingRoutes.size).toBe(0);
+    expect(JSON.stringify(repository.auditEvents)).not.toContain('+7 (999) 123-45-67');
   });
 
   test('reveals buyer-safe receiving routes only after bank selection and selects the actual route', async () => {

@@ -417,7 +417,7 @@ class AndroidMerchantApiWiringTest {
         assertEquals("Sberbank · •••• 4821", list.items.single().subtitle)
         assertFalse(list.visibleTexts().joinToString(" ").contains("2200123412344821"))
         assertEquals("GET", transport.requests[0].method)
-        assertEquals("/v1/merchant/receiving-routes", transport.requests[0].path)
+        assertEquals("/v1/merchant/receiving-methods", transport.requests[0].path)
         assertEquals("Bearer test_mch_demo", transport.requests[0].headers["Authorization"])
 
         val draft = MerchantReceivingMethodSubmission(
@@ -431,11 +431,106 @@ class AndroidMerchantApiWiringTest {
         assertEquals(MerchantRepositoryState.SUCCESS, created.state)
         assertEquals("", created.clearedSubmission.rawIdentifier)
         assertFalse(created.visibleTexts().joinToString(" ").contains("2200123412349911"))
-        assertTrue(transport.requests[1].body.contains("\"receiver_identifier\":\"2200123412349911\""))
+        assertEquals("/v1/merchant/receiving-methods", transport.requests[1].path)
+        assertTrue(transport.requests[1].body.contains("\"type\":\"card\""))
+        assertTrue(transport.requests[1].body.contains("\"value\":\"2200123412349911\""))
+        assertTrue(transport.requests[1].body.contains("\"bank_id\":\"sber_ru\""))
+        assertFalse(transport.requests[1].body.contains("route_code"))
+        assertFalse(transport.requests[1].body.contains("receiver_identifier"))
 
         val disabled = repository.disable(session, "route_card_2")
         assertEquals(MerchantRepositoryState.SUCCESS, disabled.state)
-        assertTrue(transport.requests[2].body.contains("\"enabled\":false"))
+        assertEquals("/v1/merchant/receiving-methods/route_card_2/disable", transport.requests[2].path)
+    }
+
+    @Test
+    fun receivingMethodDraftGeneratesCreatePayloadAndVisibleStateWithoutRawIdentifier() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                201,
+                """
+                {
+                  "route": {
+                    "route_id": "route_phone_1",
+                    "bank_profile_id": "tbank_ru",
+                    "rail_type": "phone_transfer",
+                    "receiver_identifier_masked": "+7 *** *** 45-67",
+                    "route_code": "TBANK-PHONE",
+                    "display_label": "T-Bank - Numéro de téléphone",
+                    "enabled": true,
+                    "recommended": false,
+                    "review_policy": "eligible_low_risk_later"
+                  },
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
+        )
+        val repository = MerchantReceivingMethodsApiRepository(transport)
+        val session = AuthenticatedMerchantSession.localDev("mch_demo")
+        val draft = MerchantReceivingMethodDraft(
+            bankProfileId = "tbank_ru",
+            type = ReceivingMethodType.PHONE_TRANSFER,
+            rawIdentifierInput = "+7 999 123-45-67"
+        )
+
+        val submission = draft.toSubmission()
+        val created = repository.create(session, submission)
+
+        assertEquals("tbank_ru", submission.bankProfileId)
+        assertEquals(ReceivingMethodType.PHONE_TRANSFER, submission.type)
+        assertEquals("+7 999 123-45-67", submission.rawIdentifier)
+        assertEquals("TBANK-PHONE", submission.routeCode)
+        assertEquals("T-Bank - Numéro de téléphone", submission.displayLabel)
+        assertEquals(MerchantRepositoryState.SUCCESS, created.state)
+        assertEquals("", created.clearedSubmission.rawIdentifier)
+        assertEquals("", created.clearedSubmission.rawIdentifierInput)
+        assertFalse(created.visibleTexts().joinToString(" ").contains("+7 999 123-45-67"))
+        assertFalse(created.visibleTexts().joinToString(" ").contains("9991234567"))
+        assertFalse(created.visibleTexts().joinToString(" ").contains("sbp_transfer", ignoreCase = true))
+
+        val body = transport.requests.single().body
+        assertTrue(body.contains("\"bank_id\":\"tbank_ru\""))
+        assertTrue(body.contains("\"type\":\"phone\""))
+        assertTrue(body.contains("\"value\":\"+7 999 123-45-67\""))
+        assertTrue(body.contains("\"label\":\"T-Bank - Numéro de téléphone\""))
+        assertFalse(body.contains("route_code"))
+        assertFalse(body.contains("receiver_identifier"))
+        assertFalse(body.contains("sbp_transfer"))
+    }
+
+    @Test
+    fun receivingMethodRepositoryRejectsInvalidLocalDraftBeforeNetworkSubmit() {
+        val transport = RecordingMerchantApiTransport()
+        val repository = MerchantReceivingMethodsApiRepository(transport)
+        val session = AuthenticatedMerchantSession.localDev("mch_demo")
+
+        val invalidCard = repository.create(
+            session,
+            MerchantReceivingMethodSubmission(
+                bankProfileId = "sber_ru",
+                type = ReceivingMethodType.CARD_TRANSFER,
+                rawIdentifier = "4242",
+                routeCode = "SBER-CARD",
+                displayLabel = "Sberbank"
+            )
+        )
+        val invalidPhone = repository.create(
+            session,
+            MerchantReceivingMethodSubmission(
+                bankProfileId = "sber_ru",
+                type = ReceivingMethodType.PHONE_TRANSFER,
+                rawIdentifier = "12345",
+                routeCode = "SBER-PHONE",
+                displayLabel = "Sberbank"
+            )
+        )
+
+        assertEquals(MerchantRepositoryState.ERROR, invalidCard.state)
+        assertEquals(MerchantRepositoryState.ERROR, invalidPhone.state)
+        assertTrue(transport.requests.isEmpty())
+        assertFalse(invalidCard.visibleTexts().joinToString(" ").contains("4242"))
+        assertFalse(invalidPhone.visibleTexts().joinToString(" ").contains("12345"))
     }
 
     @Test

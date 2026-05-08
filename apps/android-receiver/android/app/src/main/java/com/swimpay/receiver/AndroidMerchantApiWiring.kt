@@ -5,6 +5,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
 import java.util.Locale
+import android.util.Log
 
 enum class MerchantRepositoryState {
     LOADING,
@@ -344,7 +345,10 @@ class AndroidMerchantAuthApiRepository(
     private fun execute(request: MerchantApiRequest): MerchantApiResponse {
         return try {
             transport.execute(request)
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            if (BuildConfig.DEBUG) {
+                Log.w("SwimPayHttp", "${request.method} ${request.path} failed: ${error::class.java.simpleName}")
+            }
             MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
         }
     }
@@ -504,7 +508,8 @@ class HttpUrlConnectionMerchantApiTransport(
     private val timeoutMs: Int = 5_000
 ) : MerchantApiTransport {
     override fun execute(request: MerchantApiRequest): MerchantApiResponse {
-        val connection = URL(baseUrl.trimEnd('/') + request.path).openConnection() as HttpURLConnection
+        val safeUrl = baseUrl.trimEnd('/') + request.path
+        val connection = URL(safeUrl).openConnection() as HttpURLConnection
         connection.requestMethod = request.method
         connection.connectTimeout = timeoutMs
         connection.readTimeout = timeoutMs
@@ -522,6 +527,9 @@ class HttpUrlConnectionMerchantApiTransport(
         val status = connection.responseCode
         val stream = if (status in 200..399) connection.inputStream else connection.errorStream
         val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+        if (BuildConfig.DEBUG) {
+            Log.d("SwimPayHttp", "${request.method} ${request.path} -> $status")
+        }
         connection.disconnect()
         return MerchantApiResponse(statusCode = status, body = body)
     }
@@ -534,11 +542,67 @@ data class MerchantReceivingMethodSubmission(
     val routeCode: String,
     val displayLabel: String,
     val enabled: Boolean = true,
-    val recommended: Boolean = false
+    val recommended: Boolean = false,
+    val rawIdentifierInput: String = rawIdentifier
 ) {
     fun cleared(): MerchantReceivingMethodSubmission {
-        return copy(rawIdentifier = "")
+        return copy(rawIdentifier = "", rawIdentifierInput = "")
     }
+}
+
+data class MerchantReceivingMethodDraft(
+    val bankProfileId: String,
+    val type: ReceivingMethodType,
+    val rawIdentifierInput: String,
+    val enabled: Boolean = true,
+    val recommended: Boolean = false
+) {
+    fun toSubmission(): MerchantReceivingMethodSubmission {
+        val safeBankProfileId = bankProfileId.trim()
+        val safeRawIdentifier = rawIdentifierInput.trim()
+        require(safeBankProfileId.isNotBlank()) { "bankProfileId cannot be blank" }
+        require(safeRawIdentifier.isNotBlank()) { "receiver identifier cannot be blank" }
+        return MerchantReceivingMethodSubmission(
+            bankProfileId = safeBankProfileId,
+            type = type,
+            rawIdentifier = safeRawIdentifier,
+            routeCode = routeCodeFor(safeBankProfileId, type),
+            displayLabel = displayLabelFor(safeBankProfileId, type),
+            enabled = enabled,
+            recommended = recommended,
+            rawIdentifierInput = safeRawIdentifier
+        )
+    }
+}
+
+private val MERCHANT_RECEIVING_METHOD_BANK_LABELS: Map<String, String> = mapOf(
+    "sber_ru" to "Sberbank",
+    "tbank_ru" to "T-Bank",
+    "vtb_ru" to "VTB",
+    "alfa_ru" to "Alfa-Bank",
+    "gazprombank_ru" to "Gazprombank"
+)
+
+private val MERCHANT_RECEIVING_METHOD_BANK_CODES: Map<String, String> = mapOf(
+    "sber_ru" to "SBER",
+    "tbank_ru" to "TBANK",
+    "vtb_ru" to "VTB",
+    "alfa_ru" to "ALFA",
+    "gazprombank_ru" to "GAZPROMBANK"
+)
+
+private fun routeCodeFor(bankProfileId: String, type: ReceivingMethodType): String {
+    val bankCode = MERCHANT_RECEIVING_METHOD_BANK_CODES[bankProfileId] ?: bankProfileId.uppercase()
+    val methodCode = when (type) {
+        ReceivingMethodType.CARD_TRANSFER -> "CARD"
+        ReceivingMethodType.PHONE_TRANSFER -> "PHONE"
+    }
+    return "$bankCode-$methodCode"
+}
+
+private fun displayLabelFor(bankProfileId: String, type: ReceivingMethodType): String {
+    val bankLabel = MERCHANT_RECEIVING_METHOD_BANK_LABELS[bankProfileId] ?: bankProfileId
+    return "$bankLabel - ${type.merchantLabel}"
 }
 
 data class MerchantReceivingMethodsResult(
@@ -575,17 +639,20 @@ class MerchantReceivingMethodsApiRepository(
         val response = execute(
             MerchantApiRequest(
                 method = "GET",
-                path = "/v1/merchant/receiving-routes",
+                path = "/v1/merchant/receiving-methods",
                 headers = authHeaders(session)
             )
         )
         if (response.statusCode !in 200..299) {
             return MerchantReceivingMethodsResult(MerchantRepositoryState.ERROR, safeMessage = "Moyens indisponibles")
         }
-        val displays = extractTopLevelObjectsFromArray(response.body, "routes")
+        val displays = (
+            extractTopLevelObjectsFromArray(response.body, "methods")
+                .ifEmpty { extractTopLevelObjectsFromArray(response.body, "routes") }
+            )
             .mapNotNull { it.toReceivingMethodDisplay() }
         return MerchantReceivingMethodsResult(
-            state = if (displays.isEmpty()) MerchantRepositoryState.EMPTY else MerchantRepositoryState.SUCCESS,
+            state = MerchantRepositoryState.SUCCESS,
             items = displays
         )
     }
@@ -602,20 +669,27 @@ class MerchantReceivingMethodsApiRepository(
                 safeMessage = "Session marchand requise"
             )
         }
+        val validationMessage = validateReceivingMethodSubmission(submission)
+        if (validationMessage != null) {
+            return MerchantReceivingMethodMutationResult(
+                state = MerchantRepositoryState.ERROR,
+                display = null,
+                clearedSubmission = submission.cleared(),
+                safeMessage = validationMessage
+            )
+        }
         val body = jsonObject(
-            "bank_profile_id" to submission.bankProfileId,
-            "rail_type" to submission.type.wireValue,
-            "receiver_identifier" to submission.rawIdentifier,
-            "route_code" to submission.routeCode,
-            "display_label" to submission.displayLabel,
-            "enabled" to submission.enabled,
-            "recommended" to submission.recommended,
-            "review_policy" to reviewPolicyFor(submission.type)
+            "bank_id" to submission.bankProfileId,
+            "type" to receivingMethodProductType(submission.type),
+            "value" to submission.rawIdentifier,
+            "label" to submission.displayLabel,
+            "is_default" to submission.recommended,
+            "status" to if (submission.enabled) "active" else "inactive"
         )
         val response = execute(
             MerchantApiRequest(
                 method = "POST",
-                path = "/v1/merchant/receiving-routes",
+                path = "/v1/merchant/receiving-methods",
                 headers = authHeaders(session),
                 body = body
             )
@@ -623,11 +697,19 @@ class MerchantReceivingMethodsApiRepository(
         return mutationResultFrom(response, submission)
     }
 
+    fun create(
+        session: AuthenticatedMerchantSession,
+        draft: MerchantReceivingMethodDraft
+    ): MerchantReceivingMethodMutationResult {
+        return create(session, draft.toSubmission())
+    }
+
     fun disable(session: AuthenticatedMerchantSession, routeId: String): MerchantReceivingMethodMutationResult {
         val placeholder = MerchantReceivingMethodSubmission(
             bankProfileId = "",
             type = ReceivingMethodType.CARD_TRANSFER,
             rawIdentifier = "",
+            rawIdentifierInput = "",
             routeCode = "",
             displayLabel = ""
         )
@@ -639,6 +721,7 @@ class MerchantReceivingMethodsApiRepository(
             bankProfileId = "",
             type = ReceivingMethodType.CARD_TRANSFER,
             rawIdentifier = "",
+            rawIdentifierInput = "",
             routeCode = "",
             displayLabel = ""
         )
@@ -661,10 +744,10 @@ class MerchantReceivingMethodsApiRepository(
         }
         val response = execute(
             MerchantApiRequest(
-                method = "PATCH",
-                path = "/v1/merchant/receiving-routes/${urlPath(routeId)}",
+                method = "POST",
+                path = "/v1/merchant/receiving-methods/${urlPath(routeId)}${if (body.contains("\"enabled\":false")) "/disable" else "/set-default"}",
                 headers = authHeaders(session),
-                body = body
+                body = "{}"
             )
         )
         return mutationResultFrom(response, submission)
@@ -682,7 +765,7 @@ class MerchantReceivingMethodsApiRepository(
                 safeMessage = "Moyen indisponible"
             )
         }
-        val routeObject = extractObjectValue(response.body, "route")
+        val routeObject = extractObjectValue(response.body, "method") ?: extractObjectValue(response.body, "route")
         return MerchantReceivingMethodMutationResult(
             state = MerchantRepositoryState.SUCCESS,
             display = routeObject?.toReceivingMethodDisplay(),
@@ -1304,20 +1387,43 @@ fun authHeaders(session: AuthenticatedMerchantSession): Map<String, String> {
     return if (header.isBlank()) emptyMap() else mapOf("Authorization" to header)
 }
 
-private fun reviewPolicyFor(type: ReceivingMethodType): String {
+private fun receivingMethodProductType(type: ReceivingMethodType): String {
     return when (type) {
-        ReceivingMethodType.CARD_TRANSFER -> "review_first"
-        ReceivingMethodType.PHONE_TRANSFER -> "eligible_low_risk_later"
+        ReceivingMethodType.CARD_TRANSFER -> "card"
+        ReceivingMethodType.PHONE_TRANSFER -> "phone"
+    }
+}
+
+private fun validateReceivingMethodSubmission(submission: MerchantReceivingMethodSubmission): String? {
+    return when (submission.type) {
+        ReceivingMethodType.CARD_TRANSFER -> {
+            val digits = submission.rawIdentifier.filter { it.isDigit() }
+            if (digits.length in 13..19) null else "Moyen de réception invalide"
+        }
+        ReceivingMethodType.PHONE_TRANSFER -> {
+            val digits = submission.rawIdentifier.filter { it.isDigit() }
+            if ((digits.length == 11 && (digits.startsWith("7") || digits.startsWith("8"))) || digits.length == 10) {
+                null
+            } else {
+                "Moyen de réception invalide"
+            }
+        }
     }
 }
 
 private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
-    val routeId = extractString(this, "route_id").orEmpty()
-    val railType = extractString(this, "rail_type") ?: return null
-    val bankProfileId = extractString(this, "bank_profile_id").orEmpty()
-    val masked = extractString(this, "receiver_identifier_masked").orEmpty()
-    val enabled = extractBoolean(this, "enabled") ?: true
-    val recommended = extractBoolean(this, "recommended") ?: false
+    val routeId = extractString(this, "id") ?: extractString(this, "route_id").orEmpty()
+    val productType = extractString(this, "type")
+    val railType = extractString(this, "rail_type") ?: when (productType) {
+        "card" -> ReceivingMethodType.CARD_TRANSFER.wireValue
+        "phone" -> ReceivingMethodType.PHONE_TRANSFER.wireValue
+        else -> return null
+    }
+    val bankProfileId = extractString(this, "bank_id") ?: extractString(this, "bank_profile_id").orEmpty()
+    val masked = extractString(this, "masked_value") ?: extractString(this, "receiver_identifier_masked").orEmpty()
+    val status = extractString(this, "status")
+    val enabled = if (status == "inactive") false else extractBoolean(this, "enabled") ?: true
+    val recommended = extractBoolean(this, "is_default") ?: extractBoolean(this, "recommended") ?: false
     val type = when (railType) {
         ReceivingMethodType.CARD_TRANSFER.wireValue -> ReceivingMethodType.CARD_TRANSFER
         ReceivingMethodType.PHONE_TRANSFER.wireValue -> ReceivingMethodType.PHONE_TRANSFER
@@ -1332,7 +1438,7 @@ private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
         routeId = routeId,
         title = type.merchantLabel,
         subtitle = "${bankDisplayNameFor(bankProfileId)} · $masked",
-        helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements par numéro" else null,
+        helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements via SBP" else null,
         status = if (enabled) "Active" else "Désactivée",
         actions = actions
     )

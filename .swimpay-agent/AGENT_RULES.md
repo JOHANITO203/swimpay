@@ -28,7 +28,7 @@ The agent must not:
 SwimPay project guardrails:
 
 - No LLM-based payment decisions.
-- No SBP behavior.
+- No SBP technical behavior. SBP wording is allowed only as user-facing copy for `phone_transfer`.
 - No PSP behavior.
 - No SMS reading.
 - No bank app scraping.

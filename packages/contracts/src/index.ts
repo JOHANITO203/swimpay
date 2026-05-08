@@ -114,7 +114,9 @@ export interface MerchantReceivingRoute {
   rail_type: ReceivingRouteRailType;
   receiver_identifier_type: ReceiverIdentifierType;
   receiver_identifier_encrypted: string;
+  receiver_identifier_hmac: string;
   receiver_identifier_masked: string;
+  receiver_identifier_last4: string;
   route_code: string;
   display_label: string;
   enabled: boolean;

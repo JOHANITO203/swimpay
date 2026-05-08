@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Water
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,6 +50,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.swimpay.receiver.MerchantReceivingMethodSubmission
+import com.swimpay.receiver.ReceivingMethodType
+import com.swimpay.receiver.MerchantReceivingMethodDraft as MerchantReceivingRouteDraft
 import kotlinx.coroutines.delay
 
 @Composable
@@ -161,18 +165,16 @@ fun PremiumOnboardingFlow(
             onBack = { state = state.goBack() },
             onNext = { if (state.canContinueFrom()) moveNext() }
         )
-        PremiumOnboardingStep.RECEIVING_METHOD -> ReceivingMethodStep(
+        PremiumOnboardingStep.RECEIVING_METHOD -> ReceivingMethodDetailsStep(
+            selectedBankDisplayName = state.selectedBankDisplayName(bankTargetsState),
+            selectedBankIds = state.selectedBankIds,
             selectedMethod = state.receivingMethodDraft,
-            onSelect = { state = state.withReceivingMethod(it) },
-            onBack = { state = state.goBack() },
-            onNext = {
-                val next = if (state.receivingMethodConfigured) {
-                    state
-                } else {
-                    state.withReceivingMethod(PremiumReceivingMethodDraft.CARD_TRANSFER)
-                }
+            onSelectChoice = { state = state.withReceivingMethod(it) },
+            onSave = {
+                val next = state.withReceivingMethod(it)
                 moveNext(next)
-            }
+            },
+            onBack = { state = state.goBack() },
         )
         PremiumOnboardingStep.CONNECTED_SITE -> ConnectedSiteStep(
             skipped = state.skippedConnectedSite,
@@ -321,7 +323,114 @@ private fun CompatibleBankSelectionStep(
 }
 
 @Composable
+private fun ReceivingMethodDetailsStep(
+    selectedBankDisplayName: String,
+    selectedBankIds: Set<String>,
+    selectedMethod: PremiumReceivingMethodDraft?,
+    onSelectChoice: (PremiumReceivingMethodDraft) -> Unit,
+    onSave: (MerchantReceivingMethodSubmission) -> Unit,
+    onBack: () -> Unit
+) {
+    val availableBankIds = OnboardingReceivingMethodBankOptions.map { it.first }.toSet()
+    val initialBankId = selectedBankIds.firstOrNull { it in availableBankIds }
+        ?: OnboardingReceivingMethodBankOptions.first().first
+    var selectedBankId by remember(initialBankId) { mutableStateOf(initialBankId) }
+    var methodType by remember(selectedMethod) {
+        mutableStateOf(
+            when (selectedMethod) {
+                PremiumReceivingMethodDraft.PHONE_TRANSFER -> ReceivingMethodType.PHONE_TRANSFER
+                else -> ReceivingMethodType.CARD_TRANSFER
+            }
+        )
+    }
+    var identifierInput by remember { mutableStateOf("") }
+
+    OnboardingShell("Moyen de réception", PremiumOnboardingStep.RECEIVING_METHOD, onBack) {
+        PremiumTitle(
+            "Ajoutez votre moyen de réception",
+            "Vos clients utiliseront ces informations pour vous payer sur $selectedBankDisplayName."
+        )
+        ReceivingMethodOption(
+            icon = Icons.Default.ShoppingCart,
+            title = "Carte bancaire",
+            subtitle = "Recevez les paiements sur votre carte.",
+            selected = methodType == ReceivingMethodType.CARD_TRANSFER,
+            onClick = {
+                methodType = ReceivingMethodType.CARD_TRANSFER
+                onSelectChoice(PremiumReceivingMethodDraft.CARD_TRANSFER)
+            }
+        )
+        ReceivingMethodOption(
+            icon = Icons.Default.PhoneAndroid,
+            title = "Numéro de téléphone",
+            subtitle = "Pratique pour les virements via SBP.",
+            selected = methodType == ReceivingMethodType.PHONE_TRANSFER,
+            onClick = {
+                methodType = ReceivingMethodType.PHONE_TRANSFER
+                onSelectChoice(PremiumReceivingMethodDraft.PHONE_TRANSFER)
+            }
+        )
+        Spacer(Modifier.height(6.dp))
+        Text("Choisir la banque", color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(10.dp))
+        OnboardingReceivingMethodBankOptions.forEach { bank ->
+            val selected = bank.first == selectedBankId
+            PremiumCard(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp)
+                    .premiumTap { selectedBankId = bank.first },
+                radius = 24.dp,
+                color = if (selected) Color(0xFFF7FEFE) else PremiumColors.Surface
+            ) {
+                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(28.dp)
+                            .background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape)
+                            .border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape)
+                    )
+                    Text(bank.second, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 12.dp))
+                }
+            }
+        }
+        OutlinedTextField(
+            value = identifierInput,
+            onValueChange = { identifierInput = it },
+            label = { Text("Identifiant utilisé seulement pour l'enregistrement") },
+            placeholder = { Text(if (methodType == ReceivingMethodType.CARD_TRANSFER) "Numéro de carte" else "Numéro de téléphone") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(18.dp)
+        )
+        Spacer(Modifier.height(18.dp))
+        PremiumPrimaryButton(
+            "Enregistrer et continuer",
+            enabled = identifierInput.isNotBlank(),
+            onClick = {
+                onSave(
+                    MerchantReceivingRouteDraft(
+                        bankProfileId = selectedBankId,
+                        type = methodType,
+                        rawIdentifierInput = identifierInput
+                    ).toSubmission()
+                )
+            }
+        )
+    }
+}
+
+private val OnboardingReceivingMethodBankOptions: List<Pair<String, String>> = listOf(
+    "sber_ru" to "Sberbank",
+    "tbank_ru" to "T-Bank",
+    "vtb_ru" to "VTB",
+    "alfa_ru" to "Alfa-Bank",
+    "gazprombank_ru" to "Gazprombank"
+)
+
+@Composable
 private fun ReceivingMethodStep(
+    selectedBankDisplayName: String,
     selectedMethod: PremiumReceivingMethodDraft?,
     onSelect: (PremiumReceivingMethodDraft) -> Unit,
     onBack: () -> Unit,
@@ -330,7 +439,7 @@ private fun ReceivingMethodStep(
     OnboardingShell("Moyen de réception", PremiumOnboardingStep.RECEIVING_METHOD, onBack) {
         PremiumTitle(
             "Ajoutez votre moyen de réception",
-            "Vos clients utiliseront ces informations pour vous payer."
+            "Vos clients utiliseront ces informations pour vous payer sur $selectedBankDisplayName."
         )
         ReceivingMethodOption(
             icon = Icons.Default.ShoppingCart,
@@ -349,6 +458,18 @@ private fun ReceivingMethodStep(
         Spacer(Modifier.height(18.dp))
         PremiumPrimaryButton("Ajouter", onClick = onNext)
     }
+}
+
+private fun PremiumOnboardingSessionState.selectedBankDisplayName(
+    bankTargetsState: PremiumScreenState<PremiumBanksUiState>
+): String {
+    val selectedBankId = selectedBankIds.firstOrNull()
+    val detectedName = (bankTargetsState as? PremiumScreenState.Content)
+        ?.value
+        ?.items
+        ?.firstOrNull { it.bankProfileId == selectedBankId }
+        ?.displayName
+    return detectedName ?: "la banque choisie"
 }
 
 @Composable

@@ -56,6 +56,7 @@ fun PremiumMerchantApp(
     var connectedSiteState by remember { mutableStateOf<PremiumScreenState<PremiumConnectedSiteUiState>>(PremiumScreenState.loading()) }
     var configurationState by remember { mutableStateOf<PremiumScreenState<PremiumConfigurationUiState>>(PremiumScreenState.loading()) }
     var receivingMethodsState by remember { mutableStateOf<PremiumScreenState<PremiumReceivingMethodsUiState>>(PremiumScreenState.loading()) }
+    var receivingMethodClearDraftSignal by remember { mutableStateOf(0) }
     var ordersState by remember { mutableStateOf<PremiumScreenState<PremiumOrdersUiState>>(PremiumScreenState.loading()) }
     var banksState by remember { mutableStateOf<PremiumScreenState<PremiumBanksUiState>>(PremiumScreenState.loading()) }
     var receiverHealthState by remember { mutableStateOf<PremiumScreenState<PremiumReceiverHealthUiState>>(PremiumScreenState.loading()) }
@@ -89,6 +90,36 @@ fun PremiumMerchantApp(
             returnRoute = PremiumRoute.Onboarding
         )
         scope.launch {
+            val receivingMethodSubmission = completedState.receivingMethodSubmission
+            if (receivingMethodSubmission == null) {
+                route = PremiumNavigation.openAccountRecovery(
+                    PremiumAccountRecoveryUiState.receiverError(
+                        "Ajoutez un moyen de reception avant de terminer l'onboarding."
+                    ),
+                    returnRoute = PremiumRoute.Onboarding
+                )
+                return@launch
+            }
+            val receivingMethodResult = withContext(Dispatchers.IO) {
+                activeRuntime.createReceivingMethod(receivingMethodSubmission)
+            }
+            val receivingMethodError = when (receivingMethodResult) {
+                is PremiumScreenState.Content -> ""
+                is PremiumScreenState.ActionRequired -> receivingMethodResult.message
+                is PremiumScreenState.Empty -> receivingMethodResult.message
+                is PremiumScreenState.Error -> receivingMethodResult.message
+                is PremiumScreenState.Offline -> receivingMethodResult.message
+                is PremiumScreenState.Loading -> "Moyen de reception en cours d'enregistrement."
+            }
+            if (receivingMethodError.isNotBlank()) {
+                route = PremiumNavigation.openAccountRecovery(
+                    PremiumAccountRecoveryUiState.receiverError(
+                        receivingMethodError.ifBlank { "Moyen de reception indisponible. Reessayez." }
+                    ),
+                    returnRoute = PremiumRoute.Onboarding
+                )
+                return@launch
+            }
             val selectedBankIds = completedState.selectedBankIds
             val signingKey = receiverRuntimeConfigStore.signingKeyOrCreate()
             val result = withContext(Dispatchers.IO) {
@@ -318,7 +349,24 @@ fun PremiumMerchantApp(
         PremiumRoute.ReceivingMethods -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
-            content = { PremiumReceivingMethodsStateScreen(receivingMethodsState) }
+            content = {
+                PremiumReceivingMethodsStateScreen(
+                    receivingMethodsState,
+                    clearDraftSignal = receivingMethodClearDraftSignal,
+                    onSaveDraft = { submission ->
+                        receivingMethodsState = PremiumScreenState.loading()
+                        scope.launch {
+                            val mutation = withContext(Dispatchers.IO) {
+                                activeRuntime.createReceivingMethod(submission)
+                            }
+                            if (mutation is PremiumScreenState.Content) {
+                                receivingMethodClearDraftSignal += 1
+                            }
+                            receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                        }
+                    }
+                )
+            }
         )
         PremiumRoute.ConnectedSite -> PremiumConnectedSiteStateScreen(connectedSiteState) {
             route = PremiumRoute.Main(PremiumMainTab.Menu)

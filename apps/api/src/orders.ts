@@ -109,7 +109,8 @@ export interface CreateReceivingRouteInput {
 
 export type CreateReceivingRouteResult =
   | { kind: 'created'; route: StoredMerchantReceivingRouteRecord }
-  | { kind: 'duplicate_route_code' };
+  | { kind: 'duplicate_route_code' }
+  | { kind: 'duplicate_receiver_identifier' };
 
 export interface UpdateReceivingRouteInput {
   merchantId: string;
@@ -450,21 +451,32 @@ export class PgOrderRepository implements OrderRepository {
 
     try {
       await client.query('BEGIN');
-      const duplicate = await client.query(
-        `SELECT id FROM merchant_receiving_routes WHERE merchant_id = $1 AND route_code = $2`,
-        [input.route.merchant_id, input.route.route_code]
+      const duplicate = await client.query<{ route_code: string; receiver_identifier_hmac: string | null }>(
+        `SELECT route_code, receiver_identifier_hmac
+         FROM merchant_receiving_routes
+         WHERE merchant_id = $1
+           AND (
+             route_code = $2
+             OR (receiver_identifier_hmac IS NOT NULL AND receiver_identifier_hmac = $3)
+           )
+         LIMIT 1`,
+        [input.route.merchant_id, input.route.route_code, input.route.receiver_identifier_hmac]
       );
       if (duplicate.rowCount && duplicate.rowCount > 0) {
         await client.query('ROLLBACK');
+        if (duplicate.rows[0]?.receiver_identifier_hmac === input.route.receiver_identifier_hmac) {
+          return { kind: 'duplicate_receiver_identifier' };
+        }
         return { kind: 'duplicate_route_code' };
       }
 
       await client.query(
         `INSERT INTO merchant_receiving_routes (
           id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
-          receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+          receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
+          receiver_identifier_last4, route_code, display_label,
           enabled, recommended, review_policy, fees_hint, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
         [
           input.route.route_id,
           input.route.merchant_id,
@@ -472,7 +484,9 @@ export class PgOrderRepository implements OrderRepository {
           input.route.rail_type,
           input.route.receiver_identifier_type,
           input.route.receiver_identifier_encrypted,
+          input.route.receiver_identifier_hmac,
           input.route.receiver_identifier_masked,
+          input.route.receiver_identifier_last4,
           input.route.route_code,
           input.route.display_label,
           input.route.enabled,
@@ -508,7 +522,8 @@ export class PgOrderRepository implements OrderRepository {
   public async listReceivingRoutes(merchantId: string): Promise<StoredMerchantReceivingRouteRecord[]> {
     const result = await this.pool.query(
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
-        receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+        receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
+        receiver_identifier_last4, route_code, display_label,
         enabled, recommended, review_policy, fees_hint, created_at, updated_at
        FROM merchant_receiving_routes
        WHERE merchant_id = $1
@@ -528,6 +543,14 @@ export class PgOrderRepository implements OrderRepository {
       ...input.patch,
       updated_at: input.now
     };
+    if (updatedRoute.recommended) {
+      await this.pool.query(
+        `UPDATE merchant_receiving_routes
+         SET recommended = false, updated_at = $4
+         WHERE merchant_id = $1 AND rail_type = $2 AND id <> $3`,
+        [input.merchantId, updatedRoute.rail_type, input.routeId, input.now]
+      );
+    }
     const result = await this.pool.query(
       `UPDATE merchant_receiving_routes
        SET enabled = $3,
@@ -537,7 +560,8 @@ export class PgOrderRepository implements OrderRepository {
            updated_at = $7
        WHERE merchant_id = $1 AND id = $2
        RETURNING id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
-        receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+        receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
+        receiver_identifier_last4, route_code, display_label,
         enabled, recommended, review_policy, fees_hint, created_at, updated_at`,
       [
         input.merchantId,
@@ -566,7 +590,8 @@ export class PgOrderRepository implements OrderRepository {
     void paymentSessionId;
     const result = await this.pool.query(
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
-        receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+        receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
+        receiver_identifier_last4, route_code, display_label,
         enabled, recommended, review_policy, fees_hint, created_at, updated_at
        FROM merchant_receiving_routes
        WHERE merchant_id = $1 AND enabled = true
@@ -580,7 +605,8 @@ export class PgOrderRepository implements OrderRepository {
     void paymentSessionId;
     const result = await this.pool.query(
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
-        receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+        receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
+        receiver_identifier_last4, route_code, display_label,
         enabled, recommended, review_policy, fees_hint, created_at, updated_at
        FROM merchant_receiving_routes
        WHERE merchant_id = $1 AND bank_profile_id = $2 AND enabled = true
@@ -853,7 +879,8 @@ export class PgOrderRepository implements OrderRepository {
   ): Promise<StoredMerchantReceivingRouteRecord | null> {
     const result = await this.pool.query(
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
-        receiver_identifier_encrypted, receiver_identifier_masked, route_code, display_label,
+        receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
+        receiver_identifier_last4, route_code, display_label,
         enabled, recommended, review_policy, fees_hint, created_at, updated_at
        FROM merchant_receiving_routes
        WHERE merchant_id = $1 AND id = $2`,
@@ -980,7 +1007,9 @@ function toMerchantReceivingRoute(row: Record<string, string | boolean | Date | 
     rail_type: String(row.rail_type) as ReceivingRouteRailType,
     receiver_identifier_type: String(row.receiver_identifier_type) as ReceiverIdentifierType,
     receiver_identifier_encrypted: String(row.receiver_identifier_encrypted),
+    receiver_identifier_hmac: String(row.receiver_identifier_hmac ?? ''),
     receiver_identifier_masked: String(row.receiver_identifier_masked),
+    receiver_identifier_last4: String(row.receiver_identifier_last4 ?? ''),
     route_code: String(row.route_code),
     display_label: String(row.display_label),
     enabled: Boolean(row.enabled),
@@ -1032,6 +1061,12 @@ export function buildMerchantReceivingRouteRecord(input: {
   if (!input.receiverIdentifier.trim()) {
     return invalidRequest('receiver_identifier is required.', {});
   }
+  const normalizedIdentifier = normalizeReceiverIdentifier(receiverIdentifierType, input.receiverIdentifier);
+  if (!normalizedIdentifier) {
+    return invalidRequest('receiver_identifier is not valid for the selected receiving route.', {
+      type: receiverIdentifierType
+    });
+  }
   const routeCode = sanitizeRouteCode(input.routeCode);
   if (!routeCode) {
     return invalidRequest('route_code must contain letters, numbers, dash or underscore.', {});
@@ -1053,7 +1088,9 @@ export function buildMerchantReceivingRouteRecord(input: {
     rail_type: input.railType,
     receiver_identifier_type: receiverIdentifierType,
     receiver_identifier_encrypted: encryptReceiverIdentifier(input.receiverIdentifier, input.encryptionSecret),
-    receiver_identifier_masked: maskReceiverIdentifier(receiverIdentifierType, input.receiverIdentifier),
+    receiver_identifier_hmac: hmacSha256(`${input.merchantId}:${input.railType}:${normalizedIdentifier}`, input.encryptionSecret),
+    receiver_identifier_masked: maskReceiverIdentifier(receiverIdentifierType, normalizedIdentifier),
+    receiver_identifier_last4: normalizedIdentifier.replace(/\D/g, '').slice(-4),
     route_code: routeCode,
     display_label: displayLabel,
     enabled: input.enabled ?? true,
@@ -1071,6 +1108,18 @@ export function receiverIdentifierTypeForRail(railType: ReceivingRouteRailType):
 
 export function defaultReviewPolicyForRail(railType: ReceivingRouteRailType): ReceivingRouteReviewPolicy {
   return railType === 'phone_transfer' ? 'eligible_low_risk_later' : 'review_first';
+}
+
+function normalizeReceiverIdentifier(type: ReceiverIdentifierType, value: string): string | null {
+  if (type === 'phone') {
+    return normalizeRussianPhone(value);
+  }
+
+  const digits = value.replace(/\D/g, '');
+  if (digits.length < 13 || digits.length > 19) {
+    return null;
+  }
+  return digits;
 }
 
 function encryptReceiverIdentifier(value: string, secret: string): string {
@@ -1109,6 +1158,7 @@ function toReceivingRouteAuditPayload(route: StoredMerchantReceivingRouteRecord)
     rail_type: route.rail_type,
     receiver_identifier_type: route.receiver_identifier_type,
     receiver_identifier_masked: route.receiver_identifier_masked,
+    receiver_identifier_last4: route.receiver_identifier_last4,
     route_code: route.route_code,
     enabled: route.enabled,
     recommended: route.recommended,

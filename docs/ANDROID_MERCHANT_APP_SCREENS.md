@@ -81,9 +81,10 @@ Supported merchant-facing methods:
 - Carte bancaire
 - Numéro de téléphone
 
-The phone receiving-method copy may mention SBP only as merchant-facing
-transfer wording for the Russian market. This is a copy exception, not an SBP
-integration: SwimPay still does not initiate payments, call SBP APIs, read SMS,
+The phone receiving-method copy may mention SBP as merchant/buyer-facing
+transfer wording for the Russian market because users expect that language for
+phone-number bank transfers. This is a copy exception, not an SBP integration:
+SwimPay still does not initiate payments, call SBP APIs, read SMS,
 scrape bank apps, or claim official bank confirmation.
 
 After save, Android screen models display only masked identifiers:
@@ -92,6 +93,12 @@ After save, Android screen models display only masked identifiers:
 - `T-Bank · +7 *** *** 45-67`
 
 Full values are not shown after save and are not sent in webhooks.
+
+Creation is a real backend mutation, not a local-only card. Android submits the
+product contract to `/v1/merchant/receiving-methods`, keeps invalid/failed
+drafts visible for correction, and clears the raw input only after the backend
+returns success. The saved row can then be disabled or marked default from the
+same screen.
 
 ### Configuration Test
 

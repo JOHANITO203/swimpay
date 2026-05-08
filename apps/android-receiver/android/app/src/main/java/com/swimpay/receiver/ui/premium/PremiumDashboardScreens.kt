@@ -38,13 +38,22 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.swimpay.receiver.MerchantReceivingMethodDraft
+import com.swimpay.receiver.MerchantReceivingMethodSubmission
+import com.swimpay.receiver.ReceivingMethodType
 
 @Composable
 fun PremiumDashboardScreen(
@@ -445,36 +454,170 @@ fun PremiumConfigurationSummary(state: PremiumScreenState<PremiumConfigurationUi
 }
 
 @Composable
-fun PremiumReceivingMethodsStateScreen(state: PremiumScreenState<PremiumReceivingMethodsUiState>) {
+fun PremiumReceivingMethodsStateScreen(
+    state: PremiumScreenState<PremiumReceivingMethodsUiState>,
+    clearDraftSignal: Int = 0,
+    onSaveDraft: (MerchantReceivingMethodSubmission) -> Unit = {}
+) {
     when (state) {
-        is PremiumScreenState.Content -> LazyColumn(
-            Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Text("Moyens de réception", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+        is PremiumScreenState.Content -> {
+            var draftType by remember { mutableStateOf<ReceivingMethodType?>(null) }
+            var selectedBankId by remember { mutableStateOf(ReceivingMethodBankOptions.first().first) }
+            var identifierInput by remember { mutableStateOf("") }
+            LaunchedEffect(clearDraftSignal) {
+                if (clearDraftSignal > 0) {
+                    identifierInput = ""
+                    draftType = null
+                }
             }
-            items(state.value.items) { method ->
-                PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
-                    Column(Modifier.padding(22.dp)) {
-                        Text(method.title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                        Text(method.subtitle, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
-                        method.helper?.let {
-                            Text(it, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
-                        }
-                        StatusChip(method.status, if (method.enabled) StatusTone.Success else StatusTone.Neutral, Modifier.padding(top = 10.dp))
-                        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            method.actions.forEach {
-                                Text(it, color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 12.sp)
+            LazyColumn(
+                Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+                contentPadding = PaddingValues(bottom = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Text("Moyens de réception", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+                    Text("Les informations complètes ne sont jamais envoyées dans les webhooks.", color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+                }
+                item {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ReceivingMethodActionButton(
+                            label = "Ajouter une carte",
+                            icon = Icons.Default.CreditCard,
+                            onClick = { draftType = ReceivingMethodType.CARD_TRANSFER }
+                        )
+                        ReceivingMethodActionButton(
+                            label = "Ajoutez téléphone SBP",
+                            sbpIcon = true,
+                            onClick = { draftType = ReceivingMethodType.PHONE_TRANSFER }
+                        )
+                    }
+                }
+                if (draftType != null) {
+                    item {
+                        PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp, color = Color(0xFFF7FDFF)) {
+                            Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Text("Choisir la banque", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                                ReceivingMethodBankOptions.forEach { bank ->
+                                    val selected = bank.first == selectedBankId
+                                    Row(Modifier.fillMaxWidth().premiumTap { selectedBankId = bank.first }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Box(Modifier.size(26.dp).background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape).border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape))
+                                        Text(bank.second, color = PremiumColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 12.dp))
+                                    }
+                                }
+                                OutlinedTextField(
+                                    value = identifierInput,
+                                    onValueChange = { identifierInput = it },
+                                    label = { Text("Identifiant utilisé seulement pour l'enregistrement") },
+                                    placeholder = { Text(if (draftType == ReceivingMethodType.CARD_TRANSFER) "Numéro de carte" else "Numéro de téléphone") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(18.dp)
+                                )
+                                PremiumPrimaryButton(
+                                    "Enregistrer",
+                                    enabled = identifierInput.isNotBlank(),
+                                    onClick = {
+                                        val submission = MerchantReceivingMethodDraft(
+                                            bankProfileId = selectedBankId,
+                                            type = draftType ?: ReceivingMethodType.CARD_TRANSFER,
+                                            rawIdentifierInput = identifierInput
+                                        ).toSubmission()
+                                        onSaveDraft(submission)
+                                    }
+                                )
                             }
                         }
                     }
                 }
+                if (state.value.items.isEmpty()) {
+                    item {
+                        PremiumStatePanel(PremiumScreenState.empty<Unit>("Aucun moyen de réception", "Ajoutez une carte ou un téléphone SBP pour commencer."))
+                    }
+                }
+                items(state.value.items) { method ->
+                    PremiumReceivingMethodRow(method)
+                }
             }
         }
         else -> PremiumStateList(state)
+    }
+}
+
+@Composable
+private fun ReceivingMethodActionButton(
+    label: String,
+    icon: ImageVector? = null,
+    sbpIcon: Boolean = false,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(76.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(PremiumColors.Surface, RoundedCornerShape(24.dp))
+            .border(1.dp, PremiumColors.Line, RoundedCornerShape(24.dp))
+            .premiumTap(onClick)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(48.dp)
+                .background(PremiumColors.Mint, RoundedCornerShape(18.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (sbpIcon) {
+                Text("SBP", color = PremiumColors.Teal, fontSize = 12.sp, fontWeight = FontWeight.Black)
+            } else if (icon != null) {
+                Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(25.dp))
+            }
+        }
+        Text(
+            label,
+            color = PremiumColors.Navy,
+            fontSize = 15.sp,
+            lineHeight = 19.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 14.dp)
+        )
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            null,
+            tint = PremiumColors.SoftText,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+private val ReceivingMethodBankOptions: List<Pair<String, String>> = listOf(
+    "sber_ru" to "Sberbank",
+    "tbank_ru" to "T-Bank",
+    "vtb_ru" to "VTB",
+    "alfa_ru" to "Alfa-Bank",
+    "gazprombank_ru" to "Gazprombank"
+)
+
+@Composable
+private fun PremiumReceivingMethodRow(method: PremiumReceivingMethodUiItem) {
+    PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
+        Column(Modifier.padding(22.dp)) {
+            Text(method.title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+            Text(method.subtitle, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+            method.helper?.let {
+                Text(it, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+            }
+            StatusChip(method.status, if (method.enabled) StatusTone.Success else StatusTone.Neutral, Modifier.padding(top = 10.dp))
+            Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                method.actions.forEach {
+                    Text(it, color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                }
+            }
+        }
     }
 }
 

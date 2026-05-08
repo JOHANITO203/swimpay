@@ -106,11 +106,18 @@ Missing auth maps to a safe disconnected/action-required state. The visible merc
 
 Backend endpoints:
 
-- `GET /v1/merchant/receiving-routes`
-- `POST /v1/merchant/receiving-routes`
-- `PATCH /v1/merchant/receiving-routes/:route_id`
+- `GET /v1/merchant/receiving-methods`
+- `POST /v1/merchant/receiving-methods`
+- `PATCH /v1/merchant/receiving-methods/:method_id`
+- `POST /v1/merchant/receiving-methods/:method_id/disable`
+- `POST /v1/merchant/receiving-methods/:method_id/set-default`
 
-Android maps saved routes to merchant UI rows with masked identifiers only. Raw card/phone values are accepted only during create submission and cleared from frontend state after submit.
+Android maps saved methods to merchant UI rows with masked identifiers only.
+The create payload is `type`, `value`, `bank_id`, optional `label`,
+`is_default` and `status`. Raw card/phone values are accepted only during create
+submission and cleared from frontend state only after a successful backend
+mutation; error states must keep the local draft visible for correction and
+must not display saved raw values.
 
 ### Review Queue
 
