@@ -182,6 +182,30 @@ describe('android Gradle wrapper and build validation', () => {
     const properties = readFileSync(gradlePropertiesPath, 'utf8');
     expect(properties).toContain('android.useAndroidX=true');
   });
+
+  it('wires Google Credential Manager for real Android ID tokens without storing tokens', () => {
+    const appBuild = readAndroid('app/build.gradle.kts');
+    const activity = readAndroid('app/src/main/java/com/swimpay/receiver/MainActivity.kt');
+    const provider = readAndroid('app/src/main/java/com/swimpay/receiver/AndroidGoogleIdTokenProvider.kt');
+
+    expect(appBuild).toContain('swimpayGoogleServerClientId');
+    expect(appBuild).toContain('SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID');
+    expect(appBuild).toContain('SWIMPAY_GOOGLE_SERVER_CLIENT_ID');
+    expect(appBuild).toContain('androidx.credentials:credentials:1.6.0');
+    expect(appBuild).toContain('androidx.credentials:credentials-play-services-auth:1.6.0');
+    expect(appBuild).toContain('com.google.android.libraries.identity.googleid:googleid:1.2.0');
+
+    expect(provider).toContain('CredentialManager.create');
+    expect(provider).toContain('GetGoogleIdOption.Builder');
+    expect(provider).toContain('setServerClientId');
+    expect(provider).toContain('GoogleIdTokenCredential.createFrom');
+    expect(provider).toContain('TYPE_GOOGLE_ID_TOKEN_CREDENTIAL');
+    expect(provider).toContain('BuildConfig.SWIMPAY_GOOGLE_SERVER_CLIENT_ID');
+    expect(provider).not.toMatch(/SharedPreferences|Log\.|println|idToken\s*=/u);
+
+    expect(activity).toContain('AndroidGoogleIdTokenProvider(this)');
+    expect(activity).toContain('googleIdTokenProvider = googleIdTokenProvider::requestIdToken');
+  });
 });
 
 describe('android emulator smoke validation', () => {

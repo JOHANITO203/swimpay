@@ -60,6 +60,16 @@ APK backend target:
   `-PswimpayBackendBaseUrl=https://staging.swimpay.pro`;
 - external Android backend URLs must use HTTPS.
 
+APK Google recovery target:
+
+- the Android app reads the Google server/web client ID from
+  `-PswimpayGoogleServerClientId=<web-client-id>` or
+  `SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID`;
+- if the client ID is absent, Google recovery/linking fails closed before
+  opening the Credential Manager flow;
+- the Google ID token is temporary request data only and must not be stored,
+  logged or used as profile data.
+
 `device-lookup` accepts only privacy-safe install proof material. It must not
 accept IMEI, raw Android ID, advertising ID, phone number, contact data or broad
 fingerprint material.

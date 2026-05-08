@@ -8,6 +8,10 @@ val swimpayBackendBaseUrl = providers.gradleProperty("swimpayBackendBaseUrl")
     .orElse(providers.environmentVariable("SWIMPAY_ANDROID_BACKEND_BASE_URL"))
     .orElse("http://127.0.0.1:8080")
 
+val swimpayGoogleServerClientId = providers.gradleProperty("swimpayGoogleServerClientId")
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID"))
+    .orElse("")
+
 fun String.toBuildConfigString(): String {
     return "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 }
@@ -23,6 +27,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("String", "SWIMPAY_BACKEND_BASE_URL", swimpayBackendBaseUrl.get().toBuildConfigString())
+        buildConfigField("String", "SWIMPAY_GOOGLE_SERVER_CLIENT_ID", swimpayGoogleServerClientId.get().toBuildConfigString())
     }
 
     buildFeatures {
@@ -50,7 +55,10 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.credentials:credentials:1.6.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")

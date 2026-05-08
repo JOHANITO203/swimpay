@@ -22,6 +22,7 @@ class MainActivity : ComponentActivity() {
         notificationAccessEnabled = notificationAccessStatusReader.isEnabled()
         val baseUrl = AndroidMerchantBackendConfig.configuredBaseUrl()
         val bankPackageProbe = PackageManagerExactPackageProbe(this)
+        val googleIdTokenProvider = AndroidGoogleIdTokenProvider(this)
         val runtime = PremiumMerchantRuntime.forAppBuild(
             baseUrl = baseUrl,
             bankPackageProbe = bankPackageProbe
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
                             bankPackageProbe = bankPackageProbe
                         )
                     },
+                    googleIdTokenProvider = googleIdTokenProvider::requestIdToken,
                     notificationAccessEnabled = notificationAccessEnabled,
                     onOpenNotificationSettings = {
                         startActivity(NotificationListenerSettingsAction.createIntent(packageName))
