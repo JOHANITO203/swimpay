@@ -181,6 +181,31 @@ object AndroidMerchantAuthApiContract {
     const val GOOGLE_LINK_PATH = "/v1/android-merchant/auth/google/link"
 }
 
+data class AndroidMerchantAccountEntryContract(
+    val deviceLookupPath: String,
+    val lookupIntents: Set<AndroidMerchantDeviceLookupIntent>,
+    val deviceLookupRequiredBeforeCreateAccount: Boolean,
+    val deviceLookupRequiredBeforeGoogleRecovery: Boolean,
+    val googleRequiredForCreateAccount: Boolean,
+    val rawDeviceIdentifiersAllowed: Boolean
+) {
+    companion object {
+        fun current(): AndroidMerchantAccountEntryContract {
+            return AndroidMerchantAccountEntryContract(
+                deviceLookupPath = AndroidMerchantAuthApiContract.DEVICE_LOOKUP_PATH,
+                lookupIntents = setOf(
+                    AndroidMerchantDeviceLookupIntent.CREATE_ACCOUNT,
+                    AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT
+                ),
+                deviceLookupRequiredBeforeCreateAccount = true,
+                deviceLookupRequiredBeforeGoogleRecovery = true,
+                googleRequiredForCreateAccount = false,
+                rawDeviceIdentifiersAllowed = false
+            )
+        }
+    }
+}
+
 class AndroidMerchantAuthApiRepository(
     private val transport: MerchantApiTransport,
     private val deviceProofProvider: AndroidMerchantDeviceProofProvider
@@ -326,6 +351,129 @@ class AndroidMerchantAuthApiRepository(
 
     private fun parseIsoEpochMs(value: String): Long {
         return runCatching { Instant.parse(value).toEpochMilli() }.getOrDefault(0L)
+    }
+}
+
+data class AndroidReceiverRuntimeRegistrationResult(
+    val status: AndroidMerchantAuthResultStatus,
+    val deviceState: ReceiverDeviceState? = null,
+    val safeMessage: String = ""
+)
+
+class AndroidReceiverDeviceApiRepository(
+    private val transport: MerchantApiTransport,
+    private val backendBaseUrl: String
+) {
+    fun registerAndHeartbeat(
+        session: AuthenticatedMerchantSession,
+        enabledBankProfileIds: Set<String>,
+        signingKey: String,
+        notificationAccessEnabled: Boolean,
+        appVersion: String,
+        androidVersion: String
+    ): AndroidReceiverRuntimeRegistrationResult {
+        if (!session.isAuthenticated) {
+            return AndroidReceiverRuntimeRegistrationResult(
+                status = AndroidMerchantAuthResultStatus.ACTION_REQUIRED,
+                safeMessage = "Session marchand requise"
+            )
+        }
+        val safeBankIds = enabledBankProfileIds
+            .filter { id -> BankTargetLock.supportedTargets.any { it.bankProfileId == id } }
+            .toSet()
+        if (safeBankIds.isEmpty()) {
+            return AndroidReceiverRuntimeRegistrationResult(
+                status = AndroidMerchantAuthResultStatus.ACTION_REQUIRED,
+                safeMessage = "Choisissez au moins une banque compatible"
+            )
+        }
+
+        val registration = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = "/v1/receiver-devices/register",
+                headers = authHeaders(session),
+                body = jsonObject(
+                    "device_name" to "SwimPay Android Receiver",
+                    "app_version" to appVersion,
+                    "android_version" to androidVersion,
+                    "public_key" to signingKey,
+                    "supported_capabilities" to listOf(
+                        "notification_access",
+                        "signed_signal_upload",
+                        "local_redaction"
+                    ),
+                    "selected_banks" to safeBankIds.toList()
+                )
+            )
+        )
+        if (registration.statusCode !in 200..299) {
+            return AndroidReceiverRuntimeRegistrationResult(
+                status = AndroidMerchantAuthResultStatus.ERROR,
+                safeMessage = "Receiver non enregistre"
+            )
+        }
+
+        val deviceId = extractString(registration.body, "device_id")
+            ?: return AndroidReceiverRuntimeRegistrationResult(
+                status = AndroidMerchantAuthResultStatus.ERROR,
+                safeMessage = "Identifiant receiver indisponible"
+            )
+        val registeredAt = extractString(registration.body, "server_time") ?: java.time.Instant.now().toString()
+
+        val heartbeat = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = "/v1/receiver-devices/heartbeat",
+                headers = authHeaders(session),
+                body = jsonObject(
+                    "device_id" to deviceId,
+                    "app_version" to appVersion,
+                    "android_version" to androidVersion,
+                    "notification_access_enabled" to notificationAccessEnabled,
+                    "listener_connected" to notificationAccessEnabled,
+                    "allowed_bank_profile_ids" to safeBankIds.toList(),
+                    "queue_length" to 0,
+                    "last_signal_observed_at" to null,
+                    "timestamp" to registeredAt,
+                    "signature" to "heartbeat_signature_present"
+                )
+            )
+        )
+        if (heartbeat.statusCode !in 200..299) {
+            return AndroidReceiverRuntimeRegistrationResult(
+                status = AndroidMerchantAuthResultStatus.ERROR,
+                safeMessage = "Heartbeat receiver indisponible"
+            )
+        }
+
+        val heartbeatAt = extractString(heartbeat.body, "server_time") ?: registeredAt
+        val deviceStatus = extractString(heartbeat.body, "status")
+            ?: extractString(heartbeat.body, "device_status")
+            ?: extractString(registration.body, "status")
+            ?: "pending"
+        return AndroidReceiverRuntimeRegistrationResult(
+            status = AndroidMerchantAuthResultStatus.SUCCESS,
+            deviceState = ReceiverDeviceState(
+                deviceId = deviceId,
+                deviceStatus = deviceStatus,
+                serverTime = heartbeatAt,
+                appVersion = appVersion,
+                lastRegistrationAt = registeredAt,
+                lastHeartbeatAt = heartbeatAt,
+                backendBaseUrl = AndroidMerchantBackendConfig.normalizeBaseUrl(backendBaseUrl),
+                lastLocalCounter = 0,
+                lastNotificationListenerAccessEnabled = notificationAccessEnabled
+            )
+        )
+    }
+
+    private fun execute(request: MerchantApiRequest): MerchantApiResponse {
+        return try {
+            transport.execute(request)
+        } catch (_: Exception) {
+            MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
+        }
     }
 }
 

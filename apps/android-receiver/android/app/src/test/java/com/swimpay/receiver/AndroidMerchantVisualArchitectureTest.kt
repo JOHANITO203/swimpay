@@ -222,7 +222,7 @@ class AndroidMerchantVisualArchitectureTest {
         val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
         val mainActivity = File("src/main/java/com/swimpay/receiver/MainActivity.kt").readText()
 
-        assertTrue(premiumApp.contains("activeRuntime.loadBanks()"))
+        assertTrue(premiumApp.contains("activeRuntime.loadBanks(enabledBankProfileIds = receiverRuntimeConfigStore?.load()?.enabledBankProfileIds ?: emptySet())"))
         assertTrue(premiumApp.contains("bankTargetsState = banksState"))
         assertTrue(premiumOnboarding.contains("bankTargetsState: PremiumScreenState<PremiumBanksUiState>"))
         assertFalse(premiumOnboarding.contains("\"Sberbank\" to \"Détectée\""))

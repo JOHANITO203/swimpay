@@ -110,6 +110,9 @@ class AndroidEncryptedOutboxStore(
         require(!value.contains("raw_body", ignoreCase = true)) {
             "raw body must not be stored"
         }
+        require(!value.contains(Regex("raw_card|card_number|source_card|pan", RegexOption.IGNORE_CASE))) {
+            "raw card data must not be stored"
+        }
         require(!value.contains(Regex("secret|token|password|api_key", RegexOption.IGNORE_CASE))) {
             "secrets must not be stored"
         }

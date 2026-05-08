@@ -210,7 +210,122 @@ class AndroidMerchantApiWiringTest {
         assertEquals("merchant-recover", session.displayHandle)
         assertEquals("Bearer spm_recovered_secret", AuthenticatedMerchantSession.mobile(session).authorizationHeader())
         assertFalse(recovery.visibleTexts().joinToString(" ").contains("spm_recovered_secret"))
+        assertFalse(recovery.visibleTexts().joinToString(" ").contains("google_id_token_secret"))
         assertFalse(session.toString().contains("spm_recovered_secret"))
+    }
+
+    @Test
+    fun androidAccountEntryContractRequiresDeviceLookupForCreateAndRecoveryEntry() {
+        val contract = AndroidMerchantAccountEntryContract.current()
+
+        assertEquals(AndroidMerchantAuthApiContract.DEVICE_LOOKUP_PATH, contract.deviceLookupPath)
+        assertTrue(contract.lookupIntents.contains(AndroidMerchantDeviceLookupIntent.CREATE_ACCOUNT))
+        assertTrue(contract.lookupIntents.contains(AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT))
+        assertTrue(contract.deviceLookupRequiredBeforeCreateAccount)
+        assertTrue(contract.deviceLookupRequiredBeforeGoogleRecovery)
+        assertFalse(contract.googleRequiredForCreateAccount)
+        assertFalse(contract.rawDeviceIdentifiersAllowed)
+    }
+
+    @Test
+    fun receiverDeviceRepositoryRegistersAndHeartbeatsWithMobileSession() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                201,
+                """
+                {
+                  "device_id": "dev_receiver_mobile",
+                  "merchant_id": "mch_mobile",
+                  "status": "pending",
+                  "server_time": "2026-05-08T12:00:00.000Z",
+                  "required_capabilities": ["notification_access", "signed_signal_upload", "local_redaction"]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "device_id": "dev_receiver_mobile",
+                  "device_status": "active",
+                  "status": "active",
+                  "server_time": "2026-05-08T12:00:01.000Z",
+                  "receiver_mode": "active",
+                  "warnings": [],
+                  "required_actions": []
+                }
+                """.trimIndent()
+            )
+        )
+        val repository = AndroidReceiverDeviceApiRepository(
+            transport = transport,
+            backendBaseUrl = "https://staging.swimpay.pro/"
+        )
+        val session = AuthenticatedMerchantSession.mobile(
+            merchantId = "mch_mobile",
+            mobileSessionToken = "spm_mobile_session_secret"
+        )
+
+        val result = repository.registerAndHeartbeat(
+            session = session,
+            enabledBankProfileIds = setOf("sber_ru", "unsupported_bank"),
+            signingKey = "spk_runtime_signing_key",
+            notificationAccessEnabled = true,
+            appVersion = "0.1.0",
+            androidVersion = "15"
+        )
+
+        assertEquals(AndroidMerchantAuthResultStatus.SUCCESS, result.status)
+        assertEquals("dev_receiver_mobile", result.deviceState?.deviceId)
+        assertEquals("active", result.deviceState?.deviceStatus)
+        assertEquals("https://staging.swimpay.pro", result.deviceState?.backendBaseUrl)
+        assertEquals("Bearer spm_mobile_session_secret", transport.requests[0].headers["Authorization"])
+        assertEquals("/v1/receiver-devices/register", transport.requests[0].path)
+        assertEquals("/v1/receiver-devices/heartbeat", transport.requests[1].path)
+        assertTrue(transport.requests[0].body.contains("\"selected_banks\":[\"sber_ru\"]"))
+        assertTrue(transport.requests[0].body.contains("\"public_key\":\"spk_runtime_signing_key\""))
+        assertTrue(transport.requests[1].body.contains("\"allowed_bank_profile_ids\":[\"sber_ru\"]"))
+        assertFalse(result.safeMessage.contains("spk_runtime_signing_key"))
+    }
+
+    @Test
+    fun androidAuthRepositoryLinksGoogleThroughBackendWithoutExposingTokenInResult() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "linked": true,
+                  "provider": "google",
+                  "purpose": "account_recovery",
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
+        )
+        val repository = AndroidMerchantAuthApiRepository(
+            transport = transport,
+            deviceProofProvider = StaticAndroidMerchantDeviceProofProvider(
+                AndroidMerchantDeviceProof(
+                    installPublicKey = "install_public_key_link",
+                    challengeId = "challenge_link",
+                    challengeSignature = "signature_link"
+                )
+            )
+        )
+        val session = AuthenticatedMerchantSession.mobile(
+            merchantId = "mch_mobile",
+            mobileSessionToken = "spm_mobile_session_secret"
+        )
+
+        val linked = repository.googleLink(session, "google_id_token_secret")
+
+        assertEquals(AndroidMerchantAuthResultStatus.SUCCESS, linked.status)
+        assertEquals(AndroidMerchantAuthApiContract.GOOGLE_LINK_PATH, transport.requests.single().path)
+        assertEquals("Bearer spm_mobile_session_secret", transport.requests.single().headers["Authorization"])
+        assertTrue(transport.requests.single().body.contains("\"id_token\":\"google_id_token_secret\""))
+        assertFalse(linked.visibleTexts().joinToString(" ").contains("google_id_token_secret"))
+        assertFalse(linked.visibleTexts().joinToString(" ").contains("spm_mobile_session_secret"))
     }
 
     @Test

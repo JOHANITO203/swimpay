@@ -1,5 +1,6 @@
 package com.swimpay.receiver
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -34,6 +35,12 @@ class MainActivity : ComponentActivity() {
         )
         val onboardingCompletionStore = SharedPreferencesPremiumOnboardingStateStore(this)
         val mobileMerchantSessionStore = SharedPreferencesPremiumMobileMerchantSessionStore(this)
+        val receiverDeviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(this))
+        val receiverRuntimeConfigStore = ReceiverRuntimeConfigStore(this)
+        val receiverDeviceRepository = AndroidReceiverDeviceApiRepository(
+            transport = merchantTransport,
+            backendBaseUrl = baseUrl
+        )
         setContent {
             SwimPayMerchantTheme {
                 PremiumMerchantApp(
@@ -41,6 +48,11 @@ class MainActivity : ComponentActivity() {
                     onboardingCompletionStore = onboardingCompletionStore,
                     mobileMerchantSessionStore = mobileMerchantSessionStore,
                     accountAuthRepository = accountAuthRepository,
+                    receiverDeviceRepository = receiverDeviceRepository,
+                    receiverDeviceStateStore = receiverDeviceStateStore,
+                    receiverRuntimeConfigStore = receiverRuntimeConfigStore,
+                    receiverAppVersion = BuildConfig.VERSION_NAME,
+                    receiverAndroidVersion = Build.VERSION.RELEASE ?: "unknown",
                     mobileRuntimeFactory = { mobileSession ->
                         PremiumMerchantRuntime.mobileSession(
                             mobileSession = mobileSession,

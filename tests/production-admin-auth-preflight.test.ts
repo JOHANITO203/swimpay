@@ -53,6 +53,24 @@ describe('production admin auth and secret injection preflight', () => {
     expect(result.summary.noCommittedProductionSecrets).toBe(true);
   });
 
+  test('production compose override disables web/API development merchant fallbacks', () => {
+    const override = readFileSync(join(root, 'infra/docker-compose.production-admin-auth.override.yml'), 'utf8');
+    const compose = readFileSync(join(root, 'infra/docker-compose.yml'), 'utf8');
+
+    expect(override).toContain('NODE_ENV: production');
+    expect(override).toContain('ADMIN_AUTH_MODE: signed_token');
+    expect(override).toContain('SWIMPAY_ALLOW_DEV_MERCHANT_SESSION: "false"');
+    expect(override).toContain('MERCHANT_INTEGRATION_BEARER_TOKEN: ""');
+    expect(override).toContain('SWIMPAY_ADMIN_TOKEN: ""');
+    expect(override).not.toContain('test_mch');
+    expect(override).not.toContain('change_me');
+
+    expect(compose).toContain('NODE_ENV: ${NODE_ENV:-production}');
+    expect(compose).toContain('ADMIN_AUTH_MODE: ${ADMIN_AUTH_MODE:-signed_token}');
+    expect(compose).toContain('SWIMPAY_ALLOW_DEV_MERCHANT_SESSION: ${SWIMPAY_ALLOW_DEV_MERCHANT_SESSION:-false}');
+    expect(compose).toContain('ADMIN_TOKEN_HMAC_SECRET: ${ADMIN_TOKEN_HMAC_SECRET:?set ADMIN_TOKEN_HMAC_SECRET from external secret storage}');
+  });
+
   test('renders a safe report without raw tokens or secrets', () => {
     const report = renderProductionAdminAuthPreflightReport(
       inspectProductionAdminAuthPreflight({

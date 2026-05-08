@@ -50,7 +50,7 @@ describe('minimal admin console api', () => {
     expect(profiles.json().bank_profiles[0]).toMatchObject({
       bankProfileId: 'sberbank_ru',
       status: 'learning',
-      autoConfirmStatus: 'disabled'
+      v1ManualReviewReadiness: 'disabled'
     });
     expect(templates.statusCode).toBe(200);
     expect(templates.json().templates[0]).toMatchObject({
@@ -88,6 +88,8 @@ describe('minimal admin console api', () => {
         template_id: 'tpl_01'
       }
     });
+    expect(profiles.body).not.toMatch(/autoConfirm|auto_confirm/iu);
+    expect([templates.body, auditEvents.body].join('\n')).not.toMatch(/auto_confirm_allowed_by_template/iu);
     expect([profiles.body, templates.body, bankAppSignatures.body, auditEvents.body].join('\n')).not.toContain('+79991234567');
     expect([profiles.body, templates.body, bankAppSignatures.body, auditEvents.body].join('\n')).not.toContain('raw notification');
   });
@@ -148,9 +150,10 @@ describe('minimal admin console api', () => {
       payloadRedacted: {
         cert_sha256_masked: 'fea43e...99a2ea',
         trusted: false,
-        auto_confirm_enabled: false
+        v1_manual_review_only: true
       }
     });
+    expect(response.body).not.toMatch(/auto_confirm|autoConfirm|auto-confirm/iu);
     expect(response.body).not.toContain('fea43e01fea43e01fea43e01fea43e01fea43e01fea43e01fea43e01fea43e01');
     expect(response.body).not.toContain('+79991234567');
     expect(response.body).not.toContain('raw notification');
@@ -175,7 +178,7 @@ describe('minimal admin console api', () => {
       bank_profile_id: 'sberbank_ru',
       status: 'degraded',
       false_positive_count: 0,
-      auto_confirm_allowed_by_template: false,
+      v1_manual_review_ready: false,
       audit_event_id: 'aud_admin_01'
     });
     expect(repository.templates[0]?.status).toBe('degraded');
@@ -214,7 +217,7 @@ describe('minimal admin console api', () => {
     expect(action.json()).toMatchObject({
       template_id: 'tpl_01',
       status: 'review_only',
-      auto_confirm_allowed_by_template: false,
+      v1_manual_review_ready: false,
       audit_event_id: 'aud_admin_01'
     });
     expect(repository.auditEvents[0]?.eventType).toBe(AdminAuditEventTypes.TEMPLATE_REVIEW_ONLY);
@@ -290,17 +293,17 @@ describe('minimal admin console api', () => {
       template_id: 'tpl_trusted',
       status: 'trusted',
       false_positive_count: 0,
-      auto_confirm_allowed_by_template: true
+      v1_manual_review_ready: true
     });
     expect(repository.auditEvents[0]).toMatchObject({
       eventType: AdminAuditEventTypes.TEMPLATE_PROMOTED,
       payloadRedacted: {
-        auto_confirm_allowed_by_template: true
+        v1_manual_review_ready: true
       }
     });
   });
 
-  it('marks false positives review_only and disables template auto-confirm candidate status', async () => {
+  it('marks false positives review_only and clears template V1 manual review readiness', async () => {
     const repository = buildAdminRepository({
       templates: [{ ...trustedCandidateTemplate(), status: 'trusted' }],
       verifiedBankAppProfiles: ['sberbank_ru']
@@ -328,12 +331,12 @@ describe('minimal admin console api', () => {
     expect(falsePositive.json()).toMatchObject({
       status: 'review_only',
       false_positive_count: 1,
-      auto_confirm_allowed_by_template: false
+      v1_manual_review_ready: false
     });
     expect(disable.statusCode).toBe(200);
     expect(disable.json()).toMatchObject({
       status: 'disabled',
-      auto_confirm_allowed_by_template: false
+      v1_manual_review_ready: false
     });
     expect(repository.templates[0]).toMatchObject({
       status: 'disabled',
@@ -583,7 +586,7 @@ function buildAdminRepository(
         reliabilityIndex: 0,
         unknownRate24h: 0.04,
         driftRate7d: 0.02,
-        autoConfirmStatus: 'disabled',
+        v1ManualReviewReadiness: 'disabled',
         updatedAt: '2026-05-02T10:00:00.000Z'
       }
     ],

@@ -107,7 +107,7 @@ fun PremiumOnboardingFlow(
     notificationAccessEnabled: Boolean,
     bankTargetsState: PremiumScreenState<PremiumBanksUiState> = PremiumScreenState.loading(),
     openNotificationSettings: () -> Unit,
-    onDone: () -> Unit
+    onDone: (PremiumOnboardingSessionState) -> Unit
 ) {
     var state by remember {
         mutableStateOf(PremiumOnboardingSessionState(notificationAccessEnabled = notificationAccessEnabled))
@@ -129,7 +129,7 @@ fun PremiumOnboardingFlow(
     LaunchedEffect(state.onboardingCompleted, state.skippedConnectedSite) {
         if (state.onboardingCompleted && state.skippedConnectedSite) {
             delay(650)
-            onDone()
+            onDone(state)
         }
     }
 
@@ -142,7 +142,7 @@ fun PremiumOnboardingFlow(
         }
         state = moved
         if (moved.onboardingCompleted && !moved.skippedConnectedSite) {
-            onDone()
+            onDone(moved)
         }
     }
 

@@ -2388,3 +2388,16 @@ Safety checks:
 - Confirmed active runtime remains manual-confirmation-only and public webhooks remain final-event-only.
 - Identified must-fix items before real notification capture: non-debug Android upload transport, synthetic/debug hash vocabulary, and active admin/template auto-confirm vocabulary.
 - No real bank notification was processed, no public production deploy was started, no auto-confirmation was enabled, and no public webhook semantics changed.
+
+# 2026-05-08T13:05:00+03:00 - Staging-prod Android upload hardening
+
+- Created tasks 623 through 627 and completed the active task queue.
+- Added non-debug Android upload transport from encrypted redacted outbox payloads to `/v1/receiver/signals`.
+- Added safe Android upload guards for raw notification fields, raw phone/card/card-number/PAN fields and `raw_text_present=true`.
+- Wired `SignalUploadWorker` to use the real non-debug flusher while preserving debug-only smoke behavior.
+- Allowed Android mobile sessions to register and heartbeat receiver devices without dev bearer or web CSRF, while web BFF session writes remain CSRF-protected.
+- Wired Android onboarding completion to receiver registration, heartbeat, persisted receiver device state and supported-bank runtime config.
+- Neutralized active admin/operator `auto_confirm*` vocabulary to manual-review readiness language.
+- Hardened main Compose defaults toward staging/prod-safe auth and kept local dev opt-in explicit in `.env.example`.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.

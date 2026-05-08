@@ -14,12 +14,19 @@ import {
   serializeSessionCookie
 } from './auth-bff.js';
 import { deriveReceiverDeviceOperationalStatus } from './receiver-devices.js';
+import { createReceiverSignalSignature } from './signals.js';
 import type {
   CreateReceiverDeviceInput,
   ReceiverDeviceRepository,
   StoredReceiverDeviceRecord,
   UpdateReceiverHeartbeatInput
 } from './receiver-devices.js';
+import type {
+  ReceiverSignalDevice,
+  ReceiverSignalRepository,
+  SignalIngestionInput,
+  SignalIngestionResult
+} from './signals.js';
 
 class InMemoryReceiverDeviceRepository implements ReceiverDeviceRepository {
   public readonly devices = new Map<string, StoredReceiverDeviceRecord>();
@@ -65,6 +72,58 @@ class ForeignKeyFailingReceiverDeviceRepository extends InMemoryReceiverDeviceRe
     const error = new Error('insert or update on table "receiver_devices" violates foreign key constraint');
     (error as Error & { code?: string }).code = '23503';
     throw error;
+  }
+}
+
+class ReceiverDeviceBackedSignalRepository implements ReceiverSignalRepository {
+  public readonly storedSignals: SignalIngestionInput[] = [];
+  private readonly eventIds = new Set<string>();
+  private readonly notificationHashes = new Set<string>();
+
+  constructor(private readonly receiverDevices: InMemoryReceiverDeviceRepository) {}
+
+  async getReceiverDevice(params: { merchantId: string; deviceId: string }): Promise<ReceiverSignalDevice | null> {
+    const device = this.receiverDevices.devices.get(params.deviceId);
+    if (!device || device.merchantId !== params.merchantId) {
+      return null;
+    }
+
+    return {
+      id: device.id,
+      merchantId: device.merchantId,
+      publicKey: device.publicKey,
+      lastLocalCounter: device.lastLocalCounter,
+      status: device.status
+    };
+  }
+
+  async ingestSignal(input: SignalIngestionInput): Promise<SignalIngestionResult> {
+    const device = this.receiverDevices.devices.get(input.signal.deviceId);
+    if (!device || device.merchantId !== input.signal.merchantId) {
+      return { kind: 'device_not_found' };
+    }
+
+    if (input.signal.localCounter <= device.lastLocalCounter) {
+      return { kind: 'local_counter_regression' };
+    }
+
+    if (this.eventIds.has(input.signal.eventId)) {
+      return { kind: 'duplicate_event_id' };
+    }
+
+    if (this.notificationHashes.has(input.signal.notificationHash)) {
+      return { kind: 'duplicate_notification_hash' };
+    }
+
+    this.eventIds.add(input.signal.eventId);
+    this.notificationHashes.add(input.signal.notificationHash);
+    this.receiverDevices.devices.set(device.id, {
+      ...device,
+      lastLocalCounter: input.signal.localCounter,
+      updatedAt: input.signal.receivedAt
+    });
+    this.storedSignals.push(input);
+    return { kind: 'stored', signalId: input.signal.id };
   }
 }
 
@@ -244,6 +303,152 @@ describe('receiver device api', () => {
       device_id: 'prod_receiver_01',
       status: 'active',
       receiver_mode: 'active'
+    });
+  });
+
+  test('registers and heartbeats a receiver through Android mobile session without dev bearer or CSRF', async () => {
+    const repository = new InMemoryReceiverDeviceRepository();
+    const signalRepository = new ReceiverDeviceBackedSignalRepository(repository);
+    const authBffRepository = new InMemoryAuthBffRepository();
+    const server = buildApiServer({
+      environment: 'production',
+      authBffRepository,
+      receiverDeviceRepository: repository,
+      signalRepository,
+      eventPublisher: { publish: async () => {} },
+      signalIdGenerator: () => 'sig_mobile_runtime_01',
+      idGenerator: {
+        orderId: () => 'ord_unused',
+        paymentSessionId: () => 'ps_unused',
+        auditEventId: () => 'aud_receiver_mobile_01',
+        referenceCode: () => 'SWP-UNUSED'
+      },
+      receiverDeviceIdGenerator: () => 'mobile_receiver_01',
+      clock: () => new Date('2026-05-02T11:00:00.000Z'),
+      healthChecks: {
+        database: async () => 'skipped',
+        nats: async () => 'skipped',
+        valkey: async () => 'skipped'
+      }
+    });
+
+    const account = await server.inject({
+      method: 'POST',
+      url: '/v1/android-merchant/auth/create-account',
+      payload: {
+        profile_type: 'personal',
+        device_proof: {
+          install_public_key: 'install_mobile_receiver',
+          challenge_id: 'challenge_mobile_receiver',
+          challenge_signature: 'signature_mobile_receiver'
+        }
+      }
+    });
+    expect(account.statusCode).toBe(201);
+    const token = account.json().mobile_session.token as string;
+    const merchantId = account.json().account.merchant_id as string;
+
+    const registered = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver-devices/register',
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        device_name: 'Android receiver',
+        public_key: 'mobile_signal_hmac_key',
+        app_version: '1.0.0',
+        android_version: '15',
+        selected_banks: ['sber_ru']
+      }
+    });
+
+    expect(registered.statusCode).toBe(201);
+    expect(registered.json()).toMatchObject({
+      device_id: 'mobile_receiver_01',
+      merchant_id: merchantId,
+      status: 'pending'
+    });
+    expect(registered.body).not.toContain('mobile_signal_hmac_key');
+    expect(repository.devices.get('mobile_receiver_01')).toMatchObject({
+      merchantId,
+      publicKey: 'mobile_signal_hmac_key'
+    });
+
+    const heartbeat = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver-devices/heartbeat',
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        device_id: 'mobile_receiver_01',
+        notification_access_enabled: true,
+        listener_connected: true,
+        allowed_bank_profile_ids: ['sber_ru'],
+        queue_length: 0,
+        last_signal_observed_at: null,
+        app_version: '1.0.1',
+        android_version: '15',
+        timestamp: '2026-05-02T11:00:00.000Z',
+        signature: 'heartbeat_signature'
+      }
+    });
+
+    expect(heartbeat.statusCode).toBe(200);
+    expect(heartbeat.json()).toMatchObject({
+      device_id: 'mobile_receiver_01',
+      status: 'active',
+      receiver_mode: 'active'
+    });
+
+    const signal = {
+      event_id: 'evt_mobile_runtime_01',
+      device_id: 'mobile_receiver_01',
+      merchant_id: merchantId,
+      bank_profile_id: 'sber_ru',
+      package_name: 'TO_VERIFY',
+      package_cert_sha256: 'TO_VERIFY',
+      notification_hash: 'a'.repeat(64),
+      semantic_hash: 'b'.repeat(64),
+      local_counter: 1,
+      snapshot_count: 1,
+      coalesced: true,
+      observed_at: '2026-05-02T11:00:00.000Z',
+      amount_minor: 13700,
+      currency: 'RUB',
+      sender_phone_hmac: 'hmac_phone',
+      sender_phone_masked: '<PHONE>',
+      reference_hmac: 'hmac_ref',
+      reference_code_masked: '<REFERENCE>',
+      direction_hint: 'incoming_customer_transfer',
+      parser_hint: 'android-listener-runtime-redacted',
+      signal_quality_hint: 50,
+      redacted_title: 'Transfer <AMOUNT> <CURRENCY>',
+      redacted_body: 'Transfer from <PHONE>. <REFERENCE>',
+      raw_text_present: false
+    };
+
+    const upload = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver/signals',
+      payload: {
+        ...signal,
+        signature: createReceiverSignalSignature(signal, 'mobile_signal_hmac_key')
+      }
+    });
+
+    expect(upload.statusCode).toBe(201);
+    expect(upload.json()).toMatchObject({
+      signal_id: 'sig_mobile_runtime_01',
+      status: 'received',
+      accepted: true,
+      next_action: 'backend_decision_pending'
+    });
+    expect(upload.body).not.toContain('payment.confirmed');
+    expect(signalRepository.storedSignals).toHaveLength(1);
+    expect(signalRepository.storedSignals[0]?.payloadRedacted).toEqual({
+      title_redacted: 'Transfer <AMOUNT> <CURRENCY>',
+      body_redacted: 'Transfer from <PHONE>. <REFERENCE>',
+      snapshot_count: 1,
+      coalesced: true,
+      raw_text_present: false
     });
   });
 

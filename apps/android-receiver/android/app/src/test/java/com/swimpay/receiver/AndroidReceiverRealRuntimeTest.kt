@@ -109,6 +109,42 @@ class AndroidReceiverRealRuntimeTest {
     }
 
     @Test
+    fun realRuntimeOutboxRequiresRegisteredMerchantAndSigningConfig() {
+        val store = AndroidEncryptedOutboxStore(FakeEncryptedStorageAdapter())
+        val deviceStateStore = PersistentDeviceStateStore(InMemoryDeviceStateStorage())
+        deviceStateStore.save(
+            ReceiverDeviceState(
+                deviceId = "dev_runtime_01",
+                deviceStatus = "active",
+                serverTime = null,
+                appVersion = "0.1.0-test",
+                lastRegistrationAt = "2026-05-08T00:00:00.000Z",
+                lastHeartbeatAt = null,
+                backendBaseUrl = "http://127.0.0.1:8080"
+            )
+        )
+        val pipeline = ReceiverNotificationPipeline(debugEnabled = false, enabledBankPackages = setOf("ru.sberbankmobile"))
+        val result = pipeline.process(listOf(StagingSyntheticNotificationHarness.supportedBankSnapshot()))
+
+        val missingMerchant = ReceiverRuntimeOutboxController(
+            merchantId = "",
+            signingKey = "runtime_test_hmac_key",
+            deviceStateStore = deviceStateStore,
+            outboxStore = store
+        ).enqueueProcessedNotificationSignal(result)
+        val missingSigningKey = ReceiverRuntimeOutboxController(
+            merchantId = "mch_runtime_01",
+            signingKey = "",
+            deviceStateStore = deviceStateStore,
+            outboxStore = store
+        ).enqueueProcessedNotificationSignal(result)
+
+        assertFalse(missingMerchant.success)
+        assertFalse(missingSigningKey.success)
+        assertEquals(0, store.dueRecords("2026-05-08T00:02:00.000Z").size)
+    }
+
+    @Test
     fun stagingSyntheticHarnessExercisesRuntimeWithoutRealNotificationCapture() {
         val result = StagingSyntheticNotificationHarness.runSmoke(
             enabledBankPackages = setOf("ru.sberbankmobile")
@@ -149,4 +185,3 @@ class AndroidReceiverRealRuntimeTest {
         assertTrue(sourceCorpus.contains("enabledBankPackages"))
     }
 }
-

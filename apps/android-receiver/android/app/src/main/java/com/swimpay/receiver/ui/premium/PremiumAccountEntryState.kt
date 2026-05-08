@@ -59,8 +59,8 @@ data class PremiumAccountRecoveryUiState(
         fun pending(): PremiumAccountRecoveryUiState {
             return PremiumAccountRecoveryUiState(
                 status = PremiumAccountRecoveryStatus.PENDING,
-                title = "Récupération en attente",
-                message = "La connexion existante sera vérifiée dès que ce moyen sera branché."
+                title = "Connexion Google",
+                message = "SwimPay vérifie le compte lié et prépare la session mobile."
             )
         }
 
@@ -88,6 +88,22 @@ data class PremiumAccountRecoveryUiState(
                 status = PremiumAccountRecoveryStatus.SUCCESS,
                 title = "Compte retrouvé",
                 message = "La session mobile peut maintenant être restaurée."
+            )
+        }
+        fun receiverSetup(): PremiumAccountRecoveryUiState {
+            return PremiumAccountRecoveryUiState(
+                status = PremiumAccountRecoveryStatus.PENDING,
+                title = "Activation du receiver",
+                message = "SwimPay enregistre ce telephone, les banques activees et la file d'envoi securisee."
+            )
+        }
+
+        fun receiverError(message: String): PremiumAccountRecoveryUiState {
+            return PremiumAccountRecoveryUiState(
+                status = PremiumAccountRecoveryStatus.ERROR,
+                title = "Receiver non active",
+                message = message,
+                actionLabel = "Reessayer"
             )
         }
     }

@@ -124,14 +124,46 @@ class PremiumAccountEntryStaticTest {
     }
 
     @Test
+    fun accountRecoveryCopyDescribesProductionBackendFlowNotFutureWiring() {
+        val stateSource = accountEntryStateSource()
+        val appSource = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
+        val combined = "$stateSource\n$appSource"
+
+        listOf(
+            "sera branch",
+            "sera disponible",
+            "aprÃ¨s connexion au backend",
+            "après connexion au backend"
+        ).forEach { devCopy ->
+            assertFalse("account recovery copy must not look pending/dev-only: $devCopy", combined.contains(devCopy, ignoreCase = true))
+        }
+
+        assertTrue(stateSource.contains("session mobile"))
+        assertTrue(stateSource.contains("Google"))
+    }
+
+    @Test
     fun accountEntryAppCallsBackendLookupCreateAndGoogleExchangeContracts() {
         val appSource = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
 
         assertTrue(appSource.contains("lookupDevice(AndroidMerchantDeviceLookupIntent.CREATE_ACCOUNT)"))
         assertTrue(appSource.indexOf("lookupDevice(AndroidMerchantDeviceLookupIntent.CREATE_ACCOUNT)") < appSource.indexOf("createAccount("))
+        assertTrue(appSource.contains("lookupDevice(AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT)"))
+        assertTrue(appSource.indexOf("lookupDevice(AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT)") < appSource.indexOf("googleExchange"))
         assertTrue(appSource.contains("googleExchange"))
         assertTrue(appSource.contains("googleLink"))
         assertTrue(appSource.contains("mobileMerchantSessionStore.save"))
+
+        val googleRecoverySource = sourceBetween(
+            appSource,
+            "PremiumRoute.LoginProviderChoice -> PremiumAccountLoginProviderScreen",
+            "PremiumRoute.Landing -> PremiumLandingScreen"
+        )
+        assertTrue(googleRecoverySource.indexOf("mobileMerchantSessionStore.save(result.mobileSession)") < googleRecoverySource.indexOf("route = PremiumNavigation.initialRoute"))
+        assertFalse(googleRecoverySource.contains("Log."))
+        assertFalse(googleRecoverySource.contains("println"))
+        assertFalse(googleRecoverySource.contains("idToken.toString"))
+        assertFalse(googleRecoverySource.contains("\${idToken"))
     }
 
     @Test
@@ -165,5 +197,13 @@ class PremiumAccountEntryStaticTest {
         assertTrue("missing source function $signature", start >= 0)
         val nextComposable = source.indexOf("\n@Composable", start + signature.length)
         return if (nextComposable >= 0) source.substring(start, nextComposable) else source.substring(start)
+    }
+
+    private fun sourceBetween(source: String, startMarker: String, endMarker: String): String {
+        val start = source.indexOf(startMarker)
+        assertTrue("missing source marker $startMarker", start >= 0)
+        val end = source.indexOf(endMarker, start + startMarker.length)
+        assertTrue("missing end marker $endMarker", end >= 0)
+        return source.substring(start, end)
     }
 }

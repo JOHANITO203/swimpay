@@ -475,6 +475,21 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return null;
   }
 
+  async function resolveReceiverConfigureContext(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    permission: MerchantPermission
+  ): Promise<{ merchantId: string; source: 'bff_session' | 'android_mobile_session' | 'dev_test_bearer' } | null> {
+    const androidContext = await resolveAndroidMerchantContext(request, reply);
+    if (androidContext) {
+      return androidContext;
+    }
+    if (reply.sent) {
+      return null;
+    }
+    return resolveMerchantContext(request, reply, permission, { requireCsrf: true });
+  }
+
   async function requireAndroidMerchantMobileSession(
     request: FastifyRequest,
     reply: FastifyReply
@@ -1433,9 +1448,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/receiver-devices/register', async (request, reply) => {
-    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.RECEIVER_CONFIGURE, {
-      requireCsrf: true
-    });
+    const merchantContext = await resolveReceiverConfigureContext(request, reply, MerchantPermissions.RECEIVER_CONFIGURE);
     if (!merchantContext) {
       if (reply.sent) return reply;
       return reply.status(401).send(
@@ -1489,9 +1502,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/receiver-devices/heartbeat', async (request, reply) => {
-    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.RECEIVER_CONFIGURE, {
-      requireCsrf: true
-    });
+    const merchantContext = await resolveReceiverConfigureContext(request, reply, MerchantPermissions.RECEIVER_CONFIGURE);
     if (!merchantContext) {
       if (reply.sent) return reply;
       return reply.status(401).send(

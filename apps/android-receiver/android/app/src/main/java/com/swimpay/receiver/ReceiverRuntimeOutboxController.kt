@@ -19,6 +19,12 @@ class ReceiverRuntimeOutboxController(
     private val nowIso: () -> String = { java.time.Instant.now().toString() }
 ) {
     fun enqueueProcessedNotificationSignal(result: ReceiverNotificationPipelineResult): ReceiverRuntimeOutboxResult {
+        if (merchantId.isBlank()) {
+            return ReceiverRuntimeOutboxResult(success = false, safeMessage = "receiver merchant runtime config required")
+        }
+        if (signingKey.isBlank()) {
+            return ReceiverRuntimeOutboxResult(success = false, safeMessage = "receiver signing runtime config required")
+        }
         val payload = result.payload
             ?: return ReceiverRuntimeOutboxResult(success = false, safeMessage = "notification pipeline payload missing")
         val deviceState = deviceStateStore.load()

@@ -68,8 +68,11 @@ class PersistentDeviceStateStore(
         require(!serialized.contains(Regex("secret|token|password|api_key", RegexOption.IGNORE_CASE))) {
             "secrets must not be stored"
         }
-        require(state.backendBaseUrl.startsWith("http://127.0.0.1:")) {
-            "debug backend URL must use adb reverse localhost"
+        require(
+            state.backendBaseUrl.startsWith("http://127.0.0.1:") ||
+                state.backendBaseUrl.startsWith("https://")
+        ) {
+            "receiver backend URL must use HTTPS outside adb reverse localhost"
         }
     }
 }

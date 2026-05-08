@@ -24,7 +24,7 @@ export interface AdminBankProfileSummary {
   reliabilityIndex: number;
   unknownRate24h: number;
   driftRate7d: number;
-  autoConfirmStatus: 'disabled' | 'review_only' | 'shadow_testing' | 'trusted_low_amount' | 'trusted';
+  v1ManualReviewReadiness: 'disabled' | 'review_only' | 'shadow_testing' | 'trusted_low_amount' | 'trusted';
   updatedAt: string;
 }
 
@@ -566,7 +566,8 @@ export class InMemoryAdminRepository implements AdminRepository {
       .filter((event) => !input.actorId || event.actorId === input.actorId)
       .filter((event) => !input.createdAfter || event.createdAt >= input.createdAfter)
       .filter((event) => !input.createdBefore || event.createdAt <= input.createdBefore)
-      .slice(0, input.limit);
+      .slice(0, input.limit)
+      .map((event) => ({ ...event, payloadRedacted: toAdminSafeAuditPayload(event.payloadRedacted) }));
   }
 
   public async updateTemplateStatus(input: AdminTemplateStatusActionInput): Promise<AdminTemplateStatusActionResult> {
@@ -729,8 +730,7 @@ export function toAdminTemplateActionResponse(result: Extract<AdminTemplateStatu
     bank_profile_id: result.template.bankProfileId,
     status: result.template.status,
     false_positive_count: result.template.falsePositiveCount,
-    auto_confirm_allowed_by_template:
-      (result.template.status === 'trusted_low_amount' || result.template.status === 'trusted') && result.template.falsePositiveCount === 0,
+    v1_manual_review_ready: isTemplateV1ManualReviewReady(result.template),
     audit_event_id: result.auditEvent.auditEventId
   };
 }
@@ -756,12 +756,15 @@ function buildTemplateAuditEvent(
       bank_profile_id: template.bankProfileId,
       status: input.status,
       false_positive_count: template.falsePositiveCount,
-      auto_confirm_allowed_by_template:
-        (template.status === 'trusted_low_amount' || template.status === 'trusted') && template.falsePositiveCount === 0,
+      v1_manual_review_ready: isTemplateV1ManualReviewReady(template),
       reason: input.reason
     },
     createdAt: input.occurredAt
   };
+}
+
+function isTemplateV1ManualReviewReady(template: AdminTemplateSummary): boolean {
+  return (template.status === 'trusted_low_amount' || template.status === 'trusted') && template.falsePositiveCount === 0;
 }
 
 function buildBankAppSignatureAuditEvent(
@@ -935,7 +938,7 @@ function toBankProfileSummary(row: AdminBankProfileRow): AdminBankProfileSummary
     reliabilityIndex: Number(row.reliability_index),
     unknownRate24h: Number(row.unknown_rate_24h),
     driftRate7d: Number(row.drift_rate_7d),
-    autoConfirmStatus: String(row.auto_confirm_status) as AdminBankProfileSummary['autoConfirmStatus'],
+    v1ManualReviewReadiness: String(row.auto_confirm_status) as AdminBankProfileSummary['v1ManualReviewReadiness'],
     updatedAt: new Date(row.updated_at).toISOString()
   };
 }
@@ -1030,9 +1033,29 @@ function toAuditEventSummary(row: AdminAuditRow): AdminAuditEventSummary {
     objectId: String(row.object_id),
     actorType: row.actor_type ?? undefined,
     actorId: row.actor_id ?? undefined,
-    payloadRedacted: toPayloadRecord(row.payload_redacted),
+    payloadRedacted: toAdminSafeAuditPayload(toPayloadRecord(row.payload_redacted)),
     createdAt: new Date(row.created_at).toISOString()
   };
+}
+
+function toAdminSafeAuditPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const safePayload: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (key === 'auto_confirm_enabled') {
+      safePayload.v1_manual_review_only = value !== true;
+      continue;
+    }
+
+    if (key === 'auto_confirm_allowed_by_template') {
+      safePayload.v1_manual_review_ready = value === true;
+      continue;
+    }
+
+    safePayload[key] = value;
+  }
+
+  return safePayload;
 }
 
 function toPayloadRecord(value: unknown): Record<string, unknown> {

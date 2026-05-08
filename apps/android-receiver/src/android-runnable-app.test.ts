@@ -323,7 +323,7 @@ describe('android device-side network smoke wiring', () => {
 
     expect(deviceState).toContain('SharedPreferencesDeviceStateStorage');
     expect(deviceState).toContain('raw phone must not be stored');
-    expect(deviceState).toContain('debug backend URL must use adb reverse localhost');
+    expect(deviceState).toContain('receiver backend URL must use HTTPS outside adb reverse localhost');
     expect(outboxStore).toContain('SharedPreferencesOutboxStorageAdapter');
     expect(outboxStore).toContain('notificationHash == record.notificationHash');
     expect(outboxStore).toContain('ackReceivedAt');

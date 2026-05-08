@@ -7,6 +7,9 @@ services:
       DEV_ADMIN_TOKEN: ""
       DEV_ADMIN_OPERATOR_ID: ""
       DEV_ADMIN_ROLE: ""
+      MERCHANT_INTEGRATION_BEARER_TOKEN: ""
+      SWIMPAY_ALLOW_DEV_MERCHANT_SESSION: "false"
+      SWIMPAY_ADMIN_TOKEN: ""
 
   swimpay-web:
     environment:
@@ -16,3 +19,6 @@ services:
       DEV_ADMIN_TOKEN: ""
       DEV_ADMIN_OPERATOR_ID: ""
       DEV_ADMIN_ROLE: ""
+      MERCHANT_INTEGRATION_BEARER_TOKEN: ""
+      SWIMPAY_ALLOW_DEV_MERCHANT_SESSION: "false"
+      SWIMPAY_ADMIN_TOKEN: ""

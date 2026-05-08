@@ -1,5 +1,19 @@
 # Blockers
 
+## Staging-prod Android upload hardening
+
+- Resolved: non-debug Android Receiver now has a real safe upload path from encrypted redacted outbox payloads to `/v1/receiver/signals`.
+- Resolved: Android upload transport allows HTTPS staging/prod backends and localhost adb-reverse smoke only.
+- Resolved: Android upload path rejects raw notification keys, raw phone/card/card-number/PAN keys and `raw_text_present=true` before upload.
+- Resolved: Android mobile session can register and heartbeat a receiver without dev bearer or web CSRF, while web BFF session mutations remain CSRF-protected.
+- Resolved: backend accepts a signed Android receiver signal after mobile-session receiver registration and does not emit `payment.confirmed` from capture/upload alone.
+- Resolved: active admin/operator surfaces now use manual-review readiness vocabulary instead of active `auto_confirm*` capability vocabulary.
+- Resolved: main Compose defaults now fail toward staging/prod-safe auth posture instead of silent dev admin/session fallback.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
+- Remaining blocker before real capture: reinstall/run the APK on the operator device, verify staging receiver registration/heartbeat, then start only one explicitly operator-approved real notification capture.
+- Remaining optional cleanup: inert legacy `auto_confirm*` schema/template/fixture strings can be migrated in a dedicated zero-string vocabulary sprint if needed for external audit optics.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad app enumeration.
+
 ## INTEL-TRUTH SwimPay Intelligence Source-of-Truth Audit
 
 - Completed: central source truth created at `.swimpay-agent/SWIMPAY_INTELLIGENCE_SOURCE_OF_TRUTH.md`.

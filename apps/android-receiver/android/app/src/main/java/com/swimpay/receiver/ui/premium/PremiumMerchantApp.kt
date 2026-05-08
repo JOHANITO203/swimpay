@@ -12,8 +12,12 @@ import com.swimpay.receiver.AndroidMerchantAuthApiRepository
 import com.swimpay.receiver.AndroidMerchantAuthResultStatus
 import com.swimpay.receiver.AndroidMerchantDeviceLookupIntent
 import com.swimpay.receiver.AndroidMerchantDeviceLookupStatus
+import com.swimpay.receiver.AndroidReceiverDeviceApiRepository
 import com.swimpay.receiver.AuthenticatedMerchantSession
 import com.swimpay.receiver.MerchantConfigurationChecklist
+import com.swimpay.receiver.PersistentDeviceStateStore
+import com.swimpay.receiver.ReceiverRuntimeConfig
+import com.swimpay.receiver.ReceiverRuntimeConfigStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -24,6 +28,11 @@ fun PremiumMerchantApp(
     onboardingCompletionStore: PremiumOnboardingCompletionStore = InMemoryPremiumOnboardingStateStore(),
     mobileMerchantSessionStore: PremiumMobileMerchantSessionStore = InMemoryPremiumMobileMerchantSessionStore(),
     accountAuthRepository: AndroidMerchantAuthApiRepository? = null,
+    receiverDeviceRepository: AndroidReceiverDeviceApiRepository? = null,
+    receiverDeviceStateStore: PersistentDeviceStateStore? = null,
+    receiverRuntimeConfigStore: ReceiverRuntimeConfigStore? = null,
+    receiverAppVersion: String = "0.1.0",
+    receiverAndroidVersion: String = "unknown",
     googleIdTokenProvider: suspend () -> String? = { null },
     mobileRuntimeFactory: (PremiumMobileMerchantSession) -> PremiumMerchantRuntime = { PremiumMerchantRuntime.mobileSession(it) },
     notificationAccessEnabled: Boolean = true,
@@ -62,6 +71,58 @@ fun PremiumMerchantApp(
             else -> target
         }
     }
+    fun finishOnboarding(completedState: PremiumOnboardingSessionState) {
+        val session = mobileMerchantSessionStore.currentSession()
+        if (
+            session == null ||
+            receiverDeviceRepository == null ||
+            receiverDeviceStateStore == null ||
+            receiverRuntimeConfigStore == null
+        ) {
+            onboardingCompletionStore.markCompleted()
+            route = PremiumNavigation.afterOnboarding()
+            return
+        }
+
+        route = PremiumNavigation.openAccountRecovery(
+            PremiumAccountRecoveryUiState.receiverSetup(),
+            returnRoute = PremiumRoute.Onboarding
+        )
+        scope.launch {
+            val selectedBankIds = completedState.selectedBankIds
+            val signingKey = receiverRuntimeConfigStore.signingKeyOrCreate()
+            val result = withContext(Dispatchers.IO) {
+                receiverDeviceRepository.registerAndHeartbeat(
+                    session = AuthenticatedMerchantSession.mobile(session),
+                    enabledBankProfileIds = selectedBankIds,
+                    signingKey = signingKey,
+                    notificationAccessEnabled = notificationAccessEnabled,
+                    appVersion = receiverAppVersion,
+                    androidVersion = receiverAndroidVersion
+                )
+            }
+
+            if (result.status == AndroidMerchantAuthResultStatus.SUCCESS && result.deviceState != null) {
+                receiverRuntimeConfigStore.save(
+                    ReceiverRuntimeConfig(
+                        enabledBankProfileIds = selectedBankIds,
+                        merchantId = session.merchantId,
+                        signingKey = signingKey
+                    )
+                )
+                receiverDeviceStateStore.save(result.deviceState)
+                onboardingCompletionStore.markCompleted()
+                route = PremiumNavigation.afterOnboarding()
+            } else {
+                route = PremiumNavigation.openAccountRecovery(
+                    PremiumAccountRecoveryUiState.receiverError(
+                        result.safeMessage.ifBlank { "Receiver staging indisponible. Verifiez la connexion et reessayez." }
+                    ),
+                    returnRoute = PremiumRoute.Onboarding
+                )
+            }
+        }
+    }
 
     LaunchedEffect(route, activeRuntime) {
         when (val currentRoute = route) {
@@ -87,7 +148,9 @@ fun PremiumMerchantApp(
                 receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
             }
             PremiumRoute.Banks -> {
-                banksState = withContext(Dispatchers.IO) { activeRuntime.loadBanks() }
+                banksState = withContext(Dispatchers.IO) {
+                    activeRuntime.loadBanks(enabledBankProfileIds = receiverRuntimeConfigStore?.load()?.enabledBankProfileIds ?: emptySet())
+                }
             }
             PremiumRoute.ReceiverHealth -> {
                 receiverHealthState = withContext(Dispatchers.IO) { activeRuntime.loadReceiverHealth(notificationAccessEnabled) }
@@ -109,7 +172,9 @@ fun PremiumMerchantApp(
             PremiumRoute.Security,
             is PremiumRoute.OrderDetail -> Unit
             PremiumRoute.Onboarding -> {
-                banksState = withContext(Dispatchers.IO) { activeRuntime.loadBanks() }
+                banksState = withContext(Dispatchers.IO) {
+                    activeRuntime.loadBanks(enabledBankProfileIds = receiverRuntimeConfigStore?.load()?.enabledBankProfileIds ?: emptySet())
+                }
             }
         }
     }
@@ -158,7 +223,7 @@ fun PremiumMerchantApp(
                     } else {
                         route = PremiumNavigation.openAccountRecovery(
                             PremiumAccountRecoveryUiState.error(
-                                message = result?.safeMessage ?: "La création du compte sera disponible après connexion au backend."
+                                message = result?.safeMessage ?: "Création du compte indisponible. Réessayez dans quelques instants."
                             ),
                             returnRoute = PremiumRoute.AccountProfileChoice
                         )
@@ -171,6 +236,17 @@ fun PremiumMerchantApp(
             onGoogleRecovery = {
                 route = PremiumNavigation.openAccountRecovery(PremiumAccountRecoveryUiState.pending())
                 scope.launch {
+                    val lookup = withContext(Dispatchers.IO) {
+                        accountAuthRepository?.lookupDevice(AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT)
+                    }
+                    if (lookup == null || lookup.status == AndroidMerchantAuthResultStatus.ERROR) {
+                        route = PremiumNavigation.openAccountRecovery(
+                            PremiumAccountRecoveryUiState.error(
+                                message = lookup?.safeMessage ?: "Impossible de vérifier ce téléphone pour le moment."
+                            )
+                        )
+                        return@launch
+                    }
                     val idToken = withContext(Dispatchers.IO) { googleIdTokenProvider() }
                     val result = if (!idToken.isNullOrBlank()) {
                         withContext(Dispatchers.IO) { accountAuthRepository?.googleExchange(idToken) }
@@ -187,7 +263,7 @@ fun PremiumMerchantApp(
                     } else {
                         route = PremiumNavigation.openAccountRecovery(
                             PremiumAccountRecoveryUiState.error(
-                                message = result?.safeMessage ?: "Google sera branche comme moyen de recuperation."
+                                message = result?.safeMessage ?: "Connexion Google annulée ou indisponible."
                             )
                         )
                     }
@@ -204,10 +280,7 @@ fun PremiumMerchantApp(
             notificationAccessEnabled = notificationAccessEnabled,
             bankTargetsState = banksState,
             openNotificationSettings = onOpenNotificationSettings,
-            onDone = {
-                onboardingCompletionStore.markCompleted()
-                route = PremiumNavigation.afterOnboarding()
-            }
+            onDone = { completedState -> finishOnboarding(completedState) }
         )
         is PremiumRoute.PaymentDetail -> PremiumPaymentDetailScreen(
             state = paymentDetailState,
@@ -286,7 +359,7 @@ fun PremiumMerchantApp(
                             } else {
                                 PremiumNavigation.openAccountRecovery(
                                     PremiumAccountRecoveryUiState.error(
-                                        message = result?.safeMessage ?: "Google sera disponible apres connexion au backend."
+                                        message = result?.safeMessage ?: "Association Google annulée ou indisponible."
                                     ),
                                     returnRoute = PremiumRoute.Security
                                 )

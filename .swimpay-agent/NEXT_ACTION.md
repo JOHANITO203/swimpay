@@ -1,5 +1,44 @@
 # Next Action
 
+generated_at: 2026-05-08T13:05:00+03:00
+
+## Latest staging-prod Android upload hardening
+
+Completed:
+
+1. Created tasks 623 through 627 and completed the active task queue.
+2. Added non-debug Android upload transport from encrypted outbox to `/v1/receiver/signals`.
+3. Guarded Android upload against raw notification, raw phone/card and unsafe payload leakage.
+4. Allowed authenticated Android mobile sessions to register and heartbeat receivers against the backend.
+5. Wired onboarding completion to receiver registration, heartbeat and persisted runtime bank-target config.
+6. Neutralized active admin/operator `auto_confirm*` capability vocabulary in favor of manual-review readiness copy.
+7. Hardened Compose defaults so staging/prod does not silently run with dev admin/session fallback.
+8. Created `.swimpay-agent/STAGING_PROD_HARDENING_REPORT.md`.
+
+Next recommended action:
+
+Run `REAL-CAPTURE-1`: operator-assisted staging APK reinstall and receiver registration.
+
+Required scope:
+
+- install the fresh APK on the operator device;
+- verify login/create-account -> onboarding -> receiver registration;
+- verify heartbeat against `https://staging.swimpay.pro`;
+- verify selected supported bank target is active;
+- run one operator-owned real notification capture only after the final capture-start command;
+- prove manual review only, then `payment.confirmed` only after merchant manual confirmation;
+- prove final-only webhook delivery to the staging external app.
+
+Do not do:
+
+- Do not process customer data.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values or secrets.
+
+---
+
 generated_at: 2026-05-08T11:45:00+03:00
 
 ## Latest INTEL-TRUTH SwimPay Intelligence Source-of-Truth Audit

@@ -6,6 +6,14 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `623_android_non_debug_signal_upload_transport` - status: completed - source: `tasks/623_android_non_debug_signal_upload_transport.md`
+- [x] `624_android_auth_login_onboarding_truth_hardening` - status: completed - source: `tasks/624_android_auth_login_onboarding_truth_hardening.md`
+- [x] `625_admin_auto_confirm_vocabulary_neutralization` - status: completed - source: `tasks/625_admin_auto_confirm_vocabulary_neutralization.md`
+- [x] `626_staging_prod_dev_surface_cleanup` - status: completed - source: `tasks/626_staging_prod_dev_surface_cleanup.md`
+- [x] `627_staging_prod_hardening_closeout` - status: completed - source: `tasks/627_staging_prod_hardening_closeout.md`
+
+## Previous Queue
+
 - [x] `612_intelligence_source_of_truth_inventory` - status: completed_with_findings - source: `tasks/612_intelligence_source_of_truth_inventory.md`
 - [x] `613_intelligence_tools_and_boundaries_map` - status: completed - source: `tasks/613_intelligence_tools_and_boundaries_map.md`
 - [x] `614_android_receiver_truth_audit` - status: completed_with_must_fix_before_real_capture - source: `tasks/614_android_receiver_truth_audit.md`

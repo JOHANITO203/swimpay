@@ -21,12 +21,12 @@ describe('operator evidence review web surface', () => {
     expect(response.body).toContain('production_trust_requested');
     expect(response.body).toContain('fea43e...99a2ea');
     expect(response.body).toContain('confiance production');
-    expect(response.body).toContain('validation automatique reste');
-    expect(response.body).toContain('double contrôle');
+    expect(response.body).toContain('confirmation marchand reste manuelle');
+    expect(response.body).toContain('double controle');
     expect(response.body).toContain('bank_evidence.approved_review_only');
     expect(response.body).toContain('bank_evidence.production_trust_requested');
     expect(response.body).toContain('trusted=false');
-    expect(response.body).toContain('auto_confirm_enabled=false');
+    expect(response.body).toContain('manual_review_only=true');
     expect(response.body).not.toContain(fullCertHash);
     expect(response.body).not.toContain('+79991234567');
     expect(response.body).not.toContain('raw notification');
@@ -34,7 +34,7 @@ describe('operator evidence review web surface', () => {
     expect(response.body).not.toContain('api_secret');
     expect(response.body).not.toContain('official_bank_confirmation');
     expect(response.body).not.toContain('bank_confirmed');
-    expect(response.body).not.toContain('auto_confirm_enabled=true');
+    expect(response.body).not.toMatch(/auto_confirm|autoConfirm|auto-confirm/iu);
   });
 
   it('renders a safe unavailable state when evidence APIs cannot be reached', async () => {

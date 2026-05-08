@@ -9,9 +9,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import android.util.Log
+import com.swimpay.receiver.AndroidMerchantBackendConfig
 import com.swimpay.receiver.BuildConfig
 import com.swimpay.receiver.DebugReceiverSmokeController
-import com.swimpay.receiver.DebugSmokeResult
 import com.swimpay.receiver.PersistentDeviceStateStore
 import com.swimpay.receiver.SharedPreferencesDeviceStateStorage
 import com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore
@@ -44,6 +44,11 @@ data class SignalUploadWorkDecision(
     }
 }
 
+private data class SignalUploadWorkerResult(
+    val success: Boolean,
+    val safeMessage: String
+)
+
 class SignalUploadWorker(
     appContext: Context,
     workerParameters: WorkerParameters
@@ -73,17 +78,23 @@ class SignalUploadWorker(
         }
 
         val outboxStore = AndroidEncryptedOutboxStore(AndroidKeystoreOutboxStorageAdapter(applicationContext))
-        val result = if (BuildConfig.DEBUG) {
-            DebugReceiverSmokeController(
+        val deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(applicationContext))
+        val result: SignalUploadWorkerResult = if (BuildConfig.DEBUG) {
+            val debugResult = DebugReceiverSmokeController(
                 debugEnabled = true,
-                deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(applicationContext)),
+                deviceStateStore = deviceStateStore,
                 outboxStore = outboxStore
             ).performAction("flush_outbox")
+            SignalUploadWorkerResult(success = debugResult.success, safeMessage = debugResult.safeMessage)
         } else {
-            DebugSmokeResult(
-                success = outboxStore.dueRecords("9999-12-31T23:59:59.999Z").isEmpty(),
-                safeMessage = "runtime outbox flush requires staging upload transport; no unsafe payload emitted"
+            val backendBaseUrl = deviceStateStore.load()?.backendBaseUrl
+                ?: AndroidMerchantBackendConfig.configuredBaseUrl()
+            val flushResult = SignalUploadFlusher.forBaseUrl(
+                outboxStore,
+                AndroidMerchantBackendConfig.normalizeBaseUrl(backendBaseUrl)
             )
+                .flushDue()
+            SignalUploadWorkerResult(success = flushResult.success, safeMessage = flushResult.safeMessage)
         }
 
         Log.i("SwimPaySignalWorker", "background outbox flush success=${result.success} message=${result.safeMessage}")
