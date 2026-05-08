@@ -789,6 +789,105 @@ class AndroidMerchantApiWiringTest {
         assertFalse(contracts.configurationTest.usesMockRepository)
         assertTrue(contracts.missingBackendEndpoints.isEmpty())
     }
+
+    @Test
+    fun developerIntegrationRepositoryUsesBackendWizardContractsAndShowOnceSecretsOnlyOnActions() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_test_mobile",
+                  "secret_key_masked": "sk_\u2022\u2022\u20221234",
+                  "webhook_secret_masked": "whsec_\u2022\u2022\u20229876",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"],
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                201,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_test_mobile",
+                  "secret_key_masked": "sk_\u2022\u2022\u20225678",
+                  "secret_key_once": "sk_test_show_once_android",
+                  "secret_key_show_once": true,
+                  "webhook_secret_masked": "whsec_\u2022\u20229876",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"],
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_test_mobile",
+                  "secret_key_masked": "sk_\u2022\u2022\u20225678",
+                  "webhook_secret_masked": "whsec_\u2022\u20224321",
+                  "webhook_secret_once": "whsec_show_once_android",
+                  "webhook_secret_show_once": true,
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"],
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                202,
+                """
+                {
+                  "status": "test_queued",
+                  "safe_status": "Safe test webhook queued.",
+                  "test_only": true,
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
+        )
+        val session = AuthenticatedMerchantSession.mobile("mch_mobile", "spm_mobile_session_secret")
+        val repository = MerchantDeveloperIntegrationApiRepository(transport)
+
+        val loaded = repository.load(session)
+        assertEquals(MerchantRepositoryState.SUCCESS, loaded.state)
+        assertEquals("pk_test_mobile", loaded.integration?.publicKey)
+        assertEquals(null, loaded.integration?.secretKeyOnce)
+        assertTrue(loaded.integration?.exportLines()?.contains("SWIMPAY_STAGING_SECRET_KEY=sk_\u2022\u2022\u20221234") == true)
+
+        val created = repository.createApiKey(session)
+        assertEquals(MerchantRepositoryState.SUCCESS, created.state)
+        assertEquals("sk_test_show_once_android", created.integration?.secretKeyOnce)
+        assertTrue(created.integration?.exportLines()?.contains("SWIMPAY_STAGING_SECRET_KEY=sk_test_show_once_android") == true)
+
+        val webhookSecret = repository.rotateWebhookSecret(session)
+        assertEquals(MerchantRepositoryState.SUCCESS, webhookSecret.state)
+        assertEquals("whsec_show_once_android", webhookSecret.integration?.webhookSecretOnce)
+
+        val testWebhook = repository.testWebhook(session)
+        assertEquals(MerchantRepositoryState.SUCCESS, testWebhook.state)
+        assertFalse(testWebhook.androidSentWebhookDirectly)
+
+        assertEquals("/v1/merchant/integration", transport.requests[0].path)
+        assertEquals("/v1/merchant/integration/keys", transport.requests[1].path)
+        assertEquals("/v1/merchant/integration/webhook-secret/rotate", transport.requests[2].path)
+        assertEquals("/v1/merchant/integration/test-webhook", transport.requests[3].path)
+        assertTrue(transport.requests.all { it.headers["Authorization"] == "Bearer spm_mobile_session_secret" })
+
+        val normalVisible = loaded.visibleTexts().joinToString(" ")
+        assertFalse(normalVisible.contains("sk_test_show_once_android"))
+        assertFalse(normalVisible.contains("whsec_show_once_android"))
+        assertFalse(normalVisible.contains("official_bank_confirmation", ignoreCase = true))
+        assertFalse(normalVisible.contains("NotificationListener"))
+    }
 }
 
 private fun receiverPublicKeyPem(): String = listOf(

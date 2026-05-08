@@ -163,6 +163,113 @@ class PremiumMerchantRuntimeContractTest {
     }
 
     @Test
+    fun premiumRuntimeUsesBackendDeveloperIntegrationWizardForMobileSession() {
+        val transport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_masked": "sk_live_****1234",
+                  "webhook_secret_masked": "whsec_****5678",
+                  "webhook_url": "",
+                  "webhook_status": "not_configured",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                201,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_masked": "sk_live_****9999",
+                  "secret_key_once": "sk_live_show_once",
+                  "webhook_secret_masked": "whsec_****5678",
+                  "webhook_url": "",
+                  "webhook_status": "not_configured",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_masked": "sk_live_****9999",
+                  "webhook_secret_masked": "whsec_****2222",
+                  "webhook_secret_once": "whsec_show_once",
+                  "webhook_url": "",
+                  "webhook_status": "not_configured",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_masked": "sk_live_****9999",
+                  "webhook_secret_masked": "whsec_****2222",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(202, """{"safe_status":"Webhook de test envoye","android_sent_webhook_directly":false}"""),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_masked": "sk_live_****9999",
+                  "webhook_secret_masked": "whsec_****2222",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            )
+        )
+        val runtime = runtimeWithDeveloperIntegration(
+            AuthenticatedMerchantSession.mobile("mch_mobile", "spm_mobile_session_secret"),
+            transport
+        )
+
+        val initial = runtime.loadConnectedSite() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+        val keyCreated = runtime.createDeveloperApiKey() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+        val secretRotated = runtime.rotateDeveloperWebhookSecret() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+        val urlUpdated = runtime.updateDeveloperWebhookUrl("https://merchant.example/swimpay/webhook") as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+        val webhookTest = runtime.testDeveloperWebhook() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+
+        assertTrue(initial.value.oneTimeSecrets.isEmpty())
+        assertTrue(keyCreated.value.oneTimeSecrets.any { it.second == "sk_live_show_once" })
+        assertTrue(keyCreated.value.exportLines.any { it == "SWIMPAY_STAGING_SECRET_KEY=sk_live_show_once" })
+        assertTrue(secretRotated.value.oneTimeSecrets.any { it.second == "whsec_show_once" })
+        assertEquals("Integration active", urlUpdated.value.statusTitle)
+        assertEquals("Webhook de test envoye", webhookTest.value.safeMessage)
+
+        assertEquals("/v1/merchant/integration", transport.requests[0].path)
+        assertEquals("/v1/merchant/integration/keys", transport.requests[1].path)
+        assertEquals("/v1/merchant/integration/webhook-secret/rotate", transport.requests[2].path)
+        assertEquals("/v1/merchant/integration/webhook-url", transport.requests[3].path)
+        assertTrue(transport.requests[3].body.contains("https://merchant.example/swimpay/webhook"))
+        assertEquals("/v1/merchant/integration/test-webhook", transport.requests[4].path)
+        assertEquals("/v1/merchant/integration", transport.requests[5].path)
+        transport.requests.forEach {
+            assertEquals("Bearer spm_mobile_session_secret", it.headers["Authorization"])
+        }
+    }
+
+    @Test
     fun premiumRuntimeHasSafeDisconnectedModeForNonDebugBuilds() {
         val runtime = PremiumMerchantRuntime.disconnected()
 
@@ -469,6 +576,23 @@ private fun runtimeWith(
         receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
         connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
         configurationTestRepository = MerchantConfigurationTestApiRepository(transport)
+    )
+}
+
+private fun runtimeWithDeveloperIntegration(
+    session: AuthenticatedMerchantSession,
+    transport: MerchantApiTransport
+): PremiumMerchantRuntime {
+    return PremiumMerchantRuntime(
+        session = session,
+        dashboardRepository = MerchantDashboardApiRepository(RecordingPremiumTransport()),
+        reviewQueueRepository = MerchantReviewQueueApiRepository(RecordingPremiumTransport()),
+        paymentDetailRepository = MerchantPaymentDetailApiRepository(RecordingPremiumTransport()),
+        reviewActionsRepository = MerchantReviewActionsApiRepository(RecordingPremiumTransport()),
+        receivingMethodsRepository = MerchantReceivingMethodsApiRepository(RecordingPremiumTransport()),
+        connectedSiteRepository = MerchantConnectedSiteApiRepository(RecordingPremiumTransport()),
+        configurationTestRepository = MerchantConfigurationTestApiRepository(RecordingPremiumTransport()),
+        developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport)
     )
 }
 

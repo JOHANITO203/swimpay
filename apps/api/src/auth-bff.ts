@@ -91,7 +91,12 @@ const ANDROID_MERCHANT_MOBILE_PERMISSIONS = [
   MerchantPermissions.RECEIVING_METHODS_READ,
   MerchantPermissions.RECEIVING_METHODS_WRITE,
   MerchantPermissions.INTEGRATION_READ,
+  MerchantPermissions.INTEGRATION_KEYS_CREATE,
+  MerchantPermissions.INTEGRATION_KEYS_ROTATE,
+  MerchantPermissions.INTEGRATION_WEBHOOK_UPDATE,
   MerchantPermissions.INTEGRATION_WEBHOOK_TEST,
+  MerchantPermissions.INTEGRATION_DELIVERY_READ,
+  MerchantPermissions.INTEGRATION_DELIVERY_RETRY,
   MerchantPermissions.SETTINGS_READ,
   MerchantPermissions.SETTINGS_WRITE
 ] as const;

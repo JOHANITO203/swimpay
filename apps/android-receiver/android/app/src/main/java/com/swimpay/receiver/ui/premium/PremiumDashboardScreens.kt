@@ -399,7 +399,7 @@ fun PremiumSettingsScreen(
         }
         item {
             SettingsGroup("BUSINESS", listOf(
-                PremiumSettingsRow(Icons.Default.Link, "Site ou application") { onNavigate(PremiumNavigation.openConnectedSite()) },
+                PremiumSettingsRow(Icons.Default.Link, "Integration developpeur") { onNavigate(PremiumNavigation.openConnectedSite()) },
                 PremiumSettingsRow(Icons.Default.ShoppingCart, "Ventes") { onNavigate(PremiumRoute.Main(PremiumMainTab.Orders)) },
                 PremiumSettingsRow(Icons.Default.PhoneAndroid, "Notifications") { onNavigate(PremiumNavigation.openReceiverHealth()) }
             ))
@@ -428,7 +428,7 @@ fun PremiumConnectedSiteSummary(state: PremiumScreenState<PremiumConnectedSiteUi
     when (state) {
         is PremiumScreenState.Content -> PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
             Column(Modifier.padding(22.dp)) {
-                Text("Site ou application connecté", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text("Integration developpeur", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
                 Text(state.value.statusTitle, color = if (state.value.usesLiveApi) PremiumColors.Success else PremiumColors.Muted, fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
                 state.value.rows.forEach { row ->
                     Text("${row.first} · ${row.second}", color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
@@ -799,10 +799,118 @@ private fun GoogleRecoveryRow(onClick: () -> Unit) {
 @Composable
 fun PremiumConnectedSiteStateScreen(
     state: PremiumScreenState<PremiumConnectedSiteUiState>,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onCreateApiKey: () -> Unit = {},
+    onRotateApiKey: () -> Unit = {},
+    onRotateWebhookSecret: () -> Unit = {},
+    onSaveWebhookUrl: (String) -> Unit = {},
+    onTestWebhook: () -> Unit = {}
 ) {
-    PremiumStandaloneStateScreen(title = "Site ou application connecté", onBack = onBack) {
-        PremiumConnectedSiteSummary(state)
+    PremiumStandaloneStateScreen(title = "Integration developpeur", onBack = onBack) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            PremiumConnectedSiteSummary(state)
+            if (state is PremiumScreenState.Content) {
+                val value = state.value
+                var webhookUrl by remember(value.webhookUrl) { mutableStateOf(value.webhookUrl) }
+
+                if (value.oneTimeSecrets.isNotEmpty()) {
+                    PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp, color = Color(0xFFFFFBEB)) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Valeurs show-once", color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                            Text(
+                                "Ces valeurs viennent du backend SwimPay. Elles ne sont visibles qu'apres creation ou rotation.",
+                                color = PremiumColors.Muted,
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            value.oneTimeSecrets.forEach { row ->
+                                DeveloperIntegrationValueRow(row.first, row.second, highlight = true)
+                            }
+                        }
+                    }
+                }
+
+                PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Contrat marchand", color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        value.developerRows.forEach { row ->
+                            DeveloperIntegrationValueRow(row.first, row.second)
+                        }
+                        OutlinedTextField(
+                            value = webhookUrl,
+                            onValueChange = { webhookUrl = it },
+                            label = { Text("Webhook URL") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            PremiumPrimaryButton(
+                                "Enregistrer URL",
+                                modifier = Modifier.weight(1f),
+                                enabled = value.actionButtonsEnabled && webhookUrl.isNotBlank(),
+                                onClick = { onSaveWebhookUrl(webhookUrl) }
+                            )
+                            PremiumOutlineButton(
+                                "Tester",
+                                modifier = Modifier.weight(1f),
+                                onClick = { if (value.actionButtonsEnabled) onTestWebhook() }
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            PremiumBlueButton(
+                                "Creer cle API",
+                                modifier = Modifier.weight(1f),
+                                onClick = { if (value.actionButtonsEnabled) onCreateApiKey() }
+                            )
+                            PremiumOutlineButton(
+                                "Rotation cle",
+                                modifier = Modifier.weight(1f),
+                                onClick = { if (value.actionButtonsEnabled) onRotateApiKey() }
+                            )
+                        }
+                        PremiumOutlineButton(
+                            "Rotation secret webhook",
+                            onClick = { if (value.actionButtonsEnabled) onRotateWebhookSecret() }
+                        )
+                    }
+                }
+
+                PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp, color = Color(0xFFF7FDFF)) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Export staging", color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Text(
+                            "A placer dans l'environnement de l'app externe. Android et le navigateur ne recoivent pas de secret SDK.",
+                            color = PremiumColors.Muted,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        value.exportLines.forEach { line ->
+                            Text(line, color = PremiumColors.Navy, fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeveloperIntegrationValueRow(
+    label: String,
+    value: String,
+    highlight: Boolean = false
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(if (highlight) Color(0xFFFFFFFF) else PremiumColors.SurfaceAlt, RoundedCornerShape(16.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(label, color = PremiumColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        Text(value.ifBlank { "A configurer" }, color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
 

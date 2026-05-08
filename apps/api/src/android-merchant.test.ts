@@ -7,6 +7,7 @@ import {
   AndroidMerchantProfileTypes
 } from '@swimpay/contracts';
 import { InMemoryAuthBffRepository } from './auth-bff.js';
+import { InMemoryMerchantIntegrationRepository } from './developer-integration.js';
 import {
   buildApiServer,
   type CreateOrderWithSessionInput,
@@ -606,6 +607,66 @@ describe('android merchant mobile backend endpoints', () => {
     expectSafeAndroidMerchantBody(response.body);
   });
 
+  it('lets an Android merchant mobile session use backend-owned developer integration credentials without web CSRF', async () => {
+    const { server } = buildAndroidMerchantServer();
+    const createAccount = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: AndroidMerchantProfileTypes.BUSINESS,
+        business_label: 'Staging merchant',
+        device_proof: safeDeviceProof('developer-integration-device')
+      }
+    });
+    expect(createAccount.statusCode).toBe(201);
+    const token = createAccount.json().mobile_session.token as string;
+    const headers = { authorization: `Bearer ${token}` };
+
+    const read = await server.inject({ method: 'GET', url: '/v1/merchant/integration', headers });
+    expect(read.statusCode).toBe(200);
+    expect(read.json()).toMatchObject({
+      public_webhook_events: ['payment.confirmed', 'payment.rejected', 'payment.expired'],
+      official_bank_confirmation: false
+    });
+    expect(read.json().secret_key_once).toBeUndefined();
+
+    const createdKey = await server.inject({ method: 'POST', url: '/v1/merchant/integration/keys', headers });
+    expect(createdKey.statusCode).toBe(201);
+    expect(createdKey.json().secret_key_once).toMatch(/^sk_/u);
+    expect(createdKey.json().secret_key_show_once).toBe(true);
+
+    const webhookUrl = await server.inject({
+      method: 'PUT',
+      url: '/v1/merchant/integration/webhook-url',
+      headers,
+      payload: { webhook_url: 'https://merchant.example/swimpay/webhook' }
+    });
+    expect(webhookUrl.statusCode).toBe(200);
+    expect(webhookUrl.json().webhook_url).toBe('https://merchant.example/swimpay/webhook');
+    expect(webhookUrl.json().webhook_secret_once).toMatch(/^whsec_/u);
+
+    const testWebhook = await server.inject({ method: 'POST', url: '/v1/merchant/integration/test-webhook', headers });
+    expect(testWebhook.statusCode).toBe(202);
+    expect(testWebhook.json()).toMatchObject({
+      status: 'test_queued',
+      testOnly: true,
+      triggersFulfillment: false,
+      officialBankConfirmation: false
+    });
+
+    const deliveries = await server.inject({ method: 'GET', url: '/v1/merchant/integration/webhook-deliveries', headers });
+    expect(deliveries.statusCode).toBe(200);
+    expect(deliveries.json().public_webhook_events).toEqual(['payment.confirmed', 'payment.rejected', 'payment.expired']);
+
+    const normalRead = await server.inject({ method: 'GET', url: '/v1/merchant/integration', headers });
+    expect(normalRead.statusCode).toBe(200);
+    expect(normalRead.json().secret_key_once).toBeUndefined();
+    expect(normalRead.json().webhook_secret_once).toBeUndefined();
+    expect(normalRead.body).not.toContain(createdKey.json().secret_key_once);
+    expect(normalRead.body).not.toContain(webhookUrl.json().webhook_secret_once);
+    expect(normalRead.body).not.toContain('official_bank_confirmation":true');
+  });
+
   it('runs a non-confirming configuration test with merchant checklist labels', async () => {
     const eventPublisher = new FakeEventPublisher();
     const { server } = buildAndroidMerchantServer({ eventPublisher });
@@ -660,6 +721,7 @@ function buildAndroidMerchantServer(params: {
   const orderRepository = new FakeOrderRepository();
   const reviewRepository = new FakeReviewRepository();
   const authBffRepository = new InMemoryAuthBffRepository();
+  const merchantIntegrationRepository = new InMemoryMerchantIntegrationRepository();
   reviewRepository.items.set('rev_01', openReviewItem());
 
   const eventPublisher = params.eventPublisher ?? new FakeEventPublisher();
@@ -673,6 +735,7 @@ function buildAndroidMerchantServer(params: {
     orderRepository,
     reviewRepository,
     authBffRepository,
+    merchantIntegrationRepository,
     eventPublisher,
     idGenerator: {
       orderId: () => 'ord_new',

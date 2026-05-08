@@ -1217,6 +1217,175 @@ data class MerchantConnectedSiteTestResult(
     fun visibleTexts(): List<String> = texts
 }
 
+data class MerchantDeveloperIntegrationSnapshot(
+    val merchantId: String,
+    val publicKey: String,
+    val secretKeyMasked: String,
+    val secretKeyOnce: String?,
+    val webhookSecretMasked: String,
+    val webhookSecretOnce: String?,
+    val webhookUrl: String,
+    val webhookStatus: String,
+    val publicWebhookEvents: List<String>
+) {
+    fun effectiveSecretKey(): String = secretKeyOnce ?: secretKeyMasked
+
+    fun effectiveWebhookSecret(): String = webhookSecretOnce ?: webhookSecretMasked
+
+    fun showOnceSecrets(): List<Pair<String, String>> {
+        return buildList {
+            secretKeyOnce?.let { add("Cle API show-once" to it) }
+            webhookSecretOnce?.let { add("Secret webhook show-once" to it) }
+        }
+    }
+
+    fun exportLines(
+        apiBaseUrl: String = "https://staging.swimpay.pro",
+        externalAppBaseUrl: String = "https://votre-app.example"
+    ): List<String> {
+        return listOf(
+            "SWIMPAY_STAGING_API_BASE_URL=$apiBaseUrl",
+            "SWIMPAY_STAGING_SECRET_KEY=${effectiveSecretKey()}",
+            "SWIMPAY_STAGING_WEBHOOK_SECRET=${effectiveWebhookSecret()}",
+            "SWIMPAY_WEBHOOK_URL=${webhookUrl.ifBlank { "https://votre-app.example/swimpay/webhook" }}",
+            "EXTERNAL_APP_BASE_URL=$externalAppBaseUrl",
+            "SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}"
+        )
+    }
+
+    fun visibleTexts(): List<String> {
+        return listOf(
+            "Integration developpeur",
+            "Merchant ID",
+            merchantId,
+            "Cle publique",
+            publicKey,
+            "Cle API",
+            secretKeyMasked,
+            "Secret webhook",
+            webhookSecretMasked,
+            "Webhook URL",
+            webhookUrl.ifBlank { "A configurer" },
+            "Evenements publics"
+        ) + publicWebhookEvents + showOnceSecrets().flatMap { listOf(it.first, it.second) } + exportLines()
+    }
+}
+
+data class MerchantDeveloperIntegrationResult(
+    val state: MerchantRepositoryState,
+    val integration: MerchantDeveloperIntegrationSnapshot?,
+    val safeMessage: String,
+    val androidSentWebhookDirectly: Boolean = false
+) {
+    fun visibleTexts(): List<String> {
+        return (integration?.visibleTexts() ?: emptyList()) + safeMessage
+    }
+}
+
+class MerchantDeveloperIntegrationApiRepository(
+    private val transport: MerchantApiTransport
+) {
+    fun load(session: AuthenticatedMerchantSession): MerchantDeveloperIntegrationResult {
+        return requestIntegration(session, "GET", "/v1/merchant/integration")
+    }
+
+    fun createApiKey(session: AuthenticatedMerchantSession): MerchantDeveloperIntegrationResult {
+        return requestIntegration(session, "POST", "/v1/merchant/integration/keys")
+    }
+
+    fun rotateApiKey(session: AuthenticatedMerchantSession): MerchantDeveloperIntegrationResult {
+        return requestIntegration(session, "POST", "/v1/merchant/integration/keys/rotate")
+    }
+
+    fun rotateWebhookSecret(session: AuthenticatedMerchantSession): MerchantDeveloperIntegrationResult {
+        return requestIntegration(session, "POST", "/v1/merchant/integration/webhook-secret/rotate")
+    }
+
+    fun updateWebhookUrl(session: AuthenticatedMerchantSession, webhookUrl: String): MerchantDeveloperIntegrationResult {
+        return requestIntegration(
+            session,
+            "PUT",
+            "/v1/merchant/integration/webhook-url",
+            jsonObject("webhook_url" to webhookUrl.trim())
+        )
+    }
+
+    fun testWebhook(session: AuthenticatedMerchantSession): MerchantDeveloperIntegrationResult {
+        if (!session.isAuthenticated) {
+            return MerchantDeveloperIntegrationResult(
+                state = MerchantRepositoryState.ACTION_REQUIRED,
+                integration = null,
+                safeMessage = "Session marchand requise"
+            )
+        }
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = "/v1/merchant/integration/test-webhook",
+                headers = authHeaders(session)
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return MerchantDeveloperIntegrationResult(
+                state = MerchantRepositoryState.ERROR,
+                integration = null,
+                safeMessage = "Test webhook indisponible"
+            )
+        }
+        return MerchantDeveloperIntegrationResult(
+            state = MerchantRepositoryState.SUCCESS,
+            integration = null,
+            safeMessage = extractString(response.body, "safeStatus")
+                ?: extractString(response.body, "safe_status")
+                ?: "Test webhook envoye",
+            androidSentWebhookDirectly = extractBoolean(response.body, "android_sent_webhook_directly") == true
+        )
+    }
+
+    private fun requestIntegration(
+        session: AuthenticatedMerchantSession,
+        method: String,
+        path: String,
+        body: String = ""
+    ): MerchantDeveloperIntegrationResult {
+        if (!session.isAuthenticated) {
+            return MerchantDeveloperIntegrationResult(
+                state = MerchantRepositoryState.ACTION_REQUIRED,
+                integration = null,
+                safeMessage = "Session marchand requise"
+            )
+        }
+        val response = execute(
+            MerchantApiRequest(
+                method = method,
+                path = path,
+                headers = authHeaders(session),
+                body = body
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return MerchantDeveloperIntegrationResult(
+                state = MerchantRepositoryState.ERROR,
+                integration = null,
+                safeMessage = "Integration indisponible"
+            )
+        }
+        return MerchantDeveloperIntegrationResult(
+            state = MerchantRepositoryState.SUCCESS,
+            integration = response.body.toMerchantDeveloperIntegrationSnapshot(),
+            safeMessage = "Integration synchronisee"
+        )
+    }
+
+    private fun execute(request: MerchantApiRequest): MerchantApiResponse {
+        return try {
+            transport.execute(request)
+        } catch (_: Exception) {
+            MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
+        }
+    }
+}
+
 class MerchantConfigurationTestApiRepository(
     private val transport: MerchantApiTransport
 ) {
@@ -1458,6 +1627,22 @@ private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
         helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements via SBP" else null,
         status = if (enabled) "Active" else "Désactivée",
         actions = actions
+    )
+}
+
+fun String.toMerchantDeveloperIntegrationSnapshot(): MerchantDeveloperIntegrationSnapshot {
+    return MerchantDeveloperIntegrationSnapshot(
+        merchantId = extractString(this, "merchant_id") ?: "Connexion en attente",
+        publicKey = extractString(this, "public_key") ?: "A creer",
+        secretKeyMasked = extractString(this, "secret_key_masked") ?: "Non creee",
+        secretKeyOnce = extractString(this, "secret_key_once"),
+        webhookSecretMasked = extractString(this, "webhook_secret_masked") ?: "Non cree",
+        webhookSecretOnce = extractString(this, "webhook_secret_once"),
+        webhookUrl = extractString(this, "webhook_url") ?: "",
+        webhookStatus = extractString(this, "webhook_status") ?: "not_configured",
+        publicWebhookEvents = extractStringArray(this, "public_webhook_events").ifEmpty {
+            listOf("payment.confirmed", "payment.rejected", "payment.expired")
+        }
     )
 }
 

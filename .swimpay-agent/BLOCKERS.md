@@ -523,3 +523,9 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - No critical product blocker found in the local receiving-method implementation.
 - Staging/VPS blocker: apply additive migration `011_receiving_route_hmac_last4.sql` before depending on `/v1/merchant/receiving-methods` create/list responses in staging.
 - Real-notification testing remains blocked until the operator explicitly starts a controlled real-notification capture scenario; this sprint did not process real bank notifications.
+
+## Android Developer Integration Wizard
+
+- No critical local blocker remains for the Android/backend Developer Integration Wizard bridge.
+- Staging credential generation still requires an authenticated staging merchant/operator action; show-once API keys and webhook secrets must be copied into the external app environment outside chat.
+- SDK/webhook rehearsal should wait for Dokploy redeploy of this commit and a fresh staging `/api-health` check.

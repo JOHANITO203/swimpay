@@ -68,6 +68,7 @@ import {
   hashBffSessionToken,
   hashCsrfToken,
   hasMerchantPermission,
+  androidMerchantMobilePermissions,
   merchantPermissionsForRole,
   parseBearerToken,
   parseCookieHeader,
@@ -412,8 +413,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     request: FastifyRequest,
     reply: FastifyReply,
     permission: MerchantPermission,
-    routeOptions: { requireCsrf?: boolean } = {}
-  ): Promise<{ merchantId: string; source: 'bff_session' | 'dev_test_bearer' } | null> {
+    routeOptions: { requireCsrf?: boolean; allowAndroidMobile?: boolean } = {}
+  ): Promise<{ merchantId: string; source: 'bff_session' | 'android_mobile_session' | 'dev_test_bearer' } | null> {
     const session = await readBffSessionContext(request);
     if (session) {
       const membership = session.context.activeMembership;
@@ -426,6 +427,20 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         return null;
       }
       return { merchantId: membership.merchantId, source: 'bff_session' };
+    }
+
+    if (routeOptions.allowAndroidMobile) {
+      const androidContext = await resolveAndroidMerchantContext(request, reply);
+      if (androidContext) {
+        if (!androidMerchantMobilePermissions().includes(permission)) {
+          reply.status(403).send(invalidRequest('Android merchant mobile permission is required.', { permission }));
+          return null;
+        }
+        return androidContext;
+      }
+      if (reply.sent) {
+        return null;
+      }
     }
 
     const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
@@ -680,7 +695,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/merchant/integration', async (request, reply) => {
-    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_READ);
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_READ, {
+      allowAndroidMobile: true
+    });
     if (!merchantContext) {
       if (reply.sent) return reply;
       return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
@@ -696,7 +713,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
   server.post('/v1/merchant/integration/keys', async (request, reply) => {
     const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_KEYS_CREATE, {
-      requireCsrf: true
+      requireCsrf: true,
+      allowAndroidMobile: true
     });
     if (!merchantContext) {
       if (reply.sent) return reply;
@@ -713,7 +731,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
   server.post('/v1/merchant/integration/keys/rotate', async (request, reply) => {
     const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_KEYS_ROTATE, {
-      requireCsrf: true
+      requireCsrf: true,
+      allowAndroidMobile: true
     });
     if (!merchantContext) {
       if (reply.sent) return reply;
@@ -730,7 +749,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
   server.post('/v1/merchant/integration/webhook-secret/rotate', async (request, reply) => {
     const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_KEYS_ROTATE, {
-      requireCsrf: true
+      requireCsrf: true,
+      allowAndroidMobile: true
     });
     if (!merchantContext) {
       if (reply.sent) return reply;
@@ -747,7 +767,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
   server.put('/v1/merchant/integration/webhook-url', async (request, reply) => {
     const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_WEBHOOK_UPDATE, {
-      requireCsrf: true
+      requireCsrf: true,
+      allowAndroidMobile: true
     });
     if (!merchantContext) {
       if (reply.sent) return reply;
@@ -771,7 +792,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
   server.post('/v1/merchant/integration/test-webhook', async (request, reply) => {
     const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_WEBHOOK_TEST, {
-      requireCsrf: true
+      requireCsrf: true,
+      allowAndroidMobile: true
     });
     if (!merchantContext) {
       if (reply.sent) return reply;
@@ -785,7 +807,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/merchant/integration/webhook-deliveries', async (request, reply) => {
-    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_DELIVERY_READ);
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_DELIVERY_READ, {
+      allowAndroidMobile: true
+    });
     if (!merchantContext) {
       if (reply.sent) return reply;
       return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
@@ -805,7 +829,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
   server.post('/v1/merchant/integration/webhook-deliveries/:id/retry', async (request, reply) => {
     const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_DELIVERY_RETRY, {
-      requireCsrf: true
+      requireCsrf: true,
+      allowAndroidMobile: true
     });
     if (!merchantContext) {
       if (reply.sent) return reply;

@@ -1,5 +1,49 @@
 # Next Action
 
+generated_at: 2026-05-08T22:21:00+03:00
+
+## Latest Developer Integration Wizard staging verification
+
+Completed:
+
+1. Fresh root validation passed:
+   - `npm run android:doctor`
+   - `npm run typecheck`
+   - `npm run lint`
+   - `npm test` - 74 files, 530 tests passed
+   - `npm run build`
+   - `docker compose --env-file .env.example -f infra/docker-compose.yml config`
+2. Local `main` was already aligned with `origin/main` at `5fedb0a`.
+3. Staging health passed: `https://staging.swimpay.pro/api-health` reports production mode with database, NATS and Valkey `ok`.
+4. Staging Developer Integration Wizard returns HTTP 200 and contains the external-app staging export block.
+5. No real notification was processed and no payment/webhook semantics changed.
+
+Blocked:
+
+- Credential generation from this shell is blocked because no authenticated staging merchant BFF session/CSRF token, approved server-side merchant integration token, staging DB URL or external merchant app env target is available here.
+- The staging wizard currently renders a pending/unavailable merchant connection state for unauthenticated HTTP access.
+
+Next recommended action:
+
+1. Open the staging merchant dashboard in the authenticated browser/session.
+2. In Developer Integration Wizard, create/rotate the API key and webhook secret.
+3. Copy show-once values directly into the external merchant app environment, not chat:
+   - `SWIMPAY_STAGING_API_BASE_URL=https://staging.swimpay.pro`
+   - `SWIMPAY_STAGING_SECRET_KEY`
+   - `SWIMPAY_STAGING_WEBHOOK_SECRET`
+   - `EXTERNAL_APP_BASE_URL`
+4. Relaunch SDK order creation, hosted checkout without Authorization, active route selection, manual confirmation and final-only webhook delivery.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-08T22:00:00+03:00
 
 ## Latest Developer Integration Wizard staging flow
@@ -1493,3 +1537,30 @@ Do not do:
 - Do not enable auto-confirmation.
 - Do not expose raw card/phone, CVV, expiry, PIN, SMS code or bank credentials.
 - Do not claim official bank confirmation.
+
+---
+
+## Latest Developer Integration Android Work
+
+Developer Integration Wizard is now available from Android as a backend-owned merchant integration surface.
+
+Next recommended action:
+
+1. Commit and push the Android/backend Wizard bridge.
+2. Let Dokploy staging redeploy.
+3. Verify `https://staging.swimpay.pro/api-health`.
+4. Install the rebuilt APK on the operator phone if a device pass is requested.
+5. In Android Menu > Integration developpeur:
+   - create or rotate API key;
+   - rotate webhook secret if needed;
+   - save webhook URL;
+   - run backend-owned test webhook.
+6. Put show-once values into the external merchant app environment, not chat.
+7. Run SDK order creation and final-only webhook rehearsal.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not put API keys or webhook secrets in Android/browser snippets.
+- Do not let Android send developer webhooks directly.
+- Do not enable auto-confirmation or change `payment.confirmed` semantics.

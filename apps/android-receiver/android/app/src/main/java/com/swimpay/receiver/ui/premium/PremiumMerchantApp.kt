@@ -403,9 +403,40 @@ fun PremiumMerchantApp(
                 )
             }
         )
-        PremiumRoute.ConnectedSite -> PremiumConnectedSiteStateScreen(connectedSiteState) {
-            route = PremiumRoute.Main(PremiumMainTab.Menu)
-        }
+        PremiumRoute.ConnectedSite -> PremiumConnectedSiteStateScreen(
+            state = connectedSiteState,
+            onBack = { route = PremiumRoute.Main(PremiumMainTab.Menu) },
+            onCreateApiKey = {
+                connectedSiteState = PremiumScreenState.loading()
+                scope.launch {
+                    connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.createDeveloperApiKey() }
+                }
+            },
+            onRotateApiKey = {
+                connectedSiteState = PremiumScreenState.loading()
+                scope.launch {
+                    connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.rotateDeveloperApiKey() }
+                }
+            },
+            onRotateWebhookSecret = {
+                connectedSiteState = PremiumScreenState.loading()
+                scope.launch {
+                    connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.rotateDeveloperWebhookSecret() }
+                }
+            },
+            onSaveWebhookUrl = { webhookUrl ->
+                connectedSiteState = PremiumScreenState.loading()
+                scope.launch {
+                    connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.updateDeveloperWebhookUrl(webhookUrl) }
+                }
+            },
+            onTestWebhook = {
+                connectedSiteState = PremiumScreenState.loading()
+                scope.launch {
+                    connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.testDeveloperWebhook() }
+                }
+            }
+        )
         PremiumRoute.ConfigurationTest -> PremiumConfigurationStateScreen(configurationState) {
             route = PremiumRoute.Main(PremiumMainTab.Menu)
         }

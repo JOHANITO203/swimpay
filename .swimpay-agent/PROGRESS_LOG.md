@@ -2528,3 +2528,15 @@ Safety checks:
 - Recorded required device/staging proof gates before real notification capture: bank detection metrics, Notification Listener Access, receiver registration/heartbeat, synthetic redacted upload, active payment intent, SDK/webhook rehearsal and combined synthetic E2E.
 - Recorded a security-contract gap: current receiver signing uses an app-generated HMAC verification key registered as `public_key`; production-grade asymmetric Android Keystore public-key registration remains required unless explicitly accepted for controlled staging only.
 - No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
+# 2026-05-08T22:39:00+03:00 - Android Developer Integration Wizard bridge
+
+- Allowed Android mobile merchant sessions to use backend-owned `/v1/merchant/integration*` contracts through explicit integration permissions.
+- Preserved web CSRF protection for BFF-session writes while allowing mobile bearer session calls.
+- Added Android `MerchantDeveloperIntegrationApiRepository` for integration read, API key create/rotate, webhook secret rotate, webhook URL update and backend-owned test webhook.
+- Reworked the Android Menu surface from `Site ou application` to `Integration developpeur` with show-once values, masked normal reads, webhook URL form, test action and staging export block.
+- Added Android runtime action wiring so the APK calls SwimPay backend, not SDK logic, to generate credentials.
+- Added backend regression coverage for Android mobile session access to the Developer Integration Wizard.
+- Added Android repository/runtime tests proving show-once values are action-only and normal reads remain masked.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
+- No real bank notification was processed, no auto-confirmation was enabled, no SDK generated credentials and no public webhook semantics changed.

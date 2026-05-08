@@ -13,6 +13,9 @@ import com.swimpay.receiver.MerchantConfigurationTestApiRepository
 import com.swimpay.receiver.MerchantConfigurationTestOutcome
 import com.swimpay.receiver.MerchantConnectedSiteApiRepository
 import com.swimpay.receiver.MerchantDashboardApiRepository
+import com.swimpay.receiver.MerchantDeveloperIntegrationApiRepository
+import com.swimpay.receiver.MerchantDeveloperIntegrationResult
+import com.swimpay.receiver.MerchantDeveloperIntegrationSnapshot
 import com.swimpay.receiver.MerchantPaymentDetailApiRepository
 import com.swimpay.receiver.MerchantReceivingMethodsApiRepository
 import com.swimpay.receiver.MerchantReceivingMethodDisplay
@@ -243,7 +246,12 @@ data class PremiumConnectedSiteUiState(
     val statusText: String,
     val rows: List<Pair<String, String>>,
     val usesLiveApi: Boolean,
-    val safeMessage: String = ""
+    val safeMessage: String = "",
+    val developerRows: List<Pair<String, String>> = emptyList(),
+    val exportLines: List<String> = emptyList(),
+    val oneTimeSecrets: List<Pair<String, String>> = emptyList(),
+    val webhookUrl: String = "",
+    val actionButtonsEnabled: Boolean = false
 ) {
     companion object {
         fun preview(): PremiumConnectedSiteUiState {
@@ -287,7 +295,8 @@ class PremiumMerchantRuntime(
     private val receivingMethodsRepository: MerchantReceivingMethodsApiRepository,
     private val connectedSiteRepository: MerchantConnectedSiteApiRepository,
     private val configurationTestRepository: MerchantConfigurationTestApiRepository,
-    private val bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe()
+    private val bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe(),
+    private val developerIntegrationRepository: MerchantDeveloperIntegrationApiRepository? = null
 ) {
     val reviewActionsAreBackendOwned: Boolean
         get() = reviewActionsRepository.backendOwnsReviewDecisions
@@ -501,6 +510,9 @@ class PremiumMerchantRuntime(
     }
 
     fun loadConnectedSite(): PremiumScreenState<PremiumConnectedSiteUiState> {
+        developerIntegrationRepository?.let { repository ->
+            return repository.load(session).toConnectedSiteState()
+        }
         val result = connectedSiteRepository.load(session, developerDetailsEnabled = false)
         if (result.state == MerchantRepositoryState.EMPTY || result.state == MerchantRepositoryState.ERROR) {
             return PremiumScreenState.content(
@@ -534,6 +546,33 @@ class PremiumMerchantRuntime(
                 usesLiveApi = !result.usesMockRepository
             )
         )
+    }
+
+    fun createDeveloperApiKey(): PremiumScreenState<PremiumConnectedSiteUiState> {
+        return developerIntegrationRepository?.createApiKey(session)?.toConnectedSiteState()
+            ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
+    }
+
+    fun rotateDeveloperApiKey(): PremiumScreenState<PremiumConnectedSiteUiState> {
+        return developerIntegrationRepository?.rotateApiKey(session)?.toConnectedSiteState()
+            ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
+    }
+
+    fun rotateDeveloperWebhookSecret(): PremiumScreenState<PremiumConnectedSiteUiState> {
+        return developerIntegrationRepository?.rotateWebhookSecret(session)?.toConnectedSiteState()
+            ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
+    }
+
+    fun updateDeveloperWebhookUrl(webhookUrl: String): PremiumScreenState<PremiumConnectedSiteUiState> {
+        return developerIntegrationRepository?.updateWebhookUrl(session, webhookUrl)?.toConnectedSiteState()
+            ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
+    }
+
+    fun testDeveloperWebhook(): PremiumScreenState<PremiumConnectedSiteUiState> {
+        val repository = developerIntegrationRepository
+            ?: return PremiumScreenState.offline(message = "Integration developpeur indisponible.")
+        val test = repository.testWebhook(session)
+        return repository.load(session).copy(safeMessage = test.safeMessage).toConnectedSiteState()
     }
 
     fun runConfigurationTest(checklist: MerchantConfigurationChecklist): PremiumScreenState<PremiumConfigurationUiState> {
@@ -651,7 +690,8 @@ class PremiumMerchantRuntime(
                 receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
-                bankPackageProbe = bankPackageProbe
+                bankPackageProbe = bankPackageProbe,
+                developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport)
             )
         }
 
@@ -682,7 +722,8 @@ class PremiumMerchantRuntime(
                 receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
-                bankPackageProbe = bankPackageProbe
+                bankPackageProbe = bankPackageProbe,
+                developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport)
             )
         }
 
@@ -701,6 +742,51 @@ class PremiumMerchantRuntime(
             )
         }
     }
+}
+
+private fun MerchantDeveloperIntegrationResult.toConnectedSiteState(): PremiumScreenState<PremiumConnectedSiteUiState> {
+    return when (state) {
+        MerchantRepositoryState.SUCCESS -> PremiumScreenState.content(
+            integration?.toPremiumConnectedSiteUiState(safeMessage = safeMessage)
+                ?: PremiumConnectedSiteUiState(
+                    statusTitle = "Test webhook",
+                    statusText = safeMessage.ifBlank { "Test webhook envoye." },
+                    rows = emptyList(),
+                    usesLiveApi = true,
+                    safeMessage = safeMessage,
+                    actionButtonsEnabled = true
+                )
+        )
+        MerchantRepositoryState.ACTION_REQUIRED -> PremiumScreenState.actionRequired("Action requise", safeMessage.ifBlank { "Session marchand requise" })
+        MerchantRepositoryState.EMPTY -> PremiumScreenState.empty("Integration a configurer", "Creez une cle et ajoutez une URL webhook.")
+        MerchantRepositoryState.ERROR -> PremiumScreenState.offline(message = safeMessage.ifBlank { "Integration developpeur indisponible." })
+        MerchantRepositoryState.LOADING -> PremiumScreenState.loading()
+    }
+}
+
+private fun MerchantDeveloperIntegrationSnapshot.toPremiumConnectedSiteUiState(safeMessage: String): PremiumConnectedSiteUiState {
+    val active = webhookStatus == "active"
+    return PremiumConnectedSiteUiState(
+        statusTitle = if (active) "Integration active" else "Integration a configurer",
+        statusText = "SwimPay backend genere les identifiants. Le SDK les utilise cote app externe.",
+        rows = listOf(
+            "Webhook URL" to webhookUrl.ifBlank { "A configurer" },
+            "Statut" to if (active) "Actif" else "Action requise"
+        ),
+        usesLiveApi = true,
+        safeMessage = safeMessage,
+        developerRows = listOf(
+            "Merchant ID" to merchantId,
+            "Cle publique" to publicKey,
+            "Cle API" to secretKeyMasked,
+            "Secret webhook" to webhookSecretMasked,
+            "Evenements publics" to publicWebhookEvents.joinToString(", ")
+        ),
+        exportLines = exportLines(),
+        oneTimeSecrets = showOnceSecrets(),
+        webhookUrl = webhookUrl,
+        actionButtonsEnabled = true
+    )
 }
 
 private fun defaultLocalSystemCards(
