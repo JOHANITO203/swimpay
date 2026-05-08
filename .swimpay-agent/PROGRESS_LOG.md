@@ -1,5 +1,16 @@
 # Progress Log
 
+## 2026-05-08T20:05:48+03:00 - RECEIVER-SIGN-1 staging upload proof passed
+
+- Investigated the post-redeploy `timestamp_out_of_range` result from the staging ADB proof.
+- Confirmed the backend signature verifier was working because the error advanced from `invalid_signature` to timestamp validation.
+- Found the root cause: repeated synthetic proof signals could dedupe against an old outbox record because `notification_hash` did not include snapshot time.
+- Added a failing Android regression first, then fixed `NotificationCoalescer` so `notification_hash` is event-time-sensitive while `semantic_hash` remains stable for equivalent notification shape/content.
+- Added staging-only cleanup for old non-acked synthetic proof records outside the timestamp window.
+- Rebuilt and installed `app-staging.apk` on Samsung `SM-S916B`.
+- Final ADB proof passed against `https://staging.swimpay.pro`: `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=1`.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
 ## 2026-05-08T19:44:07+03:00 - RECEIVER-SIGN-1 staging proof alignment
 
 - Added Android receiver registration freshness tracking through local `receiverKeyId` persistence.

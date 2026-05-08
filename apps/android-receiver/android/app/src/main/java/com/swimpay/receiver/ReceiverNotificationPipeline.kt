@@ -82,11 +82,23 @@ class NotificationCoalescer {
         val first = distinct.minBy { it.postTime }
         val last = distinct.maxBy { it.postTime }
         val representative = distinct.last()
-        val basis = distinct.joinToString("||") { snapshot ->
+        val notificationBasis = distinct.joinToString("||") { snapshot ->
             listOf(
                 snapshot.packageName,
                 snapshot.notificationId.toString(),
                 snapshot.tag.orEmpty(),
+                snapshot.postTime.toString(),
+                snapshot.title.orEmpty(),
+                snapshot.text.orEmpty(),
+                snapshot.bigText.orEmpty(),
+                snapshot.subText.orEmpty(),
+                snapshot.summaryText.orEmpty(),
+                snapshot.textLines.joinToString("|")
+            ).joinToString("|")
+        }
+        val semanticBasis = distinct.joinToString("||") { snapshot ->
+            listOf(
+                snapshot.packageName,
                 snapshot.title.orEmpty(),
                 snapshot.text.orEmpty(),
                 snapshot.bigText.orEmpty(),
@@ -100,8 +112,8 @@ class NotificationCoalescer {
             snapshotCount = distinct.size,
             firstSnapshotAt = first.postTime,
             lastSnapshotAt = last.postTime,
-            notificationHash = "${SyntheticNotificationConstants.PACKAGE_TRUST_LABEL}:${sha256Hex("notification:$basis")}",
-            semanticHash = "semantic:${sha256Hex("semantic:$basis")}"
+            notificationHash = "${SyntheticNotificationConstants.PACKAGE_TRUST_LABEL}:${sha256Hex("notification:$notificationBasis")}",
+            semanticHash = "semantic:${sha256Hex("semantic:$semanticBasis")}"
         )
     }
 }

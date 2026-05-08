@@ -1,6 +1,6 @@
 # Receiver Signing Staging Proof
 
-Status: Android staging registration proof passed; signed upload proof requires backend redeploy from `main`.
+Status: Android staging registration proof passed; signed upload proof passed.
 
 Local validation: passed.
 
@@ -27,19 +27,25 @@ Staging-only synthetic upload trigger:
 - It does not confirm payment.
 - It does not emit developer webhooks from Android.
 
-Current staging server result before redeploy:
+Intermediate staging server result before backend redeploy:
 
 - Broadcast ran and reached backend.
 - Backend response: `status=401 code=invalid_signature`.
 - Root cause assessment: local repository is ahead of `origin/main`, so Dokploy staging is likely still running the pre-push backend contract while the APK signs with the new asymmetric Keystore path.
-- Required action: push current commits and let Dokploy redeploy, then rerun the staging proof broadcast.
+- Action taken: pushed current commits and let Dokploy redeploy.
+
+Final staging proof result after redeploy and Android proof cleanup:
+
+- Backend accepted the asymmetric signed redacted synthetic signal.
+- Log evidence:
+  - `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=1`
+- The `purged=1` value was a staging-only cleanup of one old synthetic proof outbox record whose `observed_at` was outside the production timestamp window.
+- Root cause of the intermediate `timestamp_out_of_range`: the old notification hash did not include snapshot time, so repeated synthetic proofs could dedupe against a stale outbox record. This is fixed by making `notification_hash` event-time-sensitive while keeping `semantic_hash` stable for shape matching.
 
 Required next proof:
 
-1. Push `main` and redeploy Dokploy.
-2. Install updated staging APK if Dokploy/backend changed after the APK build.
-3. Run `adb shell am broadcast -a com.swimpay.receiver.STAGING_PROOF -p com.swimpay.receiver`.
-4. Expect `staging_proof_upload success=true acked=1 failed_retrying=0`.
-5. Only after that, proceed to supervised real bank notification testing.
+1. Keep the current staging APK installed.
+2. Continue the remaining synthetic ladder: active payment intent, active receiving method, manual review and final-only webhook rehearsal.
+3. Only after that, proceed to supervised real bank notification testing.
 
 Real bank notification capture remains gated.

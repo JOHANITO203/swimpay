@@ -7,6 +7,7 @@ import android.os.Build
 import android.util.Log
 import com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore
 import com.swimpay.receiver.outbox.AndroidOutboxStorageFactory
+import com.swimpay.receiver.outbox.EncryptedStorageAdapter
 import com.swimpay.receiver.security.AndroidKeystorePayloadSigner
 import com.swimpay.receiver.ui.premium.SharedPreferencesPremiumMobileMerchantSessionStore
 import com.swimpay.receiver.work.HttpUrlConnectionSignalUploadTransport
@@ -14,6 +15,8 @@ import com.swimpay.receiver.work.SignalUploadRequest
 import com.swimpay.receiver.work.SignalUploadResponse
 import com.swimpay.receiver.work.SignalUploadFlusher
 import com.swimpay.receiver.work.SignalUploadTransport
+import java.time.Instant
+import kotlin.math.abs
 
 class StagingReceiverProofBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -66,13 +69,18 @@ class StagingReceiverProofBroadcastReceiver : BroadcastReceiver() {
             return "staging_proof_skipped reason=${result.reason}"
         }
 
-        val outboxStore = AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(context))
+        val outboxStorage = AndroidOutboxStorageFactory.createMigrating(context)
+        val purgedProofRecords = purgePreviousStagingProofRecords(outboxStorage)
+        val outboxStore = AndroidEncryptedOutboxStore(outboxStorage)
+        val proofResult = result.copy(
+            payload = result.payload?.plus("parser_hint" to "android-listener-staging-proof")
+        )
         val enqueue = ReceiverRuntimeOutboxController(
             merchantId = runtimeConfig.merchantId,
             payloadSigner = signer,
             deviceStateStore = deviceStateStore,
             outboxStore = outboxStore
-        ).enqueueProcessedNotificationSignal(result)
+        ).enqueueProcessedNotificationSignal(proofResult)
         if (!enqueue.success) {
             return "staging_proof_skipped reason=enqueue_failed message=${enqueue.safeMessage}"
         }
@@ -80,7 +88,7 @@ class StagingReceiverProofBroadcastReceiver : BroadcastReceiver() {
         val uploadTransport = RecordingSafeStatusTransport(baseUrl)
         val upload = SignalUploadFlusher(outboxStore, uploadTransport).flushDue()
         return "staging_proof_upload success=${upload.success} acked=${upload.acked} failed_retrying=${upload.failedRetrying} " +
-            "status=${uploadTransport.lastStatusCode} code=${uploadTransport.lastErrorCode}"
+            "status=${uploadTransport.lastStatusCode} code=${uploadTransport.lastErrorCode} purged=$purgedProofRecords"
     }
 
     companion object {
@@ -88,6 +96,36 @@ class StagingReceiverProofBroadcastReceiver : BroadcastReceiver() {
         const val TAG = "SwimPayStagingProof"
     }
 }
+
+private fun purgePreviousStagingProofRecords(
+    storage: EncryptedStorageAdapter,
+    nowMs: Long = System.currentTimeMillis()
+): Int {
+    var purged = 0
+    for (record in storage.readAll()) {
+        val payload = record.encryptedPayload
+        val isStagingProof = payload.contains("\"parser_hint\":\"android-listener-staging-proof\"") ||
+            payload.contains("\"redacted_body\":\"Transfer from Ivan <PHONE>. Ref <REFERENCE>\"") ||
+            payload.contains("\"parser_hint\":\"android-listener-runtime-redacted\"")
+        if (isStagingProof && record.ackReceivedAt == null && isOutsideStagingProofWindow(payload, nowMs)) {
+            storage.delete(record.eventId)
+            purged += 1
+        }
+    }
+    return purged
+}
+
+private fun isOutsideStagingProofWindow(payload: String, nowMs: Long): Boolean {
+    val observedAt = Regex("\"observed_at\"\\s*:\\s*\"([^\"]+)\"")
+        .find(payload)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?: return false
+    val observedMs = runCatching { Instant.parse(observedAt).toEpochMilli() }.getOrNull() ?: return false
+    return abs(nowMs - observedMs) > STAGING_PROOF_OBSERVED_TOLERANCE_MS
+}
+
+private const val STAGING_PROOF_OBSERVED_TOLERANCE_MS = 15L * 60L * 1000L
 
 private class RecordingSafeStatusTransport(baseUrl: String) : SignalUploadTransport {
     private val delegate = HttpUrlConnectionSignalUploadTransport(baseUrl)

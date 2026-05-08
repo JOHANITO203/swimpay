@@ -1,5 +1,35 @@
 # Next Action
 
+generated_at: 2026-05-08T20:05:48+03:00
+
+## Latest RECEIVER-SIGN-1 staging upload proof passed
+
+Completed:
+
+1. Red/green regression added for notification identity: `notification_hash` varies by snapshot time, `semantic_hash` stays stable.
+2. Rebuilt and installed the staging APK on `SM-S916B`.
+3. Reran the staging ADB proof after backend redeploy.
+4. Final proof passed: `success=true acked=1 failed_retrying=0 status=201 code=none purged=1`.
+5. No real notification was processed.
+
+Next recommended action:
+
+1. Keep real notification capture gated.
+2. Prove active receiving method + active payment intent in staging.
+3. Rehearse merchant manual review.
+4. Rehearse final-only public webhook delivery.
+5. Ask for the explicit operator capture-start command only after those synthetic proofs pass.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-08T19:44:07+03:00
 
 ## Latest RECEIVER-SIGN-1 staging proof alignment

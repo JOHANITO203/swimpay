@@ -28,18 +28,23 @@ SwimPay Receiver signing was migrated from shared HMAC-style verification keys t
 - A staging-only ADB broadcast proof was added:
   - action: `com.swimpay.receiver.STAGING_PROOF`
   - runtime path: redacted synthetic supported-bank snapshot -> Android Keystore signature -> encrypted outbox -> `/v1/receiver/signals`
-- First upload reached staging but returned `401 invalid_signature`.
-- Root cause assessment: local `main` is ahead of `origin/main`; Dokploy staging likely needs the backend asymmetric verifier commit pushed/redeployed before the proof can pass.
+- First upload reached staging but returned `401 invalid_signature` before backend redeploy.
+- After pushing/redeploying `main`, the proof advanced past signature verification and exposed one stale synthetic outbox record with `timestamp_out_of_range`.
+- Fixed the Android notification identity split:
+  - `notification_hash` now includes snapshot time so repeated notification events do not dedupe against stale outbox records;
+  - `semantic_hash` remains stable for equivalent notification shape/content.
+- Final staging proof passed:
+  - `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=1`
 
 ## Validation Notes
 
-- Targeted JS receiver-signing tests passed.
+- Targeted Android red/green regression passed for event-time-sensitive `notification_hash` and stable `semantic_hash`.
 - Full `npm test` passed: 74 test files, 528 tests.
 - `npm run android:doctor`, `npm run typecheck`, `npm run lint`, `npm run build` and Compose config validation passed.
 - Full Android JVM tests passed when `ANDROID_HOME` / `ANDROID_SDK_ROOT` were provided from the local SDK.
-- Android debug APK build passed.
-- `git diff --check` passed with a CRLF normalization warning for `.swimpay-agent/TASK_QUEUE.md`.
+- Android debug and staging APK builds passed.
+- `git diff --check` passed.
 
 ## Next Step
 
-Push/redeploy the asymmetric backend + staging proof changes, rerun the ADB staging proof, then proceed to real notification capture only if the proof returns `acked=1`.
+Continue the remaining synthetic ladder: active payment intent, active receiving method, merchant manual review and final-only webhook rehearsal. Real notification capture remains gated until those pass and the operator gives the explicit capture-start command.

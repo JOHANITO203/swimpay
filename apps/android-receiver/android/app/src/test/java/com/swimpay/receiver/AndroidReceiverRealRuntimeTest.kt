@@ -72,6 +72,24 @@ class AndroidReceiverRealRuntimeTest {
     }
 
     @Test
+    fun notificationHashChangesWithSnapshotTimeWhileSemanticHashStaysStable() {
+        val pipeline = ReceiverNotificationPipeline(
+            debugEnabled = false,
+            enabledBankPackages = setOf("ru.sberbankmobile")
+        )
+        val first = pipeline.process(
+            listOf(StagingSyntheticNotificationHarness.supportedBankSnapshot(postTime = 1_775_000_100_000L))
+        ).payload ?: error("first payload expected")
+        val second = pipeline.process(
+            listOf(StagingSyntheticNotificationHarness.supportedBankSnapshot(postTime = 1_775_000_160_000L))
+        ).payload ?: error("second payload expected")
+
+        assertFalse(first["notification_hash"] == second["notification_hash"])
+        assertEquals(first["semantic_hash"], second["semantic_hash"])
+        assertFalse(first["event_id"] == second["event_id"])
+    }
+
+    @Test
     fun realRuntimeOutboxEnqueuesOnlyRedactedSignedPayloads() {
         val store = AndroidEncryptedOutboxStore(FakeEncryptedStorageAdapter())
         val deviceStateStore = PersistentDeviceStateStore(InMemoryDeviceStateStorage())
