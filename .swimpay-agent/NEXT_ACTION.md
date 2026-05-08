@@ -10,7 +10,8 @@ Completed:
 2. Rebuilt and installed the staging APK on `SM-S916B`.
 3. Reran the staging ADB proof after backend redeploy.
 4. Final proof passed: `success=true acked=1 failed_retrying=0 status=201 code=none purged=1`.
-5. No real notification was processed.
+5. Clean rerun after the last push/redeploy passed: `success=true acked=1 failed_retrying=0 status=201 code=none purged=0`.
+6. No real notification was processed.
 
 Next recommended action:
 

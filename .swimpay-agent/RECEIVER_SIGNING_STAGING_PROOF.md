@@ -39,6 +39,8 @@ Final staging proof result after redeploy and Android proof cleanup:
 - Backend accepted the asymmetric signed redacted synthetic signal.
 - Log evidence:
   - `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=1`
+- Clean rerun after the final push/redeploy:
+  - `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=0`
 - The `purged=1` value was a staging-only cleanup of one old synthetic proof outbox record whose `observed_at` was outside the production timestamp window.
 - Root cause of the intermediate `timestamp_out_of_range`: the old notification hash did not include snapshot time, so repeated synthetic proofs could dedupe against a stale outbox record. This is fixed by making `notification_hash` event-time-sensitive while keeping `semantic_hash` stable for shape matching.
 

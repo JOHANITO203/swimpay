@@ -9,6 +9,7 @@
 - Added staging-only cleanup for old non-acked synthetic proof records outside the timestamp window.
 - Rebuilt and installed `app-staging.apk` on Samsung `SM-S916B`.
 - Final ADB proof passed against `https://staging.swimpay.pro`: `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=1`.
+- Clean rerun after the final push/redeploy also passed: `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=0`.
 - No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
 
 ## 2026-05-08T19:44:07+03:00 - RECEIVER-SIGN-1 staging proof alignment

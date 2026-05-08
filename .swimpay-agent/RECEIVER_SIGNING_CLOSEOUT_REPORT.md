@@ -35,6 +35,8 @@ SwimPay Receiver signing was migrated from shared HMAC-style verification keys t
   - `semantic_hash` remains stable for equivalent notification shape/content.
 - Final staging proof passed:
   - `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=1`
+- Clean final rerun after the last push/redeploy passed:
+  - `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=0`
 
 ## Validation Notes
 
