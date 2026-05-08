@@ -1,5 +1,6 @@
 package com.swimpay.receiver.ui.premium
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,6 +19,7 @@ import com.swimpay.receiver.MerchantConfigurationChecklist
 import com.swimpay.receiver.PersistentDeviceStateStore
 import com.swimpay.receiver.ReceiverRuntimeConfig
 import com.swimpay.receiver.ReceiverRuntimeConfigStore
+import com.swimpay.receiver.ReceiverRuntimeRegistrationCoordinator
 import com.swimpay.receiver.security.AndroidKeystorePayloadSigner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,6 +76,36 @@ fun PremiumMerchantApp(
             else -> target
         }
     }
+
+    LaunchedEffect(activeRuntime, notificationAccessEnabled) {
+        val session = mobileMerchantSessionStore.currentSession()
+        if (
+            session != null &&
+            onboardingCompletionStore.isCompleted() &&
+            receiverDeviceRepository != null &&
+            receiverDeviceStateStore != null &&
+            receiverRuntimeConfigStore != null
+        ) {
+            val refresh = withContext(Dispatchers.IO) {
+                ReceiverRuntimeRegistrationCoordinator(
+                    registrationClient = receiverDeviceRepository,
+                    deviceStateStore = receiverDeviceStateStore,
+                    runtimeConfigStore = receiverRuntimeConfigStore,
+                    payloadSigner = receiverPayloadSigner
+                ).ensureCurrentAsymmetricRegistration(
+                    session = AuthenticatedMerchantSession.mobile(session),
+                    notificationAccessEnabled = notificationAccessEnabled,
+                    appVersion = receiverAppVersion,
+                    androidVersion = receiverAndroidVersion
+                )
+            }
+            Log.i(
+                "SwimPayReceiverRegistration",
+                "registration_fresh=${refresh.success} registered=${refresh.registered} message=${refresh.safeMessage}"
+            )
+        }
+    }
+
     fun finishOnboarding(completedState: PremiumOnboardingSessionState) {
         val session = mobileMerchantSessionStore.currentSession()
         if (
@@ -123,14 +155,14 @@ fun PremiumMerchantApp(
                 return@launch
             }
             val selectedBankIds = completedState.selectedBankIds
-            val receiverPublicKeyPem = withContext(Dispatchers.IO) {
-                receiverPayloadSigner.getOrCreateKeyPair().publicKeyPem
+            val receiverKeyInfo = withContext(Dispatchers.IO) {
+                receiverPayloadSigner.getOrCreateKeyPair()
             }
             val result = withContext(Dispatchers.IO) {
                 receiverDeviceRepository.registerAndHeartbeat(
                     session = AuthenticatedMerchantSession.mobile(session),
                     enabledBankProfileIds = selectedBankIds,
-                    publicKeyPem = receiverPublicKeyPem,
+                    publicKeyPem = receiverKeyInfo.publicKeyPem,
                     notificationAccessEnabled = notificationAccessEnabled,
                     appVersion = receiverAppVersion,
                     androidVersion = receiverAndroidVersion
@@ -144,7 +176,7 @@ fun PremiumMerchantApp(
                         merchantId = session.merchantId
                     )
                 )
-                receiverDeviceStateStore.save(result.deviceState)
+                receiverDeviceStateStore.save(result.deviceState.copy(receiverKeyId = receiverKeyInfo.keyId))
                 onboardingCompletionStore.markCompleted()
                 route = PremiumNavigation.afterOnboarding()
             } else {

@@ -12,10 +12,14 @@ data class ReceiverRuntimeConfig(
         .toSet()
 }
 
-class ReceiverRuntimeConfigStore(context: Context) {
+interface ReceiverRuntimeConfigReader {
+    fun load(): ReceiverRuntimeConfig
+}
+
+class ReceiverRuntimeConfigStore(context: Context) : ReceiverRuntimeConfigReader {
     private val preferences = context.getSharedPreferences("swimpay_receiver_runtime_config", Context.MODE_PRIVATE)
 
-    fun load(): ReceiverRuntimeConfig {
+    override fun load(): ReceiverRuntimeConfig {
         val enabledBankProfileIds = preferences.getStringSet("enabled_bank_profile_ids", emptySet()).orEmpty()
             .filter { id -> BankTargetLock.supportedTargets.any { it.bankProfileId == id } }
             .toSet()

@@ -1,5 +1,35 @@
 # Next Action
 
+generated_at: 2026-05-08T19:44:07+03:00
+
+## Latest RECEIVER-SIGN-1 staging proof alignment
+
+Completed:
+
+1. Installed the staging APK on `SM-S916B`.
+2. Proved the app can silently align an existing receiver registration with the Android Keystore public key.
+3. Added a staging-only ADB proof trigger: `com.swimpay.receiver.STAGING_PROOF`.
+4. Proved the trigger uses the non-debug redaction, outbox, Android Keystore signing and `/v1/receiver/signals` upload path.
+5. Confirmed the current failure is a backend signature rejection: `status=401 code=invalid_signature`.
+
+Next recommended action:
+
+1. Finish validation of the local changes.
+2. Commit and push current `main`.
+3. Let Dokploy redeploy staging from `origin/main`.
+4. Rerun `adb shell am broadcast -a com.swimpay.receiver.STAGING_PROOF -p com.swimpay.receiver`.
+5. Continue only if the proof returns `success=true acked=1 failed_retrying=0`.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-08T18:57:37+03:00
 
 ## Latest RECEIVER-SIGN-1 asymmetric receiver signing

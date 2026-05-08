@@ -16,7 +16,20 @@ SwimPay Receiver signing was migrated from shared HMAC-style verification keys t
 ## Compatibility
 
 - Existing staging receiver registrations using old shared keys must re-register.
+- Android now stores the local `receiverKeyId` with the device state.
+- On app startup, a completed mobile session silently re-registers the receiver if the stored device state has no key id, has a different key id, or was recorded with stale notification access state.
 - Debug smoke HMAC remains isolated and cannot be used by non-debug runtime.
+
+## Staging Proof Update
+
+- `app-staging.apk` was built and installed on `SM-S916B`.
+- The app registered/aligned the receiver with the current Android Keystore key:
+  - `registration_fresh=true registered=true message=Receiver aligne avec la cle Android`
+- A staging-only ADB broadcast proof was added:
+  - action: `com.swimpay.receiver.STAGING_PROOF`
+  - runtime path: redacted synthetic supported-bank snapshot -> Android Keystore signature -> encrypted outbox -> `/v1/receiver/signals`
+- First upload reached staging but returned `401 invalid_signature`.
+- Root cause assessment: local `main` is ahead of `origin/main`; Dokploy staging likely needs the backend asymmetric verifier commit pushed/redeployed before the proof can pass.
 
 ## Validation Notes
 
@@ -29,4 +42,4 @@ SwimPay Receiver signing was migrated from shared HMAC-style verification keys t
 
 ## Next Step
 
-Build/install updated staging APK, re-register receiver, then run synthetic redacted upload proof. No real notification capture before that proof.
+Push/redeploy the asymmetric backend + staging proof changes, rerun the ADB staging proof, then proceed to real notification capture only if the proof returns `acked=1`.

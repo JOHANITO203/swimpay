@@ -1,5 +1,15 @@
 # Blockers
 
+## RECEIVER-SIGN-1 staging proof alignment
+
+- Resolved on device: the installed staging APK silently re-registered/aligned the Receiver with the Android Keystore asymmetric public key.
+- Evidence: Android logcat reported `registration_fresh=true registered=true message=Receiver aligne avec la cle Android`, then `registration_fresh=true registered=false message=Receiver deja aligne` after reinstall.
+- Added: staging-only ADB proof action `com.swimpay.receiver.STAGING_PROOF` runs a redacted synthetic supported-bank snapshot through the non-debug runtime path, encrypted outbox and `/v1/receiver/signals` upload.
+- Current blocker before real notification capture: the staging signed upload reaches the backend but returns `401 invalid_signature`.
+- Root cause assessment: local `main` is ahead of `origin/main`, so Dokploy staging likely has not redeployed the backend asymmetric verifier while the APK already signs with the new Keystore model.
+- Required before real notification capture: push/redeploy current `main`, rerun the staging proof broadcast, and require `acked=1` before any real bank notification test.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+
 ## INTEL-TOOLS-1 SwimPay Intelligence readiness matrix
 
 - Completed: tasks 637 through 647 define the SwimPay Intelligence tool-by-tool readiness pass before any real notification capture.

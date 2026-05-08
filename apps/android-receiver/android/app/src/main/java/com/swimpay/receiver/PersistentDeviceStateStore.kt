@@ -10,6 +10,7 @@ data class ReceiverDeviceState(
     val lastRegistrationAt: String?,
     val lastHeartbeatAt: String?,
     val backendBaseUrl: String,
+    val receiverKeyId: String? = null,
     val lastLocalCounter: Long = 0,
     val lastNotificationListenerAccessEnabled: Boolean = false
 )
@@ -55,6 +56,7 @@ class PersistentDeviceStateStore(
             state.lastRegistrationAt,
             state.lastHeartbeatAt,
             state.backendBaseUrl,
+            state.receiverKeyId,
             state.lastLocalCounter.toString(),
             state.lastNotificationListenerAccessEnabled.toString()
         ).joinToString("|")
@@ -107,6 +109,7 @@ class SharedPreferencesDeviceStateStorage(context: Context) : DeviceStateStorage
             lastHeartbeatAt = preferences.getString("last_heartbeat_at", null),
             backendBaseUrl = preferences.getString("backend_base_url", DebugBackendConfig.DEFAULT_BASE_URL)
                 ?: DebugBackendConfig.DEFAULT_BASE_URL,
+            receiverKeyId = preferences.getString("receiver_key_id", null),
             lastLocalCounter = preferences.getLong("last_local_counter", 0),
             lastNotificationListenerAccessEnabled = preferences.getBoolean("last_notification_listener_access_enabled", false)
         )
@@ -121,6 +124,7 @@ class SharedPreferencesDeviceStateStorage(context: Context) : DeviceStateStorage
             .putString("last_registration_at", state.lastRegistrationAt)
             .putString("last_heartbeat_at", state.lastHeartbeatAt)
             .putString("backend_base_url", state.backendBaseUrl)
+            .putString("receiver_key_id", state.receiverKeyId)
             .putLong("last_local_counter", state.lastLocalCounter)
             .putBoolean("last_notification_listener_access_enabled", state.lastNotificationListenerAccessEnabled)
             .apply()

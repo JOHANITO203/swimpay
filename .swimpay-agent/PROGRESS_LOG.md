@@ -1,5 +1,17 @@
 # Progress Log
 
+## 2026-05-08T19:44:07+03:00 - RECEIVER-SIGN-1 staging proof alignment
+
+- Added Android receiver registration freshness tracking through local `receiverKeyId` persistence.
+- Added `ReceiverRuntimeRegistrationCoordinator` so completed staging sessions silently re-register when the stored receiver key is missing, stale or tied to stale notification-access state.
+- Updated onboarding completion to persist the active Android Keystore key id with the receiver device state.
+- Added a staging-only ADB proof receiver for `com.swimpay.receiver.STAGING_PROOF`.
+- The staging proof uses the real non-debug path with current mobile session, runtime config, Android Keystore signer, redacted synthetic supported-bank snapshot, encrypted outbox and `/v1/receiver/signals` upload.
+- Installed the staging APK on Samsung `SM-S916B`; logcat showed receiver registration alignment succeeded with the current Android Keystore key.
+- The staging proof upload reached backend and returned `status=401 code=invalid_signature`.
+- Current root-cause assessment: local `main` is ahead of `origin/main`, so staging needs the backend asymmetric verifier commit pushed and redeployed before this proof can pass.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
 ## 2026-05-08T18:57:37+03:00 - RECEIVER-SIGN-1 asymmetric receiver signing
 
 - Created tasks 656 through 664 and updated `.swimpay-agent/TASK_QUEUE.md`.

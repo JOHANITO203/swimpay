@@ -19,7 +19,8 @@ class PersistentDeviceStateStoreTest {
                 appVersion = "0.1.0-debug",
                 lastRegistrationAt = "2026-05-02T18:00:01.000Z",
                 lastHeartbeatAt = "2026-05-02T18:00:02.000Z",
-                backendBaseUrl = "http://127.0.0.1:8080"
+                backendBaseUrl = "http://127.0.0.1:8080",
+                receiverKeyId = "akp_test_01"
             )
         )
 
@@ -28,6 +29,7 @@ class PersistentDeviceStateStoreTest {
         assertEquals("dev_debug_01", reloaded?.deviceId)
         assertEquals("active", reloaded?.deviceStatus)
         assertEquals("http://127.0.0.1:8080", reloaded?.backendBaseUrl)
+        assertEquals("akp_test_01", reloaded?.receiverKeyId)
         assertEquals(0L, reloaded?.lastLocalCounter)
         assertTrue(storage.dump().contains("dev_debug_01"))
 

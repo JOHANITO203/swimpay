@@ -364,11 +364,22 @@ data class AndroidReceiverRuntimeRegistrationResult(
     val safeMessage: String = ""
 )
 
+interface ReceiverDeviceRegistrationClient {
+    fun registerAndHeartbeat(
+        session: AuthenticatedMerchantSession,
+        enabledBankProfileIds: Set<String>,
+        publicKeyPem: String,
+        notificationAccessEnabled: Boolean,
+        appVersion: String,
+        androidVersion: String
+    ): AndroidReceiverRuntimeRegistrationResult
+}
+
 class AndroidReceiverDeviceApiRepository(
     private val transport: MerchantApiTransport,
     private val backendBaseUrl: String
-) {
-    fun registerAndHeartbeat(
+) : ReceiverDeviceRegistrationClient {
+    override fun registerAndHeartbeat(
         session: AuthenticatedMerchantSession,
         enabledBankProfileIds: Set<String>,
         publicKeyPem: String,
