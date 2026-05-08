@@ -1,5 +1,35 @@
 # Next Action
 
+generated_at: 2026-05-08T18:57:37+03:00
+
+## Latest RECEIVER-SIGN-1 asymmetric receiver signing
+
+Completed:
+
+1. Migrated real Android Receiver signing from shared HMAC-like keys to Android Keystore asymmetric signing.
+2. Backend signal ingestion now verifies `ecdsa_p256_sha256_der_v1` signatures with the registered PEM public key.
+3. Receiver signal upload now requires `payload_hash`; shared `spk_` receiver keys are rejected.
+4. Runtime config no longer persists a real-runtime shared signing key.
+5. Debug-only smoke HMAC remains isolated from non-debug runtime.
+6. Full validation passed locally: android doctor, typecheck, lint, full tests, build, Compose config, Android JVM tests and Android debug APK build.
+
+Next recommended action:
+
+1. Build/install the staging APK.
+2. Re-run login/onboarding or receiver registration so staging stores the new PEM public key.
+3. Run one synthetic redacted outbox upload to `https://staging.swimpay.pro`.
+4. Only after that, continue the real-capture proof ladder.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-08T18:14:42+03:00
 
 ## Latest INTEL-TOOLS-1 readiness matrix

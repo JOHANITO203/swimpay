@@ -3,6 +3,7 @@ package com.swimpay.receiver
 import com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore
 import com.swimpay.receiver.outbox.FakeEncryptedStorageAdapter
 import com.swimpay.receiver.outbox.OutboxStatus
+import com.swimpay.receiver.security.FakePayloadSigner
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -91,7 +92,7 @@ class AndroidReceiverRealRuntimeTest {
 
         val enqueue = ReceiverRuntimeOutboxController(
             merchantId = "mch_runtime_01",
-            signingKey = "runtime_test_hmac_key",
+            payloadSigner = FakePayloadSigner("runtime-test-signer"),
             deviceStateStore = deviceStateStore,
             outboxStore = store,
             nowIso = { "2026-05-08T00:01:00.000Z" }
@@ -103,13 +104,15 @@ class AndroidReceiverRealRuntimeTest {
         assertEquals(1, due.size)
         assertEquals(OutboxStatus.PENDING_UPLOAD, due[0].status)
         assertTrue(due[0].encryptedPayload.contains("\"local_counter\":42"))
+        assertTrue(due[0].encryptedPayload.contains("\"payload_hash\""))
         assertTrue(due[0].encryptedPayload.contains("\"signature\""))
+        assertFalse(due[0].encryptedPayload.contains("runtime_test_hmac_key"))
         assertFalse(due[0].encryptedPayload.contains("+79991234567"))
         assertFalse(due[0].encryptedPayload.contains("raw_title", ignoreCase = true))
     }
 
     @Test
-    fun realRuntimeOutboxRequiresRegisteredMerchantAndSigningConfig() {
+    fun realRuntimeOutboxRequiresRegisteredMerchantAndDevice() {
         val store = AndroidEncryptedOutboxStore(FakeEncryptedStorageAdapter())
         val deviceStateStore = PersistentDeviceStateStore(InMemoryDeviceStateStorage())
         deviceStateStore.save(
@@ -128,19 +131,12 @@ class AndroidReceiverRealRuntimeTest {
 
         val missingMerchant = ReceiverRuntimeOutboxController(
             merchantId = "",
-            signingKey = "runtime_test_hmac_key",
-            deviceStateStore = deviceStateStore,
-            outboxStore = store
-        ).enqueueProcessedNotificationSignal(result)
-        val missingSigningKey = ReceiverRuntimeOutboxController(
-            merchantId = "mch_runtime_01",
-            signingKey = "",
+            payloadSigner = FakePayloadSigner("runtime-test-signer"),
             deviceStateStore = deviceStateStore,
             outboxStore = store
         ).enqueueProcessedNotificationSignal(result)
 
         assertFalse(missingMerchant.success)
-        assertFalse(missingSigningKey.success)
         assertEquals(0, store.dueRecords("2026-05-08T00:02:00.000Z").size)
     }
 

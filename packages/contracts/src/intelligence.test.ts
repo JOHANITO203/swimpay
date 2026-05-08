@@ -43,6 +43,7 @@ describe('SwimPay Intelligence V1 contracts', () => {
       local_counter: 1,
       snapshot_count: 1,
       coalesced: false,
+      payload_hash: 'f'.repeat(64),
       amount_minor: 50000,
       currency: 'RUB',
       raw_text_present: false,

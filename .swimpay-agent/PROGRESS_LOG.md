@@ -1,5 +1,18 @@
 # Progress Log
 
+## 2026-05-08T18:57:37+03:00 - RECEIVER-SIGN-1 asymmetric receiver signing
+
+- Created tasks 656 through 664 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Created `.swimpay-agent/RECEIVER_SIGNING_INVENTORY.md` and receiver signing implementation reports.
+- Migrated real Android Receiver signing from shared HMAC-like runtime keys to Android Keystore EC P-256 signing.
+- Updated Android registration to send a PEM public key and removed real-runtime shared key persistence.
+- Updated signal upload to include `payload_hash` and sign canonical redacted payloads before outbox upload.
+- Updated backend signal verification to `ecdsa_p256_sha256_der_v1` using the registered receiver public key.
+- Added guardrails rejecting `spk_` shared receiver keys, missing `payload_hash`, HMAC runtime signing, and HMAC backend verification.
+- Full validation passed: receiver contract/backend tests, receiver device tests, production staging boundary tests, durable worker E2E receiver path, production guardrails, full Vitest suite, android doctor, typecheck, lint, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
+- Remaining proof: install/re-register the staging APK and run one synthetic redacted asymmetric upload before real notification capture.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
 ## 2026-05-08T18:14:42+03:00 - INTEL-TOOLS-1 SwimPay Intelligence readiness matrix
 
 - Created tasks 637 through 647 and updated `.swimpay-agent/TASK_QUEUE.md`.

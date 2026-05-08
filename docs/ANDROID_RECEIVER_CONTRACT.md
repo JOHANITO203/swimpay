@@ -37,7 +37,7 @@ Request:
   "device_name": "Merchant counter phone",
   "app_version": "0.1.0",
   "android_version": "14",
-  "public_key": "device-public-key-or-dev-verification-key",
+  "public_key": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----",
   "device_install_id": "install_...",
   "supported_capabilities": [
     "notification_access",
@@ -268,20 +268,24 @@ The signed payload is canonical JSON with deterministic key ordering and exclude
 Supported algorithm:
 
 ```text
-hmac_sha256_canonical_v1
+ecdsa_p256_sha256_der_v1
 ```
 
 The signed payload must include:
 
 - `event_id`
 - `notification_hash`
+- `payload_hash`
 - `device_id`
 - `observed_at`
 - `local_counter`
 - package and bank profile metadata
 - redacted signal fields
 
-The current foundation uses the registered device `public_key` value as a deterministic verification key in local tests. A production-grade asymmetric verification layer is intentionally future work.
+The Android Receiver signs with an Android Keystore-held EC P-256 private key.
+Only the PEM public key is registered on the backend. Shared HMAC-style receiver
+keys are not accepted for real signal upload. Debug-only smoke paths must remain
+isolated from non-debug runtime.
 
 Signal upload is accepted only when:
 

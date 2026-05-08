@@ -232,10 +232,9 @@ These names do not authorize V1 auto-confirmation. They must be renamed or quara
 
 ## 15. Must-Fix Contradictions
 
-1. Receiver signing still uses an app-generated HMAC verification key sent to
-   the backend as `public_key`. Production-grade receiver identity must move to
-   true Android Keystore asymmetric signing where only the public key is
-   registered and the private key never leaves the device.
+1. Receiver signing implementation has moved to Android Keystore asymmetric
+   signing, but the installed staging APK must still be re-registered and proven
+   with a synthetic redacted upload before real notification capture.
 2. Android runtime hash prefix still uses synthetic/debug vocabulary for real
    runtime evidence and should be renamed for audit clarity.
 3. Inert legacy `auto_confirm*` schema/template/fixture vocabulary remains as

@@ -6,7 +6,7 @@
 - Completed: `.swimpay-agent/SWIMPAY_INTELLIGENCE_TOOLS_READINESS_MATRIX.md` classifies each tool as ready, partial, blocked, not tested or unsafe.
 - Ready at code/test level: exact supported-bank gate, redaction pipeline, protected outbox, backend signal ingestion, anti-replay, parser/classifier synthetic fixtures, Payment Intent Gate, manual review, final-only webhooks, SDK guardrails and receiving methods.
 - Partial before real capture: Notification Listener Access proof on the installed staging APK, non-debug listener snapshot proof, staging receiver registration/heartbeat, synthetic redacted APK upload and external staging webhook rehearsal.
-- Security-contract gap: current receiver signing is still HMAC/shared verification-key based; production-grade asymmetric Android Keystore public-key registration remains recommended unless the operator explicitly accepts HMAC for controlled staging only.
+- Resolved in code: receiver signing now uses Android Keystore asymmetric public-key registration and backend ECDSA verification. Remaining gate: installed staging APK must re-register and prove one synthetic redacted signed upload before real capture.
 - Gated: no real bank notification capture starts until bank detection metrics, Notification Listener Access, receiver heartbeat, synthetic redacted upload, active payment intent, receiving method and final webhook rehearsal pass, followed by a final explicit operator capture-start command.
 - Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
 
@@ -17,7 +17,7 @@
 - Blocked before real notification capture: receiver registration/heartbeat from the installed staging APK still needs staging proof.
 - Blocked before real notification capture: synthetic redacted outbox upload from the installed staging APK still needs staging proof.
 - Blocked before real notification capture: active payment intent + receiving method + SDK/webhook rehearsal still need proof.
-- Security-contract gap: current receiver signing uses an app-generated HMAC verification key registered as `public_key`; production-grade asymmetric Android Keystore public-key registration remains required unless the operator explicitly accepts this for controlled staging only.
+- Resolved in code: current receiver signing no longer uses an app-generated HMAC key for real runtime; staging device proof remains required after reinstall/re-register.
 - Gated: no real notification capture starts until tasks 636 through 642 pass and the operator gives the final explicit capture-start command.
 
 ## REAL-CAPTURE-2 Intelligence test ladder

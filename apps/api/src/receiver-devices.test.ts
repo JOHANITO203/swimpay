@@ -1,3 +1,4 @@
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import { describe, expect, test } from 'vitest';
 import { InMemoryMetricsRegistry, MetricNames } from '@swimpay/observability';
 import { buildApiServer } from './server.js';
@@ -27,6 +28,10 @@ import type {
   SignalIngestionInput,
   SignalIngestionResult
 } from './signals.js';
+
+const receiverKeyPair = generateReceiverKeyPair();
+const receiverPublicKey = receiverKeyPair.publicKeyPem;
+const receiverPrivateKey = receiverKeyPair.privateKeyPem;
 
 class InMemoryReceiverDeviceRepository implements ReceiverDeviceRepository {
   public readonly devices = new Map<string, StoredReceiverDeviceRecord>();
@@ -234,7 +239,7 @@ describe('receiver device api', () => {
       headers: { authorization: 'Bearer test_mch_01' },
       payload: {
         device_name: 'Merchant Phone',
-        public_key: 'base64_public_key'
+        public_key: receiverPublicKey
       }
     });
 
@@ -257,7 +262,7 @@ describe('receiver device api', () => {
       headers: { cookie },
       payload: {
         device_name: 'Merchant Phone',
-        public_key: 'base64_public_key'
+        public_key: receiverPublicKey
       }
     });
     expect(blocked.statusCode).toBe(403);
@@ -268,7 +273,7 @@ describe('receiver device api', () => {
       headers: { cookie, [CSRF_HEADER_NAME]: csrfToken },
       payload: {
         device_name: 'Merchant Phone',
-        public_key: 'base64_public_key',
+        public_key: receiverPublicKey,
         app_version: '1.0.0',
         android_version: '15',
         selected_banks: ['sber_ru']
@@ -279,7 +284,7 @@ describe('receiver device api', () => {
       device_id: 'prod_receiver_01',
       merchant_id: merchantId
     });
-    expect(registered.body).not.toContain('base64_public_key');
+    expect(registered.body).not.toContain('BEGIN PUBLIC KEY');
 
     const heartbeat = await server.inject({
       method: 'POST',
@@ -354,7 +359,7 @@ describe('receiver device api', () => {
       headers: { authorization: `Bearer ${token}` },
       payload: {
         device_name: 'Android receiver',
-        public_key: 'mobile_signal_hmac_key',
+        public_key: receiverPublicKey,
         app_version: '1.0.0',
         android_version: '15',
         selected_banks: ['sber_ru']
@@ -367,10 +372,10 @@ describe('receiver device api', () => {
       merchant_id: merchantId,
       status: 'pending'
     });
-    expect(registered.body).not.toContain('mobile_signal_hmac_key');
+    expect(registered.body).not.toContain('BEGIN PUBLIC KEY');
     expect(repository.devices.get('mobile_receiver_01')).toMatchObject({
       merchantId,
-      publicKey: 'mobile_signal_hmac_key'
+      publicKey: receiverPublicKey
     });
 
     const heartbeat = await server.inject({
@@ -425,12 +430,13 @@ describe('receiver device api', () => {
       raw_text_present: false
     };
 
+    const signalWithPayloadHash = addPayloadHash(signal);
     const upload = await server.inject({
       method: 'POST',
       url: '/v1/receiver/signals',
       payload: {
-        ...signal,
-        signature: createReceiverSignalSignature(signal, 'mobile_signal_hmac_key')
+        ...signalWithPayloadHash,
+        signature: createReceiverSignalSignature(signalWithPayloadHash, receiverPrivateKey)
       }
     });
 
@@ -462,7 +468,7 @@ describe('receiver device api', () => {
       headers: { authorization: 'Bearer test_unknown_merchant' },
       payload: {
         device_name: 'Merchant Phone',
-        public_key: 'base64_public_key'
+        public_key: receiverPublicKey
       }
     });
 
@@ -490,7 +496,7 @@ describe('receiver device api', () => {
       headers: { authorization: 'Bearer test_mch_01' },
       payload: {
         device_name: 'Merchant Phone',
-        public_key: 'base64_public_key',
+        public_key: receiverPublicKey,
         device_install_id: 'install_01',
         app_version: '1.0.0',
         android_version: '15',
@@ -507,12 +513,12 @@ describe('receiver device api', () => {
       server_time: '2026-05-02T11:00:00.000Z',
       required_capabilities: ['notification_access', 'signed_signal_upload', 'local_redaction']
     });
-    expect(response.body).not.toContain('base64_public_key');
+    expect(response.body).not.toContain('BEGIN PUBLIC KEY');
 
     expect(repository.devices.get('dev_test_01')).toMatchObject({
       id: 'dev_test_01',
       merchantId: 'mch_01',
-      publicKey: 'base64_public_key',
+      publicKey: receiverPublicKey,
       appVersion: '1.0.0',
       androidVersion: '15',
       notificationAccessStatus: false,
@@ -557,7 +563,7 @@ describe('receiver device api', () => {
       headers: { authorization: 'Bearer test_mch_01' },
       payload: {
         device_name: 'Merchant Phone',
-        public_key: 'base64_public_key',
+        public_key: receiverPublicKey,
         app_version: '1.0.0',
         android_version: '15',
         selected_banks: ['sber_ru']
@@ -615,7 +621,7 @@ describe('receiver device api', () => {
       headers: { authorization: 'Bearer test_mch_01' },
       payload: {
         device_name: 'Merchant Phone',
-        public_key: 'base64_public_key',
+        public_key: receiverPublicKey,
         app_version: '1.0.0',
         android_version: '15'
       }
@@ -648,3 +654,37 @@ describe('receiver device api', () => {
     });
   });
 });
+
+function generateReceiverKeyPair(): { publicKeyPem: string; privateKeyPem: string } {
+  const { publicKey, privateKey } = generateKeyPairSync('ec', {
+    namedCurve: 'prime256v1'
+  });
+  return {
+    publicKeyPem: publicKey.export({ format: 'pem', type: 'spki' }).toString().trim(),
+    privateKeyPem: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString().trim()
+  };
+}
+
+function addPayloadHash(signal: Record<string, unknown>): Record<string, unknown> {
+  const withoutPayloadHash = { ...signal };
+  delete withoutPayloadHash.payload_hash;
+  delete withoutPayloadHash.signature;
+  return {
+    ...withoutPayloadHash,
+    payload_hash: createHash('sha256').update(stableStringify(withoutPayloadHash)).digest('hex')
+  };
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(',')}}`;
+}

@@ -68,13 +68,18 @@ Backend verifies:
 - local counter increasing;
 - observed timestamp inside the accepted production clock tolerance.
 
-Current V1 foundation signature algorithm:
+Current V1 Receiver signature algorithm:
 
 ```text
-hmac_sha256_canonical_v1
+ecdsa_p256_sha256_der_v1
 ```
 
-The foundation uses the registered receiver public key field as the local deterministic verification key in tests. Production-grade asymmetric verification remains a follow-up hardening step and must not introduce a bypass mode.
+The Android Receiver generates/loads an EC P-256 signing key in Android
+Keystore. The private key stays on the device. The exported PEM public key is
+registered server-side in `receiver_devices.public_key`, and backend signal
+ingestion verifies `SHA256withECDSA` signatures over deterministic canonical
+JSON excluding `signature`. Shared HMAC receiver verification keys are not valid
+for real Receiver signal upload.
 
 ## Anti-replay
 
@@ -88,6 +93,11 @@ Use:
 - optional server nonce/request hash for sensitive operations.
 
 Sprint 9H adds production receiver hardening: local `test_*` merchant bearers are rejected on receiver registration and heartbeat routes in production, heartbeat derives safe operational states such as `notification_access_missing`, `needs_reconnect`, `bank_targets_missing` and `force_review_local`, and production signal uploads reject stale or future observed timestamps before ingestion.
+
+Sprint RECEIVER-SIGN-1 migrates real Receiver identity from shared HMAC-like
+verification keys to Android Keystore asymmetric signing. Debug-only smoke code
+may keep local HMAC helpers, but non-debug runtime registration and signal upload
+must use the Keystore public/private model.
 
 ## API keys
 
@@ -117,11 +127,10 @@ Known/new-device detection must use privacy-safe device proof, such as an app
 install keypair and signed server challenge. Do not collect or store raw IMEI,
 raw Android ID, advertising ID or broad fingerprint material.
 
-Current Android account proof status is intentionally limited: the app sends a
-generated install proof boundary, not raw device identifiers. It must not be
-described as production-grade device authentication until a server-issued
-challenge is signed with an Android Keystore-held private key and verified by
-the backend.
+Current Android account proof status is intentionally separate from Receiver
+signal signing: account creation uses an install proof boundary and Google
+recovery is optional, while Receiver signal upload uses an Android
+Keystore-held private key with server-side public-key verification.
 
 Google is optional account recovery/linking only. It can appear in `Se
 connecter` and in `Paramètres > Sécurité`, but it must not be required for

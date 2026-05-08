@@ -1,3 +1,4 @@
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -44,7 +45,9 @@ import {
 import { createWebhookDeliveryRequestedHandler } from '../apps/job-worker/src/webhook-runtime.js';
 
 const now = '2026-05-02T10:00:00.000Z';
-const publicKey = 'synthetic-device-public-key';
+const receiverKeyPair = generateReceiverKeyPair();
+const publicKey = receiverKeyPair.publicKeyPem;
+const privateKey = receiverKeyPair.privateKeyPem;
 const phoneHmacSecret = 'durable_e2e_phone_secret';
 const rawBuyerPhone = '+7 (999) 123-45-67';
 const buyerPhoneHmac = hmacSha256('+79991234567', phoneHmacSecret);
@@ -598,9 +601,10 @@ function signedSignalPayload(overrides: Partial<Record<string, unknown>> = {}) {
     ...overrides
   };
 
+  const payloadWithHash = addPayloadHash(payload);
   return {
-    ...payload,
-    signature: createReceiverSignalSignature(payload, publicKey)
+    ...payloadWithHash,
+    signature: createReceiverSignalSignature(payloadWithHash, privateKey)
   };
 }
 
@@ -626,6 +630,40 @@ function signalFromApi(input: SignalIngestionInput): SignalRuntimeSignal {
     signatureValid: input.signal.signatureValid,
     status: input.signal.status
   };
+}
+
+function generateReceiverKeyPair(): { publicKeyPem: string; privateKeyPem: string } {
+  const { publicKey: generatedPublicKey, privateKey: generatedPrivateKey } = generateKeyPairSync('ec', {
+    namedCurve: 'prime256v1'
+  });
+  return {
+    publicKeyPem: generatedPublicKey.export({ format: 'pem', type: 'spki' }).toString().trim(),
+    privateKeyPem: generatedPrivateKey.export({ format: 'pem', type: 'pkcs8' }).toString().trim()
+  };
+}
+
+function addPayloadHash(payload: Record<string, unknown>): Record<string, unknown> {
+  const withoutPayloadHash = { ...payload };
+  delete withoutPayloadHash.payload_hash;
+  delete withoutPayloadHash.signature;
+  return {
+    ...withoutPayloadHash,
+    payload_hash: createHash('sha256').update(stableStringify(withoutPayloadHash)).digest('hex')
+  };
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(',')}}`;
 }
 
 function sessionFromApi(order: StoredOrderRecord, session: StoredPaymentSessionRecord): SignalRuntimeSessionCandidate {

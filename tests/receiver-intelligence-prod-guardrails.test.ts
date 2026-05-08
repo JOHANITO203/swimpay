@@ -31,6 +31,20 @@ describe('receiver intelligence production guardrails', () => {
     expect(receiverApi).not.toMatch(/sendDeveloperWebhook|developerWebhook\.send|confirmOrderFromAndroid|paymentConfirmedFromAndroid/u);
   });
 
+  it('keeps real Android runtime on asymmetric signing instead of shared HMAC keys', () => {
+    const runtimeOutbox = read('apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ReceiverRuntimeOutboxController.kt');
+    const runtimeConfig = read('apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ReceiverRuntimeConfigStore.kt');
+    const listener = read('apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/SwimPayNotificationListenerService.kt');
+    const registration = read('apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/AndroidMerchantApiWiring.kt');
+    const apiSignals = read('apps/api/src/signals.ts');
+
+    expect(runtimeOutbox).not.toMatch(/HmacSHA256|javax\.crypto\.Mac|SecretKeySpec|signingKey/u);
+    expect(runtimeConfig).not.toMatch(/SIGNING_KEY_PREFIX|spk_|signing_key|generateSigningKey|signingKeyOrCreate/u);
+    expect(`${listener}\n${registration}`).toContain('AndroidKeystorePayloadSigner');
+    expect(apiSignals).toContain('ECDSA_P256_SHA256_DER_V1');
+    expect(apiSignals).not.toMatch(/createHmac\('sha256',\s*verificationKey\)/u);
+  });
+
   it('documents non-destructive redacted retention hooks before cleanup jobs exist', () => {
     const policy = read('docs/INTELLIGENCE_RETENTION_POLICY.md');
 

@@ -1340,7 +1340,7 @@ export type AndroidReceiverErrorCode =
   (typeof AndroidReceiverErrorCodes)[keyof typeof AndroidReceiverErrorCodes];
 
 export const ReceiverSignatureAlgorithms = {
-  HMAC_SHA256_CANONICAL_V1: 'hmac_sha256_canonical_v1'
+  ECDSA_P256_SHA256_DER_V1: 'ecdsa_p256_sha256_der_v1'
 } as const;
 
 export type ReceiverSignatureAlgorithm =
@@ -1457,6 +1457,7 @@ export interface AndroidReceiverSignalUploadRequest extends AndroidSignalCoalesc
   signal_quality_hint?: number;
   redacted_title?: string;
   redacted_body?: string;
+  payload_hash: string;
   raw_text_present: false;
   signature: string;
 }
@@ -1715,7 +1716,7 @@ export function validateAndroidReceiverRegistrationRequest(
     return invalidAndroidReceiverPayload();
   }
 
-  if (!isNonEmptyString(body.public_key)) {
+  if (!isNonEmptyString(body.public_key) || !isReceiverPublicKeyPem(body.public_key)) {
     return invalidAndroidReceiverPayload('public_key');
   }
 
@@ -1850,6 +1851,7 @@ export function validateAndroidReceiverSignalUploadRequest(
     'package_name',
     'package_cert_sha256',
     'notification_hash',
+    'payload_hash',
     'observed_at'
   ]) {
     if (!isNonEmptyString(body[field])) {
@@ -1912,6 +1914,7 @@ export function validateAndroidReceiverSignalUploadRequest(
     snapshot_count: Number(body.snapshot_count),
     coalesced: Boolean(body.coalesced),
     raw_text_present: false,
+    payload_hash: String(body.payload_hash).trim(),
     signature: String(body.signature).trim()
   };
   if (typeof body.received_at === 'string') {
@@ -2171,6 +2174,16 @@ function optionalStringArray(value: unknown): string[] | undefined {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isReceiverPublicKeyPem(value: string): boolean {
+  const trimmed = value.trim();
+  return (
+    trimmed.startsWith('-----BEGIN PUBLIC KEY-----') &&
+    trimmed.endsWith('-----END PUBLIC KEY-----') &&
+    !/^spk_/u.test(trimmed) &&
+    !trimmed.includes('PRIVATE KEY')
+  );
 }
 
 function isIsoDateString(value: unknown): value is string {

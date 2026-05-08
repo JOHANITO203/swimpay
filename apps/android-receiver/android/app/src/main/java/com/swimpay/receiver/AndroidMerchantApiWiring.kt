@@ -371,7 +371,7 @@ class AndroidReceiverDeviceApiRepository(
     fun registerAndHeartbeat(
         session: AuthenticatedMerchantSession,
         enabledBankProfileIds: Set<String>,
-        signingKey: String,
+        publicKeyPem: String,
         notificationAccessEnabled: Boolean,
         appVersion: String,
         androidVersion: String
@@ -391,6 +391,12 @@ class AndroidReceiverDeviceApiRepository(
                 safeMessage = "Choisissez au moins une banque compatible"
             )
         }
+        if (!publicKeyPem.trim().startsWith("-----BEGIN PUBLIC KEY-----")) {
+            return AndroidReceiverRuntimeRegistrationResult(
+                status = AndroidMerchantAuthResultStatus.ACTION_REQUIRED,
+                safeMessage = "Cle publique receiver requise"
+            )
+        }
 
         val registration = execute(
             MerchantApiRequest(
@@ -401,7 +407,7 @@ class AndroidReceiverDeviceApiRepository(
                     "device_name" to "SwimPay Android Receiver",
                     "app_version" to appVersion,
                     "android_version" to androidVersion,
-                    "public_key" to signingKey,
+                    "public_key" to publicKeyPem,
                     "supported_capabilities" to listOf(
                         "notification_access",
                         "signed_signal_upload",

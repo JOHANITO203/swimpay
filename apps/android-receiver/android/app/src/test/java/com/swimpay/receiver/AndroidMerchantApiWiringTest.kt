@@ -269,7 +269,7 @@ class AndroidMerchantApiWiringTest {
         val result = repository.registerAndHeartbeat(
             session = session,
             enabledBankProfileIds = setOf("sber_ru", "unsupported_bank"),
-            signingKey = "spk_runtime_signing_key",
+            publicKeyPem = receiverPublicKeyPem(),
             notificationAccessEnabled = true,
             appVersion = "0.1.0",
             androidVersion = "15"
@@ -283,7 +283,8 @@ class AndroidMerchantApiWiringTest {
         assertEquals("/v1/receiver-devices/register", transport.requests[0].path)
         assertEquals("/v1/receiver-devices/heartbeat", transport.requests[1].path)
         assertTrue(transport.requests[0].body.contains("\"selected_banks\":[\"sber_ru\"]"))
-        assertTrue(transport.requests[0].body.contains("\"public_key\":\"spk_runtime_signing_key\""))
+        assertTrue(transport.requests[0].body.contains("-----BEGIN PUBLIC KEY-----"))
+        assertFalse(transport.requests[0].body.contains("spk_runtime_signing_key"))
         assertTrue(transport.requests[1].body.contains("\"allowed_bank_profile_ids\":[\"sber_ru\"]"))
         assertFalse(result.safeMessage.contains("spk_runtime_signing_key"))
     }
@@ -789,6 +790,13 @@ class AndroidMerchantApiWiringTest {
         assertTrue(contracts.missingBackendEndpoints.isEmpty())
     }
 }
+
+private fun receiverPublicKeyPem(): String = listOf(
+    "-----BEGIN PUBLIC KEY-----",
+    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiY7GDh0qtB+VSl73IXZdMEaM",
+    "C6/8oH3Iv0uJ9+QWm2YyPTrTjBznXLa3HoRrP6+uG81Svu0OJEhS1m3jIw==",
+    "-----END PUBLIC KEY-----"
+).joinToString("\n")
 
 private class RecordingMerchantApiTransport(
     private vararg val responses: MerchantApiResponse

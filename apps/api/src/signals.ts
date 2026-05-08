@@ -1,4 +1,4 @@
-import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, createPublicKey, createSign, createVerify, randomUUID, timingSafeEqual } from 'node:crypto';
 import { connect, StringCodec } from 'nats';
 import pg from 'pg';
 import {
@@ -123,7 +123,11 @@ export type ReceiverSignalValidationResult =
 
 export type ReceiverSignatureVerificationResult =
   | { valid: true; algorithm: ReceiverSignatureAlgorithm }
-  | { valid: false; algorithm: ReceiverSignatureAlgorithm; reason: 'missing_signature' | 'invalid_signature' };
+  | {
+      valid: false;
+      algorithm: ReceiverSignatureAlgorithm;
+      reason: 'missing_signature' | 'invalid_signature' | 'invalid_public_key' | 'invalid_payload_hash';
+    };
 
 const LegacyRawPhoneFields = new Set(['phone', 'raw_phone', 'buyer_phone', 'sender_phone', 'normalized_phone']);
 const LegacyRawCardFields = new Set([
@@ -452,23 +456,33 @@ function validateLegacyReceiverSignalBody(body: Record<string, unknown>): Receiv
 
 export function createReceiverSignalSignature(
   signalWithoutSignature: Record<string, unknown>,
-  verificationKey: string
+  privateKeyPem: string
 ): string {
-  return createHmac('sha256', verificationKey)
-    .update(stableStringify(signalWithoutSignature))
-    .digest('hex');
+  const signer = createSign('SHA256');
+  signer.update(stableStringify(signalWithoutSignature));
+  signer.end();
+  return signer.sign(privateKeyPem, 'base64');
 }
 
 export function verifyReceiverSignalSignature(
   body: ReceiverSignalRequestBody | Record<string, unknown>,
   verificationKey: string
 ): ReceiverSignatureVerificationResult {
+  const algorithm = ReceiverSignatureAlgorithms.ECDSA_P256_SHA256_DER_V1;
   const signature = typeof body.signature === 'string' ? body.signature : '';
   if (!signature) {
     return {
       valid: false,
-      algorithm: ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1,
+      algorithm,
       reason: 'missing_signature'
+    };
+  }
+
+  if (!isReceiverPublicKeyPem(verificationKey)) {
+    return {
+      valid: false,
+      algorithm,
+      reason: 'invalid_public_key'
     };
   }
 
@@ -479,21 +493,70 @@ export function verifyReceiverSignalSignature(
   const signalWithoutSignature = { ...(body as Record<string, unknown>) };
   delete signalWithoutSignature.signature;
   delete signalWithoutSignature.signature_payload;
-  const expected = createReceiverSignalSignature(signaturePayload ?? signalWithoutSignature, verificationKey);
-  const expectedBuffer = Buffer.from(expected, 'hex');
-  const actualBuffer = Buffer.from(signature, 'hex');
+  const payload = signaturePayload ?? signalWithoutSignature;
 
-  const valid = expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
-  return valid
-    ? {
-        valid: true,
-        algorithm: ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1
-      }
-    : {
-        valid: false,
-        algorithm: ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1,
-        reason: 'invalid_signature'
-      };
+  if (!isReceiverPayloadHashValid(payload)) {
+    return {
+      valid: false,
+      algorithm,
+      reason: 'invalid_payload_hash'
+    };
+  }
+
+  const valid = verifyAsymmetricReceiverSignature(payload, signature, verificationKey);
+  return valid ? { valid: true, algorithm } : { valid: false, algorithm, reason: 'invalid_signature' };
+}
+
+function verifyAsymmetricReceiverSignature(
+  payload: Record<string, unknown>,
+  signature: string,
+  publicKeyPem: string
+): boolean {
+  try {
+    const publicKey = createPublicKey(publicKeyPem);
+    if (publicKey.asymmetricKeyType !== 'ec') {
+      return false;
+    }
+    const verifier = createVerify('SHA256');
+    verifier.update(stableStringify(payload));
+    verifier.end();
+    return verifier.verify(publicKey, Buffer.from(signature, 'base64'));
+  } catch {
+    return false;
+  }
+}
+
+function isReceiverPublicKeyPem(value: string): boolean {
+  const trimmed = value.trim();
+  if (
+    !trimmed.startsWith('-----BEGIN PUBLIC KEY-----') ||
+    !trimmed.endsWith('-----END PUBLIC KEY-----') ||
+    /^spk_/u.test(trimmed) ||
+    trimmed.includes('PRIVATE KEY')
+  ) {
+    return false;
+  }
+
+  try {
+    const key = createPublicKey(trimmed);
+    return key.asymmetricKeyType === 'ec';
+  } catch {
+    return false;
+  }
+}
+
+function isReceiverPayloadHashValid(payload: Record<string, unknown>): boolean {
+  const payloadHash = typeof payload.payload_hash === 'string' ? payload.payload_hash.trim() : '';
+  if (!/^[0-9a-f]{64}$/iu.test(payloadHash)) {
+    return false;
+  }
+
+  const withoutPayloadHash = { ...payload };
+  delete withoutPayloadHash.payload_hash;
+  const expected = createHash('sha256').update(stableStringify(withoutPayloadHash)).digest('hex');
+  const expectedBuffer = Buffer.from(expected, 'hex');
+  const actualBuffer = Buffer.from(payloadHash, 'hex');
+  return expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
 }
 
 export function isReceiverDeviceEligibleForSignalUpload(device: ReceiverSignalDevice): boolean {

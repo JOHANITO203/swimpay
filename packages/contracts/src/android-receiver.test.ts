@@ -15,7 +15,7 @@ describe('android receiver contracts', () => {
       device_name: 'Merchant phone',
       app_version: '0.1.0',
       android_version: '15',
-      public_key: 'base64_public_key',
+      public_key: receiverPublicKeyPem(),
       device_install_id: 'install_01',
       supported_capabilities: ['notification_access', 'signed_signal_upload', 'local_redaction']
     });
@@ -26,7 +26,7 @@ describe('android receiver contracts', () => {
         device_name: 'Merchant phone',
         app_version: '0.1.0',
         android_version: '15',
-        public_key: 'base64_public_key',
+        public_key: receiverPublicKeyPem(),
         device_install_id: 'install_01',
         supported_capabilities: ['notification_access', 'signed_signal_upload', 'local_redaction']
       }
@@ -36,6 +36,19 @@ describe('android receiver contracts', () => {
 
   it('rejects registration without a public key', () => {
     expect(validateAndroidReceiverRegistrationRequest({ device_name: 'Merchant phone' })).toEqual({
+      valid: false,
+      code: AndroidReceiverErrorCodes.PAYLOAD_INVALID,
+      field: 'public_key'
+    });
+  });
+
+  it('rejects shared HMAC-looking receiver registration keys', () => {
+    expect(
+      validateAndroidReceiverRegistrationRequest({
+        device_name: 'Merchant phone',
+        public_key: 'spk_runtime_shared_secret'
+      })
+    ).toEqual({
       valid: false,
       code: AndroidReceiverErrorCodes.PAYLOAD_INVALID,
       field: 'public_key'
@@ -113,6 +126,7 @@ describe('android receiver contracts', () => {
       package_cert_sha256: 'TO_VERIFY',
       snapshot_count: 2,
       coalesced: true,
+      payload_hash: 'f'.repeat(64),
       amount_minor: 13700,
       currency: 'RUB',
       raw_text_present: false
@@ -123,6 +137,7 @@ describe('android receiver contracts', () => {
   it.each([
     ['missing event_id', { event_id: undefined }, AndroidReceiverErrorCodes.PAYLOAD_INVALID],
     ['missing signature', { signature: undefined }, AndroidReceiverErrorCodes.SIGNATURE_MISSING],
+    ['missing payload_hash', { payload_hash: undefined }, AndroidReceiverErrorCodes.PAYLOAD_INVALID],
     ['raw phone', { raw_phone: '+79991234567' }, AndroidReceiverErrorCodes.RAW_PHONE_REJECTED],
     ['raw notification flag', { raw_text_present: true }, AndroidReceiverErrorCodes.RAW_NOTIFICATION_REJECTED],
     ['raw notification body', { raw_notification_text: 'raw bank text' }, AndroidReceiverErrorCodes.RAW_NOTIFICATION_REJECTED],
@@ -146,7 +161,7 @@ describe('android receiver contracts', () => {
   });
 
   it('declares the supported receiver signature algorithm explicitly', () => {
-    expect(ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1).toBe('hmac_sha256_canonical_v1');
+    expect(ReceiverSignatureAlgorithms.ECDSA_P256_SHA256_DER_V1).toBe('ecdsa_p256_sha256_der_v1');
   });
 
   it('validates redacted notification snapshot and rejects non-bank package markers', () => {
@@ -188,6 +203,7 @@ function validSignalUpload() {
     received_at: '2026-05-02T12:00:01.000Z',
     notification_hash: 'a'.repeat(64),
     semantic_hash: 'b'.repeat(64),
+    payload_hash: 'f'.repeat(64),
     local_counter: 11,
     snapshot_count: 2,
     coalesced: true,
@@ -209,4 +225,13 @@ function validSignalUpload() {
     raw_text_present: false,
     signature: 'abcdef'
   };
+}
+
+function receiverPublicKeyPem(): string {
+  return [
+    '-----BEGIN PUBLIC KEY-----',
+    'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiY7GDh0qtB+VSl73IXZdMEaM',
+    'C6/8oH3Iv0uJ9+QWm2YyPTrTjBznXLa3HoRrP6+uG81Svu0OJEhS1m3jIw==',
+    '-----END PUBLIC KEY-----'
+  ].join('\n');
 }

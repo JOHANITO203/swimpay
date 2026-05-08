@@ -3,8 +3,7 @@ package com.swimpay.receiver
 import com.swimpay.receiver.outbox.EncryptedOutboxStore
 import com.swimpay.receiver.outbox.OutboxRecord
 import com.swimpay.receiver.outbox.OutboxStatus
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
+import com.swimpay.receiver.security.PayloadSigner
 
 data class ReceiverRuntimeOutboxResult(
     val success: Boolean,
@@ -13,7 +12,7 @@ data class ReceiverRuntimeOutboxResult(
 
 class ReceiverRuntimeOutboxController(
     private val merchantId: String,
-    private val signingKey: String,
+    private val payloadSigner: PayloadSigner,
     private val deviceStateStore: PersistentDeviceStateStore,
     private val outboxStore: EncryptedOutboxStore,
     private val nowIso: () -> String = { java.time.Instant.now().toString() }
@@ -21,9 +20,6 @@ class ReceiverRuntimeOutboxController(
     fun enqueueProcessedNotificationSignal(result: ReceiverNotificationPipelineResult): ReceiverRuntimeOutboxResult {
         if (merchantId.isBlank()) {
             return ReceiverRuntimeOutboxResult(success = false, safeMessage = "receiver merchant runtime config required")
-        }
-        if (signingKey.isBlank()) {
-            return ReceiverRuntimeOutboxResult(success = false, safeMessage = "receiver signing runtime config required")
         }
         val payload = result.payload
             ?: return ReceiverRuntimeOutboxResult(success = false, safeMessage = "notification pipeline payload missing")
@@ -36,7 +32,14 @@ class ReceiverRuntimeOutboxController(
         signal["merchant_id"] = merchantId
         signal["device_id"] = deviceState.deviceId
         signal["local_counter"] = deviceStateStore.nextLocalCounter()
-        signal["signature"] = signRuntimeSignal(signal)
+        val payloadHash = runtimeSha256Hex(stableDebugJson(signal))
+        signal["payload_hash"] = payloadHash
+        val signature = runCatching {
+            payloadSigner.sign(stableDebugJson(signal).toByteArray(Charsets.UTF_8))
+        }.getOrElse {
+            return ReceiverRuntimeOutboxResult(success = false, safeMessage = "receiver asymmetric signing unavailable")
+        }
+        signal["signature"] = signature
         val payloadJson = jsonObject(signal.entries.map { it.key to it.value })
 
         outboxStore.enqueue(
@@ -44,8 +47,8 @@ class ReceiverRuntimeOutboxController(
                 localId = "outbox_$eventId",
                 eventId = eventId,
                 notificationHash = signal["notification_hash"].toString(),
-                semanticHash = signal["semantic_hash"].toString(),
-                payloadHash = runtimeSha256Hex(payloadJson),
+                semanticHash = signal["semantic_hash"]?.toString().orEmpty(),
+                payloadHash = payloadHash,
                 encryptedPayload = payloadJson,
                 status = OutboxStatus.PENDING_UPLOAD,
                 attemptCount = 0,
@@ -60,18 +63,6 @@ class ReceiverRuntimeOutboxController(
             success = true,
             safeMessage = "redacted runtime notification signal queued; backend decision pending"
         )
-    }
-
-    private fun signRuntimeSignal(signalWithoutSignature: Map<String, Any>): String {
-        return hmacSha256Hex(signingKey, stableDebugJson(signalWithoutSignature))
-    }
-
-    private fun hmacSha256Hex(secret: String, value: String): String {
-        val mac = Mac.getInstance("HmacSHA256")
-        mac.init(SecretKeySpec(secret.toByteArray(Charsets.UTF_8), "HmacSHA256"))
-        return mac.doFinal(value.toByteArray(Charsets.UTF_8)).joinToString("") { byte ->
-            "%02x".format(byte)
-        }
     }
 
     private fun runtimeSha256Hex(value: String): String {

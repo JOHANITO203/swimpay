@@ -1,9 +1,9 @@
+import { createHash, createSign, generateKeyPairSync } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { InMemoryMetricsRegistry, MetricNames } from '@swimpay/observability';
 import { EventTypes, type EventEnvelope } from '@swimpay/events';
 import { buildApiServer } from './server.js';
 import {
-  createReceiverSignalSignature,
   ReceiverSignatureAlgorithms,
   verifyReceiverSignalSignature,
   type ReceiverSignalDevice,
@@ -11,8 +11,10 @@ import {
   type SignalIngestionInput,
   type SignalIngestionResult
 } from './signals.js';
+import { buildCanonicalReceiverSignalPayload } from '@swimpay/contracts';
 
-const publicKey = 'test-device-verification-key';
+const receiverKeyPair = generateReceiverKeyPair();
+const publicKey = receiverKeyPair.publicKeyPem;
 
 function createValidSignal(overrides: Partial<Record<string, unknown>> = {}) {
   const signal = {
@@ -43,13 +45,18 @@ function createValidSignal(overrides: Partial<Record<string, unknown>> = {}) {
     ...overrides
   };
 
+  const signalWithPayloadHash = addPayloadHash(signal);
   const signedSignal: Record<string, unknown> = {
-    ...signal,
-    signature: createReceiverSignalSignature(signal, publicKey)
+    ...signalWithPayloadHash,
+    signature: signReceiverPayload(signalWithPayloadHash)
   };
 
-  if ('signature' in overrides && overrides.signature === undefined) {
-    delete signedSignal.signature;
+  if ('signature' in overrides) {
+    if (overrides.signature === undefined) {
+      delete signedSignal.signature;
+    } else {
+      signedSignal.signature = overrides.signature;
+    }
   }
 
   return signedSignal;
@@ -83,7 +90,7 @@ function createLegacySignal(overrides: Partial<Record<string, unknown>> = {}) {
     ...overrides
   };
   const payload = signal.payload as Record<string, unknown>;
-  const signaturePayload: Record<string, unknown> = {
+  const signaturePayloadWithoutHash: Record<string, unknown> = {
     event_id: signal.event_id,
     device_id: signal.device_id,
     merchant_id: signal.merchant_id,
@@ -108,10 +115,12 @@ function createLegacySignal(overrides: Partial<Record<string, unknown>> = {}) {
       raw_text_present: payload.raw_text_present
     }
   };
+  const signaturePayload = addPayloadHash(signaturePayloadWithoutHash);
 
   return {
     ...signal,
-    signature: createReceiverSignalSignature(signaturePayload, publicKey)
+    payload_hash: signaturePayload.payload_hash,
+    signature: signReceiverPayload(signaturePayload)
   };
 }
 
@@ -308,12 +317,22 @@ describe('receiver signal ingestion api', () => {
     expect(metrics.counterValue(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL)).toBe(1);
   });
 
-  it('verifies signatures with the declared canonical HMAC algorithm', () => {
+  it('verifies signatures with the declared asymmetric public-key algorithm', () => {
     const body = createValidSignal();
-    expect(ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1).toBe('hmac_sha256_canonical_v1');
+    expect(ReceiverSignatureAlgorithms.ECDSA_P256_SHA256_DER_V1).toBe('ecdsa_p256_sha256_der_v1');
     expect(verifyReceiverSignalSignature(body, publicKey)).toEqual({
       valid: true,
-      algorithm: ReceiverSignatureAlgorithms.HMAC_SHA256_CANONICAL_V1
+      algorithm: ReceiverSignatureAlgorithms.ECDSA_P256_SHA256_DER_V1
+    });
+  });
+
+  it('rejects shared HMAC verification keys for receiver uploads', () => {
+    const body = createValidSignal();
+
+    expect(verifyReceiverSignalSignature(body, 'spk_legacy_shared_key')).toEqual({
+      valid: false,
+      algorithm: ReceiverSignatureAlgorithms.ECDSA_P256_SHA256_DER_V1,
+      reason: 'invalid_public_key'
     });
   });
 
@@ -456,4 +475,45 @@ class FakeSignalRepository implements ReceiverSignalRepository {
     this.storedSignals.push(input);
     return { kind: 'stored', signalId: input.signal.id };
   }
+}
+
+function generateReceiverKeyPair(): { publicKeyPem: string; privateKeyPem: string } {
+  const { publicKey: generatedPublicKey, privateKey } = generateKeyPairSync('ec', {
+    namedCurve: 'prime256v1'
+  });
+  return {
+    publicKeyPem: generatedPublicKey.export({ format: 'pem', type: 'spki' }).toString().trim(),
+    privateKeyPem: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString().trim()
+  };
+}
+
+function addPayloadHash(signal: Record<string, unknown>): Record<string, unknown> {
+  const withoutSignatureAndHash = { ...signal };
+  delete withoutSignatureAndHash.signature;
+  delete withoutSignatureAndHash.payload_hash;
+  return {
+    ...withoutSignatureAndHash,
+    payload_hash: createHash('sha256').update(stableStringify(withoutSignatureAndHash)).digest('hex')
+  };
+}
+
+function signReceiverPayload(signalWithPayloadHash: Record<string, unknown>): string {
+  const signer = createSign('SHA256');
+  signer.update(buildCanonicalReceiverSignalPayload(signalWithPayloadHash));
+  signer.end();
+  return signer.sign(receiverKeyPair.privateKeyPem, 'base64');
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(',')}}`;
 }

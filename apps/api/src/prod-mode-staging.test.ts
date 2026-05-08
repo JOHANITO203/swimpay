@@ -214,7 +214,7 @@ describe('production-mode staging boundaries', () => {
       method: 'POST',
       url: '/v1/receiver-devices/register',
       headers: { authorization: 'Bearer test_stage_merchant' },
-      payload: { device_name: 'Stage Phone', public_key: 'stage_public_key' }
+      payload: { device_name: 'Stage Phone', public_key: receiverPublicKeyPem() }
     });
     expect(testBearer.statusCode).toBe(401);
 
@@ -224,7 +224,7 @@ describe('production-mode staging boundaries', () => {
       headers: { cookie, 'x-csrf-token': csrfToken },
       payload: {
         device_name: 'Stage Phone',
-        public_key: 'stage_public_key',
+        public_key: receiverPublicKeyPem(),
         supported_capabilities: ['notification_access', 'signed_signal_upload', 'local_redaction']
       }
     });
@@ -234,8 +234,8 @@ describe('production-mode staging boundaries', () => {
       merchant_id: '22222222-2222-4222-8222-222222222222',
       status: 'pending'
     });
-    expect(registered.body).not.toContain('stage_public_key');
-    expect(receiverDeviceRepository.devices.get('dev_prod_stage_01')?.publicKey).toBe('stage_public_key');
+    expect(registered.body).not.toContain('BEGIN PUBLIC KEY');
+    expect(receiverDeviceRepository.devices.get('dev_prod_stage_01')?.publicKey).toBe(receiverPublicKeyPem());
 
     const heartbeat = await server.inject({
       method: 'POST',
@@ -255,6 +255,15 @@ describe('production-mode staging boundaries', () => {
     expect(heartbeat.json().required_actions).toContain('configure_bank_targets');
   });
 });
+
+function receiverPublicKeyPem(): string {
+  return [
+    '-----BEGIN PUBLIC KEY-----',
+    'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiY7GDh0qtB+VSl73IXZdMEaM',
+    'C6/8oH3Iv0uJ9+QWm2YyPTrTjBznXLa3HoRrP6+uG81Svu0OJEhS1m3jIw==',
+    '-----END PUBLIC KEY-----'
+  ].join('\n');
+}
 
 function validOrderPayload() {
   return {

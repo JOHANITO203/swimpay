@@ -6,6 +6,18 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `656_receiver_signing_inventory` - status: completed - source: `tasks/656_receiver_signing_inventory.md`
+- [x] `657_android_keystore_keypair_generation` - status: completed - source: `tasks/657_android_keystore_keypair_generation.md`
+- [x] `658_receiver_public_key_registration_contract` - status: completed - source: `tasks/658_receiver_public_key_registration_contract.md`
+- [x] `659_asymmetric_signal_envelope_signing` - status: completed - source: `tasks/659_asymmetric_signal_envelope_signing.md`
+- [x] `660_backend_public_key_signature_verification` - status: completed - source: `tasks/660_backend_public_key_signature_verification.md`
+- [x] `661_receiver_signing_migration_compatibility` - status: completed_with_reregistration_required - source: `tasks/661_receiver_signing_migration_compatibility.md`
+- [x] `662_receiver_signing_guardrails` - status: completed - source: `tasks/662_receiver_signing_guardrails.md`
+- [x] `663_receiver_signing_staging_proof` - status: implementation_ready_staging_proof_pending - source: `tasks/663_receiver_signing_staging_proof.md`
+- [x] `664_receiver_signing_closeout` - status: completed_with_external_staging_proof_pending - source: `tasks/664_receiver_signing_closeout.md`
+
+## Previous Queue
+
 - [x] `637_intelligence_tools_inventory` - status: completed_with_findings - source: `tasks/637_intelligence_tools_inventory.md`
 - [x] `638_bank_target_lock_readiness` - status: completed_ready_with_device_metric_pending - source: `tasks/638_bank_target_lock_readiness.md`
 - [x] `639_notification_listener_readiness` - status: completed_partial_device_state_pending - source: `tasks/639_notification_listener_readiness.md`

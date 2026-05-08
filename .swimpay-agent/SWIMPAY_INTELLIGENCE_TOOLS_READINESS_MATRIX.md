@@ -20,7 +20,7 @@ No real bank notification was processed. Real notification testing remains gated
 | Receiver Runtime Config | partial | Installed APK staging config state not proven. | `ReceiverRuntimeConfigStore.kt`, `AndroidMerchantApiWiring.kt` | ADB/app proof of base URL, merchant id, device id, enabled bank target. | Yes. |
 | Receiver Registration | partial | Installed APK registration to staging not proven. | `receiver-devices.ts`, `AndroidMerchantApiWiring.kt` | Register current APK against staging. | Yes. |
 | Receiver Heartbeat | partial | Installed APK heartbeat to staging not proven. | `receiver-devices.ts`, `AndroidMerchantApiWiring.kt` | Heartbeat with active/listener/bank target state. | Yes. |
-| Receiver Signing | partial | HMAC verification key is stored as `public_key`; asymmetric Keystore model not complete. | `signals.ts`, `AndroidKeystorePayloadSigner.kt`, `ReceiverRuntimeOutboxController.kt` | Production fix: asymmetric Keystore public key. Staging: explicit acceptance if not fixed. | Blocks production-ready claim; can block real test unless accepted. |
+| Receiver Signing | ready_with_staging_proof_pending | Android/API now use Keystore public/private signing in real runtime; installed APK staging proof pending. | `signals.ts`, `AndroidKeystorePayloadSigner.kt`, `ReceiverRuntimeOutboxController.kt` | Re-register installed APK on staging and run one synthetic redacted signed upload. | Yes, proof required before real capture. |
 | Backend Signal Ingestion | ready | Staging upload proof pending only. | `signals.ts` | Synthetic upload from installed APK. | No, but proof is required. |
 | Anti-Replay | ready | Staging replay proof pending only. | `signals.ts`, Postgres unique constraints. | Replay synthetic signal on staging. | No. |
 | Parser | ready | Real shape samples pending. | `bank-templates/src/parser.ts` | Real shape validation after approved capture. | No for pre-capture; yes for production confidence. |
@@ -64,7 +64,7 @@ No real bank notification was processed. Real notification testing remains gated
 - Signed Upload Flusher: installed APK staging upload proof pending.
 - Receiver Runtime Config: installed APK staging state proof pending.
 - Receiver Registration/Heartbeat: installed APK staging proof pending.
-- Receiver Signing: HMAC foundation, not final asymmetric identity.
+- Receiver Signing: asymmetric implementation done; installed APK staging proof pending.
 - Shape Hasher/Semantic Hash: real collision metrics pending.
 - Operator/Admin Surfaces: inert `auto_confirm*` vocabulary debt.
 
@@ -88,7 +88,7 @@ No active tool is unsafe in code for controlled staging, but real notification t
 - Database-backed replay proof on staging.
 - Full synthetic staging E2E: SDK order -> checkout route -> receiver armed -> synthetic signal -> manual review.
 - External staging app final webhook verification.
-- Asymmetric Android Keystore signing proof for production-ready identity.
+- Installed APK asymmetric Android Keystore registration/signature proof against staging.
 
 ## Real Notification Test Gate
 

@@ -18,6 +18,7 @@ import com.swimpay.receiver.MerchantConfigurationChecklist
 import com.swimpay.receiver.PersistentDeviceStateStore
 import com.swimpay.receiver.ReceiverRuntimeConfig
 import com.swimpay.receiver.ReceiverRuntimeConfigStore
+import com.swimpay.receiver.security.AndroidKeystorePayloadSigner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -58,6 +59,7 @@ fun PremiumMerchantApp(
     var receivingMethodsState by remember { mutableStateOf<PremiumScreenState<PremiumReceivingMethodsUiState>>(PremiumScreenState.loading()) }
     var receivingMethodClearDraftSignal by remember { mutableStateOf(0) }
     var ordersState by remember { mutableStateOf<PremiumScreenState<PremiumOrdersUiState>>(PremiumScreenState.loading()) }
+    val receiverPayloadSigner = remember { AndroidKeystorePayloadSigner() }
     var banksState by remember { mutableStateOf<PremiumScreenState<PremiumBanksUiState>>(PremiumScreenState.loading()) }
     var receiverHealthState by remember { mutableStateOf<PremiumScreenState<PremiumReceiverHealthUiState>>(PremiumScreenState.loading()) }
     val navigateFromMenu: (PremiumRoute) -> Unit = { target ->
@@ -121,12 +123,14 @@ fun PremiumMerchantApp(
                 return@launch
             }
             val selectedBankIds = completedState.selectedBankIds
-            val signingKey = receiverRuntimeConfigStore.signingKeyOrCreate()
+            val receiverPublicKeyPem = withContext(Dispatchers.IO) {
+                receiverPayloadSigner.getOrCreateKeyPair().publicKeyPem
+            }
             val result = withContext(Dispatchers.IO) {
                 receiverDeviceRepository.registerAndHeartbeat(
                     session = AuthenticatedMerchantSession.mobile(session),
                     enabledBankProfileIds = selectedBankIds,
-                    signingKey = signingKey,
+                    publicKeyPem = receiverPublicKeyPem,
                     notificationAccessEnabled = notificationAccessEnabled,
                     appVersion = receiverAppVersion,
                     androidVersion = receiverAndroidVersion
@@ -137,8 +141,7 @@ fun PremiumMerchantApp(
                 receiverRuntimeConfigStore.save(
                     ReceiverRuntimeConfig(
                         enabledBankProfileIds = selectedBankIds,
-                        merchantId = session.merchantId,
-                        signingKey = signingKey
+                        merchantId = session.merchantId
                     )
                 )
                 receiverDeviceStateStore.save(result.deviceState)

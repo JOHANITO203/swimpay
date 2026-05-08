@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.work.WorkManager
 import com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore
 import com.swimpay.receiver.outbox.AndroidOutboxStorageFactory
+import com.swimpay.receiver.security.AndroidKeystorePayloadSigner
 import com.swimpay.receiver.work.SignalUploadWorker
 
 class SwimPayNotificationListenerService : NotificationListenerService() {
@@ -53,7 +54,7 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
         } else {
             ReceiverRuntimeOutboxController(
                 merchantId = runtimeConfig.merchantId,
-                signingKey = runtimeConfig.signingKey,
+                payloadSigner = AndroidKeystorePayloadSigner(),
                 deviceStateStore = deviceStateStore,
                 outboxStore = outboxStore
             ).enqueueProcessedNotificationSignal(result).let {
