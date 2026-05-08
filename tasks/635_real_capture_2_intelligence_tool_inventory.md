@@ -1,6 +1,6 @@
 # Task 635 - REAL-CAPTURE-2 Intelligence tool inventory
 
-Status: pending
+Status: completed_with_findings
 
 Goal: inventory every active SwimPay Intelligence tool that must work before a real notification capture can safely prove SDK -> checkout -> Receiver -> manual review -> webhook.
 
@@ -23,6 +23,14 @@ Tools to inventory:
 
 Output:
 - `.swimpay-agent/REAL_CAPTURE_2_INTELLIGENCE_TOOL_INVENTORY.md`
+
+Result:
+- Non-debug Android upload is implemented and no longer a no-op.
+- Remaining work is device/staging proof plus a receiver signing source-truth
+  gap: the current implementation registers an app-generated HMAC verification
+  key as `public_key`; production-grade asymmetric public-key registration is a
+  follow-up hardening requirement unless explicitly accepted for controlled
+  staging.
 
 Guardrails:
 - No real bank notification capture during inventory.

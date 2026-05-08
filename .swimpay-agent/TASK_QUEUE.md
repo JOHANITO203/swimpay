@@ -6,7 +6,21 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-- [ ] `635_real_capture_2_intelligence_tool_inventory` - status: pending - source: `tasks/635_real_capture_2_intelligence_tool_inventory.md`
+- [x] `637_intelligence_tools_inventory` - status: completed_with_findings - source: `tasks/637_intelligence_tools_inventory.md`
+- [x] `638_bank_target_lock_readiness` - status: completed_ready_with_device_metric_pending - source: `tasks/638_bank_target_lock_readiness.md`
+- [x] `639_notification_listener_readiness` - status: completed_partial_device_state_pending - source: `tasks/639_notification_listener_readiness.md`
+- [x] `640_redaction_outbox_upload_readiness` - status: completed_partial_staging_upload_pending - source: `tasks/640_redaction_outbox_upload_readiness.md`
+- [x] `641_receiver_registration_heartbeat_readiness` - status: completed_partial_device_staging_pending - source: `tasks/641_receiver_registration_heartbeat_readiness.md`
+- [x] `642_backend_signal_ingestion_readiness` - status: completed_ready_with_live_synthetic_pending - source: `tasks/642_backend_signal_ingestion_readiness.md`
+- [x] `643_parser_shape_classifier_readiness` - status: completed_ready_with_real_shape_pending - source: `tasks/643_parser_shape_classifier_readiness.md`
+- [x] `644_payment_intent_gate_review_readiness` - status: completed_ready_with_staging_e2e_pending - source: `tasks/644_payment_intent_gate_review_readiness.md`
+- [x] `645_manual_confirmation_webhook_readiness` - status: completed_ready_with_external_staging_pending - source: `tasks/645_manual_confirmation_webhook_readiness.md`
+- [x] `646_sdk_and_receiving_methods_readiness` - status: completed_ready_with_staging_rehearsal_pending - source: `tasks/646_sdk_and_receiving_methods_readiness.md`
+- [x] `647_intelligence_tools_readiness_closeout` - status: completed_with_blockers - source: `tasks/647_intelligence_tools_readiness_closeout.md`
+
+## Previous Queue
+
+- [x] `635_real_capture_2_intelligence_tool_inventory` - status: completed_with_findings - source: `tasks/635_real_capture_2_intelligence_tool_inventory.md`
 - [ ] `636_real_capture_2_bank_detection_device_metrics` - status: pending - source: `tasks/636_real_capture_2_bank_detection_device_metrics.md`
 - [ ] `637_real_capture_2_receiver_auth_registration_heartbeat` - status: pending - source: `tasks/637_real_capture_2_receiver_auth_registration_heartbeat.md`
 - [ ] `638_real_capture_2_notification_access_and_gate` - status: pending - source: `tasks/638_real_capture_2_notification_access_and_gate.md`

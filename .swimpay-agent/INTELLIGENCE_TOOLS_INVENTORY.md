@@ -1,0 +1,48 @@
+# Intelligence Tools Inventory
+
+Date: 2026-05-08
+
+Scope: SwimPay Intelligence readiness before real bank notification testing.
+No real bank notifications were processed.
+
+## Inventory
+
+| Tool | Purpose | Input | Output | Owner | Dependencies | Tests available | Missing tests | Readiness |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Bank Target Lock | Limit runtime to exact supported banks. | Supported package list, selected/enabled bank ids. | Enabled package set and safe UI state. | Android | Android manifest exact `<queries>`, `BankTargetLock`. | `BankTargetLockTest`, `AndroidReceiverRealRuntimeTest`, `android-runnable-app.test.ts`. | Real device detected-bank metric from installed APK. | ready with device metric pending |
+| Notification Listener | Receive Android notifications after OS access. | `StatusBarNotification` from Android OS. | Snapshot only for allowed packages. | Android/OS | Notification Listener Access, Bank Target Lock, runtime config. | `AndroidReceiverRealRuntimeTest`, `ReceiverNotificationPipelineTest`, guardrail tests. | Device proof that listener access is enabled and listener is connected. | partial |
+| Supported Package Gate | Drop unsupported or non-enabled packages before extraction. | Package name, debug flag, enabled package set. | Allow/reject decision. | Android | `ReceiverBoundaries`, enabled bank packages. | `AndroidReceiverRealRuntimeTest`, `BankTargetLockTest`. | Device synthetic unsupported-package proof. | ready |
+| Snapshot Extractor | Extract temporary notification fields after package gate. | Allowed `StatusBarNotification`. | Temporary snapshot. | Android | Notification listener, package gate. | `android-runnable-app.test.ts`, `AndroidReceiverRealRuntimeTest`. | Instrumented/non-debug listener proof. | partial |
+| Redaction Pipeline | Convert temporary raw snapshot into safe signal fields. | Snapshot title/body/bigText/textLines in memory. | Redacted payload with hashes and `raw_text_present=false`. | Android | `ReceiverNotificationPipeline`, privacy firewall. | `ReceiverNotificationPipelineTest`, `AndroidReceiverRealRuntimeTest`. | Staging payload inspection from installed APK. | ready with staging proof pending |
+| Protected Outbox | Persist only redacted signed payloads. | Redacted payload, counter, hash, signature. | Encrypted/protected outbox record. | Android | `AndroidEncryptedOutboxStore`, Keystore-backed storage adapter. | `AndroidEncryptedOutboxStoreTest`, `OutboxStorageHardeningTest`, `AndroidReceiverRealRuntimeTest`. | Device filesystem/log proof during synthetic flush. | ready with staging proof pending |
+| Signed Upload Flusher | Send due outbox records to backend. | Due outbox records. | HTTPS POST to `/v1/receiver/signals`, ack/retry. | Android | Runtime config, WorkManager, staging URL. | `SignalUploadFlusherTest`, `WorkManagerHardeningTest`, `AndroidReceiverRealRuntimeTest`. | Installed APK synthetic HTTPS upload to staging. | partial |
+| Receiver Runtime Config | Persist merchant id, device id, base URL, enabled banks and signing key. | Android account/onboarding/register results. | Local receiver runtime configuration. | Android | Account session, receiver registration. | `AndroidMerchantApiWiringTest`, runtime tests. | ADB proof current installed APK has staging config. | partial |
+| Receiver Registration | Bind device to merchant. | Authenticated mobile session, public/verification key, selected banks. | Receiver device id and status. | API/Android | Auth BFF/mobile session, receiver repository. | `receiver-devices.test.ts`, `android-receiver-lifecycle.test.ts`. | Installed APK registration against staging. | partial |
+| Receiver Heartbeat | Report receiver health and derive action states. | Device id, notification access, listener state, bank targets, queue length. | `active`, `notification_access_missing`, `bank_targets_missing`, etc. | API/Android | Registered receiver device, runtime config. | `receiver-devices.test.ts`, `android-receiver-lifecycle.test.ts`. | Installed APK heartbeat against staging after OS permission. | partial |
+| Receiver Signing | Authenticate signal envelope. | Canonical fields and local signing key. | HMAC signature verified by backend. | Android/API | `AndroidKeystorePayloadSigner`, `createReceiverSignalSignature`. | `signals.test.ts`, `CanonicalPayloadTest`, `DeviceIdentityHardeningTest`. | True asymmetric Keystore private-key/non-export proof. | partial |
+| Backend Signal Ingestion | Accept safe signed signal and store redacted metadata. | Signed redacted signal. | `notification_signals` row and `signal.received`. | API | Receiver device status, signature, anti-replay. | `signals.test.ts`, `receiver-devices.test.ts`. | Staging synthetic upload from installed APK. | ready with staging proof pending |
+| Anti-Replay | Prevent duplicate or regressing signals. | event_id, notification_hash, local_counter, observed_at. | Reject duplicate/regression/stale/future. | API/Postgres | Unique constraints, receiver state. | `signals.test.ts`. | Database-backed staging replay proof. | ready with staging proof pending |
+| Parser | Parse redacted bank notification text deterministically. | Redacted title/body. | Amount, currency, direction, phone/reference hints. | bank-templates/signal-worker | V1 fixtures, redaction placeholders. | `parser.test.ts`, `fixtures.test.ts`, runtime tests. | Real shape sample after approved capture. | ready with real-shape pending |
+| Shape Hasher / Semantic Hash | Detect notification shape and semantic duplication. | Redacted fields and parsed hints. | semantic_hash / notification_hash. | Android/API | Redaction pipeline, hashing utilities. | Android runtime tests and signal ingestion tests. | Explicit cross-bank shape collision test on real samples. | partial |
+| Classifier | Classify incoming, negative and unknown categories. | Parsed redacted signal. | Direction label and reason codes. | bank-templates/signal-worker | Parser, matching core. | `parser.test.ts`, `fixtures.test.ts`, `runtime.test.ts`. | Real bank notification shape validation. | ready with real-shape pending |
+| Payment Intent Gate | Ensure signals only affect active intents. | Signal plus candidate sessions. | Review/reject/wait decision. | signal-worker/matching-core | Payment sessions, matching core. | `runtime.test.ts`, `index.test.ts`, `payment-intent-gate.test.ts`. | Staging E2E active order proof. | ready with staging proof pending |
+| Review Queue | Create manual merchant review only. | Runtime `needs_review` decision. | `review_queue` row and internal event. | signal-worker/API | Payment Intent Gate, Postgres. | `runtime.test.ts`, `reviews.test.ts`. | Staging UI/API review proof. | ready with staging proof pending |
+| Manual Confirmation | Merchant-owned final approval. | Review confirm/reject action. | `manual_confirmed`/`rejected` state and audit. | API/web/Android UI | Review repository, auth. | `reviews.test.ts`, Android merchant tests. | Full staging review action proof. | ready with staging proof pending |
+| Public Webhook Worker | Deliver final public events only. | `payment.confirmed`, `payment.rejected`, `payment.expired`. | Signed webhook delivery. | job-worker | Webhook endpoints, signing secret, retries. | `webhooks.test.ts`, private/e2e tests. | External staging app delivery proof. | ready with external proof pending |
+| Node SDK | Server-side order and webhook integration. | Secret key, order input, raw webhook body. | Checkout URL and verified public event. | SDK | API key, webhook secret. | `packages/swimpay-node/src/index.test.ts`, SDK guardrails. | Live staging external app rehearsal. | ready with staging proof pending |
+| Android SDK | Open checkout and parse return only. | checkout_url, return URI. | Non-confirming result. | SDK Android | Android browser/custom tabs. | `sdk-android-product-truth.test.ts`. | Merchant app integration smoke. | ready |
+| Receiving Methods | Store merchant card/phone destinations safely. | Merchant type/value/bank_id/label. | Masked active/inactive receiving method. | API/web/Android/checkout | `merchant_receiving_routes`, HMAC/encryption. | `payment-sessions.test.ts`, `checkout.test.ts`, Android API wiring tests. | Live staging checkout route proof. | ready with staging proof pending |
+| Feedback Logger | Record supervised feedback only. | Redacted feedback. | Monitoring row, no runtime mutation. | API/admin | Intelligence persistence. | `intelligence.test.ts`, contracts tests. | Real signal feedback workflow after capture. | ready |
+| Unknown Shape Monitor | Store unknown-shape monitoring evidence. | Redacted unknown signal metadata. | Read-only monitoring record. | API/admin | Intelligence persistence. | `intelligence.test.ts`, web intelligence tests. | Real unknown-shape observation after capture. | ready |
+| Operator/Admin Surfaces | Show safe read models. | Redacted evidence, feedback, reviews. | Safe dashboard/admin views. | web/API | Auth, repositories. | web admin tests, copy guardrails. | External audit copy pass after zero-string cleanup. | partial |
+
+## Main Missing Proofs
+
+1. ADB/device bank detection metrics from the installed staging APK.
+2. Notification Listener Access enabled and listener connected on the operator device.
+3. Receiver registration and heartbeat against `https://staging.swimpay.pro`.
+4. Synthetic redacted outbox upload from the installed APK to staging.
+5. Staging active payment intent + receiving method + manual review proof.
+6. External staging app verified final webhook proof.
+7. Decision on HMAC receiver signing versus asymmetric Keystore hardening before production-ready claim.
+

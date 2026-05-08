@@ -1,5 +1,17 @@
 # Progress Log
 
+## 2026-05-08T18:14:42+03:00 - INTEL-TOOLS-1 SwimPay Intelligence readiness matrix
+
+- Created tasks 637 through 647 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Created `.swimpay-agent/INTELLIGENCE_TOOLS_INVENTORY.md`.
+- Created readiness reports for Bank Target Lock, Notification Listener, Redaction/Outbox/Upload, Receiver Registration/Heartbeat, Backend Signal Ingestion, Parser/Shape/Classifier, Payment Intent Gate/Review, Manual Confirmation/Webhooks and SDK/Receiving Methods.
+- Created `.swimpay-agent/SWIMPAY_INTELLIGENCE_TOOLS_READINESS_MATRIX.md`.
+- Classified code/test-ready tools: exact supported-bank gate, redaction pipeline, protected outbox, backend signed ingestion, anti-replay, parser/classifier synthetic fixtures, Payment Intent Gate, review queue, manual confirmation, final-only webhooks, SDK guardrails and receiving methods.
+- Classified partial real-capture tools: installed APK Notification Listener proof, staging receiver registration/heartbeat, synthetic redacted upload, receiver signing contract, shape metrics on real-like notifications and operator/admin vocabulary cleanup.
+- Validation passed: git diff check (CRLF warning only), android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Preserved the capture gate: real bank notifications remain blocked until all synthetic/device proofs pass and the operator gives a final explicit capture-start command.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
 ## 2026-05-08 - REAL-1 Real Staging Integration Test
 
 - Created tasks 601 through 611 and updated `.swimpay-agent/TASK_QUEUE.md`.
@@ -2439,3 +2451,13 @@ Safety checks:
 - Checkout remains route/method-selection based and still blocks instructions until an active method is selected.
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
 - No real bank notification was processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
+# 2026-05-08T17:45:00+03:00 - REAL-CAPTURE-2 Intelligence Tool Inventory
+
+- Created `.swimpay-agent/REAL_CAPTURE_2_INTELLIGENCE_TOOL_INVENTORY.md`.
+- Marked task 635 completed with findings.
+- Updated the source-truth inventory: Android non-debug upload is implemented and no longer a no-op.
+- Confirmed code-level readiness for exact bank package gate, redaction, protected outbox, non-debug upload flusher, receiver registration/heartbeat APIs, backend signed signal ingestion, anti-replay, Payment Intent Gate, manual review and final-only webhooks.
+- Recorded required device/staging proof gates before real notification capture: bank detection metrics, Notification Listener Access, receiver registration/heartbeat, synthetic redacted upload, active payment intent, SDK/webhook rehearsal and combined synthetic E2E.
+- Recorded a security-contract gap: current receiver signing uses an app-generated HMAC verification key registered as `public_key`; production-grade asymmetric Android Keystore public-key registration remains required unless explicitly accepted for controlled staging only.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.

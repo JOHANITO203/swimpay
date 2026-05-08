@@ -1,5 +1,71 @@
 # Next Action
 
+generated_at: 2026-05-08T18:14:42+03:00
+
+## Latest INTEL-TOOLS-1 readiness matrix
+
+Completed:
+
+1. Created tasks 637 through 647 and updated the active task queue.
+2. Created the SwimPay Intelligence tool inventory and per-tool readiness reports.
+3. Created `.swimpay-agent/SWIMPAY_INTELLIGENCE_TOOLS_READINESS_MATRIX.md`.
+4. Confirmed code/test-level readiness for redaction, protected outbox, backend ingestion, anti-replay, parser/classifier synthetic fixtures, Payment Intent Gate, manual review, final-only webhooks, SDK guardrails and receiving methods.
+5. Preserved the real-notification gate: no real bank notification was processed in this sprint.
+
+Next recommended action:
+
+Run the device/staging proof ladder before any real capture:
+
+1. record bank target detection metrics on the installed staging APK;
+2. verify Notification Listener Access state;
+3. prove receiver registration and heartbeat against `https://staging.swimpay.pro`;
+4. run one synthetic redacted outbox upload from the installed APK;
+5. create an active payment intent using an active receiving method;
+6. rehearse manual review and final-only webhook delivery to the staging external app;
+7. ask for the final explicit operator capture-start command before one controlled real notification test.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not clear app data unless the operator explicitly approves it.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
+generated_at: 2026-05-08T17:45:00+03:00
+
+## Latest REAL-CAPTURE-2 Intelligence tool inventory
+
+Completed:
+
+1. Created `.swimpay-agent/REAL_CAPTURE_2_INTELLIGENCE_TOOL_INVENTORY.md`.
+2. Marked task 635 completed with findings.
+3. Updated the Intelligence source-truth inventory: non-debug Android upload is now implemented, not no-op.
+4. Recorded the remaining receiver signing contract gap: HMAC shared-key registration is functional but not the final asymmetric public-key model.
+
+Next recommended action:
+
+Run task 636, then 637:
+
+1. record bank detection metrics on the installed staging APK;
+2. verify Notification Listener Access state;
+3. prove receiver registration and heartbeat against `https://staging.swimpay.pro`;
+4. then run synthetic redacted outbox upload smoke before any real notification.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not clear app data unless the operator explicitly approves it.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-08T14:06:07+03:00
 
 ## Latest REAL-CAPTURE-2 Intelligence test ladder
