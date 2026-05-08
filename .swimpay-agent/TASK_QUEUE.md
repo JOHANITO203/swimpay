@@ -36,7 +36,7 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 - [ ] `636_real_capture_2_bank_detection_device_metrics` - status: pending - source: `tasks/636_real_capture_2_bank_detection_device_metrics.md`
 - [ ] `637_real_capture_2_receiver_auth_registration_heartbeat` - status: pending - source: `tasks/637_real_capture_2_receiver_auth_registration_heartbeat.md`
 - [ ] `638_real_capture_2_notification_access_and_gate` - status: pending - source: `tasks/638_real_capture_2_notification_access_and_gate.md`
-- [ ] `639_real_capture_2_redaction_outbox_upload_smoke` - status: pending - source: `tasks/639_real_capture_2_redaction_outbox_upload_smoke.md`
+- [x] `639_real_capture_2_redaction_outbox_upload_smoke` - status: completed_synthetic_staging_upload_passed - source: `tasks/639_real_capture_2_redaction_outbox_upload_smoke.md`
 - [ ] `640_real_capture_2_backend_intent_gate_metrics` - status: pending - source: `tasks/640_real_capture_2_backend_intent_gate_metrics.md`
 - [ ] `641_real_capture_2_sdk_order_and_webhook_rehearsal` - status: pending - source: `tasks/641_real_capture_2_sdk_order_and_webhook_rehearsal.md`
 - [ ] `642_real_capture_2_combined_synthetic_e2e_metrics` - status: pending - source: `tasks/642_real_capture_2_combined_synthetic_e2e_metrics.md`

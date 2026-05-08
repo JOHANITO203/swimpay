@@ -2424,6 +2424,16 @@ Safety checks:
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
 - Docker live smoke remained blocked by unavailable Docker Desktop Linux engine pipe; `/api-health` was unreachable.
 
+# 2026-05-08T21:53:31+03:00 - REAL-CAPTURE-2 Staging Synthetic Upload Proof Rerun
+
+- Confirmed `main` is clean and aligned with `origin/main` at `d45ba7f`.
+- Confirmed staging `/api-health` is reachable in production mode with database, NATS and Valkey `ok`.
+- Confirmed Samsung ADB target is reachable.
+- Reran `com.swimpay.receiver.STAGING_PROOF` against the installed staging APK.
+- Proof passed: `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=0`.
+- Recorded remaining blocker for SDK/webhook rehearsal: staging API key, webhook secret and external app public URL must be configured outside chat.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
 # 2026-05-08T21:14:08+03:00 - REAL-CAPTURE-2 Public Checkout Session Fix
 
 - Found the staging/prod blocker preventing honest SDK checkout rehearsal: public buyer checkout routes still required a development merchant bearer.

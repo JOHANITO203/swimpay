@@ -1,5 +1,14 @@
 # Blockers
 
+## REAL-CAPTURE-2 staging synthetic upload proof rerun
+
+- Resolved again on installed APK: synthetic redacted signed upload to staging passed.
+- Evidence: `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=0`.
+- Staging API health is reachable and reports database, NATS and Valkey `ok`.
+- Remaining blocker before SDK/webhook rehearsal: staging external merchant app values are not available in this shell (`SWIMPAY_STAGING_SECRET_KEY`, `SWIMPAY_STAGING_WEBHOOK_SECRET`, `EXTERNAL_APP_BASE_URL`).
+- Remaining blocker before real notification capture: SDK order, checkout route selection, active payment intent, manual review and final-only webhook delivery still need synthetic proof.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+
 ## REAL-CAPTURE-2 public checkout session fix
 
 - Resolved in code: hosted buyer checkout routes no longer require a development merchant bearer.

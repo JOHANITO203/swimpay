@@ -1,5 +1,40 @@
 # Next Action
 
+generated_at: 2026-05-08T21:53:31+03:00
+
+## Latest REAL-CAPTURE-2 staging synthetic upload proof rerun
+
+Completed:
+
+1. Confirmed local `main` is aligned with `origin/main` at `d45ba7f`.
+2. Confirmed `https://staging.swimpay.pro/api-health` is healthy in production mode.
+3. Confirmed the Samsung device is reachable over ADB.
+4. Reran the staging APK synthetic signed upload proof.
+5. Proof passed: `staging_proof_upload success=true acked=1 failed_retrying=0 status=201 code=none purged=0`.
+6. No real notification was processed.
+
+Next recommended action:
+
+1. Confirm Dokploy has redeployed commit `d45ba7f`.
+2. Prepare staging external merchant app values without pasting secrets into chat:
+   - `SWIMPAY_STAGING_API_BASE_URL=https://staging.swimpay.pro`
+   - `SWIMPAY_STAGING_SECRET_KEY`
+   - `SWIMPAY_STAGING_WEBHOOK_SECRET`
+   - `EXTERNAL_APP_BASE_URL`
+3. Run SDK order creation and hosted checkout rehearsal without dev bearer.
+4. Rehearse manual confirmation and final-only webhook delivery.
+5. Proceed to combined synthetic E2E metrics only after SDK/webhook rehearsal passes.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-08T21:14:08+03:00
 
 ## Latest REAL-CAPTURE-2 public checkout session fix
