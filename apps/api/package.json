@@ -18,6 +18,7 @@
     "@swimpay/observability": "0.1.0",
     "@swimpay/security": "0.1.0",
     "fastify": "^5.8.5",
+    "google-auth-library": "^10.6.2",
     "ioredis": "^5.10.1",
     "nats": "^2.29.3",
     "pg": "^8.20.0"

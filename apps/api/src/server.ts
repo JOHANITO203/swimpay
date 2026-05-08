@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { Redis } from 'ioredis';
 import { connect } from 'nats';
+import { OAuth2Client } from 'google-auth-library';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
 import { EventTypes, PUBLIC_EVENT_SIGNAL_DISCLOSURE } from '@swimpay/events';
@@ -27,6 +28,7 @@ import {
   validateIntelligenceFeedbackRequest,
   type AndroidMerchantAccountCreateResponse,
   type AndroidMerchantAccountErrorCode,
+  type AndroidMerchantDeviceProof,
   type ReceivingRouteRailType
 } from '@swimpay/contracts';
 import {
@@ -75,6 +77,7 @@ import {
   verifyMerchantApiKeyAuthorization,
   type AuthBffRepository,
   type AndroidMerchantAccountRecord,
+  type AndroidMerchantMobileSessionRecord,
   type BffSessionContext,
   type MerchantApiKeyVerifier,
   type MerchantPermission,
@@ -206,6 +209,14 @@ export interface HealthChecks {
   valkey: () => Promise<DependencyStatus>;
 }
 
+export interface GoogleIdTokenVerificationResult {
+  googleSub: string;
+}
+
+export interface GoogleIdTokenVerifier {
+  verifyIdToken(idToken: string): Promise<GoogleIdTokenVerificationResult | null>;
+}
+
 export interface ApiServerOptions {
   environment: string;
   healthChecks?: HealthChecks;
@@ -219,6 +230,7 @@ export interface ApiServerOptions {
   merchantIntegrationRepository?: MerchantIntegrationRepository | null;
   authBffRepository?: AuthBffRepository | null;
   merchantApiKeyVerifier?: MerchantApiKeyVerifier | null;
+  googleIdTokenVerifier?: GoogleIdTokenVerifier | null;
   eventPublisher?: InternalEventPublisher;
   phoneHmacSecret?: string;
   checkoutBaseUrl?: string;
@@ -300,6 +312,33 @@ export function createDefaultHealthChecks(env: NodeJS.ProcessEnv): HealthChecks 
   };
 }
 
+class GoogleAuthLibraryIdTokenVerifier implements GoogleIdTokenVerifier {
+  private readonly client = new OAuth2Client();
+
+  constructor(private readonly audience: string) {}
+
+  async verifyIdToken(idToken: string): Promise<GoogleIdTokenVerificationResult | null> {
+    if (!idToken.trim()) {
+      return null;
+    }
+    try {
+      const ticket = await this.client.verifyIdToken({
+        idToken,
+        audience: this.audience
+      });
+      const googleSub = ticket.getPayload()?.sub?.trim();
+      return googleSub ? { googleSub } : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+export function createDefaultGoogleIdTokenVerifier(env: NodeJS.ProcessEnv): GoogleIdTokenVerifier | null {
+  const audience = env.GOOGLE_OAUTH_CLIENT_ID?.trim() || env.SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID?.trim();
+  return audience ? new GoogleAuthLibraryIdTokenVerifier(audience) : null;
+}
+
 export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const server = Fastify({ logger: createFastifyLoggerOptions() });
   const checks = options.healthChecks ?? createDefaultHealthChecks(process.env);
@@ -314,6 +353,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     options.merchantIntegrationRepository ?? createDefaultMerchantIntegrationRepository(process.env);
   const authBffRepository = options.authBffRepository ?? createDefaultAuthBffRepository(process.env);
   const merchantApiKeyVerifier = options.merchantApiKeyVerifier ?? createDefaultMerchantApiKeyVerifier(process.env);
+  const googleIdTokenVerifier = options.googleIdTokenVerifier ?? createDefaultGoogleIdTokenVerifier(process.env);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const metrics = options.metrics ?? defaultMetricsRegistry;
   const phoneHmacSecret = options.phoneHmacSecret ?? process.env.PHONE_HMAC_SECRET ?? 'local_dev_phone_hmac_secret';
@@ -433,6 +473,38 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       );
     }
     return null;
+  }
+
+  async function requireAndroidMerchantMobileSession(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<AndroidMerchantMobileSessionRecord | null> {
+    const bearerToken = parseBearerToken(request.headers.authorization);
+    if (!bearerToken?.startsWith('spm_')) {
+      reply.status(401).send(
+        invalidRequest('An Android merchant mobile session is required for this endpoint.', {
+          authorization: 'Bearer spm_<mobile_session_token>'
+        })
+      );
+      return null;
+    }
+    if (!authBffRepository) {
+      reply.status(503).send(authBffRepositoryUnavailableError());
+      return null;
+    }
+    const mobileSession = await authBffRepository.getAndroidMerchantMobileSessionByHash(
+      hashAndroidMerchantMobileSessionToken(bearerToken),
+      clock().toISOString()
+    );
+    if (!mobileSession) {
+      reply.status(401).send(
+        invalidRequest('An Android merchant mobile session is required for this endpoint.', {
+          authorization: 'Bearer spm_<mobile_session_token>'
+        })
+      );
+      return null;
+    }
+    return mobileSession;
   }
 
   server.get('/auth/google/start', async (_request, reply) => {
@@ -1746,32 +1818,93 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return reply.status(201).send(toAndroidMerchantAccountCreateResponse(result.account, mobileSessionToken));
   });
 
-  server.post(AndroidMerchantAccountAuthPaths.GOOGLE_EXCHANGE, async (_request, reply) => {
-    if (!googleOAuthProvider.configured) {
+  server.post(AndroidMerchantAccountAuthPaths.GOOGLE_EXCHANGE, async (request, reply) => {
+    if (!authBffRepository) {
+      return reply.status(503).send(authBffRepositoryUnavailableError());
+    }
+    if (!googleIdTokenVerifier) {
       return reply.status(503).send(googleRecoveryUnconfiguredError('account_recovery'));
     }
-    return reply.status(501).send(
-      invalidRequest('Google account recovery exchange is optional and is not enabled by this local build.', {
-        provider: 'google',
-        purpose: 'account_recovery'
-      })
-    );
+    const parsed = validateAndroidMerchantGoogleExchangeRequest(request.body);
+    if (!parsed.valid) {
+      return reply.status(400).send(androidMerchantAccountContractError(parsed.code, parsed.field));
+    }
+    const verified = await googleIdTokenVerifier.verifyIdToken(parsed.value.id_token);
+    if (!verified) {
+      return reply.status(401).send(googleIdTokenRejectedError('account_recovery'));
+    }
+
+    const now = clock();
+    const mobileSessionToken = createAndroidMerchantMobileSessionToken();
+    const result = await authBffRepository.recoverAndroidMerchantAccountWithGoogle({
+      googleSub: verified.googleSub,
+      deviceProofHash: hashAndroidMerchantDeviceProof(parsed.value.device_proof.install_public_key),
+      deviceId: randomUUID(),
+      mobileSessionId: randomUUID(),
+      mobileSessionHash: hashAndroidMerchantMobileSessionToken(mobileSessionToken),
+      expiresAt: new Date(now.getTime() + ANDROID_MERCHANT_MOBILE_SESSION_TTL_MS).toISOString(),
+      now: now.toISOString()
+    });
+    if (result.kind === 'google_sub_not_linked') {
+      return reply.status(404).send(
+        invalidRequest('Google account is not linked to a SwimPay Android profile.', {
+          provider: 'google',
+          purpose: 'account_recovery'
+        })
+      );
+    }
+    if (result.kind === 'device_already_registered') {
+      return reply.status(409).send(
+        invalidRequest('This Android merchant device proof is already linked to another account.', {
+          device_status: AndroidMerchantDeviceLookupStatuses.KNOWN_DEVICE
+        })
+      );
+    }
+    return reply.status(200).send(toAndroidMerchantAccountCreateResponse(result.account, mobileSessionToken));
   });
 
   server.post(AndroidMerchantAccountAuthPaths.GOOGLE_LINK, async (request, reply) => {
-    const merchantId = await requireAndroidMerchantId(request, reply);
-    if (!merchantId) {
+    const mobileSession = await requireAndroidMerchantMobileSession(request, reply);
+    if (!mobileSession) {
       return;
     }
-    if (!googleOAuthProvider.configured) {
+    if (!authBffRepository) {
+      return reply.status(503).send(authBffRepositoryUnavailableError());
+    }
+    if (!googleIdTokenVerifier) {
       return reply.status(503).send(googleRecoveryUnconfiguredError('account_recovery_linking'));
     }
-    return reply.status(501).send(
-      invalidRequest('Google account recovery linking is optional and is not enabled by this local build.', {
-        provider: 'google',
-        purpose: 'account_recovery_linking'
-      })
-    );
+    const idToken = parseGoogleIdToken(request.body);
+    if (!idToken) {
+      return reply.status(400).send(
+        invalidRequest('A Google ID token is required for account recovery linking.', {
+          provider: 'google',
+          purpose: 'account_recovery_linking'
+        })
+      );
+    }
+    const verified = await googleIdTokenVerifier.verifyIdToken(idToken);
+    if (!verified) {
+      return reply.status(401).send(googleIdTokenRejectedError('account_recovery_linking'));
+    }
+    const link = await authBffRepository.linkAndroidMerchantGoogleSub({
+      userId: mobileSession.userId,
+      googleSub: verified.googleSub,
+      now: clock().toISOString()
+    });
+    if (link.kind === 'google_sub_conflict') {
+      return reply.status(409).send(
+        invalidRequest('Google account is already linked to another SwimPay profile.', {
+          provider: 'google',
+          purpose: 'account_recovery_linking'
+        })
+      );
+    }
+    return reply.status(200).send({
+      status: 'linked',
+      provider: 'google',
+      purpose: 'account_recovery_linking'
+    });
   });
 
   server.get('/v1/android-merchant/dashboard-summary', async (request, reply) => {
@@ -2915,6 +3048,46 @@ function googleRecoveryUnconfiguredError(purpose: 'account_recovery' | 'account_
       }
     }
   };
+}
+
+function validateAndroidMerchantGoogleExchangeRequest(
+  body: unknown
+):
+  | { valid: true; value: { id_token: string; device_proof: AndroidMerchantDeviceProof } }
+  | { valid: false; code: AndroidMerchantAccountErrorCode; field?: string } {
+  const idToken = parseGoogleIdToken(body);
+  if (!idToken) {
+    return {
+      valid: false,
+      code: AndroidMerchantAccountErrorCodes.PAYLOAD_INVALID,
+      field: 'id_token'
+    };
+  }
+  const parsedDeviceProof = validateAndroidMerchantDeviceLookupRequest(body);
+  if (!parsedDeviceProof.valid) {
+    return parsedDeviceProof;
+  }
+  return {
+    valid: true,
+    value: {
+      id_token: idToken,
+      device_proof: parsedDeviceProof.value.device_proof
+    }
+  };
+}
+
+function parseGoogleIdToken(body: unknown): string | null {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return null;
+  }
+  return asNonEmptyString((body as Record<string, unknown>).id_token);
+}
+
+function googleIdTokenRejectedError(purpose: 'account_recovery' | 'account_recovery_linking') {
+  return invalidRequest('Google ID token could not be verified.', {
+    provider: 'google',
+    purpose
+  });
 }
 
 function authBffRepositoryUnavailableError() {

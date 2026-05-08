@@ -11,6 +11,7 @@ import {
   buildApiServer,
   type CreateOrderWithSessionInput,
   type CreateOrderWithSessionResult,
+  type GoogleIdTokenVerifier,
   type OrderRepository,
   type StoredOrderRecord,
   type StoredPaymentSessionRecord
@@ -377,6 +378,67 @@ describe('android merchant mobile backend endpoints', () => {
     expect(unauthenticatedLink.body).not.toContain('google-link-token-sample');
   });
 
+  it('links Google recovery to an Android mobile account and restores it with a real verified ID token', async () => {
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_ID', 'google-web-client.apps.googleusercontent.com');
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_SECRET', 'configured-secret');
+    vi.stubEnv('GOOGLE_OAUTH_REDIRECT_URI', 'https://staging.swimpay.pro/auth/google/callback');
+    const googleVerifier = new FakeGoogleIdTokenVerifier({
+      'link-token': 'google-sub-android-01',
+      'recover-token': 'google-sub-android-01'
+    });
+    const { server, authBffRepository } = buildAndroidMerchantServer({ googleVerifier });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('google-real-device')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    const createdBody = created.json();
+    const mobileHeaders = { authorization: `Bearer ${String(createdBody.mobile_session.token)}` };
+
+    const link = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.GOOGLE_LINK,
+      headers: mobileHeaders,
+      payload: { id_token: 'link-token' }
+    });
+    expect(link.statusCode).toBe(200);
+    expect(link.body).not.toContain('link-token');
+    expect(authBffRepository.users.get(String(createdBody.account.user_id))?.googleSub).toBe('google-sub-android-01');
+
+    const recovered = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.GOOGLE_EXCHANGE,
+      payload: {
+        id_token: 'recover-token',
+        device_proof: safeDeviceProof('google-recovery-device')
+      }
+    });
+
+    expect(recovered.statusCode).toBe(200);
+    expect(recovered.body).not.toContain('recover-token');
+    expect(recovered.json()).toMatchObject({
+      account: {
+        user_id: createdBody.account.user_id,
+        merchant_id: createdBody.account.merchant_id,
+        display_handle: createdBody.account.display_handle,
+        collected_identity_fields: [],
+        google_required: false
+      },
+      mobile_session: {
+        token_type: 'swimpay_mobile_session'
+      },
+      onboarding: {
+        android_confirms_payments: false
+      }
+    });
+    expect(String(recovered.json().mobile_session.token)).toMatch(/^spm_/u);
+  });
+
   it('returns a merchant-safe dashboard summary from reviews and receiving routes', async () => {
     const { server } = buildAndroidMerchantServer();
 
@@ -593,6 +655,7 @@ describe('android merchant mobile backend endpoints', () => {
 function buildAndroidMerchantServer(params: {
   eventPublisher?: FakeEventPublisher;
   connectedSite?: { url: string; status: 'active' | 'problem' };
+  googleVerifier?: GoogleIdTokenVerifier;
 } = {}) {
   const orderRepository = new FakeOrderRepository();
   const reviewRepository = new FakeReviewRepository();
@@ -624,10 +687,20 @@ function buildAndroidMerchantServer(params: {
     },
     androidMerchantDeliveryIdGenerator: () => 'delivery_test_01',
     clock: () => new Date('2026-05-03T10:05:00.000Z'),
+    ...(params.googleVerifier ? { googleIdTokenVerifier: params.googleVerifier } : {}),
     ...(params.connectedSite ? { androidMerchantConnectedSite: params.connectedSite } : {})
   });
 
   return { server, orderRepository, reviewRepository, authBffRepository, eventPublisher };
+}
+
+class FakeGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
+  public constructor(private readonly subjectsByToken: Record<string, string>) {}
+
+  public async verifyIdToken(idToken: string): Promise<{ googleSub: string } | null> {
+    const googleSub = this.subjectsByToken[idToken];
+    return googleSub ? { googleSub } : null;
+  }
 }
 
 function safeDeviceProof(suffix: string): Record<string, string> {
