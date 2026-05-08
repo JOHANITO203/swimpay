@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -931,14 +933,30 @@ private fun PremiumStandaloneStateScreen(
     content: @Composable () -> Unit
 ) {
     LazyColumn(
-        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        Modifier
+            .fillMaxHeight()
+            .statusBarsPadding()
+            .padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(bottom = 22.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         item {
-            Row(Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 96.dp)
+                    .padding(top = 8.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 CircleAction(Icons.AutoMirrored.Filled.KeyboardArrowLeft, onClick = onBack)
-                Text(title, color = PremiumColors.Ink, fontSize = 23.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 12.dp))
+                Text(
+                    title,
+                    color = PremiumColors.Ink,
+                    fontSize = 23.sp,
+                    lineHeight = 28.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.weight(1f).padding(start = 12.dp)
+                )
             }
         }
         item { content() }

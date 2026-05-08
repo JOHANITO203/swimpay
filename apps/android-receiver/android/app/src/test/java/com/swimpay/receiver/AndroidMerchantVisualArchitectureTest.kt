@@ -268,6 +268,18 @@ class AndroidMerchantVisualArchitectureTest {
         assertFalse(onboardingSource.contains("sbp_transfer"))
     }
 
+    @Test
+    fun standalonePremiumScreensReserveSystemBarsAndLongTitleSpace() {
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val standaloneSource = sourceFunction(premiumDashboard, "private fun PremiumStandaloneStateScreen")
+
+        assertTrue(standaloneSource.contains(".statusBarsPadding()"))
+        assertTrue(standaloneSource.contains(".heightIn(min = 96.dp)"))
+        assertTrue(standaloneSource.contains("Modifier.weight(1f)"))
+        assertTrue(standaloneSource.contains("lineHeight = 28.sp"))
+        assertFalse(standaloneSource.contains(".height(64.dp)"))
+    }
+
     private fun sourceFunction(source: String, signature: String): String {
         val start = source.indexOf(signature)
         require(start >= 0) { "missing source function $signature" }
