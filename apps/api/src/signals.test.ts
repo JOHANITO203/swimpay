@@ -55,6 +55,66 @@ function createValidSignal(overrides: Partial<Record<string, unknown>> = {}) {
   return signedSignal;
 }
 
+function createLegacySignal(overrides: Partial<Record<string, unknown>> = {}) {
+  const signal: Record<string, unknown> = {
+    event_id: 'evt_legacy_01',
+    device_id: 'dev_01',
+    merchant_id: 'mch_01',
+    bank_profile_id: 'sber_ru',
+    package_name: 'TO_VERIFY',
+    package_cert_sha256: 'TO_VERIFY',
+    notification_hash: 'c'.repeat(64),
+    local_counter: 2,
+    observed_at: '2026-05-02T08:00:00.000Z',
+    payload: {
+      title_redacted: 'Transfer <AMOUNT> <CURRENCY>',
+      body_redacted: 'Transfer from <PHONE>. <REFERENCE>',
+      amount_minor: 13700,
+      currency: 'RUB',
+      sender_phone_hmac: 'hmac_phone',
+      sender_phone_masked: '+7 *** *** **33',
+      reference_hmac: 'hmac_ref',
+      reference_code_masked: 'SWP-A***',
+      direction_label: 'incoming_customer_transfer',
+      snapshot_count: 1,
+      coalesced: false,
+      raw_text_present: false
+    },
+    ...overrides
+  };
+  const payload = signal.payload as Record<string, unknown>;
+  const signaturePayload: Record<string, unknown> = {
+    event_id: signal.event_id,
+    device_id: signal.device_id,
+    merchant_id: signal.merchant_id,
+    bank_profile_id: signal.bank_profile_id,
+    package_name: signal.package_name,
+    package_cert_sha256: signal.package_cert_sha256,
+    notification_hash: signal.notification_hash,
+    local_counter: signal.local_counter,
+    observed_at: new Date(String(signal.observed_at)).toISOString(),
+    payload: {
+      title_redacted: payload.title_redacted,
+      body_redacted: payload.body_redacted,
+      amount_minor: Number.isInteger(payload.amount_minor) ? payload.amount_minor : undefined,
+      currency: payload.currency,
+      sender_phone_hmac: payload.sender_phone_hmac,
+      sender_phone_masked: payload.sender_phone_masked,
+      reference_hmac: payload.reference_hmac,
+      reference_code_masked: payload.reference_code_masked,
+      direction_label: payload.direction_label,
+      snapshot_count: payload.snapshot_count,
+      coalesced: payload.coalesced,
+      raw_text_present: payload.raw_text_present
+    }
+  };
+
+  return {
+    ...signal,
+    signature: createReceiverSignalSignature(signaturePayload, publicKey)
+  };
+}
+
 describe('receiver signal ingestion api', () => {
   it('stores a valid signed signal and emits signal.received', async () => {
     const repository = new FakeSignalRepository();
@@ -304,6 +364,36 @@ describe('receiver signal ingestion api', () => {
     expect(response.statusCode).toBe(code === 'signature_missing' ? 401 : 400);
     expect(response.json().error.code).toBe(code);
     expect(response.body).not.toContain('+79991234567');
+    expect(metrics.counterValue(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL)).toBe(1);
+  });
+
+  it('rejects legacy receiver signal payloads that carry raw notification fields', async () => {
+    const metrics = new InMemoryMetricsRegistry();
+    const server = buildApiServer({
+      environment: 'test',
+      healthChecks: skippedHealthChecks(),
+      signalRepository: new FakeSignalRepository(),
+      eventPublisher: new FakeEventPublisher(),
+      signalIdGenerator: () => 'sig_01',
+      metrics
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/receiver/signals',
+      payload: createLegacySignal({
+        payload: {
+          title_redacted: 'Transfer <AMOUNT> <CURRENCY>',
+          body_redacted: 'Transfer from <PHONE>. <REFERENCE>',
+          raw_text_present: false,
+          raw_notification_text: 'raw bank notification'
+        }
+      })
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe('raw_notification_rejected');
+    expect(response.body).not.toContain('raw bank notification');
     expect(metrics.counterValue(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL)).toBe(1);
   });
 });

@@ -6,6 +6,20 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+- [x] `612_intelligence_source_of_truth_inventory` - status: completed_with_findings - source: `tasks/612_intelligence_source_of_truth_inventory.md`
+- [x] `613_intelligence_tools_and_boundaries_map` - status: completed - source: `tasks/613_intelligence_tools_and_boundaries_map.md`
+- [x] `614_android_receiver_truth_audit` - status: completed_with_must_fix_before_real_capture - source: `tasks/614_android_receiver_truth_audit.md`
+- [x] `615_backend_signal_truth_audit` - status: completed_with_guardrail_fix - source: `tasks/615_backend_signal_truth_audit.md`
+- [x] `616_runtime_payment_intent_truth_audit` - status: completed - source: `tasks/616_runtime_payment_intent_truth_audit.md`
+- [x] `617_learning_monitoring_truth_audit` - status: completed - source: `tasks/617_learning_monitoring_truth_audit.md`
+- [x] `618_webhook_event_taxonomy_truth_audit` - status: completed - source: `tasks/618_webhook_event_taxonomy_truth_audit.md`
+- [x] `619_sdk_integration_truth_audit` - status: completed - source: `tasks/619_sdk_integration_truth_audit.md`
+- [x] `620_admin_operator_surface_truth_audit` - status: completed_with_vocabulary_debt - source: `tasks/620_admin_operator_surface_truth_audit.md`
+- [x] `621_intelligence_source_truth_guardrails` - status: completed - source: `tasks/621_intelligence_source_truth_guardrails.md`
+- [x] `622_intelligence_source_truth_closeout` - status: completed - source: `tasks/622_intelligence_source_truth_closeout.md`
+
+## Previous Queue
+
 - [x] `601_real_staging_integration_inventory` - status: completed - source: `tasks/601_real_staging_integration_inventory.md`
 - [x] `602_vps_domain_staging_deploy_plan` - status: completed - source: `tasks/602_vps_domain_staging_deploy_plan.md`
 - [x] `603_env_secrets_and_oauth_staging` - status: completed - source: `tasks/603_env_secrets_and_oauth_staging.md`

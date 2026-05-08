@@ -1,5 +1,49 @@
 # Next Action
 
+generated_at: 2026-05-08T11:45:00+03:00
+
+## Latest INTEL-TRUTH SwimPay Intelligence Source-of-Truth Audit
+
+Completed:
+
+1. Created tasks 612 through 622 and updated the active task queue.
+2. Created `.swimpay-agent/SWIMPAY_INTELLIGENCE_SOURCE_OF_TRUTH.md` as the central source of truth.
+3. Created tool boundary map and per-surface audit reports.
+4. Added `tests/swimpay-intelligence-source-truth.test.ts`.
+5. Added a receiver signal regression proving legacy payloads with nested raw notification fields are rejected.
+6. Fixed `apps/api/src/signals.ts` so legacy receiver signal payload validation rejects raw notification, phone/card and credential keys before normalization.
+
+Current source truth:
+
+- SwimPay Intelligence is a deterministic Payment Signal Engine.
+- It is payment-intent-bound.
+- V1 is manual-confirmation-only.
+- Android captures/redacts/signs/uploads only.
+- Backend decides and creates manual review only after Payment Intent Gate.
+- Public fulfillment webhooks are only `payment.confirmed`, `payment.rejected` and `payment.expired`.
+- `official_bank_confirmation=false`.
+
+Next recommended action:
+
+Run Sprint INTEL-FIX-1 before the next real notification capture attempt.
+
+Required scope:
+
+- wire safe non-debug Android staging signal upload transport;
+- replace synthetic/debug hash vocabulary in real Android runtime evidence;
+- rename or quarantine active admin/template auto-confirm vocabulary;
+- rerun signed redacted synthetic staging signal upload before any real notification capture.
+
+Do not do:
+
+- Do not process real bank notifications until INTEL-FIX-1 passes and the operator gives final capture-start approval.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values or secrets.
+
+---
+
 generated_at: 2026-05-08T00:00:00+03:00
 
 ## Latest REAL-1 Real Staging Integration Test

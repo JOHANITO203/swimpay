@@ -125,6 +125,38 @@ export type ReceiverSignatureVerificationResult =
   | { valid: true; algorithm: ReceiverSignatureAlgorithm }
   | { valid: false; algorithm: ReceiverSignatureAlgorithm; reason: 'missing_signature' | 'invalid_signature' };
 
+const LegacyRawPhoneFields = new Set(['phone', 'raw_phone', 'buyer_phone', 'sender_phone', 'normalized_phone']);
+const LegacyRawCardFields = new Set([
+  'raw_card',
+  'card_number',
+  'buyer_source_card_number',
+  'source_card',
+  'source_card_number',
+  'pan',
+  'card_pan'
+]);
+const LegacyCredentialFields = new Set([
+  'cvv',
+  'cvc',
+  'security_code',
+  'expiration',
+  'expiry',
+  'exp_month',
+  'exp_year',
+  'pin',
+  'sms_code',
+  'bank_password',
+  'password'
+]);
+const LegacyRawNotificationFields = new Set([
+  'notification_text',
+  'raw_notification',
+  'raw_notification_text',
+  'raw_text',
+  'raw_body',
+  'raw_title'
+]);
+
 export class NoopEventPublisher implements InternalEventPublisher {
   public async publish(): Promise<void> {}
 }
@@ -367,6 +399,17 @@ export function validateReceiverSignalBody(body: unknown): ReceiverSignalValidat
 }
 
 function validateLegacyReceiverSignalBody(body: Record<string, unknown>): ReceiverSignalValidationResult {
+  const rawField = findForbiddenLegacyReceiverRawField(body);
+  if (rawField?.kind === 'phone' || rawField?.kind === 'card') {
+    return { valid: false, code: 'raw_phone_rejected', field: rawField.field };
+  }
+  if (rawField?.kind === 'credential') {
+    return { valid: false, code: 'payload_invalid', field: rawField.field };
+  }
+  if (rawField?.kind === 'notification') {
+    return { valid: false, code: 'raw_notification_rejected', field: rawField.field };
+  }
+
   const candidate = body as Partial<ReceiverSignalRequestBody>;
   const localCounter = candidate.local_counter;
   if (
@@ -596,6 +639,47 @@ function normalizeSignalPayload(payload: ReceiverSignalPayload): ReceiverSignalP
 
 function isLegacyReceiverSignalShape(body: Record<string, unknown>): boolean {
   return Boolean(body.payload) && typeof body.payload === 'object';
+}
+
+function findForbiddenLegacyReceiverRawField(
+  value: unknown
+): { kind: 'phone' | 'notification' | 'card' | 'credential'; field: string } | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const nested = findForbiddenLegacyReceiverRawField(item);
+      if (nested) {
+        return nested;
+      }
+    }
+    return null;
+  }
+
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+    const normalizedKey = key.toLowerCase();
+    if (LegacyRawPhoneFields.has(normalizedKey)) {
+      return { kind: 'phone', field: key };
+    }
+    if (LegacyRawCardFields.has(normalizedKey)) {
+      return { kind: 'card', field: key };
+    }
+    if (LegacyCredentialFields.has(normalizedKey)) {
+      return { kind: 'credential', field: key };
+    }
+    if (LegacyRawNotificationFields.has(normalizedKey)) {
+      return { kind: 'notification', field: key };
+    }
+
+    const nestedResult = findForbiddenLegacyReceiverRawField(nested);
+    if (nestedResult) {
+      return nestedResult;
+    }
+  }
+
+  return null;
 }
 
 function canonicalSignalPayloadRecord(body: unknown): Record<string, unknown> {

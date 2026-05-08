@@ -2374,3 +2374,17 @@ Safety checks:
 - Rebuilt `@swimpay/matching-core` dist output.
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
 - Docker live smoke remained blocked by unavailable Docker Desktop Linux engine pipe; `/api-health` was unreachable.
+
+# 2026-05-08T11:45:00+03:00 - INTEL-TRUTH SwimPay Intelligence Source-of-Truth Audit
+
+- Created tasks 612 through 622 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Created `.swimpay-agent/SWIMPAY_INTELLIGENCE_SOURCE_OF_TRUTH.md` as the central source of truth.
+- Created `.swimpay-agent/SWIMPAY_INTELLIGENCE_TOOLS_BOUNDARIES.md`.
+- Created per-surface audits for Android Receiver, backend signal ingestion, runtime/payment intent, learning/monitoring, webhook taxonomy, SDK/integration and admin/operator surfaces.
+- Added `.swimpay-agent/SWIMPAY_INTELLIGENCE_SOURCE_TRUTH_GUARDRAILS.md` and `.swimpay-agent/SWIMPAY_INTELLIGENCE_SOURCE_TRUTH_REPORT.md`.
+- Added `tests/swimpay-intelligence-source-truth.test.ts`.
+- Added a backend regression proving legacy receiver signal payloads with nested raw notification fields are rejected.
+- Fixed `apps/api/src/signals.ts` so legacy receiver signal validation rejects raw notification, raw phone/card and credential keys before normalization.
+- Confirmed active runtime remains manual-confirmation-only and public webhooks remain final-event-only.
+- Identified must-fix items before real notification capture: non-debug Android upload transport, synthetic/debug hash vocabulary, and active admin/template auto-confirm vocabulary.
+- No real bank notification was processed, no public production deploy was started, no auto-confirmation was enabled, and no public webhook semantics changed.

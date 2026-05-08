@@ -1,5 +1,18 @@
 # Blockers
 
+## INTEL-TRUTH SwimPay Intelligence Source-of-Truth Audit
+
+- Completed: central source truth created at `.swimpay-agent/SWIMPAY_INTELLIGENCE_SOURCE_OF_TRUTH.md`.
+- Completed: tool boundary map and per-surface audits for Android, backend signal ingestion, runtime/payment intent, learning/monitoring, webhook taxonomy, SDK/integration and admin/operator surfaces.
+- Completed: guardrail test added for central source truth, Android boundaries and public webhook taxonomy.
+- Fixed: legacy receiver signal payloads now reject nested raw notification, raw phone/card and credential fields before normalization.
+- Runtime blocker: none found for active V1 auto-confirmation. Active runtime remains manual-confirmation-only and payment-intent-bound.
+- Public webhook blocker: none found. Public worker/SDK remain final-event-only: `payment.confirmed`, `payment.rejected`, `payment.expired`.
+- Critical before real notification tests: non-debug Android upload transport remains fail-safe/no-op, so real accepted redacted signals will not yet reach staging backend from the APK.
+- Critical before real notification tests: Android real-runtime hashes still use synthetic/debug vocabulary in the coalescing/hash input.
+- High before operator-facing real tests: active admin/template vocabulary can still expose `auto_confirm_allowed_by_template` / `autoConfirmStatus`, even though runtime does not auto-confirm.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad app enumeration.
+
 ## REAL-1 Real Staging Integration Test
 
 - Prepared: real staging integration inventory, VPS/domain deploy plan, staging secret contract, migration/seed report, Google OAuth report, Android Receiver staging setup report, real capture report, manual review/webhook report, observability report and closeout report.
