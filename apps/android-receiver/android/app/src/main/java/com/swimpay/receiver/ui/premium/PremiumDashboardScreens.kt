@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
@@ -61,7 +62,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -1156,6 +1159,7 @@ fun PremiumConnectedSiteStateScreen(
             if (state is PremiumScreenState.Content) {
                 val value = state.value
                 var webhookUrl by remember(value.webhookUrl) { mutableStateOf(value.webhookUrl) }
+                val clipboardManager = LocalClipboardManager.current
 
                 PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1204,7 +1208,22 @@ fun PremiumConnectedSiteStateScreen(
 
                 PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp, color = PremiumColors.PanelTint) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Export staging", color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Export staging", color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                            Box(
+                                Modifier
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(PremiumColors.Surface, RoundedCornerShape(14.dp))
+                                    .border(1.dp, PremiumColors.Line, RoundedCornerShape(14.dp))
+                                    .premiumTap {
+                                        clipboardManager.setText(AnnotatedString(value.developerExportText()))
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Copier", tint = PremiumColors.Blue, modifier = Modifier.size(18.dp))
+                            }
+                        }
                         Text(
                             "A placer dans l'environnement de l'app externe. Android et le navigateur ne recoivent pas de secret SDK.",
                             color = PremiumColors.Muted,

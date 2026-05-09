@@ -368,6 +368,22 @@ class AndroidMerchantVisualArchitectureTest {
     }
 
     @Test
+    fun developerIntegrationScreenOffersSafeCopyActionForDeveloperExport() {
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val premiumRuntime = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantRuntime.kt").readText()
+        val connectedSiteSource = sourceFunction(premiumDashboard, "fun PremiumConnectedSiteStateScreen")
+
+        assertTrue(premiumRuntime.contains("fun developerExportText(): String"))
+        assertTrue(connectedSiteSource.contains("LocalClipboardManager.current"))
+        assertTrue(connectedSiteSource.contains("AnnotatedString(value.developerExportText())"))
+        assertTrue(connectedSiteSource.contains("contentDescription = \"Copier\""))
+        assertTrue(connectedSiteSource.contains("Icons.Default.ContentCopy"))
+        assertFalse(connectedSiteSource.contains("Copier pour dev"))
+        assertFalse(connectedSiteSource.contains("secretKeyOnce"))
+        assertFalse(connectedSiteSource.contains("webhookSecretOnce"))
+    }
+
+    @Test
     fun androidLauncherUsesSwimPayAppIconResources() {
         val manifest = File("src/main/AndroidManifest.xml").readText()
         val adaptiveIcon = File("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")

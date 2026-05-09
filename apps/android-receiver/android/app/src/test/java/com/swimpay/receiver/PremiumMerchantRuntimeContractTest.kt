@@ -299,6 +299,10 @@ class PremiumMerchantRuntimeContractTest {
         val webhookTest = runtime.testDeveloperWebhook() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
 
         assertTrue(initial.value.oneTimeSecrets.isEmpty())
+        assertTrue(initial.value.developerExportText().contains("SWIMPAY_STAGING_API_BASE_URL=https://staging.swimpay.pro"))
+        assertTrue(initial.value.developerExportText().contains("SWIMPAY_STAGING_SECRET_KEY=sk_live_****1234"))
+        assertFalse(initial.value.developerExportText().contains("sk_live_show_once"))
+        assertFalse(initial.value.developerExportText().contains("whsec_show_once"))
         assertTrue(keyCreated.value.oneTimeSecrets.isEmpty())
         assertFalse(keyCreated.value.exportLines.any { it.contains("sk_live_show_once") })
         assertTrue(keyCreated.value.exportLines.any { it == "SWIMPAY_STAGING_SECRET_KEY=sk_live_****9999" })

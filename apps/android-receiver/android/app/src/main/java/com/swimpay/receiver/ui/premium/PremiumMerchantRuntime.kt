@@ -268,6 +268,8 @@ data class PremiumConnectedSiteUiState(
     val webhookUrl: String = "",
     val actionButtonsEnabled: Boolean = false
 ) {
+    fun developerExportText(): String = exportLines.joinToString("\n")
+
     companion object {
         fun preview(): PremiumConnectedSiteUiState {
             return PremiumConnectedSiteUiState(
