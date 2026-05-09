@@ -373,9 +373,62 @@ export function resolveGoogleIdTokenAudiences(env: NodeJS.ProcessEnv): string[] 
     env.SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID,
     env.SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID
   ]
-    .map((value) => value?.trim())
+    .flatMap((value) => normalizeGoogleIdTokenAudienceEnvValue(value))
     .filter((value): value is string => Boolean(value))
     .filter((value, index, values) => values.indexOf(value) === index);
+}
+
+function normalizeGoogleIdTokenAudienceEnvValue(value: string | undefined): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((part) => normalizeGoogleIdTokenAudience(part))
+    .filter((part): part is string => Boolean(part));
+}
+
+function normalizeGoogleIdTokenAudience(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const unquoted = trimmed.replace(/^["']+|["']+$/gu, '').trim();
+  return unquoted || null;
+}
+
+export function extractGoogleIdTokenAudienceForDiagnostics(idToken: string): string | null {
+  const payloadSegment = idToken.split('.')[1]?.trim();
+  if (!payloadSegment) {
+    return null;
+  }
+  return runJsonParse(() => Buffer.from(payloadSegment, 'base64url').toString('utf8'))?.aud ?? null;
+}
+
+function runJsonParse(readPayload: () => string): { aud: string } | null {
+  try {
+    const parsed = JSON.parse(readPayload()) as { aud?: unknown };
+    return typeof parsed.aud === 'string' ? { aud: parsed.aud } : null;
+  } catch {
+    return null;
+  }
+}
+
+function maskGoogleAudienceForDiagnostics(audience: string | null): string | null {
+  if (!audience) {
+    return null;
+  }
+  if (audience.length <= 18) {
+    return '<configured>';
+  }
+  return `${audience.slice(0, 8)}...${audience.slice(-24)}`;
+}
+
+function googleIdTokenRejectedDiagnostics(idToken: string, acceptedAudiences: readonly string[]): Record<string, unknown> {
+  const tokenAudience = extractGoogleIdTokenAudienceForDiagnostics(idToken);
+  return {
+    token_audience_hint: maskGoogleAudienceForDiagnostics(tokenAudience),
+    token_audience_configured: tokenAudience ? acceptedAudiences.includes(tokenAudience) : false,
+    configured_audience_count: acceptedAudiences.length,
+    configured_audience_hints: acceptedAudiences.map((audience) => maskGoogleAudienceForDiagnostics(audience))
+  };
 }
 
 export function createDefaultGoogleIdTokenVerifier(env: NodeJS.ProcessEnv): GoogleIdTokenVerifier | null {
@@ -399,6 +452,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const supportTicketRepository = options.supportTicketRepository ?? createDefaultSupportTicketRepository(process.env);
   const authBffRepository = options.authBffRepository ?? createDefaultAuthBffRepository(process.env);
   const merchantApiKeyVerifier = options.merchantApiKeyVerifier ?? createDefaultMerchantApiKeyVerifier(process.env);
+  const googleIdTokenAudiences = resolveGoogleIdTokenAudiences(process.env);
   const googleIdTokenVerifier = options.googleIdTokenVerifier ?? createDefaultGoogleIdTokenVerifier(process.env);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const metrics = options.metrics ?? defaultMetricsRegistry;
@@ -2075,7 +2129,12 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
     const verified = await googleIdTokenVerifier.verifyIdToken(parsed.value.id_token);
     if (!verified) {
-      return reply.status(401).send(googleIdTokenRejectedError('account_recovery'));
+      return reply.status(401).send(
+        googleIdTokenRejectedError(
+          'account_recovery',
+          googleIdTokenRejectedDiagnostics(parsed.value.id_token, googleIdTokenAudiences)
+        )
+      );
     }
 
     const now = clock();
@@ -2129,7 +2188,12 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
     const verified = await googleIdTokenVerifier.verifyIdToken(idToken);
     if (!verified) {
-      return reply.status(401).send(googleIdTokenRejectedError('account_recovery_linking'));
+      return reply.status(401).send(
+        googleIdTokenRejectedError(
+          'account_recovery_linking',
+          googleIdTokenRejectedDiagnostics(idToken, googleIdTokenAudiences)
+        )
+      );
     }
     const link = await authBffRepository.linkAndroidMerchantGoogleSub({
       userId: mobileSession.userId,
@@ -3507,11 +3571,18 @@ function parseGoogleIdToken(body: unknown): string | null {
   return asNonEmptyString((body as Record<string, unknown>).id_token);
 }
 
-function googleIdTokenRejectedError(purpose: 'account_recovery' | 'account_recovery_linking') {
-  return invalidRequest('Google ID token could not be verified.', {
-    provider: 'google',
-    purpose
-  });
+function googleIdTokenRejectedError(purpose: 'account_recovery' | 'account_recovery_linking', diagnostics: Record<string, unknown>) {
+  return {
+    error: {
+      code: 'google_id_token_rejected',
+      message: 'Google ID token could not be verified.',
+      details: {
+        provider: 'google',
+        purpose,
+        ...diagnostics
+      }
+    }
+  };
 }
 
 function authBffRepositoryUnavailableError() {

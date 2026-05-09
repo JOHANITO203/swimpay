@@ -341,12 +341,17 @@ class AndroidMerchantAuthApiRepository(
     private fun googleRecoveryFailureResult(response: MerchantApiResponse): AndroidMerchantAccountCreateResult {
         val code = extractString(response.body, "code")
         val message = extractString(response.body, "message").orEmpty()
+        val tokenAudienceConfigured = extractBoolean(response.body, "token_audience_configured")
         runCatching {
             Log.w("SwimPayGoogleAuth", "google_backend_failed status=${response.statusCode} code=${code ?: "unknown"}")
         }
         val safeMessage = when {
             code == "backend_unreachable" -> "Backend staging injoignable depuis l'app."
             code == "service_unavailable" -> "Service de compte Google indisponible côté serveur."
+            code == "google_id_token_rejected" && tokenAudienceConfigured == false ->
+                "Client Google non configuré côté backend."
+            code == "google_id_token_rejected" && tokenAudienceConfigured == true ->
+                "ID Google reconnu, vérification serveur échouée."
             response.statusCode == 401 -> "ID Google rejeté par le backend."
             response.statusCode == 409 && message.contains("already linked", ignoreCase = true) ->
                 "Ce compte Google est déjà lié à un autre profil SwimPay."

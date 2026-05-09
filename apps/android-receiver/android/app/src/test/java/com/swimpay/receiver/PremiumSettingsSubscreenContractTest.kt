@@ -114,13 +114,19 @@ class PremiumSettingsSubscreenContractTest {
     @Test
     fun launcherIconUsesExistingThreeWaveMark() {
         val manifest = File("src/main/AndroidManifest.xml").readText()
-        val foreground = File("src/main/res/drawable/ic_launcher_foreground.xml").readText()
         val launcher = File("src/main/res/mipmap-anydpi-v26/ic_launcher.xml").readText()
+        val launcherRound = File("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml").readText()
+        val foreground = File("src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png")
+        val background = File("src/main/res/mipmap-xxhdpi/ic_launcher_background.png")
+        val monochrome = File("src/main/res/mipmap-xxhdpi/ic_launcher_monochrome.png")
 
         assertTrue(manifest.contains("android:icon=\"@mipmap/ic_launcher\""))
-        assertTrue(launcher.contains("@drawable/ic_launcher_foreground"))
-        assertTrue(foreground.contains("swimpay three-wave launcher mark"))
-        assertTrue(foreground.split("strokeColor=\"#42D6FF\"").size - 1 >= 3)
+        assertTrue(launcher.contains("@mipmap/ic_launcher_foreground"))
+        assertTrue(launcher.contains("@mipmap/ic_launcher_background"))
+        assertTrue(launcherRound.contains("@mipmap/ic_launcher_foreground"))
+        assertTrue("IconKitchen three-wave foreground must be packaged", foreground.length() > 100L)
+        assertTrue("IconKitchen dark background must be packaged", background.length() > 100L)
+        assertTrue("IconKitchen monochrome mark must be packaged", monochrome.length() > 100L)
     }
 
     @Test

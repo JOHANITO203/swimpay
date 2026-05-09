@@ -135,9 +135,8 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
         item {
             PremiumCard(Modifier.fillMaxWidth().height(260.dp), radius = 70.dp) {
                 Column(Modifier.padding(30.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("PAIEMENTS CONFIRMÉS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
-                        StatusChip("Montant / taux", StatusTone.Neutral)
                     }
                     TrendLine(
                         modifier = Modifier.fillMaxWidth().height(170.dp).padding(top = 24.dp),

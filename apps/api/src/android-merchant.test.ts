@@ -16,6 +16,7 @@ import {
   type GoogleIdTokenVerifier,
   type OrderRepository,
   resolveGoogleIdTokenAudiences,
+  extractGoogleIdTokenAudienceForDiagnostics,
   type StoredOrderRecord,
   type StoredPaymentSessionRecord
 } from './server.js';
@@ -378,11 +379,43 @@ describe('android merchant mobile backend endpoints', () => {
   it('accepts explicit Android and web Google ID token audiences for account recovery', () => {
     expect(
       resolveGoogleIdTokenAudiences({
-        GOOGLE_OAUTH_CLIENT_ID: 'web-client.apps.googleusercontent.com',
-        SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID: 'android-server-client.apps.googleusercontent.com',
+        GOOGLE_OAUTH_CLIENT_ID: '"web-client.apps.googleusercontent.com"',
+        SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID: 'android-server-client.apps.googleusercontent.com, web-client.apps.googleusercontent.com',
         SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID: 'web-client.apps.googleusercontent.com'
       } as NodeJS.ProcessEnv)
     ).toEqual(['web-client.apps.googleusercontent.com', 'android-server-client.apps.googleusercontent.com']);
+  });
+
+  it('returns safe Google token audience diagnostics without exposing the ID token', async () => {
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_ID', '"web-client.apps.googleusercontent.com"');
+    vi.stubEnv('SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID', 'android-client.apps.googleusercontent.com');
+    const { server } = buildAndroidMerchantServer({ googleVerifier: new FakeGoogleIdTokenVerifier({}) });
+    const token = fakeGoogleIdToken('web-client.apps.googleusercontent.com');
+
+    expect(extractGoogleIdTokenAudienceForDiagnostics(token)).toBe('web-client.apps.googleusercontent.com');
+
+    const response = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.GOOGLE_EXCHANGE,
+      payload: {
+        id_token: token,
+        device_proof: safeDeviceProof('google-diagnostics-device')
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error).toMatchObject({
+      code: 'google_id_token_rejected',
+      details: {
+        provider: 'google',
+        purpose: 'account_recovery',
+        token_audience_configured: true,
+        configured_audience_count: 2
+      }
+    });
+    expect(response.body).not.toContain(token);
+    expect(response.body).not.toContain('eyJ');
+    expect(response.body).not.toContain('web-client.apps.googleusercontent.com');
   });
 
   it('requires an Android mobile session before Google profile linking', async () => {
@@ -861,6 +894,15 @@ class FakeGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
     const googleSub = this.subjectsByToken[idToken];
     return googleSub ? { googleSub } : null;
   }
+}
+
+function fakeGoogleIdToken(audience: string): string {
+  const encode = (value: Record<string, unknown>) => Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
+  return [
+    encode({ alg: 'none', typ: 'JWT' }),
+    encode({ aud: audience, iss: 'https://accounts.google.com', sub: 'google-sub-diagnostics' }),
+    'unsigned'
+  ].join('.');
 }
 
 function safeDeviceProof(suffix: string): Record<string, string> {

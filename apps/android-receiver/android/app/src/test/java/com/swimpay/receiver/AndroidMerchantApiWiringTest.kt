@@ -177,6 +177,54 @@ class AndroidMerchantApiWiringTest {
         assertEquals("ID Google rejeté par le backend.", tokenRejected.safeMessage)
         assertFalse(tokenRejected.visibleTexts().joinToString(" ").contains("google_id_token_secret"))
 
+        val audienceMissing = googleRepositoryWithResponse(
+            MerchantApiResponse(
+                401,
+                """
+                {
+                  "error": {
+                    "code": "google_id_token_rejected",
+                    "message": "Google ID token could not be verified.",
+                    "details": {
+                      "provider": "google",
+                      "purpose": "account_recovery_linking",
+                      "token_audience_configured": false,
+                      "token_audience_hint": "98304953...usercontent.com"
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+        ).googleLink(AuthenticatedMerchantSession.mobile("mch_google", "spm_google_session_secret"), "google_id_token_secret")
+
+        assertEquals(AndroidMerchantAuthResultStatus.ACTION_REQUIRED, audienceMissing.status)
+        assertEquals("Client Google non configuré côté backend.", audienceMissing.safeMessage)
+        assertFalse(audienceMissing.visibleTexts().joinToString(" ").contains("google_id_token_secret"))
+        assertFalse(audienceMissing.visibleTexts().joinToString(" ").contains("98304953"))
+
+        val audienceConfigured = googleRepositoryWithResponse(
+            MerchantApiResponse(
+                401,
+                """
+                {
+                  "error": {
+                    "code": "google_id_token_rejected",
+                    "message": "Google ID token could not be verified.",
+                    "details": {
+                      "provider": "google",
+                      "purpose": "account_recovery_linking",
+                      "token_audience_configured": true
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+        ).googleLink(AuthenticatedMerchantSession.mobile("mch_google", "spm_google_session_secret"), "google_id_token_secret")
+
+        assertEquals(AndroidMerchantAuthResultStatus.ACTION_REQUIRED, audienceConfigured.status)
+        assertEquals("ID Google reconnu, vérification serveur échouée.", audienceConfigured.safeMessage)
+        assertFalse(audienceConfigured.visibleTexts().joinToString(" ").contains("google_id_token_secret"))
+
         val conflict = googleRepositoryWithResponse(
             MerchantApiResponse(
                 409,
