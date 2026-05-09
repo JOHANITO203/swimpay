@@ -6,7 +6,30 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-The current sprint is BUYER-CHECKOUT-4STEP. It aligns hosted buyer checkout, expected payment profile, bank launcher fallbacks and Intelligence matching without processing real bank notifications.
+The current sprint is CHECKOUT-UX-REFLOW. It refactors the hosted buyer checkout into a mobile-first Apple-like guided flow without changing payment runtime semantics.
+
+- [x] `731_checkout_ux_refactor_audit` - status: completed_with_findings - source: `tasks/731_checkout_ux_refactor_audit.md`
+- [x] `732_checkout_ux_design_plan` - status: completed - source: `tasks/732_checkout_ux_design_plan.md`
+- [x] `733_checkout_flow_shell_and_stepper` - status: completed - source: `tasks/733_checkout_flow_shell_and_stepper.md`
+- [x] `734_checkout_buyer_info_method_ui` - status: completed - source: `tasks/734_checkout_buyer_info_method_ui.md`
+- [x] `735_checkout_instructions_copy_waiting_ui` - status: completed - source: `tasks/735_checkout_instructions_copy_waiting_ui.md`
+- [x] `736_checkout_ux_guardrails_tests` - status: completed - source: `tasks/736_checkout_ux_guardrails_tests.md`
+- [x] `737_checkout_ux_closeout` - status: completed - source: `tasks/737_checkout_ux_closeout.md`
+
+## Next Planned Queue
+
+The next planned sprint is DEVELOPER-LINK-VERIFY. It turns Developer Integration "test" into a real merchant-to-external-app/web liaison proof and hardens API key/webhook secret revocation.
+
+- [ ] `725_developer_link_verification_inventory` - status: pending - source: `tasks/725_developer_link_verification_inventory.md`
+- [ ] `726_webhook_liaison_test_contract` - status: pending - source: `tasks/726_webhook_liaison_test_contract.md`
+- [ ] `727_integration_secret_revocation_lifecycle` - status: pending - source: `tasks/727_integration_secret_revocation_lifecycle.md`
+- [ ] `728_android_developer_integration_liaison_ui` - status: pending - source: `tasks/728_android_developer_integration_liaison_ui.md`
+- [ ] `729_developer_link_guardrails_tests` - status: pending - source: `tasks/729_developer_link_guardrails_tests.md`
+- [ ] `730_developer_link_closeout` - status: pending - source: `tasks/730_developer_link_closeout.md`
+
+## Previous Queue
+
+The previous sprint was BUYER-CHECKOUT-4STEP. It aligns hosted buyer checkout, expected payment profile, bank launcher fallbacks and Intelligence matching without processing real bank notifications.
 
 - [x] `710_buyer_checkout_current_flow_audit` - status: completed_with_findings - source: `tasks/710_buyer_checkout_current_flow_audit.md`
 - [x] `711_expected_payment_profile_contract` - status: completed - source: `tasks/711_expected_payment_profile_contract.md`

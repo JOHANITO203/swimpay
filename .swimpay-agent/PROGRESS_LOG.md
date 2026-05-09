@@ -2623,3 +2623,44 @@ Safety checks:
 - No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
 
 ---
+
+# 2026-05-09T18:05:00+03:00 - Developer Link Verification todo added
+
+- Added a planned sprint for concrete Developer Integration improvements.
+- Created tasks 725 through 730 for:
+  - current integration inventory;
+  - real webhook liaison proof;
+  - API key/webhook secret revocation lifecycle;
+  - Android liaison UI;
+  - guardrail tests;
+  - closeout.
+- Created `.swimpay-agent/DEVELOPER_LINK_VERIFICATION_TODO.md`.
+- Updated `.swimpay-agent/TASK_QUEUE.md` and `.swimpay-agent/NEXT_ACTION.md`.
+- This was planning/documentation only; no backend, Android runtime, payment or webhook behavior was changed.
+
+---
+
+# 2026-05-09T19:10:00+03:00 - Checkout UX Apple-like guided refactor
+
+- Created tasks 731 through 737 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Refactored hosted buyer checkout into a mobile-first guided flow:
+  - intro;
+  - buyer information and method;
+  - payment instructions and bank open action;
+  - waiting timeline.
+- Preserved the Expected Payment Profile, receiver arming, buyer paid claim and manual-confirmation-only semantics.
+- Added method-specific field visibility so card only shows card input and phone/SBP only shows phone input.
+- Added prominent copy actions for exact amount, reference, destination and payment detail summary.
+- Added safe waiting timeline copy: signal detected remains pending merchant validation, not confirmation.
+- Updated checkout form POST behavior so browser form submissions redirect back into the checkout flow.
+- Targeted validation passed: `npx vitest run apps/web/src/checkout.test.ts apps/web/src/copy-guardrails.test.ts`.
+- Full validation passed:
+  - `npm run android:doctor`;
+  - `npm run typecheck`;
+  - `npm run lint`;
+  - `npm test` - 76 files, 573 tests passed;
+  - `npm run build`;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config`.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---

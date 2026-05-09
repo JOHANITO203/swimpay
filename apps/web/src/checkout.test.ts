@@ -9,79 +9,69 @@ import {
 import { buildWebServer, type CheckoutSession, type CheckoutSessionProvider } from './index.js';
 
 describe('hosted checkout web foundation', () => {
-  it('renders the initial buyer checkout as buyer identity step without route details', async () => {
+  it('renders the initial checkout as an intro-first guided flow', async () => {
     const server = buildWebServer({
       environment: 'test',
       checkoutSessionProvider: new FakeCheckoutSessionProvider()
     });
 
-    const response = await server.inject({
-      method: 'GET',
-      url: '/checkout/ps_01'
-    });
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toContain('text/html');
     expect(response.body).toContain('Payer avec SwimPay');
-    expect(response.body).toContain('Suivez votre paiement bancaire jusqu');
-    expect(response.body).toContain('Paiement guidé');
-    expect(response.body).toContain('Suivi en temps réel');
-    expect(response.body).toContain('Retour au marchand après validation');
+    expect(response.body).toContain('Paiement guid&eacute;');
+    expect(response.body).toContain('Suivi en temps reel');
+    expect(response.body).toContain('Retour au marchand');
+    expect(response.body).toContain('data-checkout-panel="buyer-identity" hidden');
     expect(response.body).toContain('Vos informations');
     expect(response.body).toContain('sender_card_number');
     expect(response.body).toContain('sender_phone');
+    expect(response.body).toContain('data-method-field="sbp" hidden');
     expect(response.body).toContain('Sberbank');
     expect(response.body).toContain('Tinkoff / T-Bank');
-    expect(response.body).toContain('137.00 RUB');
-    expect(response.body).toContain('TANGO ALFA');
+    expect(response.body).not.toContain('137.00 RUB');
+    expect(response.body).not.toContain('TANGO ALFA');
     expect(response.body).not.toContain('+7 *** *** **67');
     expect(response.body).not.toContain('2202 **** **** 7890');
-    expect(response.body).not.toContain('Other bank / manual transfer');
-    expect(response.body).not.toContain('Carte bancaire');
-    expect(response.body).not.toContain('Copier le montant');
-    expect(response.body).not.toContain('J&#39;ai payé');
+    expect(response.body).not.toContain('Montant exact');
+    expect(response.body).not.toContain('J&#39;ai paye');
     expect(response.body).not.toMatch(/confirmee? par la banque/i);
     expect(response.body).not.toMatch(/confirmera automatiquement/i);
-    expect(response.body).not.toMatch(/paiement bancaire officiel/i);
     expect(response.body).not.toMatch(/paiement garanti/i);
   });
 
-  it('reveals payment methods only after bank selection without destination values', async () => {
+  it('reveals only the compatible receiving route after buyer method selection', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {
       ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       checkout_state: 'receiving_route_selection',
       buyer_safe_status: 'not_validated'
     };
-    const server = buildWebServer({
-      environment: 'test',
-      checkoutSessionProvider: provider
-    });
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
-    const response = await server.inject({
-      method: 'GET',
-      url: '/checkout/ps_01'
-    });
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('Choisissez comment payer');
-    expect(response.body).toContain('Carte bancaire');
-    expect(response.body).toContain('Simple et neutre');
-    expect(response.body).toContain('Frais possibles selon votre banque');
-    expect(response.body).toContain('Numéro de téléphone');
-    expect(response.body).toContain('Pratique pour les virements via SBP');
+    expect(response.body).toContain('Instructions de paiement');
+    expect(response.body).toContain('Carte du destinataire');
+    expect(response.body).toContain('2202 **** **** 7890');
+    expect(response.body).not.toContain('Telephone du destinataire');
     expect(response.body).not.toContain('+7 *** *** **67');
-    expect(response.body).not.toContain('2202 **** **** 7890');
     expect(response.body).not.toContain('+79991234567');
     expect(response.body).not.toContain('2202201234567890');
   });
 
-  it('renders phone payment instructions after bank, route and launcher selection', async () => {
+  it('renders phone payment instructions after route and launcher selection', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {
       ...provider.session,
+      payment_method: 'sbp',
+      sender_bank_id: 'sber_ru',
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_phone',
@@ -89,34 +79,21 @@ describe('hosted checkout web foundation', () => {
       checkout_state: 'payment_instructions',
       buyer_safe_status: 'awaiting_payment'
     };
-    const server = buildWebServer({
-      environment: 'test',
-      checkoutSessionProvider: provider
-    });
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
-    const response = await server.inject({
-      method: 'GET',
-      url: '/checkout/ps_01'
-    });
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('Envoyez le paiement');
-    expect(response.body).toContain('SwimPay suit le signal côté marchand.');
-    expect(response.body).toContain('Telephone');
+    expect(response.body).toContain('Instructions de paiement');
+    expect(response.body).toContain('Telephone du destinataire');
     expect(response.body).toContain('+7 *** *** **67');
     expect(response.body).toContain('Ouvrir ma banque');
     expect(response.body).toContain('J&#39;ai paye');
-    expect(response.body).toContain('Copiez les champs');
-    expect(response.body).toContain('Envoyez exactement ce montant.');
-    expect(response.body).toContain('Paiement en attente');
-    expect(response.body).toContain('Effectuez le paiement dans votre application bancaire.');
-    expect(response.body).toContain('Continuer sur mobile');
-    expect(response.body).toContain('QR');
-    expect(response.body).not.toContain('Copier la destination');
-    expect(response.body).not.toContain('data-copy-route="true"');
-    expect(response.body).not.toContain('Copier le montant');
-    expect(response.body).not.toContain('Copier la reference');
-    expect(response.body).not.toContain('data-does-not-confirm="true"');
+    expect(response.body).toContain('Copier les details');
+    expect(response.body).toContain('Completez le paiement dans');
+    expect(response.body).toContain('copy-icon-btn');
+    expect(response.body).not.toContain('Continuer sur mobile');
+    expect(response.body).not.toContain('QR');
     expect(response.body).not.toContain('Compte marchand');
     expect(response.body).not.toContain('+7 (999) 123-45-67');
     expect(response.body).not.toContain('2202201234567890');
@@ -126,6 +103,8 @@ describe('hosted checkout web foundation', () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {
       ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
@@ -133,21 +112,14 @@ describe('hosted checkout web foundation', () => {
       checkout_state: 'payment_instructions',
       buyer_safe_status: 'awaiting_payment'
     };
-    const server = buildWebServer({
-      environment: 'test',
-      checkoutSessionProvider: provider
-    });
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
-    const response = await server.inject({
-      method: 'GET',
-      url: '/checkout/ps_01'
-    });
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('Envoyez le paiement');
-    expect(response.body).toContain('Carte');
+    expect(response.body).toContain('Carte du destinataire');
     expect(response.body).toContain('2202 **** **** 7890');
-    expect(response.body).toContain('Copier');
+    expect(response.body).toContain('copy-icon-btn');
     expect(response.body).toContain('137.00 RUB');
     expect(response.body).toContain('TANGO ALFA');
     expect(response.body).toContain('Ouvrir ma banque');
@@ -161,18 +133,19 @@ describe('hosted checkout web foundation', () => {
   });
 
   it.each([
-    ['awaiting_payment', 'awaiting_payment', 'Paiement en attente', 'Effectuez le paiement dans votre application bancaire.'],
-    ['buyer_claimed_paid', 'searching_signal', 'Recherche du signal', 'Nous vérifions la réception côté marchand.'],
-    ['signal_detected', 'signal_detected', 'Signal détecté', 'Nous vérifions les détails du paiement.'],
-    ['needs_review', 'needs_review', 'Vérification en cours', 'Le marchand vérifie ce paiement.'],
-    ['manual_confirmed', 'confirmed', 'Paiement validé', 'Votre commande peut maintenant être traitée.'],
-    ['expired', 'expired', 'Session expirée', 'Le paiement n’a pas été validé à temps.'],
-    ['rejected', 'not_validated', 'Paiement non validé', 'Veuillez réessayer ou contacter le marchand.']
-  ])('renders buyer checkout state panel for %s', async (status, buyerSafeStatus, title, text) => {
+    ['buyer_claimed_paid', 'searching_signal', 'Paiement en cours', 'SwimPay suit le signal de paiement cote marchand.'],
+    ['signal_detected', 'signal_detected', 'Signal detecte', 'Signal detecte, en attente de validation marchand.'],
+    ['needs_review', 'needs_review', 'Validation marchand', 'Le marchand verifie ce paiement.'],
+    ['manual_confirmed', 'confirmed', 'Paiement confirme', 'Votre commande peut maintenant etre traitee.'],
+    ['expired', 'expired', 'Paiement expire', 'Le paiement n&#39;a pas ete valide a temps.'],
+    ['rejected', 'not_validated', 'Paiement rejete', 'Veuillez reessayer ou contacter le marchand.']
+  ])('renders buyer checkout waiting panel for %s', async (status, buyerSafeStatus, title, text) => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {
       ...provider.session,
       status: status as CheckoutSession['status'],
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
@@ -180,38 +153,24 @@ describe('hosted checkout web foundation', () => {
       checkout_state: status as CheckoutSessionState,
       buyer_safe_status: buyerSafeStatus as BuyerSafeCheckoutStatus
     };
-    const server = buildWebServer({
-      environment: 'test',
-      checkoutSessionProvider: provider
-    });
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
-    const response = await server.inject({
-      method: 'GET',
-      url: '/checkout/ps_01'
-    });
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain(title);
     expect(response.body).toContain(text);
+    expect(response.body).toContain('payment-timeline');
     expect(response.body).not.toContain('confirmation bancaire officielle');
     expect(response.body).not.toContain('paiement garanti');
   });
 
   it('exposes a status polling endpoint mapped from backend session state', async () => {
     const provider = new FakeCheckoutSessionProvider();
-    provider.session = {
-      ...provider.session,
-      status: 'needs_review'
-    };
-    const server = buildWebServer({
-      environment: 'test',
-      checkoutSessionProvider: provider
-    });
+    provider.session = { ...provider.session, status: 'needs_review' };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
-    const response = await server.inject({
-      method: 'GET',
-      url: '/checkout/ps_01/status'
-    });
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01/status' });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
@@ -220,10 +179,7 @@ describe('hosted checkout web foundation', () => {
       status: 'needs_review',
       display_status: 'Vérification manuelle nécessaire',
       result_state: 'review',
-      amount: {
-        value: '137.00',
-        currency: 'RUB'
-      },
+      amount: { value: '137.00', currency: 'RUB' },
       reference: 'TANGO ALFA',
       expires_at: '2026-05-02T10:15:00.000Z',
       official_bank_confirmation: false
@@ -232,10 +188,7 @@ describe('hosted checkout web foundation', () => {
 
   it('proxies receiver, route and payer launcher selection without confirming payment', async () => {
     const provider = new FakeCheckoutSessionProvider();
-    const server = buildWebServer({
-      environment: 'test',
-      checkoutSessionProvider: provider
-    });
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
     const receiverResponse = await server.inject({
       method: 'POST',
@@ -265,28 +218,43 @@ describe('hosted checkout web foundation', () => {
     expect(launcherResponse.json().official_bank_confirmation).toBe(false);
   });
 
+  it('redirects browser form posts back into the hosted checkout flow', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/checkout/ps_01/receiving-route',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      payload: 'receiving_route_id=route_sber_card'
+    });
+
+    expect(response.statusCode).toBe(303);
+    expect(response.headers.location).toBe('/checkout/ps_01');
+  });
+
   it('proxies explicit receiving route copy details without rendering raw destination in html', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {
       ...provider.session,
+      payment_method: 'sbp',
+      sender_bank_id: 'sber_ru',
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_phone',
       selected_payer_bank_launcher_id: 'tbank_ru'
     };
-    const server = buildWebServer({
-      environment: 'test',
-      checkoutSessionProvider: provider
-    });
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
-    const page = await server.inject({
-      method: 'GET',
-      url: '/checkout/ps_01'
-    });
-    const copy = await server.inject({
-      method: 'GET',
-      url: '/checkout/ps_01/receiving-route/copy-details'
-    });
+    const page = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+    const copy = await server.inject({ method: 'GET', url: '/checkout/ps_01/receiving-route/copy-details' });
 
     expect(page.body).not.toContain('+79991234567');
     expect(copy.statusCode).toBe(200);
@@ -312,19 +280,13 @@ describe('hosted checkout web foundation', () => {
       checkout_state: 'expired',
       buyer_safe_status: 'expired'
     };
-    const server = buildWebServer({
-      environment: 'test',
-      checkoutSessionProvider: provider
-    });
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
-    const response = await server.inject({
-      method: 'GET',
-      url: '/checkout/ps_01'
-    });
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('Session expirée');
-    expect(response.body).toContain('checkout-grid');
+    expect(response.body).toContain('Paiement expire');
+    expect(response.body).toContain('checkout-flow');
     expect(response.body).not.toContain('+79991234567');
     expect(response.body).not.toContain('2202201234567890');
     expect(response.body).not.toContain('Compte marchand');
@@ -339,10 +301,7 @@ describe('hosted checkout web foundation', () => {
       checkoutSessionProvider: new FakeCheckoutSessionProvider()
     });
 
-    const response = await server.inject({
-      method: 'POST',
-      url: '/checkout/ps_01/claimed-paid'
-    });
+    const response = await server.inject({ method: 'POST', url: '/checkout/ps_01/claimed-paid' });
 
     expect(response.statusCode).toBe(202);
     expect(response.json()).toEqual({
@@ -361,6 +320,8 @@ describe('hosted checkout web foundation', () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {
       ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
@@ -368,15 +329,9 @@ describe('hosted checkout web foundation', () => {
       checkout_state: 'payment_instructions',
       buyer_safe_status: 'awaiting_payment'
     };
-    const server = buildWebServer({
-      environment: 'test',
-      checkoutSessionProvider: provider
-    });
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
-    const response = await server.inject({
-      method: 'POST',
-      url: '/checkout/ps_01/continue-to-bank'
-    });
+    const response = await server.inject({ method: 'POST', url: '/checkout/ps_01/continue-to-bank' });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
@@ -396,10 +351,7 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
     payment_session_id: 'ps_01',
     order_id: 'ord_01',
     status: 'receiver_arming',
-    amount: {
-      value: '137.00',
-      currency: 'RUB'
-    },
+    amount: { value: '137.00', currency: 'RUB' },
     reference: 'TANGO ALFA',
     receiver_status: 'armed',
     expires_at: '2026-05-02T10:15:00.000Z',
@@ -539,18 +491,12 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
   public async saveBuyerSenderPhoneHint(paymentSessionId: string, buyerSenderPhone: string) {
     void paymentSessionId;
     void buyerSenderPhone;
-    this.session = {
-      ...this.session,
-      buyer_sender_phone_masked: '+7 *** *** **67'
-    };
+    this.session = { ...this.session, buyer_sender_phone_masked: '+7 *** *** **67' };
     return this.session;
   }
 
   public async getPayerBankLaunchers(paymentSessionId: string) {
-    return {
-      payment_session_id: paymentSessionId,
-      payer_bank_launchers: PayerBankLauncherRegistry
-    };
+    return { payment_session_id: paymentSessionId, payer_bank_launchers: PayerBankLauncherRegistry };
   }
 
   public async selectPayerBankLauncher(_paymentSessionId: string, payerBankLauncherId: string) {

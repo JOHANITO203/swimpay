@@ -1,5 +1,70 @@
 # Next Action
 
+generated_at: 2026-05-09T19:10:00+03:00
+
+## Latest checkout UX refactor
+
+Completed locally:
+
+1. Hosted checkout is now a guided mobile-first flow: intro -> buyer info -> instructions -> waiting status.
+2. Card vs phone/SBP sender fields are progressively displayed by selected method.
+3. Payment instructions now prioritize amount, reference, destination, bank and copy actions.
+4. Buyer waiting state now uses a short timeline and keeps signal wording non-final.
+5. Browser form POSTs redirect back into the checkout instead of exposing JSON.
+6. Full root validation passed.
+
+Next recommended action:
+
+1. Commit the checkout UX refactor.
+2. Redeploy staging.
+3. Create a real staging SDK order and visually test the hosted `checkout_url` on mobile.
+4. Continue with Developer Link Verification after checkout visual QA.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not expose raw PAN, raw phone, raw notification text, API keys or webhook secrets.
+- Do not treat `J'ai paye`, signal detected, matching or fallback as confirmation.
+
+---
+
+generated_at: 2026-05-09T18:05:00+03:00
+
+## Next planned sprint: Developer Link Verification
+
+Planned:
+
+1. Replace the weak "test webhook queued" product meaning with a real liaison proof.
+2. `Tester la liaison` must verify that the configured external Android/web app endpoint answers successfully.
+3. Android should show concise connection status:
+   - `Webhook active`;
+   - `Liaison verifiee`;
+   - `Liaison non verifiee`;
+   - `Action requise`.
+4. API keys and webhook secrets need explicit revocation/rotation lifecycle hardening.
+5. Destructive secret actions on Android should require device-security confirmation where available.
+
+Task queue added:
+
+- `725_developer_link_verification_inventory`
+- `726_webhook_liaison_test_contract`
+- `727_integration_secret_revocation_lifecycle`
+- `728_android_developer_integration_liaison_ui`
+- `729_developer_link_guardrails_tests`
+- `730_developer_link_closeout`
+
+Do not do:
+
+- Do not process real bank notifications.
+- Do not use the test webhook as fulfillment.
+- Do not change `payment.confirmed` semantics.
+- Do not expose API keys, webhook secrets or raw payloads.
+- Do not enable auto-confirmation.
+
+---
+
 generated_at: 2026-05-09T17:25:00+03:00
 
 ## Latest Buyer Checkout addendum

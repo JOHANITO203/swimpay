@@ -678,6 +678,9 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     const body = request.body as { receiver_bank_id: string };
     await checkoutSessionProvider.selectReceiverBank(params.paymentSessionId, body.receiver_bank_id);
     const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    if (shouldRedirectCheckoutFormPost(request.headers)) {
+      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+    }
     return reply.status(200).send(toCheckoutStatusResponse(session!));
   });
 
@@ -693,6 +696,9 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     const body = request.body as { receiving_route_id: string };
     await checkoutSessionProvider.selectReceivingRoute(params.paymentSessionId, body.receiving_route_id);
     const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    if (shouldRedirectCheckoutFormPost(request.headers)) {
+      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+    }
     return reply.status(200).send(toCheckoutStatusResponse(session!));
   });
 
@@ -701,19 +707,36 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     const body = request.body as { payer_bank_launcher_id: string };
     await checkoutSessionProvider.selectPayerBankLauncher(params.paymentSessionId, body.payer_bank_launcher_id);
     const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    if (shouldRedirectCheckoutFormPost(request.headers)) {
+      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+    }
     return reply.status(200).send(toCheckoutStatusResponse(session!));
   });
 
   server.post('/checkout/:paymentSessionId/continue-to-bank', async (request, reply) => {
-    const session = await checkoutSessionProvider.markReceiverArmed((request.params as PaymentSessionParams).paymentSessionId);
+    const params = request.params as PaymentSessionParams;
+    const session = await checkoutSessionProvider.markReceiverArmed(params.paymentSessionId);
+    if (shouldRedirectCheckoutFormPost(request.headers)) {
+      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+    }
     return reply.status(200).send(toCheckoutStatusResponse(session));
   });
 
   server.post('/checkout/:paymentSessionId/claimed-paid', async (request, reply) => {
-    return reply.status(202).send(await checkoutSessionProvider.markBuyerClaimedPaid((request.params as PaymentSessionParams).paymentSessionId));
+    const params = request.params as PaymentSessionParams;
+    const result = await checkoutSessionProvider.markBuyerClaimedPaid(params.paymentSessionId);
+    if (shouldRedirectCheckoutFormPost(request.headers)) {
+      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+    }
+    return reply.status(202).send(result);
   });
 
   return server;
+}
+
+function shouldRedirectCheckoutFormPost(headers: Record<string, unknown>): boolean {
+  const contentType = headers['content-type'];
+  return typeof contentType === 'string' && contentType.toLowerCase().startsWith('application/x-www-form-urlencoded');
 }
 
 async function renderMerchantIntegrationWizard(client: MerchantIntegrationClient | null): Promise<string> {

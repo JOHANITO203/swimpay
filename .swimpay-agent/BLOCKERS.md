@@ -1,5 +1,18 @@
 # Blockers
 
+## Checkout UX Apple-like guided refactor
+
+- Resolved locally: hosted checkout now starts as a guided mobile-first flow instead of a long technical page.
+- Resolved locally: card vs phone/SBP sender inputs are method-specific and no longer shown together in the primary flow.
+- Resolved locally: instructions prioritize copyable amount, reference, destination and bank/method details.
+- Resolved locally: waiting status uses buyer-safe wording and does not imply confirmation from signal detection.
+- Resolved locally: browser form posts redirect back into the checkout rather than showing raw JSON.
+- Validation passed: targeted web checkout and copy guardrail tests.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Remaining local blocker: none for the web checkout refactor.
+- Staging gate: test the refactored checkout on a real `checkout_url` after redeploy.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+
 ## Buyer Checkout 4-Step Addendum
 
 - Resolved locally: active notification sweep runs only in active, armed Expected Payment Profile windows and rejects unsupported packages before extraction.
