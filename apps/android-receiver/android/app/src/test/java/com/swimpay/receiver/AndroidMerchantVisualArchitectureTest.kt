@@ -358,9 +358,9 @@ class AndroidMerchantVisualArchitectureTest {
         val manifest = File("src/main/AndroidManifest.xml").readText()
         val adaptiveIcon = File("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
         val adaptiveRoundIcon = File("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml")
-        val xxhdpiIcon = File("src/main/res/mipmap-xxhdpi/ic_launcher.png")
-        val xxhdpiForeground = File("src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png")
-        val xxhdpiBackground = File("src/main/res/mipmap-xxhdpi/ic_launcher_background.png")
+        val xxhdpiIcon = File("src/main/res/mipmap-xxhdpi/ic_launcher.webp")
+        val xxhdpiForeground = File("src/main/res/mipmap-xxhdpi/ic_launcher_foreground.webp")
+        val launcherBackground = File("src/main/res/values/colors.xml")
 
         assertTrue(manifest.contains("""android:icon="@mipmap/ic_launcher""""))
         assertTrue(manifest.contains("""android:roundIcon="@mipmap/ic_launcher_round""""))
@@ -368,10 +368,12 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(adaptiveRoundIcon.exists())
         assertTrue(xxhdpiIcon.exists())
         assertTrue(xxhdpiForeground.exists())
-        assertTrue(xxhdpiBackground.exists())
+        assertTrue(launcherBackground.readText().contains("ic_launcher_background"))
         assertTrue(adaptiveIcon.readText().contains("@mipmap/ic_launcher_foreground"))
         assertTrue(adaptiveRoundIcon.readText().contains("@mipmap/ic_launcher_foreground"))
-        assertTrue("launcher PNG should come from IconKitchen output", xxhdpiIcon.length() > 100L)
+        assertFalse(adaptiveIcon.readText().contains("monochrome"))
+        assertFalse(adaptiveRoundIcon.readText().contains("monochrome"))
+        assertTrue("launcher WebP should come from IconKitchen output", xxhdpiIcon.length() > 100L)
     }
 
     private fun sourceFunction(source: String, signature: String): String {

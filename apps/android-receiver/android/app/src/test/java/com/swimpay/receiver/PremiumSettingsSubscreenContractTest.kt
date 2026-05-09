@@ -2,6 +2,7 @@ package com.swimpay.receiver
 
 import java.io.File
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -118,18 +119,30 @@ class PremiumSettingsSubscreenContractTest {
         val manifest = File("src/main/AndroidManifest.xml").readText()
         val launcher = File("src/main/res/mipmap-anydpi-v26/ic_launcher.xml").readText()
         val launcherRound = File("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml").readText()
-        val foreground = File("src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png")
-        val background = File("src/main/res/mipmap-xxhdpi/ic_launcher_background.png")
-        val monochrome = File("src/main/res/mipmap-xxhdpi/ic_launcher_monochrome.png")
+        val foreground = File("src/main/res/mipmap-xxhdpi/ic_launcher_foreground.webp")
         val playStoreIcon = File("src/main/play_store_512.png")
 
         assertTrue(manifest.contains("android:icon=\"@mipmap/ic_launcher\""))
         assertTrue(launcher.contains("@mipmap/ic_launcher_foreground"))
-        assertTrue(launcher.contains("@mipmap/ic_launcher_background"))
+        assertTrue(launcher.contains("@color/ic_launcher_background"))
+        assertFalse("Task switcher must not use a monochrome-only launcher layer", launcher.contains("monochrome"))
+        assertFalse("Task switcher must not use a monochrome-only round launcher layer", launcherRound.contains("monochrome"))
         assertTrue(launcherRound.contains("@mipmap/ic_launcher_foreground"))
         assertTrue("IconKitchen three-wave foreground must be packaged", foreground.length() > 100L)
-        assertTrue("IconKitchen dark background must be packaged", background.length() > 100L)
-        assertTrue("IconKitchen monochrome mark must be packaged", monochrome.length() > 100L)
+        listOf(
+            "mipmap-mdpi" to 108,
+            "mipmap-hdpi" to 162,
+            "mipmap-xhdpi" to 216,
+            "mipmap-xxhdpi" to 324,
+            "mipmap-xxxhdpi" to 432
+        ).forEach { (density, foregroundSize) ->
+            val legacyIcon = File("src/main/res/$density/ic_launcher.webp")
+            val adaptiveForeground = File("src/main/res/$density/ic_launcher_foreground.webp")
+            assertTrue("missing full-color legacy WebP for $density", legacyIcon.isFile)
+            assertTrue("missing full-color adaptive foreground WebP for $density", adaptiveForeground.isFile)
+            assertEquals(foregroundSize, webpSize(adaptiveForeground).first)
+            assertEquals(foregroundSize, webpSize(adaptiveForeground).second)
+        }
         assertTrue("IconKitchen Play Store icon must be kept with the Android source", playStoreIcon.isFile)
         assertEquals(512, pngDimension(playStoreIcon, offset = 16))
         assertEquals(512, pngDimension(playStoreIcon, offset = 20))
@@ -139,6 +152,65 @@ class PremiumSettingsSubscreenContractTest {
         val bytes = file.readBytes()
         return ByteBuffer.wrap(bytes, offset, 4).int
     }
+
+    private fun webpSize(file: File): Pair<Int, Int> {
+        val bytes = file.readBytes()
+        assertTrue("${file.name} must be a RIFF WebP", bytes.copyOfRange(0, 4).decodeToString() == "RIFF")
+        assertTrue("${file.name} must be a RIFF WebP", bytes.copyOfRange(8, 12).decodeToString() == "WEBP")
+
+        var offset = 12
+        while (offset + 8 <= bytes.size) {
+            val fourcc = bytes.copyOfRange(offset, offset + 4).decodeToString()
+            val chunkSize = littleEndianInt(bytes, offset + 4)
+            val dataOffset = offset + 8
+            when (fourcc) {
+                "VP8X" -> {
+                    val width = 1 + littleEndian24(bytes, dataOffset + 4)
+                    val height = 1 + littleEndian24(bytes, dataOffset + 7)
+                    return width to height
+                }
+
+                "VP8L" -> {
+                    val b1 = bytes[dataOffset + 1].toInt() and 0xff
+                    val b2 = bytes[dataOffset + 2].toInt() and 0xff
+                    val b3 = bytes[dataOffset + 3].toInt() and 0xff
+                    val b4 = bytes[dataOffset + 4].toInt() and 0xff
+                    val width = 1 + (((b2 and 0x3f) shl 8) or b1)
+                    val height = 1 + (((b4 and 0x0f) shl 10) or (b3 shl 2) or ((b2 and 0xc0) shr 6))
+                    return width to height
+                }
+
+                "VP8 " -> {
+                    var startCodeOffset = dataOffset
+                    while (startCodeOffset + 10 <= bytes.size) {
+                        val hasStartCode = (bytes[startCodeOffset].toInt() and 0xff) == 0x9d &&
+                            (bytes[startCodeOffset + 1].toInt() and 0xff) == 0x01 &&
+                            (bytes[startCodeOffset + 2].toInt() and 0xff) == 0x2a
+                        if (hasStartCode) {
+                            val width = littleEndianShort(bytes, startCodeOffset + 3) and 0x3fff
+                            val height = littleEndianShort(bytes, startCodeOffset + 5) and 0x3fff
+                            return width to height
+                        }
+                        startCodeOffset += 1
+                    }
+                }
+            }
+            offset = dataOffset + chunkSize + (chunkSize % 2)
+        }
+
+        error("unable to read WebP dimensions for ${file.path}")
+    }
+
+    private fun littleEndianInt(bytes: ByteArray, offset: Int): Int =
+        ByteBuffer.wrap(bytes, offset, 4).order(ByteOrder.LITTLE_ENDIAN).int
+
+    private fun littleEndianShort(bytes: ByteArray, offset: Int): Int =
+        ByteBuffer.wrap(bytes, offset, 2).order(ByteOrder.LITTLE_ENDIAN).short.toInt() and 0xffff
+
+    private fun littleEndian24(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xff) or
+            ((bytes[offset + 1].toInt() and 0xff) shl 8) or
+            ((bytes[offset + 2].toInt() and 0xff) shl 16)
 
     @Test
     fun v1BankIconsArePackagedForMerchantScreens() {
