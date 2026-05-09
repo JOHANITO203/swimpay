@@ -227,6 +227,14 @@ export interface GoogleIdTokenVerifier {
   verifyIdToken(idToken: string): Promise<GoogleIdTokenVerificationResult | null>;
 }
 
+type GoogleTokenInfoFetch = (
+  input: string | URL,
+  init?: { method?: string; headers?: Record<string, string> }
+) => Promise<{
+  ok: boolean;
+  json(): Promise<unknown>;
+}>;
+
 export interface AndroidMerchantSupportTicketCreateInput {
   id: string;
   merchantId: string;
@@ -348,7 +356,10 @@ export function createDefaultHealthChecks(env: NodeJS.ProcessEnv): HealthChecks 
 class GoogleAuthLibraryIdTokenVerifier implements GoogleIdTokenVerifier {
   private readonly client = new OAuth2Client();
 
-  constructor(private readonly audiences: readonly string[]) {}
+  constructor(
+    private readonly audiences: readonly string[],
+    private readonly tokenInfoFetch: GoogleTokenInfoFetch | null = bindGoogleTokenInfoFetch()
+  ) {}
 
   async verifyIdToken(idToken: string): Promise<GoogleIdTokenVerificationResult | null> {
     if (!idToken.trim()) {
@@ -362,9 +373,64 @@ class GoogleAuthLibraryIdTokenVerifier implements GoogleIdTokenVerifier {
       const googleSub = ticket.getPayload()?.sub?.trim();
       return googleSub ? { googleSub } : null;
     } catch {
-      return null;
+      return verifyGoogleIdTokenWithTokenInfo(idToken, this.audiences, this.tokenInfoFetch);
     }
   }
+}
+
+function bindGoogleTokenInfoFetch(): GoogleTokenInfoFetch | null {
+  return typeof globalThis.fetch === 'function'
+    ? ((input, init) => globalThis.fetch(input, init as RequestInit) as Promise<Response>)
+    : null;
+}
+
+export async function verifyGoogleIdTokenWithTokenInfo(
+  idToken: string,
+  acceptedAudiences: readonly string[],
+  tokenInfoFetch: GoogleTokenInfoFetch | null = bindGoogleTokenInfoFetch(),
+  now: () => number = () => Date.now()
+): Promise<GoogleIdTokenVerificationResult | null> {
+  if (!idToken.trim() || acceptedAudiences.length === 0 || !tokenInfoFetch) {
+    return null;
+  }
+  try {
+    const tokenInfoUrl = new URL('https://oauth2.googleapis.com/tokeninfo');
+    tokenInfoUrl.searchParams.set('id_token', idToken);
+    const response = await tokenInfoFetch(tokenInfoUrl, {
+      method: 'GET',
+      headers: { Accept: 'application/json' }
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const payload = await response.json();
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return null;
+    }
+    const claims = payload as Record<string, unknown>;
+    const googleSub = typeof claims.sub === 'string' ? claims.sub.trim() : '';
+    const audience = typeof claims.aud === 'string' ? claims.aud.trim() : '';
+    const issuer = typeof claims.iss === 'string' ? claims.iss.trim() : '';
+    const expirySeconds = parseGoogleExpirySeconds(claims.exp);
+    const issuerAllowed = issuer === 'accounts.google.com' || issuer === 'https://accounts.google.com';
+    if (
+      !googleSub ||
+      !acceptedAudiences.includes(audience) ||
+      !issuerAllowed ||
+      expirySeconds === null ||
+      expirySeconds * 1000 <= now()
+    ) {
+      return null;
+    }
+    return { googleSub };
+  } catch {
+    return null;
+  }
+}
+
+function parseGoogleExpirySeconds(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function resolveGoogleIdTokenAudiences(env: NodeJS.ProcessEnv): string[] {

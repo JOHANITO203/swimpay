@@ -17,6 +17,7 @@ import {
   type OrderRepository,
   resolveGoogleIdTokenAudiences,
   extractGoogleIdTokenAudienceForDiagnostics,
+  verifyGoogleIdTokenWithTokenInfo,
   type StoredOrderRecord,
   type StoredPaymentSessionRecord
 } from './server.js';
@@ -416,6 +417,44 @@ describe('android merchant mobile backend endpoints', () => {
     expect(response.body).not.toContain(token);
     expect(response.body).not.toContain('eyJ');
     expect(response.body).not.toContain('web-client.apps.googleusercontent.com');
+  });
+
+  it('accepts Google tokeninfo verification fallback for valid Android recovery ID tokens', async () => {
+    const result = await verifyGoogleIdTokenWithTokenInfo(
+      'google-id-token-not-logged',
+      ['web-client.apps.googleusercontent.com'],
+      async () => ({
+        ok: true,
+        json: async () => ({
+          aud: 'web-client.apps.googleusercontent.com',
+          sub: 'google-sub-android-01',
+          iss: 'https://accounts.google.com',
+          exp: String(Math.floor(Date.now() / 1000) + 600)
+        })
+      }),
+      () => Date.now()
+    );
+
+    expect(result).toEqual({ googleSub: 'google-sub-android-01' });
+  });
+
+  it('rejects Google tokeninfo fallback when the Android token audience is not configured', async () => {
+    const result = await verifyGoogleIdTokenWithTokenInfo(
+      'google-id-token-not-logged',
+      ['web-client.apps.googleusercontent.com'],
+      async () => ({
+        ok: true,
+        json: async () => ({
+          aud: 'other-client.apps.googleusercontent.com',
+          sub: 'google-sub-android-01',
+          iss: 'https://accounts.google.com',
+          exp: String(Math.floor(Date.now() / 1000) + 600)
+        })
+      }),
+      () => Date.now()
+    );
+
+    expect(result).toBeNull();
   });
 
   it('requires an Android mobile session before Google profile linking', async () => {
