@@ -540,6 +540,8 @@ function buildTestServer(
 ) {
   return buildApiServer({
     environment: options.environment ?? 'test',
+    phoneHmacSecret:
+      options.environment === 'production' ? 'production_phone_hmac_secret_for_tests' : 'test_phone_hmac_secret',
     healthChecks: {
       database: async () => 'skipped',
       nats: async () => 'skipped',

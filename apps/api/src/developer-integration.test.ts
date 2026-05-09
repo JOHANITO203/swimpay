@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { buildApiServer } from './server.js';
-import { InMemoryMerchantIntegrationRepository } from './developer-integration.js';
+import {
+  InMemoryMerchantIntegrationRepository,
+  createDefaultMerchantIntegrationRepository,
+  validateWebhookUrl
+} from './developer-integration.js';
 
 const merchantHeaders = { authorization: 'Bearer test_merchant_9e' };
 
@@ -24,10 +28,16 @@ function buildProductionDeveloperIntegrationServer() {
   const server = buildApiServer({
     environment: 'production',
     merchantIntegrationRepository,
+    phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
     healthChecks: {
       database: async () => 'skipped',
       nats: async () => 'skipped',
       valkey: async () => 'skipped'
+    },
+    adminAuth: {
+      mode: 'signed_token',
+      environment: 'production',
+      tokenHmacSecret: 'production_admin_hmac_secret_for_tests'
     },
     clock: () => new Date('2026-05-06T10:00:00.000Z')
   });
@@ -105,6 +115,40 @@ describe('developer integration backend lifecycle', () => {
     });
     expect(read.json().webhook_secret_once).toBeUndefined();
     expect(read.body).not.toContain(updated.json().webhook_secret_once);
+  });
+
+  it('rejects localhost, private and link-local webhook URL hosts without DNS lookups', () => {
+    const unsafeUrls = [
+      'https://localhost/hooks',
+      'https://api.localhost/hooks',
+      'https://127.0.0.1/hooks',
+      'https://10.10.0.8/hooks',
+      'https://172.16.0.8/hooks',
+      'https://192.168.10.8/hooks',
+      'https://169.254.10.8/hooks',
+      'https://[::1]/hooks',
+      'https://[fe80::1]/hooks',
+      'https://internal/hooks'
+    ];
+
+    for (const webhookUrl of unsafeUrls) {
+      expect(validateWebhookUrl(webhookUrl)).toEqual({
+        valid: false,
+        message: 'Webhook URL host is not allowed.'
+      });
+    }
+  });
+
+  it('fails fast when production webhook secret encryption key is missing', () => {
+    expect(() =>
+      createDefaultMerchantIntegrationRepository(
+        {
+          DATABASE_URL: 'postgres://swimpay:swimpay@localhost:5432/swimpay',
+          WEBHOOK_SECRET_ENCRYPTION_KEY: ''
+        },
+        'production'
+      )
+    ).toThrow(/WEBHOOK_SECRET_ENCRYPTION_KEY/u);
   });
 
   it('queues a backend-owned safe test webhook that cannot trigger fulfillment', async () => {

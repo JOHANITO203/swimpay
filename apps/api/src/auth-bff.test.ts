@@ -113,6 +113,7 @@ function buildAuthServer(environment = 'test') {
     merchantIntegrationRepository,
     merchantApiKeyVerifier,
     orderRepository,
+    phoneHmacSecret: environment === 'production' ? 'production_phone_hmac_secret_for_tests' : 'test_phone_hmac_secret',
     idGenerator: {
       orderId: () => 'ord_auth_01',
       paymentSessionId: () => 'ps_auth_01',

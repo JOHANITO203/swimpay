@@ -1251,7 +1251,7 @@ export function parseMerchantId(
   authorization: string | undefined,
   options: { allowTestBearer?: boolean } = {}
 ): string | null {
-  if (options.allowTestBearer === false) {
+  if (options.allowTestBearer !== true) {
     return null;
   }
 

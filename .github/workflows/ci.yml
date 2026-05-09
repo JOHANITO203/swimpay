@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  root:
+    name: Root npm validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.15.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  compose:
+    name: Docker Compose config
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_TOKEN_HMAC_SECRET: ci_admin_token_hmac_secret_minimum_32_chars
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Docker Compose version
+        run: docker compose version
+
+      - name: Validate base Compose config
+        run: docker compose -f infra/docker-compose.yml config >/dev/null
+
+      - name: Validate production admin-auth Compose config
+        run: docker compose -f infra/docker-compose.yml -f infra/docker-compose.production-admin-auth.override.yml config >/dev/null
+
+      - name: Validate signed-admin rehearsal Compose config
+        run: docker compose -f infra/docker-compose.yml -f infra/docker-compose.signed-admin.override.yml config >/dev/null
+
+  android:
+    name: Android receiver validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: apps/android-receiver/android
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Validate Gradle wrapper
+        run: chmod +x ./gradlew && ./gradlew --version --no-daemon
+
+      - name: Unit test and build staging APK
+        run: ./gradlew testStagingUnitTest assembleStaging --no-daemon --stacktrace

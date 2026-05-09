@@ -104,6 +104,10 @@ class AndroidMerchantApiWiringTest {
         assertTrue(transport.requests[0].body.contains("\"install_public_key\":\"install_public_key_demo\""))
         assertTrue(transport.requests[0].body.contains("\"challenge_id\":\"challenge_01\""))
         assertTrue(transport.requests[0].body.contains("\"challenge_signature\":\"signature_01\""))
+        assertTrue(transport.requests[0].body.contains("\"device_proof_type\":\"install_keypair_signed_challenge\""))
+        assertTrue(transport.requests[0].body.contains("\"signature_algorithm\":\"ecdsa_p256_sha256_der_v1\""))
+        assertFalse(transport.requests[0].body.contains("private", ignoreCase = true))
+        assertFalse(transport.requests[0].body.contains("secret", ignoreCase = true))
 
         val created = repository.createAccount(AndroidMerchantAccountProfileType.BUSINESS, businessLabel = "Commerce demo")
         assertEquals(AndroidMerchantAuthResultStatus.SUCCESS, created.status)
@@ -114,8 +118,11 @@ class AndroidMerchantApiWiringTest {
         assertEquals("merchant-12345678", session.displayHandle)
         assertEquals("Bearer spm_created_secret", AuthenticatedMerchantSession.mobile(session).authorizationHeader())
         assertTrue(transport.requests[1].body.contains("\"profile_type\":\"business\""))
+        assertTrue(transport.requests[1].body.contains("\"device_proof_type\":\"install_keypair_signed_challenge\""))
+        assertTrue(transport.requests[1].body.contains("\"signature_algorithm\":\"ecdsa_p256_sha256_der_v1\""))
         assertFalse(transport.requests[1].body.contains("first_name", ignoreCase = true))
         assertFalse(transport.requests[1].body.contains("last_name", ignoreCase = true))
+        assertFalse(transport.requests[1].body.contains("private", ignoreCase = true))
         assertFalse(created.visibleTexts().joinToString(" ").contains("spm_created_secret"))
         assertFalse(session.toString().contains("spm_created_secret"))
     }

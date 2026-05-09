@@ -271,6 +271,10 @@ data class PremiumConnectedSiteUiState(
 ) {
     fun developerExportText(): String = copyExportLines.ifEmpty { exportLines }.joinToString("\n")
 
+    fun withoutShowOnceExport(): PremiumConnectedSiteUiState {
+        return copy(copyExportLines = emptyList(), oneTimeSecrets = emptyList())
+    }
+
     companion object {
         fun preview(): PremiumConnectedSiteUiState {
             return PremiumConnectedSiteUiState(
@@ -315,10 +319,12 @@ class PremiumMerchantRuntime(
     private val configurationTestRepository: MerchantConfigurationTestApiRepository,
     private val bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe(),
     private val developerIntegrationRepository: MerchantDeveloperIntegrationApiRepository? = null,
-    private val supportTicketRepository: MerchantSupportTicketApiRepository? = null
+    private val supportTicketRepository: MerchantSupportTicketApiRepository? = null,
+    private val nowEpochMs: () -> Long = System::currentTimeMillis
 ) {
     private var developerSecretKeyOnceForCopy: String? = null
     private var integrationWebhookSecretOnceForCopy: String? = null
+    private var developerShowOnceCopyExpiresAtEpochMs: Long = 0L
 
     val reviewActionsAreBackendOwned: Boolean
         get() = reviewActionsRepository.backendOwnsReviewDecisions
@@ -548,7 +554,7 @@ class PremiumMerchantRuntime(
 
     fun loadConnectedSite(): PremiumScreenState<PremiumConnectedSiteUiState> {
         developerIntegrationRepository?.let { repository ->
-            clearDeveloperShowOnceCopyValues()
+            clearDeveloperShowOnceExport()
             return repository.load(session).toConnectedSiteState()
         }
         val result = connectedSiteRepository.load(session, developerDetailsEnabled = false)
@@ -614,14 +620,40 @@ class PremiumMerchantRuntime(
         return repository.load(session).copy(safeMessage = test.safeMessage).toConnectedSiteStateWithCurrentShowOnceCopy()
     }
 
-    private fun clearDeveloperShowOnceCopyValues() {
+    fun consumeDeveloperExportText(state: PremiumConnectedSiteUiState): String {
+        val exportText = state.developerExportText()
+        clearDeveloperShowOnceExport()
+        return exportText
+    }
+
+    fun clearDeveloperShowOnceExport() {
         developerSecretKeyOnceForCopy = null
         integrationWebhookSecretOnceForCopy = null
+        developerShowOnceCopyExpiresAtEpochMs = 0L
+    }
+
+    private fun clearExpiredDeveloperShowOnceCopyValues() {
+        if (
+            developerShowOnceCopyExpiresAtEpochMs > 0L &&
+            nowEpochMs() >= developerShowOnceCopyExpiresAtEpochMs
+        ) {
+            clearDeveloperShowOnceExport()
+        }
     }
 
     private fun MerchantDeveloperIntegrationResult.toConnectedSiteStateWithShowOnceCopy(): PremiumScreenState<PremiumConnectedSiteUiState> {
-        integration?.secretKeyOnce?.takeIf { it.isNotBlank() }?.let { developerSecretKeyOnceForCopy = it }
-        integration?.webhookSecretOnce?.takeIf { it.isNotBlank() }?.let { integrationWebhookSecretOnceForCopy = it }
+        var hasShowOnceSecret = false
+        integration?.secretKeyOnce?.takeIf { it.isNotBlank() }?.let {
+            developerSecretKeyOnceForCopy = it
+            hasShowOnceSecret = true
+        }
+        integration?.webhookSecretOnce?.takeIf { it.isNotBlank() }?.let {
+            integrationWebhookSecretOnceForCopy = it
+            hasShowOnceSecret = true
+        }
+        if (hasShowOnceSecret) {
+            developerShowOnceCopyExpiresAtEpochMs = nowEpochMs() + DEVELOPER_SHOW_ONCE_COPY_TTL_MS
+        }
         return toConnectedSiteState(
             secretKeyForCopy = developerSecretKeyOnceForCopy,
             webhookSecretForCopy = integrationWebhookSecretOnceForCopy
@@ -629,6 +661,7 @@ class PremiumMerchantRuntime(
     }
 
     private fun MerchantDeveloperIntegrationResult.toConnectedSiteStateWithCurrentShowOnceCopy(): PremiumScreenState<PremiumConnectedSiteUiState> {
+        clearExpiredDeveloperShowOnceCopyValues()
         return toConnectedSiteState(
             secretKeyForCopy = developerSecretKeyOnceForCopy,
             webhookSecretForCopy = integrationWebhookSecretOnceForCopy
@@ -741,6 +774,8 @@ class PremiumMerchantRuntime(
     }
 
     companion object {
+        const val DEVELOPER_SHOW_ONCE_COPY_TTL_MS = 2 * 60 * 1000L
+
         private val REVIEW_ACTION_LABELS = setOf(
             "Rejeter le signal",
             "Rejeter la commande"

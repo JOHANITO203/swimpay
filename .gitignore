@@ -27,4 +27,6 @@ id_rsa*
 *.tar.gz
 .gradle/
 apps/android-receiver/android/.gradle/
+apps/android-receiver/android/.kotlin/
+apps/android-receiver/android/build/
 apps/android-receiver/android/app/build/

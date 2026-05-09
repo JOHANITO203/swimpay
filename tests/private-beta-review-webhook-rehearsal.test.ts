@@ -121,8 +121,9 @@ describe('Sprint 6D private beta review queue and webhook rehearsal', () => {
         status: scenario.expected_review_status
       });
       expect(repository.signals[0]?.bankProfileId).toBe(scenario.bank_profile_id);
-      expect(repository.reviews[0]?.reasonCodes).toEqual(
-        expect.arrayContaining(['bank_profile_untrusted', 'bank_app_unverified', 'package_cert_to_verify'])
+      expect(repository.reviews[0]?.reasonCodes).toEqual(expect.arrayContaining(['bank_profile_untrusted']));
+      expect(repository.reviews[0]?.reasonCodes).not.toEqual(
+        expect.arrayContaining(['bank_app_unverified', 'package_cert_to_verify'])
       );
       expect(repository.orders.get(fixtures.order_fixture.order_id)?.status).toBe(
         scenario.expected_order_status_before_review
@@ -217,8 +218,8 @@ function createRuntimeHarness(
 ) {
   const repository = new InMemorySignalRuntimeRepository({
     signals: [runtimeSignal(fixtures, scenario)],
-    sessions: [runtimeSession(fixtures)],
-    trustContext: reviewOnlyTrustContext()
+    sessions: [runtimeSession(fixtures, scenario)],
+    trustContext: reviewOnlyTrustContext(scenario)
   });
   const processor = new SignalRuntimeProcessor({
     repository,
@@ -243,6 +244,8 @@ function runtimeSignal(
     merchantId: fixtures.merchant.merchant_id,
     deviceId: 'dev_private_beta_01',
     bankProfileId: scenario.bank_profile_id,
+    packageName: `com.swimpay.synthetic.${scenario.bank_profile_id}`,
+    packageCertSha256: `cert_${scenario.bank_profile_id}`,
     eventId: scenario.event_id,
     notificationHash: scenario.notification_hash,
     observedAt: now,
@@ -261,7 +264,10 @@ function runtimeSignal(
   };
 }
 
-function runtimeSession(fixtures: PrivateBetaFixtureSet): SignalRuntimeSessionCandidate {
+function runtimeSession(
+  fixtures: PrivateBetaFixtureSet,
+  scenario: PrivateBetaFixtureSet['bank_signal_scenarios'][number]
+): SignalRuntimeSessionCandidate {
   return {
     orderId: fixtures.order_fixture.order_id,
     paymentSessionId: fixtures.order_fixture.payment_session_id,
@@ -270,6 +276,12 @@ function runtimeSession(fixtures: PrivateBetaFixtureSet): SignalRuntimeSessionCa
     currency: fixtures.order_fixture.currency,
     buyerPhoneHmac: fixtures.order_fixture.buyer_phone_hmac,
     referenceHmac: hmacSha256('<REFERENCE>', 'private_beta_reference_secret'),
+    selectedReceiverBankId: scenario.bank_profile_id,
+    selectedReceiverBankProfileId: scenario.bank_profile_id,
+    selectedReceivingRouteId: `route_${scenario.bank_profile_id}_phone`,
+    receiverRouteCode: `${scenario.bank_profile_id.toUpperCase()}-PHONE`,
+    railType: 'phone_transfer',
+    paymentReference: 'TANGO ALFA',
     status: 'awaiting_payment',
     orderStatus: 'awaiting_payment',
     paymentSessionStatus: 'awaiting_payment',
@@ -279,10 +291,12 @@ function runtimeSession(fixtures: PrivateBetaFixtureSet): SignalRuntimeSessionCa
   };
 }
 
-function reviewOnlyTrustContext(): SignalRuntimeTrustContext {
+function reviewOnlyTrustContext(scenario: PrivateBetaFixtureSet['bank_signal_scenarios'][number]): SignalRuntimeTrustContext {
   return {
     bankProfileStatus: 'learning',
-    bankAppVerificationStatus: 'pending_verification',
+    bankAppVerificationStatus: 'verified',
+    trustedPackageName: `com.swimpay.synthetic.${scenario.bank_profile_id}`,
+    trustedPackageCertSha256: `cert_${scenario.bank_profile_id}`,
     templateStatus: 'learning',
     deviceStatus: 'active',
     deviceTrustScore: 100,

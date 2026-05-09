@@ -350,6 +350,93 @@ class PremiumMerchantRuntimeContractTest {
     }
 
     @Test
+    fun developerShowOnceExportClearsAfterCopyAndTimeout() {
+        val transport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_once": "sk_live_show_once",
+                  "secret_key_masked": "sk_live_****9999",
+                  "webhook_secret_masked": "whsec_****2222",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_masked": "sk_live_****9999",
+                  "webhook_secret_masked": "whsec_****2222",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_masked": "sk_live_****9999",
+                  "webhook_secret_once": "whsec_show_once",
+                  "webhook_secret_masked": "whsec_****3333",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(200, """{"safe_status":"Webhook de test envoye"}"""),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_masked": "sk_live_****9999",
+                  "webhook_secret_masked": "whsec_****3333",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            )
+        )
+        var now = 1_000L
+        val runtime = runtimeWithDeveloperIntegration(
+            AuthenticatedMerchantSession.mobile("mch_mobile", "spm_mobile_session_secret"),
+            transport,
+            nowEpochMs = { now }
+        )
+
+        val keyCreated = runtime.createDeveloperApiKey() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+        assertTrue(keyCreated.value.developerExportText().contains("sk_live_show_once"))
+        val copiedText = runtime.consumeDeveloperExportText(keyCreated.value)
+
+        assertTrue(copiedText.contains("sk_live_show_once"))
+        val afterCopy = runtime.updateDeveloperWebhookUrl("https://merchant.example/swimpay/webhook") as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+        assertFalse(afterCopy.value.developerExportText().contains("sk_live_show_once"))
+
+        val secretRotated = runtime.rotateDeveloperWebhookSecret() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+        assertTrue(secretRotated.value.developerExportText().contains("whsec_show_once"))
+        now += PremiumMerchantRuntime.DEVELOPER_SHOW_ONCE_COPY_TTL_MS + 1
+        val afterTimeout = runtime.testDeveloperWebhook() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+
+        assertEquals("Webhook de test envoye", afterTimeout.value.safeMessage)
+        assertFalse(afterTimeout.value.developerExportText().contains("whsec_show_once"))
+    }
+
+    @Test
     fun premiumRuntimeHasSafeDisconnectedModeForNonDebugBuilds() {
         val runtime = PremiumMerchantRuntime.disconnected()
 
@@ -703,7 +790,8 @@ private fun runtimeWith(
 
 private fun runtimeWithDeveloperIntegration(
     session: AuthenticatedMerchantSession,
-    transport: MerchantApiTransport
+    transport: MerchantApiTransport,
+    nowEpochMs: () -> Long = System::currentTimeMillis
 ): PremiumMerchantRuntime {
     return PremiumMerchantRuntime(
         session = session,
@@ -714,7 +802,8 @@ private fun runtimeWithDeveloperIntegration(
         receivingMethodsRepository = MerchantReceivingMethodsApiRepository(RecordingPremiumTransport()),
         connectedSiteRepository = MerchantConnectedSiteApiRepository(RecordingPremiumTransport()),
         configurationTestRepository = MerchantConfigurationTestApiRepository(RecordingPremiumTransport()),
-        developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport)
+        developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport),
+        nowEpochMs = nowEpochMs
     )
 }
 

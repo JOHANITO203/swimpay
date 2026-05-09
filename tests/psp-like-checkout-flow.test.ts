@@ -154,6 +154,8 @@ function runtimeSignal(): SignalRuntimeSignal {
     merchantId: 'mch_checkout',
     deviceId: 'dev_checkout',
     bankProfileId: 'sber_ru',
+    packageName: 'ru.sberbankmobile',
+    packageCertSha256: 'cert_sber_verified',
     eventId: 'evt_bank_checkout_01',
     notificationHash: 'hash_checkout_01',
     observedAt: now,
@@ -201,7 +203,9 @@ function runtimeSession(): SignalRuntimeSessionCandidate {
 function reviewOnlyContext(): SignalRuntimeTrustContext {
   return {
     bankProfileStatus: 'learning',
-    bankAppVerificationStatus: 'pending_verification',
+    bankAppVerificationStatus: 'verified',
+    trustedPackageName: 'ru.sberbankmobile',
+    trustedPackageCertSha256: 'cert_sber_verified',
     templateStatus: 'learning',
     deviceStatus: 'active',
     deviceTrustScore: 100,

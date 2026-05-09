@@ -8,11 +8,16 @@ import {
   type InternalEventEnvelope
 } from '@swimpay/events';
 import {
+  evaluatePaymentIntentGate,
   evaluateSignalMatch,
   type BankProfileTrustStatus,
   type MatchingCandidateSession,
   type MatchingContext,
   type MatchingSignal,
+  type PaymentIntentGateClassification,
+  type PaymentIntentGateDecision,
+  type PaymentIntentGateIntent,
+  type PaymentIntentGateSignal,
   type TemplateTrustStatus
 } from '@swimpay/matching-core';
 import { MetricNames, type MetricsRegistry } from '@swimpay/observability';
@@ -26,6 +31,8 @@ export interface SignalRuntimeSignal {
   merchantId: string;
   deviceId: string;
   bankProfileId?: string | undefined;
+  packageName?: string | undefined;
+  packageCertSha256?: string | undefined;
   eventId: string;
   notificationHash: string;
   observedAt: string;
@@ -38,6 +45,7 @@ export interface SignalRuntimeSignal {
   senderPhoneMasked?: string | undefined;
   referenceHmac?: string | undefined;
   referenceCodeMasked?: string | undefined;
+  receivingRouteId?: string | undefined;
   directionLabel?: MatchingSignal['directionLabel'] | undefined;
   signalQuality?: number | undefined;
   parserVersion?: string | undefined;
@@ -54,6 +62,8 @@ export interface SignalRuntimeSessionCandidate extends MatchingCandidateSession 
 export interface SignalRuntimeTrustContext {
   bankProfileStatus: BankProfileTrustStatus;
   bankAppVerificationStatus: 'verified' | 'pending_verification' | 'revoked' | 'unknown' | 'TO_VERIFY';
+  trustedPackageName?: string | undefined;
+  trustedPackageCertSha256?: string | undefined;
   templateStatus: TemplateTrustStatus | 'unknown';
   deviceStatus: string;
   deviceTrustScore: number;
@@ -183,6 +193,27 @@ export class SignalRuntimeProcessor {
     }
 
     const now = this.now();
+
+    if (!signal.signatureValid) {
+      return this.rejectSignalBeforeParsing({
+        signal,
+        now,
+        reasonCodes: ['invalid_signature'],
+        score: 0
+      });
+    }
+
+    const trustContext = await this.options.repository.getTrustContext(signal);
+    const trustHardGateReasonCodes = evaluatePreParseTrustHardGate(signal, trustContext);
+    if (trustHardGateReasonCodes.length > 0) {
+      return this.rejectSignalBeforeParsing({
+        signal,
+        now,
+        reasonCodes: trustHardGateReasonCodes,
+        score: 0
+      });
+    }
+
     const parsed = parseSignal(signal);
     this.options.metrics?.increment(MetricNames.SIGNALS_PARSED_TOTAL);
     await this.options.repository.markSignalParsed({ signalId: signal.id, parsed, parsedAt: now });
@@ -199,17 +230,7 @@ export class SignalRuntimeProcessor {
     });
 
     const hydratedSignal = hydrateSignalWithParsed(signal, parsed);
-    const trustContext = await this.options.repository.getTrustContext(hydratedSignal);
     const candidates = await this.options.repository.listCandidateSessions(hydratedSignal);
-    if (candidates.length > 0) {
-      await this.emitRuntimeEvent(EventTypes.MATCH_CANDIDATES_FOUND, hydratedSignal, now, {
-        signal_id: hydratedSignal.id,
-        candidate_count: candidates.length
-      });
-      await this.writeAudit(EventTypes.MATCH_CANDIDATES_FOUND, hydratedSignal, now, {
-        candidate_count: candidates.length
-      });
-    }
 
     if (REJECTED_DIRECTIONS.has(parsed.directionLabel)) {
       this.incrementSafetyMetric(parsed.directionLabel);
@@ -222,13 +243,41 @@ export class SignalRuntimeProcessor {
       });
     }
 
+    const gate = evaluatePaymentIntentGate({
+      signal: toPaymentIntentGateSignal(hydratedSignal),
+      activePaymentIntents: candidates.map(toPaymentIntentGateIntent),
+      allowLatePaymentReview: false
+    });
+    const gateReasonCodes = uniqueReasonCodes([...parsed.reasonCodes, ...gate.reasonCodes]);
+    if (!gate.reviewCreationAllowed) {
+      return this.ignoreUnrelatedSignal({
+        signal: hydratedSignal,
+        parsed,
+        now,
+        reasonCodes: uniqueReasonCodes([...gateReasonCodes, 'no_active_payment_intent_no_review']),
+        score: parsed.signalQuality
+      });
+    }
+
+    const reviewableCandidates = filterPaymentIntentGateSessions(hydratedSignal, candidates);
+    if (reviewableCandidates.length > 0) {
+      await this.emitRuntimeEvent(EventTypes.MATCH_CANDIDATES_FOUND, hydratedSignal, now, {
+        signal_id: hydratedSignal.id,
+        candidate_count: reviewableCandidates.length
+      });
+      await this.writeAudit(EventTypes.MATCH_CANDIDATES_FOUND, hydratedSignal, now, {
+        candidate_count: reviewableCandidates.length
+      });
+    }
+
     if (parsed.directionLabel === 'unknown' || parsed.directionLabel === 'unknown_ambiguous_direction') {
-      if (!candidates[0]) {
+      const selected = selectRuntimeSessionForGate(candidates, gate);
+      if (!selected) {
         return this.ignoreUnrelatedSignal({
           signal: hydratedSignal,
           parsed,
           now,
-          reasonCodes: uniqueReasonCodes([...parsed.reasonCodes, 'unknown_without_active_payment_intent']),
+          reasonCodes: uniqueReasonCodes([...gateReasonCodes, 'unknown_without_active_payment_intent']),
           score: parsed.signalQuality
         });
       }
@@ -236,19 +285,24 @@ export class SignalRuntimeProcessor {
         signal: hydratedSignal,
         parsed,
         now,
-        selected: candidates[0],
+        selected,
         score: parsed.signalQuality,
-        collisionDetected: false,
-        reasonCodes: uniqueReasonCodes([...parsed.reasonCodes, 'ambiguous_direction'])
+        collisionDetected: gate.collisionDetected,
+        reasonCodes: uniqueReasonCodes([...gateReasonCodes, 'ambiguous_direction'])
       });
     }
 
     const match = evaluateSignalMatch({
       signal: toMatchingSignal(hydratedSignal),
-      sessions: candidates,
+      sessions: reviewableCandidates,
       context: toMatchingContext(trustContext)
     });
-    const reasonCodes = enrichReasonCodes(match.reasonCodes, parsed, trustContext, candidates.length);
+    const reasonCodes = enrichReasonCodes(
+      uniqueReasonCodes([...match.reasonCodes, ...gate.reasonCodes]),
+      parsed,
+      trustContext,
+      reviewableCandidates.length
+    );
 
     if (match.collisionDetected) {
       await this.emitRuntimeEvent(EventTypes.MATCH_COLLISION_DETECTED, hydratedSignal, now, {
@@ -302,6 +356,21 @@ export class SignalRuntimeProcessor {
       score: match.score || parsed.signalQuality,
       collisionDetected: match.collisionDetected,
       reasonCodes
+    });
+  }
+
+  private async rejectSignalBeforeParsing(input: {
+    signal: SignalRuntimeSignal;
+    now: string;
+    reasonCodes: string[];
+    score: number;
+  }): Promise<SignalRuntimeResult> {
+    return this.rejectSignal({
+      signal: input.signal,
+      parsed: unparsedRuntimeFields(input.signal, input.reasonCodes),
+      now: input.now,
+      reasonCodes: uniqueReasonCodes(input.reasonCodes),
+      score: input.score
     });
   }
 
@@ -711,24 +780,23 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
         COALESCE(bt.status, 'unknown') AS template_status,
         rd.status AS device_status,
         rd.trust_score,
-        EXISTS (
-          SELECT 1
-          FROM bank_app_signatures bas
-          WHERE bas.bank_profile_id = ns.bank_profile_id
-            AND bas.status = 'verified'
-        ) AS has_verified_app
+        bas.status AS exact_bank_app_status
        FROM notification_signals ns
        JOIN receiver_devices rd ON rd.id = ns.device_id AND rd.merchant_id = ns.merchant_id
        LEFT JOIN bank_profiles bp ON bp.id = ns.bank_profile_id
        LEFT JOIN bank_templates bt ON bt.id = ns.template_id
+       LEFT JOIN bank_app_signatures bas
+         ON bas.bank_profile_id = ns.bank_profile_id
+        AND bas.package_name = $2
+        AND bas.cert_sha256 = $3
        WHERE ns.id = $1`,
-      [signal.id]
+      [signal.id, signal.packageName ?? null, signal.packageCertSha256 ?? null]
     );
     const row = result.rows[0] as TrustRow | undefined;
 
     return {
       bankProfileStatus: normalizeBankProfileStatus(row?.bank_profile_status),
-      bankAppVerificationStatus: row?.has_verified_app ? 'verified' : 'pending_verification',
+      bankAppVerificationStatus: normalizeBankAppVerificationStatus(row?.exact_bank_app_status),
       templateStatus: normalizeTemplateStatus(row?.template_status),
       deviceStatus: String(row?.device_status ?? 'unknown'),
       deviceTrustScore: Number(row?.trust_score ?? 0),
@@ -961,6 +1029,170 @@ function hydrateSignalWithParsed(signal: SignalRuntimeSignal, parsed: ParsedSign
   };
 }
 
+function unparsedRuntimeFields(signal: SignalRuntimeSignal, reasonCodes: string[]): ParsedSignalRuntimeFields {
+  return {
+    directionLabel: coerceDirectionLabel(signal.directionLabel ?? 'unknown'),
+    amountMinor: signal.amountMinor,
+    currency: signal.currency,
+    signalQuality: signal.signalQuality ?? 0,
+    reasonCodes
+  };
+}
+
+function evaluatePreParseTrustHardGate(signal: SignalRuntimeSignal, context: SignalRuntimeTrustContext): string[] {
+  const reasonCodes: string[] = [];
+
+  if (!isTrustedRuntimeDevice(context)) {
+    reasonCodes.push('device_untrusted');
+  }
+
+  reasonCodes.push(...bankAppTrustHardGateReasonCodes(signal, context));
+
+  return uniqueReasonCodes(reasonCodes);
+}
+
+function isTrustedRuntimeDevice(context: SignalRuntimeTrustContext): boolean {
+  return context.deviceStatus === 'active' && context.deviceTrustScore >= 80;
+}
+
+function bankAppTrustHardGateReasonCodes(signal: SignalRuntimeSignal, context: SignalRuntimeTrustContext): string[] {
+  if (context.bankAppVerificationStatus === 'verified' && isExactTrustedPackageCertificate(signal, context)) {
+    return [];
+  }
+
+  const reasonCodes = ['bank_app_unverified'];
+  if (context.bankAppVerificationStatus === 'revoked') {
+    reasonCodes.push('package_cert_revoked');
+  } else if (context.bankAppVerificationStatus === 'verified') {
+    reasonCodes.push('package_cert_mismatch');
+  } else if (
+    context.bankAppVerificationStatus === 'TO_VERIFY' ||
+    context.bankAppVerificationStatus === 'pending_verification' ||
+    context.bankAppVerificationStatus === 'unknown'
+  ) {
+    reasonCodes.push('package_cert_to_verify');
+  }
+
+  return reasonCodes;
+}
+
+function isExactTrustedPackageCertificate(signal: SignalRuntimeSignal, context: SignalRuntimeTrustContext): boolean {
+  if (!context.trustedPackageName && !context.trustedPackageCertSha256) {
+    return true;
+  }
+
+  return Boolean(
+    signal.packageName &&
+      signal.packageCertSha256 &&
+      signal.packageName === context.trustedPackageName &&
+      signal.packageCertSha256 === context.trustedPackageCertSha256
+  );
+}
+
+function toPaymentIntentGateSignal(signal: SignalRuntimeSignal): PaymentIntentGateSignal {
+  return {
+    merchantId: signal.merchantId,
+    bankProfileId: signal.bankProfileId,
+    packageName: signal.packageName,
+    classification: toPaymentIntentGateClassification(signal.directionLabel ?? 'unknown'),
+    amountMinor: signal.amountMinor,
+    currency: signal.currency,
+    shapeHash: signal.templateId ?? signal.notificationHash,
+    referenceHmac: signal.referenceHmac,
+    senderPhoneHmac: signal.senderPhoneHmac,
+    receivingRouteId: signal.receivingRouteId,
+    observedAt: signal.observedAt
+  };
+}
+
+function toPaymentIntentGateIntent(session: SignalRuntimeSessionCandidate): PaymentIntentGateIntent {
+  return {
+    orderId: session.orderId,
+    paymentSessionId: session.paymentSessionId,
+    merchantId: session.merchantId,
+    expectedPaymentAmountMinor: session.expectedAmountMinor,
+    displayPriceMinor: session.expectedAmountMinor,
+    reconciliationDeltaMinor: 0,
+    currency: session.currency,
+    generatedReference: session.paymentReference ?? '',
+    referenceHmac: session.referenceHmac,
+    selectedReceiverBankProfileId: session.selectedReceiverBankProfileId ?? session.selectedReceiverBankId ?? '',
+    selectedReceivingRouteId: session.selectedReceivingRouteId,
+    selectedReceivingMethod: session.railType ?? 'phone_transfer',
+    buyerFirstName: '',
+    buyerLastName: '',
+    buyerPhoneHmac: session.buyerSenderPhoneHmac ?? session.buyerPhoneHmac,
+    buyerPhoneMasked: undefined,
+    buyerSourceCardHmac: undefined,
+    buyerSourceCardMasked: undefined,
+    buyerSourceCardLast4: undefined,
+    status: session.status,
+    validFrom: session.validFrom,
+    expiresAt: session.validUntil
+  };
+}
+
+function filterPaymentIntentGateSessions(
+  signal: SignalRuntimeSignal,
+  sessions: SignalRuntimeSessionCandidate[]
+): SignalRuntimeSessionCandidate[] {
+  return sessions.filter((session) => {
+    const sessionBankProfileId = session.selectedReceiverBankProfileId ?? session.selectedReceiverBankId;
+    if (!signal.bankProfileId || !sessionBankProfileId || signal.bankProfileId !== sessionBankProfileId) {
+      return false;
+    }
+
+    if (
+      signal.receivingRouteId &&
+      session.selectedReceivingRouteId &&
+      signal.receivingRouteId !== session.selectedReceivingRouteId
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function selectRuntimeSessionForGate(
+  sessions: SignalRuntimeSessionCandidate[],
+  gate: PaymentIntentGateDecision
+): SignalRuntimeSessionCandidate | undefined {
+  if (!gate.selectedIntent) {
+    return undefined;
+  }
+
+  return sessions.find((session) => session.paymentSessionId === gate.selectedIntent?.paymentSessionId);
+}
+
+function toPaymentIntentGateClassification(directionLabel: MatchingSignal['directionLabel']): PaymentIntentGateClassification {
+  switch (directionLabel) {
+    case 'incoming_customer_transfer':
+      return 'incoming_customer_transfer';
+    case 'incoming_card_transfer':
+      return 'incoming_card_transfer';
+    case 'incoming_sbp_transfer':
+      return 'incoming_sbp_transfer';
+    case 'incoming_cashback':
+      return 'cashback';
+    case 'incoming_refund':
+      return 'refund';
+    case 'outgoing_payment':
+      return 'outgoing_payment';
+    case 'outgoing_transfer':
+      return 'outgoing_transfer';
+    case 'failed_transfer':
+      return 'failed_transfer';
+    case 'promo':
+      return 'promo';
+    case 'balance_update':
+      return 'balance_update';
+    case 'unknown':
+    case 'unknown_ambiguous_direction':
+      return 'unknown';
+  }
+}
+
 function toMatchingSignal(signal: SignalRuntimeSignal): MatchingSignal {
   return {
     id: signal.id,
@@ -1049,6 +1281,8 @@ function coerceDirectionLabel(value: string): MatchingSignal['directionLabel'] {
   if (
     [
       'incoming_customer_transfer',
+      'incoming_card_transfer',
+      'incoming_sbp_transfer',
       'incoming_cashback',
       'incoming_refund',
       'outgoing_payment',
@@ -1097,6 +1331,12 @@ function normalizeBankProfileStatus(value: unknown): BankProfileTrustStatus {
     : 'learning';
 }
 
+function normalizeBankAppVerificationStatus(value: unknown): SignalRuntimeTrustContext['bankAppVerificationStatus'] {
+  return ['verified', 'pending_verification', 'revoked', 'unknown', 'TO_VERIFY'].includes(String(value))
+    ? (String(value) as SignalRuntimeTrustContext['bankAppVerificationStatus'])
+    : 'pending_verification';
+}
+
 function normalizeTemplateStatus(value: unknown): TemplateTrustStatus | 'unknown' {
   return ['new', 'learning', 'shadow_testing', 'trusted_low_amount', 'trusted', 'degraded', 'review_only', 'disabled'].includes(String(value))
     ? (String(value) as TemplateTrustStatus)
@@ -1133,7 +1373,7 @@ interface TrustRow {
   template_status: string | null;
   device_status: string | null;
   trust_score: number | string | null;
-  has_verified_app: boolean;
+  exact_bank_app_status: string | null;
 }
 
 interface SessionRow {

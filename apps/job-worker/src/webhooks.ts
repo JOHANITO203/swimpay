@@ -100,9 +100,9 @@ export type WebhookDeliveryCreateResult =
 export interface WebhookRepository {
   listActiveEndpoints(merchantId: string, eventType: PublicWebhookEventType): Promise<WebhookEndpoint[]>;
   createDelivery(input: WebhookDeliveryCreateInput): Promise<WebhookDeliveryCreateResult>;
-  claimDueDeliveries(now: string, limit: number): Promise<WebhookDelivery[]>;
-  claimDeliveryById(deliveryId: string, now: string): Promise<WebhookDelivery | null>;
-  claimDeliveriesByEventId(eventId: string, now: string, limit: number): Promise<WebhookDelivery[]>;
+  claimDueDeliveries(now: string, limit: number, staleBefore?: string | undefined): Promise<WebhookDelivery[]>;
+  claimDeliveryById(deliveryId: string, now: string, staleBefore?: string | undefined): Promise<WebhookDelivery | null>;
+  claimDeliveriesByEventId(eventId: string, now: string, limit: number, staleBefore?: string | undefined): Promise<WebhookDelivery[]>;
   recordDeliveryAttempt(deliveryId: string, attemptedAt: string): Promise<void>;
   markDelivered(deliveryId: string, deliveredAt: string, httpStatus: number): Promise<void>;
   markFailed(deliveryId: string, nextRetryAt: string, lastError: string, httpStatus?: number | undefined): Promise<void>;
@@ -125,6 +125,7 @@ export interface WebhookDeliveryWorkerOptions {
   httpClient: WebhookHttpClient;
   maxAttempts?: number | undefined;
   requestTimeoutMs?: number | undefined;
+  claimTimeoutMs?: number | undefined;
   metrics?: MetricsRegistry | undefined;
 }
 
@@ -142,14 +143,18 @@ export const RETRY_DELAYS_MS = WEBHOOK_RETRY_DELAYS_MS.slice(1);
 
 const DEFAULT_MAX_ATTEMPTS = WEBHOOK_RETRY_DELAYS_MS.length;
 const DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
+const DEFAULT_CLAIM_TIMEOUT_MS = 5 * 60_000;
+const STALE_DELIVERY_RECOVERY_ERROR = 'stale_delivery_recovered_after_worker_crash';
 
 export class WebhookDeliveryWorker {
   private readonly maxAttempts: number;
   private readonly requestTimeoutMs: number;
+  private readonly claimTimeoutMs: number;
 
   public constructor(private readonly options: WebhookDeliveryWorkerOptions) {
     this.maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
     this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    this.claimTimeoutMs = options.claimTimeoutMs ?? DEFAULT_CLAIM_TIMEOUT_MS;
   }
 
   public async enqueueEvent(event: PublicWebhookEvent): Promise<{ created: number; skippedDuplicates: number }> {
@@ -179,7 +184,7 @@ export class WebhookDeliveryWorker {
   }
 
   public async processDueDeliveries(now: string, limit = 10): Promise<{ delivered: number; retrying: number; failed: number }> {
-    const deliveries = await this.options.repository.claimDueDeliveries(now, limit);
+    const deliveries = await this.options.repository.claimDueDeliveries(now, limit, this.staleBefore(now));
     return this.deliverClaimed(deliveries, now);
   }
 
@@ -188,12 +193,12 @@ export class WebhookDeliveryWorker {
   }
 
   public async processDeliveryById(deliveryId: string, now: string): Promise<{ delivered: number; retrying: number; failed: number }> {
-    const delivery = await this.options.repository.claimDeliveryById(deliveryId, now);
+    const delivery = await this.options.repository.claimDeliveryById(deliveryId, now, this.staleBefore(now));
     return this.deliverClaimed(delivery ? [delivery] : [], now);
   }
 
   public async processEventDeliveries(eventId: string, now: string): Promise<{ delivered: number; retrying: number; failed: number }> {
-    const deliveries = await this.options.repository.claimDeliveriesByEventId(eventId, now, 25);
+    const deliveries = await this.options.repository.claimDeliveriesByEventId(eventId, now, 25, this.staleBefore(now));
     return this.deliverClaimed(deliveries, now);
   }
 
@@ -206,7 +211,7 @@ export class WebhookDeliveryWorker {
     let failed = 0;
 
     for (const delivery of deliveries) {
-    const result = await this.deliverOne(delivery, now);
+      const result = await this.deliverOne(delivery, now);
       if (result === 'delivered') {
         delivered += 1;
         this.options.metrics?.increment(MetricNames.WEBHOOK_DELIVERIES_DELIVERED_TOTAL);
@@ -324,6 +329,10 @@ export class WebhookDeliveryWorker {
     await this.options.repository.markFailed(delivery.id, new Date(Date.parse(now) + delay).toISOString(), error, httpStatus);
     return 'retrying';
   }
+
+  private staleBefore(now: string): string {
+    return new Date(Date.parse(now) - this.claimTimeoutMs).toISOString();
+  }
 }
 
 export class FetchWebhookHttpClient implements WebhookHttpClient {
@@ -415,7 +424,8 @@ export class InMemoryWebhookRepository implements WebhookRepository {
     return { kind: 'created', delivery };
   }
 
-  public async claimDueDeliveries(now: string, limit: number): Promise<WebhookDelivery[]> {
+  public async claimDueDeliveries(now: string, limit: number, staleBefore?: string | undefined): Promise<WebhookDelivery[]> {
+    this.recoverStaleDeliveries(now, staleBefore, () => true);
     const nowMs = Date.parse(now);
     return this.deliveries
       .filter((delivery) => isDeliveryClaimable(delivery, nowMs))
@@ -423,7 +433,8 @@ export class InMemoryWebhookRepository implements WebhookRepository {
       .map((delivery) => this.claim(delivery, now));
   }
 
-  public async claimDeliveryById(deliveryId: string, now: string): Promise<WebhookDelivery | null> {
+  public async claimDeliveryById(deliveryId: string, now: string, staleBefore?: string | undefined): Promise<WebhookDelivery | null> {
+    this.recoverStaleDeliveries(now, staleBefore, (delivery) => delivery.id === deliveryId);
     const delivery = this.deliveries.find((item) => item.id === deliveryId);
     if (!delivery || !isDeliveryClaimable(delivery, Date.parse(now))) {
       return null;
@@ -432,7 +443,13 @@ export class InMemoryWebhookRepository implements WebhookRepository {
     return this.claim(delivery, now);
   }
 
-  public async claimDeliveriesByEventId(eventId: string, now: string, limit: number): Promise<WebhookDelivery[]> {
+  public async claimDeliveriesByEventId(
+    eventId: string,
+    now: string,
+    limit: number,
+    staleBefore?: string | undefined
+  ): Promise<WebhookDelivery[]> {
+    this.recoverStaleDeliveries(now, staleBefore, (delivery) => delivery.eventId === eventId);
     const nowMs = Date.parse(now);
     return this.deliveries
       .filter((delivery) => delivery.eventId === eventId && isDeliveryClaimable(delivery, nowMs))
@@ -523,6 +540,58 @@ export class InMemoryWebhookRepository implements WebhookRepository {
     delivery.status = WEBHOOK_DELIVERY_STATUSES.DELIVERING;
     delivery.updatedAt = now;
     return { ...delivery };
+  }
+
+  private recoverStaleDeliveries(
+    now: string,
+    staleBefore: string | undefined,
+    matchesScope: (delivery: WebhookDelivery) => boolean
+  ): void {
+    if (!staleBefore) {
+      return;
+    }
+
+    const staleBeforeMs = Date.parse(staleBefore);
+    for (const delivery of this.deliveries) {
+      if (!matchesScope(delivery) || !isStaleDelivering(delivery, staleBeforeMs)) {
+        continue;
+      }
+
+      this.recoverStaleDelivery(delivery, now);
+    }
+  }
+
+  private recoverStaleDelivery(delivery: WebhookDelivery, now: string): void {
+    const recoveredAttemptCount = Math.min(delivery.attemptCount + 1, delivery.maxAttempts);
+    const nextAttempt = recoveredAttemptCount + 1;
+    const delay = retryDelayForAttempt(nextAttempt);
+
+    delivery.attemptCount = recoveredAttemptCount;
+    delivery.lastError = STALE_DELIVERY_RECOVERY_ERROR;
+    delivery.lastHttpStatus = undefined;
+
+    if (recoveredAttemptCount >= delivery.maxAttempts || delay === undefined) {
+      delivery.status = WEBHOOK_DELIVERY_STATUSES.DEAD;
+      delivery.nextRetryAt = undefined;
+      delivery.updatedAt = now;
+      this.addAuditEvent(WEBHOOK_AUDIT_EVENTS.DEAD, delivery, now, {
+        event_id: delivery.eventId,
+        error: STALE_DELIVERY_RECOVERY_ERROR,
+        attempt_count: delivery.attemptCount
+      });
+      return;
+    }
+
+    const retryAt = new Date(Date.parse(delivery.updatedAt) + delay).toISOString();
+    delivery.status = WEBHOOK_DELIVERY_STATUSES.FAILED;
+    delivery.nextRetryAt = retryAt;
+    delivery.updatedAt = now;
+    this.addAuditEvent(WEBHOOK_AUDIT_EVENTS.FAILED, delivery, now, {
+      event_id: delivery.eventId,
+      retry_at: retryAt,
+      error: STALE_DELIVERY_RECOVERY_ERROR,
+      attempt_count: delivery.attemptCount
+    });
   }
 
   private requireDelivery(deliveryId: string): WebhookDelivery {
@@ -619,7 +688,8 @@ export class PgWebhookRepository implements WebhookRepository {
     }
   }
 
-  public async claimDueDeliveries(now: string, limit: number): Promise<WebhookDelivery[]> {
+  public async claimDueDeliveries(now: string, limit: number, staleBefore?: string | undefined): Promise<WebhookDelivery[]> {
+    await this.recoverStaleDeliveries('TRUE', [], now, staleBefore, limit);
     return this.claimByWhere(
       `d.status IN ('pending', 'failed')
        AND (d.next_retry_at IS NULL OR d.next_retry_at <= $1::timestamptz)
@@ -630,7 +700,8 @@ export class PgWebhookRepository implements WebhookRepository {
     );
   }
 
-  public async claimDeliveryById(deliveryId: string, now: string): Promise<WebhookDelivery | null> {
+  public async claimDeliveryById(deliveryId: string, now: string, staleBefore?: string | undefined): Promise<WebhookDelivery | null> {
+    await this.recoverStaleDeliveries('d.id = $1', [deliveryId], now, staleBefore, 1);
     const deliveries = await this.claimByWhere(
       `d.id = $2
        AND d.status IN ('pending', 'failed')
@@ -643,7 +714,13 @@ export class PgWebhookRepository implements WebhookRepository {
     return deliveries[0] ?? null;
   }
 
-  public async claimDeliveriesByEventId(eventId: string, now: string, limit: number): Promise<WebhookDelivery[]> {
+  public async claimDeliveriesByEventId(
+    eventId: string,
+    now: string,
+    limit: number,
+    staleBefore?: string | undefined
+  ): Promise<WebhookDelivery[]> {
+    await this.recoverStaleDeliveries('d.event_id = $1', [eventId], now, staleBefore, limit);
     return this.claimByWhere(
       `d.event_id = $2
        AND d.status IN ('pending', 'failed')
@@ -797,6 +874,78 @@ export class PgWebhookRepository implements WebhookRepository {
     return deliveries;
   }
 
+  private async recoverStaleDeliveries(
+    scopeSql: string,
+    values: unknown[],
+    now: string,
+    staleBefore: string | undefined,
+    limit: number
+  ): Promise<void> {
+    if (!staleBefore) {
+      return;
+    }
+
+    const staleBeforeParam = values.length + 1;
+    const limitParam = values.length + 2;
+    const nowParam = values.length + 3;
+    const errorParam = values.length + 4;
+    const retryDelaySql = buildRetryDelayIntervalSql('LEAST(d.attempt_count + 1, d.max_attempts) + 1');
+    const result = await this.pool.query(
+      `WITH stale AS (
+         SELECT d.id,
+                LEAST(d.attempt_count + 1, d.max_attempts) AS recovered_attempt_count,
+                ${retryDelaySql} AS retry_delay
+         FROM webhook_deliveries d
+         JOIN webhook_endpoints e ON e.id = d.endpoint_id
+         WHERE ${scopeSql}
+           AND d.status = 'delivering'
+           AND d.updated_at <= $${staleBeforeParam}::timestamptz
+         ORDER BY d.updated_at, d.created_at
+         LIMIT $${limitParam}
+         FOR UPDATE SKIP LOCKED
+       )
+       UPDATE webhook_deliveries d
+       SET status = CASE
+             WHEN stale.recovered_attempt_count >= d.max_attempts OR stale.retry_delay IS NULL THEN 'dead'
+             ELSE 'failed'
+           END,
+           attempt_count = stale.recovered_attempt_count,
+           next_retry_at = CASE
+             WHEN stale.recovered_attempt_count >= d.max_attempts OR stale.retry_delay IS NULL THEN NULL
+             ELSE d.updated_at + stale.retry_delay
+           END,
+           last_error = $${errorParam},
+           last_http_status = NULL,
+           updated_at = $${nowParam}::timestamptz
+       FROM stale
+       WHERE d.id = stale.id
+       RETURNING d.*`,
+      [...values, staleBefore, limit, now, STALE_DELIVERY_RECOVERY_ERROR]
+    );
+
+    for (const row of result.rows as WebhookDeliveryRow[]) {
+      const delivery = await this.hydrateDelivery(row);
+      if (!delivery) {
+        continue;
+      }
+
+      if (delivery.status === WEBHOOK_DELIVERY_STATUSES.DEAD) {
+        await this.insertAuditEvent(WEBHOOK_AUDIT_EVENTS.DEAD, delivery, now, {
+          event_id: delivery.eventId,
+          error: STALE_DELIVERY_RECOVERY_ERROR,
+          attempt_count: delivery.attemptCount
+        });
+      } else {
+        await this.insertAuditEvent(WEBHOOK_AUDIT_EVENTS.FAILED, delivery, now, {
+          event_id: delivery.eventId,
+          retry_at: delivery.nextRetryAt,
+          error: STALE_DELIVERY_RECOVERY_ERROR,
+          attempt_count: delivery.attemptCount
+        });
+      }
+    }
+  }
+
   private async hydrateDelivery(row: WebhookDeliveryRow | undefined): Promise<WebhookDelivery | null> {
     if (!row) {
       return null;
@@ -903,6 +1052,20 @@ function isDeliveryClaimable(delivery: WebhookDelivery, nowMs: number): boolean 
   }
 
   return !delivery.nextRetryAt || Date.parse(delivery.nextRetryAt) <= nowMs;
+}
+
+function isStaleDelivering(delivery: WebhookDelivery, staleBeforeMs: number): boolean {
+  return delivery.status === WEBHOOK_DELIVERY_STATUSES.DELIVERING && Date.parse(delivery.updatedAt) <= staleBeforeMs;
+}
+
+function buildRetryDelayIntervalSql(attemptNumberExpression: string): string {
+  const cases = WEBHOOK_RETRY_DELAYS_MS.map((delayMs, index) => {
+    const attemptNumber = index + 1;
+    const delaySeconds = Math.trunc(delayMs / 1000);
+    return `WHEN ${attemptNumber} THEN INTERVAL '${delaySeconds} seconds'`;
+  }).join(' ');
+
+  return `CASE ${attemptNumberExpression} ${cases} ELSE NULL END`;
 }
 
 function assertSafePublicWebhookEvent(event: PublicWebhookEvent): void {

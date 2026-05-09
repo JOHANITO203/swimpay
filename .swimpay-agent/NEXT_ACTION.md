@@ -1,5 +1,61 @@
 # Next Action
 
+generated_at: 2026-05-09T12:37:12+03:00
+
+## Latest HARDEN-REAL-1 quality hardening
+
+Completed:
+
+1. Runtime/payment gate:
+   - invalid signatures rejected before parsing;
+   - untrusted receiver/device/package-cert blocked before review;
+   - Payment Intent Gate applied before merchant review creation.
+2. Backend production hardening:
+   - production secrets fail fast when missing;
+   - dev bearer shortcuts blocked in production-mode paths;
+   - SDK API key scopes enforced;
+   - webhook URLs restricted to safe HTTPS public hosts.
+3. Android hardening:
+   - Android Keystore asymmetric proof boundary;
+   - redacted canonical notification hashing;
+   - app-lock blocks sensitive runtime loads;
+   - developer export copy requires device unlock and clears show-once values.
+4. Webhook/CI hardening:
+   - stale `delivering` recovery added;
+   - CI workflow added for root, Compose and Android;
+   - Docker/build output hygiene added.
+5. Validation passed:
+   - `npm run android:doctor`
+   - `npm run typecheck`
+   - `npm run lint`
+   - `npm test` - 75 files, 554 tests passed
+   - `npm run build`
+   - `docker compose --env-file .env.example -f infra/docker-compose.yml config`
+   - Android JVM tests
+   - Android staging APK build
+
+Blocked:
+
+- No local HARDEN-REAL-1 code blocker remains.
+- Real notification testing is still gated by synthetic SDK order, hosted checkout, active receiving method, manual review and final-only webhook proof.
+
+Next recommended action:
+
+1. Review the HARDEN-REAL-1 diff and commit/push when ready.
+2. Redeploy staging.
+3. Run the synthetic SDK/checkout/manual-review/final-webhook rehearsal.
+4. Only then decide whether to start real bank notification capture.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-09T02:03:00+03:00
 
 ## Latest Android dashboard metrics wiring

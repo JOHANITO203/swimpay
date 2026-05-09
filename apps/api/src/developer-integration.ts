@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { isIP } from 'node:net';
 import pg from 'pg';
 import { PUBLIC_EVENT_SIGNAL_DISCLOSURE } from '@swimpay/events';
 import { encryptSecret, hashApiKey, hashWebhookSecret } from '@swimpay/security';
@@ -257,13 +258,12 @@ export class InMemoryMerchantIntegrationRepository implements MerchantIntegratio
 
 export class PgMerchantIntegrationRepository implements MerchantIntegrationRepository {
   private readonly pool: pg.Pool;
+  private readonly secretEncryptionKey: string;
 
-  public constructor(connectionString: string) {
-    this.secretEncryptionKey = process.env.WEBHOOK_SECRET_ENCRYPTION_KEY ?? 'local_dev_webhook_secret_encryption_key';
+  public constructor(connectionString: string, secretEncryptionKey: string) {
+    this.secretEncryptionKey = secretEncryptionKey;
     this.pool = new Pool({ connectionString, max: 4 });
   }
-
-  private readonly secretEncryptionKey: string;
 
   public async getIntegration(merchantId: string, now: string): Promise<MerchantIntegrationState> {
     const integration = await this.ensureIntegration(merchantId, now);
@@ -297,7 +297,7 @@ export class PgMerchantIntegrationRepository implements MerchantIntegrationRepos
         `INSERT INTO api_keys (merchant_id, key_hash, scopes, status, created_at)
          VALUES ($1, $2, $3::jsonb, 'active', $4)
          RETURNING id`,
-        [merchantId, hashApiKey(secretKeyOnce), JSON.stringify(['orders:create', 'webhooks:read']), now]
+        [merchantId, hashApiKey(secretKeyOnce), JSON.stringify(['orders.write', 'orders.read', 'webhooks.read']), now]
       );
       await client.query(
         `INSERT INTO merchant_integrations (
@@ -607,7 +607,7 @@ export function toMerchantIntegrationResponse(input: SecretLifecycleResult | Web
   return response;
 }
 
-export function validateWebhookUrl(input: unknown, environment: string): { valid: true; value: string } | { valid: false; message: string } {
+export function validateWebhookUrl(input: unknown): { valid: true; value: string } | { valid: false; message: string } {
   if (typeof input !== 'string' || input.trim().length === 0) {
     return { valid: false, message: 'Webhook URL is required.' };
   }
@@ -622,13 +622,149 @@ export function validateWebhookUrl(input: unknown, environment: string): { valid
     return { valid: false, message: 'Webhook URL must be a valid URL.' };
   }
   if (parsed.protocol === 'https:') {
+    if (parsed.username || parsed.password) {
+      return { valid: false, message: 'Webhook URL must not include credentials.' };
+    }
+    if (!isAllowedWebhookHost(parsed.hostname)) {
+      return { valid: false, message: 'Webhook URL host is not allowed.' };
+    }
     return { valid: true, value };
   }
-  const localHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
-  if (environment !== 'production' && parsed.protocol === 'http:' && localHosts.has(parsed.hostname)) {
-    return { valid: true, value };
+  return { valid: false, message: 'Webhook URL must use HTTPS.' };
+}
+
+function isAllowedWebhookHost(hostname: string): boolean {
+  const host = normalizeWebhookHostname(hostname);
+  if (!host || host.includes('%')) {
+    return false;
   }
-  return { valid: false, message: 'Webhook URL must use HTTPS. Localhost is allowed only in local/dev mode.' };
+  if (host === 'localhost' || host.endsWith('.localhost')) {
+    return false;
+  }
+  const ipVersion = isIP(host);
+  if (ipVersion === 4) {
+    return !isUnsafeIpv4(host);
+  }
+  if (ipVersion === 6) {
+    return !isUnsafeIpv6(host);
+  }
+  if (!host.includes('.')) {
+    return false;
+  }
+  return !(
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    host.endsWith('.lan') ||
+    host.endsWith('.home.arpa')
+  );
+}
+
+function normalizeWebhookHostname(hostname: string): string {
+  const lower = hostname.trim().toLowerCase();
+  const withoutBrackets = lower.startsWith('[') && lower.endsWith(']') ? lower.slice(1, -1) : lower;
+  return withoutBrackets.replace(/\.+$/u, '');
+}
+
+function isUnsafeIpv4(host: string): boolean {
+  const parts = host.split('.').map((part) => Number.parseInt(part, 10));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return true;
+  }
+  const [a = 0, b = 0, c = 0] = parts;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 192 && b === 0 && c === 2) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113) ||
+    a >= 224
+  );
+}
+
+function isUnsafeIpv6(host: string): boolean {
+  const groups = expandIpv6(host);
+  if (!groups) {
+    return true;
+  }
+  const [g0 = 0, g1 = 0, g2 = 0, g3 = 0, g4 = 0, g5 = 0, g6 = 0, g7 = 0] = groups;
+  if (groups.every((group) => group === 0)) {
+    return true;
+  }
+  if ([g0, g1, g2, g3, g4, g5, g6].every((group) => group === 0) && g7 === 1) {
+    return true;
+  }
+  if ((g0 & 0xfe00) === 0xfc00) {
+    return true;
+  }
+  if ((g0 & 0xffc0) === 0xfe80) {
+    return true;
+  }
+  if ((g0 & 0xff00) === 0xff00) {
+    return true;
+  }
+  if (g0 === 0x2001 && g1 === 0x0db8) {
+    return true;
+  }
+  if ([g0, g1, g2, g3, g4].every((group) => group === 0) && g5 === 0xffff) {
+    const ipv4 = `${g6 >> 8}.${g6 & 0xff}.${g7 >> 8}.${g7 & 0xff}`;
+    return isUnsafeIpv4(ipv4);
+  }
+  return false;
+}
+
+function expandIpv6(host: string): number[] | null {
+  if (host.includes('%')) {
+    return null;
+  }
+  const compactParts = host.split('::');
+  if (compactParts.length > 2) {
+    return null;
+  }
+  const head = parseIpv6Part(compactParts[0] ?? '');
+  const tail = compactParts.length === 2 ? parseIpv6Part(compactParts[1] ?? '') : [];
+  if (!head || !tail) {
+    return null;
+  }
+  const missingGroups = 8 - head.length - tail.length;
+  if (compactParts.length === 1) {
+    return missingGroups === 0 ? head : null;
+  }
+  if (missingGroups < 1) {
+    return null;
+  }
+  return [...head, ...Array.from({ length: missingGroups }, () => 0), ...tail];
+}
+
+function parseIpv6Part(part: string): number[] | null {
+  if (!part) {
+    return [];
+  }
+  const groups: number[] = [];
+  for (const rawGroup of part.split(':')) {
+    if (!rawGroup) {
+      return null;
+    }
+    if (rawGroup.includes('.')) {
+      if (isIP(rawGroup) !== 4 || isUnsafeIpv4(rawGroup)) {
+        return null;
+      }
+      const [a = 0, b = 0, c = 0, d = 0] = rawGroup.split('.').map((value) => Number.parseInt(value, 10));
+      groups.push((a << 8) + b, (c << 8) + d);
+      continue;
+    }
+    if (!/^[0-9a-f]{1,4}$/iu.test(rawGroup)) {
+      return null;
+    }
+    groups.push(Number.parseInt(rawGroup, 16));
+  }
+  return groups;
 }
 
 export function isPublicV1WebhookEvent(value: string): value is PublicV1WebhookEventType {
@@ -646,11 +782,25 @@ export function parseDeliveryLimit(value: unknown): number {
   return Math.min(parsed, 50);
 }
 
-export function createDefaultMerchantIntegrationRepository(env: NodeJS.ProcessEnv): MerchantIntegrationRepository | null {
+export function createDefaultMerchantIntegrationRepository(
+  env: NodeJS.ProcessEnv,
+  environment = 'development'
+): MerchantIntegrationRepository | null {
   if (!env.DATABASE_URL) {
     return null;
   }
-  return new PgMerchantIntegrationRepository(env.DATABASE_URL);
+  return new PgMerchantIntegrationRepository(env.DATABASE_URL, resolveWebhookSecretEncryptionKey(env, environment));
+}
+
+function resolveWebhookSecretEncryptionKey(env: NodeJS.ProcessEnv, environment: string): string {
+  const key = env.WEBHOOK_SECRET_ENCRYPTION_KEY?.trim();
+  if (key) {
+    return key;
+  }
+  if (environment === 'production') {
+    throw new Error('WEBHOOK_SECRET_ENCRYPTION_KEY is required in production.');
+  }
+  return 'local_dev_webhook_secret_encryption_key';
 }
 
 interface MerchantIntegrationMutable {

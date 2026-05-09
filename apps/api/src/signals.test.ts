@@ -301,6 +301,7 @@ describe('receiver signal ingestion api', () => {
       signalRepository: repository,
       eventPublisher: new FakeEventPublisher(),
       signalIdGenerator: () => 'sig_01',
+      phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
       clock: () => new Date('2026-05-02T11:00:00.000Z'),
       metrics
     });

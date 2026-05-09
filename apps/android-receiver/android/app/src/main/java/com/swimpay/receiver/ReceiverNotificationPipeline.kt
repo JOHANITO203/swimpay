@@ -74,9 +74,9 @@ class NotificationCoalescer {
                 snapshot.notificationId.toString(),
                 snapshot.tag.orEmpty(),
                 snapshot.postTime.toString(),
-                snapshot.title.orEmpty(),
-                snapshot.text.orEmpty(),
-                snapshot.bigText.orEmpty()
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.title.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.text.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.bigText.orEmpty())
             ).joinToString("|")
         }
         val first = distinct.minBy { it.postTime }
@@ -88,23 +88,23 @@ class NotificationCoalescer {
                 snapshot.notificationId.toString(),
                 snapshot.tag.orEmpty(),
                 snapshot.postTime.toString(),
-                snapshot.title.orEmpty(),
-                snapshot.text.orEmpty(),
-                snapshot.bigText.orEmpty(),
-                snapshot.subText.orEmpty(),
-                snapshot.summaryText.orEmpty(),
-                snapshot.textLines.joinToString("|")
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.title.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.text.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.bigText.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.subText.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.summaryText.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.textLines.joinToString("|"))
             ).joinToString("|")
         }
         val semanticBasis = distinct.joinToString("||") { snapshot ->
             listOf(
                 snapshot.packageName,
-                snapshot.title.orEmpty(),
-                snapshot.text.orEmpty(),
-                snapshot.bigText.orEmpty(),
-                snapshot.subText.orEmpty(),
-                snapshot.summaryText.orEmpty(),
-                snapshot.textLines.joinToString("|")
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.title.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.text.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.bigText.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.subText.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.summaryText.orEmpty()),
+                NotificationPrivacyCanonicalizer.canonicalize(snapshot.textLines.joinToString("|"))
             ).joinToString("|")
         }
         return CoalescedNotification(
@@ -195,8 +195,8 @@ class ReceiverNotificationPipeline(
             .joinToString(" ")
         val direction = classifyDirection(combined)
         val amountMinor = extractAmountMinor(combined)
-        val redactedTitle = snapshot.title?.let(::redactText)
-        val redactedBody = redactText(combined)
+        val redactedTitle = snapshot.title?.let(NotificationPrivacyCanonicalizer::redactText)
+        val redactedBody = NotificationPrivacyCanonicalizer.redactText(combined)
         return PrivacyFirewallResult(
             redactedTitle = redactedTitle,
             redactedBody = redactedBody,
@@ -204,8 +204,8 @@ class ReceiverNotificationPipeline(
             localParserHints = LocalParserHints(
                 amountMinor = amountMinor,
                 currency = if (amountMinor != null) "RUB" else null,
-                senderPhoneMasked = if (PHONE_REGEX.containsMatchIn(combined)) "<PHONE>" else null,
-                referenceMasked = if (REFERENCE_REGEX.containsMatchIn(combined)) "<REFERENCE>" else null,
+                senderPhoneMasked = if (NotificationPrivacyCanonicalizer.containsPhone(combined)) "<PHONE>" else null,
+                referenceMasked = if (NotificationPrivacyCanonicalizer.containsReference(combined)) "<REFERENCE>" else null,
                 directionHint = direction
             )
         )
@@ -246,6 +246,45 @@ class ReceiverNotificationPipeline(
     companion object {
         private val PHONE_REGEX = Regex("""\+?\d[\d\s()\-]{7,}\d""")
         private val REFERENCE_REGEX = Regex("""\bSWP-[A-Z0-9-]+\b""", RegexOption.IGNORE_CASE)
+    }
+}
+
+private object NotificationPrivacyCanonicalizer {
+    private val PHONE_REGEX = Regex("""\+?\d[\d\s()\-]{7,}\d""")
+    private val REFERENCE_REGEX = Regex(
+        """\b(?:SWP-[A-Z0-9-]+|(?:ref|reference|order|invoice|comment)\s*[:#-]?\s*[A-Z0-9][A-Z0-9-]{3,})\b""",
+        RegexOption.IGNORE_CASE
+    )
+    private val CARD_MASK_REGEX = Regex(
+        """(?i)\b(?:card|visa|mir|mastercard|account)?\s*(?:[*x]{1,4}[\s-]?\d{3,4}|\d{4}[\s-]?[*x]{2,}[\s-]?[*x]{2,}[\s-]?\d{2,4}|[*x]{2,}[\s-]?\d{2,4})\b"""
+    )
+    private val PERSON_FROM_REGEX = Regex(
+        """\b(from|sender)\s+[A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,2}""",
+        RegexOption.IGNORE_CASE
+    )
+    private val AMOUNT_REGEX = Regex("""\d+(?:[,.]\d{1,2})?\s*(₽|rub|руб\.?)""", RegexOption.IGNORE_CASE)
+    private val SPACES_REGEX = Regex("""\s+""")
+
+    fun containsPhone(value: String): Boolean = PHONE_REGEX.containsMatchIn(value)
+
+    fun containsReference(value: String): Boolean = REFERENCE_REGEX.containsMatchIn(value)
+
+    fun redactText(value: String): String {
+        return value
+            .replace(PHONE_REGEX, "<PHONE>")
+            .replace(CARD_MASK_REGEX, "<CARD_MASK>")
+            .replace(REFERENCE_REGEX, "<REFERENCE>")
+            .replace(PERSON_FROM_REGEX) { match ->
+                val prefix = match.groupValues[1]
+                "$prefix <PERSON>"
+            }
+            .replace(AMOUNT_REGEX, "<AMOUNT> <CURRENCY>")
+            .replace(SPACES_REGEX, " ")
+            .trim()
+    }
+
+    fun canonicalize(value: String): String {
+        return redactText(value).lowercase().replace(SPACES_REGEX, " ").trim()
     }
 }
 

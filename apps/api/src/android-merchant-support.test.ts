@@ -7,6 +7,7 @@ describe('android merchant support/settings contracts', () => {
     const server = buildApiServer({
       environment: 'production',
       authBffRepository: null,
+      phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
       eventPublisher: { publish: async () => undefined }
     });
 
@@ -30,6 +31,7 @@ describe('android merchant support/settings contracts', () => {
     const server = buildApiServer({
       environment: 'production',
       authBffRepository,
+      phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
       eventPublisher: { publish: async () => undefined }
     });
 
@@ -63,6 +65,7 @@ describe('android merchant support/settings contracts', () => {
       environment: 'production',
       authBffRepository,
       supportTicketRepository,
+      phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
       supportTicketIdGenerator: () => 'sup_test_01',
       eventPublisher: { publish: async () => undefined },
       clock: () => new Date('2026-05-08T20:00:00.000Z')
@@ -108,6 +111,7 @@ describe('android merchant support/settings contracts', () => {
     const server = buildApiServer({
       environment: 'production',
       authBffRepository,
+      phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
       eventPublisher: { publish: async () => undefined }
     });
 

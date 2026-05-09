@@ -116,6 +116,18 @@ describe('payment intent gate', () => {
     expect(result.reasonCodes).toContain('receiver_bank_mismatch');
   });
 
+  it('does not review wrong receiving-route notifications', () => {
+    const result = evaluatePaymentIntentGate({
+      signal: { ...baseSignal, receivingRouteId: 'route_other_card' },
+      activePaymentIntents: [baseIntent]
+    });
+
+    expect(result.intentRelation).toBe('unrelated_bank_activity');
+    expect(result.reviewCreationAllowed).toBe(false);
+    expect(result.selectedIntent).toBeUndefined();
+    expect(result.reasonCodes).toContain('receiving_route_mismatch');
+  });
+
   it('routes amount-only active matches to cautious review', () => {
     const result = evaluatePaymentIntentGate({
       signal: { ...baseSignal, referenceHmac: undefined, senderPhoneHmac: undefined },

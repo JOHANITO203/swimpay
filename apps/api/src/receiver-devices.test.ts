@@ -190,6 +190,7 @@ async function createProductionReceiverServerWithSession(repository: InMemoryRec
     environment: 'production',
     authBffRepository,
     receiverDeviceRepository: repository,
+    phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
     idGenerator: {
       orderId: () => 'ord_unused',
       paymentSessionId: () => 'ps_unused',
@@ -219,6 +220,7 @@ describe('receiver device api', () => {
     const server = buildApiServer({
       environment: 'production',
       receiverDeviceRepository: repository,
+      phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
       idGenerator: {
         orderId: () => 'ord_unused',
         paymentSessionId: () => 'ps_unused',
@@ -320,6 +322,7 @@ describe('receiver device api', () => {
       authBffRepository,
       receiverDeviceRepository: repository,
       signalRepository,
+      phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
       eventPublisher: { publish: async () => {} },
       signalIdGenerator: () => 'sig_mobile_runtime_01',
       idGenerator: {

@@ -1,5 +1,8 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { InMemoryMetricsRegistry, MetricNames } from '@swimpay/observability';
+import { InMemoryMerchantApiKeyVerifier } from './auth-bff.js';
+import { InMemoryMerchantIntegrationRepository } from './developer-integration.js';
+import { parseMerchantId } from './orders.js';
 import {
   buildApiServer,
   type OrderRepository,
@@ -217,6 +220,36 @@ function buildTestServer(repository: InMemoryOrderRepository, metrics?: InMemory
   });
 }
 
+function buildProductionOrderServer(repository: InMemoryOrderRepository) {
+  const merchantApiKeyVerifier = new InMemoryMerchantApiKeyVerifier();
+  const server = buildApiServer({
+    environment: 'production',
+    orderRepository: repository,
+    merchantIntegrationRepository: new InMemoryMerchantIntegrationRepository(),
+    merchantApiKeyVerifier,
+    phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
+    checkoutBaseUrl: 'https://pay.swimpay.example/checkout',
+    idGenerator: {
+      orderId: () => 'ord_prod_01',
+      paymentSessionId: () => 'ps_prod_01',
+      auditEventId: () => 'aud_prod_01',
+      referenceCode: () => 'SWP-PROD1'
+    },
+    clock: () => new Date('2026-05-02T10:00:00.000Z'),
+    healthChecks: {
+      database: async () => 'skipped',
+      nats: async () => 'skipped',
+      valkey: async () => 'skipped'
+    },
+    adminAuth: {
+      mode: 'signed_token',
+      environment: 'production',
+      tokenHmacSecret: 'production_admin_hmac_secret_for_tests'
+    }
+  });
+  return { server, merchantApiKeyVerifier };
+}
+
 const validOrderPayload = {
   external_id: 'order_888',
   amount: {
@@ -236,6 +269,15 @@ const validOrderPayload = {
 };
 
 describe('order api', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test('does not parse development test merchant bearers unless explicitly allowed', () => {
+    expect(parseMerchantId('Bearer test_mch_01')).toBeNull();
+    expect(parseMerchantId('Bearer test_mch_01', { allowTestBearer: true })).toBe('mch_01');
+  });
+
   test('creates an order, payment session placeholder and audit event without storing raw phone', async () => {
     const repository = new InMemoryOrderRepository();
     const metrics = new InMemoryMetricsRegistry();
@@ -390,5 +432,93 @@ describe('order api', () => {
       expires_at: '2026-05-02T10:15:00.000Z',
       latest_event: 'payment_session.receiver_arming_requested'
     });
+  });
+
+  test('rejects production test bearer tokens on SDK order routes', async () => {
+    const repository = new InMemoryOrderRepository();
+    const { server } = buildProductionOrderServer(repository);
+
+    const create = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: validOrderPayload
+    });
+    expect(create.statusCode).toBe(401);
+
+    const read = await server.inject({
+      method: 'GET',
+      url: '/v1/orders/ord_prod_01',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    expect(read.statusCode).toBe(401);
+  });
+
+  test('enforces API key scopes for SDK order creation and reads', async () => {
+    const repository = new InMemoryOrderRepository();
+    const { server, merchantApiKeyVerifier } = buildProductionOrderServer(repository);
+    merchantApiKeyVerifier.seedRawKey('sk_live_read_only', {
+      merchantId: 'merchant_prod_01',
+      apiKeyId: 'key_read_only',
+      scopes: ['orders.read']
+    });
+    merchantApiKeyVerifier.seedRawKey('sk_live_write_only', {
+      merchantId: 'merchant_prod_01',
+      apiKeyId: 'key_write_only',
+      scopes: ['orders.write']
+    });
+
+    const forbiddenCreate = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer sk_live_read_only' },
+      payload: validOrderPayload
+    });
+    expect(forbiddenCreate.statusCode).toBe(403);
+    expect(repository.orders.size).toBe(0);
+
+    const created = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer sk_live_write_only' },
+      payload: validOrderPayload
+    });
+    expect(created.statusCode).toBe(201);
+
+    const forbiddenRead = await server.inject({
+      method: 'GET',
+      url: '/v1/orders/ord_prod_01',
+      headers: { authorization: 'Bearer sk_live_write_only' }
+    });
+    expect(forbiddenRead.statusCode).toBe(403);
+
+    const read = await server.inject({
+      method: 'GET',
+      url: '/v1/orders/ord_prod_01',
+      headers: { authorization: 'Bearer sk_live_read_only' }
+    });
+    expect(read.statusCode).toBe(200);
+  });
+
+  test('fails fast when production phone HMAC secret is missing', () => {
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv('PHONE_HMAC_SECRET', '');
+
+    expect(() =>
+      buildApiServer({
+        environment: 'production',
+        orderRepository: new InMemoryOrderRepository(),
+        healthChecks: {
+          database: async () => 'skipped',
+          nats: async () => 'skipped',
+          valkey: async () => 'skipped'
+        },
+        adminAuth: {
+          mode: 'signed_token',
+          environment: 'production',
+          tokenHmacSecret: 'production_admin_hmac_secret_for_tests'
+        }
+      })
+    ).toThrow(/PHONE_HMAC_SECRET/u);
   });
 });

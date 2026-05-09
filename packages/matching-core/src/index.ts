@@ -534,10 +534,12 @@ export function evaluatePaymentIntentGate(input: EvaluatePaymentIntentGateInput)
       isInsidePaymentIntentWindow(input.signal.observedAt, intent) &&
       isReceiverBankMatch(input.signal, intent)
   );
-  const activeCandidates = activeBankCandidates.filter((intent) => isAmountRelated(input.signal, intent));
+  const activeRouteCandidates = activeBankCandidates.filter((intent) => isReceiverRouteCompatible(input.signal, intent));
+  const activeCandidates = activeRouteCandidates.filter((intent) => isAmountRelated(input.signal, intent));
   const expiredCandidates = merchantIntents.filter(
     (intent) =>
       isReceiverBankMatch(input.signal, intent) &&
+      isReceiverRouteCompatible(input.signal, intent) &&
       isExpiredPaymentIntent(input.signal.observedAt, intent) &&
       isExactAmountAndCurrency(input.signal, intent)
   );
@@ -563,6 +565,9 @@ export function evaluatePaymentIntentGate(input: EvaluatePaymentIntentGateInput)
 
   if (activeCandidates.length === 0) {
     const hasBankMismatch = merchantIntents.some((intent) => isPaymentIntentActive(intent.status) && !isReceiverBankMatch(input.signal, intent));
+    const hasRouteMismatch = activeBankCandidates.some(
+      (intent) => isAmountRelated(input.signal, intent) && hasExplicitGateRouteMismatch(input.signal, intent)
+    );
     if (expiredCandidates.length > 0 && (input.allowLatePaymentReview ?? true)) {
       return selectAmbiguousGateDecision({
         signal: input.signal,
@@ -578,7 +583,10 @@ export function evaluatePaymentIntentGate(input: EvaluatePaymentIntentGateInput)
       reviewCreationAllowed: false,
       collisionDetected: false,
       paymentWindowStatus: 'none',
-      reasonCodes: [hasBankMismatch ? 'receiver_bank_mismatch' : 'no_active_payment_intent', ...baseReasons]
+      reasonCodes: [
+        hasRouteMismatch ? 'receiving_route_mismatch' : hasBankMismatch ? 'receiver_bank_mismatch' : 'no_active_payment_intent',
+        ...baseReasons
+      ]
     });
   }
 
@@ -748,6 +756,14 @@ function isExactAmountAndCurrency(signal: PaymentIntentGateSignal, intent: Payme
 
 function hasGateRouteMatch(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
   return Boolean(signal.receivingRouteId && intent.selectedReceivingRouteId && signal.receivingRouteId === intent.selectedReceivingRouteId);
+}
+
+function isReceiverRouteCompatible(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
+  return !hasExplicitGateRouteMismatch(signal, intent);
+}
+
+function hasExplicitGateRouteMismatch(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
+  return Boolean(signal.receivingRouteId && intent.selectedReceivingRouteId && signal.receivingRouteId !== intent.selectedReceivingRouteId);
 }
 
 function hasGateIdentityMatch(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {

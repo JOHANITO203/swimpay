@@ -89,13 +89,17 @@ data class AuthenticatedMerchantSession(
 data class AndroidMerchantDeviceProof(
     val installPublicKey: String,
     val challengeId: String,
-    val challengeSignature: String
+    val challengeSignature: String,
+    val deviceProofType: String = AndroidMerchantDeviceProofContract.PROOF_TYPE,
+    val signatureAlgorithm: String = AndroidMerchantDeviceProofContract.WIRE_SIGNATURE_ALGORITHM
 ) {
     fun toRequestMap(): Map<String, String> {
-        return mapOf(
+        return linkedMapOf(
             "install_public_key" to installPublicKey,
             "challenge_id" to challengeId,
-            "challenge_signature" to challengeSignature
+            "challenge_signature" to challengeSignature,
+            "device_proof_type" to deviceProofType,
+            "signature_algorithm" to signatureAlgorithm
         )
     }
 }

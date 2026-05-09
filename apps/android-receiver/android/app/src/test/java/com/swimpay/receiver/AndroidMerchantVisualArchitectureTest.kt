@@ -376,16 +376,43 @@ class AndroidMerchantVisualArchitectureTest {
         val connectedSiteRoute = sourceBetween(premiumApp, "PremiumRoute.ConnectedSite -> PremiumConnectedSiteStateScreen(", "PremiumRoute.ConfigurationTest ->")
 
         assertTrue(premiumRuntime.contains("fun developerExportText(): String"))
+        assertTrue(premiumRuntime.contains("fun clearDeveloperShowOnceExport"))
+        assertTrue(premiumRuntime.contains("DEVELOPER_SHOW_ONCE_COPY_TTL_MS"))
         assertTrue(connectedSiteSource.contains("LocalClipboardManager.current"))
-        assertTrue(connectedSiteSource.contains("AnnotatedString(value.developerExportText())"))
+        assertTrue(connectedSiteSource.contains("AnnotatedString(onCopyDeveloperExport(value))"))
         assertTrue(connectedSiteSource.contains("onAuthorizeCopy: (onAuthorized: () -> Unit) -> Unit = { onAuthorized -> onAuthorized() }"))
+        assertTrue(connectedSiteSource.contains("onCopyDeveloperExport: (PremiumConnectedSiteUiState) -> String"))
         assertTrue(connectedSiteSource.contains("onAuthorizeCopy {"))
         assertTrue(connectedSiteRoute.contains("onAuthorizeCopy = { onAuthorized -> onRequestUnlock(onAuthorized) }"))
+        assertTrue(connectedSiteRoute.contains("onCopyDeveloperExport = { value ->"))
+        assertTrue(connectedSiteRoute.contains("activeRuntime.consumeDeveloperExportText(value)"))
         assertTrue(connectedSiteSource.contains("contentDescription = \"Copier\""))
         assertTrue(connectedSiteSource.contains("Icons.Default.ContentCopy"))
         assertFalse(connectedSiteSource.contains("Copier pour dev"))
         assertFalse(connectedSiteSource.contains("secretKeyOnce"))
         assertFalse(connectedSiteSource.contains("webhookSecretOnce"))
+    }
+
+    @Test
+    fun appLockPreventsSensitiveRuntimeLoadsWhileUiLocked() {
+        val premiumApp = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
+        val registrationEffect = sourceBetween(
+            premiumApp,
+            "LaunchedEffect(activeRuntime, notificationAccessEnabled",
+            "fun finishOnboarding"
+        )
+        val routeLoadEffect = sourceBetween(
+            premiumApp,
+            "LaunchedEffect(route, activeRuntime",
+            "\n    if (uiLocked) {"
+        )
+
+        assertTrue(registrationEffect.contains("uiLocked"))
+        assertTrue(registrationEffect.contains("if (uiLocked) return@LaunchedEffect"))
+        assertTrue(routeLoadEffect.contains("uiLocked"))
+        assertTrue(routeLoadEffect.contains("if (uiLocked) return@LaunchedEffect"))
+        assertTrue(routeLoadEffect.indexOf("if (uiLocked) return@LaunchedEffect") < routeLoadEffect.indexOf("loadConnectedSite"))
+        assertTrue(routeLoadEffect.indexOf("if (uiLocked) return@LaunchedEffect") < routeLoadEffect.indexOf("loadReviews"))
     }
 
     @Test

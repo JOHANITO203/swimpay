@@ -80,6 +80,7 @@ import {
   type AndroidMerchantAccountRecord,
   type AndroidMerchantMobileSessionRecord,
   type BffSessionContext,
+  type MerchantApiKeyPrincipal,
   type MerchantApiKeyVerifier,
   type MerchantPermission,
   type MerchantRole
@@ -193,6 +194,15 @@ const COPY_DETAILS_RATE_LIMIT_MAX = 3;
 const COPY_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const COPY_DETAILS_REVEAL_TTL_MS = 2 * 60 * 1000;
 const ANDROID_MERCHANT_MOBILE_SESSION_TTL_MS = 60 * 60 * 24 * 30 * 1000;
+const SDK_API_KEY_SCOPES = {
+  ORDERS_READ: 'orders.read',
+  ORDERS_WRITE: 'orders.write',
+  ORDERS_CREATE_LEGACY: 'orders:create'
+} as const;
+const SDK_ORDER_CREATE_SCOPES = [SDK_API_KEY_SCOPES.ORDERS_WRITE, SDK_API_KEY_SCOPES.ORDERS_CREATE_LEGACY] as const;
+const SDK_ORDER_READ_SCOPES = [SDK_API_KEY_SCOPES.ORDERS_READ] as const;
+
+type SdkApiKeyScope = (typeof SDK_API_KEY_SCOPES)[keyof typeof SDK_API_KEY_SCOPES];
 
 export type {
   CreateOrderWithSessionInput,
@@ -353,6 +363,31 @@ export function createDefaultHealthChecks(env: NodeJS.ProcessEnv): HealthChecks 
   };
 }
 
+function resolveRequiredSecret(input: {
+  optionValue?: string | undefined;
+  envValue?: string | undefined;
+  envName: string;
+  environment: string;
+  localFallback: string;
+}): string {
+  const explicitValue = input.optionValue?.trim();
+  if (explicitValue) {
+    return explicitValue;
+  }
+  const envValue = input.envValue?.trim();
+  if (envValue) {
+    return envValue;
+  }
+  if (input.environment === 'production') {
+    throw new Error(`${input.envName} is required in production.`);
+  }
+  return input.localFallback;
+}
+
+function hasSdkApiKeyScope(principal: MerchantApiKeyPrincipal, acceptedScopes: readonly SdkApiKeyScope[]): boolean {
+  return acceptedScopes.some((scope) => principal.scopes.includes(scope));
+}
+
 class GoogleAuthLibraryIdTokenVerifier implements GoogleIdTokenVerifier {
   private readonly client = new OAuth2Client();
 
@@ -503,6 +538,13 @@ export function createDefaultGoogleIdTokenVerifier(env: NodeJS.ProcessEnv): Goog
 }
 
 export function buildApiServer(options: ApiServerOptions): FastifyInstance {
+  const phoneHmacSecret = resolveRequiredSecret({
+    optionValue: options.phoneHmacSecret,
+    envValue: process.env.PHONE_HMAC_SECRET,
+    envName: 'PHONE_HMAC_SECRET',
+    environment: options.environment,
+    localFallback: 'local_dev_phone_hmac_secret'
+  });
   const server = Fastify({ logger: createFastifyLoggerOptions() });
   const checks = options.healthChecks ?? createDefaultHealthChecks(process.env);
   const repository = options.orderRepository ?? createDefaultOrderRepository(process.env);
@@ -513,7 +555,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const bankEvidenceRepository = options.bankEvidenceRepository ?? createDefaultBankEvidenceRepository(process.env);
   const intelligenceRepository = options.intelligenceRepository ?? createDefaultIntelligenceRepository(process.env, options.environment);
   const merchantIntegrationRepository =
-    options.merchantIntegrationRepository ?? createDefaultMerchantIntegrationRepository(process.env);
+    options.merchantIntegrationRepository ?? createDefaultMerchantIntegrationRepository(process.env, options.environment);
   const merchantMetricsRepository = options.merchantMetricsRepository ?? createDefaultMerchantMetricsRepository(process.env);
   const supportTicketRepository = options.supportTicketRepository ?? createDefaultSupportTicketRepository(process.env);
   const authBffRepository = options.authBffRepository ?? createDefaultAuthBffRepository(process.env);
@@ -522,7 +564,6 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const googleIdTokenVerifier = options.googleIdTokenVerifier ?? createDefaultGoogleIdTokenVerifier(process.env);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const metrics = options.metrics ?? defaultMetricsRegistry;
-  const phoneHmacSecret = options.phoneHmacSecret ?? process.env.PHONE_HMAC_SECRET ?? 'local_dev_phone_hmac_secret';
   const checkoutBaseUrl = options.checkoutBaseUrl ?? process.env.CHECKOUT_BASE_URL ?? 'http://localhost:3001/checkout';
   const idGenerator = options.idGenerator ?? createDefaultIdGenerator();
   const receiverDeviceIdGenerator = options.receiverDeviceIdGenerator ?? (() => randomUUID());
@@ -612,12 +653,26 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return merchantId ? { merchantId, source: 'dev_test_bearer' } : null;
   }
 
-  async function resolveSdkMerchantId(request: FastifyRequest): Promise<string | null> {
+  async function resolveSdkMerchantContext(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    acceptedScopes: readonly SdkApiKeyScope[]
+  ): Promise<{ merchantId: string; source: 'api_key' | 'dev_test_bearer' } | null> {
     const apiKeyPrincipal = await verifyMerchantApiKeyAuthorization(request.headers.authorization, merchantApiKeyVerifier);
     if (apiKeyPrincipal) {
-      return apiKeyPrincipal.merchantId;
+      if (hasSdkApiKeyScope(apiKeyPrincipal, acceptedScopes)) {
+        return { merchantId: apiKeyPrincipal.merchantId, source: 'api_key' };
+      }
+      reply.status(403).send(
+        invalidRequest('API key scope is required for this endpoint.', {
+          required_scopes: acceptedScopes,
+          api_key_id: apiKeyPrincipal.apiKeyId
+        })
+      );
+      return null;
     }
-    return parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
+    return merchantId ? { merchantId, source: 'dev_test_bearer' } : null;
   }
 
   async function resolveAndroidMerchantContext(
@@ -809,7 +864,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   }));
 
   server.post('/v1/intelligence/feedback', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
       return reply.status(401).send(
         invalidRequest('A test merchant bearer token is required for intelligence feedback.', {
@@ -837,7 +892,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/intelligence/unknown-shapes', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
       return reply.status(401).send(
         invalidRequest('A test merchant bearer token is required for unknown shape monitoring.', {
@@ -943,7 +998,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply.status(503).send(developerIntegrationUnavailableError());
     }
     const body = request.body as { webhook_url?: unknown } | null;
-    const webhookUrl = validateWebhookUrl(body?.webhook_url, options.environment);
+    const webhookUrl = validateWebhookUrl(body?.webhook_url);
     if (!webhookUrl.valid) {
       return reply.status(400).send(invalidRequest(webhookUrl.message, { field: 'webhook_url' }));
     }
@@ -1014,12 +1069,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/orders', async (request, reply) => {
-    const merchantId = await resolveSdkMerchantId(request);
-    if (!merchantId) {
+    const merchantContext = await resolveSdkMerchantContext(request, reply, SDK_ORDER_CREATE_SCOPES);
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(
         invalidRequest('A valid merchant API key or authenticated development merchant bearer is required.', {})
       );
     }
+    const { merchantId } = merchantContext;
 
     const body = validateCreateOrderBody(request.body);
     if ('error' in body) {
@@ -1080,14 +1137,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/orders/:id', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
-    if (!merchantId) {
+    const merchantContext = await resolveSdkMerchantContext(request, reply, SDK_ORDER_READ_SCOPES);
+    if (!merchantContext) {
+      if (reply.sent) return reply;
       return reply.status(401).send(
-        invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {
-          authorization: 'Bearer test_<merchant_id>'
-        })
+        invalidRequest('A valid merchant API key or authenticated development merchant bearer is required.', {})
       );
     }
+    const { merchantId } = merchantContext;
 
     const params = request.params as { id?: string };
     if (!params.id) {
@@ -2069,7 +2126,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/bank-evidence', async (request, reply) => {
-    const merchantId = parseMerchantId(request.headers.authorization);
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
     if (!merchantId) {
       return reply.status(401).send(
         invalidRequest('A test merchant bearer token is required for this foundation endpoint.', {

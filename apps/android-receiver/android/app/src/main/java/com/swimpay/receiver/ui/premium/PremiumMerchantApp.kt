@@ -76,6 +76,9 @@ fun PremiumMerchantApp(
         onThemeModeChanged(next.themeMode)
     }
     val navigateFromMenu: (PremiumRoute) -> Unit = { target ->
+        if (target != PremiumRoute.ConnectedSite) {
+            activeRuntime.clearDeveloperShowOnceExport()
+        }
         route = when (target) {
             PremiumRoute.ReceivingMethods -> PremiumNavigation.openReceivingMethods()
             PremiumRoute.Banks -> PremiumNavigation.openBanks()
@@ -92,7 +95,8 @@ fun PremiumMerchantApp(
         }
     }
 
-    LaunchedEffect(activeRuntime, notificationAccessEnabled) {
+    LaunchedEffect(activeRuntime, notificationAccessEnabled, uiLocked) {
+        if (uiLocked) return@LaunchedEffect
         val session = mobileMerchantSessionStore.currentSession()
         if (
             session != null &&
@@ -205,7 +209,8 @@ fun PremiumMerchantApp(
         }
     }
 
-    LaunchedEffect(route, activeRuntime) {
+    LaunchedEffect(route, activeRuntime, uiLocked) {
+        if (uiLocked) return@LaunchedEffect
         when (val currentRoute = route) {
             is PremiumRoute.Main -> {
                 when (currentRoute.tab) {
@@ -484,7 +489,10 @@ fun PremiumMerchantApp(
         )
         PremiumRoute.ConnectedSite -> PremiumConnectedSiteStateScreen(
             state = connectedSiteState,
-            onBack = { route = PremiumRoute.Main(PremiumMainTab.Menu) },
+            onBack = {
+                activeRuntime.clearDeveloperShowOnceExport()
+                route = PremiumRoute.Main(PremiumMainTab.Menu)
+            },
             onCreateApiKey = {
                 connectedSiteState = PremiumScreenState.loading()
                 scope.launch {
@@ -515,7 +523,12 @@ fun PremiumMerchantApp(
                     connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.testDeveloperWebhook() }
                 }
             },
-            onAuthorizeCopy = { onAuthorized -> onRequestUnlock(onAuthorized) }
+            onAuthorizeCopy = { onAuthorized -> onRequestUnlock(onAuthorized) },
+            onCopyDeveloperExport = { value ->
+                val exportText = activeRuntime.consumeDeveloperExportText(value)
+                connectedSiteState = PremiumScreenState.content(value.withoutShowOnceExport())
+                exportText
+            }
         )
         PremiumRoute.ConfigurationTest -> PremiumConfigurationStateScreen(configurationState) {
             route = PremiumRoute.Main(PremiumMainTab.Menu)

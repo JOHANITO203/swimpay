@@ -1,5 +1,17 @@
 # Progress Log
 
+## 2026-05-09T12:37:12+03:00 - HARDEN-REAL-1 quality hardening completed
+
+- Corrected the multi-agent quality-audit blockers before real notification testing.
+- Hardened signal runtime so invalid signatures, untrusted receivers/devices and untrusted package/certificate evidence are blocked before parsing or merchant review creation.
+- Applied Payment Intent Gate before review creation; no active payment intent remains a no-review path.
+- Hardened backend production behavior: required secrets fail fast, dev bearer shortcuts are not accepted in production-mode paths, SDK API key scopes are enforced and webhook URLs must be safe HTTPS public hosts.
+- Hardened Android: merchant device proof now uses an asymmetric Android Keystore boundary, redaction/canonical hashing avoids durable raw notification text inputs, app lock blocks sensitive runtime loads and developer export copy is device-unlock gated with show-once cleanup.
+- Hardened webhook delivery: stale `delivering` rows can be recovered after worker crash/timeout.
+- Added CI workflow and Docker/build-output hygiene; removed a tracked Gradle problem report from source control.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite with 75 files / 554 tests, TypeScript build, Compose config, Android JVM tests and Android staging APK build.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
 ## 2026-05-08T20:05:48+03:00 - RECEIVER-SIGN-1 staging upload proof passed
 
 - Investigated the post-redeploy `timestamp_out_of_range` result from the staging ADB proof.

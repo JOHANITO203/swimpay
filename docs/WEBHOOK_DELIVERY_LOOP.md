@@ -40,6 +40,13 @@ Claimable rows must satisfy:
 - `next_retry_at` is null or due;
 - `attempt_count < max_attempts`.
 
+Before each claim, the worker also recovers stale `delivering` rows whose claim
+timestamp is older than the configured claim timeout. The abandoned in-flight
+attempt is counted once. If attempts remain, the row becomes `failed` with
+`next_retry_at` derived from the persisted retry schedule; if the recovered
+attempt exhausts the budget, the row becomes `dead`. This prevents a worker
+crash after claiming a delivery from stranding it permanently.
+
 Valkey is not used as the delivery lock or source of truth.
 
 ## NATS Relationship
@@ -156,4 +163,3 @@ Task 026 intentionally does not implement:
 - payment auto-confirmation;
 - production deployment;
 - public admin replay endpoint changes.
-

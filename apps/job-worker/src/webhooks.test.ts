@@ -252,6 +252,89 @@ describe('webhook worker foundation', () => {
     expect(metrics.counterValue(MetricNames.WEBHOOK_DELIVERIES_DEAD_TOTAL)).toBe(1);
   });
 
+  it('reclaims stale delivering rows so worker crashes do not strand retryable deliveries', async () => {
+    const repository = new InMemoryWebhookRepository({
+      deliveryId: () => 'del_stale_retry'
+    });
+    repository.endpoints.push(activeEndpoint());
+    const httpClient = new FakeWebhookHttpClient([{ status: 200 }]);
+    const worker = new WebhookDeliveryWorker({ repository, httpClient });
+    const event = createPaymentWebhookEvent({
+      eventId: 'evt_stale_retry',
+      type: 'payment.confirmed',
+      createdAt: '2026-05-02T10:00:00.000Z',
+      merchantId: 'mch_01',
+      data: {
+        order_id: 'ord_01',
+        payment_session_id: 'ps_01',
+        decision: 'manual_confirmed'
+      }
+    });
+
+    await worker.enqueueEvent(event);
+    const claimedBeforeCrash = await repository.claimDueDeliveries('2026-05-02T10:00:00.000Z', 10);
+
+    expect(claimedBeforeCrash.map((delivery) => delivery.id)).toEqual(['del_stale_retry']);
+    expect(repository.deliveries[0]).toMatchObject({
+      status: 'delivering',
+      attemptCount: 0,
+      updatedAt: '2026-05-02T10:00:00.000Z'
+    });
+
+    const recovered = await worker.deliverDue('2026-05-02T10:10:00.000Z');
+
+    expect(recovered).toEqual({ delivered: 1, retrying: 0, failed: 0 });
+    expect(httpClient.requests).toHaveLength(1);
+    expect(repository.deliveries[0]).toMatchObject({
+      status: 'delivered',
+      attemptCount: 2,
+      deliveredAt: '2026-05-02T10:10:00.000Z'
+    });
+    expect(repository.auditEvents.map((event) => event.eventType)).toEqual([
+      'webhook.delivery_requested',
+      'webhook.failed',
+      'webhook.delivery_attempted',
+      'webhook.delivered'
+    ]);
+  });
+
+  it('marks stale delivering rows dead when the recovered attempt exhausts retries', async () => {
+    const repository = new InMemoryWebhookRepository({
+      deliveryId: () => 'del_stale_dead'
+    });
+    repository.endpoints.push(activeEndpoint());
+    const httpClient = new FakeWebhookHttpClient([{ status: 200 }]);
+    const worker = new WebhookDeliveryWorker({ repository, httpClient });
+    const event = createPaymentWebhookEvent({
+      eventId: 'evt_stale_dead',
+      type: 'payment.rejected',
+      createdAt: '2026-05-02T10:00:00.000Z',
+      merchantId: 'mch_01',
+      data: {
+        order_id: 'ord_01',
+        payment_session_id: 'ps_01',
+        reason_codes: ['manual_review_rejected']
+      }
+    });
+
+    await worker.enqueueEvent(event);
+    await repository.claimDueDeliveries('2026-05-02T10:00:00.000Z', 10);
+    repository.deliveries[0]!.attemptCount = 6;
+    repository.deliveries[0]!.maxAttempts = 7;
+
+    const recovered = await worker.deliverDue('2026-05-02T10:10:00.000Z');
+
+    expect(recovered).toEqual({ delivered: 0, retrying: 0, failed: 0 });
+    expect(httpClient.requests).toHaveLength(0);
+    expect(repository.deliveries[0]).toMatchObject({
+      status: 'dead',
+      attemptCount: 7,
+      nextRetryAt: undefined,
+      lastError: 'stale_delivery_recovered_after_worker_crash'
+    });
+    expect(repository.auditEvents.map((event) => event.eventType)).toContain('webhook.dead');
+  });
+
   it('records network errors as sanitized retryable failures', async () => {
     const repository = new InMemoryWebhookRepository({
       deliveryId: () => 'del_network'

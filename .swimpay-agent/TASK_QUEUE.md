@@ -6,7 +6,16 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-The current sprint is Android dashboard metrics wiring. It is not a payment runtime, Receiver capture or SDK/webhook rehearsal sprint.
+The current sprint is HARDEN-REAL-1. It fixes code-quality blockers before real notification testing.
+
+- [x] `706_harden_real_signal_runtime` - status: completed - source: `tasks/706_harden_real_signal_runtime.md`
+- [x] `707_harden_backend_prod_auth_and_secrets` - status: completed - source: `tasks/707_harden_backend_prod_auth_and_secrets.md`
+- [x] `708_harden_android_device_redaction_and_exports` - status: completed - source: `tasks/708_harden_android_device_redaction_and_exports.md`
+- [x] `709_harden_webhook_delivery_and_ci` - status: completed - source: `tasks/709_harden_webhook_delivery_and_ci.md`
+
+## Previous Queue
+
+The previous sprint was Android dashboard metrics wiring. It is not a payment runtime, Receiver capture or SDK/webhook rehearsal sprint.
 
 - [x] `698_metrics_inventory` - status: completed - source: `tasks/698_metrics_inventory.md`
 - [x] `699_backend_metrics_summary` - status: completed - source: `tasks/699_backend_metrics_summary.md`

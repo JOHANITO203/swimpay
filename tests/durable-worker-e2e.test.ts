@@ -72,7 +72,7 @@ const toVerifyContext: SignalRuntimeTrustContext = {
 };
 
 describe('durable worker e2e tests', () => {
-  it('routes an API-created TO_VERIFY bank signal to review without auto-confirming or exposing PII', async () => {
+  it('rejects an API-created TO_VERIFY bank signal before review without auto-confirming or exposing PII', async () => {
     const api = createApiHarness();
 
     const orderResponse = await api.server.inject({
@@ -123,15 +123,19 @@ describe('durable worker e2e tests', () => {
     });
 
     expect(message.ack).toHaveBeenCalledOnce();
-    expect(runtime.repository.matches[0]?.decision).toBe('needs_review');
-    expect(runtime.repository.reviews).toHaveLength(1);
-    expect(runtime.repository.reviews[0]?.reasonCodes).toEqual(
-      expect.arrayContaining(['bank_profile_untrusted', 'bank_app_unverified'])
+    expect(runtime.repository.matches[0]?.decision).toBe('rejected');
+    expect(runtime.repository.matches[0]?.reasonCodes).toEqual(
+      expect.arrayContaining(['bank_app_unverified', 'package_cert_to_verify'])
     );
-    expect(runtime.repository.orders.get('ord_e2e_01')?.status).toBe('needs_review');
+    expect(runtime.repository.reviews).toHaveLength(0);
+    expect(runtime.repository.signals[0]?.parserVersion).toBeUndefined();
+    expect(runtime.repository.orders.get('ord_e2e_01')?.status).toBe('awaiting_payment');
     expect(runtime.repository.webhookEvents).toEqual([]);
     expect(runtime.repository.publishedEvents.map((event) => event.type)).toEqual(
-      expect.arrayContaining([EventTypes.DECISION_NEEDS_REVIEW, EventTypes.REVIEW_CREATED])
+      expect.arrayContaining([EventTypes.DECISION_REJECTED])
+    );
+    expect(runtime.repository.publishedEvents.map((event) => event.type)).not.toEqual(
+      expect.arrayContaining([EventTypes.SIGNAL_PARSED, EventTypes.MATCH_SCORED, EventTypes.DECISION_NEEDS_REVIEW])
     );
     expectSafePayload(orderResponse.body);
     expectSafePayload(signalResponse.body);
@@ -614,6 +618,8 @@ function signalFromApi(input: SignalIngestionInput): SignalRuntimeSignal {
     merchantId: input.signal.merchantId,
     deviceId: input.signal.deviceId,
     bankProfileId: input.signal.bankProfileId,
+    packageName: input.signal.packageName,
+    packageCertSha256: input.signal.packageCertSha256,
     eventId: input.signal.eventId,
     notificationHash: input.signal.notificationHash,
     observedAt: input.signal.observedAt,

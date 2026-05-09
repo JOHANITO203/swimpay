@@ -75,6 +75,7 @@ function buildProductionStagingServer() {
     merchantApiKeyVerifier,
     orderRepository,
     receiverDeviceRepository,
+    phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
     receiverDeviceIdGenerator: () => 'dev_prod_stage_01',
     idGenerator: {
       orderId: () => 'ord_prod_stage_01',

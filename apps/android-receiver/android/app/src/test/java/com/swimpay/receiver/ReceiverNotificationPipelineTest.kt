@@ -86,6 +86,39 @@ class ReceiverNotificationPipelineTest {
     }
 
     @Test
+    fun privacyFirewallRedactsPersonCardAndReferenceVariantsBeforeHashing() {
+        val processor = ReceiverNotificationPipeline(debugEnabled = false, enabledBankPackages = setOf("ru.sberbankmobile"))
+        val first = StagingSyntheticNotificationHarness.supportedBankSnapshot(
+            packageName = "ru.sberbankmobile",
+            title = "Incoming transfer 137 RUB to card **** 1234",
+            text = "Transfer from Ivan Petrov +79991234567. Ref: ORDER-778899. Card *1234",
+            postTime = 1_775_000_100_000L
+        )
+        val second = first.copy(
+            text = "Transfer from Maria Sidorova +78885554433. Ref: INVOICE-445566. Card *9876",
+            bigText = "Transfer from Maria Sidorova +78885554433. Ref: INVOICE-445566. Card *9876",
+            textLines = listOf("Transfer from Maria Sidorova +78885554433. Ref: INVOICE-445566. Card *9876")
+        )
+
+        val firstPayload = processor.process(listOf(first)).payload ?: error("first payload expected")
+        val secondPayload = processor.process(listOf(second)).payload ?: error("second payload expected")
+        val firstText = firstPayload.toString()
+
+        assertTrue(firstText.contains("<PERSON>"))
+        assertTrue(firstText.contains("<CARD_MASK>"))
+        assertTrue(firstText.contains("<REFERENCE>"))
+        assertEquals("<REFERENCE>", firstPayload["reference_code_masked"])
+        assertFalse(firstText.contains("Ivan", ignoreCase = true))
+        assertFalse(firstText.contains("Petrov", ignoreCase = true))
+        assertFalse(firstText.contains("ORDER-778899", ignoreCase = true))
+        assertFalse(firstText.contains("**** 1234"))
+        assertFalse(firstText.contains("*1234"))
+        assertFalse(firstText.contains("+79991234567"))
+        assertEquals(firstPayload["semantic_hash"], secondPayload["semantic_hash"])
+        assertEquals(firstPayload["notification_hash"], secondPayload["notification_hash"])
+    }
+
+    @Test
     fun negativeSyntheticNotificationsDoNotBecomePaymentConfirmation() {
         val processor = ReceiverNotificationPipeline(debugEnabled = true)
         val categories = listOf("cashback", "refund", "outgoing", "promo", "failed")

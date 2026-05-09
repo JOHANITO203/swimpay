@@ -106,25 +106,77 @@ function createProcessor(params: {
 }
 
 describe('signal runtime processor', () => {
-  it('routes an incoming transfer to review when bank app metadata is still TO_VERIFY/pending', async () => {
+  it('rejects an incoming transfer before parsing when bank app metadata is still TO_VERIFY/pending', async () => {
     const metrics = new InMemoryMetricsRegistry();
     const { processor, repository } = createProcessor({ trustContext: toVerifyContext, metrics });
 
     const result = await processor.processSignalReceived({ signalId: 'sig_01', eventId: 'bank_evt_01' });
 
-    expect(result.decision).toBe('needs_review');
-    expect(repository.reviews).toHaveLength(1);
-    expect(repository.reviews[0]?.reasonCodes).toContain('bank_profile_untrusted');
-    expect(repository.reviews[0]?.reasonCodes).toContain('bank_app_unverified');
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toEqual(expect.arrayContaining(['bank_app_unverified', 'package_cert_to_verify']));
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.signals[0]?.parserVersion).toBeUndefined();
     expect(repository.webhookEvents).toEqual([]);
-    expect(metrics.counterValue(MetricNames.SIGNALS_PARSED_TOTAL)).toBe(1);
-    expect(metrics.counterValue(MetricNames.SIGNALS_NEEDS_REVIEW_TOTAL)).toBe(1);
-    expect(metrics.counterValue(MetricNames.REVIEWS_CREATED_TOTAL)).toBe(1);
-    expect(metrics.counterValue(MetricNames.UNTRUSTED_BANK_REVIEW_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.SIGNALS_PARSED_TOTAL)).toBe(0);
+    expect(metrics.counterValue(MetricNames.SIGNALS_REJECTED_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.SIGNALS_NEEDS_REVIEW_TOTAL)).toBe(0);
+    expect(metrics.counterValue(MetricNames.REVIEWS_CREATED_TOTAL)).toBe(0);
+    expect(metrics.counterValue(MetricNames.UNTRUSTED_BANK_REVIEW_TOTAL)).toBe(0);
+  });
+
+  it('rejects invalid signatures before parsing or match side effects', async () => {
+    const metrics = new InMemoryMetricsRegistry();
+    const { processor, repository } = createProcessor({
+      metrics,
+      signal: buildSignal({ signatureValid: false })
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toContain('invalid_signature');
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.signals[0]?.parserVersion).toBeUndefined();
+    expect(repository.signals[0]?.status).toBe('rejected');
+    expect(repository.publishedEvents.map((event) => event.type)).not.toEqual(
+      expect.arrayContaining([EventTypes.SIGNAL_PARSED, EventTypes.MATCH_CANDIDATES_FOUND, EventTypes.MATCH_SCORED])
+    );
+    expect(repository.auditEvents.map((event) => event.eventType)).not.toEqual(
+      expect.arrayContaining([EventTypes.SIGNAL_PARSED, EventTypes.MATCH_CANDIDATES_FOUND, EventTypes.MATCH_SCORED])
+    );
+    expect(metrics.counterValue(MetricNames.SIGNALS_PARSED_TOTAL)).toBe(0);
+    expect(metrics.counterValue(MetricNames.SIGNALS_REJECTED_TOTAL)).toBe(1);
+  });
+
+  it('rejects exact package/certificate mismatches before parsing or review creation', async () => {
+    const metrics = new InMemoryMetricsRegistry();
+    const exactTrustedContext = {
+      ...trustedContext,
+      trustedPackageName: 'ru.sberbankmobile',
+      trustedPackageCertSha256: 'cert_sber_verified'
+    } as SignalRuntimeTrustContext;
+    const { processor, repository } = createProcessor({
+      metrics,
+      trustContext: exactTrustedContext,
+      signal: {
+        ...buildSignal(),
+        packageName: 'com.fake.sberbankmobile',
+        packageCertSha256: 'cert_fake'
+      } as SignalRuntimeSignal
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toEqual(expect.arrayContaining(['bank_app_unverified', 'package_cert_mismatch']));
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.signals[0]?.parserVersion).toBeUndefined();
+    expect(repository.publishedEvents.map((event) => event.type)).not.toContain(EventTypes.SIGNAL_PARSED);
+    expect(metrics.counterValue(MetricNames.SIGNALS_PARSED_TOTAL)).toBe(0);
   });
 
   it('publishes internal review events without public signal or review webhooks', async () => {
-    const { processor, repository } = createProcessor({ trustContext: toVerifyContext });
+    const { processor, repository } = createProcessor();
 
     await processor.processSignalReceived({ signalId: 'sig_01', eventId: 'bank_evt_01' });
 
@@ -141,7 +193,7 @@ describe('signal runtime processor', () => {
     'vtb_ru',
     'alfa_ru',
     'gazprombank_ru'
-  ] as const)('routes synthetic review-only %s signals to review without auto-confirm', async (bankProfileId) => {
+  ] as const)('rejects synthetic unverified %s signals without auto-confirm', async (bankProfileId) => {
     const { processor, repository } = createProcessor({
       trustContext: toVerifyContext,
       signal: buildSignal({
@@ -159,12 +211,10 @@ describe('signal runtime processor', () => {
 
     const result = await processor.processSignalReceived({ signalId: `sig_${bankProfileId}` });
 
-    expect(result.decision).toBe('needs_review');
-    expect(repository.reviews).toHaveLength(1);
-    expect(repository.reviews[0]?.reasonCodes).toEqual(
-      expect.arrayContaining(['bank_profile_untrusted', 'bank_app_unverified', 'package_cert_to_verify'])
-    );
-    expect(repository.orders.get('ord_01')?.status).toBe('needs_review');
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toEqual(expect.arrayContaining(['bank_app_unverified', 'package_cert_to_verify']));
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.orders.get('ord_01')?.status).toBe('awaiting_payment');
     expect(repository.webhookEvents).toEqual([]);
   });
 
@@ -235,7 +285,7 @@ describe('signal runtime processor', () => {
       for (const fixture of bank.fixtures) {
         const signalId = `sig_${bank.bank_profile_id}_${fixture.category}`;
         const { processor, repository } = createProcessor({
-          trustContext: toVerifyContext,
+          trustContext: trustedContext,
           signal: buildSignal({
             id: signalId,
             bankProfileId: bank.bank_profile_id,
@@ -248,6 +298,9 @@ describe('signal runtime processor', () => {
           }),
           sessions: [
             buildSession({
+              selectedReceiverBankId: bank.bank_profile_id,
+              selectedReceiverBankProfileId: bank.bank_profile_id,
+              selectedReceivingRouteId: `route_${bank.bank_profile_id}_phone`,
               buyerPhoneHmac: fixture.category === 'amount_only' ? undefined : 'phone_hmac_01',
               referenceHmac: fixture.category === 'amount_only' ? undefined : 'ref_hmac_01'
             })
@@ -262,6 +315,37 @@ describe('signal runtime processor', () => {
         expect(JSON.stringify(repository.webhookEvents)).not.toContain('Transfer from +7');
       }
     }
+  });
+
+  it('does not create payment review for wrong-bank signals even when amount and identity match', async () => {
+    const { processor, repository } = createProcessor({
+      signal: buildSignal({ bankProfileId: 'tbank_ru' })
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toContain('receiver_bank_mismatch');
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.orders.get('ord_01')?.status).toBe('awaiting_payment');
+    expect(repository.publishedEvents.map((event) => event.type)).not.toContain(EventTypes.DECISION_NEEDS_REVIEW);
+  });
+
+  it('does not create payment review for wrong receiving-route signals even when amount and identity match', async () => {
+    const { processor, repository } = createProcessor({
+      signal: {
+        ...buildSignal(),
+        receivingRouteId: 'route_other_phone'
+      } as SignalRuntimeSignal
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toContain('receiving_route_mismatch');
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.orders.get('ord_01')?.status).toBe('awaiting_payment');
+    expect(repository.publishedEvents.map((event) => event.type)).not.toContain(EventTypes.DECISION_NEEDS_REVIEW);
   });
 
   it('routes trusted exact matches to manual review without emitting payment.confirmed', async () => {
@@ -336,7 +420,7 @@ describe('signal runtime processor', () => {
   });
 
   it('does not duplicate review items for repeated review decisions', async () => {
-    const { processor, repository } = createProcessor({ trustContext: toVerifyContext });
+    const { processor, repository } = createProcessor();
 
     await processor.processSignalReceived({ signalId: 'sig_01' });
     await processor.processSignalReceived({ signalId: 'sig_01' });

@@ -1,5 +1,20 @@
 # Blockers
 
+## HARDEN-REAL-1 quality blockers
+
+- Resolved locally: runtime rejects invalid signatures and untrusted receiver/device/app trust before parsing/review.
+- Resolved locally: Payment Intent Gate is applied before merchant review creation; no active intent means no review.
+- Resolved locally: backend production mode now fails fast for missing HMAC/encryption secrets and blocks dev bearer shortcuts.
+- Resolved locally: SDK order API keys now require explicit scopes; webhook URLs must be HTTPS and cannot target local/private/internal hosts.
+- Resolved locally: Android device proof uses an asymmetric Android Keystore boundary; private key remains on device.
+- Resolved locally: Android redaction/canonical hashing avoids durable raw notification text inputs.
+- Resolved locally: developer export copy is device-unlock gated, show-once, and cleared after copy/navigation.
+- Resolved locally: webhook worker recovers stale `delivering` rows after worker crash/timeout.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android staging APK build.
+- Local HARDEN-REAL-1 blocker: none remaining.
+- Real notification capture remains gated by synthetic SDK/checkout/manual-review/final-webhook proof and an explicit operator capture-start command.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+
 ## Android dashboard metrics wiring
 
 - Resolved locally: Android Accueil now displays `Paiements confirmés` with real confirmed amount from backend metrics.
