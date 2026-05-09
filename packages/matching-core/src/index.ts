@@ -88,9 +88,25 @@ export interface MatchDecisionOutput {
   decision: MatchingDecision;
   score: number;
   collisionDetected: boolean;
+  confidenceVector: MatchConfidenceVector;
   selected?: MatchingCandidateSession | undefined;
   candidates: MatchingCandidateSession[];
   reasonCodes: string[];
+}
+
+export interface MatchConfidenceVector {
+  amount: 'exact' | 'delta_match' | 'mismatch';
+  rail: 'sbp' | 'card' | 'unknown';
+  direction: 'incoming' | 'outgoing' | 'refund' | 'cashback' | 'promo' | 'unknown';
+  time_window: 'inside' | 'late' | 'too_old';
+  receiver_route: 'exact' | 'compatible' | 'missing';
+  bank_package: 'trusted_cert' | 'package_only' | 'unknown';
+  template: 'known_high' | 'known_medium' | 'unknown_shape';
+  sender_name: 'strong' | 'weak' | 'missing' | 'mismatch';
+  sender_phone: 'hmac_match' | 'masked_match' | 'not_observed';
+  sender_card: 'hmac_match' | 'last4_match' | 'not_observed';
+  reference: 'exact' | 'not_observed' | 'mismatch';
+  collision_pressure: number;
 }
 
 export type PaymentIntentGateClassification =
@@ -166,6 +182,7 @@ export interface PaymentIntentGateDecision {
   reviewCreationAllowed: boolean;
   autoConfirmAllowed: false;
   collisionDetected: boolean;
+  confidenceVector: MatchConfidenceVector;
   paymentWindowStatus: 'active' | 'expired' | 'none';
   reasonCodes: string[];
   reviewCopy: PaymentIntentGateReviewCopy;
@@ -223,6 +240,7 @@ export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecis
       decision: 'rejected',
       score: 0,
       collisionDetected: false,
+      confidenceVector: buildMatchConfidenceVector(input.signal, undefined, input.context, 0, 'none'),
       candidates: [],
       reasonCodes: [earlyRejection]
     };
@@ -234,6 +252,7 @@ export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecis
       decision: 'rejected',
       score: 0,
       collisionDetected: false,
+      confidenceVector: buildMatchConfidenceVector(input.signal, candidates[0], input.context, candidates.length),
       candidates,
       reasonCodes: ['order_already_confirmed']
     };
@@ -244,6 +263,7 @@ export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecis
       decision: 'wait',
       score: 0,
       collisionDetected: false,
+      confidenceVector: buildMatchConfidenceVector(input.signal, undefined, input.context, 0, 'none'),
       candidates,
       reasonCodes: ['no_candidate']
     };
@@ -263,6 +283,7 @@ export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecis
       decision: 'wait',
       score: 0,
       collisionDetected: false,
+      confidenceVector: buildMatchConfidenceVector(input.signal, undefined, input.context, candidates.length),
       candidates,
       reasonCodes: ['no_candidate']
     };
@@ -275,13 +296,14 @@ export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecis
   if (collisionDetected) {
     reasonCodes.add('amount_collision');
     reasonCodes.add('requires_review');
-    return {
-      decision: 'needs_review',
-      score: Math.max(0, best.score - 80),
-      collisionDetected,
-      selected: best.candidate,
-      candidates,
-      reasonCodes: [...reasonCodes]
+      return {
+        decision: 'needs_review',
+        score: Math.max(0, best.score - 80),
+        collisionDetected,
+        confidenceVector: buildMatchConfidenceVector(input.signal, best.candidate, input.context, candidates.length),
+        selected: best.candidate,
+        candidates,
+        reasonCodes: [...reasonCodes]
     };
   }
 
@@ -303,6 +325,7 @@ export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecis
     decision: 'needs_review',
     score: best.score,
     collisionDetected: false,
+    confidenceVector: buildMatchConfidenceVector(input.signal, best.candidate, input.context, candidates.length),
     selected: best.candidate,
     candidates,
     reasonCodes: [...reasonCodes]
@@ -656,7 +679,8 @@ export function evaluatePaymentIntentGate(input: EvaluatePaymentIntentGateInput)
     reviewCreationAllowed: true,
     collisionDetected,
     paymentWindowStatus: 'active',
-    reasonCodes: [...reasons]
+    reasonCodes: [...reasons],
+    confidenceVector: buildPaymentIntentGateConfidenceVector(input.signal, selected, candidatePool, 'active')
   });
 }
 
@@ -687,7 +711,13 @@ function selectAmbiguousGateDecision(input: {
     reviewCreationAllowed: true,
     collisionDetected,
     paymentWindowStatus: input.paymentWindowStatus ?? 'active',
-    reasonCodes: [...reasons]
+    reasonCodes: [...reasons],
+    confidenceVector: buildPaymentIntentGateConfidenceVector(
+      input.signal,
+      selected,
+      input.candidates,
+      input.paymentWindowStatus ?? 'active'
+    )
   });
 }
 
@@ -698,6 +728,7 @@ function gateDecision(input: {
   collisionDetected: boolean;
   paymentWindowStatus: 'active' | 'expired' | 'none';
   reasonCodes: string[];
+  confidenceVector?: MatchConfidenceVector | undefined;
 }): PaymentIntentGateDecision {
   return {
     intentRelation: input.intentRelation,
@@ -705,10 +736,137 @@ function gateDecision(input: {
     reviewCreationAllowed: input.reviewCreationAllowed,
     autoConfirmAllowed: false,
     collisionDetected: input.collisionDetected,
+    confidenceVector: input.confidenceVector ?? buildEmptyConfidenceVector(input.paymentWindowStatus),
     paymentWindowStatus: input.paymentWindowStatus,
     reasonCodes: unique(input.reasonCodes),
     reviewCopy: reviewCopyForRelation(input.intentRelation)
   };
+}
+
+export function calculateCollisionPressure(compatibleIntentCount: number): number {
+  if (!Number.isFinite(compatibleIntentCount) || compatibleIntentCount <= 1) {
+    return 0;
+  }
+  return Math.max(0, Math.trunc(compatibleIntentCount) - 1);
+}
+
+function buildEmptyConfidenceVector(
+  timeWindow: MatchConfidenceVector['time_window'] | 'active' | 'expired' | 'none'
+): MatchConfidenceVector {
+  return {
+    amount: 'mismatch',
+    rail: 'unknown',
+    direction: 'unknown',
+    time_window: timeWindow === 'active' ? 'inside' : timeWindow === 'expired' ? 'late' : 'too_old',
+    receiver_route: 'missing',
+    bank_package: 'unknown',
+    template: 'unknown_shape',
+    sender_name: 'missing',
+    sender_phone: 'not_observed',
+    sender_card: 'not_observed',
+    reference: 'not_observed',
+    collision_pressure: 0
+  };
+}
+
+function buildPaymentIntentGateConfidenceVector(
+  signal: PaymentIntentGateSignal,
+  selected: PaymentIntentGateIntent,
+  compatibleIntents: readonly PaymentIntentGateIntent[],
+  paymentWindowStatus: 'active' | 'expired' | 'none'
+): MatchConfidenceVector {
+  return {
+    amount: isExactAmountAndCurrency(signal, selected)
+      ? 'exact'
+      : signal.currency === selected.currency && signal.amountMinor === selected.displayPriceMinor
+        ? 'delta_match'
+        : 'mismatch',
+    rail: selected.selectedReceivingMethod === 'card_transfer' ? 'card' : selected.selectedReceivingMethod === 'phone_transfer' ? 'sbp' : 'unknown',
+    direction: confidenceDirectionFromGate(signal.classification),
+    time_window: paymentWindowStatus === 'active' ? 'inside' : paymentWindowStatus === 'expired' ? 'late' : 'too_old',
+    receiver_route: hasGateRouteMatch(signal, selected) ? 'exact' : signal.receivingRouteId ? 'compatible' : 'missing',
+    bank_package: signal.packageName ? 'package_only' : 'unknown',
+    template: signal.shapeHash && signal.shapeHash !== 'unknown' ? 'unknown_shape' : 'unknown_shape',
+    sender_name: 'missing',
+    sender_phone: hasGateSenderPhoneMatch(signal, selected) ? 'hmac_match' : 'not_observed',
+    sender_card: 'not_observed',
+    reference: hasGateReferenceMatch(signal, selected) ? 'exact' : signal.referenceHmac ? 'mismatch' : 'not_observed',
+    collision_pressure: calculateCollisionPressure(compatibleIntents.length)
+  };
+}
+
+function buildMatchConfidenceVector(
+  signal: MatchingSignal,
+  selected: MatchingCandidateSession | undefined,
+  context: MatchingContext,
+  compatibleIntentCount: number,
+  fallbackTimeWindow?: MatchConfidenceVector['time_window'] | 'none'
+): MatchConfidenceVector {
+  if (!selected) {
+    return buildEmptyConfidenceVector(fallbackTimeWindow ?? 'none');
+  }
+
+  const insideWindow = isObservedInsideWindow(signal.observedAt, selected.validFrom, selected.validUntil);
+  return {
+    amount: signal.amountMinor === selected.expectedAmountMinor ? 'exact' : signal.amountMinor === selected.displayAmountMinor ? 'delta_match' : 'mismatch',
+    rail: selected.railType === 'card_transfer' ? 'card' : selected.railType === 'phone_transfer' ? 'sbp' : 'unknown',
+    direction: confidenceDirectionFromMatching(signal.directionLabel),
+    time_window: insideWindow ? 'inside' : Date.parse(signal.observedAt) > Date.parse(selected.validUntil) ? 'late' : 'too_old',
+    receiver_route: signal.bankProfileId && selected.selectedReceiverBankProfileId && signal.bankProfileId === selected.selectedReceiverBankProfileId
+      ? 'compatible'
+      : selected.selectedReceivingRouteId
+        ? 'compatible'
+        : 'missing',
+    bank_package: context.bankAppTrusted ? 'trusted_cert' : signal.bankProfileId ? 'package_only' : 'unknown',
+    template: context.templateTrusted ? 'known_high' : 'unknown_shape',
+    sender_name: 'missing',
+    sender_phone: hasPhoneMatch(signal, selected) ? 'hmac_match' : 'not_observed',
+    sender_card: 'not_observed',
+    reference: hasReferenceMatch(signal, selected) ? 'exact' : signal.referenceHmac ? 'mismatch' : 'not_observed',
+    collision_pressure: calculateCollisionPressure(compatibleIntentCount)
+  };
+}
+
+function confidenceDirectionFromGate(classification: PaymentIntentGateClassification): MatchConfidenceVector['direction'] {
+  switch (classification) {
+    case 'incoming_customer_transfer':
+    case 'incoming_card_transfer':
+    case 'incoming_sbp_transfer':
+      return 'incoming';
+    case 'outgoing_payment':
+    case 'outgoing_transfer':
+    case 'failed_transfer':
+      return 'outgoing';
+    case 'refund':
+      return 'refund';
+    case 'cashback':
+      return 'cashback';
+    case 'promo':
+      return 'promo';
+    default:
+      return 'unknown';
+  }
+}
+
+function confidenceDirectionFromMatching(directionLabel: DirectionLabel): MatchConfidenceVector['direction'] {
+  switch (directionLabel) {
+    case 'incoming_customer_transfer':
+    case 'incoming_card_transfer':
+    case 'incoming_sbp_transfer':
+      return 'incoming';
+    case 'outgoing_payment':
+    case 'outgoing_transfer':
+    case 'failed_transfer':
+      return 'outgoing';
+    case 'incoming_refund':
+      return 'refund';
+    case 'incoming_cashback':
+      return 'cashback';
+    case 'promo':
+      return 'promo';
+    default:
+      return 'unknown';
+  }
 }
 
 function reviewCopyForRelation(relation: PaymentIntentRelation): PaymentIntentGateReviewCopy {

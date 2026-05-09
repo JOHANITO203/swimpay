@@ -135,6 +135,16 @@ describe('security helpers', () => {
         receiver_identifier: '2202201234567890',
         destination_value: '+79991234567',
         card_number: '2202201234567890',
+        cardNumber: '2202201234567890',
+        cardPan: '2202201234567890',
+        full_card: '2202201234567890',
+        sender_card_number: '2202201234567890',
+        buyer_source_card_number: '2202201234567890',
+        pan: '2202201234567890',
+        cvv: '123',
+        expiry: '12/29',
+        pin: '0000',
+        sms_code: '111111',
         safe: 'visible'
       }
     });
@@ -153,6 +163,16 @@ describe('security helpers', () => {
         receiver_identifier: '[REDACTED]',
         destination_value: '[REDACTED]',
         card_number: '[REDACTED]',
+        cardNumber: '[REDACTED]',
+        cardPan: '[REDACTED]',
+        full_card: '[REDACTED]',
+        sender_card_number: '[REDACTED]',
+        buyer_source_card_number: '[REDACTED]',
+        pan: '[REDACTED]',
+        cvv: '[REDACTED]',
+        expiry: '[REDACTED]',
+        pin: '[REDACTED]',
+        sms_code: '[REDACTED]',
         safe: 'visible'
       }
     });
@@ -164,6 +184,12 @@ describe('security helpers', () => {
     expect(FASTIFY_REDACTION_PATHS).toContain('req.headers.authorization');
     expect(FASTIFY_REDACTION_PATHS).toContain('req.body.signature');
     expect(FASTIFY_REDACTION_PATHS).toContain('req.body.payload.raw_notification_text');
+    expect(FASTIFY_REDACTION_PATHS).toContain('req.body.sender_card_number');
+    expect(FASTIFY_REDACTION_PATHS).toContain('req.body.pan');
+    expect(FASTIFY_REDACTION_PATHS).toContain('req.body.cvv');
+    expect(FASTIFY_REDACTION_PATHS).toContain('req.body.expiry');
+    expect(FASTIFY_REDACTION_PATHS).toContain('req.body.pin');
+    expect(FASTIFY_REDACTION_PATHS).toContain('req.body.sms_code');
     expect(options.redact.censor).toBe('[REDACTED]');
   });
 });

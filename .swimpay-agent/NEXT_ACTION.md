@@ -1,5 +1,44 @@
 # Next Action
 
+generated_at: 2026-05-09T23:18:00+03:00
+
+## Latest P0 delta hardening
+
+Completed locally:
+
+1. PAN Kill Switch was explicitly not applied.
+2. PAN/card credential redaction and rejection guardrails were strengthened across logs, observability, receiver contracts, SDK and webhooks.
+3. Receiver signal evidence envelope metadata is persisted as redacted JSON.
+4. Matching now exposes a deterministic confidence vector and collision pressure.
+5. PostgreSQL foundations were added for amount leases, worker idempotency and bank route certification.
+6. Replay/privacy/webhook/matching scripts were added.
+
+Validation:
+
+- `npm run android:doctor` passed.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm test` passed: 76 files, 593 tests.
+- `npm run build` passed.
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed.
+- `npm run test:replay` passed: 5 files, 87 tests.
+
+Next recommended action:
+
+1. Commit the P0 delta hardening batch.
+2. Redeploy staging.
+3. Apply VPS migration `016_p0_delta_hardening.sql` after redeploy.
+4. Next sprint: wire amount lease allocation and bank certification status into checkout route selection.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not expose raw PAN, raw phone, raw notification text, API keys or webhook secrets.
+
+---
+
 generated_at: 2026-05-09T19:10:00+03:00
 
 ## Latest checkout UX refactor

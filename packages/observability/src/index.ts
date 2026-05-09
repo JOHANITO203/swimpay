@@ -136,7 +136,7 @@ export function redactSensitiveFields<T>(value: T): T {
 }
 
 export function isSensitiveFieldName(key: string): boolean {
-  return /^(phone|raw_phone|buyer_phone|sender_phone|normalized_phone|notification_text|raw_notification|raw_body|raw_title|api_key|secret|token|password|signature)$/iu.test(
+  return /^(phone|raw_phone|buyer_phone|sender_phone|normalized_phone|sender_card_number|buyer_source_card_number|card_number|cardNumber|cardPan|full_card|pan|cvv|cvc|expiry|expiration|pin|sms_code|notification_text|raw_notification|raw_body|raw_title|api_key|secret|token|password|signature)$/iu.test(
     key
   );
 }
@@ -266,7 +266,13 @@ function redactValue(value: unknown): unknown {
 }
 
 function sanitizeDiagnosticText(value: string): string {
-  return value.replace(/\b(phone|raw_phone|buyer_phone|sender_phone|normalized_phone|notification_text|raw_notification|raw_body|raw_title|api_key|secret|token|password|signature)\b/giu, REDACTED_VALUE);
+  const sensitiveKey =
+    '(phone|raw_phone|buyer_phone|sender_phone|normalized_phone|sender_card_number|buyer_source_card_number|card_number|cardNumber|cardPan|full_card|pan|cvv|cvc|expiry|expiration|pin|sms_code|notification_text|raw_notification|raw_body|raw_title|api_key|secret|token|password|signature)';
+
+  return value
+    .replace(new RegExp(`\\b${sensitiveKey}\\s*=\\s*[^\\s,;]+`, 'giu'), `${REDACTED_VALUE}=${REDACTED_VALUE}`)
+    .replace(new RegExp(`\\b${sensitiveKey}\\b`, 'giu'), REDACTED_VALUE)
+    .replace(/\b\d{12,19}\b/gu, REDACTED_VALUE);
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {

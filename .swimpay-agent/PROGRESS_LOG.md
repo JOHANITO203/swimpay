@@ -1,5 +1,17 @@
 # Progress Log
 
+## 2026-05-09T23:18:00+03:00 - External P0 delta hardening completed
+
+- Audited 25 external P0 recommendations against the current SwimPay product truth and codebase.
+- Preserved the product decision to keep PAN entry in hosted checkout Step 1 while hardening it as strict sensitive data.
+- Strengthened PAN/card credential rejection and redaction across Fastify logs, observability sanitization, Android receiver contracts, Node SDK order/webhook parsing and public webhook worker payload guards.
+- Added redacted receiver signal evidence envelopes and persisted evidence-safe metadata on signal ingestion.
+- Added deterministic confidence vectors and collision pressure to matching-core and persisted them for new signal reviews.
+- Added PostgreSQL foundations for amount leases, worker idempotency ledger and bank route certification matrix.
+- Added deterministic replay/privacy/webhook/matching scripts.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite with 76 files / 593 tests, TypeScript build, Compose config and P0 replay script.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
 ## 2026-05-09T12:37:12+03:00 - HARDEN-REAL-1 quality hardening completed
 
 - Corrected the multi-agent quality-audit blockers before real notification testing.
@@ -2584,6 +2596,26 @@ Safety checks:
 # 2026-05-09T16:03:12+03:00 - Buyer checkout deployment closeout
 
 - Created `.swimpay-agent/BUYER_CHECKOUT_DEPLOYMENT_AND_NEXT_STEP.md`.
+# 2026-05-09T23:10:00+03:00 - External P0 delta hardening
+
+- Completed multi-agent delta audit for external P0 recommendations.
+- Preserved product decision: no PAN Kill Switch; PAN remains Step 1 checkout-only and sensitive.
+- Strengthened PAN/credential redaction and rejection across:
+  - `@swimpay/security`;
+  - `@swimpay/observability`;
+  - receiver signal contracts/API;
+  - public webhook worker;
+  - `@swimpay/node` order and webhook surfaces.
+- Added receiver signal evidence envelope persistence and package/cert/hash metadata columns.
+- Added deterministic matching confidence vector and collision pressure.
+- Added migration `016_p0_delta_hardening.sql` for evidence, amount leases, worker idempotency ledger and bank route certification.
+- Added deterministic replay/privacy/webhook/matching npm scripts.
+- Targeted validation passed for security, observability, SDK, webhook worker, receiver contracts, matching gate and receiver API signal tests.
+- Typecheck passed.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---
+
 - Documented the VPS migration command for `014_expected_payment_profile.sql`.
 - Documented a fallback manual SQL creation path if the migration file is not present on the VPS.
 - Recorded the next logical staging rehearsal: SDK order -> hosted checkout -> manual merchant confirmation -> final-only webhook.

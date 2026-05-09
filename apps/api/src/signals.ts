@@ -58,6 +58,12 @@ export interface ReceiverSignalRequestBody {
   package_cert_sha256: string;
   notification_hash: string;
   semantic_hash?: string | undefined;
+  payload_hash?: string | undefined;
+  shape_hash?: string | undefined;
+  profile_version?: string | undefined;
+  classification?: string | undefined;
+  confidence?: number | undefined;
+  parser_hint?: string | undefined;
   local_counter: number;
   observed_at: string;
   received_at?: string | undefined;
@@ -78,6 +84,12 @@ export interface StoredReceiverSignal {
   eventId: string;
   notificationHash: string;
   semanticHash?: string | undefined;
+  payloadHash?: string | undefined;
+  shapeHash?: string | undefined;
+  profileVersion?: string | undefined;
+  classification?: string | undefined;
+  receiverConfidence?: number | undefined;
+  evidenceEnvelope?: Record<string, unknown> | undefined;
   localCounter: number;
   observedAt: string;
   receivedAt: string;
@@ -133,11 +145,14 @@ const LegacyRawPhoneFields = new Set(['phone', 'raw_phone', 'buyer_phone', 'send
 const LegacyRawCardFields = new Set([
   'raw_card',
   'card_number',
+  'cardNumber',
   'buyer_source_card_number',
   'source_card',
   'source_card_number',
+  'full_card',
   'pan',
-  'card_pan'
+  'card_pan',
+  'cardPan'
 ]);
 const LegacyCredentialFields = new Set([
   'cvv',
@@ -273,14 +288,18 @@ export class PgSignalRepository implements ReceiverSignalRepository {
       await client.query(
         `INSERT INTO notification_signals (
           id, merchant_id, device_id, bank_profile_id, event_id, notification_hash, semantic_hash,
+          package_name, package_cert_sha256, payload_hash, shape_hash, profile_version, classification,
+          receiver_confidence, evidence_envelope_json,
           local_counter, observed_at, received_at, amount_minor, currency,
           sender_phone_hmac, sender_phone_masked, reference_hmac, reference_code_masked,
           direction_label, parser_version, signature_valid, status, created_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7,
-          $8, $9, $10, $11, $12,
-          $13, $14, $15, $16,
-          $17, $18, $19, $20, $21
+          $8, $9, $10, $11, $12, $13,
+          $14, $15::jsonb,
+          $16, $17, $18, $19, $20,
+          $21, $22, $23, $24,
+          $25, $26, $27, $28, $29
         )`,
         [
           input.signal.id,
@@ -290,6 +309,14 @@ export class PgSignalRepository implements ReceiverSignalRepository {
           input.signal.eventId,
           input.signal.notificationHash,
           input.signal.semanticHash ?? null,
+          input.signal.packageName,
+          input.signal.packageCertSha256,
+          input.signal.payloadHash ?? null,
+          input.signal.shapeHash ?? null,
+          input.signal.profileVersion ?? null,
+          input.signal.classification ?? null,
+          input.signal.receiverConfidence ?? null,
+          JSON.stringify(input.signal.evidenceEnvelope ?? {}),
           input.signal.localCounter,
           input.signal.observedAt,
           input.signal.receivedAt,
@@ -369,6 +396,12 @@ export function validateReceiverSignalBody(body: unknown): ReceiverSignalValidat
         package_cert_sha256: value.package_cert_sha256,
         notification_hash: value.notification_hash,
         semantic_hash: value.semantic_hash,
+        payload_hash: value.payload_hash,
+        shape_hash: value.shape_hash,
+        profile_version: value.profile_version,
+        classification: value.classification,
+        confidence: value.confidence,
+        parser_hint: value.parser_hint,
         local_counter: value.local_counter,
         observed_at: value.observed_at,
         received_at: value.received_at,
@@ -595,6 +628,11 @@ export function buildSignalIngestionInput(params: {
       eventId: params.body.event_id,
       notificationHash: params.body.notification_hash,
       semanticHash: params.body.semantic_hash,
+      payloadHash: params.body.payload_hash,
+      shapeHash: params.body.shape_hash,
+      profileVersion: params.body.profile_version,
+      classification: params.body.classification,
+      receiverConfidence: params.body.confidence,
       localCounter: params.body.local_counter,
       observedAt: params.body.observed_at,
       receivedAt: params.body.received_at ?? params.receivedAt,
@@ -607,7 +645,12 @@ export function buildSignalIngestionInput(params: {
       directionLabel: params.body.payload.direction_label ?? 'unknown',
       parserVersion: 'android-local-v1',
       signatureValid: true,
-      status: 'received'
+      status: 'received',
+      evidenceEnvelope: buildSignalEvidenceEnvelope({
+        body: params.body,
+        signalId: params.signalId,
+        receivedAtBackend: params.receivedAt
+      })
     },
     payloadRedacted: {
       title_redacted: params.body.payload.title_redacted,
@@ -618,6 +661,71 @@ export function buildSignalIngestionInput(params: {
     },
     auditEventId: params.auditEventId
   };
+}
+
+function buildSignalEvidenceEnvelope(params: {
+  body: ReceiverSignalRequestBody;
+  signalId: string;
+  receivedAtBackend: string;
+}): Record<string, unknown> {
+  const body = params.body;
+  const envelopeWithoutBackendSignature = {
+    envelope_version: 1,
+    official_bank_confirmation: false,
+    merchant_id: body.merchant_id,
+    receiver_device_id: body.device_id,
+    signal_id: params.signalId,
+    bank_package: body.package_name,
+    bank_cert_fingerprint: body.package_cert_sha256,
+    notification_posted_at: body.observed_at,
+    received_at_device: body.received_at ?? body.observed_at,
+    received_at_backend: params.receivedAtBackend,
+    parser_version: body.parser_hint ?? 'android-local-v1',
+    shape_hash: body.shape_hash ?? body.notification_hash,
+    semantic_hash: body.semantic_hash ?? body.notification_hash,
+    redacted_fields: stripUndefined({
+      amount_minor: body.payload.amount_minor,
+      currency: body.payload.currency,
+      direction: evidenceDirection(body.payload.direction_label),
+      rail: evidenceRail(body.classification ?? body.payload.direction_label),
+      receiver_route_hint: undefined
+    }),
+    device_signature: body.signature
+  };
+
+  return {
+    ...envelopeWithoutBackendSignature,
+    backend_signature: `sha256:${createHash('sha256').update(stableStringify(envelopeWithoutBackendSignature)).digest('hex')}`
+  };
+}
+
+function evidenceDirection(value: string | undefined): 'incoming' | 'outgoing' | 'refund' | 'cashback' | 'promo' | 'unknown' {
+  if (value === 'incoming_customer_transfer' || value === 'incoming_card_transfer' || value === 'incoming_sbp_transfer') {
+    return 'incoming';
+  }
+  if (value === 'outgoing_payment' || value === 'outgoing_transfer' || value === 'failed_transfer') {
+    return 'outgoing';
+  }
+  if (value === 'incoming_refund') {
+    return 'refund';
+  }
+  if (value === 'incoming_cashback') {
+    return 'cashback';
+  }
+  if (value === 'promo') {
+    return 'promo';
+  }
+  return 'unknown';
+}
+
+function evidenceRail(value: string | undefined): 'sbp' | 'card' | 'unknown' {
+  if (value === 'incoming_sbp_transfer') {
+    return 'sbp';
+  }
+  if (value === 'incoming_card_transfer') {
+    return 'card';
+  }
+  return 'unknown';
 }
 
 export function buildSignalReceivedEvent(params: {
@@ -784,6 +892,10 @@ function mapUniqueViolation(error: unknown): SignalIngestionResult | null {
   }
 
   return null;
+}
+
+function stripUndefined(value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).filter(([, nested]) => nested !== undefined));
 }
 
 function stableStringify(value: unknown): string {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  calculateCollisionPressure,
   evaluatePaymentIntentGate,
   type PaymentIntentGateIntent,
   type PaymentIntentGateSignal
@@ -185,6 +186,7 @@ describe('payment intent gate', () => {
     expect(result.collisionDetected).toBe(true);
     expect(result.reviewCreationAllowed).toBe(true);
     expect(result.reasonCodes).toContain('collision_detected');
+    expect(result.confidenceVector.collision_pressure).toBe(1);
   });
 
   it('requires exact expected micro amount instead of rounded display amount', () => {
@@ -197,6 +199,42 @@ describe('payment intent gate', () => {
     expect(result.reviewCreationAllowed).toBe(true);
     expect(result.reasonCodes).toContain('expected_amount_mismatch');
     expect(result.reasonCodes).toContain('display_amount_only_mismatch');
+    expect(result.confidenceVector.amount).toBe('delta_match');
+    expect(result.confidenceVector.reference).toBe('exact');
+    expect(result.confidenceVector.receiver_route).toBe('exact');
+    expect(result.confidenceVector.rail).toBe('card');
+  });
+
+  it('exposes a deterministic confidence vector without allowing auto-confirmation', () => {
+    const result = evaluatePaymentIntentGate({
+      signal: baseSignal,
+      activePaymentIntents: [baseIntent]
+    });
+
+    expect(result.autoConfirmAllowed).toBe(false);
+    expect(result.confidenceVector).toMatchObject({
+      amount: 'exact',
+      rail: 'card',
+      direction: 'incoming',
+      time_window: 'inside',
+      receiver_route: 'exact',
+      bank_package: 'package_only',
+      template: 'unknown_shape',
+      sender_name: 'missing',
+      sender_phone: 'hmac_match',
+      sender_card: 'not_observed',
+      reference: 'exact',
+      collision_pressure: 0
+    });
+  });
+
+  it.each([
+    [0, 0],
+    [1, 0],
+    [2, 1],
+    [10, 9]
+  ] as const)('calculates collision pressure for %s compatible intents', (compatibleIntentCount, pressure) => {
+    expect(calculateCollisionPressure(compatibleIntentCount)).toBe(pressure);
   });
 
   it.each(v1BankTargets)('validates intent-bound fixture outcomes for %s', (bankProfileId, packageName) => {

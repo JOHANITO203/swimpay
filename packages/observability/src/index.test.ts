@@ -21,6 +21,16 @@ describe('runtime observability foundation', () => {
       raw_notification: 'raw body',
       raw_body: 'raw http body',
       raw_title: 'raw title',
+      sender_card_number: '2202201234567890',
+      card_number: '2202201234567890',
+      cardNumber: '2202201234567890',
+      cardPan: '2202201234567890',
+      full_card: '2202201234567890',
+      pan: '2202201234567890',
+      cvv: '123',
+      expiry: '12/29',
+      pin: '0000',
+      sms_code: '111111',
       api_key: 'sk_live_secret',
       token: 'bearer-token',
       password: 'p4ss',
@@ -42,6 +52,16 @@ describe('runtime observability foundation', () => {
       raw_notification: '[REDACTED]',
       raw_body: '[REDACTED]',
       raw_title: '[REDACTED]',
+      sender_card_number: '[REDACTED]',
+      card_number: '[REDACTED]',
+      cardNumber: '[REDACTED]',
+      cardPan: '[REDACTED]',
+      full_card: '[REDACTED]',
+      pan: '[REDACTED]',
+      cvv: '[REDACTED]',
+      expiry: '[REDACTED]',
+      pin: '[REDACTED]',
+      sms_code: '[REDACTED]',
       api_key: '[REDACTED]',
       token: '[REDACTED]',
       password: '[REDACTED]',
@@ -120,7 +140,7 @@ describe('runtime observability foundation', () => {
 
     const tracker = new RuntimeStatusTracker();
     tracker.recordProcessed('evt_01', '2026-05-02T12:01:00.000Z');
-    tracker.recordError(new Error('failed with secret=abc'), '2026-05-02T12:01:10.000Z');
+    tracker.recordError(new Error('failed with secret=abc pan=2202201234567890 sms_code=111111'), '2026-05-02T12:01:10.000Z');
     const worker = createWorkerStatus({
       service: 'swimpay-signal-worker',
       workerState: 'nats_consumers_registered',
@@ -148,10 +168,12 @@ describe('runtime observability foundation', () => {
       last_processed_at: '2026-05-02T12:01:00.000Z',
       last_error: {
         name: 'Error',
-        message: 'failed with [REDACTED]=abc',
+        message: 'failed with [REDACTED]=[REDACTED] [REDACTED]=[REDACTED] [REDACTED]=[REDACTED]',
         occurred_at: '2026-05-02T12:01:10.000Z'
       }
     });
+    expect(worker.last_error?.message).not.toContain('2202201234567890');
+    expect(worker.last_error?.message).not.toContain('111111');
   });
 
   it('summarizes webhook queue state without exposing payload data', () => {

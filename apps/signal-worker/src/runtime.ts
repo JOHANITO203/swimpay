@@ -14,6 +14,7 @@ import {
   type MatchingCandidateSession,
   type MatchingContext,
   type MatchingSignal,
+  type MatchConfidenceVector,
   type PaymentIntentGateClassification,
   type PaymentIntentGateDecision,
   type PaymentIntentGateIntent,
@@ -50,6 +51,7 @@ export interface SignalRuntimeSignal {
   signalQuality?: number | undefined;
   parserVersion?: string | undefined;
   templateId?: string | undefined;
+  shapeHash?: string | undefined;
   signatureValid: boolean;
   status: string;
 }
@@ -76,6 +78,7 @@ export interface SignalRuntimeResult {
   score: number;
   collisionDetected: boolean;
   reasonCodes: string[];
+  confidenceVector?: MatchConfidenceVector | undefined;
   orderId?: string | undefined;
   paymentSessionId?: string | undefined;
   receiverRouteCode?: string | undefined;
@@ -288,7 +291,8 @@ export class SignalRuntimeProcessor {
         selected,
         score: parsed.signalQuality,
         collisionDetected: gate.collisionDetected,
-        reasonCodes: uniqueReasonCodes([...gateReasonCodes, 'ambiguous_direction'])
+        reasonCodes: uniqueReasonCodes([...gateReasonCodes, 'ambiguous_direction']),
+        confidenceVector: gate.confidenceVector
       });
     }
 
@@ -355,7 +359,8 @@ export class SignalRuntimeProcessor {
       selected: match.selected as SignalRuntimeSessionCandidate | undefined,
       score: match.score || parsed.signalQuality,
       collisionDetected: match.collisionDetected,
-      reasonCodes
+      reasonCodes,
+      confidenceVector: match.confidenceVector
     });
   }
 
@@ -382,6 +387,7 @@ export class SignalRuntimeProcessor {
     score: number;
     collisionDetected: boolean;
     reasonCodes: string[];
+    confidenceVector?: MatchConfidenceVector | undefined;
   }): Promise<SignalRuntimeResult> {
     const result: SignalRuntimeResult = {
       signalId: input.signal.id,
@@ -389,6 +395,7 @@ export class SignalRuntimeProcessor {
       score: input.score,
       collisionDetected: input.collisionDetected,
       reasonCodes: input.reasonCodes,
+      confidenceVector: input.confidenceVector,
       orderId: input.selected?.orderId,
       paymentSessionId: input.selected?.paymentSessionId,
       ...(input.selected ? routeContextFromSession(input.selected) : {})
@@ -708,6 +715,7 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
     const result = await this.pool.query(
       `SELECT
         ns.id, ns.merchant_id, ns.device_id, ns.bank_profile_id, ns.event_id, ns.notification_hash,
+        ns.package_name, ns.package_cert_sha256, ns.shape_hash,
         ns.observed_at, ns.received_at, ns.amount_minor, ns.currency, ns.sender_phone_hmac,
         ns.sender_phone_masked, ns.reference_hmac, ns.reference_code_masked, ns.direction_label,
         ns.signal_quality, ns.parser_version, ns.template_id, ns.signature_valid, ns.status,
@@ -916,9 +924,10 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
       if (input.result.orderId && input.result.paymentSessionId) {
         await client.query(
           `INSERT INTO signal_matches (
-            id, signal_id, order_id, payment_session_id, score, decision, collision_detected, reasons_json, created_at
+            id, signal_id, order_id, payment_session_id, score, decision, collision_detected, reasons_json,
+            confidence_vector_json, collision_pressure, created_at
           )
-          VALUES ($1, $2, $3, $4, $5, 'needs_review', $6, $7::jsonb, $8)`,
+          VALUES ($1, $2, $3, $4, $5, 'needs_review', $6, $7::jsonb, $8::jsonb, $9, $10)`,
           [
             DEFAULT_ID_GENERATOR.matchId(),
             input.signal.id,
@@ -927,6 +936,8 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
             input.result.score,
             input.result.collisionDetected,
             JSON.stringify(input.result.reasonCodes),
+            JSON.stringify(input.result.confidenceVector ?? {}),
+            input.result.confidenceVector?.collision_pressure ?? (input.result.collisionDetected ? 1 : 0),
             input.now
           ]
         );
@@ -1109,7 +1120,7 @@ function toPaymentIntentGateSignal(signal: SignalRuntimeSignal): PaymentIntentGa
     classification: toPaymentIntentGateClassification(signal.directionLabel ?? 'unknown'),
     amountMinor: signal.amountMinor,
     currency: signal.currency,
-    shapeHash: signal.templateId ?? signal.notificationHash,
+    shapeHash: signal.shapeHash ?? signal.templateId ?? signal.notificationHash,
     referenceHmac: signal.referenceHmac,
     senderPhoneHmac: signal.senderPhoneHmac,
     receivingRouteId: signal.receivingRouteId,
@@ -1361,8 +1372,11 @@ interface SignalRow {
   merchant_id: string;
   device_id: string;
   bank_profile_id: string | null;
+  package_name: string | null;
+  package_cert_sha256: string | null;
   event_id: string;
   notification_hash: string;
+  shape_hash: string | null;
   observed_at: Date | string;
   received_at: Date | string;
   amount_minor: number | string | null;
@@ -1441,8 +1455,11 @@ function toSignal(row: SignalRow): SignalRuntimeSignal {
     merchantId: String(row.merchant_id),
     deviceId: String(row.device_id),
     bankProfileId: row.bank_profile_id ?? undefined,
+    packageName: row.package_name ?? undefined,
+    packageCertSha256: row.package_cert_sha256 ?? undefined,
     eventId: String(row.event_id),
     notificationHash: String(row.notification_hash),
+    shapeHash: row.shape_hash ?? undefined,
     observedAt: toIso(row.observed_at),
     receivedAt: toIso(row.received_at),
     titleRedacted: row.title_redacted ?? undefined,

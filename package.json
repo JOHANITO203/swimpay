@@ -31,7 +31,11 @@
     "production:admin-auth-preflight": "node scripts/production-admin-auth-preflight.mjs",
     "android:doctor": "node scripts/android-toolchain-check.mjs",
     "android:emulator-doctor": "node scripts/android-emulator-doctor.mjs",
-    "backend:doctor": "node scripts/local-backend-doctor.mjs"
+    "backend:doctor": "node scripts/local-backend-doctor.mjs",
+    "test:replay": "node scripts/p0-deterministic-replay.mjs",
+    "test:matching": "vitest run packages/matching-core/src",
+    "test:privacy": "vitest run packages/security/src packages/observability/src packages/contracts/src/android-receiver.test.ts apps/api/src/signals.test.ts",
+    "test:webhooks": "vitest run apps/job-worker/src/webhooks.test.ts packages/swimpay-node/src/index.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.1",

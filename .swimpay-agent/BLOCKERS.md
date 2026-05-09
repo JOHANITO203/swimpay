@@ -1,5 +1,19 @@
 # Blockers
 
+## External P0 delta hardening
+
+- Resolved locally: PAN Sensitive Boundary guardrails now cover Fastify redaction, structured observability, receiver signal contracts, public webhook worker and Node SDK order/webhook parsing.
+- Resolved locally: receiver signal ingestion now carries and persists evidence-safe package/cert/hash/classification metadata plus redacted evidence envelope JSON.
+- Resolved locally: matching-core returns deterministic confidence vectors and collision pressure without enabling auto-confirmation.
+- Resolved locally: database foundations exist for amount leases, worker idempotency ledger and bank route certification matrix.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config and P0 replay script.
+- Remaining blocker before full real-notification testing: amount lease allocation is schema-ready but not yet wired into checkout/order transaction.
+- Remaining blocker before full route certification enforcement: certification matrix is schema-seeded but not yet consumed by checkout route selection/matching gates.
+- Remaining blocker before production worker hardening: idempotency ledger table exists but worker claim/complete wrapper is not yet applied.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+
+## Previous blockers
+
 ## Checkout UX Apple-like guided refactor
 
 - Resolved locally: hosted checkout now starts as a guided mobile-first flow instead of a long technical page.

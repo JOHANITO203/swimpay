@@ -222,7 +222,7 @@ function currencyFrom(data: Record<string, unknown>): string | undefined {
 function assertNoRawPiiFields(value: Record<string, unknown>, path: string[] = []): void {
   for (const [key, nested] of Object.entries(value)) {
     const fullPath = [...path, key].join('.');
-    if (/raw|notification[_-]?text|title|body|phone|card|source[_-]?card|cvv|cvc|expir/iu.test(key)) {
+    if (/raw|notification[_-]?text|title|body|phone|card|source[_-]?card|full[_-]?card|(^|_)pan$|cvv|cvc|expir|pin|sms[_-]?code/iu.test(key)) {
       throw new SwimPayValidationError(`Public webhook event contains unsafe field: ${fullPath}.`);
     }
     if (nested && typeof nested === 'object' && !Array.isArray(nested)) {

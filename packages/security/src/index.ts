@@ -207,6 +207,19 @@ export const FASTIFY_REDACTION_PATHS = [
   'req.body.buyer_phone',
   'req.body.sender_phone',
   'req.body.normalized_phone',
+  'req.body.sender_card_number',
+  'req.body.buyer_source_card_number',
+  'req.body.card_number',
+  'req.body.cardNumber',
+  'req.body.cardPan',
+  'req.body.full_card',
+  'req.body.pan',
+  'req.body.cvv',
+  'req.body.cvc',
+  'req.body.expiry',
+  'req.body.expiration',
+  'req.body.pin',
+  'req.body.sms_code',
   'req.body.notification_text',
   'req.body.raw_notification_text',
   'req.body.raw_body',
@@ -327,7 +340,7 @@ function operatorTokenSignature(operatorId: string, role: OperatorRole, secret: 
 }
 
 function isSensitiveLogKey(key: string): boolean {
-  return /authorization|cookie|api[_-]?key|secret|signature|token|password|raw[_-]?(notification|text|phone|body|title)|receiver[_-]?identifier|destination[_-]?value|card[_-]?number|phone_raw|raw_phone|(^|_)phone$|buyer_phone|sender_phone|normalized_phone|notification_text/iu.test(
+  return /authorization|cookie|api[_-]?key|secret|signature|token|password|cvv|cvc|expiry|expiration|pin|sms[_-]?code|raw[_-]?(notification|text|phone|body|title)|receiver[_-]?identifier|destination[_-]?value|card[_-]?number|cardnumber|card[_-]?pan|cardpan|full[_-]?card|(^|_)pan$|phone_raw|raw_phone|(^|_)phone$|buyer_phone|sender_phone|normalized_phone|sender[_-]?card[_-]?number|buyer[_-]?source[_-]?card[_-]?number|notification_text/iu.test(
     key
   );
 }

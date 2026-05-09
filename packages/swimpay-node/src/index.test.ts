@@ -95,7 +95,12 @@ describe('@swimpay/node orders.create', () => {
     ['auto_confirm', { auto_confirm: true }],
     ['cvv', { customer: { cvv: '123' } }],
     ['expiration date', { customer: { expirationDate: '12/29' } }],
-    ['source card', { sourceCardNumber: '2202123412344821' }]
+    ['source card', { sourceCardNumber: '2202123412344821' }],
+    ['pan', { metadata: { pan: '2202123412344821' } }],
+    ['cardPan', { metadata: { cardPan: '2202123412344821' } }],
+    ['full_card', { metadata: { full_card: '2202123412344821' } }],
+    ['sms_code', { metadata: { sms_code: '111111' } }],
+    ['pin', { metadata: { pin: '0000' } }]
   ])('rejects dangerous create-order field %s', async (_label, dangerousFields) => {
     const swimpay = new SwimPay({ secretKey: 'sk_test' });
 
@@ -330,6 +335,21 @@ describe('@swimpay/node webhook verification', () => {
       })
     ).toThrow(SwimPayValidationError);
   });
+
+  it.each(['pan', 'cardPan', 'full_card', 'sms_code', 'pin'] as const)(
+    'rejects public webhook events that expose unsafe field %s',
+    (field) => {
+      expect(() =>
+        SwimPay.parseWebhookEvent({
+          ...validPublicPayload(),
+          data: {
+            ...validPublicPayload().data,
+            [field]: field === 'sms_code' ? '111111' : '2202123412344821'
+          }
+        })
+      ).toThrow(SwimPayValidationError);
+    }
+  );
 });
 
 function signWebhook(secret: string, timestamp: string, rawBody: Buffer): string {

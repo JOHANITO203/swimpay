@@ -37,6 +37,10 @@ function createValidSignal(overrides: Partial<Record<string, unknown>> = {}) {
     reference_hmac: 'hmac_ref',
     reference_code_masked: 'SWP-A***',
     direction_hint: 'incoming_customer_transfer',
+    shape_hash: 'shape_sber_incoming_v1',
+    profile_version: 'sber_v1',
+    classification: 'incoming_customer_transfer',
+    confidence: 81,
     parser_hint: 'android-local-v1',
     signal_quality_hint: 80,
     redacted_title: 'Transfer <AMOUNT> <CURRENCY>',
@@ -163,6 +167,30 @@ describe('receiver signal ingestion api', () => {
     });
     expect(repository.storedSignals[0]?.signal.packageName).toBe('TO_VERIFY');
     expect(repository.storedSignals[0]?.signal.packageCertSha256).toBe('TO_VERIFY');
+    expect(repository.storedSignals[0]?.signal.payloadHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(repository.storedSignals[0]?.signal.shapeHash).toBe('shape_sber_incoming_v1');
+    expect(repository.storedSignals[0]?.signal.profileVersion).toBe('sber_v1');
+    expect(repository.storedSignals[0]?.signal.classification).toBe('incoming_customer_transfer');
+    expect(repository.storedSignals[0]?.signal.receiverConfidence).toBe(81);
+    expect(repository.storedSignals[0]?.signal.evidenceEnvelope).toMatchObject({
+      envelope_version: 1,
+      official_bank_confirmation: false,
+      merchant_id: 'mch_01',
+      receiver_device_id: 'dev_01',
+      signal_id: 'sig_01',
+      bank_package: 'TO_VERIFY',
+      bank_cert_fingerprint: 'TO_VERIFY',
+      parser_version: 'android-local-v1',
+      shape_hash: 'shape_sber_incoming_v1',
+      semantic_hash: 'b'.repeat(64),
+      redacted_fields: {
+        amount_minor: 13700,
+        currency: 'RUB',
+        direction: 'incoming'
+      }
+    });
+    expect(JSON.stringify(repository.storedSignals[0]?.signal.evidenceEnvelope)).not.toContain('raw bank');
+    expect(JSON.stringify(repository.storedSignals[0]?.signal.evidenceEnvelope)).not.toContain('220220');
     expect(events.events).toHaveLength(1);
     expect(events.events[0]?.eventType).toBe(EventTypes.SIGNAL_RECEIVED);
     expect(events.events[0]?.data).toMatchObject({

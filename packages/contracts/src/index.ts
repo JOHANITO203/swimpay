@@ -522,6 +522,81 @@ export interface UnknownShapeMonitoringRecord extends UnknownShapeMonitoringReco
   creates_payment_review: false;
 }
 
+export interface P0MatchConfidenceVector {
+  amount: 'exact' | 'delta_match' | 'mismatch';
+  rail: 'sbp' | 'card' | 'unknown';
+  direction: 'incoming' | 'outgoing' | 'refund' | 'cashback' | 'promo' | 'unknown';
+  time_window: 'inside' | 'late' | 'too_old';
+  receiver_route: 'exact' | 'compatible' | 'missing';
+  bank_package: 'trusted_cert' | 'package_only' | 'unknown';
+  template: 'known_high' | 'known_medium' | 'unknown_shape';
+  sender_name: 'strong' | 'weak' | 'missing' | 'mismatch';
+  sender_phone: 'hmac_match' | 'masked_match' | 'not_observed';
+  sender_card: 'hmac_match' | 'last4_match' | 'not_observed';
+  reference: 'exact' | 'not_observed' | 'mismatch';
+  collision_pressure: number;
+}
+
+export interface SignalEvidenceEnvelope {
+  envelope_version: 1;
+  official_bank_confirmation: false;
+  merchant_id: string;
+  receiver_device_id: string;
+  payment_session_id?: string | undefined;
+  signal_id: string;
+  bank_package: string;
+  bank_cert_fingerprint?: string | undefined;
+  notification_posted_at: string;
+  received_at_device: string;
+  received_at_backend: string;
+  parser_version: string;
+  template_id?: string | undefined;
+  shape_hash: string;
+  semantic_hash: string;
+  redacted_fields: {
+    amount_minor?: number | undefined;
+    currency?: string | undefined;
+    direction?: 'incoming' | 'outgoing' | 'refund' | 'cashback' | 'promo' | 'unknown' | undefined;
+    rail?: 'sbp' | 'card' | 'unknown' | undefined;
+    sender_name_hint_hash?: string | undefined;
+    receiver_route_hint?: string | undefined;
+  };
+  match_vector?: P0MatchConfidenceVector | undefined;
+  device_signature: string;
+  backend_signature: string;
+}
+
+export interface ReceiverHealth {
+  status: 'healthy' | 'degraded' | 'offline';
+  notification_access: boolean;
+  listener_connected_recently: boolean;
+  last_heartbeat_at: string;
+  encrypted_outbox_depth: number;
+  supported_bank_routes_online: number;
+  device_key_attested: boolean;
+  app_integrity_recent: boolean;
+  clock_skew_ms: number;
+}
+
+export interface BankRouteCertification {
+  bank_id: string;
+  package_name: string;
+  accepted_signing_cert_sha256: readonly string[];
+  rail_supported: readonly ('sbp' | 'card')[];
+  templates: readonly {
+    template_id: string;
+    category: 'incoming_sbp' | 'incoming_card' | 'refund' | 'outgoing' | 'cashback' | 'promo' | 'unknown';
+    confidence: 'certified' | 'observed' | 'experimental';
+    parser_version: string;
+  }[];
+  notification_reliability: {
+    live_posted_seen: boolean;
+    active_sweep_seen: boolean;
+    snoozed_seen?: boolean | undefined;
+    delay_p95_ms?: number | undefined;
+  };
+}
+
 export function deriveBuyerRecognitionHints(
   input: BuyerRecognitionHintInput,
   options: BuyerRecognitionHintDerivationOptions
@@ -2612,7 +2687,7 @@ function isForbiddenRawNotificationField(key: string): boolean {
 }
 
 function isForbiddenRawCardField(key: string): boolean {
-  return /^(raw_card|card_number|buyer_source_card_number|source_card|source_card_number|pan|card_pan)$/iu.test(key);
+  return /^(raw_card|card_number|cardNumber|card_pan|cardPan|buyer_source_card_number|source_card|source_card_number|full_card|pan)$/iu.test(key);
 }
 
 function isForbiddenBankCredentialField(key: string): boolean {
