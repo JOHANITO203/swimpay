@@ -1343,8 +1343,14 @@ data class MerchantDeveloperIntegrationSnapshot(
 
     fun effectiveWebhookSecret(): String = webhookSecretMasked
 
-    fun showOnceSecrets(): List<Pair<String, String>> {
-        return emptyList()
+    fun showOnceSecrets(
+        secretKeyForCopy: String? = secretKeyOnce,
+        webhookSecretForCopy: String? = webhookSecretOnce
+    ): List<Pair<String, String>> {
+        return buildList {
+            secretKeyForCopy?.takeIf { it.isNotBlank() }?.let { add("Cle API" to it) }
+            webhookSecretForCopy?.takeIf { it.isNotBlank() }?.let { add("Secret webhook" to it) }
+        }
     }
 
     fun exportLines(
@@ -1355,6 +1361,22 @@ data class MerchantDeveloperIntegrationSnapshot(
             "SWIMPAY_STAGING_API_BASE_URL=$apiBaseUrl",
             "SWIMPAY_STAGING_SECRET_KEY=${effectiveSecretKey()}",
             "SWIMPAY_STAGING_WEBHOOK_SECRET=${effectiveWebhookSecret()}",
+            "SWIMPAY_WEBHOOK_URL=${webhookUrl.ifBlank { "https://votre-app.example/swimpay/webhook" }}",
+            "EXTERNAL_APP_BASE_URL=$externalAppBaseUrl",
+            "SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}"
+        )
+    }
+
+    fun copyExportLines(
+        apiBaseUrl: String = "https://staging.swimpay.pro",
+        externalAppBaseUrl: String = "https://votre-app.example",
+        secretKeyForCopy: String? = secretKeyOnce,
+        webhookSecretForCopy: String? = webhookSecretOnce
+    ): List<String> {
+        return listOf(
+            "SWIMPAY_STAGING_API_BASE_URL=$apiBaseUrl",
+            "SWIMPAY_STAGING_SECRET_KEY=${secretKeyForCopy?.takeIf { it.isNotBlank() } ?: effectiveSecretKey()}",
+            "SWIMPAY_STAGING_WEBHOOK_SECRET=${webhookSecretForCopy?.takeIf { it.isNotBlank() } ?: effectiveWebhookSecret()}",
             "SWIMPAY_WEBHOOK_URL=${webhookUrl.ifBlank { "https://votre-app.example/swimpay/webhook" }}",
             "EXTERNAL_APP_BASE_URL=$externalAppBaseUrl",
             "SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}"

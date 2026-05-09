@@ -514,7 +514,8 @@ fun PremiumMerchantApp(
                 scope.launch {
                     connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.testDeveloperWebhook() }
                 }
-            }
+            },
+            onAuthorizeCopy = { onAuthorized -> onRequestUnlock(onAuthorized) }
         )
         PremiumRoute.ConfigurationTest -> PremiumConfigurationStateScreen(configurationState) {
             route = PremiumRoute.Main(PremiumMainTab.Menu)

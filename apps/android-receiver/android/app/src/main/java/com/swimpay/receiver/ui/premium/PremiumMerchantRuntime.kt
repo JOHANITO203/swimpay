@@ -264,11 +264,12 @@ data class PremiumConnectedSiteUiState(
     val safeMessage: String = "",
     val developerRows: List<Pair<String, String>> = emptyList(),
     val exportLines: List<String> = emptyList(),
+    val copyExportLines: List<String> = emptyList(),
     val oneTimeSecrets: List<Pair<String, String>> = emptyList(),
     val webhookUrl: String = "",
     val actionButtonsEnabled: Boolean = false
 ) {
-    fun developerExportText(): String = exportLines.joinToString("\n")
+    fun developerExportText(): String = copyExportLines.ifEmpty { exportLines }.joinToString("\n")
 
     companion object {
         fun preview(): PremiumConnectedSiteUiState {
@@ -316,6 +317,9 @@ class PremiumMerchantRuntime(
     private val developerIntegrationRepository: MerchantDeveloperIntegrationApiRepository? = null,
     private val supportTicketRepository: MerchantSupportTicketApiRepository? = null
 ) {
+    private var developerSecretKeyOnceForCopy: String? = null
+    private var integrationWebhookSecretOnceForCopy: String? = null
+
     val reviewActionsAreBackendOwned: Boolean
         get() = reviewActionsRepository.backendOwnsReviewDecisions
 
@@ -544,6 +548,7 @@ class PremiumMerchantRuntime(
 
     fun loadConnectedSite(): PremiumScreenState<PremiumConnectedSiteUiState> {
         developerIntegrationRepository?.let { repository ->
+            clearDeveloperShowOnceCopyValues()
             return repository.load(session).toConnectedSiteState()
         }
         val result = connectedSiteRepository.load(session, developerDetailsEnabled = false)
@@ -582,22 +587,23 @@ class PremiumMerchantRuntime(
     }
 
     fun createDeveloperApiKey(): PremiumScreenState<PremiumConnectedSiteUiState> {
-        return developerIntegrationRepository?.createApiKey(session)?.toConnectedSiteState()
+        return developerIntegrationRepository?.createApiKey(session)?.toConnectedSiteStateWithShowOnceCopy()
             ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
     }
 
     fun rotateDeveloperApiKey(): PremiumScreenState<PremiumConnectedSiteUiState> {
-        return developerIntegrationRepository?.rotateApiKey(session)?.toConnectedSiteState()
+        return developerIntegrationRepository?.rotateApiKey(session)?.toConnectedSiteStateWithShowOnceCopy()
             ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
     }
 
     fun rotateDeveloperWebhookSecret(): PremiumScreenState<PremiumConnectedSiteUiState> {
-        return developerIntegrationRepository?.rotateWebhookSecret(session)?.toConnectedSiteState()
+        return developerIntegrationRepository?.rotateWebhookSecret(session)?.toConnectedSiteStateWithShowOnceCopy()
             ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
     }
 
     fun updateDeveloperWebhookUrl(webhookUrl: String): PremiumScreenState<PremiumConnectedSiteUiState> {
-        return developerIntegrationRepository?.updateWebhookUrl(session, webhookUrl)?.toConnectedSiteState()
+        return developerIntegrationRepository?.updateWebhookUrl(session, webhookUrl)
+            ?.toConnectedSiteStateWithCurrentShowOnceCopy()
             ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
     }
 
@@ -605,7 +611,28 @@ class PremiumMerchantRuntime(
         val repository = developerIntegrationRepository
             ?: return PremiumScreenState.offline(message = "Integration developpeur indisponible.")
         val test = repository.testWebhook(session)
-        return repository.load(session).copy(safeMessage = test.safeMessage).toConnectedSiteState()
+        return repository.load(session).copy(safeMessage = test.safeMessage).toConnectedSiteStateWithCurrentShowOnceCopy()
+    }
+
+    private fun clearDeveloperShowOnceCopyValues() {
+        developerSecretKeyOnceForCopy = null
+        integrationWebhookSecretOnceForCopy = null
+    }
+
+    private fun MerchantDeveloperIntegrationResult.toConnectedSiteStateWithShowOnceCopy(): PremiumScreenState<PremiumConnectedSiteUiState> {
+        integration?.secretKeyOnce?.takeIf { it.isNotBlank() }?.let { developerSecretKeyOnceForCopy = it }
+        integration?.webhookSecretOnce?.takeIf { it.isNotBlank() }?.let { integrationWebhookSecretOnceForCopy = it }
+        return toConnectedSiteState(
+            secretKeyForCopy = developerSecretKeyOnceForCopy,
+            webhookSecretForCopy = integrationWebhookSecretOnceForCopy
+        )
+    }
+
+    private fun MerchantDeveloperIntegrationResult.toConnectedSiteStateWithCurrentShowOnceCopy(): PremiumScreenState<PremiumConnectedSiteUiState> {
+        return toConnectedSiteState(
+            secretKeyForCopy = developerSecretKeyOnceForCopy,
+            webhookSecretForCopy = integrationWebhookSecretOnceForCopy
+        )
     }
 
     fun createSupportTicket(
@@ -790,10 +817,17 @@ class PremiumMerchantRuntime(
     }
 }
 
-private fun MerchantDeveloperIntegrationResult.toConnectedSiteState(): PremiumScreenState<PremiumConnectedSiteUiState> {
+private fun MerchantDeveloperIntegrationResult.toConnectedSiteState(
+    secretKeyForCopy: String? = null,
+    webhookSecretForCopy: String? = null
+): PremiumScreenState<PremiumConnectedSiteUiState> {
     return when (state) {
         MerchantRepositoryState.SUCCESS -> PremiumScreenState.content(
-            integration?.toPremiumConnectedSiteUiState(safeMessage = safeMessage)
+            integration?.toPremiumConnectedSiteUiState(
+                safeMessage = safeMessage,
+                secretKeyForCopy = secretKeyForCopy,
+                webhookSecretForCopy = webhookSecretForCopy
+            )
                 ?: PremiumConnectedSiteUiState(
                     statusTitle = "Test webhook",
                     statusText = safeMessage.ifBlank { "Test webhook envoye." },
@@ -810,7 +844,11 @@ private fun MerchantDeveloperIntegrationResult.toConnectedSiteState(): PremiumSc
     }
 }
 
-private fun MerchantDeveloperIntegrationSnapshot.toPremiumConnectedSiteUiState(safeMessage: String): PremiumConnectedSiteUiState {
+private fun MerchantDeveloperIntegrationSnapshot.toPremiumConnectedSiteUiState(
+    safeMessage: String,
+    secretKeyForCopy: String? = null,
+    webhookSecretForCopy: String? = null
+): PremiumConnectedSiteUiState {
     val active = webhookStatus == "active"
     return PremiumConnectedSiteUiState(
         statusTitle = if (active) "Integration active" else "Integration a configurer",
@@ -829,7 +867,14 @@ private fun MerchantDeveloperIntegrationSnapshot.toPremiumConnectedSiteUiState(s
             "Evenements publics" to publicWebhookEvents.joinToString(", ")
         ),
         exportLines = exportLines(),
-        oneTimeSecrets = emptyList(),
+        copyExportLines = copyExportLines(
+            secretKeyForCopy = secretKeyForCopy,
+            webhookSecretForCopy = webhookSecretForCopy
+        ),
+        oneTimeSecrets = showOnceSecrets(
+            secretKeyForCopy = secretKeyForCopy,
+            webhookSecretForCopy = webhookSecretForCopy
+        ),
         webhookUrl = webhookUrl,
         actionButtonsEnabled = true
     )

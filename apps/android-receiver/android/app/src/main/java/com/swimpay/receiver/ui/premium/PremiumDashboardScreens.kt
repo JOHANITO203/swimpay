@@ -1151,7 +1151,8 @@ fun PremiumConnectedSiteStateScreen(
     onRotateApiKey: () -> Unit = {},
     onRotateWebhookSecret: () -> Unit = {},
     onSaveWebhookUrl: (String) -> Unit = {},
-    onTestWebhook: () -> Unit = {}
+    onTestWebhook: () -> Unit = {},
+    onAuthorizeCopy: (onAuthorized: () -> Unit) -> Unit = { onAuthorized -> onAuthorized() }
 ) {
     PremiumStandaloneStateScreen(title = "Integration developpeur", onBack = onBack) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -1217,7 +1218,9 @@ fun PremiumConnectedSiteStateScreen(
                                     .background(PremiumColors.Surface, RoundedCornerShape(14.dp))
                                     .border(1.dp, PremiumColors.Line, RoundedCornerShape(14.dp))
                                     .premiumTap {
-                                        clipboardManager.setText(AnnotatedString(value.developerExportText()))
+                                        onAuthorizeCopy {
+                                            clipboardManager.setText(AnnotatedString(value.developerExportText()))
+                                        }
                                     },
                                 contentAlignment = Alignment.Center
                             ) {

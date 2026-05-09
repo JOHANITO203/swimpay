@@ -370,12 +370,17 @@ class AndroidMerchantVisualArchitectureTest {
     @Test
     fun developerIntegrationScreenOffersSafeCopyActionForDeveloperExport() {
         val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val premiumApp = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
         val premiumRuntime = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantRuntime.kt").readText()
         val connectedSiteSource = sourceFunction(premiumDashboard, "fun PremiumConnectedSiteStateScreen")
+        val connectedSiteRoute = sourceBetween(premiumApp, "PremiumRoute.ConnectedSite -> PremiumConnectedSiteStateScreen(", "PremiumRoute.ConfigurationTest ->")
 
         assertTrue(premiumRuntime.contains("fun developerExportText(): String"))
         assertTrue(connectedSiteSource.contains("LocalClipboardManager.current"))
         assertTrue(connectedSiteSource.contains("AnnotatedString(value.developerExportText())"))
+        assertTrue(connectedSiteSource.contains("onAuthorizeCopy: (onAuthorized: () -> Unit) -> Unit = { onAuthorized -> onAuthorized() }"))
+        assertTrue(connectedSiteSource.contains("onAuthorizeCopy {"))
+        assertTrue(connectedSiteRoute.contains("onAuthorizeCopy = { onAuthorized -> onRequestUnlock(onAuthorized) }"))
         assertTrue(connectedSiteSource.contains("contentDescription = \"Copier\""))
         assertTrue(connectedSiteSource.contains("Icons.Default.ContentCopy"))
         assertFalse(connectedSiteSource.contains("Copier pour dev"))

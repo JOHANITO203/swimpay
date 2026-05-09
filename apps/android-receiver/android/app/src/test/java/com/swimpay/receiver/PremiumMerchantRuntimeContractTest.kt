@@ -285,6 +285,20 @@ class PremiumMerchantRuntimeContractTest {
                   "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
                 }
                 """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_masked": "sk_live_****9999",
+                  "webhook_secret_masked": "whsec_****2222",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
             )
         )
         val runtime = runtimeWithDeveloperIntegration(
@@ -303,13 +317,24 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(initial.value.developerExportText().contains("SWIMPAY_STAGING_SECRET_KEY=sk_live_****1234"))
         assertFalse(initial.value.developerExportText().contains("sk_live_show_once"))
         assertFalse(initial.value.developerExportText().contains("whsec_show_once"))
-        assertTrue(keyCreated.value.oneTimeSecrets.isEmpty())
+        assertTrue(keyCreated.value.oneTimeSecrets.any { it.second == "sk_live_show_once" })
         assertFalse(keyCreated.value.exportLines.any { it.contains("sk_live_show_once") })
+        assertTrue(keyCreated.value.developerExportText().contains("SWIMPAY_STAGING_SECRET_KEY=sk_live_show_once"))
         assertTrue(keyCreated.value.exportLines.any { it == "SWIMPAY_STAGING_SECRET_KEY=sk_live_****9999" })
-        assertTrue(secretRotated.value.oneTimeSecrets.isEmpty())
+        assertTrue(secretRotated.value.oneTimeSecrets.any { it.second == "whsec_show_once" })
         assertFalse(secretRotated.value.exportLines.any { it.contains("whsec_show_once") })
+        assertTrue(secretRotated.value.developerExportText().contains("SWIMPAY_STAGING_SECRET_KEY=sk_live_show_once"))
+        assertTrue(secretRotated.value.developerExportText().contains("SWIMPAY_STAGING_WEBHOOK_SECRET=whsec_show_once"))
+        assertTrue(urlUpdated.value.developerExportText().contains("SWIMPAY_STAGING_SECRET_KEY=sk_live_show_once"))
+        assertTrue(urlUpdated.value.developerExportText().contains("SWIMPAY_STAGING_WEBHOOK_SECRET=whsec_show_once"))
         assertEquals("Integration active", urlUpdated.value.statusTitle)
         assertEquals("Webhook de test envoye", webhookTest.value.safeMessage)
+        assertTrue(webhookTest.value.developerExportText().contains("SWIMPAY_STAGING_SECRET_KEY=sk_live_show_once"))
+        assertTrue(webhookTest.value.developerExportText().contains("SWIMPAY_STAGING_WEBHOOK_SECRET=whsec_show_once"))
+
+        val reloaded = runtime.loadConnectedSite() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+        assertFalse(reloaded.value.developerExportText().contains("sk_live_show_once"))
+        assertFalse(reloaded.value.developerExportText().contains("whsec_show_once"))
 
         assertEquals("/v1/merchant/integration", transport.requests[0].path)
         assertEquals("/v1/merchant/integration/keys", transport.requests[1].path)
@@ -318,6 +343,7 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(transport.requests[3].body.contains("https://merchant.example/swimpay/webhook"))
         assertEquals("/v1/merchant/integration/test-webhook", transport.requests[4].path)
         assertEquals("/v1/merchant/integration", transport.requests[5].path)
+        assertEquals("/v1/merchant/integration", transport.requests[6].path)
         transport.requests.forEach {
             assertEquals("Bearer spm_mobile_session_secret", it.headers["Authorization"])
         }

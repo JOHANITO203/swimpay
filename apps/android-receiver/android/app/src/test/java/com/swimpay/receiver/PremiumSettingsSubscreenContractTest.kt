@@ -65,7 +65,8 @@ class PremiumSettingsSubscreenContractTest {
 
         assertFalse(wiring.contains("fun effectiveSecretKey(): String = secretKeyOnce"))
         assertFalse(wiring.contains("fun effectiveWebhookSecret(): String = webhookSecretOnce"))
-        assertFalse(runtime.contains("oneTimeSecrets = showOnceSecrets()"))
+        assertTrue(runtime.contains("oneTimeSecrets = showOnceSecrets("))
+        assertTrue(runtime.contains("copyExportLines = copyExportLines("))
         assertFalse(dashboard.contains("Valeurs show-once"))
         assertFalse(dashboard.contains("secret_key_once"))
         assertFalse(dashboard.contains("webhook_secret_once"))
