@@ -118,6 +118,7 @@ Backend endpoints:
 - `PATCH /v1/merchant/receiving-methods/:method_id`
 - `POST /v1/merchant/receiving-methods/:method_id/disable`
 - `POST /v1/merchant/receiving-methods/:method_id/set-default`
+- `DELETE /v1/merchant/receiving-methods/:method_id`
 
 Android maps saved methods to merchant UI rows with masked identifiers only.
 The create payload is `type`, `value`, `bank_id`, optional `label`,
@@ -125,6 +126,8 @@ The create payload is `type`, `value`, `bank_id`, optional `label`,
 submission and cleared from frontend state only after a successful backend
 mutation; error states must keep the local draft visible for correction and
 must not display saved raw values.
+Delete is a backend soft-delete: the method disappears from merchant and
+checkout lists, but historical references remain masked and auditable.
 
 ### Review Queue
 

@@ -765,7 +765,14 @@ class MerchantReceivingMethodsApiRepository(
             routeCode = "",
             displayLabel = ""
         )
-        return patch(session, routeId, jsonObject("enabled" to false), placeholder)
+        return mutate(
+            session = session,
+            routeId = routeId,
+            method = "POST",
+            pathSuffix = "/disable",
+            body = "{}",
+            submission = placeholder
+        )
     }
 
     fun markRecommended(session: AuthenticatedMerchantSession, routeId: String): MerchantReceivingMethodMutationResult {
@@ -777,12 +784,59 @@ class MerchantReceivingMethodsApiRepository(
             routeCode = "",
             displayLabel = ""
         )
-        return patch(session, routeId, jsonObject("recommended" to true), placeholder)
+        return mutate(
+            session = session,
+            routeId = routeId,
+            method = "POST",
+            pathSuffix = "/set-default",
+            body = "{}",
+            submission = placeholder
+        )
     }
 
-    private fun patch(
+    fun updateLabel(session: AuthenticatedMerchantSession, routeId: String, label: String): MerchantReceivingMethodMutationResult {
+        val placeholder = MerchantReceivingMethodSubmission(
+            bankProfileId = "",
+            type = ReceivingMethodType.CARD_TRANSFER,
+            rawIdentifier = "",
+            rawIdentifierInput = "",
+            routeCode = "",
+            displayLabel = label.trim()
+        )
+        return mutate(
+            session = session,
+            routeId = routeId,
+            method = "PATCH",
+            pathSuffix = "",
+            body = jsonObject("label" to label.trim()),
+            submission = placeholder
+        )
+    }
+
+    fun delete(session: AuthenticatedMerchantSession, routeId: String): MerchantReceivingMethodMutationResult {
+        val placeholder = MerchantReceivingMethodSubmission(
+            bankProfileId = "",
+            type = ReceivingMethodType.CARD_TRANSFER,
+            rawIdentifier = "",
+            rawIdentifierInput = "",
+            routeCode = "",
+            displayLabel = ""
+        )
+        return mutate(
+            session = session,
+            routeId = routeId,
+            method = "DELETE",
+            pathSuffix = "",
+            body = "",
+            submission = placeholder
+        )
+    }
+
+    private fun mutate(
         session: AuthenticatedMerchantSession,
         routeId: String,
+        method: String,
+        pathSuffix: String,
         body: String,
         submission: MerchantReceivingMethodSubmission
     ): MerchantReceivingMethodMutationResult {
@@ -796,10 +850,10 @@ class MerchantReceivingMethodsApiRepository(
         }
         val response = execute(
             MerchantApiRequest(
-                method = "POST",
-                path = "/v1/merchant/receiving-methods/${urlPath(routeId)}${if (body.contains("\"enabled\":false")) "/disable" else "/set-default"}",
+                method = method,
+                path = "/v1/merchant/receiving-methods/${urlPath(routeId)}$pathSuffix",
                 headers = authHeaders(session),
-                body = "{}"
+                body = body
             )
         )
         return mutationResultFrom(response, submission)
@@ -1741,6 +1795,7 @@ private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
         else -> return null
     }
     val bankProfileId = extractString(this, "bank_id") ?: extractString(this, "bank_profile_id").orEmpty()
+    val label = extractString(this, "label") ?: extractString(this, "display_label")
     val masked = extractString(this, "masked_value") ?: extractString(this, "receiver_identifier_masked").orEmpty()
     val status = extractString(this, "status")
     val enabled = if (status == "inactive") false else extractBoolean(this, "enabled") ?: true
@@ -1759,9 +1814,9 @@ private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
         routeId = routeId,
         title = type.merchantLabel,
         subtitle = "${bankDisplayNameFor(bankProfileId)} · $masked",
-        helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements via SBP" else null,
         status = if (enabled) "Active" else "Désactivée",
-        actions = actions
+        helper = label?.takeIf { it.isNotBlank() } ?: if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements via SBP" else null,
+        actions = actions + "Supprimer"
     )
 }
 

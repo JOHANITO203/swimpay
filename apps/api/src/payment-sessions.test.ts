@@ -22,6 +22,7 @@ interface TestReceivingRoute {
   fees_hint?: string | undefined;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null | undefined;
 }
 
 class InMemoryPaymentSessionRepository implements OrderRepository {
@@ -126,7 +127,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
   }
 
   async listReceivingRoutes(merchantId: string) {
-    return [...this.receivingRoutes.values()].filter((route) => route.merchant_id === merchantId);
+    return [...this.receivingRoutes.values()].filter((route) => route.merchant_id === merchantId && !route.deleted_at);
   }
 
   async updateReceivingRoute(input: {
@@ -137,7 +138,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     now: string;
   }) {
     const route = this.receivingRoutes.get(input.routeId);
-    if (!route || route.merchant_id !== input.merchantId) {
+    if (!route || route.merchant_id !== input.merchantId || route.deleted_at) {
       return { kind: 'not_found' as const };
     }
     if (input.patch.recommended) {
@@ -152,15 +153,31 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     return { kind: 'updated' as const, route };
   }
 
+  async deleteReceivingRoute(input: {
+    merchantId: string;
+    routeId: string;
+    auditEventId: string;
+    now: string;
+  }) {
+    void input.auditEventId;
+    const route = this.receivingRoutes.get(input.routeId);
+    if (!route || route.merchant_id !== input.merchantId || route.deleted_at) {
+      return { kind: 'not_found' as const };
+    }
+    Object.assign(route, { enabled: false, recommended: false, deleted_at: input.now, updated_at: input.now });
+    this.auditEvents.push({ eventType: 'merchant_receiving_route.deleted', objectId: input.routeId });
+    return { kind: 'updated' as const, route };
+  }
+
   async listReceiverBanksForCheckout(merchantId: string, paymentSessionId: string) {
     void paymentSessionId;
-    return [...this.receivingRoutes.values()].filter((route) => route.merchant_id === merchantId && route.enabled);
+    return [...this.receivingRoutes.values()].filter((route) => route.merchant_id === merchantId && route.enabled && !route.deleted_at);
   }
 
   async listReceivingRoutesForCheckoutBank(merchantId: string, paymentSessionId: string, bankProfileId: string) {
     void paymentSessionId;
     return [...this.receivingRoutes.values()].filter(
-      (route) => route.merchant_id === merchantId && route.bank_profile_id === bankProfileId && route.enabled
+      (route) => route.merchant_id === merchantId && route.bank_profile_id === bankProfileId && route.enabled && !route.deleted_at
     );
   }
 
@@ -181,7 +198,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
       return { kind: 'not_selected' as const };
     }
     const route = this.receivingRoutes.get(result.paymentSession.selectedReceivingRouteId);
-    if (!route || !route.enabled || route.merchant_id !== input.merchantId) {
+    if (!route || !route.enabled || route.deleted_at || route.merchant_id !== input.merchantId) {
       return { kind: 'not_found' as const };
     }
 
@@ -229,7 +246,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
       return result;
     }
     const route = this.receivingRoutes.get(input.receivingRouteId);
-    if (!route || route.merchant_id !== input.merchantId || route.bank_profile_id !== result.paymentSession.selectedReceiverBankProfileId) {
+    if (!route || route.deleted_at || route.merchant_id !== input.merchantId || route.bank_profile_id !== result.paymentSession.selectedReceiverBankProfileId) {
       return { kind: 'not_found' as const };
     }
 
@@ -671,6 +688,56 @@ describe('payment session api', () => {
     expect(JSON.stringify([created.json(), listed.json()])).not.toContain('2202201234564821');
     expect(JSON.stringify(repository.receivingRoutes)).not.toContain('2202201234564821');
     expect((repository.receivingRoutes.get('route_1') as unknown as { receiver_identifier_hmac?: string }).receiver_identifier_hmac).toMatch(/^hmac_sha256:/u);
+  });
+
+  test('deletes merchant receiving methods without exposing raw values or breaking tenant boundaries', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+
+    const created = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        type: 'phone',
+        value: '+7 999 123-45-67',
+        bank_id: 'tbank_ru',
+        label: 'Telephone caisse'
+      }
+    });
+    const crossTenantDelete = await server.inject({
+      method: 'DELETE',
+      url: '/v1/merchant/receiving-methods/route_1',
+      headers: { authorization: 'Bearer test_mch_02' }
+    });
+    const deleted = await server.inject({
+      method: 'DELETE',
+      url: '/v1/merchant/receiving-methods/route_1',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const listed = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/receiving-methods',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(created.statusCode).toBe(201);
+    expect(crossTenantDelete.statusCode).toBe(404);
+    expect(deleted.statusCode).toBe(200);
+    expect(deleted.json()).toMatchObject({
+      method: {
+        id: 'route_1',
+        status: 'inactive',
+        official_bank_confirmation: false
+      },
+      deleted: true,
+      official_bank_confirmation: false
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().methods).toEqual([]);
+    expect(repository.receivingRoutes.get('route_1')).toMatchObject({ deleted_at: expect.any(String), enabled: false });
+    expect(repository.auditEvents.map((event) => event.eventType)).toContain('merchant_receiving_route.deleted');
+    expect(JSON.stringify([created.json(), deleted.json(), listed.json(), repository.auditEvents])).not.toContain('+7 999 123-45-67');
   });
 
   test('rejects receiving method card secrets and invalid merchant destinations without persisting raw values', async () => {

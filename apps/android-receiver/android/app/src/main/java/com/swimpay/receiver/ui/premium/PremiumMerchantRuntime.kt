@@ -473,6 +473,14 @@ class PremiumMerchantRuntime(
         return receivingMethodsRepository.markRecommended(session, routeId).toPremiumMutationState("Défini par défaut")
     }
 
+    fun updateReceivingMethodLabel(routeId: String, label: String): PremiumScreenState<PremiumReceivingMethodMutationUiState> {
+        return receivingMethodsRepository.updateLabel(session, routeId, label).toPremiumMutationState("Moyen modifié")
+    }
+
+    fun deleteReceivingMethod(routeId: String): PremiumScreenState<PremiumReceivingMethodMutationUiState> {
+        return receivingMethodsRepository.delete(session, routeId).toPremiumMutationState("Moyen supprimé")
+    }
+
     fun loadBanks(
         probe: ExactPackageProbe = bankPackageProbe,
         enabledBankProfileIds: Set<String> = emptySet()

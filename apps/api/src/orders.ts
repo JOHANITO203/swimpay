@@ -124,6 +124,13 @@ export type ReceivingRouteMutationResult =
   | { kind: 'updated'; route: StoredMerchantReceivingRouteRecord }
   | { kind: 'not_found' };
 
+export interface DeleteReceivingRouteInput {
+  merchantId: string;
+  routeId: string;
+  auditEventId: string;
+  now: string;
+}
+
 export interface SelectReceivingRouteInput extends CheckoutMutationBaseInput {
   receivingRouteId: string;
 }
@@ -178,6 +185,7 @@ export interface OrderRepository {
   createReceivingRoute(input: CreateReceivingRouteInput): Promise<CreateReceivingRouteResult>;
   listReceivingRoutes(merchantId: string): Promise<StoredMerchantReceivingRouteRecord[]>;
   updateReceivingRoute(input: UpdateReceivingRouteInput): Promise<ReceivingRouteMutationResult>;
+  deleteReceivingRoute(input: DeleteReceivingRouteInput): Promise<ReceivingRouteMutationResult>;
   listReceiverBanksForCheckout(
     merchantId: string,
     paymentSessionId: string
@@ -493,6 +501,7 @@ export class PgOrderRepository implements OrderRepository {
         `SELECT route_code, receiver_identifier_hmac
          FROM merchant_receiving_routes
          WHERE merchant_id = $1
+           AND deleted_at IS NULL
            AND (
              route_code = $2
              OR (receiver_identifier_hmac IS NOT NULL AND receiver_identifier_hmac = $3)
@@ -562,9 +571,9 @@ export class PgOrderRepository implements OrderRepository {
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at
        FROM merchant_receiving_routes
-       WHERE merchant_id = $1
+       WHERE merchant_id = $1 AND deleted_at IS NULL
        ORDER BY recommended DESC, created_at ASC`,
       [merchantId]
     );
@@ -585,7 +594,7 @@ export class PgOrderRepository implements OrderRepository {
       await this.pool.query(
         `UPDATE merchant_receiving_routes
          SET recommended = false, updated_at = $4
-         WHERE merchant_id = $1 AND rail_type = $2 AND id <> $3`,
+         WHERE merchant_id = $1 AND rail_type = $2 AND id <> $3 AND deleted_at IS NULL`,
         [input.merchantId, updatedRoute.rail_type, input.routeId, input.now]
       );
     }
@@ -596,11 +605,11 @@ export class PgOrderRepository implements OrderRepository {
            display_label = $5,
            fees_hint = $6,
            updated_at = $7
-       WHERE merchant_id = $1 AND id = $2
+       WHERE merchant_id = $1 AND id = $2 AND deleted_at IS NULL
        RETURNING id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at`,
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at`,
       [
         input.merchantId,
         input.routeId,
@@ -624,15 +633,46 @@ export class PgOrderRepository implements OrderRepository {
     return { kind: 'updated', route: updated };
   }
 
+  public async deleteReceivingRoute(input: DeleteReceivingRouteInput): Promise<ReceivingRouteMutationResult> {
+    const route = await this.getReceivingRoute(input.merchantId, input.routeId);
+    if (!route) {
+      return { kind: 'not_found' };
+    }
+    const result = await this.pool.query(
+      `UPDATE merchant_receiving_routes
+       SET enabled = false,
+           recommended = false,
+           deleted_at = $3,
+           updated_at = $3
+       WHERE merchant_id = $1 AND id = $2 AND deleted_at IS NULL
+       RETURNING id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
+        receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
+        receiver_identifier_last4, route_code, display_label,
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at`,
+      [input.merchantId, input.routeId, input.now]
+    );
+    if (result.rowCount === 0) {
+      return { kind: 'not_found' };
+    }
+    const deleted = toMerchantReceivingRoute(result.rows[0] as Record<string, string | boolean | Date | null>);
+    await this.pool.query(
+      `INSERT INTO audit_events (
+        id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+      ) VALUES ($1, $2, 'merchant_receiving_route.deleted', 'merchant_receiving_route', $3, 'api', $4::jsonb, $5)`,
+      [input.auditEventId, input.merchantId, input.routeId, JSON.stringify(toReceivingRouteAuditPayload(deleted)), input.now]
+    );
+    return { kind: 'updated', route: deleted };
+  }
+
   public async listReceiverBanksForCheckout(merchantId: string, paymentSessionId: string) {
     void paymentSessionId;
     const result = await this.pool.query(
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at
        FROM merchant_receiving_routes
-       WHERE merchant_id = $1 AND enabled = true
+       WHERE merchant_id = $1 AND enabled = true AND deleted_at IS NULL
        ORDER BY recommended DESC, created_at ASC`,
       [merchantId]
     );
@@ -645,9 +685,9 @@ export class PgOrderRepository implements OrderRepository {
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at
        FROM merchant_receiving_routes
-       WHERE merchant_id = $1 AND bank_profile_id = $2 AND enabled = true
+       WHERE merchant_id = $1 AND bank_profile_id = $2 AND enabled = true AND deleted_at IS NULL
        ORDER BY recommended DESC, created_at ASC`,
       [merchantId, bankProfileId]
     );
@@ -919,9 +959,9 @@ export class PgOrderRepository implements OrderRepository {
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at
+        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at
        FROM merchant_receiving_routes
-       WHERE merchant_id = $1 AND id = $2`,
+       WHERE merchant_id = $1 AND id = $2 AND deleted_at IS NULL`,
       [merchantId, routeId]
     );
     return result.rowCount
@@ -1055,7 +1095,8 @@ function toMerchantReceivingRoute(row: Record<string, string | boolean | Date | 
     review_policy: String(row.review_policy) as ReceivingRouteReviewPolicy,
     fees_hint: row.fees_hint ? String(row.fees_hint) : undefined,
     created_at: new Date(String(row.created_at)).toISOString(),
-    updated_at: new Date(String(row.updated_at)).toISOString()
+    updated_at: new Date(String(row.updated_at)).toISOString(),
+    deleted_at: row.deleted_at ? new Date(String(row.deleted_at)).toISOString() : null
   };
 }
 
@@ -1201,6 +1242,7 @@ function toReceivingRouteAuditPayload(route: StoredMerchantReceivingRouteRecord)
     enabled: route.enabled,
     recommended: route.recommended,
     review_policy: route.review_policy,
+    deleted_at: route.deleted_at ?? null,
     auto_confirm_enabled: false
   };
 }

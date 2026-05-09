@@ -125,6 +125,7 @@ export interface MerchantReceivingRoute {
   fees_hint?: string | undefined;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null | undefined;
 }
 
 export interface BuyerSafeReceivingRoute {

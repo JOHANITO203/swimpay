@@ -545,6 +545,60 @@ class AndroidMerchantApiWiringTest {
                   "official_bank_confirmation": false
                 }
                 """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "method": {
+                    "id": "route_card_2",
+                    "type": "card",
+                    "bank_id": "sber_ru",
+                    "label": "Carte magasin",
+                    "masked_value": "•••• 9911",
+                    "last4": "9911",
+                    "status": "active",
+                    "is_default": false
+                  },
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "method": {
+                    "id": "route_card_2",
+                    "type": "card",
+                    "bank_id": "sber_ru",
+                    "label": "Carte magasin",
+                    "masked_value": "•••• 9911",
+                    "last4": "9911",
+                    "status": "active",
+                    "is_default": true
+                  },
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "method": {
+                    "id": "route_card_2",
+                    "type": "card",
+                    "bank_id": "sber_ru",
+                    "label": "Carte magasin",
+                    "masked_value": "•••• 9911",
+                    "last4": "9911",
+                    "status": "inactive",
+                    "is_default": false
+                  },
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
             )
         )
         val repository = MerchantReceivingMethodsApiRepository(transport)
@@ -580,6 +634,22 @@ class AndroidMerchantApiWiringTest {
         val disabled = repository.disable(session, "route_card_2")
         assertEquals(MerchantRepositoryState.SUCCESS, disabled.state)
         assertEquals("/v1/merchant/receiving-methods/route_card_2/disable", transport.requests[2].path)
+
+        val updated = repository.updateLabel(session, "route_card_2", "Carte magasin")
+        assertEquals(MerchantRepositoryState.SUCCESS, updated.state)
+        assertEquals("PATCH", transport.requests[3].method)
+        assertEquals("/v1/merchant/receiving-methods/route_card_2", transport.requests[3].path)
+        assertTrue(transport.requests[3].body.contains("\"label\":\"Carte magasin\""))
+
+        val recommended = repository.markRecommended(session, "route_card_2")
+        assertEquals(MerchantRepositoryState.SUCCESS, recommended.state)
+        assertEquals("POST", transport.requests[4].method)
+        assertEquals("/v1/merchant/receiving-methods/route_card_2/set-default", transport.requests[4].path)
+
+        val deleted = repository.delete(session, "route_card_2")
+        assertEquals(MerchantRepositoryState.SUCCESS, deleted.state)
+        assertEquals("DELETE", transport.requests[5].method)
+        assertEquals("/v1/merchant/receiving-methods/route_card_2", transport.requests[5].path)
     }
 
     @Test

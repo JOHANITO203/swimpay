@@ -482,6 +482,40 @@ class PremiumMerchantRuntimeContractTest {
                   }
                 }
                 """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "method": {
+                    "id": "route_card",
+                    "type": "card",
+                    "bank_id": "sber_ru",
+                    "label": "Carte caisse",
+                    "masked_value": "•••• 4821",
+                    "last4": "4821",
+                    "status": "active",
+                    "is_default": true
+                  }
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "method": {
+                    "id": "route_card",
+                    "type": "card",
+                    "bank_id": "sber_ru",
+                    "label": "Carte caisse",
+                    "masked_value": "•••• 4821",
+                    "last4": "4821",
+                    "status": "inactive",
+                    "is_default": false
+                  }
+                }
+                """.trimIndent()
             )
         )
         val runtime = runtimeWith(AuthenticatedMerchantSession.localDev("mch_demo"), transport)
@@ -514,12 +548,20 @@ class PremiumMerchantRuntimeContractTest {
         assertEquals("Désactivée", disabled.value.item?.status)
         val recommended = runtime.markReceivingMethodRecommended("route_phone") as PremiumScreenState.Content<PremiumReceivingMethodMutationUiState>
         assertTrue(recommended.value.item?.recommended == true)
+        val edited = runtime.updateReceivingMethodLabel("route_card", "Carte caisse") as PremiumScreenState.Content<PremiumReceivingMethodMutationUiState>
+        assertEquals("Carte caisse", edited.value.item?.helper)
+        val deleted = runtime.deleteReceivingMethod("route_card") as PremiumScreenState.Content<PremiumReceivingMethodMutationUiState>
+        assertEquals("Moyen supprimé", deleted.value.message)
 
         assertEquals("/v1/merchant/receiving-methods", transport.requests[0].path)
         assertEquals("POST", transport.requests[1].method)
         assertEquals("/v1/merchant/receiving-methods", transport.requests[1].path)
         assertEquals("/v1/merchant/receiving-methods/route_card/disable", transport.requests[2].path)
         assertEquals("/v1/merchant/receiving-methods/route_phone/set-default", transport.requests[3].path)
+        assertEquals("PATCH", transport.requests[4].method)
+        assertEquals("/v1/merchant/receiving-methods/route_card", transport.requests[4].path)
+        assertEquals("DELETE", transport.requests[5].method)
+        assertEquals("/v1/merchant/receiving-methods/route_card", transport.requests[5].path)
     }
 
     @Test

@@ -28,10 +28,13 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Link
@@ -39,6 +42,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -485,17 +489,25 @@ fun PremiumConfigurationSummary(state: PremiumScreenState<PremiumConfigurationUi
 fun PremiumReceivingMethodsStateScreen(
     state: PremiumScreenState<PremiumReceivingMethodsUiState>,
     clearDraftSignal: Int = 0,
-    onSaveDraft: (MerchantReceivingMethodSubmission) -> Unit = {}
+    onSaveDraft: (MerchantReceivingMethodSubmission) -> Unit = {},
+    onEditMethod: (String, String) -> Unit = { _, _ -> },
+    onDisableMethod: (String) -> Unit = {},
+    onSetDefaultMethod: (String) -> Unit = {},
+    onDeleteMethod: (String) -> Unit = {}
 ) {
     when (state) {
         is PremiumScreenState.Content -> {
             var draftType by remember { mutableStateOf<ReceivingMethodType?>(null) }
             var selectedBankId by remember { mutableStateOf(ReceivingMethodBankOptions.first().first) }
             var identifierInput by remember { mutableStateOf("") }
+            var editingMethod by remember { mutableStateOf<PremiumReceivingMethodUiItem?>(null) }
+            var editLabel by remember { mutableStateOf("") }
             LaunchedEffect(clearDraftSignal) {
                 if (clearDraftSignal > 0) {
                     identifierInput = ""
                     draftType = null
+                    editingMethod = null
+                    editLabel = ""
                 }
             }
             LazyColumn(
@@ -560,13 +572,53 @@ fun PremiumReceivingMethodsStateScreen(
                         }
                     }
                 }
+                editingMethod?.let { method ->
+                    item {
+                        PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp, color = PremiumColors.PanelTint) {
+                            Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Text("Modifier le libellé", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                                Text(method.subtitle, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
+                                OutlinedTextField(
+                                    value = editLabel,
+                                    onValueChange = { editLabel = it },
+                                    label = { Text("Nom court") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(18.dp)
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                                    PremiumOutlineButton("Annuler", modifier = Modifier.weight(1f)) {
+                                        editingMethod = null
+                                        editLabel = ""
+                                    }
+                                    PremiumPrimaryButton(
+                                        "Enregistrer",
+                                        modifier = Modifier.weight(1f),
+                                        enabled = editLabel.isNotBlank()
+                                    ) {
+                                        onEditMethod(method.routeId, editLabel)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 if (state.value.items.isEmpty()) {
                     item {
                         PremiumStatePanel(PremiumScreenState.empty<Unit>("Aucun moyen de réception", "Ajoutez une carte ou un téléphone SBP pour commencer."))
                     }
                 }
                 items(state.value.items) { method ->
-                    PremiumReceivingMethodRow(method)
+                    PremiumReceivingMethodRow(
+                        method = method,
+                        onEdit = {
+                            editingMethod = method
+                            editLabel = method.helper?.takeUnless { it.contains("SBP", ignoreCase = true) } ?: method.title
+                        },
+                        onDisable = { onDisableMethod(method.routeId) },
+                        onSetDefault = { onSetDefaultMethod(method.routeId) },
+                        onDelete = { onDeleteMethod(method.routeId) }
+                    )
                 }
             }
         }
@@ -678,7 +730,13 @@ private fun PremiumBankLogo(
 }
 
 @Composable
-private fun PremiumReceivingMethodRow(method: PremiumReceivingMethodUiItem) {
+private fun PremiumReceivingMethodRow(
+    method: PremiumReceivingMethodUiItem,
+    onEdit: () -> Unit,
+    onDisable: () -> Unit,
+    onSetDefault: () -> Unit,
+    onDelete: () -> Unit
+) {
     PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
         Row(Modifier.padding(22.dp), verticalAlignment = Alignment.Top) {
             val bankProfileId = bankProfileIdFromDisplay(method.subtitle)
@@ -692,13 +750,47 @@ private fun PremiumReceivingMethodRow(method: PremiumReceivingMethodUiItem) {
                     Text(it, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
                 }
                 StatusChip(method.status, if (method.enabled) StatusTone.Success else StatusTone.Neutral, Modifier.padding(top = 10.dp))
-                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    method.actions.forEach {
-                        Text(it, color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        ReceivingMethodMutationButton("Modifier", Icons.Default.Edit, Modifier.weight(1f), onEdit)
+                        if (method.enabled) {
+                            ReceivingMethodMutationButton("Désactiver", Icons.Default.Block, Modifier.weight(1f), onDisable)
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        if (!method.recommended) {
+                            ReceivingMethodMutationButton("Défaut", Icons.Default.Star, Modifier.weight(1f), onSetDefault)
+                        }
+                        ReceivingMethodMutationButton("Supprimer", Icons.Default.Delete, Modifier.weight(1f), onDelete, destructive = true)
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ReceivingMethodMutationButton(
+    label: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    destructive: Boolean = false
+) {
+    val foreground = if (destructive) PremiumColors.Danger else PremiumColors.Blue
+    Row(
+        modifier
+            .height(42.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(PremiumColors.SurfaceAlt, RoundedCornerShape(16.dp))
+            .border(1.dp, PremiumColors.Line, RoundedCornerShape(16.dp))
+            .premiumTap(onClick)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(icon, null, tint = foreground, modifier = Modifier.size(16.dp))
+        Text(label, color = foreground, fontWeight = FontWeight.Black, fontSize = 11.sp, modifier = Modifier.padding(start = 6.dp))
     }
 }
 

@@ -442,6 +442,42 @@ fun PremiumMerchantApp(
                             }
                             receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
                         }
+                    },
+                    onEditMethod = { routeId, label ->
+                        receivingMethodsState = PremiumScreenState.loading()
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                activeRuntime.updateReceivingMethodLabel(routeId, label)
+                            }
+                            receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                        }
+                    },
+                    onDisableMethod = { routeId ->
+                        receivingMethodsState = PremiumScreenState.loading()
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                activeRuntime.disableReceivingMethod(routeId)
+                            }
+                            receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                        }
+                    },
+                    onSetDefaultMethod = { routeId ->
+                        receivingMethodsState = PremiumScreenState.loading()
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                activeRuntime.markReceivingMethodRecommended(routeId)
+                            }
+                            receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                        }
+                    },
+                    onDeleteMethod = { routeId ->
+                        receivingMethodsState = PremiumScreenState.loading()
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                activeRuntime.deleteReceivingMethod(routeId)
+                            }
+                            receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                        }
                     }
                 )
             }

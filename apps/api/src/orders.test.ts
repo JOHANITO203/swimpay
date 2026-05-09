@@ -79,6 +79,10 @@ class InMemoryOrderRepository implements OrderRepository {
     return { kind: 'not_found' as const };
   }
 
+  async deleteReceivingRoute() {
+    return { kind: 'not_found' as const };
+  }
+
   async listReceiverBanksForCheckout() {
     return [];
   }

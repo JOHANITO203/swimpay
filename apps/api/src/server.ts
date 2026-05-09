@@ -1470,6 +1470,40 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     });
   });
 
+  server.delete('/v1/merchant/receiving-methods/:method_id', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { method_id?: string };
+    if (!params.method_id) {
+      return reply.status(400).send(invalidRequest('Receiving method id is required.', {}));
+    }
+    const result = await repository.deleteReceivingRoute({
+      merchantId,
+      routeId: params.method_id,
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    if (result.kind === 'not_found') {
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Receiving method was not found.',
+          details: { id: params.method_id }
+        }
+      });
+    }
+    return reply.status(200).send({
+      method: toMerchantReceivingMethodResponse(result.route),
+      deleted: true,
+      official_bank_confirmation: false
+    });
+  });
+
   server.get('/v1/checkout/:id/receiver-banks', async (request, reply) => {
     const loaded = await loadCheckoutSession({ request, reply, repository });
     if (!loaded) {

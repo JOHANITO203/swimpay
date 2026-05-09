@@ -1106,6 +1106,10 @@ class FakeOrderRepository implements OrderRepository {
     return { kind: 'updated', route: this.route };
   }
 
+  public async deleteReceivingRoute(): Promise<ReceivingRouteMutationResult> {
+    return { kind: 'updated', route: { ...this.route, enabled: false, recommended: false } };
+  }
+
   public async listReceiverBanksForCheckout(merchantId: string, _paymentSessionId: string): Promise<StoredMerchantReceivingRouteRecord[]> {
     void _paymentSessionId;
     return this.listReceivingRoutes(merchantId);

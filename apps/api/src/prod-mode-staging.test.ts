@@ -18,6 +18,7 @@ class StagingOrderRepository implements OrderRepository {
   async createReceivingRoute(input: Parameters<OrderRepository['createReceivingRoute']>[0]) { return { kind: 'created' as const, route: input.route }; }
   async listReceivingRoutes() { return []; }
   async updateReceivingRoute() { return { kind: 'not_found' as const }; }
+  async deleteReceivingRoute() { return { kind: 'not_found' as const }; }
   async listReceiverBanksForCheckout() { return []; }
   async listReceivingRoutesForCheckoutBank() { return []; }
   async getSelectedReceivingRouteCopyDetails() { return { kind: 'not_found' as const }; }
