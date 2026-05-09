@@ -2,6 +2,7 @@ package com.swimpay.receiver
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.os.Build
 import android.util.Log
 import androidx.work.WorkManager
 import com.swimpay.receiver.outbox.AndroidEncryptedOutboxStore
@@ -10,6 +11,24 @@ import com.swimpay.receiver.security.AndroidKeystorePayloadSigner
 import com.swimpay.receiver.work.SignalUploadWorker
 
 class SwimPayNotificationListenerService : NotificationListenerService() {
+    override fun onListenerConnected() {
+        val active = try {
+            getActiveNotifications()?.toList().orEmpty()
+        } catch (_: RuntimeException) {
+            emptyList()
+        }
+        runNotificationSweep(ActiveNotificationSweepSource.ACTIVE_NOTIFICATIONS, active)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val snoozed = try {
+                getSnoozedNotifications()?.toList().orEmpty()
+            } catch (_: RuntimeException) {
+                emptyList()
+            }
+            runNotificationSweep(ActiveNotificationSweepSource.SNOOZED_NOTIFICATIONS, snoozed)
+        }
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val runtimeConfig = ReceiverRuntimeConfigStore(this).load()
         if (!ReceiverBoundaries.isRuntimeNotificationAllowed(
@@ -63,6 +82,49 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
         }
         Log.i(TAG, "outbox_enqueue_success=${enqueue.success} message=${enqueue.safeMessage}")
         SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0)
+
+        val recalled = try {
+            getActiveNotifications(arrayOf(sbn.key))?.toList().orEmpty()
+        } catch (_: RuntimeException) {
+            emptyList()
+        }
+        runNotificationSweep(ActiveNotificationSweepSource.KEYED_RECALL, recalled)
+    }
+
+    private fun runNotificationSweep(source: ActiveNotificationSweepSource, notifications: List<StatusBarNotification>) {
+        if (notifications.isEmpty()) {
+            return
+        }
+        val runtimeConfig = ReceiverRuntimeConfigStore(this).load()
+        if (!runtimeConfig.activeIntentWindow.canSweep()) {
+            return
+        }
+        val allowedBeforeExtraction = notifications.filter { sbn ->
+            ReceiverBoundaries.isRuntimeNotificationAllowed(
+                packageName = sbn.packageName,
+                appPackageName = packageName,
+                debugEnabled = BuildConfig.DEBUG,
+                enabledBankPackages = runtimeConfig.enabledBankPackages
+            )
+        }
+        if (allowedBeforeExtraction.isEmpty()) {
+            return
+        }
+        val snapshots = allowedBeforeExtraction.map { sbn ->
+            AndroidNotificationSnapshotExtractor.fromStatusBarNotification(
+                sbn = sbn,
+                appPackageName = packageName,
+                debugEnabled = BuildConfig.DEBUG
+            )
+        }
+        val result = ActiveIntentNotificationSweep(
+            debugEnabled = BuildConfig.DEBUG,
+            enabledBankPackages = runtimeConfig.enabledBankPackages
+        ).processSnapshots(runtimeConfig.activeIntentWindow, source, snapshots)
+        Log.i(
+            TAG,
+            "active_notification_sweep source=$source accepted=${result.acceptedCount} ignored=${result.ignoredCount} reason=${result.reason}"
+        )
     }
 
     companion object {

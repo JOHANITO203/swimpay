@@ -31,6 +31,7 @@ class StagingOrderRepository implements OrderRepository {
   async markReceiverArmed() { return { kind: 'not_found' as const }; }
   async markPaymentInstructionsShown() { return { kind: 'not_found' as const }; }
   async markBuyerClaimedPaid() { return { kind: 'not_found' as const }; }
+  async requestNoNotificationManualCheck() { return { kind: 'not_found' as const }; }
 }
 
 class StagingReceiverRepository implements ReceiverDeviceRepository {

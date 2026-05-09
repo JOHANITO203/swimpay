@@ -1,5 +1,40 @@
 # Next Action
 
+generated_at: 2026-05-09T17:25:00+03:00
+
+## Latest Buyer Checkout addendum
+
+Completed locally:
+
+1. Android Active Intent Notification Sweep now covers live, active, keyed, snoozed and redacted-recent-buffer paths, gated by active Expected Payment Profile.
+2. No-notification manual fallback is implemented after 120 seconds from receiver armed.
+3. Job-worker can poll due fallback sessions when `NO_NOTIFICATION_FALLBACK_WORKER_ENABLED=true`.
+4. SBP and card real-world variants were added as fixtures.
+5. Ozon Bank was added through bank profile/registry with runtime package validation pending.
+6. Tests passed for API fallback, review fallback confirmation, job-worker scheduling, parser variants, Ozon registry and Android Active Sweep.
+7. Full validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
+
+Next recommended action:
+
+1. Commit and push this addendum batch.
+2. Let Dokploy redeploy staging.
+3. Apply migration `015_no_notification_fallback_and_ozon_bank.sql` on the VPS.
+   - `cd /etc/dokploy/compose/swimpay-swimpay-merchant-usjsm2/code`
+   - `sudo docker exec -i swimpay-postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < packages/database/migrations/015_no_notification_fallback_and_ozon_bank.sql`
+4. Enable the fallback poller only after staging validation if desired:
+   - `NO_NOTIFICATION_FALLBACK_WORKER_ENABLED=true`
+   - `NO_NOTIFICATION_FALLBACK_MIN_SECONDS=120`
+5. Run SDK order creation, hosted checkout Step 1 through Step 4, wait past 120 seconds without synthetic signal, verify manual-check review appears, then manually confirm/reject and verify final-only webhook.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not expose raw PAN, raw phone, raw notification text, API keys or webhook secrets.
+- Do not treat `J'ai paye`, signal detected, matching or fallback as confirmation.
+
+---
+
 generated_at: 2026-05-09T16:03:12+03:00
 
 ## Latest Buyer Checkout deployment closeout

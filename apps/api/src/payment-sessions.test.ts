@@ -29,6 +29,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
   public readonly orders = new Map<string, StoredOrderRecord>();
   public readonly paymentSessions = new Map<string, StoredPaymentSessionRecord>();
   public readonly receivingRoutes = new Map<string, TestReceivingRoute>();
+  public readonly fallbackReviews = new Map<string, { reviewId: string; reasonLabel: string; status: string }>();
   public readonly externalIds = new Set<string>();
   public readonly auditEvents: Array<{ eventType: string; objectId: string; payloadRedacted?: Record<string, unknown> }> = [];
 
@@ -354,6 +355,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
 
     result.paymentSession.status = 'receiver_armed';
     result.paymentSession.paymentInstructionsShownAt = result.paymentSession.paymentInstructionsShownAt ?? input.now;
+    result.paymentSession.receiverArmedAt = result.paymentSession.receiverArmedAt ?? input.now;
     result.paymentSession.updatedAt = input.now;
     result.order.status = 'receiver_armed';
     result.order.updatedAt = input.now;
@@ -374,6 +376,67 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     result.order.updatedAt = input.now;
     this.auditEvents.push({ eventType: 'checkout.buyer_claimed_paid', objectId: input.paymentSessionId });
     return { kind: 'updated' as const, order: result.order, paymentSession: result.paymentSession };
+  }
+
+  async requestNoNotificationManualCheck(input: Parameters<OrderRepository['requestNoNotificationManualCheck']>[0]) {
+    const existingSession = this.paymentSessions.get(input.paymentSessionId);
+    if (existingSession?.noNotificationManualCheckRequestedAt) {
+      return { kind: 'not_eligible' as const, reason: 'already_requested' as const };
+    }
+    const result = this.requireMutableSession(input.merchantId, input.paymentSessionId, input.now, [
+      'receiver_armed',
+      'buyer_claimed_paid',
+      'awaiting_payment'
+    ]);
+    if (result.kind !== 'ok') {
+      if (result.kind === 'invalid_transition') {
+        return { kind: 'not_eligible' as const, reason: 'not_armed' as const };
+      }
+      return result;
+    }
+    if (!result.paymentSession.paymentMethod || !result.paymentSession.expectedPaymentFingerprint) {
+      return { kind: 'not_eligible' as const, reason: 'expected_profile_missing' as const };
+    }
+    if (!result.paymentSession.receiverArmedAt) {
+      return { kind: 'not_eligible' as const, reason: 'not_armed' as const };
+    }
+    if (this.fallbackReviews.has(input.paymentSessionId)) {
+      return { kind: 'not_eligible' as const, reason: 'signal_or_review_exists' as const };
+    }
+    const elapsedSeconds = Math.floor(
+      (new Date(input.now).getTime() - new Date(result.paymentSession.receiverArmedAt).getTime()) / 1000
+    );
+    if (elapsedSeconds < 120) {
+      return { kind: 'not_due' as const, elapsedSeconds };
+    }
+
+    result.paymentSession.status = 'needs_review';
+    result.paymentSession.noNotificationManualCheckRequestedAt = input.now;
+    result.paymentSession.updatedAt = input.now;
+    result.order.status = 'needs_review';
+    result.order.updatedAt = input.now;
+    this.fallbackReviews.set(input.paymentSessionId, {
+      reviewId: input.reviewId,
+      reasonLabel: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT',
+      status: 'open'
+    });
+    this.auditEvents.push({
+      eventType: 'no_notification_manual_check_requested',
+      objectId: input.paymentSessionId,
+      payloadRedacted: {
+        review_id: input.reviewId,
+        reason_label: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT',
+        emits_webhook: false,
+        official_bank_confirmation: false
+      }
+    });
+    return {
+      kind: 'created' as const,
+      reviewId: input.reviewId,
+      orderId: result.order.id,
+      paymentSessionId: input.paymentSessionId,
+      reasonLabel: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT' as const
+    };
   }
 
   private requireMutableSession(
@@ -678,6 +741,115 @@ describe('payment session api', () => {
     expect(repository.paymentSessions.get('ps_session_01')?.merchantId).toBe('mch_01');
     expect(repository.paymentSessions.get('ps_session_01')?.status).toBe('receiver_armed');
     expect(repository.orders.get('ord_session_01')?.status).not.toBe('manual_confirmed');
+  });
+
+  test('requests no-notification manual check only after receiver has been armed for 120 seconds', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-05-02T10:00:00.000Z');
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createPhoneExpectedProfile(server);
+    await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/receiving-route', payload: { receiving_route_id: 'route_1' } });
+    await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/payer-bank-launcher', payload: { payer_bank_launcher_id: 'sber_ru' } });
+    await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/payment-instructions-shown' });
+    await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/continue-to-bank' });
+
+    const tooEarlyServer = buildServer(repository, '2026-05-02T10:01:59.000Z');
+    const tooEarly = await tooEarlyServer.inject({
+      method: 'POST',
+      url: '/v1/payment-sessions/ps_session_01/no-notification-manual-check',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    const dueServer = buildServer(repository, '2026-05-02T10:02:00.000Z');
+    const due = await dueServer.inject({
+      method: 'POST',
+      url: '/v1/payment-sessions/ps_session_01/no-notification-manual-check',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const duplicate = await dueServer.inject({
+      method: 'POST',
+      url: '/v1/payment-sessions/ps_session_01/no-notification-manual-check',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(tooEarly.statusCode).toBe(409);
+    expect(tooEarly.json().error).toMatchObject({
+      code: 'manual_check_not_due',
+      details: { elapsed_seconds: 119, minimum_elapsed_seconds: 120 }
+    });
+    expect(due.statusCode).toBe(201);
+    expect(due.json()).toMatchObject({
+      status: 'manual_check_requested',
+      payment_session_id: 'ps_session_01',
+      reason_label: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT',
+      confirmation_type: 'manual_bank_check',
+      does_not_confirm_payment: true,
+      emits_webhook: false,
+      official_bank_confirmation: false
+    });
+    expect(due.body).not.toContain('payment.confirmed');
+    expect(due.body).not.toContain('+79991234567');
+    expect(duplicate.statusCode).toBe(409);
+    expect(duplicate.json().error.details).toEqual({ reason: 'already_requested' });
+    expect(repository.paymentSessions.get('ps_session_01')).toMatchObject({
+      status: 'needs_review',
+      noNotificationManualCheckRequestedAt: '2026-05-02T10:02:00.000Z'
+    });
+    expect(repository.orders.get('ord_session_01')?.status).toBe('needs_review');
+    expect(repository.auditEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventType: 'no_notification_manual_check_requested',
+          objectId: 'ps_session_01'
+        })
+      ])
+    );
+  });
+
+  test('cancels no-notification fallback when a review already exists or the payment is final', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-05-02T10:00:00.000Z');
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createPhoneExpectedProfile(server);
+    await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/receiving-route', payload: { receiving_route_id: 'route_1' } });
+    await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/payer-bank-launcher', payload: { payer_bank_launcher_id: 'sber_ru' } });
+    await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/payment-instructions-shown' });
+    await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/continue-to-bank' });
+    repository.fallbackReviews.set('ps_session_01', {
+      reviewId: 'rev_existing',
+      reasonLabel: 'MATCHING_SIGNAL_REVIEW_EXISTS',
+      status: 'open'
+    });
+
+    const dueServer = buildServer(repository, '2026-05-02T10:02:00.000Z');
+    const existingReview = await dueServer.inject({
+      method: 'POST',
+      url: '/v1/payment-sessions/ps_session_01/no-notification-manual-check',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    repository.fallbackReviews.clear();
+    const session = repository.paymentSessions.get('ps_session_01');
+    const order = repository.orders.get('ord_session_01');
+    if (!session || !order) {
+      throw new Error('test session missing');
+    }
+    session.status = 'manual_confirmed';
+    order.status = 'manual_confirmed';
+    const finalState = await dueServer.inject({
+      method: 'POST',
+      url: '/v1/payment-sessions/ps_session_01/no-notification-manual-check',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(existingReview.statusCode).toBe(409);
+    expect(existingReview.json().error.details).toEqual({ reason: 'signal_or_review_exists' });
+    expect(finalState.statusCode).toBe(409);
+    expect(finalState.json().error.details).toEqual({ reason: 'not_armed' });
+    expect(repository.auditEvents.filter((event) => event.eventType === 'no_notification_manual_check_requested')).toHaveLength(0);
+    expect(existingReview.body).not.toContain('payment.confirmed');
+    expect(finalState.body).not.toContain('payment.confirmed');
   });
 
   test('creates, lists and updates merchant receiving routes without exposing raw identifiers', async () => {

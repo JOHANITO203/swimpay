@@ -33,6 +33,25 @@ The hosted buyer checkout is now aligned with the V1 four-step product flow:
 - Native Android bank package/deeplink launching is not implemented in this hosted-web sprint.
 - Deeper card/name variant scoring can be handled in a dedicated matching sprint now that the data is persisted and carried into runtime candidates.
 
+## Addendum 2026-05-09
+
+Added the latest fallback and readiness extensions without processing real bank notifications:
+
+- Active Intent Notification Sweep added on Android for active, armed payment-intent windows only.
+- No-notification fallback added after 120 seconds from `receiver_armed` when no signal/review/final state exists.
+- Job-worker polling can request due no-notification manual checks when `NO_NOTIFICATION_FALLBACK_WORKER_ENABLED=true`.
+- Manual confirm after fallback uses `confirmation_type=manual_bank_check`, keeps `official_bank_confirmation=false`, and emits final webhook only after merchant action.
+- SBP incoming real-world fixture variant now extracts rail, amount, sender name/bank hints and diagnostic balance.
+- Card incoming real-world fixture variant now extracts rail, amount, source label, card network and receiver last4 without requiring sender hints.
+- Ozon Bank added through the bank profile/registry mechanism as `review_only` with package validation pending.
+
+Reports:
+
+- `.swimpay-agent/ACTIVE_INTENT_NOTIFICATION_SWEEP_REPORT.md`
+- `.swimpay-agent/NO_NOTIFICATION_MANUAL_FALLBACK_REPORT.md`
+- `.swimpay-agent/BANK_TEMPLATES_REAL_WORLD_VARIANTS_REPORT.md`
+- `.swimpay-agent/OZON_BANK_MANAGER_INTEGRATION_REPORT.md`
+
 ## Commands Run
 
 - `npm run android:doctor`
@@ -42,4 +61,19 @@ The hosted buyer checkout is now aligned with the V1 four-step product flow:
 - `npm test`
 - `npm run build`
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config`
+- `npm test -- --run apps/api/src/payment-sessions.test.ts apps/api/src/reviews.test.ts apps/job-worker/src/no-notification-fallback.test.ts packages/bank-templates/src/parser.test.ts packages/bank-templates/src/registry.test.ts`
+- `apps/android-receiver/android/gradlew.bat -p apps/android-receiver/android :app:testDebugUnitTest --tests com.swimpay.receiver.ActiveIntentNotificationSweepTest --no-daemon --stacktrace --max-workers=1`
+- `npm test -- --run packages/bank-templates/src/parser.test.ts packages/bank-templates/src/registry.test.ts packages/bank-templates/src/fixtures.test.ts packages/bank-templates/src/drift.test.ts`
+- `apps/android-receiver/android/gradlew.bat -p apps/android-receiver/android :app:testDebugUnitTest --no-daemon --stacktrace --max-workers=1`
+- `apps/android-receiver/android/gradlew.bat -p apps/android-receiver/android :app:assembleDebug --no-daemon --stacktrace --max-workers=1`
 
+Final validation status: passed.
+
+## Staging Migration
+
+Apply after the VPS has the new repository files:
+
+```bash
+cd /etc/dokploy/compose/swimpay-swimpay-merchant-usjsm2/code
+sudo docker exec -i swimpay-postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < packages/database/migrations/015_no_notification_fallback_and_ozon_bank.sql
+```

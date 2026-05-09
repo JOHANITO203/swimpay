@@ -10,7 +10,7 @@ export interface ReviewListItem {
   merchantId: string;
   orderId: string;
   paymentSessionId: string;
-  signalId: string;
+  signalId?: string | undefined;
   reasonCode: string;
   status: ReviewStatus;
   amountMinor?: number | undefined;
@@ -81,6 +81,8 @@ export type ReviewActionResult =
       paymentSessionStatus: PaymentSessionStatus;
       rejectionScope?: ReviewRejectionScope | undefined;
       reason?: ReviewRejectionReason | undefined;
+      confirmationType?: 'notification_signal' | 'manual_bank_check' | undefined;
+      reasonLabel?: string | undefined;
       idempotent?: boolean | undefined;
     }
   | { kind: 'not_found' }
@@ -118,7 +120,7 @@ export interface ReviewListItemResponse {
   reason_code: string;
   order_id: string;
   payment_session_id: string;
-  signal_id: string;
+  signal_id?: string | undefined;
   amount?: {
     value: string;
     currency: string;
@@ -314,11 +316,12 @@ export class PgReviewRepository implements ReviewRepository {
       const review = reviewResult.rows[0] as ReviewActionRow;
       const currentOrderStatus = normalizeOrderStatus(review.order_status);
       const currentSessionStatus = normalizePaymentSessionStatus(review.payment_session_status);
+      const effectiveScope: ReviewRejectionScope = review.signal_id ? scope : 'order';
 
       if (String(review.status) !== 'open') {
         if (String(review.status) === 'rejected') {
           const previous = await findPreviousRejectionAction(client, input.merchantId, input.reviewId);
-          if (previous?.scope === scope) {
+          if (previous?.scope === effectiveScope) {
             await client.query('COMMIT');
             return {
               kind: 'updated',
@@ -338,7 +341,7 @@ export class PgReviewRepository implements ReviewRepository {
           return {
             kind: 'rejection_scope_conflict',
             existingScope: previous?.scope ?? 'signal',
-            requestedScope: scope
+            requestedScope: effectiveScope
           };
         }
 
@@ -353,17 +356,19 @@ export class PgReviewRepository implements ReviewRepository {
         [input.merchantId, input.createdAt, input.reviewId]
       );
 
-      await client.query(
-        `UPDATE notification_signals
-         SET status = 'rejected'
-         WHERE merchant_id = $1 AND id = $2`,
-        [input.merchantId, review.signal_id]
-      );
+      if (review.signal_id) {
+        await client.query(
+          `UPDATE notification_signals
+           SET status = 'rejected'
+           WHERE merchant_id = $1 AND id = $2`,
+          [input.merchantId, review.signal_id]
+        );
+      }
 
       let orderStatus = currentOrderStatus;
       let paymentSessionStatus = currentSessionStatus;
 
-      if (scope === 'payment_session' || scope === 'order') {
+      if (effectiveScope === 'payment_session' || effectiveScope === 'order') {
         paymentSessionStatus = 'rejected';
         await client.query(
           `UPDATE payment_sessions
@@ -373,7 +378,7 @@ export class PgReviewRepository implements ReviewRepository {
         );
       }
 
-      if (scope === 'order') {
+      if (effectiveScope === 'order') {
         orderStatus = 'rejected';
         await client.query(
           `UPDATE orders
@@ -394,7 +399,7 @@ export class PgReviewRepository implements ReviewRepository {
           input.actorId ?? null,
           reason,
           input.feedbackLabel ?? null,
-          scope,
+          effectiveScope,
           input.createdAt
         ]
       );
@@ -412,7 +417,7 @@ export class PgReviewRepository implements ReviewRepository {
           payment_session_id: review.payment_session_id,
           signal_id: review.signal_id,
           action: input.action,
-          rejection_scope: scope,
+          rejection_scope: effectiveScope,
           reason,
           feedback_label: input.feedbackLabel
         }
@@ -423,18 +428,20 @@ export class PgReviewRepository implements ReviewRepository {
         objectType: 'review',
         objectId: input.reviewId,
         createdAt: input.createdAt,
-        payloadRedacted: { action: 'rejected', rejection_scope: scope, reason }
+        payloadRedacted: { action: 'rejected', rejection_scope: effectiveScope, reason }
       });
-      await insertSystemAuditEvent(client, {
-        merchantId: input.merchantId,
-        eventType: EventTypes.SIGNAL_REJECTED,
-        objectType: 'notification_signal',
-        objectId: String(review.signal_id),
-        createdAt: input.createdAt,
-        payloadRedacted: { review_id: input.reviewId, rejection_scope: scope, reason }
-      });
+      if (review.signal_id) {
+        await insertSystemAuditEvent(client, {
+          merchantId: input.merchantId,
+          eventType: EventTypes.SIGNAL_REJECTED,
+          objectType: 'notification_signal',
+          objectId: String(review.signal_id),
+          createdAt: input.createdAt,
+          payloadRedacted: { review_id: input.reviewId, rejection_scope: effectiveScope, reason }
+        });
+      }
 
-      if (scope === 'payment_session' || scope === 'order') {
+      if (effectiveScope === 'payment_session' || effectiveScope === 'order') {
         await insertSystemAuditEvent(client, {
           merchantId: input.merchantId,
           eventType: 'payment_session.status_changed',
@@ -445,7 +452,7 @@ export class PgReviewRepository implements ReviewRepository {
         });
       }
 
-      if (scope === 'order') {
+      if (effectiveScope === 'order') {
         await insertSystemAuditEvent(client, {
           merchantId: input.merchantId,
           eventType: 'order.status_changed',
@@ -466,8 +473,9 @@ export class PgReviewRepository implements ReviewRepository {
         paymentSessionId: String(review.payment_session_id),
         orderStatus,
         paymentSessionStatus,
-        rejectionScope: scope,
-        reason
+        rejectionScope: effectiveScope,
+        reason,
+        reasonLabel: review.signal_id ? undefined : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED'
       };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -512,7 +520,7 @@ export class PgReviewRepository implements ReviewRepository {
       if (outcome.reviewStatus === 'confirmed') {
         const duplicateConfirmed = await client.query(
           `SELECT id FROM signal_matches
-           WHERE (order_id = $1 OR signal_id = $2)
+           WHERE (order_id = $1 OR ($2::uuid IS NOT NULL AND signal_id = $2::uuid))
              AND decision = 'manual_confirmed'
            LIMIT 1`,
           [review.order_id, review.signal_id]
@@ -523,21 +531,23 @@ export class PgReviewRepository implements ReviewRepository {
           return { kind: 'already_confirmed' };
         }
 
-        await client.query(
-          `INSERT INTO signal_matches (
-            signal_id, order_id, payment_session_id, score, decision, collision_detected, reasons_json, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [
-            review.signal_id,
-            review.order_id,
-            review.payment_session_id,
-            100,
-            'manual_confirmed',
-            false,
-            JSON.stringify(['manual_review_confirmed']),
-            input.createdAt
-          ]
-        );
+        if (review.signal_id) {
+          await client.query(
+            `INSERT INTO signal_matches (
+              signal_id, order_id, payment_session_id, score, decision, collision_detected, reasons_json, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [
+              review.signal_id,
+              review.order_id,
+              review.payment_session_id,
+              100,
+              'manual_confirmed',
+              false,
+              JSON.stringify(['manual_review_confirmed']),
+              input.createdAt
+            ]
+          );
+        }
       }
 
       await client.query(
@@ -604,7 +614,9 @@ export class PgReviewRepository implements ReviewRepository {
         orderId: String(review.order_id),
         paymentSessionId: String(review.payment_session_id),
         orderStatus: outcome.stateStatus,
-        paymentSessionStatus: outcome.stateStatus
+        paymentSessionStatus: outcome.stateStatus,
+        confirmationType: review.signal_id ? 'notification_signal' : 'manual_bank_check',
+        reasonLabel: review.signal_id ? undefined : 'NO_NOTIFICATION_MANUAL_FALLBACK_CONFIRMED'
       };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -757,6 +769,13 @@ export function buildReviewActionEvent(params: {
   occurredAt: string;
 }): EventEnvelope {
   const eventType = params.result.status === 'confirmed' ? EventTypes.REVIEW_CONFIRMED : EventTypes.REVIEW_REJECTED;
+  const disclosure =
+    params.result.confirmationType === 'manual_bank_check'
+      ? {
+          confirmation_type: 'manual_bank_check',
+          official_bank_confirmation: false
+        }
+      : PUBLIC_EVENT_SIGNAL_DISCLOSURE;
 
   return {
     eventId: params.eventId,
@@ -771,7 +790,8 @@ export function buildReviewActionEvent(params: {
       payment_session_id: params.result.paymentSessionId,
       rejection_scope: params.result.rejectionScope,
       reason: params.result.reason,
-      ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+      reason_label: params.result.reasonLabel,
+      ...disclosure
     }
   };
 }
@@ -785,12 +805,15 @@ export function toReviewListResponse(items: ReviewListItem[]): ReviewListRespons
         reason_code: item.reasonCode,
         order_id: item.orderId,
         payment_session_id: item.paymentSessionId,
-        signal_id: item.signalId,
         positive_reasons: item.positiveReasonCodes,
         negative_reasons: item.negativeReasonCodes,
         recommended_action: 'manual_review',
         created_at: item.createdAt
       };
+
+      if (item.signalId) {
+        response.signal_id = item.signalId;
+      }
 
       if (item.amountMinor !== undefined && item.currency) {
         response.amount = {
@@ -865,7 +888,7 @@ interface ReviewListRow {
   merchant_id: string;
   order_id: string;
   payment_session_id: string;
-  signal_id: string;
+  signal_id: string | null;
   reason_code: string;
   status: string;
   created_at: Date | string;
@@ -886,7 +909,7 @@ interface ReviewActionRow {
   merchant_id: string;
   order_id: string;
   payment_session_id: string;
-  signal_id: string;
+  signal_id: string | null;
   status: string;
   order_status?: string | null;
   payment_session_status?: string | null;
@@ -908,7 +931,7 @@ function toReviewListItem(row: ReviewListRow): ReviewListItem {
     merchantId: String(row.merchant_id),
     orderId: String(row.order_id),
     paymentSessionId: String(row.payment_session_id),
-    signalId: String(row.signal_id),
+    signalId: row.signal_id ? String(row.signal_id) : undefined,
     reasonCode: String(row.reason_code),
     status: String(row.status) as ReviewStatus,
     amountMinor: row.amount_minor === null ? undefined : Number(row.amount_minor),

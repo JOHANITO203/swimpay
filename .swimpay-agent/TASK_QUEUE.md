@@ -17,6 +17,10 @@ The current sprint is BUYER-CHECKOUT-4STEP. It aligns hosted buyer checkout, exp
 - [x] `716_checkout_step3_open_bank` - status: completed_web_fallback_only - source: `tasks/716_checkout_step3_open_bank.md`
 - [x] `717_checkout_step4_paid_claim_waiting` - status: completed - source: `tasks/717_checkout_step4_paid_claim_waiting.md`
 - [x] `718_swimpay_intelligence_expected_profile_matching` - status: completed_backend_wiring_added - source: `tasks/718_swimpay_intelligence_expected_profile_matching.md`
+- [x] `721_active_intent_notification_sweep` - status: completed - source: `tasks/721_active_intent_notification_sweep.md`
+- [x] `722_no_notification_manual_fallback` - status: completed - source: `tasks/722_no_notification_manual_fallback.md`
+- [x] `723_real_world_bank_template_variants` - status: completed - source: `tasks/723_real_world_bank_template_variants.md`
+- [x] `724_ozon_bank_manager_integration` - status: completed_package_validation_pending - source: `tasks/724_ozon_bank_manager_integration.md`
 - [x] `719_buyer_checkout_security_guardrails` - status: completed - source: `tasks/719_buyer_checkout_security_guardrails.md`
 - [x] `720_buyer_checkout_4_step_closeout` - status: completed - source: `tasks/720_buyer_checkout_4_step_closeout.md`
 

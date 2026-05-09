@@ -23,6 +23,13 @@ import {
   type WebhookDeliveryProcessor,
   type WebhookWorkerConfig
 } from './webhook-runtime.js';
+import {
+  NoNotificationFallbackPollingLoop,
+  PgNoNotificationFallbackRepository,
+  parseNoNotificationFallbackConfig,
+  type NoNotificationFallbackConfig,
+  type NoNotificationFallbackProcessor
+} from './no-notification-fallback.js';
 
 export interface JobWorkerRuntime {
   nats: NatsJetStreamRuntime;
@@ -31,6 +38,9 @@ export interface JobWorkerRuntime {
   webhookWorkerReady: boolean;
   webhookPollingEnabled: boolean;
   webhookPollingLoop: WebhookPollingLoop | null;
+  noNotificationFallbackReady: boolean;
+  noNotificationFallbackEnabled: boolean;
+  noNotificationFallbackLoop: NoNotificationFallbackPollingLoop | null;
   statusTracker: RuntimeStatusTracker;
 }
 
@@ -41,10 +51,12 @@ export async function createJobWorkerRuntime(
 ): Promise<JobWorkerRuntime> {
   const natsConfig = parseNatsRuntimeConfig(env);
   const webhookConfig = parseWebhookWorkerConfig(env);
+  const noNotificationFallbackConfig = parseNoNotificationFallbackConfig(env);
   const nats = new NatsJetStreamRuntime(natsConfig, logger, metrics);
   const consumers = createJobWorkerConsumers(natsConfig.durablePrefix);
   const statusTracker = new RuntimeStatusTracker();
   const webhookProcessor = createDefaultWebhookProcessor(env, webhookConfig, metrics);
+  const noNotificationFallbackProcessor = createDefaultNoNotificationFallbackProcessor(env, noNotificationFallbackConfig);
   const webhookPollingLoop = webhookProcessor
     ? new WebhookPollingLoop({
         processor: webhookProcessor,
@@ -53,8 +65,17 @@ export async function createJobWorkerRuntime(
         logger
       })
     : null;
+  const noNotificationFallbackLoop = noNotificationFallbackProcessor
+    ? new NoNotificationFallbackPollingLoop({
+        processor: noNotificationFallbackProcessor,
+        config: noNotificationFallbackConfig,
+        now: () => new Date().toISOString(),
+        logger
+      })
+    : null;
 
   webhookPollingLoop?.start();
+  noNotificationFallbackLoop?.start();
 
   try {
     await nats.connect();
@@ -80,6 +101,9 @@ export async function createJobWorkerRuntime(
       webhookWorkerReady: Boolean(webhookProcessor),
       webhookPollingEnabled: webhookConfig.enabled && Boolean(webhookProcessor),
       webhookPollingLoop,
+      noNotificationFallbackReady: Boolean(noNotificationFallbackProcessor),
+      noNotificationFallbackEnabled: noNotificationFallbackConfig.enabled && Boolean(noNotificationFallbackProcessor),
+      noNotificationFallbackLoop,
       statusTracker
     };
   } catch (error) {
@@ -94,6 +118,9 @@ export async function createJobWorkerRuntime(
       webhookWorkerReady: Boolean(webhookProcessor),
       webhookPollingEnabled: webhookConfig.enabled && Boolean(webhookProcessor),
       webhookPollingLoop,
+      noNotificationFallbackReady: Boolean(noNotificationFallbackProcessor),
+      noNotificationFallbackEnabled: noNotificationFallbackConfig.enabled && Boolean(noNotificationFallbackProcessor),
+      noNotificationFallbackLoop,
       statusTracker
     };
   }
@@ -121,6 +148,10 @@ export function buildJobWorkerHealthResponse(params: {
     webhook_delivery: {
       status: params.runtime?.webhookWorkerReady ? 'configured' : 'unconfigured',
       polling_enabled: params.runtime?.webhookPollingEnabled ?? false
+    },
+    no_notification_fallback: {
+      status: params.runtime?.noNotificationFallbackReady ? 'configured' : 'unconfigured',
+      polling_enabled: params.runtime?.noNotificationFallbackEnabled ?? false
     },
     consumers: params.runtime?.consumers.map((consumer) => ({
       durable_name: consumer.durableName,
@@ -165,6 +196,17 @@ function createDefaultWebhookProcessor(
   });
 }
 
+function createDefaultNoNotificationFallbackProcessor(
+  env: NodeJS.ProcessEnv,
+  config: NoNotificationFallbackConfig
+): NoNotificationFallbackProcessor | null {
+  if (!config.enabled || !env.DATABASE_URL) {
+    return null;
+  }
+
+  return new PgNoNotificationFallbackRepository(env.DATABASE_URL);
+}
+
 function fastifyLoggerAdapter(server: ReturnType<typeof Fastify>): SafeEventLogger {
   return {
     info: (message, fields) => server.log.info(fields ?? {}, message),
@@ -189,6 +231,7 @@ async function main(): Promise<void> {
 
   const shutdown = async () => {
     runtime.webhookPollingLoop?.stop();
+    runtime.noNotificationFallbackLoop?.stop();
     await runtime.nats.close();
     await server.close();
   };

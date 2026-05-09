@@ -75,7 +75,9 @@ export interface StoredPaymentSessionRecord {
   reconciliationDeltaMinor?: number | undefined;
   expectedPaymentFingerprint?: string | undefined;
   paymentInstructionsShownAt?: string | undefined;
+  receiverArmedAt?: string | undefined;
   buyerClaimedPaidAt?: string | undefined;
+  noNotificationManualCheckRequestedAt?: string | undefined;
   validFrom: string;
   validUntil: string;
   createdAt: string;
@@ -194,6 +196,23 @@ export type PaymentSessionCheckoutMutationResult =
   | { kind: 'expired' }
   | { kind: 'invalid_transition'; currentStatus: PaymentSessionStatus };
 
+export interface RequestNoNotificationManualCheckInput extends CheckoutMutationBaseInput {
+  reviewId: string;
+}
+
+export type NoNotificationManualCheckResult =
+  | {
+      kind: 'created';
+      reviewId: string;
+      orderId: string;
+      paymentSessionId: string;
+      reasonLabel: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT';
+    }
+  | { kind: 'not_found' }
+  | { kind: 'expired' }
+  | { kind: 'not_due'; elapsedSeconds: number }
+  | { kind: 'not_eligible'; reason: 'not_armed' | 'expected_profile_missing' | 'signal_or_review_exists' | 'already_requested' };
+
 export interface OrderRepository {
   createOrderWithSession(input: CreateOrderWithSessionInput): Promise<CreateOrderWithSessionResult>;
   getOrderById(
@@ -250,6 +269,7 @@ export interface OrderRepository {
   markReceiverArmed(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
   markPaymentInstructionsShown(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
   markBuyerClaimedPaid(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
+  requestNoNotificationManualCheck(input: RequestNoNotificationManualCheckInput): Promise<NoNotificationManualCheckResult>;
 }
 
 export interface IdGenerator {
@@ -444,7 +464,8 @@ export class PgOrderRepository implements OrderRepository {
         buyer_name_script_detected, buyer_name_normalized, buyer_name_latin_variants,
         buyer_name_cyrillic_variants, buyer_name_initial_variants, buyer_name_reversed_order_variants,
         buyer_name_fingerprint, display_amount_minor, payable_amount_minor, reconciliation_delta_minor,
-        expected_payment_fingerprint, payment_instructions_shown_at, buyer_claimed_paid_at,
+        expected_payment_fingerprint, payment_instructions_shown_at, receiver_armed_at,
+        buyer_claimed_paid_at, no_notification_manual_check_requested_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND order_id = $2
        ORDER BY created_at DESC LIMIT 1`,
@@ -482,7 +503,8 @@ export class PgOrderRepository implements OrderRepository {
         buyer_name_script_detected, buyer_name_normalized, buyer_name_latin_variants,
         buyer_name_cyrillic_variants, buyer_name_initial_variants, buyer_name_reversed_order_variants,
         buyer_name_fingerprint, display_amount_minor, payable_amount_minor, reconciliation_delta_minor,
-        expected_payment_fingerprint, payment_instructions_shown_at, buyer_claimed_paid_at,
+        expected_payment_fingerprint, payment_instructions_shown_at, receiver_armed_at,
+        buyer_claimed_paid_at, no_notification_manual_check_requested_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND id = $2`,
       [merchantId, paymentSessionId]
@@ -521,7 +543,8 @@ export class PgOrderRepository implements OrderRepository {
         buyer_name_script_detected, buyer_name_normalized, buyer_name_latin_variants,
         buyer_name_cyrillic_variants, buyer_name_initial_variants, buyer_name_reversed_order_variants,
         buyer_name_fingerprint, display_amount_minor, payable_amount_minor, reconciliation_delta_minor,
-        expected_payment_fingerprint, payment_instructions_shown_at, buyer_claimed_paid_at,
+        expected_payment_fingerprint, payment_instructions_shown_at, receiver_armed_at,
+        buyer_claimed_paid_at, no_notification_manual_check_requested_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE id = $1`,
       [paymentSessionId]
@@ -1025,6 +1048,7 @@ export class PgOrderRepository implements OrderRepository {
           `UPDATE payment_sessions
            SET status = 'receiver_armed',
                payment_instructions_shown_at = COALESCE(payment_instructions_shown_at, $3::timestamptz),
+               receiver_armed_at = COALESCE(receiver_armed_at, $3::timestamptz),
                updated_at = $3
            WHERE merchant_id = $1 AND id = $2`,
           [input.merchantId, input.paymentSessionId, input.now]
@@ -1102,6 +1126,171 @@ export class PgOrderRepository implements OrderRepository {
         does_not_confirm_payment: true
       }
     });
+  }
+
+  public async requestNoNotificationManualCheck(
+    input: RequestNoNotificationManualCheckInput
+  ): Promise<NoNotificationManualCheckResult> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const result = await client.query(
+        `SELECT
+           ps.id,
+           ps.order_id,
+           ps.status,
+           ps.valid_until,
+           ps.receiver_armed_at,
+           ps.expected_payment_fingerprint,
+           ps.payment_method,
+           ps.no_notification_manual_check_requested_at,
+           o.amount_minor,
+           o.currency,
+           o.status AS order_status
+         FROM payment_sessions ps
+         INNER JOIN orders o ON o.id = ps.order_id AND o.merchant_id = ps.merchant_id
+         WHERE ps.merchant_id = $1 AND ps.id = $2
+         FOR UPDATE OF ps, o`,
+        [input.merchantId, input.paymentSessionId]
+      );
+
+      if (result.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_found' };
+      }
+
+      const row = result.rows[0] as {
+        id: string;
+        order_id: string;
+        status: PaymentSessionStatus;
+        valid_until: Date | string;
+        receiver_armed_at: Date | string | null;
+        expected_payment_fingerprint: string | null;
+        payment_method: string | null;
+        no_notification_manual_check_requested_at: Date | string | null;
+      };
+      const nowMs = new Date(input.now).getTime();
+
+      if (new Date(row.valid_until).getTime() <= nowMs) {
+        await client.query('ROLLBACK');
+        return { kind: 'expired' };
+      }
+
+      if (row.no_notification_manual_check_requested_at) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_eligible', reason: 'already_requested' };
+      }
+
+      if (!['receiver_armed', 'buyer_claimed_paid', 'awaiting_payment'].includes(row.status)) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_eligible', reason: 'not_armed' };
+      }
+
+      if (!row.expected_payment_fingerprint || !row.payment_method) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_eligible', reason: 'expected_profile_missing' };
+      }
+
+      if (!row.receiver_armed_at) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_eligible', reason: 'not_armed' };
+      }
+
+      const elapsedSeconds = Math.floor((nowMs - new Date(row.receiver_armed_at).getTime()) / 1000);
+      if (elapsedSeconds < 120) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_due', elapsedSeconds };
+      }
+
+      const existingSignalOrReview = await client.query(
+        `SELECT 1
+         WHERE EXISTS (
+           SELECT 1 FROM review_queue
+           WHERE merchant_id = $1 AND payment_session_id = $2
+         )
+         OR EXISTS (
+           SELECT 1 FROM signal_matches
+           WHERE payment_session_id = $2
+         )
+         LIMIT 1`,
+        [input.merchantId, input.paymentSessionId]
+      );
+      if (existingSignalOrReview.rowCount && existingSignalOrReview.rowCount > 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_eligible', reason: 'signal_or_review_exists' };
+      }
+
+      await client.query(
+        `INSERT INTO review_queue (
+          id, merchant_id, order_id, payment_session_id, signal_id, reason_code, status, created_at
+        ) VALUES ($1, $2, $3, $4, NULL, $5, 'open', $6)`,
+        [
+          input.reviewId,
+          input.merchantId,
+          row.order_id,
+          input.paymentSessionId,
+          'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT',
+          input.now
+        ]
+      );
+
+      await client.query(
+        `UPDATE payment_sessions
+         SET status = 'needs_review',
+             no_notification_manual_check_requested_at = $3,
+             updated_at = $3
+         WHERE merchant_id = $1 AND id = $2
+           AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
+        [input.merchantId, input.paymentSessionId, input.now]
+      );
+
+      await client.query(
+        `UPDATE orders
+         SET status = 'needs_review',
+             updated_at = $3
+         WHERE merchant_id = $1 AND id = $2
+           AND status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
+        [input.merchantId, row.order_id, input.now]
+      );
+
+      await client.query(
+        `INSERT INTO audit_events (
+          id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+        ) VALUES ($1, $2, 'no_notification_manual_check_requested', 'payment_session', $3, 'system', $4::jsonb, $5)`,
+        [
+          input.auditEventId,
+          input.merchantId,
+          input.paymentSessionId,
+          JSON.stringify({
+            payment_session_id: input.paymentSessionId,
+            order_id: row.order_id,
+            review_id: input.reviewId,
+            reason_label: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT',
+            elapsed_seconds: elapsedSeconds,
+            does_not_confirm_payment: true,
+            emits_webhook: false,
+            official_bank_confirmation: false
+          }),
+          input.now
+        ]
+      );
+
+      await client.query('COMMIT');
+      return {
+        kind: 'created',
+        reviewId: input.reviewId,
+        orderId: String(row.order_id),
+        paymentSessionId: input.paymentSessionId,
+        reasonLabel: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT'
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   private async getReceivingRoute(
@@ -1247,7 +1436,11 @@ function toPaymentSession(row: Record<string, string | number | Date | null>): S
     paymentInstructionsShownAt: row.payment_instructions_shown_at
       ? new Date(String(row.payment_instructions_shown_at)).toISOString()
       : undefined,
+    receiverArmedAt: row.receiver_armed_at ? new Date(String(row.receiver_armed_at)).toISOString() : undefined,
     buyerClaimedPaidAt: row.buyer_claimed_paid_at ? new Date(String(row.buyer_claimed_paid_at)).toISOString() : undefined,
+    noNotificationManualCheckRequestedAt: row.no_notification_manual_check_requested_at
+      ? new Date(String(row.no_notification_manual_check_requested_at)).toISOString()
+      : undefined,
     validFrom: new Date(String(row.valid_from)).toISOString(),
     validUntil: new Date(String(row.valid_until)).toISOString(),
     createdAt: new Date(String(row.created_at)).toISOString(),

@@ -7,13 +7,14 @@ import {
 } from './registry.js';
 
 describe('bank profile registry', () => {
-  it('loads all five V1 bank profiles from package YAML assets', async () => {
+  it('loads V1 bank profiles plus Ozon placeholder through package YAML assets', async () => {
     const registry = await BankProfileRegistry.loadDefault();
     const profiles = registry.listProfiles();
 
     expect(profiles.map((profile) => profile.bankProfileId).sort()).toEqual([
       'alfa_ru',
       'gazprombank_ru',
+      'ozon_bank',
       'sberbank_ru',
       'tbank_ru',
       'vtb_ru'
@@ -70,7 +71,29 @@ describe('bank profile registry', () => {
   it('can load profiles from an explicit directory path', async () => {
     const profiles = await loadBankProfilesFromDirectory(getDefaultBankProfilesDirectory());
 
-    expect(profiles).toHaveLength(5);
+    expect(profiles).toHaveLength(6);
     expect(profiles.every((profile) => profile.trustedApps.length === 1)).toBe(true);
+  });
+
+  it('keeps Ozon Bank review-only until an exact Android package is validated', async () => {
+    const registry = await BankProfileRegistry.loadDefault();
+    const ozon = registry.getProfile('ozon_bank');
+
+    expect(ozon).toMatchObject({
+      bankProfileId: 'ozon_bank',
+      displayName: 'Ozon Банк',
+      status: 'review_only',
+      autoConfirmStatus: 'disabled'
+    });
+    expect(ozon?.trustedApps[0]).toMatchObject({
+      packageName: 'TO_VERIFY',
+      certSha256: 'TO_VERIFY',
+      verificationStatus: 'pending_verification'
+    });
+    expect(registry.getRuntimeBehavior('ozon_bank')).toMatchObject({
+      profileKnown: true,
+      allowAutoConfirmCandidate: false,
+      reasonCodes: ['requires_review']
+    });
   });
 });

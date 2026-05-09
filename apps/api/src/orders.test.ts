@@ -216,6 +216,10 @@ class InMemoryOrderRepository implements OrderRepository {
     return { kind: 'updated' as const, ...found };
   }
 
+  async requestNoNotificationManualCheck() {
+    return { kind: 'not_found' as const };
+  }
+
   private async requireMutablePaymentSession(merchantId: string, paymentSessionId: string) {
     const found = await this.getPaymentSessionById(merchantId, paymentSessionId);
     if (!found) {

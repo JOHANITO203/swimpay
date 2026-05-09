@@ -129,6 +129,58 @@ describe('review queue api', () => {
     });
   });
 
+  it('confirms a no-notification fallback review as manual bank check only after merchant action', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_fallback_01', {
+      ...openReviewItem(),
+      id: 'rev_fallback_01',
+      signalId: undefined,
+      reasonCode: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT',
+      negativeReasonCodes: ['NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT']
+    });
+    const events = new FakeEventPublisher();
+    const server = buildTestServer(repository, events);
+
+    const listed = await server.inject({
+      method: 'GET',
+      url: '/v1/reviews',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const confirmed = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_fallback_01/confirm',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        actor_id: 'usr_01',
+        reason: 'merchant opened bank app and verified receipt'
+      }
+    });
+
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().reviews[0]).toMatchObject({
+      review_id: 'rev_fallback_01',
+      reason_code: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT',
+      recommended_action: 'manual_review'
+    });
+    expect(listed.json().reviews[0]).not.toHaveProperty('signal_id');
+    expect(confirmed.statusCode).toBe(200);
+    expect(confirmed.json()).toMatchObject({
+      status: 'confirmed',
+      order_status: 'manual_confirmed',
+      payment_session_status: 'manual_confirmed'
+    });
+    expect(events.events[0]).toMatchObject({
+      eventType: EventTypes.REVIEW_CONFIRMED,
+      data: {
+        review_id: 'rev_fallback_01',
+        confirmation_type: 'manual_bank_check',
+        official_bank_confirmation: false,
+        reason_label: 'NO_NOTIFICATION_MANUAL_FALLBACK_CONFIRMED'
+      }
+    });
+    expect(JSON.stringify(events.events)).not.toContain('payment.confirmed');
+  });
+
   it('rejects a review with default signal scope without rejecting order or session', async () => {
     const repository = new FakeReviewRepository();
     repository.items.set('rev_01', openReviewItem());
@@ -484,7 +536,8 @@ class FakeReviewRepository implements ReviewRepository {
       return { kind: 'not_found' as const };
     }
 
-    const scope: ReviewRejectionScope = input.scope ?? 'signal';
+    const requestedScope: ReviewRejectionScope = input.scope ?? 'signal';
+    const scope: ReviewRejectionScope = review.signalId ? requestedScope : 'order';
     if (review.status !== 'open') {
       if (review.status === 'rejected') {
         const previous = this.actions.find((action) => action.reviewId === input.reviewId && action.action === 'rejected');
@@ -511,7 +564,9 @@ class FakeReviewRepository implements ReviewRepository {
 
     review.status = 'rejected';
     review.resolvedAt = input.createdAt;
-    this.signalStatuses.set(review.signalId, 'rejected');
+    if (review.signalId) {
+      this.signalStatuses.set(review.signalId, 'rejected');
+    }
 
     if (scope === 'payment_session' || scope === 'order') {
       this.paymentSessionStatuses.set(review.paymentSessionId, 'rejected');
@@ -526,11 +581,13 @@ class FakeReviewRepository implements ReviewRepository {
       objectType: 'review',
       objectId: review.id
     });
-    this.auditEvents.push({
-      eventType: EventTypes.SIGNAL_REJECTED,
-      objectType: 'notification_signal',
-      objectId: review.signalId
-    });
+    if (review.signalId) {
+      this.auditEvents.push({
+        eventType: EventTypes.SIGNAL_REJECTED,
+        objectType: 'notification_signal',
+        objectId: review.signalId
+      });
+    }
     if (scope === 'payment_session' || scope === 'order') {
       this.auditEvents.push({
         eventType: 'payment_session.status_changed',
@@ -587,7 +644,13 @@ class FakeReviewRepository implements ReviewRepository {
       orderId: review.orderId,
       paymentSessionId: review.paymentSessionId,
       orderStatus: stateStatus,
-      paymentSessionStatus: stateStatus
+      paymentSessionStatus: stateStatus,
+      confirmationType: review.signalId ? 'notification_signal' as const : 'manual_bank_check' as const,
+      reasonLabel: review.signalId
+        ? undefined
+        : reviewStatus === 'confirmed'
+          ? 'NO_NOTIFICATION_MANUAL_FALLBACK_CONFIRMED'
+          : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED'
     });
   }
 }

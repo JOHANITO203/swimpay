@@ -1,5 +1,19 @@
 # Blockers
 
+## Buyer Checkout 4-Step Addendum
+
+- Resolved locally: active notification sweep runs only in active, armed Expected Payment Profile windows and rejects unsupported packages before extraction.
+- Resolved locally: local recent sweep buffer stores redacted metadata only and rejects raw text markers.
+- Resolved locally: no-notification fallback creates merchant manual review after 120 seconds from `receiver_armed` without confirmation or public webhook.
+- Resolved locally: fallback is cancelled by existing review/signal/final states and is idempotent per payment session.
+- Resolved locally: manual confirmation after fallback uses `confirmation_type=manual_bank_check` with `official_bank_confirmation=false`.
+- Resolved locally: real-world SBP/card fixture variants are parser fixtures only, not universal bank truth and not auto-confirmation.
+- Resolved locally: Ozon Bank is integrated through profile/registry as review-only with exact Android package validation pending.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
+- Remaining blocker before real notification capture: run the synthetic staging SDK/checkout/manual-review/final-webhook rehearsal after redeploy and migration `015_no_notification_fallback_and_ozon_bank.sql`.
+- Remaining blocker before Ozon runtime capture: exact package name/certificate must be validated on a consenting device.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+
 ## HARDEN-REAL-1 quality blockers
 
 - Resolved locally: runtime rejects invalid signatures and untrusted receiver/device/app trust before parsing/review.

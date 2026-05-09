@@ -104,6 +104,10 @@ class MinimalOrderRepository implements OrderRepository {
   async markBuyerClaimedPaid() {
     return { kind: 'not_found' as const };
   }
+
+  async requestNoNotificationManualCheck() {
+    return { kind: 'not_found' as const };
+  }
 }
 
 function buildAuthServer(environment = 'test') {

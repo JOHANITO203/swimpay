@@ -1,0 +1,55 @@
+template_id: ozon_bank_ru_incoming_customer_transfer_v1
+bank_profile_id: ozon_bank
+version: 1
+status: review_only
+direction_label: incoming_customer_transfer
+risk_class: review_only_package_unknown
+
+match:
+  title_any:
+    - "зачисление <AMOUNT> <CURRENCY>"
+    - "пополнение <AMOUNT> <CURRENCY>"
+  body_any:
+    - "баланс <BALANCE_AMOUNT> <CURRENCY>"
+    - "профиль Ozon Банк требует проверки пакета"
+
+positive_keywords:
+  - зачисление
+  - пополнение
+
+negative_keywords:
+  - списание
+  - покупка
+  - оплата
+  - кешбэк
+  - cashback
+  - возврат
+  - отклонено
+  - не выполнено
+
+extractors:
+  amount:
+    strategy: transaction_amount_near_direction_keyword
+    required: true
+    disambiguate_against_balance: true
+  currency:
+    strategy: ruble_currency_normalization
+    required: true
+  reference:
+    strategy: optional_reference_placeholder
+    required: false
+
+decision_hints:
+  parser_signal_quality_floor: 0
+  allow_auto_confirm_candidate: false
+  backend_must_reject_auto_confirm: true
+  package_validation_required: true
+
+reason_codes:
+  positive:
+    - incoming_keyword_detected
+    - amount_extracted
+    - bank_package_needs_validation
+  negative:
+    - package_unknown_needs_device_validation
+    - amount_only_never_auto_confirm

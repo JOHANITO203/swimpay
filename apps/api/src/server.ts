@@ -1218,6 +1218,80 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     );
   });
 
+  server.post('/v1/payment-sessions/:id/no-notification-manual-check', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
+    }
+
+    const result = await repository.requestNoNotificationManualCheck({
+      merchantId,
+      paymentSessionId: params.id,
+      reviewId: `rev_${randomUUID()}`,
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+
+    switch (result.kind) {
+      case 'created':
+        return reply.status(201).send({
+          status: 'manual_check_requested',
+          review_id: result.reviewId,
+          payment_session_id: result.paymentSessionId,
+          reason_label: result.reasonLabel,
+          merchant_notification: {
+            title: 'Paiement en attente',
+            body: 'Aucun signal bancaire detecte pour cette commande. Ouvrez votre banque pour verifier la reception, puis confirmez ou rejetez dans SwimPay.'
+          },
+          merchant_actions: ['open_bank', 'view_order', 'confirm_received', 'reject'],
+          confirmation_type: 'manual_bank_check',
+          does_not_confirm_payment: true,
+          emits_webhook: false,
+          official_bank_confirmation: false
+        });
+      case 'not_due':
+        return reply.status(409).send({
+          error: {
+            code: 'manual_check_not_due',
+            message: 'No-notification manual check is not due yet.',
+            details: { elapsed_seconds: result.elapsedSeconds, minimum_elapsed_seconds: 120 }
+          }
+        });
+      case 'not_eligible':
+        return reply.status(409).send({
+          error: {
+            code: 'manual_check_not_eligible',
+            message: 'Payment session is not eligible for no-notification manual check.',
+            details: { reason: result.reason }
+          }
+        });
+      case 'expired':
+        return reply.status(409).send({
+          error: {
+            code: 'checkout_session_expired',
+            message: 'Checkout session is expired.',
+            details: {}
+          }
+        });
+      case 'not_found':
+        return reply.status(404).send({
+          error: {
+            code: 'not_found',
+            message: 'Payment session was not found.',
+            details: { payment_session_id: params.id }
+          }
+        });
+    }
+  });
+
   server.post('/v1/merchant/receiving-routes', async (request, reply) => {
     const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {

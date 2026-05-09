@@ -2590,3 +2590,36 @@ Safety checks:
 - Preserved the real-notification capture gate.
 
 ---
+
+# 2026-05-09T17:11:04+03:00 - Buyer Checkout addendum: sweep, fallback and bank variants
+
+- Added tasks 721 through 724 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Added Android Active Intent Notification Sweep gated by active payment intent, receiver armed and Expected Payment Profile presence.
+- Added redacted recent notification buffer with safe metadata only.
+- Added no-notification manual fallback after 120 seconds from `receiver_armed`.
+- Added job-worker polling for due fallback sessions behind `NO_NOTIFICATION_FALLBACK_WORKER_ENABLED`.
+- Added fallback review semantics for `manual_bank_check` confirmation type while keeping `official_bank_confirmation=false`.
+- Added concrete SBP and card incoming parser fixture variants.
+- Added Ozon Bank through the bank profile/registry path as review-only with package validation pending.
+- Validation passed: targeted API/review/job-worker/parser/registry tests and Android Active Intent Notification Sweep JVM test.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---
+
+# 2026-05-09T17:25:00+03:00 - Buyer Checkout addendum validation closeout
+
+- Completed Ozon Bank corpus requirements by adding `fixtures/redacted_samples.jsonl` and a `review_only` YAML template under `packages/bank-templates/banks/ozon_bank`.
+- Aligned Ozon display name to `Ozon Банк` in profile, parser registry seed, migration and tests.
+- Full validation passed:
+  - `npm run android:doctor`;
+  - `npm run typecheck`;
+  - `npm run lint`;
+  - `npm test` - 76 files, 573 tests passed;
+  - `npm run build`;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config`;
+  - Android full `:app:testDebugUnitTest`;
+  - Android `:app:assembleDebug`.
+- Real bank notification capture remains blocked until staging redeploy, migration `015`, synthetic SDK/checkout/manual-review/final-webhook rehearsal and explicit operator capture-start command.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---

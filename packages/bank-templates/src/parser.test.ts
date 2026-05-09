@@ -95,4 +95,40 @@ describe('bank notification parser', () => {
     expect(parsed.directionLabel).not.toBe('incoming_customer_transfer');
     expect(parsed.allowAutoConfirmCandidate).toBe(false);
   });
+
+  it('extracts real-world SBP incoming variant as sender-focused matching context', () => {
+    const parsed = parseBankNotification({
+      bankProfileId: 'sberbank_ru',
+      text: 'Пополнение через СБП на 1390,80 ₽.\nИван П. Сбербанк.\nБаланс 5000 ₽'
+    });
+
+    expect(parsed.directionLabel).toBe('incoming_customer_transfer');
+    expect(parsed.rail).toBe('sbp');
+    expect(parsed.amountMinor).toBe(139080);
+    expect(parsed.senderNameHint).toBe('Иван П');
+    expect(parsed.senderBankHint).toBe('Сбербанк');
+    expect(parsed.balanceAfterMinor).toBe(500000);
+    expect(parsed.reasonCodes).toEqual(expect.arrayContaining(['rail_sbp_detected', 'sender_focused_matching_hint']));
+    expect(parsed.allowAutoConfirmCandidate).toBe(false);
+  });
+
+  it('extracts real-world card incoming variant without requiring sender hints', () => {
+    const parsed = parseBankNotification({
+      bankProfileId: 'tbank_ru',
+      text: 'Зачисление перевод\n+1390,80 ₽ — Баланс: 5000 ₽\nСчёт карты MIR •• 4821'
+    });
+
+    expect(parsed.directionLabel).toBe('incoming_customer_transfer');
+    expect(parsed.rail).toBe('card');
+    expect(parsed.amountMinor).toBe(139080);
+    expect(parsed.sourceLabel).toBe('перевод');
+    expect(parsed.cardNetwork).toBe('MIR');
+    expect(parsed.receiverCardLast4).toBe('4821');
+    expect(parsed.senderNameHint).toBeUndefined();
+    expect(parsed.senderBankHint).toBeUndefined();
+    expect(parsed.reasonCodes).toEqual(
+      expect.arrayContaining(['rail_card_detected', 'receiver_route_focused_matching_hint', 'receiver_card_last4_extracted'])
+    );
+    expect(parsed.allowAutoConfirmCandidate).toBe(false);
+  });
 });

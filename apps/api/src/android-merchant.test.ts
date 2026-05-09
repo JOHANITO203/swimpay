@@ -24,6 +24,7 @@ import {
 import type {
   CreateReceivingRouteInput,
   CreateReceivingRouteResult,
+  NoNotificationManualCheckResult,
   PaymentSessionCheckoutMutationResult,
   ReceivingRouteCopyDetailsResult,
   ReceivingRouteMutationResult,
@@ -1167,6 +1168,10 @@ class FakeOrderRepository implements OrderRepository {
 
   public async markBuyerClaimedPaid(): Promise<PaymentSessionCheckoutMutationResult> {
     return { kind: 'updated', order: this.order, paymentSession: this.paymentSession };
+  }
+
+  public async requestNoNotificationManualCheck(): Promise<NoNotificationManualCheckResult> {
+    return { kind: 'not_found' };
   }
 }
 
