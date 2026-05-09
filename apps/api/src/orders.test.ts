@@ -146,6 +146,36 @@ class InMemoryOrderRepository implements OrderRepository {
     return { kind: 'updated' as const, ...found };
   }
 
+  async saveExpectedPaymentProfile(input: Parameters<OrderRepository['saveExpectedPaymentProfile']>[0]) {
+    const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
+    if ('kind' in found) {
+      return found;
+    }
+    found.paymentSession.paymentMethod = input.profile.payment_method;
+    found.paymentSession.senderBankId = input.profile.sender_bank_id;
+    found.paymentSession.senderCardLast4 = input.profile.sender_card_last4;
+    found.paymentSession.senderCardMasked = input.profile.sender_card_masked;
+    found.paymentSession.senderCardHmac = input.profile.sender_card_hmac;
+    found.paymentSession.senderPhoneMasked = input.profile.sender_phone_masked;
+    found.paymentSession.senderPhoneHmac = input.profile.sender_phone_hmac;
+    found.paymentSession.buyerFirstNameRaw = input.profile.buyer_first_name_raw;
+    found.paymentSession.buyerLastNameRaw = input.profile.buyer_last_name_raw;
+    found.paymentSession.buyerNameScriptDetected = input.profile.buyer_name_script_detected;
+    found.paymentSession.buyerNameNormalized = input.profile.buyer_name_normalized;
+    found.paymentSession.buyerNameFingerprint = input.profile.buyer_name_fingerprint;
+    found.paymentSession.displayAmountMinor = input.profile.display_amount_minor;
+    found.paymentSession.payableAmountMinor = input.profile.payable_amount_minor;
+    found.paymentSession.reconciliationDeltaMinor = input.profile.reconciliation_delta_minor;
+    found.paymentSession.expectedPaymentFingerprint = input.profile.expected_payment_fingerprint;
+    found.paymentSession.expectedAmountMinor = input.profile.payable_amount_minor;
+    found.paymentSession.selectedReceiverBankId = input.profile.sender_bank_id;
+    found.paymentSession.selectedReceiverBankProfileId = input.profile.sender_bank_id;
+    found.paymentSession.selectedReceivingRouteId = undefined;
+    found.paymentSession.selectedPayerBankLauncherId = input.profile.sender_bank_id;
+    found.paymentSession.paymentInstructionsShownAt = undefined;
+    return { kind: 'updated' as const, ...found };
+  }
+
   async saveBuyerSenderPhoneHint(input: Parameters<OrderRepository['saveBuyerSenderPhoneHint']>[0]) {
     const found = await this.requireMutablePaymentSession(input.merchantId, input.paymentSessionId);
     if ('kind' in found) {

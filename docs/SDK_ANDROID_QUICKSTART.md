@@ -9,7 +9,7 @@ The merchant Android app is not the SwimPay Receiver. It does not listen to bank
 1. Your Android app asks your merchant backend to create a SwimPay order.
 2. Your merchant backend creates the order with the SwimPay server API or `@swimpay/node`.
 3. Your merchant backend returns `checkout_url` to your Android app.
-4. Your Android app opens the `checkout_url` with `SwimPayCheckout.open`.
+4. Your Android app shows a `SwimPayButton` and opens the `checkout_url` with `SwimPayCheckout.open`.
 5. The buyer completes the guided checkout.
 6. The checkout returns to your Android app through your return scheme.
 7. Your Android app must refresh order status from your backend.
@@ -28,6 +28,41 @@ packages/swimpay-android/src/main/kotlin/com/swimpay/sdk
 A later sprint can package it for Maven or Gradle publication.
 
 ## Android usage
+
+### Buyer-facing button
+
+```kotlin
+class CheckoutActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val swimPayButton = SwimPayButton.create(this) { view ->
+            val button = view as Button
+            SwimPayButton.bind(button, SwimPayButtonState.Loading)
+
+            lifecycleScope.launch {
+                val checkoutUrl = merchantBackend.createSwimPayCheckout(orderId)
+                val result = SwimPayCheckout.open(
+                    activity = this@CheckoutActivity,
+                    checkoutUrl = checkoutUrl,
+                    options = SwimPayCheckoutOptions(returnScheme = "merchantapp")
+                )
+
+                SwimPayButton.bind(button, SwimPayButtonState.Ready)
+                if (result.status == SwimPayCheckoutStatus.Error) {
+                    showSafeCheckoutError(result)
+                }
+            }
+        }
+
+        setContentView(swimPayButton)
+    }
+}
+```
+
+The button is only UI. It does not create an order by itself and does not confirm payment.
+
+### Checkout open and return
 
 ```kotlin
 class CheckoutActivity : AppCompatActivity() {

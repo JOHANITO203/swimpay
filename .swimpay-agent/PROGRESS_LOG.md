@@ -2565,3 +2565,28 @@ Safety checks:
 - Added Android repository/runtime tests proving show-once values are action-only and normal reads remain masked.
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
 - No real bank notification was processed, no auto-confirmation was enabled, no SDK generated credentials and no public webhook semantics changed.
+
+# 2026-05-09T15:55:00+03:00 - Buyer Checkout 4-Step Flow
+
+- Created tasks 710 through 720 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Added Expected Payment Profile persistence to payment sessions with protected card/phone/name matching hints.
+- Added deterministic buyer identity normalization for Latin/Cyrillic variants without LLM or external translation.
+- Reworked hosted Step 1 to collect buyer name, sender method, sender bank and method-specific card/phone input.
+- Added Luhn validation for buyer sender PAN and case-insensitive rejection of CVV/CVC/security/expiry/PIN/SMS/password fields.
+- Reworked Step 2 so method-matched receiving routes are used and instructions are recorded server-side before receiver arming.
+- Added exact payable amount, generated reference, masked receiver destination and copy actions to the checkout instructions.
+- Added V1 payer bank launcher registry with exact bank package metadata and safe web fallback behavior.
+- Enforced Step 3 ordering: `continue-to-bank` requires expected profile, route, launcher and instructions shown, then arms receiver only.
+- Enforced Step 4 ordering: `J'ai payé` requires receiver armed and remains buyer claim only.
+- Wired Expected Payment Profile fields into signal runtime candidates for Payment Intent Gate context.
+- Validation passed: android doctor, typecheck, lint, targeted checkout tests, full Vitest suite, TypeScript build and Docker Compose config.
+- No real bank notification was processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+# 2026-05-09T16:03:12+03:00 - Buyer checkout deployment closeout
+
+- Created `.swimpay-agent/BUYER_CHECKOUT_DEPLOYMENT_AND_NEXT_STEP.md`.
+- Documented the VPS migration command for `014_expected_payment_profile.sql`.
+- Documented a fallback manual SQL creation path if the migration file is not present on the VPS.
+- Recorded the next logical staging rehearsal: SDK order -> hosted checkout -> manual merchant confirmation -> final-only webhook.
+- Preserved the real-notification capture gate.
+
+---

@@ -6,7 +6,11 @@ import {
   ReceivingRouteReviewPolicies,
   ReceiverIdentifierTypes,
   V1ReceiverBankOptions,
+  deriveExpectedPaymentProfile,
   maskReceiverIdentifier,
+  receivingRailForBuyerPaymentMethod,
+  type BuyerCheckoutPaymentMethod,
+  type ExpectedPaymentProfile,
   type MerchantReceivingRoute,
   type OrderStatus,
   type PaymentSessionStatus,
@@ -50,6 +54,26 @@ export interface StoredPaymentSessionRecord {
   selectedPayerBankLauncherId?: string | undefined;
   buyerSenderPhoneHmac?: string | undefined;
   buyerSenderPhoneMasked?: string | undefined;
+  paymentMethod?: BuyerCheckoutPaymentMethod | undefined;
+  senderBankId?: string | undefined;
+  senderCardLast4?: string | undefined;
+  senderCardMasked?: string | undefined;
+  senderCardHmac?: string | undefined;
+  senderPhoneMasked?: string | undefined;
+  senderPhoneHmac?: string | undefined;
+  buyerFirstNameRaw?: string | undefined;
+  buyerLastNameRaw?: string | undefined;
+  buyerNameScriptDetected?: string | undefined;
+  buyerNameNormalized?: string | undefined;
+  buyerNameLatinVariants?: string[] | undefined;
+  buyerNameCyrillicVariants?: string[] | undefined;
+  buyerNameInitialVariants?: string[] | undefined;
+  buyerNameReversedOrderVariants?: string[] | undefined;
+  buyerNameFingerprint?: string | undefined;
+  displayAmountMinor?: number | undefined;
+  payableAmountMinor?: number | undefined;
+  reconciliationDeltaMinor?: number | undefined;
+  expectedPaymentFingerprint?: string | undefined;
   paymentInstructionsShownAt?: string | undefined;
   buyerClaimedPaidAt?: string | undefined;
   validFrom: string;
@@ -140,6 +164,13 @@ export interface SaveBuyerSenderPhoneHintInput extends CheckoutMutationBaseInput
   buyerSenderPhoneMasked: string;
 }
 
+export interface SaveExpectedPaymentProfileInput extends CheckoutMutationBaseInput {
+  profile: ExpectedPaymentProfile;
+  receiverBankId: string;
+  bankProfileId: string;
+  payerBankLauncherId: string;
+}
+
 export type ReceivingRouteCopyDetailsResult =
   | {
       kind: 'found';
@@ -160,7 +191,8 @@ export type PaymentSessionCheckoutMutationResult =
       paymentSession: StoredPaymentSessionRecord;
     }
   | { kind: 'not_found' }
-  | { kind: 'expired' };
+  | { kind: 'expired' }
+  | { kind: 'invalid_transition'; currentStatus: PaymentSessionStatus };
 
 export interface OrderRepository {
   createOrderWithSession(input: CreateOrderWithSessionInput): Promise<CreateOrderWithSessionResult>;
@@ -213,6 +245,7 @@ export interface OrderRepository {
   selectReceiverBank(input: SelectReceiverBankInput): Promise<PaymentSessionCheckoutMutationResult>;
   selectReceivingRoute(input: SelectReceivingRouteInput): Promise<PaymentSessionCheckoutMutationResult>;
   selectPayerBankLauncher(input: SelectPayerBankLauncherInput): Promise<PaymentSessionCheckoutMutationResult>;
+  saveExpectedPaymentProfile(input: SaveExpectedPaymentProfileInput): Promise<PaymentSessionCheckoutMutationResult>;
   saveBuyerSenderPhoneHint(input: SaveBuyerSenderPhoneHintInput): Promise<PaymentSessionCheckoutMutationResult>;
   markReceiverArmed(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
   markPaymentInstructionsShown(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
@@ -268,6 +301,15 @@ export interface OrderReadResponse {
   };
   expires_at: string;
   latest_event: 'payment_session.receiver_arming_requested';
+}
+
+export interface ExpectedPaymentProfileRequestBody {
+  buyer_first_name: string;
+  buyer_last_name: string;
+  payment_method: BuyerCheckoutPaymentMethod;
+  sender_bank_id: string;
+  sender_card_number?: string | undefined;
+  sender_phone?: string | undefined;
 }
 
 export interface ApiErrorResponse {
@@ -397,7 +439,12 @@ export class PgOrderRepository implements OrderRepository {
         buyer_phone_masked, buyer_name_hmac, reference_code, reference_hmac, status,
         selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_receiving_route_id,
         selected_payer_bank_launcher_id, buyer_sender_phone_hmac, buyer_sender_phone_masked,
-        payment_instructions_shown_at, buyer_claimed_paid_at,
+        payment_method, sender_bank_id, sender_card_last4, sender_card_masked, sender_card_hmac,
+        sender_phone_masked, sender_phone_hmac, buyer_first_name_raw, buyer_last_name_raw,
+        buyer_name_script_detected, buyer_name_normalized, buyer_name_latin_variants,
+        buyer_name_cyrillic_variants, buyer_name_initial_variants, buyer_name_reversed_order_variants,
+        buyer_name_fingerprint, display_amount_minor, payable_amount_minor, reconciliation_delta_minor,
+        expected_payment_fingerprint, payment_instructions_shown_at, buyer_claimed_paid_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND order_id = $2
        ORDER BY created_at DESC LIMIT 1`,
@@ -430,7 +477,12 @@ export class PgOrderRepository implements OrderRepository {
         buyer_phone_masked, buyer_name_hmac, reference_code, reference_hmac, status,
         selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_receiving_route_id,
         selected_payer_bank_launcher_id, buyer_sender_phone_hmac, buyer_sender_phone_masked,
-        payment_instructions_shown_at, buyer_claimed_paid_at,
+        payment_method, sender_bank_id, sender_card_last4, sender_card_masked, sender_card_hmac,
+        sender_phone_masked, sender_phone_hmac, buyer_first_name_raw, buyer_last_name_raw,
+        buyer_name_script_detected, buyer_name_normalized, buyer_name_latin_variants,
+        buyer_name_cyrillic_variants, buyer_name_initial_variants, buyer_name_reversed_order_variants,
+        buyer_name_fingerprint, display_amount_minor, payable_amount_minor, reconciliation_delta_minor,
+        expected_payment_fingerprint, payment_instructions_shown_at, buyer_claimed_paid_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND id = $2`,
       [merchantId, paymentSessionId]
@@ -464,7 +516,12 @@ export class PgOrderRepository implements OrderRepository {
         buyer_phone_masked, buyer_name_hmac, reference_code, reference_hmac, status,
         selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_receiving_route_id,
         selected_payer_bank_launcher_id, buyer_sender_phone_hmac, buyer_sender_phone_masked,
-        payment_instructions_shown_at, buyer_claimed_paid_at,
+        payment_method, sender_bank_id, sender_card_last4, sender_card_masked, sender_card_hmac,
+        sender_phone_masked, sender_phone_hmac, buyer_first_name_raw, buyer_last_name_raw,
+        buyer_name_script_detected, buyer_name_normalized, buyer_name_latin_variants,
+        buyer_name_cyrillic_variants, buyer_name_initial_variants, buyer_name_reversed_order_variants,
+        buyer_name_fingerprint, display_amount_minor, payable_amount_minor, reconciliation_delta_minor,
+        expected_payment_fingerprint, payment_instructions_shown_at, buyer_claimed_paid_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE id = $1`,
       [paymentSessionId]
@@ -761,6 +818,7 @@ export class PgOrderRepository implements OrderRepository {
   public async selectReceiverBank(input: SelectReceiverBankInput): Promise<PaymentSessionCheckoutMutationResult> {
     return this.mutateCheckoutSession({
       input,
+      allowedStatuses: ['created', 'receiver_arming'],
       auditEventType: 'checkout.receiver_bank_selected',
       apply: async (client) => {
         await client.query(
@@ -793,9 +851,16 @@ export class PgOrderRepository implements OrderRepository {
     if (!route || route.bank_profile_id !== loaded.paymentSession.selectedReceiverBankProfileId || !route.enabled) {
       return { kind: 'not_found' };
     }
+    if (
+      loaded.paymentSession.paymentMethod &&
+      route.rail_type !== receivingRailForBuyerPaymentMethod(loaded.paymentSession.paymentMethod)
+    ) {
+      return { kind: 'not_found' };
+    }
 
     return this.mutateCheckoutSession({
       input,
+      allowedStatuses: ['created', 'receiver_arming'],
       auditEventType: 'checkout.receiving_route_selected',
       apply: async (client) => {
         await client.query(
@@ -821,6 +886,7 @@ export class PgOrderRepository implements OrderRepository {
   public async selectPayerBankLauncher(input: SelectPayerBankLauncherInput): Promise<PaymentSessionCheckoutMutationResult> {
     return this.mutateCheckoutSession({
       input,
+      allowedStatuses: ['created', 'receiver_arming'],
       auditEventType: 'checkout.payer_bank_launcher_selected',
       apply: async (client) => {
         await client.query(
@@ -836,6 +902,88 @@ export class PgOrderRepository implements OrderRepository {
         payer_bank_launcher_id: input.payerBankLauncherId,
         does_not_confirm_payment: true,
         auto_confirm_enabled: false
+      }
+    });
+  }
+
+  public async saveExpectedPaymentProfile(input: SaveExpectedPaymentProfileInput): Promise<PaymentSessionCheckoutMutationResult> {
+    return this.mutateCheckoutSession({
+      input,
+      allowedStatuses: ['created', 'receiver_arming'],
+      auditEventType: 'checkout.expected_payment_profile_saved',
+      apply: async (client) => {
+        await client.query(
+          `UPDATE payment_sessions
+           SET payment_method = $3,
+               sender_bank_id = $4,
+               sender_card_last4 = $5,
+               sender_card_masked = $6,
+               sender_card_hmac = $7,
+               sender_phone_masked = $8,
+               sender_phone_hmac = $9,
+               buyer_first_name_raw = $10,
+               buyer_last_name_raw = $11,
+               buyer_name_script_detected = $12,
+               buyer_name_normalized = $13,
+               buyer_name_latin_variants = $14::jsonb,
+               buyer_name_cyrillic_variants = $15::jsonb,
+               buyer_name_initial_variants = $16::jsonb,
+               buyer_name_reversed_order_variants = $17::jsonb,
+               buyer_name_fingerprint = $18,
+               display_amount_minor = $19,
+               payable_amount_minor = $20,
+               reconciliation_delta_minor = $21,
+               expected_payment_fingerprint = $22,
+               expected_amount_minor = $20,
+               selected_receiver_bank_id = $23,
+               selected_receiver_bank_profile_id = $24,
+               selected_receiving_route_id = NULL,
+               selected_payer_bank_launcher_id = $25,
+               payment_instructions_shown_at = NULL,
+               updated_at = $26
+           WHERE merchant_id = $1 AND id = $2`,
+          [
+            input.merchantId,
+            input.paymentSessionId,
+            input.profile.payment_method,
+            input.profile.sender_bank_id,
+            input.profile.sender_card_last4 ?? null,
+            input.profile.sender_card_masked ?? null,
+            input.profile.sender_card_hmac ?? null,
+            input.profile.sender_phone_masked ?? null,
+            input.profile.sender_phone_hmac ?? null,
+            input.profile.buyer_first_name_raw,
+            input.profile.buyer_last_name_raw,
+            input.profile.buyer_name_script_detected,
+            input.profile.buyer_name_normalized,
+            JSON.stringify(input.profile.buyer_name_latin_variants),
+            JSON.stringify(input.profile.buyer_name_cyrillic_variants),
+            JSON.stringify(input.profile.buyer_name_initial_variants),
+            JSON.stringify(input.profile.buyer_name_reversed_order_variants),
+            input.profile.buyer_name_fingerprint,
+            input.profile.display_amount_minor,
+            input.profile.payable_amount_minor,
+            input.profile.reconciliation_delta_minor,
+            input.profile.expected_payment_fingerprint,
+            input.receiverBankId,
+            input.bankProfileId,
+            input.payerBankLauncherId,
+            input.now
+          ]
+        );
+      },
+      payload: {
+        payment_method: input.profile.payment_method,
+        sender_bank_id: input.profile.sender_bank_id,
+        sender_card_masked: input.profile.sender_card_masked,
+        sender_phone_masked: input.profile.sender_phone_masked,
+        display_amount_minor: input.profile.display_amount_minor,
+        payable_amount_minor: input.profile.payable_amount_minor,
+        reconciliation_delta_minor: input.profile.reconciliation_delta_minor,
+        selected_receiver_bank_id: input.receiverBankId,
+        selected_payer_bank_launcher_id: input.payerBankLauncherId,
+        does_not_confirm_payment: true,
+        official_bank_confirmation: false
       }
     });
   }
@@ -870,11 +1018,13 @@ export class PgOrderRepository implements OrderRepository {
   public async markReceiverArmed(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult> {
     return this.mutateCheckoutSession({
       input,
+      allowedStatuses: ['receiver_arming'],
       auditEventType: 'checkout.continue_to_bank',
       apply: async (client) => {
         await client.query(
           `UPDATE payment_sessions
            SET status = 'receiver_armed',
+               payment_instructions_shown_at = COALESCE(payment_instructions_shown_at, $3::timestamptz),
                updated_at = $3
            WHERE merchant_id = $1 AND id = $2`,
           [input.merchantId, input.paymentSessionId, input.now]
@@ -889,7 +1039,8 @@ export class PgOrderRepository implements OrderRepository {
       },
       payload: {
         receiver_status: 'armed',
-        bank_launcher_attempted: true,
+        launcher_result: 'no_supported_launcher',
+        bank_launcher_attempted: false,
         does_not_confirm_payment: true,
         auto_confirm_enabled: false
       }
@@ -899,26 +1050,27 @@ export class PgOrderRepository implements OrderRepository {
   public async markPaymentInstructionsShown(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult> {
     return this.mutateCheckoutSession({
       input,
+      allowedStatuses: ['receiver_arming', 'receiver_armed'],
       auditEventType: 'checkout.payment_instructions_shown',
       apply: async (client) => {
         await client.query(
           `UPDATE payment_sessions
-           SET status = 'awaiting_payment',
-               payment_instructions_shown_at = COALESCE(payment_instructions_shown_at, $3::timestamptz),
+           SET payment_instructions_shown_at = COALESCE(payment_instructions_shown_at, $3::timestamptz),
                updated_at = $3
            WHERE merchant_id = $1 AND id = $2`,
           [input.merchantId, input.paymentSessionId, input.now]
         );
         await client.query(
           `UPDATE orders
-           SET status = 'awaiting_payment', updated_at = $3
+           SET status = 'payment_instructions_shown', updated_at = $3
            WHERE merchant_id = $1
              AND id = (SELECT order_id FROM payment_sessions WHERE merchant_id = $1 AND id = $2)`,
           [input.merchantId, input.paymentSessionId, input.now]
         );
       },
       payload: {
-        next_status: 'awaiting_payment'
+        next_status: 'payment_instructions_shown',
+        does_not_confirm_payment: true
       }
     });
   }
@@ -926,6 +1078,7 @@ export class PgOrderRepository implements OrderRepository {
   public async markBuyerClaimedPaid(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult> {
     return this.mutateCheckoutSession({
       input,
+      allowedStatuses: ['receiver_armed'],
       auditEventType: 'checkout.buyer_claimed_paid',
       apply: async (client) => {
         await client.query(
@@ -971,6 +1124,7 @@ export class PgOrderRepository implements OrderRepository {
 
   private async mutateCheckoutSession(params: {
     input: CheckoutMutationBaseInput;
+    allowedStatuses?: readonly PaymentSessionStatus[] | undefined;
     auditEventType: string;
     apply: (client: pg.PoolClient) => Promise<void>;
     payload: Record<string, unknown>;
@@ -980,7 +1134,7 @@ export class PgOrderRepository implements OrderRepository {
     try {
       await client.query('BEGIN');
       const current = await client.query(
-        `SELECT ps.id, ps.valid_until
+        `SELECT ps.id, ps.valid_until, ps.status
          FROM payment_sessions ps
          WHERE ps.merchant_id = $1 AND ps.id = $2
          FOR UPDATE`,
@@ -990,10 +1144,14 @@ export class PgOrderRepository implements OrderRepository {
         await client.query('ROLLBACK');
         return { kind: 'not_found' };
       }
-      const row = current.rows[0] as { valid_until: string | Date };
+      const row = current.rows[0] as { valid_until: string | Date; status: PaymentSessionStatus };
       if (new Date(row.valid_until).getTime() <= new Date(params.input.now).getTime()) {
         await client.query('ROLLBACK');
         return { kind: 'expired' };
+      }
+      if (params.allowedStatuses && !params.allowedStatuses.includes(row.status)) {
+        await client.query('ROLLBACK');
+        return { kind: 'invalid_transition', currentStatus: row.status };
       }
 
       await params.apply(client);
@@ -1066,6 +1224,26 @@ function toPaymentSession(row: Record<string, string | number | Date | null>): S
       : undefined,
     buyerSenderPhoneHmac: row.buyer_sender_phone_hmac ? String(row.buyer_sender_phone_hmac) : undefined,
     buyerSenderPhoneMasked: row.buyer_sender_phone_masked ? String(row.buyer_sender_phone_masked) : undefined,
+    paymentMethod: row.payment_method ? String(row.payment_method) as BuyerCheckoutPaymentMethod : undefined,
+    senderBankId: row.sender_bank_id ? String(row.sender_bank_id) : undefined,
+    senderCardLast4: row.sender_card_last4 ? String(row.sender_card_last4) : undefined,
+    senderCardMasked: row.sender_card_masked ? String(row.sender_card_masked) : undefined,
+    senderCardHmac: row.sender_card_hmac ? String(row.sender_card_hmac) : undefined,
+    senderPhoneMasked: row.sender_phone_masked ? String(row.sender_phone_masked) : undefined,
+    senderPhoneHmac: row.sender_phone_hmac ? String(row.sender_phone_hmac) : undefined,
+    buyerFirstNameRaw: row.buyer_first_name_raw ? String(row.buyer_first_name_raw) : undefined,
+    buyerLastNameRaw: row.buyer_last_name_raw ? String(row.buyer_last_name_raw) : undefined,
+    buyerNameScriptDetected: row.buyer_name_script_detected ? String(row.buyer_name_script_detected) : undefined,
+    buyerNameNormalized: row.buyer_name_normalized ? String(row.buyer_name_normalized) : undefined,
+    buyerNameLatinVariants: parseJsonStringArray(row.buyer_name_latin_variants),
+    buyerNameCyrillicVariants: parseJsonStringArray(row.buyer_name_cyrillic_variants),
+    buyerNameInitialVariants: parseJsonStringArray(row.buyer_name_initial_variants),
+    buyerNameReversedOrderVariants: parseJsonStringArray(row.buyer_name_reversed_order_variants),
+    buyerNameFingerprint: row.buyer_name_fingerprint ? String(row.buyer_name_fingerprint) : undefined,
+    displayAmountMinor: row.display_amount_minor !== null && row.display_amount_minor !== undefined ? Number(row.display_amount_minor) : undefined,
+    payableAmountMinor: row.payable_amount_minor !== null && row.payable_amount_minor !== undefined ? Number(row.payable_amount_minor) : undefined,
+    reconciliationDeltaMinor: row.reconciliation_delta_minor !== null && row.reconciliation_delta_minor !== undefined ? Number(row.reconciliation_delta_minor) : undefined,
+    expectedPaymentFingerprint: row.expected_payment_fingerprint ? String(row.expected_payment_fingerprint) : undefined,
     paymentInstructionsShownAt: row.payment_instructions_shown_at
       ? new Date(String(row.payment_instructions_shown_at)).toISOString()
       : undefined,
@@ -1075,6 +1253,21 @@ function toPaymentSession(row: Record<string, string | number | Date | null>): S
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at)).toISOString()
   };
+}
+
+function parseJsonStringArray(value: unknown): string[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string');
+  }
+  try {
+    const parsed = JSON.parse(String(value)) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function toMerchantReceivingRoute(row: Record<string, string | boolean | Date | null>): StoredMerchantReceivingRouteRecord {
@@ -1435,5 +1628,103 @@ export function buildOrderCreateInput(params: {
     order,
     paymentSession,
     auditEvents
+  };
+}
+
+export function buildExpectedPaymentProfileMutation(params: {
+  body: unknown;
+  loaded: { order: StoredOrderRecord; paymentSession: StoredPaymentSessionRecord };
+  phoneHmacSecret: string;
+  auditEventId: string;
+  now: string;
+}): SaveExpectedPaymentProfileInput | ApiErrorResponse {
+  const body = validateExpectedPaymentProfileBody(params.body);
+  if ('error' in body) {
+    return body;
+  }
+
+  try {
+    const profile = deriveExpectedPaymentProfile({
+      payment_session_id: params.loaded.paymentSession.id,
+      merchant_id: params.loaded.paymentSession.merchantId,
+      buyer_first_name_raw: body.buyer_first_name,
+      buyer_last_name_raw: body.buyer_last_name,
+      payment_method: body.payment_method,
+      sender_bank_id: body.sender_bank_id,
+      sender_card_number: body.sender_card_number,
+      sender_phone: body.sender_phone,
+      display_amount_minor: params.loaded.order.amountMinor,
+      currency: params.loaded.order.currency,
+      generated_reference: params.loaded.paymentSession.referenceCode,
+      expires_at: params.loaded.paymentSession.validUntil,
+      hmac: (scope, value) => hmacSha256(`${scope}:${value}`, params.phoneHmacSecret)
+    });
+
+    return {
+      merchantId: params.loaded.paymentSession.merchantId,
+      paymentSessionId: params.loaded.paymentSession.id,
+      auditEventId: params.auditEventId,
+      now: params.now,
+      profile,
+      receiverBankId: profile.sender_bank_id,
+      bankProfileId: profile.sender_bank_id,
+      payerBankLauncherId: profile.sender_bank_id
+    };
+  } catch (error) {
+    return invalidRequest(error instanceof Error ? error.message : 'Expected payment profile is invalid.', {});
+  }
+}
+
+export function validateExpectedPaymentProfileBody(body: unknown): ExpectedPaymentProfileRequestBody | ApiErrorResponse {
+  if (!body || typeof body !== 'object') {
+    return invalidRequest('Expected payment profile body must be a JSON object.', {});
+  }
+  const candidate = body as Partial<ExpectedPaymentProfileRequestBody> & Record<string, unknown>;
+  const forbiddenCredentialField = /^(cvv|cvc|cvc2|security_code|expiration|expiry|exp_month|exp_year|pin|sms_code|bank_password|password)$/iu;
+  for (const key of Object.keys(candidate)) {
+    if (forbiddenCredentialField.test(key)) {
+      return invalidRequest('Buyer payment profile must not include card secrets or bank credentials.', { field: key });
+    }
+  }
+  if (
+    typeof candidate.buyer_first_name !== 'string' ||
+    typeof candidate.buyer_last_name !== 'string' ||
+    typeof candidate.payment_method !== 'string' ||
+    typeof candidate.sender_bank_id !== 'string'
+  ) {
+    return invalidRequest('Expected payment profile is missing required fields.', {});
+  }
+  if (!['card', 'sbp'].includes(candidate.payment_method)) {
+    return invalidRequest('payment_method is not supported.', { payment_method: candidate.payment_method });
+  }
+  if (!V1ReceiverBankOptions.some((bank) => bank.bank_profile_id === candidate.sender_bank_id)) {
+    return invalidRequest('sender_bank_id is not supported.', { sender_bank_id: candidate.sender_bank_id });
+  }
+  const senderCardNumber = typeof candidate.sender_card_number === 'string' ? candidate.sender_card_number.trim() : undefined;
+  const senderPhone = typeof candidate.sender_phone === 'string' ? candidate.sender_phone.trim() : undefined;
+
+  if (!candidate.buyer_first_name.trim() || !candidate.buyer_last_name.trim()) {
+    return invalidRequest('Buyer first and last names are required.', {});
+  }
+  if (candidate.payment_method === 'card' && !senderCardNumber) {
+    return invalidRequest('sender_card_number is required for card payments.', { payment_method: candidate.payment_method });
+  }
+  if (candidate.payment_method === 'card' && senderPhone) {
+    return invalidRequest('sender_phone must not be submitted for card payments.', { payment_method: candidate.payment_method });
+  }
+  if (candidate.payment_method === 'sbp' && !senderPhone) {
+    return invalidRequest('sender_phone is required for phone payments.', { payment_method: candidate.payment_method });
+  }
+  if (candidate.payment_method === 'sbp' && senderCardNumber) {
+    return invalidRequest('sender_card_number must not be submitted for phone payments.', { payment_method: candidate.payment_method });
+  }
+
+  return {
+    buyer_first_name: candidate.buyer_first_name.trim(),
+    buyer_last_name: candidate.buyer_last_name.trim(),
+    payment_method: candidate.payment_method as BuyerCheckoutPaymentMethod,
+    sender_bank_id: candidate.sender_bank_id.trim(),
+    sender_card_number: candidate.payment_method === 'card' ? senderCardNumber : undefined,
+    sender_phone: candidate.payment_method === 'sbp' ? senderPhone : undefined
   };
 }

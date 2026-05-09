@@ -8,6 +8,7 @@ import {
   toBuyerSafeReceivingRoute,
   type BuyerSafeCheckoutStatus,
   type BuyerSafeReceivingRoute,
+  type BuyerCheckoutPaymentMethod,
   type CheckoutSessionState,
   type MerchantReceivingRoute,
   type PaymentSessionStatus,
@@ -61,6 +62,13 @@ export interface PaymentSessionReadResponse {
   selected_receiving_route_id?: string | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
   buyer_sender_phone_masked?: string | undefined;
+  payment_method?: BuyerCheckoutPaymentMethod | undefined;
+  sender_bank_id?: string | undefined;
+  sender_card_masked?: string | undefined;
+  sender_phone_masked?: string | undefined;
+  display_amount?: { value: string; currency: string } | undefined;
+  payable_amount?: { value: string; currency: string } | undefined;
+  reconciliation_delta_minor?: number | undefined;
   official_bank_confirmation: false;
 }
 
@@ -81,6 +89,13 @@ export interface CheckoutStatusResponse {
   selected_receiving_route_id?: string | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
   buyer_sender_phone_masked?: string | undefined;
+  payment_method?: BuyerCheckoutPaymentMethod | undefined;
+  sender_bank_id?: string | undefined;
+  sender_card_masked?: string | undefined;
+  sender_phone_masked?: string | undefined;
+  display_amount?: { value: string; currency: string } | undefined;
+  payable_amount?: { value: string; currency: string } | undefined;
+  reconciliation_delta_minor?: number | undefined;
   receiver_bank_status?: ReceiverBankOption['status'] | undefined;
   official_bank_confirmation: false;
 }
@@ -186,6 +201,17 @@ export function toPaymentSessionReadResponse(params: {
     selected_receiving_route_id: params.paymentSession.selectedReceivingRouteId,
     selected_payer_bank_launcher_id: params.paymentSession.selectedPayerBankLauncherId,
     buyer_sender_phone_masked: params.paymentSession.buyerSenderPhoneMasked,
+    payment_method: params.paymentSession.paymentMethod,
+    sender_bank_id: params.paymentSession.senderBankId,
+    sender_card_masked: params.paymentSession.senderCardMasked,
+    sender_phone_masked: params.paymentSession.senderPhoneMasked,
+    display_amount: params.paymentSession.displayAmountMinor !== undefined
+      ? { value: formatAmountMinor(params.paymentSession.displayAmountMinor), currency: params.paymentSession.currency }
+      : undefined,
+    payable_amount: params.paymentSession.payableAmountMinor !== undefined
+      ? { value: formatAmountMinor(params.paymentSession.payableAmountMinor), currency: params.paymentSession.currency }
+      : undefined,
+    reconciliation_delta_minor: params.paymentSession.reconciliationDeltaMinor,
     official_bank_confirmation: false
   }) as unknown as PaymentSessionReadResponse;
 }
@@ -214,6 +240,13 @@ export function toCheckoutStatusResponse(params: {
     selected_receiving_route_id: read.selected_receiving_route_id,
     selected_payer_bank_launcher_id: read.selected_payer_bank_launcher_id,
     buyer_sender_phone_masked: read.buyer_sender_phone_masked,
+    payment_method: read.payment_method,
+    sender_bank_id: read.sender_bank_id,
+    sender_card_masked: read.sender_card_masked,
+    sender_phone_masked: read.sender_phone_masked,
+    display_amount: read.display_amount,
+    payable_amount: read.payable_amount,
+    reconciliation_delta_minor: read.reconciliation_delta_minor,
     receiver_bank_status: receiverBank?.status,
     official_bank_confirmation: false
   }) as unknown as CheckoutStatusResponse;
@@ -348,6 +381,7 @@ function checkoutStateForPaymentSession(
 ): CheckoutSessionState {
   return mapPaymentSessionToCheckoutState({
     paymentSessionStatus: status,
+    paymentMethod: paymentSession.paymentMethod,
     selectedReceiverBankId: paymentSession.selectedReceiverBankId,
     selectedReceivingRouteId: paymentSession.selectedReceivingRouteId,
     selectedPayerBankLauncherId: paymentSession.selectedPayerBankLauncherId,

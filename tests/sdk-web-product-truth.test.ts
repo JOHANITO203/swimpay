@@ -38,4 +38,24 @@ describe('SDK Web product truth guardrails', () => {
 
     expect(browserAndAndroidCorpus).not.toMatch(/SWIMPAY_SECRET_KEY|sk_live_|sk_test_|Authorization:\s*Bearer/iu);
   });
+
+  it('documents a buyer-facing web checkout button that only asks the merchant backend for checkout_url', () => {
+    const docs = [
+      'docs/SDK_WEB_QUICKSTART.md',
+      'packages/swimpay-node/README.md'
+    ].map((file) => readFileSync(join(process.cwd(), file), 'utf8')).join('\n');
+
+    expect(docs).toContain('Payer avec SwimPay');
+    expect(docs).toContain('swimpay-button');
+    expect(docs).toContain('/api/orders/${orderId}/swimpay-checkout');
+    expect(docs).toContain('checkout.checkoutUrl');
+
+    const buttonDocs = docs
+      .split(/\n/)
+      .filter((line) =>
+        /swimpay-button|checkout\.checkoutUrl|\/api\/orders\/\$\{orderId\}\/swimpay-checkout|button\.disabled|window\.location/iu.test(line)
+      )
+      .join('\n');
+    expect(buttonDocs).not.toMatch(/SWIMPAY_SECRET_KEY|SWIMPAY_WEBHOOK_SECRET|sk_test_|sk_live_|whsec_/iu);
+  });
 });

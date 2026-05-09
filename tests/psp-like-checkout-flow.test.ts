@@ -27,7 +27,7 @@ const now = '2026-05-03T15:00:00.000Z';
 describe('Sprint 7A PSP-like checkout bank selection flow', () => {
   it('rehearses receiver selection, payer launcher fallback, review signal, manual webhook, and expiry safely', async () => {
     const receiverBank = V1ReceiverBankOptions.find((bank) => bank.receiver_bank_id === 'sber_ru');
-    const payerLauncher = PayerBankLauncherRegistry.find((launcher) => launcher.payer_bank_launcher_id === 'other_manual');
+    const payerLauncher = PayerBankLauncherRegistry.find((launcher) => launcher.payer_bank_launcher_id === 'sber_ru');
 
     expect(receiverBank).toMatchObject({
       review_only: true,
@@ -46,16 +46,24 @@ describe('Sprint 7A PSP-like checkout bank selection flow', () => {
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming'
       })
+    ).toBe('buyer_identity');
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'sbp'
+      })
     ).toBe('receiver_bank_selection');
     expect(
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'sbp',
         selectedReceiverBankId: receiverBank?.receiver_bank_id
       })
     ).toBe('receiving_route_selection');
     expect(
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'sbp',
         selectedReceiverBankId: receiverBank?.receiver_bank_id,
         selectedReceivingRouteId: 'route_checkout_phone'
       })
@@ -63,6 +71,7 @@ describe('Sprint 7A PSP-like checkout bank selection flow', () => {
     expect(
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'sbp',
         selectedReceiverBankId: receiverBank?.receiver_bank_id,
         selectedReceivingRouteId: 'route_checkout_phone',
         selectedPayerBankLauncherId: payerLauncher?.payer_bank_launcher_id
@@ -72,6 +81,7 @@ describe('Sprint 7A PSP-like checkout bank selection flow', () => {
       mapCheckoutStateToBuyerSafeStatus(
         mapPaymentSessionToCheckoutState({
           paymentSessionStatus: 'buyer_claimed_paid',
+          paymentMethod: 'sbp',
           selectedReceiverBankId: receiverBank?.receiver_bank_id,
           selectedReceivingRouteId: 'route_checkout_phone',
           selectedPayerBankLauncherId: payerLauncher?.payer_bank_launcher_id,

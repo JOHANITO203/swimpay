@@ -37,6 +37,7 @@ export const PaymentSessionStatuses = [
 export type PaymentSessionStatus = (typeof PaymentSessionStatuses)[number];
 
 export const CheckoutSessionStates = [
+  'buyer_identity',
   'receiver_bank_selection',
   'receiving_route_selection',
   'payer_bank_launcher_selection',
@@ -66,6 +67,9 @@ export type BuyerSafeCheckoutStatus = (typeof BuyerSafeCheckoutStatuses)[number]
 
 export type ReceiverBankBuyerStatus = 'available' | 'review_required_beta' | 'temporarily_unavailable';
 export type ReceiverRouteBuyerStatus = 'review_beta' | 'temporarily_unavailable';
+
+export const BuyerCheckoutPaymentMethods = ['card', 'sbp'] as const;
+export type BuyerCheckoutPaymentMethod = (typeof BuyerCheckoutPaymentMethods)[number];
 
 export const ReceivingRouteRailTypes = ['phone_transfer', 'card_transfer'] as const;
 export type ReceivingRouteRailType = (typeof ReceivingRouteRailTypes)[number];
@@ -145,19 +149,27 @@ export interface BuyerSafeReceivingRoute {
   official_bank_confirmation: false;
 }
 
-export type PayerBankLaunchStrategy = 'package_hint_only' | 'manual_only';
+export type PayerBankLaunchStrategy = 'deeplink_then_package' | 'package_hint_only' | 'manual_only';
 export type PayerBankFallbackStrategy = 'copy_details_manual_transfer';
+export type PayerBankLauncherTestedStatus = 'validated' | 'not_validated';
 
 export interface PayerBankLauncherOption {
   payer_bank_launcher_id: string;
+  bank_id: string;
   display_name: string;
   country: 'RU';
   android_package_candidates: readonly string[];
   android_package_hint: string | null;
+  deeplink_uri_template: string | null;
   deeplink_schemes: readonly string[];
   launch_url: string | null;
   launch_strategy: PayerBankLaunchStrategy;
   fallback_strategy: PayerBankFallbackStrategy;
+  can_prefill_receiver_card: false;
+  can_prefill_receiver_phone: false;
+  can_prefill_amount: false;
+  can_prefill_reference: false;
+  tested_status: PayerBankLauncherTestedStatus;
   enabled: boolean;
   detection_supported: false;
   does_not_confirm_payment: true;
@@ -173,21 +185,16 @@ export const V1ReceiverBankOptions: readonly ReceiverBankOption[] = [
 ] as const;
 
 export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
-  payerLauncher('sberbank_ru', 'Sberbank', ['ru.sberbankmobile']),
+  payerLauncher('sber_ru', 'Sberbank', ['ru.sberbankmobile']),
   payerLauncher('tbank_ru', 'T-Bank', ['com.idamob.tinkoff.android']),
   payerLauncher('vtb_ru', 'VTB', ['ru.vtb24.mobilebanking.android']),
   payerLauncher('alfa_ru', 'Alfa-Bank', ['ru.alfabank.mobile.android']),
-  payerLauncher('gazprombank_ru', 'Gazprombank', ['ru.gazprombank.android.mobilebank.app']),
-  payerLauncher('yoomoney_ru', 'YooMoney', []),
-  payerLauncher('ozon_bank_ru', 'Ozon Bank', []),
-  payerLauncher('mts_bank_ru', 'MTS Bank', []),
-  payerLauncher('post_bank_ru', 'Post Bank', []),
-  payerLauncher('raiffeisen_ru', 'Raiffeisen', []),
-  payerLauncher('other_manual', 'Other bank / manual transfer', [], 'manual_only')
+  payerLauncher('gazprombank_ru', 'Gazprombank', ['ru.gazprombank.android.mobilebank.app'])
 ] as const;
 
 export interface CheckoutStateInput {
   paymentSessionStatus: PaymentSessionStatus;
+  paymentMethod?: BuyerCheckoutPaymentMethod | null | undefined;
   selectedReceiverBankId?: string | null | undefined;
   selectedReceivingRouteId?: string | null | undefined;
   selectedPayerBankLauncherId?: string | null | undefined;
@@ -222,6 +229,9 @@ export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): Che
     case 'created':
     case 'receiver_arming':
     case 'receiver_armed':
+      if (!input.paymentMethod && !input.selectedReceiverBankId) {
+        return 'buyer_identity';
+      }
       if (!input.selectedReceiverBankId) {
         return 'receiver_bank_selection';
       }
@@ -240,6 +250,7 @@ export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): Che
 
 export function mapCheckoutStateToBuyerSafeStatus(state: CheckoutSessionState): BuyerSafeCheckoutStatus {
   switch (state) {
+    case 'buyer_identity':
     case 'receiver_bank_selection':
     case 'receiving_route_selection':
     case 'payer_bank_launcher_selection':
@@ -343,6 +354,68 @@ export interface BuyerRecognitionHints {
   buyer_source_card_hmac: string;
   buyer_source_card_masked: string;
   buyer_source_card_last4: string;
+}
+
+export type BuyerNameScriptDetected = 'latin' | 'cyrillic' | 'mixed' | 'unknown';
+
+export interface BuyerIdentityNormalizationInput {
+  first_name: string;
+  last_name: string;
+}
+
+export interface BuyerIdentityNormalizationResult {
+  normalized_full_name: string;
+  script_detected: BuyerNameScriptDetected;
+  latin_variants: readonly string[];
+  cyrillic_variants: readonly string[];
+  initials_variants: readonly string[];
+  reversed_order_variants: readonly string[];
+  normalized_name_tokens: readonly string[];
+  buyer_name_fingerprint: string;
+}
+
+export interface ExpectedPaymentProfileInput {
+  payment_session_id: string;
+  merchant_id: string;
+  buyer_first_name_raw: string;
+  buyer_last_name_raw: string;
+  payment_method: BuyerCheckoutPaymentMethod;
+  sender_bank_id: string;
+  sender_card_number?: string | undefined;
+  sender_phone?: string | undefined;
+  display_amount_minor: number;
+  currency: string;
+  generated_reference: string;
+  expires_at: string;
+  hmac(scope: string, value: string): string;
+}
+
+export interface ExpectedPaymentProfile {
+  payment_session_id: string;
+  merchant_id: string;
+  buyer_first_name_raw: string;
+  buyer_last_name_raw: string;
+  buyer_name_script_detected: BuyerNameScriptDetected;
+  buyer_name_normalized: string;
+  buyer_name_latin_variants: readonly string[];
+  buyer_name_cyrillic_variants: readonly string[];
+  buyer_name_initial_variants: readonly string[];
+  buyer_name_reversed_order_variants: readonly string[];
+  buyer_name_fingerprint: string;
+  payment_method: BuyerCheckoutPaymentMethod;
+  sender_bank_id: string;
+  sender_card_last4?: string | undefined;
+  sender_card_masked?: string | undefined;
+  sender_card_hmac?: string | undefined;
+  sender_phone_masked?: string | undefined;
+  sender_phone_hmac?: string | undefined;
+  display_amount_minor: number;
+  payable_amount_minor: number;
+  reconciliation_delta_minor: number;
+  currency: string;
+  generated_reference: string;
+  expires_at: string;
+  expected_payment_fingerprint: string;
 }
 
 export interface BuyerRecognitionHintDerivationOptions {
@@ -475,6 +548,139 @@ export function deriveBuyerRecognitionHints(
   };
 }
 
+export function normalizeBuyerIdentity(input: BuyerIdentityNormalizationInput): BuyerIdentityNormalizationResult {
+  const firstName = normalizeNameToken(input.first_name);
+  const lastName = normalizeNameToken(input.last_name);
+  if (!firstName || !lastName) {
+    throw new Error('Buyer first and last names are required.');
+  }
+
+  const tokens = [firstName, lastName];
+  const normalizedFullName = tokens.join(' ');
+  const latin = /[a-z]/iu.test(normalizedFullName);
+  const cyrillic = /[а-яё]/iu.test(normalizedFullName);
+  const scriptDetected: BuyerNameScriptDetected = latin && cyrillic ? 'mixed' : latin ? 'latin' : cyrillic ? 'cyrillic' : 'unknown';
+  const cyrillicFirst = transliterateLatinToCyrillic(firstName);
+  const cyrillicLast = transliterateLatinToCyrillic(lastName);
+  const latinFirst = transliterateCyrillicToLatin(firstName);
+  const latinLast = transliterateCyrillicToLatin(lastName);
+  const latinVariants = uniqueNameVariants([
+    `${latinFirst} ${latinLast}`,
+    `${firstName} ${lastName}`,
+    `${latinLast} ${latinFirst}`
+  ]);
+  const cyrillicVariants = uniqueNameVariants([
+    `${cyrillicFirst} ${cyrillicLast}`,
+    `${firstName} ${lastName}`,
+    `${cyrillicLast} ${cyrillicFirst}`
+  ]);
+  const initialsVariants = uniqueNameVariants([
+    `${firstName.slice(0, 1)}. ${lastName}`,
+    `${lastName} ${firstName.slice(0, 1)}.`,
+    `${cyrillicFirst.slice(0, 1)}. ${cyrillicLast}`,
+    `${cyrillicLast} ${cyrillicFirst.slice(0, 1)}.`,
+    `${latinFirst.slice(0, 1)}. ${latinLast}`,
+    `${latinLast} ${latinFirst.slice(0, 1)}.`
+  ]);
+  const reversedOrderVariants = uniqueNameVariants([
+    `${lastName} ${firstName}`,
+    `${latinLast} ${latinFirst}`,
+    `${cyrillicLast} ${cyrillicFirst}`
+  ]);
+
+  return {
+    normalized_full_name: normalizedFullName,
+    script_detected: scriptDetected,
+    latin_variants: latinVariants,
+    cyrillic_variants: cyrillicVariants,
+    initials_variants: initialsVariants,
+    reversed_order_variants: reversedOrderVariants,
+    normalized_name_tokens: tokens,
+    buyer_name_fingerprint: fingerprintNameVariants([
+      normalizedFullName,
+      ...latinVariants,
+      ...cyrillicVariants,
+      ...initialsVariants,
+      ...reversedOrderVariants
+    ])
+  };
+}
+
+export function deriveExpectedPaymentProfile(input: ExpectedPaymentProfileInput): ExpectedPaymentProfile {
+  assertNoProhibitedBuyerCredentialFields(input as unknown as Record<string, unknown>);
+  if (!BuyerCheckoutPaymentMethods.includes(input.payment_method)) {
+    throw new Error('Unsupported buyer payment method.');
+  }
+  if (!V1ReceiverBankOptions.some((bank) => bank.bank_profile_id === input.sender_bank_id)) {
+    throw new Error('Unsupported sender bank.');
+  }
+  if (!Number.isInteger(input.display_amount_minor) || input.display_amount_minor <= 0) {
+    throw new Error('Display amount must be a positive minor-unit integer.');
+  }
+  if (input.currency !== 'RUB') {
+    throw new Error('Expected payment profile currency must be RUB.');
+  }
+
+  const identity = normalizeBuyerIdentity({
+    first_name: input.buyer_first_name_raw,
+    last_name: input.buyer_last_name_raw
+  });
+  const reconciliationDeltaMinor = deriveReconciliationDeltaMinor(input.payment_session_id, input.generated_reference);
+  const payableAmountMinor = input.display_amount_minor + reconciliationDeltaMinor;
+  const base = {
+    payment_session_id: input.payment_session_id,
+    merchant_id: input.merchant_id,
+    buyer_first_name_raw: input.buyer_first_name_raw.trim(),
+    buyer_last_name_raw: input.buyer_last_name_raw.trim(),
+    buyer_name_script_detected: identity.script_detected,
+    buyer_name_normalized: identity.normalized_full_name,
+    buyer_name_latin_variants: identity.latin_variants,
+    buyer_name_cyrillic_variants: identity.cyrillic_variants,
+    buyer_name_initial_variants: identity.initials_variants,
+    buyer_name_reversed_order_variants: identity.reversed_order_variants,
+    buyer_name_fingerprint: input.hmac('buyer_name', identity.buyer_name_fingerprint),
+    payment_method: input.payment_method,
+    sender_bank_id: input.sender_bank_id,
+    display_amount_minor: input.display_amount_minor,
+    payable_amount_minor: payableAmountMinor,
+    reconciliation_delta_minor: reconciliationDeltaMinor,
+    currency: input.currency,
+    generated_reference: input.generated_reference,
+    expires_at: new Date(input.expires_at).toISOString()
+  };
+
+  if (input.payment_method === 'card' && normalizeDigits(input.sender_phone ?? '').length > 0) {
+    throw new Error('Sender phone must not be submitted for card payments.');
+  }
+  if (input.payment_method === 'sbp' && normalizeDigits(input.sender_card_number ?? '').length > 0) {
+    throw new Error('Sender card number must not be submitted for phone payments.');
+  }
+
+  const methodFields =
+    input.payment_method === 'card'
+      ? deriveExpectedCardFields(input.sender_card_number, input.hmac)
+      : deriveExpectedPhoneFields(input.sender_phone, input.hmac);
+  const fingerprintPayload = [
+    input.merchant_id,
+    input.payment_session_id,
+    String(payableAmountMinor),
+    input.generated_reference,
+    input.sender_bank_id,
+    input.payment_method,
+    base.expires_at
+  ].join('|');
+
+  return {
+    ...base,
+    ...methodFields,
+    expected_payment_fingerprint: input.hmac('expected_payment_fingerprint', fingerprintPayload)
+  };
+}
+
+export function receivingRailForBuyerPaymentMethod(method: BuyerCheckoutPaymentMethod): ReceivingRouteRailType {
+  return method === 'card' ? 'card_transfer' : 'phone_transfer';
+}
+
 export function buildPaymentIntent(input: BuildPaymentIntentInput): PaymentIntent {
   if (!Number.isInteger(input.display_price_minor) || input.display_price_minor <= 0) {
     throw new Error('Display price must be a positive minor-unit integer.');
@@ -588,6 +794,141 @@ function normalizeDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
+function normalizeRussianPhoneForCheckout(value: string): string | null {
+  const digits = normalizeDigits(value);
+  if (digits.length === 11 && digits.startsWith('8')) {
+    return `7${digits.slice(1)}`;
+  }
+  if (digits.length === 11 && digits.startsWith('7')) {
+    return digits;
+  }
+  if (digits.length === 10) {
+    return `7${digits}`;
+  }
+  return null;
+}
+
+function deriveExpectedCardFields(
+  value: string | undefined,
+  hmac: (scope: string, normalizedValue: string) => string
+): Pick<ExpectedPaymentProfile, 'sender_card_last4' | 'sender_card_masked' | 'sender_card_hmac'> {
+  const normalizedCard = normalizeDigits(value ?? '');
+  if (normalizedCard.length < 13 || normalizedCard.length > 19 || !passesLuhn(normalizedCard)) {
+    throw new Error('Sender card number is not plausible.');
+  }
+  return {
+    sender_card_last4: normalizedCard.slice(-4),
+    sender_card_masked: maskBuyerSourceCard(normalizedCard),
+    sender_card_hmac: hmac('sender_card_pan', normalizedCard)
+  };
+}
+
+function passesLuhn(value: string): boolean {
+  let sum = 0;
+  let shouldDouble = false;
+  for (let index = value.length - 1; index >= 0; index -= 1) {
+    let digit = Number(value[index]);
+    if (!Number.isInteger(digit)) {
+      return false;
+    }
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  return sum > 0 && sum % 10 === 0;
+}
+
+function deriveExpectedPhoneFields(
+  value: string | undefined,
+  hmac: (scope: string, normalizedValue: string) => string
+): Pick<ExpectedPaymentProfile, 'sender_phone_masked' | 'sender_phone_hmac'> {
+  const normalizedPhone = normalizeRussianPhoneForCheckout(value ?? '');
+  if (!normalizedPhone) {
+    throw new Error('Sender phone number must be a valid Russian phone number.');
+  }
+  return {
+    sender_phone_masked: maskBuyerPhone(normalizedPhone),
+    sender_phone_hmac: hmac('sender_phone', normalizedPhone)
+  };
+}
+
+function normalizeNameToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/ё/giu, 'е')
+    .replace(/[^\p{L}\s'-]+/giu, '')
+    .replace(/\s+/gu, ' ');
+}
+
+const latinToCyrillicPairs: readonly [string, string][] = [
+  ['shch', 'щ'],
+  ['yo', 'е'],
+  ['zh', 'ж'],
+  ['kh', 'х'],
+  ['ts', 'ц'],
+  ['ch', 'ч'],
+  ['sh', 'ш'],
+  ['yu', 'ю'],
+  ['ya', 'я'],
+  ['a', 'а'],
+  ['b', 'б'],
+  ['v', 'в'],
+  ['g', 'г'],
+  ['d', 'д'],
+  ['e', 'е'],
+  ['z', 'з'],
+  ['i', 'и'],
+  ['y', 'й'],
+  ['k', 'к'],
+  ['l', 'л'],
+  ['m', 'м'],
+  ['n', 'н'],
+  ['o', 'о'],
+  ['p', 'п'],
+  ['r', 'р'],
+  ['s', 'с'],
+  ['t', 'т'],
+  ['u', 'у'],
+  ['f', 'ф'],
+  ['h', 'х']
+];
+
+const cyrillicToLatin: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y',
+  к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u',
+  ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ы: 'y', э: 'e', ю: 'yu', я: 'ya',
+  ь: '', ъ: ''
+};
+
+function transliterateLatinToCyrillic(value: string): string {
+  let result = value;
+  for (const [latin, cyrillic] of latinToCyrillicPairs) {
+    result = result.replace(new RegExp(latin, 'gu'), cyrillic);
+  }
+  return result;
+}
+
+function transliterateCyrillicToLatin(value: string): string {
+  return [...value].map((char) => cyrillicToLatin[char] ?? char).join('');
+}
+
+function uniqueNameVariants(values: readonly string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function fingerprintNameVariants(values: readonly string[]): string {
+  return uniqueNameVariants(values).sort().join('|');
+}
+
+function deriveReconciliationDeltaMinor(paymentSessionId: string, reference: string): number {
+  const seed = [...`${paymentSessionId}:${reference}`].reduce((total, char) => total + char.charCodeAt(0), 0);
+  return (seed % 99) + 1;
+}
+
 function receiverBank(bankProfileId: string, displayName: string): ReceiverBankOption {
   return {
     receiver_bank_id: bankProfileId,
@@ -612,14 +953,21 @@ function payerLauncher(
 ): PayerBankLauncherOption {
   return {
     payer_bank_launcher_id: payerBankLauncherId,
+    bank_id: payerBankLauncherId,
     display_name: displayName,
     country: 'RU',
     android_package_candidates: androidPackageCandidates,
     android_package_hint: androidPackageCandidates[0] ?? null,
+    deeplink_uri_template: null,
     deeplink_schemes: [],
     launch_url: null,
     launch_strategy: launchStrategy,
     fallback_strategy: 'copy_details_manual_transfer',
+    can_prefill_receiver_card: false,
+    can_prefill_receiver_phone: false,
+    can_prefill_amount: false,
+    can_prefill_reference: false,
+    tested_status: 'not_validated',
     enabled: true,
     detection_supported: false,
     does_not_confirm_payment: true,

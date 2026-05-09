@@ -66,6 +66,13 @@ export interface CheckoutSession {
   selected_receiving_route_id?: string | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
   buyer_sender_phone_masked?: string | undefined;
+  payment_method?: 'card' | 'sbp' | undefined;
+  sender_bank_id?: string | undefined;
+  sender_card_masked?: string | undefined;
+  sender_phone_masked?: string | undefined;
+  display_amount?: { value: string; currency: string } | undefined;
+  payable_amount?: { value: string; currency: string } | undefined;
+  reconciliation_delta_minor?: number | undefined;
   payment_instructions_shown_at?: string | undefined;
   buyer_claimed_paid_at?: string | undefined;
   official_bank_confirmation?: false | undefined;
@@ -82,6 +89,7 @@ export interface CheckoutSession {
 export interface CheckoutSessionProvider {
   getCheckoutSession(paymentSessionId: string): Promise<CheckoutSession | null>;
   getReceiverBanks(paymentSessionId: string): Promise<ReceiverBanksPayload>;
+  submitExpectedPaymentProfile(paymentSessionId: string, body: ExpectedPaymentProfileFormPayload): Promise<CheckoutSession>;
   selectReceiverBank(paymentSessionId: string, receiverBankId: string): Promise<CheckoutSession>;
   getReceivingRoutes(paymentSessionId: string, bankProfileId: string): Promise<ReceivingRoutesPayload>;
   selectReceivingRoute(paymentSessionId: string, receivingRouteId: string): Promise<CheckoutSession>;
@@ -92,6 +100,15 @@ export interface CheckoutSessionProvider {
   markReceiverArmed(paymentSessionId: string): Promise<CheckoutSession>;
   markPaymentInstructionsShown(paymentSessionId: string): Promise<CheckoutSession>;
   markBuyerClaimedPaid(paymentSessionId: string): Promise<CheckoutClaimedPaidResponse>;
+}
+
+export interface ExpectedPaymentProfileFormPayload {
+  buyer_first_name: string;
+  buyer_last_name: string;
+  payment_method: 'card' | 'sbp';
+  sender_bank_id: string;
+  sender_card_number?: string | undefined;
+  sender_phone?: string | undefined;
 }
 
 export interface WebServerOptions {
@@ -612,12 +629,22 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
        }
        return reply.status(400).send({ error: 'invalid_id' });
     }
-    const [session, receiverBanks, payerBankLaunchers] = await Promise.all([
-      checkoutSessionProvider.getCheckoutSession(paymentSessionId),
+    let session = await checkoutSessionProvider.getCheckoutSession(paymentSessionId);
+    if (!session) return reply.status(404).send({ error: 'not_found' });
+    if (
+      session.status === 'receiver_arming' &&
+      session.payment_method &&
+      session.selected_receiver_bank_id &&
+      session.selected_receiving_route_id &&
+      session.selected_payer_bank_launcher_id &&
+      !session.payment_instructions_shown_at
+    ) {
+      session = await checkoutSessionProvider.markPaymentInstructionsShown(paymentSessionId);
+    }
+    const [receiverBanks, payerBankLaunchers] = await Promise.all([
       checkoutSessionProvider.getReceiverBanks(paymentSessionId),
       checkoutSessionProvider.getPayerBankLaunchers(paymentSessionId)
     ]);
-    if (!session) return reply.status(404).send({ error: 'not_found' });
     const receivingRoutes = session.selected_receiver_bank_id
       ? await checkoutSessionProvider.getReceivingRoutes(paymentSessionId, session.selected_receiver_bank_id)
       : { routes: [] };
@@ -652,6 +679,13 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     await checkoutSessionProvider.selectReceiverBank(params.paymentSessionId, body.receiver_bank_id);
     const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
     return reply.status(200).send(toCheckoutStatusResponse(session!));
+  });
+
+  server.post('/checkout/:paymentSessionId/expected-payment-profile', async (request, reply) => {
+    const params = request.params as { paymentSessionId: string };
+    const body = request.body as ExpectedPaymentProfileFormPayload;
+    await checkoutSessionProvider.submitExpectedPaymentProfile(params.paymentSessionId, body);
+    return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
   });
 
   server.post('/checkout/:paymentSessionId/receiving-route', async (request, reply) => {
@@ -734,6 +768,7 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
   }
   async getCheckoutSession(id: string) { return this.f<CheckoutSession>(`/v1/payment-sessions/${id}`).catch(() => null); }
   async getReceiverBanks(id: string) { return this.f<ReceiverBanksPayload>(`/v1/checkout/${id}/receiver-banks`); }
+  async submitExpectedPaymentProfile(id: string, body: ExpectedPaymentProfileFormPayload) { return this.f<CheckoutSession>(`/v1/checkout/${id}/expected-payment-profile`, { method: 'POST', body: JSON.stringify(body) }); }
   async selectReceiverBank(id: string, bId: string) { return this.f<CheckoutSession>(`/v1/checkout/${id}/receiver-bank`, { method: 'POST', body: JSON.stringify({ receiver_bank_id: bId }) }); }
   async getReceivingRoutes(id: string, bPId: string) { return this.f<ReceivingRoutesPayload>(`/v1/checkout/${id}/receiver-banks/${bPId}/routes`); }
   async selectReceivingRoute(id: string, rId: string) { return this.f<CheckoutSession>(`/v1/checkout/${id}/receiving-route`, { method: 'POST', body: JSON.stringify({ receiving_route_id: rId }) }); }

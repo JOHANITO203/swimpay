@@ -43,33 +43,36 @@ describe('checkout bank selection contracts', () => {
 
   it('declares payer bank launchers as UX-only manual-fallback options', () => {
     expect(PayerBankLauncherRegistry.map((launcher) => launcher.payer_bank_launcher_id)).toEqual([
-      'sberbank_ru',
+      'sber_ru',
       'tbank_ru',
       'vtb_ru',
       'alfa_ru',
-      'gazprombank_ru',
-      'yoomoney_ru',
-      'ozon_bank_ru',
-      'mts_bank_ru',
-      'post_bank_ru',
-      'raiffeisen_ru',
-      'other_manual'
+      'gazprombank_ru'
     ]);
 
     for (const launcher of PayerBankLauncherRegistry) {
+      expect(launcher.bank_id).toBe(launcher.payer_bank_launcher_id);
+      expect(launcher.android_package_candidates.length).toBeGreaterThan(0);
+      expect(launcher.deeplink_uri_template).toBeNull();
       expect(launcher.deeplink_schemes).toEqual([]);
       expect(launcher.launch_url).toBeNull();
       expect(launcher.fallback_strategy).toBe('copy_details_manual_transfer');
+      expect(launcher.can_prefill_receiver_card).toBe(false);
+      expect(launcher.can_prefill_receiver_phone).toBe(false);
+      expect(launcher.can_prefill_amount).toBe(false);
+      expect(launcher.can_prefill_reference).toBe(false);
+      expect(launcher.tested_status).toBe('not_validated');
       expect(launcher.does_not_confirm_payment).toBe(true);
       expect(launcher.official_bank_confirmation).toBe(false);
       expect(launcher.detection_supported).toBe(false);
     }
 
-    expect(getPayerBankLauncherOption('other_manual')?.launch_strategy).toBe('manual_only');
+    expect(getPayerBankLauncherOption('sber_ru')?.android_package_hint).toBe('ru.sberbankmobile');
     expect(getPayerBankLauncherOption('unknown')).toBeNull();
   });
 
   it('maps checkout states to buyer-safe statuses without confirming early states', () => {
+    expect(CheckoutSessionStates).toContain('buyer_identity');
     expect(CheckoutSessionStates).toContain('receiver_bank_selection');
     expect(BuyerSafeCheckoutStatuses).toEqual([
       'awaiting_payment',
@@ -81,6 +84,7 @@ describe('checkout bank selection contracts', () => {
       'not_validated'
     ]);
 
+    expect(mapCheckoutStateToBuyerSafeStatus('buyer_identity')).toBe('not_validated');
     expect(mapCheckoutStateToBuyerSafeStatus('receiver_bank_selection')).toBe('not_validated');
     expect(mapCheckoutStateToBuyerSafeStatus('payment_instructions')).toBe('awaiting_payment');
     expect(mapCheckoutStateToBuyerSafeStatus('buyer_claimed_paid')).toBe('searching_signal');
@@ -96,6 +100,17 @@ describe('checkout bank selection contracts', () => {
     expect(
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming',
+        paymentMethod: null,
+        selectedReceiverBankId: null,
+        selectedPayerBankLauncherId: null,
+        paymentInstructionsShownAt: null
+      })
+    ).toBe('buyer_identity');
+
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'card',
         selectedReceiverBankId: null,
         selectedPayerBankLauncherId: null,
         paymentInstructionsShownAt: null
@@ -105,6 +120,7 @@ describe('checkout bank selection contracts', () => {
     expect(
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'sbp',
         selectedReceiverBankId: 'sber_ru',
         selectedReceivingRouteId: null,
         selectedPayerBankLauncherId: null,
@@ -115,6 +131,7 @@ describe('checkout bank selection contracts', () => {
     expect(
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'sbp',
         selectedReceiverBankId: 'sber_ru',
         selectedReceivingRouteId: 'route_sber_phone',
         selectedPayerBankLauncherId: null,
@@ -125,6 +142,7 @@ describe('checkout bank selection contracts', () => {
     expect(
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'sbp',
         selectedReceiverBankId: 'sber_ru',
         selectedReceivingRouteId: 'route_sber_phone',
         selectedPayerBankLauncherId: 'tbank_ru',
@@ -135,6 +153,7 @@ describe('checkout bank selection contracts', () => {
     expect(
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'buyer_claimed_paid',
+        paymentMethod: 'sbp',
         selectedReceiverBankId: 'sber_ru',
         selectedReceivingRouteId: 'route_sber_phone',
         selectedPayerBankLauncherId: 'tbank_ru',
@@ -145,6 +164,7 @@ describe('checkout bank selection contracts', () => {
     expect(
       mapPaymentSessionToCheckoutState({
         paymentSessionStatus: 'manual_confirmed',
+        paymentMethod: 'sbp',
         selectedReceiverBankId: 'sber_ru',
         selectedReceivingRouteId: 'route_sber_phone',
         selectedPayerBankLauncherId: 'tbank_ru',

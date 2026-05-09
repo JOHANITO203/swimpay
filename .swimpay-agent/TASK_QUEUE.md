@@ -6,7 +6,23 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-The current sprint is HARDEN-REAL-1. It fixes code-quality blockers before real notification testing.
+The current sprint is BUYER-CHECKOUT-4STEP. It aligns hosted buyer checkout, expected payment profile, bank launcher fallbacks and Intelligence matching without processing real bank notifications.
+
+- [x] `710_buyer_checkout_current_flow_audit` - status: completed_with_findings - source: `tasks/710_buyer_checkout_current_flow_audit.md`
+- [x] `711_expected_payment_profile_contract` - status: completed - source: `tasks/711_expected_payment_profile_contract.md`
+- [x] `712_buyer_identity_normalization_engine` - status: completed - source: `tasks/712_buyer_identity_normalization_engine.md`
+- [x] `713_checkout_step1_buyer_identity_method` - status: completed - source: `tasks/713_checkout_step1_buyer_identity_method.md`
+- [x] `714_checkout_step2_exact_instructions` - status: completed - source: `tasks/714_checkout_step2_exact_instructions.md`
+- [x] `715_bank_launcher_deeplink_registry` - status: completed_with_native_android_launcher_pending - source: `tasks/715_bank_launcher_deeplink_registry.md`
+- [x] `716_checkout_step3_open_bank` - status: completed_web_fallback_only - source: `tasks/716_checkout_step3_open_bank.md`
+- [x] `717_checkout_step4_paid_claim_waiting` - status: completed - source: `tasks/717_checkout_step4_paid_claim_waiting.md`
+- [x] `718_swimpay_intelligence_expected_profile_matching` - status: completed_backend_wiring_added - source: `tasks/718_swimpay_intelligence_expected_profile_matching.md`
+- [x] `719_buyer_checkout_security_guardrails` - status: completed - source: `tasks/719_buyer_checkout_security_guardrails.md`
+- [x] `720_buyer_checkout_4_step_closeout` - status: completed - source: `tasks/720_buyer_checkout_4_step_closeout.md`
+
+## Previous Queue
+
+The previous sprint was HARDEN-REAL-1. It fixed code-quality blockers before real notification testing.
 
 - [x] `706_harden_real_signal_runtime` - status: completed - source: `tasks/706_harden_real_signal_runtime.md`
 - [x] `707_harden_backend_prod_auth_and_secrets` - status: completed - source: `tasks/707_harden_backend_prod_auth_and_secrets.md`

@@ -1,6 +1,6 @@
 # Android Merchant Basic Example
 
-This example shows how a merchant Android app opens SwimPay Checkout.
+This example shows how a merchant Android app shows a `SwimPayButton` and opens SwimPay Checkout.
 
 ## Architecture
 
@@ -14,5 +14,5 @@ never put a SwimPay secret in the APK.
 
 ## Files
 
-- `CheckoutActivity.kt` - minimal Kotlin usage.
+- `CheckoutActivity.kt` - minimal Kotlin button and checkout usage.
 - `AndroidManifest.xml` - return deep-link setup.

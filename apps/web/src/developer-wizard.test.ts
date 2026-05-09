@@ -12,6 +12,11 @@ function extractSection(body: string, id: string): string {
   return match?.[0] ?? '';
 }
 
+function extractSnippet(body: string, name: string): string {
+  const match = body.match(new RegExp(`<section[^>]+data-snippet="${name}"[\\s\\S]*?<\\/section>`, 'iu'));
+  return match?.[0] ?? '';
+}
+
 class FakeMerchantIntegrationClient implements MerchantIntegrationClient {
   public savedWebhookUrl: string | null = null;
   public retriedDeliveryId: string | null = null;
@@ -256,5 +261,23 @@ describe('Developer Integration Wizard', () => {
 
     expect(response.body).not.toMatch(/raw_notification|raw payload|payload_json|\+7\d{10}|\b\d{16}\b|confirmation bancaire officielle|paiement garanti/iu);
     expect(response.body).not.toMatch(/official_bank_confirmation\s*[:=]\s*true|officialBankConfirmation\s*[:=]\s*true/iu);
+  });
+
+  it('publishes buyer-facing web and Android button snippets without secrets', async () => {
+    const server = buildWebServer({ environment: 'test', merchantIntegrationClient: new FakeMerchantIntegrationClient() });
+    const response = await server.inject({ method: 'GET', url: '/merchant/developer-integration' });
+    const webButton = extractSnippet(response.body, 'web-button');
+    const android = extractSection(response.body, 'android-integration-snippets');
+
+    expect(webButton).toContain('swimpay-button');
+    expect(webButton).toContain('Payer avec SwimPay');
+    expect(webButton).toContain('/api/orders/${orderId}/swimpay-checkout');
+    expect(webButton).toContain('checkout.checkoutUrl');
+    expect(webButton).not.toMatch(/SWIMPAY_SECRET_KEY|SWIMPAY_WEBHOOK_SECRET|Authorization\s*[:=]\s*Bearer|sk_test_|whsec_/iu);
+
+    expect(android).toContain('SwimPayButton.create');
+    expect(android).toContain('SwimPayButtonState.Loading');
+    expect(android).toContain('merchantBackend.createSwimPayCheckout');
+    expect(android).not.toMatch(/SWIMPAY_SECRET_KEY|SWIMPAY_WEBHOOK_SECRET|Authorization\s*[:=]\s*Bearer|webhook|payment\.confirmed|markOrderPaid|fulfill/iu);
   });
 });

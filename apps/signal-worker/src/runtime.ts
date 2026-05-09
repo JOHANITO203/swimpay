@@ -815,9 +815,21 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
         ps.id AS payment_session_id,
         ps.merchant_id,
         ps.expected_amount_minor,
+        ps.display_amount_minor,
+        ps.payable_amount_minor,
+        ps.reconciliation_delta_minor,
         ps.currency,
         ps.buyer_phone_hmac,
         ps.buyer_sender_phone_hmac,
+        ps.buyer_first_name_raw,
+        ps.buyer_last_name_raw,
+        ps.payment_method,
+        ps.sender_bank_id,
+        ps.sender_card_last4,
+        ps.sender_card_masked,
+        ps.sender_card_hmac,
+        ps.sender_phone_masked,
+        ps.sender_phone_hmac,
         ps.reference_hmac,
         ps.selected_receiver_bank_id,
         ps.selected_receiver_bank_profile_id,
@@ -1106,26 +1118,27 @@ function toPaymentIntentGateSignal(signal: SignalRuntimeSignal): PaymentIntentGa
 }
 
 function toPaymentIntentGateIntent(session: SignalRuntimeSessionCandidate): PaymentIntentGateIntent {
+  const expectedPaymentAmountMinor = session.payableAmountMinor ?? session.expectedAmountMinor;
   return {
     orderId: session.orderId,
     paymentSessionId: session.paymentSessionId,
     merchantId: session.merchantId,
-    expectedPaymentAmountMinor: session.expectedAmountMinor,
-    displayPriceMinor: session.expectedAmountMinor,
-    reconciliationDeltaMinor: 0,
+    expectedPaymentAmountMinor,
+    displayPriceMinor: session.displayAmountMinor ?? session.expectedAmountMinor,
+    reconciliationDeltaMinor: session.reconciliationDeltaMinor ?? Math.max(0, expectedPaymentAmountMinor - (session.displayAmountMinor ?? session.expectedAmountMinor)),
     currency: session.currency,
     generatedReference: session.paymentReference ?? '',
     referenceHmac: session.referenceHmac,
     selectedReceiverBankProfileId: session.selectedReceiverBankProfileId ?? session.selectedReceiverBankId ?? '',
     selectedReceivingRouteId: session.selectedReceivingRouteId,
-    selectedReceivingMethod: session.railType ?? 'phone_transfer',
-    buyerFirstName: '',
-    buyerLastName: '',
-    buyerPhoneHmac: session.buyerSenderPhoneHmac ?? session.buyerPhoneHmac,
-    buyerPhoneMasked: undefined,
-    buyerSourceCardHmac: undefined,
-    buyerSourceCardMasked: undefined,
-    buyerSourceCardLast4: undefined,
+    selectedReceivingMethod: session.railType ?? (session.paymentMethod === 'card' ? 'card_transfer' : 'phone_transfer'),
+    buyerFirstName: session.buyerFirstNameRaw ?? '',
+    buyerLastName: session.buyerLastNameRaw ?? '',
+    buyerPhoneHmac: session.senderPhoneHmac ?? session.buyerSenderPhoneHmac ?? session.buyerPhoneHmac,
+    buyerPhoneMasked: session.senderPhoneMasked,
+    buyerSourceCardHmac: session.senderCardHmac,
+    buyerSourceCardMasked: session.senderCardMasked,
+    buyerSourceCardLast4: session.senderCardLast4,
     status: session.status,
     validFrom: session.validFrom,
     expiresAt: session.validUntil
@@ -1381,9 +1394,21 @@ interface SessionRow {
   payment_session_id: string;
   merchant_id: string;
   expected_amount_minor: number | string;
+  display_amount_minor: number | string | null;
+  payable_amount_minor: number | string | null;
+  reconciliation_delta_minor: number | string | null;
   currency: string;
   buyer_phone_hmac: string | null;
   buyer_sender_phone_hmac: string | null;
+  buyer_first_name_raw: string | null;
+  buyer_last_name_raw: string | null;
+  payment_method: 'card' | 'sbp' | null;
+  sender_bank_id: string | null;
+  sender_card_last4: string | null;
+  sender_card_masked: string | null;
+  sender_card_hmac: string | null;
+  sender_phone_masked: string | null;
+  sender_phone_hmac: string | null;
   reference_hmac: string | null;
   selected_receiver_bank_id: string | null;
   selected_receiver_bank_profile_id: string | null;
@@ -1443,9 +1468,21 @@ function toSession(row: SessionRow): SignalRuntimeSessionCandidate {
     paymentSessionId: String(row.payment_session_id),
     merchantId: String(row.merchant_id),
     expectedAmountMinor: Number(row.expected_amount_minor),
+    displayAmountMinor: row.display_amount_minor === null ? undefined : Number(row.display_amount_minor),
+    payableAmountMinor: row.payable_amount_minor === null ? undefined : Number(row.payable_amount_minor),
+    reconciliationDeltaMinor: row.reconciliation_delta_minor === null ? undefined : Number(row.reconciliation_delta_minor),
     currency: row.currency,
     buyerPhoneHmac: row.buyer_phone_hmac ?? undefined,
     buyerSenderPhoneHmac: row.buyer_sender_phone_hmac ?? undefined,
+    buyerFirstNameRaw: row.buyer_first_name_raw ?? undefined,
+    buyerLastNameRaw: row.buyer_last_name_raw ?? undefined,
+    paymentMethod: row.payment_method ?? undefined,
+    senderBankId: row.sender_bank_id ?? undefined,
+    senderCardLast4: row.sender_card_last4 ?? undefined,
+    senderCardMasked: row.sender_card_masked ?? undefined,
+    senderCardHmac: row.sender_card_hmac ?? undefined,
+    senderPhoneMasked: row.sender_phone_masked ?? undefined,
+    senderPhoneHmac: row.sender_phone_hmac ?? undefined,
     referenceHmac: row.reference_hmac ?? undefined,
     selectedReceiverBankId: row.selected_receiver_bank_id ?? undefined,
     selectedReceiverBankProfileId: row.selected_receiver_bank_profile_id ?? undefined,

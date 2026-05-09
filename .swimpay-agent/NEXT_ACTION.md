@@ -1,5 +1,33 @@
 # Next Action
 
+generated_at: 2026-05-09T16:03:12+03:00
+
+## Latest Buyer Checkout deployment closeout
+
+Completed locally:
+
+1. Buyer checkout four-step flow is implemented and documented.
+2. Expected Payment Profile migration is available at `packages/database/migrations/014_expected_payment_profile.sql`.
+3. Deployment command and fallback SQL file content are documented in `.swimpay-agent/BUYER_CHECKOUT_DEPLOYMENT_AND_NEXT_STEP.md`.
+4. Next logical step is staging SDK checkout rehearsal before any real bank notification capture.
+
+Next recommended action:
+
+1. Commit and push the implementation batch.
+2. Let Dokploy redeploy staging.
+3. Apply migration `014_expected_payment_profile.sql` on the VPS.
+4. Verify `https://staging.swimpay.pro/api-health`.
+5. Run SDK order creation, hosted checkout Step 1 through Step 4, manual merchant confirmation and final-only webhook delivery.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not expose raw PAN, raw phone, raw notification text, API keys or webhook secrets.
+- Do not treat `J'ai payé`, signal detected or matching as confirmation.
+
+---
+
 generated_at: 2026-05-09T12:37:12+03:00
 
 ## Latest HARDEN-REAL-1 quality hardening
@@ -1671,3 +1699,27 @@ Do not do:
 - Do not put API keys or webhook secrets in Android/browser snippets.
 - Do not let Android send developer webhooks directly.
 - Do not enable auto-confirmation or change `payment.confirmed` semantics.
+
+---
+
+## Latest Buyer Checkout 4-Step Work
+
+Hosted buyer checkout now persists a real Expected Payment Profile and enforces the four-step order.
+
+Next recommended action:
+
+1. Apply migration `014_expected_payment_profile.sql` on staging before checkout validation.
+2. Redeploy staging.
+3. Create a staging order through the SDK.
+4. Open the hosted `checkout_url` without Authorization.
+5. Walk through Step 1 card and SBP/phone variants.
+6. Verify Step 2 shows only the matching receiving route and exact payable amount.
+7. Click `Ouvrir ma banque`, then `J'ai payé`.
+8. Confirm that no webhook fires until merchant manual confirmation.
+
+Do not do:
+
+- Do not process real bank notifications during this checkout validation.
+- Do not enable auto-confirmation.
+- Do not expose raw PAN/phone or notification text.
+- Do not treat `J'ai payé`, signal detected or matching as confirmation.

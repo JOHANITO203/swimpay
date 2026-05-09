@@ -6,6 +6,7 @@ const REQUIRED_ANDROID_SDK_FILES = [
   'packages/swimpay-android/package.json',
   'packages/swimpay-android/README.md',
   'packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayCheckout.kt',
+  'packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayButton.kt',
   'docs/SDK_ANDROID_QUICKSTART.md',
   'examples/android-merchant-basic/README.md',
   'examples/android-merchant-basic/CheckoutActivity.kt',
@@ -14,6 +15,7 @@ const REQUIRED_ANDROID_SDK_FILES = [
 
 const ANDROID_CODE_FILES = [
   'packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayCheckout.kt',
+  'packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayButton.kt',
   'examples/android-merchant-basic/CheckoutActivity.kt',
   'examples/android-merchant-basic/AndroidManifest.xml'
 ];
@@ -60,6 +62,23 @@ describe('Android merchant SDK product truth guardrails', () => {
     expect(sdk).toMatch(/returnDoesNotConfirm\s*=\s*true/);
   });
 
+  it('ships a reusable Android checkout button UI without payment decision behavior', () => {
+    const button = read('packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayButton.kt');
+    const example = read('examples/android-merchant-basic/CheckoutActivity.kt');
+
+    expect(button).toContain('object SwimPayButton');
+    expect(button).toContain('enum class SwimPayButtonState');
+    expect(button).toContain('data class SwimPayButtonConfig');
+    expect(button).toContain('Payer avec SwimPay');
+    expect(button).toMatch(/minHeightDp\s*:\s*Int\s*=\s*56/u);
+    expect(button).toContain('setOnClickListener');
+    expect(button).not.toMatch(/orders\.create|Authorization|secret|webhook|markOrderPaid|fulfill|payment\.confirmed/iu);
+
+    expect(example).toContain('SwimPayButton.create');
+    expect(example).toContain('SwimPayButtonState.Loading');
+    expect(example).toContain('SwimPayButtonState.Ready');
+  });
+
   it('keeps the Android merchant SDK separated from Receiver internals', () => {
     const corpus = ANDROID_CODE_FILES.map(read).join('\n');
 
@@ -88,6 +107,7 @@ describe('Android merchant SDK product truth guardrails', () => {
 
     expect(docs).toContain('merchant backend');
     expect(docs).toContain('checkout_url');
+    expect(docs).toContain('SwimPayButton');
     expect(docs).toContain('refresh order status from your backend');
     expect(docs).toContain('never put a SwimPay secret in the APK');
     expect(docs).toContain('return does not confirm payment');

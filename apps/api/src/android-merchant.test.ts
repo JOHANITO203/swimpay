@@ -1145,6 +1145,13 @@ class FakeOrderRepository implements OrderRepository {
     return { kind: 'updated', order: this.order, paymentSession: this.paymentSession };
   }
 
+  public async saveExpectedPaymentProfile(
+    _input: Parameters<OrderRepository['saveExpectedPaymentProfile']>[0]
+  ): Promise<PaymentSessionCheckoutMutationResult> {
+    void _input;
+    return { kind: 'updated', order: this.order, paymentSession: this.paymentSession };
+  }
+
   public async saveBuyerSenderPhoneHint(_input: SaveBuyerSenderPhoneHintInput): Promise<PaymentSessionCheckoutMutationResult> {
     void _input;
     return { kind: 'updated', order: this.order, paymentSession: this.paymentSession };

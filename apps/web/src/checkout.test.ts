@@ -9,7 +9,7 @@ import {
 import { buildWebServer, type CheckoutSession, type CheckoutSessionProvider } from './index.js';
 
 describe('hosted checkout web foundation', () => {
-  it('renders the initial buyer checkout as bank-first without route details', async () => {
+  it('renders the initial buyer checkout as buyer identity step without route details', async () => {
     const server = buildWebServer({
       environment: 'test',
       checkoutSessionProvider: new FakeCheckoutSessionProvider()
@@ -27,18 +27,17 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Paiement guidé');
     expect(response.body).toContain('Suivi en temps réel');
     expect(response.body).toContain('Retour au marchand après validation');
-    expect(response.body).toContain('Choisissez une banque');
-    expect(response.body).toContain('Sélectionnez où envoyer le paiement.');
+    expect(response.body).toContain('Vos informations');
+    expect(response.body).toContain('sender_card_number');
+    expect(response.body).toContain('sender_phone');
     expect(response.body).toContain('Sberbank');
     expect(response.body).toContain('Tinkoff / T-Bank');
-    expect(response.body).toContain('Disponible');
     expect(response.body).toContain('137.00 RUB');
     expect(response.body).toContain('TANGO ALFA');
     expect(response.body).not.toContain('+7 *** *** **67');
     expect(response.body).not.toContain('2202 **** **** 7890');
     expect(response.body).not.toContain('Other bank / manual transfer');
     expect(response.body).not.toContain('Carte bancaire');
-    expect(response.body).not.toContain('Numéro de téléphone');
     expect(response.body).not.toContain('Copier le montant');
     expect(response.body).not.toContain('J&#39;ai payé');
     expect(response.body).not.toMatch(/confirmee? par la banque/i);
@@ -86,7 +85,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_phone',
-      selected_payer_bank_launcher_id: 'other_manual',
+      selected_payer_bank_launcher_id: 'tbank_ru',
       checkout_state: 'payment_instructions',
       buyer_safe_status: 'awaiting_payment'
     };
@@ -103,15 +102,12 @@ describe('hosted checkout web foundation', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('Envoyez le paiement');
     expect(response.body).toContain('SwimPay suit le signal côté marchand.');
-    expect(response.body).toContain('Téléphone');
+    expect(response.body).toContain('Telephone');
     expect(response.body).toContain('+7 *** *** **67');
-    expect(response.body).toContain('Votre numéro d');
-    expect(response.body).toContain('Continuer vers ma banque');
-    expect(response.body).toContain('J&#39;ai payé');
-    expect(response.body).toContain('Ces informations servent uniquement');
-    expect(response.body).toContain('SwimPay ne débite pas votre carte.');
+    expect(response.body).toContain('Ouvrir ma banque');
+    expect(response.body).toContain('J&#39;ai paye');
+    expect(response.body).toContain('Copiez les champs');
     expect(response.body).toContain('Envoyez exactement ce montant.');
-    expect(response.body).toContain('Sans ces informations, la validation peut prendre plus de temps.');
     expect(response.body).toContain('Paiement en attente');
     expect(response.body).toContain('Effectuez le paiement dans votre application bancaire.');
     expect(response.body).toContain('Continuer sur mobile');
@@ -133,7 +129,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
-      selected_payer_bank_launcher_id: 'other_manual',
+      selected_payer_bank_launcher_id: 'tbank_ru',
       checkout_state: 'payment_instructions',
       buyer_safe_status: 'awaiting_payment'
     };
@@ -154,9 +150,9 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Copier');
     expect(response.body).toContain('137.00 RUB');
     expect(response.body).toContain('TANGO ALFA');
-    expect(response.body).toContain('Continuer vers ma banque');
-    expect(response.body).toContain('J&#39;ai payé');
-    expect(response.body).toContain('Carte source');
+    expect(response.body).toContain('Ouvrir ma banque');
+    expect(response.body).toContain('J&#39;ai paye');
+    expect(response.body).toContain('Montant exact');
     expect(response.body).not.toContain('2202201234567890');
     expect(response.body).not.toContain('+79991234567');
     expect(response.body).not.toContain('CVV');
@@ -180,7 +176,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
-      selected_payer_bank_launcher_id: 'other_manual',
+      selected_payer_bank_launcher_id: 'tbank_ru',
       checkout_state: status as CheckoutSessionState,
       buyer_safe_status: buyerSafeStatus as BuyerSafeCheckoutStatus
     };
@@ -254,7 +250,7 @@ describe('hosted checkout web foundation', () => {
     const launcherResponse = await server.inject({
       method: 'POST',
       url: '/checkout/ps_01/payer-bank-launcher',
-      payload: { payer_bank_launcher_id: 'other_manual' }
+      payload: { payer_bank_launcher_id: 'tbank_ru' }
     });
 
     expect(receiverResponse.statusCode).toBe(200);
@@ -262,7 +258,7 @@ describe('hosted checkout web foundation', () => {
     expect(launcherResponse.statusCode).toBe(200);
     expect(provider.session.selected_receiver_bank_id).toBe('sber_ru');
     expect(provider.session.selected_receiving_route_id).toBe('route_sber_phone');
-    expect(provider.session.selected_payer_bank_launcher_id).toBe('other_manual');
+    expect(provider.session.selected_payer_bank_launcher_id).toBe('tbank_ru');
     expect(provider.session.status).not.toBe('manual_confirmed');
     expect(receiverResponse.json().official_bank_confirmation).toBe(false);
     expect(routeResponse.json().official_bank_confirmation).toBe(false);
@@ -276,7 +272,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_phone',
-      selected_payer_bank_launcher_id: 'other_manual'
+      selected_payer_bank_launcher_id: 'tbank_ru'
     };
     const server = buildWebServer({
       environment: 'test',
@@ -368,7 +364,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
-      selected_payer_bank_launcher_id: 'other_manual',
+      selected_payer_bank_launcher_id: 'tbank_ru',
       checkout_state: 'payment_instructions',
       buyer_safe_status: 'awaiting_payment'
     };
@@ -470,6 +466,26 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
     };
   }
 
+  public async submitExpectedPaymentProfile(_paymentSessionId: string, body: Parameters<CheckoutSessionProvider['submitExpectedPaymentProfile']>[1]) {
+    this.session = {
+      ...this.session,
+      payment_method: body.payment_method,
+      sender_bank_id: body.sender_bank_id,
+      sender_card_masked: body.payment_method === 'card' ? '2202 **** **** 4821' : undefined,
+      sender_phone_masked: body.payment_method === 'sbp' ? '+7 *** *** **67' : undefined,
+      selected_receiver_bank_id: body.sender_bank_id,
+      selected_receiver_bank_profile_id: body.sender_bank_id,
+      selected_payer_bank_launcher_id: body.sender_bank_id,
+      amount: { value: '137.80', currency: 'RUB' },
+      display_amount: { value: '137.00', currency: 'RUB' },
+      payable_amount: { value: '137.80', currency: 'RUB' },
+      reconciliation_delta_minor: 80,
+      checkout_state: 'receiving_route_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    return this.session;
+  }
+
   public async selectReceiverBank(_paymentSessionId: string, receiverBankId: string) {
     this.session = {
       ...this.session,
@@ -550,7 +566,6 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
   public async markPaymentInstructionsShown() {
     this.session = {
       ...this.session,
-      status: 'awaiting_payment',
       payment_instructions_shown_at: '2026-05-02T10:01:00.000Z',
       checkout_state: 'awaiting_payment',
       buyer_safe_status: 'awaiting_payment'

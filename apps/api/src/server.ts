@@ -23,6 +23,7 @@ import {
   buildAndroidMerchantDeviceLookupResponse,
   getPayerBankLauncherOption,
   getReceiverBankOption,
+  receivingRailForBuyerPaymentMethod,
   validateAndroidMerchantCreateAccountRequest,
   validateAndroidMerchantDeviceLookupRequest,
   validateIntelligenceFeedbackRequest,
@@ -87,6 +88,7 @@ import {
 } from './auth-bff.js';
 import {
   buildMerchantReceivingRouteRecord,
+  buildExpectedPaymentProfileMutation,
   buildOrderCreateInput,
   formatAmountMinor,
   invalidRequest,
@@ -1567,8 +1569,36 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply;
     }
 
-    const routes = await repository!.listReceiverBanksForCheckout(loaded.paymentSession.merchantId, loaded.paymentSession.id);
+    const routes = filterRoutesForExpectedPaymentMethod(
+      await repository!.listReceiverBanksForCheckout(loaded.paymentSession.merchantId, loaded.paymentSession.id),
+      loaded.paymentSession.paymentMethod
+    );
     return reply.status(200).send(toReceiverBanksResponse(loaded.paymentSession, routes));
+  });
+
+  server.post('/v1/checkout/:id/expected-payment-profile', async (request, reply) => {
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
+    }
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
+    }
+    const mutation = buildExpectedPaymentProfileMutation({
+      body: request.body,
+      loaded,
+      phoneHmacSecret,
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    if ('error' in mutation) {
+      return reply.status(400).send(mutation);
+    }
+    const result = await repository!.saveExpectedPaymentProfile(mutation);
+    return sendCheckoutMutationResult(reply, result, (updated) =>
+      buildReceiverBankSelectionResponse({ ...updated, now: clock() })
+    );
   });
 
   server.post('/v1/checkout/:id/receiver-bank', async (request, reply) => {
@@ -1628,11 +1658,11 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         }
       });
     }
-    const routes = await repository!.listReceivingRoutesForCheckoutBank(
+    const routes = filterRoutesForExpectedPaymentMethod(await repository!.listReceivingRoutesForCheckoutBank(
       loaded.paymentSession.merchantId,
       loaded.paymentSession.id,
       receiverBank.bank_profile_id
-    );
+    ), loaded.paymentSession.paymentMethod);
     return reply.status(200).send(
       toReceivingRoutesForBankResponse({
         paymentSession: loaded.paymentSession,
@@ -1664,11 +1694,11 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         }
       });
     }
-    const visibleRoutes = await repository!.listReceivingRoutesForCheckoutBank(
+    const visibleRoutes = filterRoutesForExpectedPaymentMethod(await repository!.listReceivingRoutesForCheckoutBank(
       loaded.paymentSession.merchantId,
       params.id,
       loaded.paymentSession.selectedReceiverBankProfileId
-    );
+    ), loaded.paymentSession.paymentMethod);
     const selectedRoute = visibleRoutes.find((route) => route.route_id === body.receiving_route_id) ?? null;
     if (!selectedRoute) {
       return reply.status(404).send({
@@ -3508,6 +3538,17 @@ async function loadCheckoutSession(params: {
   return result;
 }
 
+function filterRoutesForExpectedPaymentMethod(
+  routes: readonly StoredMerchantReceivingRouteRecord[],
+  paymentMethod: StoredPaymentSessionRecord['paymentMethod']
+): StoredMerchantReceivingRouteRecord[] {
+  if (!paymentMethod) {
+    return [...routes];
+  }
+  const expectedRail = receivingRailForBuyerPaymentMethod(paymentMethod);
+  return routes.filter((route) => route.rail_type === expectedRail);
+}
+
 async function mutateSimpleCheckoutAction(params: {
   request: FastifyRequest;
   reply: FastifyReply;
@@ -3549,6 +3590,26 @@ async function mutateSimpleCheckoutAction(params: {
     });
     return null;
   }
+  if ((params.action === 'instructions' || params.action === 'receiver_armed') && !loaded.paymentSession.paymentMethod) {
+    params.reply.status(409).send({
+      error: {
+        code: 'expected_payment_profile_required',
+        message: 'Buyer identity and sender method must be saved before payment instructions are shown.',
+        details: {}
+      }
+    });
+    return null;
+  }
+  if (params.action === 'receiver_armed' && !loaded.paymentSession.paymentInstructionsShownAt) {
+    params.reply.status(409).send({
+      error: {
+        code: 'payment_instructions_not_shown',
+        message: 'Payment instructions must be shown before the receiver can be armed.',
+        details: {}
+      }
+    });
+    return null;
+  }
   const result = await mutateCheckoutActionRepository(params.repository!, params.action, input);
   switch (result.kind) {
     case 'updated':
@@ -3568,6 +3629,15 @@ async function mutateSimpleCheckoutAction(params: {
           code: 'checkout_session_expired',
           message: 'Checkout session is expired.',
           details: {}
+        }
+      });
+      return null;
+    case 'invalid_transition':
+      params.reply.status(409).send({
+        error: {
+          code: 'checkout_step_out_of_order',
+          message: 'Checkout step cannot be applied from the current payment session status.',
+          details: { current_status: result.currentStatus }
         }
       });
       return null;
@@ -3611,6 +3681,14 @@ function sendCheckoutMutationResult<T>(
           code: 'checkout_session_expired',
           message: 'Checkout session is expired.',
           details: {}
+        }
+      });
+    case 'invalid_transition':
+      return reply.status(409).send({
+        error: {
+          code: 'checkout_step_out_of_order',
+          message: 'Checkout step cannot be applied from the current payment session status.',
+          details: { current_status: result.currentStatus }
         }
       });
   }

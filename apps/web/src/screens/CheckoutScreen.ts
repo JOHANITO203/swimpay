@@ -10,7 +10,7 @@ import {
 import type { BuyerSafeReceivingRoute, PayerBankLauncherOption, ReceiverBankOption } from '@swimpay/contracts';
 import type { CheckoutSession, CheckoutRecipient } from '../index.js';
 
-type BuyerCheckoutStep = 'bank' | 'route' | 'launcher' | 'instructions';
+type BuyerCheckoutStep = 'identity' | 'bank' | 'route' | 'launcher' | 'instructions';
 type CheckoutStateTone = 'info' | 'success' | 'warning' | 'danger';
 
 interface CheckoutStateView {
@@ -41,10 +41,11 @@ export function renderCheckoutPage(
       <div class="checkout-grid">
         <div class="stack-lg">
           ${renderBuyerIntro(step)}
+          ${step === 'identity' ? renderBuyerIdentityStep(session, banks) : ''}
           ${step === 'bank' ? renderReceiverBankSelection(session, banks) : ''}
           ${step === 'route' ? renderReceivingRouteSelection(session, routes) : ''}
           ${step === 'launcher' ? renderPayerLauncherSelection(session, launchers) : ''}
-          ${step === 'instructions' ? renderInstructions(session, selectedRoute, selectedLauncher) : ''}
+          ${step === 'instructions' ? renderInstructionsV2(session, selectedRoute, selectedLauncher) : ''}
           ${showStatePanel ? renderCheckoutStatePanel(session) : ''}
         </div>
         <aside class="stack checkout-side">
@@ -59,6 +60,7 @@ export function renderCheckoutPage(
 }
 
 function getCheckoutStep(session: CheckoutSession): BuyerCheckoutStep {
+  if (!session.payment_method && !session.selected_receiver_bank_id) return 'identity';
   if (!session.selected_receiver_bank_id) return 'bank';
   if (!session.selected_receiving_route_id) return 'route';
   if (!session.selected_payer_bank_launcher_id) return 'launcher';
@@ -70,7 +72,7 @@ function isTerminalBuyerState(session: CheckoutSession): boolean {
 }
 
 function renderBuyerIntro(step: BuyerCheckoutStep): string {
-  if (step !== 'bank') return '';
+  if (step !== 'identity') return '';
   return Card({
     class: 'checkout-hero-card',
     children: `<p class="eyebrow">SwimPay</p>
@@ -87,6 +89,57 @@ function renderBuyerIntro(step: BuyerCheckoutStep): string {
 
 function renderBenefit(icon: string, label: string): string {
   return `<div class="checkout-benefit"><span>${escapeHtml(icon)}</span><strong>${escapeHtml(label)}</strong></div>`;
+}
+
+function renderBuyerIdentityStep(session: CheckoutSession, banks: readonly ReceiverBankOption[]): string {
+  return `<section id="buyer-identity" class="checkout-section">
+    <div class="checkout-section-head">
+      <h2>Vos informations</h2>
+      <p>Ces donnees servent a reconnaitre le signal de paiement.</p>
+    </div>
+    ${Card({
+      class: 'payment-instructions-card',
+      children: `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/expected-payment-profile" class="expected-profile-form">
+        <div class="recognition-grid">
+          <label>Prenom<input name="buyer_first_name" autocomplete="given-name" required></label>
+          <label>Nom<input name="buyer_last_name" autocomplete="family-name" required></label>
+        </div>
+        <div class="method-toggle" role="radiogroup" aria-label="Methode de paiement">
+          <label><input type="radio" name="payment_method" value="card" checked> Carte</label>
+          <label><input type="radio" name="payment_method" value="sbp"> Telephone SBP</label>
+        </div>
+        <label class="full-field">Banque d'envoi
+          <select name="sender_bank_id" required>
+            ${banks.map((bank) => `<option value="${escapeHtml(bank.bank_profile_id)}">${escapeHtml(bank.display_name)}</option>`).join('')}
+          </select>
+        </label>
+        <div class="recognition-grid">
+          <label data-method-field="card">Carte d'envoi<input name="sender_card_number" inputmode="numeric" autocomplete="cc-number" placeholder="4242 .... .... ...."></label>
+          <label data-method-field="sbp">Telephone d'envoi<input name="sender_phone" type="tel" autocomplete="tel" placeholder="+7 ..." disabled></label>
+        </div>
+        <p class="instruction-note">Pas de CVV, pas de date d'expiration, pas de code SMS.</p>
+        <div class="checkout-action-row">${Button({ text: 'Continuer', variant: 'primary', class: 'btn-wide', type: 'submit' })}</div>
+      </form>
+      <script>
+        for (const form of document.querySelectorAll('.expected-profile-form')) {
+          const syncMethodFields = () => {
+            const method = form.querySelector('input[name="payment_method"]:checked')?.value ?? 'card';
+            for (const field of form.querySelectorAll('[data-method-field]')) {
+              const active = field.getAttribute('data-method-field') === method;
+              field.hidden = !active;
+              const input = field.querySelector('input');
+              if (input) {
+                input.disabled = !active;
+                input.required = active;
+              }
+            }
+          };
+          form.addEventListener('change', syncMethodFields);
+          syncMethodFields();
+        }
+      </script>`
+    })}
+  </section>`;
 }
 
 function renderReceiverBankSelection(session: CheckoutSession, banks: readonly ReceiverBankOption[]): string {
@@ -165,7 +218,7 @@ function renderPayerLauncherSelection(session: CheckoutSession, launchers: reado
   </section>`;
 }
 
-function renderInstructions(
+function renderInstructionsLegacy(
   session: CheckoutSession,
   selectedRoute: BuyerSafeReceivingRoute | undefined,
   selectedLauncher: PayerBankLauncherOption | undefined
@@ -223,6 +276,77 @@ function renderInstructions(
         ${Button({ text: "J'ai payé", id: 'paid-button', variant: 'primary', type: 'submit' })}
       </form>
     </div>`
+  });
+}
+
+void renderInstructionsLegacy;
+
+function renderInstructionsV2(
+  session: CheckoutSession,
+  selectedRoute: BuyerSafeReceivingRoute | undefined,
+  selectedLauncher: PayerBankLauncherOption | undefined
+): string {
+  if (!selectedRoute) {
+    return Card({
+      class: 'checkout-empty',
+      children: `<h2>Envoyez le paiement</h2><p>Selectionnez d'abord une destination.</p>`
+    });
+  }
+
+  const isPhone = selectedRoute.rail_type === 'phone_transfer';
+  const destinationLabel = isPhone ? 'Telephone' : 'Carte';
+  const amount = session.payable_amount ?? session.amount;
+  const summary = `Montant: ${amount.value} ${amount.currency} | Reference: ${session.reference} | Destination: ${selectedRoute.receiver_identifier_masked}`;
+  const launcherNote = selectedLauncher
+    ? `<p class="launcher-note">Continuer avec <strong>${escapeHtml(selectedLauncher.display_name)}</strong>. Si l'ouverture echoue, copiez les details et ouvrez votre banque manuellement.</p>`
+    : '';
+
+  return Card({
+    class: 'payment-instructions-card',
+    children: `<div class="checkout-section-head">
+      <h2>Envoyez le paiement</h2>
+      <p>Copiez les champs, puis collez-les dans votre banque.</p>
+    </div>
+    <div class="instruction-destination">
+      <span class="method-icon">${isPhone ? 'Tel' : 'Card'}</span>
+      <div>
+        <small>${destinationLabel}</small>
+        <strong>${escapeHtml(selectedRoute.receiver_identifier_masked)}</strong>
+      </div>
+      <button class="copy-btn" type="button" data-copy-destination="${escapeHtml(session.payment_session_id)}">Copier</button>
+    </div>
+    <div class="instruction-grid">
+      ${CopyField({ label: 'Montant exact', value: `${amount.value} ${amount.currency}`, masked: false })}
+      ${CopyField({ label: 'Reference', value: session.reference, masked: false })}
+    </div>
+    <button class="copy-btn copy-details-btn" type="button" data-copy-text="${escapeHtml(summary)}">Copier le resume</button>
+    <p class="instruction-note">Envoyez exactement ce montant. Ajoutez cette reference si votre banque le permet.</p>
+    ${launcherNote}
+    <div class="instruction-actions">
+      <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/continue-to-bank">
+        ${Button({ text: 'Ouvrir ma banque', variant: 'secondary', type: 'submit' })}
+      </form>
+      <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/claimed-paid">
+        ${Button({ text: "J'ai paye", id: 'paid-button', variant: 'primary', type: 'submit' })}
+      </form>
+    </div>
+    <script>
+      for (const button of document.querySelectorAll('[data-copy-destination]')) {
+        button.addEventListener('click', async () => {
+          const id = button.getAttribute('data-copy-destination');
+          const response = await fetch('/checkout/' + encodeURIComponent(id ?? '') + '/receiving-route/copy-details');
+          if (response.ok) {
+            const payload = await response.json();
+            await navigator.clipboard.writeText(payload.destination_value);
+          }
+        });
+      }
+      for (const button of document.querySelectorAll('[data-copy-text]')) {
+        button.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(button.getAttribute('data-copy-text') ?? '');
+        });
+      }
+    </script>`
   });
 }
 
@@ -350,6 +474,18 @@ function buyerCheckoutStyles(): string {
     .recognition-hints p { margin:0; color:var(--color-navy); font-weight:800; }
     .recognition-hints small { color:var(--color-muted); font-weight:700; }
     .recognition-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; }
+    .expected-profile-form { display:flex; flex-direction:column; gap:16px; }
+    .method-toggle { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; }
+    .method-toggle label {
+      min-height:56px; border-radius:18px; border:1px solid rgba(225,232,237,0.9);
+      background:white; display:flex; align-items:center; gap:10px; padding:12px 14px;
+      color:var(--color-navy); font-weight:900;
+    }
+    .full-field { display:flex; flex-direction:column; gap:8px; color:var(--color-muted); font-size:13px; font-weight:900; }
+    .full-field select {
+      min-height:52px; border-radius:18px; border:1px solid rgba(225,232,237,0.9);
+      padding:12px 14px; color:var(--color-navy); background:white;
+    }
     .recognition-grid label {
       display:flex; flex-direction:column; gap:7px;
       color:var(--color-muted); font-size:13px; font-weight:900;

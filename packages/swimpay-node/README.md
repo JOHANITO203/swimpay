@@ -74,6 +74,44 @@ Every public payment webhook is parsed with `officialBankConfirmation: false`.
 
 Browser code should only redirect to a checkout URL created by your server.
 
+```html
+<style>
+.swimpay-button {
+  min-height: 56px;
+  border: 0;
+  border-radius: 18px;
+  padding: 0 24px;
+  color: white;
+  background: linear-gradient(135deg, #0097A7, #00698B);
+  font: 800 16px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: 0 14px 32px rgba(0, 151, 167, 0.26);
+}
+.swimpay-button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+</style>
+<button id="swimpay-button" class="swimpay-button" type="button">Payer avec SwimPay</button>
+```
+
+```ts
+const button = document.getElementById("swimpay-button") as HTMLButtonElement;
+button.addEventListener("click", async () => {
+  button.disabled = true;
+  try {
+    const orderId = getCurrentOrderId();
+    const response = await fetch(`/api/orders/${orderId}/swimpay-checkout`, {
+      method: "POST"
+    });
+    const checkout = await response.json() as { checkoutUrl: string };
+    window.location.assign(checkout.checkoutUrl);
+  } finally {
+    button.disabled = false;
+  }
+});
+```
+
 ```ts
 export function redirectToCheckout(checkoutUrl: string): void {
   window.location.assign(checkoutUrl);

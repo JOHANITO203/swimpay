@@ -26,6 +26,7 @@ class StagingOrderRepository implements OrderRepository {
   async selectReceiverBank() { return { kind: 'not_found' as const }; }
   async selectReceivingRoute() { return { kind: 'not_found' as const }; }
   async selectPayerBankLauncher() { return { kind: 'not_found' as const }; }
+  async saveExpectedPaymentProfile() { return { kind: 'not_found' as const }; }
   async saveBuyerSenderPhoneHint() { return { kind: 'not_found' as const }; }
   async markReceiverArmed() { return { kind: 'not_found' as const }; }
   async markPaymentInstructionsShown() { return { kind: 'not_found' as const }; }

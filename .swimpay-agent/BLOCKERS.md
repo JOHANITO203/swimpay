@@ -556,3 +556,10 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - No critical local blocker remains for the Android/backend Developer Integration Wizard bridge.
 - Staging credential generation still requires an authenticated staging merchant/operator action; show-once API keys and webhook secrets must be copied into the external app environment outside chat.
 - SDK/webhook rehearsal should wait for Dokploy redeploy of this commit and a fresh staging `/api-health` check.
+
+## Buyer Checkout 4-Step Flow
+
+- No critical local blocker remains for the hosted buyer checkout V1 four-step flow.
+- Native Android bank package/deeplink launching is not implemented in this hosted-web sprint; web checkout records a safe fallback launcher result and relies on copy/paste instructions.
+- Deeper card/name variant scoring in Payment Intent Gate remains a future matching enhancement; the Expected Payment Profile data is now persisted and carried into signal runtime candidates.
+- Real bank notification testing remains out of scope until the explicit real-notification gate is opened.

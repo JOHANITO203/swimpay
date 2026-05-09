@@ -81,6 +81,10 @@ class MinimalOrderRepository implements OrderRepository {
     return { kind: 'not_found' as const };
   }
 
+  async saveExpectedPaymentProfile() {
+    return { kind: 'not_found' as const };
+  }
+
   async saveBuyerSenderPhoneHint() {
     return { kind: 'not_found' as const };
   }

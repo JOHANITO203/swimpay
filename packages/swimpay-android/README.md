@@ -1,6 +1,6 @@
 # @swimpay/android
 
-Small Android merchant helper for opening a SwimPay `checkout_url`.
+Small Android merchant helper for showing a buyer-facing button and opening a SwimPay `checkout_url`.
 
 This package is not the SwimPay Receiver. It does not listen to bank notifications, does not process payment signals, and does not confirm payments.
 
@@ -15,6 +15,27 @@ The return does not confirm payment. The webhook is delivered to your backend af
 never put a SwimPay secret in the APK.
 
 ## Minimal usage
+
+Create the button in your Android screen. The button calls your backend first; your backend returns `checkout_url`.
+
+```kotlin
+val swimPayButton = SwimPayButton.create(this) { view ->
+    val button = view as Button
+    SwimPayButton.bind(button, SwimPayButtonState.Loading)
+    lifecycleScope.launch {
+        val checkoutUrl = merchantBackend.createSwimPayCheckout(orderId)
+        val openResult = SwimPayCheckout.open(
+            activity = this@CheckoutActivity,
+            checkoutUrl = checkoutUrl,
+            options = SwimPayCheckoutOptions(returnScheme = "merchantapp")
+        )
+        SwimPayButton.bind(button, SwimPayButtonState.Ready)
+        if (openResult.error != null) {
+            showSafeCheckoutError(openResult.safeMessage)
+        }
+    }
+}
+```
 
 ```kotlin
 val openResult = SwimPayCheckout.open(

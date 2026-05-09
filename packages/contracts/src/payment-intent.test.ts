@@ -3,8 +3,11 @@ import {
   buildIntentBoundLearningMetadata,
   buildMerchantReviewMatchingCopy,
   buildPaymentIntent,
+  deriveExpectedPaymentProfile,
   deriveBuyerRecognitionHints,
   maskBuyerSourceCard,
+  normalizeBuyerIdentity,
+  receivingRailForBuyerPaymentMethod,
   type BuyerRecognitionHintInput
 } from './index.js';
 
@@ -57,6 +60,94 @@ describe('payment-intent-bound checkout contracts', () => {
         encrypt
       })
     ).toThrow('Buyer recognition hints must not include card secrets or bank credentials.');
+  });
+
+  it('normalizes Latin and Cyrillic buyer names into deterministic variants', () => {
+    const latin = normalizeBuyerIdentity({ first_name: 'Ivan', last_name: 'Petrov' });
+    const cyrillic = normalizeBuyerIdentity({ first_name: 'Иван', last_name: 'Петров' });
+
+    expect(latin.script_detected).toBe('latin');
+    expect(latin.cyrillic_variants).toContain('иван петров');
+    expect(latin.initials_variants).toEqual(expect.arrayContaining(['i. petrov', 'и. петров']));
+    expect(cyrillic.script_detected).toBe('cyrillic');
+    expect(cyrillic.latin_variants).toContain('ivan petrov');
+    expect(cyrillic.reversed_order_variants).toEqual(expect.arrayContaining(['петров иван', 'petrov ivan']));
+  });
+
+  it('derives an expected payment profile without returning raw PAN or phone', () => {
+    const profile = deriveExpectedPaymentProfile({
+      payment_session_id: 'ps_01',
+      merchant_id: 'mch_01',
+      buyer_first_name_raw: 'Ivan',
+      buyer_last_name_raw: 'Petrov',
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
+      sender_card_number: '4242 4242 4242 4242',
+      display_amount_minor: 139000,
+      currency: 'RUB',
+      generated_reference: 'TANGO ALFA',
+      expires_at: '2026-05-06T10:15:00.000Z',
+      hmac
+    });
+
+    expect(profile).toMatchObject({
+      payment_session_id: 'ps_01',
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
+      sender_card_masked: '4242 **** **** 4242',
+      sender_card_last4: '4242',
+      display_amount_minor: 139000,
+      currency: 'RUB'
+    });
+    expect(profile.reconciliation_delta_minor).toBeGreaterThanOrEqual(1);
+    expect(profile.reconciliation_delta_minor).toBeLessThanOrEqual(99);
+    expect(profile.payable_amount_minor).toBe(139000 + profile.reconciliation_delta_minor);
+    expect(profile.sender_card_hmac).toMatch(/^hmac:sender_card_pan:/);
+    expect(profile.expected_payment_fingerprint).toMatch(/^hmac:expected_payment_fingerprint:/);
+    expect(JSON.stringify(profile)).not.toContain('4242424242424242');
+    expect(receivingRailForBuyerPaymentMethod(profile.payment_method)).toBe('card_transfer');
+  });
+
+  it('rejects non-Luhn sender card numbers in the expected payment profile', () => {
+    expect(() =>
+      deriveExpectedPaymentProfile({
+        payment_session_id: 'ps_bad_card',
+        merchant_id: 'mch_01',
+        buyer_first_name_raw: 'Ivan',
+        buyer_last_name_raw: 'Petrov',
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        sender_card_number: '4242 4242 4242 4241',
+        display_amount_minor: 139000,
+        currency: 'RUB',
+        generated_reference: 'TANGO ALFA',
+        expires_at: '2026-05-06T10:15:00.000Z',
+        hmac
+      })
+    ).toThrow('Sender card number is not plausible.');
+  });
+
+  it('derives an SBP phone expected payment profile as masked phone and HMAC only', () => {
+    const profile = deriveExpectedPaymentProfile({
+      payment_session_id: 'ps_02',
+      merchant_id: 'mch_01',
+      buyer_first_name_raw: 'Иван',
+      buyer_last_name_raw: 'Петров',
+      payment_method: 'sbp',
+      sender_bank_id: 'tbank_ru',
+      sender_phone: '+7 (999) 123-45-67',
+      display_amount_minor: 50000,
+      currency: 'RUB',
+      generated_reference: 'NOVA KILO',
+      expires_at: '2026-05-06T10:15:00.000Z',
+      hmac
+    });
+
+    expect(profile.sender_phone_masked).toBe('+7 *** *** **67');
+    expect(profile.sender_phone_hmac).toMatch(/^hmac:sender_phone:/);
+    expect(profile.sender_card_hmac).toBeUndefined();
+    expect(JSON.stringify(profile)).not.toContain('9991234567');
+    expect(receivingRailForBuyerPaymentMethod(profile.payment_method)).toBe('phone_transfer');
   });
 
   it('builds a bounded reconciliation amount that is visible and used for matching', () => {
