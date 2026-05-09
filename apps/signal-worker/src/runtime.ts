@@ -64,6 +64,15 @@ export interface SignalRuntimeSessionCandidate extends MatchingCandidateSession 
 export interface SignalRuntimeTrustContext {
   bankProfileStatus: BankProfileTrustStatus;
   bankAppVerificationStatus: 'verified' | 'pending_verification' | 'revoked' | 'unknown' | 'TO_VERIFY';
+  bankRouteCertificationStatus?:
+    | 'certified'
+    | 'observed'
+    | 'experimental'
+    | 'review_only'
+    | 'package_validation_pending'
+    | 'disabled'
+    | 'unknown'
+    | undefined;
   trustedPackageName?: string | undefined;
   trustedPackageCertSha256?: string | undefined;
   templateStatus: TemplateTrustStatus | 'unknown';
@@ -788,7 +797,8 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
         COALESCE(bt.status, 'unknown') AS template_status,
         rd.status AS device_status,
         rd.trust_score,
-        bas.status AS exact_bank_app_status
+        bas.status AS exact_bank_app_status,
+        COALESCE(brc.runtime_status, 'unknown') AS bank_route_certification_status
        FROM notification_signals ns
        JOIN receiver_devices rd ON rd.id = ns.device_id AND rd.merchant_id = ns.merchant_id
        LEFT JOIN bank_profiles bp ON bp.id = ns.bank_profile_id
@@ -797,6 +807,9 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
          ON bas.bank_profile_id = ns.bank_profile_id
         AND bas.package_name = $2
         AND bas.cert_sha256 = $3
+       LEFT JOIN bank_route_certifications brc
+         ON brc.bank_id = ns.bank_profile_id
+        AND brc.package_name = $2
        WHERE ns.id = $1`,
       [signal.id, signal.packageName ?? null, signal.packageCertSha256 ?? null]
     );
@@ -805,6 +818,7 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
     return {
       bankProfileStatus: normalizeBankProfileStatus(row?.bank_profile_status),
       bankAppVerificationStatus: normalizeBankAppVerificationStatus(row?.exact_bank_app_status),
+      bankRouteCertificationStatus: normalizeBankRouteCertificationStatus(row?.bank_route_certification_status),
       templateStatus: normalizeTemplateStatus(row?.template_status),
       deviceStatus: String(row?.device_status ?? 'unknown'),
       deviceTrustScore: Number(row?.trust_score ?? 0),
@@ -1070,6 +1084,7 @@ function evaluatePreParseTrustHardGate(signal: SignalRuntimeSignal, context: Sig
   }
 
   reasonCodes.push(...bankAppTrustHardGateReasonCodes(signal, context));
+  reasonCodes.push(...bankRouteCertificationHardGateReasonCodes(context));
 
   return uniqueReasonCodes(reasonCodes);
 }
@@ -1097,6 +1112,17 @@ function bankAppTrustHardGateReasonCodes(signal: SignalRuntimeSignal, context: S
   }
 
   return reasonCodes;
+}
+
+function bankRouteCertificationHardGateReasonCodes(context: SignalRuntimeTrustContext): string[] {
+  if (context.bankRouteCertificationStatus === 'package_validation_pending') {
+    return ['bank_route_certification_pending'];
+  }
+  if (context.bankRouteCertificationStatus === 'disabled') {
+    return ['bank_route_certification_disabled'];
+  }
+
+  return [];
 }
 
 function isExactTrustedPackageCertificate(signal: SignalRuntimeSignal, context: SignalRuntimeTrustContext): boolean {
@@ -1260,6 +1286,8 @@ function enrichReasonCodes(
     ...(context.bankAppVerificationStatus === 'TO_VERIFY' || context.bankAppVerificationStatus === 'pending_verification'
       ? ['package_cert_to_verify']
       : []),
+    ...(context.bankRouteCertificationStatus === 'experimental' ? ['bank_route_certification_experimental'] : []),
+    ...(context.bankRouteCertificationStatus === 'unknown' ? ['bank_route_certification_unknown'] : []),
     ...(context.templateStatus !== 'trusted' && context.templateStatus !== 'trusted_low_amount' ? ['template_untrusted'] : []),
     ...(context.deviceStatus !== 'active' || context.deviceTrustScore < 80 ? ['device_untrusted'] : [])
   ];
@@ -1288,6 +1316,8 @@ function primaryReasonCode(reasonCodes: string[]): string {
     reasonCodes.find((code) =>
       [
         'amount_collision',
+        'bank_route_certification_pending',
+        'bank_route_certification_disabled',
         'bank_app_unverified',
         'bank_profile_untrusted',
         'template_untrusted',
@@ -1367,6 +1397,12 @@ function normalizeTemplateStatus(value: unknown): TemplateTrustStatus | 'unknown
     : 'unknown';
 }
 
+function normalizeBankRouteCertificationStatus(value: unknown): NonNullable<SignalRuntimeTrustContext['bankRouteCertificationStatus']> {
+  return ['certified', 'observed', 'experimental', 'review_only', 'package_validation_pending', 'disabled', 'unknown'].includes(String(value))
+    ? (String(value) as NonNullable<SignalRuntimeTrustContext['bankRouteCertificationStatus']>)
+    : 'unknown';
+}
+
 interface SignalRow {
   id: string;
   merchant_id: string;
@@ -1401,6 +1437,7 @@ interface TrustRow {
   device_status: string | null;
   trust_score: number | string | null;
   exact_bank_app_status: string | null;
+  bank_route_certification_status: string | null;
 }
 
 interface SessionRow {

@@ -1,5 +1,19 @@
 # Progress Log
 
+## 2026-05-10T00:03:15+03:00 - P0-WIRE-1 runtime wiring
+
+- Wired amount lease allocation into hosted checkout receiving-route selection.
+- The checkout transaction now reserves an active lease for `merchant_id + route_id + rail + payable_amount_minor` and persists display amount, reconciliation delta and payable amount together.
+- Manual merchant confirmation marks active leases `used`; merchant rejection releases active leases.
+- Wired bank route certification into checkout route discovery and route selection.
+- Wired bank route certification into signal runtime trust gates so package-validation-pending and disabled certifications are rejected before parser/review creation.
+- Preserved Ozon Bank as review-only/package-validation-pending; runtime capture remains disabled until exact package/cert evidence is validated.
+- Added durable worker idempotency wrapper and PostgreSQL implementation over `worker_idempotency_ledger`.
+- Wrapped webhook delivery attempts and no-notification fallback creation with idempotency keys to prevent duplicate side effects.
+- Full validation passed: android doctor, typecheck, lint, full Vitest suite with 77 files / 599 tests, TypeScript build, Compose config, replay, matching, privacy and webhook scripts.
+- Android source was not touched, so Android Gradle tests/builds were not required in this sprint.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
 ## 2026-05-09T23:18:00+03:00 - External P0 delta hardening completed
 
 - Audited 25 external P0 recommendations against the current SwimPay product truth and codebase.

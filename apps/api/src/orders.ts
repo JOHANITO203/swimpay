@@ -272,6 +272,71 @@ export interface OrderRepository {
   requestNoNotificationManualCheck(input: RequestNoNotificationManualCheckInput): Promise<NoNotificationManualCheckResult>;
 }
 
+export type AmountLeaseRail = 'sbp' | 'card';
+
+export interface AmountLeaseCandidate {
+  reconciliationDeltaMinor: number;
+  payableAmountMinor: number;
+}
+
+export type BankRouteCertificationRuntimeStatus =
+  | 'certified'
+  | 'observed'
+  | 'experimental'
+  | 'review_only'
+  | 'package_validation_pending'
+  | 'disabled';
+
+const CHECKOUT_SELECTABLE_BANK_ROUTE_CERTIFICATION_STATUSES = new Set<BankRouteCertificationRuntimeStatus>([
+  'certified',
+  'observed',
+  'experimental',
+  'review_only'
+]);
+
+export function selectAmountLeaseCandidate(input: {
+  displayAmountMinor: number;
+  preferredDeltaMinor: number;
+  unavailablePayableAmounts: ReadonlySet<number>;
+}): AmountLeaseCandidate | null {
+  if (!Number.isInteger(input.displayAmountMinor) || input.displayAmountMinor <= 0) {
+    return null;
+  }
+
+  const preferredDelta = normalizeReconciliationDelta(input.preferredDeltaMinor);
+  const deltas = [
+    preferredDelta,
+    ...Array.from({ length: 99 }, (_value, index) => index + 1).filter((delta) => delta !== preferredDelta)
+  ];
+
+  for (const delta of deltas) {
+    const payableAmountMinor = input.displayAmountMinor + delta;
+    if (!input.unavailablePayableAmounts.has(payableAmountMinor)) {
+      return {
+        reconciliationDeltaMinor: delta,
+        payableAmountMinor
+      };
+    }
+  }
+
+  return null;
+}
+
+export function bankCertificationAllowsCheckoutRoute(input: {
+  status?: BankRouteCertificationRuntimeStatus | undefined;
+  railSupported?: readonly string[] | undefined;
+  routeRailType: ReceivingRouteRailType;
+}): boolean {
+  if (!input.status) {
+    return false;
+  }
+  if (!CHECKOUT_SELECTABLE_BANK_ROUTE_CERTIFICATION_STATUSES.has(input.status)) {
+    return false;
+  }
+
+  return (input.railSupported ?? []).includes(amountLeaseRailForRoute(input.routeRailType));
+}
+
 export interface IdGenerator {
   orderId: () => string;
   paymentSessionId: () => string;
@@ -753,6 +818,16 @@ export class PgOrderRepository implements OrderRepository {
         enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at
        FROM merchant_receiving_routes
        WHERE merchant_id = $1 AND enabled = true AND deleted_at IS NULL
+         AND EXISTS (
+           SELECT 1
+           FROM bank_route_certifications brc
+           WHERE brc.bank_id = merchant_receiving_routes.bank_profile_id
+             AND brc.runtime_status IN ('certified', 'observed', 'experimental', 'review_only')
+             AND CASE merchant_receiving_routes.rail_type
+               WHEN 'phone_transfer' THEN 'sbp'
+               ELSE 'card'
+             END = ANY(brc.rail_supported)
+         )
        ORDER BY recommended DESC, created_at ASC`,
       [merchantId]
     );
@@ -768,6 +843,16 @@ export class PgOrderRepository implements OrderRepository {
         enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at
        FROM merchant_receiving_routes
        WHERE merchant_id = $1 AND bank_profile_id = $2 AND enabled = true AND deleted_at IS NULL
+         AND EXISTS (
+           SELECT 1
+           FROM bank_route_certifications brc
+           WHERE brc.bank_id = merchant_receiving_routes.bank_profile_id
+             AND brc.runtime_status IN ('certified', 'observed', 'experimental', 'review_only')
+             AND CASE merchant_receiving_routes.rail_type
+               WHEN 'phone_transfer' THEN 'sbp'
+               ELSE 'card'
+             END = ANY(brc.rail_supported)
+         )
        ORDER BY recommended DESC, created_at ASC`,
       [merchantId, bankProfileId]
     );
@@ -880,20 +965,43 @@ export class PgOrderRepository implements OrderRepository {
     ) {
       return { kind: 'not_found' };
     }
+    if (!(await this.isReceivingRouteCertifiedForCheckout(route))) {
+      return { kind: 'not_found' };
+    }
 
     return this.mutateCheckoutSession({
       input,
       allowedStatuses: ['created', 'receiver_arming'],
       auditEventType: 'checkout.receiving_route_selected',
       apply: async (client) => {
+        const amountLease = await allocateAmountLeaseForRoute(client, {
+          merchantId: input.merchantId,
+          paymentSessionId: input.paymentSessionId,
+          route,
+          order: loaded.order,
+          paymentSession: loaded.paymentSession,
+          now: input.now
+        });
         await client.query(
           `UPDATE payment_sessions
            SET selected_receiving_route_id = $3,
                selected_payer_bank_launcher_id = NULL,
                payment_instructions_shown_at = NULL,
-               updated_at = $4
+               display_amount_minor = $4,
+               payable_amount_minor = $5,
+               reconciliation_delta_minor = $6,
+               expected_amount_minor = $5,
+               updated_at = $7
            WHERE merchant_id = $1 AND id = $2`,
-          [input.merchantId, input.paymentSessionId, input.receivingRouteId, input.now]
+          [
+            input.merchantId,
+            input.paymentSessionId,
+            input.receivingRouteId,
+            amountLease.displayAmountMinor,
+            amountLease.payableAmountMinor,
+            amountLease.reconciliationDeltaMinor,
+            input.now
+          ]
         );
       },
       payload: {
@@ -901,6 +1009,7 @@ export class PgOrderRepository implements OrderRepository {
         receiver_route_code: route.route_code,
         rail_type: route.rail_type,
         review_policy: route.review_policy,
+        amount_lease_allocated: true,
         auto_confirm_enabled: false
       }
     });
@@ -1311,6 +1420,30 @@ export class PgOrderRepository implements OrderRepository {
       : null;
   }
 
+  private async isReceivingRouteCertifiedForCheckout(route: StoredMerchantReceivingRouteRecord): Promise<boolean> {
+    const result = await this.pool.query(
+      `SELECT runtime_status, rail_supported
+       FROM bank_route_certifications
+       WHERE bank_id = $1
+         AND runtime_status IN ('certified', 'observed', 'experimental', 'review_only')
+         AND $2 = ANY(rail_supported)
+       ORDER BY CASE runtime_status
+         WHEN 'certified' THEN 1
+         WHEN 'observed' THEN 2
+         WHEN 'experimental' THEN 3
+         ELSE 4
+       END
+       LIMIT 1`,
+      [route.bank_profile_id, amountLeaseRailForRoute(route.rail_type)]
+    );
+    const row = result.rows[0] as { runtime_status?: BankRouteCertificationRuntimeStatus; rail_supported?: string[] } | undefined;
+    return bankCertificationAllowsCheckoutRoute({
+      status: row?.runtime_status,
+      railSupported: row?.rail_supported,
+      routeRailType: route.rail_type
+    });
+  }
+
   private async mutateCheckoutSession(params: {
     input: CheckoutMutationBaseInput;
     allowedStatuses?: readonly PaymentSessionStatus[] | undefined;
@@ -1370,6 +1503,113 @@ export class PgOrderRepository implements OrderRepository {
     } finally {
       client.release();
     }
+  }
+}
+
+async function allocateAmountLeaseForRoute(
+  client: pg.PoolClient,
+  input: {
+    merchantId: string;
+    paymentSessionId: string;
+    route: StoredMerchantReceivingRouteRecord;
+    order: StoredOrderRecord;
+    paymentSession: StoredPaymentSessionRecord;
+    now: string;
+  }
+): Promise<AmountLeaseCandidate & { displayAmountMinor: number }> {
+  const rail = amountLeaseRailForRoute(input.route.rail_type);
+  const existing = await client.query(
+    `SELECT display_amount_minor, reconciliation_delta_minor, payable_amount_minor
+     FROM amount_leases
+     WHERE merchant_id = $1
+       AND payment_session_id = $2
+       AND route_id = $3::uuid
+       AND rail = $4
+       AND status = 'active'
+     FOR UPDATE
+     LIMIT 1`,
+    [input.merchantId, input.paymentSessionId, input.route.route_id, rail]
+  );
+  if (existing.rows[0]) {
+    const row = existing.rows[0] as {
+      display_amount_minor: number | string;
+      reconciliation_delta_minor: number | string;
+      payable_amount_minor: number | string;
+    };
+    return {
+      displayAmountMinor: Number(row.display_amount_minor),
+      reconciliationDeltaMinor: Number(row.reconciliation_delta_minor),
+      payableAmountMinor: Number(row.payable_amount_minor)
+    };
+  }
+
+  await client.query(
+    `UPDATE amount_leases
+     SET status = 'released', updated_at = $3::timestamptz
+     WHERE merchant_id = $1
+       AND payment_session_id = $2
+       AND status = 'active'`,
+    [input.merchantId, input.paymentSessionId, input.now]
+  );
+
+  const displayAmountMinor = input.paymentSession.displayAmountMinor ?? input.order.amountMinor ?? input.paymentSession.expectedAmountMinor;
+  const preferredDeltaMinor =
+    input.paymentSession.reconciliationDeltaMinor ??
+    Math.max(1, (input.paymentSession.payableAmountMinor ?? displayAmountMinor + 1) - displayAmountMinor);
+  const unavailableResult = await client.query(
+    `SELECT payable_amount_minor
+     FROM amount_leases
+     WHERE merchant_id = $1
+       AND route_id = $2::uuid
+       AND rail = $3
+       AND status = 'active'
+     FOR UPDATE`,
+    [input.merchantId, input.route.route_id, rail]
+  );
+  const unavailablePayableAmounts = new Set(
+    unavailableResult.rows.map((row: { payable_amount_minor: number | string }) => Number(row.payable_amount_minor))
+  );
+
+  while (true) {
+    const candidate = selectAmountLeaseCandidate({
+      displayAmountMinor,
+      preferredDeltaMinor,
+      unavailablePayableAmounts
+    });
+    if (!candidate) {
+      throw new Error('No amount lease is available for this merchant receiving route.');
+    }
+
+    const inserted = await client.query(
+      `INSERT INTO amount_leases (
+        merchant_id, payment_session_id, route_id, rail, display_amount_minor,
+        reconciliation_delta_minor, payable_amount_minor, currency, status, expires_at,
+        created_at, updated_at
+      )
+      VALUES ($1, $2, $3::uuid, $4, $5, $6, $7, $8, 'active', $9::timestamptz, $10::timestamptz, $10::timestamptz)
+      ON CONFLICT DO NOTHING
+      RETURNING payable_amount_minor`,
+      [
+        input.merchantId,
+        input.paymentSessionId,
+        input.route.route_id,
+        rail,
+        displayAmountMinor,
+        candidate.reconciliationDeltaMinor,
+        candidate.payableAmountMinor,
+        input.paymentSession.currency,
+        input.paymentSession.validUntil,
+        input.now
+      ]
+    );
+    if ((inserted.rowCount ?? 0) > 0) {
+      return {
+        displayAmountMinor,
+        ...candidate
+      };
+    }
+
+    unavailablePayableAmounts.add(candidate.payableAmountMinor);
   }
 }
 
@@ -1573,6 +1813,18 @@ export function receiverIdentifierTypeForRail(railType: ReceivingRouteRailType):
 
 export function defaultReviewPolicyForRail(railType: ReceivingRouteRailType): ReceivingRouteReviewPolicy {
   return railType === 'phone_transfer' ? 'eligible_low_risk_later' : 'review_first';
+}
+
+function amountLeaseRailForRoute(railType: ReceivingRouteRailType): AmountLeaseRail {
+  return railType === 'phone_transfer' ? 'sbp' : 'card';
+}
+
+function normalizeReconciliationDelta(value: number): number {
+  if (!Number.isInteger(value) || value < 1 || value > 99) {
+    return 1;
+  }
+
+  return value;
 }
 
 function normalizeReceiverIdentifier(type: ReceiverIdentifierType, value: string): string | null {

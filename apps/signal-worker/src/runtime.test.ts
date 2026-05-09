@@ -175,6 +175,33 @@ describe('signal runtime processor', () => {
     expect(metrics.counterValue(MetricNames.SIGNALS_PARSED_TOTAL)).toBe(0);
   });
 
+  it('rejects package-validation-pending bank certification before parsing or review creation', async () => {
+    const metrics = new InMemoryMetricsRegistry();
+    const pendingCertificationContext = {
+      ...trustedContext,
+      trustedPackageName: 'ru.sberbankmobile',
+      trustedPackageCertSha256: 'cert_sber_verified',
+      bankRouteCertificationStatus: 'package_validation_pending'
+    } as SignalRuntimeTrustContext;
+    const { processor, repository } = createProcessor({
+      metrics,
+      trustContext: pendingCertificationContext,
+      signal: buildSignal({
+        packageName: 'ru.sberbankmobile',
+        packageCertSha256: 'cert_sber_verified'
+      })
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toContain('bank_route_certification_pending');
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.signals[0]?.parserVersion).toBeUndefined();
+    expect(repository.publishedEvents.map((event) => event.type)).not.toContain(EventTypes.SIGNAL_PARSED);
+    expect(metrics.counterValue(MetricNames.SIGNALS_PARSED_TOTAL)).toBe(0);
+  });
+
   it('publishes internal review events without public signal or review webhooks', async () => {
     const { processor, repository } = createProcessor();
 

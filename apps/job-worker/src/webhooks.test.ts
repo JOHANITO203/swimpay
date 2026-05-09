@@ -12,6 +12,7 @@ import {
   type WebhookEndpoint,
   type WebhookHttpClient
 } from './webhooks.js';
+import { InMemoryWorkerIdempotencyLedger } from './idempotency-ledger.js';
 
 describe('webhook worker foundation', () => {
   it('defines explicit durable delivery statuses and retry schedule', () => {
@@ -296,6 +297,38 @@ describe('webhook worker foundation', () => {
       'webhook.delivery_attempted',
       'webhook.delivered'
     ]);
+  });
+
+  it('uses the worker idempotency ledger to skip duplicate delivery side effects for the same attempt', async () => {
+    const repository = new InMemoryWebhookRepository({
+      deliveryId: () => 'del_once'
+    });
+    repository.endpoints.push(activeEndpoint());
+    const httpClient = new FakeWebhookHttpClient([{ status: 200 }, { status: 200 }]);
+    const worker = new WebhookDeliveryWorker({
+      repository,
+      httpClient,
+      idempotencyLedger: new InMemoryWorkerIdempotencyLedger()
+    });
+    const event = createPaymentWebhookEvent({
+      eventId: 'evt_once',
+      type: 'payment.confirmed',
+      createdAt: '2026-05-02T10:00:00.000Z',
+      merchantId: 'mch_01',
+      data: {
+        order_id: 'ord_01',
+        payment_session_id: 'ps_01',
+        decision: 'manual_confirmed'
+      }
+    });
+
+    await worker.enqueueEvent(event);
+    const [delivery] = await repository.claimDueDeliveries('2026-05-02T10:00:00.000Z', 10);
+    const result = await worker.deliverClaimed([delivery!, delivery!], '2026-05-02T10:00:00.000Z');
+
+    expect(result).toEqual({ delivered: 1, retrying: 0, failed: 0 });
+    expect(httpClient.requests).toHaveLength(1);
+    expect(repository.auditEvents.filter((item) => item.eventType === 'webhook.delivery_attempted')).toHaveLength(1);
   });
 
   it('marks stale delivering rows dead when the recovered attempt exhausts retries', async () => {

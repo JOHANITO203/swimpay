@@ -1,8 +1,56 @@
 # Next Action
 
+generated_at: 2026-05-10T00:03:15+03:00
+
+## Latest P0-WIRE-1 runtime wiring
+
+Completed locally:
+
+1. Checkout route selection now allocates an amount lease in the same DB transaction.
+2. `payable_amount_minor` is now the exact transfer amount derived from display amount plus reconciliation delta.
+3. Manual merchant confirmation marks the active lease `used`; rejection releases it.
+4. Checkout receiving-route selection now consumes bank route certification status.
+5. Signal runtime now blocks package-validation-pending and disabled certifications before review creation.
+6. Webhook delivery and no-notification fallback workers now use the durable worker idempotency ledger.
+
+Validation:
+
+- `npm run android:doctor` passed.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm test` passed: 77 files, 599 tests.
+- `npm run build` passed.
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed.
+- `npm run test:replay` passed: 5 files, 88 tests.
+- `npm run test:matching` passed: 2 files, 34 tests.
+- `npm run test:privacy` passed: 4 files, 58 tests.
+- `npm run test:webhooks` passed: 2 files, 45 tests.
+- Android source was not touched, so Android Gradle tests/builds were not required.
+
+Next recommended action:
+
+1. Commit `p0: wire amount lease certification and idempotency`.
+2. Redeploy staging.
+3. Verify `https://staging.swimpay.pro/api-health`.
+4. Run SDK order -> hosted checkout -> manual merchant review -> final-only webhook rehearsal.
+5. Keep real notification capture gated until the synthetic rehearsal proves final-only fulfillment.
+
+Staging migration:
+
+`016_p0_delta_hardening.sql` exists locally and the operator already applied it on the VPS.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not expose raw PAN, raw phone, raw notification text, API keys or webhook secrets.
+
+---
+
 generated_at: 2026-05-09T23:18:00+03:00
 
-## Latest P0 delta hardening
+## Previous P0 delta hardening
 
 Completed locally:
 
@@ -12,16 +60,6 @@ Completed locally:
 4. Matching now exposes a deterministic confidence vector and collision pressure.
 5. PostgreSQL foundations were added for amount leases, worker idempotency and bank route certification.
 6. Replay/privacy/webhook/matching scripts were added.
-
-Validation:
-
-- `npm run android:doctor` passed.
-- `npm run typecheck` passed.
-- `npm run lint` passed.
-- `npm test` passed: 76 files, 593 tests.
-- `npm run build` passed.
-- `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed.
-- `npm run test:replay` passed: 5 files, 87 tests.
 
 Next recommended action:
 

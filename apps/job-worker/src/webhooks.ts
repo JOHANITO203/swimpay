@@ -3,6 +3,7 @@ import pg from 'pg';
 import { PUBLIC_EVENT_SIGNAL_DISCLOSURE } from '@swimpay/events';
 import { MetricNames, type MetricsRegistry } from '@swimpay/observability';
 import { decryptSecret } from '@swimpay/security';
+import { runWithWorkerIdempotency, type WorkerIdempotencyLedger } from './idempotency-ledger.js';
 
 const { Pool } = pg;
 
@@ -123,6 +124,7 @@ export interface WebhookHttpClient {
 export interface WebhookDeliveryWorkerOptions {
   repository: WebhookRepository;
   httpClient: WebhookHttpClient;
+  idempotencyLedger?: WorkerIdempotencyLedger | undefined;
   maxAttempts?: number | undefined;
   requestTimeoutMs?: number | undefined;
   claimTimeoutMs?: number | undefined;
@@ -212,6 +214,9 @@ export class WebhookDeliveryWorker {
 
     for (const delivery of deliveries) {
       const result = await this.deliverOne(delivery, now);
+      if (result === 'skipped') {
+        continue;
+      }
       if (result === 'delivered') {
         delivered += 1;
         this.options.metrics?.increment(MetricNames.WEBHOOK_DELIVERIES_DELIVERED_TOTAL);
@@ -258,7 +263,7 @@ export class WebhookDeliveryWorker {
     return { kind: 'created', deliveryId: replay.delivery.id };
   }
 
-  private async deliverOne(delivery: WebhookDelivery, now: string): Promise<'delivered' | 'retrying' | 'failed'> {
+  private async deliverOne(delivery: WebhookDelivery, now: string): Promise<'delivered' | 'retrying' | 'failed' | 'skipped'> {
     if (delivery.status === WEBHOOK_DELIVERY_STATUSES.DELIVERED) {
       return 'delivered';
     }
@@ -269,6 +274,25 @@ export class WebhookDeliveryWorker {
     }
 
     assertSafePublicWebhookEvent(delivery.payload);
+    if (this.options.idempotencyLedger) {
+      const wrapped = await runWithWorkerIdempotency(
+        this.options.idempotencyLedger,
+        {
+          serviceName: 'swimpay-job-worker',
+          idempotencyKey: `webhook_delivery:${delivery.id}:attempt:${delivery.attemptCount + 1}`,
+          eventType: delivery.eventType,
+          eventId: delivery.eventId,
+          now
+        },
+        () => this.deliverOneEffect(delivery, now)
+      );
+      return wrapped.kind === 'skipped' ? 'skipped' : wrapped.value;
+    }
+
+    return this.deliverOneEffect(delivery, now);
+  }
+
+  private async deliverOneEffect(delivery: WebhookDelivery, now: string): Promise<'delivered' | 'retrying' | 'failed'> {
     await this.options.repository.recordDeliveryAttempt(delivery.id, now);
     this.options.metrics?.increment(MetricNames.WEBHOOK_DELIVERY_ATTEMPTS_TOTAL);
 

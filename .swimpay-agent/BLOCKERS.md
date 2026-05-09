@@ -1,15 +1,17 @@
 # Blockers
 
-## External P0 delta hardening
+## P0-WIRE-1 runtime wiring
 
-- Resolved locally: PAN Sensitive Boundary guardrails now cover Fastify redaction, structured observability, receiver signal contracts, public webhook worker and Node SDK order/webhook parsing.
-- Resolved locally: receiver signal ingestion now carries and persists evidence-safe package/cert/hash/classification metadata plus redacted evidence envelope JSON.
-- Resolved locally: matching-core returns deterministic confidence vectors and collision pressure without enabling auto-confirmation.
-- Resolved locally: database foundations exist for amount leases, worker idempotency ledger and bank route certification matrix.
-- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config and P0 replay script.
-- Remaining blocker before full real-notification testing: amount lease allocation is schema-ready but not yet wired into checkout/order transaction.
-- Remaining blocker before full route certification enforcement: certification matrix is schema-seeded but not yet consumed by checkout route selection/matching gates.
-- Remaining blocker before production worker hardening: idempotency ledger table exists but worker claim/complete wrapper is not yet applied.
+- Resolved locally: amount leases are now allocated in the checkout route-selection transaction.
+- Resolved locally: active route/method selection uses leased `payable_amount_minor` and persists `reconciliation_delta_minor`.
+- Resolved locally: manual confirmation marks active amount leases `used`; merchant rejection releases them.
+- Resolved locally: checkout route discovery and selection consume `bank_route_certifications`.
+- Resolved locally: package-validation-pending and disabled bank certifications are blocked before signal parsing/review creation.
+- Resolved locally: Ozon remains review-only/package-validation-pending and is not enabled for runtime capture.
+- Resolved locally: worker idempotency ledger wraps webhook delivery attempts and no-notification fallback creation.
+- Full validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, replay, matching, privacy and webhook scripts.
+- P0-WIRE-1 code blocker: none known.
+- Staging gate: redeploy this commit and verify `https://staging.swimpay.pro/api-health` before SDK/checkout/manual-review/webhook rehearsal.
 - Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
 
 ## Previous blockers

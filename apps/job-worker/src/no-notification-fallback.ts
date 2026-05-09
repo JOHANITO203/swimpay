@@ -147,7 +147,31 @@ export class PgNoNotificationFallbackRepository implements NoNotificationFallbac
       );
 
       let requested = 0;
+      let skipped = 0;
       for (const row of due.rows) {
+        const ledgerKey = `no_notification_manual_check:${row.payment_session_id}`;
+        const claim = await client.query(
+          `INSERT INTO worker_idempotency_ledger (
+            service_name, idempotency_key, event_type, event_id, status, claimed_at, updated_at
+          )
+          VALUES (
+            'swimpay-job-worker',
+            $1,
+            'no_notification_manual_check_requested',
+            $2,
+            'processing',
+            $3::timestamptz,
+            $3::timestamptz
+          )
+          ON CONFLICT DO NOTHING
+          RETURNING id`,
+          [ledgerKey, row.payment_session_id, now]
+        );
+        if ((claim.rowCount ?? 0) === 0) {
+          skipped += 1;
+          continue;
+        }
+
         const reviewId = randomUUID();
         const auditEventId = randomUUID();
 
@@ -207,11 +231,32 @@ export class PgNoNotificationFallbackRepository implements NoNotificationFallbac
           ]
         );
 
+        await client.query(
+          `UPDATE worker_idempotency_ledger
+           SET status = 'processed',
+               result_json = $3::jsonb,
+               completed_at = $4::timestamptz,
+               updated_at = $4::timestamptz
+           WHERE service_name = 'swimpay-job-worker'
+             AND idempotency_key = $1
+             AND event_id = $2`,
+          [
+            ledgerKey,
+            row.payment_session_id,
+            JSON.stringify({
+              review_id: reviewId,
+              does_not_confirm_payment: true,
+              emits_webhook: false
+            }),
+            now
+          ]
+        );
+
         requested += 1;
       }
 
       await client.query('COMMIT');
-      return { requested, skipped: (due.rowCount ?? due.rows.length) - requested };
+      return { requested, skipped };
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

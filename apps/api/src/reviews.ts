@@ -376,6 +376,15 @@ export class PgReviewRepository implements ReviewRepository {
            WHERE merchant_id = $1 AND id = $2 AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
           [input.merchantId, review.payment_session_id, input.createdAt]
         );
+        await client.query(
+          `UPDATE amount_leases
+           SET status = 'released',
+               updated_at = $3::timestamptz
+           WHERE merchant_id = $1
+             AND payment_session_id = $2
+             AND status = 'active'`,
+          [input.merchantId, review.payment_session_id, input.createdAt]
+        );
       }
 
       if (effectiveScope === 'order') {
@@ -586,6 +595,18 @@ export class PgReviewRepository implements ReviewRepository {
          WHERE merchant_id = $3 AND id = $4`,
         [outcome.stateStatus, input.createdAt, input.merchantId, review.payment_session_id]
       );
+
+      if (outcome.reviewStatus === 'confirmed') {
+        await client.query(
+          `UPDATE amount_leases
+           SET status = 'used',
+               updated_at = $3::timestamptz
+           WHERE merchant_id = $1
+             AND payment_session_id = $2
+             AND status = 'active'`,
+          [input.merchantId, review.payment_session_id, input.createdAt]
+        );
+      }
 
       await insertReviewAuditEvent(client, {
         id: input.auditEventId,

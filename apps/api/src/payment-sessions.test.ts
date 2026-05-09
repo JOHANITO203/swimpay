@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { getPayerBankLauncherOption, getReceiverBankOption } from '@swimpay/contracts';
 import { buildApiServer, type OrderRepository, type StoredOrderRecord, type StoredPaymentSessionRecord } from './server.js';
-import { decryptReceiverIdentifier } from './orders.js';
+import { bankCertificationAllowsCheckoutRoute, decryptReceiverIdentifier, selectAmountLeaseCandidate } from './orders.js';
 import { isPaymentSessionTransitionAllowed, resolvePaymentSessionStatusForRead } from './payment-sessions.js';
 
 interface TestReceivingRoute {
@@ -25,10 +25,19 @@ interface TestReceivingRoute {
   deleted_at?: string | null | undefined;
 }
 
+type TestBankRouteCertificationStatus =
+  | 'certified'
+  | 'observed'
+  | 'experimental'
+  | 'review_only'
+  | 'package_validation_pending'
+  | 'disabled';
+
 class InMemoryPaymentSessionRepository implements OrderRepository {
   public readonly orders = new Map<string, StoredOrderRecord>();
   public readonly paymentSessions = new Map<string, StoredPaymentSessionRecord>();
   public readonly receivingRoutes = new Map<string, TestReceivingRoute>();
+  public readonly bankCertifications = new Map<string, { status: TestBankRouteCertificationStatus; rails: readonly string[] }>();
   public readonly fallbackReviews = new Map<string, { reviewId: string; reasonLabel: string; status: string }>();
   public readonly externalIds = new Set<string>();
   public readonly auditEvents: Array<{ eventType: string; objectId: string; payloadRedacted?: Record<string, unknown> }> = [];
@@ -218,13 +227,20 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
 
   async listReceiverBanksForCheckout(merchantId: string, paymentSessionId: string) {
     void paymentSessionId;
-    return [...this.receivingRoutes.values()].filter((route) => route.merchant_id === merchantId && route.enabled && !route.deleted_at);
+    return [...this.receivingRoutes.values()].filter(
+      (route) => route.merchant_id === merchantId && route.enabled && !route.deleted_at && this.routeCertificationAllowsCheckout(route)
+    );
   }
 
   async listReceivingRoutesForCheckoutBank(merchantId: string, paymentSessionId: string, bankProfileId: string) {
     void paymentSessionId;
     return [...this.receivingRoutes.values()].filter(
-      (route) => route.merchant_id === merchantId && route.bank_profile_id === bankProfileId && route.enabled && !route.deleted_at
+      (route) =>
+        route.merchant_id === merchantId &&
+        route.bank_profile_id === bankProfileId &&
+        route.enabled &&
+        !route.deleted_at &&
+        this.routeCertificationAllowsCheckout(route)
     );
   }
 
@@ -305,6 +321,9 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     if (result.paymentSession.paymentMethod === 'sbp' && route.rail_type !== 'phone_transfer') {
       return { kind: 'not_found' as const };
     }
+    if (!this.routeCertificationAllowsCheckout(route)) {
+      return { kind: 'not_found' as const };
+    }
 
     result.paymentSession.selectedReceivingRouteId = input.receivingRouteId;
     result.paymentSession.selectedPayerBankLauncherId = undefined;
@@ -312,6 +331,27 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     result.paymentSession.updatedAt = input.now;
     this.auditEvents.push({ eventType: 'checkout.receiving_route_selected', objectId: input.paymentSessionId });
     return { kind: 'updated' as const, order: result.order, paymentSession: result.paymentSession };
+  }
+
+  setBankCertification(
+    bankProfileId: string,
+    status: TestBankRouteCertificationStatus,
+    rails: readonly string[] = ['sbp', 'card']
+  ): void {
+    this.bankCertifications.set(bankProfileId, { status, rails });
+  }
+
+  private routeCertificationAllowsCheckout(route: TestReceivingRoute): boolean {
+    const certification = this.bankCertifications.get(route.bank_profile_id);
+    if (!certification) {
+      return true;
+    }
+
+    return bankCertificationAllowsCheckoutRoute({
+      status: certification.status,
+      railSupported: certification.rails,
+      routeRailType: route.rail_type
+    });
   }
 
   async saveBuyerSenderPhoneHint(input: {
@@ -563,6 +603,26 @@ async function createPhoneExpectedProfile(server: ReturnType<typeof buildApiServ
 }
 
 describe('payment session api', () => {
+  test('allocates unique payable amounts for active sessions on the same route', () => {
+    const displayAmountMinor = 13_700;
+    const unavailablePayableAmounts = new Set<number>();
+    const allocated = [];
+
+    for (let index = 0; index < 99; index += 1) {
+      const candidate = selectAmountLeaseCandidate({
+        displayAmountMinor,
+        preferredDeltaMinor: 1,
+        unavailablePayableAmounts
+      });
+      expect(candidate).not.toBeNull();
+      unavailablePayableAmounts.add(candidate!.payableAmountMinor);
+      allocated.push(candidate!.payableAmountMinor);
+    }
+
+    expect(new Set(allocated).size).toBe(99);
+    expect(selectAmountLeaseCandidate({ displayAmountMinor, preferredDeltaMinor: 1, unavailablePayableAmounts })).toBeNull();
+  });
+
   test('returns checkout status for a payment session', async () => {
     const repository = new InMemoryPaymentSessionRepository();
     const server = buildServer(repository);
@@ -677,6 +737,43 @@ describe('payment session api', () => {
       rail_types: ['phone_transfer'],
       recommended_rail_type: 'phone_transfer'
     });
+  });
+
+  test('does not expose checkout receiving routes while bank package validation is pending', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    repository.setBankCertification('sber_ru', 'package_validation_pending', []);
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createPhoneExpectedProfile(server);
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiver-bank',
+      payload: { receiver_bank_id: 'sber_ru' }
+    });
+
+    const banks = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/receiver-banks'
+    });
+    const routes = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/receiver-banks/sber_ru/routes'
+    });
+    const selectedRoute = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiving-route',
+      payload: { receiving_route_id: 'route_1' }
+    });
+
+    expect(banks.statusCode).toBe(200);
+    expect(banks.json().receiver_banks.find((bank: { receiver_bank_id: string }) => bank.receiver_bank_id === 'sber_ru')).toMatchObject({
+      available_route_count: 0,
+      rail_types: []
+    });
+    expect(routes.statusCode).toBe(200);
+    expect(routes.json().routes).toEqual([]);
+    expect(selectedRoute.statusCode).toBe(404);
   });
 
   test('allows buyer checkout progression from the public payment session id without a dev bearer', async () => {

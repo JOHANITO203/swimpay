@@ -6,16 +6,25 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-The current sprint is EXTERNAL-P0-DELTA. It audits external P0 recommendations and implements missing critical guardrails without applying a PAN Kill Switch or changing manual-confirmation-only semantics.
+The current sprint is P0-WIRE-1. It wires the P0 database foundations into runtime behavior without changing manual-confirmation-only semantics.
+
+- [x] `p0_wire_amount_lease_allocation` - status: completed_validated - source: `.swimpay-agent/P0_WIRE_AMOUNT_LEASE_REPORT.md`
+- [x] `p0_wire_bank_certification_gates` - status: completed_validated - source: `.swimpay-agent/P0_WIRE_BANK_CERTIFICATION_REPORT.md`
+- [x] `p0_wire_worker_idempotency_ledger` - status: completed_validated - source: `.swimpay-agent/P0_WIRE_WORKER_IDEMPOTENCY_REPORT.md`
+- [x] `p0_wire_full_validation_and_closeout` - status: completed_validated - source: `.swimpay-agent/P0_WIRE_CLOSEOUT.md`
+
+## Previous Queue
+
+The previous sprint was EXTERNAL-P0-DELTA. It audited external P0 recommendations and implemented missing critical guardrails without applying a PAN Kill Switch or changing manual-confirmation-only semantics.
 
 - [x] `external_p0_recommendations_audit` - status: completed_with_findings - source: `.swimpay-agent/EXTERNAL_P0_RECOMMENDATIONS_AUDIT.md`
 - [x] `pan_sensitive_boundary_guardrails` - status: completed - source: `.swimpay-agent/PAN_SENSITIVE_BOUNDARY_REPORT.md`
-- [x] `p0_evidence_envelope` - status: completed_partial_runtime_enrichment_pending - source: `.swimpay-agent/P0_EVIDENCE_ENVELOPE_REPORT.md`
+- [x] `p0_evidence_envelope` - status: completed - source: `.swimpay-agent/P0_EVIDENCE_ENVELOPE_REPORT.md`
 - [x] `p0_confidence_vector` - status: completed_backend_core - source: `.swimpay-agent/P0_CONFIDENCE_VECTOR_REPORT.md`
-- [x] `p0_amount_lease_engine` - status: completed_schema_allocation_pending - source: `.swimpay-agent/P0_AMOUNT_LEASE_REPORT.md`
+- [x] `p0_amount_lease_engine` - status: completed_schema_runtime_wiring_done_in_p0_wire_1 - source: `.swimpay-agent/P0_AMOUNT_LEASE_REPORT.md`
 - [x] `p0_collision_pressure_meter` - status: completed - source: `.swimpay-agent/P0_COLLISION_PRESSURE_REPORT.md`
 - [x] `p0_receiver_health_gate` - status: completed_contract_checkout_adaptation_pending - source: `.swimpay-agent/P0_RECEIVER_HEALTH_GATE_REPORT.md`
-- [x] `p0_bank_certification_matrix` - status: completed_schema_runtime_gate_pending - source: `.swimpay-agent/P0_BANK_CERTIFICATION_MATRIX_REPORT.md`
+- [x] `p0_bank_certification_matrix` - status: completed_schema_runtime_wiring_done_in_p0_wire_1 - source: `.swimpay-agent/P0_BANK_CERTIFICATION_MATRIX_REPORT.md`
 - [x] `p0_replay_lab` - status: completed_initial_scripts - source: `.swimpay-agent/P0_REPLAY_LAB_REPORT.md`
 - [x] `p0_closeout` - status: completed_validated - source: `.swimpay-agent/P0_CLOSEOUT.md`
 

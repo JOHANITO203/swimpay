@@ -15,6 +15,7 @@ import {
   type MetricsRegistry
 } from '@swimpay/observability';
 import { createJobWorkerConsumers } from './consumers.js';
+import { PgWorkerIdempotencyLedger } from './idempotency-ledger.js';
 import { FetchWebhookHttpClient, PgWebhookRepository, WebhookDeliveryWorker } from './webhooks.js';
 import {
   createWebhookDeliveryRequestedHandler,
@@ -190,6 +191,7 @@ function createDefaultWebhookProcessor(
   return new WebhookDeliveryWorker({
     repository: new PgWebhookRepository(env.DATABASE_URL),
     httpClient: new FetchWebhookHttpClient(),
+    idempotencyLedger: new PgWorkerIdempotencyLedger(env.DATABASE_URL),
     maxAttempts: config.maxAttempts,
     requestTimeoutMs: config.requestTimeoutMs,
     metrics
