@@ -98,7 +98,7 @@ fun PremiumTopChrome() {
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Surface(Modifier.size(34.dp), shape = CircleShape, color = PremiumColors.Surface, shadowElevation = 2.dp) {
-                Icon(Icons.Default.DarkMode, null, tint = Color(0xFF777777), modifier = Modifier.padding(8.dp))
+                Icon(Icons.Default.DarkMode, null, tint = PremiumColors.Muted, modifier = Modifier.padding(8.dp))
             }
             Box {
                 Box(Modifier.size(42.dp).background(PremiumColors.Blue, CircleShape), contentAlignment = Alignment.Center) {
@@ -149,11 +149,11 @@ fun PremiumBottomNav(selected: PremiumMainTab, onTab: (PremiumMainTab) -> Unit) 
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(item.second, item.first.accessibilityLabel, tint = if (active) PremiumColors.Surface else Color(0xFF3E4654), modifier = Modifier.size(22.dp))
+                            Icon(item.second, item.first.accessibilityLabel, tint = if (active) PremiumColors.Surface else PremiumColors.Muted, modifier = Modifier.size(22.dp))
                         }
                         Text(
                             item.first.navLabel,
-                            color = if (active) PremiumColors.Blue else Color(0xFF444444),
+                            color = if (active) PremiumColors.Blue else PremiumColors.Muted,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
                             modifier = Modifier.padding(top = 2.dp)
@@ -379,10 +379,10 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun StatusChip(text: String, tone: StatusTone, modifier: Modifier = Modifier) {
     val (bg, fg) = when (tone) {
-        StatusTone.Success -> Color(0xFFE5F7EB) to PremiumColors.Success
+        StatusTone.Success -> PremiumColors.Mint to PremiumColors.Success
         StatusTone.Warning -> Color(0xFFFFF2DD) to Color(0xFFB45309)
-        StatusTone.Info -> Color(0xFFEAF3FF) to PremiumColors.Blue
-        StatusTone.Neutral -> Color(0xFFF3F4F6) to PremiumColors.Ink
+        StatusTone.Info -> PremiumColors.IconTile to PremiumColors.Blue
+        StatusTone.Neutral -> PremiumColors.NeutralChip to PremiumColors.Ink
     }
     Surface(modifier, color = bg, shape = CircleShape) {
         Text(text, color = fg, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
@@ -404,26 +404,44 @@ fun CircleAction(icon: ImageVector, onClick: () -> Unit = {}) {
 }
 
 @Composable
-fun TrendLine(modifier: Modifier = Modifier) {
+fun TrendLine(
+    modifier: Modifier = Modifier,
+    primaryValues: List<Float> = emptyList(),
+    secondaryValues: List<Float> = emptyList()
+) {
     Canvas(modifier) {
         repeat(5) {
             val y = size.height * (it + 1) / 6f
             drawLine(PremiumColors.Line, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.5f)
         }
-        val points = listOf(
-            Offset(0f, size.height * .70f),
-            Offset(size.width * .18f, size.height * .80f),
-            Offset(size.width * .36f, size.height * .42f),
-            Offset(size.width * .55f, size.height * .24f),
-            Offset(size.width * .72f, size.height * .60f),
-            Offset(size.width * .86f, size.height * .10f),
-            Offset(size.width, size.height * .30f),
-        )
-        val path = Path().apply {
-            moveTo(points.first().x, points.first().y)
-            points.drop(1).forEach { lineTo(it.x, it.y) }
+        fun normalizedPoints(values: List<Float>, maxValue: Float): List<Offset> {
+            if (values.isEmpty()) return emptyList()
+            val denominator = maxOf(1, values.lastIndex).toFloat()
+            return values.mapIndexed { index, value ->
+                val x = if (values.size == 1) size.width / 2f else size.width * (index / denominator)
+                val y = size.height - (size.height * 0.82f * (value.coerceAtLeast(0f) / maxValue.coerceAtLeast(1f))) - size.height * 0.09f
+                Offset(x, y.coerceIn(size.height * 0.08f, size.height * 0.92f))
+            }
         }
-        drawPath(path, color = PremiumColors.Blue, style = Stroke(width = 7f, cap = StrokeCap.Round))
+
+        fun drawSeries(values: List<Float>, color: Color, strokeWidth: Float) {
+            val maxValue = values.maxOrNull()?.coerceAtLeast(1f) ?: return
+            val points = normalizedPoints(values, maxValue)
+            when (points.size) {
+                0 -> Unit
+                1 -> drawCircle(color, radius = strokeWidth, center = points.first())
+                else -> {
+                    val path = Path().apply {
+                        moveTo(points.first().x, points.first().y)
+                        points.drop(1).forEach { lineTo(it.x, it.y) }
+                    }
+                    drawPath(path, color = color, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
+                }
+            }
+        }
+
+        drawSeries(primaryValues, PremiumColors.Blue, 7f)
+        drawSeries(secondaryValues, PremiumColors.Success, 4f)
     }
 }
 

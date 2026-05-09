@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storefront
@@ -41,15 +42,18 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun PremiumAccountEntryScreen(
     state: PremiumAccountEntryUiState = PremiumAccountEntryUiState(),
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
+    onLanguageSelected: (PremiumLanguageOption) -> Unit = {},
     onCreateAccount: () -> Unit,
     onSignIn: () -> Unit
 ) {
-    PremiumAccountEntryFrame {
+    val copy = PremiumLocalizedCopy.forLanguage(language)
+    PremiumAccountEntryFrame(language = language, onLanguageSelected = onLanguageSelected) {
         SwimPayLogo(markSize = 56.dp)
         Spacer(Modifier.height(26.dp))
         PremiumTitle(
-            title = state.title,
-            body = state.message,
+            title = copy.welcomeTitle,
+            body = copy.welcomeBody,
             centered = true
         )
         PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
@@ -57,8 +61,8 @@ fun PremiumAccountEntryScreen(
                 Modifier.padding(22.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                PremiumPrimaryButton(state.createAccountLabel, onClick = onCreateAccount)
-                PremiumOutlineButton(state.signInLabel, onClick = onSignIn)
+                PremiumPrimaryButton(copy.createAccount, onClick = onCreateAccount)
+                PremiumOutlineButton(copy.signIn, onClick = onSignIn)
             }
         }
     }
@@ -66,15 +70,18 @@ fun PremiumAccountEntryScreen(
 
 @Composable
 fun PremiumAccountProfileChoiceScreen(
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
+    onLanguageSelected: (PremiumLanguageOption) -> Unit = {},
     onSelectProfile: (PremiumMerchantProfileType) -> Unit,
     onBack: () -> Unit
 ) {
-    PremiumAccountEntryFrame {
+    val copy = PremiumLocalizedCopy.forLanguage(language)
+    PremiumAccountEntryFrame(language = language, onLanguageSelected = onLanguageSelected) {
         AccountEntryBackButton(onBack)
         Spacer(Modifier.height(18.dp))
         PremiumTitle(
-            title = "Choisissez votre profil",
-            body = PremiumAccountEntryCopy.sameAppRights
+            title = copy.chooseProfileTitle,
+            body = copy.sameRights
         )
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             PremiumMerchantProfileType.entries.forEach { profile ->
@@ -83,8 +90,8 @@ fun PremiumAccountProfileChoiceScreen(
                         PremiumMerchantProfileType.PERSONAL -> Icons.Default.Person
                         PremiumMerchantProfileType.COMMERCE -> Icons.Default.Storefront
                     },
-                    title = profile.label,
-                    description = profile.description,
+                    title = copy.profileLabel(profile),
+                    description = copy.profileBody(profile),
                     onClick = { onSelectProfile(profile) }
                 )
             }
@@ -94,22 +101,25 @@ fun PremiumAccountProfileChoiceScreen(
 
 @Composable
 fun PremiumAccountLoginProviderScreen(
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
+    onLanguageSelected: (PremiumLanguageOption) -> Unit = {},
     onGoogleRecovery: () -> Unit,
     onBack: () -> Unit
 ) {
-    PremiumAccountEntryFrame {
+    val copy = PremiumLocalizedCopy.forLanguage(language)
+    PremiumAccountEntryFrame(language = language, onLanguageSelected = onLanguageSelected) {
         AccountEntryBackButton(onBack)
         Spacer(Modifier.height(18.dp))
         PremiumTitle(
-            title = "Retrouver un compte",
-            body = "Choisissez un moyen de récupération pour une session déjà créée."
+            title = copy.recoverTitle,
+            body = copy.recoverBody
         )
         PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
             Column(Modifier.padding(18.dp)) {
                 PremiumLoginRecoveryProvider.entries.forEach { provider ->
                     PremiumAccountChoiceRowBase(
-                        title = provider.label,
-                        description = provider.description,
+                        title = copy.googleRecovery,
+                        description = copy.googleRecoveryBody,
                         onClick = onGoogleRecovery,
                         elevated = false
                     ) {
@@ -124,9 +134,11 @@ fun PremiumAccountLoginProviderScreen(
 @Composable
 fun PremiumAccountRecoveryScreen(
     state: PremiumAccountRecoveryUiState,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
+    onLanguageSelected: (PremiumLanguageOption) -> Unit = {},
     onBack: () -> Unit
 ) {
-    PremiumAccountEntryFrame {
+    PremiumAccountEntryFrame(language = language, onLanguageSelected = onLanguageSelected) {
         AccountEntryBackButton(onBack)
         Spacer(Modifier.height(18.dp))
         PremiumStatePanel(
@@ -151,7 +163,42 @@ fun PremiumAccountRecoveryScreen(
 }
 
 @Composable
-private fun PremiumAccountEntryFrame(content: @Composable () -> Unit) {
+fun PremiumGoogleAccountLinkScreen(
+    state: PremiumGoogleAccountLinkUiState,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
+    onLanguageSelected: (PremiumLanguageOption) -> Unit = {},
+    onBack: () -> Unit
+) {
+    PremiumAccountEntryFrame(language = language, onLanguageSelected = onLanguageSelected) {
+        AccountEntryBackButton(onBack)
+        Spacer(Modifier.height(18.dp))
+        PremiumStatePanel(
+            state = when (state.status) {
+                PremiumGoogleAccountLinkStatus.PENDING -> PremiumScreenState.actionRequired<Unit>(
+                    title = state.title,
+                    message = state.message,
+                    actionLabel = null
+                )
+                PremiumGoogleAccountLinkStatus.ERROR -> PremiumScreenState.error<Unit>(
+                    title = state.title,
+                    message = state.message,
+                    actionLabel = state.actionLabel
+                )
+                PremiumGoogleAccountLinkStatus.SUCCESS -> PremiumScreenState.empty<Unit>(
+                    title = state.title,
+                    message = state.message
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun PremiumAccountEntryFrame(
+    language: PremiumLanguageOption,
+    onLanguageSelected: (PremiumLanguageOption) -> Unit,
+    content: @Composable () -> Unit
+) {
     Box(Modifier.fillMaxSize().background(PremiumColors.Background)) {
         Column(
             Modifier
@@ -163,6 +210,41 @@ private fun PremiumAccountEntryFrame(content: @Composable () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             content = { content() }
         )
+        PremiumLanguageSwitch(
+            language = language,
+            onLanguageSelected = onLanguageSelected,
+            modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 10.dp, end = 16.dp)
+        )
+    }
+}
+
+@Composable
+fun PremiumLanguageSwitch(
+    language: PremiumLanguageOption,
+    onLanguageSelected: (PremiumLanguageOption) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier
+            .background(PremiumColors.Surface, CircleShape)
+            .border(1.dp, PremiumColors.Line, CircleShape)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(Icons.Default.Language, "Langue", tint = PremiumColors.Navy, modifier = Modifier.size(16.dp))
+        PremiumLanguageOption.entries.forEach { option ->
+            Text(
+                option.shortLabel,
+                color = if (option == language) PremiumColors.Blue else PremiumColors.Muted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier
+                    .semantics { role = Role.Button }
+                    .premiumTap { onLanguageSelected(option) }
+                    .padding(horizontal = 3.dp)
+            )
+        }
     }
 }
 

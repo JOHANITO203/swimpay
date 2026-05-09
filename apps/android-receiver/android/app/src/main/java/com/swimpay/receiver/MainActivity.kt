@@ -2,25 +2,35 @@ package com.swimpay.receiver
 
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.fragment.app.FragmentActivity
 import com.swimpay.receiver.ui.premium.PremiumMerchantApp
 import com.swimpay.receiver.ui.premium.PremiumMerchantRuntime
+import com.swimpay.receiver.ui.premium.PremiumThemeMode
 import com.swimpay.receiver.ui.premium.SharedPreferencesPremiumMobileMerchantSessionStore
+import com.swimpay.receiver.ui.premium.SharedPreferencesPremiumMerchantSettingsStore
 import com.swimpay.receiver.ui.premium.SharedPreferencesPremiumOnboardingStateStore
 import com.swimpay.receiver.ui.theme.SwimPayMerchantTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private lateinit var notificationAccessStatusReader: NotificationAccessStatusReader
+    private lateinit var merchantSettingsStore: SharedPreferencesPremiumMerchantSettingsStore
+    private lateinit var appUnlocker: AndroidSystemAppUnlocker
     private var notificationAccessEnabled by mutableStateOf(false)
+    private var themeMode by mutableStateOf(PremiumThemeMode.SYSTEM)
+    private var uiLocked by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         notificationAccessStatusReader = NotificationAccessStatusReader(this)
+        merchantSettingsStore = SharedPreferencesPremiumMerchantSettingsStore(this)
+        appUnlocker = AndroidSystemAppUnlocker(this)
         notificationAccessEnabled = notificationAccessStatusReader.isEnabled()
+        themeMode = merchantSettingsStore.load().themeMode
         val baseUrl = AndroidMerchantBackendConfig.configuredBaseUrl()
         val bankPackageProbe = PackageManagerExactPackageProbe(this)
         val googleIdTokenProvider = AndroidGoogleIdTokenProvider(this)
@@ -42,9 +52,14 @@ class MainActivity : ComponentActivity() {
             backendBaseUrl = baseUrl
         )
         setContent {
-            SwimPayMerchantTheme {
+            val systemDark = isSystemInDarkTheme()
+            SwimPayMerchantTheme(darkTheme = themeMode.resolve(systemDark)) {
                 PremiumMerchantApp(
                     runtime = runtime,
+                    merchantSettingsStore = merchantSettingsStore,
+                    uiLocked = uiLocked,
+                    onRequestUnlock = { onUnlocked -> requestSystemUnlock(onUnlocked) },
+                    onThemeModeChanged = { themeMode = it },
                     onboardingCompletionStore = onboardingCompletionStore,
                     mobileMerchantSessionStore = mobileMerchantSessionStore,
                     accountAuthRepository = accountAuthRepository,
@@ -75,6 +90,25 @@ class MainActivity : ComponentActivity() {
         if (::notificationAccessStatusReader.isInitialized) {
             notificationAccessEnabled = notificationAccessStatusReader.isEnabled()
         }
+        if (::merchantSettingsStore.isInitialized && merchantSettingsStore.shouldRequireUnlock()) {
+            uiLocked = true
+        }
+    }
+
+    private fun requestSystemUnlock(onUnlocked: () -> Unit = {}) {
+        if (!::appUnlocker.isInitialized || !::merchantSettingsStore.isInitialized) {
+            return
+        }
+        appUnlocker.requestSystemUnlock(
+            onAuthenticationSucceeded = {
+                merchantSettingsStore.markUnlocked()
+                uiLocked = false
+                onUnlocked()
+            },
+            onAuthenticationUnavailable = {
+                uiLocked = merchantSettingsStore.shouldRequireUnlock()
+            }
+        )
     }
 
     /*

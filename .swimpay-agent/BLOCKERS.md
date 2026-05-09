@@ -1,5 +1,17 @@
 # Blockers
 
+## Android dashboard metrics wiring
+
+- Resolved locally: Android Accueil now displays `Paiements confirmés` with real confirmed amount from backend metrics.
+- Resolved locally: dashboard shortcut cards are wired to pending review, confirmed, rejected, expired, failed and confirmation-rate metrics.
+- Resolved locally: compact chart consumes backend timeseries and no longer draws fake data when no points exist.
+- Resolved locally: Android payment detail can show safe score and short timeline labels.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
+- Metrics-specific blocker: none remaining locally.
+- Commit blocker: working tree contains prior Android settings/subscreen changes alongside this sprint; a single automatic commit would mix scopes.
+- Real notification capture remains gated by synthetic SDK/webhook proof and the explicit operator capture-start command.
+- Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+
 ## Developer Integration Wizard staging flow
 
 - Resolved in code: wizard now exposes an external-app staging env block for SDK/webhook rehearsal values.

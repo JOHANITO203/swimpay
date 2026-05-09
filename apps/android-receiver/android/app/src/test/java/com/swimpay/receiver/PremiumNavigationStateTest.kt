@@ -34,6 +34,10 @@ class PremiumNavigationStateTest {
         assertEquals(PremiumRoute.ConfigurationTest, PremiumNavigation.openConfigurationTest())
         assertEquals(PremiumRoute.ConfirmationMode, PremiumNavigation.openConfirmationMode())
         assertEquals(PremiumRoute.Security, PremiumNavigation.openSecurity())
+        assertEquals(PremiumRoute.HelpCenter, PremiumNavigation.openHelpCenter())
+        assertEquals(PremiumRoute.SupportContact, PremiumNavigation.openSupportContact())
+        assertEquals(PremiumRoute.Language, PremiumNavigation.openLanguage())
+        assertEquals(PremiumRoute.Appearance, PremiumNavigation.openAppearance())
     }
 
     @Test

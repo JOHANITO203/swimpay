@@ -199,6 +199,23 @@ private fun PremiumPaymentDetailContent(
                     }
                 }
             }
+            if (state.timeline.isNotEmpty()) {
+                item {
+                    Text("Parcours", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    PremiumCard(Modifier.fillMaxWidth().padding(top = 12.dp), radius = 24.dp) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            state.timeline.forEachIndexed { index, label ->
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Box(Modifier.size(24.dp).background(PremiumColors.IconTile, RoundedCornerShape(9.dp)), contentAlignment = Alignment.Center) {
+                                        Text("${index + 1}", color = PremiumColors.Blue, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                                    }
+                                    Text(label, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             if (state.actionMessage.isNotBlank()) {
                 item {
                     StatusChip(state.actionMessage, StatusTone.Info)

@@ -179,6 +179,14 @@ import {
   toUnknownShapeResponse,
   type IntelligenceRepository
 } from './intelligence.js';
+import {
+  PgMerchantMetricsRepository,
+  parseMerchantMetricsBucket,
+  parseMerchantMetricsRange,
+  type MerchantMetricsRepository,
+  type MerchantMetricsSummary,
+  type MerchantMetricsTimeseries
+} from './merchant-metrics.js';
 
 const { Pool } = pg;
 const COPY_DETAILS_RATE_LIMIT_MAX = 3;
@@ -219,6 +227,26 @@ export interface GoogleIdTokenVerifier {
   verifyIdToken(idToken: string): Promise<GoogleIdTokenVerificationResult | null>;
 }
 
+export interface AndroidMerchantSupportTicketCreateInput {
+  id: string;
+  merchantId: string;
+  userId: string;
+  category: string;
+  subject: string;
+  message: string;
+  safeContext: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AndroidMerchantSupportTicketRecord extends AndroidMerchantSupportTicketCreateInput {
+  status: 'created' | 'closed';
+  updatedAt: string;
+}
+
+export interface AndroidMerchantSupportTicketRepository {
+  create(input: AndroidMerchantSupportTicketCreateInput): Promise<AndroidMerchantSupportTicketRecord>;
+}
+
 export interface ApiServerOptions {
   environment: string;
   healthChecks?: HealthChecks;
@@ -230,6 +258,8 @@ export interface ApiServerOptions {
   bankEvidenceRepository?: BankEvidenceRepository;
   intelligenceRepository?: IntelligenceRepository | null;
   merchantIntegrationRepository?: MerchantIntegrationRepository | null;
+  merchantMetricsRepository?: MerchantMetricsRepository | null;
+  supportTicketRepository?: AndroidMerchantSupportTicketRepository | null;
   authBffRepository?: AuthBffRepository | null;
   merchantApiKeyVerifier?: MerchantApiKeyVerifier | null;
   googleIdTokenVerifier?: GoogleIdTokenVerifier | null;
@@ -243,6 +273,7 @@ export interface ApiServerOptions {
   bankEvidenceIdGenerator?: () => string;
   receivingRouteIdGenerator?: () => string;
   androidMerchantDeliveryIdGenerator?: () => string;
+  supportTicketIdGenerator?: () => string;
   androidMerchantConnectedSite?: {
     url: string;
     status: 'active' | 'problem';
@@ -317,7 +348,7 @@ export function createDefaultHealthChecks(env: NodeJS.ProcessEnv): HealthChecks 
 class GoogleAuthLibraryIdTokenVerifier implements GoogleIdTokenVerifier {
   private readonly client = new OAuth2Client();
 
-  constructor(private readonly audience: string) {}
+  constructor(private readonly audiences: readonly string[]) {}
 
   async verifyIdToken(idToken: string): Promise<GoogleIdTokenVerificationResult | null> {
     if (!idToken.trim()) {
@@ -326,7 +357,7 @@ class GoogleAuthLibraryIdTokenVerifier implements GoogleIdTokenVerifier {
     try {
       const ticket = await this.client.verifyIdToken({
         idToken,
-        audience: this.audience
+        audience: [...this.audiences]
       });
       const googleSub = ticket.getPayload()?.sub?.trim();
       return googleSub ? { googleSub } : null;
@@ -336,9 +367,20 @@ class GoogleAuthLibraryIdTokenVerifier implements GoogleIdTokenVerifier {
   }
 }
 
+export function resolveGoogleIdTokenAudiences(env: NodeJS.ProcessEnv): string[] {
+  return [
+    env.GOOGLE_OAUTH_CLIENT_ID,
+    env.SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID,
+    env.SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID
+  ]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+    .filter((value, index, values) => values.indexOf(value) === index);
+}
+
 export function createDefaultGoogleIdTokenVerifier(env: NodeJS.ProcessEnv): GoogleIdTokenVerifier | null {
-  const audience = env.GOOGLE_OAUTH_CLIENT_ID?.trim() || env.SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID?.trim();
-  return audience ? new GoogleAuthLibraryIdTokenVerifier(audience) : null;
+  const audiences = resolveGoogleIdTokenAudiences(env);
+  return audiences.length > 0 ? new GoogleAuthLibraryIdTokenVerifier(audiences) : null;
 }
 
 export function buildApiServer(options: ApiServerOptions): FastifyInstance {
@@ -353,6 +395,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const intelligenceRepository = options.intelligenceRepository ?? createDefaultIntelligenceRepository(process.env, options.environment);
   const merchantIntegrationRepository =
     options.merchantIntegrationRepository ?? createDefaultMerchantIntegrationRepository(process.env);
+  const merchantMetricsRepository = options.merchantMetricsRepository ?? createDefaultMerchantMetricsRepository(process.env);
+  const supportTicketRepository = options.supportTicketRepository ?? createDefaultSupportTicketRepository(process.env);
   const authBffRepository = options.authBffRepository ?? createDefaultAuthBffRepository(process.env);
   const merchantApiKeyVerifier = options.merchantApiKeyVerifier ?? createDefaultMerchantApiKeyVerifier(process.env);
   const googleIdTokenVerifier = options.googleIdTokenVerifier ?? createDefaultGoogleIdTokenVerifier(process.env);
@@ -367,6 +411,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const bankEvidenceIdGenerator = options.bankEvidenceIdGenerator ?? (() => randomUUID());
   const receivingRouteIdGenerator = options.receivingRouteIdGenerator ?? (() => randomUUID());
   const androidMerchantDeliveryIdGenerator = options.androidMerchantDeliveryIdGenerator ?? (() => randomUUID());
+  const supportTicketIdGenerator = options.supportTicketIdGenerator ?? (() => `sup_${randomUUID()}`);
   const androidMerchantConnectedSite = options.androidMerchantConnectedSite ?? parseAndroidMerchantConnectedSite(process.env);
   const adminAuth = options.adminAuth ?? createDefaultAdminAuthConfig(process.env, options.environment);
   const googleOAuthProvider = createGoogleOAuthProviderSeam(process.env, options.environment);
@@ -2106,6 +2151,82 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     });
   });
 
+  server.get('/v1/android-merchant/confirmation-settings', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    void merchantId;
+    return reply.status(200).send({
+      mode: 'manual_review_required',
+      allow_auto_confirmation: false,
+      android_can_confirm_payments: false,
+      confirmation_type: 'notification_signal',
+      official_bank_confirmation: false,
+      ai_confirmation_status: 'future_only_not_active_v1',
+      updated_at: clock().toISOString()
+    });
+  });
+
+  server.put('/v1/android-merchant/confirmation-settings', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (androidSupportPayloadHasForbiddenAutomation(request.body)) {
+      return reply.status(400).send(invalidRequest('Auto-confirmation is not configurable in V1.', {}));
+    }
+    void merchantId;
+    return reply.status(200).send({
+      mode: 'manual_review_required',
+      allow_auto_confirmation: false,
+      android_can_confirm_payments: false,
+      confirmation_type: 'notification_signal',
+      official_bank_confirmation: false,
+      ai_confirmation_status: 'future_only_not_active_v1',
+      updated_at: clock().toISOString()
+    });
+  });
+
+  server.post('/v1/android-merchant/support-tickets', async (request, reply) => {
+    const mobileSession = await requireAndroidMerchantMobileSession(request, reply);
+    if (!mobileSession) {
+      return;
+    }
+    const parsed = parseAndroidSupportTicketBody(request.body);
+    if ('error' in parsed) {
+      return reply.status(400).send(parsed.error);
+    }
+    if (!supportTicketRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Support ticket storage is unavailable.'
+        }
+      });
+    }
+    const now = clock().toISOString();
+    const ticket = await supportTicketRepository.create({
+      id: supportTicketIdGenerator(),
+      merchantId: mobileSession.merchantId,
+      userId: mobileSession.userId,
+      category: parsed.value.category,
+      subject: parsed.value.subject,
+      message: parsed.value.message,
+      safeContext: parsed.value.safeContext,
+      createdAt: now
+    });
+    return reply.status(201).send({
+      ticket_id: ticket.id,
+      merchant_id: ticket.merchantId,
+      status: ticket.status,
+      category: ticket.category,
+      created_at: ticket.createdAt,
+      safe_message: 'Demande support creee. Aucun secret ni donnee brute n a ete accepte.',
+      official_bank_confirmation: false
+    });
+  });
+
   server.get('/v1/android-merchant/dashboard-summary', async (request, reply) => {
     const merchantId = await requireAndroidMerchantId(request, reply);
     if (!merchantId) {
@@ -2122,7 +2243,66 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     const reviews = await reviewRepository.listOpenReviews(merchantId);
-    return reply.status(200).send(toAndroidMerchantDashboardSummaryResponse(reviews));
+    const metricSummary = merchantMetricsRepository
+      ? await merchantMetricsRepository.getSummary({ merchantId, range: '30d', now: clock() })
+      : null;
+    const metricTimeseries = merchantMetricsRepository
+      ? await merchantMetricsRepository.getTimeseries({ merchantId, range: '30d', bucket: 'day', now: clock() })
+      : null;
+    return reply.status(200).send(toAndroidMerchantDashboardSummaryResponse(reviews, metricSummary, metricTimeseries));
+  });
+
+  server.get('/v1/merchant/metrics/summary', async (request, reply) => {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.PAYMENTS_REVIEW_READ, {
+      allowAndroidMobile: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for metrics.', {}));
+    }
+    if (!merchantMetricsRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Merchant metrics repository is not configured.',
+          details: {}
+        }
+      });
+    }
+    const query = request.query as { range?: unknown };
+    const summary = await merchantMetricsRepository.getSummary({
+      merchantId: merchantContext.merchantId,
+      range: parseMerchantMetricsRange(query.range),
+      now: clock()
+    });
+    return reply.status(200).send(toMerchantMetricsSummaryResponse(summary));
+  });
+
+  server.get('/v1/merchant/metrics/timeseries', async (request, reply) => {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.PAYMENTS_REVIEW_READ, {
+      allowAndroidMobile: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for metrics.', {}));
+    }
+    if (!merchantMetricsRepository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Merchant metrics repository is not configured.',
+          details: {}
+        }
+      });
+    }
+    const query = request.query as { range?: unknown; bucket?: unknown };
+    const timeseries = await merchantMetricsRepository.getTimeseries({
+      merchantId: merchantContext.merchantId,
+      range: parseMerchantMetricsRange(query.range),
+      bucket: parseMerchantMetricsBucket(query.bucket),
+      now: clock()
+    });
+    return reply.status(200).send(toMerchantMetricsTimeseriesResponse(timeseries));
   });
 
   server.get('/v1/android-merchant/payments/:id', async (request, reply) => {
@@ -3007,6 +3187,76 @@ function createDefaultBankEvidenceRepository(env: NodeJS.ProcessEnv): BankEviden
   return new PgBankEvidenceRepository(databaseUrl);
 }
 
+function createDefaultSupportTicketRepository(env: NodeJS.ProcessEnv): AndroidMerchantSupportTicketRepository | null {
+  const databaseUrl = env.DATABASE_URL;
+  if (!databaseUrl) {
+    return null;
+  }
+
+  return new PgAndroidMerchantSupportTicketRepository(databaseUrl);
+}
+
+function createDefaultMerchantMetricsRepository(env: NodeJS.ProcessEnv): MerchantMetricsRepository | null {
+  const databaseUrl = env.DATABASE_URL;
+  if (!databaseUrl) {
+    return null;
+  }
+
+  return new PgMerchantMetricsRepository(databaseUrl);
+}
+
+class PgAndroidMerchantSupportTicketRepository implements AndroidMerchantSupportTicketRepository {
+  private readonly pool: pg.Pool;
+
+  constructor(connectionString: string) {
+    this.pool = new Pool({ connectionString, max: 3 });
+  }
+
+  async create(input: AndroidMerchantSupportTicketCreateInput): Promise<AndroidMerchantSupportTicketRecord> {
+    const result = await this.pool.query(
+      `INSERT INTO android_merchant_support_tickets (
+        id, merchant_id, user_id, category, subject, message, safe_context, status, created_at, updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, 'created', $8, $8)
+      RETURNING id, merchant_id, user_id, category, subject, message, safe_context, status, created_at, updated_at`,
+      [
+        input.id,
+        input.merchantId,
+        input.userId,
+        input.category,
+        input.subject,
+        input.message,
+        JSON.stringify(input.safeContext),
+        input.createdAt
+      ]
+    );
+    const row = result.rows[0] as {
+      id: string;
+      merchant_id: string;
+      user_id: string;
+      category: string;
+      subject: string;
+      message: string;
+      safe_context: Record<string, unknown>;
+      status: 'created' | 'closed';
+      created_at: Date;
+      updated_at: Date;
+    };
+    return {
+      id: row.id,
+      merchantId: row.merchant_id,
+      userId: row.user_id,
+      category: row.category,
+      subject: row.subject,
+      message: row.message,
+      safeContext: row.safe_context,
+      status: row.status,
+      createdAt: row.created_at.toISOString(),
+      updatedAt: row.updated_at.toISOString()
+    };
+  }
+}
+
 async function loadCheckoutSession(params: {
   request: FastifyRequest;
   reply: FastifyReply;
@@ -3274,12 +3524,18 @@ function authBffRepositoryUnavailableError() {
   };
 }
 
-function toAndroidMerchantDashboardSummaryResponse(reviews: ReviewListItem[]): Record<string, unknown> {
+function toAndroidMerchantDashboardSummaryResponse(
+  reviews: ReviewListItem[],
+  metricSummary: MerchantMetricsSummary | null = null,
+  metricTimeseries: MerchantMetricsTimeseries | null = null
+): Record<string, unknown> {
   const sorted = sortAndroidMerchantReviews(reviews);
   return {
     payments_to_review_count: sorted.length,
-    confirmed_today_count: 0,
+    confirmed_today_count: metricSummary?.confirmedPaymentCount ?? 0,
     notifications_sent_count: 0,
+    metrics_summary: metricSummary ? toMerchantMetricsSummaryResponse(metricSummary) : null,
+    metrics_timeseries: metricTimeseries ? toMerchantMetricsTimeseriesResponse(metricTimeseries) : null,
     receiver_status: {
       status: 'action_required',
       label: 'Téléphone',
@@ -3294,6 +3550,39 @@ function toAndroidMerchantDashboardSummaryResponse(reviews: ReviewListItem[]): R
       status: 'to_review',
       status_label: 'À vérifier',
       created_at: item.createdAt
+    })),
+    ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+  };
+}
+
+function toMerchantMetricsSummaryResponse(summary: MerchantMetricsSummary): Record<string, unknown> {
+  return {
+    range: summary.range,
+    currency: summary.currency,
+    confirmed_payment_count: summary.confirmedPaymentCount,
+    confirmed_amount_minor: summary.confirmedAmountMinor,
+    pending_review_count: summary.pendingReviewCount,
+    rejected_payment_count: summary.rejectedPaymentCount,
+    expired_payment_count: summary.expiredPaymentCount,
+    failed_count: summary.failedCount,
+    confirmation_rate: summary.confirmationRate,
+    average_manual_confirmation_delay_seconds: summary.averageManualConfirmationDelaySeconds,
+    ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+  };
+}
+
+function toMerchantMetricsTimeseriesResponse(timeseries: MerchantMetricsTimeseries): Record<string, unknown> {
+  return {
+    range: timeseries.range,
+    bucket: timeseries.bucket,
+    points: timeseries.points.map((point) => ({
+      date: point.date,
+      confirmed_payment_count: point.confirmedPaymentCount,
+      confirmed_amount_minor: point.confirmedAmountMinor,
+      pending_review_count: point.pendingReviewCount,
+      rejected_payment_count: point.rejectedPaymentCount,
+      expired_payment_count: point.expiredPaymentCount,
+      confirmation_rate: point.confirmationRate
     })),
     ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
   };
@@ -3331,6 +3620,7 @@ function toAndroidMerchantPaymentDetailResponse(
     referenceCodeMasked?: string | undefined;
     createdAt: string;
     reasonCode: string;
+    score?: number | undefined;
     positiveReasonCodes: string[];
     negativeReasonCodes: string[];
   },
@@ -3350,11 +3640,22 @@ function toAndroidMerchantPaymentDetailResponse(
       receiving_method_masked: route ? receivingMethodMaskedLabel(route) : 'Moyen de réception masqué',
       payment_reference: review.referenceCodeMasked ?? '<REFERENCE>',
       signal_received_at: review.createdAt,
+      score: review.score ?? null,
       reason_labels: reasonLabelsForAndroidMerchantReview([
         review.reasonCode,
         ...review.positiveReasonCodes,
         ...review.negativeReasonCodes
       ]),
+      timeline: [
+        {
+          label: 'Signal reçu',
+          occurred_at: review.createdAt
+        },
+        {
+          label: 'Review créée',
+          occurred_at: review.createdAt
+        }
+      ],
       allowed_actions: ['reject_signal', 'reject_order']
     },
     ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
@@ -3483,6 +3784,79 @@ function parseAndroidMerchantConfigurationTestBody(body: unknown): {
     connectedSiteConfigured:
       typeof candidate.connected_site_configured === 'boolean' ? candidate.connected_site_configured : undefined
   };
+}
+
+function parseAndroidSupportTicketBody(body: unknown):
+  | { value: { category: string; subject: string; message: string; safeContext: Record<string, unknown> } }
+  | { error: ReturnType<typeof invalidRequest> } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { error: invalidRequest('Support ticket body is required.', {}) };
+  }
+  if ('merchant_id' in body) {
+    return { error: invalidRequest('merchant_id is derived from the Android merchant session.', {}) };
+  }
+  if (androidSupportPayloadContainsForbiddenSecret(body)) {
+    return { error: invalidRequest('Support ticket contains raw data or secrets.', {}) };
+  }
+  const record = body as Record<string, unknown>;
+  const category = typeof record.category === 'string' ? record.category.trim() : '';
+  const subject = typeof record.subject === 'string' ? record.subject.trim() : '';
+  const message = typeof record.message === 'string' ? record.message.trim() : '';
+  if (!['receiver_issue', 'payment_review_issue', 'integration_webhook_issue', 'account_security_issue', 'other'].includes(category)) {
+    return { error: invalidRequest('Support category is invalid.', { field: 'category' }) };
+  }
+  if (subject.length < 3 || subject.length > 140) {
+    return { error: invalidRequest('Support subject is invalid.', { field: 'subject' }) };
+  }
+  if (message.length < 12 || message.length > 4000) {
+    return { error: invalidRequest('Support message is invalid.', { field: 'message' }) };
+  }
+  const safeContext = sanitizeAndroidSupportContext(record.safe_context);
+  return { value: { category, subject, message, safeContext } };
+}
+
+function sanitizeAndroidSupportContext(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  const allowed = new Set([
+    'app_version',
+    'android_version',
+    'notification_access_enabled',
+    'receiver_status',
+    'last_error_code',
+    'screen'
+  ]);
+  const result: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (!allowed.has(key)) {
+      continue;
+    }
+    if (entry === null || ['string', 'number', 'boolean'].includes(typeof entry)) {
+      result[key] = entry;
+    }
+  }
+  return result;
+}
+
+function androidSupportPayloadHasForbiddenAutomation(value: unknown): boolean {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const serialized = JSON.stringify(value).toLowerCase();
+  return serialized.includes('auto_confirm') || serialized.includes('autoconfirm') || serialized.includes('allow_auto_confirmation":true');
+}
+
+function androidSupportPayloadContainsForbiddenSecret(value: unknown): boolean {
+  const serialized = JSON.stringify(value);
+  return [
+    /\bsk_(test|live|staging)?[A-Za-z0-9_-]{6,}/i,
+    /\bwhsec_[A-Za-z0-9_-]{6,}/i,
+    /\bspm_[A-Za-z0-9_-]{6,}/i,
+    /\+?7\d{10}/,
+    /\b\d{13,19}\b/,
+    /raw_notification|notification_body|notification_title|raw_text|bank_credentials|sms_code|pin|cvv/i
+  ].some((pattern) => pattern.test(serialized));
 }
 
 function parseAndroidMerchantConnectedSite(env: NodeJS.ProcessEnv): AndroidMerchantConnectedSiteConfig {

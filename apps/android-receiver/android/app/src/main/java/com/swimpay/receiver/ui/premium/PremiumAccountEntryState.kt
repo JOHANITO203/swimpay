@@ -109,6 +109,48 @@ data class PremiumAccountRecoveryUiState(
     }
 }
 
+enum class PremiumGoogleAccountLinkStatus {
+    PENDING,
+    ERROR,
+    SUCCESS
+}
+
+data class PremiumGoogleAccountLinkUiState(
+    val status: PremiumGoogleAccountLinkStatus,
+    val title: String,
+    val message: String,
+    val actionLabel: String? = null
+) {
+    companion object {
+        fun pending(): PremiumGoogleAccountLinkUiState {
+            return PremiumGoogleAccountLinkUiState(
+                status = PremiumGoogleAccountLinkStatus.PENDING,
+                title = "Liaison Google",
+                message = "SwimPay associe ce compte Google au profil marchand actuel."
+            )
+        }
+
+        fun success(): PremiumGoogleAccountLinkUiState {
+            return PremiumGoogleAccountLinkUiState(
+                status = PremiumGoogleAccountLinkStatus.SUCCESS,
+                title = "Compte Google lie",
+                message = "Ce profil marchand pourra etre retrouve avec Google lors d'une prochaine reconnexion."
+            )
+        }
+
+        fun error(
+            message: String = "La liaison Google n'a pas abouti. Reessayez depuis Securite."
+        ): PremiumGoogleAccountLinkUiState {
+            return PremiumGoogleAccountLinkUiState(
+                status = PremiumGoogleAccountLinkStatus.ERROR,
+                title = "Liaison impossible",
+                message = message,
+                actionLabel = "Reessayer"
+            )
+        }
+    }
+}
+
 interface PremiumMobileMerchantSessionStore {
     fun currentSession(nowEpochMs: Long = System.currentTimeMillis()): PremiumMobileMerchantSession?
     fun save(session: PremiumMobileMerchantSession)

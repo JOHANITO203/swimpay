@@ -1,5 +1,6 @@
 package com.swimpay.receiver
 
+import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -149,9 +150,85 @@ class AndroidMerchantApiWiringTest {
         val recovery = repository.googleExchange("google_id_token_secret")
 
         assertEquals(AndroidMerchantAuthResultStatus.ACTION_REQUIRED, recovery.status)
+        assertTrue(recovery.safeMessage.contains("Google"))
         assertEquals("/v1/android-merchant/auth/google/exchange", transport.requests.single().path)
         assertTrue(transport.requests.single().body.contains("\"id_token\":\"google_id_token_secret\""))
         assertFalse(recovery.visibleTexts().joinToString(" ").contains("google_id_token_secret"))
+    }
+
+    @Test
+    fun androidAuthRepositoryReportsSafeGoogleBackendFailureReason() {
+        val tokenRejected = googleRepositoryWithResponse(
+            MerchantApiResponse(
+                401,
+                """
+                {
+                  "error": {
+                    "code": "invalid_request",
+                    "message": "Google ID token could not be verified.",
+                    "details": { "provider": "google", "purpose": "account_recovery_linking" }
+                  }
+                }
+                """.trimIndent()
+            )
+        ).googleLink(AuthenticatedMerchantSession.mobile("mch_google", "spm_google_session_secret"), "google_id_token_secret")
+
+        assertEquals(AndroidMerchantAuthResultStatus.ACTION_REQUIRED, tokenRejected.status)
+        assertEquals("ID Google rejeté par le backend.", tokenRejected.safeMessage)
+        assertFalse(tokenRejected.visibleTexts().joinToString(" ").contains("google_id_token_secret"))
+
+        val conflict = googleRepositoryWithResponse(
+            MerchantApiResponse(
+                409,
+                """
+                {
+                  "error": {
+                    "code": "invalid_request",
+                    "message": "Google account is already linked to another SwimPay profile.",
+                    "details": { "provider": "google", "purpose": "account_recovery_linking" }
+                  }
+                }
+                """.trimIndent()
+            )
+        ).googleLink(AuthenticatedMerchantSession.mobile("mch_google", "spm_google_session_secret"), "google_id_token_secret")
+
+        assertEquals(AndroidMerchantAuthResultStatus.ACTION_REQUIRED, conflict.status)
+        assertEquals("Ce compte Google est déjà lié à un autre profil SwimPay.", conflict.safeMessage)
+        assertFalse(conflict.visibleTexts().joinToString(" ").contains("google_id_token_secret"))
+
+        val backendTimeout = googleRepositoryWithResponse(
+            MerchantApiResponse(
+                503,
+                """
+                {
+                  "error": {
+                    "code": "backend_unreachable"
+                  }
+                }
+                """.trimIndent()
+            )
+        ).googleLink(AuthenticatedMerchantSession.mobile("mch_google", "spm_google_session_secret"), "google_id_token_secret")
+
+        assertEquals(AndroidMerchantAuthResultStatus.ACTION_REQUIRED, backendTimeout.status)
+        assertEquals("Backend staging injoignable depuis l'app.", backendTimeout.safeMessage)
+        assertFalse(backendTimeout.visibleTexts().joinToString(" ").contains("google_id_token_secret"))
+    }
+
+    @Test
+    fun merchantHttpTransportAllowsGoogleVerificationLatency() {
+        assertTrue(HttpUrlConnectionMerchantApiTransport.DEFAULT_TIMEOUT_MS >= 20_000)
+    }
+
+    @Test
+    fun googleIdTokenAudienceDiagnosticExtractsAudienceOnly() {
+        val payload = Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString("""{"aud":"web-client.apps.googleusercontent.com","sub":"do-not-log"}""".toByteArray())
+
+        assertEquals(
+            "web-client.apps.googleusercontent.com",
+            extractGoogleIdTokenAudienceForDiagnostics("header.$payload.signature")
+        )
     }
 
     @Test
@@ -225,6 +302,19 @@ class AndroidMerchantApiWiringTest {
         assertTrue(contract.deviceLookupRequiredBeforeGoogleRecovery)
         assertFalse(contract.googleRequiredForCreateAccount)
         assertFalse(contract.rawDeviceIdentifiersAllowed)
+    }
+
+    private fun googleRepositoryWithResponse(response: MerchantApiResponse): AndroidMerchantAuthApiRepository {
+        return AndroidMerchantAuthApiRepository(
+            transport = RecordingMerchantApiTransport(response),
+            deviceProofProvider = StaticAndroidMerchantDeviceProofProvider(
+                AndroidMerchantDeviceProof(
+                    installPublicKey = "install_public_key_google",
+                    challengeId = "challenge_google",
+                    challengeSignature = "signature_google"
+                )
+            )
+        )
     }
 
     @Test
@@ -866,11 +956,14 @@ class AndroidMerchantApiWiringTest {
         val created = repository.createApiKey(session)
         assertEquals(MerchantRepositoryState.SUCCESS, created.state)
         assertEquals("sk_test_show_once_android", created.integration?.secretKeyOnce)
-        assertTrue(created.integration?.exportLines()?.contains("SWIMPAY_STAGING_SECRET_KEY=sk_test_show_once_android") == true)
+        assertFalse(created.integration?.showOnceSecrets()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
+        assertFalse(created.integration?.exportLines()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
+        assertTrue(created.integration?.exportLines()?.contains("SWIMPAY_STAGING_SECRET_KEY=sk_\u2022\u2022\u20225678") == true)
 
         val webhookSecret = repository.rotateWebhookSecret(session)
         assertEquals(MerchantRepositoryState.SUCCESS, webhookSecret.state)
         assertEquals("whsec_show_once_android", webhookSecret.integration?.webhookSecretOnce)
+        assertFalse(webhookSecret.integration?.showOnceSecrets()?.joinToString(" ").orEmpty().contains("whsec_show_once_android"))
 
         val testWebhook = repository.testWebhook(session)
         assertEquals(MerchantRepositoryState.SUCCESS, testWebhook.state)

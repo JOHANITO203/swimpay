@@ -13,6 +13,7 @@ import com.swimpay.receiver.MerchantConfigurationTestApiRepository
 import com.swimpay.receiver.MerchantConfigurationTestOutcome
 import com.swimpay.receiver.MerchantConnectedSiteApiRepository
 import com.swimpay.receiver.MerchantDashboardApiRepository
+import com.swimpay.receiver.MerchantDashboardMetricsSummary
 import com.swimpay.receiver.MerchantDeveloperIntegrationApiRepository
 import com.swimpay.receiver.MerchantDeveloperIntegrationResult
 import com.swimpay.receiver.MerchantDeveloperIntegrationSnapshot
@@ -25,6 +26,7 @@ import com.swimpay.receiver.MerchantRepositoryState
 import com.swimpay.receiver.MerchantReviewActionsApiRepository
 import com.swimpay.receiver.MerchantReviewQueueApiRepository
 import com.swimpay.receiver.MerchantScreenRepositoryResult
+import com.swimpay.receiver.MerchantSupportTicketApiRepository
 import com.swimpay.receiver.ReceiverStatusViewModel
 
 data class PremiumMetricUiState(
@@ -39,6 +41,12 @@ data class PremiumLocalSystemUiState(
     val helper: String = ""
 )
 
+data class PremiumChartPointUiState(
+    val date: String,
+    val confirmedAmountMinor: Long,
+    val confirmationRate: Int
+)
+
 data class PremiumRecentPaymentUiState(
     val amount: String,
     val detail: String,
@@ -48,8 +56,10 @@ data class PremiumRecentPaymentUiState(
 data class PremiumDashboardUiState(
     val readyTitle: String,
     val readyText: String,
+    val mainMetricLabel: String = "Paiements confirmés",
     val monthlyAmount: String,
     val metrics: List<PremiumMetricUiState>,
+    val chartPoints: List<PremiumChartPointUiState> = emptyList(),
     val recentPayments: List<PremiumRecentPaymentUiState>,
     val usesLiveApi: Boolean,
     val localSystemCards: List<PremiumLocalSystemUiState> = emptyList(),
@@ -62,12 +72,14 @@ data class PremiumDashboardUiState(
         return listOf(
             readyTitle,
             readyText,
+            mainMetricLabel,
             monthlyAmount,
             backendNoticeTitle,
             backendNoticeText,
             emptyPaymentsTitle,
             emptyPaymentsAction
         ) + metrics.flatMap { listOf(it.value, it.label, it.trend) } +
+            chartPoints.flatMap { listOf(it.date, it.confirmedAmountMinor.toString(), it.confirmationRate.toString()) } +
             localSystemCards.flatMap { listOf(it.title, it.value, it.helper) } +
             recentPayments.flatMap { listOf(it.amount, it.detail, it.status) }
     }
@@ -77,16 +89,17 @@ data class PremiumDashboardUiState(
             return PremiumDashboardUiState(
                 readyTitle = "SwimPay est prêt",
                 readyText = "Votre téléphone est connecté et vos paiements peuvent être détectés.",
-                monthlyAmount = "1 482 000 ₽",
+                mainMetricLabel = "Paiements confirmés",
+                monthlyAmount = "0 ₽",
                 metrics = listOf(
-                    PremiumMetricUiState("7", "À CONFIRMER", "+2"),
-                    PremiumMetricUiState("24", "CONFIRMÉS", "+84%")
+                    PremiumMetricUiState("0", "À confirmer"),
+                    PremiumMetricUiState("0", "Confirmés"),
+                    PremiumMetricUiState("0", "Rejetés"),
+                    PremiumMetricUiState("0", "Expirés"),
+                    PremiumMetricUiState("0", "Échecs"),
+                    PremiumMetricUiState("0 %", "Taux")
                 ),
-                recentPayments = listOf(
-                    PremiumRecentPaymentUiState("58,41 ₽", "Sberbank · Il y a 2 min", "À vérifier"),
-                    PremiumRecentPaymentUiState("129,00 ₽", "T-Bank · Il y a 8 min", "Validé"),
-                    PremiumRecentPaymentUiState("45,00 ₽", "Alfa-Bank · Il y a 12 min", "En attente")
-                ),
+                recentPayments = emptyList(),
                 usesLiveApi = false,
                 localSystemCards = defaultLocalSystemCards(
                     notificationAccessEnabled = true,
@@ -133,6 +146,7 @@ data class PremiumPaymentDetailUiState(
     val statusText: String,
     val summaryRows: List<Pair<String, String>>,
     val reasons: List<String>,
+    val timeline: List<String> = emptyList(),
     val actionMessage: String = "",
     val usesLiveApi: Boolean
 ) {
@@ -151,6 +165,7 @@ data class PremiumPaymentDetailUiState(
                     "Signal reçu" to "Il y a 2 min"
                 ),
                 reasons = listOf("Validation manuelle en bêta", "Référence non visible"),
+                timeline = listOf("Signal reçu", "Review créée"),
                 usesLiveApi = false
             )
         }
@@ -296,7 +311,8 @@ class PremiumMerchantRuntime(
     private val connectedSiteRepository: MerchantConnectedSiteApiRepository,
     private val configurationTestRepository: MerchantConfigurationTestApiRepository,
     private val bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe(),
-    private val developerIntegrationRepository: MerchantDeveloperIntegrationApiRepository? = null
+    private val developerIntegrationRepository: MerchantDeveloperIntegrationApiRepository? = null,
+    private val supportTicketRepository: MerchantSupportTicketApiRepository? = null
 ) {
     val reviewActionsAreBackendOwned: Boolean
         get() = reviewActionsRepository.backendOwnsReviewDecisions
@@ -330,17 +346,21 @@ class PremiumMerchantRuntime(
             val status = chunk.getOrNull(2) ?: "À vérifier"
             PremiumRecentPaymentUiState(amount, "$bank · récemment", status)
         }
-        val toReview = texts.getOrNull(4) ?: "0"
-        val confirmed = texts.getOrNull(6) ?: "0"
+        val summary = result.dashboardMetricsSummary
         return PremiumScreenState.content(
             PremiumDashboardUiState(
                 readyTitle = texts.getOrNull(1) ?: "SwimPay est prêt",
                 readyText = texts.getOrNull(2) ?: "Votre téléphone est connecté et vos paiements peuvent être détectés.",
-                monthlyAmount = recent.firstOrNull()?.amount ?: "0,00 ₽",
-                metrics = listOf(
-                    PremiumMetricUiState(toReview, "À CONFIRMER"),
-                    PremiumMetricUiState(confirmed, "CONFIRMÉS")
-                ),
+                mainMetricLabel = "Paiements confirmés",
+                monthlyAmount = summary?.confirmedAmountLabel() ?: "0 ₽",
+                metrics = dashboardMetricCards(summary),
+                chartPoints = result.dashboardTimeseries.map {
+                    PremiumChartPointUiState(
+                        date = it.date,
+                        confirmedAmountMinor = it.confirmedAmountMinor,
+                        confirmationRate = it.confirmationRate
+                    )
+                },
                 recentPayments = recent,
                 usesLiveApi = !result.usesMockRepository,
                 localSystemCards = defaultLocalSystemCards(
@@ -388,22 +408,25 @@ class PremiumMerchantRuntime(
             )
         }
         val texts = result.visibleTexts()
+        val summaryRows = buildList {
+            add((texts.getOrNull(3) ?: "Montant attendu") to (texts.getOrNull(4) ?: "0,00 ₽"))
+            add((texts.getOrNull(5) ?: "Montant détecté") to (texts.getOrNull(6) ?: "0,00 ₽"))
+            add((texts.getOrNull(7) ?: "Banque") to (texts.getOrNull(8) ?: "Banque choisie"))
+            add((texts.getOrNull(9) ?: "Moyen de réception") to (texts.getOrNull(10) ?: "Moyen de réception"))
+            add((texts.getOrNull(11) ?: "Référence") to (texts.getOrNull(12) ?: "<REFERENCE>"))
+            add((texts.getOrNull(13) ?: "Signal reçu") to (texts.getOrNull(14) ?: "Récemment"))
+            result.paymentScoreLabel?.let { add("Score" to it) }
+        }
         return PremiumScreenState.content(
             PremiumPaymentDetailUiState(
                 reviewId = reviewId,
                 statusTitle = texts.getOrNull(1) ?: "À vérifier",
                 statusText = texts.getOrNull(2) ?: "Ce paiement nécessite une validation manuelle.",
-                summaryRows = listOf(
-                    (texts.getOrNull(3) ?: "Montant attendu") to (texts.getOrNull(4) ?: "0,00 ₽"),
-                    (texts.getOrNull(5) ?: "Montant détecté") to (texts.getOrNull(6) ?: "0,00 ₽"),
-                    (texts.getOrNull(7) ?: "Banque") to (texts.getOrNull(8) ?: "Banque choisie"),
-                    (texts.getOrNull(9) ?: "Moyen de réception") to (texts.getOrNull(10) ?: "Moyen de réception"),
-                    (texts.getOrNull(11) ?: "Référence") to (texts.getOrNull(12) ?: "<REFERENCE>"),
-                    (texts.getOrNull(13) ?: "Signal reçu") to (texts.getOrNull(14) ?: "Récemment")
-                ),
+                summaryRows = summaryRows,
                 reasons = texts.drop(16).takeWhile { it !in REVIEW_ACTION_LABELS }.ifEmpty {
                     listOf("Validation manuelle en bêta")
                 },
+                timeline = result.paymentDetailTimeline,
                 usesLiveApi = !result.usesMockRepository
             )
         )
@@ -575,6 +598,19 @@ class PremiumMerchantRuntime(
         return repository.load(session).copy(safeMessage = test.safeMessage).toConnectedSiteState()
     }
 
+    fun createSupportTicket(
+        draft: PremiumSupportTicketDraft,
+        safeContext: Map<String, Any?>
+    ): PremiumSupportTicketResult {
+        val repository = supportTicketRepository ?: return PremiumSupportTicketResult(
+            ticketId = "",
+            status = "unavailable",
+            createdAt = "",
+            safeMessage = "Support indisponible"
+        )
+        return repository.create(session, draft, safeContext)
+    }
+
     fun runConfigurationTest(checklist: MerchantConfigurationChecklist): PremiumScreenState<PremiumConfigurationUiState> {
         val result = configurationTestRepository.run(session, checklist)
         when (result.outcome) {
@@ -634,11 +670,9 @@ class PremiumMerchantRuntime(
             } else {
                 "Activez l'accès notifications pour lancer l'écoute intelligente."
             },
-            monthlyAmount = "0,00 ₽",
-            metrics = listOf(
-                PremiumMetricUiState("0", "À CONFIRMER"),
-                PremiumMetricUiState("0", "CONFIRMÉS")
-            ),
+            mainMetricLabel = "Paiements confirmés",
+            monthlyAmount = "0 ₽",
+            metrics = dashboardMetricCards(null),
             recentPayments = emptyList(),
             usesLiveApi = false,
             localSystemCards = defaultLocalSystemCards(
@@ -691,7 +725,8 @@ class PremiumMerchantRuntime(
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
                 bankPackageProbe = bankPackageProbe,
-                developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport)
+                developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport),
+                supportTicketRepository = MerchantSupportTicketApiRepository(transport)
             )
         }
 
@@ -723,7 +758,8 @@ class PremiumMerchantRuntime(
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
                 bankPackageProbe = bankPackageProbe,
-                developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport)
+                developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport),
+                supportTicketRepository = MerchantSupportTicketApiRepository(transport)
             )
         }
 
@@ -783,7 +819,7 @@ private fun MerchantDeveloperIntegrationSnapshot.toPremiumConnectedSiteUiState(s
             "Evenements publics" to publicWebhookEvents.joinToString(", ")
         ),
         exportLines = exportLines(),
-        oneTimeSecrets = showOnceSecrets(),
+        oneTimeSecrets = emptyList(),
         webhookUrl = webhookUrl,
         actionButtonsEnabled = true
     )
@@ -802,6 +838,17 @@ private fun defaultLocalSystemCards(
         PremiumLocalSystemUiState("Dernière activité", if (notificationAccessEnabled) "Il y a quelques instants" else "En attente"),
         PremiumLocalSystemUiState("Banques actives", bankValue),
         PremiumLocalSystemUiState("Moyens de réception", receivingMethodsValue)
+    )
+}
+
+private fun dashboardMetricCards(summary: MerchantDashboardMetricsSummary?): List<PremiumMetricUiState> {
+    return listOf(
+        PremiumMetricUiState((summary?.pendingReviewCount ?: 0).toString(), "À confirmer"),
+        PremiumMetricUiState((summary?.confirmedPaymentCount ?: 0).toString(), "Confirmés"),
+        PremiumMetricUiState((summary?.rejectedPaymentCount ?: 0).toString(), "Rejetés"),
+        PremiumMetricUiState((summary?.expiredPaymentCount ?: 0).toString(), "Expirés"),
+        PremiumMetricUiState((summary?.failedCount ?: 0).toString(), "Échecs"),
+        PremiumMetricUiState(summary?.confirmationRateLabel() ?: "0 %", "Taux")
     )
 }
 

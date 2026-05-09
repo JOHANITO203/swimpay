@@ -1,5 +1,56 @@
 # Next Action
 
+generated_at: 2026-05-09T02:03:00+03:00
+
+## Latest Android dashboard metrics wiring
+
+Completed:
+
+1. Added real merchant metrics backend contracts:
+   - `GET /v1/merchant/metrics/summary`
+   - `GET /v1/merchant/metrics/timeseries`
+2. Embedded `metrics_summary` and `metrics_timeseries` into the Android dashboard summary when available.
+3. Wired Android Accueil:
+   - main card: `Paiements confirmés`;
+   - amount: real confirmed amount formatted in RUB;
+   - shortcut cards: `À confirmer`, `Confirmés`, `Rejetés`, `Expirés`, `Échecs`, `Taux`.
+4. Removed fake dashboard values and the hardcoded decorative chart path.
+5. Wired review detail safe score and short timeline labels.
+6. Validation passed:
+   - `npm run android:doctor`
+   - `npm run typecheck`
+   - `npm run lint`
+   - `npm test` - 75 files, 536 tests passed
+   - `npm run build`
+   - `docker compose --env-file .env.example -f infra/docker-compose.yml config`
+   - Android JVM tests
+   - Android debug APK build
+
+Blocked:
+
+- No local metrics-specific blocker remains.
+- Automatic commit is intentionally skipped because this worktree contains earlier Android settings/subscreen changes in addition to this metrics sprint.
+
+Next recommended action:
+
+1. Do a device visual smoke of Accueil and Revue after installing the APK.
+2. Then continue the staging SDK/webhook rehearsal:
+   - SDK order creation;
+   - hosted checkout without Authorization;
+   - active receiving-method route selection;
+   - manual merchant review;
+   - final-only webhook delivery.
+
+Do not do:
+
+- Do not process real bank notifications yet.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not add LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
+- Do not expose raw notification text, raw phone/card values, account data or secrets.
+
+---
+
 generated_at: 2026-05-08T22:21:00+03:00
 
 ## Latest Developer Integration Wizard staging verification

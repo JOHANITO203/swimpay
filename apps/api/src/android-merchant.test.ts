@@ -10,10 +10,12 @@ import { InMemoryAuthBffRepository } from './auth-bff.js';
 import { InMemoryMerchantIntegrationRepository } from './developer-integration.js';
 import {
   buildApiServer,
+  type ApiServerOptions,
   type CreateOrderWithSessionInput,
   type CreateOrderWithSessionResult,
   type GoogleIdTokenVerifier,
   type OrderRepository,
+  resolveGoogleIdTokenAudiences,
   type StoredOrderRecord,
   type StoredPaymentSessionRecord
 } from './server.js';
@@ -37,6 +39,13 @@ import type {
   ReviewListItem,
   ReviewRepository
 } from './reviews.js';
+import type {
+  MerchantMetricsBucket,
+  MerchantMetricsRange,
+  MerchantMetricsRepository,
+  MerchantMetricsSummary,
+  MerchantMetricsTimeseries
+} from './merchant-metrics.js';
 
 describe('android merchant mobile backend endpoints', () => {
   afterEach(() => {
@@ -366,6 +375,16 @@ describe('android merchant mobile backend endpoints', () => {
     expect(link.body).not.toContain('google-link-token-sample');
   });
 
+  it('accepts explicit Android and web Google ID token audiences for account recovery', () => {
+    expect(
+      resolveGoogleIdTokenAudiences({
+        GOOGLE_OAUTH_CLIENT_ID: 'web-client.apps.googleusercontent.com',
+        SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID: 'android-server-client.apps.googleusercontent.com',
+        SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID: 'web-client.apps.googleusercontent.com'
+      } as NodeJS.ProcessEnv)
+    ).toEqual(['web-client.apps.googleusercontent.com', 'android-server-client.apps.googleusercontent.com']);
+  });
+
   it('requires an Android mobile session before Google profile linking', async () => {
     const { server } = buildAndroidMerchantServer();
 
@@ -454,6 +473,8 @@ describe('android merchant mobile backend endpoints', () => {
       payments_to_review_count: 1,
       confirmed_today_count: 0,
       notifications_sent_count: 0,
+      metrics_summary: null,
+      metrics_timeseries: null,
       receiver_status: {
         status: 'action_required',
         label: 'Téléphone',
@@ -501,7 +522,12 @@ describe('android merchant mobile backend endpoints', () => {
         receiving_method_masked: 'Carte bancaire · •••• 4821',
         payment_reference: 'TANGO ALFA',
         signal_received_at: '2026-05-03T10:00:00.000Z',
+        score: 68,
         reason_labels: ['Validation manuelle en bêta', 'Référence non visible'],
+        timeline: [
+          { label: 'Signal reçu', occurred_at: '2026-05-03T10:00:00.000Z' },
+          { label: 'Review créée', occurred_at: '2026-05-03T10:00:00.000Z' }
+        ],
         allowed_actions: ['reject_signal', 'reject_order']
       },
       confirmation_type: 'notification_signal',
@@ -711,12 +737,81 @@ describe('android merchant mobile backend endpoints', () => {
 
     expect(response.statusCode).toBe(401);
   });
+
+  it('returns merchant metrics summary and timeseries without side effects or raw data', async () => {
+    const eventPublisher = new FakeEventPublisher();
+    const merchantMetricsRepository = new FakeMerchantMetricsRepository();
+    const { server } = buildAndroidMerchantServer({ eventPublisher, merchantMetricsRepository });
+
+    const summary = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/metrics/summary?range=30d',
+      headers: merchantHeaders()
+    });
+
+    expect(summary.statusCode).toBe(200);
+    expect(summary.json()).toMatchObject({
+      range: '30d',
+      currency: 'RUB',
+      confirmed_payment_count: 18,
+      confirmed_amount_minor: 4250000,
+      pending_review_count: 7,
+      rejected_payment_count: 3,
+      expired_payment_count: 2,
+      failed_count: 1,
+      confirmation_rate: 75,
+      average_manual_confirmation_delay_seconds: 90,
+      confirmation_type: 'notification_signal',
+      official_bank_confirmation: false
+    });
+
+    const timeseries = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/metrics/timeseries?range=30d&bucket=day',
+      headers: merchantHeaders()
+    });
+
+    expect(timeseries.statusCode).toBe(200);
+    expect(timeseries.json()).toMatchObject({
+      range: '30d',
+      bucket: 'day',
+      points: [
+        {
+          date: '2026-05-01',
+          confirmed_payment_count: 4,
+          confirmed_amount_minor: 900000,
+          pending_review_count: 1,
+          rejected_payment_count: 0,
+          expired_payment_count: 0,
+          confirmation_rate: 100
+        },
+        {
+          date: '2026-05-02',
+          confirmed_payment_count: 0,
+          confirmed_amount_minor: 0,
+          pending_review_count: 2,
+          rejected_payment_count: 0,
+          expired_payment_count: 0,
+          confirmation_rate: 0
+        }
+      ],
+      confirmation_type: 'notification_signal',
+      official_bank_confirmation: false
+    });
+
+    expect(merchantMetricsRepository.summaryRequests).toEqual([{ merchantId: 'mch_01', range: '30d' }]);
+    expect(merchantMetricsRepository.timeseriesRequests).toEqual([{ merchantId: 'mch_01', range: '30d', bucket: 'day' }]);
+    expect(eventPublisher.events).toEqual([]);
+    expectSafeAndroidMerchantBody(summary.body);
+    expectSafeAndroidMerchantBody(timeseries.body);
+  });
 });
 
 function buildAndroidMerchantServer(params: {
   eventPublisher?: FakeEventPublisher;
   connectedSite?: { url: string; status: 'active' | 'problem' };
   googleVerifier?: GoogleIdTokenVerifier;
+  merchantMetricsRepository?: MerchantMetricsRepository;
 } = {}) {
   const orderRepository = new FakeOrderRepository();
   const reviewRepository = new FakeReviewRepository();
@@ -725,7 +820,7 @@ function buildAndroidMerchantServer(params: {
   reviewRepository.items.set('rev_01', openReviewItem());
 
   const eventPublisher = params.eventPublisher ?? new FakeEventPublisher();
-  const server = buildApiServer({
+  const serverOptions: ApiServerOptions = {
     environment: 'test',
     healthChecks: {
       database: async () => 'skipped',
@@ -751,8 +846,10 @@ function buildAndroidMerchantServer(params: {
     androidMerchantDeliveryIdGenerator: () => 'delivery_test_01',
     clock: () => new Date('2026-05-03T10:05:00.000Z'),
     ...(params.googleVerifier ? { googleIdTokenVerifier: params.googleVerifier } : {}),
-    ...(params.connectedSite ? { androidMerchantConnectedSite: params.connectedSite } : {})
-  });
+    ...(params.connectedSite ? { androidMerchantConnectedSite: params.connectedSite } : {}),
+    ...(params.merchantMetricsRepository ? { merchantMetricsRepository: params.merchantMetricsRepository } : {})
+  };
+  const server = buildApiServer(serverOptions);
 
   return { server, orderRepository, reviewRepository, authBffRepository, eventPublisher };
 }
@@ -986,6 +1083,62 @@ class FakeEventPublisher {
 
   public async publish(event: EventEnvelope): Promise<void> {
     this.events.push(event);
+  }
+}
+
+class FakeMerchantMetricsRepository implements MerchantMetricsRepository {
+  public readonly summaryRequests: Array<{ merchantId: string; range: MerchantMetricsRange }> = [];
+  public readonly timeseriesRequests: Array<{ merchantId: string; range: MerchantMetricsRange; bucket: MerchantMetricsBucket }> = [];
+
+  public async getSummary(input: { merchantId: string; range: MerchantMetricsRange; now: Date }): Promise<MerchantMetricsSummary> {
+    void input.now;
+    this.summaryRequests.push({ merchantId: input.merchantId, range: input.range });
+    return {
+      range: input.range,
+      currency: 'RUB',
+      confirmedPaymentCount: 18,
+      confirmedAmountMinor: 4_250_000,
+      pendingReviewCount: 7,
+      rejectedPaymentCount: 3,
+      expiredPaymentCount: 2,
+      failedCount: 1,
+      confirmationRate: 75,
+      averageManualConfirmationDelaySeconds: 90
+    };
+  }
+
+  public async getTimeseries(input: {
+    merchantId: string;
+    range: MerchantMetricsRange;
+    bucket: MerchantMetricsBucket;
+    now: Date;
+  }): Promise<MerchantMetricsTimeseries> {
+    void input.now;
+    this.timeseriesRequests.push({ merchantId: input.merchantId, range: input.range, bucket: input.bucket });
+    return {
+      range: input.range,
+      bucket: input.bucket,
+      points: [
+        {
+          date: '2026-05-01',
+          confirmedPaymentCount: 4,
+          confirmedAmountMinor: 900_000,
+          pendingReviewCount: 1,
+          rejectedPaymentCount: 0,
+          expiredPaymentCount: 0,
+          confirmationRate: 100
+        },
+        {
+          date: '2026-05-02',
+          confirmedPaymentCount: 0,
+          confirmedAmountMinor: 0,
+          pendingReviewCount: 2,
+          rejectedPaymentCount: 0,
+          expiredPaymentCount: 0,
+          confirmationRate: 0
+        }
+      ]
+    };
   }
 }
 

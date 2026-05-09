@@ -6,6 +6,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.swimpay.receiver.ui.premium.PremiumColors
 
 // Palette officielle Google Blue / Material 3
 val GoogleBlue = Color(0xFF0B57D0)
@@ -41,6 +42,7 @@ fun SwimPayMerchantTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    PremiumColors.useDarkTheme(darkTheme)
 
     MaterialTheme(
         colorScheme = colorScheme,

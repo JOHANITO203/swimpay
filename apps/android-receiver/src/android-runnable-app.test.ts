@@ -186,6 +186,7 @@ describe('android Gradle wrapper and build validation', () => {
   it('wires Google Credential Manager for real Android ID tokens without storing tokens', () => {
     const appBuild = readAndroid('app/build.gradle.kts');
     const activity = readAndroid('app/src/main/java/com/swimpay/receiver/MainActivity.kt');
+    const merchantApp = readAndroid('app/src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt');
     const provider = readAndroid('app/src/main/java/com/swimpay/receiver/AndroidGoogleIdTokenProvider.kt');
 
     expect(appBuild).toContain('swimpayGoogleServerClientId');
@@ -197,11 +198,15 @@ describe('android Gradle wrapper and build validation', () => {
 
     expect(provider).toContain('CredentialManager.create');
     expect(provider).toContain('GetGoogleIdOption.Builder');
+    expect(provider).toContain('setFilterByAuthorizedAccounts(false)');
     expect(provider).toContain('setServerClientId');
     expect(provider).toContain('GoogleIdTokenCredential.createFrom');
     expect(provider).toContain('TYPE_GOOGLE_ID_TOKEN_CREDENTIAL');
     expect(provider).toContain('BuildConfig.SWIMPAY_GOOGLE_SERVER_CLIENT_ID');
-    expect(provider).not.toMatch(/SharedPreferences|Log\.|println|idToken\s*=/u);
+    expect(provider).toContain('credential_failed type=');
+    expect(provider).not.toMatch(/SharedPreferences|println|idToken\s*=/u);
+    expect(provider).not.toMatch(/Log\.[id]\(/u);
+    expect(merchantApp).not.toContain('withContext(Dispatchers.IO) { googleIdTokenProvider() }');
 
     expect(activity).toContain('AndroidGoogleIdTokenProvider(this)');
     expect(activity).toContain('googleIdTokenProvider = googleIdTokenProvider::requestIdToken');

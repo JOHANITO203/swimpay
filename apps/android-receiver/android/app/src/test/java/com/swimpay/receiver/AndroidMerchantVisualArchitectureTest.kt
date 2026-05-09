@@ -169,22 +169,77 @@ class AndroidMerchantVisualArchitectureTest {
     }
 
     @Test
-    fun googleRecoveryLinkingAppearsOnlyInSecuritySettings() {
+    fun dashboardMetricsAreBackendWiredAndKeepShortLabels() {
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val premiumRuntime = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantRuntime.kt").readText()
+        val apiWiring = File("src/main/java/com/swimpay/receiver/AndroidMerchantApiWiring.kt").readText()
+        val mainCard = sourceFunction(premiumDashboard, "private fun MonthlyActivityCard")
+
+        assertTrue(premiumRuntime.contains("Paiements confirm\u00e9s"))
+        assertTrue(apiWiring.contains("metrics_summary"))
+        assertTrue(apiWiring.contains("metrics_timeseries"))
+        assertTrue(mainCard.contains("AccountBalanceWallet"))
+        assertTrue(premiumDashboard.contains("state.metrics.chunked(2)"))
+        assertFalse(mainCard.contains("Paiement suivi"))
+        assertFalse(mainCard.contains("Paiements suivis"))
+        assertFalse(mainCard.contains("+12.5%"))
+        assertFalse(premiumDashboard.contains("BentoMetricCard(\"0\", \"REJET"))
+        assertFalse(premiumDashboard.contains("BentoMetricCard(\"5\", \"BANQUES ACTIVES"))
+    }
+
+    @Test
+    fun googleAccountLinkingAppearsOnlyInSecuritySettings() {
         val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
         val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
         val securitySource = sourceFunction(premiumDashboard, "fun PremiumSecurityScreen")
-        val googleRowSource = sourceFunction(premiumDashboard, "private fun GoogleRecoveryRow")
+        val googleRowSource = sourceFunction(premiumDashboard, "private fun GoogleAccountLinkRow")
+        val premiumApp = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
+        val navigation = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumNavigationState.kt").readText()
+        val accountScreens = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumAccountEntryScreens.kt").readText()
+        val settingsState = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantSettingsState.kt").readText()
 
-        assertTrue(securitySource.contains("GoogleRecoveryRow"))
+        assertTrue(securitySource.contains("GoogleAccountLinkRow"))
         assertTrue(premiumDashboard.contains("PremiumGoogleIcon"))
-        assertTrue(googleRowSource.contains("Associer Google"))
-        assertTrue(googleRowSource.contains("récupérer ce profil", ignoreCase = true))
+        assertTrue(googleRowSource.contains("Lier le compte Google"))
+        assertTrue(googleRowSource.contains("reconnexion", ignoreCase = true))
+        assertTrue(googleRowSource.contains("sauvegarde", ignoreCase = true))
+        assertTrue(navigation.contains("data class GoogleAccountLink"))
+        assertTrue(navigation.contains("fun openGoogleAccountLink"))
+        assertTrue(accountScreens.contains("fun PremiumGoogleAccountLinkScreen"))
+        assertTrue(settingsState.contains("googleAccountLinked"))
+        assertTrue(settingsState.contains("saveGoogleAccountLinked"))
+        assertTrue(premiumApp.contains("PremiumNavigation.openGoogleAccountLink"))
+        assertTrue(premiumApp.contains("accountAuthRepository?.googleLink"))
+        assertTrue(premiumApp.contains("merchantSettingsStore.saveGoogleAccountLinked(true)"))
+        val securityLinkFlow = sourceBetween(premiumApp, "onGoogleAccountLink = {", "PremiumRoute.HelpCenter")
+        assertFalse(securityLinkFlow.contains("openAccountRecovery"))
+        assertFalse(securityLinkFlow.contains("googleExchange"))
         assertFalse(googleRowSource.contains("Google requis", ignoreCase = true))
         assertFalse(googleRowSource.contains("Google obligatoire", ignoreCase = true))
         assertFalse(googleRowSource.contains("required", ignoreCase = true))
         assertFalse(premiumOnboarding.contains("Google", ignoreCase = true))
         listOf("Prénom", "Nom de famille", "first name", "last name").forEach { forbidden ->
             assertFalse("onboarding must not collect merchant names: $forbidden", premiumOnboarding.contains(forbidden, ignoreCase = true))
+        }
+    }
+
+    @Test
+    fun securityScreenOnlyShowsWorkingAppLockAndGoogleLink() {
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val securitySource = sourceFunction(premiumDashboard, "fun PremiumSecurityScreen")
+
+        assertTrue(securitySource.contains("GoogleAccountLinkRow"))
+        assertTrue(securitySource.contains("Verrouillage de l"))
+        assertTrue(securitySource.contains("PremiumLockTimeout.entries"))
+        listOf(
+            "Code PIN",
+            "Mot de passe",
+            "Empreinte",
+            "Reconnaissance faciale",
+            "Sessions connect",
+            "Capacites du telephone"
+        ).forEach { forbidden ->
+            assertFalse("security screen must not show non-functional option: $forbidden", securitySource.contains(forbidden, ignoreCase = true))
         }
     }
 
@@ -197,10 +252,9 @@ class AndroidMerchantVisualArchitectureTest {
 
         assertTrue(premiumDashboard.contains("Manuel — Activé"))
         assertTrue(premiumDashboard.contains("Assisté — Disponible"))
-        assertTrue(premiumDashboard.contains("IA — Verrouillé"))
-        assertTrue(premiumDashboard.contains("IA en apprentissage"))
-        assertTrue(premiumDashboard.contains("7 / 10 paiements confirmés"))
-        assertTrue(premiumDashboard.contains("Activer la confirmation IA"))
+        assertTrue(premiumDashboard.contains("IA - Prochaine mise a jour"))
+        assertTrue(premiumDashboard.contains("Inactive"))
+        assertFalse(premiumDashboard.contains("Activer la confirmation IA"))
         assertTrue(premiumOnboarding.contains("Confirmation simple"))
         assertTrue(premiumOnboarding.contains("Confirmez ou rejetez en quelques secondes."))
         assertTrue(premiumOnboarding.contains("Test webhook"))
@@ -280,10 +334,56 @@ class AndroidMerchantVisualArchitectureTest {
         assertFalse(standaloneSource.contains(".height(64.dp)"))
     }
 
+    @Test
+    fun developerIntegrationScreenUsesThemeTokensAndStandaloneBackground() {
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val connectedSiteSource = sourceFunction(premiumDashboard, "fun PremiumConnectedSiteStateScreen")
+        val valueRowSource = sourceFunction(premiumDashboard, "private fun DeveloperIntegrationValueRow")
+        val standaloneSource = sourceFunction(premiumDashboard, "private fun PremiumStandaloneStateScreen")
+
+        assertTrue(standaloneSource.contains("background(PremiumColors.Background)"))
+        assertTrue(connectedSiteSource.contains("PremiumColors.PanelTint"))
+        assertTrue(valueRowSource.contains("PremiumColors.SurfaceAlt"))
+        assertFalse(connectedSiteSource.contains("Color("))
+        assertFalse(connectedSiteSource.contains("0xFF"))
+        assertFalse(valueRowSource.contains("Color("))
+        assertFalse(valueRowSource.contains("0xFF"))
+        assertFalse(standaloneSource.contains("Color("))
+        assertFalse(standaloneSource.contains("0xFF"))
+    }
+
+    @Test
+    fun androidLauncherUsesSwimPayAppIconResources() {
+        val manifest = File("src/main/AndroidManifest.xml").readText()
+        val adaptiveIcon = File("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
+        val adaptiveRoundIcon = File("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml")
+        val iconForeground = File("src/main/res/drawable/ic_launcher_foreground.xml")
+        val iconBackground = File("src/main/res/drawable/ic_launcher_background.xml")
+
+        assertTrue(manifest.contains("""android:icon="@mipmap/ic_launcher""""))
+        assertTrue(manifest.contains("""android:roundIcon="@mipmap/ic_launcher_round""""))
+        assertTrue(adaptiveIcon.exists())
+        assertTrue(adaptiveRoundIcon.exists())
+        assertTrue(iconForeground.exists())
+        assertTrue(iconBackground.exists())
+        val foregroundSource = iconForeground.readText()
+        assertTrue(foregroundSource.contains("swimpay three-wave launcher mark"))
+        assertTrue(foregroundSource.split("strokeColor=\"#42D6FF\"").size - 1 >= 3)
+        assertTrue(iconBackground.readText().contains("#0F172A"))
+    }
+
     private fun sourceFunction(source: String, signature: String): String {
         val start = source.indexOf(signature)
         require(start >= 0) { "missing source function $signature" }
         val nextComposable = source.indexOf("\n@Composable", start + signature.length)
         return if (nextComposable >= 0) source.substring(start, nextComposable) else source.substring(start)
+    }
+
+    private fun sourceBetween(source: String, startMarker: String, endMarker: String): String {
+        val start = source.indexOf(startMarker)
+        require(start >= 0) { "missing start marker $startMarker" }
+        val end = source.indexOf(endMarker, start + startMarker.length)
+        require(end >= 0) { "missing end marker $endMarker" }
+        return source.substring(start, end)
     }
 }

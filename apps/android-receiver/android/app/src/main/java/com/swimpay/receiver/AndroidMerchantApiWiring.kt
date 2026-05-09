@@ -6,6 +6,9 @@ import java.net.URL
 import java.time.Instant
 import java.util.Locale
 import android.util.Log
+import com.swimpay.receiver.ui.premium.PremiumSupportTicketDraft
+import com.swimpay.receiver.ui.premium.PremiumSupportTicketResult
+import com.swimpay.receiver.ui.premium.SupportSafety
 
 enum class MerchantRepositoryState {
     LOADING,
@@ -323,7 +326,7 @@ class AndroidMerchantAuthApiRepository(
                 safeMessage = "Google associé"
             )
         } else {
-            googleRecoveryUnavailableResult()
+            googleRecoveryFailureResult(response)
         }
     }
 
@@ -331,8 +334,31 @@ class AndroidMerchantAuthApiRepository(
         return if (response.statusCode in 200..299) {
             accountCreateResultFrom(response)
         } else {
-            googleRecoveryUnavailableResult()
+            googleRecoveryFailureResult(response)
         }
+    }
+
+    private fun googleRecoveryFailureResult(response: MerchantApiResponse): AndroidMerchantAccountCreateResult {
+        val code = extractString(response.body, "code")
+        val message = extractString(response.body, "message").orEmpty()
+        runCatching {
+            Log.w("SwimPayGoogleAuth", "google_backend_failed status=${response.statusCode} code=${code ?: "unknown"}")
+        }
+        val safeMessage = when {
+            code == "backend_unreachable" -> "Backend staging injoignable depuis l'app."
+            code == "service_unavailable" -> "Service de compte Google indisponible côté serveur."
+            response.statusCode == 401 -> "ID Google rejeté par le backend."
+            response.statusCode == 409 && message.contains("already linked", ignoreCase = true) ->
+                "Ce compte Google est déjà lié à un autre profil SwimPay."
+            code == "google_recovery_unconfigured" ->
+                "Google n'est pas configuré sur ce serveur."
+            response.statusCode == 503 -> "Google temporairement indisponible."
+            else -> "Association Google indisponible."
+        }
+        return AndroidMerchantAccountCreateResult(
+            status = AndroidMerchantAuthResultStatus.ACTION_REQUIRED,
+            safeMessage = safeMessage
+        )
     }
 
     private fun googleRecoveryUnavailableResult(): AndroidMerchantAccountCreateResult {
@@ -522,8 +548,12 @@ object AndroidMerchantReviewApiContract {
 
 class HttpUrlConnectionMerchantApiTransport(
     private val baseUrl: String,
-    private val timeoutMs: Int = 5_000
+    private val timeoutMs: Int = DEFAULT_TIMEOUT_MS
 ) : MerchantApiTransport {
+    companion object {
+        const val DEFAULT_TIMEOUT_MS: Int = 20_000
+    }
+
     override fun execute(request: MerchantApiRequest): MerchantApiResponse {
         val safeUrl = baseUrl.trimEnd('/') + request.path
         val connection = URL(safeUrl).openConnection() as HttpURLConnection
@@ -1014,6 +1044,22 @@ class MerchantDashboardApiRepository(
         val toReview = extractNumber(response.body, "payments_to_review_count") ?: "0"
         val confirmed = extractNumber(response.body, "confirmed_today_count") ?: "0"
         val notifications = extractNumber(response.body, "notifications_sent_count") ?: "0"
+        val metricsSummary = extractObjectValue(response.body, "metrics_summary")?.toMerchantDashboardMetricsSummary()
+            ?: MerchantDashboardMetricsSummary(
+                range = "30d",
+                currency = "RUB",
+                confirmedPaymentCount = confirmed.toIntOrNull() ?: 0,
+                confirmedAmountMinor = 0,
+                pendingReviewCount = toReview.toIntOrNull() ?: 0,
+                rejectedPaymentCount = 0,
+                expiredPaymentCount = 0,
+                failedCount = 0,
+                confirmationRate = 0,
+                averageManualConfirmationDelaySeconds = 0
+            )
+        val metricsTimeseries = extractObjectValue(response.body, "metrics_timeseries")
+            ?.let { extractTopLevelObjectsFromArray(it, "points").mapNotNull { point -> point.toMerchantDashboardTimeseriesPoint() } }
+            .orEmpty()
         val receiverDisplay = extractNestedString(response.body, "receiver_status", "display") ?: "Action requise"
         val recentTexts = extractTopLevelObjectsFromArray(response.body, "recent_detected_payments").flatMap { item ->
             val amount = extractNestedString(item, "amount", "value") ?: "0.00"
@@ -1040,7 +1086,9 @@ class MerchantDashboardApiRepository(
                 receiverDisplay,
                 "Derniers paiements détectés"
             ) + recentTexts + listOf("Accueil", "Revue", "Commandes", "Plus"),
-            usesMockRepository = false
+            usesMockRepository = false,
+            dashboardMetricsSummary = metricsSummary,
+            dashboardTimeseries = metricsTimeseries
         )
     }
 
@@ -1082,6 +1130,8 @@ class MerchantPaymentDetailApiRepository(
         val reasonLabels = extractStringArray(payment, "reason_labels").ifEmpty {
             listOf(MerchantReviewReasonCode.MANUAL_VALIDATION_BETA.merchantLabel)
         }
+        val scoreLabel = extractNumber(payment, "score")?.let { "$it %" }
+        val timeline = extractTopLevelObjectsFromArray(payment, "timeline").mapNotNull { extractString(it, "label") }
         return MerchantScreenRepositoryResult(
             state = MerchantRepositoryState.SUCCESS,
             texts = listOf(
@@ -1105,7 +1155,9 @@ class MerchantPaymentDetailApiRepository(
                 MerchantReviewAction.REJECT_SIGNAL.label,
                 MerchantReviewAction.REJECT_ORDER.label
             ),
-            usesMockRepository = false
+            usesMockRepository = false,
+            paymentDetailTimeline = timeline,
+            paymentScoreLabel = scoreLabel
         )
     }
 
@@ -1228,15 +1280,12 @@ data class MerchantDeveloperIntegrationSnapshot(
     val webhookStatus: String,
     val publicWebhookEvents: List<String>
 ) {
-    fun effectiveSecretKey(): String = secretKeyOnce ?: secretKeyMasked
+    fun effectiveSecretKey(): String = secretKeyMasked
 
-    fun effectiveWebhookSecret(): String = webhookSecretOnce ?: webhookSecretMasked
+    fun effectiveWebhookSecret(): String = webhookSecretMasked
 
     fun showOnceSecrets(): List<Pair<String, String>> {
-        return buildList {
-            secretKeyOnce?.let { add("Cle API show-once" to it) }
-            webhookSecretOnce?.let { add("Secret webhook show-once" to it) }
-        }
+        return emptyList()
     }
 
     fun exportLines(
@@ -1267,7 +1316,7 @@ data class MerchantDeveloperIntegrationSnapshot(
             "Webhook URL",
             webhookUrl.ifBlank { "A configurer" },
             "Evenements publics"
-        ) + publicWebhookEvents + showOnceSecrets().flatMap { listOf(it.first, it.second) } + exportLines()
+        ) + publicWebhookEvents + exportLines()
     }
 }
 
@@ -1452,11 +1501,66 @@ class MerchantConfigurationTestApiRepository(
     }
 }
 
+class MerchantSupportTicketApiRepository(
+    private val transport: MerchantApiTransport
+) {
+    fun create(
+        session: AuthenticatedMerchantSession,
+        draft: PremiumSupportTicketDraft,
+        safeContext: Map<String, Any?>
+    ): PremiumSupportTicketResult {
+        if (!session.isAuthenticated) {
+            return PremiumSupportTicketResult("", "action_required", "", "Session marchand requise")
+        }
+        val validation = draft.validationError()
+        if (validation != null) {
+            return PremiumSupportTicketResult("", "invalid", "", validation)
+        }
+        val body = jsonObject(
+            "category" to draft.category.wireValue,
+            "subject" to draft.subject.trim(),
+            "message" to draft.message.trim(),
+            "safe_context" to safeContext.filterValues { value ->
+                value == null || !SupportSafety.forbiddenContentDetected(value.toString())
+            }
+        )
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = "/v1/android-merchant/support-tickets",
+                headers = authHeaders(session),
+                body = body
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return PremiumSupportTicketResult("", "error", "", "Support indisponible")
+        }
+        return PremiumSupportTicketResult(
+            ticketId = extractString(response.body, "ticket_id").orEmpty(),
+            status = extractString(response.body, "status") ?: "created",
+            createdAt = extractString(response.body, "created_at").orEmpty(),
+            safeMessage = extractString(response.body, "safe_message") ?: "Demande envoyee"
+        )
+    }
+
+    private fun execute(request: MerchantApiRequest): MerchantApiResponse {
+        return try {
+            transport.execute(request)
+        } catch (_: Exception) {
+            MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
+        }
+    }
+}
+
 data class MerchantScreenRepositoryResult(
     val state: MerchantRepositoryState,
     private val texts: List<String>,
     val usesMockRepository: Boolean,
-    val safeMessage: String = ""
+    val safeMessage: String = "",
+    val dashboardMetricsSummary: MerchantDashboardMetricsSummary? = null,
+    val dashboardTimeseries: List<MerchantDashboardTimeseriesPoint> = emptyList(),
+    val paymentDetailTimeline: List<String> = emptyList(),
+    val paymentScoreLabel: String? = null
 ) {
     fun visibleTexts(): List<String> = texts + safeMessage
 
@@ -1474,6 +1578,32 @@ data class MerchantScreenRepositoryResult(
         )
     }
 }
+
+data class MerchantDashboardMetricsSummary(
+    val range: String,
+    val currency: String,
+    val confirmedPaymentCount: Int,
+    val confirmedAmountMinor: Long,
+    val pendingReviewCount: Int,
+    val rejectedPaymentCount: Int,
+    val expiredPaymentCount: Int,
+    val failedCount: Int,
+    val confirmationRate: Int,
+    val averageManualConfirmationDelaySeconds: Int
+) {
+    fun confirmedAmountLabel(): String = formatMinorAmountCompact(confirmedAmountMinor, currency)
+    fun confirmationRateLabel(): String = "$confirmationRate %"
+}
+
+data class MerchantDashboardTimeseriesPoint(
+    val date: String,
+    val confirmedPaymentCount: Int,
+    val confirmedAmountMinor: Long,
+    val pendingReviewCount: Int,
+    val rejectedPaymentCount: Int,
+    val expiredPaymentCount: Int,
+    val confirmationRate: Int
+)
 
 class MerchantDashboardRepository private constructor() {
     fun load(session: AuthenticatedMerchantSession): MerchantScreenRepositoryResult {
@@ -1749,11 +1879,51 @@ fun List<String>.mapMerchantReasonLabels(): List<String> {
     return labels.distinct()
 }
 
+private fun String.toMerchantDashboardMetricsSummary(): MerchantDashboardMetricsSummary? {
+    return MerchantDashboardMetricsSummary(
+        range = extractString(this, "range") ?: "30d",
+        currency = extractString(this, "currency") ?: "RUB",
+        confirmedPaymentCount = extractNumber(this, "confirmed_payment_count")?.toIntOrNull() ?: 0,
+        confirmedAmountMinor = extractNumber(this, "confirmed_amount_minor")?.toLongOrNull() ?: 0L,
+        pendingReviewCount = extractNumber(this, "pending_review_count")?.toIntOrNull() ?: 0,
+        rejectedPaymentCount = extractNumber(this, "rejected_payment_count")?.toIntOrNull() ?: 0,
+        expiredPaymentCount = extractNumber(this, "expired_payment_count")?.toIntOrNull() ?: 0,
+        failedCount = extractNumber(this, "failed_count")?.toIntOrNull() ?: 0,
+        confirmationRate = extractNumber(this, "confirmation_rate")?.toIntOrNull() ?: 0,
+        averageManualConfirmationDelaySeconds = extractNumber(this, "average_manual_confirmation_delay_seconds")?.toIntOrNull() ?: 0
+    )
+}
+
+private fun String.toMerchantDashboardTimeseriesPoint(): MerchantDashboardTimeseriesPoint? {
+    val date = extractString(this, "date") ?: return null
+    return MerchantDashboardTimeseriesPoint(
+        date = date,
+        confirmedPaymentCount = extractNumber(this, "confirmed_payment_count")?.toIntOrNull() ?: 0,
+        confirmedAmountMinor = extractNumber(this, "confirmed_amount_minor")?.toLongOrNull() ?: 0L,
+        pendingReviewCount = extractNumber(this, "pending_review_count")?.toIntOrNull() ?: 0,
+        rejectedPaymentCount = extractNumber(this, "rejected_payment_count")?.toIntOrNull() ?: 0,
+        expiredPaymentCount = extractNumber(this, "expired_payment_count")?.toIntOrNull() ?: 0,
+        confirmationRate = extractNumber(this, "confirmation_rate")?.toIntOrNull() ?: 0
+    )
+}
+
 fun formatAmountLabel(value: String, currency: String): String {
     val normalized = value.replace('.', ',')
     val withCents = if (normalized.contains(',')) normalized else "$normalized,00"
     val symbol = if (currency == "RUB") "₽" else currency
     return "$withCents $symbol"
+}
+
+fun formatMinorAmountCompact(amountMinor: Long, currency: String): String {
+    val units = amountMinor / 100L
+    val cents = kotlin.math.abs(amountMinor % 100L)
+    val grouped = "%,d".format(Locale.US, units).replace(",", " ")
+    val symbol = if (currency == "RUB") "₽" else currency
+    return if (cents == 0L) {
+        "$grouped $symbol"
+    } else {
+        "$grouped,${cents.toString().padStart(2, '0')} $symbol"
+    }
 }
 
 fun urlPath(value: String): String {

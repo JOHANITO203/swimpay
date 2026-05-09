@@ -1,0 +1,28 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- swimpay three-wave launcher mark -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#42D6FF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="7"
+        android:pathData="M28,39 C36,31 45,31 54,39 C63,47 72,47 80,39" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#42D6FF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="7"
+        android:pathData="M28,54 C36,46 45,46 54,54 C63,62 72,62 80,54" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#42D6FF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="7"
+        android:pathData="M28,69 C36,61 45,61 54,69 C63,77 72,77 80,69" />
+</vector>

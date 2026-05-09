@@ -4,23 +4,97 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+data class PremiumColorPalette(
+    val ink: Color,
+    val navy: Color,
+    val blue: Color,
+    val electricBlue: Color,
+    val cyan: Color,
+    val teal: Color,
+    val mint: Color,
+    val background: Color,
+    val surface: Color,
+    val surfaceAlt: Color,
+    val line: Color,
+    val muted: Color,
+    val softText: Color,
+    val success: Color,
+    val warning: Color,
+    val danger: Color,
+    val panelTint: Color,
+    val iconTile: Color,
+    val neutralChip: Color
+)
+
 object PremiumColors {
-    val Ink = Color(0xFF071126)
-    val Navy = Color(0xFF0F172A)
-    val Blue = Color(0xFF155BD8)
-    val ElectricBlue = Color(0xFF1EA7F2)
-    val Cyan = Color(0xFF16ADEC)
-    val Teal = Color(0xFF0EA5A4)
-    val Mint = Color(0xFFEAF6FA)
-    val Background = Color(0xFFF2F7FA)
-    val Surface = Color(0xFFFFFFFF)
-    val SurfaceAlt = Color(0xFFF6FAFD)
-    val Line = Color(0xFFE2E8F0)
-    val Muted = Color(0xFF59708D)
-    val SoftText = Color(0xFF94A3B8)
-    val Success = Color(0xFF059669)
-    val Warning = Color(0xFFF59E0B)
-    val Danger = Color(0xFFE5484D)
+    private val light = PremiumColorPalette(
+        ink = Color(0xFF071126),
+        navy = Color(0xFF0F172A),
+        blue = Color(0xFF155BD8),
+        electricBlue = Color(0xFF1EA7F2),
+        cyan = Color(0xFF16ADEC),
+        teal = Color(0xFF0EA5A4),
+        mint = Color(0xFFEAF6FA),
+        background = Color(0xFFF2F7FA),
+        surface = Color(0xFFFFFFFF),
+        surfaceAlt = Color(0xFFF6FAFD),
+        line = Color(0xFFE2E8F0),
+        muted = Color(0xFF59708D),
+        softText = Color(0xFF94A3B8),
+        success = Color(0xFF059669),
+        warning = Color(0xFFF59E0B),
+        danger = Color(0xFFE5484D),
+        panelTint = Color(0xFFF7FDFF),
+        iconTile = Color(0xFFEAF3FF),
+        neutralChip = Color(0xFFF3F4F6)
+    )
+    private val dark = PremiumColorPalette(
+        ink = Color(0xFFE8F0FF),
+        navy = Color(0xFFD7E6FF),
+        blue = Color(0xFF68A4FF),
+        electricBlue = Color(0xFF54C0FF),
+        cyan = Color(0xFF42D6FF),
+        teal = Color(0xFF2DD4BF),
+        mint = Color(0xFF102D3A),
+        background = Color(0xFF07111F),
+        surface = Color(0xFF0D1728),
+        surfaceAlt = Color(0xFF132238),
+        line = Color(0xFF26364E),
+        muted = Color(0xFFA7B7CC),
+        softText = Color(0xFF77869E),
+        success = Color(0xFF34D399),
+        warning = Color(0xFFFBBF24),
+        danger = Color(0xFFFF6B72),
+        panelTint = Color(0xFF0F2234),
+        iconTile = Color(0xFF142B47),
+        neutralChip = Color(0xFF1D2B3F)
+    )
+
+    private var palette: PremiumColorPalette = light
+
+    fun useDarkTheme(enabled: Boolean) {
+        palette = if (enabled) dark else light
+    }
+
+    val Ink: Color get() = palette.ink
+    val Navy: Color get() = palette.navy
+    val Blue: Color get() = palette.blue
+    val ElectricBlue: Color get() = palette.electricBlue
+    val Cyan: Color get() = palette.cyan
+    val Teal: Color get() = palette.teal
+    val Mint: Color get() = palette.mint
+    val Background: Color get() = palette.background
+    val Surface: Color get() = palette.surface
+    val SurfaceAlt: Color get() = palette.surfaceAlt
+    val Line: Color get() = palette.line
+    val Muted: Color get() = palette.muted
+    val SoftText: Color get() = palette.softText
+    val Success: Color get() = palette.success
+    val Warning: Color get() = palette.warning
+    val Danger: Color get() = palette.danger
+    val PanelTint: Color get() = palette.panelTint
+    val IconTile: Color get() = palette.iconTile
+    val NeutralChip: Color get() = palette.neutralChip
 }
 
 object PremiumRadius {

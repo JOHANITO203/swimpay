@@ -2481,6 +2481,19 @@ Safety checks:
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
 - No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
 
+# 2026-05-09T02:03:00+03:00 - Android Dashboard Metrics Wiring
+
+- Created tasks 698 through 705 and updated `.swimpay-agent/TASK_QUEUE.md`.
+- Added merchant metrics summary and timeseries repository/contracts over persisted orders, review queue rows and webhook deliveries.
+- Added `GET /v1/merchant/metrics/summary` and `GET /v1/merchant/metrics/timeseries` with authenticated merchant scope.
+- Embedded safe metrics into Android dashboard summary for mobile consumption.
+- Replaced Android Accueil fake card values with real metrics: confirmed amount, pending reviews, confirmed, rejected, expired, failed and confirmation rate.
+- Replaced the decorative chart with compact chart data from backend timeseries.
+- Added safe score and timeline fields to Android payment detail.
+- Added/updated backend and Android guardrail tests for real metrics wiring and no fake dashboard values.
+- Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
+- No real bank notification was processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
 # 2026-05-08T13:51:40+03:00 - REAL-CAPTURE-1 staging APK/device gate
 
 - Created tasks 628 through 634 and updated `.swimpay-agent/TASK_QUEUE.md`.

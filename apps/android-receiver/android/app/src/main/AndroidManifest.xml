@@ -9,8 +9,13 @@
   </queries>
 
   <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
-  <application android:label="SwimPay Receiver" android:theme="@style/SwimPayReceiverTheme">
+  <application
+    android:label="@string/app_name"
+    android:icon="@mipmap/ic_launcher"
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:theme="@style/SwimPayReceiverTheme">
     <activity
       android:name=".MainActivity"
       android:exported="true">
@@ -23,7 +28,7 @@
     <service
       android:name=".SwimPayNotificationListenerService"
       android:exported="true"
-      android:label="SwimPay Receiver"
+      android:label="@string/app_name"
       android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
       <intent-filter>
         <action android:name="android.service.notification.NotificationListenerService" />

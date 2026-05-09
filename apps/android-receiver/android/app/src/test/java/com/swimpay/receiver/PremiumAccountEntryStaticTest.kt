@@ -112,8 +112,7 @@ class PremiumAccountEntryStaticTest {
 
         assertTrue(source.contains("Google"))
         assertTrue(source.contains("recovery", ignoreCase = true))
-        assertTrue(source.contains("récupération"))
-        assertTrue(source.contains("déjà créée"))
+        assertTrue(source.contains("copy.recoverBody"))
         assertTrue(stateSource.contains("Récupérer un compte déjà lié"))
         assertTrue(loginProviderSource.contains("PremiumGoogleIcon"))
         assertFalse(loginProviderSource.contains("Icons.AutoMirrored.Filled.Login"))

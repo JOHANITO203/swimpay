@@ -6,6 +6,33 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+The current sprint is Android dashboard metrics wiring. It is not a payment runtime, Receiver capture or SDK/webhook rehearsal sprint.
+
+- [x] `698_metrics_inventory` - status: completed - source: `tasks/698_metrics_inventory.md`
+- [x] `699_backend_metrics_summary` - status: completed - source: `tasks/699_backend_metrics_summary.md`
+- [x] `700_backend_metrics_timeseries` - status: completed - source: `tasks/700_backend_metrics_timeseries.md`
+- [x] `701_android_dashboard_cards_wiring` - status: completed - source: `tasks/701_android_dashboard_cards_wiring.md`
+- [x] `702_android_compact_chart_wiring` - status: completed - source: `tasks/702_android_compact_chart_wiring.md`
+- [x] `703_review_screen_metrics_wiring` - status: completed - source: `tasks/703_review_screen_metrics_wiring.md`
+- [x] `704_metrics_guardrails` - status: completed - source: `tasks/704_metrics_guardrails.md`
+- [x] `705_metrics_closeout` - status: completed - source: `tasks/705_metrics_closeout.md`
+
+## Previous Queue
+
+- [x] `687_android_subscreens_inventory` - status: completed - source: `tasks/687_android_subscreens_inventory.md`
+- [x] `688_android_help_center_screen` - status: completed - source: `tasks/688_android_help_center_screen.md`
+- [x] `689_android_contact_support_screen` - status: completed - source: `tasks/689_android_contact_support_screen.md`
+- [x] `690_android_security_app_lock` - status: completed_with_device_walkthrough_pending - source: `tasks/690_android_security_app_lock.md`
+- [x] `691_android_language_localization` - status: completed_with_global_string_migration_pending - source: `tasks/691_android_language_localization.md`
+- [x] `692_android_appearance_theme_mode` - status: completed - source: `tasks/692_android_appearance_theme_mode.md`
+- [x] `693_android_confirmation_mode_settings` - status: completed_future_ia_exclusion_preserved - source: `tasks/693_android_confirmation_mode_settings.md`
+- [x] `694_backend_settings_support_contracts` - status: completed - source: `tasks/694_backend_settings_support_contracts.md`
+- [x] `695_android_subscreens_navigation_integration` - status: completed - source: `tasks/695_android_subscreens_navigation_integration.md`
+- [x] `696_android_subscreens_guardrails_tests` - status: completed - source: `tasks/696_android_subscreens_guardrails_tests.md`
+- [x] `697_android_subscreens_closeout` - status: completed - source: `tasks/697_android_subscreens_closeout.md`
+
+## Previous Queue
+
 - [x] `656_receiver_signing_inventory` - status: completed - source: `tasks/656_receiver_signing_inventory.md`
 - [x] `657_android_keystore_keypair_generation` - status: completed - source: `tasks/657_android_keystore_keypair_generation.md`
 - [x] `658_receiver_public_key_registration_contract` - status: completed - source: `tasks/658_receiver_public_key_registration_contract.md`

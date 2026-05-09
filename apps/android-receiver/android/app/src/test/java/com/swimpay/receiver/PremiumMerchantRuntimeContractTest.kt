@@ -28,6 +28,42 @@ class PremiumMerchantRuntimeContractTest {
                   "payments_to_review_count": 2,
                   "confirmed_today_count": 5,
                   "notifications_sent_count": 8,
+                  "metrics_summary": {
+                    "range": "30d",
+                    "currency": "RUB",
+                    "confirmed_payment_count": 18,
+                    "confirmed_amount_minor": 4250000,
+                    "pending_review_count": 7,
+                    "rejected_payment_count": 3,
+                    "expired_payment_count": 2,
+                    "failed_count": 1,
+                    "confirmation_rate": 75,
+                    "average_manual_confirmation_delay_seconds": 90
+                  },
+                  "metrics_timeseries": {
+                    "range": "30d",
+                    "bucket": "day",
+                    "points": [
+                      {
+                        "date": "2026-05-01",
+                        "confirmed_payment_count": 4,
+                        "confirmed_amount_minor": 900000,
+                        "pending_review_count": 1,
+                        "rejected_payment_count": 0,
+                        "expired_payment_count": 0,
+                        "confirmation_rate": 100
+                      },
+                      {
+                        "date": "2026-05-02",
+                        "confirmed_payment_count": 0,
+                        "confirmed_amount_minor": 0,
+                        "pending_review_count": 2,
+                        "rejected_payment_count": 0,
+                        "expired_payment_count": 0,
+                        "confirmation_rate": 0
+                      }
+                    ]
+                  },
                   "receiver_status": { "status": "connected", "display": "Connect\u00e9" },
                   "recent_detected_payments": [
                     {
@@ -86,7 +122,12 @@ class PremiumMerchantRuntimeContractTest {
                     "bank_display_name": "Sberbank",
                     "receiving_method_masked": "Carte bancaire \u00b7 \u2022\u2022\u2022\u2022 4821",
                     "payment_reference": "TANGO ALFA",
+                    "score": 68,
                     "reason_labels": ["Validation manuelle en b\u00eata", "R\u00e9f\u00e9rence non visible"],
+                    "timeline": [
+                      { "label": "Signal re\u00e7u" },
+                      { "label": "Review cr\u00e9\u00e9e" }
+                    ],
                     "allowed_actions": ["reject_signal", "reject_order"]
                   },
                   "official_bank_confirmation": false
@@ -131,11 +172,18 @@ class PremiumMerchantRuntimeContractTest {
         val configuration = runtime.runConfigurationTest(MerchantConfigurationChecklist.allReady()) as PremiumScreenState.Content<PremiumConfigurationUiState>
 
         assertTrue(dashboard.value.usesLiveApi)
-        assertEquals("2", dashboard.value.metrics.first().value)
+        assertEquals("Paiements confirm\u00e9s", dashboard.value.mainMetricLabel)
+        assertEquals("42 500 \u20bd", dashboard.value.monthlyAmount)
+        assertEquals(listOf("\u00c0 confirmer", "Confirm\u00e9s", "Rejet\u00e9s", "Expir\u00e9s", "\u00c9checs", "Taux"), dashboard.value.metrics.map { it.label })
+        assertEquals(listOf("7", "18", "3", "2", "1", "75 %"), dashboard.value.metrics.map { it.value })
+        assertEquals(2, dashboard.value.chartPoints.size)
+        assertEquals(900000L, dashboard.value.chartPoints.first().confirmedAmountMinor)
         assertTrue(reviews.value.usesLiveApi)
         assertEquals("rev_01", reviews.value.items.single().reviewId)
         assertTrue(detail.value.usesLiveApi)
         assertTrue(detail.value.reasons.any { it.contains("Validation manuelle") })
+        assertTrue(detail.value.summaryRows.any { it.first == "Score" && it.second == "68 %" })
+        assertEquals(listOf("Signal re\u00e7u", "Review cr\u00e9\u00e9e"), detail.value.timeline)
         assertTrue(connectedSite.value.usesLiveApi)
         assertTrue(configuration.value.usesLiveApi)
         assertTrue(runtime.reviewActionsAreBackendOwned)
@@ -251,9 +299,11 @@ class PremiumMerchantRuntimeContractTest {
         val webhookTest = runtime.testDeveloperWebhook() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
 
         assertTrue(initial.value.oneTimeSecrets.isEmpty())
-        assertTrue(keyCreated.value.oneTimeSecrets.any { it.second == "sk_live_show_once" })
-        assertTrue(keyCreated.value.exportLines.any { it == "SWIMPAY_STAGING_SECRET_KEY=sk_live_show_once" })
-        assertTrue(secretRotated.value.oneTimeSecrets.any { it.second == "whsec_show_once" })
+        assertTrue(keyCreated.value.oneTimeSecrets.isEmpty())
+        assertFalse(keyCreated.value.exportLines.any { it.contains("sk_live_show_once") })
+        assertTrue(keyCreated.value.exportLines.any { it == "SWIMPAY_STAGING_SECRET_KEY=sk_live_****9999" })
+        assertTrue(secretRotated.value.oneTimeSecrets.isEmpty())
+        assertFalse(secretRotated.value.exportLines.any { it.contains("whsec_show_once") })
         assertEquals("Integration active", urlUpdated.value.statusTitle)
         assertEquals("Webhook de test envoye", webhookTest.value.safeMessage)
 

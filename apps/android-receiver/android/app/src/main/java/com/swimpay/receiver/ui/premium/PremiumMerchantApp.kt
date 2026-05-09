@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.swimpay.receiver.AndroidMerchantAccountCreateResult
 import com.swimpay.receiver.AndroidMerchantAccountProfileType
 import com.swimpay.receiver.AndroidMerchantAuthApiRepository
 import com.swimpay.receiver.AndroidMerchantAuthResultStatus
@@ -28,6 +29,10 @@ import kotlinx.coroutines.withContext
 @Composable
 fun PremiumMerchantApp(
     runtime: PremiumMerchantRuntime,
+    merchantSettingsStore: PremiumMerchantSettingsStore = InMemoryPremiumMerchantSettingsStore(),
+    uiLocked: Boolean = false,
+    onRequestUnlock: (onUnlocked: () -> Unit) -> Unit = { onUnlocked -> onUnlocked() },
+    onThemeModeChanged: (PremiumThemeMode) -> Unit = {},
     onboardingCompletionStore: PremiumOnboardingCompletionStore = InMemoryPremiumOnboardingStateStore(),
     mobileMerchantSessionStore: PremiumMobileMerchantSessionStore = InMemoryPremiumMobileMerchantSessionStore(),
     accountAuthRepository: AndroidMerchantAuthApiRepository? = null,
@@ -64,6 +69,12 @@ fun PremiumMerchantApp(
     val receiverPayloadSigner = remember { AndroidKeystorePayloadSigner() }
     var banksState by remember { mutableStateOf<PremiumScreenState<PremiumBanksUiState>>(PremiumScreenState.loading()) }
     var receiverHealthState by remember { mutableStateOf<PremiumScreenState<PremiumReceiverHealthUiState>>(PremiumScreenState.loading()) }
+    var merchantSettings by remember(merchantSettingsStore) { mutableStateOf(merchantSettingsStore.load()) }
+    var supportResult by remember { mutableStateOf<PremiumSupportTicketResult?>(null) }
+    fun updateSettings(next: PremiumMerchantSettings) {
+        merchantSettings = next
+        onThemeModeChanged(next.themeMode)
+    }
     val navigateFromMenu: (PremiumRoute) -> Unit = { target ->
         route = when (target) {
             PremiumRoute.ReceivingMethods -> PremiumNavigation.openReceivingMethods()
@@ -73,6 +84,10 @@ fun PremiumMerchantApp(
             PremiumRoute.ConfigurationTest -> PremiumNavigation.openConfigurationTest()
             PremiumRoute.ConfirmationMode -> PremiumNavigation.openConfirmationMode()
             PremiumRoute.Security -> PremiumNavigation.openSecurity()
+            PremiumRoute.HelpCenter -> PremiumNavigation.openHelpCenter()
+            PremiumRoute.SupportContact -> PremiumNavigation.openSupportContact()
+            PremiumRoute.Language -> PremiumNavigation.openLanguage()
+            PremiumRoute.Appearance -> PremiumNavigation.openAppearance()
             else -> target
         }
     }
@@ -234,8 +249,13 @@ fun PremiumMerchantApp(
             PremiumRoute.AccountProfileChoice,
             PremiumRoute.LoginProviderChoice,
             is PremiumRoute.AccountRecovery,
+            is PremiumRoute.GoogleAccountLink,
             PremiumRoute.ConfirmationMode,
             PremiumRoute.Security,
+            PremiumRoute.HelpCenter,
+            PremiumRoute.SupportContact,
+            PremiumRoute.Language,
+            PremiumRoute.Appearance,
             is PremiumRoute.OrderDetail -> Unit
             PremiumRoute.Onboarding -> {
                 banksState = withContext(Dispatchers.IO) {
@@ -245,12 +265,24 @@ fun PremiumMerchantApp(
         }
     }
 
+    if (uiLocked) {
+        PremiumUnlockRequiredScreen(
+            appLock = merchantSettings.appLock,
+            onUnlock = { onRequestUnlock {} }
+        )
+        return
+    }
+
     when (val currentRoute = route) {
         PremiumRoute.AccountEntry -> PremiumAccountEntryScreen(
+            language = merchantSettings.language,
+            onLanguageSelected = { updateSettings(merchantSettingsStore.saveLanguage(it)) },
             onCreateAccount = { route = PremiumNavigation.openAccountProfileChoice() },
             onSignIn = { route = PremiumNavigation.openLoginProviderChoice() }
         )
         PremiumRoute.AccountProfileChoice -> PremiumAccountProfileChoiceScreen(
+            language = merchantSettings.language,
+            onLanguageSelected = { updateSettings(merchantSettingsStore.saveLanguage(it)) },
             onSelectProfile = { profileType ->
                 route = PremiumNavigation.openAccountRecovery(
                     PremiumAccountRecoveryUiState.creating(),
@@ -299,6 +331,8 @@ fun PremiumMerchantApp(
             onBack = { route = PremiumRoute.AccountEntry }
         )
         PremiumRoute.LoginProviderChoice -> PremiumAccountLoginProviderScreen(
+            language = merchantSettings.language,
+            onLanguageSelected = { updateSettings(merchantSettingsStore.saveLanguage(it)) },
             onGoogleRecovery = {
                 route = PremiumNavigation.openAccountRecovery(PremiumAccountRecoveryUiState.pending())
                 scope.launch {
@@ -313,7 +347,7 @@ fun PremiumMerchantApp(
                         )
                         return@launch
                     }
-                    val idToken = withContext(Dispatchers.IO) { googleIdTokenProvider() }
+                    val idToken = googleIdTokenProvider()
                     val result = if (!idToken.isNullOrBlank()) {
                         withContext(Dispatchers.IO) { accountAuthRepository?.googleExchange(idToken) }
                     } else {
@@ -339,6 +373,14 @@ fun PremiumMerchantApp(
         )
         is PremiumRoute.AccountRecovery -> PremiumAccountRecoveryScreen(
             state = currentRoute.state,
+            language = merchantSettings.language,
+            onLanguageSelected = { updateSettings(merchantSettingsStore.saveLanguage(it)) },
+            onBack = { route = currentRoute.returnRoute }
+        )
+        is PremiumRoute.GoogleAccountLink -> PremiumGoogleAccountLinkScreen(
+            state = currentRoute.state,
+            language = merchantSettings.language,
+            onLanguageSelected = { updateSettings(merchantSettingsStore.saveLanguage(it)) },
             onBack = { route = currentRoute.returnRoute }
         )
         PremiumRoute.Landing -> PremiumLandingScreen { route = PremiumRoute.Onboarding }
@@ -376,6 +418,7 @@ fun PremiumMerchantApp(
                     PremiumMainTab.Menu -> PremiumSettingsScreen(
                         connectedSite = connectedSiteState,
                         configuration = configurationState,
+                        language = merchantSettings.language,
                         onNavigate = navigateFromMenu
                     )
                 }
@@ -450,36 +493,118 @@ fun PremiumMerchantApp(
             onTab = { route = PremiumRoute.Main(it) },
             content = {
                 PremiumSecurityScreen(
-                    onGoogleRecoveryLink = {
-                        route = PremiumNavigation.openAccountRecovery(
-                            PremiumAccountRecoveryUiState.pending(),
-                            returnRoute = PremiumRoute.Security
+                    appLock = merchantSettings.appLock,
+                    googleAccountLinked = merchantSettings.googleAccountLinked,
+                    onToggleAppLock = { enabled ->
+                        if (enabled) {
+                            onRequestUnlock {
+                                updateSettings(
+                                    merchantSettingsStore.saveAppLock(
+                                        merchantSettingsStore.load().appLock.copy(enabled = true)
+                                    )
+                                )
+                            }
+                        } else {
+                            updateSettings(
+                                merchantSettingsStore.saveAppLock(
+                                    merchantSettings.appLock.copy(enabled = false)
+                                )
+                            )
+                        }
+                    },
+                    onTimeoutSelected = { timeout ->
+                        updateSettings(
+                            merchantSettingsStore.saveAppLock(
+                                merchantSettings.appLock.copy(timeout = timeout)
+                            )
+                        )
+                    },
+                    onGoogleAccountLink = {
+                        route = PremiumNavigation.openGoogleAccountLink(
+                            PremiumGoogleAccountLinkUiState.pending()
                         )
                         scope.launch {
                             val session = mobileMerchantSessionStore.currentSession()
-                            val idToken = withContext(Dispatchers.IO) { googleIdTokenProvider() }
-                            val result = if (session != null && !idToken.isNullOrBlank()) {
+                            if (session == null) {
+                                route = PremiumNavigation.openGoogleAccountLink(
+                                    PremiumGoogleAccountLinkUiState.error(
+                                        "Connectez-vous avant de lier Google a ce profil marchand."
+                                    )
+                                )
+                                return@launch
+                            }
+                            val idToken = googleIdTokenProvider()
+                            val result = if (!idToken.isNullOrBlank()) {
                                 withContext(Dispatchers.IO) {
                                     accountAuthRepository?.googleLink(AuthenticatedMerchantSession.mobile(session), idToken)
                                 }
                             } else {
-                                null
+                                AndroidMerchantAccountCreateResult(
+                                    status = AndroidMerchantAuthResultStatus.ACTION_REQUIRED,
+                                    safeMessage = "Aucun compte Google selectionne."
+                                )
                             }
                             route = if (result?.status == AndroidMerchantAuthResultStatus.SUCCESS) {
-                                PremiumNavigation.openAccountRecovery(
-                                    PremiumAccountRecoveryUiState.success(),
-                                    returnRoute = PremiumRoute.Security
-                                )
+                                updateSettings(merchantSettingsStore.saveGoogleAccountLinked(true))
+                                PremiumNavigation.openGoogleAccountLink(PremiumGoogleAccountLinkUiState.success())
                             } else {
-                                PremiumNavigation.openAccountRecovery(
-                                    PremiumAccountRecoveryUiState.error(
-                                        message = result?.safeMessage ?: "Association Google annulée ou indisponible."
-                                    ),
-                                    returnRoute = PremiumRoute.Security
+                                PremiumNavigation.openGoogleAccountLink(
+                                    PremiumGoogleAccountLinkUiState.error(
+                                        result?.safeMessage ?: "Association Google annulee ou indisponible."
+                                    )
                                 )
                             }
                         }
                     }
+                )
+            }
+        )
+        PremiumRoute.HelpCenter -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Menu,
+            onTab = { route = PremiumRoute.Main(it) },
+            content = { PremiumHelpCenterScreen(language = merchantSettings.language) }
+        )
+        PremiumRoute.SupportContact -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Menu,
+            onTab = { route = PremiumRoute.Main(it) },
+            content = {
+                PremiumContactSupportScreen(
+                    result = supportResult,
+                    onSubmit = { draft ->
+                        supportResult = PremiumSupportTicketResult("", "submitting", "", "Envoi en cours")
+                        scope.launch {
+                            supportResult = withContext(Dispatchers.IO) {
+                                activeRuntime.createSupportTicket(
+                                    draft = draft,
+                                    safeContext = mapOf(
+                                        "app_version" to receiverAppVersion,
+                                        "android_version" to receiverAndroidVersion,
+                                        "notification_access_enabled" to notificationAccessEnabled
+                                    )
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+        )
+        PremiumRoute.Language -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Menu,
+            onTab = { route = PremiumRoute.Main(it) },
+            content = {
+                PremiumLanguageScreen(
+                    selected = merchantSettings.language,
+                    onSelect = { updateSettings(merchantSettingsStore.saveLanguage(it)) }
+                )
+            }
+        )
+        PremiumRoute.Appearance -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Menu,
+            onTab = { route = PremiumRoute.Main(it) },
+            content = {
+                PremiumAppearanceScreen(
+                    selected = merchantSettings.themeMode,
+                    onSelect = { updateSettings(merchantSettingsStore.saveThemeMode(it)) }
                 )
             }
         )

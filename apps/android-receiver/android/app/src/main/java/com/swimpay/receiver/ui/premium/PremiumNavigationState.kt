@@ -9,6 +9,10 @@ sealed interface PremiumRoute {
         val state: PremiumAccountRecoveryUiState,
         val returnRoute: PremiumRoute = LoginProviderChoice
     ) : PremiumRoute
+    data class GoogleAccountLink(
+        val state: PremiumGoogleAccountLinkUiState,
+        val returnRoute: PremiumRoute = Security
+    ) : PremiumRoute
     data object Onboarding : PremiumRoute
     data class Main(val tab: PremiumMainTab = PremiumMainTab.Home) : PremiumRoute
     data class PaymentDetail(val reviewId: String) : PremiumRoute
@@ -19,6 +23,10 @@ sealed interface PremiumRoute {
     data object ConfigurationTest : PremiumRoute
     data object ConfirmationMode : PremiumRoute
     data object Security : PremiumRoute
+    data object HelpCenter : PremiumRoute
+    data object SupportContact : PremiumRoute
+    data object Language : PremiumRoute
+    data object Appearance : PremiumRoute
     data class OrderDetail(val orderId: String) : PremiumRoute
 }
 
@@ -61,6 +69,13 @@ object PremiumNavigation {
         return PremiumRoute.AccountRecovery(state, returnRoute)
     }
 
+    fun openGoogleAccountLink(
+        state: PremiumGoogleAccountLinkUiState,
+        returnRoute: PremiumRoute = PremiumRoute.Security
+    ): PremiumRoute {
+        return PremiumRoute.GoogleAccountLink(state, returnRoute)
+    }
+
     fun openReview(reviewId: String): PremiumRoute = PremiumRoute.PaymentDetail(reviewId)
 
     fun backFromPaymentDetail(): PremiumRoute = PremiumRoute.Main(PremiumMainTab.Reviews)
@@ -78,6 +93,14 @@ object PremiumNavigation {
     fun openConfirmationMode(): PremiumRoute = PremiumRoute.ConfirmationMode
 
     fun openSecurity(): PremiumRoute = PremiumRoute.Security
+
+    fun openHelpCenter(): PremiumRoute = PremiumRoute.HelpCenter
+
+    fun openSupportContact(): PremiumRoute = PremiumRoute.SupportContact
+
+    fun openLanguage(): PremiumRoute = PremiumRoute.Language
+
+    fun openAppearance(): PremiumRoute = PremiumRoute.Appearance
 }
 
 sealed interface PremiumScreenState<out T> {
