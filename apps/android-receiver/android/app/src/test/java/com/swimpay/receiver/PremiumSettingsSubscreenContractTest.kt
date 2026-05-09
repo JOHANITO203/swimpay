@@ -1,6 +1,8 @@
 package com.swimpay.receiver
 
 import java.io.File
+import java.nio.ByteBuffer
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -119,6 +121,7 @@ class PremiumSettingsSubscreenContractTest {
         val foreground = File("src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png")
         val background = File("src/main/res/mipmap-xxhdpi/ic_launcher_background.png")
         val monochrome = File("src/main/res/mipmap-xxhdpi/ic_launcher_monochrome.png")
+        val playStoreIcon = File("src/main/play_store_512.png")
 
         assertTrue(manifest.contains("android:icon=\"@mipmap/ic_launcher\""))
         assertTrue(launcher.contains("@mipmap/ic_launcher_foreground"))
@@ -127,6 +130,14 @@ class PremiumSettingsSubscreenContractTest {
         assertTrue("IconKitchen three-wave foreground must be packaged", foreground.length() > 100L)
         assertTrue("IconKitchen dark background must be packaged", background.length() > 100L)
         assertTrue("IconKitchen monochrome mark must be packaged", monochrome.length() > 100L)
+        assertTrue("IconKitchen Play Store icon must be kept with the Android source", playStoreIcon.isFile)
+        assertEquals(512, pngDimension(playStoreIcon, offset = 16))
+        assertEquals(512, pngDimension(playStoreIcon, offset = 20))
+    }
+
+    private fun pngDimension(file: File, offset: Int): Int {
+        val bytes = file.readBytes()
+        return ByteBuffer.wrap(bytes, offset, 4).int
     }
 
     @Test
