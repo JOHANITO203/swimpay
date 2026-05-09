@@ -1398,15 +1398,15 @@ class MerchantDeveloperIntegrationApiRepository(
     }
 
     fun createApiKey(session: AuthenticatedMerchantSession): MerchantDeveloperIntegrationResult {
-        return requestIntegration(session, "POST", "/v1/merchant/integration/keys")
+        return requestIntegration(session, "POST", "/v1/merchant/integration/keys", jsonObject())
     }
 
     fun rotateApiKey(session: AuthenticatedMerchantSession): MerchantDeveloperIntegrationResult {
-        return requestIntegration(session, "POST", "/v1/merchant/integration/keys/rotate")
+        return requestIntegration(session, "POST", "/v1/merchant/integration/keys/rotate", jsonObject())
     }
 
     fun rotateWebhookSecret(session: AuthenticatedMerchantSession): MerchantDeveloperIntegrationResult {
-        return requestIntegration(session, "POST", "/v1/merchant/integration/webhook-secret/rotate")
+        return requestIntegration(session, "POST", "/v1/merchant/integration/webhook-secret/rotate", jsonObject())
     }
 
     fun updateWebhookUrl(session: AuthenticatedMerchantSession, webhookUrl: String): MerchantDeveloperIntegrationResult {
@@ -1430,7 +1430,8 @@ class MerchantDeveloperIntegrationApiRepository(
             MerchantApiRequest(
                 method = "POST",
                 path = "/v1/merchant/integration/test-webhook",
-                headers = authHeaders(session)
+                headers = authHeaders(session),
+                body = jsonObject()
             )
         )
         if (response.statusCode !in 200..299) {

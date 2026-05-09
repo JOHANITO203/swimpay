@@ -1091,6 +1091,9 @@ class AndroidMerchantApiWiringTest {
         assertEquals("/v1/merchant/integration/keys", transport.requests[1].path)
         assertEquals("/v1/merchant/integration/webhook-secret/rotate", transport.requests[2].path)
         assertEquals("/v1/merchant/integration/test-webhook", transport.requests[3].path)
+        assertEquals("{}", transport.requests[1].body)
+        assertEquals("{}", transport.requests[2].body)
+        assertEquals("{}", transport.requests[3].body)
         assertTrue(transport.requests.all { it.headers["Authorization"] == "Bearer spm_mobile_session_secret" })
 
         val normalVisible = loaded.visibleTexts().joinToString(" ")
