@@ -35,7 +35,10 @@
     "test:replay": "node scripts/p0-deterministic-replay.mjs",
     "test:matching": "vitest run packages/matching-core/src",
     "test:privacy": "vitest run packages/security/src packages/observability/src packages/contracts/src/android-receiver.test.ts apps/api/src/signals.test.ts",
-    "test:webhooks": "vitest run apps/job-worker/src/webhooks.test.ts packages/swimpay-node/src/index.test.ts"
+    "test:webhooks": "vitest run apps/job-worker/src/webhooks.test.ts packages/swimpay-node/src/index.test.ts",
+    "apk:discover": "tsx tools/apk-discovery/scripts/discover.ts",
+    "apk:discover:all": "tsx tools/apk-discovery/scripts/discover-all.ts",
+    "apk:registry": "tsx tools/apk-discovery/scripts/generate-observed-registry.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.1",

@@ -1,5 +1,16 @@
 # Blockers
 
+## APK Deeplink Discovery Pipeline
+
+- Local code blocker: none known.
+- Validation passed: typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Runtime blocker: static APK discovery is not runtime launcher support.
+- Runtime validation still required before using any candidate deeplink in checkout Step 3.
+- Certification blocker: no generated entry is certified; all entries remain `experimental` and `runtimeVerified=false`.
+- Local artifact note: old pre-fix decoded `unknown/apktool` folders remain ignored under `tools/apk-discovery/output` because Windows long paths resisted deletion. The corrected pipeline no longer preserves decoded folders.
+
+## Previous blockers
+
 ## P0-WIRE-1 runtime wiring
 
 - Resolved locally: amount leases are now allocated in the checkout route-selection transaction.
@@ -13,8 +24,6 @@
 - P0-WIRE-1 code blocker: none known.
 - Staging gate: redeploy this commit and verify `https://staging.swimpay.pro/api-health` before SDK/checkout/manual-review/webhook rehearsal.
 - Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
-
-## Previous blockers
 
 ## Checkout UX Apple-like guided refactor
 

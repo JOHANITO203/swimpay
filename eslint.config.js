@@ -10,7 +10,10 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/.gradle/**',
       'apps/android-receiver/android/app/build/**',
-      'swimpay_bank_templates_pack/**'
+      'swimpay_bank_templates_pack/**',
+      'tools/apk-discovery/input/**',
+      'tools/apk-discovery/output/**',
+      'tools/apk-discovery/reports/**'
     ]
   },
   {

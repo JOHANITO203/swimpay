@@ -1,5 +1,36 @@
 # Next Action
 
+generated_at: 2026-05-10T02:00:00+03:00
+
+## Latest APK Deeplink Discovery Pipeline
+
+Completed locally:
+
+1. Static APKTool discovery pipeline created under `tools/apk-discovery`.
+2. Six bank APKs from `C:\Users\Lenovo\Downloads\apkanalyser` were analyzed.
+3. Generated local Markdown/JSON reports and an observed launcher registry.
+4. All generated capabilities remain `experimental` and `runtimeVerified=false`.
+
+Next recommended action:
+
+1. Commit the pipeline code.
+2. Add a separate Android runtime validation sprint:
+   - exact package launch;
+   - `resolveActivity()` for candidate URIs;
+   - deeplink open tests;
+   - manual fallback tests;
+   - no broad package enumeration.
+3. Promote only proven entries into the Bank Route Certification Matrix.
+
+Do not do:
+
+- Do not treat APK discovery as runtime support.
+- Do not mark any deeplink as certified from static discovery.
+- Do not automate bank actions.
+- Do not process real bank notifications during launcher validation.
+
+---
+
 generated_at: 2026-05-10T00:03:15+03:00
 
 ## Latest P0-WIRE-1 runtime wiring

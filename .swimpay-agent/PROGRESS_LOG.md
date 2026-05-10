@@ -2710,3 +2710,17 @@ Safety checks:
 - No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
 
 ---
+# 2026-05-10T02:00:00+03:00 - APK Deeplink Discovery Pipeline
+
+- Built a static APKTool discovery pipeline under `tools/apk-discovery`.
+- Added CLI scripts for single APK discovery, all-APK discovery and observed-registry generation.
+- Parsed AndroidManifest package metadata, browsable VIEW intent filters, schemes, hosts, paths and exported activities.
+- Added candidate deeplink detection without claiming runtime support or certification.
+- Added META-INF certificate SHA-256 observation and Markdown/JSON report generation.
+- Generated local reports for Sberbank, T-Bank, VTB, Alfa-Bank, Gazprombank and Ozon Bank from `C:\Users\Lenovo\Downloads\apkanalyser`.
+- Generated `bank-launcher-registry.observed.json` with six experimental entries and `runtimeVerified=false`.
+- Added tests for parser, candidate detection, version fallback, report generation and certificate extraction.
+- Validation passed: `npm run typecheck`, `npm run lint`, `npm test` (78 files, 607 tests), `npm run build`, and Compose config.
+- No real bank notification was captured or processed, no payment semantics changed, no bank action automation was added.
+
+---
