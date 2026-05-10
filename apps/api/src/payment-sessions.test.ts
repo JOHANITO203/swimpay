@@ -1011,6 +1011,10 @@ describe('payment session api', () => {
       method: 'POST',
       url: '/v1/checkout/ps_session_01/continue-to-bank'
     });
+    const armedAgain = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/continue-to-bank'
+    });
 
     expect([
       session.statusCode,
@@ -1021,9 +1025,15 @@ describe('payment session api', () => {
       selectedRoute.statusCode,
       selectedLauncher.statusCode,
       instructions.statusCode,
-      armed.statusCode
-    ]).toEqual([200, 200, 200, 200, 200, 200, 200, 200, 200]);
+      armed.statusCode,
+      armedAgain.statusCode
+    ]).toEqual([200, 200, 200, 200, 200, 200, 200, 200, 200, 200]);
     expect(armed.json()).toMatchObject({
+      status: 'receiver_armed',
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(armedAgain.json()).toMatchObject({
       status: 'receiver_armed',
       does_not_confirm_payment: true,
       official_bank_confirmation: false

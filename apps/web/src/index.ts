@@ -139,6 +139,7 @@ interface CheckoutProviderErrorBody {
       fallback_actions?: CheckoutFallbackAction[] | undefined;
       payment_method?: 'card' | 'sbp' | undefined;
       available_methods?: Array<'card' | 'sbp'> | undefined;
+      current_status?: CheckoutStatus | undefined;
     } | undefined;
   } | undefined;
   official_bank_confirmation?: false | undefined;
@@ -905,6 +906,15 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     try {
       session = await checkoutSessionProvider.markReceiverArmed(params.paymentSessionId);
     } catch (error) {
+      if (isAlreadyReceiverArmedConflict(error)) {
+        const currentSession = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+        if (shouldRedirectCheckoutFormPost(request.headers)) {
+          return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+        }
+        if (currentSession) {
+          return reply.status(200).send(toCheckoutStatusResponse(currentSession));
+        }
+      }
       const renderedFallback = await renderStructuredCheckoutFallbackFromError({
         error,
         paymentSessionId: params.paymentSessionId,
@@ -1023,6 +1033,16 @@ async function renderStructuredCheckoutFallbackFromError(params: {
     receivingRoutes.routes,
     payerBankLaunchers.payer_bank_launchers,
     mapCheckoutStatus(session.status).displayStatus
+  );
+}
+
+function isAlreadyReceiverArmedConflict(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { status?: unknown; body?: CheckoutProviderErrorBody | undefined };
+  return (
+    candidate.status === 409 &&
+    candidate.body?.error?.code === 'checkout_step_out_of_order' &&
+    candidate.body.error.details?.current_status === 'receiver_armed'
   );
 }
 

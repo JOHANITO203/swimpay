@@ -605,6 +605,55 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toMatch(/\+7\d{10}/u);
   });
 
+  it('redirects duplicate continue-to-bank posts when the receiver is already armed', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      status: 'receiver_armed',
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_card',
+      selected_payer_bank_launcher_id: 'sber_ru',
+      payment_instructions_shown_at: '2026-05-02T10:01:00.000Z',
+      checkout_state: 'awaiting_payment',
+      buyer_safe_status: 'awaiting_payment'
+    };
+    provider.markReceiverArmed = async () => {
+      const error = new Error('Checkout step cannot be applied from the current payment session status.') as Error & {
+        status: number;
+        body: {
+          error: {
+            code: 'checkout_step_out_of_order';
+            details: { current_status: 'receiver_armed' };
+          };
+        };
+      };
+      error.status = 409;
+      error.body = {
+        error: {
+          code: 'checkout_step_out_of_order',
+          details: { current_status: 'receiver_armed' }
+        }
+      };
+      throw error;
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/checkout/ps_01/continue-to-bank',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      payload: ''
+    });
+
+    expect(response.statusCode).toBe(303);
+    expect(response.headers.location).toBe('/checkout/ps_01');
+    expect(response.body).not.toContain('Checkout step cannot be applied');
+    expect(response.body).not.toContain('API Error');
+  });
+
   it('proxies explicit receiving route copy details without rendering raw destination in html', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {

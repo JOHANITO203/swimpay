@@ -3861,6 +3861,9 @@ async function mutateSimpleCheckoutAction(params: {
     });
     return null;
   }
+  if (params.action === 'receiver_armed' && loaded.paymentSession.status === 'receiver_armed') {
+    return { kind: 'updated', order: loaded.order, paymentSession: loaded.paymentSession };
+  }
   const result = await mutateCheckoutActionRepository(params.repository!, params.action, input);
   switch (result.kind) {
     case 'updated':
