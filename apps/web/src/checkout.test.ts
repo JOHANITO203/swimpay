@@ -553,6 +553,7 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
       recommended: true,
       review_policy: 'eligible_low_risk_later',
       fees_hint: 'Usually instant',
+      lifecycle_status: 'active',
       created_at: '2026-05-02T10:00:00.000Z',
       updated_at: '2026-05-02T10:00:00.000Z'
     }),
@@ -571,6 +572,7 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
       enabled: true,
       recommended: false,
       review_policy: 'review_first',
+      lifecycle_status: 'active',
       created_at: '2026-05-02T10:00:00.000Z',
       updated_at: '2026-05-02T10:00:00.000Z'
     })

@@ -2797,3 +2797,30 @@ Safety checks:
 - No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
 
 ---
+
+# 2026-05-10T10:25:00+03:00 - Route Readiness, Lock And Soft Disable
+
+- Added additive migration `017_receiving_route_readiness_lock.sql`.
+- Added receiving route lifecycle states: `active`, `pending_disable`, `disabled`, `revoked`, `deleted`.
+- Added payment session route lock fields: `route_locked_at`, `route_lock_expires_at` and `amount_lease_id`.
+- Step 2 now locks the selected receiving route and exact amount lease id for the session.
+- Normal disable now becomes `pending_disable` when active locked sessions exist.
+- Revocation is explicit, requires a reason and blocks even already locked sessions.
+- `pending_disable` routes are hidden from new sessions but remain valid for existing locked sessions.
+- Confirmation, rejection and expiration now release route locks alongside amount leases.
+- Added tests for locked route disable, pre-lock disable fallback and post-lock revoke fallback.
+- Full validation passed:
+  - `npm run android:doctor`;
+  - `npm run typecheck`;
+  - `npm run lint`;
+  - `npm test` - 77 files, 614 tests passed;
+  - `npm run build`;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config`;
+  - `npm run test:replay`;
+  - `npm run test:matching`;
+  - `npm run test:privacy`;
+  - `npm run test:webhooks`.
+- Android source was not touched, so Gradle was not run.
+- No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---

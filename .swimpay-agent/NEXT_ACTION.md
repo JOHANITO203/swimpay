@@ -1999,3 +1999,27 @@ Do not do:
 - Do not change public webhook semantics.
 - Do not expose raw PAN, raw phone, raw notification text or secrets.
 - Do not treat `J'ai payé`, signal detected or matching as confirmation.
+
+---
+
+## Latest Route Readiness / Soft Disable Work
+
+Checkout now protects already-started sessions from normal route disable while still blocking dangerous revocations.
+
+Next recommended action:
+
+1. Commit and push `refactor: harden checkout route readiness lifecycle`.
+2. Let Dokploy redeploy staging.
+3. Apply migration `017_receiving_route_readiness_lock.sql` on staging if the deploy process does not apply it automatically.
+4. Re-test SWIMVPN+ hosted checkout:
+   - no active route blocks before Step 1;
+   - one active route shows only that method;
+   - route disabled after Step 2 becomes `pending_disable` and buyer can continue;
+   - route revoked after Step 2 blocks `continue-to-bank` with fallback.
+
+Do not do:
+
+- Do not process real bank notifications during this validation.
+- Do not enable auto-confirmation.
+- Do not change public webhook semantics.
+- Do not expose raw PAN, raw phone, raw notification text or secrets.

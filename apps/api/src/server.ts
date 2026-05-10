@@ -31,6 +31,7 @@ import {
   type AndroidMerchantAccountErrorCode,
   type AndroidMerchantDeviceProof,
   type CheckoutFallbackAction,
+  type CheckoutUnavailableReason,
   type ReceivingRouteRailType
 } from '@swimpay/contracts';
 import {
@@ -1558,6 +1559,49 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       merchantId,
       routeId: params.method_id,
       patch: { enabled: false },
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+    if (result.kind === 'not_found') {
+      return reply.status(404).send({
+        error: {
+          code: 'not_found',
+          message: 'Receiving method was not found.',
+          details: { id: params.method_id }
+        }
+      });
+    }
+    return reply.status(200).send({
+      method: toMerchantReceivingMethodResponse(result.route),
+      official_bank_confirmation: false
+    });
+  });
+
+  server.post('/v1/merchant/receiving-methods/:method_id/revoke', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+    const params = request.params as { method_id?: string };
+    if (!params.method_id) {
+      return reply.status(400).send(invalidRequest('Receiving method id is required.', {}));
+    }
+    const body = validateReceivingRouteRevokeBody(request.body);
+    if ('error' in body) {
+      return reply.status(400).send(body);
+    }
+    const result = await repository.updateReceivingRoute({
+      merchantId,
+      routeId: params.method_id,
+      patch: {
+        enabled: false,
+        recommended: false,
+        lifecycle_status: 'revoked',
+        revocation_reason: body.reason
+      },
       auditEventId: idGenerator.auditEventId(),
       now: clock().toISOString()
     });
@@ -3751,18 +3795,20 @@ async function mutateSimpleCheckoutAction(params: {
     return null;
   }
   if (params.action === 'instructions' || params.action === 'receiver_armed') {
-    const routeAvailable = await selectedReceivingRouteStillAvailable({
+    const routeAvailability = await selectedReceivingRouteStillAvailable({
       repository: params.repository!,
       paymentSession: loaded.paymentSession
     });
-    if (!routeAvailable) {
+    if (!routeAvailability.available) {
       params.reply.status(409).send({
         error: {
           code: 'receiving_route_unavailable',
           message: 'The selected receiving route is no longer active or compatible with this checkout.',
           details: {
             payment_method: loaded.paymentSession.paymentMethod,
-            receiving_route_id: loaded.paymentSession.selectedReceivingRouteId
+            receiving_route_id: loaded.paymentSession.selectedReceivingRouteId,
+            unavailable_reason: routeAvailability.unavailable_reason,
+            fallback_actions: routeAvailability.fallback_actions
           }
         },
         official_bank_confirmation: false
@@ -3817,14 +3863,35 @@ async function mutateSimpleCheckoutAction(params: {
 async function selectedReceivingRouteStillAvailable(params: {
   repository: OrderRepository;
   paymentSession: StoredPaymentSessionRecord;
-}): Promise<boolean> {
+}): Promise<
+  | { available: true }
+  | {
+      available: false;
+      unavailable_reason: CheckoutUnavailableReason;
+      fallback_actions: CheckoutFallbackAction[];
+    }
+> {
   if (
     !params.paymentSession.paymentMethod ||
     !params.paymentSession.selectedReceiverBankProfileId ||
     !params.paymentSession.selectedReceivingRouteId
   ) {
-    return false;
+    return {
+      available: false,
+      unavailable_reason: 'route_disabled',
+      fallback_actions: ['refresh_methods', 'return_to_merchant']
+    };
   }
+
+  const visibleMerchantRoutes = await params.repository.listReceiverBanksForCheckout(
+    params.paymentSession.merchantId,
+    params.paymentSession.id
+  );
+  const availableMethods = {
+    card: availableBuyerMethodsForRoutes(visibleMerchantRoutes).includes('card'),
+    sbp: availableBuyerMethodsForRoutes(visibleMerchantRoutes).includes('sbp')
+  };
+  const fallbackActions = buildFallbackActionsForAvailableMethods(availableMethods);
 
   const routes = filterRoutesForExpectedPaymentMethod(
     await params.repository.listReceivingRoutesForCheckoutBank(
@@ -3835,7 +3902,18 @@ async function selectedReceivingRouteStillAvailable(params: {
     params.paymentSession.paymentMethod
   );
 
-  return routes.some((route) => route.route_id === params.paymentSession.selectedReceivingRouteId);
+  if (routes.some((route) => route.route_id === params.paymentSession.selectedReceivingRouteId)) {
+    return { available: true };
+  }
+
+  const route = (await params.repository.listReceivingRoutes(params.paymentSession.merchantId)).find(
+    (candidate) => candidate.route_id === params.paymentSession.selectedReceivingRouteId
+  );
+  return {
+    available: false,
+    unavailable_reason: route?.lifecycle_status === 'revoked' ? 'route_revoked' : 'route_disabled',
+    fallback_actions: fallbackActions.length > 0 ? fallbackActions : ['refresh_methods', 'return_to_merchant']
+  };
 }
 
 function mutateCheckoutActionRepository(
@@ -4655,6 +4733,21 @@ function validateReceivingRoutePatchBody(
   return patch;
 }
 
+function validateReceivingRouteRevokeBody(body: unknown): { reason: string } | ReturnType<typeof invalidRequest> {
+  if (!body || typeof body !== 'object') {
+    return invalidRequest('Receiving route revoke body must be a JSON object.', {});
+  }
+  const reason = typeof (body as { reason?: unknown }).reason === 'string'
+    ? (body as { reason: string }).reason.trim()
+    : '';
+  if (reason.length < 8) {
+    return invalidRequest('A clear revocation reason is required.', {
+      field: 'reason'
+    });
+  }
+  return { reason };
+}
+
 function toMerchantReceivingRouteResponse(route: StoredMerchantReceivingRouteRecord): Record<string, unknown> {
   return {
     route_id: route.route_id,
@@ -4667,6 +4760,10 @@ function toMerchantReceivingRouteResponse(route: StoredMerchantReceivingRouteRec
     display_label: route.display_label,
     enabled: route.enabled,
     recommended: route.recommended,
+    lifecycle_status: route.lifecycle_status,
+    pending_disable_at: route.pending_disable_at,
+    disabled_at: route.disabled_at,
+    revoked_at: route.revoked_at,
     review_policy: route.review_policy,
     fees_hint: route.fees_hint,
     created_at: route.created_at,
@@ -4678,6 +4775,7 @@ function toMerchantReceivingRouteResponse(route: StoredMerchantReceivingRouteRec
 
 function toMerchantReceivingMethodResponse(route: StoredMerchantReceivingRouteRecord): Record<string, unknown> {
   const type = route.rail_type === 'phone_transfer' ? 'phone' : 'card';
+  const methodStatus = receivingMethodStatusForRoute(route);
   return {
     id: route.route_id,
     route_id: route.route_id,
@@ -4687,13 +4785,20 @@ function toMerchantReceivingMethodResponse(route: StoredMerchantReceivingRouteRe
     label: route.display_label,
     masked_value: route.receiver_identifier_masked,
     last4: route.receiver_identifier_last4,
-    status: route.enabled ? 'active' : 'inactive',
+    status: methodStatus,
+    lifecycle_status: route.lifecycle_status,
     is_default: route.recommended,
     created_at: route.created_at,
     updated_at: route.updated_at,
     confirmation_type: 'notification_signal',
     official_bank_confirmation: false
   };
+}
+
+function receivingMethodStatusForRoute(route: StoredMerchantReceivingRouteRecord): 'active' | 'inactive' | 'pending_disable' | 'revoked' {
+  if (route.lifecycle_status === 'pending_disable') return 'pending_disable';
+  if (route.lifecycle_status === 'revoked') return 'revoked';
+  return route.enabled && route.lifecycle_status === 'active' ? 'active' : 'inactive';
 }
 
 function parseBankEvidenceListFilters(query: {

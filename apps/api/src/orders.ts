@@ -14,6 +14,7 @@ import {
   type MerchantReceivingRoute,
   type OrderStatus,
   type PaymentSessionStatus,
+  type ReceivingRouteLifecycleStatus,
   type ReceivingRouteRailType,
   type ReceivingRouteReviewPolicy,
   type ReceiverIdentifierType
@@ -78,6 +79,9 @@ export interface StoredPaymentSessionRecord {
   receiverArmedAt?: string | undefined;
   buyerClaimedPaidAt?: string | undefined;
   noNotificationManualCheckRequestedAt?: string | undefined;
+  routeLockedAt?: string | undefined;
+  routeLockExpiresAt?: string | undefined;
+  amountLeaseId?: string | undefined;
   validFrom: string;
   validUntil: string;
   createdAt: string;
@@ -141,7 +145,7 @@ export type CreateReceivingRouteResult =
 export interface UpdateReceivingRouteInput {
   merchantId: string;
   routeId: string;
-  patch: Partial<Pick<StoredMerchantReceivingRouteRecord, 'enabled' | 'recommended' | 'display_label' | 'fees_hint'>>;
+  patch: Partial<Pick<StoredMerchantReceivingRouteRecord, 'enabled' | 'recommended' | 'display_label' | 'fees_hint' | 'lifecycle_status' | 'revocation_reason'>>;
   auditEventId: string;
   now: string;
 }
@@ -294,6 +298,8 @@ const CHECKOUT_SELECTABLE_BANK_ROUTE_CERTIFICATION_STATUSES = new Set<BankRouteC
   'experimental',
   'review_only'
 ]);
+
+const ROUTE_FINAL_SESSION_STATUSES = new Set<PaymentSessionStatus>(['manual_confirmed', 'rejected', 'expired']);
 
 export function selectAmountLeaseCandidate(input: {
   displayAmountMinor: number;
@@ -532,6 +538,7 @@ export class PgOrderRepository implements OrderRepository {
         buyer_name_fingerprint, display_amount_minor, payable_amount_minor, reconciliation_delta_minor,
         expected_payment_fingerprint, payment_instructions_shown_at, receiver_armed_at,
         buyer_claimed_paid_at, no_notification_manual_check_requested_at,
+        route_locked_at, route_lock_expires_at, amount_lease_id,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND order_id = $2
        ORDER BY created_at DESC LIMIT 1`,
@@ -571,6 +578,7 @@ export class PgOrderRepository implements OrderRepository {
         buyer_name_fingerprint, display_amount_minor, payable_amount_minor, reconciliation_delta_minor,
         expected_payment_fingerprint, payment_instructions_shown_at, receiver_armed_at,
         buyer_claimed_paid_at, no_notification_manual_check_requested_at,
+        route_locked_at, route_lock_expires_at, amount_lease_id,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND id = $2`,
       [merchantId, paymentSessionId]
@@ -611,6 +619,7 @@ export class PgOrderRepository implements OrderRepository {
         buyer_name_fingerprint, display_amount_minor, payable_amount_minor, reconciliation_delta_minor,
         expected_payment_fingerprint, payment_instructions_shown_at, receiver_armed_at,
         buyer_claimed_paid_at, no_notification_manual_check_requested_at,
+        route_locked_at, route_lock_expires_at, amount_lease_id,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE id = $1`,
       [paymentSessionId]
@@ -668,8 +677,9 @@ export class PgOrderRepository implements OrderRepository {
           id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
           receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
           receiver_identifier_last4, route_code, display_label,
-          enabled, recommended, review_policy, fees_hint, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+          enabled, recommended, review_policy, fees_hint, lifecycle_status,
+          pending_disable_at, disabled_at, revoked_at, revocation_reason, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::timestamptz, $18::timestamptz, $19::timestamptz, $20, $21, $22)`,
         [
           input.route.route_id,
           input.route.merchant_id,
@@ -686,6 +696,11 @@ export class PgOrderRepository implements OrderRepository {
           input.route.recommended,
           input.route.review_policy,
           input.route.fees_hint ?? null,
+          input.route.lifecycle_status,
+          input.route.pending_disable_at ?? null,
+          input.route.disabled_at ?? null,
+          input.route.revoked_at ?? null,
+          input.route.revocation_reason ?? null,
           input.route.created_at,
           input.route.updated_at
         ]
@@ -717,7 +732,8 @@ export class PgOrderRepository implements OrderRepository {
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at
+        enabled, recommended, review_policy, fees_hint, lifecycle_status, pending_disable_at,
+        disabled_at, revoked_at, revocation_reason, created_at, updated_at, deleted_at
        FROM merchant_receiving_routes
        WHERE merchant_id = $1 AND deleted_at IS NULL
        ORDER BY recommended DESC, created_at ASC`,
@@ -731,9 +747,16 @@ export class PgOrderRepository implements OrderRepository {
     if (!route) {
       return { kind: 'not_found' };
     }
+    const lifecyclePatch = await this.resolveRouteLifecyclePatch({
+      merchantId: input.merchantId,
+      route,
+      patch: input.patch,
+      now: input.now
+    });
     const updatedRoute: StoredMerchantReceivingRouteRecord = {
       ...route,
       ...input.patch,
+      ...lifecyclePatch,
       updated_at: input.now
     };
     if (updatedRoute.recommended) {
@@ -750,12 +773,18 @@ export class PgOrderRepository implements OrderRepository {
            recommended = $4,
            display_label = $5,
            fees_hint = $6,
-           updated_at = $7
+           lifecycle_status = $7,
+           pending_disable_at = $8::timestamptz,
+           disabled_at = $9::timestamptz,
+           revoked_at = $10::timestamptz,
+           revocation_reason = $11,
+           updated_at = $12
        WHERE merchant_id = $1 AND id = $2 AND deleted_at IS NULL
        RETURNING id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at`,
+        enabled, recommended, review_policy, fees_hint, lifecycle_status, pending_disable_at,
+        disabled_at, revoked_at, revocation_reason, created_at, updated_at, deleted_at`,
       [
         input.merchantId,
         input.routeId,
@@ -763,6 +792,11 @@ export class PgOrderRepository implements OrderRepository {
         updatedRoute.recommended,
         updatedRoute.display_label,
         updatedRoute.fees_hint ?? null,
+        updatedRoute.lifecycle_status,
+        updatedRoute.pending_disable_at ?? null,
+        updatedRoute.disabled_at ?? null,
+        updatedRoute.revoked_at ?? null,
+        updatedRoute.revocation_reason ?? null,
         input.now
       ]
     );
@@ -788,13 +822,15 @@ export class PgOrderRepository implements OrderRepository {
       `UPDATE merchant_receiving_routes
        SET enabled = false,
            recommended = false,
+           lifecycle_status = 'deleted',
            deleted_at = $3,
            updated_at = $3
        WHERE merchant_id = $1 AND id = $2 AND deleted_at IS NULL
        RETURNING id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at`,
+        enabled, recommended, review_policy, fees_hint, lifecycle_status, pending_disable_at,
+        disabled_at, revoked_at, revocation_reason, created_at, updated_at, deleted_at`,
       [input.merchantId, input.routeId, input.now]
     );
     if (result.rowCount === 0) {
@@ -810,15 +846,85 @@ export class PgOrderRepository implements OrderRepository {
     return { kind: 'updated', route: deleted };
   }
 
+  private async resolveRouteLifecyclePatch(input: {
+    merchantId: string;
+    route: StoredMerchantReceivingRouteRecord;
+    patch: UpdateReceivingRouteInput['patch'];
+    now: string;
+  }): Promise<Partial<Pick<
+    StoredMerchantReceivingRouteRecord,
+    'enabled' | 'recommended' | 'lifecycle_status' | 'pending_disable_at' | 'disabled_at' | 'revoked_at' | 'revocation_reason'
+  >>> {
+    if (input.patch.lifecycle_status === 'revoked') {
+      return {
+        enabled: false,
+        recommended: false,
+        lifecycle_status: 'revoked',
+        revoked_at: input.now,
+        revocation_reason: input.patch.revocation_reason ?? 'merchant_requested_revoke'
+      };
+    }
+
+    if (input.patch.enabled === true) {
+      if (input.route.lifecycle_status === 'revoked' || input.route.lifecycle_status === 'deleted') {
+        return {};
+      }
+      return {
+        enabled: true,
+        lifecycle_status: 'active',
+        pending_disable_at: null,
+        disabled_at: null
+      };
+    }
+
+    if (input.patch.enabled === false) {
+      const activeLocks = await this.countActiveRouteLocks(input.merchantId, input.route.route_id, input.now);
+      if (activeLocks > 0) {
+        return {
+          enabled: false,
+          recommended: false,
+          lifecycle_status: 'pending_disable',
+          pending_disable_at: input.now
+        };
+      }
+      return {
+        enabled: false,
+        recommended: false,
+        lifecycle_status: 'disabled',
+        disabled_at: input.now
+      };
+    }
+
+    return {};
+  }
+
+  private async countActiveRouteLocks(merchantId: string, routeId: string, now: string): Promise<number> {
+    const result = await this.pool.query(
+      `SELECT COUNT(*)::int AS active_locks
+       FROM payment_sessions
+       WHERE merchant_id = $1
+         AND selected_receiving_route_id = $2::uuid
+         AND route_lock_expires_at IS NOT NULL
+         AND route_lock_expires_at > $3::timestamptz
+         AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
+      [merchantId, routeId, now]
+    );
+    return Number((result.rows[0] as { active_locks?: number | string } | undefined)?.active_locks ?? 0);
+  }
+
   public async listReceiverBanksForCheckout(merchantId: string, paymentSessionId: string) {
     void paymentSessionId;
     const result = await this.pool.query(
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at
+        enabled, recommended, review_policy, fees_hint, lifecycle_status, pending_disable_at,
+        disabled_at, revoked_at, revocation_reason, created_at, updated_at, deleted_at
        FROM merchant_receiving_routes
-       WHERE merchant_id = $1 AND enabled = true AND deleted_at IS NULL
+       WHERE merchant_id = $1
+         AND enabled = true
+         AND lifecycle_status = 'active'
+         AND deleted_at IS NULL
          AND EXISTS (
            SELECT 1
            FROM bank_route_certifications brc
@@ -836,14 +942,31 @@ export class PgOrderRepository implements OrderRepository {
   }
 
   public async listReceivingRoutesForCheckoutBank(merchantId: string, paymentSessionId: string, bankProfileId: string) {
-    void paymentSessionId;
     const result = await this.pool.query(
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at
+        enabled, recommended, review_policy, fees_hint, lifecycle_status, pending_disable_at,
+        disabled_at, revoked_at, revocation_reason, created_at, updated_at, deleted_at
        FROM merchant_receiving_routes
-       WHERE merchant_id = $1 AND bank_profile_id = $2 AND enabled = true AND deleted_at IS NULL
+       WHERE merchant_id = $1
+         AND bank_profile_id = $2
+         AND deleted_at IS NULL
+         AND (
+           (enabled = true AND lifecycle_status = 'active')
+           OR (
+             lifecycle_status = 'pending_disable'
+             AND id = (
+               SELECT selected_receiving_route_id
+               FROM payment_sessions
+               WHERE merchant_id = $1
+                 AND id = $3
+                 AND route_lock_expires_at IS NOT NULL
+                 AND route_lock_expires_at > now()
+                 AND status NOT IN ('manual_confirmed', 'rejected', 'expired')
+             )
+           )
+         )
          AND EXISTS (
            SELECT 1
            FROM bank_route_certifications brc
@@ -855,7 +978,7 @@ export class PgOrderRepository implements OrderRepository {
              END = ANY(brc.rail_supported)
          )
        ORDER BY recommended DESC, created_at ASC`,
-      [merchantId, bankProfileId]
+      [merchantId, bankProfileId, paymentSessionId]
     );
     return result.rows.map((row) => toMerchantReceivingRoute(row as Record<string, string | boolean | Date | null>));
   }
@@ -881,7 +1004,11 @@ export class PgOrderRepository implements OrderRepository {
     }
 
     const route = await this.getReceivingRoute(input.merchantId, loaded.paymentSession.selectedReceivingRouteId);
-    if (!route || !route.enabled || route.bank_profile_id !== loaded.paymentSession.selectedReceiverBankProfileId) {
+    if (
+      !route ||
+      route.bank_profile_id !== loaded.paymentSession.selectedReceiverBankProfileId ||
+      !isReceivingRouteUsableForSession(route, loaded.paymentSession)
+    ) {
       return { kind: 'not_found' };
     }
 
@@ -957,7 +1084,7 @@ export class PgOrderRepository implements OrderRepository {
       return { kind: 'not_found' };
     }
     const route = await this.getReceivingRoute(input.merchantId, input.receivingRouteId);
-    if (!route || route.bank_profile_id !== loaded.paymentSession.selectedReceiverBankProfileId || !route.enabled) {
+    if (!route || route.bank_profile_id !== loaded.paymentSession.selectedReceiverBankProfileId || !isReceivingRouteVisibleToNewCheckout(route)) {
       return { kind: 'not_found' };
     }
     if (
@@ -992,7 +1119,8 @@ export class PgOrderRepository implements OrderRepository {
                payable_amount_minor = $5,
                reconciliation_delta_minor = $6,
                expected_amount_minor = $5,
-               updated_at = $7
+               amount_lease_id = $7::uuid,
+               updated_at = $8
            WHERE merchant_id = $1 AND id = $2`,
           [
             input.merchantId,
@@ -1001,6 +1129,7 @@ export class PgOrderRepository implements OrderRepository {
             amountLease.displayAmountMinor,
             amountLease.payableAmountMinor,
             amountLease.reconciliationDeltaMinor,
+            amountLease.id,
             input.now
           ]
         );
@@ -1072,6 +1201,7 @@ export class PgOrderRepository implements OrderRepository {
                selected_receiver_bank_profile_id = $24,
                selected_receiving_route_id = $25,
                selected_payer_bank_launcher_id = $26,
+               amount_lease_id = NULL,
                payment_instructions_shown_at = NULL,
                updated_at = $27
            WHERE merchant_id = $1 AND id = $2`,
@@ -1192,6 +1322,20 @@ export class PgOrderRepository implements OrderRepository {
         await client.query(
           `UPDATE payment_sessions
            SET payment_instructions_shown_at = COALESCE(payment_instructions_shown_at, $3::timestamptz),
+               route_locked_at = COALESCE(route_locked_at, $3::timestamptz),
+               route_lock_expires_at = valid_until,
+               amount_lease_id = COALESCE(
+                 amount_lease_id,
+                 (
+                   SELECT id FROM amount_leases
+                   WHERE merchant_id = $1
+                     AND payment_session_id = $2
+                     AND route_id = payment_sessions.selected_receiving_route_id
+                     AND status = 'active'
+                   ORDER BY created_at DESC
+                   LIMIT 1
+                 )
+               ),
                updated_at = $3
            WHERE merchant_id = $1 AND id = $2`,
           [input.merchantId, input.paymentSessionId, input.now]
@@ -1286,7 +1430,7 @@ export class PgOrderRepository implements OrderRepository {
       const nowMs = new Date(input.now).getTime();
 
       if (new Date(row.valid_until).getTime() <= nowMs) {
-        await client.query('ROLLBACK');
+        await client.query('COMMIT');
         return { kind: 'expired' };
       }
 
@@ -1413,7 +1557,8 @@ export class PgOrderRepository implements OrderRepository {
       `SELECT id, merchant_id, bank_profile_id, rail_type, receiver_identifier_type,
         receiver_identifier_encrypted, receiver_identifier_hmac, receiver_identifier_masked,
         receiver_identifier_last4, route_code, display_label,
-        enabled, recommended, review_policy, fees_hint, created_at, updated_at, deleted_at
+        enabled, recommended, review_policy, fees_hint, lifecycle_status, pending_disable_at,
+        disabled_at, revoked_at, revocation_reason, created_at, updated_at, deleted_at
        FROM merchant_receiving_routes
        WHERE merchant_id = $1 AND id = $2 AND deleted_at IS NULL`,
       [merchantId, routeId]
@@ -1471,6 +1616,35 @@ export class PgOrderRepository implements OrderRepository {
       }
       const row = current.rows[0] as { valid_until: string | Date; status: PaymentSessionStatus };
       if (new Date(row.valid_until).getTime() <= new Date(params.input.now).getTime()) {
+        await client.query(
+          `UPDATE payment_sessions
+           SET status = 'expired',
+               route_lock_expires_at = NULL,
+               amount_lease_id = NULL,
+               updated_at = $3::timestamptz
+           WHERE merchant_id = $1
+             AND id = $2
+             AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
+          [params.input.merchantId, params.input.paymentSessionId, params.input.now]
+        );
+        await client.query(
+          `UPDATE orders
+           SET status = 'expired',
+               updated_at = $3::timestamptz
+           WHERE merchant_id = $1
+             AND id = (SELECT order_id FROM payment_sessions WHERE merchant_id = $1 AND id = $2)
+             AND status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
+          [params.input.merchantId, params.input.paymentSessionId, params.input.now]
+        );
+        await client.query(
+          `UPDATE amount_leases
+           SET status = 'expired',
+               updated_at = $3::timestamptz
+           WHERE merchant_id = $1
+             AND payment_session_id = $2
+             AND status = 'active'`,
+          [params.input.merchantId, params.input.paymentSessionId, params.input.now]
+        );
         await client.query('ROLLBACK');
         return { kind: 'expired' };
       }
@@ -1519,10 +1693,10 @@ async function allocateAmountLeaseForRoute(
     paymentSession: StoredPaymentSessionRecord;
     now: string;
   }
-): Promise<AmountLeaseCandidate & { displayAmountMinor: number }> {
+): Promise<AmountLeaseCandidate & { id: string; displayAmountMinor: number }> {
   const rail = amountLeaseRailForRoute(input.route.rail_type);
   const existing = await client.query(
-    `SELECT display_amount_minor, reconciliation_delta_minor, payable_amount_minor
+    `SELECT id, display_amount_minor, reconciliation_delta_minor, payable_amount_minor
      FROM amount_leases
      WHERE merchant_id = $1
        AND payment_session_id = $2
@@ -1535,11 +1709,13 @@ async function allocateAmountLeaseForRoute(
   );
   if (existing.rows[0]) {
     const row = existing.rows[0] as {
+      id: string;
       display_amount_minor: number | string;
       reconciliation_delta_minor: number | string;
       payable_amount_minor: number | string;
     };
     return {
+      id: row.id,
       displayAmountMinor: Number(row.display_amount_minor),
       reconciliationDeltaMinor: Number(row.reconciliation_delta_minor),
       payableAmountMinor: Number(row.payable_amount_minor)
@@ -1591,7 +1767,7 @@ async function allocateAmountLeaseForRoute(
       )
       VALUES ($1, $2, $3::uuid, $4, $5, $6, $7, $8, 'active', $9::timestamptz, $10::timestamptz, $10::timestamptz)
       ON CONFLICT DO NOTHING
-      RETURNING payable_amount_minor`,
+      RETURNING id, payable_amount_minor`,
       [
         input.merchantId,
         input.paymentSessionId,
@@ -1607,6 +1783,7 @@ async function allocateAmountLeaseForRoute(
     );
     if ((inserted.rowCount ?? 0) > 0) {
       return {
+        id: String((inserted.rows[0] as { id: string }).id),
         displayAmountMinor,
         ...candidate
       };
@@ -1684,6 +1861,11 @@ function toPaymentSession(row: Record<string, string | number | Date | null>): S
     noNotificationManualCheckRequestedAt: row.no_notification_manual_check_requested_at
       ? new Date(String(row.no_notification_manual_check_requested_at)).toISOString()
       : undefined,
+    routeLockedAt: row.route_locked_at ? new Date(String(row.route_locked_at)).toISOString() : undefined,
+    routeLockExpiresAt: row.route_lock_expires_at
+      ? new Date(String(row.route_lock_expires_at)).toISOString()
+      : undefined,
+    amountLeaseId: row.amount_lease_id ? String(row.amount_lease_id) : undefined,
     validFrom: new Date(String(row.valid_from)).toISOString(),
     validUntil: new Date(String(row.valid_until)).toISOString(),
     createdAt: new Date(String(row.created_at)).toISOString(),
@@ -1723,10 +1905,26 @@ function toMerchantReceivingRoute(row: Record<string, string | boolean | Date | 
     recommended: Boolean(row.recommended),
     review_policy: String(row.review_policy) as ReceivingRouteReviewPolicy,
     fees_hint: row.fees_hint ? String(row.fees_hint) : undefined,
+    lifecycle_status: routeLifecycleFromRow(row),
+    pending_disable_at: row.pending_disable_at ? new Date(String(row.pending_disable_at)).toISOString() : null,
+    disabled_at: row.disabled_at ? new Date(String(row.disabled_at)).toISOString() : null,
+    revoked_at: row.revoked_at ? new Date(String(row.revoked_at)).toISOString() : null,
+    revocation_reason: row.revocation_reason ? String(row.revocation_reason) : null,
     created_at: new Date(String(row.created_at)).toISOString(),
     updated_at: new Date(String(row.updated_at)).toISOString(),
     deleted_at: row.deleted_at ? new Date(String(row.deleted_at)).toISOString() : null
   };
+}
+
+function routeLifecycleFromRow(row: Record<string, string | boolean | Date | null>): ReceivingRouteLifecycleStatus {
+  const lifecycle = row.lifecycle_status ? String(row.lifecycle_status) as ReceivingRouteLifecycleStatus : undefined;
+  if (lifecycle && ['active', 'pending_disable', 'disabled', 'revoked', 'deleted'].includes(lifecycle)) {
+    return lifecycle;
+  }
+  if (row.deleted_at) {
+    return 'deleted';
+  }
+  return row.enabled ? 'active' : 'disabled';
 }
 
 const copyDetailsAllowedSessionStatuses = new Set<PaymentSessionStatus>([
@@ -1805,9 +2003,40 @@ export function buildMerchantReceivingRouteRecord(input: {
     recommended: input.recommended ?? false,
     review_policy: reviewPolicy,
     fees_hint: input.feesHint?.trim() || undefined,
+    lifecycle_status: input.enabled === false ? 'disabled' : 'active',
+    pending_disable_at: null,
+    disabled_at: input.enabled === false ? input.now : null,
+    revoked_at: null,
+    revocation_reason: null,
     created_at: input.now,
     updated_at: input.now
   };
+}
+
+function isReceivingRouteVisibleToNewCheckout(route: StoredMerchantReceivingRouteRecord): boolean {
+  return route.enabled && route.lifecycle_status === 'active' && !route.deleted_at;
+}
+
+function isReceivingRouteUsableForSession(
+  route: StoredMerchantReceivingRouteRecord,
+  paymentSession: Pick<StoredPaymentSessionRecord, 'selectedReceivingRouteId' | 'routeLockExpiresAt' | 'status'>
+): boolean {
+  if (route.deleted_at || route.lifecycle_status === 'revoked' || route.lifecycle_status === 'disabled' || route.lifecycle_status === 'deleted') {
+    return false;
+  }
+  if (route.lifecycle_status === 'active') {
+    return route.enabled;
+  }
+  if (route.lifecycle_status !== 'pending_disable') {
+    return false;
+  }
+  if (route.route_id !== paymentSession.selectedReceivingRouteId || !paymentSession.routeLockExpiresAt) {
+    return false;
+  }
+  if (ROUTE_FINAL_SESSION_STATUSES.has(paymentSession.status)) {
+    return false;
+  }
+  return true;
 }
 
 export function receiverIdentifierTypeForRail(railType: ReceivingRouteRailType): ReceiverIdentifierType {
@@ -1882,6 +2111,10 @@ function toReceivingRouteAuditPayload(route: StoredMerchantReceivingRouteRecord)
     route_code: route.route_code,
     enabled: route.enabled,
     recommended: route.recommended,
+    lifecycle_status: route.lifecycle_status,
+    pending_disable_at: route.pending_disable_at ?? null,
+    disabled_at: route.disabled_at ?? null,
+    revoked_at: route.revoked_at ?? null,
     review_policy: route.review_policy,
     deleted_at: route.deleted_at ?? null,
     auto_confirm_enabled: false

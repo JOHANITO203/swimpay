@@ -635,3 +635,10 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Staging/online checkout validation requires commit, push and Dokploy redeploy before SWIMVPN+ can observe the new behavior.
 - Native Android bank launcher runtime remains outside this refactor.
 - Real bank notification testing remains out of scope.
+
+## Route Readiness / Soft Disable
+
+- No critical local blocker remains.
+- Staging requires migration `017_receiving_route_readiness_lock.sql` before relying on route lifecycle and lock fields.
+- Online SWIMVPN+ validation requires commit, push and Dokploy redeploy.
+- Real bank notification testing remains out of scope.

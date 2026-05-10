@@ -437,6 +437,7 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 
 ## Recently Completed / Blocked
 
+- [x] `route_readiness_reservation_soft_disable` - status: completed - source: `.swimpay-agent/ROUTE_READINESS_SOFT_DISABLE_REPORT.md`
 - [x] `423_android_premium_dashboard_state_rollout` - status: completed - source: `tasks/423_android_premium_dashboard_state_rollout.md`
 - [x] `424_android_premium_reviews_state_rollout` - status: completed - source: `tasks/424_android_premium_reviews_state_rollout.md`
 - [x] `425_android_premium_payment_detail_state_rollout` - status: completed - source: `tasks/425_android_premium_payment_detail_state_rollout.md`

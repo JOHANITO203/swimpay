@@ -74,6 +74,8 @@ export interface PaymentSessionReadResponse {
   display_amount?: { value: string; currency: string } | undefined;
   payable_amount?: { value: string; currency: string } | undefined;
   reconciliation_delta_minor?: number | undefined;
+  route_locked_at?: string | undefined;
+  route_lock_expires_at?: string | undefined;
   available_payment_methods?: AvailableCheckoutPaymentMethods | undefined;
   available_routes?: readonly AvailableCheckoutRoute[] | undefined;
   available_compatibility_pairs?: readonly PaymentCompatibilityPair[] | undefined;
@@ -108,6 +110,8 @@ export interface CheckoutStatusResponse {
   display_amount?: { value: string; currency: string } | undefined;
   payable_amount?: { value: string; currency: string } | undefined;
   reconciliation_delta_minor?: number | undefined;
+  route_locked_at?: string | undefined;
+  route_lock_expires_at?: string | undefined;
   available_payment_methods?: AvailableCheckoutPaymentMethods | undefined;
   available_routes?: readonly AvailableCheckoutRoute[] | undefined;
   available_compatibility_pairs?: readonly PaymentCompatibilityPair[] | undefined;
@@ -248,6 +252,8 @@ export function toPaymentSessionReadResponse(params: {
       ? { value: formatAmountMinor(params.paymentSession.payableAmountMinor), currency: params.paymentSession.currency }
       : undefined,
     reconciliation_delta_minor: params.paymentSession.reconciliationDeltaMinor,
+    route_locked_at: params.paymentSession.routeLockedAt,
+    route_lock_expires_at: params.paymentSession.routeLockExpiresAt,
     available_payment_methods: availability?.available_payment_methods,
     available_routes: availability?.available_routes,
     available_compatibility_pairs: availability?.available_compatibility_pairs,
@@ -291,6 +297,8 @@ export function toCheckoutStatusResponse(params: {
     display_amount: read.display_amount,
     payable_amount: read.payable_amount,
     reconciliation_delta_minor: read.reconciliation_delta_minor,
+    route_locked_at: read.route_locked_at,
+    route_lock_expires_at: read.route_lock_expires_at,
     available_payment_methods: read.available_payment_methods,
     available_routes: read.available_routes,
     available_compatibility_pairs: read.available_compatibility_pairs,
@@ -331,7 +339,7 @@ export function buildCheckoutAvailability(
   fallback_actions: readonly CheckoutFallbackAction[];
 } {
   const availableRoutes = routes
-    .filter((route) => route.enabled)
+    .filter((route) => route.enabled && route.lifecycle_status === 'active')
     .map((route) => ({
       route_id: route.route_id,
       method_type: route.rail_type === 'phone_transfer' ? 'sbp' as const : 'card' as const,
@@ -382,7 +390,7 @@ function buildPaymentCompatibilityPairs(
   routes: readonly MerchantReceivingRoute[]
 ): readonly PaymentCompatibilityPair[] {
   return routes
-    .filter((route) => route.enabled)
+    .filter((route) => route.enabled && route.lifecycle_status === 'active')
     .map((route) => {
       const method = route.rail_type === 'phone_transfer' ? 'sbp' as const : 'card' as const;
       const selected = route.route_id === paymentSession.selectedReceivingRouteId;
@@ -561,7 +569,7 @@ function checkoutStateForPaymentSession(
 }
 
 function withRouteSummary(bank: ReceiverBankOption, routes: readonly MerchantReceivingRoute[]): ReceiverBankOption {
-  const bankRoutes = routes.filter((route) => route.bank_profile_id === bank.bank_profile_id && route.enabled);
+  const bankRoutes = routes.filter((route) => route.bank_profile_id === bank.bank_profile_id && route.enabled && route.lifecycle_status === 'active');
   const railTypes = [...new Set(bankRoutes.map((route) => route.rail_type))] as ReceivingRouteRailType[];
   const recommended = bankRoutes.find((route) => route.recommended) ?? bankRoutes[0] ?? null;
   return stripUndefined({

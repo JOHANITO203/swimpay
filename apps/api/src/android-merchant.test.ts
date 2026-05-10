@@ -1066,6 +1066,7 @@ class FakeOrderRepository implements OrderRepository {
     recommended: true,
     review_policy: 'review_first',
     fees_hint: undefined,
+    lifecycle_status: 'active',
     created_at: '2026-05-03T09:50:00.000Z',
     updated_at: '2026-05-03T09:50:00.000Z'
   };

@@ -80,6 +80,9 @@ export type ReceiverIdentifierType = (typeof ReceiverIdentifierTypes)[number];
 export const ReceivingRouteReviewPolicies = ['review_first', 'eligible_low_risk_later'] as const;
 export type ReceivingRouteReviewPolicy = (typeof ReceivingRouteReviewPolicies)[number];
 
+export const ReceivingRouteLifecycleStatuses = ['active', 'pending_disable', 'disabled', 'revoked', 'deleted'] as const;
+export type ReceivingRouteLifecycleStatus = (typeof ReceivingRouteLifecycleStatuses)[number];
+
 export const ReceivingRouteRiskReasonCodes = [
   'phone_transfer_matching_hint_available',
   'buyer_sender_phone_missing',
@@ -127,6 +130,11 @@ export interface MerchantReceivingRoute {
   recommended: boolean;
   review_policy: ReceivingRouteReviewPolicy;
   fees_hint?: string | undefined;
+  lifecycle_status: ReceivingRouteLifecycleStatus;
+  pending_disable_at?: string | null | undefined;
+  disabled_at?: string | null | undefined;
+  revoked_at?: string | null | undefined;
+  revocation_reason?: string | null | undefined;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null | undefined;
@@ -177,6 +185,7 @@ export type CheckoutUnavailableReason =
   | 'merchant_no_active_receiving_method'
   | 'method_not_supported_by_merchant'
   | 'route_disabled'
+  | 'route_revoked'
   | 'route_expired'
   | 'certification_blocked'
   | 'amount_lease_unavailable'

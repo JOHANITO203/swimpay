@@ -20,6 +20,11 @@ interface TestReceivingRoute {
   recommended: boolean;
   review_policy: 'review_first' | 'eligible_low_risk_later';
   fees_hint?: string | undefined;
+  lifecycle_status: 'active' | 'pending_disable' | 'disabled' | 'revoked' | 'deleted';
+  pending_disable_at?: string | null | undefined;
+  disabled_at?: string | null | undefined;
+  revoked_at?: string | null | undefined;
+  revocation_reason?: string | null | undefined;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null | undefined;
@@ -148,6 +153,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     result.paymentSession.selectedReceiverBankProfileId = input.bankProfileId;
     result.paymentSession.selectedReceivingRouteId = input.receivingRouteId;
     result.paymentSession.selectedPayerBankLauncherId = input.payerBankLauncherId;
+    result.paymentSession.amountLeaseId = undefined;
     result.paymentSession.paymentInstructionsShownAt = undefined;
     result.paymentSession.updatedAt = input.now;
     this.auditEvents.push({
@@ -189,7 +195,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
   async updateReceivingRoute(input: {
     merchantId: string;
     routeId: string;
-    patch: Partial<Pick<TestReceivingRoute, 'enabled' | 'recommended' | 'display_label' | 'fees_hint'>>;
+    patch: Partial<Pick<TestReceivingRoute, 'enabled' | 'recommended' | 'display_label' | 'fees_hint' | 'lifecycle_status' | 'revocation_reason'>>;
     auditEventId: string;
     now: string;
   }) {
@@ -204,7 +210,8 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
         }
       }
     }
-    Object.assign(route, input.patch, { updated_at: input.now });
+    const lifecyclePatch = this.resolveRouteLifecyclePatch(route, input.patch, input.now);
+    Object.assign(route, input.patch, lifecyclePatch, { updated_at: input.now });
     this.auditEvents.push({ eventType: 'merchant_receiving_route.updated', objectId: input.routeId });
     return { kind: 'updated' as const, route };
   }
@@ -220,7 +227,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     if (!route || route.merchant_id !== input.merchantId || route.deleted_at) {
       return { kind: 'not_found' as const };
     }
-    Object.assign(route, { enabled: false, recommended: false, deleted_at: input.now, updated_at: input.now });
+    Object.assign(route, { enabled: false, recommended: false, lifecycle_status: 'deleted', deleted_at: input.now, updated_at: input.now });
     this.auditEvents.push({ eventType: 'merchant_receiving_route.deleted', objectId: input.routeId });
     return { kind: 'updated' as const, route };
   }
@@ -228,18 +235,18 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
   async listReceiverBanksForCheckout(merchantId: string, paymentSessionId: string) {
     void paymentSessionId;
     return [...this.receivingRoutes.values()].filter(
-      (route) => route.merchant_id === merchantId && route.enabled && !route.deleted_at && this.routeCertificationAllowsCheckout(route)
+      (route) => route.merchant_id === merchantId && this.routeVisibleToNewCheckout(route) && this.routeCertificationAllowsCheckout(route)
     );
   }
 
   async listReceivingRoutesForCheckoutBank(merchantId: string, paymentSessionId: string, bankProfileId: string) {
-    void paymentSessionId;
+    const paymentSession = this.paymentSessions.get(paymentSessionId);
     return [...this.receivingRoutes.values()].filter(
       (route) =>
         route.merchant_id === merchantId &&
         route.bank_profile_id === bankProfileId &&
-        route.enabled &&
         !route.deleted_at &&
+        (this.routeVisibleToNewCheckout(route) || this.routeUsableForLockedSession(route, paymentSession)) &&
         this.routeCertificationAllowsCheckout(route)
     );
   }
@@ -264,7 +271,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
       return { kind: 'not_selected' as const };
     }
     const route = this.receivingRoutes.get(result.paymentSession.selectedReceivingRouteId);
-    if (!route || !route.enabled || route.deleted_at || route.merchant_id !== input.merchantId) {
+    if (!route || route.deleted_at || route.merchant_id !== input.merchantId || !this.routeUsableForLockedSession(route, result.paymentSession)) {
       return { kind: 'not_found' as const };
     }
 
@@ -312,7 +319,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
       return result;
     }
     const route = this.receivingRoutes.get(input.receivingRouteId);
-    if (!route || route.deleted_at || route.merchant_id !== input.merchantId || route.bank_profile_id !== result.paymentSession.selectedReceiverBankProfileId) {
+    if (!route || route.deleted_at || route.merchant_id !== input.merchantId || route.bank_profile_id !== result.paymentSession.selectedReceiverBankProfileId || !this.routeVisibleToNewCheckout(route)) {
       return { kind: 'not_found' as const };
     }
     if (result.paymentSession.paymentMethod === 'card' && route.rail_type !== 'card_transfer') {
@@ -327,6 +334,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
 
     result.paymentSession.selectedReceivingRouteId = input.receivingRouteId;
     result.paymentSession.selectedPayerBankLauncherId = undefined;
+    result.paymentSession.amountLeaseId = `lease_${input.receivingRouteId}`;
     result.paymentSession.paymentInstructionsShownAt = undefined;
     result.paymentSession.updatedAt = input.now;
     this.auditEvents.push({ eventType: 'checkout.receiving_route_selected', objectId: input.paymentSessionId });
@@ -352,6 +360,67 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
       railSupported: certification.rails,
       routeRailType: route.rail_type
     });
+  }
+
+  private routeVisibleToNewCheckout(route: TestReceivingRoute): boolean {
+    return route.enabled && (route.lifecycle_status ?? 'active') === 'active' && !route.deleted_at;
+  }
+
+  private routeUsableForLockedSession(route: TestReceivingRoute, paymentSession: StoredPaymentSessionRecord | undefined): boolean {
+    if (!paymentSession || route.route_id !== paymentSession.selectedReceivingRouteId) {
+      return false;
+    }
+    const lifecycle = route.lifecycle_status ?? (route.enabled ? 'active' : 'disabled');
+    if (lifecycle === 'active') {
+      return route.enabled;
+    }
+    return lifecycle === 'pending_disable' && Boolean(paymentSession.routeLockExpiresAt);
+  }
+
+  private resolveRouteLifecyclePatch(
+    route: TestReceivingRoute,
+    patch: Partial<Pick<TestReceivingRoute, 'enabled' | 'recommended' | 'display_label' | 'fees_hint' | 'lifecycle_status' | 'revocation_reason'>>,
+    now: string
+  ): Partial<TestReceivingRoute> {
+    if (patch.lifecycle_status === 'revoked') {
+      return {
+        enabled: false,
+        recommended: false,
+        lifecycle_status: 'revoked',
+        revoked_at: now,
+        revocation_reason: patch.revocation_reason ?? 'merchant_requested_revoke'
+      };
+    }
+    if (patch.enabled === true) {
+      return {
+        enabled: true,
+        lifecycle_status: 'active',
+        pending_disable_at: null,
+        disabled_at: null
+      };
+    }
+    if (patch.enabled === false) {
+      const activeLockedSession = [...this.paymentSessions.values()].some(
+        (session) =>
+          session.selectedReceivingRouteId === route.route_id &&
+          Boolean(session.routeLockExpiresAt) &&
+          !['manual_confirmed', 'rejected', 'expired'].includes(session.status)
+      );
+      return activeLockedSession
+        ? {
+            enabled: false,
+            recommended: false,
+            lifecycle_status: 'pending_disable',
+            pending_disable_at: now
+          }
+        : {
+            enabled: false,
+            recommended: false,
+            lifecycle_status: 'disabled',
+            disabled_at: now
+          };
+    }
+    return {};
   }
 
   async saveBuyerSenderPhoneHint(input: {
@@ -380,6 +449,9 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     }
 
     result.paymentSession.paymentInstructionsShownAt = input.now;
+    result.paymentSession.routeLockedAt = result.paymentSession.routeLockedAt ?? input.now;
+    result.paymentSession.routeLockExpiresAt = result.paymentSession.routeLockExpiresAt ?? result.paymentSession.validUntil;
+    result.paymentSession.amountLeaseId = result.paymentSession.amountLeaseId ?? `lease_${result.paymentSession.selectedReceivingRouteId ?? 'unknown'}`;
     result.paymentSession.updatedAt = input.now;
     result.order.status = 'payment_instructions_shown';
     result.order.updatedAt = input.now;
@@ -490,6 +562,13 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
       return { kind: 'not_found' as const };
     }
     if (new Date(paymentSession.validUntil).getTime() <= new Date(now).getTime()) {
+      paymentSession.status = 'expired';
+      paymentSession.routeLockExpiresAt = undefined;
+      paymentSession.amountLeaseId = undefined;
+      const expiredOrder = this.orders.get(paymentSession.orderId);
+      if (expiredOrder) {
+        expiredOrder.status = 'expired';
+      }
       return { kind: 'expired' as const };
     }
     const order = this.orders.get(paymentSession.orderId);
@@ -1894,6 +1973,150 @@ describe('payment session api', () => {
           receiving_route_id: 'route_1'
         }
       }
+    });
+    expect(repository.paymentSessions.get('ps_session_01')?.status).toBe('receiver_arming');
+    expect(repository.orders.get('ord_session_01')?.status).not.toBe('receiver_armed');
+  });
+
+  test('locks the selected route at instructions and allows a pending-disable route to continue for the locked session', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createPhoneExpectedProfile(server);
+
+    const instructions = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/payment-instructions-shown',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const disabled = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods/route_1/disable',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const hiddenFromNewSessions = await repository.listReceiverBanksForCheckout('mch_01', 'ps_new_session');
+    const copyDetails = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/receiving-route/copy-details',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const continueToBank = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/continue-to-bank',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(instructions.statusCode).toBe(200);
+    expect(instructions.json()).toMatchObject({
+      route_lock_expires_at: '2026-05-02T10:15:00.000Z',
+      selected_receiving_route_id: 'route_1'
+    });
+    expect(disabled.statusCode).toBe(200);
+    expect(disabled.json()).toMatchObject({
+      method: {
+        id: 'route_1',
+        status: 'pending_disable',
+        lifecycle_status: 'pending_disable'
+      }
+    });
+    expect(hiddenFromNewSessions).toEqual([]);
+    expect(copyDetails.statusCode).toBe(200);
+    expect(continueToBank.statusCode).toBe(200);
+    expect(continueToBank.json()).toMatchObject({
+      status: 'receiver_armed',
+      receiver_status: 'armed',
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+  });
+
+  test('disables a selected route immediately before Step 2 lock and returns actionable fallback', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createPhoneExpectedProfile(server);
+
+    const disabled = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods/route_1/disable',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const instructions = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/payment-instructions-shown',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(disabled.statusCode).toBe(200);
+    expect(disabled.json()).toMatchObject({
+      method: {
+        id: 'route_1',
+        status: 'inactive',
+        lifecycle_status: 'disabled'
+      }
+    });
+    expect(instructions.statusCode).toBe(409);
+    expect(instructions.json()).toMatchObject({
+      error: {
+        code: 'receiving_route_unavailable',
+        details: {
+          payment_method: 'sbp',
+          receiving_route_id: 'route_1',
+          unavailable_reason: 'route_disabled',
+          fallback_actions: ['refresh_methods', 'return_to_merchant']
+        }
+      },
+      official_bank_confirmation: false
+    });
+    expect(repository.paymentSessions.get('ps_session_01')?.status).toBe('receiver_arming');
+    expect(repository.orders.get('ord_session_01')?.status).not.toBe('payment_instructions_shown');
+  });
+
+  test('revoked locked route blocks receiver arming with structured fallback', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createPhoneExpectedProfile(server);
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/payment-instructions-shown',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    const revoked = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods/route_1/revoke',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { reason: 'receiver destination compromised' }
+    });
+    const continueToBank = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/continue-to-bank',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(revoked.statusCode).toBe(200);
+    expect(revoked.json()).toMatchObject({
+      method: {
+        id: 'route_1',
+        status: 'revoked',
+        lifecycle_status: 'revoked'
+      }
+    });
+    expect(continueToBank.statusCode).toBe(409);
+    expect(continueToBank.json()).toMatchObject({
+      error: {
+        code: 'receiving_route_unavailable',
+        details: {
+          unavailable_reason: 'route_revoked',
+          receiving_route_id: 'route_1',
+          fallback_actions: ['refresh_methods', 'return_to_merchant']
+        }
+      },
+      official_bank_confirmation: false
     });
     expect(repository.paymentSessions.get('ps_session_01')?.status).toBe('receiver_arming');
     expect(repository.orders.get('ord_session_01')?.status).not.toBe('receiver_armed');
