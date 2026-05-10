@@ -6,7 +6,16 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-The current addendum is MERCHANT-READINESS-GATE. It prevents a merchant with no active checkout-safe receiving route from being considered payment-ready.
+The current hotfix is CHECKOUT-EXTERNAL-FLOW-REPAIR. It reconciles staging schema dependencies and external app error handling after the checkout business-logic refactors.
+
+- [x] `checkout_external_breakage_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_EXTERNAL_APP_BREAKAGE_AUDIT.md`
+- [x] `staging_migration_reconciliation` - status: completed_local_migration_created - source: `.swimpay-agent/STAGING_MIGRATION_RECONCILIATION_REPORT.md`
+- [x] `external_app_sdk_error_rendering` - status: completed_validated - source: `.swimpay-agent/CHECKOUT_EXTERNAL_FLOW_REPAIR_REPORT.md`
+- [ ] `staging_sdk_order_rehearsal` - status: blocked_waiting_for_staging_secret_and_vps_migration - source: `.swimpay-agent/CHECKOUT_EXTERNAL_FLOW_REPAIR_REPORT.md`
+
+## Previous Queue
+
+The previous addendum was MERCHANT-READINESS-GATE. It prevents a merchant with no active checkout-safe receiving route from being considered payment-ready.
 
 - [x] `merchant_readiness_contract` - status: completed_validated - source: `.swimpay-agent/MERCHANT_READINESS_GATE_REPORT.md`
 - [x] `merchant_order_creation_gate` - status: completed_validated - source: `.swimpay-agent/MERCHANT_READINESS_GATE_REPORT.md`

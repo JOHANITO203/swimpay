@@ -1,5 +1,14 @@
 # Blockers
 
+## Checkout External Flow Repair
+
+- Resolved locally: created additive idempotent migration `018_checkout_external_flow_reconciliation.sql` for staging schema reconciliation.
+- Resolved locally: deployment guardrail now checks that the reconciliation migration contains current checkout runtime tables and columns.
+- Resolved locally: the real staging external merchant app preserves `SwimPayApiError` status/code/details instead of converting setup errors into generic HTTP 500.
+- Staging blocker: apply `018_checkout_external_flow_reconciliation.sql` on the VPS after the repo sync.
+- Staging blocker: no local staging SDK secret/webhook secret/external app base URL is available, so SDK order creation was not run from this machine.
+- Not executed: real bank notification capture, auto-confirmation, public webhook semantic changes or Android receiver runtime capture.
+
 ## Merchant Readiness Gate
 
 - Resolved locally: merchants with no active checkout-safe receiving route now report `merchant_setup_status=receiving_method_required`.

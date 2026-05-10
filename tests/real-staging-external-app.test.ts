@@ -6,9 +6,17 @@ const readme = readFileSync('examples/real-staging-merchant/README.md', 'utf8');
 
 describe('real staging external merchant app', () => {
   it('uses the SwimPay Node SDK for order creation and webhook verification', () => {
-    expect(serverSource).toContain("import { SwimPay, WebhooksClient }");
+    expect(serverSource).toContain("import { SwimPay, SwimPayApiError, WebhooksClient }");
     expect(serverSource).toContain("swimpay.orders.create");
     expect(serverSource).toContain("webhooks.verify");
+  });
+
+  it('preserves SDK setup errors as structured external app responses', () => {
+    expect(serverSource).toContain('error instanceof SwimPayApiError');
+    expect(serverSource).toContain('statusCode: error.statusCode');
+    expect(serverSource).toContain('code: error.code');
+    expect(serverSource).toContain('details: error.details');
+    expect(serverSource).toContain('merchant_payment_setup_required');
   });
 
   it('fulfills only after verified payment.confirmed with notification signal semantics', () => {

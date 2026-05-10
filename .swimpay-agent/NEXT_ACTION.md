@@ -1,5 +1,46 @@
 # Next Action
 
+generated_at: 2026-05-10T12:02:00+03:00
+
+## Latest Checkout External Flow Repair
+
+Completed locally:
+
+1. Audited local/origin commit state: both are at `31081fabb025b35366249000d2a527d4cd82eb9a` before this hotfix.
+2. Verified staging `/api-health` is reachable, but health does not prove schema compatibility.
+3. Identified the high-probability root cause: deployed code can be ahead of manually applied PostgreSQL migrations.
+4. Added idempotent migration `018_checkout_external_flow_reconciliation.sql`.
+5. Added a deployment guardrail test for required checkout runtime schema dependencies.
+6. Updated the real staging external merchant app to preserve structured SDK errors instead of returning generic HTTP 500.
+
+VPS migration command after sync:
+
+```bash
+cd /etc/dokploy/compose/swimpay-swimpay-merchant-usjsm2/code
+sudo docker exec -i swimpay-postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < packages/database/migrations/018_checkout_external_flow_reconciliation.sql
+```
+
+Next recommended action:
+
+1. Commit and push this hotfix.
+2. Let Dokploy sync/redeploy.
+3. Apply migration `018_checkout_external_flow_reconciliation.sql` on the VPS.
+4. Re-run external app SDK order creation.
+5. Open the returned `checkout_url` on the phone.
+
+Blocked locally:
+
+- No `SWIMPAY_STAGING_SECRET_KEY` / `SWIMPAY_STAGING_WEBHOOK_SECRET` / `EXTERNAL_APP_BASE_URL` in local environment, so staging SDK order creation was not executed from this machine.
+
+Do not do:
+
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not change public webhook semantics.
+- Do not expose raw PAN or raw phone after submit.
+
+---
+
 generated_at: 2026-05-10T11:45:00+03:00
 
 ## Latest Merchant Readiness Gate

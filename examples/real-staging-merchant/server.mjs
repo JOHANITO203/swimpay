@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { SwimPay, WebhooksClient } from '../../packages/swimpay-node/dist/index.js';
+import { SwimPay, SwimPayApiError, WebhooksClient } from '../../packages/swimpay-node/dist/index.js';
 
 const port = Number(process.env.PORT ?? 4105);
 const apiBaseUrl = requiredEnv('SWIMPAY_STAGING_API_BASE_URL');
@@ -78,7 +78,8 @@ const server = createServer(async (request, response) => {
 
     return sendJson(response, 404, { error: 'not_found' });
   } catch (error) {
-    return sendJson(response, 500, { error: safeError(error) });
+    const statusCode = error instanceof SwimPayApiError ? error.statusCode ?? 502 : 500;
+    return sendJson(response, statusCode, { error: safeErrorPayload(error) });
   }
 });
 
@@ -123,7 +124,23 @@ function sendJson(response, statusCode, payload) {
   response.end(JSON.stringify(payload));
 }
 
-function safeError(error) {
+function safeErrorPayload(error) {
+  if (error instanceof SwimPayApiError) {
+    return {
+      code: error.code,
+      message: safeErrorMessage(error),
+      statusCode: error.statusCode,
+      details: error.details,
+      actionRequired: error.code === 'merchant_payment_setup_required'
+    };
+  }
+  return {
+    code: 'staging_app_error',
+    message: safeErrorMessage(error)
+  };
+}
+
+function safeErrorMessage(error) {
   if (!(error instanceof Error)) {
     return 'staging_app_error';
   }

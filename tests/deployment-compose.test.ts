@@ -85,4 +85,38 @@ describe('single-server docker compose deployment', () => {
       }
     }
   });
+
+  test('keeps checkout staging reconciliation migration aligned with runtime schema dependencies', () => {
+    const migrationPath = join(root, 'packages/database/migrations/018_checkout_external_flow_reconciliation.sql');
+    expect(existsSync(migrationPath)).toBe(true);
+    const migration = readFileSync(migrationPath, 'utf8');
+
+    for (const table of ['amount_leases', 'bank_route_certifications', 'worker_idempotency_ledger']) {
+      expect(migration).toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
+    }
+
+    for (const paymentSessionColumn of [
+      'payment_method',
+      'sender_bank_id',
+      'selected_receiving_route_id',
+      'selected_payer_bank_launcher_id',
+      'payable_amount_minor',
+      'reconciliation_delta_minor',
+      'receiver_armed_at',
+      'no_notification_manual_check_requested_at',
+      'route_locked_at',
+      'route_lock_expires_at',
+      'amount_lease_id'
+    ]) {
+      expect(migration).toContain(`ADD COLUMN IF NOT EXISTS ${paymentSessionColumn}`);
+    }
+
+    for (const routeColumn of ['lifecycle_status', 'pending_disable_at', 'disabled_at', 'revoked_at', 'revocation_reason']) {
+      expect(migration).toContain(`ADD COLUMN IF NOT EXISTS ${routeColumn}`);
+    }
+
+    expect(migration).toContain('idx_amount_leases_active_unique_amount');
+    expect(migration).toContain('idx_payment_sessions_active_route_locks');
+    expect(migration).toContain('ON CONFLICT (bank_id, package_name) DO UPDATE');
+  });
 });

@@ -1,5 +1,17 @@
 # Progress Log
 
+## 2026-05-10T12:02:00+03:00 - Checkout external flow repair
+
+- Audited the external app checkout breakage after the payment compatibility and route readiness refactors.
+- Confirmed local `HEAD` and `origin/main` were aligned before the hotfix.
+- Verified `https://staging.swimpay.pro/api-health` was reachable, while noting health does not prove schema compatibility.
+- Identified the likely root cause as code deployed ahead of manually applied PostgreSQL migrations on an existing Dokploy data volume.
+- Added additive idempotent migration `018_checkout_external_flow_reconciliation.sql` to reconcile current checkout runtime schema dependencies.
+- Added a deployment guardrail test to keep the reconciliation migration aligned with runtime fields.
+- Updated the real staging external merchant app to preserve structured SDK API errors such as `merchant_payment_setup_required`.
+- Targeted red/green validation passed for deployment migration guardrails and real staging external app error handling.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
 ## 2026-05-10T11:45:00+03:00 - Merchant Readiness Gate completed
 
 - Added the shared `MerchantPaymentReadiness` contract and `GET /v1/merchant/readiness`.
