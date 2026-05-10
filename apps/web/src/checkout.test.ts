@@ -111,6 +111,31 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('name="sender_phone"');
   });
 
+  it('submits the only available buyer method even when mobile WebView leaves the radio unchecked', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      available_payment_methods: { card: true, sbp: false },
+      available_routes: [
+        {
+          route_id: 'route_sber_card',
+          method_type: 'card',
+          bank_id: 'sber_ru',
+          masked_value: '2202 **** **** 7890',
+          status: 'active'
+        }
+      ]
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('type="hidden" name="payment_method" value="card"');
+    expect(response.body).not.toContain('type="hidden" name="payment_method" value="sbp"');
+    expect(response.body.match(/name="payment_method"/g)).toHaveLength(1);
+  });
+
   it('shows only SBP phone when the merchant has an active phone route only', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.routes = provider.routes.filter((route) => route.rail_type === 'phone_transfer');

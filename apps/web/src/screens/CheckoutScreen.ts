@@ -232,6 +232,9 @@ function renderBuyerIdentityStep(
     return renderNoReceivingMethodsFallback(session, hidden);
   }
   const selectedMethod = getSelectedBuyerMethod(session, methodAvailability);
+  const singleMethodInput = methodAvailability.card !== methodAvailability.sbp
+    ? `<input type="hidden" name="payment_method" value="${selectedMethod}">`
+    : '';
   const cardActive = selectedMethod === 'card';
   const sbpActive = selectedMethod === 'sbp';
   return `<section class="checkout-stage-card checkout-info-card" data-checkout-panel="buyer-identity" ${hidden ? 'hidden' : ''} data-visual-stage="info">
@@ -240,6 +243,7 @@ function renderBuyerIdentityStep(
       <p>Ces donnees servent a reconnaitre le signal de paiement.</p>
     </div>
     <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/expected-payment-profile" class="expected-profile-form">
+      ${singleMethodInput}
       <div class="checkout-input-grid">
         ${renderTextInput('Prenom', 'buyer_first_name', 'Jean', 'given-name')}
         ${renderTextInput('Nom', 'buyer_last_name', 'Dupont', 'family-name')}
@@ -247,8 +251,8 @@ function renderBuyerIdentityStep(
       <div class="checkout-field-block">
         <span class="checkout-field-label">Methode de paiement</span>
         <div class="method-toggle" role="radiogroup" aria-label="Methode de paiement">
-          ${methodAvailability.card ? renderPaymentMethodCard('card', 'Carte', 'card', cardActive) : ''}
-          ${methodAvailability.sbp ? renderPaymentMethodCard('sbp', 'SBP / telephone', 'phone', sbpActive) : ''}
+          ${methodAvailability.card ? renderPaymentMethodCard('card', 'Carte', 'card', cardActive, !singleMethodInput) : ''}
+          ${methodAvailability.sbp ? renderPaymentMethodCard('sbp', 'SBP / telephone', 'phone', sbpActive, !singleMethodInput) : ''}
         </div>
       </div>
       <label class="checkout-field">Banque d'envoi
@@ -281,11 +285,12 @@ function renderPaymentMethodCard(
   value: BuyerCheckoutPaymentMethod,
   label: string,
   icon: 'card' | 'phone',
-  selected: boolean
+  selected: boolean,
+  submitsValue = true
 ): string {
   const inputAttributes = [
     'type="radio"',
-    'name="payment_method"',
+    submitsValue ? 'name="payment_method"' : '',
     `value="${value}"`,
     selected ? 'checked' : ''
   ].filter(Boolean).join(' ');
