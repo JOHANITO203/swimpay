@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   PayerBankLauncherRegistry,
   V1ReceiverBankOptions,
@@ -8,7 +8,7 @@ import {
   type CheckoutUnavailableReason,
   type CheckoutSessionState
 } from '@swimpay/contracts';
-import { buildWebServer, type CheckoutSession, type CheckoutSessionProvider } from './index.js';
+import { ApiCheckoutSessionProvider, buildWebServer, type CheckoutSession, type CheckoutSessionProvider } from './index.js';
 
 describe('hosted checkout web foundation', () => {
   it('renders the initial checkout as an intro-first guided flow', async () => {
@@ -134,6 +134,29 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('type="hidden" name="payment_method" value="card"');
     expect(response.body).not.toContain('type="hidden" name="payment_method" value="sbp"');
     expect(response.body.match(/name="payment_method"/g)).toHaveLength(1);
+  });
+
+  it('does not send JSON content-type on bodyless checkout API posts', async () => {
+    const originalFetch = globalThis.fetch;
+    const calls: RequestInit[] = [];
+    const provider = new ApiCheckoutSessionProvider('https://api.example', 'mch_test');
+    globalThis.fetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      calls.push(init ?? {});
+      return new Response(JSON.stringify(new FakeCheckoutSessionProvider().session), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }) as typeof fetch;
+
+    try {
+      await provider.markPaymentInstructionsShown('ps_01');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.method).toBe('POST');
+    expect(calls[0]?.headers && 'Content-Type' in calls[0].headers).not.toBe(true);
   });
 
   it('shows only SBP phone when the merchant has an active phone route only', async () => {

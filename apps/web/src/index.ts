@@ -1124,7 +1124,14 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
     void checkoutMerchantId;
   }
   private async f<T>(p: string, i: RequestInit = {}): Promise<T> {
-    const r = await fetch(this.url + p, { ...i, headers: { ...i.headers, 'Content-Type': 'application/json' } });
+    const hasBody = i.body !== undefined && i.body !== null;
+    const requestInit: RequestInit = { ...i };
+    if (hasBody) {
+      const headers = new Headers(i.headers);
+      headers.set('Content-Type', 'application/json');
+      requestInit.headers = headers;
+    }
+    const r = await fetch(this.url + p, requestInit);
     if (!r.ok) {
       const body = await r.json().catch(() => ({} as CheckoutProviderErrorBody));
       throw new CheckoutProviderError(r.status, body as CheckoutProviderErrorBody);
