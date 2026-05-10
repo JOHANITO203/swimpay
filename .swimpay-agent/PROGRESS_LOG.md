@@ -2655,6 +2655,35 @@ Safety checks:
 
 ---
 
+# 2026-05-10T13:35:00+03:00 - Checkout Success/Failure Code Review Corrections
+
+- Reviewed checkout success and failure scenarios across backend checkout, matching, web fallback and job-worker webhook surfaces.
+- Fixed stale amount lease allocation and expected payment fingerprint refresh around exact payable amounts.
+- Strengthened Payment Intent Gate so matching uses `payable_amount_minor` and no longer treats rounded `display_amount_minor` as enough to create a strong review.
+- Added non-regression coverage proving a rounded displayed amount does not create a review when the payable amount includes micro-reconciliation.
+- Preserved receiver/sender bank separation in matching and signal runtime filtering.
+- Hardened checkout POST actions so PAN/phone-like fields are accepted only in Step 1 and rejected on later actions.
+- Fixed review terminal stale-state checks so final order/session state blocks later confirm/reject actions.
+- Fixed no-notification fallback rejection semantics so manual bank check rejection does not look like a notification signal.
+- Fixed idempotent rejection behavior so duplicate rejection does not publish another terminal event.
+- Created `.swimpay-agent/CHECKOUT_SUCCESS_FAILURE_CODE_REVIEW_REPORT.md`.
+- Full validation passed:
+  - `npm run android:doctor`;
+  - `npm run typecheck`;
+  - `npm run lint`;
+  - `npm test` - 77 files, 649 tests passed;
+  - `npm run build`;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config`;
+  - `npm run test:replay`;
+  - `npm run test:matching`;
+  - `npm run test:privacy`;
+  - `npm run test:webhooks`;
+  - `git diff --check`.
+- Android source was not touched, so Gradle was not run.
+- No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---
+
 - Documented the VPS migration command for `014_expected_payment_profile.sql`.
 - Documented a fallback manual SQL creation path if the migration file is not present on the VPS.
 - Recorded the next logical staging rehearsal: SDK order -> hosted checkout -> manual merchant confirmation -> final-only webhook.
@@ -2846,6 +2875,40 @@ Safety checks:
   - `npm run test:privacy`;
   - `npm run test:webhooks`.
 - Android source was not touched, so Gradle was not run.
+- No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---
+
+# 2026-05-10T15:45:00+03:00 - Payable Amount Intelligence Alignment
+
+- Aligned Payment Intent Gate and signal runtime on `payable_amount_minor` as the authoritative matching amount.
+- Added reason labels:
+  - `PAYABLE_AMOUNT_EXACT_MATCH`;
+  - `DISPLAY_AMOUNT_ONLY_MATCH`;
+  - `PAYABLE_AMOUNT_MISMATCH`;
+  - `RECONCILIATION_AMOUNT_EXPECTED`.
+- Display-amount-only bank signals are now explainable but do not create strong manual reviews when a micro-reconciliation exists.
+- Updated Android merchant payment detail to show:
+  - montant affiché;
+  - montant exact attendu;
+  - montant détecté;
+  - écart;
+  - risk label.
+- Updated merchant review copy so amount mismatch/display-only cases stay cautious.
+- Added `.swimpay-agent/PAYABLE_AMOUNT_INTELLIGENCE_ALIGNMENT_REPORT.md`.
+- Validation passed:
+  - `npm run android:doctor`;
+  - `npm run typecheck`;
+  - `npm run lint`;
+  - `npm test` - 77 files, 650 tests passed;
+  - `npm run build`;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config`;
+  - `npm run test:replay`;
+  - `npm run test:matching`;
+  - `npm run test:privacy`;
+  - `npm run test:webhooks`;
+  - Android JVM tests;
+  - Android debug APK build.
 - No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
 
 ---

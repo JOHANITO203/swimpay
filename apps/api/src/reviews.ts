@@ -5,6 +5,9 @@ import { formatAmountMinor, invalidRequest, type ApiErrorResponse } from './orde
 
 const { Pool } = pg;
 
+const finalOrderStatuses = new Set<OrderStatus>(['manual_confirmed', 'fulfilled', 'rejected', 'expired']);
+const finalPaymentSessionStatuses = new Set<PaymentSessionStatus>(['manual_confirmed', 'rejected', 'expired']);
+
 export interface ReviewListItem {
   id: string;
   merchantId: string;
@@ -14,6 +17,11 @@ export interface ReviewListItem {
   reasonCode: string;
   status: ReviewStatus;
   amountMinor?: number | undefined;
+  displayAmountMinor?: number | undefined;
+  payableAmountMinor?: number | undefined;
+  detectedAmountMinor?: number | undefined;
+  amountDeltaMinor?: number | undefined;
+  amountRiskLabel?: string | undefined;
   currency?: string | undefined;
   bankProfileId?: string | undefined;
   directionLabel?: string | undefined;
@@ -125,6 +133,20 @@ export interface ReviewListItemResponse {
     value: string;
     currency: string;
   };
+  display_amount?: {
+    value: string;
+    currency: string;
+  };
+  payable_amount?: {
+    value: string;
+    currency: string;
+  };
+  detected_amount?: {
+    value: string;
+    currency: string;
+  };
+  amount_delta_minor?: number | undefined;
+  risk_label?: string | undefined;
   bank_profile_id?: string | undefined;
   direction_label?: string | undefined;
   signal_quality?: number | undefined;
@@ -249,7 +271,15 @@ export class PgReviewRepository implements ReviewRepository {
         rq.status,
         rq.created_at,
         rq.resolved_at,
-        COALESCE(ns.amount_minor, o.amount_minor, ps.expected_amount_minor) AS amount_minor,
+        COALESCE(ns.amount_minor, ps.payable_amount_minor, ps.expected_amount_minor, o.amount_minor) AS amount_minor,
+        COALESCE(ps.display_amount_minor, o.amount_minor, ps.expected_amount_minor) AS display_amount_minor,
+        COALESCE(ps.payable_amount_minor, ps.expected_amount_minor, o.amount_minor) AS payable_amount_minor,
+        ns.amount_minor AS detected_amount_minor,
+        CASE
+          WHEN ns.amount_minor IS NOT NULL AND COALESCE(ps.payable_amount_minor, ps.expected_amount_minor, o.amount_minor) IS NOT NULL
+          THEN ABS(ns.amount_minor - COALESCE(ps.payable_amount_minor, ps.expected_amount_minor, o.amount_minor))
+          ELSE NULL
+        END AS amount_delta_minor,
         COALESCE(ns.currency, o.currency, ps.currency) AS currency,
         ns.bank_profile_id,
         ns.direction_label,
@@ -349,6 +379,19 @@ export class PgReviewRepository implements ReviewRepository {
         return { kind: 'not_open' };
       }
 
+      if (
+        (effectiveScope === 'payment_session' || effectiveScope === 'order') &&
+        (isFinalPaymentSessionStatus(currentSessionStatus) || isFinalOrderStatus(currentOrderStatus))
+      ) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_open' };
+      }
+
+      if (effectiveScope === 'order' && isFinalOrderStatus(currentOrderStatus)) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_open' };
+      }
+
       await client.query(
         `UPDATE review_queue
          SET status = 'rejected', resolved_at = $2
@@ -370,7 +413,7 @@ export class PgReviewRepository implements ReviewRepository {
 
       if (effectiveScope === 'payment_session' || effectiveScope === 'order') {
         paymentSessionStatus = 'rejected';
-        await client.query(
+        const paymentSessionUpdate = await client.query(
           `UPDATE payment_sessions
            SET status = 'rejected',
                route_lock_expires_at = NULL,
@@ -379,6 +422,10 @@ export class PgReviewRepository implements ReviewRepository {
            WHERE merchant_id = $1 AND id = $2 AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
           [input.merchantId, review.payment_session_id, input.createdAt]
         );
+        if (paymentSessionUpdate.rowCount !== 1) {
+          await client.query('ROLLBACK');
+          return { kind: 'not_open' };
+        }
         await client.query(
           `UPDATE amount_leases
            SET status = 'released',
@@ -392,12 +439,16 @@ export class PgReviewRepository implements ReviewRepository {
 
       if (effectiveScope === 'order') {
         orderStatus = 'rejected';
-        await client.query(
+        const orderUpdate = await client.query(
           `UPDATE orders
            SET status = 'rejected', updated_at = $3
            WHERE merchant_id = $1 AND id = $2 AND status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
           [input.merchantId, review.order_id, input.createdAt]
         );
+        if (orderUpdate.rowCount !== 1) {
+          await client.query('ROLLBACK');
+          return { kind: 'not_open' };
+        }
       }
 
       await client.query(
@@ -487,6 +538,7 @@ export class PgReviewRepository implements ReviewRepository {
         paymentSessionStatus,
         rejectionScope: effectiveScope,
         reason,
+        confirmationType: review.signal_id ? 'notification_signal' : 'manual_bank_check',
         reasonLabel: review.signal_id ? undefined : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED'
       };
     } catch (error) {
@@ -511,10 +563,15 @@ export class PgReviewRepository implements ReviewRepository {
       await client.query('BEGIN');
 
       const reviewResult = await client.query(
-        `SELECT id, merchant_id, order_id, payment_session_id, signal_id, status
-         FROM review_queue
-         WHERE merchant_id = $1 AND id = $2
-         FOR UPDATE`,
+        `SELECT
+           rq.id, rq.merchant_id, rq.order_id, rq.payment_session_id, rq.signal_id, rq.status,
+           o.status AS order_status,
+           ps.status AS payment_session_status
+         FROM review_queue rq
+         LEFT JOIN orders o ON o.id = rq.order_id AND o.merchant_id = rq.merchant_id
+         LEFT JOIN payment_sessions ps ON ps.id = rq.payment_session_id AND ps.merchant_id = rq.merchant_id
+         WHERE rq.merchant_id = $1 AND rq.id = $2
+         FOR UPDATE OF rq`,
         [input.merchantId, input.reviewId]
       );
 
@@ -524,7 +581,14 @@ export class PgReviewRepository implements ReviewRepository {
       }
 
       const review = reviewResult.rows[0] as ReviewActionRow;
+      const currentOrderStatus = normalizeOrderStatus(review.order_status);
+      const currentSessionStatus = normalizePaymentSessionStatus(review.payment_session_status);
       if (String(review.status) !== 'open') {
+        await client.query('ROLLBACK');
+        return { kind: 'not_open' };
+      }
+
+      if (isFinalOrderStatus(currentOrderStatus) || isFinalPaymentSessionStatus(currentSessionStatus)) {
         await client.query('ROLLBACK');
         return { kind: 'not_open' };
       }
@@ -585,22 +649,31 @@ export class PgReviewRepository implements ReviewRepository {
         ]
       );
 
-      await client.query(
+      const orderUpdate = await client.query(
         `UPDATE orders
          SET status = $1, updated_at = $2
-         WHERE merchant_id = $3 AND id = $4`,
+         WHERE merchant_id = $3
+           AND id = $4
+           AND status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
         [outcome.stateStatus, input.createdAt, input.merchantId, review.order_id]
       );
 
-      await client.query(
+      const paymentSessionUpdate = await client.query(
         `UPDATE payment_sessions
          SET status = $1,
              route_lock_expires_at = NULL,
              amount_lease_id = NULL,
              updated_at = $2
-         WHERE merchant_id = $3 AND id = $4`,
+         WHERE merchant_id = $3
+           AND id = $4
+           AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
         [outcome.stateStatus, input.createdAt, input.merchantId, review.payment_session_id]
       );
+
+      if (orderUpdate.rowCount !== 1 || paymentSessionUpdate.rowCount !== 1) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_open' };
+      }
 
       if (outcome.reviewStatus === 'confirmed') {
         await client.query(
@@ -812,6 +885,7 @@ export function buildReviewActionEvent(params: {
     merchantId: params.merchantId,
     idempotencyKey: `${eventType}:${params.result.reviewId}`,
     data: {
+      merchant_id: params.merchantId,
       review_id: params.result.reviewId,
       order_id: params.result.orderId,
       payment_session_id: params.result.paymentSessionId,
@@ -847,6 +921,35 @@ export function toReviewListResponse(items: ReviewListItem[]): ReviewListRespons
           value: formatAmountMinor(item.amountMinor),
           currency: item.currency
         };
+      }
+
+      if (item.displayAmountMinor !== undefined && item.currency) {
+        response.display_amount = {
+          value: formatAmountMinor(item.displayAmountMinor),
+          currency: item.currency
+        };
+      }
+
+      if (item.payableAmountMinor !== undefined && item.currency) {
+        response.payable_amount = {
+          value: formatAmountMinor(item.payableAmountMinor),
+          currency: item.currency
+        };
+      }
+
+      if (item.detectedAmountMinor !== undefined && item.currency) {
+        response.detected_amount = {
+          value: formatAmountMinor(item.detectedAmountMinor),
+          currency: item.currency
+        };
+      }
+
+      if (item.amountDeltaMinor !== undefined) {
+        response.amount_delta_minor = item.amountDeltaMinor;
+      }
+
+      if (item.amountRiskLabel) {
+        response.risk_label = item.amountRiskLabel;
       }
 
       if (item.bankProfileId) {
@@ -921,6 +1024,10 @@ interface ReviewListRow {
   created_at: Date | string;
   resolved_at: Date | string | null;
   amount_minor: number | string | null;
+  display_amount_minor: number | string | null;
+  payable_amount_minor: number | string | null;
+  detected_amount_minor: number | string | null;
+  amount_delta_minor: number | string | null;
   currency: string | null;
   bank_profile_id: string | null;
   direction_label: string | null;
@@ -962,6 +1069,10 @@ function toReviewListItem(row: ReviewListRow): ReviewListItem {
     reasonCode: String(row.reason_code),
     status: String(row.status) as ReviewStatus,
     amountMinor: row.amount_minor === null ? undefined : Number(row.amount_minor),
+    displayAmountMinor: row.display_amount_minor === null ? undefined : Number(row.display_amount_minor),
+    payableAmountMinor: row.payable_amount_minor === null ? undefined : Number(row.payable_amount_minor),
+    detectedAmountMinor: row.detected_amount_minor === null ? undefined : Number(row.detected_amount_minor),
+    amountDeltaMinor: row.amount_delta_minor === null ? undefined : Number(row.amount_delta_minor),
     currency: row.currency ?? undefined,
     bankProfileId: row.bank_profile_id ?? undefined,
     directionLabel: row.direction_label ?? undefined,
@@ -1066,6 +1177,14 @@ function normalizeOrderStatus(value: unknown): OrderStatus {
 
 function normalizePaymentSessionStatus(value: unknown): PaymentSessionStatus {
   return typeof value === 'string' ? (value as PaymentSessionStatus) : 'awaiting_payment';
+}
+
+function isFinalOrderStatus(status: OrderStatus): boolean {
+  return finalOrderStatuses.has(status);
+}
+
+function isFinalPaymentSessionStatus(status: PaymentSessionStatus): boolean {
+  return finalPaymentSessionStatuses.has(status);
 }
 
 function stripUndefined<T extends Record<string, unknown>>(value: T): Partial<T> {

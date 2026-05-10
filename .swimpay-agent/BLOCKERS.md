@@ -585,6 +585,9 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 
 ## Standing Non-critical Limitations
 
+- Checkout success/failure corrections are local until commit, push and Dokploy redeploy.
+- Staging/external SWIMVPN+ checkout smoke still needs to be rerun after deployment.
+- Staging DB must contain recent checkout/matching migrations before the online external app flow can be trusted.
 - Global `gradle` is still not available in PATH; use the checked-in Android Gradle wrapper.
 - Android SDK path on this machine is `C:\Users\Lenovo\AppData\Local\Android\Sdk`.
 - Android Emulator command and AVDs are not configured; real device `R5CWA0FEPZW` is available through adb.
@@ -662,4 +665,10 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - No critical local blocker remains.
 - Staging requires migration `017_receiving_route_readiness_lock.sql` before relying on route lifecycle and lock fields.
 - Online SWIMVPN+ validation requires commit, push and Dokploy redeploy.
+- Real bank notification testing remains out of scope.
+
+## Payable Amount Intelligence Alignment
+
+- No critical local blocker remains for payable amount matching.
+- Online SWIMVPN+ validation requires commit, push and Dokploy redeploy before the external app can observe the corrected matching/review copy.
 - Real bank notification testing remains out of scope.

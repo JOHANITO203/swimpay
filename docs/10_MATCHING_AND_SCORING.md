@@ -48,9 +48,13 @@ Candidate sessions must match:
 - same merchant;
 - active/pending status;
 - same currency;
-- exact amount;
+- exact payable amount (`payable_amount_minor`, falling back to `expected_amount_minor`
+  for historical sessions);
 - valid time window;
 - not already confirmed/rejected.
+
+Display amount and legacy expected/display values may appear as review context,
+but they are not exact amount matches when they differ from the payable amount.
 
 Then score phone/reference/time/template/device.
 

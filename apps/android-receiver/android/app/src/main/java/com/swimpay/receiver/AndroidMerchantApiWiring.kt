@@ -962,7 +962,11 @@ class MerchantReviewQueueApiRepository(
                 amountLabel = formatAmountLabel(amount, currency),
                 bankDisplayName = bankDisplayNameFor(bankProfileId),
                 statusLabel = "À vérifier",
-                helper = "Signal détecté",
+                helper = if (reasons.any { it == "DISPLAY_AMOUNT_ONLY_MATCH" || it == "PAYABLE_AMOUNT_MISMATCH" }) {
+                    "Montant à vérifier"
+                } else {
+                    "Signal à vérifier"
+                },
                 reasonLabels = reasons.mapMerchantReasonLabels()
             )
         }
@@ -1195,10 +1199,15 @@ class MerchantPaymentDetailApiRepository(
             return MerchantScreenRepositoryResult(MerchantRepositoryState.ERROR, listOf("Action requise"), false)
         }
         val payment = extractObjectValue(response.body, "payment").orEmpty()
+        val displayedValue = extractNestedString(payment, "amount_displayed", "value") ?: "0.00"
+        val displayedCurrency = extractNestedString(payment, "amount_displayed", "currency") ?: "RUB"
         val expectedValue = extractNestedString(payment, "amount_expected", "value") ?: "0.00"
         val expectedCurrency = extractNestedString(payment, "amount_expected", "currency") ?: "RUB"
         val detectedValue = extractNestedString(payment, "amount_detected", "value") ?: expectedValue
         val detectedCurrency = extractNestedString(payment, "amount_detected", "currency") ?: expectedCurrency
+        val deltaValue = extractNestedString(payment, "amount_delta", "value") ?: "0.00"
+        val deltaCurrency = extractNestedString(payment, "amount_delta", "currency") ?: expectedCurrency
+        val riskLabel = extractString(payment, "risk_label") ?: "Validation manuelle requise"
         val reasonLabels = extractStringArray(payment, "reason_labels").ifEmpty {
             listOf(MerchantReviewReasonCode.MANUAL_VALIDATION_BETA.merchantLabel)
         }
@@ -1210,10 +1219,16 @@ class MerchantPaymentDetailApiRepository(
                 "Vérifier ce paiement",
                 "À vérifier",
                 "Ce paiement nécessite une validation manuelle.",
-                "Montant attendu",
+                "Montant affiché",
+                formatAmountLabel(displayedValue, displayedCurrency),
+                "Montant exact attendu",
                 formatAmountLabel(expectedValue, expectedCurrency),
                 "Montant détecté",
                 formatAmountLabel(detectedValue, detectedCurrency),
+                "Écart",
+                formatAmountLabel(deltaValue, deltaCurrency),
+                "Risque",
+                riskLabel,
                 "Banque",
                 extractString(payment, "bank_display_name") ?: "Banque choisie",
                 "Moyen de réception",
@@ -1959,6 +1974,14 @@ fun List<String>.mapMerchantReasonLabels(): List<String> {
     for (reason in this) {
         val normalized = reason.lowercase(Locale.US)
         when {
+            reason == "PAYABLE_AMOUNT_EXACT_MATCH" ->
+                labels.add("Montant exact attendu reconnu")
+            reason == "DISPLAY_AMOUNT_ONLY_MATCH" ->
+                labels.add("Montant affiché seulement")
+            reason == "PAYABLE_AMOUNT_MISMATCH" ->
+                labels.add("Montant exact attendu différent")
+            reason == "RECONCILIATION_AMOUNT_EXPECTED" ->
+                labels.add("Micro-ajustement attendu")
             normalized.contains("review_only") || normalized.contains("manual_validation") ->
                 labels.add(MerchantReviewReasonCode.MANUAL_VALIDATION_BETA.merchantLabel)
             normalized.contains("reference_not") || normalized.contains("reference") ->

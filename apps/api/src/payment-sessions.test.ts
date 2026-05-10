@@ -1723,6 +1723,45 @@ describe('payment session api', () => {
     expect(JSON.stringify([response.json(), repository.paymentSessions, repository.auditEvents])).not.toContain('+7 999 123-45-67');
   });
 
+  test('returns structured amount lease unavailable error from expected payment profile checkout', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    (
+      repository as unknown as {
+        saveExpectedPaymentProfile: OrderRepository['saveExpectedPaymentProfile'];
+      }
+    ).saveExpectedPaymentProfile = async () => ({ kind: 'amount_lease_unavailable' });
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createCardRoute(server);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/expected-payment-profile',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        buyer_first_name: 'Ivan',
+        buyer_last_name: 'Petrov',
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        sender_card_number: '4242 4242 4242 4242'
+      }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'amount_lease_unavailable',
+        message: 'No payable amount is available for this checkout route right now.',
+        details: {
+          unavailable_reason: 'amount_lease_unavailable',
+          fallback_actions: ['refresh_methods', 'return_to_merchant']
+        }
+      },
+      official_bank_confirmation: false
+    });
+    expect(response.body).not.toContain('4242424242424242');
+  });
+
   test('keeps sender bank separate from merchant receiver route and payer launcher', async () => {
     const repository = new InMemoryPaymentSessionRepository();
     const server = buildServer(repository);
@@ -2027,6 +2066,58 @@ describe('payment session api', () => {
     expect(repository.orders.get('ord_session_01')?.status).toBe('buyer_claimed_paid');
     expect(repository.orders.get('ord_session_01')?.status).not.toBe('manual_confirmed');
     expect(repository.auditEvents.map((event) => event.eventType)).toContain('checkout.continue_to_bank');
+  });
+
+  test('rejects buyer credentials on checkout actions outside Step 1', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createPhoneExpectedProfile(server);
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiver-bank',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiver_bank_id: 'sber_ru' }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiving-route',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiving_route_id: 'route_1' }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/payer-bank-launcher',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { payer_bank_launcher_id: 'tbank_ru' }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/payment-instructions-shown',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    const continueWithPan = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/continue-to-bank',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { sender_card_number: '4242 4242 4242 4242' }
+    });
+    const claimedWithPhone = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/claimed-paid',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { nested: { sender_phone: '+7 999 123-45-67' } }
+    });
+
+    expect(continueWithPan.statusCode).toBe(400);
+    expect(continueWithPan.json().error.details).toMatchObject({ field: 'sender_card_number' });
+    expect(claimedWithPhone.statusCode).toBe(400);
+    expect(claimedWithPhone.json().error.details).toMatchObject({ field: 'sender_phone' });
+    expect(JSON.stringify([continueWithPan.json(), claimedWithPhone.json(), repository.auditEvents])).not.toContain('4242424242424242');
+    expect(JSON.stringify([continueWithPan.json(), claimedWithPhone.json(), repository.auditEvents])).not.toContain('+79991234567');
+    expect(repository.orders.get('ord_session_01')?.status).not.toBe('manual_confirmed');
   });
 
   test('rejects receiver arming when the selected receiving route is no longer active', async () => {

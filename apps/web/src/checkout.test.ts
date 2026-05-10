@@ -4,6 +4,8 @@ import {
   V1ReceiverBankOptions,
   toBuyerSafeReceivingRoute,
   type BuyerSafeCheckoutStatus,
+  type CheckoutFallbackAction,
+  type CheckoutUnavailableReason,
   type CheckoutSessionState
 } from '@swimpay/contracts';
 import { buildWebServer, type CheckoutSession, type CheckoutSessionProvider } from './index.js';
@@ -373,29 +375,11 @@ describe('hosted checkout web foundation', () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.routes = provider.routes.filter((route) => route.rail_type === 'card_transfer');
     provider.submitExpectedPaymentProfile = async () => {
-      const error = new Error('API Error') as Error & {
-        status: number;
-        body: {
-          error: {
-            code: string;
-            details: {
-              available_payment_methods: { card: boolean; sbp: boolean };
-              unavailable_reason: string;
-            };
-          };
-        };
-      };
-      error.status = 409;
-      error.body = {
-        error: {
-          code: 'no_receiving_route_for_method',
-          details: {
-            available_payment_methods: { card: true, sbp: false },
-            unavailable_reason: 'method_not_supported_by_merchant'
-          }
-        }
-      };
-      throw error;
+      throw structuredCheckoutConflict('no_receiving_route_for_method', {
+        available_payment_methods: { card: true, sbp: false },
+        unavailable_reason: 'method_not_supported_by_merchant',
+        fallback_actions: ['switch_to_card', 'refresh_methods', 'return_to_merchant']
+      });
     };
     const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
@@ -416,6 +400,161 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Ce marchand accepte actuellement : Carte.');
     expect(response.body).toContain('Payer par carte');
     expect(response.body).not.toContain('+7 999 123-45-67');
+  });
+
+  it('does not echo a submitted card PAN when card profile submission falls back', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = [];
+    provider.submitExpectedPaymentProfile = async () => {
+      throw structuredCheckoutConflict('no_receiving_route_for_method', {
+        available_payment_methods: { card: false, sbp: false },
+        unavailable_reason: 'merchant_no_active_receiving_method',
+        fallback_actions: ['refresh_methods', 'return_to_merchant']
+      });
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/checkout/ps_01/expected-payment-profile',
+      payload: {
+        buyer_first_name: 'Ivan',
+        buyer_last_name: 'Petrov',
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        sender_card_number: '4242 4242 4242 4242'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Paiement indisponible');
+    expect(response.body).toContain('Actualiser les methodes');
+    expect(response.body).toContain('Retour au marchand');
+    expect(response.body).not.toContain('4242 4242 4242 4242');
+    expect(response.body).not.toContain('4242424242424242');
+  });
+
+  it('renders structured fallback from intermediate receiving-route POST errors', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'card_transfer');
+    provider.session = {
+      ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      checkout_state: 'receiving_route_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    provider.selectReceivingRoute = async () => {
+      throw structuredCheckoutConflict('receiving_route_unavailable', {
+        available_payment_methods: { card: true, sbp: false },
+        unavailable_reason: 'route_disabled',
+        fallback_actions: ['switch_to_sbp']
+      });
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/checkout/ps_01/receiving-route',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      payload: 'receiving_route_id=route_sber_card'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Destination indisponible');
+    expect(response.body).toContain('Ce marchand accepte actuellement : Carte.');
+    expect(response.body).toContain('Payer par carte');
+    expect(response.body).toContain('Actualiser les methodes');
+    expect(response.body).toContain('Retour au marchand');
+    expect(response.body).not.toContain('Payer par SBP');
+    expect(response.body).not.toContain('Internal Server Error');
+  });
+
+  it('renders route fallback when marking payment instructions returns a structured 409', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'phone_transfer');
+    provider.session = {
+      ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_card',
+      selected_payer_bank_launcher_id: 'tbank_ru',
+      checkout_state: 'payment_instructions',
+      buyer_safe_status: 'awaiting_payment'
+    };
+    provider.markPaymentInstructionsShown = async () => {
+      throw structuredCheckoutConflict('receiving_route_unavailable', {
+        available_payment_methods: { card: false, sbp: true },
+        unavailable_reason: 'route_disabled',
+        fallback_actions: ['switch_to_sbp', 'refresh_methods', 'return_to_merchant']
+      });
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Destination indisponible');
+    expect(response.body).toContain('Ce marchand accepte actuellement : SBP / telephone.');
+    expect(response.body).toContain('Payer par SBP');
+    expect(response.body).toContain('data-select-method="sbp"');
+    expect(response.body).toContain('Actualiser les methodes');
+    expect(response.body).toContain('Retour au marchand');
+    expect(response.body).not.toContain('API Error');
+    expect(response.body).not.toContain('Internal Server Error');
+    expect(response.body).not.toMatch(/\b\d{16}\b/u);
+    expect(response.body).not.toMatch(/\+7\d{10}/u);
+  });
+
+  it.each([
+    ['amount_lease_unavailable', 'Montant indisponible'],
+    ['checkout_selection_incomplete', 'Selection incomplete'],
+    ['checkout_session_expired', 'Session expiree']
+  ] as const)('renders actionable checkout fallback when continue-to-bank returns %s', async (code, title) => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'card_transfer');
+    provider.session = {
+      ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_card',
+      selected_payer_bank_launcher_id: 'tbank_ru',
+      payment_instructions_shown_at: '2026-05-02T10:01:00.000Z',
+      checkout_state: 'payment_instructions',
+      buyer_safe_status: 'awaiting_payment'
+    };
+    provider.markReceiverArmed = async () => {
+      throw structuredCheckoutConflict(code, {
+        available_payment_methods: { card: true, sbp: false },
+        unavailable_reason: code === 'amount_lease_unavailable' ? 'amount_lease_unavailable' : undefined,
+        fallback_actions: ['switch_to_card', 'refresh_methods', 'return_to_merchant']
+      });
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/checkout/ps_01/continue-to-bank',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      payload: ''
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain(title);
+    expect(response.body).toContain('Ce marchand accepte actuellement : Carte.');
+    expect(response.body).toContain('Payer par carte');
+    expect(response.body).toContain('Actualiser les methodes');
+    expect(response.body).toContain('Retour au marchand');
+    expect(response.body).not.toContain('API Error');
+    expect(response.body).not.toContain('Internal Server Error');
+    expect(response.body).not.toMatch(/\b\d{16}\b/u);
+    expect(response.body).not.toMatch(/\+7\d{10}/u);
   });
 
   it('proxies explicit receiving route copy details without rendering raw destination in html', async () => {
@@ -523,6 +662,48 @@ describe('hosted checkout web foundation', () => {
     expect(provider.session.status).not.toBe('manual_confirmed');
   });
 });
+
+type StructuredCheckoutErrorCode =
+  | 'receiving_route_unavailable'
+  | 'amount_lease_unavailable'
+  | 'checkout_selection_incomplete'
+  | 'checkout_session_expired'
+  | 'no_receiving_route_for_method';
+
+function structuredCheckoutConflict(
+  code: StructuredCheckoutErrorCode,
+  details: {
+    available_payment_methods?: { card: boolean; sbp: boolean } | undefined;
+    unavailable_reason?: CheckoutUnavailableReason | undefined;
+    fallback_actions?: CheckoutFallbackAction[] | undefined;
+  }
+): Error & {
+  status: number;
+  body: {
+    error: {
+      code: StructuredCheckoutErrorCode;
+      details: typeof details;
+    };
+    official_bank_confirmation: false;
+  };
+} {
+  const error = new Error('API Error') as Error & {
+    status: number;
+    body: {
+      error: {
+        code: StructuredCheckoutErrorCode;
+        details: typeof details;
+      };
+      official_bank_confirmation: false;
+    };
+  };
+  error.status = 409;
+  error.body = {
+    error: { code, details },
+    official_bank_confirmation: false
+  };
+  return error;
+}
 
 class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
   public session: CheckoutSession = {

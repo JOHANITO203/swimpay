@@ -9,6 +9,7 @@ export default defineConfig({
       '@swimpay/events': packageAlias('./packages/events/src/index.ts'),
       '@swimpay/contracts': packageAlias('./packages/contracts/src/index.ts'),
       '@swimpay/bank-templates': packageAlias('./packages/bank-templates/src/index.ts'),
+      '@swimpay/matching-core': packageAlias('./packages/matching-core/src/index.ts'),
       '@swimpay/security': packageAlias('./packages/security/src/index.ts'),
       '@swimpay/observability': packageAlias('./packages/observability/src/index.ts')
     }

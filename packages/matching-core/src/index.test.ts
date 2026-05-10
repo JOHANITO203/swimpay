@@ -47,6 +47,50 @@ describe('matching core', () => {
     expect(result.reasonCodes).toContain('requires_review');
   });
 
+  it('uses payable amount as the exact matching amount when reconciliation delta is present', () => {
+    const result = evaluateSignalMatch({
+      signal: { ...baseSignal, amountMinor: 139035, referenceHmac: 'hmac_ref' },
+      sessions: [
+        {
+          ...baseSession,
+          expectedAmountMinor: 139000,
+          displayAmountMinor: 139000,
+          payableAmountMinor: 139035,
+          reconciliationDeltaMinor: 35,
+          referenceHmac: 'hmac_ref'
+        }
+      ],
+      context: trustedContext
+    });
+
+    expect(result.decision).toBe('needs_review');
+    expect(result.selected?.paymentSessionId).toBe('ps_01');
+    expect(result.reasonCodes).toContain('amount_exact');
+    expect(result.confidenceVector.amount).toBe('exact');
+  });
+
+  it('does not match the legacy expected/display amount when payable amount differs', () => {
+    const result = evaluateSignalMatch({
+      signal: { ...baseSignal, amountMinor: 139000, referenceHmac: 'hmac_ref' },
+      sessions: [
+        {
+          ...baseSession,
+          expectedAmountMinor: 139000,
+          displayAmountMinor: 139000,
+          payableAmountMinor: 139035,
+          reconciliationDeltaMinor: 35,
+          referenceHmac: 'hmac_ref'
+        }
+      ],
+      context: trustedContext
+    });
+
+    expect(result.decision).toBe('wait');
+    expect(result.selected).toBeUndefined();
+    expect(result.candidates).toHaveLength(0);
+    expect(result.confidenceVector.amount).toBe('mismatch');
+  });
+
   it('routes exact sender phone match to review when receiving route is not selected', () => {
     const result = evaluateSignalMatch({
       signal: { ...baseSignal, senderPhoneHmac: 'hmac_phone' },
@@ -102,6 +146,27 @@ describe('matching core', () => {
     expect(result.reasonCodes).toContain('phone_transfer_matching_hint_available');
     expect(result.reasonCodes).toContain('receiver_bank_exact');
     expect(result.reasonCodes).toContain('receiver_route_review_only');
+  });
+
+  it('does not create a review when the receiver bank does not match the active intent', () => {
+    const result = evaluateSignalMatch({
+      signal: { ...baseSignal, senderPhoneHmac: 'hmac_sender', bankProfileId: 'sber_ru' },
+      sessions: [
+        {
+          ...baseSession,
+          buyerSenderPhoneHmac: 'hmac_sender',
+          selectedReceiverBankProfileId: 'tbank_ru',
+          selectedReceivingRouteId: 'route_tbank_phone',
+          railType: 'phone_transfer',
+          receivingRouteReviewPolicy: 'eligible_low_risk_later'
+        }
+      ],
+      context: trustedContext
+    });
+
+    expect(result.decision).toBe('wait');
+    expect(result.selected).toBeUndefined();
+    expect(result.reasonCodes).toContain('no_candidate');
   });
 
   it('keeps card-transfer amount-only matches in review with route risk reasons', () => {

@@ -163,6 +163,7 @@ export interface DeleteReceivingRouteInput {
 
 export interface SelectReceivingRouteInput extends CheckoutMutationBaseInput {
   receivingRouteId: string;
+  expectedPaymentFingerprintForPayableAmount?: ((payableAmountMinor: number) => string) | undefined;
 }
 
 export interface SaveBuyerSenderPhoneHintInput extends CheckoutMutationBaseInput {
@@ -176,6 +177,7 @@ export interface SaveExpectedPaymentProfileInput extends CheckoutMutationBaseInp
   receiverBankId: string;
   bankProfileId: string;
   payerBankLauncherId: string;
+  expectedPaymentFingerprintForPayableAmount?: ((payableAmountMinor: number) => string) | undefined;
 }
 
 export type ReceivingRouteCopyDetailsResult =
@@ -199,6 +201,7 @@ export type PaymentSessionCheckoutMutationResult =
     }
   | { kind: 'not_found' }
   | { kind: 'expired' }
+  | { kind: 'amount_lease_unavailable' }
   | { kind: 'invalid_transition'; currentStatus: PaymentSessionStatus };
 
 export interface RequestNoNotificationManualCheckInput extends CheckoutMutationBaseInput {
@@ -300,6 +303,13 @@ const CHECKOUT_SELECTABLE_BANK_ROUTE_CERTIFICATION_STATUSES = new Set<BankRouteC
 ]);
 
 const ROUTE_FINAL_SESSION_STATUSES = new Set<PaymentSessionStatus>(['manual_confirmed', 'rejected', 'expired']);
+
+class AmountLeaseUnavailableError extends Error {
+  public constructor() {
+    super('No amount lease is available for this merchant receiving route.');
+    this.name = 'AmountLeaseUnavailableError';
+  }
+}
 
 export function selectAmountLeaseCandidate(input: {
   displayAmountMinor: number;
@@ -1110,6 +1120,12 @@ export class PgOrderRepository implements OrderRepository {
           paymentSession: loaded.paymentSession,
           now: input.now
         });
+        const expectedPaymentFingerprint =
+          input.expectedPaymentFingerprintForPayableAmount?.(amountLease.payableAmountMinor) ??
+          (loaded.paymentSession.expectedPaymentFingerprint &&
+          loaded.paymentSession.payableAmountMinor === amountLease.payableAmountMinor
+            ? loaded.paymentSession.expectedPaymentFingerprint
+            : null);
         await client.query(
           `UPDATE payment_sessions
            SET selected_receiving_route_id = $3,
@@ -1119,8 +1135,9 @@ export class PgOrderRepository implements OrderRepository {
                payable_amount_minor = $5,
                reconciliation_delta_minor = $6,
                expected_amount_minor = $5,
-               amount_lease_id = $7::uuid,
-               updated_at = $8
+               expected_payment_fingerprint = $7,
+               amount_lease_id = $8::uuid,
+               updated_at = $9
            WHERE merchant_id = $1 AND id = $2`,
           [
             input.merchantId,
@@ -1129,6 +1146,7 @@ export class PgOrderRepository implements OrderRepository {
             amountLease.displayAmountMinor,
             amountLease.payableAmountMinor,
             amountLease.reconciliationDeltaMinor,
+            expectedPaymentFingerprint,
             amountLease.id,
             input.now
           ]
@@ -1169,11 +1187,48 @@ export class PgOrderRepository implements OrderRepository {
   }
 
   public async saveExpectedPaymentProfile(input: SaveExpectedPaymentProfileInput): Promise<PaymentSessionCheckoutMutationResult> {
+    const loaded = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+    if (!loaded) {
+      return { kind: 'not_found' };
+    }
+    const route = await this.getReceivingRoute(input.merchantId, input.receivingRouteId);
+    if (
+      !route ||
+      route.bank_profile_id !== input.bankProfileId ||
+      route.rail_type !== receivingRailForBuyerPaymentMethod(input.profile.payment_method) ||
+      !isReceivingRouteVisibleToNewCheckout(route)
+    ) {
+      return { kind: 'not_found' };
+    }
+    if (!(await this.isReceivingRouteCertifiedForCheckout(route))) {
+      return { kind: 'not_found' };
+    }
+    const leasePaymentSession: StoredPaymentSessionRecord = {
+      ...loaded.paymentSession,
+      displayAmountMinor: input.profile.display_amount_minor,
+      payableAmountMinor: input.profile.payable_amount_minor,
+      reconciliationDeltaMinor: input.profile.reconciliation_delta_minor,
+      expectedAmountMinor: input.profile.payable_amount_minor,
+      currency: input.profile.currency,
+      validUntil: input.profile.expires_at
+    };
+
     return this.mutateCheckoutSession({
       input,
       allowedStatuses: ['created', 'receiver_arming'],
       auditEventType: 'checkout.expected_payment_profile_saved',
       apply: async (client) => {
+        const amountLease = await allocateAmountLeaseForRoute(client, {
+          merchantId: input.merchantId,
+          paymentSessionId: input.paymentSessionId,
+          route,
+          order: loaded.order,
+          paymentSession: leasePaymentSession,
+          now: input.now
+        });
+        const expectedPaymentFingerprint =
+          input.expectedPaymentFingerprintForPayableAmount?.(amountLease.payableAmountMinor) ??
+          input.profile.expected_payment_fingerprint;
         await client.query(
           `UPDATE payment_sessions
            SET payment_method = $3,
@@ -1201,9 +1256,9 @@ export class PgOrderRepository implements OrderRepository {
                selected_receiver_bank_profile_id = $24,
                selected_receiving_route_id = $25,
                selected_payer_bank_launcher_id = $26,
-               amount_lease_id = NULL,
+               amount_lease_id = $27::uuid,
                payment_instructions_shown_at = NULL,
-               updated_at = $27
+               updated_at = $28
            WHERE merchant_id = $1 AND id = $2`,
           [
             input.merchantId,
@@ -1224,14 +1279,15 @@ export class PgOrderRepository implements OrderRepository {
             JSON.stringify(input.profile.buyer_name_initial_variants),
             JSON.stringify(input.profile.buyer_name_reversed_order_variants),
             input.profile.buyer_name_fingerprint,
-            input.profile.display_amount_minor,
-            input.profile.payable_amount_minor,
-            input.profile.reconciliation_delta_minor,
-            input.profile.expected_payment_fingerprint,
+            amountLease.displayAmountMinor,
+            amountLease.payableAmountMinor,
+            amountLease.reconciliationDeltaMinor,
+            expectedPaymentFingerprint,
             input.receiverBankId,
             input.bankProfileId,
             input.receivingRouteId,
             input.payerBankLauncherId,
+            amountLease.id,
             input.now
           ]
         );
@@ -1242,11 +1298,11 @@ export class PgOrderRepository implements OrderRepository {
         sender_card_masked: input.profile.sender_card_masked,
         sender_phone_masked: input.profile.sender_phone_masked,
         display_amount_minor: input.profile.display_amount_minor,
-        payable_amount_minor: input.profile.payable_amount_minor,
-        reconciliation_delta_minor: input.profile.reconciliation_delta_minor,
         selected_receiver_bank_id: input.receiverBankId,
         selected_receiving_route_id: input.receivingRouteId,
         selected_payer_bank_launcher_id: input.payerBankLauncherId,
+        payable_amount_source: 'amount_lease',
+        amount_lease_allocated: true,
         does_not_confirm_payment: true,
         official_bank_confirmation: false
       }
@@ -1645,7 +1701,25 @@ export class PgOrderRepository implements OrderRepository {
              AND status = 'active'`,
           [params.input.merchantId, params.input.paymentSessionId, params.input.now]
         );
-        await client.query('ROLLBACK');
+        await client.query(
+          `INSERT INTO audit_events (
+            id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+          ) VALUES ($1, $2, 'payment_session.status_changed', 'payment_session', $3, 'system', $4::jsonb, $5)`,
+          [
+            params.input.auditEventId,
+            params.input.merchantId,
+            params.input.paymentSessionId,
+            JSON.stringify({
+              payment_session_id: params.input.paymentSessionId,
+              from_status: row.status,
+              to_status: 'expired',
+              reason: 'checkout_session_expired',
+              official_bank_confirmation: false
+            }),
+            params.input.now
+          ]
+        );
+        await client.query('COMMIT');
         return { kind: 'expired' };
       }
       if (params.allowedStatuses && !params.allowedStatuses.includes(row.status)) {
@@ -1676,6 +1750,9 @@ export class PgOrderRepository implements OrderRepository {
       return updated ? { kind: 'updated', order: updated.order, paymentSession: updated.paymentSession } : { kind: 'not_found' };
     } catch (error) {
       await client.query('ROLLBACK');
+      if (error instanceof AmountLeaseUnavailableError) {
+        return { kind: 'amount_lease_unavailable' };
+      }
       throw error;
     } finally {
       client.release();
@@ -1695,6 +1772,18 @@ async function allocateAmountLeaseForRoute(
   }
 ): Promise<AmountLeaseCandidate & { id: string; displayAmountMinor: number }> {
   const rail = amountLeaseRailForRoute(input.route.rail_type);
+  await client.query(
+    `UPDATE amount_leases
+     SET status = 'expired',
+         updated_at = $4::timestamptz
+     WHERE merchant_id = $1
+       AND route_id = $2::uuid
+       AND rail = $3
+       AND status = 'active'
+       AND expires_at <= $4::timestamptz`,
+    [input.merchantId, input.route.route_id, rail, input.now]
+  );
+
   const existing = await client.query(
     `SELECT id, display_amount_minor, reconciliation_delta_minor, payable_amount_minor
      FROM amount_leases
@@ -1756,7 +1845,7 @@ async function allocateAmountLeaseForRoute(
       unavailablePayableAmounts
     });
     if (!candidate) {
-      throw new Error('No amount lease is available for this merchant receiving route.');
+      throw new AmountLeaseUnavailableError();
     }
 
     const inserted = await client.query(
@@ -2346,6 +2435,19 @@ export function buildExpectedPaymentProfileMutation(params: {
       expires_at: params.loaded.paymentSession.validUntil,
       hmac: (scope, value) => hmacSha256(`${scope}:${value}`, params.phoneHmacSecret)
     });
+    const expectedPaymentFingerprintForPayableAmount = (payableAmountMinor: number): string =>
+      hmacSha256(
+        `expected_payment_fingerprint:${[
+          params.loaded.paymentSession.merchantId,
+          params.loaded.paymentSession.id,
+          String(payableAmountMinor),
+          params.loaded.paymentSession.referenceCode,
+          body.sender_bank_id,
+          body.payment_method,
+          new Date(params.loaded.paymentSession.validUntil).toISOString()
+        ].join('|')}`,
+        params.phoneHmacSecret
+      );
 
     return {
       merchantId: params.loaded.paymentSession.merchantId,
@@ -2356,7 +2458,8 @@ export function buildExpectedPaymentProfileMutation(params: {
       receivingRouteId: params.compatibility.receivingRouteId,
       receiverBankId: params.compatibility.receiverBankId,
       bankProfileId: params.compatibility.bankProfileId,
-      payerBankLauncherId: params.compatibility.payerBankLauncherId
+      payerBankLauncherId: params.compatibility.payerBankLauncherId,
+      expectedPaymentFingerprintForPayableAmount
     };
   } catch (error) {
     return invalidRequest(error instanceof Error ? error.message : 'Expected payment profile is invalid.', {});

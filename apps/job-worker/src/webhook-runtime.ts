@@ -1,4 +1,5 @@
 import { EventTypes, type DurableEventHandler, type InternalEventEnvelope, type SafeEventLogger } from '@swimpay/events';
+import { createPaymentWebhookEvent, type PublicWebhookEvent } from './webhooks.js';
 
 export interface WebhookWorkerConfig {
   enabled: boolean;
@@ -14,6 +15,10 @@ export interface WebhookDeliveryProcessor {
   processDeliveryById(deliveryId: string, now: string): Promise<unknown>;
   processEventDeliveries(eventId: string, now: string): Promise<unknown>;
   processDueDeliveries(now: string, limit: number): Promise<unknown>;
+}
+
+export interface PublicWebhookEnqueuer {
+  enqueueEvent(event: PublicWebhookEvent): Promise<{ created: number; skippedDuplicates: number }>;
 }
 
 export function parseWebhookWorkerConfig(env: Record<string, string | undefined>): WebhookWorkerConfig {
@@ -51,6 +56,66 @@ export function createWebhookDeliveryRequestedHandler(
     }
 
     throw new Error('webhook.delivery_requested requires delivery_id or event_id.');
+  };
+}
+
+export function createReviewFinalWebhookHandler(enqueuer: PublicWebhookEnqueuer): DurableEventHandler {
+  return async (event: InternalEventEnvelope): Promise<{ kind: 'ok' }> => {
+    if (event.type !== EventTypes.REVIEW_CONFIRMED && event.type !== EventTypes.REVIEW_REJECTED) {
+      throw new Error(`Unexpected review final webhook event type: ${event.type}`);
+    }
+
+    if (readOptionalString(event.data.confirmation_type) !== 'notification_signal') {
+      return { kind: 'ok' };
+    }
+
+    const merchantId = requireString(event.data.merchant_id, 'merchant_id');
+    const reviewId = requireString(event.data.review_id, 'review_id');
+    const orderId = requireString(event.data.order_id, 'order_id');
+    const paymentSessionId = requireString(event.data.payment_session_id, 'payment_session_id');
+
+    if (event.type === EventTypes.REVIEW_REJECTED) {
+      const rejectionScope = readOptionalString(event.data.rejection_scope);
+      if (rejectionScope !== 'payment_session' && rejectionScope !== 'order') {
+        return { kind: 'ok' };
+      }
+
+      await enqueuer.enqueueEvent(
+        createPaymentWebhookEvent({
+          eventId: event.id,
+          type: 'payment.rejected',
+          createdAt: event.created_at,
+          merchantId,
+          data: stripUndefined({
+            review_id: reviewId,
+            order_id: orderId,
+            payment_session_id: paymentSessionId,
+            decision: 'manual_rejected',
+            rejection_scope: rejectionScope,
+            reason: readOptionalString(event.data.reason),
+            reason_label: readOptionalString(event.data.reason_label)
+          })
+        })
+      );
+      return { kind: 'ok' };
+    }
+
+    await enqueuer.enqueueEvent(
+      createPaymentWebhookEvent({
+        eventId: event.id,
+        type: 'payment.confirmed',
+        createdAt: event.created_at,
+        merchantId,
+        data: stripUndefined({
+          review_id: reviewId,
+          order_id: orderId,
+          payment_session_id: paymentSessionId,
+          decision: 'manual_confirmed',
+          reason_label: readOptionalString(event.data.reason_label)
+        })
+      })
+    );
+    return { kind: 'ok' };
   };
 }
 
@@ -126,4 +191,17 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function requireString(value: unknown, field: string): string {
+  const normalized = readOptionalString(value);
+  if (!normalized) {
+    throw new Error(`review final webhook event requires ${field}.`);
+  }
+
+  return normalized;
+}
+
+function stripUndefined(value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
 }

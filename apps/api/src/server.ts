@@ -1893,6 +1893,10 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       merchantId: loaded.paymentSession.merchantId,
       paymentSessionId: params.id,
       receivingRouteId: selectedRoute.route_id,
+      expectedPaymentFingerprintForPayableAmount: buildExpectedPaymentFingerprintForSession(
+        loaded.paymentSession,
+        phoneHmacSecret
+      ),
       auditEventId: idGenerator.auditEventId(),
       now: clock().toISOString()
     });
@@ -2944,16 +2948,18 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (result.kind !== 'updated') {
       return reply.status(reviewActionErrorStatus(result.kind)).send(reviewActionErrorResponse(result.kind, params.id));
     }
-    metrics.increment(MetricNames.REVIEWS_REJECTED_TOTAL);
+    if (!result.idempotent) {
+      metrics.increment(MetricNames.REVIEWS_REJECTED_TOTAL);
 
-    await eventPublisher.publish(
-      buildReviewActionEvent({
-        eventId: reviewIdGenerator.eventId(),
-        result,
-        merchantId,
-        occurredAt
-      })
-    );
+      await eventPublisher.publish(
+        buildReviewActionEvent({
+          eventId: reviewIdGenerator.eventId(),
+          result,
+          merchantId,
+          occurredAt
+        })
+      );
+    }
 
     return reply.status(200).send(toReviewActionResponse(result));
   });
@@ -3786,6 +3792,13 @@ async function mutateSimpleCheckoutAction(params: {
     params.reply.status(400).send(invalidRequest('Payment session id is required.', {}));
     return null;
   }
+  const forbiddenField = findForbiddenCheckoutActionCredentialField(params.request.body);
+  if (forbiddenField) {
+    params.reply.status(400).send(invalidRequest('Checkout action does not accept buyer payment credentials.', {
+      field: forbiddenField
+    }));
+    return null;
+  }
 
   const input = {
     merchantId: loaded.paymentSession.merchantId,
@@ -3882,6 +3895,47 @@ async function mutateSimpleCheckoutAction(params: {
   }
 }
 
+function buildExpectedPaymentFingerprintForSession(
+  session: StoredPaymentSessionRecord,
+  phoneHmacSecret: string
+): ((payableAmountMinor: number) => string) | undefined {
+  if (!session.senderBankId || !session.paymentMethod) {
+    return undefined;
+  }
+
+  return (payableAmountMinor: number): string =>
+    hmacSha256(
+      `expected_payment_fingerprint:${[
+        session.merchantId,
+        session.id,
+        String(payableAmountMinor),
+        session.referenceCode,
+        session.senderBankId,
+        session.paymentMethod,
+        new Date(session.validUntil).toISOString()
+      ].join('|')}`,
+      phoneHmacSecret
+    );
+}
+
+function findForbiddenCheckoutActionCredentialField(value: unknown): string | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const forbidden =
+    /^(sender_card_number|card_number|cardnumber|card_pan|pan|full_card|sender_phone|phone|cvv|cvc|security_code|expiration|expiry|exp_month|exp_year|pin|sms_code)$/iu;
+  for (const [key, nested] of Object.entries(value)) {
+    if (forbidden.test(key)) {
+      return key;
+    }
+    const child = findForbiddenCheckoutActionCredentialField(nested);
+    if (child) {
+      return child;
+    }
+  }
+  return null;
+}
+
 async function selectedReceivingRouteStillAvailable(params: {
   repository: OrderRepository;
   paymentSession: StoredPaymentSessionRecord;
@@ -3976,6 +4030,18 @@ function sendCheckoutMutationResult<T>(
           message: 'Checkout session is expired.',
           details: {}
         }
+      });
+    case 'amount_lease_unavailable':
+      return reply.status(409).send({
+        error: {
+          code: 'amount_lease_unavailable',
+          message: 'No payable amount is available for this checkout route right now.',
+          details: {
+            unavailable_reason: 'amount_lease_unavailable',
+            fallback_actions: ['refresh_methods', 'return_to_merchant']
+          }
+        },
+        official_bank_confirmation: false
       });
     case 'invalid_transition':
       return reply.status(409).send({
@@ -4228,6 +4294,11 @@ function toAndroidMerchantPaymentDetailResponse(
     paymentSessionId: string;
     bankProfileId?: string | undefined;
     amountMinor?: number | undefined;
+    displayAmountMinor?: number | undefined;
+    payableAmountMinor?: number | undefined;
+    detectedAmountMinor?: number | undefined;
+    amountDeltaMinor?: number | undefined;
+    amountRiskLabel?: string | undefined;
     currency?: string | undefined;
     referenceCodeMasked?: string | undefined;
     createdAt: string;
@@ -4238,6 +4309,21 @@ function toAndroidMerchantPaymentDetailResponse(
   },
   route: StoredMerchantReceivingRouteRecord | null
 ): Record<string, unknown> {
+  const reasonCodes = [
+    review.reasonCode,
+    ...review.positiveReasonCodes,
+    ...review.negativeReasonCodes
+  ];
+  const displayAmountMinor = review.displayAmountMinor ?? review.amountMinor;
+  const payableAmountMinor = review.payableAmountMinor ?? review.amountMinor;
+  const detectedAmountMinor = review.detectedAmountMinor ?? review.amountMinor;
+  const amountDeltaMinor =
+    review.amountDeltaMinor ??
+    (detectedAmountMinor !== undefined && payableAmountMinor !== undefined
+      ? Math.abs(detectedAmountMinor - payableAmountMinor)
+      : undefined);
+  const riskLabel = review.amountRiskLabel ?? amountRiskLabelForAndroidMerchantReview(reasonCodes, amountDeltaMinor);
+
   return {
     payment: {
       id: review.id,
@@ -4246,18 +4332,18 @@ function toAndroidMerchantPaymentDetailResponse(
       payment_session_id: review.paymentSessionId,
       status: 'to_review',
       status_label: 'À vérifier',
-      amount_expected: amountResponse(review.amountMinor, review.currency),
-      amount_detected: amountResponse(review.amountMinor, review.currency),
+      amount_displayed: amountResponse(displayAmountMinor, review.currency),
+      amount_expected: amountResponse(payableAmountMinor, review.currency),
+      amount_detected: amountResponse(detectedAmountMinor, review.currency),
+      amount_delta_minor: amountDeltaMinor ?? null,
+      amount_delta: amountResponse(amountDeltaMinor, review.currency),
+      risk_label: riskLabel,
       bank_display_name: bankDisplayNameForProfile(review.bankProfileId),
       receiving_method_masked: route ? receivingMethodMaskedLabel(route) : 'Moyen de réception masqué',
       payment_reference: review.referenceCodeMasked ?? '<REFERENCE>',
       signal_received_at: review.createdAt,
       score: review.score ?? null,
-      reason_labels: reasonLabelsForAndroidMerchantReview([
-        review.reasonCode,
-        ...review.positiveReasonCodes,
-        ...review.negativeReasonCodes
-      ]),
+      reason_labels: reasonLabelsForAndroidMerchantReview(reasonCodes),
       timeline: [
         {
           label: 'Signal reçu',
@@ -4331,6 +4417,20 @@ function amountResponse(amountMinor: number | undefined, currency: string | unde
   };
 }
 
+function amountRiskLabelForAndroidMerchantReview(reasonCodes: string[], amountDeltaMinor: number | undefined): string {
+  const normalized = reasonCodes.map((reason) => reason.toUpperCase());
+  if (normalized.includes('DISPLAY_AMOUNT_ONLY_MATCH')) {
+    return 'Montant affiché seulement';
+  }
+  if (normalized.includes('PAYABLE_AMOUNT_MISMATCH')) {
+    return 'Montant exact attendu différent';
+  }
+  if (normalized.includes('PAYABLE_AMOUNT_EXACT_MATCH') && (amountDeltaMinor ?? 0) === 0) {
+    return 'Montant exact attendu reconnu';
+  }
+  return 'Validation manuelle requise';
+}
+
 function bankDisplayNameForProfile(bankProfileId: string | undefined): string {
   switch (bankProfileId) {
     case 'sber_ru':
@@ -4356,6 +4456,19 @@ function receivingMethodMaskedLabel(route: StoredMerchantReceivingRouteRecord): 
 function reasonLabelsForAndroidMerchantReview(reasonCodes: string[]): string[] {
   const labels = new Set<string>();
   for (const reasonCode of reasonCodes) {
+    const upper = reasonCode.toUpperCase();
+    if (upper === 'PAYABLE_AMOUNT_EXACT_MATCH') {
+      labels.add('Montant exact attendu reconnu');
+    }
+    if (upper === 'DISPLAY_AMOUNT_ONLY_MATCH') {
+      labels.add('Montant affiché seulement');
+    }
+    if (upper === 'PAYABLE_AMOUNT_MISMATCH') {
+      labels.add('Montant exact attendu différent');
+    }
+    if (upper === 'RECONCILIATION_AMOUNT_EXPECTED') {
+      labels.add('Micro-ajustement attendu');
+    }
     const normalized = reasonCode.toLowerCase();
     if (
       normalized.includes('review_only') ||

@@ -888,13 +888,17 @@ class AndroidMerchantApiWiringTest {
                 {
                   "payment": {
                     "review_id": "rev_01",
-                    "amount_expected": { "value": "58.41", "currency": "RUB" },
-                    "amount_detected": { "value": "58.41", "currency": "RUB" },
+                    "amount_displayed": { "value": "58.41", "currency": "RUB" },
+                    "amount_expected": { "value": "58.80", "currency": "RUB" },
+                    "amount_detected": { "value": "58.80", "currency": "RUB" },
+                    "amount_delta": { "value": "0.00", "currency": "RUB" },
+                    "amount_delta_minor": 0,
+                    "risk_label": "Montant exact attendu reconnu",
                     "bank_display_name": "Sberbank",
                     "receiving_method_masked": "Carte bancaire \u00b7 \u2022\u2022\u2022\u2022 4821",
                     "payment_reference": "TANGO ALFA",
                     "signal_received_at": "2026-05-03T10:00:00.000Z",
-                    "reason_labels": ["Validation manuelle en b\u00eata", "R\u00e9f\u00e9rence non visible"],
+                    "reason_labels": ["Montant exact attendu reconnu", "Micro-ajustement attendu", "Validation manuelle en b\u00eata", "R\u00e9f\u00e9rence non visible"],
                     "allowed_actions": ["reject_signal", "reject_order"]
                   },
                   "official_bank_confirmation": false
@@ -954,6 +958,14 @@ class AndroidMerchantApiWiringTest {
 
         val detail = MerchantPaymentDetailApiRepository(transport).load(session, "rev_01")
         assertEquals(MerchantRepositoryState.SUCCESS, detail.state)
+        assertTrue(detail.visibleTexts().contains("Montant affiché"))
+        assertTrue(detail.visibleTexts().contains("58,41 \u20bd"))
+        assertTrue(detail.visibleTexts().contains("Montant exact attendu"))
+        assertTrue(detail.visibleTexts().contains("58,80 \u20bd"))
+        assertTrue(detail.visibleTexts().contains("Écart"))
+        assertTrue(detail.visibleTexts().contains("0,00 \u20bd"))
+        assertTrue(detail.visibleTexts().contains("Risque"))
+        assertTrue(detail.visibleTexts().contains("Montant exact attendu reconnu"))
         assertFalse(detail.visibleTexts().joinToString(" ").contains("receiver_route_review_only"))
         assertFalse(detail.visibleTexts().contains("Confirmer le paiement"))
 

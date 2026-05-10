@@ -71,6 +71,8 @@ describe('payment intent gate', () => {
         'active_payment_intent_present',
         'receiver_bank_exact',
         'receiving_route_exact',
+        'PAYABLE_AMOUNT_EXACT_MATCH',
+        'RECONCILIATION_AMOUNT_EXPECTED',
         'expected_amount_exact',
         'currency_exact',
         'reference_exact',
@@ -189,20 +191,40 @@ describe('payment intent gate', () => {
     expect(result.confidenceVector.collision_pressure).toBe(1);
   });
 
-  it('requires exact expected micro amount instead of rounded display amount', () => {
+  it('marks display-amount-only matches as non-strong when payable has micro-reconciliation', () => {
     const result = evaluatePaymentIntentGate({
       signal: { ...baseSignal, amountMinor: 139000 },
       activePaymentIntents: [baseIntent]
     });
 
-    expect(result.intentRelation).toBe('ambiguous_activity');
-    expect(result.reviewCreationAllowed).toBe(true);
-    expect(result.reasonCodes).toContain('expected_amount_mismatch');
-    expect(result.reasonCodes).toContain('display_amount_only_mismatch');
+    expect(result.intentRelation).toBe('unrelated_bank_activity');
+    expect(result.reviewCreationAllowed).toBe(false);
+    expect(result.autoConfirmAllowed).toBe(false);
+    expect(result.selectedIntent).toBeUndefined();
+    expect(result.reasonCodes).toEqual(
+      expect.arrayContaining([
+        'DISPLAY_AMOUNT_ONLY_MATCH',
+        'PAYABLE_AMOUNT_MISMATCH',
+        'RECONCILIATION_AMOUNT_EXPECTED'
+      ])
+    );
+    expect(result.reviewCopy.title).not.toContain('détecté');
     expect(result.confidenceVector.amount).toBe('delta_match');
-    expect(result.confidenceVector.reference).toBe('exact');
-    expect(result.confidenceVector.receiver_route).toBe('exact');
-    expect(result.confidenceVector.rail).toBe('card');
+  });
+
+  it('marks unrelated amount differences as payable mismatch', () => {
+    const result = evaluatePaymentIntentGate({
+      signal: { ...baseSignal, amountMinor: 139099 },
+      activePaymentIntents: [baseIntent]
+    });
+
+    expect(result.intentRelation).toBe('unrelated_bank_activity');
+    expect(result.reviewCreationAllowed).toBe(false);
+    expect(result.reasonCodes).toEqual(
+      expect.arrayContaining(['PAYABLE_AMOUNT_MISMATCH', 'RECONCILIATION_AMOUNT_EXPECTED'])
+    );
+    expect(result.reasonCodes).not.toContain('DISPLAY_AMOUNT_ONLY_MATCH');
+    expect(result.confidenceVector.amount).toBe('mismatch');
   });
 
   it('exposes a deterministic confidence vector without allowing auto-confirmation', () => {
@@ -293,7 +315,11 @@ describe('payment intent gate', () => {
       intentRelation: 'ambiguous_activity',
       reviewCreationAllowed: true
     });
-    expect(roundedAmount.reasonCodes).toContain('display_amount_only_mismatch');
+    expect(roundedAmount).toMatchObject({
+      intentRelation: 'unrelated_bank_activity',
+      reviewCreationAllowed: false
+    });
+    expect(roundedAmount.reasonCodes).toContain('DISPLAY_AMOUNT_ONLY_MATCH');
     expect(late).toMatchObject({
       intentRelation: 'late_payment_candidate',
       reviewCreationAllowed: true,

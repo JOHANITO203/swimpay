@@ -2028,6 +2028,31 @@ Next recommended action:
    - save webhook URL;
    - run backend-owned test webhook.
 6. Put show-once values into the external merchant app environment, not chat.
+## Latest Checkout Success/Failure Code Review
+
+The local checkout/matching corrections are validated. The key product fix is now enforced: matching uses the exact `payable_amount_minor`; the rounded `display_amount_minor` alone cannot create a strong review when micro-reconciliation is present.
+
+Next recommended action:
+
+1. Commit and push the checkout success/failure corrections.
+2. Let Dokploy redeploy staging.
+3. Confirm staging DB has recent migrations applied.
+4. Run external app -> SDK order -> hosted checkout smoke.
+5. Test both success and failure paths:
+   - exact payable amount can create manual review only;
+   - rounded display amount cannot create review when payable differs;
+   - unavailable method renders actionable fallback;
+   - no webhook fires before merchant manual decision.
+
+Do not do:
+
+- Do not process real bank notifications during this validation.
+- Do not enable auto-confirmation.
+- Do not change public webhook semantics.
+- Do not expose raw PAN, raw phone, raw notification text or secrets.
+
+---
+
 7. Run SDK order creation and final-only webhook rehearsal.
 
 Do not do:
@@ -2101,6 +2126,28 @@ Next recommended action:
    - one active route shows only that method;
    - route disabled after Step 2 becomes `pending_disable` and buyer can continue;
    - route revoked after Step 2 blocks `continue-to-bank` with fallback.
+
+Do not do:
+
+- Do not process real bank notifications during this validation.
+- Do not enable auto-confirmation.
+- Do not change public webhook semantics.
+- Do not expose raw PAN, raw phone, raw notification text or secrets.
+
+---
+
+## Latest Payable Amount Intelligence Alignment
+
+SwimPay Intelligence now treats `payable_amount_minor` as the exact matching amount. The visible order amount alone is no longer enough to create a strong review when a micro-reconciliation exists.
+
+Next recommended action:
+
+1. Commit and push the current checkout/matching hardening bundle.
+2. Let Dokploy redeploy staging.
+3. Re-test external app -> SDK order -> hosted checkout.
+4. In checkout, verify Step 2 shows the exact payable amount, not only the displayed price.
+5. In merchant review, verify amount rows show displayed, expected, detected, delta and risk.
+6. Keep real notification testing blocked until staging web/SDK/merchant review rehearsal is clean.
 
 Do not do:
 

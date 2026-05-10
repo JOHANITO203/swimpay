@@ -1,6 +1,8 @@
 import { EventTypes, createDurableConsumerDefinition, type DurableConsumerDefinition } from '@swimpay/events';
 
 const JOB_WORKER_EVENT_TYPES = [
+  EventTypes.REVIEW_CONFIRMED,
+  EventTypes.REVIEW_REJECTED,
   EventTypes.WEBHOOK_DELIVERY_REQUESTED,
   EventTypes.ORDER_EXPIRED,
   EventTypes.PAYMENT_SESSION_EXPIRED

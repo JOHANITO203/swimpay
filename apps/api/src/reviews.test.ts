@@ -120,6 +120,7 @@ describe('review queue api', () => {
       eventType: EventTypes.REVIEW_CONFIRMED,
       merchantId: 'mch_01',
       data: {
+        merchant_id: 'mch_01',
         review_id: 'rev_01',
         order_id: 'ord_01',
         payment_session_id: 'ps_01',
@@ -179,6 +180,47 @@ describe('review queue api', () => {
       }
     });
     expect(JSON.stringify(events.events)).not.toContain('payment.confirmed');
+  });
+
+  it('rejects a no-notification fallback review as manual bank check without notification-signal disclosure', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_fallback_01', {
+      ...openReviewItem(),
+      id: 'rev_fallback_01',
+      signalId: undefined,
+      reasonCode: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT',
+      negativeReasonCodes: ['NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT']
+    });
+    const events = new FakeEventPublisher();
+    const server = buildTestServer(repository, events);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_fallback_01/reject',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        scope: 'order',
+        reason: 'merchant_cancelled'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      status: 'rejected',
+      rejection_scope: 'order',
+      order_status: 'rejected',
+      payment_session_status: 'rejected'
+    });
+    expect(events.events[0]).toMatchObject({
+      eventType: EventTypes.REVIEW_REJECTED,
+      data: {
+        review_id: 'rev_fallback_01',
+        confirmation_type: 'manual_bank_check',
+        official_bank_confirmation: false,
+        reason_label: 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED'
+      }
+    });
+    expect(JSON.stringify(events.events)).not.toContain('notification_signal');
   });
 
   it('rejects a review with default signal scope without rejecting order or session', async () => {
@@ -319,7 +361,8 @@ describe('review queue api', () => {
       reason: 'false_positive',
       createdAt: '2026-05-02T10:05:00.000Z'
     });
-    const server = buildTestServer(repository);
+    const events = new FakeEventPublisher();
+    const server = buildTestServer(repository, events);
 
     const response = await server.inject({
       method: 'POST',
@@ -338,6 +381,7 @@ describe('review queue api', () => {
       idempotent: true
     });
     expect(repository.actions).toHaveLength(1);
+    expect(events.events).toHaveLength(0);
   });
 
   it('rejects conflicting scope escalation after review resolution', async () => {
@@ -407,6 +451,83 @@ describe('review queue api', () => {
 
     expect(response.statusCode).toBe(409);
     expect(response.json().error.code).toBe('review_not_open');
+  });
+
+  it('does not confirm an open review after the order or session reached a final state', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_01', openReviewItem());
+    repository.orderStatuses.set('ord_01', 'expired');
+    repository.paymentSessionStatuses.set('ps_01', 'expired');
+    const events = new FakeEventPublisher();
+    const server = buildTestServer(repository, events);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_01/confirm',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { actor_id: 'usr_01' }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('review_not_open');
+    expect(repository.items.get('rev_01')?.status).toBe('open');
+    expect(repository.orderStatuses.get('ord_01')).toBe('expired');
+    expect(repository.paymentSessionStatuses.get('ps_01')).toBe('expired');
+    expect(repository.actions).toHaveLength(0);
+    expect(events.events).toHaveLength(0);
+  });
+
+  it('does not reject a payment session review after the session reached a final state', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_01', openReviewItem());
+    repository.orderStatuses.set('ord_01', 'awaiting_payment');
+    repository.paymentSessionStatuses.set('ps_01', 'expired');
+    const events = new FakeEventPublisher();
+    const server = buildTestServer(repository, events);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_01/reject',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        scope: 'payment_session',
+        reason: 'expired_payment'
+      }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('review_not_open');
+    expect(repository.items.get('rev_01')?.status).toBe('open');
+    expect(repository.signalStatuses.get('sig_01')).toBeUndefined();
+    expect(repository.paymentSessionStatuses.get('ps_01')).toBe('expired');
+    expect(repository.actions).toHaveLength(0);
+    expect(events.events).toHaveLength(0);
+  });
+
+  it('does not reject a payment session review after the order reached a final state', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_01', openReviewItem());
+    repository.orderStatuses.set('ord_01', 'manual_confirmed');
+    repository.paymentSessionStatuses.set('ps_01', 'awaiting_payment');
+    const events = new FakeEventPublisher();
+    const server = buildTestServer(repository, events);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_01/reject',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        scope: 'payment_session',
+        reason: 'merchant_cancelled'
+      }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('review_not_open');
+    expect(repository.items.get('rev_01')?.status).toBe('open');
+    expect(repository.paymentSessionStatuses.get('ps_01')).toBe('awaiting_payment');
+    expect(repository.actions).toHaveLength(0);
+    expect(events.events).toHaveLength(0);
   });
 });
 
@@ -538,6 +659,8 @@ class FakeReviewRepository implements ReviewRepository {
 
     const requestedScope: ReviewRejectionScope = input.scope ?? 'signal';
     const scope: ReviewRejectionScope = review.signalId ? requestedScope : 'order';
+    const currentOrderStatus = this.orderStatuses.get(review.orderId) ?? 'awaiting_payment';
+    const currentPaymentSessionStatus = this.paymentSessionStatuses.get(review.paymentSessionId) ?? 'awaiting_payment';
     if (review.status !== 'open') {
       if (review.status === 'rejected') {
         const previous = this.actions.find((action) => action.reviewId === input.reviewId && action.action === 'rejected');
@@ -559,6 +682,16 @@ class FakeReviewRepository implements ReviewRepository {
         return { kind: 'rejection_scope_conflict' as const, existingScope: previous?.scope ?? 'signal', requestedScope: scope };
       }
 
+      return { kind: 'not_open' as const };
+    }
+
+    if (
+      (scope === 'payment_session' || scope === 'order') &&
+      (isTerminalTestPaymentSessionStatus(currentPaymentSessionStatus) || isTerminalTestOrderStatus(currentOrderStatus))
+    ) {
+      return { kind: 'not_open' as const };
+    }
+    if (scope === 'order' && isTerminalTestOrderStatus(currentOrderStatus)) {
       return { kind: 'not_open' as const };
     }
 
@@ -612,7 +745,9 @@ class FakeReviewRepository implements ReviewRepository {
       orderStatus: (this.orderStatuses.get(review.orderId) ?? 'awaiting_payment') as ReviewActionResultUpdated['orderStatus'],
       paymentSessionStatus: (this.paymentSessionStatuses.get(review.paymentSessionId) ?? 'awaiting_payment') as ReviewActionResultUpdated['paymentSessionStatus'],
       rejectionScope: scope,
-      reason: input.reason as ReviewRejectionReason | undefined
+      reason: input.reason as ReviewRejectionReason | undefined,
+      confirmationType: review.signalId ? 'notification_signal' as const : 'manual_bank_check' as const,
+      reasonLabel: review.signalId ? undefined : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED'
     };
   }
 
@@ -623,6 +758,11 @@ class FakeReviewRepository implements ReviewRepository {
     }
 
     if (review.status !== 'open') {
+      return Promise.resolve({ kind: 'not_open' as const });
+    }
+    const currentOrderStatus = this.orderStatuses.get(review.orderId) ?? 'awaiting_payment';
+    const currentPaymentSessionStatus = this.paymentSessionStatuses.get(review.paymentSessionId) ?? 'awaiting_payment';
+    if (isTerminalTestOrderStatus(currentOrderStatus) || isTerminalTestPaymentSessionStatus(currentPaymentSessionStatus)) {
       return Promise.resolve({ kind: 'not_open' as const });
     }
 
@@ -653,4 +793,12 @@ class FakeReviewRepository implements ReviewRepository {
           : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED'
     });
   }
+}
+
+function isTerminalTestOrderStatus(status: string): boolean {
+  return ['manual_confirmed', 'fulfilled', 'rejected', 'expired'].includes(status);
+}
+
+function isTerminalTestPaymentSessionStatus(status: string): boolean {
+  return ['manual_confirmed', 'rejected', 'expired'].includes(status);
 }

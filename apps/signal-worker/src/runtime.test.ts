@@ -293,6 +293,72 @@ describe('signal runtime processor', () => {
     expect(repository.orders.get('ord_01')?.status).toBe('needs_review');
   });
 
+  it('creates review when the signal amount matches payable amount with reconciliation delta', async () => {
+    const { processor, repository } = createProcessor({
+      signal: buildSignal({
+        titleRedacted: '',
+        bodyRedacted: '',
+        amountMinor: 139035,
+        currency: 'RUB',
+        directionLabel: 'incoming_customer_transfer'
+      }),
+      sessions: [
+        buildSession({
+          expectedAmountMinor: 139000,
+          displayAmountMinor: 139000,
+          payableAmountMinor: 139035,
+          reconciliationDeltaMinor: 35
+        })
+      ]
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('needs_review');
+    expect(result.paymentSessionId).toBe('ps_01');
+    expect(result.reasonCodes).toContain('amount_exact');
+    expect(result.reasonCodes).toContain('PAYABLE_AMOUNT_EXACT_MATCH');
+    expect(result.reasonCodes).toContain('RECONCILIATION_AMOUNT_EXPECTED');
+    expect(result.confidenceVector?.amount).toBe('exact');
+    expect(repository.reviews).toHaveLength(1);
+    expect(repository.orders.get('ord_01')?.status).toBe('needs_review');
+  });
+
+  it('does not create a review for the rounded display amount when payable amount includes micro-reconciliation', async () => {
+    const { processor, repository } = createProcessor({
+      signal: buildSignal({
+        titleRedacted: '',
+        bodyRedacted: '',
+        amountMinor: 139000,
+        currency: 'RUB',
+        directionLabel: 'incoming_customer_transfer',
+        referenceHmac: 'ref_hmac_01',
+        senderPhoneHmac: 'phone_hmac_01'
+      }),
+      sessions: [
+        buildSession({
+          expectedAmountMinor: 139000,
+          displayAmountMinor: 139000,
+          payableAmountMinor: 139035,
+          reconciliationDeltaMinor: 35,
+          referenceHmac: 'ref_hmac_01',
+          buyerPhoneHmac: 'phone_hmac_01'
+        })
+      ]
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toContain('no_active_payment_intent_no_review');
+    expect(result.reasonCodes).toContain('DISPLAY_AMOUNT_ONLY_MATCH');
+    expect(result.reasonCodes).toContain('PAYABLE_AMOUNT_MISMATCH');
+    expect(result.reasonCodes).toContain('RECONCILIATION_AMOUNT_EXPECTED');
+    expect(result.confidenceVector?.amount).not.toBe('exact');
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.orders.get('ord_01')?.status).toBe('awaiting_payment');
+  });
+
   it('rehearses five-bank synthetic shadow fixtures through review or rejection without official confirmation claims', async () => {
     const fixtureSet = JSON.parse(
       readFileSync(join(root, 'packages/bank-templates/five-bank-synthetic-shadow-fixtures.json'), 'utf8')

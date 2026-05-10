@@ -157,8 +157,11 @@ data class PremiumPaymentDetailUiState(
                 statusTitle = "À vérifier",
                 statusText = "Ce paiement nécessite une validation manuelle.",
                 summaryRows = listOf(
-                    "Montant attendu" to "58,41 ₽",
-                    "Montant détecté" to "58,41 ₽",
+                    "Montant affiché" to "58,41 ₽",
+                    "Montant exact attendu" to "58,80 ₽",
+                    "Montant détecté" to "58,80 ₽",
+                    "Écart" to "0,00 ₽",
+                    "Risque" to "Montant exact attendu reconnu",
                     "Banque" to "Sberbank",
                     "Moyen de réception" to "Carte · •••• 4821",
                     "Référence" to "TANGO ALFA",
@@ -421,12 +424,15 @@ class PremiumMerchantRuntime(
         }
         val texts = result.visibleTexts()
         val summaryRows = buildList {
-            add((texts.getOrNull(3) ?: "Montant attendu") to (texts.getOrNull(4) ?: "0,00 ₽"))
-            add((texts.getOrNull(5) ?: "Montant détecté") to (texts.getOrNull(6) ?: "0,00 ₽"))
-            add((texts.getOrNull(7) ?: "Banque") to (texts.getOrNull(8) ?: "Banque choisie"))
-            add((texts.getOrNull(9) ?: "Moyen de réception") to (texts.getOrNull(10) ?: "Moyen de réception"))
-            add((texts.getOrNull(11) ?: "Référence") to (texts.getOrNull(12) ?: "<REFERENCE>"))
-            add((texts.getOrNull(13) ?: "Signal reçu") to (texts.getOrNull(14) ?: "Récemment"))
+            add((texts.getOrNull(3) ?: "Montant affiché") to (texts.getOrNull(4) ?: "0,00 ₽"))
+            add((texts.getOrNull(5) ?: "Montant exact attendu") to (texts.getOrNull(6) ?: "0,00 ₽"))
+            add((texts.getOrNull(7) ?: "Montant détecté") to (texts.getOrNull(8) ?: "0,00 ₽"))
+            add((texts.getOrNull(9) ?: "Écart") to (texts.getOrNull(10) ?: "0,00 ₽"))
+            add((texts.getOrNull(11) ?: "Risque") to (texts.getOrNull(12) ?: "Validation manuelle requise"))
+            add((texts.getOrNull(13) ?: "Banque") to (texts.getOrNull(14) ?: "Banque choisie"))
+            add((texts.getOrNull(15) ?: "Moyen de réception") to (texts.getOrNull(16) ?: "Moyen de réception"))
+            add((texts.getOrNull(17) ?: "Référence") to (texts.getOrNull(18) ?: "<REFERENCE>"))
+            add((texts.getOrNull(19) ?: "Signal reçu") to (texts.getOrNull(20) ?: "Récemment"))
             result.paymentScoreLabel?.let { add("Score" to it) }
         }
         return PremiumScreenState.content(
@@ -435,7 +441,7 @@ class PremiumMerchantRuntime(
                 statusTitle = texts.getOrNull(1) ?: "À vérifier",
                 statusText = texts.getOrNull(2) ?: "Ce paiement nécessite une validation manuelle.",
                 summaryRows = summaryRows,
-                reasons = texts.drop(16).takeWhile { it !in REVIEW_ACTION_LABELS }.ifEmpty {
+                reasons = texts.drop(22).takeWhile { it !in REVIEW_ACTION_LABELS }.ifEmpty {
                     listOf("Validation manuelle en bêta")
                 },
                 timeline = result.paymentDetailTimeline,

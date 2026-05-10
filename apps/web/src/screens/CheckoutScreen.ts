@@ -6,7 +6,7 @@ import type {
   ReceiverBankOption,
   ReceivingRouteRailType
 } from '@swimpay/contracts';
-import type { CheckoutSession, CheckoutRecipient } from '../index.js';
+import type { CheckoutSession, CheckoutRecipient, StructuredCheckoutFallbackCode } from '../index.js';
 
 type BuyerCheckoutStep = 'intro' | 'bank' | 'route' | 'launcher' | 'instructions' | 'waiting';
 type VisualStage = 'intro' | 'info' | 'instructions' | 'status';
@@ -74,7 +74,7 @@ function renderCurrentStage(
 
 function getCheckoutStep(session: CheckoutSession): BuyerCheckoutStep {
   if (isWaitingBuyerState(session)) return 'waiting';
-  if (session.unavailable_reason === 'method_not_supported_by_merchant' && session.payment_method) return 'route';
+  if (hasStructuredCheckoutFallback(session)) return 'route';
   if (!session.payment_method) return 'intro';
   if (!session.selected_receiver_bank_id) return 'bank';
   if (!session.selected_receiving_route_id) return 'route';
@@ -122,6 +122,10 @@ function getBuyerMethodAvailability(
 
 function hasReceivingMethod(availability: BuyerMethodAvailability): boolean {
   return availability.card || availability.sbp;
+}
+
+function hasStructuredCheckoutFallback(session: CheckoutSession): boolean {
+  return Boolean(session.checkout_error_code || session.unavailable_reason);
 }
 
 function getSelectedBuyerMethod(
@@ -322,9 +326,9 @@ function renderReceivingRouteSelection(
   routes: readonly BuyerSafeReceivingRoute[],
   methodAvailability: BuyerMethodAvailability
 ): string {
-  if (routes.length === 0) {
+  if (hasStructuredCheckoutFallback(session) || routes.length === 0) {
     return `<div class="checkout-stage-host">
-      ${renderMethodUnavailableFallback(session, methodAvailability)}
+      ${renderStructuredFallback(session, methodAvailability)}
       ${renderBuyerIdentityStep(session, banks, methodAvailability, false, 'Changer de methode')}
     </div>`;
   }
@@ -362,7 +366,7 @@ function renderPayerLauncherSelection(
 ): string {
   if (!selectedRoute) {
     return `<div class="checkout-stage-host">
-      ${renderMethodUnavailableFallback(session, methodAvailability)}
+      ${renderStructuredFallback(session, methodAvailability)}
       ${renderBuyerIdentityStep(session, banks, methodAvailability, false, 'Changer de methode')}
     </div>`;
   }
@@ -398,7 +402,7 @@ function renderInstructionsStep(
 ): string {
   if (!selectedRoute) {
     return `<div class="checkout-stage-host">
-      ${renderMethodUnavailableFallback(session, methodAvailability)}
+      ${renderStructuredFallback(session, methodAvailability)}
       ${renderBuyerIdentityStep(session, banks, methodAvailability, false, 'Changer de methode')}
     </div>`;
   }
@@ -458,7 +462,7 @@ function renderNoReceivingMethodsFallback(session: CheckoutSession, hidden = fal
   </section>`;
 }
 
-function renderMethodUnavailableFallback(session: CheckoutSession, methodAvailability: BuyerMethodAvailability): string {
+function renderStructuredFallback(session: CheckoutSession, methodAvailability: BuyerMethodAvailability): string {
   const hasCard = methodAvailability.card;
   const hasSbp = methodAvailability.sbp;
   const availableText = hasCard && hasSbp
@@ -468,23 +472,72 @@ function renderMethodUnavailableFallback(session: CheckoutSession, methodAvailab
       : hasSbp
         ? 'Ce marchand accepte actuellement : SBP / telephone.'
         : 'Ce marchand n&#39;a pas encore configure de moyen de reception actif.';
+  const fallbackActions = getFallbackActions(session, methodAvailability);
   const actions = [
-    hasCard
+    fallbackActions.has('switch_to_card') && hasCard
       ? `<button class="checkout-primary-action" type="button" data-show-panel="buyer-identity" data-progress-step="2" data-select-method="card">Payer par carte</button>`
       : '',
-    hasSbp
+    fallbackActions.has('switch_to_sbp') && hasSbp
       ? `<button class="checkout-primary-action" type="button" data-show-panel="buyer-identity" data-progress-step="2" data-select-method="sbp">Payer par SBP</button>`
       : '',
-    `<a class="checkout-secondary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Actualiser les methodes</a>`,
-    renderReturnToMerchantAction(session)
+    fallbackActions.has('refresh_methods')
+      ? `<a class="checkout-secondary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Actualiser les methodes</a>`
+      : '',
+    fallbackActions.has('return_to_merchant') ? renderReturnToMerchantAction(session) : ''
   ].filter(Boolean).join('');
+  const title = checkoutFallbackTitle(session.checkout_error_code, methodAvailability);
+  const explanation = checkoutFallbackExplanation(session.checkout_error_code);
 
   return `<section class="checkout-stage-card checkout-empty-card checkout-configuration-card" data-visual-stage="instructions">
     <div class="checkout-stage-icon">!</div>
-    <h1>Methode indisponible</h1>
+    <h1>${escapeHtml(title)}</h1>
+    ${explanation ? `<p>${escapeHtml(explanation)}</p>` : ''}
     <p>${availableText}</p>
     <div class="checkout-empty-actions">${actions}</div>
   </section>`;
+}
+
+function checkoutFallbackTitle(
+  code: StructuredCheckoutFallbackCode | undefined,
+  methodAvailability: BuyerMethodAvailability
+): string {
+  if (code === 'receiving_route_unavailable') return 'Destination indisponible';
+  if (code === 'amount_lease_unavailable') return 'Montant indisponible';
+  if (code === 'checkout_selection_incomplete') return 'Selection incomplete';
+  if (code === 'checkout_session_expired') return 'Session expiree';
+  if (!hasReceivingMethod(methodAvailability)) return 'Paiement indisponible';
+  return 'Methode indisponible';
+}
+
+function checkoutFallbackExplanation(code: StructuredCheckoutFallbackCode | undefined): string {
+  if (code === 'receiving_route_unavailable') {
+    return "La destination selectionnee n'est plus disponible pour ce paiement.";
+  }
+  if (code === 'amount_lease_unavailable') {
+    return "Le montant exact reserve n'est plus disponible pour cette tentative.";
+  }
+  if (code === 'checkout_selection_incomplete') {
+    return 'Des informations de paiement manquent avant de continuer.';
+  }
+  if (code === 'checkout_session_expired') {
+    return 'Cette session de paiement a expire.';
+  }
+  return '';
+}
+
+function getFallbackActions(
+  session: CheckoutSession,
+  methodAvailability: BuyerMethodAvailability
+): Set<string> {
+  const actions = session.fallback_actions && session.fallback_actions.length > 0
+    ? session.fallback_actions
+    : [
+        methodAvailability.card ? 'switch_to_card' : '',
+        methodAvailability.sbp ? 'switch_to_sbp' : '',
+        'refresh_methods',
+        'return_to_merchant'
+      ];
+  return new Set(actions.filter(Boolean));
 }
 
 function renderReturnToMerchantAction(session: CheckoutSession): string {

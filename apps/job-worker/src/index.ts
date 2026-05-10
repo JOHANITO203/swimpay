@@ -18,9 +18,11 @@ import { createJobWorkerConsumers } from './consumers.js';
 import { PgWorkerIdempotencyLedger } from './idempotency-ledger.js';
 import { FetchWebhookHttpClient, PgWebhookRepository, WebhookDeliveryWorker } from './webhooks.js';
 import {
+  createReviewFinalWebhookHandler,
   createWebhookDeliveryRequestedHandler,
   parseWebhookWorkerConfig,
   WebhookPollingLoop,
+  type PublicWebhookEnqueuer,
   type WebhookDeliveryProcessor,
   type WebhookWorkerConfig
 } from './webhook-runtime.js';
@@ -162,7 +164,13 @@ export function buildJobWorkerHealthResponse(params: {
   };
 }
 
-function createJobWorkerHandler(consumer: DurableConsumerDefinition, webhookProcessor: WebhookDeliveryProcessor | null) {
+type WebhookRuntimeProcessor = WebhookDeliveryProcessor & PublicWebhookEnqueuer;
+
+function createJobWorkerHandler(consumer: DurableConsumerDefinition, webhookProcessor: WebhookRuntimeProcessor | null) {
+  if ((consumer.eventType === EventTypes.REVIEW_CONFIRMED || consumer.eventType === EventTypes.REVIEW_REJECTED) && webhookProcessor) {
+    return createReviewFinalWebhookHandler(webhookProcessor);
+  }
+
   if (consumer.eventType === EventTypes.WEBHOOK_DELIVERY_REQUESTED && webhookProcessor) {
     return createWebhookDeliveryRequestedHandler(webhookProcessor, () => new Date().toISOString());
   }
@@ -183,7 +191,7 @@ function createDefaultWebhookProcessor(
   env: NodeJS.ProcessEnv,
   config: WebhookWorkerConfig,
   metrics: MetricsRegistry
-): WebhookDeliveryProcessor | null {
+): WebhookRuntimeProcessor | null {
   if (!env.DATABASE_URL) {
     return null;
   }

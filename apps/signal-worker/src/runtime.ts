@@ -648,7 +648,7 @@ export class InMemorySignalRuntimeRepository implements SignalRuntimeRepository 
       if (session.merchantId !== signal.merchantId) {
         return false;
       }
-      if (signal.amountMinor !== session.expectedAmountMinor || signal.currency !== session.currency) {
+      if (!isRuntimeAmountRelated(signal, session) || signal.currency !== session.currency) {
         return false;
       }
 
@@ -877,7 +877,10 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
          ON mrr.id = ps.selected_receiving_route_id
         AND mrr.merchant_id = ps.merchant_id
        WHERE ps.merchant_id = $1
-         AND ps.expected_amount_minor = $2
+         AND (
+           COALESCE(ps.payable_amount_minor, ps.expected_amount_minor) = $2
+           OR ps.display_amount_minor = $2
+         )
          AND ps.currency = $3
          AND $4::timestamptz BETWEEN ps.valid_from AND ps.valid_until
          AND ps.status NOT IN ('manual_confirmed', 'rejected', 'expired')
@@ -1155,7 +1158,7 @@ function toPaymentIntentGateSignal(signal: SignalRuntimeSignal): PaymentIntentGa
 }
 
 function toPaymentIntentGateIntent(session: SignalRuntimeSessionCandidate): PaymentIntentGateIntent {
-  const expectedPaymentAmountMinor = session.payableAmountMinor ?? session.expectedAmountMinor;
+  const expectedPaymentAmountMinor = runtimeMatchingAmountMinor(session);
   return {
     orderId: session.orderId,
     paymentSessionId: session.paymentSessionId,
@@ -1166,7 +1169,7 @@ function toPaymentIntentGateIntent(session: SignalRuntimeSessionCandidate): Paym
     currency: session.currency,
     generatedReference: session.paymentReference ?? '',
     referenceHmac: session.referenceHmac,
-    selectedReceiverBankProfileId: session.selectedReceiverBankProfileId ?? session.selectedReceiverBankId ?? '',
+    selectedReceiverBankProfileId: session.selectedReceiverBankProfileId ?? '',
     selectedReceivingRouteId: session.selectedReceivingRouteId,
     selectedReceivingMethod: session.railType ?? (session.paymentMethod === 'card' ? 'card_transfer' : 'phone_transfer'),
     buyerFirstName: session.buyerFirstNameRaw ?? '',
@@ -1182,12 +1185,23 @@ function toPaymentIntentGateIntent(session: SignalRuntimeSessionCandidate): Paym
   };
 }
 
+function runtimeMatchingAmountMinor(session: SignalRuntimeSessionCandidate): number {
+  return session.payableAmountMinor ?? session.expectedAmountMinor;
+}
+
+function isRuntimeAmountRelated(signal: SignalRuntimeSignal, session: SignalRuntimeSessionCandidate): boolean {
+  return Boolean(
+    signal.amountMinor !== undefined &&
+      (signal.amountMinor === runtimeMatchingAmountMinor(session) || signal.amountMinor === session.displayAmountMinor)
+  );
+}
+
 function filterPaymentIntentGateSessions(
   signal: SignalRuntimeSignal,
   sessions: SignalRuntimeSessionCandidate[]
 ): SignalRuntimeSessionCandidate[] {
   return sessions.filter((session) => {
-    const sessionBankProfileId = session.selectedReceiverBankProfileId ?? session.selectedReceiverBankId;
+    const sessionBankProfileId = session.selectedReceiverBankProfileId;
     if (!signal.bankProfileId || !sessionBankProfileId || signal.bankProfileId !== sessionBankProfileId) {
       return false;
     }

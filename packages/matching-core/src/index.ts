@@ -345,7 +345,11 @@ export function findCandidateSessions(
       return false;
     }
 
-    if (signal.amountMinor !== session.expectedAmountMinor || signal.currency !== session.currency) {
+    if (signal.amountMinor !== matchingAmountMinor(session) || signal.currency !== session.currency) {
+      return false;
+    }
+
+    if (!isReceiverBankCompatible(signal, session)) {
       return false;
     }
 
@@ -360,7 +364,7 @@ export function computeScore(
 ): number {
   let score = 0;
 
-  if (signal.amountMinor === session.expectedAmountMinor) {
+  if (signal.amountMinor === matchingAmountMinor(session)) {
     score += 35;
   }
 
@@ -438,8 +442,19 @@ function computeReasonCodes(
 ): string[] {
   const codes: string[] = [];
 
-  if (signal.amountMinor === session.expectedAmountMinor) {
+  if (signal.amountMinor === matchingAmountMinor(session)) {
     codes.push('amount_exact');
+    codes.push('PAYABLE_AMOUNT_EXACT_MATCH');
+  } else {
+    codes.push('PAYABLE_AMOUNT_MISMATCH');
+  }
+
+  if (hasReconciliationDelta(session)) {
+    codes.push('RECONCILIATION_AMOUNT_EXPECTED');
+  }
+
+  if (isDisplayAmountOnlySessionMatch(signal, session)) {
+    codes.push('DISPLAY_AMOUNT_ONLY_MATCH');
   }
 
   if (signal.currency === session.currency) {
@@ -520,7 +535,7 @@ function isStrongManualReviewCandidate(input: {
 
   return (
     input.score >= 90 &&
-    input.signal.amountMinor === input.candidate.expectedAmountMinor &&
+    input.signal.amountMinor === matchingAmountMinor(input.candidate) &&
     input.signal.currency === input.candidate.currency &&
     input.signal.directionLabel === 'incoming_customer_transfer' &&
     hasIdentityMatch(input.signal, input.candidate) &&
@@ -534,6 +549,32 @@ function isStrongManualReviewCandidate(input: {
 
 function hasIdentityMatch(signal: MatchingSignal, session: MatchingCandidateSession): boolean {
   return hasPhoneMatch(signal, session) || hasReferenceMatch(signal, session);
+}
+
+function matchingAmountMinor(session: MatchingCandidateSession): number {
+  return session.payableAmountMinor ?? session.expectedAmountMinor;
+}
+
+function hasReconciliationDelta(session: MatchingCandidateSession): boolean {
+  return Boolean(session.reconciliationDeltaMinor && session.reconciliationDeltaMinor !== 0);
+}
+
+function isDisplayAmountOnlySessionMatch(signal: MatchingSignal, session: MatchingCandidateSession): boolean {
+  return Boolean(
+    signal.currency === session.currency &&
+      signal.amountMinor !== undefined &&
+      session.displayAmountMinor !== undefined &&
+      signal.amountMinor === session.displayAmountMinor &&
+      signal.amountMinor !== matchingAmountMinor(session)
+  );
+}
+
+function isReceiverBankCompatible(signal: MatchingSignal, session: MatchingCandidateSession): boolean {
+  if (!signal.bankProfileId || !session.selectedReceiverBankProfileId) {
+    return true;
+  }
+
+  return signal.bankProfileId === session.selectedReceiverBankProfileId;
 }
 
 function hasPhoneMatch(signal: MatchingSignal, session: MatchingCandidateSession): boolean {
@@ -571,6 +612,14 @@ export function evaluatePaymentIntentGate(input: EvaluatePaymentIntentGateInput)
   );
   const activeRouteCandidates = activeBankCandidates.filter((intent) => isReceiverRouteCompatible(input.signal, intent));
   const activeCandidates = activeRouteCandidates.filter((intent) => isAmountRelated(input.signal, intent));
+  const activeDisplayAmountOnlyCandidates = activeRouteCandidates.filter((intent) => isDisplayAmountOnlyGateMatch(input.signal, intent));
+  const activeAmountMismatchCandidates = activeRouteCandidates.filter(
+    (intent) =>
+      input.signal.currency === intent.currency &&
+      input.signal.amountMinor !== undefined &&
+      input.signal.amountMinor !== intent.expectedPaymentAmountMinor &&
+      !isDisplayAmountOnlyGateMatch(input.signal, intent)
+  );
   const expiredCandidates = merchantIntents.filter(
     (intent) =>
       isReceiverBankMatch(input.signal, intent) &&
@@ -603,6 +652,28 @@ export function evaluatePaymentIntentGate(input: EvaluatePaymentIntentGateInput)
     const hasRouteMismatch = activeBankCandidates.some(
       (intent) => isAmountRelated(input.signal, intent) && hasExplicitGateRouteMismatch(input.signal, intent)
     );
+    const amountRelatedNonReviewCandidates =
+      activeDisplayAmountOnlyCandidates.length > 0 ? activeDisplayAmountOnlyCandidates : activeAmountMismatchCandidates;
+    if (amountRelatedNonReviewCandidates.length > 0) {
+      const selected = selectBestIntent(input.signal, amountRelatedNonReviewCandidates);
+      return gateDecision({
+        intentRelation: 'unrelated_bank_activity',
+        reviewCreationAllowed: false,
+        collisionDetected: amountRelatedNonReviewCandidates.length > 1,
+        paymentWindowStatus: 'active',
+        reasonCodes: [
+          'no_payable_amount_match',
+          ...gateAmountReasonCodes(input.signal, selected),
+          ...baseReasons
+        ],
+        confidenceVector: buildPaymentIntentGateConfidenceVector(
+          input.signal,
+          selected,
+          amountRelatedNonReviewCandidates,
+          'active'
+        )
+      });
+    }
     if (expiredCandidates.length > 0 && (input.allowLatePaymentReview ?? true)) {
       return selectAmbiguousGateDecision({
         signal: input.signal,
@@ -643,8 +714,8 @@ export function evaluatePaymentIntentGate(input: EvaluatePaymentIntentGateInput)
     ...baseReasons
   ]);
   reasons.add(amountExact ? 'expected_amount_exact' : 'expected_amount_mismatch');
-  if (!amountExact && input.signal.amountMinor === selected.displayPriceMinor) {
-    reasons.add('display_amount_only_mismatch');
+  for (const reason of gateAmountReasonCodes(input.signal, selected)) {
+    reasons.add(reason);
   }
   if (input.signal.currency === selected.currency) {
     reasons.add('currency_exact');
@@ -808,7 +879,7 @@ function buildMatchConfidenceVector(
 
   const insideWindow = isObservedInsideWindow(signal.observedAt, selected.validFrom, selected.validUntil);
   return {
-    amount: signal.amountMinor === selected.expectedAmountMinor ? 'exact' : signal.amountMinor === selected.displayAmountMinor ? 'delta_match' : 'mismatch',
+    amount: signal.amountMinor === matchingAmountMinor(selected) ? 'exact' : signal.amountMinor === selected.displayAmountMinor ? 'delta_match' : 'mismatch',
     rail: selected.railType === 'card_transfer' ? 'card' : selected.railType === 'phone_transfer' ? 'sbp' : 'unknown',
     direction: confidenceDirectionFromMatching(signal.directionLabel),
     time_window: insideWindow ? 'inside' : Date.parse(signal.observedAt) > Date.parse(selected.validUntil) ? 'late' : 'too_old',
@@ -914,14 +985,40 @@ function gateIntentScore(signal: PaymentIntentGateSignal, intent: PaymentIntentG
 }
 
 function isAmountRelated(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
-  return (
-    signal.currency === intent.currency &&
-    (signal.amountMinor === intent.expectedPaymentAmountMinor || signal.amountMinor === intent.displayPriceMinor)
-  );
+  return signal.currency === intent.currency && signal.amountMinor === intent.expectedPaymentAmountMinor;
 }
 
 function isExactAmountAndCurrency(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
   return signal.amountMinor === intent.expectedPaymentAmountMinor && signal.currency === intent.currency;
+}
+
+function isDisplayAmountOnlyGateMatch(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {
+  return Boolean(
+    signal.currency === intent.currency &&
+      signal.amountMinor !== undefined &&
+      signal.amountMinor === intent.displayPriceMinor &&
+      signal.amountMinor !== intent.expectedPaymentAmountMinor
+  );
+}
+
+function gateAmountReasonCodes(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): string[] {
+  const reasons: string[] = [];
+  if (isExactAmountAndCurrency(signal, intent)) {
+    reasons.push('PAYABLE_AMOUNT_EXACT_MATCH');
+  } else {
+    reasons.push('PAYABLE_AMOUNT_MISMATCH');
+  }
+
+  if (intent.reconciliationDeltaMinor !== 0) {
+    reasons.push('RECONCILIATION_AMOUNT_EXPECTED');
+  }
+
+  if (isDisplayAmountOnlyGateMatch(signal, intent)) {
+    reasons.push('DISPLAY_AMOUNT_ONLY_MATCH');
+    reasons.push('display_amount_only_mismatch');
+  }
+
+  return reasons;
 }
 
 function hasGateRouteMatch(signal: PaymentIntentGateSignal, intent: PaymentIntentGateIntent): boolean {

@@ -58,6 +58,13 @@ export type CheckoutStatus =
   | 'rejected'
   | 'expired';
 
+export type StructuredCheckoutFallbackCode =
+  | 'receiving_route_unavailable'
+  | 'amount_lease_unavailable'
+  | 'checkout_selection_incomplete'
+  | 'checkout_session_expired'
+  | 'no_receiving_route_for_method';
+
 export interface CheckoutSession {
   payment_session_id: string;
   order_id: string;
@@ -89,6 +96,7 @@ export interface CheckoutSession {
     status: 'active';
   }> | undefined;
   available_compatibility_pairs?: PaymentCompatibilityPair[] | undefined;
+  checkout_error_code?: StructuredCheckoutFallbackCode | undefined;
   unavailable_reason?: CheckoutUnavailableReason | undefined;
   fallback_actions?: CheckoutFallbackAction[] | undefined;
   return_url?: string | undefined;
@@ -130,10 +138,12 @@ interface CheckoutProviderErrorBody {
       unavailable_reason?: CheckoutUnavailableReason | undefined;
       fallback_actions?: CheckoutFallbackAction[] | undefined;
       payment_method?: 'card' | 'sbp' | undefined;
+      available_methods?: Array<'card' | 'sbp'> | undefined;
     } | undefined;
   } | undefined;
   official_bank_confirmation?: false | undefined;
 }
+type CheckoutProviderErrorDetails = NonNullable<NonNullable<CheckoutProviderErrorBody['error']>['details']>;
 
 class CheckoutProviderError extends Error {
   constructor(
@@ -410,9 +420,46 @@ interface CheckoutClaimedPaidResponse {
   official_bank_confirmation: false;
 }
 
+interface StructuredCheckoutFallbackError {
+  code: StructuredCheckoutFallbackCode;
+  availablePaymentMethods?: { card: boolean; sbp: boolean } | undefined;
+  unavailableReason?: CheckoutUnavailableReason | undefined;
+  fallbackActions?: CheckoutFallbackAction[] | undefined;
+  paymentMethod?: 'card' | 'sbp' | undefined;
+}
+
 type RouteParams = { routeId: string };
 type PaymentSessionParams = { paymentSessionId: string };
 type MerchantRoutePayload = Record<string, unknown>;
+
+const structuredCheckoutFallbackCodes = new Set<StructuredCheckoutFallbackCode>([
+  'receiving_route_unavailable',
+  'amount_lease_unavailable',
+  'checkout_selection_incomplete',
+  'checkout_session_expired',
+  'no_receiving_route_for_method'
+]);
+
+const checkoutUnavailableReasons = new Set<CheckoutUnavailableReason>([
+  'merchant_no_active_receiving_method',
+  'method_not_supported_by_merchant',
+  'route_disabled',
+  'route_revoked',
+  'route_expired',
+  'certification_blocked',
+  'amount_lease_unavailable',
+  'receiver_offline',
+  'launcher_unavailable'
+]);
+
+const checkoutFallbackActions = new Set<CheckoutFallbackAction>([
+  'switch_to_card',
+  'switch_to_sbp',
+  'switch_route',
+  'manual_copy_paste',
+  'refresh_methods',
+  'return_to_merchant'
+]);
 
 export interface MerchantServerBearerOptions {
   environment: string;
@@ -700,7 +747,22 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       session.selected_payer_bank_launcher_id &&
       !session.payment_instructions_shown_at
     ) {
-      session = await checkoutSessionProvider.markPaymentInstructionsShown(paymentSessionId);
+      try {
+        session = await checkoutSessionProvider.markPaymentInstructionsShown(paymentSessionId);
+      } catch (error) {
+        const renderedFallback = await renderStructuredCheckoutFallbackFromError({
+          error,
+          paymentSessionId,
+          checkoutSessionProvider,
+          recipient: options.recipient ?? defaultRecipient,
+          session
+        });
+        if (renderedFallback) {
+          reply.type('text/html; charset=utf-8');
+          return renderedFallback;
+        }
+        throw error;
+      }
     }
     const [receiverBanks, payerBankLaunchers] = await Promise.all([
       checkoutSessionProvider.getReceiverBanks(paymentSessionId),
@@ -737,8 +799,24 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   server.post('/checkout/:paymentSessionId/receiver-bank', async (request, reply) => {
     const params = request.params as { paymentSessionId: string };
     const body = request.body as { receiver_bank_id: string };
-    await checkoutSessionProvider.selectReceiverBank(params.paymentSessionId, body.receiver_bank_id);
-    const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    let session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    try {
+      await checkoutSessionProvider.selectReceiverBank(params.paymentSessionId, body.receiver_bank_id);
+      session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    } catch (error) {
+      const renderedFallback = await renderStructuredCheckoutFallbackFromError({
+        error,
+        paymentSessionId: params.paymentSessionId,
+        checkoutSessionProvider,
+        recipient: options.recipient ?? defaultRecipient,
+        session: session ?? undefined
+      });
+      if (!renderedFallback) {
+        throw error;
+      }
+      reply.type('text/html; charset=utf-8');
+      return renderedFallback;
+    }
     if (shouldRedirectCheckoutFormPost(request.headers)) {
       return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
     }
@@ -752,42 +830,42 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       await checkoutSessionProvider.submitExpectedPaymentProfile(params.paymentSessionId, body);
       return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
     } catch (error) {
-      const structuredError = getStructuredCheckoutMethodError(error);
-      if (!structuredError) {
+      const renderedFallback = await renderStructuredCheckoutFallbackFromError({
+        error,
+        paymentSessionId: params.paymentSessionId,
+        checkoutSessionProvider,
+        recipient: options.recipient ?? defaultRecipient,
+        preferredPaymentMethod: body.payment_method
+      });
+      if (!renderedFallback) {
         throw error;
       }
-      const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
-      if (!session) {
-        throw error;
-      }
-      const [receiverBanks, payerBankLaunchers] = await Promise.all([
-        checkoutSessionProvider.getReceiverBanks(params.paymentSessionId),
-        checkoutSessionProvider.getPayerBankLaunchers(params.paymentSessionId)
-      ]);
-      const patchedSession: CheckoutSession = {
-        ...session,
-        payment_method: body.payment_method,
-        available_payment_methods: structuredError.availablePaymentMethods,
-        unavailable_reason: structuredError.unavailableReason,
-        fallback_actions: structuredError.fallbackActions
-      };
       reply.type('text/html; charset=utf-8');
-      return renderCheckoutScreen(
-        patchedSession,
-        options.recipient ?? defaultRecipient,
-        receiverBanks.receiver_banks,
-        [],
-        payerBankLaunchers.payer_bank_launchers,
-        mapCheckoutStatus(session.status).displayStatus
-      );
+      return renderedFallback;
     }
   });
 
   server.post('/checkout/:paymentSessionId/receiving-route', async (request, reply) => {
     const params = request.params as { paymentSessionId: string };
     const body = request.body as { receiving_route_id: string };
-    await checkoutSessionProvider.selectReceivingRoute(params.paymentSessionId, body.receiving_route_id);
-    const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    let session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    try {
+      await checkoutSessionProvider.selectReceivingRoute(params.paymentSessionId, body.receiving_route_id);
+      session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    } catch (error) {
+      const renderedFallback = await renderStructuredCheckoutFallbackFromError({
+        error,
+        paymentSessionId: params.paymentSessionId,
+        checkoutSessionProvider,
+        recipient: options.recipient ?? defaultRecipient,
+        session: session ?? undefined
+      });
+      if (!renderedFallback) {
+        throw error;
+      }
+      reply.type('text/html; charset=utf-8');
+      return renderedFallback;
+    }
     if (shouldRedirectCheckoutFormPost(request.headers)) {
       return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
     }
@@ -797,8 +875,24 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   server.post('/checkout/:paymentSessionId/payer-bank-launcher', async (request, reply) => {
     const params = request.params as { paymentSessionId: string };
     const body = request.body as { payer_bank_launcher_id: string };
-    await checkoutSessionProvider.selectPayerBankLauncher(params.paymentSessionId, body.payer_bank_launcher_id);
-    const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    let session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    try {
+      await checkoutSessionProvider.selectPayerBankLauncher(params.paymentSessionId, body.payer_bank_launcher_id);
+      session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    } catch (error) {
+      const renderedFallback = await renderStructuredCheckoutFallbackFromError({
+        error,
+        paymentSessionId: params.paymentSessionId,
+        checkoutSessionProvider,
+        recipient: options.recipient ?? defaultRecipient,
+        session: session ?? undefined
+      });
+      if (!renderedFallback) {
+        throw error;
+      }
+      reply.type('text/html; charset=utf-8');
+      return renderedFallback;
+    }
     if (shouldRedirectCheckoutFormPost(request.headers)) {
       return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
     }
@@ -807,7 +901,22 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
 
   server.post('/checkout/:paymentSessionId/continue-to-bank', async (request, reply) => {
     const params = request.params as PaymentSessionParams;
-    const session = await checkoutSessionProvider.markReceiverArmed(params.paymentSessionId);
+    let session: CheckoutSession;
+    try {
+      session = await checkoutSessionProvider.markReceiverArmed(params.paymentSessionId);
+    } catch (error) {
+      const renderedFallback = await renderStructuredCheckoutFallbackFromError({
+        error,
+        paymentSessionId: params.paymentSessionId,
+        checkoutSessionProvider,
+        recipient: options.recipient ?? defaultRecipient
+      });
+      if (!renderedFallback) {
+        throw error;
+      }
+      reply.type('text/html; charset=utf-8');
+      return renderedFallback;
+    }
     if (shouldRedirectCheckoutFormPost(request.headers)) {
       return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
     }
@@ -870,30 +979,142 @@ async function renderMerchantIntegrationAction(
   }
 }
 
-function getStructuredCheckoutMethodError(error: unknown): {
-  availablePaymentMethods: { card: boolean; sbp: boolean };
-  unavailableReason: CheckoutUnavailableReason;
-  fallbackActions?: CheckoutFallbackAction[] | undefined;
-} | null {
+async function renderStructuredCheckoutFallbackFromError(params: {
+  error: unknown;
+  paymentSessionId: string;
+  checkoutSessionProvider: CheckoutSessionProvider;
+  recipient: CheckoutRecipient;
+  preferredPaymentMethod?: 'card' | 'sbp' | undefined;
+  session?: CheckoutSession | undefined;
+}): Promise<string | null> {
+  const structuredError = getStructuredCheckoutFallbackError(params.error);
+  if (!structuredError) {
+    return null;
+  }
+  const session = params.session ?? await params.checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+  if (!session) {
+    return null;
+  }
+  const [receiverBanks, payerBankLaunchers] = await Promise.all([
+    params.checkoutSessionProvider
+      .getReceiverBanks(params.paymentSessionId)
+      .catch(() => ({ payment_session_id: params.paymentSessionId, receiver_banks: [] })),
+    params.checkoutSessionProvider
+      .getPayerBankLaunchers(params.paymentSessionId)
+      .catch(() => ({ payment_session_id: params.paymentSessionId, payer_bank_launchers: [] }))
+  ]);
+  const receivingRoutes = session.selected_receiver_bank_id
+    ? await params.checkoutSessionProvider
+        .getReceivingRoutes(params.paymentSessionId, session.selected_receiver_bank_id)
+        .catch(() => ({ payment_session_id: params.paymentSessionId, bank_profile_id: session.selected_receiver_bank_id!, routes: [] }))
+    : { routes: [] };
+  const patchedSession: CheckoutSession = {
+    ...session,
+    payment_method: structuredError.paymentMethod ?? params.preferredPaymentMethod ?? session.payment_method,
+    available_payment_methods: structuredError.availablePaymentMethods ?? session.available_payment_methods,
+    checkout_error_code: structuredError.code,
+    unavailable_reason: structuredError.unavailableReason ?? session.unavailable_reason,
+    fallback_actions: structuredError.fallbackActions ?? session.fallback_actions
+  };
+  return renderCheckoutScreen(
+    patchedSession,
+    params.recipient,
+    receiverBanks.receiver_banks,
+    receivingRoutes.routes,
+    payerBankLaunchers.payer_bank_launchers,
+    mapCheckoutStatus(session.status).displayStatus
+  );
+}
+
+function getStructuredCheckoutFallbackError(error: unknown): StructuredCheckoutFallbackError | null {
   if (!error || typeof error !== 'object') return null;
   const candidate = error as {
     status?: unknown;
     body?: CheckoutProviderErrorBody | undefined;
   };
-  if (candidate.status !== 409 || candidate.body?.error?.code !== 'no_receiving_route_for_method') {
+  const code = candidate.body?.error?.code;
+  if (candidate.status !== 409 || !isStructuredCheckoutFallbackCode(code)) {
     return null;
   }
-  const details = candidate.body.error.details;
-  const methods = details?.available_payment_methods;
-  const reason = details?.unavailable_reason;
-  if (!methods || typeof methods.card !== 'boolean' || typeof methods.sbp !== 'boolean' || !reason) {
-    return null;
-  }
+  const details = candidate.body?.error?.details;
+  const methods = getAvailablePaymentMethods(details);
   return {
+    code,
     availablePaymentMethods: methods,
-    unavailableReason: reason,
-    fallbackActions: details?.fallback_actions
+    unavailableReason: getCheckoutUnavailableReason(code, details?.unavailable_reason, methods),
+    fallbackActions: getCheckoutFallbackActions(details?.fallback_actions, methods),
+    paymentMethod: details?.payment_method
   };
+}
+
+function isStructuredCheckoutFallbackCode(code: unknown): code is StructuredCheckoutFallbackCode {
+  return typeof code === 'string' && structuredCheckoutFallbackCodes.has(code as StructuredCheckoutFallbackCode);
+}
+
+function getAvailablePaymentMethods(
+  details: CheckoutProviderErrorDetails | undefined
+): { card: boolean; sbp: boolean } | undefined {
+  const methods = details?.available_payment_methods;
+  if (methods && typeof methods.card === 'boolean' && typeof methods.sbp === 'boolean') {
+    return methods;
+  }
+  const availableMethods = details?.available_methods;
+  if (Array.isArray(availableMethods)) {
+    return {
+      card: availableMethods.includes('card'),
+      sbp: availableMethods.includes('sbp')
+    };
+  }
+  return undefined;
+}
+
+function getCheckoutUnavailableReason(
+  code: StructuredCheckoutFallbackCode,
+  reason: CheckoutUnavailableReason | undefined,
+  methods: { card: boolean; sbp: boolean } | undefined
+): CheckoutUnavailableReason | undefined {
+  if (reason && checkoutUnavailableReasons.has(reason)) {
+    return reason;
+  }
+  if (code === 'amount_lease_unavailable') {
+    return 'amount_lease_unavailable';
+  }
+  if (code === 'no_receiving_route_for_method') {
+    return methods && !methods.card && !methods.sbp
+      ? 'merchant_no_active_receiving_method'
+      : 'method_not_supported_by_merchant';
+  }
+  return undefined;
+}
+
+function getCheckoutFallbackActions(
+  actions: readonly CheckoutFallbackAction[] | undefined,
+  methods: { card: boolean; sbp: boolean } | undefined
+): CheckoutFallbackAction[] | undefined {
+  const normalized = new Set<CheckoutFallbackAction>();
+  for (const action of actions ?? []) {
+    if (!checkoutFallbackActions.has(action)) continue;
+    if (action === 'switch_to_card' && methods?.card === false) continue;
+    if (action === 'switch_to_sbp' && methods?.sbp === false) continue;
+    normalized.add(action);
+  }
+  if (methods) {
+    if (methods.card) normalized.add('switch_to_card');
+    if (methods.sbp) normalized.add('switch_to_sbp');
+  }
+  normalized.add('refresh_methods');
+  normalized.add('return_to_merchant');
+  if (normalized.size > 0) {
+    return [...normalized];
+  }
+  if (!methods) {
+    return ['refresh_methods', 'return_to_merchant'];
+  }
+  const fallbackActions: CheckoutFallbackAction[] = [];
+  if (methods.card) fallbackActions.push('switch_to_card');
+  if (methods.sbp) fallbackActions.push('switch_to_sbp');
+  fallbackActions.push('refresh_methods', 'return_to_merchant');
+  return fallbackActions;
 }
 
 // Logic & Providers
