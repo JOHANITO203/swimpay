@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { getPayerBankLauncherOption, getReceiverBankOption } from '@swimpay/contracts';
 import { buildApiServer, type OrderRepository, type StoredOrderRecord, type StoredPaymentSessionRecord } from './server.js';
+import { InMemoryMerchantApiKeyVerifier } from './auth-bff.js';
 import { bankCertificationAllowsCheckoutRoute, decryptReceiverIdentifier, selectAmountLeaseCandidate } from './orders.js';
 import { isPaymentSessionTransitionAllowed, resolvePaymentSessionStatusForRead } from './payment-sessions.js';
 
@@ -592,8 +593,12 @@ const copyDetailsAllowedStatuses = new Set([
   'needs_review'
 ]);
 
-function buildServer(repository: InMemoryPaymentSessionRepository, now = '2026-05-02T10:00:00.000Z') {
-  return buildApiServer({
+function buildServer(
+  repository: InMemoryPaymentSessionRepository,
+  now = '2026-05-02T10:00:00.000Z',
+  merchantApiKeyVerifier?: InMemoryMerchantApiKeyVerifier
+) {
+  const options: Parameters<typeof buildApiServer>[0] = {
     environment: 'test',
     orderRepository: repository,
     phoneHmacSecret: 'test_secret',
@@ -611,7 +616,8 @@ function buildServer(repository: InMemoryPaymentSessionRepository, now = '2026-0
       nats: async () => 'skipped',
       valkey: async () => 'skipped'
     }
-  });
+  };
+  return buildApiServer(merchantApiKeyVerifier ? { ...options, merchantApiKeyVerifier } : options);
 }
 
 async function createOrder(server: ReturnType<typeof buildApiServer>) {
@@ -627,6 +633,22 @@ async function createOrder(server: ReturnType<typeof buildApiServer>) {
       },
       buyer: {
         bank_phone: '+79991234567'
+      },
+      expires_in_seconds: 900
+    }
+  });
+}
+
+async function createSdkOrder(server: ReturnType<typeof buildApiServer>, apiKey = 'sk_test_ready_gate') {
+  return server.inject({
+    method: 'POST',
+    url: '/v1/orders',
+    headers: { authorization: `Bearer ${apiKey}` },
+    payload: {
+      external_id: 'order_session_01',
+      amount: {
+        value: '137.00',
+        currency: 'RUB'
       },
       expires_in_seconds: 900
     }
@@ -700,6 +722,90 @@ describe('payment session api', () => {
 
     expect(new Set(allocated).size).toBe(99);
     expect(selectAmountLeaseCandidate({ displayAmountMinor, preferredDeltaMinor: 1, unavailablePayableAmounts })).toBeNull();
+  });
+
+  test('blocks payable order creation when the merchant has no active receiving route', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const merchantApiKeyVerifier = new InMemoryMerchantApiKeyVerifier();
+    merchantApiKeyVerifier.seedRawKey('sk_test_ready_gate', {
+      apiKeyId: 'key_ready_gate',
+      merchantId: 'mch_01',
+      scopes: ['orders.write']
+    });
+    const server = buildServer(repository, '2026-05-02T10:00:00.000Z', merchantApiKeyVerifier);
+
+    const response = await createSdkOrder(server);
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'merchant_payment_setup_required',
+        message: 'Merchant must add an active receiving method before accepting payments.',
+        details: {
+          merchant_setup_status: 'receiving_method_required',
+          payment_ready: false,
+          unavailable_reason: 'merchant_no_active_receiving_method',
+          setup_actions: ['add_receiving_method']
+        }
+      },
+      merchant_setup_status: 'receiving_method_required',
+      payment_ready: false,
+      setup_actions: ['add_receiving_method'],
+      official_bank_confirmation: false
+    });
+    expect(repository.orders.size).toBe(0);
+    expect(repository.paymentSessions.size).toBe(0);
+  });
+
+  test('reports merchant readiness from active receiving routes and drops readiness after disabling the last route', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+
+    const initial = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/readiness',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    expect(initial.statusCode).toBe(200);
+    expect(initial.json()).toMatchObject({
+      merchant_setup_status: 'receiving_method_required',
+      payment_ready: false,
+      setup_actions: ['add_receiving_method']
+    });
+
+    await createPhoneRoute(server);
+
+    const ready = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/readiness',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    expect(ready.statusCode).toBe(200);
+    expect(ready.json()).toMatchObject({
+      merchant_setup_status: 'ready_for_manual_payments',
+      payment_ready: true,
+      active_receiving_route_count: 1,
+      available_payment_methods: { card: false, sbp: true }
+    });
+
+    const disable = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods/route_1/disable',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    expect(disable.statusCode).toBe(200);
+
+    const afterDisable = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/readiness',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    expect(afterDisable.statusCode).toBe(200);
+    expect(afterDisable.json()).toMatchObject({
+      merchant_setup_status: 'receiving_method_required',
+      payment_ready: false,
+      setup_actions: ['add_receiving_method']
+    });
   });
 
   test('returns checkout status for a payment session', async () => {

@@ -176,6 +176,47 @@ describe('@swimpay/node orders.create', () => {
     } satisfies Partial<SwimPayApiError>);
   });
 
+  it('surfaces merchant setup readiness errors without hiding the action required', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          {
+            error: {
+              code: 'merchant_payment_setup_required',
+              message: 'Merchant must add an active receiving method before accepting payments.',
+              details: {
+                merchant_setup_status: 'receiving_method_required',
+                payment_ready: false,
+                unavailable_reason: 'merchant_no_active_receiving_method',
+                setup_actions: ['add_receiving_method']
+              }
+            },
+            official_bank_confirmation: false
+          },
+          { status: 409 }
+        )
+      )
+    );
+    const swimpay = new SwimPay({ secretKey: 'sk_test_secret', apiBaseUrl: 'https://api.swimpay.test' });
+
+    await expect(
+      swimpay.orders.create({
+        externalOrderId: 'ORDER_SETUP_REQUIRED',
+        amountMinor: 100,
+        currency: 'RUB'
+      })
+    ).rejects.toMatchObject({
+      code: 'merchant_payment_setup_required',
+      statusCode: 409,
+      details: {
+        merchant_setup_status: 'receiving_method_required',
+        payment_ready: false,
+        setup_actions: ['add_receiving_method']
+      }
+    } satisfies Partial<SwimPayApiError>);
+  });
+
   it('turns aborted requests into typed timeout errors', async () => {
     vi.stubGlobal(
       'fetch',

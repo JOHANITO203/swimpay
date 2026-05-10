@@ -6,7 +6,17 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
-The current sprint is PAYMENT-COMPATIBILITY-PAIR. It separates buyer sender bank, merchant receiver route, payer launcher and checkout fallback behavior.
+The current addendum is MERCHANT-READINESS-GATE. It prevents a merchant with no active checkout-safe receiving route from being considered payment-ready.
+
+- [x] `merchant_readiness_contract` - status: completed_validated - source: `.swimpay-agent/MERCHANT_READINESS_GATE_REPORT.md`
+- [x] `merchant_order_creation_gate` - status: completed_validated - source: `.swimpay-agent/MERCHANT_READINESS_GATE_REPORT.md`
+- [x] `android_dashboard_readiness_state` - status: completed_validated - source: `.swimpay-agent/MERCHANT_READINESS_GATE_REPORT.md`
+- [x] `web_dashboard_readiness_state` - status: completed_validated - source: `.swimpay-agent/MERCHANT_READINESS_GATE_REPORT.md`
+- [x] `sdk_setup_error_guardrail` - status: completed_validated - source: `.swimpay-agent/MERCHANT_READINESS_GATE_REPORT.md`
+
+## Previous Queue
+
+The previous sprint was PAYMENT-COMPATIBILITY-PAIR. It separates buyer sender bank, merchant receiver route, payer launcher and checkout fallback behavior.
 
 - [x] `payment_compatibility_pair_audit` - status: completed_with_findings - source: `.swimpay-agent/PAYMENT_COMPATIBILITY_PAIR_AUDIT.md`
 - [x] `payment_compatibility_pair_contract` - status: completed_validated - source: `.swimpay-agent/PAYMENT_COMPATIBILITY_PAIR_CONTRACT_REPORT.md`

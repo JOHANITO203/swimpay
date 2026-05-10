@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildApiServer, type OrderRepository, type StoredOrderRecord, type StoredPaymentSessionRecord } from './server.js';
+import {
+  buildApiServer,
+  type OrderRepository,
+  type StoredOrderRecord,
+  type StoredPaymentSessionRecord
+} from './server.js';
+import type { StoredMerchantReceivingRouteRecord } from './orders.js';
 import { InMemoryMerchantIntegrationRepository } from './developer-integration.js';
 import {
   AdminRoles,
@@ -14,6 +20,28 @@ import {
   hasAdminPermission,
   hasMerchantPermission
 } from './auth-bff.js';
+
+function checkoutReadyRoute(merchantId: string): StoredMerchantReceivingRouteRecord {
+  return {
+    route_id: 'route_auth_ready_card',
+    merchant_id: merchantId,
+    bank_profile_id: 'sber_ru',
+    rail_type: 'card_transfer',
+    receiver_identifier_type: 'card',
+    receiver_identifier_encrypted: 'encrypted',
+    receiver_identifier_hmac: 'hmac',
+    receiver_identifier_masked: '2202 **** **** 7890',
+    receiver_identifier_last4: '7890',
+    route_code: 'SBER-CARD',
+    display_label: 'Sberbank card',
+    enabled: true,
+    recommended: true,
+    review_policy: 'review_first',
+    lifecycle_status: 'active',
+    created_at: '2026-05-07T10:00:00.000Z',
+    updated_at: '2026-05-07T10:00:00.000Z'
+  };
+}
 
 class MinimalOrderRepository implements OrderRepository {
   public readonly orders = new Map<string, StoredOrderRecord>();
@@ -41,8 +69,8 @@ class MinimalOrderRepository implements OrderRepository {
     return { kind: 'created' as const, route: input.route };
   }
 
-  async listReceivingRoutes() {
-    return [];
+  async listReceivingRoutes(merchantId: string) {
+    return [checkoutReadyRoute(merchantId)];
   }
 
   async updateReceivingRoute() {
@@ -53,12 +81,12 @@ class MinimalOrderRepository implements OrderRepository {
     return { kind: 'not_found' as const };
   }
 
-  async listReceiverBanksForCheckout() {
-    return [];
+  async listReceiverBanksForCheckout(merchantId: string) {
+    return [checkoutReadyRoute(merchantId)];
   }
 
-  async listReceivingRoutesForCheckoutBank() {
-    return [];
+  async listReceivingRoutesForCheckoutBank(merchantId: string) {
+    return [checkoutReadyRoute(merchantId)];
   }
 
   async getSelectedReceivingRouteCopyDetails() {

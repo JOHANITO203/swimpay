@@ -1,5 +1,17 @@
 # Blockers
 
+## Merchant Readiness Gate
+
+- Resolved locally: merchants with no active checkout-safe receiving route now report `merchant_setup_status=receiving_method_required`.
+- Resolved locally: SDK/API-key order creation returns structured `409 merchant_payment_setup_required` for not-ready merchants.
+- Resolved locally: not-ready merchants do not get a payable order, payment session, amount lease, Expected Payment Profile or receiver-armed state.
+- Resolved locally: adding an active receiving route changes readiness to `ready_for_manual_payments`; disabling the last active route returns readiness to `receiving_method_required`.
+- Resolved locally: Android dashboard shows the action-required receiving-method message.
+- Resolved locally: web merchant dashboard and connected-site surfaces show payment unavailable/action-required copy when no active route exists.
+- Full validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Docker Compose config, Android JVM tests and Android debug APK build.
+- Staging gate: redeploy before re-testing SWIMVPN+ and external SDK order creation.
+- Not executed: real bank notification capture, auto-confirmation, public webhook semantic changes or Android receiver runtime capture.
+
 ## Checkout Method Availability Hotfix
 
 - Resolved locally: buyer Step 1 now derives visible card/SBP methods from active checkout-safe merchant receiving routes.

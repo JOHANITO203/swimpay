@@ -145,18 +145,30 @@ function renderConfigurationTestStep(): string {
   <div style="margin-top:28px;"><a href="/merchant/dashboard" style="text-decoration:none;">${Button({ text: 'Lancer un test', variant: 'primary', class: 'btn-wide' })}</a></div>`;
 }
 
-export function renderMerchantDashboard(): string {
+export function renderMerchantDashboard(routes: readonly MerchantRouteAdminRoute[] | null = null): string {
+  const knownReadiness = Array.isArray(routes);
+  const activeRouteCount = routes?.filter((route) => route.enabled).length ?? 0;
+  const paymentReady = !knownReadiness || activeRouteCount > 0;
+  const readinessPanel = paymentReady
+    ? StatusPanel({
+        title: 'SwimPay est prêt',
+        text: 'Votre téléphone est connecté et vos paiements peuvent être détectés.',
+        variant: 'success',
+        icon: 'OK'
+      })
+    : `${StatusPanel({
+        title: 'Action requise',
+        text: 'Ajoutez un moyen de réception pour activer les paiements.',
+        variant: 'warning',
+        icon: '!'
+      })}
+      <p style="text-align:center;margin-top:16px;"><a href="/merchant/receiving-methods" style="text-decoration:none;">${Button({ text: 'Ajouter un moyen de réception', variant: 'primary', class: 'btn-wide' })}</a></p>`;
   return AppShell({
     title: 'Tableau de bord',
     children: `<section class="screen merchant-screen"><div class="screen-content">
       ${SwimPayBrand()}
       ${PageHeader({ title: 'Tableau de bord' })}
-      ${StatusPanel({
-        title: 'SwimPay est prêt',
-        text: 'Votre téléphone est connecté et vos paiements peuvent être détectés.',
-        variant: 'success',
-        icon: 'OK'
-      })}
+      ${readinessPanel}
       <div class="metrics-grid" style="margin-top:26px;">
         ${MetricCard({ label: 'À vérifier', value: '7', icon: 'R' })}
         ${MetricCard({ label: 'Validés aujourd’hui', value: '24', icon: 'V' })}
@@ -361,7 +373,17 @@ export function renderMerchantOrderDetailPage(): string {
   });
 }
 
-export function renderConnectedSitePage(): string {
+export function renderConnectedSitePage(routes: readonly MerchantRouteAdminRoute[] | null = null): string {
+  const knownReadiness = Array.isArray(routes);
+  const paymentReady = !knownReadiness || (routes?.some((route) => route.enabled) ?? false);
+  const paymentReadinessNotice = paymentReady
+    ? ''
+    : StatusPanel({
+        title: 'Paiements indisponibles',
+        text: 'Paiements indisponibles tant qu’aucun moyen de réception n’est configuré.',
+        variant: 'warning',
+        icon: '!'
+      });
   return AppShell({
     title: 'Site ou application connecté',
     children: `<section class="screen merchant-screen"><div class="screen-content mobile-narrow">
@@ -370,6 +392,7 @@ export function renderConnectedSitePage(): string {
         title: 'Site ou application connecté',
         subtitle: 'Votre site ou application reçoit une notification quand un paiement change de statut.'
       })}
+      ${paymentReadinessNotice}
       ${StatusPanel({ title: 'Connexion active', text: 'Dernière notification envoyée il y a 3 min.', variant: 'success', icon: 'OK' })}
       ${Card({
         children: `

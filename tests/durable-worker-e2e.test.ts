@@ -19,6 +19,7 @@ import {
   type StoredOrderRecord,
   type StoredPaymentSessionRecord
 } from '../apps/api/src/server.js';
+import type { StoredMerchantReceivingRouteRecord } from '../apps/api/src/orders.js';
 import {
   createReceiverSignalSignature,
   type ReceiverSignalDevice,
@@ -70,6 +71,28 @@ const toVerifyContext: SignalRuntimeTrustContext = {
   deviceTrustScore: 100,
   merchantTrusted: true
 };
+
+function checkoutReadyRoute(merchantId: string): StoredMerchantReceivingRouteRecord {
+  return {
+    route_id: 'route_e2e_ready_card',
+    merchant_id: merchantId,
+    bank_profile_id: 'sber_ru',
+    rail_type: 'card_transfer',
+    receiver_identifier_type: 'card',
+    receiver_identifier_encrypted: 'encrypted',
+    receiver_identifier_hmac: 'hmac',
+    receiver_identifier_masked: '2202 **** **** 7890',
+    receiver_identifier_last4: '7890',
+    route_code: 'SBER-CARD',
+    display_label: 'Sberbank card',
+    enabled: true,
+    recommended: true,
+    review_policy: 'review_first',
+    lifecycle_status: 'active',
+    created_at: now,
+    updated_at: now
+  };
+}
 
 describe('durable worker e2e tests', () => {
   it('rejects an API-created TO_VERIFY bank signal before review without auto-confirming or exposing PII', async () => {
@@ -907,6 +930,30 @@ class E2EOrderRepository implements OrderRepository {
 
   public async getSelectedReceivingRouteCopyDetails() {
     return { kind: 'not_found' as const };
+  }
+
+  public async createReceivingRoute(input: Parameters<OrderRepository['createReceivingRoute']>[0]) {
+    return { kind: 'created' as const, route: input.route };
+  }
+
+  public async listReceivingRoutes(merchantId: string) {
+    return [checkoutReadyRoute(merchantId)];
+  }
+
+  public async updateReceivingRoute() {
+    return { kind: 'not_found' as const };
+  }
+
+  public async deleteReceivingRoute() {
+    return { kind: 'not_found' as const };
+  }
+
+  public async listReceiverBanksForCheckout(merchantId: string) {
+    return [checkoutReadyRoute(merchantId)];
+  }
+
+  public async listReceivingRoutesForCheckoutBank(merchantId: string) {
+    return [checkoutReadyRoute(merchantId)];
   }
 
   public async recordCheckoutDestinationCopied() {

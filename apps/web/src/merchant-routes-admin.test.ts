@@ -95,6 +95,38 @@ describe('merchant receiving route admin web surface', () => {
     ]);
   });
 
+  it('shows merchant payment readiness actions when no route is active', async () => {
+    const client = new EmptyMerchantRouteAdminClient();
+    const server = buildWebServer({
+      environment: 'test',
+      merchantRouteAdminClient: client
+    });
+
+    const dashboard = await server.inject({ method: 'GET', url: '/merchant/dashboard' });
+    const connectedSite = await server.inject({ method: 'GET', url: '/merchant/connected-site' });
+
+    expect(dashboard.statusCode).toBe(200);
+    expect(dashboard.body).toContain('Action requise');
+    expect(dashboard.body).toContain('Ajoutez un moyen de réception pour activer les paiements.');
+    expect(dashboard.body).toContain('Ajouter un moyen de réception');
+    expect(connectedSite.statusCode).toBe(200);
+    expect(connectedSite.body).toContain('Paiements indisponibles tant qu’aucun moyen de réception n’est configuré.');
+  });
+
+  it('keeps merchant dashboard ready when an active route exists', async () => {
+    const client = new FakeMerchantRouteAdminClient();
+    const server = buildWebServer({
+      environment: 'test',
+      merchantRouteAdminClient: client
+    });
+
+    const dashboard = await server.inject({ method: 'GET', url: '/merchant/dashboard' });
+
+    expect(dashboard.statusCode).toBe(200);
+    expect(dashboard.body).toContain('SwimPay est prêt');
+    expect(dashboard.body).not.toContain('Ajoutez un moyen de réception pour activer les paiements.');
+  });
+
   it('sends the server-side merchant bearer on receiving-method writes', async () => {
     const calls: Array<{ url: string; init: RequestInit | undefined }> = [];
     const previousFetch = globalThis.fetch;
@@ -200,5 +232,19 @@ class FakeMerchantRouteAdminClient implements MerchantRouteAdminClient {
     }
     Object.assign(route, patch);
     return route;
+  }
+}
+
+class EmptyMerchantRouteAdminClient implements MerchantRouteAdminClient {
+  async listRoutes(): Promise<MerchantRouteAdminRoute[]> {
+    return [];
+  }
+
+  async createRoute(): Promise<MerchantRouteAdminRoute> {
+    throw new Error('not implemented');
+  }
+
+  async updateRoute(): Promise<MerchantRouteAdminRoute> {
+    throw new Error('not implemented');
   }
 }

@@ -32,6 +32,7 @@ import {
   type AndroidMerchantDeviceProof,
   type CheckoutFallbackAction,
   type CheckoutUnavailableReason,
+  type MerchantPaymentReadiness,
   type ReceivingRouteRailType
 } from '@swimpay/contracts';
 import {
@@ -1088,6 +1089,21 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply.status(400).send(body);
     }
 
+    if (!repository) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Order repository is not configured.',
+          details: {}
+        }
+      });
+    }
+
+    const readiness = await resolveMerchantPaymentReadiness(repository, merchantId);
+    if (merchantContext.source === 'api_key' && !readiness.payment_ready) {
+      return reply.status(409).send(merchantPaymentSetupRequiredError(readiness));
+    }
+
     const createInput = buildOrderCreateInput({
       body,
       merchantId,
@@ -1098,16 +1114,6 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     if ('error' in createInput) {
       return reply.status(400).send(createInput);
-    }
-
-    if (!repository) {
-      return reply.status(503).send({
-        error: {
-          code: 'service_unavailable',
-          message: 'Order repository is not configured.',
-          details: {}
-        }
-      });
     }
 
     const result = await repository.createOrderWithSession(createInput);
@@ -1357,6 +1363,21 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       route: toMerchantReceivingRouteResponse(result.route),
       official_bank_confirmation: false
     });
+  });
+
+  server.get('/v1/merchant/readiness', async (request, reply) => {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.RECEIVING_METHODS_READ, {
+      allowAndroidMobile: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for merchant readiness.', {}));
+    }
+    if (!repository) {
+      return reply.status(503).send(orderRepositoryUnavailableError());
+    }
+
+    return reply.status(200).send(await resolveMerchantPaymentReadiness(repository, merchantContext.merchantId));
   });
 
   server.get('/v1/merchant/receiving-routes', async (request, reply) => {
@@ -2665,7 +2686,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     const metricTimeseries = merchantMetricsRepository
       ? await merchantMetricsRepository.getTimeseries({ merchantId, range: '30d', bucket: 'day', now: clock() })
       : null;
-    return reply.status(200).send(toAndroidMerchantDashboardSummaryResponse(reviews, metricSummary, metricTimeseries));
+    const readiness = repository ? await resolveMerchantPaymentReadiness(repository, merchantId) : null;
+    return reply.status(200).send(toAndroidMerchantDashboardSummaryResponse(reviews, metricSummary, metricTimeseries, readiness));
   });
 
   server.get('/v1/merchant/metrics/summary', async (request, reply) => {
@@ -4105,15 +4127,27 @@ function authBffRepositoryUnavailableError() {
 function toAndroidMerchantDashboardSummaryResponse(
   reviews: ReviewListItem[],
   metricSummary: MerchantMetricsSummary | null = null,
-  metricTimeseries: MerchantMetricsTimeseries | null = null
+  metricTimeseries: MerchantMetricsTimeseries | null = null,
+  readiness: MerchantPaymentReadiness | null = null
 ): Record<string, unknown> {
   const sorted = sortAndroidMerchantReviews(reviews);
+  const merchantSetupStatus = readiness?.merchant_setup_status ?? 'receiver_required';
+  const paymentReady = readiness?.payment_ready ?? false;
+  const readinessMessage = paymentReady
+    ? 'Paiements disponibles en validation manuelle.'
+    : merchantSetupStatus === 'receiving_method_required'
+      ? 'Ajoutez un moyen de réception pour activer les paiements.'
+      : 'Votre configuration doit être complétée avant de recevoir des paiements.';
   return {
     payments_to_review_count: sorted.length,
     confirmed_today_count: metricSummary?.confirmedPaymentCount ?? 0,
     notifications_sent_count: 0,
     metrics_summary: metricSummary ? toMerchantMetricsSummaryResponse(metricSummary) : null,
     metrics_timeseries: metricTimeseries ? toMerchantMetricsTimeseriesResponse(metricTimeseries) : null,
+    merchant_setup_status: merchantSetupStatus,
+    payment_ready: paymentReady,
+    setup_actions: readiness?.setup_actions ?? ['connect_receiver'],
+    readiness_message: readinessMessage,
     receiver_status: {
       status: 'action_required',
       label: 'Téléphone',
@@ -4452,6 +4486,61 @@ function orderRepositoryUnavailableError() {
       message: 'Order repository is not configured.',
       details: {}
     }
+  };
+}
+
+async function resolveMerchantPaymentReadiness(
+  repository: OrderRepository,
+  merchantId: string
+): Promise<MerchantPaymentReadiness> {
+  const routes = await repository.listReceiverBanksForCheckout(merchantId, '__merchant_readiness__');
+  const methods = {
+    card: routes.some((route) => route.rail_type === 'card_transfer'),
+    sbp: routes.some((route) => route.rail_type === 'phone_transfer')
+  };
+
+  if (routes.length === 0) {
+    return {
+      merchant_setup_status: 'receiving_method_required',
+      payment_ready: false,
+      active_receiving_route_count: 0,
+      available_payment_methods: methods,
+      setup_actions: ['add_receiving_method'],
+      unavailable_reason: 'merchant_no_active_receiving_method',
+      manual_fallback_ready: false,
+      signal_assisted_ready: false,
+      official_bank_confirmation: false
+    };
+  }
+
+  return {
+    merchant_setup_status: 'ready_for_manual_payments',
+    payment_ready: true,
+    active_receiving_route_count: routes.length,
+    available_payment_methods: methods,
+    setup_actions: [],
+    manual_fallback_ready: true,
+    signal_assisted_ready: false,
+    official_bank_confirmation: false
+  };
+}
+
+function merchantPaymentSetupRequiredError(readiness: MerchantPaymentReadiness): Record<string, unknown> {
+  return {
+    error: {
+      code: 'merchant_payment_setup_required',
+      message: 'Merchant must add an active receiving method before accepting payments.',
+      details: {
+        merchant_setup_status: readiness.merchant_setup_status,
+        payment_ready: false,
+        unavailable_reason: readiness.unavailable_reason ?? 'merchant_no_active_receiving_method',
+        setup_actions: readiness.setup_actions
+      }
+    },
+    merchant_setup_status: readiness.merchant_setup_status,
+    payment_ready: false,
+    setup_actions: readiness.setup_actions,
+    official_bank_confirmation: false
   };
 }
 

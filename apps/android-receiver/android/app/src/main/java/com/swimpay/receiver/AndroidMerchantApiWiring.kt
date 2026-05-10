@@ -1123,6 +1123,15 @@ class MerchantDashboardApiRepository(
         val metricsTimeseries = extractObjectValue(response.body, "metrics_timeseries")
             ?.let { extractTopLevelObjectsFromArray(it, "points").mapNotNull { point -> point.toMerchantDashboardTimeseriesPoint() } }
             .orEmpty()
+        val merchantSetupStatus = extractString(response.body, "merchant_setup_status")
+        val paymentReady = extractBoolean(response.body, "payment_ready") ?: true
+        val readinessMessage = extractString(response.body, "readiness_message")
+        val readyTitle = if (paymentReady) "SwimPay est prêt" else "Action requise"
+        val readyText = readinessMessage ?: if (merchantSetupStatus == "receiving_method_required") {
+            "Ajoutez un moyen de réception pour activer les paiements."
+        } else {
+            "Votre configuration doit être complétée avant de recevoir des paiements."
+        }
         val receiverDisplay = extractNestedString(response.body, "receiver_status", "display") ?: "Action requise"
         val recentTexts = extractTopLevelObjectsFromArray(response.body, "recent_detected_payments").flatMap { item ->
             val amount = extractNestedString(item, "amount", "value") ?: "0.00"
@@ -1137,8 +1146,8 @@ class MerchantDashboardApiRepository(
             state = MerchantRepositoryState.SUCCESS,
             texts = listOf(
                 "Tableau de bord",
-                "SwimPay est prêt",
-                "Votre téléphone est connecté et vos paiements peuvent être détectés.",
+                readyTitle,
+                readyText,
                 "À vérifier",
                 toReview,
                 "Validés aujourd’hui",

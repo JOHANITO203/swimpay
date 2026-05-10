@@ -1,5 +1,18 @@
 # Progress Log
 
+## 2026-05-10T11:45:00+03:00 - Merchant Readiness Gate completed
+
+- Added the shared `MerchantPaymentReadiness` contract and `GET /v1/merchant/readiness`.
+- Enforced merchant setup readiness before SDK/API-key order creation.
+- Merchants without active checkout-safe receiving routes now receive structured `409 merchant_payment_setup_required`.
+- Prevented not-ready merchants from creating payable orders, payment sessions, amount leases, Expected Payment Profiles or receiver-armed states.
+- Wired Android merchant dashboard readiness copy so missing receiving methods show an action-required state.
+- Wired web merchant dashboard and connected-site surfaces to show payment unavailable/action-required copy when no active route exists.
+- Added Node SDK, API, Android and web tests for readiness behavior.
+- Updated legacy payable-order fixtures so they explicitly include active checkout-safe receiving routes.
+- Full validation passed: android doctor, typecheck, lint, full Vitest suite with 77 files / 619 tests, TypeScript build, Compose config, Android JVM tests and Android debug APK build.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
 ## 2026-05-10T00:03:15+03:00 - P0-WIRE-1 runtime wiring
 
 - Wired amount lease allocation into hosted checkout receiving-route selection.

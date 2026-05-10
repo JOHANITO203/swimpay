@@ -1112,6 +1112,37 @@ class AndroidMerchantApiWiringTest {
         assertFalse(normalVisible.contains("official_bank_confirmation", ignoreCase = true))
         assertFalse(normalVisible.contains("NotificationListener"))
     }
+
+    @Test
+    fun dashboardRepositoryShowsReceivingMethodReadinessAction() {
+        val session = AuthenticatedMerchantSession.localDev("mch_demo")
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "payments_to_review_count": 0,
+                  "confirmed_today_count": 0,
+                  "notifications_sent_count": 0,
+                  "merchant_setup_status": "receiving_method_required",
+                  "payment_ready": false,
+                  "setup_actions": ["add_receiving_method"],
+                  "readiness_message": "Ajoutez un moyen de r\u00e9ception pour activer les paiements.",
+                  "receiver_status": { "display": "Action requise" },
+                  "recent_detected_payments": [],
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
+        )
+
+        val dashboard = MerchantDashboardApiRepository(transport).load(session)
+
+        assertEquals(MerchantRepositoryState.SUCCESS, dashboard.state)
+        assertTrue(dashboard.visibleTexts().contains("Action requise"))
+        assertTrue(dashboard.visibleTexts().contains("Ajoutez un moyen de réception pour activer les paiements."))
+        assertFalse(dashboard.visibleTexts().contains("SwimPay est prêt"))
+    }
 }
 
 private fun receiverPublicKeyPem(): String = listOf(

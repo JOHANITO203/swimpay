@@ -83,6 +83,32 @@ export type ReceivingRouteReviewPolicy = (typeof ReceivingRouteReviewPolicies)[n
 export const ReceivingRouteLifecycleStatuses = ['active', 'pending_disable', 'disabled', 'revoked', 'deleted'] as const;
 export type ReceivingRouteLifecycleStatus = (typeof ReceivingRouteLifecycleStatuses)[number];
 
+export const MerchantSetupStatuses = [
+  'onboarding_incomplete',
+  'receiving_method_required',
+  'receiver_required',
+  'developer_integration_required',
+  'ready_for_manual_payments',
+  'ready_for_signal_assisted_payments'
+] as const;
+
+export type MerchantSetupStatus = (typeof MerchantSetupStatuses)[number];
+
+export interface MerchantPaymentReadiness {
+  merchant_setup_status: MerchantSetupStatus;
+  payment_ready: boolean;
+  active_receiving_route_count: number;
+  available_payment_methods: {
+    card: boolean;
+    sbp: boolean;
+  };
+  setup_actions: readonly string[];
+  unavailable_reason?: 'merchant_no_active_receiving_method' | undefined;
+  manual_fallback_ready: boolean;
+  signal_assisted_ready: boolean;
+  official_bank_confirmation: false;
+}
+
 export const ReceivingRouteRiskReasonCodes = [
   'phone_transfer_matching_hint_available',
   'buyer_sender_phone_missing',

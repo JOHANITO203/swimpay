@@ -456,7 +456,15 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
 
   server.get('/merchant/dashboard', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
-    return renderMerchantDashboardScreen();
+    if (!merchantRouteAdminClient) {
+      return renderMerchantDashboardScreen(null);
+    }
+    try {
+      const routes = await merchantRouteAdminClient.listRoutes();
+      return renderMerchantDashboardScreen(routes);
+    } catch {
+      return renderMerchantDashboardScreen(null);
+    }
   });
 
   server.get('/merchant/banks', async (_request, reply) => {
@@ -547,7 +555,15 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
 
   server.get('/merchant/connected-site', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
-    return renderConnectedSiteScreen();
+    if (!merchantRouteAdminClient) {
+      return renderConnectedSiteScreen(null);
+    }
+    try {
+      const routes = await merchantRouteAdminClient.listRoutes();
+      return renderConnectedSiteScreen(routes);
+    } catch {
+      return renderConnectedSiteScreen(null);
+    }
   });
 
   server.get('/merchant/developer-integration', async (_request, reply) => {

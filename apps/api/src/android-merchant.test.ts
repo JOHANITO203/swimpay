@@ -548,6 +548,10 @@ describe('android merchant mobile backend endpoints', () => {
       notifications_sent_count: 0,
       metrics_summary: null,
       metrics_timeseries: null,
+      merchant_setup_status: 'ready_for_manual_payments',
+      payment_ready: true,
+      setup_actions: [],
+      readiness_message: 'Paiements disponibles en validation manuelle.',
       receiver_status: {
         status: 'action_required',
         label: 'Téléphone',

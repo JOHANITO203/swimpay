@@ -1,5 +1,49 @@
 # Next Action
 
+generated_at: 2026-05-10T11:45:00+03:00
+
+## Latest Merchant Readiness Gate
+
+Completed locally:
+
+1. Added `MerchantPaymentReadiness` contract and `GET /v1/merchant/readiness`.
+2. Blocked SDK/API-key order creation for merchants without an active checkout-safe receiving route.
+3. Returned structured `409 merchant_payment_setup_required` instead of creating a payable checkout.
+4. Ensured no order, payment session, amount lease, Expected Payment Profile or receiver-armed state is created for a not-ready merchant.
+5. Wired Android dashboard copy to show `Ajoutez un moyen de réception pour activer les paiements.`
+6. Wired web merchant dashboard and connected-site surfaces to show action-required/payment-unavailable states.
+7. Added SDK guardrail coverage for typed setup errors.
+
+Validation:
+
+- `npm run android:doctor` passed.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm test` passed: 77 files, 619 tests.
+- `npm run build` passed.
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed.
+- Android JVM tests passed.
+- Android debug APK build passed.
+
+Next recommended action:
+
+1. Commit and redeploy staging.
+2. Re-test SWIMVPN+ / external SDK order creation with:
+   - no receiving route;
+   - card-only route;
+   - SBP-only route;
+   - both routes.
+3. Confirm the buyer never reaches a dead-end method choice for an unavailable merchant route.
+
+Do not do:
+
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not change public webhook semantics.
+- Do not expose raw PAN or raw phone after submit.
+
+---
+
 generated_at: 2026-05-10T08:35:00+03:00
 
 ## Latest Checkout Method Availability Hotfix
