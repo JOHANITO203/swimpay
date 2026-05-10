@@ -41,21 +41,21 @@ describe('checkout bank selection contracts', () => {
     expect(getReceiverBankOption('unknown')).toBeNull();
   });
 
-  it('declares payer bank launchers as UX-only manual-fallback options', () => {
+  it('declares observed payer bank launchers as UX-only package launch options', () => {
     expect(PayerBankLauncherRegistry.map((launcher) => launcher.payer_bank_launcher_id)).toEqual([
       'sber_ru',
       'tbank_ru',
       'vtb_ru',
       'alfa_ru',
-      'gazprombank_ru'
+      'gazprombank_ru',
+      'ozon_bank'
     ]);
 
     for (const launcher of PayerBankLauncherRegistry) {
       expect(launcher.bank_id).toBe(launcher.payer_bank_launcher_id);
       expect(launcher.android_package_candidates.length).toBeGreaterThan(0);
       expect(launcher.deeplink_uri_template).toBeNull();
-      expect(launcher.deeplink_schemes).toEqual([]);
-      expect(launcher.launch_url).toBeNull();
+      expect(launcher.launch_url).toBe(`intent://#Intent;package=${launcher.android_package_hint};end`);
       expect(launcher.fallback_strategy).toBe('copy_details_manual_transfer');
       expect(launcher.can_prefill_receiver_card).toBe(false);
       expect(launcher.can_prefill_receiver_phone).toBe(false);
@@ -68,6 +68,15 @@ describe('checkout bank selection contracts', () => {
     }
 
     expect(getPayerBankLauncherOption('sber_ru')?.android_package_hint).toBe('ru.sberbankmobile');
+    expect(getPayerBankLauncherOption('ozon_bank')).toMatchObject({
+      android_package_hint: 'ru.ozon.fintech.finance',
+      detection_supported: false,
+      tested_status: 'not_validated'
+    });
+    expect(getReceiverBankOption('ozon_bank')).toBeNull();
+    expect(getPayerBankLauncherOption('tbank_ru')?.deeplink_schemes).toContain('tbank');
+    expect(getPayerBankLauncherOption('vtb_ru')?.deeplink_schemes).toContain('vtb');
+    expect(getPayerBankLauncherOption('gazprombank_ru')?.deeplink_schemes).toContain('gpbapp');
     expect(getPayerBankLauncherOption('unknown')).toBeNull();
   });
 

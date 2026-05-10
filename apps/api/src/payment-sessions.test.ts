@@ -1001,7 +1001,7 @@ describe('payment session api', () => {
     const selectedLauncher = await server.inject({
       method: 'POST',
       url: '/v1/checkout/ps_session_01/payer-bank-launcher',
-      payload: { payer_bank_launcher_id: 'tbank_ru' }
+      payload: { payer_bank_launcher_id: 'sber_ru' }
     });
     const instructions = await server.inject({
       method: 'POST',
@@ -1817,6 +1817,48 @@ describe('payment session api', () => {
     expect(repository.paymentSessions.get('ps_session_01')?.selectedPayerBankLauncherId).toBe('tbank_ru');
   });
 
+  test('rejects payer launcher overrides that do not match the buyer sender bank', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createCardRoute(server);
+
+    const profile = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/expected-payment-profile',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        buyer_first_name: 'Ivan',
+        buyer_last_name: 'Petrov',
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        sender_card_number: '4242 4242 4242 4242'
+      }
+    });
+    const launcherOverride = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/payer-bank-launcher',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { payer_bank_launcher_id: 'tbank_ru' }
+    });
+
+    expect(profile.statusCode).toBe(200);
+    expect(launcherOverride.statusCode).toBe(409);
+    expect(launcherOverride.json()).toMatchObject({
+      error: {
+        code: 'payer_launcher_mismatch',
+        details: {
+          sender_bank_id: 'sber_ru',
+          payer_bank_launcher_id: 'tbank_ru'
+        }
+      },
+      official_bank_confirmation: false
+    });
+    expect(repository.paymentSessions.get('ps_session_01')?.senderBankId).toBe('sber_ru');
+    expect(repository.paymentSessions.get('ps_session_01')?.selectedReceiverBankId).toBe('sber_ru');
+    expect(repository.paymentSessions.get('ps_session_01')?.selectedPayerBankLauncherId).toBe('sber_ru');
+  });
+
   test('exposes active checkout payment methods and routes as backend source of truth', async () => {
     const repository = new InMemoryPaymentSessionRepository();
     const server = buildServer(repository);
@@ -2032,7 +2074,7 @@ describe('payment session api', () => {
       method: 'POST',
       url: '/v1/checkout/ps_session_01/payer-bank-launcher',
       headers: { authorization: 'Bearer test_mch_01' },
-      payload: { payer_bank_launcher_id: 'tbank_ru' }
+      payload: { payer_bank_launcher_id: 'sber_ru' }
     });
 
     const instructions = await server.inject({
@@ -2100,7 +2142,7 @@ describe('payment session api', () => {
       method: 'POST',
       url: '/v1/checkout/ps_session_01/payer-bank-launcher',
       headers: { authorization: 'Bearer test_mch_01' },
-      payload: { payer_bank_launcher_id: 'tbank_ru' }
+      payload: { payer_bank_launcher_id: 'sber_ru' }
     });
     await server.inject({
       method: 'POST',
@@ -2152,7 +2194,7 @@ describe('payment session api', () => {
       method: 'POST',
       url: '/v1/checkout/ps_session_01/payer-bank-launcher',
       headers: { authorization: 'Bearer test_mch_01' },
-      payload: { payer_bank_launcher_id: 'tbank_ru' }
+      payload: { payer_bank_launcher_id: 'sber_ru' }
     });
     await server.inject({
       method: 'POST',

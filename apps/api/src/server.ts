@@ -2053,6 +2053,23 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         }
       });
     }
+    if (
+      loaded.paymentSession.senderBankId &&
+      launcher.payer_bank_launcher_id !== loaded.paymentSession.senderBankId
+    ) {
+      return reply.status(409).send({
+        error: {
+          code: 'payer_launcher_mismatch',
+          message: 'The payer bank launcher must match the buyer sender bank.',
+          details: {
+            sender_bank_id: loaded.paymentSession.senderBankId,
+            payer_bank_launcher_id: launcher.payer_bank_launcher_id,
+            fallback_actions: ['refresh_methods', 'return_to_merchant']
+          }
+        },
+        official_bank_confirmation: false
+      });
+    }
 
     const result = await repository!.selectPayerBankLauncher({
       merchantId: loaded.paymentSession.merchantId,

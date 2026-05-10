@@ -272,11 +272,24 @@ export const V1ReceiverBankOptions: readonly ReceiverBankOption[] = [
 ] as const;
 
 export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
-  payerLauncher('sber_ru', 'Sberbank', ['ru.sberbankmobile']),
-  payerLauncher('tbank_ru', 'T-Bank', ['com.idamob.tinkoff.android']),
-  payerLauncher('vtb_ru', 'VTB', ['ru.vtb24.mobilebanking.android']),
-  payerLauncher('alfa_ru', 'Alfa-Bank', ['ru.alfabank.mobile.android']),
-  payerLauncher('gazprombank_ru', 'Gazprombank', ['ru.gazprombank.android.mobilebank.app'])
+  payerLauncher('sber_ru', 'Sberbank', ['ru.sberbankmobile'], {
+    deeplinkSchemes: ['tel']
+  }),
+  payerLauncher('tbank_ru', 'T-Bank', ['com.idamob.tinkoff.android'], {
+    deeplinkSchemes: ['bank100000000004', 'bank10000000004', 'tbank', 'tcalls', 'tel', 'tinkoffbank']
+  }),
+  payerLauncher('vtb_ru', 'VTB', ['ru.vtb24.mobilebanking.android'], {
+    deeplinkSchemes: ['bank100000000005', 'bank110000000005', 'bank120000000005', 'bank200000000005', 'extvtb', 'shortcut', 'vtb', 'vtb-help']
+  }),
+  payerLauncher('alfa_ru', 'Alfa-Bank', ['ru.alfabank.mobile.android'], {
+    deeplinkSchemes: ['alfabank', 'esia']
+  }),
+  payerLauncher('gazprombank_ru', 'Gazprombank', ['ru.gazprombank.android.mobilebank.app'], {
+    deeplinkSchemes: ['bank100000000001', 'gpbapp']
+  }),
+  payerLauncher('ozon_bank', 'Ozon Bank', ['ru.ozon.fintech.finance'], {
+    deeplinkSchemes: ['bank100000000273', 'ozonbank', 'ozonplatiqr', 'tel', 'vk53864657']
+  })
 ] as const;
 
 export interface CheckoutStateInput {
@@ -1111,18 +1124,23 @@ function payerLauncher(
   payerBankLauncherId: string,
   displayName: string,
   androidPackageCandidates: readonly string[],
-  launchStrategy: PayerBankLaunchStrategy = androidPackageCandidates.length > 0 ? 'package_hint_only' : 'manual_only'
+  options: {
+    deeplinkSchemes?: readonly string[];
+    launchStrategy?: PayerBankLaunchStrategy;
+  } = {}
 ): PayerBankLauncherOption {
+  const androidPackageHint = androidPackageCandidates[0] ?? null;
+  const launchStrategy = options.launchStrategy ?? (androidPackageHint ? 'package_hint_only' : 'manual_only');
   return {
     payer_bank_launcher_id: payerBankLauncherId,
     bank_id: payerBankLauncherId,
     display_name: displayName,
     country: 'RU',
     android_package_candidates: androidPackageCandidates,
-    android_package_hint: androidPackageCandidates[0] ?? null,
+    android_package_hint: androidPackageHint,
     deeplink_uri_template: null,
-    deeplink_schemes: [],
-    launch_url: null,
+    deeplink_schemes: options.deeplinkSchemes ?? [],
+    launch_url: androidPackageHint ? androidPackageLaunchUrl(androidPackageHint) : null,
     launch_strategy: launchStrategy,
     fallback_strategy: 'copy_details_manual_transfer',
     can_prefill_receiver_card: false,
@@ -1135,6 +1153,10 @@ function payerLauncher(
     does_not_confirm_payment: true,
     official_bank_confirmation: false
   };
+}
+
+function androidPackageLaunchUrl(packageName: string): string {
+  return `intent://#Intent;package=${packageName};end`;
 }
 
 const DEFAULT_REFERENCE_WORDS = [

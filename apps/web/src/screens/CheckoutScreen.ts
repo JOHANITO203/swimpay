@@ -418,6 +418,7 @@ function renderInstructionsStep(
   const destinationCopyLabel = isPhone ? 'Telephone du destinataire' : 'Carte du destinataire';
   const methodLabel = isPhone ? 'Telephone SBP' : 'Carte';
   const bankLabel = selectedLauncher?.display_name ?? 'Banque choisie';
+  const bankLaunchUrl = selectedLauncher?.launch_url ?? '';
   const summary = [
     `Montant exact: ${amount.value} ${amount.currency}`,
     `Reference: ${session.reference}`,
@@ -443,7 +444,7 @@ function renderInstructionsStep(
       ${renderCopyablePaymentRow('Methode', methodLabel, methodLabel)}
     </div>
     <div class="instruction-actions">
-      <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/continue-to-bank">
+      <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/continue-to-bank" data-bank-launch-form data-launch-url="${escapeHtml(bankLaunchUrl)}" data-checkout-url="/checkout/${escapeHtml(session.payment_session_id)}">
         <button class="checkout-primary-action" type="submit">Aller a ma banque ${iconSvg('external')}<span class="sr-only">Ouvrir ma banque</span></button>
       </form>
       <button class="checkout-secondary-action" type="button" data-copy-value="${escapeHtml(summary)}" aria-label="Copier les details">Copier tous les details</button>
@@ -796,6 +797,42 @@ function buyerCheckoutScript(): string {
           }
           const payload = await response.json();
           await copyText(target, payload.destination_value || payload.receiver_identifier_copy_value || '');
+        }
+      });
+
+      document.addEventListener('submit', async (event) => {
+        const form = event.target instanceof HTMLFormElement ? event.target.closest('[data-bank-launch-form]') : null;
+        if (!form) return;
+        const launchUrl = form.getAttribute('data-launch-url') || '';
+        if (!launchUrl) return;
+
+        event.preventDefault();
+        const button = form.querySelector('button[type=submit]');
+        if (button) button.disabled = true;
+
+        try {
+          const response = await fetch(form.action, {
+            method: 'POST',
+            headers: { accept: 'application/json' },
+            credentials: 'same-origin'
+          });
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('text/html')) {
+            document.open();
+            document.write(await response.text());
+            document.close();
+            return;
+          }
+          if (!response.ok) throw new Error('continue-to-bank failed');
+
+          window.location.href = launchUrl;
+          const checkoutUrl = form.getAttribute('data-checkout-url') || form.action.replace('/continue-to-bank', '');
+          window.setTimeout(() => {
+            window.location.href = checkoutUrl;
+          }, 1400);
+        } catch {
+          if (button) button.disabled = false;
+          form.submit();
         }
       });
 

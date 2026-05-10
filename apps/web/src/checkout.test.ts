@@ -198,7 +198,7 @@ describe('hosted checkout web foundation', () => {
     provider.session = {
       ...provider.session,
       payment_method: 'sbp',
-      sender_bank_id: 'sber_ru',
+      sender_bank_id: 'tbank_ru',
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       checkout_state: 'receiving_route_selection',
@@ -226,7 +226,7 @@ describe('hosted checkout web foundation', () => {
     provider.session = {
       ...provider.session,
       payment_method: 'card',
-      sender_bank_id: 'sber_ru',
+      sender_bank_id: 'tbank_ru',
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       checkout_state: 'receiving_route_selection',
@@ -250,7 +250,7 @@ describe('hosted checkout web foundation', () => {
     provider.session = {
       ...provider.session,
       payment_method: 'sbp',
-      sender_bank_id: 'sber_ru',
+      sender_bank_id: 'tbank_ru',
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_phone',
@@ -267,6 +267,8 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Telephone du destinataire');
     expect(response.body).toContain('+7 *** *** **67');
     expect(response.body).toContain('Ouvrir ma banque');
+    expect(response.body).toContain('data-bank-launch-form');
+    expect(response.body).toContain('data-launch-url="intent://#Intent;package=com.idamob.tinkoff.android;end"');
     expect(response.body).toContain('J&#39;ai paye');
     expect(response.body).toContain('Copier les details');
     expect(response.body).toContain('Completez le paiement dans');
@@ -287,7 +289,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
-      selected_payer_bank_launcher_id: 'tbank_ru',
+      selected_payer_bank_launcher_id: 'sber_ru',
       checkout_state: 'payment_instructions',
       buyer_safe_status: 'awaiting_payment'
     };
@@ -328,7 +330,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
-      selected_payer_bank_launcher_id: 'tbank_ru',
+      selected_payer_bank_launcher_id: 'sber_ru',
       checkout_state: status as CheckoutSessionState,
       buyer_safe_status: buyerSafeStatus as BuyerSafeCheckoutStatus
     };
@@ -530,7 +532,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
-      selected_payer_bank_launcher_id: 'tbank_ru',
+      selected_payer_bank_launcher_id: 'sber_ru',
       checkout_state: 'payment_instructions',
       buyer_safe_status: 'awaiting_payment'
     };
@@ -572,7 +574,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
-      selected_payer_bank_launcher_id: 'tbank_ru',
+      selected_payer_bank_launcher_id: 'sber_ru',
       payment_instructions_shown_at: '2026-05-02T10:01:00.000Z',
       checkout_state: 'payment_instructions',
       buyer_safe_status: 'awaiting_payment'
@@ -663,7 +665,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_phone',
-      selected_payer_bank_launcher_id: 'tbank_ru'
+      selected_payer_bank_launcher_id: 'sber_ru'
     };
     const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
@@ -739,7 +741,7 @@ describe('hosted checkout web foundation', () => {
       selected_receiver_bank_id: 'sber_ru',
       selected_receiver_bank_profile_id: 'sber_ru',
       selected_receiving_route_id: 'route_sber_card',
-      selected_payer_bank_launcher_id: 'tbank_ru',
+      selected_payer_bank_launcher_id: 'sber_ru',
       checkout_state: 'payment_instructions',
       buyer_safe_status: 'awaiting_payment'
     };
