@@ -6,6 +6,14 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+The current hotfix is CHECKOUT-METHOD-AVAILABILITY. It prevents buyers from seeing or forcing payment methods the merchant cannot receive.
+
+- [x] `checkout_method_availability_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_METHOD_AVAILABILITY_AUDIT.md`
+- [x] `checkout_backend_availability_contract` - status: completed_targeted_validated - source: `.swimpay-agent/CHECKOUT_METHOD_AVAILABILITY_FIX_REPORT.md`
+- [x] `checkout_actionable_method_fallback` - status: completed_targeted_validated - source: `.swimpay-agent/CHECKOUT_METHOD_FALLBACK_UX_REPORT.md`
+
+## Previous Queue
+
 The current sprint is P0-WIRE-1. It wires the P0 database foundations into runtime behavior without changing manual-confirmation-only semantics.
 
 - [x] `p0_wire_amount_lease_allocation` - status: completed_validated - source: `.swimpay-agent/P0_WIRE_AMOUNT_LEASE_REPORT.md`

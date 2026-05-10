@@ -2735,3 +2735,33 @@ Safety checks:
 - No app runtime, payment semantics, Android Receiver behavior, webhook behavior or real bank notification handling changed.
 
 ---
+
+# 2026-05-10T08:35:00+03:00 - Checkout Method Availability Hotfix
+
+- Audited the real SWIMVPN+ checkout issue where SBP remained visible although the merchant had no active SBP/phone receiving route.
+- Added backend availability fields to payment session/status responses:
+  - `available_payment_methods`;
+  - `available_routes`;
+  - `unavailable_reason`.
+- Kept backend as source of truth by rejecting forced Expected Payment Profile submission when no compatible active receiving route exists.
+- Kept receiver arming blocked when the selected receiving route is inactive or incompatible.
+- Updated hosted checkout so unavailable methods are hidden before Step 1.
+- Updated no-route checkout to show `Paiement indisponible` before collecting buyer information.
+- Replaced the dead-end method fallback with actionable options:
+  - `Payer par carte`;
+  - `Payer par SBP`;
+  - `Actualiser les methodes`;
+  - `Retour au marchand`.
+- Verified targeted tests:
+  - `npm test -- --run apps/api/src/payment-sessions.test.ts`;
+  - `npm test -- --run apps/web/src/checkout.test.ts`.
+- Full validation passed:
+  - `npm run android:doctor`;
+  - `npm run typecheck`;
+  - `npm run lint`;
+  - `npm test` - 77 files, 608 tests passed;
+  - `npm run build`;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config`.
+- No Android Receiver runtime, payment confirmation, webhook semantics, real notification capture, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad enumeration changed.
+
+---

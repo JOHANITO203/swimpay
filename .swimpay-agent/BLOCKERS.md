@@ -1,5 +1,17 @@
 # Blockers
 
+## Checkout Method Availability Hotfix
+
+- Resolved locally: buyer Step 1 now derives visible card/SBP methods from active checkout-safe merchant receiving routes.
+- Resolved locally: backend read/status responses expose `available_payment_methods`, `available_routes` and `unavailable_reason`.
+- Resolved locally: forced Expected Payment Profile submission for an unsupported method returns `409 no_receiving_route_for_method`.
+- Resolved locally: `continue-to-bank` remains blocked unless a compatible active route is selected.
+- Resolved locally: method-unavailable fallback now offers `Payer par carte` or `Payer par SBP` when an alternative exists.
+- Resolved locally: no-route checkout opens on `Paiement indisponible` without collecting buyer PAN/phone data.
+- Full validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build and Docker Compose config.
+- Pending: staging redeploy before re-testing the SWIMVPN+ checkout path on device.
+- Not executed: real bank notification capture, Android Receiver runtime changes, auto-confirmation or webhook semantic changes.
+
 ## APK Deeplink Discovery Pipeline
 
 - Repo code blocker: none known.

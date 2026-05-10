@@ -93,6 +93,7 @@ describe('hosted checkout web foundation', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('data-payment-method="sbp"');
     expect(response.body).toContain('name="sender_phone"');
+    expect(response.body).toContain('<rect x="7" y="3" width="10" height="18" rx="3"');
     expect(response.body).not.toContain('data-payment-method="card"');
     expect(response.body).not.toContain('name="sender_card_number"');
     expect(response.body).not.toContain('Carte indisponible');
@@ -107,10 +108,12 @@ describe('hosted checkout web foundation', () => {
     const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('Aucun moyen de reception');
-    expect(response.body).toContain('Ce marchand n&#39;a pas encore configure de moyen de reception.');
+    expect(response.body).toContain('Paiement indisponible');
+    expect(response.body).toContain('Ce marchand n&#39;a pas encore configure de moyen de reception actif.');
+    expect(response.body).toContain('Actualiser');
     expect(response.body).toContain('Retour au marchand');
     expect(response.body).not.toContain('name="payment_method"');
+    expect(response.body).not.toContain('Commencer l&rsquo;experience');
   });
 
   it('offers a recovery action when a selected method has no compatible receiving route later in the flow', async () => {
@@ -131,9 +134,38 @@ describe('hosted checkout web foundation', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('Methode indisponible');
+    expect(response.body).toContain('Ce marchand accepte actuellement : Carte.');
+    expect(response.body).toContain('Payer par carte');
+    expect(response.body).toContain('data-select-method="card"');
+    expect(response.body).toContain('Actualiser les methodes');
     expect(response.body).toContain('Changer de methode');
     expect(response.body).toContain('Carte disponible');
     expect(response.body).toContain('Retour au marchand');
+    expect(response.body).not.toContain('Ouvrir ma banque');
+  });
+
+  it('offers SBP recovery when card becomes unavailable but phone receiving is available', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'phone_transfer');
+    provider.session = {
+      ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      checkout_state: 'receiving_route_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Methode indisponible');
+    expect(response.body).toContain('Ce marchand accepte actuellement : SBP / telephone.');
+    expect(response.body).toContain('Payer par SBP');
+    expect(response.body).toContain('data-select-method="sbp"');
+    expect(response.body).toContain('Actualiser les methodes');
     expect(response.body).not.toContain('Ouvrir ma banque');
   });
 

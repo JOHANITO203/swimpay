@@ -113,7 +113,9 @@ describe('UI Copy Guardrails and Wording', () => {
     expect(response.body).not.toContain('confirmation bancaire officielle');
     expect(response.body).not.toContain('paiement garanti');
     expect(response.body).toContain('Payer avec SwimPay');
-    expect(response.body).toContain('Suivez votre paiement bancaire');
+    expect(response.body).toContain('Paiement indisponible');
+    expect(response.body).toContain('Ce marchand n&#39;a pas encore configure de moyen de reception actif.');
+    expect(response.body).not.toContain('name="payment_method"');
   });
 
   it('masks sensitive PII in merchant UI', async () => {

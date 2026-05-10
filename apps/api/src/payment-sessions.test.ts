@@ -649,6 +649,12 @@ describe('payment session api', () => {
       reference: 'SWP-SESSION',
       receiver_status: 'arming',
       expires_at: '2026-05-02T10:15:00.000Z',
+      available_payment_methods: {
+        card: false,
+        sbp: false
+      },
+      available_routes: [],
+      unavailable_reason: 'merchant_no_active_receiving_method',
       official_bank_confirmation: false
     });
   });
@@ -1513,13 +1519,85 @@ describe('payment session api', () => {
           payment_method: 'sbp',
           required_rail_type: 'phone_transfer',
           sender_bank_id: 'sber_ru',
-          available_methods: ['card']
+          available_methods: ['card'],
+          available_payment_methods: {
+            card: true,
+            sbp: false
+          },
+          unavailable_reason: 'method_not_supported_by_merchant'
         }
       },
       official_bank_confirmation: false
     });
     expect(repository.paymentSessions.get('ps_session_01')?.paymentMethod).toBeUndefined();
     expect(JSON.stringify([response.json(), repository.paymentSessions, repository.auditEvents])).not.toContain('+7 999 123-45-67');
+  });
+
+  test('exposes active checkout payment methods and routes as backend source of truth', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createCardRoute(server);
+
+    const both = await server.inject({
+      method: 'GET',
+      url: '/v1/payment-sessions/ps_session_01',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    repository.receivingRoutes.get('route_1')!.enabled = false;
+    const cardOnly = await server.inject({
+      method: 'GET',
+      url: '/v1/payment-sessions/ps_session_01',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    repository.receivingRoutes.get('route_2')!.enabled = false;
+    const none = await server.inject({
+      method: 'GET',
+      url: '/v1/payment-sessions/ps_session_01',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(both.statusCode).toBe(200);
+    expect(both.json()).toMatchObject({
+      available_payment_methods: { card: true, sbp: true },
+      available_routes: [
+        expect.objectContaining({ route_id: 'route_1', method_type: 'sbp', bank_id: 'sber_ru', masked_value: '+7 *** *** **67', status: 'active' }),
+        expect.objectContaining({ route_id: 'route_2', method_type: 'card', bank_id: 'sber_ru', masked_value: '2202 **** **** 7890', status: 'active' })
+      ],
+      official_bank_confirmation: false
+    });
+    expect(cardOnly.json()).toMatchObject({
+      available_payment_methods: { card: true, sbp: false },
+      available_routes: [expect.objectContaining({ route_id: 'route_2', method_type: 'card' })]
+    });
+    expect(none.json()).toMatchObject({
+      available_payment_methods: { card: false, sbp: false },
+      available_routes: [],
+      unavailable_reason: 'merchant_no_active_receiving_method'
+    });
+  });
+
+  test('does not expose certification-blocked receiving routes as checkout methods', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    repository.setBankCertification('sber_ru', 'package_validation_pending', ['sbp', 'card']);
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createCardRoute(server);
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/payment-sessions/ps_session_01',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      available_payment_methods: { card: false, sbp: false },
+      available_routes: [],
+      unavailable_reason: 'merchant_no_active_receiving_method'
+    });
   });
 
   test('rejects expected payment profile wrong-method raw values and card secrets', async () => {

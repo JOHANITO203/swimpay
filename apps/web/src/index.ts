@@ -75,6 +75,16 @@ export interface CheckoutSession {
   display_amount?: { value: string; currency: string } | undefined;
   payable_amount?: { value: string; currency: string } | undefined;
   reconciliation_delta_minor?: number | undefined;
+  available_payment_methods?: { card: boolean; sbp: boolean } | undefined;
+  available_routes?: Array<{
+    route_id: string;
+    method_type: 'card' | 'sbp';
+    bank_id: string;
+    masked_value: string;
+    status: 'active';
+  }> | undefined;
+  unavailable_reason?: 'merchant_no_active_receiving_method' | 'method_not_supported_by_merchant' | undefined;
+  return_url?: string | undefined;
   payment_instructions_shown_at?: string | undefined;
   buyer_claimed_paid_at?: string | undefined;
   official_bank_confirmation?: false | undefined;

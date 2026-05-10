@@ -175,6 +175,9 @@ function renderIntroFlow(
   banks: readonly ReceiverBankOption[],
   methodAvailability: BuyerMethodAvailability
 ): string {
+  if (!hasReceivingMethod(methodAvailability)) {
+    return renderNoReceivingMethodsFallback(session, false);
+  }
   return `<div class="checkout-stage-host">
     ${renderIntroStep()}
     ${renderBuyerIdentityStep(session, banks, methodAvailability, true)}
@@ -236,7 +239,7 @@ function renderBuyerIdentityStep(
         <span class="checkout-field-label">Methode de paiement</span>
         <div class="method-toggle" role="radiogroup" aria-label="Methode de paiement">
           ${methodAvailability.card ? renderPaymentMethodCard('card', 'Carte', 'card', cardActive) : ''}
-          ${methodAvailability.sbp ? renderPaymentMethodCard('sbp', 'Telephone SBP', 'phone', sbpActive) : ''}
+          ${methodAvailability.sbp ? renderPaymentMethodCard('sbp', 'SBP / telephone', 'phone', sbpActive) : ''}
         </div>
       </div>
       <label class="checkout-field">Banque d'envoi
@@ -316,7 +319,7 @@ function renderReceivingRouteSelection(
 ): string {
   if (routes.length === 0) {
     return `<div class="checkout-stage-host">
-      ${renderMethodUnavailableFallback(session)}
+      ${renderMethodUnavailableFallback(session, methodAvailability)}
       ${renderBuyerIdentityStep(session, banks, methodAvailability, false, 'Changer de methode')}
     </div>`;
   }
@@ -354,7 +357,7 @@ function renderPayerLauncherSelection(
 ): string {
   if (!selectedRoute) {
     return `<div class="checkout-stage-host">
-      ${renderMethodUnavailableFallback(session)}
+      ${renderMethodUnavailableFallback(session, methodAvailability)}
       ${renderBuyerIdentityStep(session, banks, methodAvailability, false, 'Changer de methode')}
     </div>`;
   }
@@ -390,7 +393,7 @@ function renderInstructionsStep(
 ): string {
   if (!selectedRoute) {
     return `<div class="checkout-stage-host">
-      ${renderMethodUnavailableFallback(session)}
+      ${renderMethodUnavailableFallback(session, methodAvailability)}
       ${renderBuyerIdentityStep(session, banks, methodAvailability, false, 'Changer de methode')}
     </div>`;
   }
@@ -441,25 +444,49 @@ function renderInstructionsStep(
 function renderNoReceivingMethodsFallback(session: CheckoutSession, hidden = false): string {
   return `<section class="checkout-stage-card checkout-empty-card checkout-configuration-card" data-checkout-panel="buyer-identity" ${hidden ? 'hidden' : ''} data-visual-stage="info">
     <div class="checkout-stage-icon">!</div>
-    <h1>Aucun moyen de reception</h1>
-    <p>Ce marchand n&#39;a pas encore configure de moyen de reception.</p>
+    <h1>Paiement indisponible</h1>
+    <p>Ce marchand n&#39;a pas encore configure de moyen de reception actif.</p>
     <div class="checkout-empty-actions">
-      <button class="checkout-primary-action" type="button" onclick="history.back()">Retour au marchand</button>
       <a class="checkout-secondary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Actualiser</a>
+      ${renderReturnToMerchantAction(session)}
     </div>
   </section>`;
 }
 
-function renderMethodUnavailableFallback(session: CheckoutSession): string {
+function renderMethodUnavailableFallback(session: CheckoutSession, methodAvailability: BuyerMethodAvailability): string {
+  const hasCard = methodAvailability.card;
+  const hasSbp = methodAvailability.sbp;
+  const availableText = hasCard && hasSbp
+    ? 'Choisissez une methode disponible.'
+    : hasCard
+      ? 'Ce marchand accepte actuellement : Carte.'
+      : hasSbp
+        ? 'Ce marchand accepte actuellement : SBP / telephone.'
+        : 'Ce marchand n&#39;a pas encore configure de moyen de reception actif.';
+  const actions = [
+    hasCard
+      ? `<button class="checkout-primary-action" type="button" data-show-panel="buyer-identity" data-progress-step="2" data-select-method="card">Payer par carte</button>`
+      : '',
+    hasSbp
+      ? `<button class="checkout-primary-action" type="button" data-show-panel="buyer-identity" data-progress-step="2" data-select-method="sbp">Payer par SBP</button>`
+      : '',
+    `<a class="checkout-secondary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Actualiser les methodes</a>`,
+    renderReturnToMerchantAction(session)
+  ].filter(Boolean).join('');
+
   return `<section class="checkout-stage-card checkout-empty-card checkout-configuration-card" data-visual-stage="instructions">
     <div class="checkout-stage-icon">!</div>
     <h1>Methode indisponible</h1>
-    <p>Ce marchand n&#39;a pas configure cette methode de reception.</p>
-    <div class="checkout-empty-actions">
-      <button class="checkout-primary-action" type="button" onclick="history.back()">Retour au marchand</button>
-      <a class="checkout-secondary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Actualiser</a>
-    </div>
+    <p>${availableText}</p>
+    <div class="checkout-empty-actions">${actions}</div>
   </section>`;
+}
+
+function renderReturnToMerchantAction(session: CheckoutSession): string {
+  if (session.return_url) {
+    return `<a class="checkout-ghost-action" href="${escapeHtml(session.return_url)}">Retour au marchand</a>`;
+  }
+  return `<button class="checkout-ghost-action" type="button" onclick="history.back()">Retour au marchand</button>`;
 }
 
 function renderCopyablePaymentRow(
@@ -673,12 +700,22 @@ function buyerCheckoutScript(): string {
         if (firstInput && firstInput.focus) setTimeout(() => firstInput.focus(), 160);
       };
 
+      const selectPaymentMethod = (method) => {
+        if (!method) return;
+        const form = document.querySelector('.expected-profile-form');
+        const input = form?.querySelector('input[name=payment_method][value="' + method + '"]:not(:disabled)');
+        if (!input) return;
+        input.checked = true;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+
       document.addEventListener('click', async (event) => {
         const target = event.target instanceof Element ? event.target.closest('[data-show-panel], [data-copy-value], [data-copy-destination]') : null;
         if (!target) return;
 
         if (target.hasAttribute('data-show-panel')) {
           showPanel(target.getAttribute('data-show-panel'), target.getAttribute('data-progress-step'));
+          selectPaymentMethod(target.getAttribute('data-select-method'));
           return;
         }
 

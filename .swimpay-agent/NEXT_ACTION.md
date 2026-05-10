@@ -1,5 +1,48 @@
 # Next Action
 
+generated_at: 2026-05-10T08:35:00+03:00
+
+## Latest Checkout Method Availability Hotfix
+
+Completed locally:
+
+1. Added backend availability contract for active merchant receiving routes:
+   - `available_payment_methods`;
+   - `available_routes`;
+   - `unavailable_reason`.
+2. Stopped filtering `/v1/checkout/:id/receiver-banks` by stale selected method so fallback can see real alternatives.
+3. Updated checkout Step 1 to hide unavailable methods.
+4. Updated no-route checkout to show `Paiement indisponible` before buyer data collection.
+5. Added actionable fallback buttons when a selected method becomes unavailable.
+
+Validation:
+
+- `npm test -- --run apps/api/src/payment-sessions.test.ts` passed.
+- `npm test -- --run apps/web/src/checkout.test.ts` passed.
+- `npm run android:doctor` passed.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm test` passed: 77 files, 608 tests.
+- `npm run build` passed.
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed.
+
+Next recommended action:
+
+1. Commit and redeploy staging.
+2. Re-test SWIMVPN+ checkout on the phone:
+   - card-only merchant should show card only;
+   - no SBP route should not show SBP;
+   - no active route should show `Paiement indisponible`.
+
+Do not do:
+
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not change public webhook semantics.
+- Do not expose raw PAN or raw phone after submit.
+
+---
+
 generated_at: 2026-05-10T03:30:00+03:00
 
 ## Latest APK Deeplink Discovery Pipeline

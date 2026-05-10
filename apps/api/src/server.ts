@@ -1208,12 +1208,17 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         }
       });
     }
+    const availableRoutes = await repository.listReceiverBanksForCheckout(
+      result.paymentSession.merchantId,
+      result.paymentSession.id
+    );
 
     return reply.status(200).send(
       toPaymentSessionReadResponse({
         order: result.order,
         paymentSession: result.paymentSession,
-        now: clock()
+        now: clock(),
+        availableRoutes
       })
     );
   });
@@ -1643,10 +1648,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply;
     }
 
-    const routes = filterRoutesForExpectedPaymentMethod(
-      await repository!.listReceiverBanksForCheckout(loaded.paymentSession.merchantId, loaded.paymentSession.id),
-      loaded.paymentSession.paymentMethod
-    );
+    const routes = await repository!.listReceiverBanksForCheckout(loaded.paymentSession.merchantId, loaded.paymentSession.id);
     return reply.status(200).send(toReceiverBanksResponse(loaded.paymentSession, routes));
   });
 
@@ -1676,6 +1678,10 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     ), mutation.profile.payment_method);
     if (compatibleRoutes.length === 0) {
       const allRoutes = await repository!.listReceiverBanksForCheckout(loaded.paymentSession.merchantId, params.id);
+      const availableMethods = {
+        card: availableBuyerMethodsForRoutes(allRoutes).includes('card'),
+        sbp: availableBuyerMethodsForRoutes(allRoutes).includes('sbp')
+      };
       return reply.status(409).send({
         error: {
           code: 'no_receiving_route_for_method',
@@ -1684,7 +1690,11 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
             payment_method: mutation.profile.payment_method,
             required_rail_type: receivingRailForBuyerPaymentMethod(mutation.profile.payment_method),
             sender_bank_id: mutation.profile.sender_bank_id,
-            available_methods: availableBuyerMethodsForRoutes(allRoutes)
+            available_methods: availableBuyerMethodsForRoutes(allRoutes),
+            available_payment_methods: availableMethods,
+            unavailable_reason: availableMethods.card || availableMethods.sbp
+              ? 'method_not_supported_by_merchant'
+              : 'merchant_no_active_receiving_method'
           }
         },
         official_bank_confirmation: false
@@ -2007,11 +2017,17 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       return reply;
     }
 
+    const availableRoutes = await repository!.listReceiverBanksForCheckout(
+      loaded.paymentSession.merchantId,
+      loaded.paymentSession.id
+    );
+
     return reply.status(200).send(
       toCheckoutStatusResponse({
         order: loaded.order,
         paymentSession: loaded.paymentSession,
-        now: clock()
+        now: clock(),
+        availableRoutes
       })
     );
   });
