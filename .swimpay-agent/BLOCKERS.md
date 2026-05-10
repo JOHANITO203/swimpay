@@ -2,12 +2,13 @@
 
 ## APK Deeplink Discovery Pipeline
 
-- Local code blocker: none known.
-- Validation passed: typecheck, lint, full Vitest suite, TypeScript build and Compose config.
+- Repo code blocker: none known.
+- The APK discovery tool is now external to the SwimPay repo at `D:\Dev\ExternalTools\swimpay-apk-discovery`.
+- Repo integration removed: no root npm scripts, no project reference, no in-repo tests and no `tools/apk-discovery` runtime/build path.
 - Runtime blocker: static APK discovery is not runtime launcher support.
 - Runtime validation still required before using any candidate deeplink in checkout Step 3.
 - Certification blocker: no generated entry is certified; all entries remain `experimental` and `runtimeVerified=false`.
-- Local artifact note: old pre-fix decoded `unknown/apktool` folders remain ignored under `tools/apk-discovery/output` because Windows long paths resisted deletion. The corrected pipeline no longer preserves decoded folders.
+- Sandbox rule: APKTool outputs, decoded APK files and experimental bank observations stay outside the repo.
 
 ## Previous blockers
 

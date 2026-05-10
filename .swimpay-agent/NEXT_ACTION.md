@@ -1,20 +1,21 @@
 # Next Action
 
-generated_at: 2026-05-10T02:00:00+03:00
+generated_at: 2026-05-10T03:30:00+03:00
 
 ## Latest APK Deeplink Discovery Pipeline
 
 Completed locally:
 
-1. Static APKTool discovery pipeline created under `tools/apk-discovery`.
+1. Static APKTool discovery pipeline moved outside the repo to `D:\Dev\ExternalTools\swimpay-apk-discovery`.
 2. Six bank APKs from `C:\Users\Lenovo\Downloads\apkanalyser` were analyzed.
 3. Generated local Markdown/JSON reports and an observed launcher registry.
 4. All generated capabilities remain `experimental` and `runtimeVerified=false`.
+5. SwimPay repo integration was removed: no app/runtime code depends on the sandbox.
 
 Next recommended action:
 
-1. Commit the pipeline code.
-2. Add a separate Android runtime validation sprint:
+1. Keep APKTool experiments and generated outputs in the external sandbox.
+2. Add a separate Android runtime validation sprint when ready:
    - exact package launch;
    - `resolveActivity()` for candidate URIs;
    - deeplink open tests;

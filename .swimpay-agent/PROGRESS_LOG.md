@@ -2724,3 +2724,14 @@ Safety checks:
 - No real bank notification was captured or processed, no payment semantics changed, no bank action automation was added.
 
 ---
+
+# 2026-05-10T03:30:00+03:00 - APK Deeplink Discovery Sandbox Externalized
+
+- Moved the APK deeplink discovery tool outside the SwimPay repo to `D:\Dev\ExternalTools\swimpay-apk-discovery`.
+- Removed root npm scripts, TypeScript project reference, ESLint sandbox ignores, in-repo APK discovery tests and `tools/apk-discovery/**`.
+- Kept only documentation and agent reports in the repo to record the external sandbox path and safety boundary.
+- Confirmed the tool is not used by the API, web checkout, Android Receiver, workers, SDKs or runtime build.
+- APKTool experiments, decoded APK files and generated launcher observations must remain in the external sandbox.
+- No app runtime, payment semantics, Android Receiver behavior, webhook behavior or real bank notification handling changed.
+
+---

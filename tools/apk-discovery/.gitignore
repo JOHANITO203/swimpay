@@ -1,6 +1,0 @@
-input/*
-output/*
-reports/*
-!input/.gitkeep
-!output/.gitkeep
-!reports/.gitkeep

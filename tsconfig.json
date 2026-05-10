@@ -15,7 +15,6 @@
     { "path": "apps/signal-worker" },
     { "path": "apps/job-worker" },
     { "path": "apps/web" },
-    { "path": "apps/android-receiver" },
-    { "path": "tools/apk-discovery" }
+    { "path": "apps/android-receiver" }
   ]
 }
