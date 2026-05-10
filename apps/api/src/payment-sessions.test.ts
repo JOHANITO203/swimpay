@@ -146,7 +146,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     result.paymentSession.expectedAmountMinor = input.profile.payable_amount_minor;
     result.paymentSession.selectedReceiverBankId = input.receiverBankId;
     result.paymentSession.selectedReceiverBankProfileId = input.bankProfileId;
-    result.paymentSession.selectedReceivingRouteId = undefined;
+    result.paymentSession.selectedReceivingRouteId = input.receivingRouteId;
     result.paymentSession.selectedPayerBankLauncherId = input.payerBankLauncherId;
     result.paymentSession.paymentInstructionsShownAt = undefined;
     result.paymentSession.updatedAt = input.now;
@@ -654,7 +654,9 @@ describe('payment session api', () => {
         sbp: false
       },
       available_routes: [],
+      available_compatibility_pairs: [],
       unavailable_reason: 'merchant_no_active_receiving_method',
+      fallback_actions: ['refresh_methods', 'return_to_merchant'],
       official_bank_confirmation: false
     });
   });
@@ -1467,8 +1469,10 @@ describe('payment session api', () => {
       sender_bank_id: 'sber_ru',
       sender_card_masked: '4242 **** **** 4242',
       selected_receiver_bank_id: 'sber_ru',
+      selected_receiving_route_id: 'route_2',
+      receiver_method_type: 'card',
       selected_payer_bank_launcher_id: 'sber_ru',
-      checkout_state: 'receiving_route_selection',
+      checkout_state: 'payment_instructions',
       official_bank_confirmation: false
     });
     const stored = repository.paymentSessions.get('ps_session_01');
@@ -1524,6 +1528,7 @@ describe('payment session api', () => {
             card: true,
             sbp: false
           },
+          fallback_actions: ['switch_to_card', 'refresh_methods', 'return_to_merchant'],
           unavailable_reason: 'method_not_supported_by_merchant'
         }
       },
@@ -1531,6 +1536,51 @@ describe('payment session api', () => {
     });
     expect(repository.paymentSessions.get('ps_session_01')?.paymentMethod).toBeUndefined();
     expect(JSON.stringify([response.json(), repository.paymentSessions, repository.auditEvents])).not.toContain('+7 999 123-45-67');
+  });
+
+  test('keeps sender bank separate from merchant receiver route and payer launcher', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createCardRoute(server);
+
+    const profile = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/expected-payment-profile',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        buyer_first_name: 'Ivan',
+        buyer_last_name: 'Petrov',
+        payment_method: 'card',
+        sender_bank_id: 'tbank_ru',
+        sender_card_number: '4242 4242 4242 4242'
+      }
+    });
+
+    expect(profile.statusCode).toBe(200);
+    expect(profile.json()).toMatchObject({
+      payment_method: 'card',
+      sender_bank_id: 'tbank_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiving_route_id: 'route_1',
+      receiver_method_type: 'card',
+      selected_payer_bank_launcher_id: 'tbank_ru',
+      available_compatibility_pairs: [
+        expect.objectContaining({
+          receiving_route_id: 'route_1',
+          receiver_bank_id: 'sber_ru',
+          receiver_method_type: 'card',
+          payer_method_type: 'card',
+          sender_bank_id: 'tbank_ru',
+          payer_bank_launcher_id: 'tbank_ru',
+          compatibility_status: 'compatible'
+        })
+      ],
+      official_bank_confirmation: false
+    });
+    expect(repository.paymentSessions.get('ps_session_01')?.senderBankId).toBe('tbank_ru');
+    expect(repository.paymentSessions.get('ps_session_01')?.selectedReceiverBankId).toBe('sber_ru');
+    expect(repository.paymentSessions.get('ps_session_01')?.selectedPayerBankLauncherId).toBe('tbank_ru');
   });
 
   test('exposes active checkout payment methods and routes as backend source of truth', async () => {

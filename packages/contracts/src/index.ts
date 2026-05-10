@@ -152,6 +152,58 @@ export interface BuyerSafeReceivingRoute {
 export type PayerBankLaunchStrategy = 'deeplink_then_package' | 'package_hint_only' | 'manual_only';
 export type PayerBankFallbackStrategy = 'copy_details_manual_transfer';
 export type PayerBankLauncherTestedStatus = 'validated' | 'not_validated';
+export type PaymentCompatibilityStatus =
+  | 'compatible'
+  | 'incompatible_method'
+  | 'route_unavailable'
+  | 'certification_blocked'
+  | 'launcher_unavailable'
+  | 'manual_fallback_required';
+export type PaymentCompatibilityFallbackStrategy =
+  | 'none'
+  | 'switch_method'
+  | 'switch_route'
+  | 'manual_copy_paste'
+  | 'manual_bank_check'
+  | 'return_to_merchant';
+export type CheckoutFallbackAction =
+  | 'switch_to_card'
+  | 'switch_to_sbp'
+  | 'switch_route'
+  | 'manual_copy_paste'
+  | 'refresh_methods'
+  | 'return_to_merchant';
+export type CheckoutUnavailableReason =
+  | 'merchant_no_active_receiving_method'
+  | 'method_not_supported_by_merchant'
+  | 'route_disabled'
+  | 'route_expired'
+  | 'certification_blocked'
+  | 'amount_lease_unavailable'
+  | 'receiver_offline'
+  | 'launcher_unavailable';
+
+export interface PaymentCompatibilityPair {
+  pair_id: string;
+  payment_session_id: string;
+  merchant_id: string;
+  receiving_route_id: string;
+  receiver_bank_id: string;
+  receiver_method_type: BuyerCheckoutPaymentMethod;
+  payer_method_type: BuyerCheckoutPaymentMethod;
+  sender_bank_id?: string | undefined;
+  payer_bank_launcher_id?: string | undefined;
+  compatibility_status: PaymentCompatibilityStatus;
+  fallback_strategy: PaymentCompatibilityFallbackStrategy;
+  can_open_bank_app: boolean;
+  can_prefill_payment: boolean;
+  requires_manual_copy: boolean;
+  amount_lease_id?: string | undefined;
+  display_amount_minor?: number | undefined;
+  reconciliation_delta_minor?: number | undefined;
+  payable_amount_minor?: number | undefined;
+  reason_labels: readonly string[];
+}
 
 export interface PayerBankLauncherOption {
   payer_bank_launcher_id: string;

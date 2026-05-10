@@ -168,10 +168,10 @@ class InMemoryOrderRepository implements OrderRepository {
     found.paymentSession.reconciliationDeltaMinor = input.profile.reconciliation_delta_minor;
     found.paymentSession.expectedPaymentFingerprint = input.profile.expected_payment_fingerprint;
     found.paymentSession.expectedAmountMinor = input.profile.payable_amount_minor;
-    found.paymentSession.selectedReceiverBankId = input.profile.sender_bank_id;
-    found.paymentSession.selectedReceiverBankProfileId = input.profile.sender_bank_id;
-    found.paymentSession.selectedReceivingRouteId = undefined;
-    found.paymentSession.selectedPayerBankLauncherId = input.profile.sender_bank_id;
+    found.paymentSession.selectedReceiverBankId = input.receiverBankId;
+    found.paymentSession.selectedReceiverBankProfileId = input.bankProfileId;
+    found.paymentSession.selectedReceivingRouteId = input.receivingRouteId;
+    found.paymentSession.selectedPayerBankLauncherId = input.payerBankLauncherId;
     found.paymentSession.paymentInstructionsShownAt = undefined;
     return { kind: 'updated' as const, ...found };
   }

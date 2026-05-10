@@ -1974,4 +1974,28 @@ Do not do:
 - Do not process real bank notifications during this checkout validation.
 - Do not enable auto-confirmation.
 - Do not expose raw PAN/phone or notification text.
+
+---
+
+## Latest Payment Compatibility Pair Work
+
+Checkout/backend now separates merchant receiver route, buyer sender bank and payer bank launcher.
+
+Next recommended action:
+
+1. Commit and push `refactor: payment compatibility pair and checkout fallback model`.
+2. Let Dokploy redeploy staging.
+3. Re-test SWIMVPN+ hosted checkout:
+   - merchant card-only shows card only;
+   - merchant SBP-only shows SBP only;
+   - forced stale method shows actionable fallback;
+   - Step 2 uses the exact selected merchant receiving route.
+4. Continue with the Developer Link Verification sprint after staging confirms this behavior.
+
+Do not do:
+
+- Do not process real bank notifications during this validation.
+- Do not enable auto-confirmation.
+- Do not change public webhook semantics.
+- Do not expose raw PAN, raw phone, raw notification text or secrets.
 - Do not treat `J'ai payé`, signal detected or matching as confirmation.

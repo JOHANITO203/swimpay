@@ -9,8 +9,11 @@ import {
   type BuyerSafeCheckoutStatus,
   type BuyerSafeReceivingRoute,
   type BuyerCheckoutPaymentMethod,
+  type CheckoutFallbackAction,
   type CheckoutSessionState,
+  type CheckoutUnavailableReason,
   type MerchantReceivingRoute,
+  type PaymentCompatibilityPair,
   type PaymentSessionStatus,
   type PayerBankLauncherOption,
   type ReceivingRouteRailType,
@@ -61,7 +64,7 @@ export interface PaymentSessionReadResponse {
   selected_receiver_bank_id?: string | undefined;
   selected_receiving_route_id?: string | undefined;
   receiving_route_id?: string | undefined;
-  receiver_method_type?: 'card' | 'phone' | undefined;
+  receiver_method_type?: BuyerCheckoutPaymentMethod | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
   buyer_sender_phone_masked?: string | undefined;
   payment_method?: BuyerCheckoutPaymentMethod | undefined;
@@ -73,7 +76,9 @@ export interface PaymentSessionReadResponse {
   reconciliation_delta_minor?: number | undefined;
   available_payment_methods?: AvailableCheckoutPaymentMethods | undefined;
   available_routes?: readonly AvailableCheckoutRoute[] | undefined;
+  available_compatibility_pairs?: readonly PaymentCompatibilityPair[] | undefined;
   unavailable_reason?: CheckoutUnavailableReason | undefined;
+  fallback_actions?: readonly CheckoutFallbackAction[] | undefined;
   official_bank_confirmation: false;
 }
 
@@ -93,7 +98,7 @@ export interface CheckoutStatusResponse {
   selected_receiver_bank_id?: string | undefined;
   selected_receiving_route_id?: string | undefined;
   receiving_route_id?: string | undefined;
-  receiver_method_type?: 'card' | 'phone' | undefined;
+  receiver_method_type?: BuyerCheckoutPaymentMethod | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
   buyer_sender_phone_masked?: string | undefined;
   payment_method?: BuyerCheckoutPaymentMethod | undefined;
@@ -105,7 +110,9 @@ export interface CheckoutStatusResponse {
   reconciliation_delta_minor?: number | undefined;
   available_payment_methods?: AvailableCheckoutPaymentMethods | undefined;
   available_routes?: readonly AvailableCheckoutRoute[] | undefined;
+  available_compatibility_pairs?: readonly PaymentCompatibilityPair[] | undefined;
   unavailable_reason?: CheckoutUnavailableReason | undefined;
+  fallback_actions?: readonly CheckoutFallbackAction[] | undefined;
   receiver_bank_status?: ReceiverBankOption['status'] | undefined;
   official_bank_confirmation: false;
 }
@@ -118,14 +125,12 @@ export interface AvailableCheckoutPaymentMethods {
 export interface AvailableCheckoutRoute {
   route_id: string;
   method_type: BuyerCheckoutPaymentMethod;
+  receiver_bank_id: string;
   bank_id: string;
   masked_value: string;
+  certification_status: 'checkout_allowed';
   status: 'active';
 }
-
-export type CheckoutUnavailableReason =
-  | 'merchant_no_active_receiving_method'
-  | 'method_not_supported_by_merchant';
 
 export interface ReceiverBanksResponse {
   payment_session_id: string;
@@ -245,7 +250,9 @@ export function toPaymentSessionReadResponse(params: {
     reconciliation_delta_minor: params.paymentSession.reconciliationDeltaMinor,
     available_payment_methods: availability?.available_payment_methods,
     available_routes: availability?.available_routes,
+    available_compatibility_pairs: availability?.available_compatibility_pairs,
     unavailable_reason: availability?.unavailable_reason,
+    fallback_actions: availability?.fallback_actions,
     official_bank_confirmation: false
   }) as unknown as PaymentSessionReadResponse;
 }
@@ -286,7 +293,9 @@ export function toCheckoutStatusResponse(params: {
     reconciliation_delta_minor: read.reconciliation_delta_minor,
     available_payment_methods: read.available_payment_methods,
     available_routes: read.available_routes,
+    available_compatibility_pairs: read.available_compatibility_pairs,
     unavailable_reason: read.unavailable_reason,
+    fallback_actions: read.fallback_actions,
     receiver_bank_status: receiverBank?.status,
     official_bank_confirmation: false
   }) as unknown as CheckoutStatusResponse;
@@ -294,28 +303,42 @@ export function toCheckoutStatusResponse(params: {
 
 function receiverMethodTypeForSession(
   paymentSession: Pick<StoredPaymentSessionRecord, 'paymentMethod' | 'selectedReceivingRouteId'>
-): 'card' | 'phone' | undefined {
+): BuyerCheckoutPaymentMethod | undefined {
   if (!paymentSession.selectedReceivingRouteId || !paymentSession.paymentMethod) {
     return undefined;
   }
-  return paymentSession.paymentMethod === 'card' ? 'card' : 'phone';
+  return paymentSession.paymentMethod;
 }
 
 export function buildCheckoutAvailability(
-  paymentSession: Pick<StoredPaymentSessionRecord, 'paymentMethod'>,
+  paymentSession: Pick<
+    StoredPaymentSessionRecord,
+    | 'id'
+    | 'merchantId'
+    | 'paymentMethod'
+    | 'senderBankId'
+    | 'selectedReceivingRouteId'
+    | 'displayAmountMinor'
+    | 'payableAmountMinor'
+    | 'reconciliationDeltaMinor'
+  >,
   routes: readonly MerchantReceivingRoute[]
 ): {
   available_payment_methods: AvailableCheckoutPaymentMethods;
   available_routes: readonly AvailableCheckoutRoute[];
+  available_compatibility_pairs: readonly PaymentCompatibilityPair[];
   unavailable_reason?: CheckoutUnavailableReason | undefined;
+  fallback_actions: readonly CheckoutFallbackAction[];
 } {
   const availableRoutes = routes
     .filter((route) => route.enabled)
     .map((route) => ({
       route_id: route.route_id,
       method_type: route.rail_type === 'phone_transfer' ? 'sbp' as const : 'card' as const,
+      receiver_bank_id: route.bank_profile_id,
       bank_id: route.bank_profile_id,
       masked_value: route.receiver_identifier_masked,
+      certification_status: 'checkout_allowed' as const,
       status: 'active' as const
     }));
   const methods: AvailableCheckoutPaymentMethods = {
@@ -327,16 +350,76 @@ export function buildCheckoutAvailability(
     : paymentSession.paymentMethod && !methods[paymentSession.paymentMethod]
       ? 'method_not_supported_by_merchant'
       : undefined;
+  const compatibilityPairs = buildPaymentCompatibilityPairs(paymentSession, routes);
+  const fallbackActions = buildCheckoutFallbackActions(methods);
 
   return stripUndefined({
     available_payment_methods: methods,
     available_routes: availableRoutes,
+    available_compatibility_pairs: compatibilityPairs,
+    fallback_actions: fallbackActions,
     unavailable_reason: unavailableReason
   }) as {
     available_payment_methods: AvailableCheckoutPaymentMethods;
     available_routes: readonly AvailableCheckoutRoute[];
+    available_compatibility_pairs: readonly PaymentCompatibilityPair[];
     unavailable_reason?: CheckoutUnavailableReason | undefined;
+    fallback_actions: readonly CheckoutFallbackAction[];
   };
+}
+
+function buildPaymentCompatibilityPairs(
+  paymentSession: Pick<
+    StoredPaymentSessionRecord,
+    | 'id'
+    | 'merchantId'
+    | 'senderBankId'
+    | 'selectedReceivingRouteId'
+    | 'displayAmountMinor'
+    | 'payableAmountMinor'
+    | 'reconciliationDeltaMinor'
+  >,
+  routes: readonly MerchantReceivingRoute[]
+): readonly PaymentCompatibilityPair[] {
+  return routes
+    .filter((route) => route.enabled)
+    .map((route) => {
+      const method = route.rail_type === 'phone_transfer' ? 'sbp' as const : 'card' as const;
+      const selected = route.route_id === paymentSession.selectedReceivingRouteId;
+      return stripUndefined({
+        pair_id: `${paymentSession.id}:${route.route_id}:${method}`,
+        payment_session_id: paymentSession.id,
+        merchant_id: paymentSession.merchantId,
+        receiving_route_id: route.route_id,
+        receiver_bank_id: route.bank_profile_id,
+        receiver_method_type: method,
+        payer_method_type: method,
+        sender_bank_id: paymentSession.senderBankId,
+        payer_bank_launcher_id: paymentSession.senderBankId,
+        compatibility_status: 'compatible',
+        fallback_strategy: paymentSession.senderBankId ? 'manual_copy_paste' : 'none',
+        can_open_bank_app: Boolean(paymentSession.senderBankId),
+        can_prefill_payment: false,
+        requires_manual_copy: true,
+        display_amount_minor: selected ? paymentSession.displayAmountMinor : undefined,
+        reconciliation_delta_minor: selected ? paymentSession.reconciliationDeltaMinor : undefined,
+        payable_amount_minor: selected ? paymentSession.payableAmountMinor : undefined,
+        reason_labels: [
+          'merchant_receiving_route_active',
+          'method_pair_compatible',
+          'certification_checkout_allowed',
+          'manual_confirmation_required_v1'
+        ]
+      }) as unknown as PaymentCompatibilityPair;
+    });
+}
+
+function buildCheckoutFallbackActions(methods: AvailableCheckoutPaymentMethods): readonly CheckoutFallbackAction[] {
+  const actions: CheckoutFallbackAction[] = [];
+  if (methods.card) actions.push('switch_to_card');
+  if (methods.sbp) actions.push('switch_to_sbp');
+  actions.push('refresh_methods', 'return_to_merchant');
+  return actions;
 }
 
 export function toReceiverBanksResponse(
@@ -365,6 +448,7 @@ export function buildReceiverBankSelectionResponse(params: {
   order: StoredOrderRecord;
   paymentSession: StoredPaymentSessionRecord;
   now: Date;
+  availableRoutes?: readonly MerchantReceivingRoute[] | undefined;
 }): Record<string, unknown> {
   const status = toCheckoutStatusResponse(params);
   return stripUndefined({

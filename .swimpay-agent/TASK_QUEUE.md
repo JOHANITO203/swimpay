@@ -6,6 +6,17 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+The current sprint is PAYMENT-COMPATIBILITY-PAIR. It separates buyer sender bank, merchant receiver route, payer launcher and checkout fallback behavior.
+
+- [x] `payment_compatibility_pair_audit` - status: completed_with_findings - source: `.swimpay-agent/PAYMENT_COMPATIBILITY_PAIR_AUDIT.md`
+- [x] `payment_compatibility_pair_contract` - status: completed_validated - source: `.swimpay-agent/PAYMENT_COMPATIBILITY_PAIR_CONTRACT_REPORT.md`
+- [x] `payment_compatibility_backend_refactor` - status: completed_validated - source: `.swimpay-agent/PAYMENT_COMPATIBILITY_BACKEND_REFACTOR_REPORT.md`
+- [x] `payment_compatibility_fallback_matrix` - status: completed_validated - source: `.swimpay-agent/PAYMENT_COMPATIBILITY_FALLBACK_MATRIX_REPORT.md`
+- [x] `checkout_structured_error_handling` - status: completed_validated - source: `.swimpay-agent/CHECKOUT_STRUCTURED_ERROR_HANDLING_REPORT.md`
+- [x] `payment_compatibility_closeout` - status: completed_validated - source: `.swimpay-agent/PAYMENT_COMPATIBILITY_CLOSEOUT.md`
+
+## Previous Queue
+
 The current hotfix is CHECKOUT-METHOD-AVAILABILITY. It prevents buyers from seeing or forcing payment methods the merchant cannot receive.
 
 - [x] `checkout_method_availability_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_METHOD_AVAILABILITY_AUDIT.md`

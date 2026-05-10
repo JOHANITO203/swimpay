@@ -628,3 +628,10 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Native Android bank package/deeplink launching is not implemented in this hosted-web sprint; web checkout records a safe fallback launcher result and relies on copy/paste instructions.
 - Deeper card/name variant scoring in Payment Intent Gate remains a future matching enhancement; the Expected Payment Profile data is now persisted and carried into signal runtime candidates.
 - Real bank notification testing remains out of scope until the explicit real-notification gate is opened.
+
+## Payment Compatibility Pair Refactor
+
+- No critical local blocker remains.
+- Staging/online checkout validation requires commit, push and Dokploy redeploy before SWIMVPN+ can observe the new behavior.
+- Native Android bank launcher runtime remains outside this refactor.
+- Real bank notification testing remains out of scope.

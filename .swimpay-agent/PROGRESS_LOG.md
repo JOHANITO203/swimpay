@@ -2765,3 +2765,35 @@ Safety checks:
 - No Android Receiver runtime, payment confirmation, webhook semantics, real notification capture, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad enumeration changed.
 
 ---
+
+# 2026-05-10T09:50:00+03:00 - Payment Compatibility Pair Refactor
+
+- Audited checkout/backend confusion risk between buyer sender bank, merchant receiver bank, receiving route and payer bank launcher.
+- Added shared `PaymentCompatibilityPair`, fallback action and unavailable-reason contracts.
+- Updated checkout status responses with `available_compatibility_pairs` and `fallback_actions`.
+- Refactored Expected Payment Profile creation so:
+  - `receiver_bank_id` comes from the selected merchant receiving route;
+  - `receiving_route_id` is persisted immediately;
+  - `sender_bank_id` stays buyer-side;
+  - `payer_bank_launcher_id` follows the buyer sender bank.
+- Preserved PAN Sensitive Boundary and added early card plausibility/Luhn validation before route availability checks.
+- Updated hosted checkout error handling so structured backend `409` method errors render actionable fallback instead of generic API failure.
+- Verified targeted tests:
+  - `npm test -- --run apps/api/src/payment-sessions.test.ts`;
+  - `npm test -- --run apps/api/src/orders.test.ts`;
+  - `npm test -- --run apps/web/src/checkout.test.ts`.
+- Full validation passed:
+  - `npm run android:doctor`;
+  - `npm run typecheck`;
+  - `npm run lint`;
+  - `npm test` - 77 files, 611 tests passed;
+  - `npm run build`;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config`;
+  - `npm run test:replay`;
+  - `npm run test:matching`;
+  - `npm run test:privacy`;
+  - `npm run test:webhooks`.
+- Android source was not touched, so Gradle was not run.
+- No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---

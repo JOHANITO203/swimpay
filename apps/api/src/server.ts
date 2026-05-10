@@ -30,6 +30,7 @@ import {
   type AndroidMerchantAccountCreateResponse,
   type AndroidMerchantAccountErrorCode,
   type AndroidMerchantDeviceProof,
+  type CheckoutFallbackAction,
   type ReceivingRouteRailType
 } from '@swimpay/contracts';
 import {
@@ -95,6 +96,7 @@ import {
   parseMerchantId,
   PgOrderRepository,
   receiverIdentifierTypeForRail,
+  validateExpectedPaymentProfileBody,
   validateCreateOrderBody,
   type IdGenerator,
   type OrderCreateResponse,
@@ -1661,23 +1663,13 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (!params.id) {
       return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
     }
-    const mutation = buildExpectedPaymentProfileMutation({
-      body: request.body,
-      loaded,
-      phoneHmacSecret,
-      auditEventId: idGenerator.auditEventId(),
-      now: clock().toISOString()
-    });
-    if ('error' in mutation) {
-      return reply.status(400).send(mutation);
+    const checkoutProfileBody = validateExpectedPaymentProfileBody(request.body);
+    if ('error' in checkoutProfileBody) {
+      return reply.status(400).send(checkoutProfileBody);
     }
-    const compatibleRoutes = filterRoutesForExpectedPaymentMethod(await repository!.listReceivingRoutesForCheckoutBank(
-      loaded.paymentSession.merchantId,
-      params.id,
-      mutation.bankProfileId
-    ), mutation.profile.payment_method);
+    const allRoutes = await repository!.listReceiverBanksForCheckout(loaded.paymentSession.merchantId, params.id);
+    const compatibleRoutes = filterRoutesForExpectedPaymentMethod(allRoutes, checkoutProfileBody.payment_method);
     if (compatibleRoutes.length === 0) {
-      const allRoutes = await repository!.listReceiverBanksForCheckout(loaded.paymentSession.merchantId, params.id);
       const availableMethods = {
         card: availableBuyerMethodsForRoutes(allRoutes).includes('card'),
         sbp: availableBuyerMethodsForRoutes(allRoutes).includes('sbp')
@@ -1687,11 +1679,12 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
           code: 'no_receiving_route_for_method',
           message: 'Merchant has no active receiving route for the selected payment method.',
           details: {
-            payment_method: mutation.profile.payment_method,
-            required_rail_type: receivingRailForBuyerPaymentMethod(mutation.profile.payment_method),
-            sender_bank_id: mutation.profile.sender_bank_id,
+            payment_method: checkoutProfileBody.payment_method,
+            required_rail_type: receivingRailForBuyerPaymentMethod(checkoutProfileBody.payment_method),
+            sender_bank_id: checkoutProfileBody.sender_bank_id,
             available_methods: availableBuyerMethodsForRoutes(allRoutes),
             available_payment_methods: availableMethods,
+            fallback_actions: buildFallbackActionsForAvailableMethods(availableMethods),
             unavailable_reason: availableMethods.card || availableMethods.sbp
               ? 'method_not_supported_by_merchant'
               : 'merchant_no_active_receiving_method'
@@ -1700,9 +1693,26 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         official_bank_confirmation: false
       });
     }
+    const preferredReceiverRoute = selectPreferredCompatibilityRoute(compatibleRoutes);
+    const mutation = buildExpectedPaymentProfileMutation({
+      body: request.body,
+      loaded,
+      phoneHmacSecret,
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString(),
+      compatibility: {
+        receivingRouteId: preferredReceiverRoute.route_id,
+        receiverBankId: preferredReceiverRoute.bank_profile_id,
+        bankProfileId: preferredReceiverRoute.bank_profile_id,
+        payerBankLauncherId: checkoutProfileBody.sender_bank_id
+      }
+    });
+    if ('error' in mutation) {
+      return reply.status(400).send(mutation);
+    }
     const result = await repository!.saveExpectedPaymentProfile(mutation);
     return sendCheckoutMutationResult(reply, result, (updated) =>
-      buildReceiverBankSelectionResponse({ ...updated, now: clock() })
+      buildReceiverBankSelectionResponse({ ...updated, now: clock(), availableRoutes: allRoutes })
     );
   });
 
@@ -3672,6 +3682,21 @@ function availableBuyerMethodsForRoutes(
     methods.push('sbp');
   }
   return methods;
+}
+
+function buildFallbackActionsForAvailableMethods(methods: { card: boolean; sbp: boolean }): CheckoutFallbackAction[] {
+  return [
+    methods.card ? 'switch_to_card' : null,
+    methods.sbp ? 'switch_to_sbp' : null,
+    'refresh_methods',
+    'return_to_merchant'
+  ].filter((action): action is CheckoutFallbackAction => Boolean(action));
+}
+
+function selectPreferredCompatibilityRoute(
+  routes: readonly StoredMerchantReceivingRouteRecord[]
+): StoredMerchantReceivingRouteRecord {
+  return routes.find((route) => route.recommended) ?? routes[0]!;
 }
 
 async function mutateSimpleCheckoutAction(params: {

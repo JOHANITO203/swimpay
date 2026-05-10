@@ -29,10 +29,13 @@ import { renderCheckoutPage as renderCheckoutScreen } from './screens/CheckoutSc
 import {
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
+  type CheckoutFallbackAction,
+  type CheckoutUnavailableReason,
   type BuyerSafeCheckoutStatus,
   type BuyerSafeReceivingRoute,
   type CheckoutSessionState,
   type PayerBankLauncherOption,
+  type PaymentCompatibilityPair,
   type PaymentSessionStatus,
   type ReceiverBankOption,
   type ReceiverIdentifierType,
@@ -65,7 +68,7 @@ export interface CheckoutSession {
   selected_receiver_bank_profile_id?: string | undefined;
   selected_receiving_route_id?: string | undefined;
   receiving_route_id?: string | undefined;
-  receiver_method_type?: 'card' | 'phone' | undefined;
+  receiver_method_type?: 'card' | 'sbp' | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
   buyer_sender_phone_masked?: string | undefined;
   payment_method?: 'card' | 'sbp' | undefined;
@@ -79,11 +82,15 @@ export interface CheckoutSession {
   available_routes?: Array<{
     route_id: string;
     method_type: 'card' | 'sbp';
+    receiver_bank_id?: string | undefined;
     bank_id: string;
     masked_value: string;
+    certification_status?: string | undefined;
     status: 'active';
   }> | undefined;
-  unavailable_reason?: 'merchant_no_active_receiving_method' | 'method_not_supported_by_merchant' | undefined;
+  available_compatibility_pairs?: PaymentCompatibilityPair[] | undefined;
+  unavailable_reason?: CheckoutUnavailableReason | undefined;
+  fallback_actions?: CheckoutFallbackAction[] | undefined;
   return_url?: string | undefined;
   payment_instructions_shown_at?: string | undefined;
   buyer_claimed_paid_at?: string | undefined;
@@ -112,6 +119,29 @@ export interface CheckoutSessionProvider {
   markReceiverArmed(paymentSessionId: string): Promise<CheckoutSession>;
   markPaymentInstructionsShown(paymentSessionId: string): Promise<CheckoutSession>;
   markBuyerClaimedPaid(paymentSessionId: string): Promise<CheckoutClaimedPaidResponse>;
+}
+
+interface CheckoutProviderErrorBody {
+  error?: {
+    code?: string | undefined;
+    message?: string | undefined;
+    details?: {
+      available_payment_methods?: { card: boolean; sbp: boolean } | undefined;
+      unavailable_reason?: CheckoutUnavailableReason | undefined;
+      fallback_actions?: CheckoutFallbackAction[] | undefined;
+      payment_method?: 'card' | 'sbp' | undefined;
+    } | undefined;
+  } | undefined;
+  official_bank_confirmation?: false | undefined;
+}
+
+class CheckoutProviderError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly body: CheckoutProviderErrorBody
+  ) {
+    super(body.error?.message ?? 'Checkout API Error');
+  }
 }
 
 export interface ExpectedPaymentProfileFormPayload {
@@ -350,7 +380,7 @@ interface CheckoutStatusResponse {
   buyer_safe_status: BuyerSafeCheckoutStatus;
   selected_receiving_route_id?: string | undefined;
   receiving_route_id?: string | undefined;
-  receiver_method_type?: 'card' | 'phone' | undefined;
+  receiver_method_type?: 'card' | 'sbp' | undefined;
   display_status: string;
   result_state: 'pending' | 'review' | 'recognized' | 'rejected' | 'expired';
   amount: { value: string; currency: string };
@@ -702,8 +732,39 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   server.post('/checkout/:paymentSessionId/expected-payment-profile', async (request, reply) => {
     const params = request.params as { paymentSessionId: string };
     const body = request.body as ExpectedPaymentProfileFormPayload;
-    await checkoutSessionProvider.submitExpectedPaymentProfile(params.paymentSessionId, body);
-    return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+    try {
+      await checkoutSessionProvider.submitExpectedPaymentProfile(params.paymentSessionId, body);
+      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+    } catch (error) {
+      const structuredError = getStructuredCheckoutMethodError(error);
+      if (!structuredError) {
+        throw error;
+      }
+      const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+      if (!session) {
+        throw error;
+      }
+      const [receiverBanks, payerBankLaunchers] = await Promise.all([
+        checkoutSessionProvider.getReceiverBanks(params.paymentSessionId),
+        checkoutSessionProvider.getPayerBankLaunchers(params.paymentSessionId)
+      ]);
+      const patchedSession: CheckoutSession = {
+        ...session,
+        payment_method: body.payment_method,
+        available_payment_methods: structuredError.availablePaymentMethods,
+        unavailable_reason: structuredError.unavailableReason,
+        fallback_actions: structuredError.fallbackActions
+      };
+      reply.type('text/html; charset=utf-8');
+      return renderCheckoutScreen(
+        patchedSession,
+        options.recipient ?? defaultRecipient,
+        receiverBanks.receiver_banks,
+        [],
+        payerBankLaunchers.payer_bank_launchers,
+        mapCheckoutStatus(session.status).displayStatus
+      );
+    }
   });
 
   server.post('/checkout/:paymentSessionId/receiving-route', async (request, reply) => {
@@ -793,6 +854,32 @@ async function renderMerchantIntegrationAction(
   }
 }
 
+function getStructuredCheckoutMethodError(error: unknown): {
+  availablePaymentMethods: { card: boolean; sbp: boolean };
+  unavailableReason: CheckoutUnavailableReason;
+  fallbackActions?: CheckoutFallbackAction[] | undefined;
+} | null {
+  if (!error || typeof error !== 'object') return null;
+  const candidate = error as {
+    status?: unknown;
+    body?: CheckoutProviderErrorBody | undefined;
+  };
+  if (candidate.status !== 409 || candidate.body?.error?.code !== 'no_receiving_route_for_method') {
+    return null;
+  }
+  const details = candidate.body.error.details;
+  const methods = details?.available_payment_methods;
+  const reason = details?.unavailable_reason;
+  if (!methods || typeof methods.card !== 'boolean' || typeof methods.sbp !== 'boolean' || !reason) {
+    return null;
+  }
+  return {
+    availablePaymentMethods: methods,
+    unavailableReason: reason,
+    fallbackActions: details?.fallback_actions
+  };
+}
+
 // Logic & Providers
 
 export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
@@ -801,7 +888,10 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
   }
   private async f<T>(p: string, i: RequestInit = {}): Promise<T> {
     const r = await fetch(this.url + p, { ...i, headers: { ...i.headers, 'Content-Type': 'application/json' } });
-    if (!r.ok) throw new Error('API Error');
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({} as CheckoutProviderErrorBody));
+      throw new CheckoutProviderError(r.status, body as CheckoutProviderErrorBody);
+    }
     return r.json() as Promise<T>;
   }
   async getCheckoutSession(id: string) { return this.f<CheckoutSession>(`/v1/payment-sessions/${id}`).catch(() => null); }

@@ -83,6 +83,32 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('Methode indisponible');
   });
 
+  it('uses session available payment methods as the primary checkout source of truth', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      available_payment_methods: { card: true, sbp: false },
+      available_routes: [
+        {
+          route_id: 'route_sber_card',
+          method_type: 'card',
+          bank_id: 'sber_ru',
+          masked_value: '2202 **** **** 7890',
+          status: 'active'
+        }
+      ]
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('data-payment-method="card"');
+    expect(response.body).toContain('name="sender_card_number"');
+    expect(response.body).not.toContain('data-payment-method="sbp"');
+    expect(response.body).not.toContain('name="sender_phone"');
+  });
+
   it('shows only SBP phone when the merchant has an active phone route only', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.routes = provider.routes.filter((route) => route.rail_type === 'phone_transfer');
@@ -341,6 +367,55 @@ describe('hosted checkout web foundation', () => {
 
     expect(response.statusCode).toBe(303);
     expect(response.headers.location).toBe('/checkout/ps_01');
+  });
+
+  it('renders structured fallback instead of crashing on stale forced payment method POST', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'card_transfer');
+    provider.submitExpectedPaymentProfile = async () => {
+      const error = new Error('API Error') as Error & {
+        status: number;
+        body: {
+          error: {
+            code: string;
+            details: {
+              available_payment_methods: { card: boolean; sbp: boolean };
+              unavailable_reason: string;
+            };
+          };
+        };
+      };
+      error.status = 409;
+      error.body = {
+        error: {
+          code: 'no_receiving_route_for_method',
+          details: {
+            available_payment_methods: { card: true, sbp: false },
+            unavailable_reason: 'method_not_supported_by_merchant'
+          }
+        }
+      };
+      throw error;
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/checkout/ps_01/expected-payment-profile',
+      payload: {
+        buyer_first_name: 'Ivan',
+        buyer_last_name: 'Petrov',
+        payment_method: 'sbp',
+        sender_bank_id: 'sber_ru',
+        sender_phone: '+7 999 123-45-67'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Methode indisponible');
+    expect(response.body).toContain('Ce marchand accepte actuellement : Carte.');
+    expect(response.body).toContain('Payer par carte');
+    expect(response.body).not.toContain('+7 999 123-45-67');
   });
 
   it('proxies explicit receiving route copy details without rendering raw destination in html', async () => {

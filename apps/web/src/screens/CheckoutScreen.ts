@@ -31,7 +31,7 @@ export function renderCheckoutPage(
   const visibleRoutes = filterRoutesForSession(routes, session.payment_method);
   const selectedRoute = visibleRoutes.find((route) => route.route_id === session.selected_receiving_route_id);
   const selectedLauncher = launchers.find((launcher) => launcher.payer_bank_launcher_id === session.selected_payer_bank_launcher_id);
-  const methodAvailability = getBuyerMethodAvailability(banks, routes);
+  const methodAvailability = getBuyerMethodAvailability(session, banks, routes);
   const step = getCheckoutStep(session);
   const stage = visualStageForStep(step);
 
@@ -74,6 +74,7 @@ function renderCurrentStage(
 
 function getCheckoutStep(session: CheckoutSession): BuyerCheckoutStep {
   if (isWaitingBuyerState(session)) return 'waiting';
+  if (session.unavailable_reason === 'method_not_supported_by_merchant' && session.payment_method) return 'route';
   if (!session.payment_method) return 'intro';
   if (!session.selected_receiver_bank_id) return 'bank';
   if (!session.selected_receiving_route_id) return 'route';
@@ -97,9 +98,13 @@ function filterRoutesForSession(
 }
 
 function getBuyerMethodAvailability(
+  session: CheckoutSession,
   banks: readonly ReceiverBankOption[],
   routes: readonly BuyerSafeReceivingRoute[]
 ): BuyerMethodAvailability {
+  if (session.available_payment_methods) {
+    return session.available_payment_methods;
+  }
   const rails = new Set<ReceivingRouteRailType>();
   for (const bank of banks) {
     for (const rail of bank.rail_types ?? []) {

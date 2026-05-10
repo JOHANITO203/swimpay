@@ -168,6 +168,7 @@ export interface SaveBuyerSenderPhoneHintInput extends CheckoutMutationBaseInput
 
 export interface SaveExpectedPaymentProfileInput extends CheckoutMutationBaseInput {
   profile: ExpectedPaymentProfile;
+  receivingRouteId: string;
   receiverBankId: string;
   bankProfileId: string;
   payerBankLauncherId: string;
@@ -1069,10 +1070,10 @@ export class PgOrderRepository implements OrderRepository {
                expected_amount_minor = $20,
                selected_receiver_bank_id = $23,
                selected_receiver_bank_profile_id = $24,
-               selected_receiving_route_id = NULL,
-               selected_payer_bank_launcher_id = $25,
+               selected_receiving_route_id = $25,
+               selected_payer_bank_launcher_id = $26,
                payment_instructions_shown_at = NULL,
-               updated_at = $26
+               updated_at = $27
            WHERE merchant_id = $1 AND id = $2`,
           [
             input.merchantId,
@@ -1099,6 +1100,7 @@ export class PgOrderRepository implements OrderRepository {
             input.profile.expected_payment_fingerprint,
             input.receiverBankId,
             input.bankProfileId,
+            input.receivingRouteId,
             input.payerBankLauncherId,
             input.now
           ]
@@ -1113,6 +1115,7 @@ export class PgOrderRepository implements OrderRepository {
         payable_amount_minor: input.profile.payable_amount_minor,
         reconciliation_delta_minor: input.profile.reconciliation_delta_minor,
         selected_receiver_bank_id: input.receiverBankId,
+        selected_receiving_route_id: input.receivingRouteId,
         selected_payer_bank_launcher_id: input.payerBankLauncherId,
         does_not_confirm_payment: true,
         official_bank_confirmation: false
@@ -2082,6 +2085,12 @@ export function buildExpectedPaymentProfileMutation(params: {
   phoneHmacSecret: string;
   auditEventId: string;
   now: string;
+  compatibility: {
+    receivingRouteId: string;
+    receiverBankId: string;
+    bankProfileId: string;
+    payerBankLauncherId: string;
+  };
 }): SaveExpectedPaymentProfileInput | ApiErrorResponse {
   const body = validateExpectedPaymentProfileBody(params.body);
   if ('error' in body) {
@@ -2111,9 +2120,10 @@ export function buildExpectedPaymentProfileMutation(params: {
       auditEventId: params.auditEventId,
       now: params.now,
       profile,
-      receiverBankId: profile.sender_bank_id,
-      bankProfileId: profile.sender_bank_id,
-      payerBankLauncherId: profile.sender_bank_id
+      receivingRouteId: params.compatibility.receivingRouteId,
+      receiverBankId: params.compatibility.receiverBankId,
+      bankProfileId: params.compatibility.bankProfileId,
+      payerBankLauncherId: params.compatibility.payerBankLauncherId
     };
   } catch (error) {
     return invalidRequest(error instanceof Error ? error.message : 'Expected payment profile is invalid.', {});
@@ -2157,6 +2167,9 @@ export function validateExpectedPaymentProfileBody(body: unknown): ExpectedPayme
   if (candidate.payment_method === 'card' && senderPhone) {
     return invalidRequest('sender_phone must not be submitted for card payments.', { payment_method: candidate.payment_method });
   }
+  if (candidate.payment_method === 'card' && senderCardNumber && !isPlausibleCheckoutCardNumber(senderCardNumber)) {
+    return invalidRequest('Sender card number is not plausible.', { payment_method: candidate.payment_method });
+  }
   if (candidate.payment_method === 'sbp' && !senderPhone) {
     return invalidRequest('sender_phone is required for phone payments.', { payment_method: candidate.payment_method });
   }
@@ -2172,4 +2185,26 @@ export function validateExpectedPaymentProfileBody(body: unknown): ExpectedPayme
     sender_card_number: candidate.payment_method === 'card' ? senderCardNumber : undefined,
     sender_phone: candidate.payment_method === 'sbp' ? senderPhone : undefined
   };
+}
+
+function isPlausibleCheckoutCardNumber(value: string): boolean {
+  const normalizedCard = value.replace(/\D/g, '');
+  if (normalizedCard.length < 13 || normalizedCard.length > 19) {
+    return false;
+  }
+  let sum = 0;
+  let shouldDouble = false;
+  for (let index = normalizedCard.length - 1; index >= 0; index -= 1) {
+    let digit = Number(normalizedCard[index]);
+    if (!Number.isInteger(digit)) {
+      return false;
+    }
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  return sum > 0 && sum % 10 === 0;
 }
