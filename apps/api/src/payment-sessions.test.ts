@@ -1478,6 +1478,10 @@ describe('payment session api', () => {
     ]);
     expect(wrongRoute.statusCode).toBe(404);
     expect(rightRoute.statusCode).toBe(200);
+    expect(rightRoute.json()).toMatchObject({
+      receiving_route_id: 'route_2',
+      receiver_method_type: 'card'
+    });
     expect(JSON.stringify([profile.json(), routes.json(), repository.paymentSessions, repository.auditEvents])).not.toContain('4242424242424242');
   });
 
@@ -1619,7 +1623,8 @@ describe('payment session api', () => {
     });
     expect(routeResponse.json()).toMatchObject({
       selected_receiving_route: expect.objectContaining({ route_id: 'route_1' }),
-      checkout_state: 'payer_bank_launcher_selection'
+      checkout_state: 'payer_bank_launcher_selection',
+      receiving_route_id: 'route_1'
     });
     expect(launcherResponse.statusCode).toBe(200);
     expect(launcherResponse.json()).toMatchObject({
@@ -1709,6 +1714,61 @@ describe('payment session api', () => {
     expect(repository.orders.get('ord_session_01')?.status).toBe('buyer_claimed_paid');
     expect(repository.orders.get('ord_session_01')?.status).not.toBe('manual_confirmed');
     expect(repository.auditEvents.map((event) => event.eventType)).toContain('checkout.continue_to_bank');
+  });
+
+  test('rejects receiver arming when the selected receiving route is no longer active', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createPhoneRoute(server);
+    await createPhoneExpectedProfile(server);
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiver-bank',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiver_bank_id: 'sber_ru' }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/receiving-route',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { receiving_route_id: 'route_1' }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/payer-bank-launcher',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { payer_bank_launcher_id: 'tbank_ru' }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/payment-instructions-shown',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const route = repository.receivingRoutes.get('route_1');
+    if (!route) {
+      throw new Error('test route missing');
+    }
+    route.enabled = false;
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/continue-to-bank',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      error: {
+        code: 'receiving_route_unavailable',
+        details: {
+          payment_method: 'sbp',
+          receiving_route_id: 'route_1'
+        }
+      }
+    });
+    expect(repository.paymentSessions.get('ps_session_01')?.status).toBe('receiver_arming');
+    expect(repository.orders.get('ord_session_01')?.status).not.toBe('receiver_armed');
   });
 
   test('rejects buyer paid claim before the receiver is armed', async () => {

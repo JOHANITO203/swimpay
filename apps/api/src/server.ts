@@ -3709,6 +3709,26 @@ async function mutateSimpleCheckoutAction(params: {
     });
     return null;
   }
+  if (params.action === 'instructions' || params.action === 'receiver_armed') {
+    const routeAvailable = await selectedReceivingRouteStillAvailable({
+      repository: params.repository!,
+      paymentSession: loaded.paymentSession
+    });
+    if (!routeAvailable) {
+      params.reply.status(409).send({
+        error: {
+          code: 'receiving_route_unavailable',
+          message: 'The selected receiving route is no longer active or compatible with this checkout.',
+          details: {
+            payment_method: loaded.paymentSession.paymentMethod,
+            receiving_route_id: loaded.paymentSession.selectedReceivingRouteId
+          }
+        },
+        official_bank_confirmation: false
+      });
+      return null;
+    }
+  }
   if (params.action === 'receiver_armed' && !loaded.paymentSession.paymentInstructionsShownAt) {
     params.reply.status(409).send({
       error: {
@@ -3751,6 +3771,30 @@ async function mutateSimpleCheckoutAction(params: {
       });
       return null;
   }
+}
+
+async function selectedReceivingRouteStillAvailable(params: {
+  repository: OrderRepository;
+  paymentSession: StoredPaymentSessionRecord;
+}): Promise<boolean> {
+  if (
+    !params.paymentSession.paymentMethod ||
+    !params.paymentSession.selectedReceiverBankProfileId ||
+    !params.paymentSession.selectedReceivingRouteId
+  ) {
+    return false;
+  }
+
+  const routes = filterRoutesForExpectedPaymentMethod(
+    await params.repository.listReceivingRoutesForCheckoutBank(
+      params.paymentSession.merchantId,
+      params.paymentSession.id,
+      params.paymentSession.selectedReceiverBankProfileId
+    ),
+    params.paymentSession.paymentMethod
+  );
+
+  return routes.some((route) => route.route_id === params.paymentSession.selectedReceivingRouteId);
 }
 
 function mutateCheckoutActionRepository(

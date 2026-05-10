@@ -64,6 +64,8 @@ export interface CheckoutSession {
   selected_receiver_bank_id?: string | undefined;
   selected_receiver_bank_profile_id?: string | undefined;
   selected_receiving_route_id?: string | undefined;
+  receiving_route_id?: string | undefined;
+  receiver_method_type?: 'card' | 'phone' | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
   buyer_sender_phone_masked?: string | undefined;
   payment_method?: 'card' | 'sbp' | undefined;
@@ -336,6 +338,9 @@ interface CheckoutStatusResponse {
   status: CheckoutStatus;
   checkout_state: CheckoutSessionState;
   buyer_safe_status: BuyerSafeCheckoutStatus;
+  selected_receiving_route_id?: string | undefined;
+  receiving_route_id?: string | undefined;
+  receiver_method_type?: 'card' | 'phone' | undefined;
   display_status: string;
   result_state: 'pending' | 'review' | 'recognized' | 'rejected' | 'expired';
   amount: { value: string; currency: string };
@@ -1020,6 +1025,9 @@ export function toCheckoutStatusResponse(s: CheckoutSession): CheckoutStatusResp
     payment_session_id: s.payment_session_id, order_id: s.order_id, status: s.status,
     checkout_state, buyer_safe_status,
     display_status: st.displayStatus, result_state: st.resultState,
+    selected_receiving_route_id: s.selected_receiving_route_id,
+    receiving_route_id: s.receiving_route_id ?? s.selected_receiving_route_id,
+    receiver_method_type: s.receiver_method_type,
     amount: s.amount, reference: s.reference, expires_at: s.expires_at, official_bank_confirmation: false
   };
 }

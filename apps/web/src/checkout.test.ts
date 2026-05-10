@@ -66,7 +66,7 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('2202201234567890');
   });
 
-  it('disables buyer payment methods that the merchant cannot receive before submit', async () => {
+  it('shows only card when the merchant has an active card route only', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.routes = provider.routes.filter((route) => route.rail_type === 'card_transfer');
     const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
@@ -75,9 +75,27 @@ describe('hosted checkout web foundation', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('data-payment-method="card"');
+    expect(response.body).toContain('name="sender_card_number"');
+    expect(response.body).not.toContain('data-payment-method="sbp"');
+    expect(response.body).not.toContain('name="sender_phone"');
+    expect(response.body).not.toContain('Telephone SBP');
+    expect(response.body).not.toContain('indisponible');
+    expect(response.body).not.toContain('Methode indisponible');
+  });
+
+  it('shows only SBP phone when the merchant has an active phone route only', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'phone_transfer');
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
     expect(response.body).toContain('data-payment-method="sbp"');
-    expect(response.body).toContain('value="sbp" disabled');
-    expect(response.body).toContain('Telephone SBP indisponible');
+    expect(response.body).toContain('name="sender_phone"');
+    expect(response.body).not.toContain('data-payment-method="card"');
+    expect(response.body).not.toContain('name="sender_card_number"');
+    expect(response.body).not.toContain('Carte indisponible');
     expect(response.body).not.toContain('Methode indisponible');
   });
 

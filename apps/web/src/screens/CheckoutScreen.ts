@@ -235,8 +235,8 @@ function renderBuyerIdentityStep(
       <div class="checkout-field-block">
         <span class="checkout-field-label">Methode de paiement</span>
         <div class="method-toggle" role="radiogroup" aria-label="Methode de paiement">
-          ${renderPaymentMethodCard('card', 'Carte', 'card', cardActive, methodAvailability.card)}
-          ${renderPaymentMethodCard('sbp', 'Telephone SBP', 'phone', sbpActive, methodAvailability.sbp)}
+          ${methodAvailability.card ? renderPaymentMethodCard('card', 'Carte', 'card', cardActive) : ''}
+          ${methodAvailability.sbp ? renderPaymentMethodCard('sbp', 'Telephone SBP', 'phone', sbpActive) : ''}
         </div>
       </div>
       <label class="checkout-field">Banque d'envoi
@@ -245,12 +245,12 @@ function renderBuyerIdentityStep(
         </select>
       </label>
       <div class="method-field-stack">
-        <label class="checkout-field" data-method-field="card" ${cardActive ? '' : 'hidden'}>Carte d'envoi
+        ${methodAvailability.card ? `<label class="checkout-field" data-method-field="card" ${cardActive ? '' : 'hidden'}>Carte d'envoi
           <input name="sender_card_number" inputmode="numeric" autocomplete="cc-number" placeholder="4242 &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull;" ${cardActive ? '' : 'disabled'}>
-        </label>
-        <label class="checkout-field" data-method-field="sbp" ${sbpActive ? '' : 'hidden'}>Telephone d'envoi
+        </label>` : ''}
+        ${methodAvailability.sbp ? `<label class="checkout-field" data-method-field="sbp" ${sbpActive ? '' : 'hidden'}>Telephone d'envoi
           <input name="sender_phone" type="tel" autocomplete="tel" placeholder="+7 ..." ${sbpActive ? '' : 'disabled'}>
-        </label>
+        </label>` : ''}
       </div>
       <p class="checkout-security-line"><span></span> Pas de CVV, pas de date d'expiration, pas de code SMS.</p>
       <button class="checkout-primary-action" type="submit">Continuer</button>
@@ -269,21 +269,19 @@ function renderPaymentMethodCard(
   value: BuyerCheckoutPaymentMethod,
   label: string,
   icon: 'card' | 'phone',
-  selected: boolean,
-  available: boolean
+  selected: boolean
 ): string {
   const inputAttributes = [
     'type="radio"',
     'name="payment_method"',
     `value="${value}"`,
-    selected ? 'checked' : '',
-    available ? '' : 'disabled'
+    selected ? 'checked' : ''
   ].filter(Boolean).join(' ');
-  return `<label class="payment-method-card ${selected ? 'selected' : ''} ${available ? '' : 'unavailable'}" data-payment-method="${value}" aria-disabled="${available ? 'false' : 'true'}">
+  return `<label class="payment-method-card ${selected ? 'selected' : ''}" data-payment-method="${value}">
     <input ${inputAttributes}>
     <span class="payment-method-icon">${iconSvg(icon)}</span>
     <strong>${escapeHtml(label)}</strong>
-    <small>${escapeHtml(`${label} ${available ? 'disponible' : 'indisponible'}`)}</small>
+    <small>${escapeHtml(`${label} disponible`)}</small>
   </label>`;
 }
 

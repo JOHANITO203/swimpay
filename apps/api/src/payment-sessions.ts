@@ -60,6 +60,8 @@ export interface PaymentSessionReadResponse {
   expires_at: string;
   selected_receiver_bank_id?: string | undefined;
   selected_receiving_route_id?: string | undefined;
+  receiving_route_id?: string | undefined;
+  receiver_method_type?: 'card' | 'phone' | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
   buyer_sender_phone_masked?: string | undefined;
   payment_method?: BuyerCheckoutPaymentMethod | undefined;
@@ -87,6 +89,8 @@ export interface CheckoutStatusResponse {
   receiver_status: ReceiverStatus;
   selected_receiver_bank_id?: string | undefined;
   selected_receiving_route_id?: string | undefined;
+  receiving_route_id?: string | undefined;
+  receiver_method_type?: 'card' | 'phone' | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
   buyer_sender_phone_masked?: string | undefined;
   payment_method?: BuyerCheckoutPaymentMethod | undefined;
@@ -199,6 +203,8 @@ export function toPaymentSessionReadResponse(params: {
     expires_at: params.paymentSession.validUntil,
     selected_receiver_bank_id: params.paymentSession.selectedReceiverBankId,
     selected_receiving_route_id: params.paymentSession.selectedReceivingRouteId,
+    receiving_route_id: params.paymentSession.selectedReceivingRouteId,
+    receiver_method_type: receiverMethodTypeForSession(params.paymentSession),
     selected_payer_bank_launcher_id: params.paymentSession.selectedPayerBankLauncherId,
     buyer_sender_phone_masked: params.paymentSession.buyerSenderPhoneMasked,
     payment_method: params.paymentSession.paymentMethod,
@@ -238,6 +244,8 @@ export function toCheckoutStatusResponse(params: {
     receiver_status: read.receiver_status,
     selected_receiver_bank_id: read.selected_receiver_bank_id,
     selected_receiving_route_id: read.selected_receiving_route_id,
+    receiving_route_id: read.receiving_route_id,
+    receiver_method_type: read.receiver_method_type,
     selected_payer_bank_launcher_id: read.selected_payer_bank_launcher_id,
     buyer_sender_phone_masked: read.buyer_sender_phone_masked,
     payment_method: read.payment_method,
@@ -250,6 +258,15 @@ export function toCheckoutStatusResponse(params: {
     receiver_bank_status: receiverBank?.status,
     official_bank_confirmation: false
   }) as unknown as CheckoutStatusResponse;
+}
+
+function receiverMethodTypeForSession(
+  paymentSession: Pick<StoredPaymentSessionRecord, 'paymentMethod' | 'selectedReceivingRouteId'>
+): 'card' | 'phone' | undefined {
+  if (!paymentSession.selectedReceivingRouteId || !paymentSession.paymentMethod) {
+    return undefined;
+  }
+  return paymentSession.paymentMethod === 'card' ? 'card' : 'phone';
 }
 
 export function toReceiverBanksResponse(
