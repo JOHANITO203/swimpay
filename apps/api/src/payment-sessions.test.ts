@@ -1481,6 +1481,43 @@ describe('payment session api', () => {
     expect(JSON.stringify([profile.json(), routes.json(), repository.paymentSessions, repository.auditEvents])).not.toContain('4242424242424242');
   });
 
+  test('rejects expected payment profile when merchant lacks a compatible receiving route for the selected method', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    await createCardRoute(server);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/expected-payment-profile',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        buyer_first_name: 'Ivan',
+        buyer_last_name: 'Petrov',
+        payment_method: 'sbp',
+        sender_bank_id: 'sber_ru',
+        sender_phone: '+7 999 123-45-67'
+      }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'no_receiving_route_for_method',
+        message: 'Merchant has no active receiving route for the selected payment method.',
+        details: {
+          payment_method: 'sbp',
+          required_rail_type: 'phone_transfer',
+          sender_bank_id: 'sber_ru',
+          available_methods: ['card']
+        }
+      },
+      official_bank_confirmation: false
+    });
+    expect(repository.paymentSessions.get('ps_session_01')?.paymentMethod).toBeUndefined();
+    expect(JSON.stringify([response.json(), repository.paymentSessions, repository.auditEvents])).not.toContain('+7 999 123-45-67');
+  });
+
   test('rejects expected payment profile wrong-method raw values and card secrets', async () => {
     const repository = new InMemoryPaymentSessionRepository();
     const server = buildServer(repository);

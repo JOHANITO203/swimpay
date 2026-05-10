@@ -66,6 +66,59 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('2202201234567890');
   });
 
+  it('disables buyer payment methods that the merchant cannot receive before submit', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'card_transfer');
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('data-payment-method="card"');
+    expect(response.body).toContain('data-payment-method="sbp"');
+    expect(response.body).toContain('value="sbp" disabled');
+    expect(response.body).toContain('Telephone SBP indisponible');
+    expect(response.body).not.toContain('Methode indisponible');
+  });
+
+  it('shows a merchant configuration fallback before collecting buyer info when no receiving methods exist', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = [];
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Aucun moyen de reception');
+    expect(response.body).toContain('Ce marchand n&#39;a pas encore configure de moyen de reception.');
+    expect(response.body).toContain('Retour au marchand');
+    expect(response.body).not.toContain('name="payment_method"');
+  });
+
+  it('offers a recovery action when a selected method has no compatible receiving route later in the flow', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'card_transfer');
+    provider.session = {
+      ...provider.session,
+      payment_method: 'sbp',
+      sender_bank_id: 'sber_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      checkout_state: 'receiving_route_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Methode indisponible');
+    expect(response.body).toContain('Changer de methode');
+    expect(response.body).toContain('Carte disponible');
+    expect(response.body).toContain('Retour au marchand');
+    expect(response.body).not.toContain('Ouvrir ma banque');
+  });
+
   it('renders phone payment instructions after route and launcher selection', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {
@@ -358,7 +411,7 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
     product_name: 'Premium Pack'
   };
 
-  private readonly routes = [
+  public routes = [
     toBuyerSafeReceivingRoute({
       route_id: 'route_sber_phone',
       merchant_id: 'mch_01',
@@ -405,16 +458,16 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
   public async getReceiverBanks(paymentSessionId: string) {
     return {
       payment_session_id: paymentSessionId,
-      receiver_banks: V1ReceiverBankOptions.map((bank) =>
-        bank.receiver_bank_id === 'sber_ru'
-          ? {
-              ...bank,
-              available_route_count: 2,
-              rail_types: ['phone_transfer', 'card_transfer'] as const,
-              recommended_rail_type: 'phone_transfer' as const
-            }
-          : bank
-      )
+      receiver_banks: V1ReceiverBankOptions.map((bank) => {
+        const bankRoutes = this.routes.filter((route) => route.bank_profile_id === bank.bank_profile_id);
+        const railTypes = [...new Set(bankRoutes.map((route) => route.rail_type))];
+        return {
+          ...bank,
+          available_route_count: bankRoutes.length,
+          rail_types: railTypes,
+          recommended_rail_type: railTypes[0] ?? null
+        };
+      })
     };
   }
 

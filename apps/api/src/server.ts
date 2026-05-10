@@ -1669,6 +1669,27 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if ('error' in mutation) {
       return reply.status(400).send(mutation);
     }
+    const compatibleRoutes = filterRoutesForExpectedPaymentMethod(await repository!.listReceivingRoutesForCheckoutBank(
+      loaded.paymentSession.merchantId,
+      params.id,
+      mutation.bankProfileId
+    ), mutation.profile.payment_method);
+    if (compatibleRoutes.length === 0) {
+      const allRoutes = await repository!.listReceiverBanksForCheckout(loaded.paymentSession.merchantId, params.id);
+      return reply.status(409).send({
+        error: {
+          code: 'no_receiving_route_for_method',
+          message: 'Merchant has no active receiving route for the selected payment method.',
+          details: {
+            payment_method: mutation.profile.payment_method,
+            required_rail_type: receivingRailForBuyerPaymentMethod(mutation.profile.payment_method),
+            sender_bank_id: mutation.profile.sender_bank_id,
+            available_methods: availableBuyerMethodsForRoutes(allRoutes)
+          }
+        },
+        official_bank_confirmation: false
+      });
+    }
     const result = await repository!.saveExpectedPaymentProfile(mutation);
     return sendCheckoutMutationResult(reply, result, (updated) =>
       buildReceiverBankSelectionResponse({ ...updated, now: clock() })
@@ -3621,6 +3642,20 @@ function filterRoutesForExpectedPaymentMethod(
   }
   const expectedRail = receivingRailForBuyerPaymentMethod(paymentMethod);
   return routes.filter((route) => route.rail_type === expectedRail);
+}
+
+function availableBuyerMethodsForRoutes(
+  routes: readonly StoredMerchantReceivingRouteRecord[]
+): Array<'card' | 'sbp'> {
+  const rails = new Set<ReceivingRouteRailType>(routes.map((route) => route.rail_type));
+  const methods: Array<'card' | 'sbp'> = [];
+  if (rails.has('card_transfer')) {
+    methods.push('card');
+  }
+  if (rails.has('phone_transfer')) {
+    methods.push('sbp');
+  }
+  return methods;
 }
 
 async function mutateSimpleCheckoutAction(params: {

@@ -1,11 +1,18 @@
 import { AppShell, Button, escapeHtml } from '../ui/Components.js';
-import type { BuyerSafeReceivingRoute, PayerBankLauncherOption, ReceiverBankOption } from '@swimpay/contracts';
+import type {
+  BuyerCheckoutPaymentMethod,
+  BuyerSafeReceivingRoute,
+  PayerBankLauncherOption,
+  ReceiverBankOption,
+  ReceivingRouteRailType
+} from '@swimpay/contracts';
 import type { CheckoutSession, CheckoutRecipient } from '../index.js';
 
 type BuyerCheckoutStep = 'intro' | 'bank' | 'route' | 'launcher' | 'instructions' | 'waiting';
 type VisualStage = 'intro' | 'info' | 'instructions' | 'status';
 type CheckoutStateTone = 'info' | 'success' | 'warning' | 'danger';
 type TimelineState = 'done' | 'active' | 'pending' | 'danger';
+type BuyerMethodAvailability = Record<BuyerCheckoutPaymentMethod, boolean>;
 
 interface CheckoutStateView {
   title: string;
@@ -24,6 +31,7 @@ export function renderCheckoutPage(
   const visibleRoutes = filterRoutesForSession(routes, session.payment_method);
   const selectedRoute = visibleRoutes.find((route) => route.route_id === session.selected_receiving_route_id);
   const selectedLauncher = launchers.find((launcher) => launcher.payer_bank_launcher_id === session.selected_payer_bank_launcher_id);
+  const methodAvailability = getBuyerMethodAvailability(banks, routes);
   const step = getCheckoutStep(session);
   const stage = visualStageForStep(step);
 
@@ -35,7 +43,7 @@ export function renderCheckoutPage(
         ${renderCheckoutBrand()}
         ${renderSegmentProgress(stage)}
         <div class="checkout-flow" data-checkout-stage-host>
-          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers)}
+          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability)}
         </div>
         ${renderCheckoutTrustFooter()}
       </div>
@@ -53,13 +61,14 @@ function renderCurrentStage(
   visibleRoutes: readonly BuyerSafeReceivingRoute[],
   selectedRoute: BuyerSafeReceivingRoute | undefined,
   selectedLauncher: PayerBankLauncherOption | undefined,
-  launchers: readonly PayerBankLauncherOption[]
+  launchers: readonly PayerBankLauncherOption[],
+  methodAvailability: BuyerMethodAvailability
 ): string {
-  if (step === 'intro') return renderIntroFlow(session, banks);
+  if (step === 'intro') return renderIntroFlow(session, banks, methodAvailability);
   if (step === 'bank') return renderReceiverBankSelection(session, banks);
-  if (step === 'route') return renderReceivingRouteSelection(session, visibleRoutes);
-  if (step === 'launcher') return renderPayerLauncherSelection(session, selectedRoute, launchers);
-  if (step === 'instructions') return renderInstructionsStep(session, selectedRoute, selectedLauncher);
+  if (step === 'route') return renderReceivingRouteSelection(session, banks, visibleRoutes, methodAvailability);
+  if (step === 'launcher') return renderPayerLauncherSelection(session, banks, selectedRoute, launchers, methodAvailability);
+  if (step === 'instructions') return renderInstructionsStep(session, banks, selectedRoute, selectedLauncher, methodAvailability);
   return renderWaitingStatusStep(session, displayStatus, selectedRoute, selectedLauncher);
 }
 
@@ -87,6 +96,39 @@ function filterRoutesForSession(
   return routes;
 }
 
+function getBuyerMethodAvailability(
+  banks: readonly ReceiverBankOption[],
+  routes: readonly BuyerSafeReceivingRoute[]
+): BuyerMethodAvailability {
+  const rails = new Set<ReceivingRouteRailType>();
+  for (const bank of banks) {
+    for (const rail of bank.rail_types ?? []) {
+      rails.add(rail);
+    }
+  }
+  for (const route of routes) {
+    rails.add(route.rail_type);
+  }
+  return {
+    card: rails.has('card_transfer'),
+    sbp: rails.has('phone_transfer')
+  };
+}
+
+function hasReceivingMethod(availability: BuyerMethodAvailability): boolean {
+  return availability.card || availability.sbp;
+}
+
+function getSelectedBuyerMethod(
+  session: CheckoutSession,
+  availability: BuyerMethodAvailability
+): BuyerCheckoutPaymentMethod {
+  if (session.payment_method && availability[session.payment_method]) {
+    return session.payment_method;
+  }
+  return availability.card ? 'card' : 'sbp';
+}
+
 function isWaitingBuyerState(session: CheckoutSession): boolean {
   return [
     'buyer_claimed_paid',
@@ -102,7 +144,7 @@ function isWaitingBuyerState(session: CheckoutSession): boolean {
 
 function renderCheckoutBrand(): string {
   return `<header class="checkout-brand" aria-label="SwimPay">
-    <div class="checkout-brand-mark">S.</div>
+    <div class="checkout-brand-mark">${swimPayWavesSvg()}</div>
     <div class="checkout-brand-copy">
       <strong>SwimPay</strong>
       <span>Security Engine</span>
@@ -128,16 +170,20 @@ function stageIndex(stage: VisualStage): number {
   return 4;
 }
 
-function renderIntroFlow(session: CheckoutSession, banks: readonly ReceiverBankOption[]): string {
+function renderIntroFlow(
+  session: CheckoutSession,
+  banks: readonly ReceiverBankOption[],
+  methodAvailability: BuyerMethodAvailability
+): string {
   return `<div class="checkout-stage-host">
     ${renderIntroStep()}
-    ${renderBuyerIdentityStep(session, banks, true)}
+    ${renderBuyerIdentityStep(session, banks, methodAvailability, true)}
   </div>`;
 }
 
 function renderIntroStep(): string {
   return `<section class="checkout-stage-card checkout-intro-card" data-checkout-panel="intro" data-visual-stage="intro">
-    <div class="checkout-stage-icon">S.</div>
+    <div class="checkout-stage-icon">${swimPayWavesSvg()}</div>
     <div class="checkout-stage-head checkout-stage-head-center">
       <p class="checkout-kicker">SwimPay</p>
       <h1>Simple. S&ucirc;r. SwimPay.</h1>
@@ -163,10 +209,22 @@ function renderFeature(icon: 'shield' | 'clock' | 'return', label: string, text:
   </article>`;
 }
 
-function renderBuyerIdentityStep(session: CheckoutSession, banks: readonly ReceiverBankOption[], hidden = false): string {
+function renderBuyerIdentityStep(
+  session: CheckoutSession,
+  banks: readonly ReceiverBankOption[],
+  methodAvailability: BuyerMethodAvailability,
+  hidden = false,
+  title = 'Vos informations'
+): string {
+  if (!hasReceivingMethod(methodAvailability)) {
+    return renderNoReceivingMethodsFallback(session, hidden);
+  }
+  const selectedMethod = getSelectedBuyerMethod(session, methodAvailability);
+  const cardActive = selectedMethod === 'card';
+  const sbpActive = selectedMethod === 'sbp';
   return `<section class="checkout-stage-card checkout-info-card" data-checkout-panel="buyer-identity" ${hidden ? 'hidden' : ''} data-visual-stage="info">
     <div class="checkout-stage-head">
-      <h1>Vos informations</h1>
+      <h1>${escapeHtml(title)}</h1>
       <p>Ces donnees servent a reconnaitre le signal de paiement.</p>
     </div>
     <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/expected-payment-profile" class="expected-profile-form">
@@ -177,8 +235,8 @@ function renderBuyerIdentityStep(session: CheckoutSession, banks: readonly Recei
       <div class="checkout-field-block">
         <span class="checkout-field-label">Methode de paiement</span>
         <div class="method-toggle" role="radiogroup" aria-label="Methode de paiement">
-          ${renderPaymentMethodCard('card', 'Carte', 'card', true)}
-          ${renderPaymentMethodCard('sbp', 'SBP', 'phone', false)}
+          ${renderPaymentMethodCard('card', 'Carte', 'card', cardActive, methodAvailability.card)}
+          ${renderPaymentMethodCard('sbp', 'Telephone SBP', 'phone', sbpActive, methodAvailability.sbp)}
         </div>
       </div>
       <label class="checkout-field">Banque d'envoi
@@ -187,11 +245,11 @@ function renderBuyerIdentityStep(session: CheckoutSession, banks: readonly Recei
         </select>
       </label>
       <div class="method-field-stack">
-        <label class="checkout-field" data-method-field="card">Carte d'envoi
-          <input name="sender_card_number" inputmode="numeric" autocomplete="cc-number" placeholder="4242 &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull;">
+        <label class="checkout-field" data-method-field="card" ${cardActive ? '' : 'hidden'}>Carte d'envoi
+          <input name="sender_card_number" inputmode="numeric" autocomplete="cc-number" placeholder="4242 &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull;" ${cardActive ? '' : 'disabled'}>
         </label>
-        <label class="checkout-field" data-method-field="sbp" hidden>Telephone d'envoi
-          <input name="sender_phone" type="tel" autocomplete="tel" placeholder="+7 ..." disabled>
+        <label class="checkout-field" data-method-field="sbp" ${sbpActive ? '' : 'hidden'}>Telephone d'envoi
+          <input name="sender_phone" type="tel" autocomplete="tel" placeholder="+7 ..." ${sbpActive ? '' : 'disabled'}>
         </label>
       </div>
       <p class="checkout-security-line"><span></span> Pas de CVV, pas de date d'expiration, pas de code SMS.</p>
@@ -207,11 +265,25 @@ function renderTextInput(label: string, name: string, placeholder: string, autoc
   </label>`;
 }
 
-function renderPaymentMethodCard(value: 'card' | 'sbp', label: string, icon: 'card' | 'phone', selected: boolean): string {
-  return `<label class="payment-method-card ${selected ? 'selected' : ''}">
-    <input type="radio" name="payment_method" value="${value}" ${selected ? 'checked' : ''}>
+function renderPaymentMethodCard(
+  value: BuyerCheckoutPaymentMethod,
+  label: string,
+  icon: 'card' | 'phone',
+  selected: boolean,
+  available: boolean
+): string {
+  const inputAttributes = [
+    'type="radio"',
+    'name="payment_method"',
+    `value="${value}"`,
+    selected ? 'checked' : '',
+    available ? '' : 'disabled'
+  ].filter(Boolean).join(' ');
+  return `<label class="payment-method-card ${selected ? 'selected' : ''} ${available ? '' : 'unavailable'}" data-payment-method="${value}" aria-disabled="${available ? 'false' : 'true'}">
+    <input ${inputAttributes}>
     <span class="payment-method-icon">${iconSvg(icon)}</span>
     <strong>${escapeHtml(label)}</strong>
+    <small>${escapeHtml(`${label} ${available ? 'disponible' : 'indisponible'}`)}</small>
   </label>`;
 }
 
@@ -238,13 +310,17 @@ function renderReceiverBankSelection(session: CheckoutSession, banks: readonly R
   </section>`;
 }
 
-function renderReceivingRouteSelection(session: CheckoutSession, routes: readonly BuyerSafeReceivingRoute[]): string {
+function renderReceivingRouteSelection(
+  session: CheckoutSession,
+  banks: readonly ReceiverBankOption[],
+  routes: readonly BuyerSafeReceivingRoute[],
+  methodAvailability: BuyerMethodAvailability
+): string {
   if (routes.length === 0) {
-    return `<section class="checkout-stage-card checkout-empty-card" data-visual-stage="instructions">
-      <div class="checkout-stage-icon">!</div>
-      <h1>Methode indisponible</h1>
-      <p>Ce marchand n'a pas encore configure cette methode de reception.</p>
-    </section>`;
+    return `<div class="checkout-stage-host">
+      ${renderMethodUnavailableFallback(session)}
+      ${renderBuyerIdentityStep(session, banks, methodAvailability, false, 'Changer de methode')}
+    </div>`;
   }
 
   return `<section class="checkout-stage-card" data-visual-stage="instructions">
@@ -273,15 +349,16 @@ function renderReceivingRouteSelection(session: CheckoutSession, routes: readonl
 
 function renderPayerLauncherSelection(
   session: CheckoutSession,
+  banks: readonly ReceiverBankOption[],
   selectedRoute: BuyerSafeReceivingRoute | undefined,
-  launchers: readonly PayerBankLauncherOption[]
+  launchers: readonly PayerBankLauncherOption[],
+  methodAvailability: BuyerMethodAvailability
 ): string {
   if (!selectedRoute) {
-    return `<section class="checkout-stage-card checkout-empty-card" data-visual-stage="instructions">
-      <div class="checkout-stage-icon">!</div>
-      <h1>Methode indisponible</h1>
-      <p>Selectionnez une destination compatible.</p>
-    </section>`;
+    return `<div class="checkout-stage-host">
+      ${renderMethodUnavailableFallback(session)}
+      ${renderBuyerIdentityStep(session, banks, methodAvailability, false, 'Changer de methode')}
+    </div>`;
   }
 
   const orderedLaunchers = orderLaunchers(launchers, session.sender_bank_id);
@@ -308,15 +385,16 @@ function renderPayerLauncherSelection(
 
 function renderInstructionsStep(
   session: CheckoutSession,
+  banks: readonly ReceiverBankOption[],
   selectedRoute: BuyerSafeReceivingRoute | undefined,
-  selectedLauncher: PayerBankLauncherOption | undefined
+  selectedLauncher: PayerBankLauncherOption | undefined,
+  methodAvailability: BuyerMethodAvailability
 ): string {
   if (!selectedRoute) {
-    return `<section class="checkout-stage-card checkout-empty-card" data-visual-stage="instructions">
-      <div class="checkout-stage-icon">!</div>
-      <h1>Methode indisponible</h1>
-      <p>Selectionnez une destination compatible.</p>
-    </section>`;
+    return `<div class="checkout-stage-host">
+      ${renderMethodUnavailableFallback(session)}
+      ${renderBuyerIdentityStep(session, banks, methodAvailability, false, 'Changer de methode')}
+    </div>`;
   }
 
   const isPhone = selectedRoute.rail_type === 'phone_transfer';
@@ -358,6 +436,30 @@ function renderInstructionsStep(
         ${Button({ text: "J'ai paye", id: 'paid-button', variant: 'ghost', class: 'checkout-ghost-action checkout-paid-action', type: 'submit' })}
       </form>
       <a class="checkout-ghost-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Annuler et modifier les infos</a>
+    </div>
+  </section>`;
+}
+
+function renderNoReceivingMethodsFallback(session: CheckoutSession, hidden = false): string {
+  return `<section class="checkout-stage-card checkout-empty-card checkout-configuration-card" data-checkout-panel="buyer-identity" ${hidden ? 'hidden' : ''} data-visual-stage="info">
+    <div class="checkout-stage-icon">!</div>
+    <h1>Aucun moyen de reception</h1>
+    <p>Ce marchand n&#39;a pas encore configure de moyen de reception.</p>
+    <div class="checkout-empty-actions">
+      <button class="checkout-primary-action" type="button" onclick="history.back()">Retour au marchand</button>
+      <a class="checkout-secondary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Actualiser</a>
+    </div>
+  </section>`;
+}
+
+function renderMethodUnavailableFallback(session: CheckoutSession): string {
+  return `<section class="checkout-stage-card checkout-empty-card checkout-configuration-card" data-visual-stage="instructions">
+    <div class="checkout-stage-icon">!</div>
+    <h1>Methode indisponible</h1>
+    <p>Ce marchand n&#39;a pas configure cette methode de reception.</p>
+    <div class="checkout-empty-actions">
+      <button class="checkout-primary-action" type="button" onclick="history.back()">Retour au marchand</button>
+      <a class="checkout-secondary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Actualiser</a>
     </div>
   </section>`;
 }
@@ -512,6 +614,14 @@ function orderLaunchers(
   });
 }
 
+function swimPayWavesSvg(): string {
+  return `<svg viewBox="0 0 48 48" aria-hidden="true" class="swimpay-waves-mark">
+    <path d="M10 17.5c4.9 0 4.9-3 9.8-3s4.9 3 9.8 3 4.9-3 8.4-3v5.2c-3.5 0-3.5 3-8.4 3s-4.9-3-9.8-3-4.9 3-9.8 3v-5.2z"/>
+    <path d="M10 24.2c4.9 0 4.9-3 9.8-3s4.9 3 9.8 3 4.9-3 8.4-3v5.2c-3.5 0-3.5 3-8.4 3s-4.9-3-9.8-3-4.9 3-9.8 3v-5.2z"/>
+    <path d="M10 30.9c4.9 0 4.9-3 9.8-3s4.9 3 9.8 3 4.9-3 8.4-3v5.2c-3.5 0-3.5 3-8.4 3s-4.9-3-9.8-3-4.9 3-9.8 3v-5.2z"/>
+  </svg>`;
+}
+
 function iconSvg(icon: 'shield' | 'clock' | 'return' | 'card' | 'phone' | 'copy' | 'external' | 'check'): string {
   if (icon === 'shield') {
     return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-2.9 8.5-7 10-4.1-1.5-7-5.4-7-10V6l7-3z"/><path d="M9 12l2 2 4-5"/></svg>`;
@@ -526,7 +636,7 @@ function iconSvg(icon: 'shield' | 'clock' | 'return' | 'card' | 'phone' | 'copy'
     return `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M4 10h16"/><path d="M8 14h4"/></svg>`;
   }
   if (icon === 'phone') {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4c2 5 5 8 10 10l-2.5 3c-.5.6-1.3.8-2 .5-3.3-1.5-5.9-4.1-7.4-7.4-.3-.7-.1-1.5.5-2L8 4z"/></svg>`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="3"/><path d="M11 17.5h2"/></svg>`;
   }
   if (icon === 'copy') {
     return `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="10" height="10" rx="2"/><path d="M6 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>`;
@@ -593,9 +703,15 @@ function buyerCheckoutScript(): string {
 
       for (const form of document.querySelectorAll('.expected-profile-form')) {
         const syncMethodFields = () => {
-          const method = form.querySelector('input[name="payment_method"]:checked')?.value || 'card';
+          const checked = form.querySelector('input[name=payment_method]:checked:not(:disabled)');
+          const fallback = form.querySelector('input[name=payment_method]:not(:disabled)');
+          const methodInput = checked || fallback;
+          if (!methodInput) return;
+          methodInput.checked = true;
+          const method = methodInput.value || 'card';
           for (const card of form.querySelectorAll('.payment-method-card')) {
-            card.classList.toggle('selected', card.querySelector('input')?.value === method);
+            const input = card.querySelector('input');
+            card.classList.toggle('selected', input?.value === method && !input.disabled);
           }
           for (const field of form.querySelectorAll('[data-method-field]')) {
             const active = field.getAttribute('data-method-field') === method;
@@ -686,6 +802,12 @@ function buyerCheckoutStyles(): string {
       font-style: italic;
       background: linear-gradient(135deg, #00AFC2 0%, #007D9A 100%);
       box-shadow: 0 16px 28px rgba(0, 175, 194, 0.22);
+    }
+    .checkout-brand-mark svg,
+    .checkout-stage-icon svg {
+      width: 34px;
+      height: 34px;
+      fill: currentColor;
     }
     .checkout-brand-copy {
       display: flex;
@@ -932,6 +1054,7 @@ function buyerCheckoutStyles(): string {
       display: grid;
       place-items: center;
       gap: 9px;
+      padding: 14px;
       cursor: pointer;
       color: #94A3B8;
       transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
@@ -946,11 +1069,31 @@ function buyerCheckoutStyles(): string {
       color: currentColor;
       font-size: 17px;
       font-weight: 900;
+      text-align: center;
+    }
+    .payment-method-card small {
+      color: #94A3B8;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0;
+      line-height: 1.2;
+      text-align: center;
+      text-transform: none;
     }
     .payment-method-card.selected {
       color: #00AFC2;
       background: rgba(0, 175, 194, 0.07);
       border-color: #00AFC2;
+    }
+    .payment-method-card.unavailable {
+      color: #AAB6C2;
+      background: #F3F6F9;
+      cursor: not-allowed;
+      opacity: 0.72;
+    }
+    .payment-method-card.unavailable .payment-method-icon {
+      color: #AAB6C2;
+      background: #F8FAFC;
     }
     .payment-method-card:active,
     .checkout-primary-action:active,
@@ -1298,6 +1441,15 @@ function buyerCheckoutStyles(): string {
       margin: 0;
       color: #64748B;
       font-size: 16px;
+    }
+    .checkout-configuration-card + .checkout-info-card {
+      margin-top: 22px;
+    }
+    .checkout-empty-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 28px;
     }
     .checkout-trust-footer {
       display: flex;
