@@ -86,6 +86,7 @@ const ALL_MERCHANT_PERMISSIONS = Object.values(MerchantPermissions);
 
 const ANDROID_MERCHANT_MOBILE_PERMISSIONS = [
   MerchantPermissions.PAYMENTS_REVIEW_READ,
+  MerchantPermissions.PAYMENTS_REVIEW_CONFIRM,
   MerchantPermissions.PAYMENTS_REVIEW_REJECT,
   MerchantPermissions.RECEIVER_CONFIGURE,
   MerchantPermissions.RECEIVING_METHODS_READ,

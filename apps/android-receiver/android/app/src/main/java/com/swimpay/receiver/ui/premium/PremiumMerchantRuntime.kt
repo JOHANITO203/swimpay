@@ -23,6 +23,8 @@ import com.swimpay.receiver.MerchantReceivingMethodDisplay
 import com.swimpay.receiver.MerchantReceivingMethodMutationResult
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
 import com.swimpay.receiver.MerchantRepositoryState
+import com.swimpay.receiver.MerchantReviewActionApiResult
+import com.swimpay.receiver.MerchantReviewActionResultStatus
 import com.swimpay.receiver.MerchantReviewActionsApiRepository
 import com.swimpay.receiver.MerchantReviewQueueApiRepository
 import com.swimpay.receiver.MerchantScreenRepositoryResult
@@ -150,7 +152,8 @@ data class PremiumPaymentDetailUiState(
     val reasons: List<String>,
     val timeline: List<String> = emptyList(),
     val actionMessage: String = "",
-    val usesLiveApi: Boolean
+    val usesLiveApi: Boolean,
+    val actionsEnabled: Boolean = true
 ) {
     companion object {
         fun preview(reviewId: String = "rev_demo_1"): PremiumPaymentDetailUiState {
@@ -452,14 +455,31 @@ class PremiumMerchantRuntime(
         )
     }
 
+    fun confirmReceived(reviewId: String): PremiumScreenState<PremiumPaymentDetailUiState> {
+        val result = reviewActionsRepository.confirmReceived(session, reviewId)
+        return resolveReviewActionState(reviewId, result)
+    }
+
     fun rejectSignal(reviewId: String): PremiumScreenState<PremiumPaymentDetailUiState> {
         val result = reviewActionsRepository.rejectSignal(session, reviewId)
-        return loadPaymentDetail(reviewId).withActionMessage(result.safeMessage)
+        return resolveReviewActionState(reviewId, result)
     }
 
     fun rejectOrder(reviewId: String): PremiumScreenState<PremiumPaymentDetailUiState> {
         val result = reviewActionsRepository.rejectOrder(session, reviewId)
-        return loadPaymentDetail(reviewId).withActionMessage(result.safeMessage)
+        return resolveReviewActionState(reviewId, result)
+    }
+
+    private fun resolveReviewActionState(
+        reviewId: String,
+        result: MerchantReviewActionApiResult
+    ): PremiumScreenState<PremiumPaymentDetailUiState> {
+        val refreshed = loadPaymentDetail(reviewId)
+        if (refreshed is PremiumScreenState.Content) {
+            return refreshed.withActionMessage(result.safeMessage)
+        }
+        val resolved = result.toResolvedPaymentDetail(reviewId)
+        return resolved ?: refreshed.withActionMessage(result.safeMessage)
     }
 
     fun loadReceivingMethods(): PremiumScreenState<PremiumReceivingMethodsUiState> {
@@ -1075,6 +1095,51 @@ private fun PremiumScreenState<PremiumPaymentDetailUiState>.withActionMessage(
         is PremiumScreenState.Loading -> this
         is PremiumScreenState.Offline -> copy(message = actionMessage.ifBlank { message })
     }
+}
+
+private fun MerchantReviewActionApiResult.toResolvedPaymentDetail(
+    reviewId: String
+): PremiumScreenState<PremiumPaymentDetailUiState>? {
+    val (title, text, decision) = when (status) {
+        MerchantReviewActionResultStatus.SIGNAL_REJECTED -> Triple(
+            "Signal rejeté",
+            "Le signal a été écarté. Aucune confirmation automatique.",
+            "Signal rejeté"
+        )
+        MerchantReviewActionResultStatus.ORDER_REJECTED -> Triple(
+            "Commande rejetée",
+            "La décision est enregistrée côté backend.",
+            "Commande rejetée"
+        )
+        MerchantReviewActionResultStatus.MANUAL_CONFIRMED -> Triple(
+            "Commande confirmée",
+            "La décision marchand est enregistrée côté backend.",
+            "Commande confirmée"
+        )
+        MerchantReviewActionResultStatus.ALREADY_RESOLVED -> Triple(
+            "Déjà traité",
+            "Cette review a déjà été traitée côté backend.",
+            "Déjà traité"
+        )
+        MerchantReviewActionResultStatus.ACTION_REQUIRED,
+        MerchantReviewActionResultStatus.ERROR -> return null
+    }
+    return PremiumScreenState.content(
+        PremiumPaymentDetailUiState(
+            reviewId = reviewId,
+            statusTitle = title,
+            statusText = text,
+            summaryRows = listOf(
+                "Review" to reviewId,
+                "Décision" to decision
+            ),
+            reasons = listOf("Décision marchand enregistrée.", "Aucun paiement n'est confirmé automatiquement par Android."),
+            timeline = listOf("Action marchand enregistrée"),
+            actionMessage = safeMessage,
+            usesLiveApi = true,
+            actionsEnabled = false
+        )
+    )
 }
 
 private object NoopMerchantApiTransport : MerchantApiTransport {

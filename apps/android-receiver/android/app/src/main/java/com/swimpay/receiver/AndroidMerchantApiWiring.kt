@@ -552,6 +552,7 @@ interface MerchantApiTransport {
 object AndroidMerchantReviewApiContract {
     const val REVIEW_QUEUE_PATH = "/v1/reviews"
 
+    fun confirmPath(reviewId: String): String = "$REVIEW_QUEUE_PATH/${urlPath(reviewId)}/confirm"
     fun rejectPath(reviewId: String): String = "$REVIEW_QUEUE_PATH/${urlPath(reviewId)}/reject"
 }
 
@@ -992,6 +993,7 @@ enum class MerchantReviewActionResultStatus {
     MANUAL_CONFIRMED,
     SIGNAL_REJECTED,
     ORDER_REJECTED,
+    ALREADY_RESOLVED,
     ACTION_REQUIRED,
     ERROR
 }
@@ -1014,6 +1016,7 @@ class MerchantReviewActionsApiRepository(
         return action(
             session = session,
             reviewId = reviewId,
+            path = AndroidMerchantReviewApiContract.rejectPath(reviewId),
             body = jsonObject(
                 "actor_id" to "android_merchant",
                 "scope" to "signal",
@@ -1027,6 +1030,7 @@ class MerchantReviewActionsApiRepository(
         return action(
             session = session,
             reviewId = reviewId,
+            path = AndroidMerchantReviewApiContract.rejectPath(reviewId),
             body = jsonObject(
                 "actor_id" to "android_merchant",
                 "scope" to "order",
@@ -1036,9 +1040,24 @@ class MerchantReviewActionsApiRepository(
         )
     }
 
+    fun confirmReceived(session: AuthenticatedMerchantSession, reviewId: String): MerchantReviewActionApiResult {
+        return action(
+            session = session,
+            reviewId = reviewId,
+            path = AndroidMerchantReviewApiContract.confirmPath(reviewId),
+            body = jsonObject(
+                "actor_id" to "android_merchant",
+                "reason" to "merchant confirmed receipt from bank app",
+                "feedback_label" to "true_payment"
+            ),
+            fallbackStatus = MerchantReviewActionResultStatus.MANUAL_CONFIRMED
+        )
+    }
+
     private fun action(
         session: AuthenticatedMerchantSession,
         reviewId: String,
+        path: String,
         body: String,
         fallbackStatus: MerchantReviewActionResultStatus
     ): MerchantReviewActionApiResult {
@@ -1053,7 +1072,7 @@ class MerchantReviewActionsApiRepository(
             transport.execute(
                 MerchantApiRequest(
                     method = "POST",
-                    path = AndroidMerchantReviewApiContract.rejectPath(reviewId),
+                    path = path,
                     headers = authHeaders(session),
                     body = body
                 )
@@ -1062,6 +1081,14 @@ class MerchantReviewActionsApiRepository(
             MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
         }
         if (response.statusCode !in 200..299) {
+            val errorCode = extractNestedString(response.body, "error", "code")
+            if (errorCode in REVIEW_ALREADY_RESOLVED_ERROR_CODES) {
+                return MerchantReviewActionApiResult(
+                    status = MerchantReviewActionResultStatus.ALREADY_RESOLVED,
+                    rejectsOrder = false,
+                    safeMessage = "Déjà traité"
+                )
+            }
             return MerchantReviewActionApiResult(
                 status = MerchantReviewActionResultStatus.ERROR,
                 rejectsOrder = false,
@@ -1080,15 +1107,22 @@ class MerchantReviewActionsApiRepository(
             status = status,
             rejectsOrder = status == MerchantReviewActionResultStatus.ORDER_REJECTED,
             safeMessage = when (status) {
-                MerchantReviewActionResultStatus.MANUAL_CONFIRMED -> "Validé"
+                MerchantReviewActionResultStatus.MANUAL_CONFIRMED -> "Commande confirmée"
                 MerchantReviewActionResultStatus.SIGNAL_REJECTED -> "Signal rejeté"
                 MerchantReviewActionResultStatus.ORDER_REJECTED -> "Commande rejetée"
+                MerchantReviewActionResultStatus.ALREADY_RESOLVED -> "Déjà traité"
                 MerchantReviewActionResultStatus.ACTION_REQUIRED -> "Action requise"
                 MerchantReviewActionResultStatus.ERROR -> "Action indisponible"
             }
         )
     }
 }
+
+private val REVIEW_ALREADY_RESOLVED_ERROR_CODES = setOf(
+    "not_found",
+    "review_not_open",
+    "review_rejection_scope_conflict"
+)
 
 class MerchantDashboardApiRepository(
     private val transport: MerchantApiTransport

@@ -2092,6 +2092,28 @@ Do not do:
 
 ---
 
+## Latest Review Actions / Payment State Machine Fix
+
+Next recommended action:
+
+1. Commit and push `fix: align review actions and payment state machine`.
+2. Let Dokploy redeploy staging.
+3. Apply migration `019_review_action_state_machine.sql` on the VPS if migrations are not automatic.
+4. Re-test Android Merchant review actions on the phone:
+   - `CONFIRMER REÇU`;
+   - `REJETER LE SIGNAL`;
+   - `Rejeter la commande`.
+5. Verify final webhooks only after backend merchant decision.
+
+Do not do:
+
+- Do not process real bank notifications during this verification.
+- Do not enable auto-confirmation.
+- Do not treat Android local UI state as proof of payment.
+- Do not expose raw notification, PAN, phone or secrets.
+
+---
+
 ## Latest No-Notification Fallback Runtime Wiring
 
 The fallback worker is now wired into Docker/env configuration and Android merchant review notifications are wired for action-required reviews.

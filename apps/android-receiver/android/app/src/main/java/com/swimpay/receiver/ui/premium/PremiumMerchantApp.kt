@@ -435,6 +435,9 @@ fun PremiumMerchantApp(
             onBack = {
                 route = PremiumNavigation.backFromPaymentDetail()
             },
+            onConfirmReceived = {
+                paymentDetailState = activeRuntime.confirmReceived(currentRoute.reviewId)
+            },
             onRejectSignal = {
                 paymentDetailState = activeRuntime.rejectSignal(currentRoute.reviewId)
             },

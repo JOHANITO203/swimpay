@@ -107,6 +107,8 @@ CREATE TABLE payment_sessions (
   selected_receiver_bank_profile_id TEXT REFERENCES bank_profiles(id),
   selected_payer_bank_launcher_id TEXT,
   payment_instructions_shown_at TIMESTAMPTZ,
+  receiver_armed_at TIMESTAMPTZ,
+  receiver_arm_expires_at TIMESTAMPTZ,
   buyer_claimed_paid_at TIMESTAMPTZ,
   valid_from TIMESTAMPTZ NOT NULL,
   valid_until TIMESTAMPTZ NOT NULL,

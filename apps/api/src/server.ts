@@ -2865,7 +2865,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
   server.post('/v1/reviews/:id/confirm', async (request, reply) => {
     const context = await resolveMerchantContext(request, reply, MerchantPermissions.PAYMENTS_REVIEW_CONFIRM, {
-      requireCsrf: true
+      requireCsrf: true,
+      allowAndroidMobile: true
     });
     if (!context) {
       if (!reply.sent) {

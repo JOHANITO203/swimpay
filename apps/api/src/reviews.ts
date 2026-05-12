@@ -417,6 +417,7 @@ export class PgReviewRepository implements ReviewRepository {
           `UPDATE payment_sessions
            SET status = 'rejected',
                route_lock_expires_at = NULL,
+               receiver_arm_expires_at = NULL,
                amount_lease_id = NULL,
                updated_at = $3
            WHERE merchant_id = $1 AND id = $2 AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
@@ -659,11 +660,12 @@ export class PgReviewRepository implements ReviewRepository {
       );
 
       const paymentSessionUpdate = await client.query(
-        `UPDATE payment_sessions
-         SET status = $1,
-             route_lock_expires_at = NULL,
-             amount_lease_id = NULL,
-             updated_at = $2
+         `UPDATE payment_sessions
+          SET status = $1,
+              route_lock_expires_at = NULL,
+              receiver_arm_expires_at = NULL,
+              amount_lease_id = NULL,
+              updated_at = $2
          WHERE merchant_id = $3
            AND id = $4
            AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,

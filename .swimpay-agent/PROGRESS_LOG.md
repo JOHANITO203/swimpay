@@ -2999,3 +2999,25 @@ Safety checks:
 - No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
 
 ---
+
+# 2026-05-12T13:35:00+03:00 - Review Actions + Payment State Machine Fix
+
+- Audited review action contracts after real device showed `Action indisponible`.
+- Root cause: Android mobile sessions could read and reject reviews, but `/v1/reviews/:id/confirm` required dashboard/BFF CSRF auth and Android mobile permissions missed `payments.review.confirm`.
+- Added Android mobile `payments.review.confirm` permission.
+- Allowed Android mobile context on backend `POST /v1/reviews/:id/confirm` while preserving dashboard CSRF behavior.
+- Added explicit `receiver_arm_expires_at` column through migration `019_review_action_state_machine.sql`, initialized from `valid_until` at arming and cleared on final backend decisions.
+- Android action wiring now includes `CONFIRMER REÇU`, backend-only confirmation payload and resolved-state handling when backend closes the review before detail refresh.
+- Validation passed:
+  - `npm run android:doctor`;
+  - `npm run typecheck`;
+  - `npm run lint`;
+  - `npm test` - 77 files, 663 tests passed;
+  - `npm run build`;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config`;
+  - Android full JVM tests - 211 tests passed;
+  - Android debug APK build;
+  - Android staging APK build;
+  - staging APK installed and launched on Samsung `SM_S916B`.
+- Staging live button success still requires backend redeploy and migration application.
+- No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.

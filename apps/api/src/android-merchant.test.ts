@@ -305,7 +305,7 @@ describe('android merchant mobile backend endpoints', () => {
     expectSafeAndroidMerchantBody(connectedSiteTest.body);
   });
 
-  it('rejects Android mobile session confirmation attempts and keeps manual confirmation outside Android', async () => {
+  it('accepts Android mobile manual confirmation through the backend only', async () => {
     const eventPublisher = new FakeEventPublisher();
     const { server, reviewRepository } = buildAndroidMerchantServer({ eventPublisher });
 
@@ -318,6 +318,10 @@ describe('android merchant mobile backend endpoints', () => {
       }
     });
     expect(created.statusCode).toBe(201);
+    reviewRepository.items.set('rev_01', {
+      ...openReviewItem(),
+      merchantId: String(created.json().account.merchant_id)
+    });
     const mobileHeaders = { authorization: `Bearer ${String(created.json().mobile_session.token)}` };
 
     const response = await server.inject({
@@ -325,14 +329,146 @@ describe('android merchant mobile backend endpoints', () => {
       url: '/v1/reviews/rev_01/confirm',
       headers: mobileHeaders,
       payload: {
-        actor_id: 'android_merchant'
+        actor_id: 'android_merchant',
+        reason: 'merchant verified receipt in bank app',
+        feedback_label: 'true_payment'
       }
     });
 
-    expect(response.statusCode).toBe(401);
-    expect(response.json().error.message).toMatch(/merchant permission|bearer|session/i);
-    expect(reviewRepository.items.get('rev_01')?.status).toBe('open');
-    expect(eventPublisher.events).toEqual([]);
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      review_id: 'rev_01',
+      status: 'confirmed',
+      order_status: 'manual_confirmed',
+      payment_session_status: 'manual_confirmed'
+    });
+    expect(reviewRepository.items.get('rev_01')?.status).toBe('confirmed');
+    expect(eventPublisher.events[0]).toMatchObject({
+      eventType: EventTypes.REVIEW_CONFIRMED,
+      data: {
+        review_id: 'rev_01',
+        confirmation_type: 'notification_signal',
+        official_bank_confirmation: false
+      }
+    });
+    expect(JSON.stringify(eventPublisher.events)).not.toContain('official_bank_confirmation":true');
+  });
+
+  it('accepts Android mobile manual bank check confirmation without treating it as bank confirmation', async () => {
+    const eventPublisher = new FakeEventPublisher();
+    const { server, reviewRepository } = buildAndroidMerchantServer({ eventPublisher });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('mobile-manual-bank-check-device')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    reviewRepository.items.set('rev_manual_check', {
+      ...openReviewItem(),
+      id: 'rev_manual_check',
+      merchantId: String(created.json().account.merchant_id),
+      signalId: undefined,
+      reasonCode: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT',
+      negativeReasonCodes: ['NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT']
+    });
+    const mobileHeaders = { authorization: `Bearer ${String(created.json().mobile_session.token)}` };
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_manual_check/confirm',
+      headers: mobileHeaders,
+      payload: {
+        actor_id: 'android_merchant',
+        reason: 'merchant verified manually in bank app',
+        feedback_label: 'true_payment'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      review_id: 'rev_manual_check',
+      status: 'confirmed',
+      order_status: 'manual_confirmed',
+      payment_session_status: 'manual_confirmed'
+    });
+    expect(eventPublisher.events[0]).toMatchObject({
+      eventType: EventTypes.REVIEW_CONFIRMED,
+      data: {
+        review_id: 'rev_manual_check',
+        confirmation_type: 'manual_bank_check',
+        official_bank_confirmation: false,
+        reason_label: undefined
+      }
+    });
+    expect(JSON.stringify(eventPublisher.events)).not.toContain('bank_confirmed');
+  });
+
+  it('accepts Android mobile signal and order rejection actions with explicit scopes', async () => {
+    const eventPublisher = new FakeEventPublisher();
+    const { server, reviewRepository } = buildAndroidMerchantServer({ eventPublisher });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('mobile-reject-actions-device')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    const merchantId = String(created.json().account.merchant_id);
+    reviewRepository.items.set('rev_signal_reject', {
+      ...openReviewItem(),
+      id: 'rev_signal_reject',
+      merchantId
+    });
+    reviewRepository.items.set('rev_order_reject', {
+      ...openReviewItem(),
+      id: 'rev_order_reject',
+      merchantId
+    });
+    const mobileHeaders = { authorization: `Bearer ${String(created.json().mobile_session.token)}` };
+
+    const signalReject = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_signal_reject/reject',
+      headers: mobileHeaders,
+      payload: {
+        actor_id: 'android_merchant',
+        scope: 'signal',
+        reason: 'wrong_signal'
+      }
+    });
+    const orderReject = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_order_reject/reject',
+      headers: mobileHeaders,
+      payload: {
+        actor_id: 'android_merchant',
+        scope: 'order',
+        reason: 'buyer_not_recognized'
+      }
+    });
+
+    expect(signalReject.statusCode).toBe(200);
+    expect(signalReject.json()).toMatchObject({
+      review_id: 'rev_signal_reject',
+      status: 'rejected',
+      rejection_scope: 'signal'
+    });
+    expect(orderReject.statusCode).toBe(200);
+    expect(orderReject.json()).toMatchObject({
+      review_id: 'rev_order_reject',
+      status: 'rejected',
+      rejection_scope: 'order',
+      order_status: 'rejected',
+      payment_session_status: 'rejected'
+    });
+    expect(JSON.stringify(eventPublisher.events)).not.toContain('payment.confirmed');
   });
 
   it('keeps Google recovery and linking optional and fails closed when unconfigured', async () => {
@@ -1007,14 +1143,24 @@ class FakeReviewRepository implements ReviewRepository {
   }
 
   public async confirmReview(input: ReviewActionInput): Promise<ReviewActionResult> {
+    const review = this.items.get(input.reviewId);
+    if (!review || review.merchantId !== input.merchantId) {
+      return { kind: 'not_found' };
+    }
+    if (review.status !== 'open') {
+      return { kind: 'not_open' };
+    }
+    review.status = 'confirmed';
+    review.resolvedAt = '2026-05-03T10:01:00.000Z';
     return {
       kind: 'updated',
       reviewId: input.reviewId,
       status: 'confirmed',
-      orderId: 'ord_01',
-      paymentSessionId: 'ps_01',
+      orderId: review.orderId,
+      paymentSessionId: review.paymentSessionId,
       orderStatus: 'manual_confirmed',
-      paymentSessionStatus: 'manual_confirmed'
+      paymentSessionStatus: 'manual_confirmed',
+      confirmationType: review.signalId ? 'notification_signal' : 'manual_bank_check'
     };
   }
 

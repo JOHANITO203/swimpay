@@ -109,7 +109,7 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumApp.contains("PremiumNavigation.openSecurity()"))
         assertTrue(premiumApp.contains("PremiumSecurityScreen("))
         assertTrue(premiumApp.contains("route = PremiumNavigation.openAccountRecovery"))
-        assertFalse(premiumReviews.contains("onConfirm"))
+        assertTrue(premiumReviews.contains("onConfirmReceived"))
         assertFalse(premiumReviews.contains("Confirmer le paiement"))
         assertTrue(premiumReviews.contains("onRejectSignal"))
         assertTrue(premiumReviews.contains("onRejectOrder"))

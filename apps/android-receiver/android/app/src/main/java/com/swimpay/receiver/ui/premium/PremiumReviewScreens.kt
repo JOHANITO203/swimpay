@@ -128,6 +128,7 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
 fun PremiumPaymentDetailScreen(
     state: PremiumScreenState<PremiumPaymentDetailUiState> = PremiumScreenState.content(PremiumPaymentDetailUiState.preview()),
     onBack: () -> Unit = {},
+    onConfirmReceived: () -> Unit = {},
     onRejectSignal: () -> Unit = {},
     onRejectOrder: () -> Unit = {}
 ) {
@@ -135,6 +136,7 @@ fun PremiumPaymentDetailScreen(
         is PremiumScreenState.Content -> PremiumPaymentDetailContent(
             state = state.value,
             onBack = onBack,
+            onConfirmReceived = onConfirmReceived,
             onRejectSignal = onRejectSignal,
             onRejectOrder = onRejectOrder
         )
@@ -146,6 +148,7 @@ fun PremiumPaymentDetailScreen(
 private fun PremiumPaymentDetailContent(
     state: PremiumPaymentDetailUiState,
     onBack: () -> Unit,
+    onConfirmReceived: () -> Unit,
     onRejectSignal: () -> Unit,
     onRejectOrder: () -> Unit
 ) {
@@ -221,19 +224,23 @@ private fun PremiumPaymentDetailContent(
                     StatusChip(state.actionMessage, StatusTone.Info)
                 }
             }
-            item {
-                PremiumPrimaryButton("Rejeter le signal", onClick = onRejectSignal)
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Rejeter la commande",
-                    color = PremiumColors.Danger,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 16.sp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .premiumTap(onRejectOrder)
-                        .padding(vertical = 12.dp)
-                )
+            if (state.actionsEnabled) {
+                item {
+                    PremiumPrimaryButton("Confirmer reçu", onClick = onConfirmReceived)
+                    Spacer(Modifier.height(12.dp))
+                    PremiumPrimaryButton("Rejeter le signal", onClick = onRejectSignal)
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Rejeter la commande",
+                        color = PremiumColors.Danger,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 16.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .premiumTap(onRejectOrder)
+                            .padding(vertical = 12.dp)
+                    )
+                }
             }
         }
     }

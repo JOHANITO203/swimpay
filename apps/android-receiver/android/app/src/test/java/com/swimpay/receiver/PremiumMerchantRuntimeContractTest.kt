@@ -786,6 +786,90 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(MerchantReviewActionsApiRepository(transport).backendOwnsReviewDecisions)
         assertFalse(MerchantReviewActionsApiRepository(transport).sendsDeveloperWebhookDirectly)
     }
+
+    @Test
+    fun premiumRuntimeConfirmReceivedUsesBackendManualConfirmationEndpointOnly() {
+        val transport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "review_id": "rev_04",
+                  "status": "confirmed",
+                  "order_status": "manual_confirmed",
+                  "payment_session_status": "manual_confirmed"
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                404,
+                """{"error":{"code":"not_found","message":"Payment review was not found."}}"""
+            )
+        )
+        val runtime = runtimeWith(AuthenticatedMerchantSession.localDev("mch_demo"), transport)
+
+        val confirmed = runtime.confirmReceived("rev_04") as PremiumScreenState.Content<PremiumPaymentDetailUiState>
+
+        assertEquals("Commande confirm\u00e9e", confirmed.value.statusTitle)
+        assertEquals("Commande confirm\u00e9e", confirmed.value.actionMessage)
+        assertFalse(confirmed.value.actionsEnabled)
+        assertEquals("/v1/reviews/rev_04/confirm", transport.requests[0].path)
+        assertTrue(transport.requests[0].body.contains("\"feedback_label\":\"true_payment\""))
+        assertFalse(transport.requests[0].body.contains("webhook", ignoreCase = true))
+    }
+
+    @Test
+    fun premiumRuntimeKeepsResolvedActionVisibleWhenBackendClosesReviewBeforeDetailReload() {
+        val transport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "review_id": "rev_02",
+                  "status": "rejected",
+                  "order_status": "needs_review",
+                  "rejection_scope": "signal"
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                404,
+                """{"error":{"code":"not_found","message":"Payment review was not found."}}"""
+            )
+        )
+        val runtime = runtimeWith(AuthenticatedMerchantSession.localDev("mch_demo"), transport)
+
+        val state = runtime.rejectSignal("rev_02") as PremiumScreenState.Content<PremiumPaymentDetailUiState>
+
+        assertEquals("Signal rejet\u00e9", state.value.statusTitle)
+        assertEquals("Signal rejet\u00e9", state.value.actionMessage)
+        assertFalse(state.value.actionsEnabled)
+        assertTrue(state.value.summaryRows.any { it.first == "D\u00e9cision" && it.second == "Signal rejet\u00e9" })
+        assertEquals("/v1/reviews/rev_02/reject", transport.requests[0].path)
+        assertEquals("/v1/android-merchant/payments/rev_02", transport.requests[1].path)
+    }
+
+    @Test
+    fun premiumRuntimeTreatsAlreadyClosedReviewActionAsResolvedNotBroken() {
+        val transport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                409,
+                """{"error":{"code":"review_not_open","message":"Review item is no longer open."}}"""
+            ),
+            MerchantApiResponse(
+                404,
+                """{"error":{"code":"not_found","message":"Payment review was not found."}}"""
+            )
+        )
+        val runtime = runtimeWith(AuthenticatedMerchantSession.localDev("mch_demo"), transport)
+
+        val state = runtime.rejectSignal("rev_02") as PremiumScreenState.Content<PremiumPaymentDetailUiState>
+
+        assertEquals("D\u00e9j\u00e0 trait\u00e9", state.value.statusTitle)
+        assertEquals("D\u00e9j\u00e0 trait\u00e9", state.value.actionMessage)
+        assertFalse(state.value.actionsEnabled)
+        assertTrue(state.value.summaryRows.any { it.first == "D\u00e9cision" && it.second == "D\u00e9j\u00e0 trait\u00e9" })
+    }
 }
 
 private fun runtimeWith(

@@ -697,3 +697,11 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - After redeploy, verify `swimpay-job-worker /health` reports `no_notification_fallback.polling_enabled=true`.
 - Local Android Gradle validation is partially blocked by host memory pressure: Gradle reaches Android tasks, then JVM exits with native OOM during unit/APK build. Root Node validation passed.
 - Real bank notification testing remains out of scope until fallback review creation and Android merchant notification are verified on staging.
+
+## Review Actions + Payment State Machine
+
+- No local validation blocker remains.
+- Staging must be redeployed with the API fix before Android Merchant `CONFIRMER REÇU` can succeed online.
+- Staging DB must apply `019_review_action_state_machine.sql` for the explicit `receiver_arm_expires_at` column.
+- Live staging ADB action success was not claimed before backend redeploy; local tests and APK install/launch passed.
+- Real bank notification testing remains out of scope.

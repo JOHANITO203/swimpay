@@ -1347,6 +1347,7 @@ export class PgOrderRepository implements OrderRepository {
            SET status = 'receiver_armed',
                payment_instructions_shown_at = COALESCE(payment_instructions_shown_at, $3::timestamptz),
                receiver_armed_at = COALESCE(receiver_armed_at, $3::timestamptz),
+               receiver_arm_expires_at = COALESCE(receiver_arm_expires_at, valid_until),
                updated_at = $3
            WHERE merchant_id = $1 AND id = $2`,
           [input.merchantId, input.paymentSessionId, input.now]
