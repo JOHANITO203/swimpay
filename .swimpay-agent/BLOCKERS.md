@@ -672,3 +672,14 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - No critical local blocker remains for payable amount matching.
 - Online SWIMVPN+ validation requires commit, push and Dokploy redeploy before the external app can observe the corrected matching/review copy.
 - Real bank notification testing remains out of scope.
+
+## No-Notification Fallback Runtime Wiring
+
+- Staging/VPS must set:
+  - `NO_NOTIFICATION_FALLBACK_WORKER_ENABLED=true`
+  - `NO_NOTIFICATION_FALLBACK_MIN_SECONDS=120`
+  - `NO_NOTIFICATION_FALLBACK_POLL_INTERVAL_MS=30000`
+  - `NO_NOTIFICATION_FALLBACK_BATCH_SIZE=25`
+- After redeploy, verify `swimpay-job-worker /health` reports `no_notification_fallback.polling_enabled=true`.
+- Local Android Gradle validation is partially blocked by host memory pressure: Gradle reaches Android tasks, then JVM exits with native OOM during unit/APK build. Root Node validation passed.
+- Real bank notification testing remains out of scope until fallback review creation and Android merchant notification are verified on staging.

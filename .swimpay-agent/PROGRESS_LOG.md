@@ -2684,6 +2684,41 @@ Safety checks:
 
 ---
 
+## 2026-05-12 - No-notification fallback runtime wiring
+
+- Audited `continue-to-bank`, fallback worker, review creation and Android merchant review visibility.
+- Found runtime config gap: `NO_NOTIFICATION_FALLBACK_*` variables were not exposed through Docker Compose / `.env.example`.
+- Added no-notification fallback runtime env defaults:
+  - `NO_NOTIFICATION_FALLBACK_WORKER_ENABLED=true`;
+  - `NO_NOTIFICATION_FALLBACK_MIN_SECONDS=120`;
+  - `NO_NOTIFICATION_FALLBACK_POLL_INTERVAL_MS=30000`;
+  - `NO_NOTIFICATION_FALLBACK_BATCH_SIZE=25`.
+- Added shared `ManualBankCheckReview` and `FallbackReviewReason` contracts.
+- Added main Android `POST_NOTIFICATIONS` permission.
+- Added Android merchant local notification publisher for new action-required reviews:
+  - title `Commande à vérifier`;
+  - manual validation copy;
+  - no payment confirmation;
+  - no public webhook;
+  - no raw notification/PAN/phone/secrets.
+- Added Android runtime polling hook to notify once per newly seen open review.
+- Reports created:
+  - `.swimpay-agent/NO_NOTIFICATION_FALLBACK_RUNTIME_AUDIT.md`;
+  - `.swimpay-agent/NO_NOTIFICATION_FALLBACK_RUNTIME_WIRING_REPORT.md`;
+  - `.swimpay-agent/ANDROID_MERCHANT_REVIEW_NOTIFICATION_REPORT.md`.
+- Validation:
+  - `npm run android:doctor` passed;
+  - `npm run typecheck` passed with `NODE_OPTIONS=--max-old-space-size=4096`;
+  - `npm run lint` passed with `NODE_OPTIONS=--max-old-space-size=4096`;
+  - `npm test` passed - 77 files, 656 tests;
+  - `npm run build` passed;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed and includes `NO_NOTIFICATION_FALLBACK_*`.
+  - `npm run test:replay` passed;
+  - `npm run test:matching` passed;
+  - `npm run test:privacy` passed;
+  - `npm run test:webhooks` passed.
+- Android Gradle commands were attempted with `ANDROID_HOME=C:\Users\Lenovo\AppData\Local\Android\Sdk`, but local JVM exited with native OOM during unit/APK build. This is a host memory blocker, not a reported Kotlin compile error.
+
 - Documented the VPS migration command for `014_expected_payment_profile.sql`.
 - Documented a fallback manual SQL creation path if the migration file is not present on the VPS.
 - Recorded the next logical staging rehearsal: SDK order -> hosted checkout -> manual merchant confirmation -> final-only webhook.

@@ -733,8 +733,10 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     if (!paymentSessionId || paymentSessionId === 'any') {
        // Mock for copy-guardrails tests if needed
        if (options.environment === 'test') {
-           const testSession = mockSession('any');
-           return renderCheckoutScreen(testSession, defaultRecipient, [], [], [], mapCheckoutStatus(testSession.status).displayStatus);
+            const testSession = mockSession('any');
+            return renderCheckoutScreen(testSession, defaultRecipient, [], [], [], mapCheckoutStatus(testSession.status).displayStatus, {
+              nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query)
+            });
        }
        return reply.status(400).send({ error: 'invalid_id' });
     }
@@ -780,7 +782,10 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       receiverBanks.receiver_banks,
       receivingRoutes.routes,
       payerBankLaunchers.payer_bank_launchers,
-      mapCheckoutStatus(session.status).displayStatus
+      mapCheckoutStatus(session.status).displayStatus,
+      {
+        nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query)
+      }
     );
   });
 
@@ -948,6 +953,20 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
 function shouldRedirectCheckoutFormPost(headers: Record<string, unknown>): boolean {
   const contentType = headers['content-type'];
   return typeof contentType === 'string' && contentType.toLowerCase().startsWith('application/x-www-form-urlencoded');
+}
+
+function readNativeBankLauncherScheme(query: unknown): string | undefined {
+  if (!query || typeof query !== 'object' || Array.isArray(query)) {
+    return undefined;
+  }
+  const value = (query as Record<string, unknown>).swimpay_bank_launcher_scheme;
+  if (typeof value !== 'string' || !/^[a-z][a-z0-9+.-]{1,40}$/iu.test(value)) {
+    return undefined;
+  }
+  if (['http', 'https', 'intent'].includes(value.toLowerCase())) {
+    return undefined;
+  }
+  return value;
 }
 
 async function renderMerchantIntegrationWizard(client: MerchantIntegrationClient | null): Promise<string> {

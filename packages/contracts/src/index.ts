@@ -183,7 +183,11 @@ export interface BuyerSafeReceivingRoute {
   official_bank_confirmation: false;
 }
 
-export type PayerBankLaunchStrategy = 'deeplink_then_package' | 'package_hint_only' | 'manual_only';
+export type PayerBankLaunchStrategy =
+  | 'deeplink_then_package'
+  | 'explicit_activity_then_package'
+  | 'package_hint_only'
+  | 'manual_only';
 export type PayerBankFallbackStrategy = 'copy_details_manual_transfer';
 export type PayerBankLauncherTestedStatus = 'validated' | 'not_validated';
 export type PaymentCompatibilityStatus =
@@ -247,6 +251,7 @@ export interface PayerBankLauncherOption {
   country: 'RU';
   android_package_candidates: readonly string[];
   android_package_hint: string | null;
+  android_explicit_activity_name?: string | undefined;
   deeplink_uri_template: string | null;
   deeplink_schemes: readonly string[];
   launch_url: string | null;
@@ -259,6 +264,8 @@ export interface PayerBankLauncherOption {
   tested_status: PayerBankLauncherTestedStatus;
   enabled: boolean;
   detection_supported: false;
+  runtime_verified: boolean;
+  runtime_verified_source?: string | undefined;
   does_not_confirm_payment: true;
   official_bank_confirmation: false;
 }
@@ -273,7 +280,13 @@ export const V1ReceiverBankOptions: readonly ReceiverBankOption[] = [
 
 export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
   payerLauncher('sber_ru', 'Sberbank', ['ru.sberbankmobile'], {
-    deeplinkSchemes: ['tel']
+    androidExplicitActivityName:
+      'ru.sberbank.mobile.feature.externalstarttransfer.impl.presentation.NativeContactShortcutActivity',
+    deeplinkSchemes: ['tel'],
+    launchStrategy: 'explicit_activity_then_package',
+    runtimeVerified: true,
+    runtimeVerifiedSource: 'real_device_explicit_activity_open_only',
+    testedStatus: 'validated'
   }),
   payerLauncher('tbank_ru', 'T-Bank', ['com.idamob.tinkoff.android'], {
     deeplinkSchemes: ['bank100000000004', 'bank10000000004', 'tbank', 'tcalls', 'tel', 'tinkoffbank']
@@ -1125,13 +1138,17 @@ function payerLauncher(
   displayName: string,
   androidPackageCandidates: readonly string[],
   options: {
+    androidExplicitActivityName?: string;
     deeplinkSchemes?: readonly string[];
     launchStrategy?: PayerBankLaunchStrategy;
+    runtimeVerified?: boolean;
+    runtimeVerifiedSource?: string;
+    testedStatus?: PayerBankLauncherTestedStatus;
   } = {}
 ): PayerBankLauncherOption {
   const androidPackageHint = androidPackageCandidates[0] ?? null;
   const launchStrategy = options.launchStrategy ?? (androidPackageHint ? 'package_hint_only' : 'manual_only');
-  return {
+  const launcher: PayerBankLauncherOption = {
     payer_bank_launcher_id: payerBankLauncherId,
     bank_id: payerBankLauncherId,
     display_name: displayName,
@@ -1140,22 +1157,31 @@ function payerLauncher(
     android_package_hint: androidPackageHint,
     deeplink_uri_template: null,
     deeplink_schemes: options.deeplinkSchemes ?? [],
-    launch_url: androidPackageHint ? androidPackageLaunchUrl(androidPackageHint) : null,
+    launch_url: androidPackageHint
+      ? androidPackageLaunchUrl(androidPackageHint, launchStrategy === 'explicit_activity_then_package' ? options.androidExplicitActivityName : undefined)
+      : null,
     launch_strategy: launchStrategy,
     fallback_strategy: 'copy_details_manual_transfer',
     can_prefill_receiver_card: false,
     can_prefill_receiver_phone: false,
     can_prefill_amount: false,
     can_prefill_reference: false,
-    tested_status: 'not_validated',
+    tested_status: options.testedStatus ?? 'not_validated',
     enabled: true,
     detection_supported: false,
+    runtime_verified: options.runtimeVerified ?? false,
     does_not_confirm_payment: true,
     official_bank_confirmation: false
   };
+  assignIfDefined(launcher, 'android_explicit_activity_name', options.androidExplicitActivityName);
+  assignIfDefined(launcher, 'runtime_verified_source', options.runtimeVerifiedSource);
+  return launcher;
 }
 
-function androidPackageLaunchUrl(packageName: string): string {
+function androidPackageLaunchUrl(packageName: string, explicitActivityName?: string): string {
+  if (explicitActivityName) {
+    return `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${packageName};component=${packageName}/${explicitActivityName};end`;
+  }
   return `intent://#Intent;package=${packageName};end`;
 }
 
@@ -1424,6 +1450,37 @@ export interface ReviewItem {
   assignedTo?: string;
   createdAt: string;
   resolvedAt?: string;
+}
+
+export const FallbackReviewReasons = [
+  'no_notification_after_receiver_armed',
+  'receiver_offline_after_arming',
+  'notification_access_missing',
+  'bank_target_missing',
+  'launcher_failed_manual_transfer_possible'
+] as const;
+export type FallbackReviewReason = (typeof FallbackReviewReasons)[number];
+
+export interface ManualBankCheckReview {
+  review_id: string;
+  payment_session_id: string;
+  merchant_id: string;
+  order_id: string;
+  review_type: 'manual_bank_check';
+  status: 'needs_review';
+  official_bank_confirmation: false;
+  payment_confirmed: false;
+  webhook_sent: false;
+  amount_expected_minor: number;
+  display_amount_minor: number;
+  reconciliation_delta_minor: number;
+  currency: 'RUB';
+  receiver_bank_id: string;
+  receiving_route_id: string;
+  fallback_reason: FallbackReviewReason;
+  receiver_armed_at: string;
+  fallback_due_at: string;
+  created_at: string;
 }
 
 export interface WebhookEvent<TData extends Record<string, unknown> = Record<string, unknown>> {

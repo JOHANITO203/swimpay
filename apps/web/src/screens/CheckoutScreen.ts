@@ -26,7 +26,8 @@ export function renderCheckoutPage(
   banks: readonly ReceiverBankOption[],
   routes: readonly BuyerSafeReceivingRoute[],
   launchers: readonly PayerBankLauncherOption[],
-  displayStatus: string
+  displayStatus: string,
+  options: { nativeBankLauncherScheme?: string | undefined } = {}
 ): string {
   const visibleRoutes = filterRoutesForSession(routes, session.payment_method);
   const selectedRoute = visibleRoutes.find((route) => route.route_id === session.selected_receiving_route_id);
@@ -43,7 +44,7 @@ export function renderCheckoutPage(
         ${renderCheckoutBrand()}
         ${renderSegmentProgress(stage)}
         <div class="checkout-flow" data-checkout-stage-host>
-          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability)}
+          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability, options.nativeBankLauncherScheme)}
         </div>
         ${renderCheckoutTrustFooter()}
       </div>
@@ -62,13 +63,14 @@ function renderCurrentStage(
   selectedRoute: BuyerSafeReceivingRoute | undefined,
   selectedLauncher: PayerBankLauncherOption | undefined,
   launchers: readonly PayerBankLauncherOption[],
-  methodAvailability: BuyerMethodAvailability
+  methodAvailability: BuyerMethodAvailability,
+  nativeBankLauncherScheme?: string | undefined
 ): string {
   if (step === 'intro') return renderIntroFlow(session, banks, methodAvailability);
   if (step === 'bank') return renderReceiverBankSelection(session, banks);
   if (step === 'route') return renderReceivingRouteSelection(session, banks, visibleRoutes, methodAvailability);
   if (step === 'launcher') return renderPayerLauncherSelection(session, banks, selectedRoute, launchers, methodAvailability);
-  if (step === 'instructions') return renderInstructionsStep(session, banks, selectedRoute, selectedLauncher, methodAvailability);
+  if (step === 'instructions') return renderInstructionsStep(session, banks, selectedRoute, selectedLauncher, methodAvailability, nativeBankLauncherScheme);
   return renderWaitingStatusStep(session, displayStatus, selectedRoute, selectedLauncher);
 }
 
@@ -403,7 +405,8 @@ function renderInstructionsStep(
   banks: readonly ReceiverBankOption[],
   selectedRoute: BuyerSafeReceivingRoute | undefined,
   selectedLauncher: PayerBankLauncherOption | undefined,
-  methodAvailability: BuyerMethodAvailability
+  methodAvailability: BuyerMethodAvailability,
+  nativeBankLauncherScheme?: string | undefined
 ): string {
   if (!selectedRoute) {
     return `<div class="checkout-stage-host">
@@ -418,7 +421,7 @@ function renderInstructionsStep(
   const destinationCopyLabel = isPhone ? 'Telephone du destinataire' : 'Carte du destinataire';
   const methodLabel = isPhone ? 'Telephone SBP' : 'Carte';
   const bankLabel = selectedLauncher?.display_name ?? 'Banque choisie';
-  const bankLaunchUrl = selectedLauncher?.launch_url ?? '';
+  const bankLaunchUrl = resolveBankLaunchUrl(selectedLauncher, nativeBankLauncherScheme);
   const summary = [
     `Montant exact: ${amount.value} ${amount.currency}`,
     `Reference: ${session.reference}`,
@@ -701,6 +704,28 @@ function orderLaunchers(
     if (b.payer_bank_launcher_id === selectedBankId) return 1;
     return a.display_name.localeCompare(b.display_name);
   });
+}
+
+function resolveBankLaunchUrl(
+  selectedLauncher: PayerBankLauncherOption | undefined,
+  nativeBankLauncherScheme?: string | undefined
+): string {
+  if (!selectedLauncher) {
+    return '';
+  }
+
+  if (nativeBankLauncherScheme && selectedLauncher.android_package_hint) {
+    const params = new URLSearchParams({
+      payer_bank_launcher_id: selectedLauncher.payer_bank_launcher_id,
+      package_name: selectedLauncher.android_package_hint
+    });
+    if (selectedLauncher.android_explicit_activity_name) {
+      params.set('explicit_activity_class_name', selectedLauncher.android_explicit_activity_name);
+    }
+    return `${nativeBankLauncherScheme}://swimpay-bank-launch?${params.toString()}`;
+  }
+
+  return selectedLauncher.launch_url ?? '';
 }
 
 function swimPayWavesSvg(): string {

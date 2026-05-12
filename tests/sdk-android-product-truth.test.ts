@@ -6,6 +6,7 @@ const REQUIRED_ANDROID_SDK_FILES = [
   'packages/swimpay-android/package.json',
   'packages/swimpay-android/README.md',
   'packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayCheckout.kt',
+  'packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayBankLauncher.kt',
   'packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayButton.kt',
   'docs/SDK_ANDROID_QUICKSTART.md',
   'examples/android-merchant-basic/README.md',
@@ -15,6 +16,7 @@ const REQUIRED_ANDROID_SDK_FILES = [
 
 const ANDROID_CODE_FILES = [
   'packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayCheckout.kt',
+  'packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayBankLauncher.kt',
   'packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayButton.kt',
   'examples/android-merchant-basic/CheckoutActivity.kt',
   'examples/android-merchant-basic/AndroidManifest.xml'
@@ -60,6 +62,26 @@ describe('Android merchant SDK product truth guardrails', () => {
     }
 
     expect(sdk).toMatch(/returnDoesNotConfirm\s*=\s*true/);
+  });
+
+  it('exposes a safe payer bank app launcher without payment extras', () => {
+    const launcher = read('packages/swimpay-android/src/main/kotlin/com/swimpay/sdk/SwimPayBankLauncher.kt');
+
+    expect(launcher).toContain('object SwimPayBankLauncher');
+    expect(launcher).toContain('data class SwimPayBankLauncherOptions');
+    expect(launcher).toContain('data class SwimPayBankLauncherResult');
+    expect(launcher).toContain('enum class SwimPayBankLauncherStatus');
+    expect(launcher).toContain('enum class SwimPayBankLauncherError');
+    expect(launcher).toContain('explicitActivityClassName');
+    expect(launcher).toContain('packageName');
+    expect(launcher).toContain('fallbackPackageNames');
+    expect(launcher).toContain('setClassName');
+    expect(launcher).toContain('getLaunchIntentForPackage');
+    expect(launcher).toContain('launchDoesNotConfirm');
+    expect(launcher).toMatch(/launchDoesNotConfirm\s*:\s*Boolean\s*=\s*true/);
+
+    expect(launcher).not.toMatch(/putExtra|replaceExtras|data\s*=|setData|setDataAndType|Uri\.parse|ClipData|EXTRA_/u);
+    expect(launcher).not.toMatch(/phone|amount|card|reference|webhook|notification|bank_confirmed|payment\.confirmed|official_bank_confirmation/iu);
   });
 
   it('ships a reusable Android checkout button UI without payment decision behavior', () => {

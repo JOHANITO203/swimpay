@@ -1,5 +1,7 @@
 package com.swimpay.receiver
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -26,6 +28,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestMerchantNotificationPermissionIfNeeded()
         notificationAccessStatusReader = NotificationAccessStatusReader(this)
         merchantSettingsStore = SharedPreferencesPremiumMerchantSettingsStore(this)
         appUnlocker = AndroidSystemAppUnlocker(this)
@@ -77,6 +80,7 @@ class MainActivity : FragmentActivity() {
                     },
                     googleIdTokenProvider = googleIdTokenProvider::requestIdToken,
                     notificationAccessEnabled = notificationAccessEnabled,
+                    merchantReviewNotifier = AndroidMerchantReviewNotifier(this),
                     onOpenNotificationSettings = {
                         startActivity(NotificationListenerSettingsAction.createIntent(packageName))
                     }
@@ -109,6 +113,19 @@ class MainActivity : FragmentActivity() {
                 uiLocked = merchantSettingsStore.shouldRequireUnlock()
             }
         )
+    }
+
+    private fun requestMerchantNotificationPermissionIfNeeded() {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), MERCHANT_REVIEW_NOTIFICATION_PERMISSION_REQUEST)
+        }
+    }
+
+    companion object {
+        private const val MERCHANT_REVIEW_NOTIFICATION_PERMISSION_REQUEST = 6201
     }
 
     /*

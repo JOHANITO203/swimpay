@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.swimpay.sdk.SwimPayBankLauncher
 import com.swimpay.sdk.SwimPayButton
 import com.swimpay.sdk.SwimPayButtonState
 import com.swimpay.sdk.SwimPayCheckout
@@ -36,7 +37,10 @@ class CheckoutActivity : AppCompatActivity() {
             val result = SwimPayCheckout.open(
                 activity = this@CheckoutActivity,
                 checkoutUrl = checkoutUrl,
-                options = SwimPayCheckoutOptions(returnScheme = "merchantapp")
+                options = SwimPayCheckoutOptions(
+                    returnScheme = "merchantapp",
+                    bankLauncherScheme = "merchantapp"
+                )
             )
             button?.let { SwimPayButton.bind(it, SwimPayButtonState.Ready) }
 
@@ -48,6 +52,15 @@ class CheckoutActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        val bankLaunchResult = SwimPayBankLauncher.openFromHandoffIntent(
+            activity = this,
+            intent = intent,
+            expectedScheme = "merchantapp"
+        )
+        if (bankLaunchResult != null) {
+            return
+        }
+
         val result = SwimPayCheckout.parseReturnIntent(
             intent,
             SwimPayCheckoutOptions(returnScheme = "merchantapp")

@@ -23,8 +23,19 @@ import com.swimpay.receiver.ReceiverRuntimeConfigStore
 import com.swimpay.receiver.ReceiverRuntimeRegistrationCoordinator
 import com.swimpay.receiver.security.AndroidKeystorePayloadSigner
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+interface PremiumMerchantReviewNotifier {
+    fun notifyActionRequired(review: PremiumReviewUiItem)
+}
+
+object NoopPremiumMerchantReviewNotifier : PremiumMerchantReviewNotifier {
+    override fun notifyActionRequired(review: PremiumReviewUiItem) {
+        // Local notification delivery is provided by the Android runtime shell.
+    }
+}
 
 @Composable
 fun PremiumMerchantApp(
@@ -44,6 +55,7 @@ fun PremiumMerchantApp(
     googleIdTokenProvider: suspend () -> String? = { null },
     mobileRuntimeFactory: (PremiumMobileMerchantSession) -> PremiumMerchantRuntime = { PremiumMerchantRuntime.mobileSession(it) },
     notificationAccessEnabled: Boolean = true,
+    merchantReviewNotifier: PremiumMerchantReviewNotifier = NoopPremiumMerchantReviewNotifier,
     onOpenNotificationSettings: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
@@ -71,6 +83,13 @@ fun PremiumMerchantApp(
     var receiverHealthState by remember { mutableStateOf<PremiumScreenState<PremiumReceiverHealthUiState>>(PremiumScreenState.loading()) }
     var merchantSettings by remember(merchantSettingsStore) { mutableStateOf(merchantSettingsStore.load()) }
     var supportResult by remember { mutableStateOf<PremiumSupportTicketResult?>(null) }
+    val notifiedReviewIds = remember { mutableSetOf<String>() }
+    fun notifyNewActionRequiredReviews(state: PremiumScreenState<PremiumReviewsUiState>) {
+        if (state !is PremiumScreenState.Content) return
+        state.value.items
+            .filter { !it.valid && notifiedReviewIds.add(it.reviewId) }
+            .forEach { merchantReviewNotifier.notifyActionRequired(it) }
+    }
     fun updateSettings(next: PremiumMerchantSettings) {
         merchantSettings = next
         onThemeModeChanged(next.themeMode)
@@ -217,7 +236,10 @@ fun PremiumMerchantApp(
                     PremiumMainTab.Home -> dashboardState = withContext(Dispatchers.IO) {
                         activeRuntime.loadDashboard(notificationAccessEnabled)
                     }
-                    PremiumMainTab.Reviews -> reviewsState = withContext(Dispatchers.IO) { activeRuntime.loadReviews() }
+                    PremiumMainTab.Reviews -> {
+                        reviewsState = withContext(Dispatchers.IO) { activeRuntime.loadReviews() }
+                        notifyNewActionRequiredReviews(reviewsState)
+                    }
                     PremiumMainTab.Orders -> ordersState = withContext(Dispatchers.IO) { activeRuntime.loadOrders() }
                     PremiumMainTab.Menu -> {
                         connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.loadConnectedSite() }
@@ -267,6 +289,19 @@ fun PremiumMerchantApp(
                     activeRuntime.loadBanks(enabledBankProfileIds = receiverRuntimeConfigStore?.load()?.enabledBankProfileIds ?: emptySet())
                 }
             }
+        }
+    }
+
+    LaunchedEffect(activeRuntime, uiLocked, route) {
+        if (uiLocked) return@LaunchedEffect
+        while (true) {
+            val state = withContext(Dispatchers.IO) { activeRuntime.loadReviews() }
+            notifyNewActionRequiredReviews(state)
+            val currentRoute = route
+            if (currentRoute is PremiumRoute.Main && currentRoute.tab == PremiumMainTab.Reviews) {
+                reviewsState = state
+            }
+            delay(30_000)
         }
     }
 

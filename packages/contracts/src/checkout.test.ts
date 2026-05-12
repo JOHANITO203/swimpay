@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BuyerSafeCheckoutStatuses,
   CheckoutSessionStates,
+  FallbackReviewReasons,
   PayerBankLauncherRegistry,
   ReceivingRouteReviewPolicies,
   ReceivingRouteRiskReasonCodes,
@@ -55,29 +56,105 @@ describe('checkout bank selection contracts', () => {
       expect(launcher.bank_id).toBe(launcher.payer_bank_launcher_id);
       expect(launcher.android_package_candidates.length).toBeGreaterThan(0);
       expect(launcher.deeplink_uri_template).toBeNull();
-      expect(launcher.launch_url).toBe(`intent://#Intent;package=${launcher.android_package_hint};end`);
+      if (launcher.payer_bank_launcher_id === 'sber_ru') {
+        expect(launcher.launch_url).toBe(
+          'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=ru.sberbankmobile;component=ru.sberbankmobile/ru.sberbank.mobile.feature.externalstarttransfer.impl.presentation.NativeContactShortcutActivity;end'
+        );
+      } else {
+        expect(launcher.launch_url).toBe(`intent://#Intent;package=${launcher.android_package_hint};end`);
+      }
       expect(launcher.fallback_strategy).toBe('copy_details_manual_transfer');
       expect(launcher.can_prefill_receiver_card).toBe(false);
       expect(launcher.can_prefill_receiver_phone).toBe(false);
       expect(launcher.can_prefill_amount).toBe(false);
       expect(launcher.can_prefill_reference).toBe(false);
-      expect(launcher.tested_status).toBe('not_validated');
       expect(launcher.does_not_confirm_payment).toBe(true);
       expect(launcher.official_bank_confirmation).toBe(false);
       expect(launcher.detection_supported).toBe(false);
     }
 
-    expect(getPayerBankLauncherOption('sber_ru')?.android_package_hint).toBe('ru.sberbankmobile');
+    expect(getPayerBankLauncherOption('sber_ru')).toMatchObject({
+      android_package_hint: 'ru.sberbankmobile',
+      launch_strategy: 'explicit_activity_then_package',
+      android_explicit_activity_name:
+        'ru.sberbank.mobile.feature.externalstarttransfer.impl.presentation.NativeContactShortcutActivity',
+      tested_status: 'validated',
+      runtime_verified: true,
+      runtime_verified_source: 'real_device_explicit_activity_open_only',
+      can_prefill_receiver_card: false,
+      can_prefill_receiver_phone: false,
+      can_prefill_amount: false,
+      can_prefill_reference: false,
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(getPayerBankLauncherOption('sber_ru')?.launch_url).not.toMatch(/amount|phone|card|reference|pan|cvv/iu);
     expect(getPayerBankLauncherOption('ozon_bank')).toMatchObject({
       android_package_hint: 'ru.ozon.fintech.finance',
       detection_supported: false,
-      tested_status: 'not_validated'
+      tested_status: 'not_validated',
+      runtime_verified: false
     });
+    expect(
+      PayerBankLauncherRegistry.filter((launcher) => launcher.payer_bank_launcher_id !== 'sber_ru').map((launcher) => ({
+        payer_bank_launcher_id: launcher.payer_bank_launcher_id,
+        launch_strategy: launcher.launch_strategy,
+        tested_status: launcher.tested_status,
+        runtime_verified: launcher.runtime_verified,
+        android_explicit_activity_name: launcher.android_explicit_activity_name
+      }))
+    ).toEqual([
+      {
+        payer_bank_launcher_id: 'tbank_ru',
+        launch_strategy: 'package_hint_only',
+        tested_status: 'not_validated',
+        runtime_verified: false,
+        android_explicit_activity_name: undefined
+      },
+      {
+        payer_bank_launcher_id: 'vtb_ru',
+        launch_strategy: 'package_hint_only',
+        tested_status: 'not_validated',
+        runtime_verified: false,
+        android_explicit_activity_name: undefined
+      },
+      {
+        payer_bank_launcher_id: 'alfa_ru',
+        launch_strategy: 'package_hint_only',
+        tested_status: 'not_validated',
+        runtime_verified: false,
+        android_explicit_activity_name: undefined
+      },
+      {
+        payer_bank_launcher_id: 'gazprombank_ru',
+        launch_strategy: 'package_hint_only',
+        tested_status: 'not_validated',
+        runtime_verified: false,
+        android_explicit_activity_name: undefined
+      },
+      {
+        payer_bank_launcher_id: 'ozon_bank',
+        launch_strategy: 'package_hint_only',
+        tested_status: 'not_validated',
+        runtime_verified: false,
+        android_explicit_activity_name: undefined
+      }
+    ]);
     expect(getReceiverBankOption('ozon_bank')).toBeNull();
     expect(getPayerBankLauncherOption('tbank_ru')?.deeplink_schemes).toContain('tbank');
     expect(getPayerBankLauncherOption('vtb_ru')?.deeplink_schemes).toContain('vtb');
     expect(getPayerBankLauncherOption('gazprombank_ru')?.deeplink_schemes).toContain('gpbapp');
     expect(getPayerBankLauncherOption('unknown')).toBeNull();
+  });
+
+  it('declares manual-bank-check fallback review reasons without confirmation semantics', () => {
+    expect(FallbackReviewReasons).toEqual([
+      'no_notification_after_receiver_armed',
+      'receiver_offline_after_arming',
+      'notification_access_missing',
+      'bank_target_missing',
+      'launcher_failed_manual_transfer_possible'
+    ]);
   });
 
   it('maps checkout states to buyer-safe statuses without confirming early states', () => {

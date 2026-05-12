@@ -27,7 +27,10 @@ val swimPayButton = SwimPayButton.create(this) { view ->
         val openResult = SwimPayCheckout.open(
             activity = this@CheckoutActivity,
             checkoutUrl = checkoutUrl,
-            options = SwimPayCheckoutOptions(returnScheme = "merchantapp")
+            options = SwimPayCheckoutOptions(
+                returnScheme = "merchantapp",
+                bankLauncherScheme = "merchantapp"
+            )
         )
         SwimPayButton.bind(button, SwimPayButtonState.Ready)
         if (openResult.error != null) {
@@ -41,7 +44,10 @@ val swimPayButton = SwimPayButton.create(this) { view ->
 val openResult = SwimPayCheckout.open(
     activity = this,
     checkoutUrl = checkoutUrl,
-    options = SwimPayCheckoutOptions(returnScheme = "merchantapp")
+    options = SwimPayCheckoutOptions(
+        returnScheme = "merchantapp",
+        bankLauncherScheme = "merchantapp"
+    )
 )
 ```
 
@@ -50,6 +56,45 @@ val result = SwimPayCheckout.parseReturnIntent(intent, SwimPayCheckoutOptions(re
 if (result != null) {
     refreshOrderStatusFromBackend()
 }
+```
+
+Add both callback hosts to your Android activity:
+
+```xml
+<data android:scheme="merchantapp" android:host="swimpay-return" />
+<data android:scheme="merchantapp" android:host="swimpay-bank-launch" />
+```
+
+## Optional payer bank launcher
+
+`SwimPayBankLauncher` can open a buyer's bank app by explicit Android activity first, then by package launch intent, then by optional package fallbacks.
+
+It never adds payment extras, URI data, phone, amount, card or reference values. It does not confirm payment, send webhooks, read bank notifications or prefill a transfer screen.
+
+```kotlin
+val result = SwimPayBankLauncher.open(
+    activity = this,
+    options = SwimPayBankLauncherOptions(
+        packageName = "com.example.bank",
+        explicitActivityClassName = "com.example.bank.MainActivity",
+        fallbackPackageNames = listOf("com.example.bank.alt")
+    )
+)
+
+if (result.error != null) {
+    showSafeBankOpenError(result.safeMessage)
+}
+```
+
+When the hosted checkout hands bank opening back to the app, handle the intent before normal checkout returns:
+
+```kotlin
+val bankLaunch = SwimPayBankLauncher.openFromHandoffIntent(
+    activity = this,
+    intent = intent,
+    expectedScheme = "merchantapp"
+)
+if (bankLaunch != null) return
 ```
 
 ## Publication note

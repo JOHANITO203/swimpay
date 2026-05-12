@@ -11,6 +11,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="merchantapp" android:host="swimpay-return" />
+                <data android:scheme="merchantapp" android:host="swimpay-bank-launch" />
             </intent-filter>
         </activity>
     </application>

@@ -2053,6 +2053,33 @@ Do not do:
 
 ---
 
+## Latest No-Notification Fallback Runtime Wiring
+
+The fallback worker is now wired into Docker/env configuration and Android merchant review notifications are wired for action-required reviews.
+
+Next recommended action:
+
+1. Commit and push the current fallback/runtime bundle.
+2. Copy these VPS env values:
+   - `NO_NOTIFICATION_FALLBACK_WORKER_ENABLED=true`
+   - `NO_NOTIFICATION_FALLBACK_MIN_SECONDS=120`
+   - `NO_NOTIFICATION_FALLBACK_POLL_INTERVAL_MS=30000`
+   - `NO_NOTIFICATION_FALLBACK_BATCH_SIZE=25`
+3. Redeploy staging.
+4. Check `https://staging.swimpay.pro/api-health` and job-worker `/health`.
+5. Run an armed checkout and wait 120 seconds with no signal.
+6. Verify a `manual_bank_check` review appears in Android merchant review queue.
+7. Verify local notification `Commande à vérifier` appears when app notifications are allowed.
+
+Do not do:
+
+- Do not process real bank notifications during this validation.
+- Do not enable auto-confirmation.
+- Do not emit public webhooks before merchant decision.
+- Do not treat fallback as official bank confirmation.
+
+---
+
 7. Run SDK order creation and final-only webhook rehearsal.
 
 Do not do:

@@ -306,11 +306,45 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Ouvrir ma banque');
     expect(response.body).toContain('J&#39;ai paye');
     expect(response.body).toContain('Montant exact');
+    const launchUrl = response.body.match(/data-launch-url="([^"]*)"/u)?.[1] ?? '';
+    expect(launchUrl).toBe(
+      'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=ru.sberbankmobile;component=ru.sberbankmobile/ru.sberbank.mobile.feature.externalstarttransfer.impl.presentation.NativeContactShortcutActivity;end'
+    );
+    expect(launchUrl).not.toMatch(/amount|phone|card|reference|pan|cvv|137|TANGO|2202/iu);
     expect(response.body).not.toContain('2202201234567890');
     expect(response.body).not.toContain('+79991234567');
     expect(response.body).not.toContain('CVV');
     expect(response.body).not.toContain('SMS code');
     expect(response.body).not.toContain('bank password');
+  });
+
+  it('renders native Android bank launcher handoff when checkout was opened with SDK launcher scheme', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_card',
+      selected_payer_bank_launcher_id: 'sber_ru',
+      checkout_state: 'payment_instructions',
+      buyer_safe_status: 'awaiting_payment'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01?swimpay_bank_launcher_scheme=merchantapp'
+    });
+
+    expect(response.statusCode).toBe(200);
+    const launchUrl = response.body.match(/data-launch-url="([^"]*)"/u)?.[1] ?? '';
+    expect(launchUrl).toContain('merchantapp://swimpay-bank-launch?');
+    expect(launchUrl).toContain('payer_bank_launcher_id=sber_ru');
+    expect(launchUrl).toContain('package_name=ru.sberbankmobile');
+    expect(launchUrl).toContain('explicit_activity_class_name=ru.sberbank.mobile.feature.externalstarttransfer.impl.presentation.NativeContactShortcutActivity');
+    expect(launchUrl).not.toMatch(/amount|phone|card|reference|pan|cvv|137|TANGO|2202/iu);
   });
 
   it.each([

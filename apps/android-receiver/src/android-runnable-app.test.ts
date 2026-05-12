@@ -477,6 +477,19 @@ describe('android device-side network smoke wiring', () => {
     expect(existsSync(join(root, 'tasks/147_sprint_4k_closeout_review.md'))).toBe(true);
   });
 
+  it('posts merchant review notifications without confirmation semantics', () => {
+    const mainManifest = readAndroid('app/src/main/AndroidManifest.xml');
+    const reviewNotifier = readAndroid('app/src/main/java/com/swimpay/receiver/AndroidMerchantReviewNotifier.kt');
+    const merchantApp = readAndroid('app/src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt');
+
+    expect(mainManifest).toContain('android.permission.POST_NOTIFICATIONS');
+    expect(reviewNotifier).toContain('Commande à vérifier');
+    expect(reviewNotifier).toContain('validation manuelle requise');
+    expect(reviewNotifier).toContain('POST_NOTIFICATIONS');
+    expect(merchantApp).toContain('notifyNewActionRequiredReviews');
+    expect(`${reviewNotifier}\n${merchantApp}`).not.toMatch(/paymentConfirmed|autoConfirm|bank_confirmed/iu);
+  });
+
   it('wires Sprint 4K bank selection readiness and safe operator diagnostics', () => {
     const bankSelection = readAndroid('app/src/main/java/com/swimpay/receiver/BankProfileSelection.kt');
     const onboarding = readAndroid('app/src/main/java/com/swimpay/receiver/ReceiverOnboardingReadiness.kt');

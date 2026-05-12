@@ -35,6 +35,7 @@ enum class SwimPayCheckoutError {
 
 data class SwimPayCheckoutOptions(
     val returnScheme: String? = null,
+    val bankLauncherScheme: String? = null,
     val allowedHosts: Set<String> = emptySet(),
     val environment: SwimPayEnvironment = SwimPayEnvironment.Production,
     val requestTimeoutMs: Long? = null
@@ -61,7 +62,7 @@ object SwimPayCheckout {
         checkoutUrl: String,
         options: SwimPayCheckoutOptions = SwimPayCheckoutOptions()
     ): SwimPayCheckoutResult {
-        val uri = validateCheckoutUri(checkoutUrl, options)
+        val uri = validateCheckoutUri(checkoutUrl, options)?.withAndroidHandoff(options)
             ?: return errorResult(SwimPayCheckoutError.InvalidCheckoutUrl, "Invalid checkout URL.")
 
         try {
@@ -85,7 +86,7 @@ object SwimPayCheckout {
         checkoutUrl: String,
         options: SwimPayCheckoutOptions = SwimPayCheckoutOptions()
     ): SwimPayCheckoutIntentResult {
-        val uri = validateCheckoutUri(checkoutUrl, options)
+        val uri = validateCheckoutUri(checkoutUrl, options)?.withAndroidHandoff(options)
             ?: return SwimPayCheckoutIntentResult(
                 error = SwimPayCheckoutError.InvalidCheckoutUrl,
                 safeMessage = "Invalid checkout URL."
@@ -172,6 +173,15 @@ object SwimPayCheckout {
         }
 
         return uri
+    }
+
+    private fun Uri.withAndroidHandoff(options: SwimPayCheckoutOptions): Uri {
+        val bankLauncherScheme = options.bankLauncherScheme?.trim()?.takeIf { it.isNotEmpty() }
+            ?: return this
+
+        return buildUpon()
+            .appendQueryParameter("swimpay_bank_launcher_scheme", bankLauncherScheme)
+            .build()
     }
 
     private fun errorResult(
