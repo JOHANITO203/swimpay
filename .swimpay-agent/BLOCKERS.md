@@ -714,3 +714,10 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Staging DB must apply `019_review_action_state_machine.sql` for the explicit `receiver_arm_expires_at` column.
 - Live staging ADB action success was not claimed before backend redeploy; local tests and APK install/launch passed.
 - Real bank notification testing remains out of scope.
+
+## Android Merchant Polish Static Data Cleanup
+
+- No targeted Android Merchant blocker remains.
+- Full repository validation still pending for this polish bundle.
+- Receiver Health can only show exact backend receiver fields once the backend exposes a complete `receiver_health` contract to the app; until then unknown values are shown as `À vérifier` / `À configurer`, not fake values.
+- Real bank notification testing remains out of scope.

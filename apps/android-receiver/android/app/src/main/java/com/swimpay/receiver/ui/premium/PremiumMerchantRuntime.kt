@@ -124,11 +124,32 @@ data class PremiumReviewUiItem(
     val reviewId: String,
     val amount: String,
     val bank: String,
+    val reviewStatus: ReviewUiStatus = ReviewUiStatus.TO_CONFIRM,
     val status: String,
     val helper: String,
     val reasons: List<String>,
     val valid: Boolean
 )
+
+enum class ReviewUiStatus {
+    TO_CONFIRM,
+    CONFIRMED,
+    REJECTED
+}
+
+private fun String.toReviewUiStatus(): ReviewUiStatus {
+    return when (trim().lowercase()) {
+        "merchant_confirmed",
+        "manual_confirmed",
+        "confirmed",
+        "payment_confirmed" -> ReviewUiStatus.CONFIRMED
+        "merchant_rejected",
+        "signal_rejected",
+        "order_rejected",
+        "rejected" -> ReviewUiStatus.REJECTED
+        else -> ReviewUiStatus.TO_CONFIRM
+    }
+}
 
 data class PremiumReviewsUiState(
     val items: List<PremiumReviewUiItem>,
@@ -139,9 +160,9 @@ data class PremiumReviewsUiState(
         fun preview(): PremiumReviewsUiState {
             return PremiumReviewsUiState(
                 items = listOf(
-                    PremiumReviewUiItem("rev_demo_1", "58,41 ₽", "Sberbank", "À vérifier", "Signal détecté il y a 2 min", listOf("Validation manuelle en bêta"), false),
-                    PremiumReviewUiItem("rev_demo_2", "129,00 ₽", "T-Bank", "À vérifier", "Référence non visible", listOf("Référence non visible"), false),
-                    PremiumReviewUiItem("rev_demo_3", "45,00 ₽", "Alfa-Bank", "Validé", "Confirmé manuellement", listOf("Validation manuelle en bêta"), true)
+                    PremiumReviewUiItem("rev_demo_1", "58,41 ₽", "Sberbank", ReviewUiStatus.TO_CONFIRM, "À vérifier", "Signal détecté il y a 2 min", listOf("Validation manuelle en bêta"), false),
+                    PremiumReviewUiItem("rev_demo_2", "129,00 ₽", "T-Bank", ReviewUiStatus.TO_CONFIRM, "À vérifier", "Référence non visible", listOf("Référence non visible"), false),
+                    PremiumReviewUiItem("rev_demo_3", "45,00 ₽", "Alfa-Bank", ReviewUiStatus.CONFIRMED, "Validé", "Confirmé manuellement", listOf("Validation manuelle en bêta"), true)
                 ),
                 usesLiveApi = false
             )
@@ -279,6 +300,25 @@ data class PremiumOrdersUiState(
             secondaryActionLabel
         ) +
             rows.flatMap { listOf(it.orderId, it.amount, it.status, it.helper) }
+    }
+}
+
+data class PremiumMerchantProfileUiState(
+    val displayName: String = "Marchand",
+    val statusLabel: String = "Profil en attente",
+    val initials: String = "S."
+) {
+    companion object {
+        fun fromSession(session: PremiumMobileMerchantSession?): PremiumMerchantProfileUiState {
+            val handle = session?.displayHandle?.trim().orEmpty()
+            val merchantId = session?.merchantId?.trim().orEmpty()
+            val display = handle.ifBlank { "Marchand" }
+            return PremiumMerchantProfileUiState(
+                displayName = display,
+                statusLabel = if (merchantId.isBlank()) "Profil en attente" else "Profil mobile actif",
+                initials = display.initialsForProfile()
+            )
+        }
     }
 }
 
@@ -426,14 +466,16 @@ class PremiumMerchantRuntime(
             MerchantRepositoryState.SUCCESS -> Unit
         }
         val items = result.items.map {
+            val reviewStatus = it.reviewStatus.toReviewUiStatus()
             PremiumReviewUiItem(
                 reviewId = it.reviewId,
                 amount = it.amountLabel,
                 bank = it.bankDisplayName,
+                reviewStatus = reviewStatus,
                 status = it.statusLabel,
                 helper = it.helper,
                 reasons = it.reasonLabels,
-                valid = it.statusLabel.equals("Validé", ignoreCase = true)
+                valid = reviewStatus == ReviewUiStatus.CONFIRMED
             )
         }
         if (items.isEmpty()) {
@@ -577,12 +619,32 @@ class PremiumMerchantRuntime(
     }
 
     fun loadReceiverHealth(notificationAccessEnabled: Boolean): PremiumScreenState<PremiumReceiverHealthUiState> {
+        return loadReceiverHealth(
+            notificationAccessEnabled = notificationAccessEnabled,
+            enabledBankProfileIds = emptySet(),
+            listenerConnected = null,
+            outboxDepth = null
+        )
+    }
+
+    fun loadReceiverHealth(
+        notificationAccessEnabled: Boolean,
+        enabledBankProfileIds: Set<String>,
+        listenerConnected: Boolean?,
+        outboxDepth: Int?
+    ): PremiumScreenState<PremiumReceiverHealthUiState> {
+        val detectedEnabledBanks = BankTargetLock.resolveTargets(
+            probe = bankPackageProbe,
+            selectedBankProfileIds = enabledBankProfileIds,
+            enabledBankProfileIds = enabledBankProfileIds,
+            listenerReady = notificationAccessEnabled
+        ).count { it.visibleStatus == BankTargetVisibleStatus.ENABLED }
         val health = ReceiverStatusViewModel().buildState(
             notificationAccessEnabled = notificationAccessEnabled,
-            listenerConnected = notificationAccessEnabled,
-            allowedBanksCount = 5,
-            trustedBanksCount = 0,
-            queueLength = 0,
+            listenerConnected = listenerConnected ?: false,
+            allowedBanksCount = enabledBankProfileIds.size,
+            trustedBanksCount = detectedEnabledBanks,
+            queueLength = outboxDepth ?: 1,
             backendReachable = session.isAuthenticated
         )
         val statusTitle = when (health.runtimeState) {
@@ -622,9 +684,9 @@ class PremiumMerchantRuntime(
                 rows = listOf(
                     "État Receiver" to runtimeStateLabel,
                     "Accès notifications" to if (health.notificationAccessEnabled) "Activé" else "Action requise",
-                    "Banques surveillées" to "${health.allowedBanksCount} banques",
-                    "File d'envoi" to if (health.queueLength == 0) "OK" else "À vérifier",
-                    "Dernière synchronisation" to if (health.backendReachable) "Il y a quelques instants" else "Hors ligne"
+                    "Banques surveillées" to if (enabledBankProfileIds.isEmpty()) "À configurer" else "${health.allowedBanksCount} banques",
+                    "File d'envoi" to outboxDepth?.let { if (it == 0) "OK" else "À vérifier" }.orEmpty().ifBlank { "À vérifier" },
+                    "Dernière synchronisation" to if (health.backendReachable && listenerConnected == true) "Synchronisé" else "À vérifier"
                 ),
                 notices = notices
             )
@@ -639,6 +701,28 @@ class PremiumMerchantRuntime(
             health.allowedBanksCount > 0 && health.trustedBanksCount == 0 -> "Vérifiez les banques surveillées avant de compter sur la détection."
             else -> "La détection automatique peut être limitée."
         }
+    }
+
+    fun loadConfigurationChecklist(
+        notificationAccessEnabled: Boolean,
+        enabledBankProfileIds: Set<String>
+    ): MerchantConfigurationChecklist {
+        val receivingMethodsReady = receivingMethodsRepository.list(session).let { result ->
+            result.state == MerchantRepositoryState.SUCCESS &&
+                result.items.any { it.status.equals("Active", ignoreCase = true) }
+        }
+        val connectedSiteReady = connectedSiteRepository.load(session, developerDetailsEnabled = false).let { result ->
+            result.state == MerchantRepositoryState.SUCCESS &&
+                result.visibleTexts().any { text ->
+                    text.equals("Actif", ignoreCase = true) || text.equals("Connexion active", ignoreCase = true)
+                }
+        }
+        return MerchantConfigurationChecklist(
+            phoneConnected = notificationAccessEnabled,
+            bankChosen = enabledBankProfileIds.isNotEmpty(),
+            receivingMethodAdded = receivingMethodsReady,
+            connectedSiteReady = connectedSiteReady
+        )
     }
 
     fun loadConnectedSite(): PremiumScreenState<PremiumConnectedSiteUiState> {
@@ -1077,6 +1161,16 @@ private fun formatDashboardChartAmount(amountMinor: Long, currency: String): Str
     }
 }
 
+private fun String.initialsForProfile(): String {
+    val initials = trim()
+        .split(Regex("[\\s._-]+"))
+        .filter { it.isNotBlank() }
+        .take(2)
+        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
+        .joinToString("")
+    return initials.ifBlank { "S." }.take(2)
+}
+
 private fun defaultBankPackageProbe(): ExactPackageProbe {
     return StaticExactPackageProbe(
         detectedPackages = setOf(
@@ -1220,3 +1314,4 @@ private object NoopMerchantApiTransport : MerchantApiTransport {
         )
     }
 }
+

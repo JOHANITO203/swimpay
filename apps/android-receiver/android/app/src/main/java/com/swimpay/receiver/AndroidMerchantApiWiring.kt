@@ -897,6 +897,7 @@ data class MerchantReviewQueueItem(
     val reviewId: String,
     val amountLabel: String,
     val bankDisplayName: String,
+    val reviewStatus: String,
     val statusLabel: String,
     val helper: String,
     val reasonLabels: List<String>
@@ -955,6 +956,9 @@ class MerchantReviewQueueApiRepository(
         val items = extractTopLevelObjectsFromArray(response.body, "reviews").map { reviewObject ->
             val reviewId = extractString(reviewObject, "review_id").orEmpty()
             val bankProfileId = extractString(reviewObject, "bank_profile_id").orEmpty()
+            val reviewStatus = extractString(reviewObject, "review_status")
+                ?: extractString(reviewObject, "status")
+                ?: "open"
             val amount = extractNestedString(reviewObject, "amount", "value") ?: "0.00"
             val currency = extractNestedString(reviewObject, "amount", "currency") ?: "RUB"
             val reasons = extractReasonTokens(reviewObject)
@@ -962,6 +966,7 @@ class MerchantReviewQueueApiRepository(
                 reviewId = reviewId,
                 amountLabel = formatAmountLabel(amount, currency),
                 bankDisplayName = bankDisplayNameFor(bankProfileId),
+                reviewStatus = reviewStatus,
                 statusLabel = "À vérifier",
                 helper = when {
                     reasons.any { it == "NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT" } ->
@@ -1351,7 +1356,9 @@ class MerchantPaymentDetailApiRepository(
                 "Référence",
                 extractString(payment, "payment_reference") ?: "<REFERENCE>",
                 "Signal reçu",
-                "Il y a 2 min",
+                extractString(payment, "signal_received_at_label")
+                    ?: extractString(payment, "signal_observed_at_label")
+                    ?: "Signal non horodaté",
                 "Pourquoi ce paiement est à vérifier ?"
             ) + reasonLabels + listOf(
                 MerchantReviewAction.REJECT_SIGNAL.label,
@@ -1498,32 +1505,46 @@ data class MerchantDeveloperIntegrationSnapshot(
 
     fun exportLines(
         apiBaseUrl: String = "https://staging.swimpay.pro",
-        externalAppBaseUrl: String = "https://votre-app.example"
+        externalAppBaseUrl: String = ""
     ): List<String> {
+        val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/swimpay/webhook # exemple" }
+        val externalAppLines = externalAppExportLines(externalAppBaseUrl)
         return listOf(
             "SWIMPAY_STAGING_API_BASE_URL=$apiBaseUrl",
             "SWIMPAY_STAGING_SECRET_KEY=${effectiveSecretKey()}",
             "SWIMPAY_STAGING_WEBHOOK_SECRET=${effectiveWebhookSecret()}",
-            "SWIMPAY_WEBHOOK_URL=${webhookUrl.ifBlank { "https://votre-app.example/swimpay/webhook" }}",
-            "EXTERNAL_APP_BASE_URL=$externalAppBaseUrl",
-            "SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}"
-        )
+            "SWIMPAY_WEBHOOK_URL=$safeWebhookUrl"
+        ) + externalAppLines + listOf("SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}")
     }
 
     fun copyExportLines(
         apiBaseUrl: String = "https://staging.swimpay.pro",
-        externalAppBaseUrl: String = "https://votre-app.example",
+        externalAppBaseUrl: String = "",
         secretKeyForCopy: String? = secretKeyOnce,
         webhookSecretForCopy: String? = webhookSecretOnce
     ): List<String> {
+        val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/swimpay/webhook # exemple" }
+        val externalAppLines = externalAppExportLines(externalAppBaseUrl)
         return listOf(
             "SWIMPAY_STAGING_API_BASE_URL=$apiBaseUrl",
             "SWIMPAY_STAGING_SECRET_KEY=${secretKeyForCopy?.takeIf { it.isNotBlank() } ?: effectiveSecretKey()}",
             "SWIMPAY_STAGING_WEBHOOK_SECRET=${webhookSecretForCopy?.takeIf { it.isNotBlank() } ?: effectiveWebhookSecret()}",
-            "SWIMPAY_WEBHOOK_URL=${webhookUrl.ifBlank { "https://votre-app.example/swimpay/webhook" }}",
-            "EXTERNAL_APP_BASE_URL=$externalAppBaseUrl",
-            "SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}"
-        )
+            "SWIMPAY_WEBHOOK_URL=$safeWebhookUrl"
+        ) + externalAppLines + listOf("SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}")
+    }
+
+    private fun externalAppExportLines(externalAppBaseUrl: String): List<String> {
+        return if (externalAppBaseUrl.isBlank()) {
+            listOf(
+                "# EXTERNAL_APP_BASE_URL non configuree",
+                "EXTERNAL_APP_BASE_URL_EXAMPLE=https://votre-app.example"
+            )
+        } else {
+            listOf(
+                "EXTERNAL_APP_BASE_URL=$externalAppBaseUrl",
+                "EXTERNAL_APP_BASE_URL_EXAMPLE=https://votre-app.example"
+            )
+        }
     }
 
     fun visibleTexts(): List<String> {
@@ -2177,3 +2198,4 @@ fun formatMinorAmountCompact(amountMinor: Long, currency: String): String {
 fun urlPath(value: String): String {
     return value.replace(Regex("[^A-Za-z0-9_\\-.]"), "")
 }
+

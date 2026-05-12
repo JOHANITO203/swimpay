@@ -45,13 +45,15 @@ class PremiumSettingsSubscreenContractTest {
     }
 
     @Test
-    fun confirmationIaIsFutureOnlyAndNotAnActiveV1DecisionPath() {
+    fun confirmationModeIsManualOnlyAndNotAnActiveAutoDecisionPath() {
         val dashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
         val confirmation = sourceFunction(dashboard, "fun PremiumConfirmationModeScreen")
 
-        assertTrue(confirmation.contains("IA"))
-        assertTrue(confirmation.contains("Prochaine mise a jour") || confirmation.contains("prochaine mise a jour"))
-        assertTrue(confirmation.contains("Inactive") || confirmation.contains("inactive"))
+        assertTrue(confirmation.contains("Mode manuel V1"))
+        assertTrue(confirmation.contains("Assistance de revue"))
+        assertTrue(confirmation.contains("Lecture seule"))
+        assertFalse(confirmation.contains("IA - Prochaine mise a jour"))
+        assertFalse(confirmation.contains("Automatisation disponible"))
         assertFalse(confirmation.contains("Activer la confirmation IA"))
         assertFalse(confirmation.contains("allow_auto_confirmation = true"))
         assertFalse(confirmation.contains("payment.confirmed"))

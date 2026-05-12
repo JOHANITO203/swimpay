@@ -94,6 +94,18 @@ fun PremiumMerchantApp(
         merchantSettings = next
         onThemeModeChanged(next.themeMode)
     }
+    fun currentMerchantProfileUiState(): PremiumMerchantProfileUiState {
+        return PremiumMerchantProfileUiState.fromSession(mobileMerchantSessionStore.currentSession())
+    }
+    fun enabledReceiverBankProfileIds(): Set<String> {
+        return receiverRuntimeConfigStore?.load()?.enabledBankProfileIds ?: emptySet()
+    }
+    fun currentConfigurationChecklist(): MerchantConfigurationChecklist {
+        return activeRuntime.loadConfigurationChecklist(
+            notificationAccessEnabled = notificationAccessEnabled,
+            enabledBankProfileIds = enabledReceiverBankProfileIds()
+        )
+    }
     val navigateFromMenu: (PremiumRoute) -> Unit = { target ->
         if (target != PremiumRoute.ConnectedSite) {
             activeRuntime.clearDeveloperShowOnceExport()
@@ -244,7 +256,7 @@ fun PremiumMerchantApp(
                     PremiumMainTab.Menu -> {
                         connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.loadConnectedSite() }
                         configurationState = withContext(Dispatchers.IO) {
-                            activeRuntime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
+                            activeRuntime.runConfigurationTest(currentConfigurationChecklist())
                         }
                     }
                 }
@@ -261,14 +273,21 @@ fun PremiumMerchantApp(
                 }
             }
             PremiumRoute.ReceiverHealth -> {
-                receiverHealthState = withContext(Dispatchers.IO) { activeRuntime.loadReceiverHealth(notificationAccessEnabled) }
+                receiverHealthState = withContext(Dispatchers.IO) {
+                    activeRuntime.loadReceiverHealth(
+                        notificationAccessEnabled = notificationAccessEnabled,
+                        enabledBankProfileIds = enabledReceiverBankProfileIds(),
+                        listenerConnected = notificationAccessEnabled,
+                        outboxDepth = null
+                    )
+                }
             }
             PremiumRoute.ConnectedSite -> {
                 connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.loadConnectedSite() }
             }
             PremiumRoute.ConfigurationTest -> {
                 configurationState = withContext(Dispatchers.IO) {
-                    activeRuntime.runConfigurationTest(MerchantConfigurationChecklist.allReady())
+                    activeRuntime.runConfigurationTest(currentConfigurationChecklist())
                 }
             }
             PremiumRoute.Landing,
@@ -463,6 +482,7 @@ fun PremiumMerchantApp(
         is PremiumRoute.Main -> PremiumAppShell(
             selectedTab = currentRoute.tab,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = {
                 when (currentRoute.tab) {
                     PremiumMainTab.Home -> PremiumDashboardScreen(dashboardState)
@@ -476,6 +496,7 @@ fun PremiumMerchantApp(
                     PremiumMainTab.Menu -> PremiumSettingsScreen(
                         connectedSite = connectedSiteState,
                         configuration = configurationState,
+                        merchantProfile = currentMerchantProfileUiState(),
                         language = merchantSettings.language,
                         onNavigate = navigateFromMenu
                     )
@@ -485,6 +506,7 @@ fun PremiumMerchantApp(
         PremiumRoute.ReceivingMethods -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = {
                 PremiumReceivingMethodsStateScreen(
                     receivingMethodsState,
@@ -589,11 +611,13 @@ fun PremiumMerchantApp(
         PremiumRoute.ConfirmationMode -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumConfirmationModeScreen() }
         )
         PremiumRoute.Security -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = {
                 PremiumSecurityScreen(
                     appLock = merchantSettings.appLock,
@@ -665,11 +689,13 @@ fun PremiumMerchantApp(
         PremiumRoute.HelpCenter -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumHelpCenterScreen(language = merchantSettings.language) }
         )
         PremiumRoute.SupportContact -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = {
                 PremiumContactSupportScreen(
                     result = supportResult,
@@ -694,6 +720,7 @@ fun PremiumMerchantApp(
         PremiumRoute.Language -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = {
                 PremiumLanguageScreen(
                     selected = merchantSettings.language,
@@ -704,6 +731,7 @@ fun PremiumMerchantApp(
         PremiumRoute.Appearance -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = {
                 PremiumAppearanceScreen(
                     selected = merchantSettings.themeMode,
@@ -714,16 +742,19 @@ fun PremiumMerchantApp(
         PremiumRoute.Banks -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumBanksStateScreen(banksState) }
         )
         PremiumRoute.ReceiverHealth -> PremiumAppShell(
             selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumReceiverHealthStateScreen(receiverHealthState, onOpenNotificationSettings) }
         )
         is PremiumRoute.OrderDetail -> PremiumAppShell(
             selectedTab = PremiumMainTab.Orders,
             onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
             content = {
                 PremiumStatePanel(
                     PremiumScreenState.empty<Unit>(

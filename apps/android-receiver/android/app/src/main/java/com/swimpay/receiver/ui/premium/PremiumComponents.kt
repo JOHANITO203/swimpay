@@ -69,11 +69,12 @@ import androidx.compose.ui.unit.sp
 fun PremiumAppShell(
     selectedTab: PremiumMainTab,
     onTab: (PremiumMainTab) -> Unit,
+    profileInitials: String = "S.",
     content: @Composable () -> Unit
 ) {
     Box(Modifier.fillMaxSize().background(PremiumColors.Surface)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            PremiumTopChrome()
+            PremiumTopChrome(profileInitials = profileInitials)
             Box(Modifier.weight(1f)) { content() }
             PremiumBottomNav(selectedTab, onTab)
         }
@@ -81,7 +82,7 @@ fun PremiumAppShell(
 }
 
 @Composable
-fun PremiumTopChrome() {
+fun PremiumTopChrome(profileInitials: String = "S.") {
     Row(
         Modifier
             .fillMaxWidth()
@@ -102,7 +103,7 @@ fun PremiumTopChrome() {
             }
             Box {
                 Box(Modifier.size(42.dp).background(PremiumColors.Blue, CircleShape), contentAlignment = Alignment.Center) {
-                    Text("JD", color = PremiumColors.Surface, fontWeight = FontWeight.Black)
+                    Text(profileInitials, color = PremiumColors.Surface, fontWeight = FontWeight.Black)
                 }
                 Box(Modifier.align(Alignment.TopEnd).size(9.dp).background(PremiumColors.Success, CircleShape))
             }

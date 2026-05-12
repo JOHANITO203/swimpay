@@ -20,6 +20,36 @@ Completed locally:
 
 Next recommended action:
 
+## Latest Android Merchant Polish
+
+1. Run full validation if this polish is going into the next push:
+   - `npm run android:doctor`
+   - `npm run typecheck`
+   - `npm run lint`
+   - `npm test`
+   - `npm run build`
+   - `docker compose --env-file .env.example -f infra/docker-compose.yml config`
+   - Android full JVM tests
+   - Android debug APK build
+2. Install the debug APK and verify runtime screens:
+   - menu profile;
+   - configuration checklist;
+   - receiver health;
+   - review tabs;
+   - receiving method bank selector;
+   - developer integration export;
+   - confirmation mode.
+3. Continue polish by separating preview/demo fixtures from runtime source paths with an explicit naming convention.
+
+Do not do:
+
+- Do not process real bank notifications during this validation.
+- Do not enable auto-confirmation.
+- Do not change public webhook semantics.
+- Do not expose raw PAN, raw phone, raw notification text or secrets.
+
+---
+
 1. Commit and push this actor identity contract fix.
 2. Let Dokploy redeploy staging.
 3. Apply migration `020_review_action_actor_identity.sql` on the VPS:

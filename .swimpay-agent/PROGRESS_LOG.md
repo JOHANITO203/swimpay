@@ -3050,3 +3050,19 @@ Safety checks:
 - No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
 
 ---
+# 2026-05-12T17:40:00+03:00 - Android Merchant Polish Static Data Cleanup
+
+- Audited remaining Android Merchant premium runtime static/fake values after dashboard chart and sales hydration.
+- Removed fake menu/profile runtime data: no static `JD`, no fake UID `#7114-4466-8301`, profile now comes from mobile merchant session with honest fallback.
+- Replaced runtime configuration readiness `MerchantConfigurationChecklist.allReady()` with current notification access, receiver bank config, receiving methods, and connected site state.
+- Reworked Receiver Health so it no longer invents fixed bank counts, trusted counts, queue length, or listener status.
+- Replaced fake payment detail timestamp `Signal reçu · Il y a 2 min` with backend timestamp labels or `Signal non horodaté`.
+- Made review tabs actually filter loaded reviews and count real items.
+- Unified receiving method bank lists through `PremiumReceivingMethodBankCatalog` backed by `BankTargetLock.supportedTargets`.
+- Marked missing developer external URL as non-configured and kept example URL explicitly as example.
+- Clarified confirmation mode as `Mode manuel V1`; no assisted/AI auto-confirmation copy remains in runtime.
+- Validation passed: Android targeted polish tests; Android Merchant premium/runtime/hydration set - 41 tests passed.
+- Full repo validation still pending.
+- No payment runtime, webhook semantics, real notification processing, or auto-confirmation behavior changed.
+
+---

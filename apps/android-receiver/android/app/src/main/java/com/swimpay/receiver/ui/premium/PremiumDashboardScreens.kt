@@ -1,4 +1,4 @@
-package com.swimpay.receiver.ui.premium
+﻿package com.swimpay.receiver.ui.premium
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -420,6 +420,7 @@ private fun OrderCard(id: String, amount: String, status: String, helper: String
 fun PremiumSettingsScreen(
     connectedSite: PremiumScreenState<PremiumConnectedSiteUiState> = PremiumScreenState.content(PremiumConnectedSiteUiState.preview()),
     configuration: PremiumScreenState<PremiumConfigurationUiState> = PremiumScreenState.content(PremiumConfigurationUiState.preview()),
+    merchantProfile: PremiumMerchantProfileUiState = PremiumMerchantProfileUiState(),
     language: PremiumLanguageOption = PremiumLanguageOption.FR,
     onNavigate: (PremiumRoute) -> Unit = {}
 ) {
@@ -433,10 +434,11 @@ fun PremiumSettingsScreen(
         item {
             Spacer(Modifier.height(22.dp))
             Box(Modifier.size(108.dp).background(PremiumColors.Blue, CircleShape), contentAlignment = Alignment.Center) {
-                Text("JD", color = PremiumColors.Surface, fontSize = 31.sp, fontWeight = FontWeight.Black)
+                Text(merchantProfile.initials, color = PremiumColors.Surface, fontSize = 31.sp, fontWeight = FontWeight.Black)
             }
             Text(copy.terminalTitle, color = PremiumColors.Ink, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 12.dp))
-            Text("UID: #7114-4466-8301", color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(merchantProfile.displayName, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(merchantProfile.statusLabel, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(24.dp))
         }
         item { PremiumConnectedSiteSummary(connectedSite) }
@@ -517,7 +519,8 @@ fun PremiumReceivingMethodsStateScreen(
     when (state) {
         is PremiumScreenState.Content -> {
             var draftType by remember { mutableStateOf<ReceivingMethodType?>(null) }
-            var selectedBankId by remember { mutableStateOf(ReceivingMethodBankOptions.first().first) }
+            val bankOptions = PremiumReceivingMethodBankCatalog.availableBanks
+            var selectedBankId by remember { mutableStateOf(bankOptions.firstOrNull()?.bankProfileId.orEmpty()) }
             var identifierInput by remember { mutableStateOf("") }
             var editingMethod by remember { mutableStateOf<PremiumReceivingMethodUiItem?>(null) }
             var editLabel by remember { mutableStateOf("") }
@@ -558,12 +561,12 @@ fun PremiumReceivingMethodsStateScreen(
                         PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp, color = PremiumColors.PanelTint) {
                             Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                                 Text("Choisir la banque", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                                ReceivingMethodBankOptions.forEach { bank ->
-                                    val selected = bank.first == selectedBankId
-                                    Row(Modifier.fillMaxWidth().premiumTap { selectedBankId = bank.first }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                bankOptions.forEach { bank ->
+                                    val selected = bank.bankProfileId == selectedBankId
+                                    Row(Modifier.fillMaxWidth().premiumTap { selectedBankId = bank.bankProfileId }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Box(Modifier.size(26.dp).background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape).border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape))
-                                        PremiumBankLogo(bankProfileId = bank.first, displayName = bank.second, size = 30.dp, modifier = Modifier.padding(start = 12.dp))
-                                        Text(bank.second, color = PremiumColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 10.dp))
+                                        PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 30.dp, modifier = Modifier.padding(start = 12.dp))
+                                        Text(bank.displayName, color = PremiumColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 10.dp))
                                     }
                                 }
                                 OutlinedTextField(
@@ -694,14 +697,6 @@ private fun ReceivingMethodActionButton(
     }
 }
 
-private val ReceivingMethodBankOptions: List<Pair<String, String>> = listOf(
-    "sber_ru" to "Sberbank",
-    "tbank_ru" to "T-Bank",
-    "vtb_ru" to "VTB",
-    "alfa_ru" to "Alfa-Bank",
-    "gazprombank_ru" to "Gazprombank"
-)
-
 private fun bankIconResource(bankProfileId: String): Int? {
     return when (bankProfileId) {
         "sber_ru" -> R.drawable.ic_bank_sberbank
@@ -714,9 +709,9 @@ private fun bankIconResource(bankProfileId: String): Int? {
 }
 
 private fun bankProfileIdFromDisplay(value: String): String? {
-    return ReceivingMethodBankOptions.firstOrNull { (_, label) ->
-        value.contains(label, ignoreCase = true)
-    }?.first
+    return PremiumReceivingMethodBankCatalog.availableBanks.firstOrNull { option ->
+        value.contains(option.displayName, ignoreCase = true)
+    }?.bankProfileId
 }
 
 @Composable
@@ -903,7 +898,7 @@ fun PremiumConfirmationModeScreen() {
         item {
             PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumColors.PanelTint) {
                 Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Manuel — Activé", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text("Mode manuel V1", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
                     Text("Chaque paiement doit être confirmé par vous.", color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     StatusChip("Confirmation manuelle", StatusTone.Success)
                 }
@@ -912,17 +907,9 @@ fun PremiumConfirmationModeScreen() {
         item {
             PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
                 Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Assisté — Disponible", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text("Assistance de revue", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
                     Text("SwimPay prépare les indices, vous décidez.", color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    StatusChip("Disponible", StatusTone.Info)
-                }
-            }
-        }
-        item {
-            PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
-                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("IA - Prochaine mise a jour", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                    StatusChip("Inactive", StatusTone.Neutral)
+                    StatusChip("Lecture seule", StatusTone.Neutral)
                 }
             }
         }
@@ -1362,3 +1349,4 @@ private fun SettingsGroup(title: String, rows: List<PremiumSettingsRow>) {
         }
     }
 }
+

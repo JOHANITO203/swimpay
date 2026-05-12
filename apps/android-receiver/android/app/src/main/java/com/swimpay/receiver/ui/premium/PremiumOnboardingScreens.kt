@@ -331,9 +331,10 @@ private fun ReceivingMethodDetailsStep(
     onSave: (MerchantReceivingMethodSubmission) -> Unit,
     onBack: () -> Unit
 ) {
-    val availableBankIds = OnboardingReceivingMethodBankOptions.map { it.first }.toSet()
+    val bankOptions = PremiumReceivingMethodBankCatalog.availableBanks
+    val availableBankIds = bankOptions.map { it.bankProfileId }.toSet()
     val initialBankId = selectedBankIds.firstOrNull { it in availableBankIds }
-        ?: OnboardingReceivingMethodBankOptions.first().first
+        ?: bankOptions.firstOrNull()?.bankProfileId.orEmpty()
     var selectedBankId by remember(initialBankId) { mutableStateOf(initialBankId) }
     var methodType by remember(selectedMethod) {
         mutableStateOf(
@@ -373,13 +374,13 @@ private fun ReceivingMethodDetailsStep(
         Spacer(Modifier.height(6.dp))
         Text("Choisir la banque", color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(10.dp))
-        OnboardingReceivingMethodBankOptions.forEach { bank ->
-            val selected = bank.first == selectedBankId
+        bankOptions.forEach { bank ->
+            val selected = bank.bankProfileId == selectedBankId
             PremiumCard(
                 Modifier
                     .fillMaxWidth()
                     .padding(bottom = 10.dp)
-                    .premiumTap { selectedBankId = bank.first },
+                    .premiumTap { selectedBankId = bank.bankProfileId },
                 radius = 24.dp,
                 color = if (selected) Color(0xFFF7FEFE) else PremiumColors.Surface
             ) {
@@ -390,7 +391,7 @@ private fun ReceivingMethodDetailsStep(
                             .background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape)
                             .border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape)
                     )
-                    Text(bank.second, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 12.dp))
+                    Text(bank.displayName, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 12.dp))
                 }
             }
         }
@@ -419,14 +420,6 @@ private fun ReceivingMethodDetailsStep(
         )
     }
 }
-
-private val OnboardingReceivingMethodBankOptions: List<Pair<String, String>> = listOf(
-    "sber_ru" to "Sberbank",
-    "tbank_ru" to "T-Bank",
-    "vtb_ru" to "VTB",
-    "alfa_ru" to "Alfa-Bank",
-    "gazprombank_ru" to "Gazprombank"
-)
 
 @Composable
 private fun ReceivingMethodStep(

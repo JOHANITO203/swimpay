@@ -29,6 +29,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,6 +57,8 @@ private fun PremiumReviewsContent(
     state: PremiumReviewsUiState,
     onOpenReview: (String) -> Unit
 ) {
+    var selectedFilter by remember { mutableStateOf(PremiumReviewFilter.TO_CONFIRM) }
+    val filteredItems = selectedFilter.applyTo(state.items)
     LazyColumn(
         Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(bottom = 22.dp),
@@ -67,14 +73,42 @@ private fun PremiumReviewsContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FilterLabel(Icons.Default.GridView, "Tout", false, Modifier.weight(1f))
-                FilterLabel(Icons.Default.Sync, "À confirmer", true, Modifier.weight(1.35f))
-                FilterLabel(Icons.Default.CheckCircle, "Confirmés", false, Modifier.weight(1f))
-                FilterLabel(Icons.Default.WarningAmber, "Rejetés", false, Modifier.weight(1f))
+                PremiumReviewFilter.entries.forEach { filter ->
+                    FilterLabel(
+                        filter.icon,
+                        "${filter.label} ${filter.countFor(state.items)}",
+                        selectedFilter == filter,
+                        Modifier.weight(filter.weight)
+                    ) {
+                        selectedFilter = filter
+                    }
+                }
             }
         }
-        items(state.items) { item -> ReviewPaymentCard(item, onOpenReview) }
+        items(filteredItems) { item -> ReviewPaymentCard(item, onOpenReview) }
     }
+}
+
+private enum class PremiumReviewFilter(
+    val label: String,
+    val icon: ImageVector,
+    val weight: Float
+) {
+    ALL("Tout", Icons.Default.GridView, 1f),
+    TO_CONFIRM("À confirmer", Icons.Default.Sync, 1.35f),
+    CONFIRMED("Confirmés", Icons.Default.CheckCircle, 1f),
+    REJECTED("Rejetés", Icons.Default.WarningAmber, 1f);
+
+    fun applyTo(items: List<PremiumReviewUiItem>): List<PremiumReviewUiItem> {
+        return when (this) {
+            ALL -> items
+            TO_CONFIRM -> items.filter { it.reviewStatus == ReviewUiStatus.TO_CONFIRM }
+            CONFIRMED -> items.filter { it.reviewStatus == ReviewUiStatus.CONFIRMED }
+            REJECTED -> items.filter { it.reviewStatus == ReviewUiStatus.REJECTED }
+        }
+    }
+
+    fun countFor(items: List<PremiumReviewUiItem>): Int = applyTo(items).size
 }
 
 @Composable
@@ -272,8 +306,8 @@ private fun PremiumPaymentDetailState(
 }
 
 @Composable
-private fun FilterLabel(icon: ImageVector, text: String, selected: Boolean, modifier: Modifier = Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+private fun FilterLabel(icon: ImageVector, text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+    Column(modifier.premiumTap(onClick), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Icon(icon, null, tint = if (selected) PremiumColors.Blue else Color(0xFF555555), modifier = Modifier.size(17.dp))
             Text(text, color = if (selected) PremiumColors.Blue else Color(0xFF444444), fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1)

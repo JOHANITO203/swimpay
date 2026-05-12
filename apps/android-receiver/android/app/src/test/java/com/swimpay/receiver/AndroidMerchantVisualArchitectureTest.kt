@@ -253,10 +253,11 @@ class AndroidMerchantVisualArchitectureTest {
         val receiverBoundaries = File("src/main/java/com/swimpay/receiver/ReceiverBoundaries.kt").readText()
         val apiWiring = File("src/main/java/com/swimpay/receiver/AndroidMerchantApiWiring.kt").readText()
 
-        assertTrue(premiumDashboard.contains("Manuel — Activé"))
-        assertTrue(premiumDashboard.contains("Assisté — Disponible"))
-        assertTrue(premiumDashboard.contains("IA - Prochaine mise a jour"))
-        assertTrue(premiumDashboard.contains("Inactive"))
+        assertTrue(premiumDashboard.contains("Mode manuel V1"))
+        assertTrue(premiumDashboard.contains("Assistance de revue"))
+        assertTrue(premiumDashboard.contains("Lecture seule"))
+        assertFalse(premiumDashboard.contains("IA - Prochaine mise a jour"))
+        assertFalse(premiumDashboard.contains("Assisté — Disponible"))
         assertFalse(premiumDashboard.contains("Activer la confirmation IA"))
         assertTrue(premiumOnboarding.contains("Confirmation simple"))
         assertTrue(premiumOnboarding.contains("Confirmez ou rejetez en quelques secondes."))
@@ -291,6 +292,7 @@ class AndroidMerchantVisualArchitectureTest {
     fun premiumReceivingMethodComposeExposesOperationalDraftWithoutRawSavedDisplay() {
         val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
         val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
+        val bankCatalog = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumReceivingMethodBankCatalog.kt").readText()
         val premiumApp = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
         val receivingSource = sourceFunction(premiumDashboard, "fun PremiumReceivingMethodsStateScreen")
         val onboardingSource = sourceFunction(premiumOnboarding, "private fun ReceivingMethodDetailsStep")
@@ -309,11 +311,11 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumDashboard.contains("Icons.Default.Star"))
         assertTrue(premiumDashboard.contains("Icons.Default.Delete"))
         assertTrue(receivingSource.contains("Choisir la banque"))
-        assertTrue(premiumDashboard.contains("Sberbank"))
-        assertTrue(premiumDashboard.contains("T-Bank"))
-        assertTrue(premiumDashboard.contains("VTB"))
-        assertTrue(premiumDashboard.contains("Alfa-Bank"))
-        assertTrue(premiumDashboard.contains("Gazprombank"))
+        assertTrue(premiumDashboard.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
+        assertTrue(premiumOnboarding.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
+        assertTrue(bankCatalog.contains("BankTargetLock.supportedTargets"))
+        assertTrue(bankCatalog.contains("bankProfileId"))
+        assertTrue(bankCatalog.contains("displayName"))
         assertTrue(receivingSource.contains("Identifiant utilisé seulement pour l'enregistrement"))
         assertTrue(receivingSource.contains("Enregistrer"))
         assertTrue(receivingSource.contains("Les informations complètes ne sont jamais envoyées dans les webhooks."))
@@ -393,6 +395,64 @@ class AndroidMerchantVisualArchitectureTest {
         assertFalse(connectedSiteSource.contains("Copier pour dev"))
         assertFalse(connectedSiteSource.contains("secretKeyOnce"))
         assertFalse(connectedSiteSource.contains("webhookSecretOnce"))
+    }
+
+    @Test
+    fun premiumRuntimeScreensDoNotUseStaticMerchantProfileOrReadinessData() {
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val premiumComponents = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt").readText()
+        val premiumApp = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
+        val premiumRuntime = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantRuntime.kt").readText()
+        val apiWiring = File("src/main/java/com/swimpay/receiver/AndroidMerchantApiWiring.kt").readText()
+
+        assertFalse("runtime menu must not show fake initials", premiumDashboard.contains("""Text("JD""""))
+        assertFalse("runtime top chrome must not show fake initials", premiumComponents.contains("""Text("JD""""))
+        assertFalse("runtime top chrome must not show static SwimPay initials as merchant profile", premiumComponents.contains("""Text("S.""""))
+        assertTrue(premiumComponents.contains("profileInitials: String"))
+        assertTrue(premiumComponents.contains("Text(profileInitials"))
+        assertFalse("runtime menu must not show fake UID", premiumDashboard.contains("UID: #7114-4466-8301"))
+        assertTrue(premiumDashboard.contains("PremiumMerchantProfileUiState"))
+        assertTrue(premiumApp.contains("currentMerchantProfileUiState"))
+        assertTrue(premiumApp.contains("profileInitials = currentMerchantProfileUiState().initials"))
+        assertFalse("configuration runtime must not assume all checklist items ready", premiumApp.contains("runConfigurationTest(MerchantConfigurationChecklist.allReady())"))
+        assertTrue(premiumApp.contains("currentConfigurationChecklist("))
+        assertFalse("receiver health must not invent fixed bank count", premiumRuntime.contains("allowedBanksCount = 5"))
+        assertFalse("receiver health must not invent trusted bank count", premiumRuntime.contains("trustedBanksCount = 0"))
+        assertFalse("receiver health must not invent outbox depth", premiumRuntime.contains("queueLength = 0"))
+        assertFalse("payment detail must not invent a relative signal age", apiWiring.contains("\"Il y a 2 min\""))
+    }
+
+    @Test
+    fun premiumPolishUsesSharedBankCatalogAndRealReviewFilters() {
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
+        val premiumReviews = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumReviewScreens.kt").readText()
+
+        assertTrue(premiumDashboard.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
+        assertTrue(premiumOnboarding.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
+        assertFalse(premiumDashboard.contains("private val ReceivingMethodBankOptions"))
+        assertFalse(premiumOnboarding.contains("private val OnboardingReceivingMethodBankOptions"))
+        assertTrue(premiumReviews.contains("selectedFilter"))
+        assertTrue(premiumReviews.contains("filteredItems"))
+        assertTrue(premiumReviews.contains("filter.countFor(state.items)"))
+        assertTrue(premiumReviews.contains("ReviewUiStatus"))
+        assertFalse(premiumReviews.contains("status.contains("))
+        assertFalse(premiumReviews.contains("FilterLabel(Icons.Default.Sync, \"À confirmer\", true"))
+    }
+
+    @Test
+    fun developerAndConfirmationPolishDoNotShowMisleadingPlaceholdersOrAutoConfirmOptions() {
+        val apiWiring = File("src/main/java/com/swimpay/receiver/AndroidMerchantApiWiring.kt").readText()
+        val premiumDashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+
+        assertTrue(apiWiring.contains("# EXTERNAL_APP_BASE_URL non configuree"))
+        assertFalse(apiWiring.contains("""EXTERNAL_APP_BASE_URL=${'$'}safeExternalBaseUrl"""))
+        assertTrue(apiWiring.contains("EXTERNAL_APP_BASE_URL_EXAMPLE"))
+        assertFalse(apiWiring.contains("EXTERNAL_APP_BASE_URL=https://votre-app.example"))
+        assertTrue(premiumDashboard.contains("Mode manuel V1"))
+        assertFalse(premiumDashboard.contains("Assisté — Disponible"))
+        assertFalse(premiumDashboard.contains("IA - Prochaine mise a jour"))
+        assertFalse(premiumDashboard.contains("Automatisation disponible"))
     }
 
     @Test
