@@ -17,8 +17,11 @@ import com.swimpay.receiver.MerchantDashboardMetricsSummary
 import com.swimpay.receiver.MerchantDeveloperIntegrationApiRepository
 import com.swimpay.receiver.MerchantDeveloperIntegrationResult
 import com.swimpay.receiver.MerchantDeveloperIntegrationSnapshot
+import com.swimpay.receiver.MerchantOrderItem
 import com.swimpay.receiver.MerchantPaymentDetailApiRepository
 import com.swimpay.receiver.MerchantOrdersApiRepository
+import com.swimpay.receiver.MerchantOrdersResult
+import com.swimpay.receiver.MerchantOrdersSummary
 import com.swimpay.receiver.MerchantReceivingMethodsApiRepository
 import com.swimpay.receiver.MerchantReceivingMethodDisplay
 import com.swimpay.receiver.MerchantReceivingMethodMutationResult
@@ -425,13 +428,27 @@ class PremiumMerchantRuntime(
             val status = chunk.getOrNull(2) ?: "À vérifier"
             PremiumRecentPaymentUiState(amount, "$bank · récemment", status)
         }
-        val summary = result.dashboardMetricsSummary
-        val chartPoints = result.dashboardTimeseries.map {
+        val dashboardChartPoints = result.dashboardTimeseries.map {
             PremiumChartPointUiState(
                 date = it.date,
                 confirmedAmountMinor = it.confirmedAmountMinor,
                 confirmationRate = it.confirmationRate
             )
+        }
+        val ordersFallback = loadConfirmedOrdersFallback(
+            summary = result.dashboardMetricsSummary,
+            chartPoints = dashboardChartPoints,
+            recentPayments = recent
+        )
+        val summary = result.dashboardMetricsSummary
+            ?.takeUnless { it.isEmptyConfirmedDashboardSummary() && ordersFallback != null }
+            ?: ordersFallback?.summary?.toDashboardMetricsSummary()
+            ?: result.dashboardMetricsSummary
+        val chartPoints = dashboardChartPoints.ifEmpty {
+            ordersFallback?.summary?.toDashboardChartPoints().orEmpty()
+        }
+        val recentPayments = recent.ifEmpty {
+            ordersFallback?.items?.toDashboardRecentPayments().orEmpty()
         }
         val chartConfirmedAmountMinor = chartPoints.sumOf { it.confirmedAmountMinor }
         val chartConfirmationRate = chartPoints.maxOfOrNull { it.confirmationRate }
@@ -445,7 +462,7 @@ class PremiumMerchantRuntime(
                 chartPoints = chartPoints,
                 chartConfirmedAmountLabel = if (chartPoints.isEmpty()) "—" else formatDashboardChartAmount(chartConfirmedAmountMinor, summary?.currency ?: "RUB"),
                 chartConfirmationRateLabel = chartConfirmationRate?.let { "$it %" } ?: "—",
-                recentPayments = recent,
+                recentPayments = recentPayments,
                 usesLiveApi = !result.usesMockRepository,
                 localSystemCards = defaultLocalSystemCards(
                     notificationAccessEnabled = notificationAccessEnabled,
@@ -454,6 +471,21 @@ class PremiumMerchantRuntime(
                 )
             )
         )
+    }
+
+    private fun loadConfirmedOrdersFallback(
+        summary: MerchantDashboardMetricsSummary?,
+        chartPoints: List<PremiumChartPointUiState>,
+        recentPayments: List<PremiumRecentPaymentUiState>
+    ): MerchantOrdersResult? {
+        val dashboardHasConfirmedData = summary != null &&
+            (summary.confirmedPaymentCount > 0 || summary.confirmedAmountMinor > 0L)
+        if (dashboardHasConfirmedData && chartPoints.isNotEmpty()) return null
+        if (dashboardHasConfirmedData && recentPayments.isNotEmpty()) return null
+        val orders = ordersRepository.list(session)
+        if (orders.state != MerchantRepositoryState.SUCCESS) return null
+        if (orders.summary.confirmedOrderCount <= 0 && orders.summary.confirmedAmountMinor <= 0L) return null
+        return orders
     }
 
     fun loadReviews(): PremiumScreenState<PremiumReviewsUiState> {
@@ -1136,6 +1168,51 @@ private fun defaultLocalSystemCards(
         PremiumLocalSystemUiState("Banques actives", bankValue),
         PremiumLocalSystemUiState("Moyens de réception", receivingMethodsValue)
     )
+}
+
+private fun MerchantDashboardMetricsSummary.isEmptyConfirmedDashboardSummary(): Boolean {
+    return confirmedPaymentCount <= 0 &&
+        confirmedAmountMinor <= 0L &&
+        rejectedPaymentCount <= 0 &&
+        expiredPaymentCount <= 0 &&
+        failedCount <= 0 &&
+        confirmationRate <= 0
+}
+
+private fun MerchantOrdersSummary.toDashboardMetricsSummary(): MerchantDashboardMetricsSummary {
+    return MerchantDashboardMetricsSummary(
+        range = "orders",
+        currency = currency,
+        confirmedPaymentCount = confirmedOrderCount,
+        confirmedAmountMinor = confirmedAmountMinor,
+        pendingReviewCount = 0,
+        rejectedPaymentCount = 0,
+        expiredPaymentCount = 0,
+        failedCount = failedCount,
+        confirmationRate = confirmationRate,
+        averageManualConfirmationDelaySeconds = 0
+    )
+}
+
+private fun MerchantOrdersSummary.toDashboardChartPoints(): List<PremiumChartPointUiState> {
+    if (confirmedOrderCount <= 0 && confirmedAmountMinor <= 0L) return emptyList()
+    return listOf(
+        PremiumChartPointUiState(
+            date = "Ventes",
+            confirmedAmountMinor = confirmedAmountMinor,
+            confirmationRate = confirmationRate
+        )
+    )
+}
+
+private fun List<MerchantOrderItem>.toDashboardRecentPayments(): List<PremiumRecentPaymentUiState> {
+    return take(5).map {
+        PremiumRecentPaymentUiState(
+            amount = it.amountLabel,
+            detail = it.helper.ifBlank { it.orderId },
+            status = it.statusLabel
+        )
+    }
 }
 
 private fun dashboardMetricCards(summary: MerchantDashboardMetricsSummary?): List<PremiumMetricUiState> {

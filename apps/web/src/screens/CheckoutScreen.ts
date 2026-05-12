@@ -1,4 +1,5 @@
 import { AppShell, Button, escapeHtml } from '../ui/Components.js';
+import { checkoutBankLogoDataUri } from './BankLogoAssets.js';
 import type {
   BuyerCheckoutPaymentMethod,
   BuyerSafeReceivingRoute,
@@ -344,7 +345,8 @@ function bankLogoAssetKey(bankId: string): string {
 
 function renderBankLogoMark(logoAssetKey: string, displayName: string): string {
   const initials = logoAssetKey === 'ic_bank_ozon' ? 'OZ' : displayName.slice(0, 1);
-  return `<span class="bank-logo-mark bank-logo-${escapeHtml(logoAssetKey)}" data-logo-asset-key="${escapeHtml(logoAssetKey)}">${escapeHtml(initials)}</span>`;
+  const hasImage = Boolean(checkoutBankLogoDataUri(logoAssetKey));
+  return `<span class="bank-logo-mark bank-logo-${escapeHtml(logoAssetKey)}${hasImage ? ' bank-logo-image' : ''}" data-logo-asset-key="${escapeHtml(logoAssetKey)}" role="img" aria-label="${escapeHtml(displayName)}"><span aria-hidden="true">${escapeHtml(initials)}</span></span>`;
 }
 
 function renderReceiverBankSelection(session: CheckoutSession, banks: readonly ReceiverBankOption[]): string {
@@ -754,6 +756,20 @@ function renderCheckoutTrustFooter(): string {
     <div class="checkout-trust-badge">${iconSvg('shield')} Secured by SwimPay Cloud</div>
     <p>&copy; 2026 SwimPay Technologies Inc. All rights reserved.</p>
   </footer>`;
+}
+
+function bankLogoImageStyles(): string {
+  return [
+    'ic_bank_sberbank',
+    'ic_bank_tbank',
+    'ic_bank_vtb',
+    'ic_bank_alfa',
+    'ic_bank_gazprombank'
+  ].map((logoAssetKey) => {
+    const dataUri = checkoutBankLogoDataUri(logoAssetKey);
+    if (!dataUri) return '';
+    return `.bank-logo-${logoAssetKey} { background-image: url("${dataUri.replaceAll('QR', 'Q\\52 ')}"); }`;
+  }).filter(Boolean).join('\n');
 }
 
 function orderLaunchers(
@@ -1547,6 +1563,18 @@ function buyerCheckoutStyles(): string {
       font-family: 'Outfit', 'Inter', sans-serif;
       font-weight: 900;
     }
+    .bank-logo-image {
+      background-color: #FFFFFF;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      color: transparent;
+      overflow: hidden;
+    }
+    .bank-logo-image > span {
+      opacity: 0;
+    }
+    ${bankLogoImageStyles()}
     .bank-logo-ic_bank_ozon {
       background: #005BFF;
       color: #FFFFFF;

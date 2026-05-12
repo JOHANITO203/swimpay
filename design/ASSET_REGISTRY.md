@@ -13,7 +13,7 @@ This registry is the visual source of truth for SwimPay Android Merchant and hos
 | Android round icon | `apps/android-receiver/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml` | Android round launcher icon | Required by `android:roundIcon`; duplicate structure is intentional. |
 | Launcher foreground WebP | `apps/android-receiver/android/app/src/main/res/mipmap-*/ic_launcher_foreground.webp` | Adaptive icon foreground only | Runtime-used by adaptive icon XML. |
 | Android notification small icon | `apps/android-receiver/android/app/src/main/res/drawable/ic_notification_small.xml` | Android local merchant notifications only | Official monochrome vector status icon. Keep vector-only; do not replace with bitmap. |
-| Bank icons | `apps/android-receiver/android/app/src/main/res/drawable-nodpi/ic_bank_*.png` and documented vector placeholders below | Android bank selector/manager only | Treat official/trademark assets carefully; do not reuse on web without explicit decision. |
+| Bank icons | `apps/android-receiver/android/app/src/main/res/drawable-nodpi/ic_bank_*.png` and documented vector placeholders below | Android bank selector/manager, hosted checkout sender/receiver bank marks | Checkout may embed these same source assets as data URIs so the buyer flow does not create separate bank-logo variants. |
 | Ozon Bank placeholder | `apps/android-receiver/android/app/src/main/res/drawable/ic_bank_ozon.xml` | Android bank selector/manager and review card placeholder | Documented placeholder `OZ` mark because no official Ozon Bank logo asset was provided in-repo. Replace with an official asset only after explicit product/design approval. |
 
 ## Generated Runtime Marks

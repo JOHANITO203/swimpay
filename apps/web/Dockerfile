@@ -23,6 +23,7 @@ COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
 COPY --from=build /app/packages/events/dist ./packages/events/dist
 COPY --from=build /app/packages/observability/dist ./packages/observability/dist
+COPY apps/android-receiver/android/app/src/main/res/drawable-nodpi ./apps/android-receiver/android/app/src/main/res/drawable-nodpi
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/contracts/package.json packages/contracts/package.json

@@ -213,6 +213,105 @@ class PremiumMerchantRuntimeContractTest {
     }
 
     @Test
+    fun premiumDashboardFallsBackToConfirmedOrdersWhenDashboardMetricsAreEmpty() {
+        val dashboardTransport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "payments_to_review_count": 0,
+                  "confirmed_today_count": 0,
+                  "notifications_sent_count": 0,
+                  "metrics_summary": null,
+                  "metrics_timeseries": null,
+                  "receiver_status": { "status": "connected", "display": "Connect\u00e9" },
+                  "recent_detected_payments": [],
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
+        )
+        val receivingMethodsTransport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "routes": [
+                    {
+                      "route_id": "route_card",
+                      "bank_profile_id": "sber_ru",
+                      "rail_type": "card_transfer",
+                      "receiver_identifier_masked": "\u2022\u2022\u2022\u2022 4821",
+                      "enabled": true
+                    }
+                  ]
+                }
+                """.trimIndent()
+            )
+        )
+        val ordersTransport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "summary": {
+                    "confirmed_order_count": 3,
+                    "confirmed_amount_minor": 89700,
+                    "failed_count": 2,
+                    "confirmation_rate": 60,
+                    "currency": "RUB"
+                  },
+                  "orders": [
+                    {
+                      "order_id": "ord_1",
+                      "amount": { "value": "299.00", "currency": "RUB" },
+                      "status_label": "Confirm\u00e9e",
+                      "helper": "Commande confirm\u00e9e"
+                    },
+                    {
+                      "order_id": "ord_2",
+                      "amount": { "value": "299.00", "currency": "RUB" },
+                      "status_label": "Confirm\u00e9e",
+                      "helper": "Commande confirm\u00e9e"
+                    },
+                    {
+                      "order_id": "ord_3",
+                      "amount": { "value": "299.00", "currency": "RUB" },
+                      "status_label": "Confirm\u00e9e",
+                      "helper": "Commande confirm\u00e9e"
+                    }
+                  ]
+                }
+                """.trimIndent()
+            )
+        )
+        val runtime = PremiumMerchantRuntime(
+            session = AuthenticatedMerchantSession.localDev("mch_demo"),
+            dashboardRepository = MerchantDashboardApiRepository(dashboardTransport),
+            reviewQueueRepository = MerchantReviewQueueApiRepository(RecordingPremiumTransport()),
+            paymentDetailRepository = MerchantPaymentDetailApiRepository(RecordingPremiumTransport()),
+            reviewActionsRepository = MerchantReviewActionsApiRepository(RecordingPremiumTransport()),
+            receivingMethodsRepository = MerchantReceivingMethodsApiRepository(receivingMethodsTransport),
+            connectedSiteRepository = MerchantConnectedSiteApiRepository(RecordingPremiumTransport()),
+            configurationTestRepository = MerchantConfigurationTestApiRepository(RecordingPremiumTransport()),
+            ordersRepository = MerchantOrdersApiRepository(ordersTransport)
+        )
+
+        val dashboard = runtime.loadDashboard() as PremiumScreenState.Content<PremiumDashboardUiState>
+
+        assertEquals("897 \u20bd", dashboard.value.monthlyAmount)
+        assertEquals(listOf("0", "3", "0", "0", "2", "60 %"), dashboard.value.metrics.map { it.value })
+        assertEquals(1, dashboard.value.chartPoints.size)
+        assertEquals(89700L, dashboard.value.chartPoints.single().confirmedAmountMinor)
+        assertEquals("897 \u20bd", dashboard.value.chartConfirmedAmountLabel)
+        assertEquals("60 %", dashboard.value.chartConfirmationRateLabel)
+        assertEquals(3, dashboard.value.recentPayments.size)
+        assertEquals("/v1/android-merchant/dashboard-summary", dashboardTransport.requests.single().path)
+        assertEquals("/v1/merchant/receiving-methods", receivingMethodsTransport.requests.single().path)
+        assertEquals("/v1/android-merchant/orders", ordersTransport.requests.single().path)
+    }
+
+    @Test
     fun premiumRuntimeUsesBackendDeveloperIntegrationWizardForMobileSession() {
         val transport = RecordingPremiumTransport(
             MerchantApiResponse(

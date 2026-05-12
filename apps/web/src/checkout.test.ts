@@ -32,6 +32,17 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('data-method-field="sbp" hidden');
     expect(response.body).toContain('Sberbank');
     expect(response.body).toContain('T-Bank');
+    for (const logoAssetKey of [
+      'ic_bank_sberbank',
+      'ic_bank_tbank',
+      'ic_bank_vtb',
+      'ic_bank_alfa',
+      'ic_bank_gazprombank'
+    ]) {
+      expect(response.body).toContain(`data-logo-asset-key="${logoAssetKey}"`);
+      expect(response.body).toContain(`.bank-logo-${logoAssetKey}`);
+      expect(response.body).toMatch(new RegExp(`\\.bank-logo-${logoAssetKey}[^{]*\\{[^}]*data:image/`, 'u'));
+    }
     expect(response.body).toContain('Ozon Банк');
     expect(response.body).toContain('data-logo-asset-key="ic_bank_ozon"');
     expect(response.body).toContain('Runtime verified');
