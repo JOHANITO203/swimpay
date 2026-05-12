@@ -55,10 +55,36 @@ describe('checkout bank selection contracts', () => {
     for (const launcher of PayerBankLauncherRegistry) {
       expect(launcher.bank_id).toBe(launcher.payer_bank_launcher_id);
       expect(launcher.android_package_candidates.length).toBeGreaterThan(0);
-      expect(launcher.deeplink_uri_template).toBeNull();
+      if (launcher.payer_bank_launcher_id === 'tbank_ru') {
+        expect(launcher.deeplink_uri_template).toBe('bank100000000004://tbank.ru/transfer');
+      } else if (launcher.payer_bank_launcher_id === 'vtb_ru') {
+        expect(launcher.deeplink_uri_template).toBe('bank100000000005://online.vtb.ru/');
+      } else if (launcher.payer_bank_launcher_id === 'gazprombank_ru') {
+        expect(launcher.deeplink_uri_template).toBe('gpbapp://open');
+      } else if (launcher.payer_bank_launcher_id === 'ozon_bank') {
+        expect(launcher.deeplink_uri_template).toBe('bank100000000273://finance.ozon.ru/transfer');
+      } else {
+        expect(launcher.deeplink_uri_template).toBeNull();
+      }
       if (launcher.payer_bank_launcher_id === 'sber_ru') {
         expect(launcher.launch_url).toBe(
           'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=ru.sberbankmobile;component=ru.sberbankmobile/ru.sberbank.mobile.feature.externalstarttransfer.impl.presentation.NativeContactShortcutActivity;end'
+        );
+      } else if (launcher.payer_bank_launcher_id === 'tbank_ru') {
+        expect(launcher.launch_url).toBe(
+          'intent://tbank.ru/transfer#Intent;scheme=bank100000000004;package=com.idamob.tinkoff.android;category=android.intent.category.BROWSABLE;end'
+        );
+      } else if (launcher.payer_bank_launcher_id === 'vtb_ru') {
+        expect(launcher.launch_url).toBe(
+          'intent://online.vtb.ru/#Intent;scheme=bank100000000005;package=ru.vtb24.mobilebanking.android;category=android.intent.category.BROWSABLE;end'
+        );
+      } else if (launcher.payer_bank_launcher_id === 'gazprombank_ru') {
+        expect(launcher.launch_url).toBe(
+          'intent://open#Intent;scheme=gpbapp;package=ru.gazprombank.android.mobilebank.app;category=android.intent.category.BROWSABLE;end'
+        );
+      } else if (launcher.payer_bank_launcher_id === 'ozon_bank') {
+        expect(launcher.launch_url).toBe(
+          'intent://finance.ozon.ru/transfer#Intent;scheme=bank100000000273;package=ru.ozon.fintech.finance;category=android.intent.category.BROWSABLE;end'
         );
       } else {
         expect(launcher.launch_url).toBe(`intent://#Intent;package=${launcher.android_package_hint};end`);
@@ -92,8 +118,8 @@ describe('checkout bank selection contracts', () => {
     expect(getPayerBankLauncherOption('ozon_bank')).toMatchObject({
       android_package_hint: 'ru.ozon.fintech.finance',
       detection_supported: false,
-      tested_status: 'not_validated',
-      runtime_verified: false
+      tested_status: 'validated',
+      runtime_verified: true
     });
     expect(
       PayerBankLauncherRegistry.filter((launcher) => launcher.payer_bank_launcher_id !== 'sber_ru').map((launcher) => ({
@@ -106,44 +132,129 @@ describe('checkout bank selection contracts', () => {
     ).toEqual([
       {
         payer_bank_launcher_id: 'tbank_ru',
-        launch_strategy: 'package_hint_only',
-        tested_status: 'not_validated',
-        runtime_verified: false,
+        launch_strategy: 'deeplink_then_package',
+        tested_status: 'validated',
+        runtime_verified: true,
         android_explicit_activity_name: undefined
       },
       {
         payer_bank_launcher_id: 'vtb_ru',
-        launch_strategy: 'package_hint_only',
-        tested_status: 'not_validated',
-        runtime_verified: false,
+        launch_strategy: 'deeplink_then_package',
+        tested_status: 'validated',
+        runtime_verified: true,
         android_explicit_activity_name: undefined
       },
       {
         payer_bank_launcher_id: 'alfa_ru',
         launch_strategy: 'package_hint_only',
-        tested_status: 'not_validated',
-        runtime_verified: false,
+        tested_status: 'validated',
+        runtime_verified: true,
         android_explicit_activity_name: undefined
       },
       {
         payer_bank_launcher_id: 'gazprombank_ru',
-        launch_strategy: 'package_hint_only',
-        tested_status: 'not_validated',
-        runtime_verified: false,
+        launch_strategy: 'deeplink_then_package',
+        tested_status: 'validated',
+        runtime_verified: true,
         android_explicit_activity_name: undefined
       },
       {
         payer_bank_launcher_id: 'ozon_bank',
-        launch_strategy: 'package_hint_only',
-        tested_status: 'not_validated',
-        runtime_verified: false,
+        launch_strategy: 'deeplink_then_package',
+        tested_status: 'validated',
+        runtime_verified: true,
         android_explicit_activity_name: undefined
       }
     ]);
     expect(getReceiverBankOption('ozon_bank')).toBeNull();
     expect(getPayerBankLauncherOption('tbank_ru')?.deeplink_schemes).toContain('tbank');
+    expect(getPayerBankLauncherOption('tbank_ru')).toMatchObject({
+      android_package_hint: 'com.idamob.tinkoff.android',
+      deeplink_uri_template: 'bank100000000004://tbank.ru/transfer',
+      launch_strategy: 'deeplink_then_package',
+      tested_status: 'validated',
+      runtime_verified: true,
+      runtime_verified_source: 'real_device_deeplink_open_only',
+      can_prefill_receiver_card: false,
+      can_prefill_receiver_phone: false,
+      can_prefill_amount: false,
+      can_prefill_reference: false,
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(getPayerBankLauncherOption('tbank_ru')?.launch_url).not.toMatch(/card=|cardNumber|externalCardNumber|amount|phone|reference|pan|cvv/iu);
+    expect(getPayerBankLauncherOption('vtb_ru')).toMatchObject({
+      android_package_hint: 'ru.vtb24.mobilebanking.android',
+      deeplink_uri_template: 'bank100000000005://online.vtb.ru/',
+      launch_strategy: 'deeplink_then_package',
+      tested_status: 'validated',
+      runtime_verified: true,
+      runtime_verified_source: 'real_device_deeplink_open_only',
+      can_prefill_receiver_card: false,
+      can_prefill_receiver_phone: false,
+      can_prefill_amount: false,
+      can_prefill_reference: false,
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
     expect(getPayerBankLauncherOption('vtb_ru')?.deeplink_schemes).toContain('vtb');
+    expect(getPayerBankLauncherOption('vtb_ru')?.launch_url).toBe(
+      'intent://online.vtb.ru/#Intent;scheme=bank100000000005;package=ru.vtb24.mobilebanking.android;category=android.intent.category.BROWSABLE;end'
+    );
+    expect(getPayerBankLauncherOption('vtb_ru')?.launch_url).not.toMatch(/card=|cardNumber|externalCardNumber|amount|phone|reference|pan|cvv/iu);
+    expect(getPayerBankLauncherOption('alfa_ru')).toMatchObject({
+      android_package_hint: 'ru.alfabank.mobile.android',
+      launch_strategy: 'package_hint_only',
+      tested_status: 'validated',
+      runtime_verified: true,
+      runtime_verified_source: 'real_device_package_launch_open_only',
+      can_prefill_receiver_card: false,
+      can_prefill_receiver_phone: false,
+      can_prefill_amount: false,
+      can_prefill_reference: false,
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(getPayerBankLauncherOption('alfa_ru')?.android_explicit_activity_name).toBeUndefined();
+    expect(getPayerBankLauncherOption('alfa_ru')?.launch_url).toBe(
+      'intent://#Intent;package=ru.alfabank.mobile.android;end'
+    );
+    expect(getPayerBankLauncherOption('alfa_ru')?.launch_url).not.toContain('EsiaAuthActivity');
+    expect(getPayerBankLauncherOption('alfa_ru')?.launch_url).not.toMatch(/auth_url|amount|phone|card|reference|pan|cvv/iu);
+    expect(getPayerBankLauncherOption('ozon_bank')).toMatchObject({
+      android_package_hint: 'ru.ozon.fintech.finance',
+      deeplink_uri_template: 'bank100000000273://finance.ozon.ru/transfer',
+      launch_strategy: 'deeplink_then_package',
+      tested_status: 'validated',
+      runtime_verified: true,
+      runtime_verified_source: 'real_device_deeplink_open_only',
+      can_prefill_receiver_card: false,
+      can_prefill_receiver_phone: false,
+      can_prefill_amount: false,
+      can_prefill_reference: false,
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(getPayerBankLauncherOption('ozon_bank')?.launch_url).not.toMatch(/card=|cardNumber|externalCardNumber|amount|phone|reference|pan|cvv/iu);
+    expect(getPayerBankLauncherOption('gazprombank_ru')).toMatchObject({
+      android_package_hint: 'ru.gazprombank.android.mobilebank.app',
+      deeplink_uri_template: 'gpbapp://open',
+      launch_strategy: 'deeplink_then_package',
+      tested_status: 'validated',
+      runtime_verified: true,
+      runtime_verified_source: 'real_device_deeplink_open_only',
+      can_prefill_receiver_card: false,
+      can_prefill_receiver_phone: false,
+      can_prefill_amount: false,
+      can_prefill_reference: false,
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
     expect(getPayerBankLauncherOption('gazprombank_ru')?.deeplink_schemes).toContain('gpbapp');
+    expect(getPayerBankLauncherOption('gazprombank_ru')?.launch_url).toBe(
+      'intent://open#Intent;scheme=gpbapp;package=ru.gazprombank.android.mobilebank.app;category=android.intent.category.BROWSABLE;end'
+    );
+    expect(getPayerBankLauncherOption('gazprombank_ru')?.launch_url).not.toMatch(/card=|cardNumber|externalCardNumber|amount|phone|reference|pan|cvv/iu);
     expect(getPayerBankLauncherOption('unknown')).toBeNull();
   });
 

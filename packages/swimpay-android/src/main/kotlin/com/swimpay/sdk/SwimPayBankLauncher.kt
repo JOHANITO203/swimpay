@@ -24,6 +24,7 @@ enum class SwimPayBankLauncherError {
 data class SwimPayBankLauncherOptions(
     val packageName: String,
     val explicitActivityClassName: String? = null,
+    val launchUri: String? = null,
     val fallbackPackageNames: List<String> = emptyList()
 )
 
@@ -84,6 +85,14 @@ object SwimPayBankLauncher {
             }
         }
 
+        val launchUri = options.launchUri?.trim()?.takeIf { it.isNotEmpty() }
+        if (launchUri != null) {
+            val deeplinkIntent = cleanDeeplinkIntent(primaryPackage, launchUri)
+            if (deeplinkIntent.resolveActivity(context.packageManager) != null) {
+                return readyResult(deeplinkIntent, primaryPackage)
+            }
+        }
+
         val targetPackages = listOf(primaryPackage) + options.fallbackPackageNames
         for (targetPackage in targetPackages.map { it.trim() }.filter { it.isNotEmpty() }.distinct()) {
             val packageIntent = context.packageManager.getLaunchIntentForPackage(targetPackage)
@@ -137,10 +146,14 @@ object SwimPayBankLauncher {
         val explicitActivityClassName = uri.getQueryParameter("explicit_activity_class_name")
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
+        val launchUri = uri.getQueryParameter("launch_uri")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
 
         return SwimPayBankLauncherOptions(
             packageName = packageName,
-            explicitActivityClassName = explicitActivityClassName
+            explicitActivityClassName = explicitActivityClassName,
+            launchUri = launchUri
         )
     }
 
@@ -168,6 +181,15 @@ object SwimPayBankLauncher {
         }
 
         return cleanIntent
+    }
+
+    private fun cleanDeeplinkIntent(
+        packageName: String,
+        launchUri: String
+    ): Intent {
+        return Intent(Intent.ACTION_VIEW, Uri.parse(launchUri))
+            .addCategory(Intent.CATEGORY_BROWSABLE)
+            .setPackage(packageName)
     }
 
     private fun readyResult(

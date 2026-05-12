@@ -73,14 +73,18 @@ describe('Android merchant SDK product truth guardrails', () => {
     expect(launcher).toContain('enum class SwimPayBankLauncherStatus');
     expect(launcher).toContain('enum class SwimPayBankLauncherError');
     expect(launcher).toContain('explicitActivityClassName');
+    expect(launcher).toContain('launchUri');
     expect(launcher).toContain('packageName');
     expect(launcher).toContain('fallbackPackageNames');
     expect(launcher).toContain('setClassName');
+    expect(launcher).toContain('Intent.ACTION_VIEW');
+    expect(launcher).toContain('Intent.CATEGORY_BROWSABLE');
+    expect(launcher).toContain('setPackage(packageName)');
     expect(launcher).toContain('getLaunchIntentForPackage');
     expect(launcher).toContain('launchDoesNotConfirm');
     expect(launcher).toMatch(/launchDoesNotConfirm\s*:\s*Boolean\s*=\s*true/);
 
-    expect(launcher).not.toMatch(/putExtra|replaceExtras|data\s*=|setData|setDataAndType|Uri\.parse|ClipData|EXTRA_/u);
+    expect(launcher).not.toMatch(/putExtra|replaceExtras|data\s*=|setData|setDataAndType|ClipData|EXTRA_/u);
     expect(launcher).not.toMatch(/phone|amount|card|reference|webhook|notification|bank_confirmed|payment\.confirmed|official_bank_confirmation/iu);
   });
 

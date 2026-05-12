@@ -268,7 +268,9 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('+7 *** *** **67');
     expect(response.body).toContain('Ouvrir ma banque');
     expect(response.body).toContain('data-bank-launch-form');
-    expect(response.body).toContain('data-launch-url="intent://#Intent;package=com.idamob.tinkoff.android;end"');
+    expect(response.body).toContain(
+      'data-launch-url="intent://tbank.ru/transfer#Intent;scheme=bank100000000004;package=com.idamob.tinkoff.android;category=android.intent.category.BROWSABLE;end"'
+    );
     expect(response.body).toContain('J&#39;ai paye');
     expect(response.body).toContain('Copier les details');
     expect(response.body).toContain('Completez le paiement dans');
@@ -345,6 +347,94 @@ describe('hosted checkout web foundation', () => {
     expect(launchUrl).toContain('package_name=ru.sberbankmobile');
     expect(launchUrl).toContain('explicit_activity_class_name=ru.sberbank.mobile.feature.externalstarttransfer.impl.presentation.NativeContactShortcutActivity');
     expect(launchUrl).not.toMatch(/amount|phone|card|reference|pan|cvv|137|TANGO|2202/iu);
+  });
+
+  it('renders Alfa native bank launcher as package-only without ESIA payload', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'alfa_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_card',
+      selected_payer_bank_launcher_id: 'alfa_ru',
+      checkout_state: 'payment_instructions',
+      buyer_safe_status: 'awaiting_payment'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01?swimpay_bank_launcher_scheme=merchantapp'
+    });
+
+    expect(response.statusCode).toBe(200);
+    const launchUrl = response.body.match(/data-launch-url="([^"]*)"/u)?.[1] ?? '';
+    expect(launchUrl).toContain('merchantapp://swimpay-bank-launch?');
+    expect(launchUrl).toContain('payer_bank_launcher_id=alfa_ru');
+    expect(launchUrl).toContain('package_name=ru.alfabank.mobile.android');
+    expect(launchUrl).not.toContain('explicit_activity_class_name');
+    expect(launchUrl).not.toContain('EsiaAuthActivity');
+    expect(launchUrl).not.toMatch(/auth_url|amount|phone|card|reference|pan|cvv|137|TANGO|2202/iu);
+  });
+
+  it('renders T-Bank native bank launcher as open-only deeplink without payment payload', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'tbank_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_card',
+      selected_payer_bank_launcher_id: 'tbank_ru',
+      checkout_state: 'payment_instructions',
+      buyer_safe_status: 'awaiting_payment'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01?swimpay_bank_launcher_scheme=merchantapp'
+    });
+
+    expect(response.statusCode).toBe(200);
+    const launchUrl = response.body.match(/data-launch-url="([^"]*)"/u)?.[1] ?? '';
+    expect(launchUrl).toContain('merchantapp://swimpay-bank-launch?');
+    expect(launchUrl).toContain('payer_bank_launcher_id=tbank_ru');
+    expect(launchUrl).toContain('package_name=com.idamob.tinkoff.android');
+    expect(launchUrl).toContain('launch_uri=bank100000000004%3A%2F%2Ftbank.ru%2Ftransfer');
+    expect(launchUrl).not.toMatch(/card=|cardNumber|externalCardNumber|amount|phone|reference|pan|cvv|137|TANGO|2202/iu);
+  });
+
+  it('renders Ozon native bank launcher as open-only deeplink without payment payload', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      payment_method: 'card',
+      sender_bank_id: 'ozon_bank',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_card',
+      selected_payer_bank_launcher_id: 'ozon_bank',
+      checkout_state: 'payment_instructions',
+      buyer_safe_status: 'awaiting_payment'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01?swimpay_bank_launcher_scheme=merchantapp'
+    });
+
+    expect(response.statusCode).toBe(200);
+    const launchUrl = response.body.match(/data-launch-url="([^"]*)"/u)?.[1] ?? '';
+    expect(launchUrl).toContain('merchantapp://swimpay-bank-launch?');
+    expect(launchUrl).toContain('payer_bank_launcher_id=ozon_bank');
+    expect(launchUrl).toContain('package_name=ru.ozon.fintech.finance');
+    expect(launchUrl).toContain('launch_uri=bank100000000273%3A%2F%2Ffinance.ozon.ru%2Ftransfer');
+    expect(launchUrl).not.toMatch(/card=|cardNumber|externalCardNumber|amount|phone|reference|pan|cvv|137|TANGO|2202/iu);
   });
 
   it.each([

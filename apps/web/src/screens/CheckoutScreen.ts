@@ -722,6 +722,9 @@ function resolveBankLaunchUrl(
     if (selectedLauncher.android_explicit_activity_name) {
       params.set('explicit_activity_class_name', selectedLauncher.android_explicit_activity_name);
     }
+    if (selectedLauncher.deeplink_uri_template) {
+      params.set('launch_uri', selectedLauncher.deeplink_uri_template);
+    }
     return `${nativeBankLauncherScheme}://swimpay-bank-launch?${params.toString()}`;
   }
 

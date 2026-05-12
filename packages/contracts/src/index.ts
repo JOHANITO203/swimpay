@@ -289,19 +289,42 @@ export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
     testedStatus: 'validated'
   }),
   payerLauncher('tbank_ru', 'T-Bank', ['com.idamob.tinkoff.android'], {
-    deeplinkSchemes: ['bank100000000004', 'bank10000000004', 'tbank', 'tcalls', 'tel', 'tinkoffbank']
+    deeplinkSchemes: ['bank100000000004', 'bank10000000004', 'tbank', 'tcalls', 'tel', 'tinkoffbank'],
+    deeplinkUriTemplate: 'bank100000000004://tbank.ru/transfer',
+    launchStrategy: 'deeplink_then_package',
+    runtimeVerified: true,
+    runtimeVerifiedSource: 'real_device_deeplink_open_only',
+    testedStatus: 'validated'
   }),
   payerLauncher('vtb_ru', 'VTB', ['ru.vtb24.mobilebanking.android'], {
-    deeplinkSchemes: ['bank100000000005', 'bank110000000005', 'bank120000000005', 'bank200000000005', 'extvtb', 'shortcut', 'vtb', 'vtb-help']
+    deeplinkSchemes: ['bank100000000005', 'bank110000000005', 'bank120000000005', 'bank200000000005', 'extvtb', 'shortcut', 'vtb', 'vtb-help'],
+    deeplinkUriTemplate: 'bank100000000005://online.vtb.ru/',
+    launchStrategy: 'deeplink_then_package',
+    runtimeVerified: true,
+    runtimeVerifiedSource: 'real_device_deeplink_open_only',
+    testedStatus: 'validated'
   }),
   payerLauncher('alfa_ru', 'Alfa-Bank', ['ru.alfabank.mobile.android'], {
-    deeplinkSchemes: ['alfabank', 'esia']
+    deeplinkSchemes: ['alfabank', 'esia'],
+    runtimeVerified: true,
+    runtimeVerifiedSource: 'real_device_package_launch_open_only',
+    testedStatus: 'validated'
   }),
   payerLauncher('gazprombank_ru', 'Gazprombank', ['ru.gazprombank.android.mobilebank.app'], {
-    deeplinkSchemes: ['bank100000000001', 'gpbapp']
+    deeplinkSchemes: ['bank100000000001', 'gpbapp'],
+    deeplinkUriTemplate: 'gpbapp://open',
+    launchStrategy: 'deeplink_then_package',
+    runtimeVerified: true,
+    runtimeVerifiedSource: 'real_device_deeplink_open_only',
+    testedStatus: 'validated'
   }),
   payerLauncher('ozon_bank', 'Ozon Bank', ['ru.ozon.fintech.finance'], {
-    deeplinkSchemes: ['bank100000000273', 'ozonbank', 'ozonplatiqr', 'tel', 'vk53864657']
+    deeplinkSchemes: ['bank100000000273', 'ozonbank', 'ozonplatiqr', 'tel', 'vk53864657'],
+    deeplinkUriTemplate: 'bank100000000273://finance.ozon.ru/transfer',
+    launchStrategy: 'deeplink_then_package',
+    runtimeVerified: true,
+    runtimeVerifiedSource: 'real_device_deeplink_open_only',
+    testedStatus: 'validated'
   })
 ] as const;
 
@@ -1140,6 +1163,7 @@ function payerLauncher(
   options: {
     androidExplicitActivityName?: string;
     deeplinkSchemes?: readonly string[];
+    deeplinkUriTemplate?: string;
     launchStrategy?: PayerBankLaunchStrategy;
     runtimeVerified?: boolean;
     runtimeVerifiedSource?: string;
@@ -1155,10 +1179,14 @@ function payerLauncher(
     country: 'RU',
     android_package_candidates: androidPackageCandidates,
     android_package_hint: androidPackageHint,
-    deeplink_uri_template: null,
+    deeplink_uri_template: options.deeplinkUriTemplate ?? null,
     deeplink_schemes: options.deeplinkSchemes ?? [],
     launch_url: androidPackageHint
-      ? androidPackageLaunchUrl(androidPackageHint, launchStrategy === 'explicit_activity_then_package' ? options.androidExplicitActivityName : undefined)
+      ? androidLaunchUrl({
+          packageName: androidPackageHint,
+          explicitActivityName: launchStrategy === 'explicit_activity_then_package' ? options.androidExplicitActivityName : undefined,
+          deeplinkUriTemplate: launchStrategy === 'deeplink_then_package' ? options.deeplinkUriTemplate : undefined
+        })
       : null,
     launch_strategy: launchStrategy,
     fallback_strategy: 'copy_details_manual_transfer',
@@ -1178,11 +1206,20 @@ function payerLauncher(
   return launcher;
 }
 
-function androidPackageLaunchUrl(packageName: string, explicitActivityName?: string): string {
-  if (explicitActivityName) {
-    return `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${packageName};component=${packageName}/${explicitActivityName};end`;
+function androidLaunchUrl(input: {
+  packageName: string;
+  explicitActivityName?: string | undefined;
+  deeplinkUriTemplate?: string | undefined;
+}): string {
+  if (input.deeplinkUriTemplate) {
+    const uri = new URL(input.deeplinkUriTemplate);
+    const path = `${uri.host}${uri.pathname}`;
+    return `intent://${path}#Intent;scheme=${uri.protocol.replace(':', '')};package=${input.packageName};category=android.intent.category.BROWSABLE;end`;
   }
-  return `intent://#Intent;package=${packageName};end`;
+  if (input.explicitActivityName) {
+    return `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${input.packageName};component=${input.packageName}/${input.explicitActivityName};end`;
+  }
+  return `intent://#Intent;package=${input.packageName};end`;
 }
 
 const DEFAULT_REFERENCE_WORDS = [
