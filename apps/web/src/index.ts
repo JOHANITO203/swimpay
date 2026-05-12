@@ -397,6 +397,7 @@ interface CheckoutStatusResponse {
   amount: { value: string; currency: string };
   reference: string;
   expires_at: string;
+  return_url?: string | undefined;
   official_bank_confirmation: false;
 }
 
@@ -1454,6 +1455,7 @@ export function toCheckoutStatusResponse(s: CheckoutSession): CheckoutStatusResp
     selected_receiving_route_id: s.selected_receiving_route_id,
     receiving_route_id: s.receiving_route_id ?? s.selected_receiving_route_id,
     receiver_method_type: s.receiver_method_type,
+    return_url: s.return_url,
     amount: s.amount, reference: s.reference, expires_at: s.expires_at, official_bank_confirmation: false
   };
 }

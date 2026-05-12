@@ -1,5 +1,17 @@
 ﻿# Blockers
 
+## Checkout Return URL + External Fulfillment Webhook
+
+- Resolved locally: SDK/API `return_url` is now validated, persisted on `orders`, and exposed to the hosted checkout status contract.
+- Resolved locally: confirmed checkout uses the stored merchant return URL before native Android/browser fallback.
+- Resolved locally: final webhook payloads now include `external_id`, `amount_minor`, `currency` and `status` so the external backend can identify and fulfill the order.
+- Resolved locally: no-notification `manual_bank_check` merchant decisions now create final public webhooks after merchant action only.
+- Targeted validation passed: order API, payment-session API, hosted checkout, review action and webhook worker tests.
+- Staging blocker: apply `022_checkout_return_url_and_webhook_payload.sql`, then redeploy API/web/job-worker.
+- Staging blocker: external merchant backend must have webhook URL/secret configured and verify `SwimPay-Signature`.
+- Staging blocker: external app/backend must create orders with `return_url`; fulfillment must rely on signed webhook, not the return button.
+- Not executed: real bank notification capture, auto-confirmation or public webhook semantic expansion.
+
 ## Buyer Checkout Final State Propagation
 
 - Resolved locally: hosted checkout waiting screen now polls `/checkout/:paymentSessionId/status`.

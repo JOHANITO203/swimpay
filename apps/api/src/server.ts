@@ -5813,6 +5813,7 @@ function toOrderReadResponse(order: StoredOrderRecord, paymentSessionId: string 
     external_id: order.externalId,
     status: order.status,
     payment_session_id: paymentSessionId,
+    return_url: order.returnUrl,
     amount: {
       value: formatAmountMinor(order.amountMinor),
       currency: order.currency

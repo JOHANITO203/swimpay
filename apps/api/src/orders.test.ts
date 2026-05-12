@@ -986,6 +986,66 @@ describe('order api', () => {
     expect(metrics.counterValue(MetricNames.PAYMENT_SESSIONS_CREATED_TOTAL)).toBe(1);
   });
 
+  test('stores a safe SDK return_url for hosted checkout return UX', async () => {
+    const repository = new InMemoryOrderRepository();
+    const server = buildTestServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        ...validOrderPayload,
+        return_url: 'merchantapp://swimpay-return?order_id=order_888'
+      }
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(repository.orders.get('ord_test_01')?.returnUrl).toBe('merchantapp://swimpay-return?order_id=order_888');
+    expect(repository.auditEvents[0]?.payloadRedacted).toMatchObject({
+      return_url_present: true
+    });
+
+    const read = await server.inject({
+      method: 'GET',
+      url: '/v1/orders/ord_test_01',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    expect(read.statusCode).toBe(200);
+    expect(read.json()).toMatchObject({
+      external_id: 'order_888',
+      return_url: 'merchantapp://swimpay-return?order_id=order_888'
+    });
+  });
+
+  test('rejects unsafe return_url values that could leak secrets or execute browser code', async () => {
+    const repository = new InMemoryOrderRepository();
+    const server = buildTestServer(repository);
+
+    const unsafeScript = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        ...validOrderPayload,
+        return_url: 'javascript:alert(1)'
+      }
+    });
+    const unsafeSecret = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        ...validOrderPayload,
+        return_url: 'https://merchant.example/orders/888?webhook_secret=whsec_secret'
+      }
+    });
+
+    expect(unsafeScript.statusCode).toBe(400);
+    expect(unsafeSecret.statusCode).toBe(400);
+    expect(repository.orders.size).toBe(0);
+  });
+
   test('rejects duplicate external id for a merchant', async () => {
     const repository = new InMemoryOrderRepository();
     const server = buildTestServer(repository);

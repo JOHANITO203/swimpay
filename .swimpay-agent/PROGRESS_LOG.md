@@ -1,5 +1,17 @@
 # Progress Log
 
+## 2026-05-13T00:59:00+03:00 - Checkout return URL and external fulfillment webhook
+
+- Audited the confirmed checkout return path and external fulfillment webhook separately.
+- Identified that SDK/API `return_url` existed at the client contract edge but was not persisted by the API or exposed to hosted checkout status.
+- Added additive migration `022_checkout_return_url_and_webhook_payload.sql` for `orders.return_url`.
+- Validated and persisted safe `return_url` values, rejecting executable URLs, local unsafe protocols and query parameters that look like secrets.
+- Exposed `return_url` in order, payment-session and checkout status responses.
+- Kept the checkout button as UX only: stored merchant `return_url` wins, native Android scheme/browser fallback remains secondary.
+- Enriched final webhook events with `external_id`, amount, currency and public status so external backends can fulfill by signed webhook.
+- Allowed final webhook emission after merchant-confirmed `manual_bank_check` reviews while preserving public `confirmation_type=notification_signal` and `official_bank_confirmation=false`.
+- Targeted validation passed: 6 test files / 159 tests.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook event type was added.
 ## 2026-05-12T07:00:00+03:00 - Merchant Intelligence runtime hardening
 
 - Completed the Merchant Intelligence audit across Android listener/sweep, backend heartbeat, no-notification fallback, merchant review queue and local notification surfaces.

@@ -65,14 +65,19 @@ export function createReviewFinalWebhookHandler(enqueuer: PublicWebhookEnqueuer)
       throw new Error(`Unexpected review final webhook event type: ${event.type}`);
     }
 
-    if (readOptionalString(event.data.confirmation_type) !== 'notification_signal') {
+    const confirmationType = readOptionalString(event.data.confirmation_type);
+    if (confirmationType !== 'notification_signal' && confirmationType !== 'manual_bank_check') {
       return { kind: 'ok' };
     }
 
     const merchantId = requireString(event.data.merchant_id, 'merchant_id');
     const reviewId = requireString(event.data.review_id, 'review_id');
     const orderId = requireString(event.data.order_id, 'order_id');
+    const externalOrderId = readOptionalString(event.data.external_id);
     const paymentSessionId = requireString(event.data.payment_session_id, 'payment_session_id');
+    const amountMinor = requireInteger(event.data.amount_minor, 'amount_minor');
+    const currency = requireString(event.data.currency, 'currency');
+    const publicStatus = event.type === EventTypes.REVIEW_CONFIRMED ? 'confirmed' : 'rejected';
 
     if (event.type === EventTypes.REVIEW_REJECTED) {
       const rejectionScope = readOptionalString(event.data.rejection_scope);
@@ -89,7 +94,11 @@ export function createReviewFinalWebhookHandler(enqueuer: PublicWebhookEnqueuer)
           data: stripUndefined({
             review_id: reviewId,
             order_id: orderId,
+            external_id: externalOrderId,
             payment_session_id: paymentSessionId,
+            amount_minor: amountMinor,
+            currency,
+            status: publicStatus,
             decision: 'manual_rejected',
             rejection_scope: rejectionScope,
             reason: readOptionalString(event.data.reason),
@@ -109,7 +118,11 @@ export function createReviewFinalWebhookHandler(enqueuer: PublicWebhookEnqueuer)
         data: stripUndefined({
           review_id: reviewId,
           order_id: orderId,
+          external_id: externalOrderId,
           payment_session_id: paymentSessionId,
+          amount_minor: amountMinor,
+          currency,
+          status: publicStatus,
           decision: 'manual_confirmed',
           reason_label: readOptionalString(event.data.reason_label)
         })
@@ -200,6 +213,16 @@ function requireString(value: unknown, field: string): string {
   }
 
   return normalized;
+}
+
+function requireInteger(value: unknown, field: string): number {
+  if (Number.isInteger(value)) {
+    return value as number;
+  }
+  if (typeof value === 'string' && /^\d+$/u.test(value)) {
+    return Number(value);
+  }
+  throw new Error(`review final webhook event requires ${field}.`);
 }
 
 function stripUndefined(value: Record<string, unknown>): Record<string, unknown> {

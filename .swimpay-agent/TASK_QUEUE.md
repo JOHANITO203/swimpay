@@ -6,6 +6,15 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+Current follow-up is CHECKOUT-RETURN-URL-AND-FULFILLMENT-WEBHOOK. It separates buyer return UX from backend merchant fulfillment.
+
+- [x] `return_url_contract_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_RETURN_URL_AUDIT.md`
+- [x] `return_url_persistence_and_checkout_status` - status: completed_targeted_validated - source: `.swimpay-agent/CHECKOUT_RETURN_URL_FIX_REPORT.md`
+- [x] `final_webhook_fulfillment_payload` - status: completed_targeted_validated - source: `.swimpay-agent/EXTERNAL_FULFILLMENT_WEBHOOK_AUDIT.md`
+- [ ] `staging_external_app_fulfillment_rehearsal` - status: pending_redeploy_migration_and_external_webhook_receiver - source: `.swimpay-agent/EXTERNAL_FULFILLMENT_WEBHOOK_REHEARSAL_REPORT.md`
+
+## Previous Queue
+
 Current follow-up is CHECKOUT-RETURN-TO-MERCHANT-APP. It makes the confirmed checkout return to the Android app that opened the hosted checkout.
 
 - [x] `checkout_return_path_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_RETURN_TO_MERCHANT_REPORT.md`

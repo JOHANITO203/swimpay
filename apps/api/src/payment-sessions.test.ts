@@ -757,6 +757,55 @@ describe('payment session api', () => {
     expect(repository.paymentSessions.size).toBe(0);
   });
 
+  test('exposes stored return_url on checkout session and confirmed checkout status', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createCardRoute(server);
+
+    const created = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        external_id: 'order_session_01',
+        return_url: 'https://merchant.example/orders/order_session_01',
+        amount: {
+          value: '137.00',
+          currency: 'RUB'
+        },
+        expires_in_seconds: 900
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    const session = repository.paymentSessions.get('ps_session_01');
+    const order = repository.orders.get('ord_session_01');
+    expect(session).toBeDefined();
+    expect(order).toBeDefined();
+    if (session) session.status = 'manual_confirmed';
+    if (order) order.status = 'manual_confirmed';
+
+    const read = await server.inject({
+      method: 'GET',
+      url: '/v1/payment-sessions/ps_session_01',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+    const status = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/status'
+    });
+
+    expect(read.statusCode).toBe(200);
+    expect(read.json()).toMatchObject({
+      buyer_safe_status: 'confirmed',
+      return_url: 'https://merchant.example/orders/order_session_01'
+    });
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toMatchObject({
+      buyer_safe_status: 'confirmed',
+      return_url: 'https://merchant.example/orders/order_session_01'
+    });
+  });
+
   test('reports merchant readiness from active receiving routes and drops readiness after disabling the last route', async () => {
     const repository = new InMemoryPaymentSessionRepository();
     const server = buildServer(repository);

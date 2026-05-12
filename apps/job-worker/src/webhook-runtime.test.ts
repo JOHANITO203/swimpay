@@ -113,7 +113,11 @@ describe('webhook runtime integration', () => {
         data: {
           review_id: 'rev_01',
           order_id: 'ord_01',
+          external_id: 'ORDER_01',
           payment_session_id: 'ps_01',
+          amount_minor: 13700,
+          currency: 'RUB',
+          status: 'confirmed',
           decision: 'manual_confirmed',
           confirmation_type: 'notification_signal',
           official_bank_confirmation: false
@@ -152,13 +156,56 @@ describe('webhook runtime integration', () => {
     expect(repository.deliveries[0]?.payload.data).toMatchObject({
       review_id: 'rev_01',
       order_id: 'ord_01',
+      external_id: 'ORDER_01',
       payment_session_id: 'ps_01',
+      amount_minor: 13700,
+      currency: 'RUB',
+      status: 'confirmed',
       decision: 'manual_confirmed',
       confirmation_type: 'notification_signal',
       official_bank_confirmation: false
     });
     expect(repository.auditEvents.map((event) => event.eventType)).toEqual(['webhook.delivery_requested']);
     expect(httpClient.requests).toHaveLength(0);
+  });
+
+  it('review.confirmed handler enqueues payment.confirmed for manual bank check after merchant decision', async () => {
+    const enqueuer = new FakePublicWebhookEnqueuer();
+    const handler = createReviewFinalWebhookHandler(enqueuer);
+
+    await handler(
+      reviewEvent(EventTypes.REVIEW_CONFIRMED, {
+        merchant_id: 'mch_01',
+        review_id: 'rev_fallback_01',
+        order_id: 'ord_01',
+        payment_session_id: 'ps_01',
+        confirmation_type: 'manual_bank_check',
+        reason_label: 'NO_NOTIFICATION_MANUAL_FALLBACK_CONFIRMED',
+        official_bank_confirmation: false
+      }, 'evt_review_fallback_confirmed')
+    );
+
+    expect(enqueuer.events).toEqual([
+      {
+        id: 'evt_review_fallback_confirmed',
+        type: 'payment.confirmed',
+        created_at: '2026-05-02T10:00:00.000Z',
+        merchant_id: 'mch_01',
+        data: {
+          review_id: 'rev_fallback_01',
+          order_id: 'ord_01',
+          external_id: 'ORDER_01',
+          payment_session_id: 'ps_01',
+          amount_minor: 13700,
+          currency: 'RUB',
+          status: 'confirmed',
+          decision: 'manual_confirmed',
+          reason_label: 'NO_NOTIFICATION_MANUAL_FALLBACK_CONFIRMED',
+          confirmation_type: 'notification_signal',
+          official_bank_confirmation: false
+        }
+      }
+    ]);
   });
 
   it('review.rejected handler enqueues payment.rejected only for terminal manual rejection', async () => {
@@ -198,7 +245,11 @@ describe('webhook runtime integration', () => {
       data: {
         review_id: 'rev_02',
         order_id: 'ord_02',
+        external_id: 'ORDER_01',
         payment_session_id: 'ps_02',
+        amount_minor: 13700,
+        currency: 'RUB',
+        status: 'rejected',
         decision: 'manual_rejected',
         rejection_scope: 'order',
         reason: 'merchant_cancelled',
@@ -208,7 +259,7 @@ describe('webhook runtime integration', () => {
     });
   });
 
-  it('review.rejected handler ignores no-notification manual-bank-check rejections as non-signal public fulfillment', async () => {
+  it('review.rejected handler emits final payment.rejected for no-notification manual bank check order rejection', async () => {
     const enqueuer = new FakePublicWebhookEnqueuer();
     const handler = createReviewFinalWebhookHandler(enqueuer);
 
@@ -226,7 +277,24 @@ describe('webhook runtime integration', () => {
       }, 'evt_review_fallback_rejected')
     );
 
-    expect(enqueuer.events).toHaveLength(0);
+    expect(enqueuer.events).toHaveLength(1);
+    expect(enqueuer.events[0]).toMatchObject({
+      id: 'evt_review_fallback_rejected',
+      type: 'payment.rejected',
+      data: {
+        review_id: 'rev_fallback_01',
+        order_id: 'ord_01',
+        external_id: 'ORDER_01',
+        payment_session_id: 'ps_01',
+        amount_minor: 13700,
+        currency: 'RUB',
+        status: 'rejected',
+        decision: 'manual_rejected',
+        reason_label: 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED',
+        confirmation_type: 'notification_signal',
+        official_bank_confirmation: false
+      }
+    });
   });
 
   it('polling loop processes pending deliveries only when enabled', async () => {
@@ -275,7 +343,12 @@ function reviewEvent(
     type,
     created_at: '2026-05-02T10:00:00.000Z',
     source: 'swimpay-api',
-    data
+    data: {
+      external_id: 'ORDER_01',
+      amount_minor: 13700,
+      currency: 'RUB',
+      ...data
+    }
   };
 }
 

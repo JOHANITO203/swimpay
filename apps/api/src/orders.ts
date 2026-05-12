@@ -26,6 +26,7 @@ export interface StoredOrderRecord {
   id: string;
   merchantId: string;
   externalId: string;
+  returnUrl?: string | undefined;
   productId?: string | undefined;
   productName?: string | undefined;
   productRiskLevel: string;
@@ -367,6 +368,12 @@ export interface IdGenerator {
 
 export interface CreateOrderRequestBody {
   external_id: string;
+  return_url?: string | undefined;
+  success_url?: string | undefined;
+  cancel_url?: string | undefined;
+  merchant_return_url?: string | undefined;
+  app_link_url?: string | undefined;
+  android_deep_link?: string | undefined;
   amount: {
     value: string;
     currency: string;
@@ -401,6 +408,7 @@ export interface OrderReadResponse {
   external_id: string;
   status: string;
   payment_session_id: string | null;
+  return_url?: string | undefined;
   amount: {
     value: string;
     currency: string;
@@ -451,13 +459,14 @@ export class PgOrderRepository implements OrderRepository {
 
       await client.query(
         `INSERT INTO orders (
-          id, merchant_id, external_id, product_id, product_name, product_risk_level,
+          id, merchant_id, external_id, return_url, product_id, product_name, product_risk_level,
           amount_minor, currency, status, expires_at, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
           input.order.id,
           input.order.merchantId,
           input.order.externalId,
+          input.order.returnUrl ?? null,
           input.order.productId ?? null,
           input.order.productName ?? null,
           input.order.productRiskLevel,
@@ -534,7 +543,7 @@ export class PgOrderRepository implements OrderRepository {
     const limit = Math.max(1, Math.min(input.limit ?? 50, 100));
     const result = await this.pool.query(
       `SELECT id, merchant_id, external_id, product_id, product_name, product_risk_level,
-        amount_minor, currency, status, expires_at, created_at, updated_at
+        return_url, amount_minor, currency, status, expires_at, created_at, updated_at
        FROM orders
        WHERE merchant_id = $1
          AND status IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')
@@ -549,7 +558,7 @@ export class PgOrderRepository implements OrderRepository {
   public async getOrderById(merchantId: string, orderId: string) {
     const orderResult = await this.pool.query(
       `SELECT id, merchant_id, external_id, product_id, product_name, product_risk_level,
-        amount_minor, currency, status, expires_at, created_at, updated_at
+        return_url, amount_minor, currency, status, expires_at, created_at, updated_at
        FROM orders WHERE merchant_id = $1 AND id = $2`,
       [merchantId, orderId]
     );
@@ -582,6 +591,7 @@ export class PgOrderRepository implements OrderRepository {
       id: String(row.id),
       merchantId: String(row.merchant_id),
       externalId: String(row.external_id),
+      returnUrl: row.return_url ? String(row.return_url) : undefined,
       productId: row.product_id ? String(row.product_id) : undefined,
       productName: row.product_name ? String(row.product_name) : undefined,
       productRiskLevel: String(row.product_risk_level),
@@ -624,7 +634,7 @@ export class PgOrderRepository implements OrderRepository {
     const paymentSession = toPaymentSession(paymentResult.rows[0] as Record<string, string | number | Date | null>);
     const orderResult = await this.pool.query(
       `SELECT id, merchant_id, external_id, product_id, product_name, product_risk_level,
-        amount_minor, currency, status, expires_at, created_at, updated_at
+        return_url, amount_minor, currency, status, expires_at, created_at, updated_at
        FROM orders WHERE merchant_id = $1 AND id = $2`,
       [merchantId, paymentSession.orderId]
     );
@@ -665,7 +675,7 @@ export class PgOrderRepository implements OrderRepository {
     const paymentSession = toPaymentSession(paymentResult.rows[0] as Record<string, string | number | Date | null>);
     const orderResult = await this.pool.query(
       `SELECT id, merchant_id, external_id, product_id, product_name, product_risk_level,
-        amount_minor, currency, status, expires_at, created_at, updated_at
+        return_url, amount_minor, currency, status, expires_at, created_at, updated_at
        FROM orders WHERE merchant_id = $1 AND id = $2`,
       [paymentSession.merchantId, paymentSession.orderId]
     );
@@ -1911,6 +1921,7 @@ function toOrder(row: Record<string, string | number | Date | null>): StoredOrde
     id: String(row.id),
     merchantId: String(row.merchant_id),
     externalId: String(row.external_id),
+    returnUrl: row.return_url ? String(row.return_url) : undefined,
     productId: row.product_id ? String(row.product_id) : undefined,
     productName: row.product_name ? String(row.product_name) : undefined,
     productRiskLevel: String(row.product_risk_level),
@@ -1921,6 +1932,39 @@ function toOrder(row: Record<string, string | number | Date | null>): StoredOrde
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at)).toISOString()
   };
+}
+
+export function normalizeOrderReturnUrl(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 2048) {
+    return undefined;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return undefined;
+  }
+
+  const protocol = parsed.protocol.replace(/:$/u, '').toLowerCase();
+  if (['javascript', 'data', 'file', 'content', 'intent', 'android-app', 'http'].includes(protocol)) {
+    return undefined;
+  }
+  if (protocol !== 'https' && !/^[a-z][a-z0-9+.-]{1,40}$/u.test(protocol)) {
+    return undefined;
+  }
+
+  for (const [key, parameter] of parsed.searchParams.entries()) {
+    if (/(^|[_-])(secret|token|api[_-]?key|password|bearer|authorization)([_-]|$)/iu.test(key)) {
+      return undefined;
+    }
+    if (/sk_(live|test)_|whsec_|spm_|Bearer\s+/iu.test(parameter)) {
+      return undefined;
+    }
+  }
+
+  return parsed.toString();
 }
 
 function toPaymentSession(row: Record<string, string | number | Date | null>): StoredPaymentSessionRecord {
@@ -2295,8 +2339,25 @@ export function validateCreateOrderBody(body: unknown): CreateOrderRequestBody |
     return invalidRequest('Order request is missing required fields.', {});
   }
 
+  const requestedReturnUrl =
+    candidate.return_url ??
+    candidate.success_url ??
+    candidate.merchant_return_url ??
+    candidate.app_link_url ??
+    candidate.android_deep_link;
+  if (requestedReturnUrl !== undefined && typeof requestedReturnUrl !== 'string') {
+    return invalidRequest('Order return_url must be a string when provided.', { field: 'return_url' });
+  }
+  const returnUrl = requestedReturnUrl === undefined ? undefined : normalizeOrderReturnUrl(requestedReturnUrl);
+  if (requestedReturnUrl !== undefined && !returnUrl) {
+    return invalidRequest('Order return_url must be a safe HTTPS URL, app link or custom app scheme without secrets.', {
+      field: 'return_url'
+    });
+  }
+
   return {
     external_id: candidate.external_id.trim(),
+    return_url: returnUrl,
     amount: {
       value: amount.value,
       currency: amount.currency
@@ -2346,6 +2407,7 @@ export function buildOrderCreateInput(params: {
     id: orderId,
     merchantId: params.merchantId,
     externalId: params.body.external_id,
+    returnUrl: params.body.return_url,
     productId: params.body.product?.id,
     productName: params.body.product?.name,
     productRiskLevel: params.body.product?.risk_level ?? 'low',
@@ -2384,6 +2446,7 @@ export function buildOrderCreateInput(params: {
       objectId: orderId,
       payloadRedacted: {
         external_id: params.body.external_id,
+        return_url_present: Boolean(params.body.return_url),
         amount_minor: amountMinor,
         currency: params.body.amount.currency,
         payment_session_id: paymentSessionId,

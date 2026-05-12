@@ -1,6 +1,33 @@
 # Next Action
 
-generated_at: 2026-05-12T22:55:00+03:00
+generated_at: 2026-05-13T00:59:00+03:00
+
+## Completed Locally In This Pass
+
+1. Persisted safe SDK/API `return_url` on orders for confirmed checkout return UX.
+2. Exposed `return_url` through order, payment-session and checkout-status contracts.
+3. Hosted checkout now uses stored merchant return URL before native-scheme/browser fallback.
+4. Enriched final webhook payloads with `external_id`, amount, currency and status.
+5. Final webhook worker now emits fulfillment webhooks for manual merchant decisions from both notification-signal reviews and no-notification manual-bank-check reviews.
+6. Added targeted API/web/job-worker regression tests.
+
+## Next Recommended Action
+
+1. Apply migration `022_checkout_return_url_and_webhook_payload.sql` on staging.
+2. Redeploy API, web and job-worker.
+3. Create an external-app SDK order with `external_id` and `return_url`.
+4. Confirm the review in Android Merchant.
+5. Verify buyer checkout shows confirmed, then `Retourner au marchand` opens the configured return URL.
+6. Verify the external backend receives signed `payment.confirmed`, verifies `SwimPay-Signature`, and fulfills by `external_id`.
+
+## Do Not Do
+
+- Do not use `return_url` as fulfillment proof.
+- Do not put webhook secrets or API keys in `return_url`.
+- Do not handle webhook secrets in Android.
+- Do not change final-only webhook semantics.
+
+## Previous Pass
 
 ## Completed Locally In This Pass
 

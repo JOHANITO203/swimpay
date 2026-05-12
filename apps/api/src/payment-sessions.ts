@@ -81,6 +81,7 @@ export interface PaymentSessionReadResponse {
   available_compatibility_pairs?: readonly PaymentCompatibilityPair[] | undefined;
   unavailable_reason?: CheckoutUnavailableReason | undefined;
   fallback_actions?: readonly CheckoutFallbackAction[] | undefined;
+  return_url?: string | undefined;
   official_bank_confirmation: false;
 }
 
@@ -118,6 +119,7 @@ export interface CheckoutStatusResponse {
   unavailable_reason?: CheckoutUnavailableReason | undefined;
   fallback_actions?: readonly CheckoutFallbackAction[] | undefined;
   receiver_bank_status?: ReceiverBankOption['status'] | undefined;
+  return_url?: string | undefined;
   official_bank_confirmation: false;
 }
 
@@ -259,6 +261,7 @@ export function toPaymentSessionReadResponse(params: {
     available_compatibility_pairs: availability?.available_compatibility_pairs,
     unavailable_reason: availability?.unavailable_reason,
     fallback_actions: availability?.fallback_actions,
+    return_url: params.order.returnUrl,
     official_bank_confirmation: false
   }) as unknown as PaymentSessionReadResponse;
 }
@@ -305,6 +308,7 @@ export function toCheckoutStatusResponse(params: {
     unavailable_reason: read.unavailable_reason,
     fallback_actions: read.fallback_actions,
     receiver_bank_status: receiverBank?.status,
+    return_url: read.return_url,
     official_bank_confirmation: false
   }) as unknown as CheckoutStatusResponse;
 }

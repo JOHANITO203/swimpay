@@ -105,7 +105,10 @@ export type ReviewActionResult =
       reviewId: string;
       status: 'confirmed' | 'rejected';
       orderId: string;
+      externalOrderId: string;
       paymentSessionId: string;
+      amountMinor: number;
+      currency: string;
       orderStatus: OrderStatus;
       paymentSessionStatus: PaymentSessionStatus;
       rejectionScope?: ReviewRejectionScope | undefined;
@@ -184,6 +187,7 @@ export interface ReviewActionResponse {
   review_id: string;
   status: 'confirmed' | 'rejected';
   order_id: string;
+  external_order_id?: string | undefined;
   payment_session_id: string;
   order_status: OrderStatus;
   payment_session_status: PaymentSessionStatus;
@@ -349,7 +353,7 @@ export class PgReviewRepository implements ReviewRepository {
       const reviewResult = await client.query(
         `SELECT
            rq.id, rq.merchant_id, rq.order_id, rq.payment_session_id, rq.signal_id, rq.status,
-           o.status AS order_status,
+           o.status AS order_status, o.external_id, o.amount_minor, o.currency,
            ps.status AS payment_session_status
          FROM review_queue rq
          LEFT JOIN orders o ON o.id = rq.order_id AND o.merchant_id = rq.merchant_id
@@ -379,7 +383,10 @@ export class PgReviewRepository implements ReviewRepository {
               reviewId: input.reviewId,
               status: 'rejected',
               orderId: String(review.order_id),
+              externalOrderId: String(review.external_id),
               paymentSessionId: String(review.payment_session_id),
+              amountMinor: Number(review.amount_minor),
+              currency: String(review.currency),
               orderStatus: currentOrderStatus,
               paymentSessionStatus: currentSessionStatus,
               rejectionScope: previous.scope,
@@ -561,7 +568,10 @@ export class PgReviewRepository implements ReviewRepository {
         reviewId: input.reviewId,
         status: 'rejected',
         orderId: String(review.order_id),
+        externalOrderId: String(review.external_id),
         paymentSessionId: String(review.payment_session_id),
+        amountMinor: Number(review.amount_minor),
+        currency: String(review.currency),
         orderStatus,
         paymentSessionStatus,
         rejectionScope: effectiveScope,
@@ -593,7 +603,7 @@ export class PgReviewRepository implements ReviewRepository {
       const reviewResult = await client.query(
         `SELECT
            rq.id, rq.merchant_id, rq.order_id, rq.payment_session_id, rq.signal_id, rq.status,
-           o.status AS order_status,
+           o.status AS order_status, o.external_id, o.amount_minor, o.currency,
            ps.status AS payment_session_status
          FROM review_queue rq
          LEFT JOIN orders o ON o.id = rq.order_id AND o.merchant_id = rq.merchant_id
@@ -747,7 +757,10 @@ export class PgReviewRepository implements ReviewRepository {
         reviewId: input.reviewId,
         status: outcome.reviewStatus,
         orderId: String(review.order_id),
+        externalOrderId: String(review.external_id),
         paymentSessionId: String(review.payment_session_id),
+        amountMinor: Number(review.amount_minor),
+        currency: String(review.currency),
         orderStatus: outcome.stateStatus,
         paymentSessionStatus: outcome.stateStatus,
         confirmationType: review.signal_id ? 'notification_signal' : 'manual_bank_check',
@@ -927,7 +940,11 @@ export function buildReviewActionEvent(params: {
       merchant_id: params.merchantId,
       review_id: params.result.reviewId,
       order_id: params.result.orderId,
+      external_id: params.result.externalOrderId,
       payment_session_id: params.result.paymentSessionId,
+      amount_minor: params.result.amountMinor,
+      currency: params.result.currency,
+      status: params.result.status === 'confirmed' ? 'confirmed' : 'rejected',
       rejection_scope: params.result.rejectionScope,
       reason: params.result.reason,
       reason_label: params.result.reasonLabel,
@@ -1025,6 +1042,7 @@ export function toReviewActionResponse(result: Extract<ReviewActionResult, { kin
     review_id: result.reviewId,
     status: result.status,
     order_id: result.orderId,
+    external_order_id: result.externalOrderId,
     payment_session_id: result.paymentSessionId,
     order_status: result.orderStatus,
     payment_session_status: result.paymentSessionStatus,
@@ -1084,6 +1102,9 @@ interface ReviewActionRow {
   payment_session_id: string;
   signal_id: string | null;
   status: string;
+  external_id: string;
+  amount_minor: number | string;
+  currency: string;
   order_status?: string | null;
   payment_session_status?: string | null;
 }
