@@ -301,6 +301,7 @@ describe('checkout bank selection contracts', () => {
       'needs_review',
       'confirmed',
       'expired',
+      'rejected',
       'not_validated'
     ]);
 
@@ -311,6 +312,7 @@ describe('checkout bank selection contracts', () => {
     expect(mapCheckoutStateToBuyerSafeStatus('signal_detected')).toBe('signal_detected');
     expect(mapCheckoutStateToBuyerSafeStatus('needs_review')).toBe('needs_review');
     expect(mapCheckoutStateToBuyerSafeStatus('confirmed')).toBe('confirmed');
+    expect(mapCheckoutStateToBuyerSafeStatus('rejected')).toBe('rejected');
     expect(isCheckoutStatePaymentConfirming('buyer_claimed_paid')).toBe(false);
     expect(isCheckoutStatePaymentConfirming('signal_detected')).toBe(false);
     expect(isCheckoutStatePaymentConfirming('confirmed')).toBe(true);

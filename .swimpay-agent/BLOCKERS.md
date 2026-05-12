@@ -1,5 +1,15 @@
 ﻿# Blockers
 
+## Buyer Checkout Final State Propagation
+
+- Resolved locally: hosted checkout waiting screen now polls `/checkout/:paymentSessionId/status`.
+- Resolved locally: API and hosted web checkout status endpoints send `Cache-Control: no-store` and `Pragma: no-cache`.
+- Resolved locally: shared buyer-safe contract now exposes `rejected` as an explicit final buyer status.
+- Resolved locally: `/v1/checkout/:id/status` maps merchant manual confirmation to `checkout_state=confirmed` and `buyer_safe_status=confirmed`.
+- Targeted validation passed: contracts, hosted checkout and payment-session API tests.
+- Staging gate: redeploy API/web, open a real external-app checkout URL, confirm the review in Android Merchant, and verify the buyer page reloads to `Paiement confirme`.
+- Not executed: real bank notification capture, auto-confirmation or public webhook semantic changes.
+
 ## Visual Quality Gate / Android Premium Design System
 
 - No payment runtime blocker introduced.

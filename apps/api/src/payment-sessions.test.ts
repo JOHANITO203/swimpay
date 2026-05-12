@@ -2120,6 +2120,65 @@ describe('payment session api', () => {
     expect(repository.auditEvents.map((event) => event.eventType)).toContain('checkout.continue_to_bank');
   });
 
+  test('checkout status endpoint exposes merchant manual confirmation as buyer-safe confirmed', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    const session = repository.paymentSessions.get('ps_session_01');
+    const order = repository.orders.get('ord_session_01');
+    if (!session || !order) {
+      throw new Error('test session missing');
+    }
+    session.status = 'manual_confirmed';
+    order.status = 'manual_confirmed';
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/status'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({
+      payment_session_id: 'ps_session_01',
+      order_id: 'ord_session_01',
+      status: 'manual_confirmed',
+      checkout_state: 'confirmed',
+      buyer_safe_status: 'confirmed',
+      receiver_status: 'complete',
+      official_bank_confirmation: false
+    });
+    expect(response.body).not.toContain('bank_confirmed');
+  });
+
+  test('checkout status endpoint exposes merchant rejection as buyer-safe rejected', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    const session = repository.paymentSessions.get('ps_session_01');
+    const order = repository.orders.get('ord_session_01');
+    if (!session || !order) {
+      throw new Error('test session missing');
+    }
+    session.status = 'rejected';
+    order.status = 'rejected';
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/status'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      payment_session_id: 'ps_session_01',
+      order_id: 'ord_session_01',
+      status: 'rejected',
+      checkout_state: 'rejected',
+      buyer_safe_status: 'rejected',
+      official_bank_confirmation: false
+    });
+  });
+
   test('rejects buyer credentials on checkout actions outside Step 1', async () => {
     const repository = new InMemoryPaymentSessionRepository();
     const server = buildServer(repository);

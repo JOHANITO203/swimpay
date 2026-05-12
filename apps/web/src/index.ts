@@ -793,6 +793,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     const params = request.params as { paymentSessionId?: string };
     const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId!);
     if (!session) return reply.status(404).send({ error: 'not_found' });
+    reply.header('Cache-Control', 'no-store').header('Pragma', 'no-cache');
     return reply.status(200).send(toCheckoutStatusResponse(session));
   });
 

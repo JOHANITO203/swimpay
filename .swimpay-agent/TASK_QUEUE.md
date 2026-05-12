@@ -6,6 +6,16 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+The current sprint is CHECKOUT-FINAL-STATE-PROPAGATION. It ensures merchant manual decisions propagate to the hosted buyer checkout waiting screen.
+
+- [x] `checkout_final_state_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_FINAL_STATE_PROPAGATION_AUDIT.md`
+- [x] `buyer_checkout_status_contract` - status: completed_targeted_validated - source: `.swimpay-agent/BUYER_CHECKOUT_STATUS_CONTRACT_REPORT.md`
+- [x] `hosted_checkout_status_polling` - status: completed_targeted_validated - source: `.swimpay-agent/CHECKOUT_FINAL_STATE_FIX_REPORT.md`
+- [x] `checkout_final_state_tests` - status: completed_targeted_validated - source: `.swimpay-agent/CHECKOUT_FINAL_STATE_TEST_REPORT.md`
+- [ ] `staging_external_checkout_confirmation_smoke` - status: pending_redeploy_and_device_test - source: `.swimpay-agent/CHECKOUT_FINAL_STATE_PROPAGATION_CLOSEOUT.md`
+
+## Previous Queue
+
 The current visual follow-up is OZON-BANK-RUNTIME-VERIFIED + BANK-LOGO-VISIBILITY.
 
 - [x] `remove_false_visual_blockers` - status: completed - source: `.swimpay-agent/BLOCKERS.md`

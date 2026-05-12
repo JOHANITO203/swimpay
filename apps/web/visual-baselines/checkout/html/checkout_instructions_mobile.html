@@ -1553,6 +1553,42 @@
         setInterval(tick, 1000);
       }
 
+      for (const statusPanel of document.querySelectorAll('[data-checkout-status-poll-url]')) {
+        const pollUrl = statusPanel.getAttribute('data-checkout-status-poll-url') || '';
+        const currentStatus = statusPanel.getAttribute('data-checkout-current-status') || '';
+        const currentSafeStatus = statusPanel.getAttribute('data-checkout-current-safe-status') || '';
+        const finalSafeStatuses = ['confirmed', 'rejected', 'expired', 'cancelled'];
+        if (!pollUrl || finalSafeStatuses.includes(currentSafeStatus)) continue;
+
+        let stopped = false;
+        const poll = async () => {
+          if (stopped || document.hidden) return;
+          try {
+            const response = await fetch(pollUrl, {
+              cache: 'no-store',
+              headers: { accept: 'application/json' },
+              credentials: 'same-origin'
+            });
+            if (!response.ok) return;
+            const payload = await response.json();
+            const nextSafeStatus = String(payload.buyer_safe_status || '');
+            const nextStatus = String(payload.status || '');
+            if (finalSafeStatuses.includes(nextSafeStatus) || (nextStatus && nextStatus !== currentStatus)) {
+              stopped = true;
+              window.location.href = window.location.pathname + window.location.search;
+            }
+          } catch {
+            // Keep the waiting screen stable; the next poll or manual refresh can recover.
+          }
+        };
+        const interval = window.setInterval(poll, 2500);
+        window.addEventListener('beforeunload', () => {
+          stopped = true;
+          window.clearInterval(interval);
+        }, { once: true });
+        window.setTimeout(poll, 800);
+      }
+
       async function copyText(button, value) {
         try {
           await navigator.clipboard.writeText(value);

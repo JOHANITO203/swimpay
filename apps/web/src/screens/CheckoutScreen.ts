@@ -646,7 +646,7 @@ function renderWaitingStatusStep(
   selectedLauncher: PayerBankLauncherOption | undefined
 ): string {
   const state = checkoutStateView(session);
-  return `<section class="checkout-stage-card checkout-status-card buyer-state-${state.tone}" data-visual-stage="status">
+  return `<section class="checkout-stage-card checkout-status-card buyer-state-${state.tone}" data-visual-stage="status" data-checkout-status-poll-url="/checkout/${escapeHtml(session.payment_session_id)}/status" data-checkout-current-status="${escapeHtml(session.status)}" data-checkout-current-safe-status="${escapeHtml(session.buyer_safe_status ?? '')}">
     <div class="checkout-stage-head">
       <h1>${escapeHtml(state.title)}</h1>
       <p>${escapeHtml(state.text)}</p>
@@ -706,7 +706,7 @@ function checkoutStateView(session: CheckoutSession): CheckoutStateView {
   if (session.status === 'expired' || safe === 'expired') {
     return { title: 'Paiement expire', text: "Le paiement n'a pas ete valide a temps.", tone: 'warning' };
   }
-  if (session.status === 'rejected' || safe === 'not_validated') {
+  if (session.status === 'rejected' || safe === 'rejected') {
     return { title: 'Paiement rejete', text: 'Veuillez reessayer ou contacter le marchand.', tone: 'danger' };
   }
   if (session.status === 'manual_confirmed' || session.status === 'fulfilled' || safe === 'confirmed') {
@@ -956,6 +956,42 @@ function buyerCheckoutScript(): string {
         };
         tick();
         setInterval(tick, 1000);
+      }
+
+      for (const statusPanel of document.querySelectorAll('[data-checkout-status-poll-url]')) {
+        const pollUrl = statusPanel.getAttribute('data-checkout-status-poll-url') || '';
+        const currentStatus = statusPanel.getAttribute('data-checkout-current-status') || '';
+        const currentSafeStatus = statusPanel.getAttribute('data-checkout-current-safe-status') || '';
+        const finalSafeStatuses = ['confirmed', 'rejected', 'expired', 'cancelled'];
+        if (!pollUrl || finalSafeStatuses.includes(currentSafeStatus)) continue;
+
+        let stopped = false;
+        const poll = async () => {
+          if (stopped || document.hidden) return;
+          try {
+            const response = await fetch(pollUrl, {
+              cache: 'no-store',
+              headers: { accept: 'application/json' },
+              credentials: 'same-origin'
+            });
+            if (!response.ok) return;
+            const payload = await response.json();
+            const nextSafeStatus = String(payload.buyer_safe_status || '');
+            const nextStatus = String(payload.status || '');
+            if (finalSafeStatuses.includes(nextSafeStatus) || (nextStatus && nextStatus !== currentStatus)) {
+              stopped = true;
+              window.location.href = window.location.pathname + window.location.search;
+            }
+          } catch {
+            // Keep the waiting screen stable; the next poll or manual refresh can recover.
+          }
+        };
+        const interval = window.setInterval(poll, 2500);
+        window.addEventListener('beforeunload', () => {
+          stopped = true;
+          window.clearInterval(interval);
+        }, { once: true });
+        window.setTimeout(poll, 800);
       }
 
       async function copyText(button, value) {

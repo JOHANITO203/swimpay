@@ -448,7 +448,7 @@ describe('hosted checkout web foundation', () => {
     ['needs_review', 'needs_review', 'Validation marchand', 'Le marchand verifie ce paiement.'],
     ['manual_confirmed', 'confirmed', 'Paiement confirme', 'Votre commande peut maintenant etre traitee.'],
     ['expired', 'expired', 'Paiement expire', 'Le paiement n&#39;a pas ete valide a temps.'],
-    ['rejected', 'not_validated', 'Paiement rejete', 'Veuillez reessayer ou contacter le marchand.']
+    ['rejected', 'rejected', 'Paiement rejete', 'Veuillez reessayer ou contacter le marchand.']
   ])('renders buyer checkout waiting panel for %s', async (status, buyerSafeStatus, title, text) => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {
@@ -483,6 +483,8 @@ describe('hosted checkout web foundation', () => {
     const response = await server.inject({ method: 'GET', url: '/checkout/ps_01/status' });
 
     expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers.pragma).toBe('no-cache');
     expect(response.json()).toMatchObject({
       payment_session_id: 'ps_01',
       order_id: 'ord_01',
@@ -494,6 +496,33 @@ describe('hosted checkout web foundation', () => {
       expires_at: '2026-05-02T10:15:00.000Z',
       official_bank_confirmation: false
     });
+  });
+
+  it('wires the buyer waiting screen to poll status and stop after a final state', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      status: 'buyer_claimed_paid',
+      checkout_state: 'buyer_claimed_paid',
+      buyer_safe_status: 'searching_signal',
+      payment_method: 'card',
+      sender_bank_id: 'sber_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_card',
+      selected_payer_bank_launcher_id: 'sber_ru'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('data-checkout-status-poll-url="/checkout/ps_01/status"');
+    expect(response.body).toContain('data-checkout-current-safe-status="searching_signal"');
+    expect(response.body).toContain('fetch(pollUrl');
+    expect(response.body).toContain("['confirmed', 'rejected', 'expired', 'cancelled']");
+    expect(response.body).not.toContain('payment.confirmed');
+    expect(response.body).not.toContain('official bank confirmation');
   });
 
   it('proxies receiver, route and payer launcher selection without confirming payment', async () => {

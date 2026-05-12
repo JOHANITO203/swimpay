@@ -3201,3 +3201,14 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Targeted validations passed: contracts/bank-template/web checkout tests, Android bank target/profile/static profile tests, `npm run android:screenshot:verify`, `npm run checkout:screenshot:verify`, `npm run android:doctor`, `npm run typecheck`, `npm run lint`.
 
 2026-05-12T23:10:00+03:00 - Added registered Android notification small icon, verified Ozon/logo visual contracts, and built staging debug-signed APK at apps/android-receiver/android/app/build/outputs/apk/staging/app-staging.apk.
+
+## 2026-05-12T23:45:00+03:00 - Buyer checkout final state propagation
+
+- Audited merchant review decision propagation to order, payment session, checkout status endpoints and hosted checkout waiting screen.
+- Confirmed the backend manual-confirmation path already updates `review`, `order` and `payment_session` to final manual states.
+- Identified the root cause as stale hosted checkout HTML: the buyer waiting screen did not poll the status endpoint after merchant confirmation.
+- Added hosted checkout polling against `/checkout/:paymentSessionId/status` with no-store fetch semantics.
+- Added no-store headers to API and hosted web status endpoints.
+- Made `rejected` explicit in the shared buyer-safe checkout status contract.
+- Added targeted contract, API and web tests for confirmed/rejected status propagation.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.

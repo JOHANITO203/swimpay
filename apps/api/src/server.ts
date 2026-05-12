@@ -2221,6 +2221,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       loaded.paymentSession.id
     );
 
+    reply.header('Cache-Control', 'no-store').header('Pragma', 'no-cache');
     return reply.status(200).send(
       toCheckoutStatusResponse({
         order: loaded.order,

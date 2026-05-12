@@ -60,6 +60,7 @@ export const BuyerSafeCheckoutStatuses = [
   'needs_review',
   'confirmed',
   'expired',
+  'rejected',
   'not_validated'
 ] as const;
 
@@ -422,7 +423,7 @@ export function mapCheckoutStateToBuyerSafeStatus(state: CheckoutSessionState): 
     case 'expired':
       return 'expired';
     case 'rejected':
-      return 'not_validated';
+      return 'rejected';
   }
 }
 
