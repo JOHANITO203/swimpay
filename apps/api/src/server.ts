@@ -634,6 +634,37 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     userId?: string | undefined;
     deviceId?: string | undefined;
   } | null> {
+    const bearerToken = parseBearerToken(request.headers.authorization);
+    const hasAndroidMobileBearer = bearerToken?.startsWith('spm_') ?? false;
+    if (hasAndroidMobileBearer && !routeOptions.allowAndroidMobile) {
+      reply.status(401).send(
+        invalidRequest('Android merchant mobile bearer is not accepted for this merchant endpoint.', {
+          authorization: 'dashboard_session_required'
+        })
+      );
+      return null;
+    }
+
+    if (routeOptions.allowAndroidMobile && hasAndroidMobileBearer) {
+      const androidContext = await resolveAndroidMerchantContext(request, reply);
+      if (androidContext) {
+        if (!androidMerchantMobilePermissions().includes(permission)) {
+          reply.status(403).send(invalidRequest('Android merchant mobile permission is required.', { permission }));
+          return null;
+        }
+        return androidContext;
+      }
+      if (reply.sent) {
+        return null;
+      }
+      reply.status(401).send(
+        invalidRequest('A valid Android merchant mobile session is required for this merchant action.', {
+          authorization: 'Bearer spm_<mobile_session_token>'
+        })
+      );
+      return null;
+    }
+
     const session = await readBffSessionContext(request);
     if (session) {
       const membership = session.context.activeMembership;
@@ -771,11 +802,20 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     reply: FastifyReply,
     permission: MerchantPermission
   ): Promise<{ merchantId: string; source: 'bff_session' | 'android_mobile_session' | 'dev_test_bearer' } | null> {
-    const androidContext = await resolveAndroidMerchantContext(request, reply);
-    if (androidContext) {
-      return androidContext;
-    }
-    if (reply.sent) {
+    const bearerToken = parseBearerToken(request.headers.authorization);
+    if (bearerToken?.startsWith('spm_')) {
+      const androidContext = await resolveAndroidMerchantContext(request, reply);
+      if (androidContext) {
+        return androidContext;
+      }
+      if (reply.sent) {
+        return null;
+      }
+      reply.status(401).send(
+        invalidRequest('A valid Android merchant mobile session is required for receiver configuration.', {
+          authorization: 'Bearer spm_<mobile_session_token>'
+        })
+      );
       return null;
     }
     return resolveMerchantContext(request, reply, permission, { requireCsrf: true });
@@ -874,6 +914,13 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.get('/v1/me', async (request, reply) => {
+    if (parseBearerToken(request.headers.authorization)?.startsWith('spm_')) {
+      return reply.status(401).send(
+        invalidRequest('Android merchant mobile bearer is not accepted for this BFF endpoint.', {
+          authorization: 'dashboard_session_required'
+        })
+      );
+    }
     const session = await readBffSessionContext(request);
     if (!session) {
       return reply.status(401).send(invalidRequest('An authenticated BFF session is required.', {}));
@@ -882,6 +929,13 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/auth/logout', async (request, reply) => {
+    if (parseBearerToken(request.headers.authorization)?.startsWith('spm_')) {
+      return reply.status(401).send(
+        invalidRequest('Android merchant mobile bearer is not accepted for this BFF endpoint.', {
+          authorization: 'dashboard_session_required'
+        })
+      );
+    }
     const session = await readBffSessionContext(request);
     if (!session) {
       reply.header('Set-Cookie', serializeExpiredSessionCookie(options.environment));

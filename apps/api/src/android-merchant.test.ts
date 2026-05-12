@@ -361,6 +361,106 @@ describe('android merchant mobile backend endpoints', () => {
     expect(JSON.stringify(eventPublisher.events)).not.toContain('official_bank_confirmation":true');
   });
 
+  it('lets Android mobile review actions bypass dashboard CSRF when a stale dashboard cookie is present', async () => {
+    const eventPublisher = new FakeEventPublisher();
+    const { server, reviewRepository } = buildAndroidMerchantServer({ eventPublisher });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('mobile-review-with-dashboard-cookie')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+
+    const dashboardSession = await server.inject({
+      method: 'POST',
+      url: '/auth/dev/bootstrap-session',
+      payload: {
+        user_id: '33333333-3333-4333-8333-333333333333',
+        merchant_id: '44444444-4444-4444-8444-444444444444',
+        role: 'owner'
+      }
+    });
+    expect(dashboardSession.statusCode).toBe(201);
+
+    reviewRepository.items.set('rev_mobile_priority', {
+      ...openReviewItem(),
+      id: 'rev_mobile_priority',
+      merchantId: String(created.json().account.merchant_id)
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_mobile_priority/confirm',
+      headers: {
+        authorization: `Bearer ${String(created.json().mobile_session.token)}`,
+        cookie: Array.isArray(dashboardSession.headers['set-cookie'])
+          ? dashboardSession.headers['set-cookie'][0]
+          : String(dashboardSession.headers['set-cookie'])
+      },
+      payload: {
+        reason: 'merchant verified receipt in Android app',
+        feedback_label: 'true_payment'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(reviewRepository.actions[0]).toMatchObject({
+      reviewId: 'rev_mobile_priority',
+      actorType: 'android_merchant',
+      actorId: String(created.json().account.user_id),
+      actorSource: 'android_mobile_session'
+    });
+    expect(JSON.stringify(eventPublisher.events)).not.toContain('dashboard_merchant');
+  });
+
+  it('fails closed when an invalid Android bearer is sent with a valid dashboard session', async () => {
+    const eventPublisher = new FakeEventPublisher();
+    const { server, reviewRepository } = buildAndroidMerchantServer({ eventPublisher });
+
+    const merchantId = '55555555-5555-4555-8555-555555555555';
+    const dashboardSession = await server.inject({
+      method: 'POST',
+      url: '/auth/dev/bootstrap-session',
+      payload: {
+        user_id: '66666666-6666-4666-8666-666666666666',
+        merchant_id: merchantId,
+        role: 'owner'
+      }
+    });
+    expect(dashboardSession.statusCode).toBe(201);
+    reviewRepository.items.set('rev_invalid_mobile_token', {
+      ...openReviewItem(),
+      id: 'rev_invalid_mobile_token',
+      merchantId
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_invalid_mobile_token/confirm',
+      headers: {
+        authorization: 'Bearer spm_invalid_mobile_session_token',
+        cookie: Array.isArray(dashboardSession.headers['set-cookie'])
+          ? dashboardSession.headers['set-cookie'][0]
+          : String(dashboardSession.headers['set-cookie']),
+        'x-csrf-token': String(dashboardSession.json().csrf_token)
+      },
+      payload: {
+        reason: 'merchant verified receipt in dashboard',
+        feedback_label: 'true_payment'
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe('invalid_request');
+    expect(response.json().error.message).toContain('valid Android merchant mobile session');
+    expect(reviewRepository.actions).toHaveLength(0);
+    expect(eventPublisher.events).toHaveLength(0);
+  });
+
   it('preserves dashboard merchant user UUID separately from actor type on review confirmation', async () => {
     const userId = '11111111-1111-4111-8111-111111111111';
     const merchantId = '22222222-2222-4222-8222-222222222222';
@@ -407,6 +507,132 @@ describe('android merchant mobile backend endpoints', () => {
       actorDisplay: 'Dashboard Merchant'
     });
     expect(JSON.stringify(eventPublisher.events)).not.toContain('android_merchant');
+  });
+
+  it('keeps dashboard CSRF required when no Android bearer is present', async () => {
+    const eventPublisher = new FakeEventPublisher();
+    const { server, reviewRepository } = buildAndroidMerchantServer({ eventPublisher });
+    const merchantId = '77777777-7777-4777-8777-777777777777';
+
+    const bootstrap = await server.inject({
+      method: 'POST',
+      url: '/auth/dev/bootstrap-session',
+      payload: {
+        user_id: '88888888-8888-4888-8888-888888888888',
+        merchant_id: merchantId,
+        role: 'owner'
+      }
+    });
+    expect(bootstrap.statusCode).toBe(201);
+    reviewRepository.items.set('rev_dashboard_missing_csrf', {
+      ...openReviewItem(),
+      id: 'rev_dashboard_missing_csrf',
+      merchantId
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_dashboard_missing_csrf/confirm',
+      headers: {
+        cookie: Array.isArray(bootstrap.headers['set-cookie'])
+          ? bootstrap.headers['set-cookie'][0]
+          : String(bootstrap.headers['set-cookie'])
+      },
+      payload: {
+        reason: 'merchant verified receipt in dashboard',
+        feedback_label: 'true_payment'
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error.message).toContain('CSRF');
+    expect(reviewRepository.actions).toHaveLength(0);
+    expect(eventPublisher.events).toHaveLength(0);
+  });
+
+  it('rejects Android bearer credentials on BFF-only routes', async () => {
+    const { server } = buildAndroidMerchantServer();
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('mobile-on-bff-only-route')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    const dashboardSession = await server.inject({
+      method: 'POST',
+      url: '/auth/dev/bootstrap-session',
+      payload: {
+        user_id: '99999999-9999-4999-8999-999999999999',
+        merchant_id: String(created.json().account.merchant_id),
+        role: 'owner'
+      }
+    });
+    expect(dashboardSession.statusCode).toBe(201);
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/me',
+      headers: {
+        authorization: `Bearer ${String(created.json().mobile_session.token)}`,
+        cookie: Array.isArray(dashboardSession.headers['set-cookie'])
+          ? dashboardSession.headers['set-cookie'][0]
+          : String(dashboardSession.headers['set-cookie'])
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.message).toContain('not accepted');
+  });
+
+  it('rejects Android merchant review actions across merchant boundaries', async () => {
+    const eventPublisher = new FakeEventPublisher();
+    const { server, reviewRepository } = buildAndroidMerchantServer({ eventPublisher });
+
+    const merchantA = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('mobile-tenant-a')
+      }
+    });
+    const merchantB = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'business',
+        device_proof: safeDeviceProof('mobile-tenant-b')
+      }
+    });
+    expect(merchantA.statusCode).toBe(201);
+    expect(merchantB.statusCode).toBe(201);
+
+    reviewRepository.items.set('rev_merchant_b', {
+      ...openReviewItem(),
+      id: 'rev_merchant_b',
+      merchantId: String(merchantB.json().account.merchant_id)
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_merchant_b/confirm',
+      headers: {
+        authorization: `Bearer ${String(merchantA.json().mobile_session.token)}`
+      },
+      payload: {
+        reason: 'merchant verified receipt in Android app',
+        feedback_label: 'true_payment'
+      }
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json().error.code).toBe('not_found');
+    expect(reviewRepository.actions).toHaveLength(0);
+    expect(eventPublisher.events).toHaveLength(0);
   });
 
   it('accepts Android mobile manual bank check confirmation without treating it as bank confirmation', async () => {
@@ -1257,7 +1483,6 @@ class FakeReviewRepository implements ReviewRepository {
   }
 
   public async confirmReview(input: ReviewActionInput): Promise<ReviewActionResult> {
-    this.actions.push(input);
     const review = this.items.get(input.reviewId);
     if (!review || review.merchantId !== input.merchantId) {
       return { kind: 'not_found' };
@@ -1265,6 +1490,7 @@ class FakeReviewRepository implements ReviewRepository {
     if (review.status !== 'open') {
       return { kind: 'not_open' };
     }
+    this.actions.push(input);
     review.status = 'confirmed';
     review.resolvedAt = '2026-05-03T10:01:00.000Z';
     return {
@@ -1280,13 +1506,22 @@ class FakeReviewRepository implements ReviewRepository {
   }
 
   public async rejectReview(input: ReviewActionInput): Promise<ReviewActionResult> {
+    const review = this.items.get(input.reviewId);
+    if (!review || review.merchantId !== input.merchantId) {
+      return { kind: 'not_found' };
+    }
+    if (review.status !== 'open') {
+      return { kind: 'not_open' };
+    }
     this.actions.push(input);
+    review.status = 'rejected';
+    review.resolvedAt = '2026-05-03T10:01:00.000Z';
     return {
       kind: 'updated',
       reviewId: input.reviewId,
       status: 'rejected',
-      orderId: 'ord_01',
-      paymentSessionId: 'ps_01',
+      orderId: review.orderId,
+      paymentSessionId: review.paymentSessionId,
       orderStatus: input.scope === 'order' ? 'rejected' : 'needs_review',
       paymentSessionStatus: input.scope === 'order' ? 'rejected' : 'needs_review',
       rejectionScope: input.scope ?? 'signal',

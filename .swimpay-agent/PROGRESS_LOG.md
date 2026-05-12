@@ -3066,3 +3066,14 @@ Safety checks:
 - No payment runtime, webhook semantics, real notification processing, or auto-confirmation behavior changed.
 
 ---
+
+---
+# 2026-05-12T19:05:00+03:00 - Mobile-First Review Actions Realignment
+
+- Root-caused a mobile-first contradiction: review action endpoints allowed Android mobile sessions, but a stale/ambient dashboard BFF cookie without CSRF could be evaluated first and block Android review actions.
+- Updated `resolveMerchantContext` so routes that allow Android mobile sessions prioritize a valid `Authorization: Bearer spm_...` identity before BFF dashboard cookie/CSRF checks.
+- Dashboard CSRF remains required for dashboard/BFF sessions.
+- Hosted buyer checkout and SDK/developer web surfaces were not changed.
+- Added regression test proving Android review confirmation succeeds with a valid mobile bearer even when a dashboard cookie is present and no CSRF header is sent.
+- Targeted API validation passed for Android merchant and review action tests.
+- No real bank notification processing, auto-confirmation, public webhook semantic change, or raw sensitive data exposure was added.
