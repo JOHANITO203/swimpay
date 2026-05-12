@@ -1,5 +1,14 @@
 # Blockers
 
+## Review Action Actor Identity Contract
+
+- No local code validation blocker remains.
+- Root cause resolved locally: runtime marker `android_merchant` is no longer treated as a UUID actor id.
+- Review actions now preserve traceability with `actor_type`, `actor_source` and `actor_display`.
+- Staging blocker: redeploy API/job-worker and apply migration `020_review_action_actor_identity.sql` before trusting online Android review action writes.
+- Device validation pending after deployment: re-test `CONFIRMER RECU`, `REJETER LE SIGNAL` and `Rejeter la commande` against staging.
+- Not executed: real bank notification capture, auto-confirmation or public webhook semantic changes.
+
 ## Merchant Intelligence 7-Sprint Runtime
 
 - Resolved locally: backend heartbeat now exposes typed `receiver_health` for healthy/degraded/offline UI decisions.

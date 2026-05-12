@@ -3,6 +3,7 @@ import { EventTypes, type EventEnvelope } from '@swimpay/events';
 import { buildApiServer, type ReviewRepository } from './server.js';
 import {
   buildReviewCreateInput,
+  validateReviewActionBody,
   type ReviewActionInput,
   type ReviewActionResult,
   type ReviewCreateInput,
@@ -14,6 +15,24 @@ import {
 type ReviewActionResultUpdated = Extract<ReviewActionResult, { kind: 'updated' }>;
 
 describe('review queue api', () => {
+  it('does not persist Android legacy actor marker as a UUID actor id', () => {
+    const body = validateReviewActionBody(
+      {
+        actor_id: 'android_merchant',
+        reason: 'merchant confirmed receipt from bank app',
+        feedback_label: 'true_payment'
+      },
+      'confirmed'
+    );
+
+    expect(body).toEqual({
+      actor_id: undefined,
+      reason: 'merchant confirmed receipt from bank app',
+      feedback_label: 'true_payment',
+      scope: undefined
+    });
+  });
+
   it('lists open review items for the authenticated merchant without raw sensitive fields', async () => {
     const repository = new FakeReviewRepository();
     repository.items.set('rev_01', {
@@ -356,6 +375,7 @@ describe('review queue api', () => {
       reviewId: 'rev_01',
       reviewActionId: 'act_existing',
       auditEventId: 'aud_existing',
+      actorType: 'dashboard_merchant',
       action: 'rejected',
       scope: 'signal',
       reason: 'false_positive',
@@ -392,6 +412,7 @@ describe('review queue api', () => {
       reviewId: 'rev_01',
       reviewActionId: 'act_existing',
       auditEventId: 'aud_existing',
+      actorType: 'dashboard_merchant',
       action: 'rejected',
       scope: 'signal',
       reason: 'false_positive',

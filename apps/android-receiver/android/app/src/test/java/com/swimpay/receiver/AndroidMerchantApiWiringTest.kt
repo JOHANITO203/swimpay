@@ -819,10 +819,12 @@ class AndroidMerchantApiWiringTest {
         assertEquals("POST", transport.requests[1].method)
         assertEquals("/v1/reviews/rev_02/reject", transport.requests[1].path)
         assertTrue(transport.requests[1].body.contains("\"scope\":\"signal\""))
+        assertFalse(transport.requests[1].body.contains("\"actor_id\""))
 
         val orderRejected = actionsRepository.rejectOrder(session, "rev_03")
         assertTrue(orderRejected.rejectsOrder)
         assertTrue(transport.requests[2].body.contains("\"scope\":\"order\""))
+        assertFalse(transport.requests[2].body.contains("\"actor_id\""))
         assertFalse(actionsRepository.sendsDeveloperWebhookDirectly)
     }
 

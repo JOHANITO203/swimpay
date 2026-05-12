@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  NO_NOTIFICATION_FALLBACK_ACTOR_TYPE,
   NoNotificationFallbackPollingLoop,
   parseNoNotificationFallbackConfig,
   type NoNotificationFallbackProcessor
@@ -13,6 +14,10 @@ describe('no-notification fallback worker', () => {
       batchSize: 25,
       minimumElapsedSeconds: 120
     });
+  });
+
+  it('attributes fallback review requests to the job worker actor type', () => {
+    expect(NO_NOTIFICATION_FALLBACK_ACTOR_TYPE).toBe('job_worker');
   });
 
   it('schedules due manual-check scans after receiver_armed without confirming or emitting webhooks', async () => {

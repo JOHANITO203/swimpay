@@ -8,6 +8,24 @@ const { Pool } = pg;
 const finalOrderStatuses = new Set<OrderStatus>(['manual_confirmed', 'fulfilled', 'rejected', 'expired']);
 const finalPaymentSessionStatuses = new Set<PaymentSessionStatus>(['manual_confirmed', 'rejected', 'expired']);
 
+export const ReviewActorTypes = [
+  'android_merchant',
+  'dashboard_merchant',
+  'system',
+  'job_worker',
+  'receiver_device',
+  'admin'
+] as const;
+
+export type ReviewActorType = (typeof ReviewActorTypes)[number];
+
+export interface ReviewActorIdentity {
+  actorType: ReviewActorType;
+  actorId?: string | undefined;
+  actorSource?: string | undefined;
+  actorDisplay?: string | undefined;
+}
+
 export interface ReviewListItem {
   id: string;
   merchantId: string;
@@ -52,7 +70,7 @@ export interface ReviewAuditEventInput {
   eventType: (typeof EventTypes.REVIEW_CREATED) | (typeof EventTypes.REVIEW_CONFIRMED) | (typeof EventTypes.REVIEW_REJECTED);
   objectType: 'review' | 'order' | 'payment_session';
   objectId: string;
-  actorType: 'system' | 'merchant_user';
+  actorType: ReviewActorType;
   actorId?: string | undefined;
   payloadRedacted: Record<string, unknown>;
 }
@@ -68,7 +86,10 @@ export interface ReviewActionInput {
   reviewId: string;
   reviewActionId: string;
   auditEventId: string;
+  actorType: ReviewActorType;
   actorId?: string | undefined;
+  actorSource?: string | undefined;
+  actorDisplay?: string | undefined;
   action: 'confirmed' | 'rejected';
   scope?: ReviewRejectionScope | undefined;
   reason?: string | undefined;
@@ -454,13 +475,17 @@ export class PgReviewRepository implements ReviewRepository {
 
       await client.query(
         `INSERT INTO review_actions (
-          id, review_id, merchant_id, actor_id, action, reason, feedback_label, scope, created_at
-        ) VALUES ($1, $2, $3, $4, 'rejected', $5, $6, $7, $8)`,
+          id, review_id, merchant_id, actor_id, actor_type, actor_source, actor_display,
+          action, reason, feedback_label, scope, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'rejected', $8, $9, $10, $11)`,
         [
           input.reviewActionId,
           input.reviewId,
           input.merchantId,
           input.actorId ?? null,
+          input.actorType,
+          input.actorSource ?? null,
+          input.actorDisplay ?? null,
           reason,
           input.feedbackLabel ?? null,
           effectiveScope,
@@ -474,13 +499,15 @@ export class PgReviewRepository implements ReviewRepository {
         eventType: EventTypes.REVIEW_REJECTED,
         objectType: 'review',
         objectId: input.reviewId,
-        actorType: 'merchant_user',
+        actorType: input.actorType,
         actorId: input.actorId,
         payloadRedacted: {
           order_id: review.order_id,
           payment_session_id: review.payment_session_id,
           signal_id: review.signal_id,
           action: input.action,
+          actor_type: input.actorType,
+          actor_source: input.actorSource,
           rejection_scope: effectiveScope,
           reason,
           feedback_label: input.feedbackLabel
@@ -636,13 +663,17 @@ export class PgReviewRepository implements ReviewRepository {
 
       await client.query(
         `INSERT INTO review_actions (
-          id, review_id, merchant_id, actor_id, action, reason, feedback_label, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          id, review_id, merchant_id, actor_id, actor_type, actor_source, actor_display,
+          action, reason, feedback_label, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
           input.reviewActionId,
           input.reviewId,
           input.merchantId,
           input.actorId ?? null,
+          input.actorType,
+          input.actorSource ?? null,
+          input.actorDisplay ?? null,
           input.action,
           input.reason ?? null,
           input.feedbackLabel ?? null,
@@ -695,13 +726,15 @@ export class PgReviewRepository implements ReviewRepository {
         eventType: outcome.eventType,
         objectType: 'review',
         objectId: input.reviewId,
-        actorType: 'merchant_user',
+        actorType: input.actorType,
         actorId: input.actorId,
         payloadRedacted: {
           order_id: review.order_id,
           payment_session_id: review.payment_session_id,
           signal_id: review.signal_id,
           action: input.action,
+          actor_type: input.actorType,
+          actor_source: input.actorSource,
           reason: input.reason,
           feedback_label: input.feedbackLabel
         }
@@ -805,7 +838,7 @@ export function validateReviewActionBody(
   }
 
   const candidate = body as Partial<ReviewActionRequestBody>;
-  const actorId = normalizeOptionalString(candidate.actor_id);
+  const actorId = normalizeOptionalActorId(candidate.actor_id);
   const reason = normalizeOptionalString(candidate.reason);
   const scope = normalizeOptionalString(candidate.scope);
   const feedbackLabel = normalizeOptionalString(candidate.feedback_label);
@@ -847,6 +880,7 @@ export function buildReviewActionInput(params: {
   reviewId: string;
   action: 'confirmed' | 'rejected';
   body: ReviewActionRequestBody;
+  actor: ReviewActorIdentity;
   idGenerator: ReviewIdGenerator;
   now: string;
 }): ReviewActionInput {
@@ -856,7 +890,10 @@ export function buildReviewActionInput(params: {
     action: params.action,
     reviewActionId: params.idGenerator.reviewActionId(),
     auditEventId: params.idGenerator.auditEventId(),
-    actorId: params.body.actor_id,
+    actorType: params.actor.actorType,
+    actorId: normalizeOptionalActorId(params.actor.actorId),
+    actorSource: params.actor.actorSource,
+    actorDisplay: params.actor.actorDisplay,
     scope: params.action === 'rejected' ? params.body.scope ?? 'signal' : undefined,
     reason: params.body.reason,
     feedbackLabel: params.body.feedback_label,
@@ -1108,6 +1145,17 @@ function parseReasonCodes(value: unknown): string[] {
 
 function normalizeOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function normalizeOptionalActorId(value: unknown): string | undefined {
+  const candidate = normalizeOptionalString(value);
+  if (!candidate || candidate === 'android_merchant') {
+    return undefined;
+  }
+
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
+    ? candidate
+    : undefined;
 }
 
 function isReviewRejectionScope(value: string): value is ReviewRejectionScope {

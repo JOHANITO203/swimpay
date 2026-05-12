@@ -236,6 +236,27 @@ If a command cannot be run, explain why in the final response.
 - Emit reason codes for every decision.
 - Update docs when changing major behavior.
 
+## Root-cause fix rule
+
+Do not apply symptom-only minimal patches.
+
+A fix is acceptable only if it:
+- identifies the root cause;
+- updates the relevant contract, enum, state machine or schema if the bug comes from a contract mismatch;
+- preserves auditability instead of stripping or hiding data;
+- adds a regression test that fails before the fix and passes after;
+- documents why the fix is correct in the task report.
+
+Forbidden:
+- neutralizing invalid values without explaining why they existed;
+- silently dropping actor, state, payment, review or audit metadata;
+- converting contract bugs into generic fallback behavior;
+- patching UI labels while backend states remain inconsistent;
+- making tests pass by weakening assertions;
+- adding compatibility shims without a migration or deprecation plan.
+
+If a temporary hotfix is unavoidable, label it `TEMPORARY_HOTFIX`, create a root-cause follow-up task in `.swimpay-agent/BLOCKERS.md`, and do not close the sprint until the permanent fix is implemented or explicitly approved.
+
 ## Required files to read before coding
 
 Before implementing a task, read:

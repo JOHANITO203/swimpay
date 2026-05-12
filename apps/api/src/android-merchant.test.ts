@@ -330,6 +330,7 @@ describe('android merchant mobile backend endpoints', () => {
       headers: mobileHeaders,
       payload: {
         actor_id: 'android_merchant',
+        actor_type: 'android_merchant',
         reason: 'merchant verified receipt in bank app',
         feedback_label: 'true_payment'
       }
@@ -343,6 +344,12 @@ describe('android merchant mobile backend endpoints', () => {
       payment_session_status: 'manual_confirmed'
     });
     expect(reviewRepository.items.get('rev_01')?.status).toBe('confirmed');
+    expect(reviewRepository.actions[0]).toMatchObject({
+      actorType: 'android_merchant',
+      actorId: String(created.json().account.user_id),
+      actorSource: 'android_mobile_session',
+      actorDisplay: 'Android Merchant'
+    });
     expect(eventPublisher.events[0]).toMatchObject({
       eventType: EventTypes.REVIEW_CONFIRMED,
       data: {
@@ -352,6 +359,54 @@ describe('android merchant mobile backend endpoints', () => {
       }
     });
     expect(JSON.stringify(eventPublisher.events)).not.toContain('official_bank_confirmation":true');
+  });
+
+  it('preserves dashboard merchant user UUID separately from actor type on review confirmation', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const merchantId = '22222222-2222-4222-8222-222222222222';
+    const eventPublisher = new FakeEventPublisher();
+    const { server, reviewRepository } = buildAndroidMerchantServer({ eventPublisher });
+
+    const bootstrap = await server.inject({
+      method: 'POST',
+      url: '/auth/dev/bootstrap-session',
+      payload: {
+        user_id: userId,
+        merchant_id: merchantId,
+        role: 'owner'
+      }
+    });
+    expect(bootstrap.statusCode).toBe(201);
+    const cookie = bootstrap.headers['set-cookie'];
+    const csrfToken = String(bootstrap.json().csrf_token);
+    reviewRepository.items.set('rev_dashboard', {
+      ...openReviewItem(),
+      id: 'rev_dashboard',
+      merchantId
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_dashboard/confirm',
+      headers: {
+        cookie: Array.isArray(cookie) ? cookie[0] : String(cookie),
+        'x-csrf-token': csrfToken
+      },
+      payload: {
+        actor_id: 'android_merchant',
+        reason: 'merchant verified receipt in dashboard',
+        feedback_label: 'true_payment'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(reviewRepository.actions[0]).toMatchObject({
+      actorType: 'dashboard_merchant',
+      actorId: userId,
+      actorSource: 'bff_session',
+      actorDisplay: 'Dashboard Merchant'
+    });
+    expect(JSON.stringify(eventPublisher.events)).not.toContain('android_merchant');
   });
 
   it('accepts Android mobile manual bank check confirmation without treating it as bank confirmation', async () => {
@@ -389,6 +444,11 @@ describe('android merchant mobile backend endpoints', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(reviewRepository.actions[0]).toMatchObject({
+      actorType: 'android_merchant',
+      actorId: String(created.json().account.user_id),
+      actorSource: 'android_mobile_session'
+    });
     expect(response.json()).toMatchObject({
       review_id: 'rev_manual_check',
       status: 'confirmed',
@@ -455,6 +515,18 @@ describe('android merchant mobile backend endpoints', () => {
     });
 
     expect(signalReject.statusCode).toBe(200);
+    expect(reviewRepository.actions[0]).toMatchObject({
+      actorType: 'android_merchant',
+      actorId: String(created.json().account.user_id),
+      actorSource: 'android_mobile_session',
+      scope: 'signal'
+    });
+    expect(reviewRepository.actions[1]).toMatchObject({
+      actorType: 'android_merchant',
+      actorId: String(created.json().account.user_id),
+      actorSource: 'android_mobile_session',
+      scope: 'order'
+    });
     expect(signalReject.json()).toMatchObject({
       review_id: 'rev_signal_reject',
       status: 'rejected',
@@ -1132,6 +1204,7 @@ function openReviewItem(): ReviewListItem {
 
 class FakeReviewRepository implements ReviewRepository {
   public readonly items = new Map<string, ReviewListItem>();
+  public readonly actions: ReviewActionInput[] = [];
 
   public async createReview(input: ReviewCreateInput): Promise<{ kind: 'created'; reviewId: string }> {
     this.items.set(input.review.id, input.review);
@@ -1143,6 +1216,7 @@ class FakeReviewRepository implements ReviewRepository {
   }
 
   public async confirmReview(input: ReviewActionInput): Promise<ReviewActionResult> {
+    this.actions.push(input);
     const review = this.items.get(input.reviewId);
     if (!review || review.merchantId !== input.merchantId) {
       return { kind: 'not_found' };
@@ -1165,6 +1239,7 @@ class FakeReviewRepository implements ReviewRepository {
   }
 
   public async rejectReview(input: ReviewActionInput): Promise<ReviewActionResult> {
+    this.actions.push(input);
     return {
       kind: 'updated',
       reviewId: input.reviewId,

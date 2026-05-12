@@ -379,6 +379,9 @@ CREATE TABLE review_actions (
   review_id UUID NOT NULL REFERENCES review_queue(id),
   merchant_id UUID NOT NULL REFERENCES merchants(id),
   actor_id UUID,
+  actor_type TEXT,
+  actor_source TEXT,
+  actor_display TEXT,
   action TEXT NOT NULL,
   reason TEXT,
   feedback_label TEXT,
@@ -386,6 +389,12 @@ CREATE TABLE review_actions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
+
+`actor_id` is nullable and stores only a real UUID-backed merchant/admin/user
+identity. Runtime labels such as Android Merchant are stored in `actor_type`,
+not forced into the UUID column. Supported actor types are
+`android_merchant`, `dashboard_merchant`, `system`, `job_worker`,
+`receiver_device` and `admin`.
 
 ### `webhook_endpoints`
 

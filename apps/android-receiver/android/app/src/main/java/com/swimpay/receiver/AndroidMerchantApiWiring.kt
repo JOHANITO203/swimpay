@@ -1018,7 +1018,6 @@ class MerchantReviewActionsApiRepository(
             reviewId = reviewId,
             path = AndroidMerchantReviewApiContract.rejectPath(reviewId),
             body = jsonObject(
-                "actor_id" to "android_merchant",
                 "scope" to "signal",
                 "reason" to "wrong_signal"
             ),
@@ -1032,7 +1031,6 @@ class MerchantReviewActionsApiRepository(
             reviewId = reviewId,
             path = AndroidMerchantReviewApiContract.rejectPath(reviewId),
             body = jsonObject(
-                "actor_id" to "android_merchant",
                 "scope" to "order",
                 "reason" to "buyer_not_recognized"
             ),
@@ -1046,7 +1044,6 @@ class MerchantReviewActionsApiRepository(
             reviewId = reviewId,
             path = AndroidMerchantReviewApiContract.confirmPath(reviewId),
             body = jsonObject(
-                "actor_id" to "android_merchant",
                 "reason" to "merchant confirmed receipt from bank app",
                 "feedback_label" to "true_payment"
             ),

@@ -151,6 +151,7 @@ import {
   toReviewActionResponse,
   toReviewListResponse,
   validateReviewActionBody,
+  type ReviewActorIdentity,
   type ReviewIdGenerator,
   type ReviewListItem,
   type ReviewRepository
@@ -626,7 +627,12 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     reply: FastifyReply,
     permission: MerchantPermission,
     routeOptions: { requireCsrf?: boolean; allowAndroidMobile?: boolean } = {}
-  ): Promise<{ merchantId: string; source: 'bff_session' | 'android_mobile_session' | 'dev_test_bearer' } | null> {
+  ): Promise<{
+    merchantId: string;
+    source: 'bff_session' | 'android_mobile_session' | 'dev_test_bearer';
+    userId?: string | undefined;
+    deviceId?: string | undefined;
+  } | null> {
     const session = await readBffSessionContext(request);
     if (session) {
       const membership = session.context.activeMembership;
@@ -638,7 +644,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         reply.status(403).send(invalidRequest('A valid CSRF token is required for this merchant action.', {}));
         return null;
       }
-      return { merchantId: membership.merchantId, source: 'bff_session' };
+      return { merchantId: membership.merchantId, source: 'bff_session', userId: session.context.user.id };
     }
 
     if (routeOptions.allowAndroidMobile) {
@@ -684,7 +690,12 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   async function resolveAndroidMerchantContext(
     request: FastifyRequest,
     reply: FastifyReply
-  ): Promise<{ merchantId: string; source: 'android_mobile_session' | 'dev_test_bearer' } | null> {
+  ): Promise<{
+    merchantId: string;
+    source: 'android_mobile_session' | 'dev_test_bearer';
+    userId?: string | undefined;
+    deviceId?: string | undefined;
+  } | null> {
     const bearerToken = parseBearerToken(request.headers.authorization);
     if (bearerToken?.startsWith('spm_')) {
       if (!authBffRepository) {
@@ -695,7 +706,14 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         hashAndroidMerchantMobileSessionToken(bearerToken),
         clock().toISOString()
       );
-      return mobileSession ? { merchantId: mobileSession.merchantId, source: 'android_mobile_session' } : null;
+      return mobileSession
+        ? {
+            merchantId: mobileSession.merchantId,
+            source: 'android_mobile_session',
+            userId: mobileSession.userId,
+            deviceId: mobileSession.deviceId
+          }
+        : null;
     }
 
     const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
@@ -715,6 +733,36 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       );
     }
     return null;
+  }
+
+  function reviewActorFromMerchantContext(context: {
+    source: 'bff_session' | 'android_mobile_session' | 'dev_test_bearer';
+    userId?: string | undefined;
+    deviceId?: string | undefined;
+  }): ReviewActorIdentity {
+    if (context.source === 'android_mobile_session') {
+      return {
+        actorType: 'android_merchant',
+        actorId: context.userId,
+        actorSource: 'android_mobile_session',
+        actorDisplay: 'Android Merchant'
+      };
+    }
+
+    if (context.source === 'bff_session') {
+      return {
+        actorType: 'dashboard_merchant',
+        actorId: context.userId,
+        actorSource: 'bff_session',
+        actorDisplay: 'Dashboard Merchant'
+      };
+    }
+
+    return {
+      actorType: 'dashboard_merchant',
+      actorSource: 'dev_test_bearer',
+      actorDisplay: 'Development Bearer'
+    };
   }
 
   async function resolveReceiverConfigureContext(
@@ -2906,6 +2954,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       reviewId: params.id,
       action: 'confirmed',
       body,
+      actor: reviewActorFromMerchantContext(context),
       idGenerator: reviewIdGenerator,
       now: occurredAt
     });
@@ -2929,10 +2978,21 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   server.post('/v1/reviews/:id/reject', async (request, reply) => {
-    const merchantId = await requireAndroidMerchantId(request, reply);
-    if (!merchantId) {
+    const context = await resolveMerchantContext(request, reply, MerchantPermissions.PAYMENTS_REVIEW_REJECT, {
+      requireCsrf: true,
+      allowAndroidMobile: true
+    });
+    if (!context) {
+      if (!reply.sent) {
+        return reply.status(401).send(
+          invalidRequest('A merchant dashboard session or Android merchant mobile session is required for review rejection.', {
+            authorization: 'Bearer spm_<mobile_session_token>'
+          })
+        );
+      }
       return;
     }
+    const { merchantId } = context;
 
     if (!reviewRepository) {
       return reply.status(503).send({
@@ -2960,6 +3020,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       reviewId: params.id,
       action: 'rejected',
       body,
+      actor: reviewActorFromMerchantContext(context),
       idGenerator: reviewIdGenerator,
       now: occurredAt
     });

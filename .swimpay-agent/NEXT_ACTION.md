@@ -1,5 +1,49 @@
 # Next Action
 
+generated_at: 2026-05-12T14:20:00+03:00
+
+## Latest Review Action Actor Identity Contract
+
+Completed locally:
+
+1. Root-caused Android Merchant `Action indisponible` to an actor identity contract mismatch.
+2. Added a durable actor model:
+   - UUID-only nullable `actor_id`;
+   - safe `actor_type`;
+   - optional `actor_source`;
+   - optional `actor_display`.
+3. Added migration `020_review_action_actor_identity.sql`.
+4. Updated API review confirm/reject to derive actors from authenticated context.
+5. Updated Android review action payloads to stop sending `actor_id=android_merchant`.
+6. Updated fallback audit attribution to `job_worker`.
+7. Passed full local validation including root tests, replay/matching/privacy/webhook scripts, Android JVM tests and debug APK build.
+
+Next recommended action:
+
+1. Commit and push this actor identity contract fix.
+2. Let Dokploy redeploy staging.
+3. Apply migration `020_review_action_actor_identity.sql` on the VPS:
+
+```bash
+cd /etc/dokploy/compose/swimpay-swimpay-merchant-usjsm2/code
+sudo docker exec -i swimpay-postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < packages/database/migrations/020_review_action_actor_identity.sql
+```
+
+4. Install the rebuilt APK if you want the client-side payload cleanup immediately.
+5. Re-test Android Merchant review actions:
+   - `CONFIRMER RECU`;
+   - `REJETER LE SIGNAL`;
+   - `Rejeter la commande`.
+
+Do not do:
+
+- Do not process real bank notifications during this verification.
+- Do not enable auto-confirmation.
+- Do not expose raw notification, PAN, phone or secrets.
+- Do not put runtime labels into UUID columns.
+
+---
+
 generated_at: 2026-05-12T07:00:00+03:00
 
 ## Latest Merchant Intelligence Runtime

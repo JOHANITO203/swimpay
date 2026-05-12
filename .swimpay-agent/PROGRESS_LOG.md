@@ -3021,3 +3021,32 @@ Safety checks:
   - staging APK installed and launched on Samsung `SM_S916B`.
 - Staging live button success still requires backend redeploy and migration application.
 - No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+# 2026-05-12T14:20:00+03:00 - Review Action Actor Identity Contract
+
+- Audited the root cause behind Android Merchant review actions returning `Action indisponible`.
+- Found the contract mismatch: Android sent `actor_id=android_merchant`, while `review_actions.actor_id` is a UUID column.
+- Implemented the permanent actor model:
+  - `actor_id` remains nullable UUID-only;
+  - `actor_type` carries `android_merchant`, `dashboard_merchant`, `system`, `job_worker`, `receiver_device`, or `admin`;
+  - `actor_source` and `actor_display` preserve safe traceability.
+- Added additive migration `020_review_action_actor_identity.sql`.
+- Updated API review confirm/reject to derive actor identity from authenticated Android mobile or dashboard/BFF context.
+- Updated Android review actions so payloads no longer send a fake UUID actor marker.
+- Updated no-notification fallback audit attribution to `job_worker`.
+- Validation passed:
+  - `npm run android:doctor`;
+  - `npm run typecheck`;
+  - `npm run lint`;
+  - `npm test` - 77 files, 666 tests passed;
+  - `npm run build`;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config`;
+  - `npm run test:replay`;
+  - `npm run test:matching`;
+  - `npm run test:privacy`;
+  - `npm run test:webhooks`;
+  - Android full JVM tests;
+  - Android debug APK build.
+- Staging still requires redeploy plus migration `020_review_action_actor_identity.sql` before online Android review actions can be trusted.
+- No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---

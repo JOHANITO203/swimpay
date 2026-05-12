@@ -4,6 +4,8 @@ import type { SafeEventLogger } from '@swimpay/events';
 
 const { Pool } = pg;
 
+export const NO_NOTIFICATION_FALLBACK_ACTOR_TYPE = 'job_worker';
+
 export interface NoNotificationFallbackConfig {
   enabled: boolean;
   pollIntervalMs: number;
@@ -214,11 +216,12 @@ export class PgNoNotificationFallbackRepository implements NoNotificationFallbac
         await client.query(
           `INSERT INTO audit_events (
             id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
-          ) VALUES ($1, $2, 'no_notification_manual_check_requested', 'payment_session', $3, 'system', $4::jsonb, $5)`,
+          ) VALUES ($1, $2, 'no_notification_manual_check_requested', 'payment_session', $3, $4, $5::jsonb, $6)`,
           [
             auditEventId,
             row.merchant_id,
             row.payment_session_id,
+            NO_NOTIFICATION_FALLBACK_ACTOR_TYPE,
             JSON.stringify({
               review_id: reviewId,
               reason_label: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT',
