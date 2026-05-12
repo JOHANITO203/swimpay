@@ -1115,6 +1115,87 @@ class MerchantReviewActionsApiRepository(
     }
 }
 
+data class MerchantOrderItem(
+    val orderId: String,
+    val amountLabel: String,
+    val statusLabel: String,
+    val helper: String
+)
+
+data class MerchantOrdersSummary(
+    val confirmedOrderCount: Int,
+    val confirmedAmountMinor: Long,
+    val failedCount: Int,
+    val confirmationRate: Int,
+    val currency: String
+) {
+    fun confirmedOrderCountLabel(): String = confirmedOrderCount.toString()
+    fun confirmedAmountLabel(): String = formatMinorAmountCompact(confirmedAmountMinor, currency)
+    fun failedCountLabel(): String = failedCount.toString()
+    fun confirmationRateLabel(): String = "$confirmationRate %"
+}
+
+data class MerchantOrdersResult(
+    val state: MerchantRepositoryState,
+    val items: List<MerchantOrderItem> = emptyList(),
+    val summary: MerchantOrdersSummary = MerchantOrdersSummary(
+        confirmedOrderCount = 0,
+        confirmedAmountMinor = 0L,
+        failedCount = 0,
+        confirmationRate = 0,
+        currency = "RUB"
+    ),
+    val safeMessage: String = ""
+)
+
+class MerchantOrdersApiRepository(
+    private val transport: MerchantApiTransport
+) {
+    fun list(session: AuthenticatedMerchantSession): MerchantOrdersResult {
+        if (!session.isAuthenticated) {
+            return MerchantOrdersResult(
+                state = MerchantRepositoryState.ACTION_REQUIRED,
+                safeMessage = "Session marchand requise"
+            )
+        }
+        val response = try {
+            transport.execute(
+                MerchantApiRequest(
+                    method = "GET",
+                    path = "/v1/android-merchant/orders",
+                    headers = authHeaders(session)
+                )
+            )
+        } catch (_: Exception) {
+            MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
+        }
+        if (response.statusCode !in 200..299) {
+            return MerchantOrdersResult(
+                state = MerchantRepositoryState.ERROR,
+                safeMessage = "Ventes indisponibles"
+            )
+        }
+        val summary = extractObjectValue(response.body, "summary")?.toMerchantOrdersSummary()
+            ?: MerchantOrdersSummary(0, 0L, 0, 0, "RUB")
+        val items = extractTopLevelObjectsFromArray(response.body, "orders").mapNotNull { orderObject ->
+            val orderId = extractString(orderObject, "order_id") ?: return@mapNotNull null
+            val amount = extractNestedString(orderObject, "amount", "value") ?: "0.00"
+            val currency = extractNestedString(orderObject, "amount", "currency") ?: summary.currency
+            MerchantOrderItem(
+                orderId = orderId,
+                amountLabel = formatAmountLabel(amount, currency),
+                statusLabel = extractString(orderObject, "status_label") ?: "Confirmee",
+                helper = extractString(orderObject, "helper") ?: "Confirmation marchand"
+            )
+        }
+        return MerchantOrdersResult(
+            state = MerchantRepositoryState.SUCCESS,
+            items = items,
+            summary = summary
+        )
+    }
+}
+
 private val REVIEW_ALREADY_RESOLVED_ERROR_CODES = setOf(
     "not_found",
     "review_not_open",
@@ -2048,6 +2129,16 @@ private fun String.toMerchantDashboardMetricsSummary(): MerchantDashboardMetrics
         failedCount = extractNumber(this, "failed_count")?.toIntOrNull() ?: 0,
         confirmationRate = extractNumber(this, "confirmation_rate")?.toIntOrNull() ?: 0,
         averageManualConfirmationDelaySeconds = extractNumber(this, "average_manual_confirmation_delay_seconds")?.toIntOrNull() ?: 0
+    )
+}
+
+private fun String.toMerchantOrdersSummary(): MerchantOrdersSummary {
+    return MerchantOrdersSummary(
+        confirmedOrderCount = extractNumber(this, "confirmed_order_count")?.toIntOrNull() ?: 0,
+        confirmedAmountMinor = extractNumber(this, "confirmed_amount_minor")?.toLongOrNull() ?: 0L,
+        failedCount = extractNumber(this, "failed_count")?.toIntOrNull() ?: 0,
+        confirmationRate = extractNumber(this, "confirmation_rate")?.toIntOrNull() ?: 0,
+        currency = extractString(this, "currency") ?: "RUB"
     )
 }
 

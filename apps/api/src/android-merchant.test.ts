@@ -1099,6 +1099,47 @@ describe('android merchant mobile backend endpoints', () => {
     expectSafeAndroidMerchantBody(summary.body);
     expectSafeAndroidMerchantBody(timeseries.body);
   });
+
+  it('hydrates android merchant sales from confirmed orders without exposing unsafe internals', async () => {
+    const eventPublisher = new FakeEventPublisher();
+    const { server, orderRepository } = buildAndroidMerchantServer({ eventPublisher });
+    orderRepository.order.status = 'manual_confirmed';
+    orderRepository.order.amountMinor = 29904;
+    orderRepository.order.updatedAt = '2026-05-03T10:10:00.000Z';
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/android-merchant/orders',
+      headers: merchantHeaders()
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      summary: {
+        confirmed_order_count: 1,
+        confirmed_amount_minor: 29904,
+        failed_count: 0,
+        confirmation_rate: 100,
+        currency: 'RUB'
+      },
+      orders: [
+        {
+          order_id: 'ord_01',
+          external_id: 'ext_01',
+          amount: { value: '299.04', currency: 'RUB' },
+          status: 'manual_confirmed',
+          status_label: 'Confirmee'
+        }
+      ],
+      confirmation_type: 'notification_signal',
+      official_bank_confirmation: false
+    });
+    expect(eventPublisher.events).toEqual([]);
+    expectSafeAndroidMerchantBody(response.body);
+    expect(response.body).not.toContain('buyer_phone');
+    expect(response.body).not.toContain('sender_card');
+    expect(response.body).not.toContain('webhook');
+  });
 });
 
 function buildAndroidMerchantServer(params: {
@@ -1313,6 +1354,10 @@ class FakeOrderRepository implements OrderRepository {
   public async createOrderWithSession(_input: CreateOrderWithSessionInput): Promise<CreateOrderWithSessionResult> {
     void _input;
     return { kind: 'created', order: this.order, paymentSession: this.paymentSession };
+  }
+
+  public async listMerchantOrders(merchantId: string): Promise<StoredOrderRecord[]> {
+    return merchantId === this.order.merchantId ? [this.order] : [];
   }
 
   public async getOrderById(merchantId: string, orderId: string): Promise<{ order: StoredOrderRecord; paymentSession: StoredPaymentSessionRecord | null } | null> {

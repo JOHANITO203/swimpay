@@ -18,6 +18,7 @@ import com.swimpay.receiver.MerchantDeveloperIntegrationApiRepository
 import com.swimpay.receiver.MerchantDeveloperIntegrationResult
 import com.swimpay.receiver.MerchantDeveloperIntegrationSnapshot
 import com.swimpay.receiver.MerchantPaymentDetailApiRepository
+import com.swimpay.receiver.MerchantOrdersApiRepository
 import com.swimpay.receiver.MerchantReceivingMethodsApiRepository
 import com.swimpay.receiver.MerchantReceivingMethodDisplay
 import com.swimpay.receiver.MerchantReceivingMethodMutationResult
@@ -253,13 +254,26 @@ data class PremiumOrderUiItem(
 data class PremiumOrdersUiState(
     val rows: List<PremiumOrderUiItem>,
     val usesLiveApi: Boolean,
+    val confirmedSalesCount: String = if (usesLiveApi) "0" else "—",
+    val confirmedAmount: String = if (usesLiveApi) "0,00 RUB" else "—",
+    val failedCount: String = if (usesLiveApi) "0" else "—",
+    val confirmationRate: String = if (usesLiveApi) "0 %" else "—",
     val emptyTitle: String = "Aucune vente confirmée",
     val emptyMessage: String = "Vos ventes apparaîtront ici après confirmation des paiements.",
     val primaryActionLabel: String = "Lancer un test",
     val secondaryActionLabel: String = "Voir les paiements à confirmer"
 ) {
     fun visibleTexts(): List<String> {
-        return listOf(emptyTitle, emptyMessage, primaryActionLabel, secondaryActionLabel) +
+        return listOf(
+            confirmedSalesCount,
+            confirmedAmount,
+            failedCount,
+            confirmationRate,
+            emptyTitle,
+            emptyMessage,
+            primaryActionLabel,
+            secondaryActionLabel
+        ) +
             rows.flatMap { listOf(it.orderId, it.amount, it.status, it.helper) }
     }
 }
@@ -328,6 +342,7 @@ class PremiumMerchantRuntime(
     private val bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe(),
     private val developerIntegrationRepository: MerchantDeveloperIntegrationApiRepository? = null,
     private val supportTicketRepository: MerchantSupportTicketApiRepository? = null,
+    private val ordersRepository: MerchantOrdersApiRepository = MerchantOrdersApiRepository(NoopMerchantApiTransport),
     private val nowEpochMs: () -> Long = System::currentTimeMillis
 ) {
     private var developerSecretKeyOnceForCopy: String? = null
@@ -771,6 +786,37 @@ class PremiumMerchantRuntime(
     }
 
     fun loadOrders(): PremiumScreenState<PremiumOrdersUiState> {
+        val result = ordersRepository.list(session)
+        if (result.state == MerchantRepositoryState.ACTION_REQUIRED) {
+            return PremiumScreenState.content(
+                PremiumOrdersUiState(
+                    rows = emptyList(),
+                    usesLiveApi = false
+                )
+            )
+        }
+        if (result.state == MerchantRepositoryState.LOADING) {
+            return PremiumScreenState.loading()
+        }
+        if (result.state == MerchantRepositoryState.SUCCESS) {
+            return PremiumScreenState.content(
+                PremiumOrdersUiState(
+                    rows = result.items.map { item ->
+                        PremiumOrderUiItem(
+                            orderId = item.orderId,
+                            amount = item.amountLabel,
+                            status = item.statusLabel,
+                            helper = item.helper
+                        )
+                    },
+                    usesLiveApi = true,
+                    confirmedSalesCount = result.summary.confirmedOrderCountLabel(),
+                    confirmedAmount = result.summary.confirmedAmountLabel(),
+                    failedCount = result.summary.failedCountLabel(),
+                    confirmationRate = result.summary.confirmationRateLabel()
+                )
+            )
+        }
         return PremiumScreenState.content(
             PremiumOrdersUiState(
                 rows = emptyList(),
@@ -858,6 +904,7 @@ class PremiumMerchantRuntime(
                 reviewQueueRepository = MerchantReviewQueueApiRepository(transport),
                 paymentDetailRepository = MerchantPaymentDetailApiRepository(transport),
                 reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
+                ordersRepository = MerchantOrdersApiRepository(transport),
                 receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
@@ -891,6 +938,7 @@ class PremiumMerchantRuntime(
                 reviewQueueRepository = MerchantReviewQueueApiRepository(transport),
                 paymentDetailRepository = MerchantPaymentDetailApiRepository(transport),
                 reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
+                ordersRepository = MerchantOrdersApiRepository(transport),
                 receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
@@ -908,6 +956,7 @@ class PremiumMerchantRuntime(
                 reviewQueueRepository = MerchantReviewQueueApiRepository(transport),
                 paymentDetailRepository = MerchantPaymentDetailApiRepository(transport),
                 reviewActionsRepository = MerchantReviewActionsApiRepository(transport),
+                ordersRepository = MerchantOrdersApiRepository(transport),
                 receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport),

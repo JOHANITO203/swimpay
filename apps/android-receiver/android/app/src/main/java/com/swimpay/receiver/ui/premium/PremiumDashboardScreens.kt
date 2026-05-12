@@ -305,15 +305,13 @@ private fun PremiumOrdersContent(state: PremiumOrdersUiState) {
             Text("Ventes confirmées", color = PremiumColors.Ink, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.Black)
             Text("Suivez les commandes reliées aux paiements confirmés.", color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(24.dp))
-            val syncedValue = if (state.usesLiveApi) "0" else "—"
-            val syncedAmount = if (state.usesLiveApi) "0,00 ₽" else "—"
-            SalesMetricCard(syncedValue, "VENTES CONFIRMÉES", Icons.Default.CheckCircle)
+            SalesMetricCard(state.confirmedSalesCount, "VENTES CONFIRMÉES", Icons.Default.CheckCircle)
             Spacer(Modifier.height(12.dp))
-            SalesMetricCard(syncedAmount, "MONTANT CONFIRMÉ", Icons.Default.ShoppingCart)
+            SalesMetricCard(state.confirmedAmount, "MONTANT CONFIRMÉ", Icons.Default.ShoppingCart)
             Spacer(Modifier.height(12.dp))
-            SalesMetricCard(syncedValue, "ÉCHECS", Icons.Default.Security)
+            SalesMetricCard(state.failedCount, "ÉCHECS", Icons.Default.Security)
             Spacer(Modifier.height(12.dp))
-            SalesMetricCard("—", "TAUX DE CONFIRMATION", Icons.Default.Visibility)
+            SalesMetricCard(state.confirmationRate, "TAUX DE CONFIRMATION", Icons.Default.Visibility)
             Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 StatusChip("Aujourd'hui", StatusTone.Info)

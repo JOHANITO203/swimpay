@@ -416,6 +416,24 @@ class AndroidMerchantVisualArchitectureTest {
     }
 
     @Test
+    fun reviewDecisionActionsRunNetworkCallsOffTheComposeMainThread() {
+        val premiumApp = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
+        val confirmAction = sourceBetween(premiumApp, "onConfirmReceived = {", "onRejectSignal = {")
+        val rejectSignalAction = sourceBetween(premiumApp, "onRejectSignal = {", "onRejectOrder = {")
+        val rejectOrderAction = sourceBetween(premiumApp, "onRejectOrder = {", "\n        )\n        is PremiumRoute.Main")
+
+        listOf(
+            "confirmReceived" to confirmAction,
+            "rejectSignal" to rejectSignalAction,
+            "rejectOrder" to rejectOrderAction
+        ).forEach { (methodName, actionSource) ->
+            assertTrue("$methodName must launch asynchronously from Compose", actionSource.contains("scope.launch"))
+            assertTrue("$methodName must execute backend IO off the main thread", actionSource.contains("withContext(Dispatchers.IO)"))
+            assertTrue("$methodName must still call the backend-owned runtime action", actionSource.contains("activeRuntime.$methodName(currentRoute.reviewId)"))
+        }
+    }
+
+    @Test
     fun androidLauncherUsesSwimPayAppIconResources() {
         val manifest = File("src/main/AndroidManifest.xml").readText()
         val adaptiveIcon = File("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")

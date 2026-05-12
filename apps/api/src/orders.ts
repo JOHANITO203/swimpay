@@ -223,6 +223,10 @@ export type NoNotificationManualCheckResult =
 
 export interface OrderRepository {
   createOrderWithSession(input: CreateOrderWithSessionInput): Promise<CreateOrderWithSessionResult>;
+  listMerchantOrders?(
+    merchantId: string,
+    input?: { limit?: number | undefined }
+  ): Promise<StoredOrderRecord[]>;
   getOrderById(
     merchantId: string,
     orderId: string
@@ -521,6 +525,25 @@ export class PgOrderRepository implements OrderRepository {
     } finally {
       client.release();
     }
+  }
+
+  public async listMerchantOrders(
+    merchantId: string,
+    input: { limit?: number | undefined } = {}
+  ): Promise<StoredOrderRecord[]> {
+    const limit = Math.max(1, Math.min(input.limit ?? 50, 100));
+    const result = await this.pool.query(
+      `SELECT id, merchant_id, external_id, product_id, product_name, product_risk_level,
+        amount_minor, currency, status, expires_at, created_at, updated_at
+       FROM orders
+       WHERE merchant_id = $1
+         AND status IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')
+       ORDER BY updated_at DESC, created_at DESC
+       LIMIT $2`,
+      [merchantId, limit]
+    );
+
+    return result.rows.map((row) => toOrder(row as Record<string, string | number | Date | null>));
   }
 
   public async getOrderById(merchantId: string, orderId: string) {

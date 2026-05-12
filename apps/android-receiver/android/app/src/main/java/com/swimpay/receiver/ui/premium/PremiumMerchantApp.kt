@@ -436,13 +436,28 @@ fun PremiumMerchantApp(
                 route = PremiumNavigation.backFromPaymentDetail()
             },
             onConfirmReceived = {
-                paymentDetailState = activeRuntime.confirmReceived(currentRoute.reviewId)
+                scope.launch {
+                    paymentDetailState = PremiumScreenState.loading()
+                    paymentDetailState = withContext(Dispatchers.IO) {
+                        activeRuntime.confirmReceived(currentRoute.reviewId)
+                    }
+                }
             },
             onRejectSignal = {
-                paymentDetailState = activeRuntime.rejectSignal(currentRoute.reviewId)
+                scope.launch {
+                    paymentDetailState = PremiumScreenState.loading()
+                    paymentDetailState = withContext(Dispatchers.IO) {
+                        activeRuntime.rejectSignal(currentRoute.reviewId)
+                    }
+                }
             },
             onRejectOrder = {
-                paymentDetailState = activeRuntime.rejectOrder(currentRoute.reviewId)
+                scope.launch {
+                    paymentDetailState = PremiumScreenState.loading()
+                    paymentDetailState = withContext(Dispatchers.IO) {
+                        activeRuntime.rejectOrder(currentRoute.reviewId)
+                    }
+                }
             }
         )
         is PremiumRoute.Main -> PremiumAppShell(

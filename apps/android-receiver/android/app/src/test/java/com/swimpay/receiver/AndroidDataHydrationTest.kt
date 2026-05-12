@@ -5,6 +5,7 @@ import com.swimpay.receiver.ui.premium.PremiumDashboardUiState
 import com.swimpay.receiver.ui.premium.PremiumMerchantRuntime
 import com.swimpay.receiver.ui.premium.PremiumReviewsUiState
 import com.swimpay.receiver.ui.premium.PremiumScreenState
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -148,6 +149,34 @@ class AndroidDataHydrationTest {
     }
 
     @Test
+    fun salesScreenHydratesConfirmedOrdersFromBackendContract() {
+        val runtime = runtimeWith(
+            ordersTransport = StaticTransport(
+                MerchantApiResponse(
+                    200,
+                    """{"summary":{"confirmed_order_count":1,"confirmed_amount_minor":29904,"failed_count":0,"confirmation_rate":100,"currency":"RUB"},"orders":[{"order_id":"ord_01","external_id":"ext_01","amount":{"value":"299.04","currency":"RUB"},"status":"manual_confirmed","status_label":"Confirmee","helper":"Confirmation marchand"}],"confirmation_type":"notification_signal","official_bank_confirmation":false}"""
+                )
+            )
+        )
+
+        val orders = runtime.loadOrders()
+
+        assertTrue(orders is PremiumScreenState.Content<*>)
+        val content = (orders as PremiumScreenState.Content).value
+        assertTrue(content.usesLiveApi)
+        assertEquals("1", content.confirmedSalesCount)
+        assertTrue(content.confirmedAmount.contains("299,04"))
+        assertEquals("0", content.failedCount)
+        assertEquals("100 %", content.confirmationRate)
+        assertEquals(1, content.rows.size)
+        val visible = content.visibleTexts().joinToString(" ")
+        assertTrue(visible.contains("ord_01"))
+        assertTrue(visible.contains("299,04"))
+        assertTrue(visible.contains("Confirmee"))
+        assertSafeMerchantHydrationCopy(visible)
+    }
+
+    @Test
     fun backendOfflineUsesMerchantFriendlySyncCopyForReceivingMethods() {
         val runtime = runtimeWith(
             receivingTransport = StaticTransport(MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}"""))
@@ -197,6 +226,7 @@ class AndroidDataHydrationTest {
         dashboardTransport: MerchantApiTransport = StaticTransport(MerchantApiResponse(200, """{"payments_to_review_count":0,"confirmed_today_count":0,"notifications_sent_count":0,"receiver_status":{"display":"Connecté"},"recent_detected_payments":[]}""")),
         reviewTransport: MerchantApiTransport = StaticTransport(MerchantApiResponse(200, """{"reviews":[]}""")),
         paymentTransport: MerchantApiTransport = StaticTransport(MerchantApiResponse(404, """{"error":{"code":"not_found"}}""")),
+        ordersTransport: MerchantApiTransport = StaticTransport(MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")),
         receivingTransport: MerchantApiTransport = StaticTransport(MerchantApiResponse(200, """{"routes":[]}""")),
         connectedSiteTransport: MerchantApiTransport = StaticTransport(MerchantApiResponse(503, """{"error":{"code":"not_configured"}}""")),
         configurationTransport: MerchantApiTransport = StaticTransport(MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}"""))
@@ -207,6 +237,7 @@ class AndroidDataHydrationTest {
             reviewQueueRepository = MerchantReviewQueueApiRepository(reviewTransport),
             paymentDetailRepository = MerchantPaymentDetailApiRepository(paymentTransport),
             reviewActionsRepository = MerchantReviewActionsApiRepository(StaticTransport(MerchantApiResponse(503, "{}"))),
+            ordersRepository = MerchantOrdersApiRepository(ordersTransport),
             receivingMethodsRepository = MerchantReceivingMethodsApiRepository(receivingTransport),
             connectedSiteRepository = MerchantConnectedSiteApiRepository(connectedSiteTransport),
             configurationTestRepository = MerchantConfigurationTestApiRepository(configurationTransport)

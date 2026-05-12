@@ -33,6 +33,7 @@ import {
   type CheckoutFallbackAction,
   type CheckoutUnavailableReason,
   type MerchantPaymentReadiness,
+  type OrderStatus,
   type ReceivingRouteRailType
 } from '@swimpay/contracts';
 import {
@@ -2761,6 +2762,25 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return reply.status(200).send(toAndroidMerchantDashboardSummaryResponse(reviews, metricSummary, metricTimeseries, readiness));
   });
 
+  server.get('/v1/android-merchant/orders', async (request, reply) => {
+    const merchantId = await requireAndroidMerchantId(request, reply);
+    if (!merchantId) {
+      return;
+    }
+    if (!repository?.listMerchantOrders) {
+      return reply.status(503).send({
+        error: {
+          code: 'service_unavailable',
+          message: 'Order list repository is not configured.',
+          details: {}
+        }
+      });
+    }
+
+    const orders = await repository.listMerchantOrders(merchantId, { limit: 50 });
+    return reply.status(200).send(toAndroidMerchantOrdersResponse(orders));
+  });
+
   server.get('/v1/merchant/metrics/summary', async (request, reply) => {
     const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.PAYMENTS_REVIEW_READ, {
       allowAndroidMobile: true
@@ -4348,6 +4368,52 @@ function toMerchantMetricsTimeseriesResponse(timeseries: MerchantMetricsTimeseri
     })),
     ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
   };
+}
+
+const ANDROID_MERCHANT_CONFIRMED_ORDER_STATUSES = new Set<OrderStatus>(['manual_confirmed', 'fulfilled']);
+const ANDROID_MERCHANT_FAILED_ORDER_STATUSES = new Set<OrderStatus>(['rejected', 'expired']);
+
+function toAndroidMerchantOrdersResponse(orders: StoredOrderRecord[]): Record<string, unknown> {
+  const confirmedOrders = orders.filter((order) => ANDROID_MERCHANT_CONFIRMED_ORDER_STATUSES.has(order.status));
+  const failedCount = orders.filter((order) => ANDROID_MERCHANT_FAILED_ORDER_STATUSES.has(order.status)).length;
+  const confirmedAmountMinor = confirmedOrders.reduce((total, order) => total + order.amountMinor, 0);
+  const finalCount = confirmedOrders.length + failedCount;
+  const confirmationRate = finalCount > 0 ? Math.round((confirmedOrders.length / finalCount) * 100) : 0;
+
+  return {
+    summary: {
+      confirmed_order_count: confirmedOrders.length,
+      confirmed_amount_minor: confirmedAmountMinor,
+      failed_count: failedCount,
+      confirmation_rate: confirmationRate,
+      currency: confirmedOrders[0]?.currency ?? orders[0]?.currency ?? 'RUB'
+    },
+    orders: confirmedOrders.map((order) => ({
+      order_id: order.id,
+      external_id: order.externalId,
+      product_name: order.productName,
+      amount: amountResponse(order.amountMinor, order.currency),
+      status: order.status,
+      status_label: androidMerchantOrderStatusLabel(order.status),
+      helper: 'Confirmation marchand',
+      confirmed_at: order.updatedAt
+    })),
+    ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+  };
+}
+
+function androidMerchantOrderStatusLabel(status: OrderStatus): string {
+  switch (status) {
+    case 'manual_confirmed':
+    case 'fulfilled':
+      return 'Confirmee';
+    case 'rejected':
+      return 'Rejetee';
+    case 'expired':
+      return 'Expiree';
+    default:
+      return 'En attente';
+  }
 }
 
 async function findSelectedRouteForReview(
