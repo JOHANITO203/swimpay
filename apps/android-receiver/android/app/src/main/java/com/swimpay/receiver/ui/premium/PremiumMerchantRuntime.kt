@@ -28,6 +28,7 @@ import com.swimpay.receiver.MerchantReviewQueueApiRepository
 import com.swimpay.receiver.MerchantScreenRepositoryResult
 import com.swimpay.receiver.MerchantSupportTicketApiRepository
 import com.swimpay.receiver.ReceiverRuntimeState
+import com.swimpay.receiver.ReceiverStatusState
 import com.swimpay.receiver.ReceiverStatusViewModel
 
 data class PremiumMetricUiState(
@@ -550,7 +551,8 @@ class PremiumMerchantRuntime(
             ReceiverRuntimeState.LISTENING -> "Ce téléphone peut détecter les paiements reçus."
             ReceiverRuntimeState.MANUAL_CHECK_REQUIRED -> "Des commandes peuvent nécessiter une vérification banque."
             ReceiverRuntimeState.OFFLINE -> "La synchronisation backend est indisponible."
-            else -> "Activez l'accès notifications pour continuer."
+            ReceiverRuntimeState.DEGRADED -> receiverHealthDegradedMessage(health)
+            else -> "Le Receiver est prêt à se synchroniser."
         }
         val runtimeStateLabel = when (health.runtimeState) {
             ReceiverRuntimeState.IDLE -> "Au repos"
@@ -583,6 +585,16 @@ class PremiumMerchantRuntime(
                 notices = notices
             )
         )
+    }
+
+    private fun receiverHealthDegradedMessage(health: ReceiverStatusState): String {
+        return when {
+            !health.notificationAccessEnabled -> "Activez l'accès notifications pour continuer."
+            !health.listenerConnected -> "Gardez SwimPay ouvert quelques instants pour reconnecter l'écoute."
+            health.allowedBanksCount == 0 -> "Activez au moins une banque surveillée."
+            health.allowedBanksCount > 0 && health.trustedBanksCount == 0 -> "Vérifiez les banques surveillées avant de compter sur la détection."
+            else -> "La détection automatique peut être limitée."
+        }
     }
 
     fun loadConnectedSite(): PremiumScreenState<PremiumConnectedSiteUiState> {

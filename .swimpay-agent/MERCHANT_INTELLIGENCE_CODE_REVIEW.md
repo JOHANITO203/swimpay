@@ -23,6 +23,10 @@ No blocker found in the modified code paths during local review.
 
 ## Android UX Review
 
+ADB smoke on Samsung `SM_S916B` confirmed the review queue, fallback notification channel and review detail fields render on the real device.
+
+Resolved UX issue: degraded-state action copy no longer says to enable notification access when `Accès notifications` is already `Activé`.
+
 - Receiver health now surfaces a short state: listening, degraded, offline or manual bank check required.
 - Merchant local notification is action-oriented: “Commande à vérifier”.
 - Review queue maps no-notification fallback to “Vérification banque requise”.
@@ -41,12 +45,13 @@ Added/updated coverage for:
 
 ## Residual Risk
 
-- ADB device validation still needs to confirm notification permission/channel behavior on the actual merchant phone.
+- ADB device validation confirmed notification permission/channel behavior on the actual merchant phone.
 - Staging worker environment must be checked before relying on the 120-second fallback in staging.
+- Device reinstall of the rebuilt staging APK is pending because ADB currently lists no attached device.
 
 ## Validation Review
 
 - Full root validation passed.
 - Full Android JVM tests passed.
 - Android debug APK assembly passed.
-- ADB smoke remains pending because no device was attached.
+- ADB smoke passed on Samsung `SM_S916B` / `R5CWA0FEPZW`.

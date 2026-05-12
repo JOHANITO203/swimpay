@@ -705,6 +705,21 @@ class PremiumMerchantRuntimeContractTest {
     }
 
     @Test
+    fun receiverHealthDoesNotAskToEnableNotificationsWhenTheyAreAlreadyEnabled() {
+        val runtime = runtimeWith(
+            AuthenticatedMerchantSession.localDev("mch_demo"),
+            RecordingPremiumTransport()
+        )
+
+        val health = runtime.loadReceiverHealth(notificationAccessEnabled = true) as PremiumScreenState.Content<PremiumReceiverHealthUiState>
+        val visible = health.value.visibleTexts().joinToString(" ")
+
+        assertTrue(health.value.rows.any { it.first == "Accès notifications" && it.second == "Activé" })
+        assertFalse(visible.contains("Activez l'accès notifications"))
+        assertTrue(visible.contains("Vérifiez les banques surveillées"))
+    }
+
+    @Test
     fun premiumRuntimeDoesNotInventSalesRowsWhenOrdersApiIsNotReady() {
         val runtime = PremiumMerchantRuntime.disconnected()
 

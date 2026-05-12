@@ -16,10 +16,19 @@ Completed locally:
 
 Next recommended action:
 
-1. Connect the merchant phone and perform ADB smoke on receiver health, review list and local notification.
+1. Reconnect the merchant phone if you want the rebuilt staging APK installed immediately; ADB currently lists no attached device.
 2. Check staging job-worker env values before fallback rehearsal.
 3. Redeploy staging if this branch is pushed.
 4. Rehearse a controlled checkout with receiver armed but without processing real bank notifications.
+
+ADB smoke result:
+
+- Samsung `SM_S916B` / `R5CWA0FEPZW` installed and launched the staging APK.
+- Review queue showed the fallback `manual_bank_check` review.
+- Android notification channel `swimpay_merchant_reviews` posted `Commande à vérifier`.
+- Receiver Health displayed the expected runtime rows and privacy notice.
+- Review detail displayed displayed/expected/detected amount, delta and risk with masked receiver route details only.
+- Receiver Health degraded copy was fixed locally after the device smoke found it.
 
 Do not do:
 

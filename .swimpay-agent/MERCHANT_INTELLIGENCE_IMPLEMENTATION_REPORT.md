@@ -10,7 +10,7 @@ generated_at: 2026-05-12T07:00:00+03:00
 4. Sprint 4 redacted-only buffer: completed locally. Recent observations are redacted-only, TTL-limited, duplicate-deduped and reject raw phone/card/raw notification markers.
 5. Sprint 5 fallback + merchant notification: completed locally. Existing worker remains manual-review-only; Android notification copy is action-required and not proof wording.
 6. Sprint 6 review UI: confirmed. Current merchant review UI already shows displayed amount, exact expected amount, detected amount, delta and risk labels.
-7. Sprint 7 stabilization: completed locally. Reports/docs updated and full root/Android validation passed. ADB smoke was not run because no device was attached.
+7. Sprint 7 stabilization: completed locally. Reports/docs updated and full root/Android validation passed. ADB smoke then passed on the connected Samsung device for review visibility, local notification and Receiver health surfaces.
 
 ## Files Changed
 
@@ -51,8 +51,15 @@ generated_at: 2026-05-12T07:00:00+03:00
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed.
 - `apps/android-receiver/android/gradlew.bat -p apps/android-receiver/android :app:testDebugUnitTest --no-daemon --stacktrace --max-workers=1` passed.
 - `apps/android-receiver/android/gradlew.bat -p apps/android-receiver/android :app:assembleDebug --no-daemon --stacktrace --max-workers=1` passed.
-- ADB smoke not run: `adb.exe devices -l` returned no attached devices.
+- ADB smoke passed on Samsung `SM_S916B` / `R5CWA0FEPZW`:
+  - staging APK installed with `adb install -r`;
+  - app launched without a SwimPay fatal crash;
+  - review queue displayed the fallback `manual_bank_check` review as `À vérifier`;
+  - Android posted local notification `Commande à vérifier` on channel `swimpay_merchant_reviews`;
+  - notification listener access was present for `SwimPayNotificationListenerService`;
+  - Receiver health screen displayed `État Receiver`, `Accès notifications`, `Banques surveillées`, `File d'envoi`, `Dernière synchronisation` and the SMS/bank-control privacy notice;
+  - review detail displayed `Montant affiché`, `Montant exact attendu`, `Montant détecté`, `Écart` and `Risque` with masked route details only.
 
 ## Next Validation
 
-Connect a merchant phone and run ADB smoke on receiver health, review list and local “Commande à vérifier” notification.
+ADB smoke is complete. The degraded-state Receiver Health copy found on device has been fixed locally; reinstall the rebuilt staging APK once ADB sees the phone again.

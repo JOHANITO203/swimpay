@@ -9,7 +9,8 @@
 - Resolved locally: no-notification fallback review labels are shown as manual bank check/action required.
 - Resolved locally: Android local review notification says “Commande à vérifier” and does not imply confirmation.
 - Full validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Android JVM tests and Android debug APK build.
-- Pending: ADB smoke for receiver health, review list and local notification on the real merchant phone because no device was attached.
+- Resolved on device: ADB smoke passed on Samsung `SM_S916B` / `R5CWA0FEPZW`; review list, local `Commande à vérifier` notification, notification channel and Receiver Health screen were verified.
+- Resolved locally: Receiver Health degraded-state action copy now names the actual degraded condition instead of asking to enable notifications when access is already `Activé`.
 - Staging check: verify `NO_NOTIFICATION_FALLBACK_WORKER_ENABLED=true` and `NO_NOTIFICATION_FALLBACK_MIN_SECONDS=120` before controlled checkout fallback rehearsal.
 - Not executed: real bank notification capture, auto-confirmation or public webhook semantic changes.
 

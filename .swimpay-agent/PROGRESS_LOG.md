@@ -2960,3 +2960,42 @@ Safety checks:
 - No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
 
 ---
+# 2026-05-12T11:35:00+03:00 - Merchant Intelligence ADB Smoke
+
+- Installed the staging APK on Samsung `SM_S916B` / `R5CWA0FEPZW` with `adb install -r`.
+- Launched `com.swimpay.receiver/.MainActivity` and found no SwimPay `AndroidRuntime`/fatal crash in the inspected logcat tail.
+- Verified the merchant review queue shows a fallback manual bank check review:
+  - `À vérifier`;
+  - `Vérification banque requise`;
+  - `Aucun signal bancaire détecté`.
+- Verified Android posted local notification `Commande à vérifier` through channel `swimpay_merchant_reviews` with action-required copy.
+- Verified Notification Listener Access is present for `SwimPayNotificationListenerService`.
+- Verified Receiver Health screen rows:
+  - `État Receiver`;
+  - `Accès notifications`;
+  - `Banques surveillées`;
+  - `File d'envoi`;
+  - `Dernière synchronisation`;
+  - privacy notice: SwimPay does not read SMS or control the bank.
+- Verified payment review detail shows `Montant affiché`, `Montant exact attendu`, `Montant détecté`, `Écart`, `Risque` and masked route details only.
+- Non-blocking UX issue found: Receiver Health degraded-state message still says `Activez l'accès notifications` even though the row value says `Accès notifications: Activé`.
+- No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---
+
+# 2026-05-12T12:05:00+03:00 - Receiver Health Degraded Copy Fix
+
+- Added a regression test proving Receiver Health does not ask to enable notification access when `Accès notifications` is already `Activé`.
+- Verified the test failed before the fix.
+- Updated `PremiumMerchantRuntime.loadReceiverHealth` so degraded copy is selected from the actual Receiver warning:
+  - notification access disabled;
+  - listener disconnected;
+  - no bank enabled;
+  - bank target validation pending;
+  - generic limited detection fallback.
+- Targeted `PremiumMerchantRuntimeContractTest` passed.
+- Staging APK build passed.
+- Reinstall on the phone is pending because ADB currently lists no attached device.
+- No real bank notifications were processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
+---
