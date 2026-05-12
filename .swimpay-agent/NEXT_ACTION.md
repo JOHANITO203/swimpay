@@ -2,7 +2,31 @@
 
 generated_at: 2026-05-12T19:05:00+03:00
 
-## Latest Mobile-First Review Actions Realignment
+## Latest Visual Quality Gate / Android Premium Design System
+
+Completed locally:
+
+1. Audited visual source of truth across Android assets, hosted checkout brand usage and premium tokens.
+2. Created `design/ASSET_REGISTRY.md`.
+3. Added centralized premium token primitives for elevation, icon sizes, component sizes, tones and gradients.
+4. Added static Android visual guardrail tests for official assets and token availability.
+5. Documented the screenshot/golden testing gap and a manual visual QA protocol.
+
+Next recommended action:
+
+1. Run full repo validation.
+2. Add Paparazzi or an equivalent Compose screenshot testing dependency for stable Android Merchant screens.
+3. Record goldens for dashboard, review list, review detail and Receiver Health.
+4. Align runtime SwimPay marks to the official asset registry in a dedicated visual polish sprint.
+
+Do not do:
+
+- Do not change payment runtime logic for visual polish.
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not create new logos or generated bank assets without updating `design/ASSET_REGISTRY.md`.
+
+## Previous Mobile-First Review Actions Realignment
 
 Completed locally:
 

@@ -469,6 +469,7 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 
 ## Recently Completed / Blocked
 
+- [x] `visual_quality_gate_android_premium_design_system` - status: completed_static_gate_added_screenshot_automation_pending - source: `.swimpay-agent/VISUAL_QUALITY_GATE_CLOSEOUT.md`
 - [x] `android_merchant_polish_static_data_cleanup` - status: completed_targeted_validation_passed - source: `.swimpay-agent/ANDROID_MERCHANT_POLISH_CLOSEOUT.md`
 - [x] `review_actions_payment_state_machine_fix` - status: completed_pending_staging_redeploy - source: `.swimpay-agent/REVIEW_ACTION_STATE_MACHINE_CLOSEOUT.md`
 - [x] `no_notification_fallback_runtime_wiring` - status: completed_with_android_gradle_memory_blocker - source: `.swimpay-agent/NO_NOTIFICATION_FALLBACK_RUNTIME_WIRING_REPORT.md`

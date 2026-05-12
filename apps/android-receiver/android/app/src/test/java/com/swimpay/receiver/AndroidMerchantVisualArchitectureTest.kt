@@ -518,6 +518,58 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue("launcher WebP should come from IconKitchen output", xxhdpiIcon.length() > 100L)
     }
 
+    @Test
+    fun visualQualityGateLocksOfficialAssetsAndPreventsNewRuntimeLogos() {
+        val manifest = File("src/main/AndroidManifest.xml").readText()
+        val resourceRoot = File("src/main/res")
+        val runtimeLogoAssets = resourceRoot.walkTopDown()
+            .filter { it.isFile }
+            .filter { file ->
+                val name = file.name.lowercase()
+                name.contains("logo") || name.contains("swimpay")
+            }
+            .map { it.relativeTo(resourceRoot).invariantSeparatorsPath }
+            .toList()
+
+        assertTrue(manifest.contains("""android:icon="@mipmap/ic_launcher""""))
+        assertTrue(manifest.contains("""android:roundIcon="@mipmap/ic_launcher_round""""))
+        assertTrue("runtime must not add ad-hoc logo assets outside launcher resources", runtimeLogoAssets.isEmpty())
+
+        listOf(
+            "drawable-nodpi/ic_bank_sberbank.png",
+            "drawable-nodpi/ic_bank_tbank.png",
+            "drawable-nodpi/ic_bank_vtb.png",
+            "drawable-nodpi/ic_bank_alfa.png",
+            "drawable-nodpi/ic_bank_gazprombank.png"
+        ).forEach { path ->
+            assertTrue("bank icon must remain available for runtime catalog: $path", File(resourceRoot, path).exists())
+        }
+    }
+
+    @Test
+    fun premiumDesignTokensExposeVisualGatePrimitives() {
+        val tokens = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDesignTokens.kt").readText()
+
+        listOf(
+            "object PremiumColors",
+            "object PremiumRadius",
+            "object PremiumSpacing",
+            "object PremiumType",
+            "object PremiumElevation",
+            "object PremiumIconSize",
+            "object PremiumComponentSize",
+            "object PremiumToneColors",
+            "object PremiumBrandGradient",
+            "object ExternalBrandTokens"
+        ).forEach { token ->
+            assertTrue("missing visual token primitive $token", tokens.contains(token))
+        }
+        assertTrue(tokens.contains("ButtonHeight = 56.dp"))
+        assertTrue(tokens.contains("TouchTarget = 48.dp"))
+        assertTrue(tokens.contains("PrimaryDeep"))
+        assertTrue(tokens.contains("Google"))
+    }
+
     private fun sourceFunction(source: String, signature: String): String {
         val start = source.indexOf(signature)
         require(start >= 0) { "missing source function $signature" }

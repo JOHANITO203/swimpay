@@ -120,3 +120,56 @@ object PremiumType {
     val Caption = 12.sp
     val Micro = 10.sp
 }
+
+object PremiumElevation {
+    val None = 0.dp
+    val Card = 3.dp
+    val CardRaised = 6.dp
+    val Button = 8.dp
+    val Floating = 12.dp
+}
+
+object PremiumIconSize {
+    val Small = 16.dp
+    val Default = 22.dp
+    val Medium = 28.dp
+    val Large = 36.dp
+    val Tile = 48.dp
+}
+
+object PremiumComponentSize {
+    val ButtonHeight = 56.dp
+    val CompactButtonHeight = 44.dp
+    val RowHeight = 84.dp
+    val TouchTarget = 48.dp
+    val TopAction = 46.dp
+}
+
+data class PremiumTone(
+    val foreground: Color,
+    val background: Color
+)
+
+object PremiumToneColors {
+    val Success: PremiumTone get() = PremiumTone(PremiumColors.Success, Color(0xFFE7F7EF))
+    val Warning: PremiumTone get() = PremiumTone(PremiumColors.Warning, Color(0xFFFFF4E5))
+    val Danger: PremiumTone get() = PremiumTone(PremiumColors.Danger, Color(0xFFFDECEC))
+    val Info: PremiumTone get() = PremiumTone(PremiumColors.Blue, PremiumColors.IconTile)
+    val Selected: PremiumTone get() = PremiumTone(PremiumColors.Teal, Color(0xFFF7FEFE))
+    val Disabled: PremiumTone get() = PremiumTone(PremiumColors.SoftText, PremiumColors.NeutralChip)
+}
+
+object PremiumBrandGradient {
+    val Primary: List<Color> get() = listOf(PremiumColors.Teal, PremiumColors.Cyan)
+    val PrimaryDeep: List<Color> get() = listOf(PremiumColors.Teal, PremiumColors.Blue)
+    val Disabled: List<Color> get() = listOf(PremiumColors.Line, PremiumColors.NeutralChip)
+}
+
+object ExternalBrandTokens {
+    object Google {
+        val Blue = Color(0xFF4285F4)
+        val Red = Color(0xFFEA4335)
+        val Yellow = Color(0xFFFBBC05)
+        val Green = Color(0xFF34A853)
+    }
+}

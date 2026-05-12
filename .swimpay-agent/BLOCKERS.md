@@ -1,5 +1,17 @@
 # Blockers
 
+## Visual Quality Gate / Android Premium Design System
+
+- No payment runtime blocker introduced.
+- Resolved locally: visual source-of-truth audit completed for Android assets, hosted checkout brand marks and premium UI tokens.
+- Resolved locally: `design/ASSET_REGISTRY.md` now defines official Android launcher assets, bank icon scope, generated runtime marks and forbidden duplicate asset rules.
+- Resolved locally: premium Android tokens now include centralized elevation, icon sizes, component sizes, tone colors and gradients.
+- Resolved locally: static Android visual guardrail tests now prevent unregistered runtime SwimPay/logo resources and verify token primitives exist.
+- Remaining visual QA blocker: no Paparazzi/Roborazzi/Compose screenshot testing dependency is configured yet.
+- Remaining visual QA blocker: no golden screenshots were recorded in this sprint.
+- Remaining brand blocker: Android Compose, hosted checkout and web dashboard still render distinct generated SwimPay marks; future polish must align them to the official asset registry.
+- No real bank notification processing, auto-confirmation, webhook semantic change or payment state change was made.
+
 ## Review Action Actor Identity Contract
 
 - No local code validation blocker remains.

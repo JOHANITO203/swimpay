@@ -3077,3 +3077,33 @@ Safety checks:
 - Added regression test proving Android review confirmation succeeds with a valid mobile bearer even when a dashboard cookie is present and no CSRF header is sent.
 - Targeted API validation passed for Android merchant and review action tests.
 - No real bank notification processing, auto-confirmation, public webhook semantic change, or raw sensitive data exposure was added.
+
+---
+
+# 2026-05-12T20:05:00+03:00 - Visual Quality Gate / Android Premium Design System
+
+- Ran a multi-agent visual audit over Android assets, premium tokens and screenshot-test readiness.
+- Created `design/ASSET_REGISTRY.md` as the asset source of truth.
+- Documented official Android launcher assets, bank icon usage, generated runtime marks and deprecated launcher drawable candidates.
+- Added premium token primitives for elevation, icon sizes, component sizes, tone colors and gradients.
+- Added static Android visual guardrail tests to block unregistered runtime logo assets and assert token primitives exist.
+- Created visual reports:
+  - `.swimpay-agent/VISUAL_SOURCE_OF_TRUTH_AUDIT.md`;
+  - `.swimpay-agent/ASSET_REGISTRY_REPORT.md`;
+  - `.swimpay-agent/PREMIUM_DESIGN_TOKENS_REPORT.md`;
+  - `.swimpay-agent/PREMIUM_SURFACE_VISUAL_LOCK_REPORT.md`;
+  - `.swimpay-agent/ANDROID_VISUAL_REGRESSION_TEST_REPORT.md`;
+  - `.swimpay-agent/REFERENCE_MOCK_REPRODUCTION_REPORT.md`;
+  - `.swimpay-agent/VISUAL_QUALITY_GATE_CLOSEOUT.md`.
+- Screenshot/golden automation was not added yet; the gap and manual protocol are explicitly documented.
+- No payment runtime, webhook semantics, real notification processing or auto-confirmation behavior changed.
+- Validation completed after report creation:
+  - `npm run android:doctor` passed;
+  - `npm run typecheck` passed;
+  - `npm run lint` passed;
+  - `npm test` passed - 77 files, 672 tests;
+  - `npm run build` passed;
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed;
+  - Android targeted visual JVM test passed;
+  - Android full debug JVM tests passed;
+  - Android debug APK build passed.
