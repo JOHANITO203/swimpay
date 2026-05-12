@@ -178,6 +178,8 @@ class PremiumMerchantRuntimeContractTest {
         assertEquals(listOf("7", "18", "3", "2", "1", "75 %"), dashboard.value.metrics.map { it.value })
         assertEquals(2, dashboard.value.chartPoints.size)
         assertEquals(900000L, dashboard.value.chartPoints.first().confirmedAmountMinor)
+        assertTrue(dashboard.value.chartConfirmedAmountLabel.contains("9 000"))
+        assertEquals("100 %", dashboard.value.chartConfirmationRateLabel)
         assertTrue(reviews.value.usesLiveApi)
         assertEquals("rev_01", reviews.value.items.single().reviewId)
         assertTrue(detail.value.usesLiveApi)

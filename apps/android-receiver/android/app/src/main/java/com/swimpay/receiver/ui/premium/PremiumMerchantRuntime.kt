@@ -65,6 +65,8 @@ data class PremiumDashboardUiState(
     val monthlyAmount: String,
     val metrics: List<PremiumMetricUiState>,
     val chartPoints: List<PremiumChartPointUiState> = emptyList(),
+    val chartConfirmedAmountLabel: String = "—",
+    val chartConfirmationRateLabel: String = "—",
     val recentPayments: List<PremiumRecentPaymentUiState>,
     val usesLiveApi: Boolean,
     val localSystemCards: List<PremiumLocalSystemUiState> = emptyList(),
@@ -79,6 +81,8 @@ data class PremiumDashboardUiState(
             readyText,
             mainMetricLabel,
             monthlyAmount,
+            chartConfirmedAmountLabel,
+            chartConfirmationRateLabel,
             backendNoticeTitle,
             backendNoticeText,
             emptyPaymentsTitle,
@@ -382,6 +386,15 @@ class PremiumMerchantRuntime(
             PremiumRecentPaymentUiState(amount, "$bank · récemment", status)
         }
         val summary = result.dashboardMetricsSummary
+        val chartPoints = result.dashboardTimeseries.map {
+            PremiumChartPointUiState(
+                date = it.date,
+                confirmedAmountMinor = it.confirmedAmountMinor,
+                confirmationRate = it.confirmationRate
+            )
+        }
+        val chartConfirmedAmountMinor = chartPoints.sumOf { it.confirmedAmountMinor }
+        val chartConfirmationRate = chartPoints.maxOfOrNull { it.confirmationRate }
         return PremiumScreenState.content(
             PremiumDashboardUiState(
                 readyTitle = texts.getOrNull(1) ?: "SwimPay est prêt",
@@ -389,13 +402,9 @@ class PremiumMerchantRuntime(
                 mainMetricLabel = "Paiements confirmés",
                 monthlyAmount = summary?.confirmedAmountLabel() ?: "0 ₽",
                 metrics = dashboardMetricCards(summary),
-                chartPoints = result.dashboardTimeseries.map {
-                    PremiumChartPointUiState(
-                        date = it.date,
-                        confirmedAmountMinor = it.confirmedAmountMinor,
-                        confirmationRate = it.confirmationRate
-                    )
-                },
+                chartPoints = chartPoints,
+                chartConfirmedAmountLabel = if (chartPoints.isEmpty()) "—" else formatDashboardChartAmount(chartConfirmedAmountMinor, summary?.currency ?: "RUB"),
+                chartConfirmationRateLabel = chartConfirmationRate?.let { "$it %" } ?: "—",
                 recentPayments = recent,
                 usesLiveApi = !result.usesMockRepository,
                 localSystemCards = defaultLocalSystemCards(
@@ -1054,6 +1063,18 @@ private fun dashboardMetricCards(summary: MerchantDashboardMetricsSummary?): Lis
         PremiumMetricUiState((summary?.failedCount ?: 0).toString(), "Échecs"),
         PremiumMetricUiState(summary?.confirmationRateLabel() ?: "0 %", "Taux")
     )
+}
+
+private fun formatDashboardChartAmount(amountMinor: Long, currency: String): String {
+    val units = amountMinor / 100L
+    val cents = kotlin.math.abs(amountMinor % 100L)
+    val grouped = "%,d".format(java.util.Locale.US, units).replace(",", " ")
+    val symbol = if (currency == "RUB") "₽" else currency
+    return if (cents == 0L) {
+        "$grouped $symbol"
+    } else {
+        "$grouped,${cents.toString().padStart(2, '0')} $symbol"
+    }
 }
 
 private fun defaultBankPackageProbe(): ExactPackageProbe {

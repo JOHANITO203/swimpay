@@ -145,8 +145,12 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("PAIEMENTS CONFIRMÉS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
                     }
+                    Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ChartMetricPill("Montant", state.chartConfirmedAmountLabel, Modifier.weight(1f))
+                        ChartMetricPill("Taux", state.chartConfirmationRateLabel, Modifier.weight(1f))
+                    }
                     TrendLine(
-                        modifier = Modifier.fillMaxWidth().height(170.dp).padding(top = 24.dp),
+                        modifier = Modifier.fillMaxWidth().height(126.dp).padding(top = 20.dp),
                         primaryValues = state.chartPoints.map { it.confirmedAmountMinor.toFloat() },
                         secondaryValues = state.chartPoints.map { it.confirmationRate.toFloat() }
                     )
@@ -173,6 +177,20 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
             items(state.recentPayments) {
                 RecentPaymentRow(it.amount, it.detail)
             }
+        }
+    }
+}
+
+@Composable
+private fun ChartMetricPill(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier.height(52.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(20.dp)),
+        color = PremiumColors.SurfaceAlt,
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp), verticalArrangement = Arrangement.Center) {
+            Text(label, color = PremiumColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Black)
+            Text(value, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black)
         }
     }
 }

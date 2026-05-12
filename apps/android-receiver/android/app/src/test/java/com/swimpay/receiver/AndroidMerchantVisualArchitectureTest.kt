@@ -180,6 +180,8 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(apiWiring.contains("metrics_timeseries"))
         assertTrue(mainCard.contains("AccountBalanceWallet"))
         assertTrue(premiumDashboard.contains("state.metrics.chunked(2)"))
+        assertTrue(premiumDashboard.contains("state.chartConfirmedAmountLabel"))
+        assertTrue(premiumDashboard.contains("state.chartConfirmationRateLabel"))
         assertFalse(mainCard.contains("Paiement suivi"))
         assertFalse(mainCard.contains("Paiements suivis"))
         assertFalse(premiumDashboard.contains("Montant / taux"))
