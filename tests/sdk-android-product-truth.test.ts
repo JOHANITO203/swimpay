@@ -44,6 +44,8 @@ describe('Android merchant SDK product truth guardrails', () => {
     expect(sdk).toContain('Intent.ACTION_VIEW');
     expect(sdk).toContain('CustomTabsIntent');
     expect(sdk).toContain('enum class SwimPayCheckoutStatus');
+    expect(sdk).toContain('swimpay_return_scheme');
+    expect(sdk).toContain('swimpay_bank_launcher_scheme');
 
     for (const status of ['Returned', 'Cancelled', 'Expired', 'Rejected', 'Unknown', 'Error']) {
       expect(sdk).toContain(status);

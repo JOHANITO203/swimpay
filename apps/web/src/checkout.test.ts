@@ -525,6 +525,51 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('official bank confirmation');
   });
 
+  it('uses the Android SDK return scheme for the confirmed return-to-merchant button', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      status: 'manual_confirmed',
+      checkout_state: 'confirmed',
+      buyer_safe_status: 'confirmed'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01?swimpay_return_scheme=merchantapp'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Retourner au marchand');
+    expect(response.body).toContain('href="merchantapp://swimpay-return?status=completed');
+    expect(response.body).toContain('payment_session_id=ps_01');
+    expect(response.body).toContain('order_id=ord_01');
+    expect(response.body).not.toContain('onclick="history.back()"');
+    expect(response.body).not.toContain('payment.confirmed');
+  });
+
+  it('rejects unsafe return schemes and keeps the browser-history fallback', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      status: 'manual_confirmed',
+      checkout_state: 'confirmed',
+      buyer_safe_status: 'confirmed'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01?swimpay_return_scheme=javascript'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Retourner au marchand');
+    expect(response.body).toContain('onclick="history.back()"');
+    expect(response.body).not.toContain('javascript://swimpay-return');
+  });
+
   it('proxies receiver, route and payer launcher selection without confirming payment', async () => {
     const provider = new FakeCheckoutSessionProvider();
     const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });

@@ -176,12 +176,18 @@ object SwimPayCheckout {
     }
 
     private fun Uri.withAndroidHandoff(options: SwimPayCheckoutOptions): Uri {
+        val returnScheme = options.returnScheme?.trim()?.takeIf { it.isNotEmpty() }
         val bankLauncherScheme = options.bankLauncherScheme?.trim()?.takeIf { it.isNotEmpty() }
-            ?: return this
+        if (returnScheme == null && bankLauncherScheme == null) return this
 
-        return buildUpon()
-            .appendQueryParameter("swimpay_bank_launcher_scheme", bankLauncherScheme)
-            .build()
+        val builder = buildUpon()
+        if (returnScheme != null) {
+            builder.appendQueryParameter("swimpay_return_scheme", returnScheme)
+        }
+        if (bankLauncherScheme != null) {
+            builder.appendQueryParameter("swimpay_bank_launcher_scheme", bankLauncherScheme)
+        }
+        return builder.build()
     }
 
     private fun errorResult(

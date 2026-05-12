@@ -6,6 +6,15 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+Current follow-up is CHECKOUT-RETURN-TO-MERCHANT-APP. It makes the confirmed checkout return to the Android app that opened the hosted checkout.
+
+- [x] `checkout_return_path_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_RETURN_TO_MERCHANT_REPORT.md`
+- [x] `android_sdk_return_scheme_handoff` - status: completed_targeted_validated - source: `.swimpay-agent/CHECKOUT_RETURN_TO_MERCHANT_REPORT.md`
+- [x] `hosted_checkout_confirmed_return_link` - status: completed_targeted_validated - source: `.swimpay-agent/CHECKOUT_RETURN_TO_MERCHANT_REPORT.md`
+- [ ] `staging_external_app_return_smoke` - status: pending_redeploy_and_external_app_rebuild - source: `.swimpay-agent/CHECKOUT_RETURN_TO_MERCHANT_REPORT.md`
+
+## Previous Queue
+
 The current sprint is CHECKOUT-FINAL-STATE-PROPAGATION. It ensures merchant manual decisions propagate to the hosted buyer checkout waiting screen.
 
 - [x] `checkout_final_state_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_FINAL_STATE_PROPAGATION_AUDIT.md`

@@ -670,7 +670,7 @@ function renderStatusMessage(session: CheckoutSession): string {
 
 function renderWaitingAction(session: CheckoutSession): string {
   if (session.status === 'manual_confirmed' || session.status === 'fulfilled') {
-    return `<button class="checkout-primary-action" type="button" onclick="history.back()">Retourner au marchand <span aria-hidden="true">-&gt;</span></button>`;
+    return renderReturnToMerchantPrimaryAction(session);
   }
   if (session.status === 'expired') {
     return `<a class="checkout-primary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Reessayer</a>`;
@@ -679,6 +679,13 @@ function renderWaitingAction(session: CheckoutSession): string {
     return `<button class="checkout-secondary-action" type="button" onclick="history.back()">Contacter le marchand</button>`;
   }
   return `<a class="checkout-secondary-action checkout-refresh-action" href="/checkout/${escapeHtml(session.payment_session_id)}"><span></span>Actualisation...</a>`;
+}
+
+function renderReturnToMerchantPrimaryAction(session: CheckoutSession): string {
+  if (session.return_url) {
+    return `<a class="checkout-primary-action" href="${escapeHtml(session.return_url)}">Retourner au marchand <span aria-hidden="true">-&gt;</span></a>`;
+  }
+  return `<button class="checkout-primary-action" type="button" onclick="history.back()">Retourner au marchand <span aria-hidden="true">-&gt;</span></button>`;
 }
 
 function renderPaymentTimeline(session: CheckoutSession): string {

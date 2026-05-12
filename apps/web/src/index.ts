@@ -733,7 +733,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     if (!paymentSessionId || paymentSessionId === 'any') {
        // Mock for copy-guardrails tests if needed
        if (options.environment === 'test') {
-            const testSession = mockSession('any');
+            const testSession = withNativeReturnUrl(mockSession('any'), request.query);
             return renderCheckoutScreen(testSession, defaultRecipient, [], [], [], mapCheckoutStatus(testSession.status).displayStatus, {
               nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query)
             });
@@ -742,6 +742,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     }
     let session = await checkoutSessionProvider.getCheckoutSession(paymentSessionId);
     if (!session) return reply.status(404).send({ error: 'not_found' });
+    session = withNativeReturnUrl(session, request.query);
     if (
       session.status === 'receiver_arming' &&
       session.payment_method &&
@@ -752,6 +753,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     ) {
       try {
         session = await checkoutSessionProvider.markPaymentInstructionsShown(paymentSessionId);
+        session = withNativeReturnUrl(session, request.query);
       } catch (error) {
         const renderedFallback = await renderStructuredCheckoutFallbackFromError({
           error,
@@ -968,6 +970,46 @@ function readNativeBankLauncherScheme(query: unknown): string | undefined {
     return undefined;
   }
   return value;
+}
+
+function readNativeReturnScheme(query: unknown): string | undefined {
+  if (!query || typeof query !== 'object' || Array.isArray(query)) {
+    return undefined;
+  }
+  const value = (query as Record<string, unknown>).swimpay_return_scheme;
+  if (typeof value !== 'string' || !/^[a-z][a-z0-9+.-]{1,40}$/iu.test(value)) {
+    return undefined;
+  }
+  if (['http', 'https', 'javascript', 'data', 'file', 'content', 'intent', 'android-app'].includes(value.toLowerCase())) {
+    return undefined;
+  }
+  return value;
+}
+
+function withNativeReturnUrl(session: CheckoutSession, query: unknown): CheckoutSession {
+  if (session.return_url) {
+    return session;
+  }
+  const scheme = readNativeReturnScheme(query);
+  if (!scheme) {
+    return session;
+  }
+  const params = new URLSearchParams({
+    status: checkoutReturnStatus(session.status),
+    payment_session_id: session.payment_session_id,
+    order_id: session.order_id
+  });
+  return {
+    ...session,
+    return_url: `${scheme}://swimpay-return?${params.toString()}`
+  };
+}
+
+function checkoutReturnStatus(status: CheckoutStatus): string {
+  if (status === 'expired') return 'expired';
+  if (status === 'rejected') return 'rejected';
+  if (status === 'manual_confirmed' || status === 'fulfilled') return 'completed';
+  return 'returned';
 }
 
 async function renderMerchantIntegrationWizard(client: MerchantIntegrationClient | null): Promise<string> {

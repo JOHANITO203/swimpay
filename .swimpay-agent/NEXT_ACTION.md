@@ -4,6 +4,30 @@ generated_at: 2026-05-12T22:55:00+03:00
 
 ## Completed Locally In This Pass
 
+1. Fixed checkout `Retourner au marchand` for Android SDK custom return schemes.
+2. `SwimPayCheckout.open(...)` now forwards `returnScheme` to hosted checkout as `swimpay_return_scheme`.
+3. Hosted checkout now renders a safe native return URL after confirmation.
+4. Unsafe return schemes are rejected and fall back to browser history.
+5. Added targeted web and Android SDK guardrail tests.
+
+## Next Recommended Action
+
+1. Redeploy web to staging.
+2. Rebuild/update the external Android app with the updated SDK code.
+3. Open checkout with `SwimPayCheckoutOptions(returnScheme = "merchantapp", bankLauncherScheme = "merchantapp")`.
+4. Confirm the review in Android Merchant.
+5. Tap `Retourner au marchand` and verify the external app receives `merchantapp://swimpay-return?...`.
+
+## Do Not Do
+
+- Do not treat the app return as payment proof.
+- Do not confirm locally in Android.
+- Do not change webhook final-only semantics.
+
+## Previous Pass
+
+## Completed Locally In This Pass
+
 1. Audited buyer checkout final-state propagation after merchant review confirmation.
 2. Confirmed backend manual review decision already updates the payment session to `manual_confirmed`.
 3. Added status polling to the hosted checkout waiting screen.

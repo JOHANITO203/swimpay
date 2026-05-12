@@ -3212,3 +3212,14 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Made `rejected` explicit in the shared buyer-safe checkout status contract.
 - Added targeted contract, API and web tests for confirmed/rejected status propagation.
 - No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook semantics changed.
+
+## 2026-05-13T00:35:00+03:00 - Checkout return to merchant app
+
+- Audited the confirmed checkout return path after the buyer page reached `Paiement confirme`.
+- Found that the final button still used `history.back()`, which is unreliable for Android Custom Tabs/browser flows.
+- Found that Android SDK `returnScheme` was not forwarded to the hosted checkout URL.
+- Added `swimpay_return_scheme` handoff from `SwimPayCheckout.open(...)`.
+- Added hosted checkout validation for custom return schemes and blocked unsafe schemes.
+- Rendered confirmed `Retourner au marchand` as `merchantapp://swimpay-return?...` when a safe return scheme exists.
+- Preserved browser history fallback when no safe return URL is configured.
+- No local app confirmation, auto-confirmation, real notification processing or webhook semantic change was introduced.
