@@ -3107,3 +3107,97 @@ Safety checks:
   - Android targeted visual JVM test passed;
   - Android full debug JVM tests passed;
   - Android debug APK build passed.
+
+---
+
+# 2026-05-12T20:45:00+03:00 - Visual Quality Gate Follow-up
+
+- Continued the visual quality gap closure after the initial gate.
+- Multi-agent review recommended Roborazzi as the next screenshot framework candidate, but dependency/golden setup was left for a dedicated sprint to avoid destabilizing Android validation.
+- Android runtime brand now avoids generated Material `Water` icons for SwimPay marks:
+  - `SwimPayLogo` renders the official launcher asset;
+  - compact chrome/onboarding marks use shared `SwimPayWavesMark`.
+- Tokenized safe hardcoded values:
+  - Google colors -> `ExternalBrandTokens.Google`;
+  - premium button height/radius/gradients -> `PremiumComponentSize`, `PremiumRadius`, `PremiumBrandGradient`;
+  - selected onboarding background -> `PremiumToneColors.Selected.background`;
+  - known 3dp card elevations -> `PremiumElevation.Card`.
+- Added regression tests in `AndroidMerchantVisualArchitectureTest` for these visual contracts.
+- Targeted Android visual JVM test passed after red/green verification.
+- No payment runtime, webhook semantics, real notification processing or auto-confirmation behavior changed.
+
+---
+
+# 2026-05-12T21:12:00+03:00 - Android Visual Golden Baselines + Brand Unification
+
+- Added Roborazzi to the Android app module for Compose golden screenshot testing.
+- Added deterministic golden tests for Dashboard, Review list, Review detail and Receiver Health.
+- Recorded versioned PNG baselines under `apps/android-receiver/android/app/src/test/snapshots`.
+- Added root commands:
+  - `npm run android:screenshot:record`;
+  - `npm run android:screenshot:verify`.
+- Aligned the hosted checkout palette to Android premium token values.
+- Replaced the hosted checkout waves mark with the compact Android waves geometry and documented it in `design/ASSET_REGISTRY.md`.
+- Added `tests/checkout-brand-visual-contract.test.ts`.
+- Validation passed so far:
+  - `npm run android:screenshot:record`;
+  - `npm run android:screenshot:verify`;
+  - targeted checkout brand visual contract test.
+- Full validation is running/next.
+- No payment runtime, webhook semantics, real notification processing or auto-confirmation behavior changed.
+
+Validation update 2026-05-12T21:30:00+03:00:
+
+- `npm run android:doctor` passed.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm test` passed: 78 files, 675 tests.
+- `npm run build` passed.
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed.
+- Android `:app:testDebugUnitTest` passed.
+- Android `:app:assembleDebug` passed.
+
+---
+
+# 2026-05-12T22:05:00+03:00 - Checkout Browser Visual Baselines + Android Staging Build Rule
+
+- Added `scripts/checkout-browser-baselines.ts` to render hosted checkout browser goldens with local Chrome headless/CDP.
+- Added checkout screenshot commands:
+  - `npm run checkout:screenshot:record`;
+  - `npm run checkout:screenshot:verify`.
+- Recorded checkout baselines for intro, buyer info, payment instructions, waiting state and desktop instructions.
+- Baseline creation exposed checkout horizontal clipping risk; fixed it with scoped `box-sizing: border-box` under `.buyer-checkout`.
+- Added staging-connected Android build commands:
+  - `npm run android:assemble:staging`;
+  - `npm run android:assemble:debug-vps`.
+- Documented the new Android staging build rule in `AGENTS.md`.
+- No payment runtime, webhook semantics, real notification processing or auto-confirmation behavior changed.
+
+Validation update 2026-05-12T22:20:00+03:00:
+
+- `npm run checkout:screenshot:verify` passed.
+- Targeted checkout tests passed: 40 tests.
+- `npm run android:assemble:staging` passed.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed.
+- `npm run android:assemble:debug-vps` passed.
+
+---
+
+# 2026-05-12T22:55:00+03:00 - Ozon Bank Runtime Verified + Bank Logo Visibility
+
+- Removed stale visual blockers for missing Android golden coverage.
+- Added Roborazzi golden baselines for Moyens de reception, Developer Integration and Mode confirmation.
+- Regenerated and verified Android golden screenshots.
+- Marked Ozon Bank as operator runtime-verified in contracts and database migration `021_ozon_bank_runtime_verified.sql`.
+- Kept Ozon manual-review-only: `auto_confirm_enabled=false`, `official_bank_confirmation=false`, certificate fingerprint `documented_unknown`.
+- Added exact Ozon Android package `ru.ozon.fintech.finance` to Android Bank Target Lock and manifest `<queries>`.
+- Added documented placeholder asset `ic_bank_ozon`.
+- Checkout Step 1 now renders sender bank choices with logo asset keys from the payer launcher registry.
+- Checkout Step 2 now renders the receiver bank logo/name from the selected receiving route, not from the payer launcher.
+- Android Merchant review cards now show bank logos via shared `PremiumBankLogo`.
+- Targeted validations passed: contracts/bank-template/web checkout tests, Android bank target/profile/static profile tests, `npm run android:screenshot:verify`, `npm run checkout:screenshot:verify`, `npm run android:doctor`, `npm run typecheck`, `npm run lint`.
+
+2026-05-12T23:10:00+03:00 - Added registered Android notification small icon, verified Ozon/logo visual contracts, and built staging debug-signed APK at apps/android-receiver/android/app/build/outputs/apk/staging/app-staging.apk.

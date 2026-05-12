@@ -31,7 +31,10 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('sender_phone');
     expect(response.body).toContain('data-method-field="sbp" hidden');
     expect(response.body).toContain('Sberbank');
-    expect(response.body).toContain('Tinkoff / T-Bank');
+    expect(response.body).toContain('T-Bank');
+    expect(response.body).toContain('Ozon Банк');
+    expect(response.body).toContain('data-logo-asset-key="ic_bank_ozon"');
+    expect(response.body).toContain('Runtime verified');
     expect(response.body).not.toContain('137.00 RUB');
     expect(response.body).not.toContain('TANGO ALFA');
     expect(response.body).not.toContain('+7 *** *** **67');
@@ -308,6 +311,8 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Ouvrir ma banque');
     expect(response.body).toContain('J&#39;ai paye');
     expect(response.body).toContain('Montant exact');
+    expect(response.body).toContain('Banque de reception');
+    expect(response.body).toContain('data-logo-asset-key="ic_bank_sberbank"');
     const launchUrl = response.body.match(/data-launch-url="([^"]*)"/u)?.[1] ?? '';
     expect(launchUrl).toBe(
       'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=ru.sberbankmobile;component=ru.sberbankmobile/ru.sberbank.mobile.feature.externalstarttransfer.impl.presentation.NativeContactShortcutActivity;end'

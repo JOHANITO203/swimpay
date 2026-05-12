@@ -3,13 +3,20 @@ display_name: "Ozon Банк"
 country: RU
 status: review_only
 auto_confirm_status: disabled
-notes: "Package name is unknown and must be validated on a real Android device before runtime capture is enabled."
+runtime_capture_status: runtime_verified
+runtime_verified: true
+runtime_verified_by: operator
+runtime_verified_at: "2026-05-12T00:00:00.000Z"
+runtime_evidence_source: operator_runtime_test
+logo_asset: ic_bank_ozon
+official_bank_confirmation: false
+notes: "Operator runtime test validated Ozon Bank app opening/capability. Certificate fingerprint remains documented_unknown, so V1 remains manual-review-only and auto-confirmation disabled."
 
 trusted_apps:
-  - package_name: TO_VERIFY
-    cert_sha256: TO_VERIFY
-    verification_status: pending_verification
-    source: package_unknown_needs_device_validation
+  - package_name: ru.ozon.fintech.finance
+    cert_sha256: documented_unknown
+    verification_status: verified
+    source: operator_runtime_test
 
 supported_locales:
   - ru-RU

@@ -6,6 +6,7 @@
     <package android:name="ru.vtb24.mobilebanking.android" />
     <package android:name="ru.alfabank.mobile.android" />
     <package android:name="ru.gazprombank.android.mobilebank.app" />
+    <package android:name="ru.ozon.fintech.finance" />
   </queries>
 
   <uses-permission android:name="android.permission.INTERNET" />

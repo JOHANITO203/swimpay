@@ -127,6 +127,15 @@ export interface ReceiverBankOption {
   receiver_bank_id: string;
   bank_profile_id: string;
   display_name: string;
+  logo_asset_key: string;
+  selectable: boolean;
+  supported_roles: readonly ('sender_bank' | 'receiver_bank')[];
+  runtime_capture_status: 'runtime_verified' | 'observed' | 'review_only' | 'package_validation_pending';
+  runtime_verified: boolean;
+  runtime_verified_by?: 'operator' | undefined;
+  runtime_verified_at?: string | undefined;
+  package_name: string;
+  package_cert_sha256: string;
   status: ReceiverBankBuyerStatus;
   review_only: boolean;
   detection_supported: boolean;
@@ -275,7 +284,15 @@ export const V1ReceiverBankOptions: readonly ReceiverBankOption[] = [
   receiverBank('tbank_ru', 'Tinkoff / T-Bank'),
   receiverBank('vtb_ru', 'VTB'),
   receiverBank('alfa_ru', 'Alfa-Bank'),
-  receiverBank('gazprombank_ru', 'Gazprombank')
+  receiverBank('gazprombank_ru', 'Gazprombank'),
+  receiverBank('ozon_bank', 'Ozon Банк', {
+    runtimeCaptureStatus: 'runtime_verified',
+    runtimeVerified: true,
+    runtimeVerifiedBy: 'operator',
+    runtimeVerifiedAt: '2026-05-12T00:00:00.000Z',
+    packageName: 'ru.ozon.fintech.finance',
+    packageCertSha256: 'documented_unknown'
+  })
 ] as const;
 
 export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
@@ -318,7 +335,7 @@ export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
     runtimeVerifiedSource: 'real_device_deeplink_open_only',
     testedStatus: 'validated'
   }),
-  payerLauncher('ozon_bank', 'Ozon Bank', ['ru.ozon.fintech.finance'], {
+  payerLauncher('ozon_bank', 'Ozon Банк', ['ru.ozon.fintech.finance'], {
     deeplinkSchemes: ['bank100000000273', 'ozonbank', 'ozonplatiqr', 'tel', 'vk53864657'],
     deeplinkUriTemplate: 'bank100000000273://finance.ozon.ru/transfer',
     launchStrategy: 'deeplink_then_package',
@@ -1140,11 +1157,29 @@ function deriveReconciliationDeltaMinor(paymentSessionId: string, reference: str
   return (seed % 99) + 1;
 }
 
-function receiverBank(bankProfileId: string, displayName: string): ReceiverBankOption {
-  return {
+function receiverBank(
+  bankProfileId: string,
+  displayName: string,
+  options: {
+    runtimeCaptureStatus?: ReceiverBankOption['runtime_capture_status'];
+    runtimeVerified?: boolean;
+    runtimeVerifiedBy?: ReceiverBankOption['runtime_verified_by'];
+    runtimeVerifiedAt?: string;
+    packageName?: string;
+    packageCertSha256?: string;
+  } = {}
+): ReceiverBankOption {
+  const option: ReceiverBankOption = {
     receiver_bank_id: bankProfileId,
     bank_profile_id: bankProfileId,
     display_name: displayName,
+    logo_asset_key: bankLogoAssetKey(bankProfileId),
+    selectable: true,
+    supported_roles: ['sender_bank', 'receiver_bank'],
+    runtime_capture_status: options.runtimeCaptureStatus ?? 'observed',
+    runtime_verified: options.runtimeVerified ?? false,
+    package_name: options.packageName ?? bankPackageName(bankProfileId),
+    package_cert_sha256: options.packageCertSha256 ?? 'documented_unknown',
     status: 'review_required_beta',
     review_only: true,
     detection_supported: true,
@@ -1154,6 +1189,47 @@ function receiverBank(bankProfileId: string, displayName: string): ReceiverBankO
     auto_confirm_enabled: false,
     official_bank_confirmation: false
   };
+  assignIfDefined(option, 'runtime_verified_by', options.runtimeVerifiedBy);
+  assignIfDefined(option, 'runtime_verified_at', options.runtimeVerifiedAt);
+  return option;
+}
+
+function bankLogoAssetKey(bankProfileId: string): string {
+  switch (bankProfileId) {
+    case 'sber_ru':
+      return 'ic_bank_sberbank';
+    case 'tbank_ru':
+      return 'ic_bank_tbank';
+    case 'vtb_ru':
+      return 'ic_bank_vtb';
+    case 'alfa_ru':
+      return 'ic_bank_alfa';
+    case 'gazprombank_ru':
+      return 'ic_bank_gazprombank';
+    case 'ozon_bank':
+      return 'ic_bank_ozon';
+    default:
+      return 'ic_bank_unknown';
+  }
+}
+
+function bankPackageName(bankProfileId: string): string {
+  switch (bankProfileId) {
+    case 'sber_ru':
+      return 'ru.sberbankmobile';
+    case 'tbank_ru':
+      return 'com.idamob.tinkoff.android';
+    case 'vtb_ru':
+      return 'ru.vtb24.mobilebanking.android';
+    case 'alfa_ru':
+      return 'ru.alfabank.mobile.android';
+    case 'gazprombank_ru':
+      return 'ru.gazprombank.android.mobilebank.app';
+    case 'ozon_bank':
+      return 'ru.ozon.fintech.finance';
+    default:
+      return 'documented_unknown';
+  }
 }
 
 function payerLauncher(

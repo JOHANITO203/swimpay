@@ -8,6 +8,8 @@ generated_at: 2026-05-12T20:05:00+03:00
 - Created `design/ASSET_REGISTRY.md`.
 - Added premium token primitives for elevation, icon size, component size, tones and gradients.
 - Added static Android visual guardrail tests.
+- Aligned Android runtime brand away from generated Material `Water` marks.
+- Wired safe hardcoded Google colors, button dimensions/radius/gradients, selected tones and card elevations to premium tokens.
 - Documented screenshot testing gap and manual QA protocol.
 
 ## Validation
@@ -21,6 +23,16 @@ generated_at: 2026-05-12T20:05:00+03:00
 - Android targeted visual JVM test: passed.
 - Android `:app:testDebugUnitTest`: passed.
 - Android `:app:assembleDebug`: passed.
+- Follow-up validation repeated after Android brand/token wiring:
+  - `npm run android:doctor`: passed.
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm test`: passed, 77 files / 672 tests.
+  - `npm run build`: passed.
+  - `docker compose --env-file .env.example -f infra/docker-compose.yml config`: passed.
+  - Android targeted visual JVM test: passed.
+  - Android `:app:testDebugUnitTest`: passed.
+  - Android `:app:assembleDebug`: passed.
 
 ## Not Completed
 
@@ -34,7 +46,7 @@ generated_at: 2026-05-12T20:05:00+03:00
 
 - No `/design/reference` source images exist.
 - No deterministic screenshot test dependency is configured.
-- SwimPay brand still has multiple runtime renderings.
+- SwimPay brand still has distinct web/checkout renderings; Android Compose is now partially aligned through official launcher asset usage.
 
 ## Next Recommended Sprint
 

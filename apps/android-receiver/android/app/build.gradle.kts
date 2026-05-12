@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("io.github.takahirom.roborazzi")
 }
 
 val swimpayBackendBaseUrl = providers.gradleProperty("swimpayBackendBaseUrl")
@@ -54,6 +55,12 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -66,6 +73,7 @@ android {
 
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    testImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material:material-icons-extended")
@@ -81,7 +89,18 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.46.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.46.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-junit-rule:1.46.1")
+    testImplementation("org.robolectric:robolectric:4.15.1")
     testImplementation("junit:junit:4.13.2")
+}
+
+roborazzi {
+    outputDir.set(file("src/test/snapshots"))
 }
 
 tasks.withType<Test>().configureEach {

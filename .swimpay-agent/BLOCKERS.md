@@ -1,4 +1,4 @@
-# Blockers
+﻿# Blockers
 
 ## Visual Quality Gate / Android Premium Design System
 
@@ -7,9 +7,11 @@
 - Resolved locally: `design/ASSET_REGISTRY.md` now defines official Android launcher assets, bank icon scope, generated runtime marks and forbidden duplicate asset rules.
 - Resolved locally: premium Android tokens now include centralized elevation, icon sizes, component sizes, tone colors and gradients.
 - Resolved locally: static Android visual guardrail tests now prevent unregistered runtime SwimPay/logo resources and verify token primitives exist.
-- Remaining visual QA blocker: no Paparazzi/Roborazzi/Compose screenshot testing dependency is configured yet.
-- Remaining visual QA blocker: no golden screenshots were recorded in this sprint.
-- Remaining brand blocker: Android Compose, hosted checkout and web dashboard still render distinct generated SwimPay marks; future polish must align them to the official asset registry.
+- Resolved locally: Android runtime brand surfaces no longer use generated Material `Water` icons as the SwimPay mark.
+- Resolved locally: safe hardcoded button, Google, selected-tone and card-elevation values are now wired to premium tokens with regression tests.
+- Resolved locally: Roborazzi Compose screenshot testing is configured for Android Merchant premium surfaces.
+- Resolved locally: Android golden baselines are recorded and verified locally.
+- Remaining brand blocker: hosted checkout and web dashboard still render distinct generated SwimPay marks; future polish must align them to the official asset registry.
 - No real bank notification processing, auto-confirmation, webhook semantic change or payment state change was made.
 
 ## Review Action Actor Identity Contract
@@ -87,7 +89,7 @@
 - Resolved locally: manual confirmation marks active amount leases `used`; merchant rejection releases them.
 - Resolved locally: checkout route discovery and selection consume `bank_route_certifications`.
 - Resolved locally: package-validation-pending and disabled bank certifications are blocked before signal parsing/review creation.
-- Resolved locally: Ozon remains review-only/package-validation-pending and is not enabled for runtime capture.
+- Resolved locally: Ozon Bank is operator runtime-verified for selectable/manual-review-only use; auto-confirmation remains disabled.
 - Resolved locally: worker idempotency ledger wraps webhook delivery attempts and no-notification fallback creation.
 - Full validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, replay, matching, privacy and webhook scripts.
 - P0-WIRE-1 code blocker: none known.
@@ -118,7 +120,7 @@
 - Resolved locally: Ozon Bank is integrated through profile/registry as review-only with exact Android package validation pending.
 - Validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, full Android JVM tests and Android debug APK build.
 - Remaining blocker before real notification capture: run the synthetic staging SDK/checkout/manual-review/final-webhook rehearsal after redeploy and migration `015_no_notification_fallback_and_ozon_bank.sql`.
-- Remaining blocker before Ozon runtime capture: exact package name/certificate must be validated on a consenting device.
+- Resolved locally: Ozon Bank package capability is operator runtime-verified; certificate fingerprint remains documented_unknown and auto-confirmation remains disabled.
 - Not executed: real bank notification capture, public production deployment, auto-confirmation, LLM payment decisions, SMS, Accessibility, scraping, `QUERY_ALL_PACKAGES` or broad package enumeration.
 
 ## HARDEN-REAL-1 quality blockers
@@ -695,6 +697,14 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Native Android bank launcher runtime remains outside this refactor.
 - Real bank notification testing remains out of scope.
 
+## Android Visual Golden Baselines / Brand Unification
+
+- No critical local blocker found for Roborazzi debug golden baselines.
+- Golden coverage currently includes Dashboard, Review list, Review detail, Receiver Health, Moyens de réception, Developer Integration and Mode confirmation.
+- Hosted checkout browser screenshot baselines are now automated locally with Chrome headless.
+- Web dashboard brand remains intentionally frozen/secondary and still has a separate generated `S` mark.
+- No real bank notification testing, payment runtime change, webhook change or auto-confirmation was introduced.
+
 ## Route Readiness / Soft Disable
 
 - No critical local blocker remains.
@@ -730,6 +740,6 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 ## Android Merchant Polish Static Data Cleanup
 
 - No targeted Android Merchant blocker remains.
-- Full repository validation still pending for this polish bundle.
+- Full repository validation passed locally during the visual/Ozon polish bundle.
 - Receiver Health can only show exact backend receiver fields once the backend exposes a complete `receiver_health` contract to the app; until then unknown values are shown as `À vérifier` / `À configurer`, not fake values.
 - Real bank notification testing remains out of scope.

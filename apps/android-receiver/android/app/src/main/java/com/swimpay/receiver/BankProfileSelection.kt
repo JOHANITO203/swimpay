@@ -17,6 +17,7 @@ data class ReceiverBankProfileSelection(
             verificationStatus == BankPackageVerificationStatus.VERIFIED &&
             packageName != "TO_VERIFY" &&
             packageCertSha256 != "TO_VERIFY" &&
+            packageCertSha256 != "documented_unknown" &&
             !packageName.contains("synthetic", ignoreCase = true) &&
             !packageCertSha256.contains("synthetic", ignoreCase = true)
     }
@@ -78,7 +79,14 @@ object ReceiverBankProfileSelectionDefaults {
             reviewOnlyProfile("tbank_ru", "Tinkoff / T-Bank"),
             reviewOnlyProfile("vtb_ru", "VTB"),
             reviewOnlyProfile("alfa_ru", "Alfa-Bank"),
-            reviewOnlyProfile("gazprombank_ru", "Gazprombank")
+            reviewOnlyProfile("gazprombank_ru", "Gazprombank"),
+            reviewOnlyProfile(
+                bankProfileId = "ozon_bank",
+                displayName = "Ozon Банк",
+                packageName = "ru.ozon.fintech.finance",
+                packageCertSha256 = "documented_unknown",
+                verificationStatus = BankPackageVerificationStatus.VERIFIED
+            )
         )
     }
 
@@ -111,14 +119,17 @@ object ReceiverBankProfileSelectionDefaults {
     private fun reviewOnlyProfile(
         bankProfileId: String,
         displayName: String,
-        selected: Boolean = false
+        selected: Boolean = false,
+        packageName: String = "TO_VERIFY",
+        packageCertSha256: String = "TO_VERIFY",
+        verificationStatus: BankPackageVerificationStatus = BankPackageVerificationStatus.TO_VERIFY
     ): ReceiverBankProfileSelection {
         return ReceiverBankProfileSelection(
             bankProfileId = bankProfileId,
             displayName = displayName,
-            packageName = "TO_VERIFY",
-            packageCertSha256 = "TO_VERIFY",
-            verificationStatus = BankPackageVerificationStatus.TO_VERIFY,
+            packageName = packageName,
+            packageCertSha256 = packageCertSha256,
+            verificationStatus = verificationStatus,
             selected = selected,
             reviewOnly = true,
             syntheticDebugOnly = false

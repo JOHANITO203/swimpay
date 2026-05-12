@@ -200,7 +200,7 @@ private fun LocalSystemCard(state: PremiumLocalSystemUiState, modifier: Modifier
     Surface(
         modifier.height(96.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(28.dp)),
         color = PremiumColors.Surface,
-        shadowElevation = 3.dp,
+        shadowElevation = PremiumElevation.Card,
         shape = RoundedCornerShape(28.dp)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.Center) {
@@ -285,7 +285,7 @@ private fun RecentPaymentRow(amount: String, detail: String) {
     Surface(
         Modifier.fillMaxWidth().height(88.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(32.dp)),
         color = PremiumColors.Surface,
-        shadowElevation = 3.dp,
+        shadowElevation = PremiumElevation.Card,
         shape = RoundedCornerShape(32.dp)
     ) {
         Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -704,6 +704,7 @@ private fun bankIconResource(bankProfileId: String): Int? {
         "vtb_ru" -> R.drawable.ic_bank_vtb
         "alfa_ru" -> R.drawable.ic_bank_alfa
         "gazprombank_ru" -> R.drawable.ic_bank_gazprombank
+        "ozon_bank" -> R.drawable.ic_bank_ozon
         else -> null
     }
 }
@@ -715,7 +716,7 @@ private fun bankProfileIdFromDisplay(value: String): String? {
 }
 
 @Composable
-private fun PremiumBankLogo(
+fun PremiumBankLogo(
     bankProfileId: String,
     displayName: String,
     size: Dp = 46.dp,

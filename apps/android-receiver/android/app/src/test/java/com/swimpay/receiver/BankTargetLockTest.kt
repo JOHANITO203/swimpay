@@ -18,7 +18,8 @@ class BankTargetLockTest {
                 "com.idamob.tinkoff.android",
                 "ru.vtb24.mobilebanking.android",
                 "ru.alfabank.mobile.android",
-                "ru.gazprombank.android.mobilebank.app"
+                "ru.gazprombank.android.mobilebank.app",
+                "ru.ozon.fintech.finance"
             ),
             BankTargetLock.supportedTargets.map { it.packageName }
         )
@@ -47,7 +48,7 @@ class BankTargetLockTest {
         )
 
         assertEquals(
-            listOf("Sberbank", "T-Bank", "VTB", "Alfa-Bank", "Gazprombank"),
+            listOf("Sberbank", "T-Bank", "VTB", "Alfa-Bank", "Gazprombank", "Ozon Банк"),
             states.map { it.target.displayName }
         )
         assertEquals(BankTargetVisibleStatus.ENABLED, states.first { it.bankProfileId == "sber_ru" }.visibleStatus)

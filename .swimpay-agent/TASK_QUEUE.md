@@ -6,6 +6,18 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+The current visual follow-up is OZON-BANK-RUNTIME-VERIFIED + BANK-LOGO-VISIBILITY.
+
+- [x] `remove_false_visual_blockers` - status: completed - source: `.swimpay-agent/BLOCKERS.md`
+- [x] `android_goldens_receiving_methods` - status: completed_verified - source: `.swimpay-agent/ANDROID_GOLDEN_SCREENSHOT_TEST_REPORT.md`
+- [x] `android_goldens_developer_integration` - status: completed_verified - source: `.swimpay-agent/ANDROID_GOLDEN_SCREENSHOT_TEST_REPORT.md`
+- [x] `android_goldens_confirmation_mode` - status: completed_verified - source: `.swimpay-agent/ANDROID_GOLDEN_SCREENSHOT_TEST_REPORT.md`
+- [x] `ozon_bank_runtime_verified_contract` - status: completed_targeted_validated - source: `.swimpay-agent/OZON_BANK_RUNTIME_VERIFIED_REPORT.md`
+- [x] `bank_logo_visibility_checkout_android` - status: completed_targeted_validated - source: `.swimpay-agent/BANK_LOGO_VISIBILITY_REPORT.md`
+- [ ] `staging_apply_021_and_smoke` - status: pending_operator_vps_migration - source: `.swimpay-agent/NEXT_ACTION.md`
+
+## Previous Queue
+
 The current sprint is MERCHANT-INTELLIGENCE-7. It stabilizes Android merchant notification listening, Receiver health, redacted local observations, no-notification fallback reviews and merchant action notifications.
 
 - [x] `merchant_intelligence_audit` - status: completed_with_findings - source: `.swimpay-agent/MERCHANT_INTELLIGENCE_AUDIT.md`
@@ -469,7 +481,10 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 
 ## Recently Completed / Blocked
 
-- [x] `visual_quality_gate_android_premium_design_system` - status: completed_static_gate_added_screenshot_automation_pending - source: `.swimpay-agent/VISUAL_QUALITY_GATE_CLOSEOUT.md`
+- [x] `visual_quality_gate_android_premium_design_system` - status: completed_static_gate_and_token_followup_added_screenshot_automation_pending - source: `.swimpay-agent/VISUAL_QUALITY_GATE_CLOSEOUT.md`
+- [x] `android_visual_golden_screenshot_roborazzi` - status: completed_debug_baselines_recorded_and_verified - source: `.swimpay-agent/ANDROID_GOLDEN_SCREENSHOT_TEST_REPORT.md`
+- [x] `hosted_checkout_browser_visual_baselines` - status: completed_chrome_headless_baselines_recorded_and_verified - source: `.swimpay-agent/CHECKOUT_BROWSER_VISUAL_BASELINE_REPORT.md`
+- [ ] `android_visual_golden_remaining_surfaces` - status: recommended_next_visual_sprint - source: `.swimpay-agent/VISUAL_GOLDEN_BASELINE_CLOSEOUT.md`
 - [x] `android_merchant_polish_static_data_cleanup` - status: completed_targeted_validation_passed - source: `.swimpay-agent/ANDROID_MERCHANT_POLISH_CLOSEOUT.md`
 - [x] `review_actions_payment_state_machine_fix` - status: completed_pending_staging_redeploy - source: `.swimpay-agent/REVIEW_ACTION_STATE_MACHINE_CLOSEOUT.md`
 - [x] `no_notification_fallback_runtime_wiring` - status: completed_with_android_gradle_memory_blocker - source: `.swimpay-agent/NO_NOTIFICATION_FALLBACK_RUNTIME_WIRING_REPORT.md`

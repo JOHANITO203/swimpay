@@ -1,5 +1,6 @@
 package com.swimpay.receiver.ui.premium
 
+import com.swimpay.receiver.R
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -35,7 +36,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.SignalWifiOff
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Water
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -95,7 +96,7 @@ fun PremiumTopChrome(profileInitials: String = "S.") {
             Modifier.size(26.dp).background(PremiumColors.Navy, RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Water, null, tint = PremiumColors.Cyan, modifier = Modifier.size(16.dp))
+            SwimPayWavesMark(Modifier.size(PremiumIconSize.Small), tint = PremiumColors.Cyan)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Surface(Modifier.size(34.dp), shape = CircleShape, color = PremiumColors.Surface, shadowElevation = 2.dp) {
@@ -205,7 +206,8 @@ fun SwimPayLogo(markSize: Dp = 52.dp) {
             Modifier.size(markSize).background(PremiumColors.Navy, RoundedCornerShape((markSize.value / 4).dp)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Water, null, tint = PremiumColors.Cyan, modifier = Modifier.size(markSize * 0.5f))
+            // Keeps the runtime brand tied to the registered official launcher asset.
+            Icon(painterResource(R.mipmap.ic_launcher), null, tint = Color.Unspecified, modifier = Modifier.size(markSize * 0.64f))
         }
         Spacer(Modifier.height(12.dp))
         Text(
@@ -216,6 +218,31 @@ fun SwimPayLogo(markSize: Dp = 52.dp) {
             color = PremiumColors.Ink,
             fontSize = 22.sp,
             fontWeight = FontWeight.Black
+        )
+    }
+}
+
+@Composable
+fun SwimPayWavesMark(modifier: Modifier = Modifier, tint: Color = PremiumColors.Cyan) {
+    Canvas(modifier) {
+        val strokeWidth = size.minDimension * 0.18f
+        val style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        val left = size.width * 0.2f
+        val right = size.width * 0.8f
+        val top = size.height * 0.34f
+        val middle = size.height * 0.5f
+        val bottom = size.height * 0.66f
+        drawLine(tint, Offset(left, top), Offset(right, top), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+        drawLine(tint, Offset(left, middle), Offset(right, middle), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+        drawLine(tint, Offset(left, bottom), Offset(right, bottom), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+        drawArc(
+            color = tint,
+            startAngle = 90f,
+            sweepAngle = 180f,
+            useCenter = false,
+            topLeft = Offset(size.width * 0.08f, size.height * 0.22f),
+            size = Size(size.width * 0.32f, size.height * 0.56f),
+            style = style
         )
     }
 }
@@ -290,12 +317,12 @@ fun PremiumGoogleIcon(modifier: Modifier = Modifier.size(26.dp)) {
         val arcStyle = Stroke(width = strokeWidth, cap = StrokeCap.Round)
         val inset = strokeWidth / 2f
         val arcBounds = Size(size.width - strokeWidth, size.height - strokeWidth)
-        drawArc(Color(0xFF4285F4), startAngle = -35f, sweepAngle = 105f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
-        drawArc(Color(0xFF34A853), startAngle = 70f, sweepAngle = 70f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
-        drawArc(Color(0xFFFBBC05), startAngle = 140f, sweepAngle = 75f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
-        drawArc(Color(0xFFEA4335), startAngle = 215f, sweepAngle = 110f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
+        drawArc(ExternalBrandTokens.Google.Blue, startAngle = -35f, sweepAngle = 105f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
+        drawArc(ExternalBrandTokens.Google.Green, startAngle = 70f, sweepAngle = 70f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
+        drawArc(ExternalBrandTokens.Google.Yellow, startAngle = 140f, sweepAngle = 75f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
+        drawArc(ExternalBrandTokens.Google.Red, startAngle = 215f, sweepAngle = 110f, useCenter = false, topLeft = Offset(inset, inset), size = arcBounds, style = arcStyle)
         drawLine(
-            Color(0xFF4285F4),
+            ExternalBrandTokens.Google.Blue,
             start = Offset(size.width * 0.52f, size.height * 0.52f),
             end = Offset(size.width * 0.88f, size.height * 0.52f),
             strokeWidth = strokeWidth,
@@ -313,15 +340,15 @@ fun PremiumPrimaryButton(
 ) {
     val buttonModifier = modifier
         .fillMaxWidth()
-        .height(58.dp)
-        .clip(RoundedCornerShape(22.dp))
+        .height(PremiumComponentSize.ButtonHeight)
+        .clip(RoundedCornerShape(PremiumRadius.Button))
         .background(
             if (enabled) {
-                Brush.linearGradient(listOf(PremiumColors.Navy, Color(0xFF101C34)))
+                Brush.linearGradient(PremiumBrandGradient.PrimaryDeep)
             } else {
-                Brush.linearGradient(listOf(Color(0xFFD7E3EA), Color(0xFFC8D6DF)))
+                Brush.linearGradient(PremiumBrandGradient.Disabled)
             },
-            RoundedCornerShape(22.dp)
+            RoundedCornerShape(PremiumRadius.Button)
         )
     Box(
         if (enabled) buttonModifier.premiumTap(onClick) else buttonModifier,
@@ -336,10 +363,10 @@ fun PremiumOutlineButton(text: String, modifier: Modifier = Modifier, onClick: (
     Box(
         modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(PremiumColors.Surface, RoundedCornerShape(22.dp))
-            .border(1.dp, PremiumColors.Line, RoundedCornerShape(22.dp))
+            .height(PremiumComponentSize.ButtonHeight)
+            .clip(RoundedCornerShape(PremiumRadius.Button))
+            .background(PremiumColors.Surface, RoundedCornerShape(PremiumRadius.Button))
+            .border(1.dp, PremiumColors.Line, RoundedCornerShape(PremiumRadius.Button))
             .premiumTap(onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -352,11 +379,11 @@ fun PremiumBlueButton(text: String, modifier: Modifier = Modifier, onClick: () -
     Box(
         modifier
             .fillMaxWidth()
-            .height(58.dp)
-            .clip(RoundedCornerShape(22.dp))
+            .height(PremiumComponentSize.ButtonHeight)
+            .clip(RoundedCornerShape(PremiumRadius.Button))
             .background(
-                Brush.linearGradient(listOf(PremiumColors.ElectricBlue, PremiumColors.Blue)),
-                RoundedCornerShape(22.dp)
+                Brush.linearGradient(PremiumBrandGradient.Primary),
+                RoundedCornerShape(PremiumRadius.Button)
             )
             .premiumTap(onClick),
         contentAlignment = Alignment.Center
@@ -399,7 +426,7 @@ enum class StatusTone {
 
 @Composable
 fun CircleAction(icon: ImageVector, onClick: () -> Unit = {}) {
-    Surface(Modifier.size(42.dp).premiumTap(onClick), shape = CircleShape, color = PremiumColors.Surface, shadowElevation = 3.dp) {
+    Surface(Modifier.size(42.dp).premiumTap(onClick), shape = CircleShape, color = PremiumColors.Surface, shadowElevation = PremiumElevation.Card) {
         Icon(icon, null, tint = PremiumColors.Navy, modifier = Modifier.padding(10.dp))
     }
 }

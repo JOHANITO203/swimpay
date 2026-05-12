@@ -140,7 +140,11 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(46.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(18.dp)).border(1.dp, PremiumColors.Line, RoundedCornerShape(18.dp)))
+                PremiumBankLogo(
+                    bankProfileId = reviewBankProfileId(item.bank),
+                    displayName = item.bank,
+                    size = 46.dp
+                )
                 Column(Modifier.weight(1f).padding(start = 18.dp)) {
                     Text(item.amount, color = PremiumColors.Ink, fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Black)
                     Text(item.bank, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -155,6 +159,18 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
                 Text(item.reasons.firstOrNull() ?: "Validation requise", color = PremiumColors.Ink, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+private fun reviewBankProfileId(value: String): String {
+    return when {
+        value.contains("sber", ignoreCase = true) -> "sber_ru"
+        value.contains("t-bank", ignoreCase = true) || value.contains("tinkoff", ignoreCase = true) -> "tbank_ru"
+        value.contains("vtb", ignoreCase = true) -> "vtb_ru"
+        value.contains("alfa", ignoreCase = true) -> "alfa_ru"
+        value.contains("gazprom", ignoreCase = true) -> "gazprombank_ru"
+        value.contains("ozon", ignoreCase = true) -> "ozon_bank"
+        else -> "unknown"
     }
 }
 

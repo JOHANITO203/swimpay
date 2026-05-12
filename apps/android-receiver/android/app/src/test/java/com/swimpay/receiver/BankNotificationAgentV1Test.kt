@@ -37,11 +37,11 @@ class BankNotificationAgentV1Test {
     }
 
     @Test
-    fun staticProfilesCoverFiveBanksAndRejectAutoConfirmProfiles() {
+    fun staticProfilesCoverRuntimeVerifiedBanksAndRejectAutoConfirmProfiles() {
         val profiles = StaticBankProfileRegistry.v1Profiles()
 
         assertEquals(
-            setOf("sber_ru", "tbank_ru", "vtb_ru", "alfa_ru", "gazprombank_ru"),
+            setOf("sber_ru", "tbank_ru", "vtb_ru", "alfa_ru", "gazprombank_ru", "ozon_bank"),
             profiles.map { it.bankProfileId }.toSet()
         )
         assertTrue(profiles.all { it.version == BankProfileVersion("intelligence-v1") })

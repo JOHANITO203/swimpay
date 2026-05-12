@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.VerifiedUser
-import androidx.compose.material.icons.filled.Water
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -97,7 +96,9 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                PremiumIconTile(Icons.Default.Water, 78.dp)
+                Box(Modifier.size(78.dp).background(PremiumColors.Navy, RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {
+                    SwimPayWavesMark(Modifier.size(PremiumIconSize.Large), tint = PremiumColors.Cyan)
+                }
                 Spacer(Modifier.height(26.dp))
                 Text("Configuration initiale", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
                 Text("Commencer", color = PremiumColors.SoftText, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
@@ -382,7 +383,7 @@ private fun ReceivingMethodDetailsStep(
                     .padding(bottom = 10.dp)
                     .premiumTap { selectedBankId = bank.bankProfileId },
                 radius = 24.dp,
-                color = if (selected) Color(0xFFF7FEFE) else PremiumColors.Surface
+                color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
             ) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
@@ -661,7 +662,7 @@ private fun BankSearchStatusCard(
         )
     }
 
-    PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = Color(0xFFF7FEFE)) {
+    PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumToneColors.Selected.background) {
         Row(
             Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -732,7 +733,7 @@ private fun BankRow(
                 if (selectable && detected) onToggleBank(bank.bankProfileId)
             },
         radius = 28.dp,
-        color = if (selected) Color(0xFFF7FEFE) else PremiumColors.Surface
+        color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
     ) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(50.dp).background(PremiumColors.Mint, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
@@ -766,7 +767,7 @@ private fun ReceivingMethodOption(
     PremiumCard(
         Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap(onClick),
         radius = 30.dp,
-        color = if (selected) Color(0xFFF7FEFE) else PremiumColors.Surface
+        color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
     ) {
         Row(Modifier.padding(22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             Box(Modifier.size(62.dp).background(PremiumColors.Mint, RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {

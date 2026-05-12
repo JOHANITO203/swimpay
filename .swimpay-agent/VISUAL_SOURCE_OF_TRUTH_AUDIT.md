@@ -1,10 +1,10 @@
 # Visual Source Of Truth Audit
 
-generated_at: 2026-05-12T20:05:00+03:00
+generated_at: 2026-05-12T21:12:00+03:00
 
 ## Result
 
-The current repository has no `design/` source of truth and no versioned visual reference screenshots. Android runtime assets exist, but brand rendering is split between launcher WebP/adaptive resources, Compose-drawn logo, web CSS brand mark and checkout inline SVG.
+The repository now has an asset registry and initial Android golden baselines. Android launcher resources remain the official asset family. Runtime brand rendering is still split across Android Compose, hosted checkout and the secondary web dashboard, but the hosted checkout has been aligned to the Android compact mark direction.
 
 ## Asset Classification
 
@@ -17,17 +17,17 @@ The current repository has no `design/` source of truth and no versioned visual 
 | `drawable-nodpi/ic_bank_*.png` | `official_asset`, `runtime_used`, `unsafe_to_delete` | Android bank manager icons. Provenance should be documented before broader reuse. |
 | `drawable/ic_launcher_foreground.xml` | `duplicated_asset`, `deprecated_asset`, `safe_to_delete` candidate | Not currently referenced by adaptive icon XML. |
 | `drawable/ic_launcher_background.xml` | `deprecated_asset`, `safe_to_delete` candidate | Not currently referenced by adaptive icon XML. |
-| `PremiumComponents.kt::SwimPayLogo` | `generated_asset`, `runtime_used` | Compose mark does not match launcher waves exactly. |
-| `apps/web/src/ui/Components.ts::SwimPayBrand` | `generated_asset`, `runtime_used` | Web dashboard is secondary/frozen. |
-| `CheckoutScreen.ts::swimPayWavesSvg` | `generated_asset`, `runtime_used` | Checkout brand is closer to waves, but still inline-generated. |
+| `PremiumComponents.kt::SwimPayLogo` | `official_asset_consumer`, `runtime_used` | Renders the official launcher asset with `painterResource(R.mipmap.ic_launcher)`. |
+| `PremiumComponents.kt::SwimPayWavesMark` | `generated_runtime_mark`, `runtime_used` | Compact token-driven mark for small Android chrome; not a new file asset. |
+| `apps/web/src/ui/Components.ts::SwimPayBrand` | `generated_runtime_mark`, `runtime_used`, `secondary_surface` | Web dashboard is secondary/frozen. |
+| `CheckoutScreen.ts::swimPayWavesSvg` | `generated_runtime_mark`, `runtime_used`, `aligned_now` | Inline mark aligned to Android compact waves geometry and Android premium tokens. |
 
 ## Visual Risks
 
-- SwimPay brand has multiple implementations: Android launcher waves, Android Compose Material `Water`, web `S`, checkout waves.
-- Premium tokens exist but do not cover all radius/elevation/icon/status states.
-- No screenshot/golden baseline prevents subtle visual regression.
+- Web dashboard `SwimPayBrand` remains visually separate and should stay frozen until prioritized.
+- Golden screenshot coverage currently protects four Android screens only.
+- Hosted checkout still needs browser screenshot baselines before further visual icon polish.
 
 ## Decision
 
-No asset deletion was performed in this sprint. The first lock is documentation + static tests. Cleanup and logo unification should be handled in a dedicated visual polish sprint with screenshots.
-
+No asset deletion was performed. No new logo/icon resource file was created.

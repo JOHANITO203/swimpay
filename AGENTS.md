@@ -185,6 +185,17 @@ Backend decides.
 
 Never implement final payment confirmation on Android.
 
+## Android build rule
+
+For operator/device testing, prefer staging-connected debug-signed builds.
+
+Use:
+
+- `npm run android:assemble:staging` for the standard debug-signed staging APK;
+- `npm run android:assemble:debug-vps` only when an actual `debug` build must point to `https://staging.swimpay.pro`.
+
+Do not hand off a plain local debug APK for VPS/staging tests unless the user explicitly asks for a local-backend build.
+
 ## Android merchant account truth
 
 The current Android merchant app account flow is:

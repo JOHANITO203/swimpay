@@ -64,7 +64,8 @@ object BankTargetLock {
         SupportedBankTarget("tbank_ru", "T-Bank", "com.idamob.tinkoff.android"),
         SupportedBankTarget("vtb_ru", "VTB", "ru.vtb24.mobilebanking.android"),
         SupportedBankTarget("alfa_ru", "Alfa-Bank", "ru.alfabank.mobile.android"),
-        SupportedBankTarget("gazprombank_ru", "Gazprombank", "ru.gazprombank.android.mobilebank.app")
+        SupportedBankTarget("gazprombank_ru", "Gazprombank", "ru.gazprombank.android.mobilebank.app"),
+        SupportedBankTarget("ozon_bank", "Ozon Банк", "ru.ozon.fintech.finance")
     )
 
     private val supportedPackages: Set<String> = supportedTargets.map { it.packageName }.toSet()

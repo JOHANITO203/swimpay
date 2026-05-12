@@ -503,11 +503,19 @@ class AndroidMerchantVisualArchitectureTest {
         val xxhdpiIcon = File("src/main/res/mipmap-xxhdpi/ic_launcher.webp")
         val xxhdpiForeground = File("src/main/res/mipmap-xxhdpi/ic_launcher_foreground.webp")
         val launcherBackground = File("src/main/res/values/colors.xml")
+        val notificationIcon = File("src/main/res/drawable/ic_notification_small.xml")
+        val merchantReviewNotifier = File("src/main/java/com/swimpay/receiver/AndroidMerchantReviewNotifier.kt").readText()
+        val debugSyntheticSource = File("src/main/java/com/swimpay/receiver/DebugSyntheticNotificationSource.kt").readText()
 
         assertTrue(manifest.contains("""android:icon="@mipmap/ic_launcher""""))
         assertTrue(manifest.contains("""android:roundIcon="@mipmap/ic_launcher_round""""))
         assertTrue(adaptiveIcon.exists())
         assertTrue(adaptiveRoundIcon.exists())
+        assertTrue(notificationIcon.exists())
+        assertTrue(merchantReviewNotifier.contains("R.drawable.ic_notification_small"))
+        assertTrue(debugSyntheticSource.contains("R.drawable.ic_notification_small"))
+        assertFalse(merchantReviewNotifier.contains("android.R.drawable.ic_dialog_info"))
+        assertFalse(debugSyntheticSource.contains("android.R.drawable.stat_notify_more"))
         assertTrue(xxhdpiIcon.exists())
         assertTrue(xxhdpiForeground.exists())
         assertTrue(launcherBackground.readText().contains("ic_launcher_background"))
@@ -568,6 +576,55 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(tokens.contains("TouchTarget = 48.dp"))
         assertTrue(tokens.contains("PrimaryDeep"))
         assertTrue(tokens.contains("Google"))
+    }
+
+    @Test
+    fun premiumRuntimeBrandUsesOfficialLauncherAssetInsteadOfGeneratedWaterMark() {
+        val components = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt").readText()
+        val onboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
+        val logoFunction = sourceFunction(components, "fun SwimPayLogo(")
+
+        assertTrue("runtime logo should render the official launcher asset", logoFunction.contains("painterResource(R.mipmap.ic_launcher)"))
+        assertFalse("runtime logo must not draw a generated Material water mark", logoFunction.contains("Icons.Default.Water"))
+        assertFalse("premium runtime brand surfaces must not draw a generated Material water mark", components.contains("Icons.Default.Water"))
+        assertFalse("premium onboarding brand surfaces must not draw a generated Material water mark", onboarding.contains("Icons.Default.Water"))
+        assertTrue("premium onboarding should reuse the shared waves mark", onboarding.contains("SwimPayWavesMark"))
+    }
+
+    @Test
+    fun premiumComponentsUseCentralVisualTokensForButtonsAndExternalBrands() {
+        val components = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt").readText()
+        val primaryButton = sourceFunction(components, "fun PremiumPrimaryButton(")
+        val outlineButton = sourceFunction(components, "fun PremiumOutlineButton(")
+        val blueButton = sourceFunction(components, "fun PremiumBlueButton(")
+        val googleIcon = sourceFunction(components, "fun PremiumGoogleIcon(")
+
+        listOf(primaryButton, outlineButton, blueButton).forEach { button ->
+            assertTrue("premium buttons must use shared height token", button.contains("PremiumComponentSize.ButtonHeight"))
+            assertTrue("premium buttons must use shared button radius token", button.contains("PremiumRadius.Button"))
+        }
+        assertTrue("primary button must use shared deep brand gradient", primaryButton.contains("PremiumBrandGradient.PrimaryDeep"))
+        assertTrue("blue button must use shared primary brand gradient", blueButton.contains("PremiumBrandGradient.Primary"))
+        assertTrue("disabled primary button must use shared disabled gradient", primaryButton.contains("PremiumBrandGradient.Disabled"))
+
+        assertTrue("Google icon blue must come from external brand tokens", googleIcon.contains("ExternalBrandTokens.Google.Blue"))
+        assertTrue("Google icon green must come from external brand tokens", googleIcon.contains("ExternalBrandTokens.Google.Green"))
+        assertTrue("Google icon yellow must come from external brand tokens", googleIcon.contains("ExternalBrandTokens.Google.Yellow"))
+        assertTrue("Google icon red must come from external brand tokens", googleIcon.contains("ExternalBrandTokens.Google.Red"))
+    }
+
+    @Test
+    fun premiumScreensUseSelectedToneAndElevationTokensForKnownHardcodes() {
+        val onboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
+        val components = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt").readText()
+        val dashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+
+        assertFalse("selected onboarding tone must use PremiumToneColors.Selected", onboarding.contains("Color(0xFFF7FEFE)"))
+        assertTrue(onboarding.contains("PremiumToneColors.Selected.background"))
+        assertFalse("known 3dp card elevations must use PremiumElevation.Card", components.contains("shadowElevation = 3.dp"))
+        assertFalse("known 3dp card elevations must use PremiumElevation.Card", dashboard.contains("shadowElevation = 3.dp"))
+        assertTrue(components.contains("shadowElevation = PremiumElevation.Card"))
+        assertTrue(dashboard.contains("shadowElevation = PremiumElevation.Card"))
     }
 
     private fun sourceFunction(source: String, signature: String): String {

@@ -20,16 +20,22 @@ import {
 } from './index.js';
 
 describe('checkout bank selection contracts', () => {
-  it('declares five review-only receiver bank options without auto-confirm implications', () => {
+  it('declares review-only receiver bank options with logo/runtime metadata and no auto-confirm implications', () => {
     expect(V1ReceiverBankOptions.map((bank) => bank.bank_profile_id)).toEqual([
       'sber_ru',
       'tbank_ru',
       'vtb_ru',
       'alfa_ru',
-      'gazprombank_ru'
+      'gazprombank_ru',
+      'ozon_bank'
     ]);
 
     for (const option of V1ReceiverBankOptions) {
+      expect(option.logo_asset_key).toMatch(/^ic_bank_/u);
+      expect(option.selectable).toBe(true);
+      expect(option.supported_roles).toEqual(['sender_bank', 'receiver_bank']);
+      expect(option.package_name).toBeTruthy();
+      expect(option.package_cert_sha256).toBeTruthy();
       expect(option.status).toBe('review_required_beta');
       expect(option.review_only).toBe(true);
       expect(option.detection_supported).toBe(true);
@@ -39,6 +45,17 @@ describe('checkout bank selection contracts', () => {
     }
 
     expect(getReceiverBankOption('sber_ru')?.display_name).toBe('Sberbank');
+    expect(getReceiverBankOption('ozon_bank')).toMatchObject({
+      display_name: 'Ozon Банк',
+      logo_asset_key: 'ic_bank_ozon',
+      runtime_capture_status: 'runtime_verified',
+      runtime_verified: true,
+      runtime_verified_by: 'operator',
+      package_name: 'ru.ozon.fintech.finance',
+      package_cert_sha256: 'documented_unknown',
+      auto_confirm_enabled: false,
+      official_bank_confirmation: false
+    });
     expect(getReceiverBankOption('unknown')).toBeNull();
   });
 
@@ -166,7 +183,13 @@ describe('checkout bank selection contracts', () => {
         android_explicit_activity_name: undefined
       }
     ]);
-    expect(getReceiverBankOption('ozon_bank')).toBeNull();
+    expect(getReceiverBankOption('ozon_bank')).toMatchObject({
+      selectable: true,
+      runtime_capture_status: 'runtime_verified',
+      runtime_verified: true,
+      auto_confirm_enabled: false,
+      official_bank_confirmation: false
+    });
     expect(getPayerBankLauncherOption('tbank_ru')?.deeplink_schemes).toContain('tbank');
     expect(getPayerBankLauncherOption('tbank_ru')).toMatchObject({
       android_package_hint: 'com.idamob.tinkoff.android',

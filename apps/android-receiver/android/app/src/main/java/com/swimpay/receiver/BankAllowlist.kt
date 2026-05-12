@@ -17,6 +17,7 @@ data class AllowedBankProfile(
     fun isTrustedForUpload(): Boolean {
         return verificationStatus == BankPackageVerificationStatus.VERIFIED &&
             packageName != "TO_VERIFY" &&
-            certSha256 != "TO_VERIFY"
+            certSha256 != "TO_VERIFY" &&
+            certSha256 != "documented_unknown"
     }
 }

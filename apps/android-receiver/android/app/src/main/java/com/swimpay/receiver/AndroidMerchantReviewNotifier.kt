@@ -21,7 +21,7 @@ class AndroidMerchantReviewNotifier(
 
         ensureChannel()
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_notification_small)
             .setContentTitle("Commande à vérifier")
             .setContentText("${review.amount} · commande à vérifier")
             .setStyle(

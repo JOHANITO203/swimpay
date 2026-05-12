@@ -17,7 +17,7 @@ class DebugSyntheticNotificationSource(
             val uniqueSuffix = (System.currentTimeMillis() % 100_000L).toInt()
             val notificationId = 10_000 + uniqueSuffix
             val notification = Notification.Builder(context, SyntheticNotificationConstants.CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_notify_more)
+                .setSmallIcon(R.drawable.ic_notification_small)
                 .setContentTitle("Поступление 137 ₽")
                 .setContentText("Перевод от <PERSON> <PHONE>. Коммент <REFERENCE>")
                 .setStyle(

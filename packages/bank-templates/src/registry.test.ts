@@ -75,7 +75,7 @@ describe('bank profile registry', () => {
     expect(profiles.every((profile) => profile.trustedApps.length === 1)).toBe(true);
   });
 
-  it('keeps Ozon Bank review-only until an exact Android package is validated', async () => {
+  it('keeps Ozon Bank runtime-verified but manual-review-only', async () => {
     const registry = await BankProfileRegistry.loadDefault();
     const ozon = registry.getProfile('ozon_bank');
 
@@ -86,9 +86,9 @@ describe('bank profile registry', () => {
       autoConfirmStatus: 'disabled'
     });
     expect(ozon?.trustedApps[0]).toMatchObject({
-      packageName: 'TO_VERIFY',
-      certSha256: 'TO_VERIFY',
-      verificationStatus: 'pending_verification'
+      packageName: 'ru.ozon.fintech.finance',
+      certSha256: 'documented_unknown',
+      verificationStatus: 'verified'
     });
     expect(registry.getRuntimeBehavior('ozon_bank')).toMatchObject({
       profileKnown: true,

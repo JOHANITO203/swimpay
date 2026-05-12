@@ -68,4 +68,19 @@ class BankProfileSelectionTest {
 
         assertFalse(syntheticVerified.isTrustedForProductionReady())
     }
+
+    @Test
+    fun ozonRuntimeVerifiedProfileRemainsReviewOnlyUntilCertificateIsDocumented() {
+        val ozon = ReceiverBankProfileSelectionDefaults.v1ReviewOnlyProfiles()
+            .first { it.bankProfileId == "ozon_bank" }
+            .copy(selected = true)
+
+        assertEquals("Ozon Банк", ozon.displayName)
+        assertEquals("ru.ozon.fintech.finance", ozon.packageName)
+        assertEquals("documented_unknown", ozon.packageCertSha256)
+        assertEquals(BankPackageVerificationStatus.VERIFIED, ozon.verificationStatus)
+        assertTrue(ozon.reviewOnly)
+        assertFalse(ozon.isTrustedForProductionReady())
+        assertTrue(ozon.toOnboardingProfile().reviewOnly)
+    }
 }
