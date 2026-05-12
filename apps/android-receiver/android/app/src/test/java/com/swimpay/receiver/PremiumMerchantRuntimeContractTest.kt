@@ -692,7 +692,8 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(banks.value.items.filter { it.status == "Non détectée" }.none { it.canActivate })
 
         val health = runtime.loadReceiverHealth(notificationAccessEnabled = false) as PremiumScreenState.Content<PremiumReceiverHealthUiState>
-        assertEquals("Action nécessaire", health.value.statusTitle)
+        assertEquals("Hors ligne", health.value.statusTitle)
+        assertTrue(health.value.rows.any { it.first == "État Receiver" && it.second == "Hors ligne" })
         assertTrue(health.value.rows.any { it.first == "Accès notifications" && it.second == "Action requise" })
         assertTrue(health.value.rows.any { it.first == "Banques surveillées" })
 

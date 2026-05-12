@@ -1,5 +1,35 @@
 # Next Action
 
+generated_at: 2026-05-12T07:00:00+03:00
+
+## Latest Merchant Intelligence Runtime
+
+Completed locally:
+
+1. Audited Android listener/sweep, backend heartbeat, fallback worker, review queue, local notification and privacy boundaries.
+2. Added typed `receiver_health` to heartbeat responses.
+3. Added Android `ReceiverRuntimeState` for merchant health UI.
+4. Required a locked receiving route before live listener/sweep extraction.
+5. Added TTL, deduplication and raw-value rejection to the redacted recent buffer.
+6. Updated no-notification fallback review labels and local notification copy.
+7. Added targeted backend and Android JVM tests.
+
+Next recommended action:
+
+1. Connect the merchant phone and perform ADB smoke on receiver health, review list and local notification.
+2. Check staging job-worker env values before fallback rehearsal.
+3. Redeploy staging if this branch is pushed.
+4. Rehearse a controlled checkout with receiver armed but without processing real bank notifications.
+
+Do not do:
+
+- Do not process real bank notifications.
+- Do not enable auto-confirmation.
+- Do not change `payment.confirmed` semantics.
+- Do not expose raw notification, PAN, phone, card or secrets.
+
+---
+
 generated_at: 2026-05-10T12:02:00+03:00
 
 ## Latest Checkout External Flow Repair

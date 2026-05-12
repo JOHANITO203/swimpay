@@ -309,7 +309,14 @@ describe('receiver device api', () => {
     expect(heartbeat.json()).toMatchObject({
       device_id: 'prod_receiver_01',
       status: 'active',
-      receiver_mode: 'active'
+      receiver_mode: 'active',
+      receiver_health: {
+        status: 'healthy',
+        notification_access: true,
+        listener_connected_recently: true,
+        encrypted_outbox_depth: 0,
+        supported_bank_routes_online: 1
+      }
     });
   });
 
@@ -601,6 +608,17 @@ describe('receiver device api', () => {
       server_time: '2026-05-02T11:00:00.000Z',
       receiver_mode: 'attention_required',
       active_payment_sessions_count: 0,
+      receiver_health: {
+        status: 'degraded',
+        notification_access: false,
+        listener_connected_recently: true,
+        last_heartbeat_at: '2026-05-02T11:00:00.000Z',
+        encrypted_outbox_depth: 75,
+        supported_bank_routes_online: 1,
+        device_key_attested: true,
+        app_integrity_recent: true,
+        clock_skew_ms: 0
+      },
       warnings: ['notification_access_disabled', 'queue_backlog_high'],
       required_actions: ['enable_notification_access', 'check_receiver_outbox']
     });

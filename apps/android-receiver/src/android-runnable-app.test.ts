@@ -484,7 +484,8 @@ describe('android device-side network smoke wiring', () => {
 
     expect(mainManifest).toContain('android.permission.POST_NOTIFICATIONS');
     expect(reviewNotifier).toContain('Commande à vérifier');
-    expect(reviewNotifier).toContain('validation manuelle requise');
+    expect(reviewNotifier).toContain('Aucun signal bancaire détecté');
+    expect(reviewNotifier).toContain('confirmez ou rejetez');
     expect(reviewNotifier).toContain('POST_NOTIFICATIONS');
     expect(merchantApp).toContain('notifyNewActionRequiredReviews');
     expect(`${reviewNotifier}\n${merchantApp}`).not.toMatch(/paymentConfirmed|autoConfirm|bank_confirmed/iu);

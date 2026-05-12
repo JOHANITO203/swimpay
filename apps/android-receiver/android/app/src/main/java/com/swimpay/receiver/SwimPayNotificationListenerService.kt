@@ -31,6 +31,9 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val runtimeConfig = ReceiverRuntimeConfigStore(this).load()
+        if (!runtimeConfig.activeIntentWindow.canSweep()) {
+            return
+        }
         if (!ReceiverBoundaries.isRuntimeNotificationAllowed(
                 packageName = sbn.packageName,
                 appPackageName = packageName,

@@ -2236,7 +2236,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       buildReceiverHeartbeatResponse({
         device,
         serverTime: heartbeatAt,
-        warnings: body.warnings ?? []
+        warnings: body.warnings ?? [],
+        queueLength: body.value.queue_length,
+        allowedBankProfileIds: body.value.allowed_bank_profile_ids
       })
     );
   });

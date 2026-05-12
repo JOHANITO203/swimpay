@@ -1,5 +1,14 @@
 package com.swimpay.receiver
 
+enum class ReceiverRuntimeState {
+    IDLE,
+    ARMED,
+    LISTENING,
+    DEGRADED,
+    OFFLINE,
+    MANUAL_CHECK_REQUIRED
+}
+
 data class ReceiverStatusState(
     val notificationAccessEnabled: Boolean,
     val listenerConnected: Boolean,
@@ -7,6 +16,7 @@ data class ReceiverStatusState(
     val trustedBanksCount: Int,
     val queueLength: Int,
     val backendReachable: Boolean,
+    val runtimeState: ReceiverRuntimeState,
     val warnings: List<String>
 )
 
@@ -35,7 +45,30 @@ class ReceiverStatusViewModel {
             trustedBanksCount = trustedBanksCount,
             queueLength = queueLength,
             backendReachable = backendReachable,
+            runtimeState = deriveRuntimeState(
+                notificationAccessEnabled = notificationAccessEnabled,
+                listenerConnected = listenerConnected,
+                allowedBanksCount = allowedBanksCount,
+                trustedBanksCount = trustedBanksCount,
+                queueLength = queueLength,
+                backendReachable = backendReachable
+            ),
             warnings = warnings
         )
+    }
+
+    private fun deriveRuntimeState(
+        notificationAccessEnabled: Boolean,
+        listenerConnected: Boolean,
+        allowedBanksCount: Int,
+        trustedBanksCount: Int,
+        queueLength: Int,
+        backendReachable: Boolean
+    ): ReceiverRuntimeState {
+        if (!backendReachable) return ReceiverRuntimeState.OFFLINE
+        if (!notificationAccessEnabled || !listenerConnected || allowedBanksCount == 0) return ReceiverRuntimeState.DEGRADED
+        if (allowedBanksCount > 0 && trustedBanksCount == 0) return ReceiverRuntimeState.DEGRADED
+        if (queueLength >= 50) return ReceiverRuntimeState.MANUAL_CHECK_REQUIRED
+        return ReceiverRuntimeState.LISTENING
     }
 }

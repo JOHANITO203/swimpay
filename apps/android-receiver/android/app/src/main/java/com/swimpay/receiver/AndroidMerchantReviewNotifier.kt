@@ -23,10 +23,10 @@ class AndroidMerchantReviewNotifier(
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Commande à vérifier")
-            .setContentText("${review.amount} · validation manuelle requise")
+            .setContentText("${review.amount} · commande à vérifier")
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("Aucun signal bancaire suffisant. Ouvrez votre banque, puis confirmez ou rejetez dans SwimPay.")
+                    .bigText("Aucun signal bancaire détecté. Vérifiez votre banque puis confirmez ou rejetez dans SwimPay.")
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)

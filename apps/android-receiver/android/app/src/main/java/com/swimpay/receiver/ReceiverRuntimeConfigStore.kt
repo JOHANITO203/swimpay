@@ -7,7 +7,8 @@ data class ReceiverRuntimeConfig(
     val merchantId: String,
     val paymentIntentActive: Boolean = false,
     val receiverArmed: Boolean = false,
-    val expectedPaymentProfilePresent: Boolean = false
+    val expectedPaymentProfilePresent: Boolean = false,
+    val receivingRouteLocked: Boolean = false
 ) {
     val enabledBankPackages: Set<String> = BankTargetLock.supportedTargets
         .filter { it.bankProfileId in enabledBankProfileIds }
@@ -17,7 +18,8 @@ data class ReceiverRuntimeConfig(
     val activeIntentWindow: ActiveIntentWindow = ActiveIntentWindow(
         paymentIntentActive = paymentIntentActive,
         receiverArmed = receiverArmed,
-        expectedPaymentProfilePresent = expectedPaymentProfilePresent
+        expectedPaymentProfilePresent = expectedPaymentProfilePresent,
+        receivingRouteLocked = receivingRouteLocked
     )
 }
 
@@ -37,7 +39,8 @@ class ReceiverRuntimeConfigStore(context: Context) : ReceiverRuntimeConfigReader
             merchantId = preferences.getString("merchant_id", "") ?: "",
             paymentIntentActive = preferences.getBoolean("payment_intent_active", false),
             receiverArmed = preferences.getBoolean("receiver_armed", false),
-            expectedPaymentProfilePresent = preferences.getBoolean("expected_payment_profile_present", false)
+            expectedPaymentProfilePresent = preferences.getBoolean("expected_payment_profile_present", false),
+            receivingRouteLocked = preferences.getBoolean("receiving_route_locked", false)
         )
     }
 
@@ -53,6 +56,7 @@ class ReceiverRuntimeConfigStore(context: Context) : ReceiverRuntimeConfigReader
             .putBoolean("payment_intent_active", config.paymentIntentActive)
             .putBoolean("receiver_armed", config.receiverArmed)
             .putBoolean("expected_payment_profile_present", config.expectedPaymentProfilePresent)
+            .putBoolean("receiving_route_locked", config.receivingRouteLocked)
             .remove(legacySharedKeyPreferenceName())
             .apply()
     }
@@ -62,6 +66,7 @@ class ReceiverRuntimeConfigStore(context: Context) : ReceiverRuntimeConfigReader
             .putBoolean("payment_intent_active", window.paymentIntentActive)
             .putBoolean("receiver_armed", window.receiverArmed)
             .putBoolean("expected_payment_profile_present", window.expectedPaymentProfilePresent)
+            .putBoolean("receiving_route_locked", window.receivingRouteLocked)
             .apply()
     }
 

@@ -6,6 +6,19 @@ If a task file exists in `tasks/`, it can be prepared. If the root task file is 
 
 ## Queue
 
+The current sprint is MERCHANT-INTELLIGENCE-7. It stabilizes Android merchant notification listening, Receiver health, redacted local observations, no-notification fallback reviews and merchant action notifications.
+
+- [x] `merchant_intelligence_audit` - status: completed_with_findings - source: `.swimpay-agent/MERCHANT_INTELLIGENCE_AUDIT.md`
+- [x] `receiver_health_gate` - status: completed_targeted_validated - source: `.swimpay-agent/MERCHANT_INTELLIGENCE_IMPLEMENTATION_REPORT.md`
+- [x] `active_intent_sweep_guardrails` - status: completed_targeted_validated - source: `.swimpay-agent/MERCHANT_INTELLIGENCE_IMPLEMENTATION_REPORT.md`
+- [x] `redacted_recent_buffer` - status: completed_targeted_validated - source: `.swimpay-agent/MERCHANT_INTELLIGENCE_IMPLEMENTATION_REPORT.md`
+- [x] `fallback_review_merchant_notification` - status: completed_targeted_validated - source: `.swimpay-agent/MERCHANT_INTELLIGENCE_IMPLEMENTATION_REPORT.md`
+- [x] `merchant_review_safe_signal_ui` - status: confirmed_existing_and_label_wired - source: `.swimpay-agent/MERCHANT_INTELLIGENCE_CODE_REVIEW.md`
+- [x] `full_validation` - status: completed_validated - source: `.swimpay-agent/MERCHANT_INTELLIGENCE_CODE_REVIEW.md`
+- [ ] `adb_smoke` - status: blocked_no_attached_device - source: `.swimpay-agent/MERCHANT_INTELLIGENCE_CODE_REVIEW.md`
+
+## Previous Queue
+
 The current hotfix is CHECKOUT-EXTERNAL-FLOW-REPAIR. It reconciles staging schema dependencies and external app error handling after the checkout business-logic refactors.
 
 - [x] `checkout_external_breakage_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_EXTERNAL_APP_BREAKAGE_AUDIT.md`

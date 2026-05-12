@@ -962,10 +962,13 @@ class MerchantReviewQueueApiRepository(
                 amountLabel = formatAmountLabel(amount, currency),
                 bankDisplayName = bankDisplayNameFor(bankProfileId),
                 statusLabel = "À vérifier",
-                helper = if (reasons.any { it == "DISPLAY_AMOUNT_ONLY_MATCH" || it == "PAYABLE_AMOUNT_MISMATCH" }) {
-                    "Montant à vérifier"
-                } else {
-                    "Signal à vérifier"
+                helper = when {
+                    reasons.any { it == "NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT" } ->
+                        "Vérification banque requise"
+                    reasons.any { it == "DISPLAY_AMOUNT_ONLY_MATCH" || it == "PAYABLE_AMOUNT_MISMATCH" } ->
+                        "Montant à vérifier"
+                    else ->
+                        "Signal à vérifier"
                 },
                 reasonLabels = reasons.mapMerchantReasonLabels()
             )
@@ -1974,6 +1977,10 @@ fun List<String>.mapMerchantReasonLabels(): List<String> {
     for (reason in this) {
         val normalized = reason.lowercase(Locale.US)
         when {
+            reason == "NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT" ->
+                labels.add("Aucun signal bancaire détecté")
+            normalized.contains("unknown") ->
+                labels.add("Signal inconnu à vérifier")
             reason == "PAYABLE_AMOUNT_EXACT_MATCH" ->
                 labels.add("Montant exact attendu reconnu")
             reason == "DISPLAY_AMOUNT_ONLY_MATCH" ->

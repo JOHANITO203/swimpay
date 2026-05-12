@@ -827,6 +827,42 @@ class AndroidMerchantApiWiringTest {
     }
 
     @Test
+    fun reviewQueueLabelsNoNotificationFallbackAsManualBankCheck() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "reviews": [
+                    {
+                      "review_id": "rev_manual_check",
+                      "status": "open",
+                      "reason_code": "NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT",
+                      "order_id": "ord_01",
+                      "payment_session_id": "ps_01",
+                      "signal_id": null,
+                      "amount": { "value": "299.80", "currency": "RUB" },
+                      "bank_profile_id": "sber_ru",
+                      "negative_reasons": ["NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT"],
+                      "positive_reasons": []
+                    }
+                  ]
+                }
+                """.trimIndent()
+            )
+        )
+
+        val queue = MerchantReviewQueueApiRepository(transport)
+            .list(AuthenticatedMerchantSession.localDev("mch_demo"))
+
+        assertEquals(MerchantRepositoryState.SUCCESS, queue.state)
+        assertEquals("Vérification banque requise", queue.items.single().helper)
+        assertTrue(queue.items.single().reasonLabels.contains("Aucun signal bancaire détecté"))
+        assertFalse(queue.visibleTexts().joinToString(" ").contains("payment.confirmed"))
+        assertFalse(queue.visibleTexts().joinToString(" ").contains("official_bank_confirmation", ignoreCase = true))
+    }
+
+    @Test
     fun mockOnlyRepositoriesAreExplicitAndSafeUntilBackendEndpointsExist() {
         val session = AuthenticatedMerchantSession.localDev("mch_demo")
 

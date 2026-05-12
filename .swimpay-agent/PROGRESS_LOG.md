@@ -1,5 +1,18 @@
 # Progress Log
 
+## 2026-05-12T07:00:00+03:00 - Merchant Intelligence runtime hardening
+
+- Completed the Merchant Intelligence audit across Android listener/sweep, backend heartbeat, no-notification fallback, merchant review queue and local notification surfaces.
+- Added backend `receiver_health` to receiver heartbeat responses with healthy/degraded/offline fields and outbox/bank-target metadata.
+- Added Android `ReceiverRuntimeState` and wired merchant health UI to short action-oriented states.
+- Hardened live NotificationListenerService so extraction requires an active payment intent, receiver armed state, Expected Payment Profile and locked receiving route.
+- Hardened Active Intent Notification Sweep with the same route-lock requirement.
+- Added TTL, deduplication and raw phone/card/raw-notification rejection to the redacted recent observation buffer.
+- Updated merchant review queue and local notification copy for no-notification manual bank check fallback.
+- Added targeted Android and backend tests; full root and Android validation passed.
+- ADB smoke was not run because no device was attached.
+- No real bank notification was captured or processed, no auto-confirmation was enabled and no public webhook/payment confirmation semantics changed.
+
 ## 2026-05-10T12:02:00+03:00 - Checkout external flow repair
 
 - Audited the external app checkout breakage after the payment compatibility and route readiness refactors.

@@ -198,4 +198,26 @@ class AndroidReceiverRealRuntimeTest {
         assertFalse(sourceCorpus.contains("autoConfirm"))
         assertTrue(sourceCorpus.contains("enabledBankPackages"))
     }
+
+    @Test
+    fun liveNotificationListenerChecksActiveIntentBeforeExtraction() {
+        val source = File("src/main/java/com/swimpay/receiver/SwimPayNotificationListenerService.kt").readText()
+        val activeWindowGate = source.indexOf("if (!runtimeConfig.activeIntentWindow.canSweep())")
+        val extractorCall = source.indexOf("AndroidNotificationSnapshotExtractor.fromStatusBarNotification")
+
+        assertTrue(activeWindowGate >= 0)
+        assertTrue(extractorCall >= 0)
+        assertTrue(activeWindowGate < extractorCall)
+    }
+
+    @Test
+    fun merchantFallbackNotificationCopyIsActionOnlyAndNotAConfirmation() {
+        val source = File("src/main/java/com/swimpay/receiver/AndroidMerchantReviewNotifier.kt").readText()
+
+        assertTrue(source.contains("Commande à vérifier"))
+        assertTrue(source.contains("Aucun signal bancaire détecté"))
+        assertTrue(source.contains("confirmez ou rejetez"))
+        assertFalse(source.contains("paiement confirmé", ignoreCase = true))
+        assertFalse(source.contains("official_bank_confirmation", ignoreCase = true))
+    }
 }

@@ -27,6 +27,7 @@ import com.swimpay.receiver.MerchantReviewActionsApiRepository
 import com.swimpay.receiver.MerchantReviewQueueApiRepository
 import com.swimpay.receiver.MerchantScreenRepositoryResult
 import com.swimpay.receiver.MerchantSupportTicketApiRepository
+import com.swimpay.receiver.ReceiverRuntimeState
 import com.swimpay.receiver.ReceiverStatusViewModel
 
 data class PremiumMetricUiState(
@@ -539,21 +540,47 @@ class PremiumMerchantRuntime(
             queueLength = 0,
             backendReachable = session.isAuthenticated
         )
+        val statusTitle = when (health.runtimeState) {
+            ReceiverRuntimeState.LISTENING -> "Téléphone connecté"
+            ReceiverRuntimeState.MANUAL_CHECK_REQUIRED -> "Vérification requise"
+            ReceiverRuntimeState.OFFLINE -> "Hors ligne"
+            else -> "Action nécessaire"
+        }
+        val statusText = when (health.runtimeState) {
+            ReceiverRuntimeState.LISTENING -> "Ce téléphone peut détecter les paiements reçus."
+            ReceiverRuntimeState.MANUAL_CHECK_REQUIRED -> "Des commandes peuvent nécessiter une vérification banque."
+            ReceiverRuntimeState.OFFLINE -> "La synchronisation backend est indisponible."
+            else -> "Activez l'accès notifications pour continuer."
+        }
+        val runtimeStateLabel = when (health.runtimeState) {
+            ReceiverRuntimeState.IDLE -> "Au repos"
+            ReceiverRuntimeState.ARMED -> "Armé"
+            ReceiverRuntimeState.LISTENING -> "À l'écoute"
+            ReceiverRuntimeState.DEGRADED -> "Dégradé"
+            ReceiverRuntimeState.OFFLINE -> "Hors ligne"
+            ReceiverRuntimeState.MANUAL_CHECK_REQUIRED -> "Vérification banque"
+        }
+        val notices = buildList {
+            add("SwimPay ne lit pas vos SMS et ne contrôle pas votre banque.")
+            if (health.runtimeState == ReceiverRuntimeState.MANUAL_CHECK_REQUIRED) {
+                add("Vérifiez les commandes en attente depuis votre banque.")
+            }
+            if (health.runtimeState == ReceiverRuntimeState.OFFLINE || health.runtimeState == ReceiverRuntimeState.DEGRADED) {
+                add("La détection automatique peut être limitée.")
+            }
+        }
         return PremiumScreenState.content(
             PremiumReceiverHealthUiState(
-                statusTitle = if (health.notificationAccessEnabled && health.listenerConnected) "Téléphone connecté" else "Action nécessaire",
-                statusText = if (health.notificationAccessEnabled && health.listenerConnected) {
-                    "Ce téléphone peut détecter les paiements reçus."
-                } else {
-                    "Activez l'accès notifications pour continuer."
-                },
+                statusTitle = statusTitle,
+                statusText = statusText,
                 rows = listOf(
+                    "État Receiver" to runtimeStateLabel,
                     "Accès notifications" to if (health.notificationAccessEnabled) "Activé" else "Action requise",
                     "Banques surveillées" to "${health.allowedBanksCount} banques",
                     "File d'envoi" to if (health.queueLength == 0) "OK" else "À vérifier",
                     "Dernière synchronisation" to if (health.backendReachable) "Il y a quelques instants" else "Hors ligne"
                 ),
-                notices = listOf("SwimPay ne lit pas vos SMS et ne contrôle pas votre banque.")
+                notices = notices
             )
         )
     }

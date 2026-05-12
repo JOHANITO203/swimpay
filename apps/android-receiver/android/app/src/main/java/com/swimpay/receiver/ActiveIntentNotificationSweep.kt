@@ -3,9 +3,11 @@ package com.swimpay.receiver
 data class ActiveIntentWindow(
     val paymentIntentActive: Boolean,
     val receiverArmed: Boolean,
-    val expectedPaymentProfilePresent: Boolean
+    val expectedPaymentProfilePresent: Boolean,
+    val receivingRouteLocked: Boolean = false
 ) {
-    fun canSweep(): Boolean = paymentIntentActive && receiverArmed && expectedPaymentProfilePresent
+    fun canSweep(): Boolean =
+        paymentIntentActive && receiverArmed && expectedPaymentProfilePresent && receivingRouteLocked
 }
 
 enum class ActiveNotificationSweepSource {
@@ -28,12 +30,20 @@ data class RedactedRecentObservation(
 )
 
 class RedactedRecentNotificationBuffer(
-    private val maxRecords: Int = 32
+    private val maxRecords: Int = 32,
+    private val maxAgeMs: Long = 15 * 60 * 1000,
+    private val nowEpochMs: () -> Long = System::currentTimeMillis
 ) {
     private val observations = ArrayDeque<RedactedRecentObservation>()
 
     fun add(observation: RedactedRecentObservation) {
         require(!observation.rawTextPresent) { "recent buffer accepts redacted observations only" }
+        requireRedactedValue(observation.packageName, "package_name")
+        requireRedactedValue(observation.bankId, "bank_id")
+        requireRedactedValue(observation.notificationHash, "notification_hash")
+        requireRedactedValue(observation.semanticHash, "semantic_hash")
+        requireRedactedValue(observation.categoryGuess, "category_guess")
+        purgeExpired()
         observations.removeAll { it.notificationHash == observation.notificationHash }
         observations.addLast(observation)
         while (observations.size > maxRecords) {
@@ -41,7 +51,34 @@ class RedactedRecentNotificationBuffer(
         }
     }
 
-    fun list(): List<RedactedRecentObservation> = observations.toList()
+    fun list(): List<RedactedRecentObservation> {
+        purgeExpired()
+        return observations.toList()
+    }
+
+    private fun purgeExpired() {
+        val cutoff = nowEpochMs() - maxAgeMs
+        observations.removeAll { observation ->
+            observation.observedAt.toEpochMsOrNull()?.let { it < cutoff } ?: false
+        }
+    }
+
+    private fun requireRedactedValue(value: String, field: String) {
+        require(!SENSITIVE_VALUE_PATTERN.containsMatchIn(value)) {
+            "recent buffer field $field must not contain raw notification, card or phone data"
+        }
+    }
+
+    private fun String.toEpochMsOrNull(): Long? {
+        return runCatching { java.time.Instant.parse(this).toEpochMilli() }.getOrNull()
+    }
+
+    companion object {
+        private val SENSITIVE_VALUE_PATTERN = Regex(
+            "(raw[_ -]?(notification|title|body|text)|\\+?7\\d{10}|\\b\\d{12,19}\\b)",
+            RegexOption.IGNORE_CASE
+        )
+    }
 }
 
 data class ActiveIntentNotificationSweepResult(

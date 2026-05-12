@@ -17,7 +17,31 @@ class ActiveIntentNotificationSweepTest {
             window = ActiveIntentWindow(
                 paymentIntentActive = false,
                 receiverArmed = true,
-                expectedPaymentProfilePresent = true
+                expectedPaymentProfilePresent = true,
+                receivingRouteLocked = true
+            ),
+            source = ActiveNotificationSweepSource.ACTIVE_NOTIFICATIONS,
+            snapshots = listOf(StagingSyntheticNotificationHarness.supportedBankSnapshot(packageName = "ru.sberbankmobile"))
+        )
+
+        assertTrue(result.skipped)
+        assertEquals("active_payment_intent_required", result.reason)
+        assertEquals(0, result.acceptedCount)
+    }
+
+    @Test
+    fun skipsSweepWhenReceivingRouteIsNotLocked() {
+        val sweep = ActiveIntentNotificationSweep(
+            debugEnabled = false,
+            enabledBankPackages = setOf("ru.sberbankmobile")
+        )
+
+        val result = sweep.processSnapshots(
+            window = ActiveIntentWindow(
+                paymentIntentActive = true,
+                receiverArmed = true,
+                expectedPaymentProfilePresent = true,
+                receivingRouteLocked = false
             ),
             source = ActiveNotificationSweepSource.ACTIVE_NOTIFICATIONS,
             snapshots = listOf(StagingSyntheticNotificationHarness.supportedBankSnapshot(packageName = "ru.sberbankmobile"))
@@ -40,7 +64,8 @@ class ActiveIntentNotificationSweepTest {
             window = ActiveIntentWindow(
                 paymentIntentActive = true,
                 receiverArmed = true,
-                expectedPaymentProfilePresent = true
+                expectedPaymentProfilePresent = true,
+                receivingRouteLocked = true
             ),
             source = ActiveNotificationSweepSource.ACTIVE_NOTIFICATIONS,
             snapshots = listOf(unsupported)
@@ -70,7 +95,8 @@ class ActiveIntentNotificationSweepTest {
             window = ActiveIntentWindow(
                 paymentIntentActive = true,
                 receiverArmed = true,
-                expectedPaymentProfilePresent = true
+                expectedPaymentProfilePresent = true,
+                receivingRouteLocked = true
             ),
             source = ActiveNotificationSweepSource.ACTIVE_NOTIFICATIONS,
             snapshots = listOf(supported)
@@ -88,5 +114,66 @@ class ActiveIntentNotificationSweepTest {
         assertFalse(observation.toString().contains("SWP-ABC123"))
         assertFalse(observation.toString().contains("manual_confirmed", ignoreCase = true))
         assertFalse(observation.toString().contains("payment.confirmed", ignoreCase = true))
+    }
+
+    @Test
+    fun redactedRecentBufferPurgesExpiredEntriesAndDeduplicatesByHash() {
+        var now = java.time.Instant.parse("2026-05-12T10:02:00.000Z").toEpochMilli()
+        val buffer = RedactedRecentNotificationBuffer(
+            maxRecords = 8,
+            maxAgeMs = 60_000,
+            nowEpochMs = { now }
+        )
+
+        val old = redactedObservation(
+            observedAt = "2026-05-12T10:00:00.000Z",
+            notificationHash = "old_hash"
+        )
+        val first = redactedObservation(
+            observedAt = "2026-05-12T10:01:30.000Z",
+            notificationHash = "dup_hash",
+            categoryGuess = "incoming_transfer"
+        )
+        val replacement = redactedObservation(
+            observedAt = "2026-05-12T10:01:45.000Z",
+            notificationHash = "dup_hash",
+            categoryGuess = "incoming_sbp"
+        )
+
+        buffer.add(old)
+        buffer.add(first)
+        buffer.add(replacement)
+
+        val observations = buffer.list()
+        assertEquals(1, observations.size)
+        assertEquals("dup_hash", observations.single().notificationHash)
+        assertEquals("incoming_sbp", observations.single().categoryGuess)
+
+        now = java.time.Instant.parse("2026-05-12T10:04:00.000Z").toEpochMilli()
+        assertTrue(buffer.list().isEmpty())
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun redactedRecentBufferRejectsRawPhoneOrCardLikeValues() {
+        RedactedRecentNotificationBuffer().add(
+            redactedObservation(categoryGuess = "incoming from +79991234567")
+        )
+    }
+
+    private fun redactedObservation(
+        observedAt: String = "2026-05-12T10:01:00.000Z",
+        notificationHash: String = "notification_hash",
+        categoryGuess: String = "incoming_transfer"
+    ): RedactedRecentObservation {
+        return RedactedRecentObservation(
+            packageName = "ru.sberbankmobile",
+            bankId = "sber_ru",
+            observedAt = observedAt,
+            notificationHash = notificationHash,
+            semanticHash = "semantic_hash",
+            categoryGuess = categoryGuess,
+            amountMinor = 13700L,
+            rawTextPresent = false
+        )
     }
 }

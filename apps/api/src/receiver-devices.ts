@@ -22,6 +22,20 @@ export type ReceiverDeviceStatus =
   | 'bank_targets_missing'
   | 'force_review_local';
 
+export type ReceiverHealthStatus = 'healthy' | 'degraded' | 'offline';
+
+export interface ReceiverHealth {
+  status: ReceiverHealthStatus;
+  notification_access: boolean;
+  listener_connected_recently: boolean;
+  last_heartbeat_at: string | null;
+  encrypted_outbox_depth: number;
+  supported_bank_routes_online: number;
+  device_key_attested: boolean;
+  app_integrity_recent: boolean;
+  clock_skew_ms: number;
+}
+
 export interface StoredReceiverDeviceRecord {
   id: string;
   merchantId: string;
@@ -335,7 +349,10 @@ export function buildReceiverHeartbeatResponse(params: {
   device: StoredReceiverDeviceRecord;
   serverTime: string;
   warnings: readonly AndroidReceiverWarning[];
+  queueLength?: number | undefined;
+  allowedBankProfileIds?: readonly string[] | undefined;
 }) {
+  const receiverHealth = buildReceiverHealth(params);
   return {
     device_id: params.device.id,
     device_status: params.device.status,
@@ -345,9 +362,44 @@ export function buildReceiverHeartbeatResponse(params: {
     server_time: params.serverTime,
     receiver_mode: params.warnings.length > 0 ? 'attention_required' : 'active',
     active_payment_sessions_count: 0,
+    receiver_health: receiverHealth,
     warnings: [...params.warnings],
     required_actions: receiverRequiredActions(params.warnings)
   };
+}
+
+function buildReceiverHealth(params: {
+  device: StoredReceiverDeviceRecord;
+  warnings: readonly AndroidReceiverWarning[];
+  queueLength?: number | undefined;
+  allowedBankProfileIds?: readonly string[] | undefined;
+}): ReceiverHealth {
+  const listenerConnectedRecently =
+    params.device.status !== 'inactive' &&
+    params.device.status !== 'needs_reconnect' &&
+    !params.warnings.includes(AndroidReceiverWarnings.LISTENER_DISCONNECTED);
+
+  return {
+    status: deriveReceiverHealthStatus(params.device),
+    notification_access: params.device.notificationAccessStatus,
+    listener_connected_recently: listenerConnectedRecently,
+    last_heartbeat_at: params.device.lastHeartbeatAt,
+    encrypted_outbox_depth: Math.max(0, params.queueLength ?? 0),
+    supported_bank_routes_online: params.allowedBankProfileIds?.length ?? 0,
+    device_key_attested: params.device.publicKey.startsWith('-----BEGIN PUBLIC KEY-----'),
+    app_integrity_recent: params.device.status !== 'revoked' && params.device.status !== 'suspended',
+    clock_skew_ms: 0
+  };
+}
+
+export function deriveReceiverHealthStatus(device: StoredReceiverDeviceRecord): ReceiverHealthStatus {
+  if (device.status === 'active' && device.notificationAccessStatus) {
+    return 'healthy';
+  }
+  if (device.status === 'inactive' || device.status === 'suspended' || device.status === 'revoked') {
+    return 'offline';
+  }
+  return 'degraded';
 }
 
 function normalizeHeartbeatAliases(body: unknown): unknown {

@@ -23,7 +23,58 @@ class ReceiverStatusViewModelTest {
         assertTrue(state.warnings.contains("all_banks_untrusted"))
         assertTrue(state.warnings.contains("queue_backlog_high"))
         assertTrue(state.warnings.contains("backend_unreachable"))
+        assertEquals(ReceiverRuntimeState.OFFLINE, state.runtimeState)
         assertFalse(state.toString().contains("+7"))
         assertFalse(state.toString().contains("raw_notification"))
+    }
+
+    @Test
+    fun derivesReceiverRuntimeStatesForMerchantUi() {
+        val viewModel = ReceiverStatusViewModel()
+
+        assertEquals(
+            ReceiverRuntimeState.LISTENING,
+            viewModel.buildState(
+                notificationAccessEnabled = true,
+                listenerConnected = true,
+                allowedBanksCount = 2,
+                trustedBanksCount = 2,
+                queueLength = 0,
+                backendReachable = true
+            ).runtimeState
+        )
+        assertEquals(
+            ReceiverRuntimeState.DEGRADED,
+            viewModel.buildState(
+                notificationAccessEnabled = false,
+                listenerConnected = false,
+                allowedBanksCount = 2,
+                trustedBanksCount = 0,
+                queueLength = 0,
+                backendReachable = true
+            ).runtimeState
+        )
+        assertEquals(
+            ReceiverRuntimeState.MANUAL_CHECK_REQUIRED,
+            viewModel.buildState(
+                notificationAccessEnabled = true,
+                listenerConnected = true,
+                allowedBanksCount = 2,
+                trustedBanksCount = 2,
+                queueLength = 50,
+                backendReachable = true
+            ).runtimeState
+        )
+        assertEquals(
+            ReceiverRuntimeState.OFFLINE,
+            viewModel.buildState(
+                notificationAccessEnabled = true,
+                listenerConnected = true,
+                allowedBanksCount = 2,
+                trustedBanksCount = 2,
+                queueLength = 0,
+                backendReachable = false
+            ).runtimeState
+        )
     }
 }
