@@ -1,6 +1,7 @@
 import { AppShell, Button, escapeHtml } from '../ui/Components.js';
 import { checkoutBankLogoDataUri } from './BankLogoAssets.js';
 import type {
+  AvailableSenderBank,
   BuyerCheckoutPaymentMethod,
   BuyerSafeReceivingRoute,
   PayerBankLauncherOption,
@@ -34,7 +35,7 @@ export function renderCheckoutPage(
   const selectedRoute = visibleRoutes.find((route) => route.route_id === session.selected_receiving_route_id);
   const selectedLauncher = launchers.find((launcher) => launcher.payer_bank_launcher_id === session.selected_payer_bank_launcher_id);
   const methodAvailability = getBuyerMethodAvailability(session, banks, routes);
-  const step = getCheckoutStep(session);
+  const step = resolveCheckoutStep(session);
   const stage = visualStageForStep(step);
 
   return AppShell({
@@ -75,14 +76,41 @@ function renderCurrentStage(
   return renderWaitingStatusStep(session, displayStatus, selectedRoute, selectedLauncher);
 }
 
-function getCheckoutStep(session: CheckoutSession): BuyerCheckoutStep {
-  if (isWaitingBuyerState(session)) return 'waiting';
+function resolveCheckoutStep(session: CheckoutSession): BuyerCheckoutStep {
+  if (isFinalBuyerState(session)) return 'waiting';
   if (hasStructuredCheckoutFallback(session)) return 'route';
+  const canonical = canonicalStepFromCheckoutState(session);
+  if (canonical) return canonical;
   if (!session.payment_method) return 'intro';
   if (!session.selected_receiver_bank_id) return 'bank';
   if (!session.selected_receiving_route_id) return 'route';
   if (!session.selected_payer_bank_launcher_id) return 'launcher';
   return 'instructions';
+}
+
+function canonicalStepFromCheckoutState(session: CheckoutSession): BuyerCheckoutStep | null {
+  switch (session.checkout_state) {
+    case 'buyer_identity':
+      return 'intro';
+    case 'receiver_bank_selection':
+      return 'bank';
+    case 'receiving_route_selection':
+      return 'route';
+    case 'payer_bank_launcher_selection':
+      return 'launcher';
+    case 'payment_instructions':
+    case 'awaiting_payment':
+      return 'instructions';
+    case 'buyer_claimed_paid':
+    case 'signal_detected':
+    case 'needs_review':
+    case 'confirmed':
+    case 'expired':
+    case 'rejected':
+      return 'waiting';
+    default:
+      return null;
+  }
 }
 
 function visualStageForStep(step: BuyerCheckoutStep): VisualStage {
@@ -141,17 +169,12 @@ function getSelectedBuyerMethod(
   return availability.card ? 'card' : 'sbp';
 }
 
-function isWaitingBuyerState(session: CheckoutSession): boolean {
-  return [
-    'buyer_claimed_paid',
-    'signal_detected',
-    'matching',
-    'needs_review',
-    'manual_confirmed',
-    'fulfilled',
-    'rejected',
-    'expired'
-  ].includes(session.status);
+function isFinalBuyerState(session: CheckoutSession): boolean {
+  const safeStatus = session.buyer_safe_status as string | undefined;
+  if (safeStatus && ['confirmed', 'rejected', 'expired', 'cancelled'].includes(safeStatus)) {
+    return true;
+  }
+  return ['manual_confirmed', 'fulfilled', 'rejected', 'expired'].includes(session.status);
 }
 
 function renderCheckoutBrand(): string {
@@ -247,7 +270,7 @@ function renderBuyerIdentityStep(
   return `<section class="checkout-stage-card checkout-info-card" data-checkout-panel="buyer-identity" ${hidden ? 'hidden' : ''} data-visual-stage="info">
     <div class="checkout-stage-head">
       <h1>${escapeHtml(title)}</h1>
-      <p>Veuillez remplir le formulaire de donnees ci-dessous</p>
+      <p>Veuillez remplir le formulaire de données ci-dessous</p>
     </div>
     <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/expected-payment-profile" class="expected-profile-form">
       ${renderNativeReturnHiddenInput(nativeReturnScheme)}
@@ -272,7 +295,7 @@ function renderBuyerIdentityStep(
           <input name="sender_phone" type="tel" autocomplete="tel" placeholder="+7 ..." ${sbpActive ? '' : 'disabled'}>
         </label>` : ''}
       </div>
-      <p class="checkout-security-line"><span></span> SwimPay ne collecte pas vos donnees sensibles</p>
+      <p class="checkout-security-line"><span></span> SwimPay ne collecte pas vos données sensibles</p>
       <button class="checkout-primary-action" type="submit">Continuer</button>
       <button class="checkout-ghost-action" type="button" data-show-panel="intro" data-progress-step="1">Retour a l'accueil</button>
     </form>
@@ -280,24 +303,76 @@ function renderBuyerIdentityStep(
 }
 
 function renderSenderBankSelector(session: CheckoutSession, launchers: readonly PayerBankLauncherOption[]): string {
-  const selected = session.sender_bank_id ?? launchers[0]?.payer_bank_launcher_id ?? '';
+  const senderBanks = resolveSenderBankChoices(session, launchers);
+  const selected = resolveSelectedSenderBankId(session, senderBanks);
   return `<div class="checkout-field-block">
     <span class="checkout-field-label">Banque d'envoi</span>
     <div class="sender-bank-selector" role="radiogroup" aria-label="Banque d'envoi">
-      ${launchers.map((launcher) => {
-        const active = launcher.payer_bank_launcher_id === selected;
-        const logoAssetKey = bankLogoAssetKey(launcher.payer_bank_launcher_id);
-        return `<label class="sender-bank-choice ${active ? 'selected' : ''}" data-sender-bank-choice="${escapeHtml(launcher.payer_bank_launcher_id)}" data-logo-asset-key="${escapeHtml(logoAssetKey)}">
-          <input type="radio" name="sender_bank_id" value="${escapeHtml(launcher.payer_bank_launcher_id)}" ${active ? 'checked' : ''} required>
-          ${renderBankLogoMark(logoAssetKey, launcher.display_name)}
+      ${senderBanks.map((bank) => {
+        const active = bank.sender_bank_id === selected;
+        const logoAssetKey = bank.logo_asset_key ?? bankLogoAssetKey(bank.sender_bank_id);
+        const selectable = bank.selectable !== false;
+        return `<label class="sender-bank-choice ${active ? 'selected' : ''}" data-sender-bank-choice="${escapeHtml(bank.sender_bank_id)}" data-logo-asset-key="${escapeHtml(logoAssetKey)}">
+          <input type="radio" name="sender_bank_id" value="${escapeHtml(bank.sender_bank_id)}" ${active ? 'checked' : ''} ${selectable ? '' : 'disabled'} required>
+          ${renderBankLogoMark(logoAssetKey, bank.display_name)}
           <span>
-            <strong>${escapeHtml(launcher.display_name)}</strong>
-            <small>${launcher.runtime_verified ? 'Runtime verified' : 'Ouverture manuelle possible'}</small>
+            <strong>${escapeHtml(bank.display_name)}</strong>
+            <small>${senderBankStatusLabel(bank)}</small>
           </span>
         </label>`;
       }).join('')}
     </div>
   </div>`;
+}
+
+interface SenderBankChoice {
+  sender_bank_id: string;
+  display_name: string;
+  logo_asset_key?: string | undefined;
+  selectable?: boolean | undefined;
+  runtime_capture_status?: AvailableSenderBank['runtime_capture_status'] | undefined;
+}
+
+function resolveSenderBankChoices(
+  session: CheckoutSession,
+  launchers: readonly PayerBankLauncherOption[]
+): readonly SenderBankChoice[] {
+  if (session.available_sender_banks && session.available_sender_banks.length > 0) {
+    return session.available_sender_banks.map((bank) => ({
+      sender_bank_id: bank.payer_bank_launcher_id ?? bank.bank_id,
+      display_name: bank.display_name,
+      logo_asset_key: bank.logo_asset_key,
+      selectable: bank.selectable,
+      runtime_capture_status: bank.runtime_capture_status
+    }));
+  }
+  return launchers.map((launcher) => ({
+    sender_bank_id: launcher.payer_bank_launcher_id,
+    display_name: launcher.display_name,
+    logo_asset_key: bankLogoAssetKey(launcher.payer_bank_launcher_id),
+    selectable: true,
+    runtime_capture_status: launcher.runtime_verified ? 'runtime_verified' : 'observed'
+  }));
+}
+
+function resolveSelectedSenderBankId(
+  session: CheckoutSession,
+  senderBanks: readonly SenderBankChoice[]
+): string {
+  if (session.sender_bank_id && senderBanks.some((bank) => bank.sender_bank_id === session.sender_bank_id && bank.selectable !== false)) {
+    return session.sender_bank_id;
+  }
+  return senderBanks.find((bank) => bank.selectable !== false)?.sender_bank_id ?? senderBanks[0]?.sender_bank_id ?? '';
+}
+
+function senderBankStatusLabel(bank: SenderBankChoice): string {
+  if (bank.selectable === false) {
+    return 'Indisponible';
+  }
+  if (bank.runtime_capture_status === 'runtime_verified') {
+    return 'Disponible';
+  }
+  return 'Ouverture manuelle possible';
 }
 
 function renderTextInput(label: string, name: string, placeholder: string, autocomplete: string): string {
@@ -524,7 +599,6 @@ function renderInstructionsStep(
         ${renderNativeReturnHiddenInput(options.nativeReturnScheme)}
         ${Button({ text: "J'ai paye", id: 'paid-button', variant: 'ghost', class: 'checkout-ghost-action checkout-paid-action', type: 'submit' })}
       </form>
-      <a class="checkout-ghost-action" href="${escapeHtml(checkoutReturnPath)}">Annuler et modifier les infos</a>
     </div>
   </section>`;
 }
@@ -636,7 +710,7 @@ function renderReturnToMerchantAction(session: CheckoutSession): string {
   if (returnUrl) {
     return `<a class="checkout-ghost-action" href="${escapeHtml(returnUrl)}">Retour au marchand</a>`;
   }
-  return `<button class="checkout-ghost-action" type="button" onclick="history.back()">Retour au marchand</button>`;
+  return `<a class="checkout-ghost-action" href="${escapeHtml(checkoutStableReturnFallbackUrl(session))}">Retour au marchand</a>`;
 }
 
 function renderNativeReturnHiddenInput(nativeReturnScheme?: string | undefined): string {
@@ -657,6 +731,17 @@ function resolveBuyerReturnUrl(session: CheckoutSession): string | undefined {
     return undefined;
   }
   return session.return_url;
+}
+
+function checkoutStableReturnFallbackUrl(session: CheckoutSession): string {
+  const params = new URLSearchParams({
+    payment_session_id: session.payment_session_id,
+    order_id: session.order_id
+  });
+  if (session.external_id) {
+    params.set('external_id', session.external_id);
+  }
+  return `/merchant/return-unavailable?${params.toString()}`;
 }
 
 function isSafeBuyerReturnUrl(value: string): boolean {
@@ -747,7 +832,7 @@ function renderWaitingAction(session: CheckoutSession): string {
     return `<a class="checkout-primary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Reessayer</a>`;
   }
   if (session.status === 'rejected') {
-    return `<button class="checkout-secondary-action" type="button" onclick="history.back()">Contacter le marchand</button>`;
+    return `<a class="checkout-secondary-action" href="${escapeHtml(checkoutStableReturnFallbackUrl(session))}">Contacter le marchand</a>`;
   }
   return `<a class="checkout-secondary-action checkout-refresh-action" href="/checkout/${escapeHtml(session.payment_session_id)}"><span></span>Actualisation...</a>`;
 }
@@ -757,7 +842,7 @@ function renderReturnToMerchantPrimaryAction(session: CheckoutSession): string {
   if (returnUrl) {
     return `<a class="checkout-primary-action" href="${escapeHtml(returnUrl)}">Retourner au marchand <span aria-hidden="true">-&gt;</span></a>`;
   }
-  return `<button class="checkout-primary-action" type="button" onclick="history.back()">Retourner au marchand <span aria-hidden="true">-&gt;</span></button>`;
+  return `<a class="checkout-primary-action" href="${escapeHtml(checkoutStableReturnFallbackUrl(session))}">Retourner au marchand <span aria-hidden="true">-&gt;</span></a>`;
 }
 
 function renderPaymentTimeline(session: CheckoutSession): string {

@@ -542,3 +542,21 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 - [x] `412_sberbank_shadow_test_report` - status: completed - source: `tasks/412_sberbank_shadow_test_report.md`
 - [x] `checkout_sender_bank_receiver_route_contract_fix` - status: completed_targeted_tests_passed - source: `.swimpay-agent/CHECKOUT_SENDER_BANK_RECEIVER_ROUTE_AUDIT.md`
 - [x] `checkout_microcopy_late_buyer_claim_return_host` - status: completed_targeted_tests_passed_full_validation_pending - source: `.swimpay-agent/CHECKOUT_FINAL_STATE_MACHINE_CLOSEOUT.md`
+
+- [x] Remove checkout edit CTA and neutralize checkout_edit query.
+- [ ] Run staging manual walkthrough after redeploy.
+## Checkout Contradiction Review (2026-05-13)
+
+- [x] `checkout_contract_cold_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_CONTRADICTION_REVIEW.md`
+- [x] `checkout_state_priority_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_STATE_PRIORITY_AUDIT.md`
+- [x] `checkout_return_fulfillment_contradiction_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_RETURN_AND_FULFILLMENT_CONTRADICTION_AUDIT.md`
+- [x] `checkout_bank_contract_contradiction_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_BANK_CONTRACT_CONTRADICTION_AUDIT.md`
+- [x] `checkout_edge_case_matrix_20` - status: completed - source: `.swimpay-agent/CHECKOUT_EDGE_CASE_MATRIX.md`
+- [ ] `checkout_contradiction_fix_pass` - status: pending_user_go - source: `.swimpay-agent/CHECKOUT_CONTRADICTION_CLOSEOUT.md`
+
+## Checkout Contradiction Fix Sprint (2026-05-13)
+- [x] sender_bank_source_of_truth_alignment - status: completed_validated - source: .swimpay-agent/CHECKOUT_CONTRADICTION_FIX_REPORT.md
+- [x] checkout_state_renderer_alignment - status: completed_validated - source: .swimpay-agent/CHECKOUT_STATE_RENDERER_FIX_REPORT.md
+- [x] deterministic_return_fallback - status: completed_validated - source: .swimpay-agent/CHECKOUT_RETURN_FALLBACK_FIX_REPORT.md
+- [x] contradiction_fix_closeout - status: completed_validated - source: .swimpay-agent/CHECKOUT_CONTRADICTION_FIX_CLOSEOUT.md
+

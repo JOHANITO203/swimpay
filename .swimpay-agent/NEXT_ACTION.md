@@ -157,3 +157,19 @@ generated_at: 2026-05-13T00:59:00+03:00
 ## Validation Status
 
 Full local validation passed. Next action is staging redeploy and external-app smoke test for Android return scheme plus late buyer claim reconciliation.
+
+## Next - Checkout runtime rehearsal
+- Redeploy staging and manually verify buyer flow: instructions -> waiting/final states, no edit CTA, checkout_edit=1 ignored.
+## Checkout Contradiction Review (Audit-Only, 2026-05-13)
+
+1. Basculer le rendu Step 1 vers `available_sender_banks` comme source primaire (et garder `payer_bank_launchers` pour la résolution d’ouverture uniquement).
+2. Prioriser `logo_asset_key` contractuel backend pour tous les logos checkout (sender + receiver), fallback local en dernier recours.
+3. Aligner le renderer d’étape sur `checkout_state` canonique backend avec priorité finale stricte.
+4. Remplacer le fallback `history.back()` final par une destination déterministe “retour indisponible” quand aucun target sûr n’existe.
+5. Ajouter tests E2E multi-tab/stale-session + webhook consumer rehearsal.
+
+## Checkout Contradiction Fix Sprint (2026-05-13)
+1. Deploy to staging and validate end-to-end Android scheme return + web return fallback.
+2. Run real-device checkout where sender bank list comes from backend payload and verify logos for all configured banks.
+3. Add observability counter for deterministic fallback hits (/merchant/return-unavailable).
+

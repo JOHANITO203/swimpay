@@ -786,3 +786,19 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 
 - Full local validation passed for this checkout sprint.
 - Remaining blocker is staging redeploy/online verification only.
+
+## 2026-05-13 - Checkout edit mode removal
+- No blocker from checkout edit mode. Runtime edit CTA removed and checkout_edit query ignored in canonical flow.
+## Checkout Contradiction Review (Audit-Only, 2026-05-13)
+
+- Critical blocker: sender bank UI source is still `payer_bank_launchers` instead of strict `available_sender_banks` contract.
+- Critical blocker: fallback `Retourner au marchand` still depends on `history.back()` when no safe return target exists (safe but non-deterministic in webviews).
+- Medium blocker: checkout renderer step resolution still trusts local field combination more than canonical `checkout_state`.
+- Medium blocker: logo rendering still has local mapping dependency instead of backend-provided `logo_asset_key` priority.
+- Missing test blocker: multi-tab stale checkout reconciliation and external webhook consumer E2E coverage remain incomplete.
+
+## Checkout Contradiction Fix Sprint (2026-05-13)
+- Staging blocker: deploy web/api build containing canonical checkout_state renderer and deterministic return fallback route.
+- Staging blocker: verify integrators send either android return scheme or safe return_url to avoid fallback page.
+- Monitoring blocker: add alert for sessions repeatedly landing on /merchant/return-unavailable to detect integration gaps.
+

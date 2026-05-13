@@ -26,6 +26,7 @@ import {
   renderIntelligenceUnavailablePage as renderIntelligenceUnavailableScreen
 } from './screens/IntelligenceAdminScreen.js';
 import { renderCheckoutPage as renderCheckoutScreen } from './screens/CheckoutScreen.js';
+import { AppShell, escapeHtml } from './ui/Components.js';
 import {
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
@@ -620,6 +621,19 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   server.get('/merchant/settings', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
     return renderSettingsScreen();
+  });
+
+  server.get('/merchant/return-unavailable', async (request, reply) => {
+    const query = request.query as Record<string, unknown> | undefined;
+    const paymentSessionId = typeof query?.payment_session_id === 'string' ? query.payment_session_id : '';
+    const orderId = typeof query?.order_id === 'string' ? query.order_id : '';
+    const externalId = typeof query?.external_id === 'string' ? query.external_id : '';
+    reply.type('text/html; charset=utf-8');
+    return AppShell({
+      title: 'Retour indisponible',
+      chrome: 'checkout',
+      children: `<section class="screen buyer-checkout"><div class="checkout-shell-inner"><section class="checkout-stage-card checkout-empty-card checkout-configuration-card"><div class="checkout-stage-icon">!</div><h1>Retour indisponible</h1><p>Le retour automatique vers le marchand n'est pas configure pour cette session.</p><p>Conservez cette reference puis revenez dans l'application marchande.</p><div class="checkout-status-summary"><div class="summary-row"><span>Payment session</span><strong>${escapeHtml(paymentSessionId || 'N/A')}</strong></div><div class="summary-row"><span>Commande</span><strong>${escapeHtml(orderId || 'N/A')}</strong></div>${externalId ? `<div class="summary-row"><span>Reference externe</span><strong>${escapeHtml(externalId)}</strong></div>` : ''}</div></section></div></section>`
+    });
   });
 
   server.get('/merchant/connected-site', async (_request, reply) => {

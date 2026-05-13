@@ -3265,3 +3265,27 @@ Validation update 2026-05-12T22:20:00+03:00:
 - `npm run build` passed.
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed.
 - `npm run checkout:screenshot:record` and `npm run checkout:screenshot:verify` passed for the intentional checkout copy baseline update.
+
+## 2026-05-13
+- Removed checkout runtime edit CTA.
+- Neutralized query-driven edit mode (checkout_edit).
+- Added regression tests for final/waiting/instructions precedence under checkout_edit=1.
+- Validation run green (typecheck, lint, tests, build, compose config, checkout screenshots).
+
+## 2026-05-13T14:10:00+03:00 - Checkout contradiction cold audit
+
+- Performed a no-code cold audit over hosted checkout + API checkout contracts + payment session read/status + test matrix.
+- Confirmed final-state priority and late buyer-claim idempotency remain aligned (no checkout_edit override, no 5xx expected path for already-final claims).
+- Identified contract contradictions around sender bank source-of-truth (available_sender_banks vs payer_bank_launchers) and logo key resolution.
+- Identified deterministic return UX gap when no safe return target exists (history.back fallback only).
+- Produced dedicated contradiction reports and edge-case matrix for 20 scenarios before any further patching.
+
+
+## 2026-05-13T14:40:00+03:00 - Checkout contradiction fix sprint
+- Implemented sender bank UI source-of-truth alignment to available_sender_banks (primary).
+- Enforced backend logo_asset_key priority with local key fallback only.
+- Refactored checkout step resolver to prioritize canonical checkout_state and final safe statuses.
+- Replaced history.back-only return fallback with deterministic /merchant/return-unavailable route.
+- Removed runtime verified wording from checkout sender-bank cards.
+- Added/updated tests and passed full validation gates including checkout screenshot verify.
+
