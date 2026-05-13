@@ -416,6 +416,8 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(initial.value.oneTimeSecrets.isEmpty())
         assertTrue(initial.value.developerExportText().contains("SWIMPAY_STAGING_API_BASE_URL=https://staging.swimpay.pro"))
         assertTrue(initial.value.developerExportText().contains("SWIMPAY_STAGING_SECRET_KEY=sk_live_****1234"))
+        assertTrue(initial.value.developerExportText().contains("SWIMPAY_MERCHANT_AUTHORIZATION=Bearer spm_mobile_session_secret"))
+        assertTrue(initial.value.developerRows.any { it.first == "Authorization Bearer mobile" && it.second.contains("Bearer spm_") })
         assertFalse(initial.value.developerExportText().contains("sk_live_show_once"))
         assertFalse(initial.value.developerExportText().contains("whsec_show_once"))
         assertTrue(keyCreated.value.oneTimeSecrets.any { it.second == "sk_live_show_once" })

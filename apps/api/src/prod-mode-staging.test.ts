@@ -230,7 +230,7 @@ describe('production-mode staging boundaries', () => {
     });
     expect(created.statusCode).toBe(201);
     expect(orderRepository.orders.get('ord_prod_stage_01')?.merchantId).toBe('22222222-2222-4222-8222-222222222222');
-    expect(created.json().status).toBe('receiver_arming');
+    expect(created.json().status).toBe('created');
     expect(created.body).not.toContain('manual_confirmed');
   });
 

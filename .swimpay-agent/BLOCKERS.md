@@ -1,5 +1,14 @@
 ﻿# Blockers
 
+## Checkout Receiver_arming Runtime Blocker (2026-05-13)
+
+- Root-cause fixed in code: creation-time arming state moved from order creation to expected-profile transaction.
+- Latest staging rehearsal session remained pre-armed with missing route/lease/armed timestamp, so no review was eligible.
+- `webhook_endpoints` is now configured for the test merchant, but no final review decision means no webhook delivery row for that session.
+- `webhook_events` is not a runtime table in current schema; use `webhook_deliveries` as source of truth.
+- Critical blocker: complete a full checkout progression to produce a review, then confirm it to trigger `payment.confirmed`.
+- Security blocker: rotate exposed staging tokens/secrets before next E2E rehearsal.
+
 ## Checkout Return URL + External Fulfillment Webhook
 
 - Resolved locally: SDK/API `return_url` is now validated, persisted on `orders`, and exposed to the hosted checkout status contract.

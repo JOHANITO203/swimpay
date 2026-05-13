@@ -2,6 +2,19 @@
 
 generated_at: 2026-05-13T00:59:00+03:00
 
+## Current Runtime Priority (Receiver Arming Blocker)
+
+1. Redeploy staging with the latest API build (creation-time arming fix).
+2. Create a fresh order.
+3. Complete full checkout path:
+   - expected payment profile saved;
+   - payment instructions shown;
+   - continue-to-bank (`receiver_armed_at` written).
+4. Wait fallback window or run synthetic review-safe trigger.
+5. Confirm review in Android Merchant.
+6. Verify webhook delivery in `webhook_deliveries` and external signature validation logs.
+7. Rotate exposed staging secrets/tokens before final rehearsal sign-off.
+
 ## Completed Locally In This Pass
 
 1. Persisted safe SDK/API `return_url` on orders for confirmed checkout return UX.

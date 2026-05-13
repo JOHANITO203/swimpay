@@ -347,6 +347,7 @@ class FakeCheckoutPgClient {
           lease.route_id === values[24] &&
           lease.status === 'active'
       );
+      this.paymentSessionRow.status = 'receiver_arming';
       this.paymentSessionRow.payment_method = values[2];
       this.paymentSessionRow.sender_bank_id = values[3];
       this.paymentSessionRow.sender_card_last4 = values[4];
@@ -373,6 +374,11 @@ class FakeCheckoutPgClient {
       this.paymentSessionRow.amount_lease_id = allocatedLease?.id ?? null;
       this.paymentSessionRow.payment_instructions_shown_at = null;
       this.paymentSessionRow.updated_at = values.length > 27 ? values[27] : values[26];
+      return emptyPgResult();
+    }
+    if (text.includes('UPDATE orders') && text.includes("SET status = 'receiver_arming'")) {
+      this.orderRow.status = 'receiver_arming';
+      this.orderRow.updated_at = values[2];
       return emptyPgResult();
     }
     if (text.includes('INSERT INTO audit_events')) {
@@ -610,6 +616,8 @@ class InMemoryOrderRepository implements OrderRepository {
     if ('kind' in found) {
       return found;
     }
+    found.paymentSession.status = 'receiver_arming';
+    found.order.status = 'receiver_arming';
     found.paymentSession.paymentMethod = input.profile.payment_method;
     found.paymentSession.senderBankId = input.profile.sender_bank_id;
     found.paymentSession.senderCardLast4 = input.profile.sender_card_last4;
@@ -940,7 +948,7 @@ describe('order api', () => {
     expect(response.json()).toEqual({
       order_id: 'ord_test_01',
       payment_session_id: 'ps_test_01',
-      status: 'receiver_arming',
+      status: 'created',
       checkout_url: 'https://pay.test/checkout/ps_test_01',
       amount: {
         value: '137.00',
@@ -955,17 +963,17 @@ describe('order api', () => {
       externalId: 'order_888',
       amountMinor: 13700,
       currency: 'RUB',
-      status: 'receiver_arming'
+      status: 'payment_session_created'
     });
     expect(repository.paymentSessions[0]).toMatchObject({
       orderId: 'ord_test_01',
       buyerPhoneMasked: '+7 *** *** **67',
-      status: 'receiver_arming'
+      status: 'created'
     });
     expect(repository.paymentSessions[0]?.buyerPhoneHmac).toMatch(/^hmac_sha256:/);
     expect(JSON.stringify(repository.orders)).not.toContain('+7 (999) 123-45-67');
     expect(JSON.stringify(repository.paymentSessions)).not.toContain('+7 (999) 123-45-67');
-    expect(repository.auditEvents).toHaveLength(3);
+    expect(repository.auditEvents).toHaveLength(2);
     expect(repository.auditEvents[0]).toMatchObject({
       merchantId: 'mch_01',
       eventType: 'order.created',
@@ -974,11 +982,6 @@ describe('order api', () => {
     });
     expect(repository.auditEvents[1]).toMatchObject({
       eventType: 'payment_session.created',
-      objectType: 'payment_session',
-      objectId: 'ps_test_01'
-    });
-    expect(repository.auditEvents[2]).toMatchObject({
-      eventType: 'payment_session.receiver_arming_requested',
       objectType: 'payment_session',
       objectId: 'ps_test_01'
     });
@@ -1148,14 +1151,14 @@ describe('order api', () => {
     expect(response.json()).toEqual({
       order_id: 'ord_test_01',
       external_id: 'order_888',
-      status: 'receiver_arming',
+      status: 'payment_session_created',
       payment_session_id: 'ps_test_01',
       amount: {
         value: '137.00',
         currency: 'RUB'
       },
       expires_at: '2026-05-02T10:15:00.000Z',
-      latest_event: 'payment_session.receiver_arming_requested'
+      latest_event: 'payment_session.created'
     });
   });
 

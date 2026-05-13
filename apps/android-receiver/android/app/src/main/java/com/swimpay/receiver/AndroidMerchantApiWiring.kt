@@ -35,6 +35,16 @@ data class AuthenticatedMerchantSession(
         return bearerToken?.let { "Bearer $it" }.orEmpty()
     }
 
+    fun hasBearerToken(): Boolean = !bearerToken.isNullOrBlank()
+
+    fun maskedAuthorizationHeader(): String {
+        val token = bearerToken?.trim().orEmpty()
+        if (token.isBlank()) return ""
+        val prefix = token.take(8)
+        val suffix = token.takeLast(4)
+        return "Bearer ${prefix}...${suffix}"
+    }
+
     fun visibleTexts(): List<String> {
         return listOf(merchantStatusLabel, safeModeLabel)
     }
@@ -1521,16 +1531,22 @@ data class MerchantDeveloperIntegrationSnapshot(
         apiBaseUrl: String = "https://staging.swimpay.pro",
         externalAppBaseUrl: String = "",
         secretKeyForCopy: String? = secretKeyOnce,
-        webhookSecretForCopy: String? = webhookSecretOnce
+        webhookSecretForCopy: String? = webhookSecretOnce,
+        merchantAuthorizationHeaderForCopy: String = ""
     ): List<String> {
         val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/swimpay/webhook # exemple" }
         val externalAppLines = externalAppExportLines(externalAppBaseUrl)
+        val merchantAuthLine = merchantAuthorizationHeaderForCopy
+            .trim()
+            .takeIf { it.startsWith("Bearer spm_") }
+            ?.let { listOf("SWIMPAY_MERCHANT_AUTHORIZATION=$it") }
+            ?: listOf("# SWIMPAY_MERCHANT_AUTHORIZATION=Bearer spm_xxx # session mobile requise")
         return listOf(
             "SWIMPAY_STAGING_API_BASE_URL=$apiBaseUrl",
             "SWIMPAY_STAGING_SECRET_KEY=${secretKeyForCopy?.takeIf { it.isNotBlank() } ?: effectiveSecretKey()}",
             "SWIMPAY_STAGING_WEBHOOK_SECRET=${webhookSecretForCopy?.takeIf { it.isNotBlank() } ?: effectiveWebhookSecret()}",
             "SWIMPAY_WEBHOOK_URL=$safeWebhookUrl"
-        ) + externalAppLines + listOf("SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}")
+        ) + externalAppLines + merchantAuthLine + listOf("SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}")
     }
 
     private fun externalAppExportLines(externalAppBaseUrl: String): List<String> {

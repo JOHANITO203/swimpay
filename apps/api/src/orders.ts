@@ -430,7 +430,7 @@ export interface OrderReadResponse {
     currency: string;
   };
   expires_at: string;
-  latest_event: 'payment_session.receiver_arming_requested';
+  latest_event: 'payment_session.created';
 }
 
 export interface ExpectedPaymentProfileRequestBody {
@@ -1280,7 +1280,8 @@ export class PgOrderRepository implements OrderRepository {
           input.profile.expected_payment_fingerprint;
         await client.query(
           `UPDATE payment_sessions
-           SET payment_method = $3,
+           SET status = 'receiver_arming',
+               payment_method = $3,
                sender_bank_id = $4,
                sender_card_last4 = $5,
                sender_card_masked = $6,
@@ -1339,6 +1340,13 @@ export class PgOrderRepository implements OrderRepository {
             amountLease.id,
             input.now
           ]
+        );
+        await client.query(
+          `UPDATE orders
+           SET status = 'receiver_arming', updated_at = $3
+           WHERE merchant_id = $1
+             AND id = (SELECT order_id FROM payment_sessions WHERE merchant_id = $1 AND id = $2)`,
+          [input.merchantId, input.paymentSessionId, input.now]
         );
       },
       payload: {
@@ -2628,7 +2636,7 @@ export function buildOrderCreateInput(params: {
     productRiskLevel: params.body.product?.risk_level ?? 'low',
     amountMinor,
     currency: params.body.amount.currency,
-    status: 'receiver_arming',
+    status: 'payment_session_created',
     expiresAt: expiresAt.toISOString(),
     createdAt: now.toISOString(),
     updatedAt: now.toISOString()
@@ -2645,7 +2653,7 @@ export function buildOrderCreateInput(params: {
     buyerNameHmac: buyerName ? hmacSha256(buyerName, params.phoneHmacSecret) : undefined,
     referenceCode,
     referenceHmac: hmacSha256(referenceCode, params.phoneHmacSecret),
-    status: 'receiver_arming',
+    status: 'created',
     validFrom: now.toISOString(),
     validUntil: expiresAt.toISOString(),
     createdAt: now.toISOString(),
@@ -2679,18 +2687,6 @@ export function buildOrderCreateInput(params: {
         expected_amount_minor: amountMinor,
         currency: params.body.amount.currency,
         valid_until: expiresAt.toISOString()
-      }
-    },
-    {
-      id: params.idGenerator.auditEventId(),
-      merchantId: params.merchantId,
-      eventType: 'payment_session.receiver_arming_requested',
-      objectType: 'payment_session',
-      objectId: paymentSessionId,
-      payloadRedacted: {
-        order_id: orderId,
-        reference_hmac: paymentSession.referenceHmac,
-        buyer_phone_masked: paymentSession.buyerPhoneMasked
       }
     }
   ];

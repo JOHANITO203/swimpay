@@ -129,6 +129,8 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
       return result;
     }
 
+    result.paymentSession.status = 'receiver_arming';
+    result.order.status = 'receiver_arming';
     result.paymentSession.paymentMethod = input.profile.payment_method;
     result.paymentSession.senderBankId = input.profile.sender_bank_id;
     result.paymentSession.senderCardLast4 = input.profile.sender_card_last4;
@@ -898,7 +900,7 @@ describe('payment session api', () => {
       payment_session_id: 'ps_session_01',
       order_id: 'ord_session_01',
       external_id: 'order_session_01',
-      status: 'receiver_arming',
+      status: 'created',
       checkout_state: 'buyer_identity',
       buyer_safe_status: 'not_validated',
       amount: {
@@ -957,8 +959,7 @@ describe('payment session api', () => {
 
     expect(repository.auditEvents.map((event) => event.eventType)).toEqual([
       'order.created',
-      'payment_session.created',
-      'payment_session.receiver_arming_requested'
+      'payment_session.created'
     ]);
   });
 
@@ -1510,6 +1511,7 @@ describe('payment session api', () => {
     await createOrder(server);
     await createPhoneRoute(server);
     await createCardRoute(server);
+    await createPhoneExpectedProfile(server);
 
     await server.inject({
       method: 'POST',
@@ -1544,12 +1546,6 @@ describe('payment session api', () => {
           rail_type: 'phone_transfer',
           receiver_identifier_masked: '+7 *** *** **67',
           review_policy: 'eligible_low_risk_later'
-        }),
-        expect.objectContaining({
-          route_id: 'route_2',
-          rail_type: 'card_transfer',
-          receiver_identifier_masked: '2202 **** **** 7890',
-          review_policy: 'review_first'
         })
       ],
       official_bank_confirmation: false
@@ -2173,7 +2169,7 @@ describe('payment session api', () => {
       selected_payer_bank_launcher_id: 'tbank_ru',
       official_bank_confirmation: false
     });
-    expect(repository.paymentSessions.get('ps_session_01')?.status).toBe('receiver_arming');
+    expect(repository.paymentSessions.get('ps_session_01')?.status).toBe('created');
     expect(repository.orders.get('ord_session_01')?.status).not.toBe('manual_confirmed');
     expect(repository.auditEvents.map((event) => event.eventType)).toEqual(
       expect.arrayContaining(['checkout.receiver_bank_selected', 'checkout.payer_bank_launcher_selected'])
@@ -2722,7 +2718,7 @@ describe('payment session api', () => {
     expect(claimed.json()).toMatchObject({
       error: {
         code: 'checkout_step_out_of_order',
-        details: { current_status: 'receiver_arming' }
+        details: { current_status: 'created' }
       }
     });
     expect(repository.orders.get('ord_session_01')?.status).not.toBe('manual_confirmed');

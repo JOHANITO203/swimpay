@@ -1135,6 +1135,9 @@ class AndroidMerchantApiWiringTest {
         assertFalse(created.integration?.exportLines()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
         assertTrue(created.integration?.copyExportLines()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
         assertTrue(created.integration?.exportLines()?.contains("SWIMPAY_STAGING_SECRET_KEY=sk_\u2022\u2022\u20225678") == true)
+        assertTrue(created.integration?.copyExportLines(
+            merchantAuthorizationHeaderForCopy = "Bearer spm_mobile_session_secret"
+        )?.joinToString(" ").orEmpty().contains("SWIMPAY_MERCHANT_AUTHORIZATION=Bearer spm_mobile_session_secret"))
 
         val webhookSecret = repository.rotateWebhookSecret(session)
         assertEquals(MerchantRepositoryState.SUCCESS, webhookSecret.state)

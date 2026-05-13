@@ -336,6 +336,7 @@ data class PremiumConnectedSiteUiState(
     val copyExportLines: List<String> = emptyList(),
     val oneTimeSecrets: List<Pair<String, String>> = emptyList(),
     val webhookUrl: String = "",
+    val merchantAuthorizationHeaderMasked: String = "",
     val actionButtonsEnabled: Boolean = false
 ) {
     fun developerExportText(): String = copyExportLines.ifEmpty { exportLines }.joinToString("\n")
@@ -760,7 +761,10 @@ class PremiumMerchantRuntime(
     fun loadConnectedSite(): PremiumScreenState<PremiumConnectedSiteUiState> {
         developerIntegrationRepository?.let { repository ->
             clearDeveloperShowOnceExport()
-            return repository.load(session).toConnectedSiteState()
+            return repository.load(session).toConnectedSiteState(
+                merchantAuthorizationHeaderForCopy = session.authorizationHeader(),
+                merchantAuthorizationHeaderMasked = session.maskedAuthorizationHeader()
+            )
         }
         val result = connectedSiteRepository.load(session, developerDetailsEnabled = false)
         if (result.state == MerchantRepositoryState.EMPTY || result.state == MerchantRepositoryState.ERROR) {
@@ -861,7 +865,9 @@ class PremiumMerchantRuntime(
         }
         return toConnectedSiteState(
             secretKeyForCopy = developerSecretKeyOnceForCopy,
-            webhookSecretForCopy = integrationWebhookSecretOnceForCopy
+            webhookSecretForCopy = integrationWebhookSecretOnceForCopy,
+            merchantAuthorizationHeaderForCopy = session.authorizationHeader(),
+            merchantAuthorizationHeaderMasked = session.maskedAuthorizationHeader()
         )
     }
 
@@ -869,7 +875,9 @@ class PremiumMerchantRuntime(
         clearExpiredDeveloperShowOnceCopyValues()
         return toConnectedSiteState(
             secretKeyForCopy = developerSecretKeyOnceForCopy,
-            webhookSecretForCopy = integrationWebhookSecretOnceForCopy
+            webhookSecretForCopy = integrationWebhookSecretOnceForCopy,
+            merchantAuthorizationHeaderForCopy = session.authorizationHeader(),
+            merchantAuthorizationHeaderMasked = session.maskedAuthorizationHeader()
         )
     }
 
@@ -1093,14 +1101,18 @@ class PremiumMerchantRuntime(
 
 private fun MerchantDeveloperIntegrationResult.toConnectedSiteState(
     secretKeyForCopy: String? = null,
-    webhookSecretForCopy: String? = null
+    webhookSecretForCopy: String? = null,
+    merchantAuthorizationHeaderForCopy: String = "",
+    merchantAuthorizationHeaderMasked: String = ""
 ): PremiumScreenState<PremiumConnectedSiteUiState> {
     return when (state) {
         MerchantRepositoryState.SUCCESS -> PremiumScreenState.content(
             integration?.toPremiumConnectedSiteUiState(
                 safeMessage = safeMessage,
                 secretKeyForCopy = secretKeyForCopy,
-                webhookSecretForCopy = webhookSecretForCopy
+                webhookSecretForCopy = webhookSecretForCopy,
+                merchantAuthorizationHeaderForCopy = merchantAuthorizationHeaderForCopy,
+                merchantAuthorizationHeaderMasked = merchantAuthorizationHeaderMasked
             )
                 ?: PremiumConnectedSiteUiState(
                     statusTitle = "Test webhook",
@@ -1121,7 +1133,9 @@ private fun MerchantDeveloperIntegrationResult.toConnectedSiteState(
 private fun MerchantDeveloperIntegrationSnapshot.toPremiumConnectedSiteUiState(
     safeMessage: String,
     secretKeyForCopy: String? = null,
-    webhookSecretForCopy: String? = null
+    webhookSecretForCopy: String? = null,
+    merchantAuthorizationHeaderForCopy: String = "",
+    merchantAuthorizationHeaderMasked: String = ""
 ): PremiumConnectedSiteUiState {
     val active = webhookStatus == "active"
     return PremiumConnectedSiteUiState(
@@ -1135,6 +1149,7 @@ private fun MerchantDeveloperIntegrationSnapshot.toPremiumConnectedSiteUiState(
         safeMessage = safeMessage,
         developerRows = listOf(
             "Merchant ID" to merchantId,
+            "Authorization Bearer mobile" to merchantAuthorizationHeaderMasked.ifBlank { "Session mobile requise" },
             "Cle publique" to publicKey,
             "Cle API" to secretKeyMasked,
             "Secret webhook" to webhookSecretMasked,
@@ -1143,13 +1158,15 @@ private fun MerchantDeveloperIntegrationSnapshot.toPremiumConnectedSiteUiState(
         exportLines = exportLines(),
         copyExportLines = copyExportLines(
             secretKeyForCopy = secretKeyForCopy,
-            webhookSecretForCopy = webhookSecretForCopy
+            webhookSecretForCopy = webhookSecretForCopy,
+            merchantAuthorizationHeaderForCopy = merchantAuthorizationHeaderForCopy
         ),
         oneTimeSecrets = showOnceSecrets(
             secretKeyForCopy = secretKeyForCopy,
             webhookSecretForCopy = webhookSecretForCopy
         ),
         webhookUrl = webhookUrl,
+        merchantAuthorizationHeaderMasked = merchantAuthorizationHeaderMasked,
         actionButtonsEnabled = true
     )
 }

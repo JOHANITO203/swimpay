@@ -5830,6 +5830,6 @@ function toOrderReadResponse(order: StoredOrderRecord, paymentSessionId: string 
       currency: order.currency
     },
     expires_at: order.expiresAt,
-    latest_event: 'payment_session.receiver_arming_requested'
+    latest_event: 'payment_session.created'
   };
 }

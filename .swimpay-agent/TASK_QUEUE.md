@@ -1,5 +1,16 @@
 # SwimPay Task Queue
 
+## Current Queue - Checkout runtime blocker (2026-05-13)
+
+- [x] `staging_schema_reconciliation_audit` - status: completed_with_findings - source: `.swimpay-agent/STAGING_SCHEMA_RECONCILIATION_AUDIT.md`
+- [x] `checkout_receiver_arming_blocker_audit` - status: completed_with_findings - source: `.swimpay-agent/CHECKOUT_RECEIVER_ARMING_BLOCKER_AUDIT.md`
+- [x] `checkout_receiver_arming_fix` - status: completed_local_validated - source: `.swimpay-agent/CHECKOUT_RECEIVER_ARMING_FIX_REPORT.md`
+- [x] `review_creation_path_proof` - status: completed_partial_latest_session_not_eligible - source: `.swimpay-agent/CHECKOUT_REVIEW_CREATION_PROOF_REPORT.md`
+- [x] `secret_rotation_audit` - status: completed_rotation_required - source: `.swimpay-agent/SECRET_ROTATION_REQUIRED_REPORT.md`
+- [ ] `webhook_e2e_after_arming_fix` - status: blocked_by_session_progression_and_redeploy - source: `.swimpay-agent/WEBHOOK_E2E_REHEARSAL_AFTER_ARMING_FIX.md`
+- [x] `return_target_ux_status` - status: completed_with_findings - source: `.swimpay-agent/RETURN_TARGET_UX_STATUS_REPORT.md`
+- [x] `runtime_blocker_closeout` - status: completed - source: `.swimpay-agent/CHECKOUT_RUNTIME_BLOCKER_CLOSEOUT.md`
+
 The runner may prepare only one pending task at a time.
 
 If a task file exists in `tasks/`, it can be prepared. If the root task file is missing, it is marked `missing` and is not automatic.
