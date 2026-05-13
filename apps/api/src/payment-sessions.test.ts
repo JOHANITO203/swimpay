@@ -797,11 +797,13 @@ describe('payment session api', () => {
     expect(read.statusCode).toBe(200);
     expect(read.json()).toMatchObject({
       buyer_safe_status: 'confirmed',
+      external_id: 'order_session_01',
       return_url: 'https://merchant.example/orders/order_session_01'
     });
     expect(status.statusCode).toBe(200);
     expect(status.json()).toMatchObject({
       buyer_safe_status: 'confirmed',
+      external_id: 'order_session_01',
       return_url: 'https://merchant.example/orders/order_session_01'
     });
   });
@@ -873,6 +875,7 @@ describe('payment session api', () => {
     expect(response.json()).toEqual({
       payment_session_id: 'ps_session_01',
       order_id: 'ord_session_01',
+      external_id: 'order_session_01',
       status: 'receiver_arming',
       checkout_state: 'buyer_identity',
       buyer_safe_status: 'not_validated',

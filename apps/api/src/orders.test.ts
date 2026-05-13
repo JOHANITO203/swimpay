@@ -1018,6 +1018,27 @@ describe('order api', () => {
     });
   });
 
+  test('accepts web_return_url as the web fallback return URL alias', async () => {
+    const repository = new InMemoryOrderRepository();
+    const server = buildTestServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        ...validOrderPayload,
+        web_return_url: 'https://merchant.example/orders/order_888'
+      }
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(repository.orders.get('ord_test_01')?.returnUrl).toBe('https://merchant.example/orders/order_888');
+    expect(repository.auditEvents[0]?.payloadRedacted).toMatchObject({
+      return_url_present: true
+    });
+  });
+
   test('rejects unsafe return_url values that could leak secrets or execute browser code', async () => {
     const repository = new InMemoryOrderRepository();
     const server = buildTestServer(repository);

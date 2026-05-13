@@ -556,11 +556,12 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('href="merchantapp://swimpay-return?status=completed');
     expect(response.body).toContain('payment_session_id=ps_01');
     expect(response.body).toContain('order_id=ord_01');
+    expect(response.body).toContain('external_id=ext_01');
     expect(response.body).not.toContain('onclick="history.back()"');
     expect(response.body).not.toContain('payment.confirmed');
   });
 
-  it('uses the stored merchant return_url for the confirmed return-to-merchant button', async () => {
+  it('prioritizes Android SDK return scheme over stored web return_url', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {
       ...provider.session,
@@ -574,6 +575,51 @@ describe('hosted checkout web foundation', () => {
     const response = await server.inject({
       method: 'GET',
       url: '/checkout/ps_01?swimpay_return_scheme=merchantapp'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('href="merchantapp://swimpay-return?status=completed');
+    expect(response.body).toContain('external_id=ext_01');
+    expect(response.body).not.toContain('href="https://merchant.example/orders/ORDER_01"');
+    expect(response.body).not.toContain('onclick="history.back()"');
+  });
+
+  it('accepts android_return_scheme as the native return scheme alias', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      status: 'manual_confirmed',
+      checkout_state: 'confirmed',
+      buyer_safe_status: 'confirmed',
+      return_url: 'https://merchant.example/orders/ORDER_01'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01?android_return_scheme=merchantapp'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('href="merchantapp://swimpay-return?status=completed');
+    expect(response.body).toContain('external_id=ext_01');
+    expect(response.body).not.toContain('href="https://merchant.example/orders/ORDER_01"');
+  });
+
+  it('falls back to stored web return_url when no Android return scheme is present', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      status: 'manual_confirmed',
+      checkout_state: 'confirmed',
+      buyer_safe_status: 'confirmed',
+      return_url: 'https://merchant.example/orders/ORDER_01'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01'
     });
 
     expect(response.statusCode).toBe(200);
@@ -1065,6 +1111,7 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
   public session: CheckoutSession = {
     payment_session_id: 'ps_01',
     order_id: 'ord_01',
+    external_id: 'ext_01',
     status: 'receiver_arming',
     amount: { value: '137.00', currency: 'RUB' },
     reference: 'TANGO ALFA',

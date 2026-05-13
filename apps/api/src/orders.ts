@@ -369,6 +369,7 @@ export interface IdGenerator {
 export interface CreateOrderRequestBody {
   external_id: string;
   return_url?: string | undefined;
+  web_return_url?: string | undefined;
   success_url?: string | undefined;
   cancel_url?: string | undefined;
   merchant_return_url?: string | undefined;
@@ -2341,6 +2342,7 @@ export function validateCreateOrderBody(body: unknown): CreateOrderRequestBody |
 
   const requestedReturnUrl =
     candidate.return_url ??
+    candidate.web_return_url ??
     candidate.success_url ??
     candidate.merchant_return_url ??
     candidate.app_link_url ??

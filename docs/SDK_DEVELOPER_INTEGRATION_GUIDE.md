@@ -362,6 +362,8 @@ Android rule:
 ```text
 Return from checkout != paid.
 Only your backend can mark the merchant order fulfilled, after a verified payment.confirmed webhook.
+Android returnScheme wins over web_return_url/return_url.
+web_return_url/return_url is only a browser fallback.
 ```
 
 ## 8. Webhook endpoint

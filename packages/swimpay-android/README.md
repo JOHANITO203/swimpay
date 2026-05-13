@@ -65,13 +65,15 @@ Add both callback hosts to your Android activity:
 <data android:scheme="merchantapp" android:host="swimpay-bank-launch" />
 ```
 
-`returnScheme` is forwarded to the hosted checkout as a custom app return scheme. When the buyer taps `Retourner au marchand`, the checkout opens:
+`returnScheme` is forwarded to the hosted checkout as the priority Android app return scheme. When the buyer taps `Retourner au marchand`, the checkout opens the native scheme before any stored web return URL:
 
 ```text
-merchantapp://swimpay-return?status=completed&payment_session_id=...&order_id=...
+merchantapp://swimpay-return?status=completed&payment_session_id=...&order_id=...&external_id=...
 ```
 
-This return only tells your app to refresh its own backend. It is not a payment proof and does not confirm anything locally.
+If no `returnScheme` is provided, the hosted checkout can fall back to the merchant web return URL configured by the backend. This return only tells your app to refresh its own backend. It is not a payment proof and does not confirm anything locally.
+
+Contract shorthand: returnScheme wins over web_return_url/return_url.
 
 ## Optional payer bank launcher
 

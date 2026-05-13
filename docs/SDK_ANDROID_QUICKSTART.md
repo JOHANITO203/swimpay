@@ -16,6 +16,7 @@ The merchant Android app is not the SwimPay Receiver. It does not listen to bank
 8. The SwimPay webhook is delivered to your backend after merchant manual confirmation.
 
 The return does not confirm payment.
+For Android SDK launches, the native `returnScheme` has priority over any merchant web return URL. A web return URL is only a fallback for browser/web integrations.
 
 ## Install
 
@@ -110,6 +111,14 @@ class CheckoutActivity : AppCompatActivity() {
     </intent-filter>
 </activity>
 ```
+
+When the buyer taps `Retourner au marchand` after a final checkout state, the native Android return opens:
+
+```text
+merchantapp://swimpay-return?status=completed&payment_session_id=...&order_id=...&external_id=...
+```
+
+This URI is only a signal for your app to refresh its own backend. It is not payment proof and must not fulfill the order.
 
 ## Security notes
 

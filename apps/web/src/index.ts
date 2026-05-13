@@ -68,6 +68,7 @@ export type StructuredCheckoutFallbackCode =
 export interface CheckoutSession {
   payment_session_id: string;
   order_id: string;
+  external_id?: string | undefined;
   status: CheckoutStatus;
   checkout_state?: CheckoutSessionState | undefined;
   buyer_safe_status?: BuyerSafeCheckoutStatus | undefined;
@@ -386,6 +387,7 @@ export interface CheckoutRecipient {
 interface CheckoutStatusResponse {
   payment_session_id: string;
   order_id: string;
+  external_id?: string | undefined;
   status: CheckoutStatus;
   checkout_state: CheckoutSessionState;
   buyer_safe_status: BuyerSafeCheckoutStatus;
@@ -977,7 +979,8 @@ function readNativeReturnScheme(query: unknown): string | undefined {
   if (!query || typeof query !== 'object' || Array.isArray(query)) {
     return undefined;
   }
-  const value = (query as Record<string, unknown>).swimpay_return_scheme;
+  const record = query as Record<string, unknown>;
+  const value = record.android_return_scheme ?? record.swimpay_return_scheme;
   if (typeof value !== 'string' || !/^[a-z][a-z0-9+.-]{1,40}$/iu.test(value)) {
     return undefined;
   }
@@ -988,9 +991,6 @@ function readNativeReturnScheme(query: unknown): string | undefined {
 }
 
 function withNativeReturnUrl(session: CheckoutSession, query: unknown): CheckoutSession {
-  if (session.return_url) {
-    return session;
-  }
   const scheme = readNativeReturnScheme(query);
   if (!scheme) {
     return session;
@@ -1000,6 +1000,9 @@ function withNativeReturnUrl(session: CheckoutSession, query: unknown): Checkout
     payment_session_id: session.payment_session_id,
     order_id: session.order_id
   });
+  if (session.external_id) {
+    params.set('external_id', session.external_id);
+  }
   return {
     ...session,
     return_url: `${scheme}://swimpay-return?${params.toString()}`
@@ -1449,7 +1452,7 @@ export function toCheckoutStatusResponse(s: CheckoutSession): CheckoutStatusResp
   const buyer_safe_status = s.buyer_safe_status ?? mapCheckoutStateToBuyerSafeStatus(checkout_state);
 
   return {
-    payment_session_id: s.payment_session_id, order_id: s.order_id, status: s.status,
+    payment_session_id: s.payment_session_id, order_id: s.order_id, external_id: s.external_id, status: s.status,
     checkout_state, buyer_safe_status,
     display_status: st.displayStatus, result_state: st.resultState,
     selected_receiving_route_id: s.selected_receiving_route_id,

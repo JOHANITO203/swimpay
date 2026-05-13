@@ -51,6 +51,7 @@ const expirableStatuses = new Set<PaymentSessionStatus>([
 export interface PaymentSessionReadResponse {
   payment_session_id: string;
   order_id: string;
+  external_id?: string | undefined;
   status: PaymentSessionStatus;
   checkout_state: CheckoutSessionState;
   buyer_safe_status: BuyerSafeCheckoutStatus;
@@ -88,6 +89,7 @@ export interface PaymentSessionReadResponse {
 export interface CheckoutStatusResponse {
   payment_session_id: string;
   order_id: string;
+  external_id?: string | undefined;
   status: PaymentSessionStatus;
   checkout_state: CheckoutSessionState;
   buyer_safe_status: BuyerSafeCheckoutStatus;
@@ -227,6 +229,7 @@ export function toPaymentSessionReadResponse(params: {
   return stripUndefined({
     payment_session_id: params.paymentSession.id,
     order_id: params.order.id,
+    external_id: params.order.externalId,
     status,
     checkout_state: checkoutState,
     buyer_safe_status: mapCheckoutStateToBuyerSafeStatus(checkoutState),
@@ -280,6 +283,7 @@ export function toCheckoutStatusResponse(params: {
   return stripUndefined({
     payment_session_id: read.payment_session_id,
     order_id: read.order_id,
+    external_id: read.external_id,
     status: read.status,
     checkout_state: read.checkout_state,
     buyer_safe_status: read.buyer_safe_status,

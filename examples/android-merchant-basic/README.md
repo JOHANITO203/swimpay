@@ -12,6 +12,8 @@ The return does not confirm payment. The webhook is delivered to your backend af
 
 never put a SwimPay secret in the APK.
 
+When `SwimPayCheckoutOptions(returnScheme = "merchantapp")` is used, the hosted checkout returns to `merchantapp://swimpay-return?...` before using any web return URL. A web return URL is only a fallback for browser integrations.
+
 ## Files
 
 - `CheckoutActivity.kt` - minimal Kotlin button and checkout usage.

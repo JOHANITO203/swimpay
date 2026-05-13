@@ -137,6 +137,7 @@ describe('Android merchant SDK product truth guardrails', () => {
     expect(docs).toContain('checkout_url');
     expect(docs).toContain('SwimPayButton');
     expect(docs).toContain('refresh order status from your backend');
+    expect(docs).toContain('returnScheme wins over web_return_url/return_url');
     expect(docs).toContain('never put a SwimPay secret in the APK');
     expect(docs).toContain('return does not confirm payment');
     expect(docs).toContain('webhook is delivered to your backend');
