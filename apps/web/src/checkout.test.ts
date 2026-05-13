@@ -27,6 +27,10 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Retour au marchand');
     expect(response.body).toContain('data-checkout-panel="buyer-identity" hidden');
     expect(response.body).toContain('Vos informations');
+    expect(response.body).toContain('Veuillez remplir le formulaire de donnees ci-dessous');
+    expect(response.body).toContain('SwimPay ne collecte pas vos donnees sensibles');
+    expect(response.body).not.toContain('Ces donnees servent a reconnaitre le signal de paiement.');
+    expect(response.body).not.toContain("Pas de CVV, pas de date d'expiration, pas de code SMS.");
     expect(response.body).toContain('sender_card_number');
     expect(response.body).toContain('sender_phone');
     expect(response.body).toContain('data-method-field="sbp" hidden');
@@ -680,6 +684,28 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('merchantapp://swimpay-return');
   });
 
+  it('does not render a raw API return endpoint as the final buyer destination', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      status: 'manual_confirmed',
+      checkout_state: 'confirmed',
+      buyer_safe_status: 'confirmed',
+      return_url: 'https://api.swimvpn.pro/swimpay-return?orderRef=ORDER_01'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/checkout/ps_01'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Retourner au marchand');
+    expect(response.body).not.toContain('href="https://api.swimvpn.pro/swimpay-return');
+    expect(response.body).toContain('onclick="history.back()"');
+  });
+
   it('rejects unsafe return schemes and keeps the browser-history fallback', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.session = {
@@ -1059,11 +1085,52 @@ describe('hosted checkout web foundation', () => {
       buyer_claimed_paid: true,
       does_not_confirm_payment: true,
       next_status: 'Recherche du signal bancaire',
+      claim_result: 'claim_recorded',
       status: 'buyer_claimed_paid',
       checkout_state: 'buyer_claimed_paid',
       buyer_safe_status: 'searching_signal',
       official_bank_confirmation: false
     });
+  });
+
+  it('reconciles a late buyer paid claim to the already confirmed checkout state', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      status: 'manual_confirmed',
+      checkout_state: 'confirmed',
+      buyer_safe_status: 'confirmed'
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'POST', url: '/checkout/ps_01/claimed-paid' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      payment_session_id: 'ps_01',
+      status: 'manual_confirmed',
+      checkout_state: 'confirmed',
+      buyer_safe_status: 'confirmed',
+      claim_result: 'already_confirmed',
+      buyer_claimed_paid: false,
+      official_bank_confirmation: false
+    });
+    expect(provider.session.status).toBe('manual_confirmed');
+  });
+
+  it('preserves Android return scheme across buyer paid form redirects', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/checkout/ps_01/claimed-paid',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      payload: 'swimpay_return_scheme=merchantapp'
+    });
+
+    expect(response.statusCode).toBe(303);
+    expect(response.headers.location).toBe('/checkout/ps_01?swimpay_return_scheme=merchantapp');
   });
 
   it('arms the receiver when buyer continues to bank without confirming payment', async () => {
@@ -1329,6 +1396,58 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
 
   public async markBuyerClaimedPaid(paymentSessionId: string) {
     void paymentSessionId;
+    if (this.session.status === 'manual_confirmed' || this.session.status === 'fulfilled' || this.session.buyer_safe_status === 'confirmed') {
+      return {
+        payment_session_id: this.session.payment_session_id,
+        buyer_claimed_paid: false as const,
+        does_not_confirm_payment: true as const,
+        next_status: 'Paiement confirme',
+        claim_result: 'already_confirmed' as const,
+        status: this.session.status,
+        checkout_state: this.session.checkout_state as CheckoutSessionState,
+        buyer_safe_status: this.session.buyer_safe_status as BuyerSafeCheckoutStatus,
+        official_bank_confirmation: false as const
+      };
+    }
+    if (this.session.status === 'rejected' || this.session.buyer_safe_status === 'rejected') {
+      return {
+        payment_session_id: this.session.payment_session_id,
+        buyer_claimed_paid: false as const,
+        does_not_confirm_payment: true as const,
+        next_status: 'Paiement rejete',
+        claim_result: 'already_rejected' as const,
+        status: this.session.status,
+        checkout_state: this.session.checkout_state as CheckoutSessionState,
+        buyer_safe_status: this.session.buyer_safe_status as BuyerSafeCheckoutStatus,
+        official_bank_confirmation: false as const
+      };
+    }
+    if (this.session.status === 'expired' || this.session.buyer_safe_status === 'expired') {
+      return {
+        payment_session_id: this.session.payment_session_id,
+        buyer_claimed_paid: false as const,
+        does_not_confirm_payment: true as const,
+        next_status: 'Paiement expire',
+        claim_result: 'already_expired' as const,
+        status: this.session.status,
+        checkout_state: this.session.checkout_state as CheckoutSessionState,
+        buyer_safe_status: this.session.buyer_safe_status as BuyerSafeCheckoutStatus,
+        official_bank_confirmation: false as const
+      };
+    }
+    if (this.session.status === 'buyer_claimed_paid') {
+      return {
+        payment_session_id: this.session.payment_session_id,
+        buyer_claimed_paid: true as const,
+        does_not_confirm_payment: true as const,
+        next_status: 'Recherche du signal bancaire',
+        claim_result: 'claim_recorded' as const,
+        status: this.session.status,
+        checkout_state: this.session.checkout_state as CheckoutSessionState,
+        buyer_safe_status: this.session.buyer_safe_status as BuyerSafeCheckoutStatus,
+        official_bank_confirmation: false as const
+      };
+    }
     this.session = {
       ...this.session,
       status: 'buyer_claimed_paid',
@@ -1341,6 +1460,7 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
       buyer_claimed_paid: true as const,
       does_not_confirm_payment: true as const,
       next_status: 'Recherche du signal bancaire',
+      claim_result: 'claim_recorded' as const,
       status: this.session.status,
       checkout_state: this.session.checkout_state as CheckoutSessionState,
       buyer_safe_status: this.session.buyer_safe_status as BuyerSafeCheckoutStatus,

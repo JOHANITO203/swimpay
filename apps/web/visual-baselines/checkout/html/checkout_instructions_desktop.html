@@ -478,10 +478,12 @@
     </div>
     <div class="instruction-actions">
       <form method="post" action="/checkout/ps_visual_01/continue-to-bank" data-bank-launch-form data-launch-url="swimpaymerchant://swimpay-bank-launch?payer_bank_launcher_id=sber_ru&amp;package_name=ru.sberbankmobile&amp;explicit_activity_class_name=ru.sberbank.mobile.feature.externalstarttransfer.impl.presentation.NativeContactShortcutActivity" data-checkout-url="/checkout/ps_visual_01" data-selected-sender-bank-id="sber_ru" data-payer-bank-launcher-id="sber_ru">
+        <input type="hidden" name="swimpay_return_scheme" value="">
         <button class="checkout-primary-action" type="submit">Aller a ma banque <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5"/><path d="M10 14L19 5"/><path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg><span class="sr-only">Ouvrir ma banque</span></button>
       </form>
       <button class="checkout-secondary-action" type="button" data-copy-value="Montant exact: 299.07 RUB\nReference: SWP-97DBEF3C\nCarte du destinataire: 2202 **** **** 4821\nBanque de reception: Sberbank\nBanque d&#39;envoi: Sberbank" aria-label="Copier les details">Copier tous les details</button>
       <form method="post" action="/checkout/ps_visual_01/claimed-paid">
+        <input type="hidden" name="swimpay_return_scheme" value="">
         <button
     id="paid-button"
     type="submit"

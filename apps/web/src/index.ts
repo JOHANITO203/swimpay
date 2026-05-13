@@ -1,5 +1,5 @@
 ﻿import { pathToFileURL } from 'node:url';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import {
   renderConnectedSitePage as renderConnectedSiteScreen,
   renderDeveloperIntegrationWizardPage as renderDeveloperIntegrationWizardScreen,
@@ -432,9 +432,10 @@ interface ReceivingRouteCopyDetailsPayload {
 }
 interface CheckoutClaimedPaidResponse {
   payment_session_id: string;
-  buyer_claimed_paid: true;
+  buyer_claimed_paid: boolean;
   does_not_confirm_payment: true;
   next_status: string;
+  claim_result?: 'claim_recorded' | 'pending_review' | 'already_confirmed' | 'already_rejected' | 'already_expired' | undefined;
   status: CheckoutStatus;
   checkout_state: CheckoutSessionState;
   buyer_safe_status: BuyerSafeCheckoutStatus;
@@ -755,7 +756,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
        if (options.environment === 'test') {
             const testSession = withNativeReturnUrl(mockSession('any'), request.query);
             return renderCheckoutScreen(testSession, defaultRecipient, [], [], [], mapCheckoutStatus(testSession.status).displayStatus, {
-              nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query)
+              nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query),
+              nativeReturnScheme: readNativeReturnScheme(request.query)
             });
        }
        return reply.status(400).send({ error: 'invalid_id' });
@@ -806,7 +808,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       payerBankLaunchers.payer_bank_launchers,
       mapCheckoutStatus(session.status).displayStatus,
       {
-        nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query)
+        nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query),
+        nativeReturnScheme: readNativeReturnScheme(request.query)
       }
     );
   });
@@ -847,7 +850,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       return renderedFallback;
     }
     if (shouldRedirectCheckoutFormPost(request.headers)) {
-      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+      return reply.status(303).redirect(checkoutRedirectPath(params.paymentSessionId, request));
     }
     return reply.status(200).send(toCheckoutStatusResponse(session!));
   });
@@ -857,7 +860,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     const body = request.body as ExpectedPaymentProfileFormPayload;
     try {
       await checkoutSessionProvider.submitExpectedPaymentProfile(params.paymentSessionId, body);
-      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+      return reply.status(303).redirect(checkoutRedirectPath(params.paymentSessionId, request));
     } catch (error) {
       const renderedFallback = await renderStructuredCheckoutFallbackFromError({
         error,
@@ -896,7 +899,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       return renderedFallback;
     }
     if (shouldRedirectCheckoutFormPost(request.headers)) {
-      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+      return reply.status(303).redirect(checkoutRedirectPath(params.paymentSessionId, request));
     }
     return reply.status(200).send(toCheckoutStatusResponse(session!));
   });
@@ -923,7 +926,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       return renderedFallback;
     }
     if (shouldRedirectCheckoutFormPost(request.headers)) {
-      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+      return reply.status(303).redirect(checkoutRedirectPath(params.paymentSessionId, request));
     }
     return reply.status(200).send(toCheckoutStatusResponse(session!));
   });
@@ -937,7 +940,7 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       if (isAlreadyReceiverArmedConflict(error)) {
         const currentSession = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
         if (shouldRedirectCheckoutFormPost(request.headers)) {
-          return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+          return reply.status(303).redirect(checkoutRedirectPath(params.paymentSessionId, request));
         }
         if (currentSession) {
           return reply.status(200).send(toCheckoutStatusResponse(currentSession));
@@ -956,18 +959,30 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       return renderedFallback;
     }
     if (shouldRedirectCheckoutFormPost(request.headers)) {
-      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+      return reply.status(303).redirect(checkoutRedirectPath(params.paymentSessionId, request));
     }
     return reply.status(200).send(toCheckoutStatusResponse(session));
   });
 
   server.post('/checkout/:paymentSessionId/claimed-paid', async (request, reply) => {
     const params = request.params as PaymentSessionParams;
-    const result = await checkoutSessionProvider.markBuyerClaimedPaid(params.paymentSessionId);
-    if (shouldRedirectCheckoutFormPost(request.headers)) {
-      return reply.status(303).redirect(`/checkout/${encodeURIComponent(params.paymentSessionId)}`);
+    let result: CheckoutClaimedPaidResponse;
+    try {
+      result = await checkoutSessionProvider.markBuyerClaimedPaid(params.paymentSessionId);
+    } catch (error) {
+      const currentSession = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+      if (currentSession && shouldRedirectCheckoutFormPost(request.headers)) {
+        return reply.status(303).redirect(checkoutRedirectPath(params.paymentSessionId, request));
+      }
+      if (currentSession) {
+        return reply.status(200).send(toCheckoutStatusResponse(currentSession));
+      }
+      throw error;
     }
-    return reply.status(202).send(result);
+    if (shouldRedirectCheckoutFormPost(request.headers)) {
+      return reply.status(303).redirect(checkoutRedirectPath(params.paymentSessionId, request));
+    }
+    return reply.status(result.claim_result?.startsWith('already_') ? 200 : 202).send(result);
   });
 
   return server;
@@ -1005,6 +1020,25 @@ function readNativeReturnScheme(query: unknown): string | undefined {
     return undefined;
   }
   return value;
+}
+
+function readNativeReturnSchemeFromRequest(request: FastifyRequest): string | undefined {
+  const bodyScheme = readNativeReturnScheme(request.body);
+  return bodyScheme ?? readNativeReturnScheme(request.query);
+}
+
+function checkoutRedirectPath(paymentSessionId: string, request: FastifyRequest): string {
+  const params = new URLSearchParams();
+  const returnScheme = readNativeReturnSchemeFromRequest(request);
+  const bankLauncherScheme = readNativeBankLauncherScheme(request.body) ?? readNativeBankLauncherScheme(request.query);
+  if (returnScheme) {
+    params.set('swimpay_return_scheme', returnScheme);
+  }
+  if (bankLauncherScheme) {
+    params.set('swimpay_bank_launcher_scheme', bankLauncherScheme);
+  }
+  const query = params.toString();
+  return `/checkout/${encodeURIComponent(paymentSessionId)}${query ? `?${query}` : ''}`;
 }
 
 function withNativeReturnUrl(session: CheckoutSession, query: unknown): CheckoutSession {

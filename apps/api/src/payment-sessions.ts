@@ -610,10 +610,12 @@ export function buildCheckoutActionResponse(params: {
   paymentSession: StoredPaymentSessionRecord;
   now: Date;
   buyerClaimedPaid?: boolean;
+  buyerClaimResult?: string | undefined;
 }): Record<string, unknown> {
   return stripUndefined({
     ...toCheckoutStatusResponse(params),
     buyer_claimed_paid: params.buyerClaimedPaid,
+    claim_result: params.buyerClaimResult,
     does_not_confirm_payment: true
   });
 }

@@ -476,9 +476,10 @@
     <section class="checkout-stage-card checkout-info-card" data-checkout-panel="buyer-identity" data-visual-stage="info">
     <div class="checkout-stage-head">
       <h1>Vos informations</h1>
-      <p>Ces donnees servent a reconnaitre le signal de paiement.</p>
+      <p>Veuillez remplir le formulaire de donnees ci-dessous</p>
     </div>
     <form method="post" action="/checkout/ps_visual_01/expected-payment-profile" class="expected-profile-form">
+      <input type="hidden" name="swimpay_return_scheme" value="">
       
       <div class="checkout-input-grid">
         <label class="checkout-field">Prenom
@@ -561,7 +562,7 @@
           <input name="sender_phone" type="tel" autocomplete="tel" placeholder="+7 ..." disabled>
         </label>
       </div>
-      <p class="checkout-security-line"><span></span> Pas de CVV, pas de date d'expiration, pas de code SMS.</p>
+      <p class="checkout-security-line"><span></span> SwimPay ne collecte pas vos donnees sensibles</p>
       <button class="checkout-primary-action" type="submit">Continuer</button>
       <button class="checkout-ghost-action" type="button" data-show-panel="intro" data-progress-step="1">Retour a l'accueil</button>
     </form>

@@ -3247,3 +3247,21 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Hosted checkout Step 2 now shows both receiver bank and sender bank with logo asset keys.
 - Hosted checkout bank logos now resolve from repo-root-relative paths instead of `process.cwd()`.
 - Targeted contract/API/web checkout tests passed.
+
+## 2026-05-13T04:40:00+03:00 - Checkout microcopy, late buyer claim and return host
+
+- Updated Step 1 buyer copy and sensitive-data notice.
+- Found root cause for late `J'ai paye` failures: the buyer claim mutation only allowed `receiver_armed` and did not reconcile final merchant decisions first.
+- Replaced buyer claim handling with a state-aware transaction that returns `already_confirmed`, `already_rejected`, `already_expired`, `pending_review` or `claim_recorded`.
+- Preserved Android SDK return scheme through hosted checkout POST redirects.
+- Added a safe final return resolver so raw API endpoints are not rendered as buyer CTA destinations.
+- Targeted checkout API/web tests passed: 93 tests.
+
+## Validation Completed
+
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm test` passed: 78 files, 697 tests.
+- `npm run build` passed.
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config` passed.
+- `npm run checkout:screenshot:record` and `npm run checkout:screenshot:verify` passed for the intentional checkout copy baseline update.

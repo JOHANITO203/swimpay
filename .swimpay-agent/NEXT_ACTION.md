@@ -130,3 +130,30 @@ generated_at: 2026-05-13T00:59:00+03:00
 - Do not add generated bank logos.
 - Do not change payment confirmation semantics.
 - Do not process real bank notifications in this checkout contract pass.
+
+## Current Pass - Checkout Micro Details / Return Host
+
+## Completed Locally In This Pass
+
+1. Updated Step 1 checkout copy and sensitive-data notice.
+2. Made late `J'ai paye` claims idempotent for confirmed, rejected and expired sessions.
+3. Preserved Android SDK return scheme through hosted checkout form redirects.
+4. Added checkout-safe return CTA resolution so raw API endpoints are not rendered as buyer destinations.
+5. Added targeted API and web checkout regression tests.
+
+## Next Recommended Action
+
+1. Run full validation.
+2. Run hosted checkout screenshot verification and record if intentional copy/layout baseline changes require it.
+3. Redeploy API/web to staging.
+4. Test Android SDK host return and late buyer claim behavior from the external app.
+
+## Do Not Do
+
+- Do not use return URL as fulfillment proof.
+- Do not change final webhook semantics.
+- Do not reopen final payment sessions from buyer actions.
+
+## Validation Status
+
+Full local validation passed. Next action is staging redeploy and external-app smoke test for Android return scheme plus late buyer claim reconciliation.

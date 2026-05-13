@@ -774,3 +774,15 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Ozon Bank still uses the documented `OZ` placeholder because no official Ozon logo asset is registered in-repo.
 - Staging must be redeployed before SWIMVPN+ can verify sender-bank selection and logos online.
 - Real bank notification testing remains out of scope.
+
+## Checkout Micro Details / Late Buyer Claim / Return To Host
+
+- No local implementation blocker remains after targeted checkout tests.
+- Full validation and checkout screenshot verification still need to run before final handoff.
+- Staging must be redeployed before Android SDK return behavior and late buyer claim reconciliation can be verified online.
+- External fulfillment remains webhook-owned; the buyer return CTA is UX-only.
+
+## Validation Status
+
+- Full local validation passed for this checkout sprint.
+- Remaining blocker is staging redeploy/online verification only.

@@ -200,11 +200,25 @@ export type PaymentSessionCheckoutMutationResult =
       kind: 'updated';
       order: StoredOrderRecord;
       paymentSession: StoredPaymentSessionRecord;
+      claimResult?: BuyerClaimResult | undefined;
+    }
+  | {
+      kind: 'already_final';
+      order: StoredOrderRecord;
+      paymentSession: StoredPaymentSessionRecord;
+      claimResult: BuyerClaimResult;
     }
   | { kind: 'not_found' }
   | { kind: 'expired' }
   | { kind: 'amount_lease_unavailable' }
   | { kind: 'invalid_transition'; currentStatus: PaymentSessionStatus };
+
+export type BuyerClaimResult =
+  | 'claim_recorded'
+  | 'pending_review'
+  | 'already_confirmed'
+  | 'already_rejected'
+  | 'already_expired';
 
 export interface RequestNoNotificationManualCheckInput extends CheckoutMutationBaseInput {
   reviewId: string;
@@ -1448,32 +1462,135 @@ export class PgOrderRepository implements OrderRepository {
   }
 
   public async markBuyerClaimedPaid(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult> {
-    return this.mutateCheckoutSession({
-      input,
-      allowedStatuses: ['receiver_armed'],
-      auditEventType: 'checkout.buyer_claimed_paid',
-      apply: async (client) => {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      const current = await client.query(
+        `SELECT ps.id, ps.valid_until, ps.status, ps.buyer_claimed_paid_at, o.status AS order_status
+         FROM payment_sessions ps
+         INNER JOIN orders o ON o.id = ps.order_id AND o.merchant_id = ps.merchant_id
+         WHERE ps.merchant_id = $1 AND ps.id = $2
+         FOR UPDATE OF ps, o`,
+        [input.merchantId, input.paymentSessionId]
+      );
+      if (current.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_found' };
+      }
+
+      const row = current.rows[0] as {
+        valid_until: string | Date;
+        status: PaymentSessionStatus;
+        order_status: OrderStatus;
+        buyer_claimed_paid_at: string | Date | null;
+      };
+      const finalClaim = buyerClaimResultForFinalStatus(row.status, row.order_status);
+      if (finalClaim) {
+        await client.query('ROLLBACK');
+        const loaded = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+        return loaded
+          ? { kind: 'already_final', order: loaded.order, paymentSession: loaded.paymentSession, claimResult: finalClaim }
+          : { kind: 'not_found' };
+      }
+
+      if (new Date(row.valid_until).getTime() <= new Date(input.now).getTime()) {
+        await markCheckoutSessionExpired(client, input, row.status);
+        await client.query('COMMIT');
+        const loaded = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+        return loaded
+          ? { kind: 'already_final', order: loaded.order, paymentSession: loaded.paymentSession, claimResult: 'already_expired' }
+          : { kind: 'not_found' };
+      }
+
+      if (row.status === 'buyer_claimed_paid') {
+        await client.query('ROLLBACK');
+        const loaded = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+        return loaded
+          ? { kind: 'updated', order: loaded.order, paymentSession: loaded.paymentSession, claimResult: 'claim_recorded' }
+          : { kind: 'not_found' };
+      }
+
+      if (['signal_detected', 'matching', 'needs_review'].includes(row.status)) {
+        if (row.buyer_claimed_paid_at) {
+          await client.query('ROLLBACK');
+          const loaded = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+          return loaded
+            ? { kind: 'updated', order: loaded.order, paymentSession: loaded.paymentSession, claimResult: 'pending_review' }
+            : { kind: 'not_found' };
+        }
         await client.query(
           `UPDATE payment_sessions
-           SET status = 'buyer_claimed_paid',
-               buyer_claimed_paid_at = COALESCE(buyer_claimed_paid_at, $3::timestamptz),
+           SET buyer_claimed_paid_at = COALESCE(buyer_claimed_paid_at, $3::timestamptz),
                updated_at = $3
            WHERE merchant_id = $1 AND id = $2`,
           [input.merchantId, input.paymentSessionId, input.now]
         );
-        await client.query(
-          `UPDATE orders
-           SET status = 'buyer_claimed_paid', updated_at = $3
-           WHERE merchant_id = $1
-             AND id = (SELECT order_id FROM payment_sessions WHERE merchant_id = $1 AND id = $2)`,
-          [input.merchantId, input.paymentSessionId, input.now]
-        );
-      },
-      payload: {
-        buyer_claimed_paid: true,
-        does_not_confirm_payment: true
+        await insertCheckoutAuditEvent(client, {
+          merchantId: input.merchantId,
+          paymentSessionId: input.paymentSessionId,
+          auditEventId: input.auditEventId,
+          eventType: 'checkout.buyer_claimed_paid',
+          payload: {
+            payment_session_id: input.paymentSessionId,
+            buyer_claimed_paid: true,
+            claim_result: 'pending_review',
+            preserved_status: row.status,
+            does_not_confirm_payment: true
+          },
+          now: input.now
+        });
+        await client.query('COMMIT');
+        const loaded = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+        return loaded
+          ? { kind: 'updated', order: loaded.order, paymentSession: loaded.paymentSession, claimResult: 'pending_review' }
+          : { kind: 'not_found' };
       }
-    });
+
+      if (row.status !== 'receiver_armed') {
+        await client.query('ROLLBACK');
+        return { kind: 'invalid_transition', currentStatus: row.status };
+      }
+
+      await client.query(
+        `UPDATE payment_sessions
+         SET status = 'buyer_claimed_paid',
+             buyer_claimed_paid_at = COALESCE(buyer_claimed_paid_at, $3::timestamptz),
+             updated_at = $3
+         WHERE merchant_id = $1 AND id = $2`,
+        [input.merchantId, input.paymentSessionId, input.now]
+      );
+      await client.query(
+        `UPDATE orders
+         SET status = 'buyer_claimed_paid', updated_at = $3
+         WHERE merchant_id = $1
+           AND id = (SELECT order_id FROM payment_sessions WHERE merchant_id = $1 AND id = $2)`,
+        [input.merchantId, input.paymentSessionId, input.now]
+      );
+      await insertCheckoutAuditEvent(client, {
+        merchantId: input.merchantId,
+        paymentSessionId: input.paymentSessionId,
+        auditEventId: input.auditEventId,
+        eventType: 'checkout.buyer_claimed_paid',
+        payload: {
+          payment_session_id: input.paymentSessionId,
+          buyer_claimed_paid: true,
+          claim_result: 'claim_recorded',
+          does_not_confirm_payment: true
+        },
+        now: input.now
+      });
+      await client.query('COMMIT');
+      const updated = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+      return updated
+        ? { kind: 'updated', order: updated.order, paymentSession: updated.paymentSession, claimResult: 'claim_recorded' }
+        : { kind: 'not_found' };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   public async requestNoNotificationManualCheck(
@@ -1794,6 +1911,101 @@ export class PgOrderRepository implements OrderRepository {
       client.release();
     }
   }
+}
+
+function buyerClaimResultForFinalStatus(
+  paymentSessionStatus: PaymentSessionStatus,
+  orderStatus: OrderStatus
+): BuyerClaimResult | null {
+  if (paymentSessionStatus === 'manual_confirmed' || orderStatus === 'manual_confirmed' || orderStatus === 'fulfilled') {
+    return 'already_confirmed';
+  }
+  if (paymentSessionStatus === 'rejected' || orderStatus === 'rejected') {
+    return 'already_rejected';
+  }
+  if (paymentSessionStatus === 'expired' || orderStatus === 'expired') {
+    return 'already_expired';
+  }
+  return null;
+}
+
+async function markCheckoutSessionExpired(
+  client: pg.PoolClient,
+  input: CheckoutMutationBaseInput,
+  fromStatus: PaymentSessionStatus
+): Promise<void> {
+  await client.query(
+    `UPDATE payment_sessions
+     SET status = 'expired',
+         route_lock_expires_at = NULL,
+         amount_lease_id = NULL,
+         updated_at = $3::timestamptz
+     WHERE merchant_id = $1
+       AND id = $2
+       AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
+    [input.merchantId, input.paymentSessionId, input.now]
+  );
+  await client.query(
+    `UPDATE orders
+     SET status = 'expired',
+         updated_at = $3::timestamptz
+     WHERE merchant_id = $1
+       AND id = (SELECT order_id FROM payment_sessions WHERE merchant_id = $1 AND id = $2)
+       AND status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
+    [input.merchantId, input.paymentSessionId, input.now]
+  );
+  await client.query(
+    `UPDATE amount_leases
+     SET status = 'expired',
+         updated_at = $3::timestamptz
+     WHERE merchant_id = $1
+       AND payment_session_id = $2
+       AND status = 'active'`,
+    [input.merchantId, input.paymentSessionId, input.now]
+  );
+  await insertCheckoutAuditEvent(client, {
+    merchantId: input.merchantId,
+    paymentSessionId: input.paymentSessionId,
+    auditEventId: input.auditEventId,
+    eventType: 'payment_session.status_changed',
+    payload: {
+      payment_session_id: input.paymentSessionId,
+      from_status: fromStatus,
+      to_status: 'expired',
+      reason: 'checkout_session_expired',
+      official_bank_confirmation: false
+    },
+    now: input.now,
+    actorType: 'system'
+  });
+}
+
+async function insertCheckoutAuditEvent(
+  client: pg.PoolClient,
+  params: {
+    merchantId: string;
+    paymentSessionId: string;
+    auditEventId: string;
+    eventType: string;
+    payload: Record<string, unknown>;
+    now: string;
+    actorType?: 'api' | 'system' | undefined;
+  }
+): Promise<void> {
+  await client.query(
+    `INSERT INTO audit_events (
+      id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+    ) VALUES ($1, $2, $3, 'payment_session', $4, $5, $6::jsonb, $7)`,
+    [
+      params.auditEventId,
+      params.merchantId,
+      params.eventType,
+      params.paymentSessionId,
+      params.actorType ?? 'api',
+      JSON.stringify(params.payload),
+      params.now
+    ]
+  );
 }
 
 async function allocateAmountLeaseForRoute(

@@ -541,3 +541,4 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 - [ ] `411_sberbank_manual_review_webhook_rehearsal` - status: blocked_no_review_row - source: `tasks/411_sberbank_manual_review_webhook_rehearsal.md`
 - [x] `412_sberbank_shadow_test_report` - status: completed - source: `tasks/412_sberbank_shadow_test_report.md`
 - [x] `checkout_sender_bank_receiver_route_contract_fix` - status: completed_targeted_tests_passed - source: `.swimpay-agent/CHECKOUT_SENDER_BANK_RECEIVER_ROUTE_AUDIT.md`
+- [x] `checkout_microcopy_late_buyer_claim_return_host` - status: completed_targeted_tests_passed_full_validation_pending - source: `.swimpay-agent/CHECKOUT_FINAL_STATE_MACHINE_CLOSEOUT.md`

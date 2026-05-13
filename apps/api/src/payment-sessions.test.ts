@@ -477,6 +477,28 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
   }
 
   async markBuyerClaimedPaid(input: Parameters<OrderRepository['markBuyerClaimedPaid']>[0]) {
+    const existingSession = this.paymentSessions.get(input.paymentSessionId);
+    const existingOrder = existingSession ? this.orders.get(existingSession.orderId) : undefined;
+    if (existingSession && existingOrder) {
+      if (existingSession.status === 'manual_confirmed' || existingOrder.status === 'manual_confirmed' || existingOrder.status === 'fulfilled') {
+        return { kind: 'already_final' as const, order: existingOrder, paymentSession: existingSession, claimResult: 'already_confirmed' as const };
+      }
+      if (existingSession.status === 'rejected' || existingOrder.status === 'rejected') {
+        return { kind: 'already_final' as const, order: existingOrder, paymentSession: existingSession, claimResult: 'already_rejected' as const };
+      }
+      if (existingSession.status === 'expired' || existingOrder.status === 'expired') {
+        return { kind: 'already_final' as const, order: existingOrder, paymentSession: existingSession, claimResult: 'already_expired' as const };
+      }
+      if (existingSession.status === 'buyer_claimed_paid') {
+        return { kind: 'updated' as const, order: existingOrder, paymentSession: existingSession, claimResult: 'claim_recorded' as const };
+      }
+      if (
+        ['signal_detected', 'matching', 'needs_review'].includes(existingSession.status) &&
+        existingSession.buyerClaimedPaidAt
+      ) {
+        return { kind: 'updated' as const, order: existingOrder, paymentSession: existingSession, claimResult: 'pending_review' as const };
+      }
+    }
     const result = this.requireMutableSession(input.merchantId, input.paymentSessionId, input.now, ['receiver_armed']);
     if (result.kind !== 'ok') {
       return result;
@@ -488,7 +510,7 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     result.order.status = 'buyer_claimed_paid';
     result.order.updatedAt = input.now;
     this.auditEvents.push({ eventType: 'checkout.buyer_claimed_paid', objectId: input.paymentSessionId });
-    return { kind: 'updated' as const, order: result.order, paymentSession: result.paymentSession };
+    return { kind: 'updated' as const, order: result.order, paymentSession: result.paymentSession, claimResult: 'claim_recorded' as const };
   }
 
   async requestNoNotificationManualCheck(input: Parameters<OrderRepository['requestNoNotificationManualCheck']>[0]) {
@@ -2224,6 +2246,136 @@ describe('payment session api', () => {
     expect(repository.orders.get('ord_session_01')?.status).toBe('buyer_claimed_paid');
     expect(repository.orders.get('ord_session_01')?.status).not.toBe('manual_confirmed');
     expect(repository.auditEvents.map((event) => event.eventType)).toContain('checkout.continue_to_bank');
+  });
+
+  test('buyer paid claim reconciles idempotently when merchant already confirmed', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    const session = repository.paymentSessions.get('ps_session_01');
+    const order = repository.orders.get('ord_session_01');
+    if (!session || !order) {
+      throw new Error('test session missing');
+    }
+    session.status = 'manual_confirmed';
+    order.status = 'manual_confirmed';
+
+    const claimed = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/claimed-paid',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(claimed.statusCode).toBe(200);
+    expect(claimed.json()).toMatchObject({
+      status: 'manual_confirmed',
+      checkout_state: 'confirmed',
+      buyer_safe_status: 'confirmed',
+      claim_result: 'already_confirmed',
+      buyer_claimed_paid: false,
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(repository.paymentSessions.get('ps_session_01')?.status).toBe('manual_confirmed');
+    expect(repository.orders.get('ord_session_01')?.status).toBe('manual_confirmed');
+  });
+
+  test('buyer paid claim reconciles rejected and expired final states without reopening review', async () => {
+    for (const finalStatus of ['rejected', 'expired'] as const) {
+      const repository = new InMemoryPaymentSessionRepository();
+      const server = buildServer(repository);
+      await createOrder(server);
+      const session = repository.paymentSessions.get('ps_session_01');
+      const order = repository.orders.get('ord_session_01');
+      if (!session || !order) {
+        throw new Error('test session missing');
+      }
+      session.status = finalStatus;
+      order.status = finalStatus;
+
+      const claimed = await server.inject({
+        method: 'POST',
+        url: '/v1/checkout/ps_session_01/claimed-paid',
+        headers: { authorization: 'Bearer test_mch_01' }
+      });
+
+      expect(claimed.statusCode).toBe(200);
+      expect(claimed.json()).toMatchObject({
+        status: finalStatus,
+        checkout_state: finalStatus,
+        buyer_safe_status: finalStatus,
+        claim_result: finalStatus === 'rejected' ? 'already_rejected' : 'already_expired',
+        buyer_claimed_paid: false,
+        does_not_confirm_payment: true,
+        official_bank_confirmation: false
+      });
+      expect(repository.paymentSessions.get('ps_session_01')?.status).toBe(finalStatus);
+      expect(repository.orders.get('ord_session_01')?.status).toBe(finalStatus);
+    }
+  });
+
+  test('duplicate buyer paid claim is idempotent and does not emit a second state change', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    const session = repository.paymentSessions.get('ps_session_01');
+    const order = repository.orders.get('ord_session_01');
+    if (!session || !order) {
+      throw new Error('test session missing');
+    }
+    session.status = 'buyer_claimed_paid';
+    session.buyerClaimedPaidAt = '2026-05-02T10:02:00.000Z';
+    order.status = 'buyer_claimed_paid';
+
+    const claimed = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/claimed-paid',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(claimed.statusCode).toBe(202);
+    expect(claimed.json()).toMatchObject({
+      status: 'buyer_claimed_paid',
+      checkout_state: 'buyer_claimed_paid',
+      buyer_safe_status: 'searching_signal',
+      claim_result: 'claim_recorded',
+      buyer_claimed_paid: true,
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(repository.auditEvents.filter((event) => event.eventType === 'checkout.buyer_claimed_paid')).toHaveLength(0);
+  });
+
+  test('duplicate buyer paid claim during merchant review is idempotent and preserves review state', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    await createOrder(server);
+    const session = repository.paymentSessions.get('ps_session_01');
+    const order = repository.orders.get('ord_session_01');
+    if (!session || !order) {
+      throw new Error('test session missing');
+    }
+    session.status = 'needs_review';
+    session.buyerClaimedPaidAt = '2026-05-02T10:02:00.000Z';
+    order.status = 'needs_review';
+
+    const claimed = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/claimed-paid',
+      headers: { authorization: 'Bearer test_mch_01' }
+    });
+
+    expect(claimed.statusCode).toBe(202);
+    expect(claimed.json()).toMatchObject({
+      status: 'needs_review',
+      checkout_state: 'needs_review',
+      buyer_safe_status: 'needs_review',
+      claim_result: 'pending_review',
+      buyer_claimed_paid: true,
+      does_not_confirm_payment: true,
+      official_bank_confirmation: false
+    });
+    expect(repository.auditEvents.filter((event) => event.eventType === 'checkout.buyer_claimed_paid')).toHaveLength(0);
   });
 
   test('checkout status endpoint exposes merchant manual confirmation as buyer-safe confirmed', async () => {

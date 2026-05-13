@@ -28,7 +28,7 @@ export function renderCheckoutPage(
   routes: readonly BuyerSafeReceivingRoute[],
   launchers: readonly PayerBankLauncherOption[],
   displayStatus: string,
-  options: { nativeBankLauncherScheme?: string | undefined } = {}
+  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined } = {}
 ): string {
   const visibleRoutes = filterRoutesForSession(routes, session.payment_method);
   const selectedRoute = visibleRoutes.find((route) => route.route_id === session.selected_receiving_route_id);
@@ -45,7 +45,7 @@ export function renderCheckoutPage(
         ${renderCheckoutBrand()}
         ${renderSegmentProgress(stage)}
         <div class="checkout-flow" data-checkout-stage-host>
-          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability, options.nativeBankLauncherScheme)}
+          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability, options)}
         </div>
         ${renderCheckoutTrustFooter()}
       </div>
@@ -65,13 +65,13 @@ function renderCurrentStage(
   selectedLauncher: PayerBankLauncherOption | undefined,
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
-  nativeBankLauncherScheme?: string | undefined
+  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined }
 ): string {
-  if (step === 'intro') return renderIntroFlow(session, banks, launchers, methodAvailability);
-  if (step === 'bank') return renderReceiverBankSelection(session, banks);
-  if (step === 'route') return renderReceivingRouteSelection(session, banks, visibleRoutes, launchers, methodAvailability);
-  if (step === 'launcher') return renderPayerLauncherSelection(session, banks, selectedRoute, launchers, methodAvailability);
-  if (step === 'instructions') return renderInstructionsStep(session, banks, selectedRoute, selectedLauncher, launchers, methodAvailability, nativeBankLauncherScheme);
+  if (step === 'intro') return renderIntroFlow(session, banks, launchers, methodAvailability, options.nativeReturnScheme);
+  if (step === 'bank') return renderReceiverBankSelection(session, banks, options.nativeReturnScheme);
+  if (step === 'route') return renderReceivingRouteSelection(session, banks, visibleRoutes, launchers, methodAvailability, options.nativeReturnScheme);
+  if (step === 'launcher') return renderPayerLauncherSelection(session, banks, selectedRoute, launchers, methodAvailability, options.nativeReturnScheme);
+  if (step === 'instructions') return renderInstructionsStep(session, banks, selectedRoute, selectedLauncher, launchers, methodAvailability, options);
   return renderWaitingStatusStep(session, displayStatus, selectedRoute, selectedLauncher);
 }
 
@@ -186,14 +186,15 @@ function renderIntroFlow(
   session: CheckoutSession,
   banks: readonly ReceiverBankOption[],
   launchers: readonly PayerBankLauncherOption[],
-  methodAvailability: BuyerMethodAvailability
+  methodAvailability: BuyerMethodAvailability,
+  nativeReturnScheme?: string | undefined
 ): string {
   if (!hasReceivingMethod(methodAvailability)) {
     return renderNoReceivingMethodsFallback(session, false);
   }
   return `<div class="checkout-stage-host">
     ${renderIntroStep()}
-    ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, true)}
+    ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, true, 'Vos informations', nativeReturnScheme)}
   </div>`;
 }
 
@@ -231,7 +232,8 @@ function renderBuyerIdentityStep(
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
   hidden = false,
-  title = 'Vos informations'
+  title = 'Vos informations',
+  nativeReturnScheme?: string | undefined
 ): string {
   if (!hasReceivingMethod(methodAvailability)) {
     return renderNoReceivingMethodsFallback(session, hidden);
@@ -245,9 +247,10 @@ function renderBuyerIdentityStep(
   return `<section class="checkout-stage-card checkout-info-card" data-checkout-panel="buyer-identity" ${hidden ? 'hidden' : ''} data-visual-stage="info">
     <div class="checkout-stage-head">
       <h1>${escapeHtml(title)}</h1>
-      <p>Ces donnees servent a reconnaitre le signal de paiement.</p>
+      <p>Veuillez remplir le formulaire de donnees ci-dessous</p>
     </div>
     <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/expected-payment-profile" class="expected-profile-form">
+      ${renderNativeReturnHiddenInput(nativeReturnScheme)}
       ${singleMethodInput}
       <div class="checkout-input-grid">
         ${renderTextInput('Prenom', 'buyer_first_name', 'Jean', 'given-name')}
@@ -269,7 +272,7 @@ function renderBuyerIdentityStep(
           <input name="sender_phone" type="tel" autocomplete="tel" placeholder="+7 ..." ${sbpActive ? '' : 'disabled'}>
         </label>` : ''}
       </div>
-      <p class="checkout-security-line"><span></span> Pas de CVV, pas de date d'expiration, pas de code SMS.</p>
+      <p class="checkout-security-line"><span></span> SwimPay ne collecte pas vos donnees sensibles</p>
       <button class="checkout-primary-action" type="submit">Continuer</button>
       <button class="checkout-ghost-action" type="button" data-show-panel="intro" data-progress-step="1">Retour a l'accueil</button>
     </form>
@@ -349,7 +352,11 @@ function renderBankLogoMark(logoAssetKey: string, displayName: string): string {
   return `<span class="bank-logo-mark bank-logo-${escapeHtml(logoAssetKey)}${hasImage ? ' bank-logo-image' : ''}" data-logo-asset-key="${escapeHtml(logoAssetKey)}" role="img" aria-label="${escapeHtml(displayName)}"><span aria-hidden="true">${escapeHtml(initials)}</span></span>`;
 }
 
-function renderReceiverBankSelection(session: CheckoutSession, banks: readonly ReceiverBankOption[]): string {
+function renderReceiverBankSelection(
+  session: CheckoutSession,
+  banks: readonly ReceiverBankOption[],
+  nativeReturnScheme?: string | undefined
+): string {
   return `<section class="checkout-stage-card checkout-info-card" data-visual-stage="info">
     <div class="checkout-stage-head">
       <h1>Banque du marchand</h1>
@@ -358,6 +365,7 @@ function renderReceiverBankSelection(session: CheckoutSession, banks: readonly R
     <div class="checkout-option-list">${banks.map((bank) => {
       const available = (bank.available_route_count ?? 0) > 0;
       return `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/receiver-bank" class="selection-form">
+        ${renderNativeReturnHiddenInput(nativeReturnScheme)}
         <input type="hidden" name="receiver_bank_id" value="${escapeHtml(bank.receiver_bank_id)}">
         <button class="checkout-option-card" type="submit" ${available ? '' : 'disabled'}>
           ${renderBankLogoMark(bank.logo_asset_key, bank.display_name)}
@@ -377,12 +385,13 @@ function renderReceivingRouteSelection(
   banks: readonly ReceiverBankOption[],
   routes: readonly BuyerSafeReceivingRoute[],
   launchers: readonly PayerBankLauncherOption[],
-  methodAvailability: BuyerMethodAvailability
+  methodAvailability: BuyerMethodAvailability,
+  nativeReturnScheme?: string | undefined
 ): string {
   if (hasStructuredCheckoutFallback(session) || routes.length === 0) {
     return `<div class="checkout-stage-host">
       ${renderStructuredFallback(session, methodAvailability)}
-      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, 'Changer de methode')}
+      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, 'Changer de methode', nativeReturnScheme)}
     </div>`;
   }
 
@@ -396,6 +405,7 @@ function renderReceivingRouteSelection(
       const isPhone = route.rail_type === 'phone_transfer';
       const title = isPhone ? 'Telephone du destinataire' : 'Carte du destinataire';
       return `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/receiving-route" class="selection-form">
+        ${renderNativeReturnHiddenInput(nativeReturnScheme)}
         <input type="hidden" name="receiving_route_id" value="${escapeHtml(route.route_id)}">
         <button class="checkout-option-card route-option-card" type="submit">
           <span class="payment-method-icon">${iconSvg(isPhone ? 'phone' : 'card')}</span>
@@ -415,12 +425,13 @@ function renderPayerLauncherSelection(
   banks: readonly ReceiverBankOption[],
   selectedRoute: BuyerSafeReceivingRoute | undefined,
   launchers: readonly PayerBankLauncherOption[],
-  methodAvailability: BuyerMethodAvailability
+  methodAvailability: BuyerMethodAvailability,
+  nativeReturnScheme?: string | undefined
 ): string {
   if (!selectedRoute) {
     return `<div class="checkout-stage-host">
       ${renderStructuredFallback(session, methodAvailability)}
-      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, 'Changer de methode')}
+      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, 'Changer de methode', nativeReturnScheme)}
     </div>`;
   }
 
@@ -433,6 +444,7 @@ function renderPayerLauncherSelection(
     </div>
     ${renderInstructionPreview(session, selectedRoute)}
     <div class="checkout-option-list">${orderedLaunchers.map((launcher) => `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/payer-bank-launcher" class="selection-form">
+      ${renderNativeReturnHiddenInput(nativeReturnScheme)}
       <input type="hidden" name="payer_bank_launcher_id" value="${escapeHtml(launcher.payer_bank_launcher_id)}">
       <button class="checkout-option-card" type="submit">
         ${renderBankLogoMark(bankLogoAssetKey(launcher.payer_bank_launcher_id), launcher.display_name)}
@@ -453,12 +465,12 @@ function renderInstructionsStep(
   selectedLauncher: PayerBankLauncherOption | undefined,
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
-  nativeBankLauncherScheme?: string | undefined
+  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined }
 ): string {
   if (!selectedRoute) {
     return `<div class="checkout-stage-host">
       ${renderStructuredFallback(session, methodAvailability)}
-      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, 'Changer de methode')}
+      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, 'Changer de methode', options.nativeReturnScheme)}
     </div>`;
   }
 
@@ -474,7 +486,8 @@ function renderInstructionsStep(
   const senderBankLogoAssetKey = selectedLauncher
     ? bankLogoAssetKey(selectedLauncher.payer_bank_launcher_id)
     : session.sender_bank_logo_asset_key ?? (session.sender_bank_id ? bankLogoAssetKey(session.sender_bank_id) : 'ic_bank_unknown');
-  const bankLaunchUrl = resolveBankLaunchUrl(selectedLauncher, nativeBankLauncherScheme);
+  const bankLaunchUrl = resolveBankLaunchUrl(selectedLauncher, options.nativeBankLauncherScheme);
+  const checkoutReturnPath = checkoutPathWithNativeReturn(session.payment_session_id, options.nativeReturnScheme);
   const summary = [
     `Montant exact: ${amount.value} ${amount.currency}`,
     `Reference: ${session.reference}`,
@@ -502,14 +515,16 @@ function renderInstructionsStep(
       ${renderCopyablePaymentRow('Methode', methodLabel, methodLabel)}
     </div>
     <div class="instruction-actions">
-      <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/continue-to-bank" data-bank-launch-form data-launch-url="${escapeHtml(bankLaunchUrl)}" data-checkout-url="/checkout/${escapeHtml(session.payment_session_id)}" data-selected-sender-bank-id="${escapeHtml(session.sender_bank_id ?? selectedLauncher?.payer_bank_launcher_id ?? '')}" data-payer-bank-launcher-id="${escapeHtml(selectedLauncher?.payer_bank_launcher_id ?? '')}">
+      <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/continue-to-bank" data-bank-launch-form data-launch-url="${escapeHtml(bankLaunchUrl)}" data-checkout-url="${escapeHtml(checkoutReturnPath)}" data-selected-sender-bank-id="${escapeHtml(session.sender_bank_id ?? selectedLauncher?.payer_bank_launcher_id ?? '')}" data-payer-bank-launcher-id="${escapeHtml(selectedLauncher?.payer_bank_launcher_id ?? '')}">
+        ${renderNativeReturnHiddenInput(options.nativeReturnScheme)}
         <button class="checkout-primary-action" type="submit">Aller a ma banque ${iconSvg('external')}<span class="sr-only">Ouvrir ma banque</span></button>
       </form>
       <button class="checkout-secondary-action" type="button" data-copy-value="${escapeHtml(summary)}" aria-label="Copier les details">Copier tous les details</button>
       <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/claimed-paid">
+        ${renderNativeReturnHiddenInput(options.nativeReturnScheme)}
         ${Button({ text: "J'ai paye", id: 'paid-button', variant: 'ghost', class: 'checkout-ghost-action checkout-paid-action', type: 'submit' })}
       </form>
-      <a class="checkout-ghost-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Annuler et modifier les infos</a>
+      <a class="checkout-ghost-action" href="${escapeHtml(checkoutReturnPath)}">Annuler et modifier les infos</a>
     </div>
   </section>`;
 }
@@ -617,10 +632,54 @@ function getFallbackActions(
 }
 
 function renderReturnToMerchantAction(session: CheckoutSession): string {
-  if (session.return_url) {
-    return `<a class="checkout-ghost-action" href="${escapeHtml(session.return_url)}">Retour au marchand</a>`;
+  const returnUrl = resolveBuyerReturnUrl(session);
+  if (returnUrl) {
+    return `<a class="checkout-ghost-action" href="${escapeHtml(returnUrl)}">Retour au marchand</a>`;
   }
   return `<button class="checkout-ghost-action" type="button" onclick="history.back()">Retour au marchand</button>`;
+}
+
+function renderNativeReturnHiddenInput(nativeReturnScheme?: string | undefined): string {
+  return `<input type="hidden" name="swimpay_return_scheme" value="${escapeHtml(nativeReturnScheme ?? '')}">`;
+}
+
+function checkoutPathWithNativeReturn(paymentSessionId: string, nativeReturnScheme?: string | undefined): string {
+  const base = `/checkout/${encodeURIComponent(paymentSessionId)}`;
+  if (!nativeReturnScheme) {
+    return base;
+  }
+  const params = new URLSearchParams({ swimpay_return_scheme: nativeReturnScheme });
+  return `${base}?${params.toString()}`;
+}
+
+function resolveBuyerReturnUrl(session: CheckoutSession): string | undefined {
+  if (!session.return_url || !isSafeBuyerReturnUrl(session.return_url)) {
+    return undefined;
+  }
+  return session.return_url;
+}
+
+function isSafeBuyerReturnUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    const protocol = url.protocol.replace(/:$/u, '').toLowerCase();
+    if (['javascript', 'data', 'file', 'content', 'intent', 'android-app'].includes(protocol)) {
+      return false;
+    }
+    if (protocol === 'http') {
+      return false;
+    }
+    if (protocol === 'https') {
+      const hostname = url.hostname.toLowerCase();
+      if (hostname.startsWith('api.') || url.pathname.startsWith('/api/') || url.pathname.startsWith('/v1/')) {
+        return false;
+      }
+      return true;
+    }
+    return /^[a-z][a-z0-9+.-]{1,40}$/iu.test(protocol);
+  } catch {
+    return false;
+  }
 }
 
 function renderCopyablePaymentRow(
@@ -694,8 +753,9 @@ function renderWaitingAction(session: CheckoutSession): string {
 }
 
 function renderReturnToMerchantPrimaryAction(session: CheckoutSession): string {
-  if (session.return_url) {
-    return `<a class="checkout-primary-action" href="${escapeHtml(session.return_url)}">Retourner au marchand <span aria-hidden="true">-&gt;</span></a>`;
+  const returnUrl = resolveBuyerReturnUrl(session);
+  if (returnUrl) {
+    return `<a class="checkout-primary-action" href="${escapeHtml(returnUrl)}">Retourner au marchand <span aria-hidden="true">-&gt;</span></a>`;
   }
   return `<button class="checkout-primary-action" type="button" onclick="history.back()">Retourner au marchand <span aria-hidden="true">-&gt;</span></button>`;
 }

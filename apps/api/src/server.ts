@@ -2207,7 +2207,16 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (!result) {
       return reply;
     }
-    return reply.status(202).send(buildCheckoutActionResponse({ ...result, now: clock(), buyerClaimedPaid: true }));
+    const alreadyFinal = result.kind === 'already_final';
+    const buyerClaimResult = 'claimResult' in result ? result.claimResult : undefined;
+    return reply.status(alreadyFinal ? 200 : 202).send(
+      buildCheckoutActionResponse({
+        ...result,
+        now: clock(),
+        buyerClaimedPaid: !alreadyFinal,
+        buyerClaimResult: buyerClaimResult ?? 'claim_recorded'
+      })
+    );
   });
 
   server.get('/v1/checkout/:id/status', async (request, reply) => {
@@ -4023,6 +4032,8 @@ async function mutateSimpleCheckoutAction(params: {
   const result = await mutateCheckoutActionRepository(params.repository!, params.action, input);
   switch (result.kind) {
     case 'updated':
+      return result;
+    case 'already_final':
       return result;
     case 'not_found':
       params.reply.status(404).send({
