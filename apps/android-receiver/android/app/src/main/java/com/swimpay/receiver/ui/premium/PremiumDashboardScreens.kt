@@ -1156,6 +1156,7 @@ fun PremiumConnectedSiteStateScreen(
     onRotateWebhookSecret: () -> Unit = {},
     onSaveWebhookUrl: (String) -> Unit = {},
     onTestWebhook: () -> Unit = {},
+    onOpenDeveloperGuide: () -> Unit = {},
     onAuthorizeCopy: (onAuthorized: () -> Unit) -> Unit = { onAuthorized -> onAuthorized() },
     onCopyDeveloperExport: (PremiumConnectedSiteUiState) -> String = { value -> value.developerExportText() }
 ) {
@@ -1208,6 +1209,10 @@ fun PremiumConnectedSiteStateScreen(
                         PremiumOutlineButton(
                             "Rotation secret webhook",
                             onClick = { if (value.actionButtonsEnabled) onRotateWebhookSecret() }
+                        )
+                        PremiumOutlineButton(
+                            "Guide SDK (PDF)",
+                            onClick = onOpenDeveloperGuide
                         )
                     }
                 }

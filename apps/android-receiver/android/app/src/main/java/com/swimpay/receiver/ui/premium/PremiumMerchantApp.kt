@@ -1,5 +1,7 @@
 package com.swimpay.receiver.ui.premium
 
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -8,10 +10,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import com.swimpay.receiver.AndroidMerchantAccountCreateResult
 import com.swimpay.receiver.AndroidMerchantAccountProfileType
 import com.swimpay.receiver.AndroidMerchantAuthApiRepository
 import com.swimpay.receiver.AndroidMerchantAuthResultStatus
+import com.swimpay.receiver.AndroidMerchantBackendConfig
 import com.swimpay.receiver.AndroidMerchantDeviceLookupIntent
 import com.swimpay.receiver.AndroidMerchantDeviceLookupStatus
 import com.swimpay.receiver.AndroidReceiverDeviceApiRepository
@@ -58,6 +62,8 @@ fun PremiumMerchantApp(
     merchantReviewNotifier: PremiumMerchantReviewNotifier = NoopPremiumMerchantReviewNotifier,
     onOpenNotificationSettings: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val developerGuidePdfUrl = remember { resolveDeveloperGuidePdfUrl() }
     val scope = rememberCoroutineScope()
     var activeRuntime by remember(mobileMerchantSessionStore) {
         mutableStateOf(mobileMerchantSessionStore.currentSession()?.let(mobileRuntimeFactory) ?: runtime)
@@ -598,6 +604,16 @@ fun PremiumMerchantApp(
                     connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.testDeveloperWebhook() }
                 }
             },
+            onOpenDeveloperGuide = {
+                runCatching {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(developerGuidePdfUrl)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                }.onFailure { error ->
+                    Log.w("PremiumMerchantApp", "Unable to open developer guide PDF.", error)
+                }
+            },
             onAuthorizeCopy = { onAuthorized -> onRequestUnlock(onAuthorized) },
             onCopyDeveloperExport = { value ->
                 val exportText = activeRuntime.consumeDeveloperExportText(value)
@@ -771,5 +787,24 @@ private fun PremiumMerchantProfileType.toAndroidAuthProfileType(): AndroidMercha
     return when (this) {
         PremiumMerchantProfileType.PERSONAL -> AndroidMerchantAccountProfileType.PERSONAL
         PremiumMerchantProfileType.COMMERCE -> AndroidMerchantAccountProfileType.BUSINESS
+    }
+}
+
+private const val DEVELOPER_GUIDE_PDF_PATH = "/docs/sdk-developer-integration-guide.pdf"
+private const val DEVELOPER_GUIDE_FALLBACK_ORIGIN = "https://staging.swimpay.pro"
+
+private fun resolveDeveloperGuidePdfUrl(): String {
+    return runCatching {
+        val base = AndroidMerchantBackendConfig.configuredBaseUrl()
+        val parsed = Uri.parse(base)
+        val scheme = parsed.scheme ?: "https"
+        val authority = parsed.encodedAuthority
+        if (authority.isNullOrBlank()) {
+            "$DEVELOPER_GUIDE_FALLBACK_ORIGIN$DEVELOPER_GUIDE_PDF_PATH"
+        } else {
+            "$scheme://$authority$DEVELOPER_GUIDE_PDF_PATH"
+        }
+    }.getOrElse {
+        "$DEVELOPER_GUIDE_FALLBACK_ORIGIN$DEVELOPER_GUIDE_PDF_PATH"
     }
 }

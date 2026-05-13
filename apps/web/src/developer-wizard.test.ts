@@ -119,7 +119,16 @@ describe('Developer Integration Wizard', () => {
     expect(wizard.body).toContain('https://merchant.example/webhooks/swimpay');
     expect(wizard.body).toContain("Utilisez l'URL publique exacte de votre backend pour la route webhook.");
     expect(wizard.body).toContain('https://api.votre-site.com/api/v1/payments/swimpay/webhook');
+    expect(wizard.body).toContain('/docs/sdk-developer-integration-guide.pdf');
     expect(wizard.body).not.toMatch(/Shopify|WordPress|CRM|\bbot\b/iu);
+  });
+
+  it('serves the developer integration PDF guide', async () => {
+    const server = buildWebServer({ environment: 'test', merchantIntegrationClient: new FakeMerchantIntegrationClient() });
+    const response = await server.inject({ method: 'GET', url: '/docs/sdk-developer-integration-guide.pdf' });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('application/pdf');
+    expect(response.body.length).toBeGreaterThan(1000);
   });
 
   it('renders a safe unavailable state when backend lifecycle is unavailable', async () => {

@@ -456,6 +456,7 @@ export function renderDeveloperIntegrationWizardPage(params: {
       ${integration?.secret_key_once ? renderOneTimeSecret('Clé secrète à copier maintenant', integration.secret_key_once) : ''}
       ${integration?.webhook_secret_once ? renderOneTimeSecret('Secret webhook à copier maintenant', integration.webhook_secret_once) : ''}
       <div style="margin-bottom:22px;">${Button({ text: 'Configurer l’intégration', variant: 'primary', class: 'btn-wide' })}</div>
+      <p style="margin:0 0 18px;"><a href="/docs/sdk-developer-integration-guide.pdf" target="_blank" rel="noopener noreferrer" style="font-weight:700;color:var(--color-teal);text-decoration:none;">Ouvrir le guide PDF d’intégration SDK</a></p>
       ${Card({
         children: `<h2 class="section-title" style="margin-top:0;">Quel type de projet utilisez-vous ?</h2>
           <div class="two-col">
@@ -539,6 +540,7 @@ function renderDeveloperIntegrationWizardPageStatic(params: {
         subtitle: 'Connectez SwimPay à votre site ou votre application pour recevoir les mises à jour de paiement.'
       })}
       <div style="margin-bottom:22px;">${Button({ text: 'Configurer l’intégration', variant: 'primary', class: 'btn-wide' })}</div>
+      <p style="margin:0 0 18px;"><a href="/docs/sdk-developer-integration-guide.pdf" target="_blank" rel="noopener noreferrer" style="font-weight:700;color:var(--color-teal);text-decoration:none;">Ouvrir le guide PDF d’intégration SDK</a></p>
       ${Card({
         children: `<h2 class="section-title" style="margin-top:0;">Quel type de projet utilisez-vous ?</h2>
           <div class="two-col">

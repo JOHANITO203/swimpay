@@ -1,5 +1,8 @@
 ﻿import { pathToFileURL } from 'node:url';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   renderConnectedSitePage as renderConnectedSiteScreen,
   renderDeveloperIntegrationWizardPage as renderDeveloperIntegrationWizardScreen,
@@ -499,6 +502,8 @@ const defaultRecipient: CheckoutRecipient = {
 
 export function buildWebServer(options: WebServerOptions): FastifyInstance {
   const server = Fastify({ logger: true });
+  const projectRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', '..', '..');
+  const developerGuidePdfPath = resolve(projectRoot, 'docs', 'SDK_DEVELOPER_INTEGRATION_GUIDE.pdf');
   server.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_request, body, done) => {
     done(null, Object.fromEntries(new URLSearchParams(String(body))));
   });
@@ -697,6 +702,22 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       await merchantIntegrationClient.retryDelivery(deliveryId).catch(() => null);
     }
     return reply.status(303).redirect('/merchant/developer-integration?result=retry');
+  });
+
+  server.get('/docs/sdk-developer-integration-guide.pdf', async (_request, reply) => {
+    try {
+      const pdf = await readFile(developerGuidePdfPath);
+      reply.header('Cache-Control', 'public, max-age=300');
+      reply.type('application/pdf');
+      return reply.send(pdf);
+    } catch {
+      return reply.status(404).send({
+        error: {
+          code: 'developer_guide_pdf_not_found',
+          message: 'Developer integration PDF guide not found.'
+        }
+      });
+    }
   });
 
   server.get('/admin/evidence-review', async (_request, reply) => {
