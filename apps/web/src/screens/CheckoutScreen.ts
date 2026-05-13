@@ -284,7 +284,7 @@ function renderSenderBankSelector(session: CheckoutSession, launchers: readonly 
       ${launchers.map((launcher) => {
         const active = launcher.payer_bank_launcher_id === selected;
         const logoAssetKey = bankLogoAssetKey(launcher.payer_bank_launcher_id);
-        return `<label class="sender-bank-choice ${active ? 'selected' : ''}" data-logo-asset-key="${escapeHtml(logoAssetKey)}">
+        return `<label class="sender-bank-choice ${active ? 'selected' : ''}" data-sender-bank-choice="${escapeHtml(launcher.payer_bank_launcher_id)}" data-logo-asset-key="${escapeHtml(logoAssetKey)}">
           <input type="radio" name="sender_bank_id" value="${escapeHtml(launcher.payer_bank_launcher_id)}" ${active ? 'checked' : ''} required>
           ${renderBankLogoMark(logoAssetKey, launcher.display_name)}
           <span>
@@ -470,12 +470,17 @@ function renderInstructionsStep(
   const receiverBank = banks.find((bank) => bank.bank_profile_id === selectedRoute.bank_profile_id);
   const bankLabel = receiverBank?.display_name ?? 'Banque de reception';
   const receiverBankLogoAssetKey = receiverBank?.logo_asset_key ?? bankLogoAssetKey(selectedRoute.bank_profile_id);
+  const senderBankLabel = selectedLauncher?.display_name ?? session.sender_bank_name ?? "Banque d'envoi";
+  const senderBankLogoAssetKey = selectedLauncher
+    ? bankLogoAssetKey(selectedLauncher.payer_bank_launcher_id)
+    : session.sender_bank_logo_asset_key ?? (session.sender_bank_id ? bankLogoAssetKey(session.sender_bank_id) : 'ic_bank_unknown');
   const bankLaunchUrl = resolveBankLaunchUrl(selectedLauncher, nativeBankLauncherScheme);
   const summary = [
     `Montant exact: ${amount.value} ${amount.currency}`,
     `Reference: ${session.reference}`,
     `${destinationCopyLabel}: ${selectedRoute.receiver_identifier_masked}`,
-    `Banque de reception: ${bankLabel}`
+    `Banque de reception: ${bankLabel}`,
+    `Banque d'envoi: ${htmlToPlainText(senderBankLabel)}`
   ].join('\\n');
 
   return `<section class="checkout-stage-card checkout-instructions-card" data-visual-stage="instructions">
@@ -493,10 +498,11 @@ function renderInstructionsStep(
       ${renderCopyablePaymentRow('Reference', session.reference, session.reference)}
       ${renderCopyablePaymentRow(destinationLabel, selectedRoute.receiver_identifier_masked, '', true, session.payment_session_id, destinationCopyLabel)}
       ${renderCopyableBankRow('Banque de reception', bankLabel, bankLabel, receiverBankLogoAssetKey)}
+      ${renderCopyableBankRow("Banque d'envoi", senderBankLabel, htmlToPlainText(senderBankLabel), senderBankLogoAssetKey)}
       ${renderCopyablePaymentRow('Methode', methodLabel, methodLabel)}
     </div>
     <div class="instruction-actions">
-      <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/continue-to-bank" data-bank-launch-form data-launch-url="${escapeHtml(bankLaunchUrl)}" data-checkout-url="/checkout/${escapeHtml(session.payment_session_id)}">
+      <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/continue-to-bank" data-bank-launch-form data-launch-url="${escapeHtml(bankLaunchUrl)}" data-checkout-url="/checkout/${escapeHtml(session.payment_session_id)}" data-selected-sender-bank-id="${escapeHtml(session.sender_bank_id ?? selectedLauncher?.payer_bank_launcher_id ?? '')}" data-payer-bank-launcher-id="${escapeHtml(selectedLauncher?.payer_bank_launcher_id ?? '')}">
         <button class="checkout-primary-action" type="submit">Aller a ma banque ${iconSvg('external')}<span class="sr-only">Ouvrir ma banque</span></button>
       </form>
       <button class="checkout-secondary-action" type="button" data-copy-value="${escapeHtml(summary)}" aria-label="Copier les details">Copier tous les details</button>
@@ -514,6 +520,10 @@ function renderCopyableBankRow(label: string, displayValue: string, copyValue: s
     <strong>${renderBankLogoMark(logoAssetKey, displayValue)}${escapeHtml(displayValue)}</strong>
     <button class="copy-icon-btn" type="button" data-copy-value="${escapeHtml(copyValue)}" aria-label="Copier ${escapeHtml(label)}">${iconSvg('copy')}</button>
   </div>`;
+}
+
+function htmlToPlainText(value: string): string {
+  return value.replace(/&#39;/gu, "'");
 }
 
 function renderNoReceivingMethodsFallback(session: CheckoutSession, hidden = false): string {
@@ -944,6 +954,13 @@ function buyerCheckoutScript(): string {
       });
 
       for (const form of document.querySelectorAll('.expected-profile-form')) {
+        const syncSenderBankChoices = () => {
+          const selectedBank = form.querySelector('input[name=sender_bank_id]:checked');
+          for (const choice of form.querySelectorAll('.sender-bank-choice')) {
+            const input = choice.querySelector('input[name=sender_bank_id]');
+            choice.classList.toggle('selected', Boolean(input && selectedBank && input.value === selectedBank.value));
+          }
+        };
         const syncMethodFields = () => {
           const checked = form.querySelector('input[name=payment_method]:checked:not(:disabled)');
           const fallback = form.querySelector('input[name=payment_method]:not(:disabled)');
@@ -965,8 +982,12 @@ function buyerCheckoutScript(): string {
             }
           }
         };
-        form.addEventListener('change', syncMethodFields);
+        form.addEventListener('change', () => {
+          syncMethodFields();
+          syncSenderBankChoices();
+        });
         syncMethodFields();
+        syncSenderBankChoices();
       }
 
       for (const timer of document.querySelectorAll('[data-countdown-target]')) {

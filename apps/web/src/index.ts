@@ -29,6 +29,8 @@ import { renderCheckoutPage as renderCheckoutScreen } from './screens/CheckoutSc
 import {
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
+  type AvailableReceivingMethod,
+  type AvailableSenderBank,
   type CheckoutFallbackAction,
   type CheckoutUnavailableReason,
   type BuyerSafeCheckoutStatus,
@@ -83,10 +85,17 @@ export interface CheckoutSession {
   sender_bank_id?: string | undefined;
   sender_card_masked?: string | undefined;
   sender_phone_masked?: string | undefined;
+  selected_sender_bank_id?: string | undefined;
+  sender_bank_name?: string | undefined;
+  sender_bank_logo_asset_key?: string | undefined;
+  receiver_bank_name?: string | undefined;
+  receiver_bank_logo_asset_key?: string | undefined;
   display_amount?: { value: string; currency: string } | undefined;
   payable_amount?: { value: string; currency: string } | undefined;
   reconciliation_delta_minor?: number | undefined;
   available_payment_methods?: { card: boolean; sbp: boolean } | undefined;
+  available_receiving_methods?: AvailableReceivingMethod[] | undefined;
+  available_sender_banks?: AvailableSenderBank[] | undefined;
   available_routes?: Array<{
     route_id: string;
     method_type: 'card' | 'sbp';
@@ -394,6 +403,14 @@ interface CheckoutStatusResponse {
   selected_receiving_route_id?: string | undefined;
   receiving_route_id?: string | undefined;
   receiver_method_type?: 'card' | 'sbp' | undefined;
+  selected_sender_bank_id?: string | undefined;
+  sender_bank_id?: string | undefined;
+  sender_bank_name?: string | undefined;
+  sender_bank_logo_asset_key?: string | undefined;
+  receiver_bank_name?: string | undefined;
+  receiver_bank_logo_asset_key?: string | undefined;
+  available_receiving_methods?: AvailableReceivingMethod[] | undefined;
+  available_sender_banks?: AvailableSenderBank[] | undefined;
   display_status: string;
   result_state: 'pending' | 'review' | 'recognized' | 'rejected' | 'expired';
   amount: { value: string; currency: string };
@@ -1458,6 +1475,14 @@ export function toCheckoutStatusResponse(s: CheckoutSession): CheckoutStatusResp
     selected_receiving_route_id: s.selected_receiving_route_id,
     receiving_route_id: s.receiving_route_id ?? s.selected_receiving_route_id,
     receiver_method_type: s.receiver_method_type,
+    selected_sender_bank_id: s.selected_sender_bank_id ?? s.sender_bank_id,
+    sender_bank_id: s.sender_bank_id,
+    sender_bank_name: s.sender_bank_name,
+    sender_bank_logo_asset_key: s.sender_bank_logo_asset_key,
+    receiver_bank_name: s.receiver_bank_name,
+    receiver_bank_logo_asset_key: s.receiver_bank_logo_asset_key,
+    available_receiving_methods: s.available_receiving_methods,
+    available_sender_banks: s.available_sender_banks,
     return_url: s.return_url,
     amount: s.amount, reference: s.reference, expires_at: s.expires_at, official_bank_confirmation: false
   };

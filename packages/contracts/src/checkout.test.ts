@@ -9,6 +9,7 @@ import {
   ReceivingRouteRailTypes,
   ReceiverIdentifierTypes,
   V1ReceiverBankOptions,
+  toAvailableSenderBanks,
   generateHumanReadablePaymentReference,
   getPayerBankLauncherOption,
   getReceiverBankOption,
@@ -279,6 +280,32 @@ describe('checkout bank selection contracts', () => {
     );
     expect(getPayerBankLauncherOption('gazprombank_ru')?.launch_url).not.toMatch(/card=|cardNumber|externalCardNumber|amount|phone|reference|pan|cvv/iu);
     expect(getPayerBankLauncherOption('unknown')).toBeNull();
+  });
+
+  it('derives explicit checkout sender banks from the payer launcher registry', () => {
+    expect(toAvailableSenderBanks().map((bank) => bank.bank_id)).toEqual([
+      'sber_ru',
+      'tbank_ru',
+      'vtb_ru',
+      'alfa_ru',
+      'gazprombank_ru',
+      'ozon_bank'
+    ]);
+
+    for (const bank of toAvailableSenderBanks()) {
+      expect(bank.payer_bank_launcher_id).toBe(bank.bank_id);
+      expect(bank.logo_asset_key).toMatch(/^ic_bank_/u);
+      expect(bank.selectable).toBe(true);
+      expect(bank.auto_confirm_enabled).toBe(false);
+      expect(bank.official_bank_confirmation).toBe(false);
+    }
+
+    expect(toAvailableSenderBanks().find((bank) => bank.bank_id === 'ozon_bank')).toMatchObject({
+      display_name: 'Ozon Банк',
+      logo_asset_key: 'ic_bank_ozon',
+      runtime_capture_status: 'runtime_verified',
+      runtime_verified: true
+    });
   });
 
   it('declares manual-bank-check fallback review reasons without confirmation semantics', () => {

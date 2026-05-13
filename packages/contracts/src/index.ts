@@ -280,6 +280,29 @@ export interface PayerBankLauncherOption {
   official_bank_confirmation: false;
 }
 
+export interface AvailableSenderBank {
+  bank_id: string;
+  payer_bank_launcher_id: string;
+  display_name: string;
+  logo_asset_key: string;
+  selectable: boolean;
+  runtime_capture_status: ReceiverBankOption['runtime_capture_status'];
+  runtime_verified: boolean;
+  auto_confirm_enabled: false;
+  official_bank_confirmation: false;
+}
+
+export interface AvailableReceivingMethod {
+  method: BuyerCheckoutPaymentMethod;
+  label: 'Carte' | 'SBP';
+  available: boolean;
+  route_id: string;
+  receiver_bank_id: string;
+  receiver_bank_name: string;
+  receiver_bank_logo_asset_key: string;
+  status: 'active';
+}
+
 export const V1ReceiverBankOptions: readonly ReceiverBankOption[] = [
   receiverBank('sber_ru', 'Sberbank'),
   receiverBank('tbank_ru', 'Tinkoff / T-Bank'),
@@ -361,6 +384,24 @@ export function getReceiverBankOption(receiverBankId: string): ReceiverBankOptio
 
 export function getPayerBankLauncherOption(payerBankLauncherId: string): PayerBankLauncherOption | null {
   return PayerBankLauncherRegistry.find((launcher) => launcher.payer_bank_launcher_id === payerBankLauncherId) ?? null;
+}
+
+export function toAvailableSenderBanks(
+  launchers: readonly PayerBankLauncherOption[] = PayerBankLauncherRegistry
+): readonly AvailableSenderBank[] {
+  return launchers
+    .filter((launcher) => launcher.enabled)
+    .map((launcher) => ({
+      bank_id: launcher.bank_id,
+      payer_bank_launcher_id: launcher.payer_bank_launcher_id,
+      display_name: launcher.display_name,
+      logo_asset_key: bankLogoAssetKey(launcher.bank_id),
+      selectable: true,
+      runtime_capture_status: launcher.runtime_verified ? 'runtime_verified' : 'observed',
+      runtime_verified: launcher.runtime_verified,
+      auto_confirm_enabled: false,
+      official_bank_confirmation: false
+    }));
 }
 
 export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): CheckoutSessionState {
@@ -840,7 +881,7 @@ export function deriveExpectedPaymentProfile(input: ExpectedPaymentProfileInput)
   if (!BuyerCheckoutPaymentMethods.includes(input.payment_method)) {
     throw new Error('Unsupported buyer payment method.');
   }
-  if (!V1ReceiverBankOptions.some((bank) => bank.bank_profile_id === input.sender_bank_id)) {
+  if (!PayerBankLauncherRegistry.some((bank) => bank.payer_bank_launcher_id === input.sender_bank_id && bank.enabled)) {
     throw new Error('Unsupported sender bank.');
   }
   if (!Number.isInteger(input.display_amount_minor) || input.display_amount_minor <= 0) {
@@ -1195,7 +1236,7 @@ function receiverBank(
   return option;
 }
 
-function bankLogoAssetKey(bankProfileId: string): string {
+export function bankLogoAssetKey(bankProfileId: string): string {
   switch (bankProfileId) {
     case 'sber_ru':
       return 'ic_bank_sberbank';

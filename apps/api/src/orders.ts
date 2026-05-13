@@ -5,6 +5,7 @@ import {
   ReceivingRouteRailTypes,
   ReceivingRouteReviewPolicies,
   ReceiverIdentifierTypes,
+  PayerBankLauncherRegistry,
   V1ReceiverBankOptions,
   deriveExpectedPaymentProfile,
   maskReceiverIdentifier,
@@ -2577,7 +2578,7 @@ export function validateExpectedPaymentProfileBody(body: unknown): ExpectedPayme
   if (!['card', 'sbp'].includes(candidate.payment_method)) {
     return invalidRequest('payment_method is not supported.', { payment_method: candidate.payment_method });
   }
-  if (!V1ReceiverBankOptions.some((bank) => bank.bank_profile_id === candidate.sender_bank_id)) {
+  if (!PayerBankLauncherRegistry.some((bank) => bank.payer_bank_launcher_id === candidate.sender_bank_id && bank.enabled)) {
     return invalidRequest('sender_bank_id is not supported.', { sender_bank_id: candidate.sender_bank_id });
   }
   const senderCardNumber = typeof candidate.sender_card_number === 'string' ? candidate.sender_card_number.trim() : undefined;

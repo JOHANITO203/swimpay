@@ -32,6 +32,9 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('data-method-field="sbp" hidden');
     expect(response.body).toContain('Sberbank');
     expect(response.body).toContain('T-Bank');
+    expect(response.body).toContain('data-sender-bank-choice="sber_ru"');
+    expect(response.body).toContain('data-sender-bank-choice="ozon_bank"');
+    expect(response.body).toContain('syncSenderBankChoices');
     for (const logoAssetKey of [
       'ic_bank_sberbank',
       'ic_bank_tbank',
@@ -55,6 +58,28 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toMatch(/confirmee? par la banque/i);
     expect(response.body).not.toMatch(/confirmera automatiquement/i);
     expect(response.body).not.toMatch(/paiement garanti/i);
+  });
+
+  it('embeds registered checkout bank logos without depending on the server cwd', async () => {
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue('C:\\not-the-swimpay-repo');
+    const server = buildWebServer({
+      environment: 'test',
+      checkoutSessionProvider: new FakeCheckoutSessionProvider()
+    });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    cwd.mockRestore();
+    expect(response.statusCode).toBe(200);
+    for (const logoAssetKey of [
+      'ic_bank_sberbank',
+      'ic_bank_tbank',
+      'ic_bank_vtb',
+      'ic_bank_alfa',
+      'ic_bank_gazprombank'
+    ]) {
+      expect(response.body).toMatch(new RegExp(`\\.bank-logo-${logoAssetKey}[^{]*\\{[^}]*data:image/`, 'u'));
+    }
   });
 
   it('reveals only the compatible receiving route after buyer method selection', async () => {
@@ -280,8 +305,14 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Instructions de paiement');
     expect(response.body).toContain('Telephone du destinataire');
     expect(response.body).toContain('+7 *** *** **67');
+    expect(response.body).toContain('Banque de reception');
+    expect(response.body).toContain('Banque d&#39;envoi');
+    expect(response.body).toContain('data-logo-asset-key="ic_bank_sberbank"');
+    expect(response.body).toContain('data-logo-asset-key="ic_bank_tbank"');
     expect(response.body).toContain('Ouvrir ma banque');
     expect(response.body).toContain('data-bank-launch-form');
+    expect(response.body).toContain('data-selected-sender-bank-id="tbank_ru"');
+    expect(response.body).toContain('data-payer-bank-launcher-id="tbank_ru"');
     expect(response.body).toContain(
       'data-launch-url="intent://tbank.ru/transfer#Intent;scheme=bank100000000004;package=com.idamob.tinkoff.android;category=android.intent.category.BROWSABLE;end"'
     );
@@ -1183,14 +1214,17 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
   }
 
   public async submitExpectedPaymentProfile(_paymentSessionId: string, body: Parameters<CheckoutSessionProvider['submitExpectedPaymentProfile']>[1]) {
+    const compatibleRoute = this.routes.find((route) =>
+      body.payment_method === 'card' ? route.rail_type === 'card_transfer' : route.rail_type === 'phone_transfer'
+    );
     this.session = {
       ...this.session,
       payment_method: body.payment_method,
       sender_bank_id: body.sender_bank_id,
       sender_card_masked: body.payment_method === 'card' ? '2202 **** **** 4821' : undefined,
       sender_phone_masked: body.payment_method === 'sbp' ? '+7 *** *** **67' : undefined,
-      selected_receiver_bank_id: body.sender_bank_id,
-      selected_receiver_bank_profile_id: body.sender_bank_id,
+      selected_receiver_bank_id: compatibleRoute?.bank_profile_id,
+      selected_receiver_bank_profile_id: compatibleRoute?.bank_profile_id,
       selected_payer_bank_launcher_id: body.sender_bank_id,
       amount: { value: '137.80', currency: 'RUB' },
       display_amount: { value: '137.00', currency: 'RUB' },

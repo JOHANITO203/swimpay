@@ -16,6 +16,12 @@ This registry is the visual source of truth for SwimPay Android Merchant and hos
 | Bank icons | `apps/android-receiver/android/app/src/main/res/drawable-nodpi/ic_bank_*.png` and documented vector placeholders below | Android bank selector/manager, hosted checkout sender/receiver bank marks | Checkout may embed these same source assets as data URIs so the buyer flow does not create separate bank-logo variants. |
 | Ozon Bank placeholder | `apps/android-receiver/android/app/src/main/res/drawable/ic_bank_ozon.xml` | Android bank selector/manager and review card placeholder | Documented placeholder `OZ` mark because no official Ozon Bank logo asset was provided in-repo. Replace with an official asset only after explicit product/design approval. |
 
+## Checkout Bank Logo Resolution
+
+Hosted checkout must resolve registered Android bank icons from the repository-root-relative paths above, not from the process working directory. This keeps staging/Docker rendering aligned with local browser baselines and avoids falling back to initials for Sberbank, T-Bank, VTB, Alfa-Bank and Gazprombank.
+
+No checkout-only bank logo variants are allowed. If a bank has no registered official asset, use the documented neutral placeholder and keep a blocker instead of inventing a logo.
+
 ## Generated Runtime Marks
 
 | Mark | Source path | Current use | Status |

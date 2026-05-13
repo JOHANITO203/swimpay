@@ -3,9 +3,13 @@ import {
   V1ReceiverBankOptions,
   getPayerBankLauncherOption,
   getReceiverBankOption,
+  toAvailableSenderBanks,
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
   toBuyerSafeReceivingRoute,
+  bankLogoAssetKey,
+  type AvailableReceivingMethod,
+  type AvailableSenderBank,
   type BuyerSafeCheckoutStatus,
   type BuyerSafeReceivingRoute,
   type BuyerCheckoutPaymentMethod,
@@ -72,12 +76,19 @@ export interface PaymentSessionReadResponse {
   sender_bank_id?: string | undefined;
   sender_card_masked?: string | undefined;
   sender_phone_masked?: string | undefined;
+  selected_sender_bank_id?: string | undefined;
+  sender_bank_name?: string | undefined;
+  sender_bank_logo_asset_key?: string | undefined;
+  receiver_bank_name?: string | undefined;
+  receiver_bank_logo_asset_key?: string | undefined;
   display_amount?: { value: string; currency: string } | undefined;
   payable_amount?: { value: string; currency: string } | undefined;
   reconciliation_delta_minor?: number | undefined;
   route_locked_at?: string | undefined;
   route_lock_expires_at?: string | undefined;
   available_payment_methods?: AvailableCheckoutPaymentMethods | undefined;
+  available_receiving_methods?: readonly AvailableReceivingMethod[] | undefined;
+  available_sender_banks?: readonly AvailableSenderBank[] | undefined;
   available_routes?: readonly AvailableCheckoutRoute[] | undefined;
   available_compatibility_pairs?: readonly PaymentCompatibilityPair[] | undefined;
   unavailable_reason?: CheckoutUnavailableReason | undefined;
@@ -110,12 +121,19 @@ export interface CheckoutStatusResponse {
   sender_bank_id?: string | undefined;
   sender_card_masked?: string | undefined;
   sender_phone_masked?: string | undefined;
+  selected_sender_bank_id?: string | undefined;
+  sender_bank_name?: string | undefined;
+  sender_bank_logo_asset_key?: string | undefined;
+  receiver_bank_name?: string | undefined;
+  receiver_bank_logo_asset_key?: string | undefined;
   display_amount?: { value: string; currency: string } | undefined;
   payable_amount?: { value: string; currency: string } | undefined;
   reconciliation_delta_minor?: number | undefined;
   route_locked_at?: string | undefined;
   route_lock_expires_at?: string | undefined;
   available_payment_methods?: AvailableCheckoutPaymentMethods | undefined;
+  available_receiving_methods?: readonly AvailableReceivingMethod[] | undefined;
+  available_sender_banks?: readonly AvailableSenderBank[] | undefined;
   available_routes?: readonly AvailableCheckoutRoute[] | undefined;
   available_compatibility_pairs?: readonly PaymentCompatibilityPair[] | undefined;
   unavailable_reason?: CheckoutUnavailableReason | undefined;
@@ -225,6 +243,12 @@ export function toPaymentSessionReadResponse(params: {
   const status = resolvePaymentSessionStatusForRead(params.paymentSession, params.now);
   const checkoutState = checkoutStateForPaymentSession(params.paymentSession, status);
   const availability = params.availableRoutes ? buildCheckoutAvailability(params.paymentSession, params.availableRoutes) : null;
+  const senderBank = params.paymentSession.senderBankId
+    ? getPayerBankLauncherOption(params.paymentSession.senderBankId)
+    : null;
+  const receiverBank = params.paymentSession.selectedReceiverBankId
+    ? getReceiverBankOption(params.paymentSession.selectedReceiverBankId)
+    : null;
 
   return stripUndefined({
     payment_session_id: params.paymentSession.id,
@@ -250,6 +274,13 @@ export function toPaymentSessionReadResponse(params: {
     sender_bank_id: params.paymentSession.senderBankId,
     sender_card_masked: params.paymentSession.senderCardMasked,
     sender_phone_masked: params.paymentSession.senderPhoneMasked,
+    selected_sender_bank_id: params.paymentSession.senderBankId,
+    sender_bank_name: senderBank?.display_name,
+    sender_bank_logo_asset_key: params.paymentSession.senderBankId ? bankLogoAssetKey(params.paymentSession.senderBankId) : undefined,
+    receiver_bank_name: receiverBank?.display_name,
+    receiver_bank_logo_asset_key: params.paymentSession.selectedReceiverBankId
+      ? bankLogoAssetKey(params.paymentSession.selectedReceiverBankId)
+      : undefined,
     display_amount: params.paymentSession.displayAmountMinor !== undefined
       ? { value: formatAmountMinor(params.paymentSession.displayAmountMinor), currency: params.paymentSession.currency }
       : undefined,
@@ -260,6 +291,8 @@ export function toPaymentSessionReadResponse(params: {
     route_locked_at: params.paymentSession.routeLockedAt,
     route_lock_expires_at: params.paymentSession.routeLockExpiresAt,
     available_payment_methods: availability?.available_payment_methods,
+    available_receiving_methods: availability?.available_receiving_methods,
+    available_sender_banks: toAvailableSenderBanks(),
     available_routes: availability?.available_routes,
     available_compatibility_pairs: availability?.available_compatibility_pairs,
     unavailable_reason: availability?.unavailable_reason,
@@ -301,12 +334,19 @@ export function toCheckoutStatusResponse(params: {
     sender_bank_id: read.sender_bank_id,
     sender_card_masked: read.sender_card_masked,
     sender_phone_masked: read.sender_phone_masked,
+    selected_sender_bank_id: read.selected_sender_bank_id,
+    sender_bank_name: read.sender_bank_name,
+    sender_bank_logo_asset_key: read.sender_bank_logo_asset_key,
+    receiver_bank_name: read.receiver_bank_name,
+    receiver_bank_logo_asset_key: read.receiver_bank_logo_asset_key,
     display_amount: read.display_amount,
     payable_amount: read.payable_amount,
     reconciliation_delta_minor: read.reconciliation_delta_minor,
     route_locked_at: read.route_locked_at,
     route_lock_expires_at: read.route_lock_expires_at,
     available_payment_methods: read.available_payment_methods,
+    available_receiving_methods: read.available_receiving_methods,
+    available_sender_banks: read.available_sender_banks,
     available_routes: read.available_routes,
     available_compatibility_pairs: read.available_compatibility_pairs,
     unavailable_reason: read.unavailable_reason,
@@ -341,6 +381,7 @@ export function buildCheckoutAvailability(
   routes: readonly MerchantReceivingRoute[]
 ): {
   available_payment_methods: AvailableCheckoutPaymentMethods;
+  available_receiving_methods: readonly AvailableReceivingMethod[];
   available_routes: readonly AvailableCheckoutRoute[];
   available_compatibility_pairs: readonly PaymentCompatibilityPair[];
   unavailable_reason?: CheckoutUnavailableReason | undefined;
@@ -357,6 +398,19 @@ export function buildCheckoutAvailability(
       certification_status: 'checkout_allowed' as const,
       status: 'active' as const
     }));
+  const availableReceivingMethods = availableRoutes.map((route) => {
+    const receiverBank = getReceiverBankOption(route.receiver_bank_id);
+    return {
+      method: route.method_type,
+      label: route.method_type === 'card' ? 'Carte' as const : 'SBP' as const,
+      available: true,
+      route_id: route.route_id,
+      receiver_bank_id: route.receiver_bank_id,
+      receiver_bank_name: receiverBank?.display_name ?? route.receiver_bank_id,
+      receiver_bank_logo_asset_key: receiverBank?.logo_asset_key ?? bankLogoAssetKey(route.receiver_bank_id),
+      status: 'active' as const
+    };
+  });
   const methods: AvailableCheckoutPaymentMethods = {
     card: availableRoutes.some((route) => route.method_type === 'card'),
     sbp: availableRoutes.some((route) => route.method_type === 'sbp')
@@ -371,12 +425,14 @@ export function buildCheckoutAvailability(
 
   return stripUndefined({
     available_payment_methods: methods,
+    available_receiving_methods: availableReceivingMethods,
     available_routes: availableRoutes,
     available_compatibility_pairs: compatibilityPairs,
     fallback_actions: fallbackActions,
     unavailable_reason: unavailableReason
   }) as {
     available_payment_methods: AvailableCheckoutPaymentMethods;
+    available_receiving_methods: readonly AvailableReceivingMethod[];
     available_routes: readonly AvailableCheckoutRoute[];
     available_compatibility_pairs: readonly PaymentCompatibilityPair[];
     unavailable_reason?: CheckoutUnavailableReason | undefined;

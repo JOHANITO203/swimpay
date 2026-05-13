@@ -1,5 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 
 const BANK_LOGO_FILES: Readonly<Record<string, { path: string; mime: string }>> = {
   ic_bank_sberbank: {
@@ -32,7 +35,7 @@ export function checkoutBankLogoDataUri(logoAssetKey: string): string | undefine
   const asset = BANK_LOGO_FILES[logoAssetKey];
   if (!asset) return undefined;
   try {
-    const bytes = readFileSync(join(process.cwd(), asset.path));
+    const bytes = readFileSync(join(REPO_ROOT, asset.path));
     const dataUri = `data:${asset.mime};base64,${bytes.toString('base64')}`;
     bankLogoDataUriCache.set(logoAssetKey, dataUri);
     return dataUri;

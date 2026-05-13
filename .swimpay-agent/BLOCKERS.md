@@ -767,3 +767,10 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Full repository validation passed locally during the visual/Ozon polish bundle.
 - Receiver Health can only show exact backend receiver fields once the backend exposes a complete `receiver_health` contract to the app; until then unknown values are shown as `À vérifier` / `À configurer`, not fake values.
 - Real bank notification testing remains out of scope.
+
+## Checkout Sender Bank / Receiver Route Contract
+
+- No implementation blocker remains after the targeted contract/UI fix.
+- Ozon Bank still uses the documented `OZ` placeholder because no official Ozon logo asset is registered in-repo.
+- Staging must be redeployed before SWIMVPN+ can verify sender-bank selection and logos online.
+- Real bank notification testing remains out of scope.

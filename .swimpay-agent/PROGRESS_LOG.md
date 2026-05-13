@@ -3235,3 +3235,15 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Rendered confirmed `Retourner au marchand` as `merchantapp://swimpay-return?...` when a safe return scheme exists.
 - Preserved browser history fallback when no safe return URL is configured.
 - No local app confirmation, auto-confirmation, real notification processing or webhook semantic change was introduced.
+
+## 2026-05-13T03:25:00+03:00 - Checkout sender bank / receiver route contract
+
+- Audited the checkout bank contract with parallel read-only agents.
+- Found missing `available_sender_banks`, missing explicit `available_receiving_methods`, fragile checkout logo path resolution and missing Step 2 sender bank display.
+- Added `AvailableSenderBank`, `AvailableReceivingMethod`, `toAvailableSenderBanks()` and exported `bankLogoAssetKey`.
+- Backend checkout read/status now exposes sender banks separately from receiving methods/routes.
+- `sender_bank_id` validation now uses `PayerBankLauncherRegistry`, not receiver bank options.
+- Hosted checkout Step 1 sender-bank choices update visually on selection.
+- Hosted checkout Step 2 now shows both receiver bank and sender bank with logo asset keys.
+- Hosted checkout bank logos now resolve from repo-root-relative paths instead of `process.cwd()`.
+- Targeted contract/API/web checkout tests passed.

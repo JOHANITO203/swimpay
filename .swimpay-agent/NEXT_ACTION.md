@@ -105,3 +105,28 @@ generated_at: 2026-05-13T00:59:00+03:00
 - Do not treat runtime verified as official bank confirmation.
 - Do not process real bank notifications in this polish pass.
 - Do not add unregistered/generated bank logos.
+
+## Current Pass - Checkout Sender Bank / Receiver Route
+
+## Completed Locally In This Pass
+
+1. Added explicit sender bank contract from the payer launcher registry.
+2. Added explicit receiving method contract from active merchant routes.
+3. Fixed Step 1 sender-bank visual selection.
+4. Fixed checkout bank logo resolution outside repo-root cwd.
+5. Added Step 2 sender bank and receiver bank separation.
+6. Added targeted contract/API/web tests.
+
+## Next Recommended Action
+
+1. Run full validation.
+2. Regenerate/verify checkout browser screenshots if visual baselines changed.
+3. Redeploy API/web to staging.
+4. Verify on mobile that all six sender banks are selectable and `Aller a ma banque` opens the selected sender bank.
+
+## Do Not Do
+
+- Do not use receiver bank as payer launcher.
+- Do not add generated bank logos.
+- Do not change payment confirmation semantics.
+- Do not process real bank notifications in this checkout contract pass.

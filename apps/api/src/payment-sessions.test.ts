@@ -872,7 +872,7 @@ describe('payment session api', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
+    expect(response.json()).toMatchObject({
       payment_session_id: 'ps_session_01',
       order_id: 'ord_session_01',
       external_id: 'order_session_01',
@@ -890,6 +890,15 @@ describe('payment session api', () => {
         card: false,
         sbp: false
       },
+      available_receiving_methods: [],
+      available_sender_banks: [
+        expect.objectContaining({ bank_id: 'sber_ru', logo_asset_key: 'ic_bank_sberbank', selectable: true }),
+        expect.objectContaining({ bank_id: 'tbank_ru', logo_asset_key: 'ic_bank_tbank', selectable: true }),
+        expect.objectContaining({ bank_id: 'vtb_ru', logo_asset_key: 'ic_bank_vtb', selectable: true }),
+        expect.objectContaining({ bank_id: 'alfa_ru', logo_asset_key: 'ic_bank_alfa', selectable: true }),
+        expect.objectContaining({ bank_id: 'gazprombank_ru', logo_asset_key: 'ic_bank_gazprombank', selectable: true }),
+        expect.objectContaining({ bank_id: 'ozon_bank', logo_asset_key: 'ic_bank_ozon', selectable: true })
+      ],
       available_routes: [],
       available_compatibility_pairs: [],
       unavailable_reason: 'merchant_no_active_receiving_method',
@@ -1719,6 +1728,48 @@ describe('payment session api', () => {
       selected_receiving_route_id: 'route_2',
       receiver_method_type: 'card',
       selected_payer_bank_launcher_id: 'sber_ru',
+      selected_sender_bank_id: 'sber_ru',
+      sender_bank_logo_asset_key: 'ic_bank_sberbank',
+      receiver_bank_logo_asset_key: 'ic_bank_sberbank',
+      available_sender_banks: [
+        expect.objectContaining({
+          bank_id: 'sber_ru',
+          display_name: 'Sberbank',
+          logo_asset_key: 'ic_bank_sberbank',
+          selectable: true,
+          payer_bank_launcher_id: 'sber_ru',
+          official_bank_confirmation: false
+        }),
+        expect.objectContaining({ bank_id: 'tbank_ru', logo_asset_key: 'ic_bank_tbank', selectable: true }),
+        expect.objectContaining({ bank_id: 'vtb_ru', logo_asset_key: 'ic_bank_vtb', selectable: true }),
+        expect.objectContaining({ bank_id: 'alfa_ru', logo_asset_key: 'ic_bank_alfa', selectable: true }),
+        expect.objectContaining({ bank_id: 'gazprombank_ru', logo_asset_key: 'ic_bank_gazprombank', selectable: true }),
+        expect.objectContaining({
+          bank_id: 'ozon_bank',
+          display_name: 'Ozon Банк',
+          logo_asset_key: 'ic_bank_ozon',
+          selectable: true,
+          runtime_capture_status: 'runtime_verified'
+        })
+      ],
+      available_receiving_methods: [
+        expect.objectContaining({
+          method: 'sbp',
+          label: 'SBP',
+          available: true,
+          route_id: 'route_1',
+          receiver_bank_id: 'sber_ru',
+          receiver_bank_logo_asset_key: 'ic_bank_sberbank'
+        }),
+        expect.objectContaining({
+          method: 'card',
+          label: 'Carte',
+          available: true,
+          route_id: 'route_2',
+          receiver_bank_id: 'sber_ru',
+          receiver_bank_logo_asset_key: 'ic_bank_sberbank'
+        })
+      ],
       checkout_state: 'payment_instructions',
       official_bank_confirmation: false
     });
@@ -1847,6 +1898,9 @@ describe('payment session api', () => {
     expect(profile.json()).toMatchObject({
       payment_method: 'card',
       sender_bank_id: 'tbank_ru',
+      selected_sender_bank_id: 'tbank_ru',
+      sender_bank_logo_asset_key: 'ic_bank_tbank',
+      receiver_bank_logo_asset_key: 'ic_bank_sberbank',
       selected_receiver_bank_id: 'sber_ru',
       selected_receiving_route_id: 'route_1',
       receiver_method_type: 'card',
