@@ -117,6 +117,8 @@ describe('Developer Integration Wizard', () => {
     expect(wizard.body).toContain('sk_live_••••1234');
     expect(wizard.body).toContain('whsec_••••9876');
     expect(wizard.body).toContain('https://merchant.example/webhooks/swimpay');
+    expect(wizard.body).toContain("Utilisez l'URL publique exacte de votre backend pour la route webhook.");
+    expect(wizard.body).toContain('https://api.votre-site.com/api/v1/payments/swimpay/webhook');
     expect(wizard.body).not.toMatch(/Shopify|WordPress|CRM|\bbot\b/iu);
   });
 
@@ -209,6 +211,8 @@ describe('Developer Integration Wizard', () => {
     expect(exportBlock).toContain('SWIMPAY_WEBHOOK_URL=https://merchant.example/webhooks/swimpay');
     expect(exportBlock).toContain('EXTERNAL_APP_BASE_URL=https://&lt;merchant-staging-endpoint&gt;');
     expect(exportBlock).toContain('payment.confirmed,payment.rejected,payment.expired');
+    expect(exportBlock).toContain('Verifiez que');
+    expect(exportBlock).toContain('route publique exacte');
 
     expect(createdExportBlock).toContain('SWIMPAY_STAGING_SECRET_KEY=sk_test_show_once_secret_value');
     expect(rotatedExportBlock).toContain('SWIMPAY_STAGING_WEBHOOK_SECRET=whsec_rotated_secret_value');

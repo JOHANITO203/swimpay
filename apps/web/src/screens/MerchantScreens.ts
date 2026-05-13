@@ -485,6 +485,9 @@ export function renderDeveloperIntegrationWizardPage(params: {
             <input id="webhook_url" name="webhook_url" value="${escapeHtml(webhookUrl)}" placeholder="https://merchant.example/webhooks/swimpay" autocomplete="off" ${params.unavailable ? 'disabled aria-disabled="true"' : ''}>
             <div style="margin-top:12px;">${Button({ text: 'Enregistrer', variant: 'secondary', class: 'btn-small', type: 'submit', attr: actionButtonAttr })}</div>
           </form>
+          <p class="safe-note" style="margin-top:14px;">${IconBubble({ icon: 'R', tone: 'warning' })}<span>Utilisez l'URL publique exacte de votre backend pour la route webhook.</span></p>
+          <p class="muted" style="margin-top:10px;">Si votre backend utilise un prefix global (par exemple <code>/api</code>, <code>/v1</code> ou <code>/api/v1</code>), incluez ce prefixe dans <code>SWIMPAY_WEBHOOK_URL</code>.</p>
+          <p class="muted" style="margin-top:8px;">Exemple: <code>https://api.votre-site.com/api/v1/payments/swimpay/webhook</code>. Une route inexacte provoque des erreurs HTTP 404 et des retries webhook.</p>
           ${developerField('Status', webhookStatus)}
           ${developerField('Événements publics', publicEvents.join(', '))}
           <div class="cluster" style="margin:18px 0;">
@@ -558,6 +561,9 @@ function renderDeveloperIntegrationWizardPageStatic(params: {
           ${developerField('Webhook URL', 'https://merchant.example/webhooks/swimpay')}
           ${developerField('Status', 'Connexion active')}
           ${developerField('Last test result', 'Connexion réussie')}
+          <p class="safe-note" style="margin-top:14px;">${IconBubble({ icon: 'R', tone: 'warning' })}<span>Utilisez l'URL publique exacte de votre backend pour la route webhook.</span></p>
+          <p class="muted" style="margin-top:10px;">Si votre backend utilise un prefix global (par exemple <code>/api</code>, <code>/v1</code> ou <code>/api/v1</code>), incluez ce prefixe dans <code>SWIMPAY_WEBHOOK_URL</code>.</p>
+          <p class="muted" style="margin-top:8px;">Exemple: <code>https://api.votre-site.com/api/v1/payments/swimpay/webhook</code>. Une route inexacte provoque des erreurs HTTP 404 et des retries webhook.</p>
           <div class="cluster" style="margin:18px 0;">
             ${Button({ text: 'Enregistrer', variant: 'secondary', class: 'btn-small' })}
             ${Button({ text: 'Tester la connexion', variant: 'primary', class: 'btn-small' })}
@@ -842,7 +848,7 @@ function renderExternalAppExport(integration: MerchantIntegrationPayload | null,
   const apiBaseUrl = integration?.api_base_url ?? 'https://staging.swimpay.pro';
   const secretKey = integration?.secret_key_once ?? integration?.secret_key_masked ?? '<create-api-key-show-once>';
   const webhookSecret = integration?.webhook_secret_once ?? integration?.webhook_secret_masked ?? '<create-webhook-secret-show-once>';
-  const webhookUrl = integration?.webhook_url ?? 'https://<merchant-staging-endpoint>/webhooks/swimpay';
+  const webhookUrl = integration?.webhook_url ?? 'https://<merchant-staging-endpoint>/api/v1/payments/swimpay/webhook';
   const env = `SWIMPAY_STAGING_API_BASE_URL=${apiBaseUrl}
 SWIMPAY_STAGING_SECRET_KEY=${secretKey}
 SWIMPAY_STAGING_WEBHOOK_SECRET=${webhookSecret}
@@ -855,6 +861,7 @@ SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicEvents.join(',')}`;
       <h2 class="section-title" style="margin-top:0;">Variables staging pour app externe</h2>
       <p class="muted">Utilisez ce bloc pour brancher une application marchande de test. Les secrets complets sont affiches seulement juste apres creation ou rotation.</p>
       ${renderSnippet('Env staging', env)}
+      <p class="muted" style="margin-top:10px;">Verifiez que <code>SWIMPAY_WEBHOOK_URL</code> pointe vers la route publique exacte de votre backend (prefixes inclus).</p>
       <p class="safe-note" style="margin-top:14px;">${IconBubble({ icon: 'S', tone: 'muted' })}<span>Conservez ces valeurs cote serveur. Une app Android externe ne doit recevoir que checkout_url et le resultat de retour.</span></p>
     </section>`
   });

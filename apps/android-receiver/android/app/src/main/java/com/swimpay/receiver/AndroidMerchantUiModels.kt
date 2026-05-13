@@ -305,7 +305,7 @@ class AndroidMerchantUiCatalog {
                 }
                 if (!checklist.connectedSiteReady) {
                     add("Action requise")
-                    add("Configurez un webhook pour tester l'envoi backend.")
+                    add("Configurez un webhook backend avec la route publique exacte (prefixes inclus).")
                 }
             }
         }
@@ -468,7 +468,8 @@ class AndroidMerchantUiCatalog {
                 "Action nécessaire",
                 "La dernière notification n’a pas été envoyée.",
                 "URL de notification",
-                "https://votre-site.com/swimpay/webhook",
+                "https://votre-site.com/api/v1/payments/swimpay/webhook",
+                "Utilisez la route publique exacte de votre backend (exemple avec /api/v1).",
                 "Statut",
                 "Actif",
                 "Tester la connexion",

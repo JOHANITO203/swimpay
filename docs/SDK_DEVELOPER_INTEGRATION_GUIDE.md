@@ -370,6 +370,18 @@ web_return_url/return_url is only a browser fallback.
 
 Your backend must expose the configured `SWIMPAY_WEBHOOK_URL`.
 
+Route accuracy is mandatory:
+
+- `SWIMPAY_WEBHOOK_URL` must match the exact public backend route.
+- If your backend uses a global prefix/version (`/api`, `/v1`, `/api/v1`), include it in the URL.
+- A partial route (wrong prefix/path) usually returns HTTP `404` and keeps webhook deliveries in retry.
+
+Example with a prefixed backend route:
+
+```text
+SWIMPAY_WEBHOOK_URL=https://api.your-site.com/api/v1/payments/swimpay/webhook
+```
+
 Example with Express:
 
 ```ts

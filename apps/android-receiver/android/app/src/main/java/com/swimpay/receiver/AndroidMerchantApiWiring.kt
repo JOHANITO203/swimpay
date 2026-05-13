@@ -1517,7 +1517,7 @@ data class MerchantDeveloperIntegrationSnapshot(
         apiBaseUrl: String = "https://staging.swimpay.pro",
         externalAppBaseUrl: String = ""
     ): List<String> {
-        val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/swimpay/webhook # exemple" }
+        val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/api/v1/payments/swimpay/webhook # exemple" }
         val externalAppLines = externalAppExportLines(externalAppBaseUrl)
         return listOf(
             "SWIMPAY_STAGING_API_BASE_URL=$apiBaseUrl",
@@ -1534,7 +1534,7 @@ data class MerchantDeveloperIntegrationSnapshot(
         webhookSecretForCopy: String? = webhookSecretOnce,
         merchantAuthorizationHeaderForCopy: String = ""
     ): List<String> {
-        val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/swimpay/webhook # exemple" }
+        val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/api/v1/payments/swimpay/webhook # exemple" }
         val externalAppLines = externalAppExportLines(externalAppBaseUrl)
         val merchantAuthLine = merchantAuthorizationHeaderForCopy
             .trim()

@@ -137,7 +137,7 @@ class AndroidMerchantUiContractTest {
         )
         assertTrue(actionRequired.visibleTexts().contains("Action requise"))
         assertTrue(actionRequired.visibleTexts().contains("Ajoutez un moyen de réception pour continuer."))
-        assertTrue(actionRequired.visibleTexts().contains("Configurez un webhook pour tester l'envoi backend."))
+        assertTrue(actionRequired.visibleTexts().contains("Configurez un webhook backend avec la route publique exacte (prefixes inclus)."))
 
         val dashboard = catalog.dashboardScreen(receiverReady = true)
         assertEquals("Tableau de bord", dashboard.title)

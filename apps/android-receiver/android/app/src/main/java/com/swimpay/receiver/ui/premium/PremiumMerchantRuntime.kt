@@ -351,7 +351,7 @@ data class PremiumConnectedSiteUiState(
                 statusTitle = "Connexion active",
                 statusText = "Dernière notification envoyée il y a 3 min.",
                 rows = listOf(
-                    "URL de notification" to "https://votre-site.com/swimpay/webhook",
+                    "URL de notification" to "https://votre-site.com/api/v1/payments/swimpay/webhook",
                     "Statut" to "Actif"
                 ),
                 usesLiveApi = false
