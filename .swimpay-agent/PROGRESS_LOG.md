@@ -3335,3 +3335,12 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Added `docs/ai/CODEX_DESIGN_WORKFLOW.md`, `docs/ai/CODEX_MULTI_AGENT_WORKFLOW.md` and `docs/ai/SWIMPAY_UI_UX_PRO_MAX_ADAPTATION.md`.
 - Updated `AGENTS.md` with design-only mode, full visual rebuild mode, multi-agent workflow and skill conflict resolution.
 - No backend, API, database, payment runtime, webhook, receiver runtime, SDK or notification-processing behavior was changed.
+
+## 2026-05-14T00:00:00+03:00 - Android Merchant full visual rebuild
+
+- Rebuilt the active Android Merchant premium UI layer as a design-only pass against the 14 reference mockups.
+- Updated account entry, onboarding, bank selection, receiving setup, webhook test, receiving methods, bank/logo styling, integrations, receiver/security/settings surfaces and shared form styling.
+- Preserved SBP visual orientation and allowed Ozon to be visually selectable when present in bank UI state.
+- Preserved copy meaning; no backend/API/database/payment/webhook/receiver/SDK/state-machine files were changed.
+- Validation passed: `:app:compileDebugKotlin`, `:app:assembleDebug`, device install/launch and live screenshot capture.
+- Roborazzi was not run and goldens were not updated.

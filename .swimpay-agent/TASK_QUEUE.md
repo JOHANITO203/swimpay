@@ -1,5 +1,13 @@
 # SwimPay Task Queue
 
+## Current Queue - Android Merchant Full Visual Rebuild (2026-05-14)
+
+- [x] `android_full_visual_rebuild_audit` - status: completed - source: `.swimpay-agent/ANDROID_FULL_VISUAL_REBUILD_AUDIT.md`
+- [x] `android_premium_ui_rebuild` - status: completed_validated - source: `.swimpay-agent/ANDROID_FULL_VISUAL_REBUILD_REPORT.md`
+- [x] `android_screen_acceptance_matrix` - status: completed_close_not_pixel_perfect - source: `.swimpay-agent/ANDROID_SCREEN_BY_SCREEN_ACCEPTANCE_MATRIX.md`
+- [x] `android_design_only_copy_guardrail` - status: completed_no_broad_rewrite - source: `.swimpay-agent/ANDROID_COPY_RESTORE_REPORT.md`
+- [ ] `android_visual_freeze_after_approval` - status: pending_operator_visual_approval - source: `.swimpay-agent/ANDROID_FULL_VISUAL_REBUILD_CLOSEOUT.md`
+
 ## Current Queue - Checkout runtime blocker (2026-05-13)
 
 - [x] `staging_schema_reconciliation_audit` - status: completed_with_findings - source: `.swimpay-agent/STAGING_SCHEMA_RECONCILIATION_AUDIT.md`

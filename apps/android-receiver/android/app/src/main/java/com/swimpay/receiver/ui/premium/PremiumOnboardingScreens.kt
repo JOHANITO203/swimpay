@@ -57,27 +57,27 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun PremiumLandingScreen(onStart: () -> Unit) {
+    MockupScreenBackground(Modifier.fillMaxSize()) {
     Column(
-        Modifier
-            .fillMaxSize()
-            .background(PremiumColors.Background)
-            .statusBarsPadding()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
         SwimPayLogo(markSize = 56.dp)
         Spacer(Modifier.height(22.dp))
         Text(
             "Terminal marchand",
-            color = PremiumColors.SoftText,
+            color = PremiumMockupColors.Cyan,
             fontWeight = FontWeight.Black,
             fontSize = 12.sp,
             letterSpacing = 4.sp
         )
         Text(
             "Configurez SwimPay sur ce téléphone pour suivre les paiements reçus.",
-            color = PremiumColors.Muted,
+            color = PremiumMockupColors.Muted,
             fontWeight = FontWeight.SemiBold,
             fontSize = 16.sp,
             lineHeight = 24.sp,
@@ -85,7 +85,7 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
             modifier = Modifier.padding(top = 12.dp)
         )
         Spacer(Modifier.height(44.dp))
-        PremiumCard(
+        MockupGlassCard(
             Modifier
                 .fillMaxWidth()
                 .height(220.dp)
@@ -97,14 +97,15 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Box(Modifier.size(78.dp).background(PremiumColors.Navy, RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {
-                    SwimPayWavesMark(Modifier.size(PremiumIconSize.Large), tint = PremiumColors.Cyan)
+                Box(Modifier.size(78.dp).background(PremiumMockupColors.Field, RoundedCornerShape(26.dp)).border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {
+                    SwimPayWavesMark(Modifier.size(PremiumIconSize.Large), tint = PremiumMockupColors.Green)
                 }
                 Spacer(Modifier.height(26.dp))
-                Text("Configuration initiale", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Text("Commencer", color = PremiumColors.SoftText, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                Text("Configuration initiale", color = PremiumMockupColors.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                Text("Commencer", color = PremiumMockupColors.Cyan, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
             }
         }
+    }
     }
 }
 
@@ -198,7 +199,8 @@ fun PremiumOnboardingFlow(
 
 @Composable
 private fun WelcomeStep(onNext: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(PremiumColors.Background).statusBarsPadding()) {
+    MockupScreenBackground(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -211,7 +213,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
             Spacer(Modifier.height(26.dp))
             Text(
                 "Recevez vos paiements plus facilement",
-                color = PremiumColors.Ink,
+                color = PremiumMockupColors.White,
                 fontSize = 30.sp,
                 lineHeight = 34.sp,
                 fontWeight = FontWeight.Black,
@@ -219,7 +221,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
             )
             Text(
                 "SwimPay détecte les paiements reçus, vous aide à les confirmer et prévient votre site ou votre application.",
-                color = PremiumColors.Muted,
+                color = PremiumMockupColors.Muted,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 lineHeight = 23.sp,
@@ -235,10 +237,10 @@ private fun WelcomeStep(onNext: () -> Unit) {
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(PremiumColors.Background)
                 .padding(horizontal = 22.dp, vertical = 18.dp)
         ) {
             PremiumPrimaryButton("Commencer", onClick = onNext)
+        }
         }
     }
 }
@@ -255,22 +257,25 @@ private fun NotificationAccessStep(
             "Connectez votre téléphone",
             "SwimPay a besoin d’accéder aux notifications de cet appareil pour fonctionner."
         )
-        PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp) {
+        MockupGlassCard(
+            Modifier.fillMaxWidth(),
+            radius = 30.dp,
+            border = if (notificationAccessEnabled) PremiumMockupColors.Green else PremiumMockupColors.Cyan.copy(alpha = 0.42f)
+        ) {
             Row(
                 Modifier.padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                Box(
-                    Modifier.size(64.dp).background(Color(0xFFFFF2DD), RoundedCornerShape(22.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Fingerprint, null, tint = PremiumColors.Warning, modifier = Modifier.size(32.dp))
-                }
+                MockupIconTile(
+                    Icons.Default.Fingerprint,
+                    size = 64.dp,
+                    tint = if (notificationAccessEnabled) PremiumMockupColors.Green else PremiumMockupColors.Cyan
+                )
                 Column(Modifier.weight(1f)) {
                     Text(
                         if (notificationAccessEnabled) "Activé" else "Accès nécessaire",
-                        color = if (notificationAccessEnabled) PremiumColors.Success else PremiumColors.Ink,
+                        color = if (notificationAccessEnabled) PremiumMockupColors.Green else PremiumMockupColors.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -280,7 +285,7 @@ private fun NotificationAccessStep(
                         } else {
                             "Activez l’accès aux notifications pour détecter les paiements reçus."
                         },
-                        color = PremiumColors.Muted,
+                        color = PremiumMockupColors.Muted,
                         fontSize = 14.sp,
                         lineHeight = 21.sp,
                         fontWeight = FontWeight.SemiBold
@@ -418,6 +423,24 @@ private fun ReceivingMethodDetailsStep(
                 }
             }
         }
+        bankOptions.firstOrNull { it.bankProfileId == selectedBankId }?.let { bank ->
+            MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp, border = PremiumMockupColors.Green.copy(alpha = 0.34f)) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 44.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text("Destination exemple", color = PremiumMockupColors.MutedDark, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                        Text(
+                            if (ReceivingMethodType.PHONE_TRANSFER in visualMethodSelection) "+7 *** *** ** 42 / SBP" else "**** 4242",
+                            color = PremiumMockupColors.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(bank.displayName, color = PremiumMockupColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    MockupStatusChip(if (visualMethodSelection.size > 1) "Carte + SBP" else if (ReceivingMethodType.PHONE_TRANSFER in visualMethodSelection) "SBP" else "Carte")
+                }
+            }
+        }
         OutlinedTextField(
             value = identifierInput,
             onValueChange = { identifierInput = it },
@@ -521,19 +544,17 @@ private fun ConnectedSiteStep(
             "Connectez votre site ou application",
             "Recevez une mise à jour après votre validation manuelle."
         )
-        PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp) {
+        MockupGlassCard(Modifier.fillMaxWidth(), radius = 30.dp, border = PremiumMockupColors.Cyan.copy(alpha = 0.38f)) {
             Row(
                 Modifier.padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                Box(Modifier.size(58.dp).background(PremiumColors.Mint, RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Link, null, tint = PremiumColors.Teal, modifier = Modifier.size(30.dp))
-                }
+                MockupIconTile(Icons.Default.Link, size = 58.dp, tint = PremiumMockupColors.Cyan)
                 Column(Modifier.weight(1f)) {
                     Text(
                         if (skipped) "Configuration reportée" else "Prêt à ajouter",
-                        color = PremiumColors.Ink,
+                        color = PremiumMockupColors.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -543,7 +564,7 @@ private fun ConnectedSiteStep(
                         } else {
                             "Ajoutez un endpoint pour lancer ensuite un test webhook backend."
                         },
-                        color = PremiumColors.Muted,
+                        color = PremiumMockupColors.Muted,
                         fontSize = 13.sp,
                         lineHeight = 20.sp,
                         fontWeight = FontWeight.SemiBold
@@ -570,12 +591,21 @@ private fun ConfigurationTestStep(
             "Test webhook",
             "Le test est déclenché par le backend vers votre endpoint. Android ne traite aucune notification réelle et ne confirme aucun paiement."
         )
-        ChecklistCard(state)
-        Spacer(Modifier.height(22.dp))
         ResultCard(state)
+        Spacer(Modifier.height(16.dp))
+        MockupInfoBanner(
+            title = "Point de test",
+            body = state.configurationChecklistLabels().joinToString(" - "),
+            icon = Icons.Default.Link,
+            tone = PremiumMockupColors.Blue
+        )
+        Spacer(Modifier.height(16.dp))
+        ChecklistCard(state)
         Spacer(Modifier.height(18.dp))
         if (state.connectedSiteConfigured) {
-            PremiumPrimaryButton("Lancer le test webhook", onClick = onRunTest)
+            PremiumOutlineButton("Relancer le test", onClick = onRunTest)
+            Spacer(Modifier.height(12.dp))
+            PremiumPrimaryButton(if (state.configurationTestRan) "Terminer" else "Lancer le test webhook", onClick = onRunTest)
         } else {
             PremiumPrimaryButton("Ajouter maintenant", onClick = onConnectSite)
         }
@@ -614,14 +644,12 @@ private fun ProgressLine(step: PremiumOnboardingStep) {
 
 @Composable
 private fun BenefitRow(icon: ImageVector, title: String, body: String) {
-    PremiumCard(Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap {}, radius = 28.dp) {
+    MockupGlassCard(Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap {}, radius = 28.dp) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            Box(Modifier.size(54.dp).background(PremiumColors.Mint, RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(28.dp))
-            }
+            MockupIconTile(icon, size = 54.dp, tint = PremiumMockupColors.Green)
             Column {
-                Text(title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                Text(body, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 20.sp)
+                Text(title, color = PremiumMockupColors.White, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                Text(body, color = PremiumMockupColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 20.sp)
             }
         }
     }
@@ -629,9 +657,11 @@ private fun BenefitRow(icon: ImageVector, title: String, body: String) {
 
 @Composable
 private fun NoticeRow(icon: ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Icon(icon, null, tint = PremiumColors.SoftText, modifier = Modifier.size(28.dp))
-        Text(text, color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp, border = PremiumMockupColors.BorderSoft) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Icon(icon, null, tint = PremiumMockupColors.Cyan, modifier = Modifier.size(28.dp))
+            Text(text, color = PremiumMockupColors.Muted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 
@@ -645,7 +675,7 @@ private fun BankSearchStatusCard(
             "Recherche en cours",
             "Les banques compatibles apparaissent ici sans parcourir toutes les applications.",
             Icons.Default.Bolt,
-            PremiumColors.Cyan
+            PremiumMockupColors.Cyan
         )
         is PremiumScreenState.Content -> {
             val detected = bankTargetsState.value.items.count { it.canActivate || it.enabled }
@@ -659,27 +689,27 @@ private fun BankSearchStatusCard(
                     "Vous pourrez configurer une banque compatible plus tard."
                 },
                 Icons.Default.AccountBalance,
-                if (detected > 0) PremiumColors.Teal else PremiumColors.SoftText
+                if (detected > 0) PremiumMockupColors.Green else PremiumMockupColors.MutedDark
             )
         }
         is PremiumScreenState.Empty -> Quadruple(
             "Aucune banque détectée",
             "Vous pourrez configurer une banque compatible plus tard.",
             Icons.Default.AccountBalance,
-            PremiumColors.SoftText
+            PremiumMockupColors.MutedDark
         )
         is PremiumScreenState.ActionRequired -> Quadruple(
             bankTargetsState.title,
             bankTargetsState.message,
             Icons.Default.AccountBalance,
-            PremiumColors.Warning
+            PremiumMockupColors.Warning
         )
         is PremiumScreenState.Error,
         is PremiumScreenState.Offline -> Quadruple(
             "Recherche à relancer",
             "Réessayez dans quelques instants.",
             Icons.Default.AccountBalance,
-            PremiumColors.Warning
+            PremiumMockupColors.Warning
         )
     }
 
@@ -749,7 +779,7 @@ private fun BankRow(
             .fillMaxWidth()
             .padding(bottom = 14.dp)
             .premiumTap {
-                if (selectable && detected) onToggleBank(bank.bankProfileId)
+                if (selectable) onToggleBank(bank.bankProfileId)
             },
         radius = 28.dp,
         border = if (selected) PremiumMockupColors.Green else PremiumMockupColors.BorderSoft
@@ -824,12 +854,14 @@ private fun ResultCard(state: PremiumOnboardingSessionState) {
         radius = 28.dp,
         border = if (ready) PremiumMockupColors.Green else PremiumMockupColors.Warning
     ) {
-        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            MockupIconTile(Icons.Default.CheckCircle, size = 72.dp, tint = if (ready) PremiumMockupColors.Green else PremiumMockupColors.Warning)
             Text(
                 if (ready) "Webhook prêt" else "Action nécessaire",
                 color = if (ready) PremiumMockupColors.Green else PremiumMockupColors.Warning,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center
             )
             Text(
                 if (ready) {
@@ -840,8 +872,10 @@ private fun ResultCard(state: PremiumOnboardingSessionState) {
                 color = PremiumMockupColors.Muted,
                 fontSize = 14.sp,
                 lineHeight = 21.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
             )
+            MockupStatusChip(if (ready) "Reussi" else "En attente", tone = if (ready) PremiumMockupColors.Green else PremiumMockupColors.Warning)
         }
     }
 }

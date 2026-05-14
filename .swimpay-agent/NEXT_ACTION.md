@@ -1,5 +1,33 @@
 # Next Action
 
+generated_at: 2026-05-14T00:00:00+03:00
+
+## Current Design Priority
+
+Android Merchant Full Visual Rebuild is locally complete as a design-only pass. Next action is operator visual review of the captured APK/screenshot, then Visual Freeze Mode only after approval.
+
+## Completed Locally In This Pass
+
+1. Rebuilt active premium Android Merchant surfaces toward the 14 mockups.
+2. Preserved copy meaning and kept SBP visual orientation.
+3. Made Ozon visually selectable when present in bank UI state.
+4. Kept receiving setup visually capable of card, SBP and card+SBP.
+5. Passed `:app:compileDebugKotlin` and `:app:assembleDebug`.
+6. Installed and launched the APK on a real device; captured `.swimpay-agent/screenshots/android-full-visual-rebuild/after_launch.png`.
+
+## Next Recommended Design Action
+
+1. Review the live Android Merchant APK visually.
+2. If accepted, enter Visual Freeze Mode.
+3. Capture all 14 final screen screenshots.
+4. Update Roborazzi goldens only after approval.
+
+## Do Not Do
+
+- Do not change backend/API/payment/webhook/receiver/database/SDK/state-machine code for this design pass.
+- Do not update goldens before approval.
+- Do not run screenshot verify as a blocking polish gate.
+
 generated_at: 2026-05-13T00:59:00+03:00
 
 ## Current Runtime Priority (Receiver Arming Blocker)

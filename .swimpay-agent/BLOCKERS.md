@@ -830,3 +830,11 @@ No backend/runtime blockers found for this design-only pass. Remaining blockers 
 - External repositories were cloned into `.external-skills/` for local audit and are ignored by git.
 - No backend, API, database, payment runtime, webhook, receiver runtime, SDK or notification-processing files were changed.
 - Existing visual blocker remains: Android screens still need screen-by-screen mockup matching before Visual Freeze Mode.
+
+## Android Merchant Full Visual Rebuild (2026-05-14)
+
+- No backend/runtime blocker introduced.
+- Completed local design-only rebuild pass against 14 Android Merchant references.
+- Validation passed: `:app:compileDebugKotlin`, `:app:assembleDebug`, device install/launch and live screenshot capture.
+- Remaining blocker is design approval only: do not update Roborazzi goldens until the operator approves the visual result.
+- Remaining visual-freeze task: capture all 14 final screens and tune exact spacing/density before baseline update.

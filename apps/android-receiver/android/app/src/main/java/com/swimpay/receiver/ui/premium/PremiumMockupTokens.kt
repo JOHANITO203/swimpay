@@ -1,4 +1,4 @@
-package com.swimpay.receiver.ui.premium
+﻿package com.swimpay.receiver.ui.premium
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -43,41 +43,45 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object PremiumMockupColors {
     val Black = Color(0xFF000407)
-    val DeepNavy = Color(0xFF00101A)
-    val Night = Color(0xFF04131E)
-    val Card = Color(0xDD071823)
-    val CardStrong = Color(0xEA071925)
-    val Field = Color(0xB804111B)
-    val Border = Color(0xFF304653)
-    val BorderSoft = Color(0x73304451)
-    val Highlight = Color(0x332BE6FF)
+    val DeepNavy = Color(0xFF020817)
+    val Night = Color(0xFF07111F)
+    val Card = Color(0xE00A121E)
+    val CardStrong = Color(0xF50A121E)
+    val Field = Color(0x4DFFFFFF)
+    val Border = Color(0x14FFFFFF)
+    val BorderSoft = Color(0x14FFFFFF)
+    val Highlight = Color(0x1F2491FF)
     val White = Color(0xFFF8FAFC)
-    val Muted = Color(0xFFB2BBCD)
-    val MutedDark = Color(0xFF8792A8)
+    val Muted = Color(0xADBFFFFFFF)
+    val MutedDark = Color(0x73FFFFFF)
     val Cyan = Color(0xFF23D8F3)
-    val Green = Color(0xFF39E978)
+    val Green = Color(0xFF39FF88)
+    val GreenDeep = Color(0xFF22C55E)
     val Lime = Color(0xFF9BF24A)
-    val Blue = Color(0xFF348BFF)
-    val Warning = Color(0xFFFFC542)
-    val Danger = Color(0xFFFF4B4B)
+    val Blue = Color(0xFF2491FF)
+    val Warning = Color(0xFFFFC933)
+    val Purple = Color(0xFF8B5CF6)
+    val Danger = Color(0xFFFF4D6D)
 }
 
 object PremiumMockupRadius {
-    val Card = 22.dp
-    val CardLarge = 26.dp
-    val Field = 14.dp
-    val Button = 20.dp
+    val Card = 11.dp
+    val CardLarge = 13.dp
+    val Field = 8.dp
+    val Button = 9.dp
     val Pill = 999.dp
 }
 
@@ -89,9 +93,9 @@ object PremiumMockupSpacing {
 
 object PremiumMockupGradient {
     val Background = listOf(
-        PremiumMockupColors.Black,
-        Color(0xFF000D15),
-        PremiumMockupColors.Black
+        PremiumMockupColors.DeepNavy,
+        PremiumMockupColors.Night,
+        PremiumMockupColors.DeepNavy
     )
     val Primary = listOf(
         PremiumMockupColors.Cyan,
@@ -99,9 +103,19 @@ object PremiumMockupGradient {
         PremiumMockupColors.Lime
     )
     val Glass = listOf(
-        Color(0xD80B2230),
-        Color(0xD0081A26)
+        Color(0xF50B121E),
+        Color(0xEB070D18)
     )
+}
+
+@Composable
+fun mockupSp(value: Int): TextUnit {
+    val density = LocalDensity.current
+    return ((value * 0.46f) / density.fontScale).sp
+}
+
+fun mockupDp(value: Int): Dp {
+    return (value * 0.58f).dp
 }
 
 @Composable
@@ -113,14 +127,14 @@ fun MockupScreenBackground(modifier: Modifier = Modifier, content: @Composable (
     ) {
         Canvas(Modifier.matchParentSize()) {
             drawCircle(
-                color = PremiumMockupColors.Cyan.copy(alpha = 0.026f),
-                radius = size.width * 0.24f,
-                center = Offset(size.width * 0.16f, size.height * 0.1f)
+                color = PremiumMockupColors.Blue.copy(alpha = 0.055f),
+                radius = size.width * 0.42f,
+                center = Offset(size.width * -0.05f, size.height * 0.08f)
             )
             drawCircle(
-                color = PremiumMockupColors.Green.copy(alpha = 0.02f),
-                radius = size.width * 0.34f,
-                center = Offset(size.width * 0.9f, size.height * 0.34f)
+                color = PremiumMockupColors.Green.copy(alpha = 0.04f),
+                radius = size.width * 0.5f,
+                center = Offset(size.width * 0.96f, size.height * 0.3f)
             )
         }
         content()
@@ -136,7 +150,6 @@ fun MockupGlassCard(
 ) {
     Card(
         modifier = modifier
-            .shadow(12.dp, RoundedCornerShape(radius), ambientColor = PremiumMockupColors.Cyan.copy(alpha = 0.08f))
             .border(BorderStroke(1.dp, border), RoundedCornerShape(radius)),
         shape = RoundedCornerShape(radius),
         colors = CardDefaults.cardColors(containerColor = PremiumMockupColors.Card),
@@ -177,14 +190,14 @@ fun MockupTopBar(
             title,
             modifier = Modifier.weight(1f),
             color = PremiumMockupColors.White,
-            fontSize = 20.sp,
-            lineHeight = 24.sp,
+            fontSize = mockupSp(20),
+            lineHeight = mockupSp(24),
             fontWeight = FontWeight.Black,
             textAlign = TextAlign.Center
         )
         Box(Modifier.width(48.dp), contentAlignment = Alignment.CenterEnd) {
             if (stepLabel != null) {
-                Text(stepLabel, color = PremiumMockupColors.Green, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                Text(stepLabel, color = PremiumMockupColors.Green, fontSize = mockupSp(17), fontWeight = FontWeight.Black)
             }
         }
     }
@@ -223,7 +236,7 @@ fun MockupStatusChip(text: String, tone: Color = PremiumMockupColors.Green, modi
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Icon(Icons.Default.CheckCircle, null, tint = tone, modifier = Modifier.size(15.dp))
-        Text(text, color = tone, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        Text(text, color = tone, fontSize = mockupSp(12), fontWeight = FontWeight.Black)
     }
 }
 
@@ -243,8 +256,8 @@ fun MockupInfoBanner(
         ) {
             Icon(icon, null, tint = tone, modifier = Modifier.size(27.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = PremiumMockupColors.White, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                Text(body, color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
+                Text(title, color = PremiumMockupColors.White, fontSize = mockupSp(15), fontWeight = FontWeight.Black)
+                Text(body, color = PremiumMockupColors.Muted, fontSize = mockupSp(13), lineHeight = mockupSp(18), fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -263,7 +276,7 @@ fun MockupBulletLine(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(icon, null, tint = tone, modifier = Modifier.size(20.dp))
-        Text(text, color = PremiumMockupColors.Muted, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.Medium)
+        Text(text, color = PremiumMockupColors.Muted, fontSize = mockupSp(14), lineHeight = mockupSp(19), fontWeight = FontWeight.Medium)
     }
 }
 
@@ -281,7 +294,7 @@ fun MockupLogo(modifier: Modifier = Modifier) {
                 withStyle(SpanStyle(color = PremiumMockupColors.Green)) { append("Pay") }
             },
             color = PremiumMockupColors.White,
-            fontSize = 31.sp,
+            fontSize = mockupSp(31),
             fontWeight = FontWeight.Black
         )
     }
@@ -348,7 +361,7 @@ fun MockupInputRow(
     ) {
         Icon(icon, null, tint = PremiumMockupColors.Green, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
-        Text(placeholder, color = PremiumMockupColors.MutedDark, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+        Text(placeholder, color = PremiumMockupColors.MutedDark, fontSize = mockupSp(14), fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
         trailing?.let { Icon(it, null, tint = PremiumMockupColors.Muted, modifier = Modifier.size(24.dp)) }
     }
 }
@@ -371,7 +384,7 @@ fun MockupPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = 
             .premiumTap { if (enabled) onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = Color(0xFF02070A), fontSize = 17.sp, fontWeight = FontWeight.Black)
+        Text(text, color = Color(0xFF02070A), fontSize = mockupSp(17), fontWeight = FontWeight.Black)
         Icon(
             Icons.AutoMirrored.Filled.ArrowForward,
             null,
@@ -399,7 +412,7 @@ fun MockupOutlineButton(text: String, onClick: () -> Unit, modifier: Modifier = 
         val tone = if (enabled) PremiumMockupColors.Green else PremiumMockupColors.MutedDark
         Icon(Icons.Default.PersonAdd, null, tint = tone, modifier = Modifier.size(28.dp))
         Spacer(Modifier.width(14.dp))
-        Text(text, color = tone, fontSize = 16.sp, fontWeight = FontWeight.Black)
+        Text(text, color = tone, fontSize = mockupSp(16), fontWeight = FontWeight.Black)
     }
 }
 
@@ -420,8 +433,8 @@ fun MockupTruthBanner(modifier: Modifier = Modifier) {
             Text(
                 "SwimPay n'est pas une banque et ne fournit\npas de confirmation bancaire officielle.",
                 color = PremiumMockupColors.Muted,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
+                fontSize = mockupSp(13),
+                lineHeight = mockupSp(18),
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f)
             )
@@ -443,7 +456,7 @@ fun MockupFeature(label: String, body: String, icon: ImageVector, modifier: Modi
             Icon(icon, null, tint = PremiumMockupColors.Green, modifier = Modifier.size(23.dp))
         }
         Spacer(Modifier.height(8.dp))
-        Text(label, color = PremiumMockupColors.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
-        Text(body, color = PremiumMockupColors.MutedDark, fontSize = 11.sp, lineHeight = 15.sp, textAlign = TextAlign.Center)
+        Text(label, color = PremiumMockupColors.White, fontSize = mockupSp(13), fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+        Text(body, color = PremiumMockupColors.MutedDark, fontSize = mockupSp(11), lineHeight = mockupSp(15), textAlign = TextAlign.Center)
     }
 }

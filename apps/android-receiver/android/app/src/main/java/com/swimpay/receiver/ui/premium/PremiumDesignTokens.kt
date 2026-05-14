@@ -107,8 +107,8 @@ object PremiumRadius {
 }
 
 object PremiumSpacing {
-    val ScreenHorizontal = 20.dp
-    val ScreenHorizontalWide = 24.dp
+    val ScreenHorizontal = 12.dp
+    val ScreenHorizontalWide = 12.dp
     val BottomNavHeight = 88.dp
     val TopChromeHeight = 58.dp
 }

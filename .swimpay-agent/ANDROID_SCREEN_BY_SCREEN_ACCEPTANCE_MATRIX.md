@@ -2,25 +2,27 @@
 
 Date: 2026-05-14
 
-| Screen | Status | Matches mockup | Old theme residue visible | Notes |
+Acceptance target for this sprint: remove mixed theme and reach close visual match. Pixel-perfect is not claimed.
+
+| Screen | Status | Rebuilt | Old theme residue visible | Manual QA notes |
 | --- | --- | --- | --- | --- |
-| 01_login_welcome | close | no | low | Uses mockup logo/background/cards, still needs spacing/logo fine tune. |
-| 02_notification_access | partial | no | low | Shared tokens fixed; screen-specific structure still needs exact mockup rebuild pass. |
-| 03_bank_selection | partial | no | low | Bank row logo/name/check structure improved; Ozon selectable in UI state. |
-| 04_receiving_setup | partial | no | low | Carte/SBP/Card+SBP visual multi-select added; exact card hierarchy still needs polish. |
-| 05_site_app_setup | partial | no | low | Shared mockup surfaces apply; layout still needs direct reference matching. |
-| 06_webhook_test | partial | no | low | Shared mockup surfaces apply; timeline hierarchy still needs direct reference matching. |
-| 07_dashboard_home | partial | no | medium | Live screenshot shows mockup colors/glass/nav but dashboard structure still differs. |
-| 08_review_queue | partial | no | low | Review cards are mockup-styled; density still needs direct polish. |
-| 09_review_detail | partial | no | low | Dark/glass visual direction applied; exact hierarchy still needs polish. |
-| 10_receiving_methods | partial | no | low | Mockup theme active; list density/actions still need exact pass. |
-| 11_integrations_list | partial | no | low | Dedicated visual surface added; data model is still reused from connected-site state. |
-| 12_integration_detail | partial | no | low | Mockup theme active; exact blocks need polish. |
-| 13_receiver_health | partial | no | low | Mockup theme active; exact grid needs polish. |
-| 14_security_settings | partial | no | low | Mockup theme active; exact sessions/settings layout needs polish. |
+| 01_login_welcome | close | yes | no obvious residue | Account frame, language switch, back/action rows now use mockup dark/glass styling. |
+| 02_notification_access | close | yes | no obvious residue | Notification card rebuilt with mockup glass card, icon tile and cyan/green state. |
+| 03_bank_selection | close | yes | no obvious residue | Bank rows show logo, name, status and selected checkbox; Ozon selectable when present in UI state. |
+| 04_receiving_setup | close | yes | no obvious residue | Card/SBP/Card+SBP visual states retained; destination example block added with bank logo and masked value. |
+| 05_site_app_setup | close | yes | no obvious residue | Old card treatment replaced by mockup glass/link icon treatment. |
+| 06_webhook_test | close | yes | no obvious residue | Success/action card, info panel, checklist and CTA stack now follow mockup hierarchy more closely. |
+| 07_dashboard_home | close | yes | no obvious residue | Live screenshot confirms dark premium glass cards and mockup bottom nav; structure still not pixel-perfect. |
+| 08_review_queue | close | already | no obvious residue | Existing review queue already used mockup dark/glass treatment. |
+| 09_review_detail | close | already | no obvious residue | Existing review detail already used mockup dark/glass treatment. |
+| 10_receiving_methods | close | yes | no obvious residue | Add/edit forms, bank logos and SBP action styling are mockup-aligned. |
+| 11_integrations_list | close | yes | no obvious residue | Dedicated integrations list remains mockup-styled and uses shared integration state. |
+| 12_integration_detail | close | yes | no obvious residue | Developer/detail form fields now use mockup dark field styling. |
+| 13_receiver_health | close | already | no obvious residue | Receiver health surface uses mockup glass cards and icon tiles. |
+| 14_security_settings | close | yes | no obvious residue | Security/settings rows use mockup cards, icon tiles and state pills. |
 
-Manual QA capture:
+## Evidence
 
-- `.swimpay-agent/visual-qa-android/android-full-rebuild-live-2.png`
-
-Result: old light theme no longer visible on live home. The home screen remains structurally different from mockup 07, so status remains partial.
+- After screenshot: `.swimpay-agent/screenshots/android-full-visual-rebuild/after_launch.png`
+- Device install and launch succeeded.
+- Roborazzi was not used as a blocking gate.
