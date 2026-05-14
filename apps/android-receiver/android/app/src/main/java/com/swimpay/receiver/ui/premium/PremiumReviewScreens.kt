@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -80,13 +81,13 @@ private fun PremiumReviewsContent(
             Modifier
                 .fillMaxHeight()
                 .padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp),
+            contentPadding = PaddingValues(top = 10.dp, bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Row(Modifier.fillMaxWidth().height(mockupDp(64)), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.ArrowBack, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(24)))
-                    Text("File d'examen", color = PremiumMockupColors.White, fontSize = mockupSp(25), fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = mockupDp(22)))
+                    Text("File d’examen", color = PremiumMockupColors.White, fontSize = mockupSp(25), fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = mockupDp(22)))
                     Box {
                         Icon(Icons.Default.FilterAlt, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(24)))
                         Box(Modifier.align(Alignment.TopEnd).size(mockupDp(6)).background(PremiumMockupColors.Green, androidx.compose.foundation.shape.CircleShape))
@@ -106,11 +107,21 @@ private fun PremiumReviewsContent(
                     horizontalArrangement = Arrangement.spacedBy(mockupDp(6)),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    PremiumReviewFilter.entries.take(3).forEach { filter ->
+                    listOf(PremiumReviewFilter.ALL, PremiumReviewFilter.TO_CONFIRM, PremiumReviewFilter.TODAY).forEach { filter ->
                         ReviewFilterPill(filter = filter, count = filter.countFor(state.items), selected = selectedFilter == filter, modifier = Modifier.weight(filter.weight)) { selectedFilter = filter }
                     }
-                    Box(Modifier.size(mockupDp(34)).background(PremiumMockupColors.Field, RoundedCornerShape(mockupDp(9))).border(mockupDp(1), PremiumMockupColors.BorderSoft, RoundedCornerShape(mockupDp(9))), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.FilterAlt, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(18)))
+                    Row(
+                        Modifier
+                            .weight(0.92f)
+                            .height(44.dp)
+                            .background(PremiumMockupColors.Field, RoundedCornerShape(13.dp))
+                            .border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(13.dp))
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text("Filtrer", color = PremiumMockupColors.White, fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1)
+                        Icon(Icons.Default.FilterAlt, null, tint = PremiumMockupColors.White, modifier = Modifier.padding(start = 4.dp).size(16.dp))
                     }
                 }
             }
@@ -120,14 +131,14 @@ private fun PremiumReviewsContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.Search, null, tint = PremiumMockupColors.MutedDark, modifier = Modifier.size(mockupDp(19)))
-                    Text("Rechercher par reference, montant ou banque...", color = PremiumMockupColors.MutedDark, fontSize = mockupSp(15), modifier = Modifier.padding(start = mockupDp(8)))
+                    Text("Rechercher par référence, montant ou banque...", color = PremiumMockupColors.MutedDark, fontSize = mockupSp(15), modifier = Modifier.padding(start = mockupDp(8)))
                 }
             }
             items(filteredItems) { item -> ReviewPaymentCard(item, onOpenReview) }
             item {
                 MockupInfoBanner(
-                    title = "Signal a examiner",
-                    body = "Decision manuelle avant validation.",
+                    title = "Signal à examiner",
+                    body = "Décision manuelle avant validation.",
                     icon = Icons.Default.WarningAmber,
                     tone = PremiumMockupColors.Warning
                 )
@@ -141,15 +152,17 @@ private enum class PremiumReviewFilter(
     val icon: ImageVector,
     val weight: Float
 ) {
-    ALL("Tout", Icons.Default.GridView, 1f),
-    TO_CONFIRM("A verifier", Icons.Default.Sync, 1.35f),
-    CONFIRMED("Confirmes", Icons.Default.CheckCircle, 1f),
-    REJECTED("Rejetes", Icons.Default.WarningAmber, 1f);
+    ALL("Tous", Icons.Default.GridView, 0.82f),
+    TO_CONFIRM("À vérifier", Icons.Default.Sync, 1.18f),
+    TODAY("Aujourd’hui", Icons.Default.FilterAlt, 1.18f),
+    CONFIRMED("Confirmés", Icons.Default.CheckCircle, 1f),
+    REJECTED("Rejetés", Icons.Default.WarningAmber, 1f);
 
     fun applyTo(items: List<PremiumReviewUiItem>): List<PremiumReviewUiItem> {
         return when (this) {
             ALL -> items
             TO_CONFIRM -> items.filter { it.reviewStatus == ReviewUiStatus.TO_CONFIRM }
+            TODAY -> items
             CONFIRMED -> items.filter { it.reviewStatus == ReviewUiStatus.CONFIRMED }
             REJECTED -> items.filter { it.reviewStatus == ReviewUiStatus.REJECTED }
         }
@@ -165,7 +178,7 @@ private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>
             Modifier
                 .fillMaxHeight()
                 .padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(top = mockupDp(14), bottom = mockupDp(22)),
+            contentPadding = PaddingValues(top = mockupDp(14), bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(mockupDp(18))
         ) {
             item {
@@ -183,30 +196,38 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
     MockupGlassCard(
         Modifier
             .fillMaxWidth()
-            .height(108.dp)
+            .height(166.dp)
             .premiumTap { onOpenReview(item.reviewId) },
-        radius = mockupDp(11),
+        radius = mockupDp(16),
         border = tone.border
     ) {
-        Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 PremiumBankLogo(
                     bankProfileId = reviewBankProfileId(item.bank),
                     displayName = item.bank,
-                    size = 54.dp
+                    size = 48.dp
                 )
-                Column(Modifier.weight(1f).padding(start = mockupDp(12)), verticalArrangement = Arrangement.spacedBy(mockupDp(2))) {
-                    Text(item.bank, color = PremiumMockupColors.Muted, fontSize = mockupSp(16), fontWeight = FontWeight.Bold)
-                    Text(item.amount, color = PremiumMockupColors.White, fontSize = mockupSp(25), lineHeight = mockupSp(29), fontWeight = FontWeight.Black)
-                    Text(item.helper, color = PremiumMockupColors.MutedDark, fontSize = mockupSp(13), fontWeight = FontWeight.SemiBold)
-                }
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(mockupDp(5))) {
-                    MockupStatusPill(item.status.replace("À vérifier", "Confiance 72%"), tone.color)
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(mockupDp(8))) {
-                        Text("Examiner", color = PremiumMockupColors.Green, fontSize = mockupSp(15), fontWeight = FontWeight.Black)
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = PremiumMockupColors.Green, modifier = Modifier.size(mockupDp(18)))
-                    }
+                Text(item.bank, color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 12.dp))
+                MockupStatusPill("À vérifier", tone.color)
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(item.amount, color = PremiumMockupColors.White, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black, maxLines = 2, modifier = Modifier.weight(1f))
+                Row(
+                    Modifier
+                        .height(46.dp)
+                        .background(PremiumMockupColors.Green.copy(alpha = 0.10f), RoundedCornerShape(13.dp))
+                        .border(1.dp, PremiumMockupColors.Green, RoundedCornerShape(13.dp))
+                        .padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(mockupDp(8))
+                ) {
+                    Text("Examiner", color = PremiumMockupColors.Green, fontSize = mockupSp(15), fontWeight = FontWeight.Black)
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = PremiumMockupColors.Green, modifier = Modifier.size(mockupDp(18)))
                 }
             }
+            Text(item.helper, color = PremiumMockupColors.MutedDark, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
@@ -260,26 +281,27 @@ private fun PremiumPaymentDetailContent(
         Column(
             Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
         ) {
             Row(Modifier.fillMaxWidth().height(mockupDp(96)), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.ArrowBack, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(34)).premiumTap(onBack))
-                Text("Detail a examiner", modifier = Modifier.weight(1f).padding(start = mockupDp(28)), color = PremiumMockupColors.White, fontSize = mockupSp(24), fontWeight = FontWeight.Black)
+                Text("Détail à examiner", modifier = Modifier.weight(1f).padding(start = mockupDp(28)), color = PremiumMockupColors.White, fontSize = mockupSp(24), fontWeight = FontWeight.Black)
                 Icon(Icons.Default.Security, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(28)))
             }
             LazyColumn(
-                contentPadding = PaddingValues(bottom = mockupDp(24)),
+                contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
                 verticalArrangement = Arrangement.spacedBy(mockupDp(12))
             ) {
                 item {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        MockupStatusPill("Priorite moyenne", PremiumMockupColors.Warning)
+                        MockupStatusPill("Priorité moyenne", PremiumMockupColors.Warning)
                     }
                 }
                 item { ReviewDetailMockCard(state, onConfirmReceived, onRejectSignal) }
                 /*
                 item {
-                    Text("Pourquoi verifier ?", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
+                    Text("Pourquoi vérifier ?", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
                     ReasonsGlass(state.reasons, Modifier.padding(top = mockupDp(10)))
                 }
                 if (state.timeline.isNotEmpty()) {
@@ -320,20 +342,20 @@ private fun ReviewDetailMockCard(
                 Column(Modifier.weight(1f).padding(start = mockupDp(10))) {
                     Text(amount, color = PremiumMockupColors.White, fontSize = mockupSp(34), lineHeight = mockupSp(38), fontWeight = FontWeight.Black)
                     Text("Sberbank  -  Carte **** 5421", color = PremiumMockupColors.Muted, fontSize = mockupSp(16))
-                    Text("Signal detecte il y a 2 min", color = PremiumMockupColors.Muted, fontSize = mockupSp(14))
+                    Text("Signal détecté il y a 2 min", color = PremiumMockupColors.Muted, fontSize = mockupSp(14))
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(mockupDp(6))) {
                     MockupStatusPill("#SPM-2025-05-0912", PremiumMockupColors.MutedDark)
-                    MockupStatusPill("signal detecte", PremiumMockupColors.Warning)
+                    MockupStatusPill("signal détecté", PremiumMockupColors.Warning)
                 }
             }
             ReviewSummaryGlass(state.summaryRows.take(6).ifEmpty {
-                listOf("Banque" to "Sberbank", "Methode" to "Carte bancaire", "Reference" to "#SPM-2025-05-0912", "Montant" to "9 450,00 RUB", "Confiance" to "78%")
+                listOf("Banque" to "Sberbank", "Méthode" to "Carte bancaire", "Référence" to "#SPM-2025-05-0912", "Montant" to "9 450,00 RUB", "Confiance" to "78%")
             })
             MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(11), border = PremiumMockupColors.Green.copy(alpha = 0.42f)) {
                 Column(Modifier.padding(mockupDp(10)), verticalArrangement = Arrangement.spacedBy(mockupDp(6))) {
                     Text("Indices correspondants", color = PremiumMockupColors.Green, fontSize = mockupSp(16), fontWeight = FontWeight.Black)
-                    state.reasons.ifEmpty { listOf("Montant exact", "Carte se terminant par 5421", "Reference dans la notification", "Heure proche") }.forEach {
+                    state.reasons.ifEmpty { listOf("Montant exact", "Carte se terminant par 5421", "Référence dans la notification", "Heure proche") }.forEach {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(mockupDp(10))) {
                             Icon(Icons.Default.CheckCircle, null, tint = PremiumMockupColors.Green, modifier = Modifier.size(mockupDp(15)))
                             Text(it, color = PremiumMockupColors.Muted, fontSize = mockupSp(14), modifier = Modifier.weight(1f))
@@ -342,7 +364,7 @@ private fun ReviewDetailMockCard(
                     }
                 }
             }
-            MockupInfoBanner("Decision manuelle", "Signal a examiner avant validation.", Icons.Default.WarningAmber, PremiumMockupColors.Warning)
+            MockupInfoBanner("Décision manuelle", "Signal à examiner avant validation.", Icons.Default.WarningAmber, PremiumMockupColors.Warning)
             Row(horizontalArrangement = Arrangement.spacedBy(mockupDp(12)), modifier = Modifier.fillMaxWidth()) {
                 Box(Modifier.weight(1f).height(52.dp).background(PremiumMockupColors.Danger, RoundedCornerShape(14.dp)).premiumTap(onRejectSignal), contentAlignment = Alignment.Center) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(mockupDp(10))) {
@@ -367,6 +389,7 @@ private fun PremiumPaymentDetailState(
         Column(
             Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
         ) {
             Row(Modifier.fillMaxWidth().height(mockupDp(72)), verticalAlignment = Alignment.CenterVertically) {
@@ -374,7 +397,7 @@ private fun PremiumPaymentDetailState(
                 Text("Verifier ce paiement", modifier = Modifier.weight(1f), color = PremiumMockupColors.White, fontSize = mockupSp(22), fontWeight = FontWeight.Black)
             }
             LazyColumn(
-                contentPadding = PaddingValues(bottom = mockupDp(24)),
+                contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
                 verticalArrangement = Arrangement.spacedBy(mockupDp(18))
             ) {
                 item { PremiumStatePanel(state) }
@@ -394,16 +417,16 @@ private fun ReviewQueueHeader(
             Row(Modifier.fillMaxWidth().padding(mockupDp(14)), verticalAlignment = Alignment.CenterVertically) {
                 MockupIconTile(Icons.Default.Description, tint = PremiumMockupColors.Warning, size = mockupDp(42))
                 Column(Modifier.weight(1f).padding(start = mockupDp(12))) {
-                    Text("Elements en attente", color = PremiumMockupColors.White, fontSize = mockupSp(20), fontWeight = FontWeight.Black)
-                    Text("Necessitent une verification manuelle", color = PremiumMockupColors.Muted, fontSize = mockupSp(14), modifier = Modifier.padding(top = mockupDp(8)))
+                    Text("Éléments en attente", color = PremiumMockupColors.White, fontSize = mockupSp(20), fontWeight = FontWeight.Black)
+                    Text("Nécessitent une vérification manuelle", color = PremiumMockupColors.Muted, fontSize = mockupSp(14), modifier = Modifier.padding(top = mockupDp(8)))
                 }
                 Text("${state.items.size}", color = PremiumMockupColors.White, fontSize = mockupSp(42), fontWeight = FontWeight.Black)
             }
             Box(Modifier.fillMaxWidth().height(mockupDp(1)).background(PremiumMockupColors.BorderSoft))
             Row(Modifier.fillMaxWidth().padding(horizontal = mockupDp(14), vertical = mockupDp(10)), horizontalArrangement = Arrangement.SpaceBetween) {
-                ReviewHeaderMetric("Priorite haute", "${state.items.count { it.reviewStatus == ReviewUiStatus.TO_CONFIRM }}", PremiumMockupColors.Warning, Modifier.weight(1f))
-                ReviewHeaderMetric("Aujourd'hui", "$visibleCount", PremiumMockupColors.Blue, Modifier.weight(1f))
-                ReviewHeaderMetric("Qualite moyenne", "78%", PremiumMockupColors.Warning, Modifier.weight(1f))
+                ReviewHeaderMetric("Priorité haute", "${state.items.count { it.reviewStatus == ReviewUiStatus.TO_CONFIRM }}", PremiumMockupColors.Warning, Modifier.weight(1f))
+                ReviewHeaderMetric("Aujourd’hui", "$visibleCount", PremiumMockupColors.Blue, Modifier.weight(1f))
+                ReviewHeaderMetric("Qualité moyenne", "78%", PremiumMockupColors.Warning, Modifier.weight(1f))
             }
         }
     }
@@ -412,7 +435,7 @@ private fun ReviewQueueHeader(
 @Composable
 private fun ReviewHeaderMetric(label: String, value: String, tone: Color, modifier: Modifier = Modifier) {
     Column(modifier.padding(end = mockupDp(10))) {
-        Text(label, color = PremiumMockupColors.Muted, fontSize = mockupSp(13), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, color = PremiumMockupColors.Muted, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text(value, color = tone, fontSize = mockupSp(20), fontWeight = FontWeight.Black, modifier = Modifier.padding(top = mockupDp(6)))
     }
 }
@@ -469,17 +492,19 @@ private fun ReviewFilterPill(
     val tint = if (selected) PremiumMockupColors.Green else PremiumMockupColors.MutedDark
     Row(
         modifier
-            .height(mockupDp(30))
-            .background(if (selected) PremiumMockupColors.Highlight else PremiumMockupColors.Field, RoundedCornerShape(mockupDp(10)))
-            .border(mockupDp(1), border, RoundedCornerShape(mockupDp(10)))
+            .height(44.dp)
+            .background(if (selected) PremiumMockupColors.Green.copy(alpha = 0.13f) else PremiumMockupColors.Field, RoundedCornerShape(13.dp))
+            .border(1.dp, border, RoundedCornerShape(13.dp))
             .premiumTap(onClick)
-            .padding(horizontal = mockupDp(7)),
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        Icon(filter.icon, null, tint = tint, modifier = Modifier.size(mockupDp(13)))
-        Spacer(Modifier.width(mockupDp(4)))
-        Text("$count", color = PremiumMockupColors.White, fontSize = mockupSp(12), fontWeight = FontWeight.Black)
+        Text(filter.label, color = tint, fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (filter != PremiumReviewFilter.TODAY) {
+            Spacer(Modifier.width(5.dp))
+            Text("$count", color = PremiumMockupColors.White, fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        }
     }
 }
 

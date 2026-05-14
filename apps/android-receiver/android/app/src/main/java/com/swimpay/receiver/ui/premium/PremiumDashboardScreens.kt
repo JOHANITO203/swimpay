@@ -84,6 +84,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -115,13 +116,13 @@ private fun premiumDesignFixtureEnabled(): Boolean {
 private fun premiumReceivingMethodsPreviewState(): PremiumReceivingMethodsUiState {
     return PremiumReceivingMethodsUiState(
         items = listOf(
-            PremiumReceivingMethodUiItem("demo_sber_card", "Sberbank", "Sberbank - 4276 **** **** 5421", "Carte - Visa - Debit", "Validee", "Validee", true, true, emptyList()),
-            PremiumReceivingMethodUiItem("demo_tbank_card", "T-Bank", "T-Bank - 5536 **** **** 8876", "Carte - Mastercard - Debit", "Validee", "Validee", true, false, emptyList()),
-            PremiumReceivingMethodUiItem("demo_vtb_phone", "VTB", "VTB - +7 900 *** ** 33", "Telephone - SBP", "Validee", "Validee", true, false, emptyList()),
-            PremiumReceivingMethodUiItem("demo_alfa_card", "Alfa-Bank", "Alfa-Bank - 2200 **** **** 1122", "Carte - Mir - Debit", "A verifier", "A verifier", true, false, emptyList()),
-            PremiumReceivingMethodUiItem("demo_gazprom_card", "Gazprombank", "Gazprombank - 4249 **** **** 7788", "Carte - Visa - Credit", "Validee", "Validee", true, false, emptyList()),
-            PremiumReceivingMethodUiItem("demo_sber_phone", "Sberbank", "Sberbank - +7 911 *** ** 44", "Telephone - SBP", "Inactive", "Inactive", false, false, emptyList()),
-            PremiumReceivingMethodUiItem("demo_tbank_phone", "T-Bank", "T-Bank - +7 995 *** ** 55", "Telephone - SBP", "Inactive", "Inactive", false, false, emptyList())
+            PremiumReceivingMethodUiItem("demo_sber_card", "Sberbank", "Sberbank - 4276 **** **** 5421", "Carte - Visa - DÃ©bit", "ValidÃ©e", "ValidÃ©e", true, true, emptyList()),
+            PremiumReceivingMethodUiItem("demo_tbank_card", "T-Bank", "T-Bank - 5536 **** **** 8876", "Carte - Mastercard - DÃ©bit", "ValidÃ©e", "ValidÃ©e", true, false, emptyList()),
+            PremiumReceivingMethodUiItem("demo_vtb_phone", "VTB", "VTB - +7 900 *** ** 33", "TÃ©lÃ©phone - SBP", "ValidÃ©e", "ValidÃ©e", true, false, emptyList()),
+            PremiumReceivingMethodUiItem("demo_alfa_card", "Alfa-Bank", "Alfa-Bank - 2200 **** **** 1122", "Carte - Mir - DÃ©bit", "Ã€ vÃ©rifier", "Ã€ vÃ©rifier", true, false, emptyList()),
+            PremiumReceivingMethodUiItem("demo_gazprom_card", "Gazprombank", "Gazprombank - 4249 **** **** 7788", "Carte - Visa - CrÃ©dit", "ValidÃ©e", "ValidÃ©e", true, false, emptyList()),
+            PremiumReceivingMethodUiItem("demo_sber_phone", "Sberbank", "Sberbank - +7 911 *** ** 44", "TÃ©lÃ©phone - SBP", "Inactive", "Inactive", false, false, emptyList()),
+            PremiumReceivingMethodUiItem("demo_tbank_phone", "T-Bank", "T-Bank - +7 995 *** ** 55", "TÃ©lÃ©phone - SBP", "Inactive", "Inactive", false, false, emptyList())
         ),
         usesLiveApi = false
     )
@@ -130,11 +131,11 @@ private fun premiumReceivingMethodsPreviewState(): PremiumReceivingMethodsUiStat
 private fun premiumReceiverHealthPreviewState(): PremiumReceiverHealthUiState {
     return PremiumReceiverHealthUiState(
         statusTitle = "Sain",
-        statusText = "Le recepteur fonctionne correctement et detecte les signaux de paiement en temps reel.",
+        statusText = "Le rÃ©cepteur fonctionne correctement et dÃ©tecte les signaux de paiement en temps rÃ©el.",
         rows = listOf(
             "Dernier heartbeat" to "09:41:23",
             "Intervalle attendu" to "30 s",
-            "Temps de reponse moyen" to "187 ms",
+            "Temps de rÃ©ponse moyen" to "187 ms",
             "File locale" to "0"
         ),
         notices = emptyList()
@@ -144,18 +145,18 @@ private fun premiumReceiverHealthPreviewState(): PremiumReceiverHealthUiState {
 private fun premiumConnectedSitePreviewState(): PremiumConnectedSiteUiState {
     return PremiumConnectedSiteUiState(
         statusTitle = "merchant.example",
-        statusText = "Integration active",
+        statusText = "IntÃ©gration active",
         rows = listOf(
             "Site" to "merchant.example",
             "Statut" to "Actif",
-            "Cree le" to "21 mai 2025"
+            "CrÃ©Ã© le" to "21 mai 2025"
         ),
         usesLiveApi = false,
         developerRows = listOf(
-            "Cle API" to "sp_live_**************abcd",
+            "ClÃ© API" to "sp_live_**************abcd",
             "Webhook" to "https://merchant.example/webhook",
             "Dernier test du webhook" to "200 OK",
-            "Sante de livraison (7 derniers jours)" to "Excellent"
+            "SantÃ© de livraison (7 derniers jours)" to "Excellent"
         ),
         exportLines = listOf(
             "SWIMPAY_API_KEY=sp_live_**************abcd",
@@ -170,21 +171,21 @@ private fun premiumConnectedSitePreviewState(): PremiumConnectedSiteUiState {
 private fun premiumDashboardPreviewState(): PremiumDashboardUiState {
     return PremiumDashboardUiState(
         readyTitle = "SwimPay Merchant",
-        readyText = "Apercu de votre activite aujourd'hui",
+        readyText = "AperÃ§u de votre activitÃ© aujourdâ€™hui",
         mainMetricLabel = "CA du jour",
-        monthlyAmount = "85 920 ?",
+        monthlyAmount = "85 920 RUB",
         metrics = listOf(
             PremiumMetricUiState("126", "Paiements en attente de revue", "+8 vs hier"),
-            PremiumMetricUiState("342", "Signaux detectes", "+18,3% vs hier"),
-            PremiumMetricUiState("92%", "Taux de confirmations operationnelles", "+2,6 pts vs hier"),
-            PremiumMetricUiState("Excellent", "Webhook sante", "100% livre"),
-            PremiumMetricUiState("0", "Echecs"),
+            PremiumMetricUiState("342", "Signaux dÃ©tectÃ©s", "+18,3% vs hier"),
+            PremiumMetricUiState("92%", "Taux de confirmations opÃ©rationnelles", "+2,6 pts vs hier"),
+            PremiumMetricUiState("Excellent", "Webhook santÃ©", "100% livrÃ©"),
+            PremiumMetricUiState("0", "Ã‰checs"),
             PremiumMetricUiState("92%", "Taux", "+2,6 pts vs hier")
         ),
         recentPayments = listOf(
-            PremiumRecentPaymentUiState("Nouveau signal detecte", "Sberbank - Carte **** 5421 - 9 450,00 RUB"),
-            PremiumRecentPaymentUiState("Confirmation operationnelle", "T-Bank - Tinkoff - 14 200,00 RUB"),
-            PremiumRecentPaymentUiState("Webhook livre", "merchant.example - /webhook/payment")
+            PremiumRecentPaymentUiState("Nouveau signal dÃ©tectÃ©", "Sberbank - Carte **** 5421 - 9 450,00 RUB"),
+            PremiumRecentPaymentUiState("Confirmation opÃ©rationnelle", "T-Bank - Tinkoff - 14 200,00 RUB"),
+            PremiumRecentPaymentUiState("Webhook livrÃ©", "merchant.example - /webhook/payment")
         ),
         usesLiveApi = true
     )
@@ -210,19 +211,19 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 22.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Row {
-                            Text("Bonjour, ", color = PremiumMockupColors.White, fontSize = mockupSp(28), lineHeight = mockupSp(34))
-                            Text("Merchant", color = PremiumMockupColors.Green, fontSize = mockupSp(28), lineHeight = mockupSp(34))
-                        }
-                        Text("Aperçu de votre activité aujourd’hui", color = PremiumMockupColors.Muted, fontSize = mockupSp(16), lineHeight = mockupSp(22))
+                Column(
+                    Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(mockupDp(10))
+                ) {
+                    PremiumDashboardGreeting("Merchant")
+                    PremiumBodyText("Aper\u00E7u de votre activit\u00E9 aujourd\u2019hui")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        MockupSmallButton("Aujourd\u2019hui")
                     }
-                    MockupSmallButton("Aujourd’hui")
                 }
             }
             item { DashboardRevenueMockCard(state) }
@@ -234,13 +235,13 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(mockupDp(12))) {
-                    DashboardMetricMockCard("Taux confirme", state.metrics.lastOrNull()?.value ?: "0%", state.metrics.lastOrNull()?.trend ?: "", Icons.Default.Security, PremiumMockupColors.Green, Modifier.weight(1f), ring = true)
-                    DashboardMetricMockCard("Webhook", if (state.usesLiveApi) "Excellent" else "En attente", "100% livre", Icons.Default.Visibility, Color(0xFFA166FF), Modifier.weight(1f))
+                    DashboardMetricMockCard("Taux confirmÃ©", state.metrics.lastOrNull()?.value ?: "0%", state.metrics.lastOrNull()?.trend ?: "", Icons.Default.Security, PremiumMockupColors.Green, Modifier.weight(1f), ring = true)
+                    DashboardMetricMockCard("Webhook", if (state.usesLiveApi) "Excellent" else "En attente", "100% livrÃ©", Icons.Default.Visibility, Color(0xFFA166FF), Modifier.weight(1f))
                 }
             }
             item {
                 MockupInfoBanner(
-                    title = "Verification manuelle",
+                    title = "VÃ©rification manuelle",
                     body = "Les signaux importants passent par une revue.",
                     icon = Icons.Default.Info,
                     tone = PremiumMockupColors.Blue
@@ -251,9 +252,9 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
                     Column(Modifier.padding(mockupDp(18)), verticalArrangement = Arrangement.spacedBy(mockupDp(14))) {
                         Text("Actions rapides", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
                         Row(horizontalArrangement = Arrangement.spacedBy(mockupDp(12))) {
-                            QuickActionMock("Revue", "Voir les paiements\nà examiner", Icons.AutoMirrored.Filled.ReceiptLong, PremiumMockupColors.Warning, Modifier.weight(1f))
-                            QuickActionMock("Méthodes", "Gérer vos méthodes\nde réception", Icons.Default.CreditCard, PremiumMockupColors.Green, Modifier.weight(1f))
-                            QuickActionMock("Intégration", "Sites & webhooks\nconnectés", Icons.Default.Code, PremiumMockupColors.Blue, Modifier.weight(1f))
+                            QuickActionMock("Revue", "Voir les paiements\nÃ  examiner", Icons.AutoMirrored.Filled.ReceiptLong, PremiumMockupColors.Warning, Modifier.weight(1f))
+                            QuickActionMock("MÃ©thodes", "GÃ©rer vos mÃ©thodes\nde rÃ©ception", Icons.Default.CreditCard, PremiumMockupColors.Green, Modifier.weight(1f))
+                            QuickActionMock("IntÃ©gration", "Sites & webhooks\nconnectÃ©s", Icons.Default.Code, PremiumMockupColors.Blue, Modifier.weight(1f))
                         }
                     }
                 }
@@ -262,14 +263,14 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
                 MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(18)) {
                     Column(Modifier.padding(mockupDp(18)), verticalArrangement = Arrangement.spacedBy(mockupDp(12))) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Activité récente", color = PremiumMockupColors.White, fontWeight = FontWeight.Black, fontSize = mockupSp(18))
+                            Text("ActivitÃ© rÃ©cente", color = PremiumMockupColors.White, fontWeight = FontWeight.Black, fontSize = mockupSp(18))
                             Text("Voir tout", color = PremiumMockupColors.Green, fontWeight = FontWeight.Medium, fontSize = mockupSp(16))
                         }
                         val rows = state.recentPayments.ifEmpty {
                             listOf(
-                                PremiumRecentPaymentUiState("Nouveau signal détecté", "Sberbank • Carte **** 5421 • 9 450,00 ?"),
-                                PremiumRecentPaymentUiState("Confirmation opérationnelle", "T-Bank • Tinkoff • 14 200,00 ?"),
-                                PremiumRecentPaymentUiState("Webhook livré", "merchant.example • /webhook/payment")
+                                PremiumRecentPaymentUiState("Nouveau signal dÃ©tectÃ©", "Sberbank â€¢ Carte **** 5421 â€¢ 9 450,00 RUB"),
+                                PremiumRecentPaymentUiState("Confirmation opÃ©rationnelle", "T-Bank â€¢ Tinkoff â€¢ 14 200,00 RUB"),
+                                PremiumRecentPaymentUiState("Webhook livrÃ©", "merchant.example â€¢ /webhook/payment")
                             )
                         }
                         rows.take(3).forEachIndexed { index, row ->
@@ -312,7 +313,7 @@ private fun DashboardRevenueMockCard(state: PremiumDashboardUiState) {
                         .border(mockupDp(1), PremiumMockupColors.BorderSoft, RoundedCornerShape(mockupDp(8)))
                         .padding(horizontal = mockupDp(7), vertical = mockupDp(5))
                 ) {
-                    Text("Hier 76 421 ?", color = PremiumMockupColors.Muted, fontSize = mockupSp(12))
+                    Text("Hier 76 421 RUB", color = PremiumMockupColors.Muted, fontSize = mockupSp(12))
                 }
             }
             MockRevenueChart(Modifier.weight(0.54f).height(110.dp))
@@ -378,23 +379,24 @@ private fun DashboardMetricMockCard(
     modifier: Modifier = Modifier,
     ring: Boolean = false
 ) {
-    MockupGlassCard(modifier.height(112.dp), radius = 16.dp) {
+    val valueSize = if (value.length > 6) 22.sp else mockupSp(29)
+    MockupGlassCard(modifier.height(122.dp), radius = 16.dp) {
         Row(Modifier.fillMaxSize().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(mockupDp(4))) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(mockupDp(6))) {
                     Icon(icon, null, tint = tone, modifier = Modifier.size(22.dp))
                     Text(title, color = PremiumMockupColors.White, fontSize = mockupSp(14), lineHeight = mockupSp(17), fontWeight = FontWeight.Medium, maxLines = 2)
                 }
-                Text(value, color = if (title.contains("Webhook")) PremiumMockupColors.Green else PremiumMockupColors.White, fontSize = mockupSp(29), lineHeight = mockupSp(31), fontWeight = FontWeight.Black, maxLines = 1)
-                Text(trend.ifBlank { "vs hier" }, color = if (trend.startsWith("+")) PremiumMockupColors.Green else PremiumMockupColors.Muted, fontSize = mockupSp(12))
+                Text(value, color = if (title.contains("Webhook")) PremiumMockupColors.Green else PremiumMockupColors.White, fontSize = valueSize, lineHeight = 27.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(trend.ifBlank { "vs hier" }, color = if (trend.startsWith("+")) PremiumMockupColors.Green else PremiumMockupColors.Muted, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             if (ring) {
                 Box(Modifier.size(48.dp).border(5.dp, PremiumMockupColors.Green, CircleShape), contentAlignment = Alignment.Center) {
                     Text(value, color = PremiumMockupColors.White, fontSize = mockupSp(14))
                 }
             } else {
-                Box(Modifier.size(44.dp).background(PremiumMockupColors.Field, RoundedCornerShape(12.dp)).border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumMockupColors.Muted, modifier = Modifier.size(24.dp))
+                Box(Modifier.size(36.dp).background(PremiumMockupColors.Field, RoundedCornerShape(11.dp)).border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumMockupColors.Muted, modifier = Modifier.size(21.dp))
                 }
             }
         }
@@ -461,7 +463,7 @@ private fun LocalSystemCard(state: PremiumLocalSystemUiState, modifier: Modifier
 private fun PremiumStateList(state: PremiumScreenState<*>) {
     LazyColumn(
         Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = mockupDp(22)),
+        contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
         verticalArrangement = Arrangement.spacedBy(mockupDp(18))
     ) {
         item { PremiumStatePanel(state) }
@@ -488,11 +490,11 @@ private fun MonthlyActivityCard(label: String, amount: String, usesLiveApi: Bool
 
 private fun metricIcon(label: String): ImageVector {
     return when (label.lowercase()) {
-        "à confirmer" -> Icons.Default.Visibility
-        "confirmés" -> Icons.Default.CheckCircle
-        "rejetés" -> Icons.Default.Security
-        "expirés" -> Icons.Default.AccountBalance
-        "échecs" -> Icons.Default.Link
+        "Ã  confirmer" -> Icons.Default.Visibility
+        "confirmÃ©s" -> Icons.Default.CheckCircle
+        "rejetÃ©s" -> Icons.Default.Security
+        "expirÃ©s" -> Icons.Default.AccountBalance
+        "Ã©checs" -> Icons.Default.Link
         "taux" -> Icons.Default.Description
         else -> Icons.Default.Visibility
     }
@@ -556,7 +558,7 @@ private fun MockupSignalPill(text: String, modifier: Modifier = Modifier, danger
 fun PremiumOrdersScreen(
     state: PremiumScreenState<PremiumOrdersUiState> = PremiumScreenState.empty(
         "Aucune commande",
-        "Les commandes synchronisées apparaîtront ici."
+        "Les commandes synchronisÃ©es apparaÃ®tront ici."
     )
 ) {
     when (state) {
@@ -569,18 +571,18 @@ fun PremiumOrdersScreen(
 private fun PremiumOrdersContent(state: PremiumOrdersUiState) {
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = mockupDp(34)),
+        contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
         verticalArrangement = Arrangement.spacedBy(mockupDp(18))
     ) {
         item {
-            Text("Ventes confirmées", color = PremiumColors.Ink, fontSize = mockupSp(24), lineHeight = mockupSp(29), fontWeight = FontWeight.Black)
-            Text("Suivez les commandes reliées aux paiements confirmés.", color = PremiumColors.Muted, fontSize = mockupSp(13), lineHeight = mockupSp(20), fontWeight = FontWeight.SemiBold)
+            Text("Ventes confirmÃ©es", color = PremiumColors.Ink, fontSize = mockupSp(24), lineHeight = mockupSp(29), fontWeight = FontWeight.Black)
+            Text("Suivez les commandes reliÃ©es aux paiements confirmÃ©s.", color = PremiumColors.Muted, fontSize = mockupSp(13), lineHeight = mockupSp(20), fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(mockupDp(24)))
-            SalesMetricCard(state.confirmedSalesCount, "VENTES CONFIRMÉES", Icons.Default.CheckCircle)
+            SalesMetricCard(state.confirmedSalesCount, "VENTES CONFIRMÃ‰ES", Icons.Default.CheckCircle)
             Spacer(Modifier.height(mockupDp(12)))
-            SalesMetricCard(state.confirmedAmount, "MONTANT CONFIRMÉ", Icons.Default.ShoppingCart)
+            SalesMetricCard(state.confirmedAmount, "MONTANT CONFIRMÃ‰", Icons.Default.ShoppingCart)
             Spacer(Modifier.height(mockupDp(12)))
-            SalesMetricCard(state.failedCount, "ÉCHECS", Icons.Default.Security)
+            SalesMetricCard(state.failedCount, "Ã‰CHECS", Icons.Default.Security)
             Spacer(Modifier.height(mockupDp(12)))
             SalesMetricCard(state.confirmationRate, "TAUX DE CONFIRMATION", Icons.Default.Visibility)
             Spacer(Modifier.height(mockupDp(18)))
@@ -664,7 +666,7 @@ private fun OrderCard(id: String, amount: String, status: String, helper: String
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(amount, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = mockupSp(16))
-                StatusChip(status, if (status == "VALIDÉ") StatusTone.Success else StatusTone.Warning)
+                StatusChip(status, if (status == "VALIDÃ‰") StatusTone.Success else StatusTone.Warning)
             }
         }
     }
@@ -687,7 +689,7 @@ fun PremiumSettingsScreen(
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = mockupDp(22)),
+            contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(mockupDp(18))
         ) {
@@ -753,7 +755,7 @@ fun PremiumConnectedSiteSummary(state: PremiumScreenState<PremiumConnectedSiteUi
                 Text("Integration developpeur", color = PremiumMockupColors.White, fontWeight = FontWeight.Black, fontSize = mockupSp(18))
                 Text(state.value.statusTitle, color = if (state.value.usesLiveApi) PremiumMockupColors.Green else PremiumMockupColors.Muted, fontWeight = FontWeight.Black, fontSize = mockupSp(14), modifier = Modifier.padding(top = mockupDp(8)))
                 state.value.rows.forEach { row ->
-                    Text("${row.first} · ${row.second}", color = PremiumMockupColors.Muted, fontSize = mockupSp(12), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = mockupDp(6)))
+                    Text("${row.first} Â· ${row.second}", color = PremiumMockupColors.Muted, fontSize = mockupSp(12), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = mockupDp(6)))
                 }
             }
         }
@@ -850,15 +852,15 @@ fun PremiumReceivingMethodsStateScreen(
             MockupScreenBackground(Modifier.fillMaxSize()) {
                 LazyColumn(
                     Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-                    contentPadding = PaddingValues(bottom = mockupDp(22)),
+                    contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
                     verticalArrangement = Arrangement.spacedBy(mockupDp(16))
                 ) {
                     item {
                         Row(Modifier.fillMaxWidth().height(mockupDp(96)), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(34)))
                             Column(Modifier.weight(1f).padding(start = mockupDp(18))) {
-                                Text("Méthodes de réception", color = PremiumMockupColors.White, fontSize = mockupSp(24), fontWeight = FontWeight.Black)
-                                Text("Gérez vos méthodes par banque", color = PremiumMockupColors.Muted, fontSize = mockupSp(16))
+                                Text("MÃ©thodes de rÃ©ception", color = PremiumMockupColors.White, fontSize = mockupSp(24), fontWeight = FontWeight.Black)
+                                Text("GÃ©rez vos mÃ©thodes par banque", color = PremiumMockupColors.Muted, fontSize = mockupSp(16))
                             }
                             Row(
                                 Modifier.height(mockupDp(48)).background(PremiumMockupColors.Field, RoundedCornerShape(mockupDp(14))).border(mockupDp(1), PremiumMockupColors.BorderSoft, RoundedCornerShape(mockupDp(14))).premiumTap { draftType = ReceivingMethodType.CARD_TRANSFER }.padding(horizontal = mockupDp(16)),
@@ -875,10 +877,10 @@ fun PremiumReceivingMethodsStateScreen(
                             Row(Modifier.padding(mockupDp(18)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(mockupDp(16))) {
                                 Icon(Icons.Default.Security, null, tint = PremiumMockupColors.Green, modifier = Modifier.size(mockupDp(42)))
                                 Column(Modifier.weight(1f)) {
-                                    Text("Vos détails restent privés", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
-                                    Text("Les valeurs complètes ne sont jamais exposées\ndans les payloads webhook.", color = PremiumMockupColors.Muted, fontSize = mockupSp(15), lineHeight = mockupSp(21))
+                                    Text("Vos dÃ©tails restent privÃ©s", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
+                                    Text("Les valeurs complÃ¨tes ne sont jamais exposÃ©es\ndans les payloads webhook.", color = PremiumMockupColors.Muted, fontSize = mockupSp(15), lineHeight = mockupSp(21))
                                 }
-                                MockupStatusChip("?")
+                                MockupStatusChip("OK")
                             }
                         }
                     }
@@ -905,8 +907,8 @@ fun PremiumReceivingMethodsStateScreen(
                                     OutlinedTextField(
                                         value = identifierInput,
                                         onValueChange = { identifierInput = it },
-                                label = { Text("Identifiant utilisé seulement pour l'enregistrement") },
-                                placeholder = { Text(if (draftType == ReceivingMethodType.CARD_TRANSFER) "Numéro de carte" else "Numéro de téléphone") },
+                                label = { Text("Identifiant utilisÃ© seulement pour l'enregistrement") },
+                                placeholder = { Text(if (draftType == ReceivingMethodType.CARD_TRANSFER) "NumÃ©ro de carte" else "NumÃ©ro de tÃ©lÃ©phone") },
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true,
                                         shape = RoundedCornerShape(mockupDp(18)),
@@ -1122,7 +1124,8 @@ private fun PremiumReceivingMethodRow(
             val bankProfileId = bankProfileIdFromDisplay(method.subtitle)
             val isSbp = method.helper?.contains("SBP", ignoreCase = true) == true ||
                 method.subtitle.contains("SBP", ignoreCase = true) ||
-                method.helper?.contains("Telephone", ignoreCase = true) == true
+                method.helper?.contains("Telephone", ignoreCase = true) == true ||
+                method.helper?.contains("TÃ©lÃ©phone", ignoreCase = true) == true
             if (bankProfileId != null) {
                 Box {
                     PremiumBankLogo(bankProfileId = bankProfileId, displayName = method.subtitle, size = 58.dp)
@@ -1180,13 +1183,13 @@ fun PremiumBanksStateScreen(state: PremiumScreenState<PremiumBanksUiState>) {
         is PremiumScreenState.Content -> MockupScreenBackground(Modifier.fillMaxSize()) {
             LazyColumn(
                 Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-                contentPadding = PaddingValues(bottom = mockupDp(34)),
+                contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
                 verticalArrangement = Arrangement.spacedBy(mockupDp(16))
             ) {
                 item {
                     MockupSectionHeader(
                         title = "Recherche des banques compatibles",
-                        body = "SwimPay vérifie uniquement les banques compatibles sur ce téléphone."
+                        body = "SwimPay vÃ©rifie uniquement les banques compatibles sur ce tÃ©lÃ©phone."
                     )
                 }
                 items(state.value.items) { bank ->
@@ -1221,15 +1224,15 @@ fun PremiumReceiverHealthStateScreen(
         is PremiumScreenState.Content -> MockupScreenBackground(Modifier.fillMaxSize()) {
             LazyColumn(
                 Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-                contentPadding = PaddingValues(bottom = mockupDp(34)),
+                contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
                 verticalArrangement = Arrangement.spacedBy(mockupDp(16))
             ) {
                 item {
                     Row(Modifier.fillMaxWidth().height(mockupDp(96)), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(34)))
                         Column(Modifier.weight(1f).padding(start = mockupDp(18))) {
-                            Text("Santé des récepteurs", color = PremiumMockupColors.White, fontSize = mockupSp(24), fontWeight = FontWeight.Black)
-                            Text("Surveillance et paramètres", color = PremiumMockupColors.Muted, fontSize = mockupSp(16))
+                            Text("SantÃ© des rÃ©cepteurs", color = PremiumMockupColors.White, fontSize = mockupSp(24), fontWeight = FontWeight.Black)
+                            Text("Surveillance et paramÃ¨tres", color = PremiumMockupColors.Muted, fontSize = mockupSp(16))
                         }
                         Icon(Icons.Default.MoreVert, null, tint = PremiumMockupColors.Muted, modifier = Modifier.size(mockupDp(30)))
                     }
@@ -1244,12 +1247,12 @@ fun PremiumReceiverHealthStateScreen(
                                     Text("Statut global", color = PremiumMockupColors.Muted, fontSize = mockupSp(15))
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(mockupDp(10))) {
                                         Text(visualState.value.statusTitle, color = PremiumMockupColors.Green, fontWeight = FontWeight.Black, fontSize = mockupSp(24))
-                                        MockupStatusChip("Opérationnel")
+                                        MockupStatusChip("OpÃ©rationnel")
                                     }
                                     Text(visualState.value.statusText, color = PremiumMockupColors.Muted, fontSize = mockupSp(14), lineHeight = mockupSp(20), modifier = Modifier.padding(top = mockupDp(6)))
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("Activé depuis", color = PremiumMockupColors.Muted, fontSize = mockupSp(13))
+                                    Text("ActivÃ© depuis", color = PremiumMockupColors.Muted, fontSize = mockupSp(13))
                                     Text("3 j 12 h 45 min", color = PremiumMockupColors.White, fontSize = mockupSp(16), fontWeight = FontWeight.Black)
                                 }
                         }
@@ -1257,20 +1260,20 @@ fun PremiumReceiverHealthStateScreen(
                 }
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(mockupDp(12))) {
-                        ReceiverHealthMiniCard("Dernier heartbeat", "09:41:23", "Intervalle attendu      30 s\nTemps de réponse moyen      187 ms", Icons.Default.PhoneAndroid, PremiumMockupColors.Green, Modifier.weight(1f))
-                        ReceiverHealthMiniCard("Banque(s) surveillée(s)", "Sberbank\nT-Bank\nVTB\nAlfa-Bank\nGazprombank", "Actif\nActif\nActif\nInactif\nInactif", Icons.Default.AccountBalance, PremiumMockupColors.Blue, Modifier.weight(1f))
+                        ReceiverHealthMiniCard("Dernier heartbeat", "09:41:23", "Intervalle attendu      30 s\nTemps de rÃ©ponse moyen      187 ms", Icons.Default.PhoneAndroid, PremiumMockupColors.Green, Modifier.weight(1f))
+                        ReceiverHealthMiniCard("Banque(s) surveillÃ©e(s)", "Sberbank\nT-Bank\nVTB\nAlfa-Bank\nGazprombank", "Actif\nActif\nActif\nInactif\nInactif", Icons.Default.AccountBalance, PremiumMockupColors.Blue, Modifier.weight(1f))
                     }
                 }
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(mockupDp(12))) {
-                        ReceiverHealthMiniCard("Accès notifications", "Autorisé", "Permissions      OK\nL’accès aux notifications est nécessaire pour détecter les signaux de paiement.", Icons.Default.NotificationsNone, Color(0xFFA166FF), Modifier.weight(1f))
-                        ReceiverHealthMiniCard("File locale", "0", "Dernier traitement      09:41:20\nStockage utilisé      12,4 Mo\nMode de persistance      SQLite", Icons.Default.Description, PremiumMockupColors.Warning, Modifier.weight(1f))
+                        ReceiverHealthMiniCard("AccÃ¨s notifications", "AutorisÃ©", "Permissions      OK\nLâ€™accÃ¨s aux notifications est nÃ©cessaire pour dÃ©tecter les signaux de paiement.", Icons.Default.NotificationsNone, Color(0xFFA166FF), Modifier.weight(1f))
+                        ReceiverHealthMiniCard("File locale", "0", "Dernier traitement      09:41:20\nStockage utilisÃ©      12,4 Mo\nMode de persistance      SQLite", Icons.Default.Description, PremiumMockupColors.Warning, Modifier.weight(1f))
                     }
                 }
                 item {
                     MockupInfoBanner(
                         title = "Traitement des signaux",
-                        body = "SwimPay lit les notifications bancaires et en extrait des signaux.\nLa confirmation reste opérationnelle et peut nécessiter une vérification manuelle avant toute action.",
+                        body = "SwimPay lit les notifications bancaires et en extrait des signaux.\nLa confirmation reste opÃ©rationnelle et peut nÃ©cessiter une vÃ©rification manuelle avant toute action.",
                         icon = Icons.Default.Info,
                         tone = PremiumMockupColors.Blue
                     )
@@ -1280,10 +1283,10 @@ fun PremiumReceiverHealthStateScreen(
                 }
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(mockupDp(12))) {
-                        QuickActionMock("Relancer le récepteur", "Redémarre le traitement\ndes notifications.", Icons.Default.Sync, PremiumMockupColors.Green, Modifier.weight(1f))
-                        QuickActionMock("Tester la connexion", "Vérifie la connectivité\nréseau.", Icons.Default.Visibility, PremiumMockupColors.Blue, Modifier.weight(1f))
-                        QuickActionMock("Voir les logs", "Consultez les journaux\nrécents.", Icons.Default.Description, Color(0xFFA166FF), Modifier.weight(1f))
-                        QuickActionMock("Paramètres avancés", "Ajustez les options de\nfonctionnement.", Icons.Default.Settings, PremiumMockupColors.Warning, Modifier.weight(1f))
+                        QuickActionMock("Relancer le rÃ©cepteur", "RedÃ©marre le traitement\ndes notifications.", Icons.Default.Sync, PremiumMockupColors.Green, Modifier.weight(1f))
+                        QuickActionMock("Tester la connexion", "VÃ©rifie la connectivitÃ©\nrÃ©seau.", Icons.Default.Visibility, PremiumMockupColors.Blue, Modifier.weight(1f))
+                        QuickActionMock("Voir les logs", "Consultez les journaux\nrÃ©cents.", Icons.Default.Description, Color(0xFFA166FF), Modifier.weight(1f))
+                        QuickActionMock("ParamÃ¨tres avancÃ©s", "Ajustez les options de\nfonctionnement.", Icons.Default.Settings, PremiumMockupColors.Warning, Modifier.weight(1f))
                     }
                 }
             }
@@ -1307,7 +1310,7 @@ private fun ReceiverHealthMiniCard(
                 Icon(icon, null, tint = tone, modifier = Modifier.size(mockupDp(24)))
                 Text(title, color = PremiumMockupColors.White, fontSize = mockupSp(15), fontWeight = FontWeight.Black)
             }
-            Text(value, color = if (value == "Autorisé" || value == "0") PremiumMockupColors.Green else PremiumMockupColors.White, fontSize = mockupSp(22), lineHeight = mockupSp(27), fontWeight = FontWeight.Black)
+            Text(value, color = if (value == "AutorisÃ©" || value == "0") PremiumMockupColors.Green else PremiumMockupColors.White, fontSize = mockupSp(22), lineHeight = mockupSp(27), fontWeight = FontWeight.Black)
             Text(body, color = PremiumMockupColors.Muted, fontSize = mockupSp(12), lineHeight = mockupSp(19))
         }
     }
@@ -1324,20 +1327,20 @@ fun PremiumConfirmationModeScreen() {
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = mockupDp(34)),
+            contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(mockupDp(16))
         ) {
             item {
                 MockupSectionHeader(
                     title = "Mode de confirmation",
-                    body = "Choisissez le niveau d'aide pour vérifier vos paiements."
+                    body = "Choisissez le niveau d'aide pour vÃ©rifier vos paiements."
                 )
             }
             item {
                 MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(30), border = PremiumMockupColors.Green.copy(alpha = 0.42f)) {
                     Column(Modifier.padding(mockupDp(22)), verticalArrangement = Arrangement.spacedBy(mockupDp(10))) {
                         Text("Mode manuel V1", color = PremiumMockupColors.White, fontSize = mockupSp(20), fontWeight = FontWeight.Black)
-                        Text("Chaque paiement doit être confirmé par vous.", color = PremiumMockupColors.Muted, fontSize = mockupSp(13), fontWeight = FontWeight.SemiBold)
+                        Text("Chaque paiement doit Ãªtre confirmÃ© par vous.", color = PremiumMockupColors.Muted, fontSize = mockupSp(13), fontWeight = FontWeight.SemiBold)
                         MockupStatusChip("Confirmation manuelle", tone = PremiumMockupColors.Green)
                     }
                 }
@@ -1346,7 +1349,7 @@ fun PremiumConfirmationModeScreen() {
                 MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(30)) {
                     Column(Modifier.padding(mockupDp(22)), verticalArrangement = Arrangement.spacedBy(mockupDp(10))) {
                         Text("Assistance de revue", color = PremiumMockupColors.White, fontSize = mockupSp(20), fontWeight = FontWeight.Black)
-                        Text("SwimPay prépare les indices, vous décidez.", color = PremiumMockupColors.Muted, fontSize = mockupSp(13), fontWeight = FontWeight.SemiBold)
+                        Text("SwimPay prÃ©pare les indices, vous dÃ©cidez.", color = PremiumMockupColors.Muted, fontSize = mockupSp(13), fontWeight = FontWeight.SemiBold)
                         MockupStatusChip("Lecture seule", tone = PremiumMockupColors.MutedDark)
                     }
                 }
@@ -1367,13 +1370,13 @@ fun PremiumSecurityScreen(
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = mockupDp(34)),
+            contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(mockupDp(16))
         ) {
             item {
                 Row(Modifier.fillMaxWidth().height(mockupDp(96)), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(34)))
-                    Text("Sécurité & paramètres", color = PremiumMockupColors.White, fontSize = mockupSp(24), fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = mockupDp(18)))
+                    Text("SÃ©curitÃ© & paramÃ¨tres", color = PremiumMockupColors.White, fontSize = mockupSp(24), fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = mockupDp(18)))
                     Icon(
                         Icons.Default.Security,
                         null,
@@ -1383,15 +1386,15 @@ fun PremiumSecurityScreen(
                 }
             }
             item { GoogleAccountLinkRow(googleAccountLinked, onGoogleAccountLink) }
-            item { Text("Sécurité de l’application", color = PremiumMockupColors.White, fontSize = mockupSp(19), fontWeight = FontWeight.Black) }
+            item { Text("SÃ©curitÃ© de lâ€™application", color = PremiumMockupColors.White, fontSize = mockupSp(19), fontWeight = FontWeight.Black) }
             item {
                 MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(16)) {
                     Column(Modifier.padding(mockupDp(18)), verticalArrangement = Arrangement.spacedBy(mockupDp(14))) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             MockupIconTile(Icons.Default.Security, size = mockupDp(58), tint = PremiumMockupColors.Green)
                             Column(Modifier.weight(1f).padding(start = mockupDp(16))) {
-                                Text("Verrouillage de l’application", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
-                                Text("Protégez l’accès à SwimPay Merchant\nsur cet appareil.", color = PremiumMockupColors.Muted, fontSize = mockupSp(14), lineHeight = mockupSp(19))
+                                Text("Verrouillage de lâ€™application", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
+                                Text("ProtÃ©gez lâ€™accÃ¨s Ã  SwimPay Merchant\nsur cet appareil.", color = PremiumMockupColors.Muted, fontSize = mockupSp(14), lineHeight = mockupSp(19))
                             }
                             Switch(checked = appLock.enabled, onCheckedChange = onToggleAppLock)
                         }
@@ -1410,25 +1413,25 @@ fun PremiumSecurityScreen(
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Sessions actives", color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black)
-                                Text("Gérez les appareils connectés à votre compte.", color = PremiumMockupColors.Muted, fontSize = mockupSp(13))
+                                Text("GÃ©rez les appareils connectÃ©s Ã  votre compte.", color = PremiumMockupColors.Muted, fontSize = mockupSp(13))
                             }
                             Text("2 actives", color = PremiumMockupColors.Green, fontSize = mockupSp(14))
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumMockupColors.Muted)
                         }
-                        SecurityDeviceRow("Android • Pixel 7 Pro", "Moscow, Russie • IP 176.59.***.24", "Cet appareil", active = true)
-                        SecurityDeviceRow("Windows • Chrome", "Moscow, Russie • IP 176.59.***.81", "Hier, 14:32", active = false)
+                        SecurityDeviceRow("Android â€¢ Pixel 7 Pro", "Moscow, Russie â€¢ IP 176.59.***.24", "Cet appareil", active = true)
+                        SecurityDeviceRow("Windows â€¢ Chrome", "Moscow, Russie â€¢ IP 176.59.***.81", "Hier, 14:32", active = false)
                         Box(Modifier.fillMaxWidth().height(mockupDp(48)).border(mockupDp(1), PremiumMockupColors.Danger, RoundedCornerShape(mockupDp(12))), contentAlignment = Alignment.Center) {
-                            Text("Se déconnecter de toutes les sessions", color = PremiumMockupColors.Danger, fontSize = mockupSp(14), fontWeight = FontWeight.Black)
+                            Text("Se dÃ©connecter de toutes les sessions", color = PremiumMockupColors.Danger, fontSize = mockupSp(14), fontWeight = FontWeight.Black)
                         }
                     }
                 }
             }
-            item { Text("Confidentialité", color = PremiumMockupColors.White, fontSize = mockupSp(19), fontWeight = FontWeight.Black) }
+            item { Text("ConfidentialitÃ©", color = PremiumMockupColors.White, fontSize = mockupSp(19), fontWeight = FontWeight.Black) }
             item {
                 MockupSettingsList(
                     listOf(
-                        Triple(Icons.Default.Visibility, "Données & confidentialité", "Gérez vos données, exportez ou supprimez votre compte."),
-                        Triple(Icons.Default.NotificationsNone, "Préférences de notifications", "Choisissez les alertes que vous souhaitez recevoir.")
+                        Triple(Icons.Default.Visibility, "DonnÃ©es & confidentialitÃ©", "GÃ©rez vos donnÃ©es, exportez ou supprimez votre compte."),
+                        Triple(Icons.Default.NotificationsNone, "PrÃ©fÃ©rences de notifications", "Choisissez les alertes que vous souhaitez recevoir.")
                     )
                 )
             }
@@ -1436,15 +1439,15 @@ fun PremiumSecurityScreen(
             item {
                 MockupSettingsList(
                     listOf(
-                        Triple(Icons.Default.HelpOutline, "Centre d’aide", "Guides, FAQ et bonnes pratiques."),
-                        Triple(Icons.AutoMirrored.Filled.Help, "Contacter le support", "Ouvrez un ticket, nous vous répondrons rapidement.")
+                        Triple(Icons.Default.HelpOutline, "Centre dâ€™aide", "Guides, FAQ et bonnes pratiques."),
+                        Triple(Icons.AutoMirrored.Filled.Help, "Contacter le support", "Ouvrez un ticket, nous vous rÃ©pondrons rapidement.")
                     )
                 )
             }
             item {
                 MockupInfoBanner(
-                    title = "Donnees protegees",
-                    body = "Vos controles restent manuels et tracables.",
+                    title = "DonnÃ©es protÃ©gÃ©es",
+                    body = "Vos contrÃ´les restent manuels et traÃ§ables.",
                     icon = Icons.Default.Info,
                     tone = PremiumMockupColors.Warning
                 )
@@ -1455,13 +1458,13 @@ fun PremiumSecurityScreen(
 
 @Composable
 private fun SecurityDeviceRow(title: String, body: String, status: String, active: Boolean) {
-    Row(Modifier.fillMaxWidth().height(mockupDp(62)), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(86.dp), verticalAlignment = Alignment.CenterVertically) {
         MockupIconTile(if (active) Icons.Default.PhoneAndroid else Icons.Default.Public, size = mockupDp(42), tint = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted)
         Column(Modifier.weight(1f).padding(start = mockupDp(12))) {
-            Text(title, color = PremiumMockupColors.White, fontSize = mockupSp(15))
-            Text(body, color = PremiumMockupColors.Muted, fontSize = mockupSp(12))
+            Text(title, color = PremiumMockupColors.White, fontSize = mockupSp(15), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(body, color = PremiumMockupColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        Text(status, color = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted, fontSize = mockupSp(12))
+        Text(status, color = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (!active) Icon(Icons.Default.MoreVert, null, tint = PremiumMockupColors.Muted)
     }
 }
@@ -1520,7 +1523,7 @@ fun PremiumHelpCenterScreen(language: PremiumLanguageOption = PremiumLanguageOpt
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = mockupDp(34)),
+            contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(mockupDp(16))
         ) {
             item {
@@ -1566,7 +1569,7 @@ fun PremiumContactSupportScreen(
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = mockupDp(34)),
+            contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(mockupDp(16))
         ) {
             item {
@@ -1611,7 +1614,7 @@ fun PremiumLanguageScreen(selected: PremiumLanguageOption, onSelect: (PremiumLan
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = mockupDp(34)),
+            contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(mockupDp(16))
         ) {
             item {
@@ -1631,7 +1634,7 @@ fun PremiumAppearanceScreen(selected: PremiumThemeMode, onSelect: (PremiumThemeM
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = mockupDp(34)),
+            contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(mockupDp(16))
         ) {
             item {
@@ -1719,15 +1722,15 @@ fun PremiumIntegrationsListStateScreen(
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = mockupDp(24)),
+            contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(mockupDp(14))
         ) {
             item {
                 Row(Modifier.fillMaxWidth().height(mockupDp(96)), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(34)))
                     Column(Modifier.weight(1f).padding(start = mockupDp(18))) {
-                        Text("Sites / Intégrations", color = PremiumMockupColors.White, fontSize = mockupSp(24), lineHeight = mockupSp(29), fontWeight = FontWeight.Black)
-                        Text("Gérez vos intégrations et le statut de livraison", color = PremiumMockupColors.Muted, fontSize = mockupSp(15))
+                        Text("Sites / IntÃ©grations", color = PremiumMockupColors.White, fontSize = mockupSp(24), lineHeight = mockupSp(29), fontWeight = FontWeight.Black)
+                        Text("GÃ©rez vos intÃ©grations et le statut de livraison", color = PremiumMockupColors.Muted, fontSize = mockupSp(15))
                     }
                     Icon(Icons.Default.MoreVert, null, tint = PremiumMockupColors.Muted, modifier = Modifier.size(mockupDp(30)))
                 }
@@ -1739,7 +1742,7 @@ fun PremiumIntegrationsListStateScreen(
                 }
             }
             item {
-                Text("Statut d'intégration", color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black)
+                Text("Statut d'intÃ©gration", color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black)
             }
             if (visualState is PremiumScreenState.Content) {
                 items(visualState.value.developerRows.ifEmpty { visualState.value.rows }) { row ->
@@ -1762,21 +1765,21 @@ fun PremiumIntegrationsListStateScreen(
             item {
                 MockupInfoBanner(
                     title = "",
-                    body = "Les signaux sont envoyés pour vérification manuelle.\nLa confirmation opérationnelle dépend de la vérification.",
+                    body = "Les signaux sont envoyÃ©s pour vÃ©rification manuelle.\nLa confirmation opÃ©rationnelle dÃ©pend de la vÃ©rification.",
                     icon = Icons.Default.Info,
                     tone = PremiumMockupColors.Blue
                 )
             }
             item {
-                Text("Ressources développeur", color = PremiumMockupColors.White, fontSize = mockupSp(19), fontWeight = FontWeight.Black)
+                Text("Ressources dÃ©veloppeur", color = PremiumMockupColors.White, fontSize = mockupSp(19), fontWeight = FontWeight.Black)
             }
             item {
                 MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(16)) {
                     Row(Modifier.padding(mockupDp(18)), verticalAlignment = Alignment.CenterVertically) {
                         MockupIconTile(Icons.Default.Description, size = mockupDp(52), tint = PremiumMockupColors.Blue)
                         Column(Modifier.weight(1f).padding(start = mockupDp(14))) {
-                            Text("Guide d’intégration SDK (PDF)", color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black)
-                            Text("Instructions complètes pour intégrer l’API et gérer les webhooks.", color = PremiumMockupColors.Muted, fontSize = mockupSp(12))
+                            Text("Guide dâ€™intÃ©gration SDK (PDF)", color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black)
+                            Text("Instructions complÃ¨tes pour intÃ©grer lâ€™API et gÃ©rer les webhooks.", color = PremiumMockupColors.Muted, fontSize = mockupSp(12))
                         }
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumMockupColors.Muted)
                     }
@@ -1814,7 +1817,7 @@ private fun IntegrationListPrimaryCard(
                 )
                 Text("Environnement :  Production", color = PremiumMockupColors.Muted, fontSize = mockupSp(14))
                 Text("Statut :  Actif", color = PremiumMockupColors.Green, fontSize = mockupSp(14))
-                Text("Créé le :  21 mai 2025", color = PremiumMockupColors.Muted, fontSize = mockupSp(14))
+                Text("CrÃ©Ã© le :  21 mai 2025", color = PremiumMockupColors.Muted, fontSize = mockupSp(14))
             }
             Chevron()
         }
@@ -1839,7 +1842,7 @@ fun PremiumConnectedSiteStateScreen(
     } else {
         state
     }
-    PremiumStandaloneStateScreen(title = "Détails intégration", onBack = onBack) {
+    PremiumStandaloneStateScreen(title = "DÃ©tails intÃ©gration", onBack = onBack) {
         Column(verticalArrangement = Arrangement.spacedBy(mockupDp(14))) integrationDetailColumn@ {
             if (visualState is PremiumScreenState.Content) {
                 val value = visualState.value
@@ -1862,7 +1865,7 @@ fun PremiumConnectedSiteStateScreen(
 
                 MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(24)) {
                     Column(Modifier.padding(mockupDp(18)), verticalArrangement = Arrangement.spacedBy(mockupDp(12))) {
-                        Text("Clés API et webhook", color = PremiumMockupColors.White, fontSize = mockupSp(16), fontWeight = FontWeight.Black)
+                        Text("ClÃ©s API et webhook", color = PremiumMockupColors.White, fontSize = mockupSp(16), fontWeight = FontWeight.Black)
                         value.developerRows.forEach { row ->
                             DeveloperIntegrationValueRow(row.first, row.second)
                         }
@@ -1890,12 +1893,12 @@ fun PremiumConnectedSiteStateScreen(
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(mockupDp(10)), modifier = Modifier.fillMaxWidth()) {
                             MockupPrimaryButton(
-                                "Créer clé API",
+                                "CrÃ©er clÃ© API",
                                 modifier = Modifier.weight(1f),
                                 onClick = { if (value.actionButtonsEnabled) onCreateApiKey() }
                             )
                             MockupOutlineButton(
-                                "Rotation clé",
+                                "Rotation clÃ©",
                                 modifier = Modifier.weight(1f),
                                 onClick = { if (value.actionButtonsEnabled) onRotateApiKey() }
                             )
@@ -1913,7 +1916,7 @@ fun PremiumConnectedSiteStateScreen(
 
                 MockupInfoBanner(
                     "Test webhook backend",
-                    "Le test vérifie uniquement que votre endpoint est joignable. Il ne déclenche aucune confirmation opérationnelle.",
+                    "Le test vÃ©rifie uniquement que votre endpoint est joignable. Il ne dÃ©clenche aucune confirmation opÃ©rationnelle.",
                     Icons.Default.Link,
                     PremiumMockupColors.Blue,
                     Modifier.fillMaxWidth()
@@ -1970,22 +1973,22 @@ private fun PremiumConnectedSiteMockDetail(
     MockupSignalPill("Integration active")
     MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(16)) {
         Column(Modifier.padding(mockupDp(16)), verticalArrangement = Arrangement.spacedBy(mockupDp(10))) {
-            Text("Clés API", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
+            Text("ClÃ©s API", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
             IntegrationDetailValueRow(
-                label = rows.firstOrNull { it.first.contains("publique", true) || it.first.contains("API", true) }?.first ?: "Clé API (publique)",
+                label = rows.firstOrNull { it.first.contains("publique", true) || it.first.contains("API", true) }?.first ?: "ClÃ© API (publique)",
                 value = rows.firstOrNull { it.first.contains("publique", true) || it.first.contains("API", true) }?.second ?: "sp_live_**************abcd",
                 icon = Icons.Default.ContentCopy,
                 onAction = onCopy
             )
             IntegrationDetailValueRow(
-                label = "Clé API (secrète)",
+                label = "ClÃ© API (secrÃ¨te)",
                 value = value.merchantAuthorizationHeaderMasked.ifBlank { "sp_live_**************wxyz" },
                 icon = Icons.Default.Visibility,
                 onAction = onCopy
             )
             MockupInfoBanner(
                 title = "",
-                body = value.safeMessage.ifBlank { "Conservez votre clé secrète en sécurité.\nElle ne sera plus affichée après sa création." },
+                body = value.safeMessage.ifBlank { "Conservez votre clÃ© secrÃ¨te en sÃ©curitÃ©.\nElle ne sera plus affichÃ©e aprÃ¨s sa crÃ©ation." },
                 icon = Icons.Default.Info,
                 tone = PremiumMockupColors.Blue
             )
@@ -2017,7 +2020,7 @@ private fun PremiumConnectedSiteMockDetail(
             )
             MockupInfoBanner(
                 title = "Route publique exacte requise",
-                body = "Le webhook doit être accessible depuis nos serveurs.\nToute redirection, authentification ou route incorrecte entraînera une boucle de réessais.",
+                body = "Le webhook doit Ãªtre accessible depuis nos serveurs.\nToute redirection, authentification ou route incorrecte entraÃ®nera une boucle de rÃ©essais.",
                 icon = Icons.Default.Info,
                 tone = PremiumMockupColors.Warning
             )
@@ -2025,15 +2028,15 @@ private fun PremiumConnectedSiteMockDetail(
     }
     Text("Statistiques de livraison (7 derniers jours)", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(mockupDp(8))) {
-        IntegrationStatCard("Livrés", "98.6%", PremiumMockupColors.Green, Modifier.weight(1f))
-        IntegrationStatCard("Échecs", "1.2%", PremiumMockupColors.Danger, Modifier.weight(1f))
+        IntegrationStatCard("LivrÃ©s", "98.6%", PremiumMockupColors.Green, Modifier.weight(1f))
+        IntegrationStatCard("Ã‰checs", "1.2%", PremiumMockupColors.Danger, Modifier.weight(1f))
         IntegrationStatCard("En attente", "0.2%", PremiumMockupColors.Warning, Modifier.weight(1f))
-        IntegrationStatCard("Réponse", "168 ms", PremiumMockupColors.Blue, Modifier.weight(1f))
+        IntegrationStatCard("RÃ©ponse", "168 ms", PremiumMockupColors.Blue, Modifier.weight(1f))
     }
     MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(16)) {
         Column(Modifier.padding(mockupDp(12)), verticalArrangement = Arrangement.spacedBy(mockupDp(8))) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Dernières livraisons", color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                Text("DerniÃ¨res livraisons", color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
                 Text("Voir tout", color = PremiumMockupColors.Green, fontSize = mockupSp(13), fontWeight = FontWeight.Black)
             }
             IntegrationDeliveryRow("21 mai 2025, 09:21:44", "payment.succeeded", "200 OK", PremiumMockupColors.Green)
@@ -2047,13 +2050,13 @@ private fun PremiumConnectedSiteMockDetail(
             Icon(Icons.Default.Link, null, tint = PremiumMockupColors.Blue, modifier = Modifier.size(mockupDp(26)))
             Column(Modifier.weight(1f)) {
                 Text("Tester le webhook", color = PremiumMockupColors.Blue, fontSize = mockupSp(16), fontWeight = FontWeight.Black)
-                Text("Envoie un événement de test.", color = PremiumMockupColors.Muted, fontSize = mockupSp(12))
+                Text("Envoie un Ã©vÃ©nement de test.", color = PremiumMockupColors.Muted, fontSize = mockupSp(12))
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(20)))
         }
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(mockupDp(10))) {
-        MockupOutlineButton("Créer clé", modifier = Modifier.weight(1f), onClick = onCreateApiKey)
+        MockupOutlineButton("CrÃ©er clÃ©", modifier = Modifier.weight(1f), onClick = onCreateApiKey)
         MockupOutlineButton("Guide SDK", modifier = Modifier.weight(1f), onClick = onOpenDeveloperGuide)
     }
 }
@@ -2125,7 +2128,7 @@ private fun DeveloperIntegrationValueRow(
         verticalArrangement = Arrangement.spacedBy(mockupDp(4))
     ) {
         Text(label, color = PremiumMockupColors.MutedDark, fontSize = mockupSp(11), fontWeight = FontWeight.Black)
-        Text(value.ifBlank { "À configurer" }, color = PremiumMockupColors.White, fontSize = mockupSp(13), lineHeight = mockupSp(18), fontWeight = FontWeight.Bold)
+        Text(value.ifBlank { "Ã€ configurer" }, color = PremiumMockupColors.White, fontSize = mockupSp(13), lineHeight = mockupSp(18), fontWeight = FontWeight.Bold)
     }
 }
 
@@ -2151,7 +2154,7 @@ private fun PremiumStandaloneStateScreen(
                 .fillMaxHeight()
                 .statusBarsPadding()
                 .padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = mockupDp(22)),
+            contentPadding = PaddingValues(bottom = PremiumSpacing.ScreenBottomWithNav),
             verticalArrangement = Arrangement.spacedBy(mockupDp(18))
         ) {
             item {

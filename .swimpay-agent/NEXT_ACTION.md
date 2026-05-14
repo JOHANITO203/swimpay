@@ -269,3 +269,13 @@ Use the new workflow docs for the next visual sprint:
 3. Continue with `07_dashboard_home`, then `02_notification_access` and `03_bank_selection`.
 4. Keep Roborazzi non-blocking until Visual Freeze Mode is explicitly requested.
 5. Do not change backend, API, database, payment runtime, webhook, receiver runtime, SDK or notification processing during design-only work.
+
+## 2026-05-14 - Android edge-to-edge shell/splash sprint
+- Next visual pass: fix oversized/wrapped premium screen typography under real-device display settings and investigate accented glyph rendering.
+- Optional QA: navigate directly to receiver health and unauthenticated login state for additional edge-to-edge captures.
+
+
+## 2026-05-14 - Android text integrity and mojibake fix
+- Next visual QA pass: spot-check review detail, receiving methods, integrations, receiver health and security settings for layout-specific overflow under real-device font/display settings.
+
+2026-05-14 - Next: operator visual pass on freshly installed staging APK; inspect remaining density differences on dashboard/review/security before Roborazzi freeze.

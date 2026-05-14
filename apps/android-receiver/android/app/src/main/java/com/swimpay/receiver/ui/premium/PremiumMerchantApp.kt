@@ -3,6 +3,12 @@ package com.swimpay.receiver.ui.premium
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -10,7 +16,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.swimpay.receiver.AndroidMerchantAccountCreateResult
 import com.swimpay.receiver.AndroidMerchantAccountProfileType
 import com.swimpay.receiver.AndroidMerchantAuthApiRepository
@@ -33,6 +42,15 @@ import kotlinx.coroutines.withContext
 
 interface PremiumMerchantReviewNotifier {
     fun notifyActionRequired(review: PremiumReviewUiItem)
+}
+
+private enum class PremiumBootUiState {
+    BootLoading,
+    BootAuthenticated,
+    BootUnauthenticated,
+    BootLocked,
+    BootOffline,
+    BootError
 }
 
 object NoopPremiumMerchantReviewNotifier : PremiumMerchantReviewNotifier {
@@ -76,6 +94,7 @@ fun PremiumMerchantApp(
             )
         )
     }
+    var bootState by remember { mutableStateOf(PremiumBootUiState.BootLoading) }
     var dashboardState by remember { mutableStateOf<PremiumScreenState<PremiumDashboardUiState>>(PremiumScreenState.loading()) }
     var reviewsState by remember { mutableStateOf<PremiumScreenState<PremiumReviewsUiState>>(PremiumScreenState.loading()) }
     var paymentDetailState by remember { mutableStateOf<PremiumScreenState<PremiumPaymentDetailUiState>>(PremiumScreenState.loading()) }
@@ -129,6 +148,16 @@ fun PremiumMerchantApp(
             PremiumRoute.Language -> PremiumNavigation.openLanguage()
             PremiumRoute.Appearance -> PremiumNavigation.openAppearance()
             else -> target
+        }
+    }
+
+    LaunchedEffect(uiLocked, onboardingCompletionStore, mobileMerchantSessionStore) {
+        bootState = PremiumBootUiState.BootLoading
+        delay(850)
+        bootState = when {
+            uiLocked -> PremiumBootUiState.BootLocked
+            mobileMerchantSessionStore.hasValidSession() -> PremiumBootUiState.BootAuthenticated
+            else -> PremiumBootUiState.BootUnauthenticated
         }
     }
 
@@ -343,6 +372,11 @@ fun PremiumMerchantApp(
             appLock = merchantSettings.appLock,
             onUnlock = { onRequestUnlock {} }
         )
+        return
+    }
+
+    if (bootState == PremiumBootUiState.BootLoading) {
+        PremiumSplashScreen()
         return
     }
 
@@ -706,7 +740,7 @@ fun PremiumMerchantApp(
                             } else {
                                 PremiumNavigation.openGoogleAccountLink(
                                     PremiumGoogleAccountLinkUiState.error(
-                                        result?.safeMessage ?: "Association Google annulee ou indisponible."
+                                        result?.safeMessage ?: "Association Google annulée ou indisponible."
                                     )
                                 )
                             }
@@ -793,6 +827,25 @@ fun PremiumMerchantApp(
                 )
             }
         )
+    }
+}
+
+@Composable
+private fun PremiumSplashScreen() {
+    MockupScreenBackground(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(mockupDp(22))
+            ) {
+                MockupLogo()
+                CircularProgressIndicator(
+                    modifier = Modifier.size(32.dp),
+                    color = PremiumMockupColors.Green,
+                    strokeWidth = 3.dp
+                )
+            }
+        }
     }
 }
 

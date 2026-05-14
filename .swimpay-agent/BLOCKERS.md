@@ -843,3 +843,18 @@ No backend/runtime blockers found for this design-only pass. Remaining blockers 
 - Validation passed: `:app:compileDebugKotlin`, `:app:assembleDebug`, device install/launch and live screenshot capture.
 - Remaining blocker is design approval only: do not update Roborazzi goldens until the operator approves the visual result.
 - Remaining visual-freeze task: capture all 14 final screens and tune exact spacing/density before baseline update.
+
+## 2026-05-14 - Android edge-to-edge shell/splash sprint
+- No backend/runtime blockers introduced.
+- Visual follow-up: connected phone renders several premium screen texts oversized/wrapped under current device display/font settings.
+- Visual follow-up: accented French glyphs appear as replacement characters on captured device screenshots; investigate source encoding/resource rendering separately from shell work.
+- QA follow-up: receiver health route was not reached during the quick ADB tab sweep.
+
+
+## 2026-05-14 - Android text integrity and mojibake fix
+- No backend/runtime blocker introduced.
+- Remaining UI QA risk: only dashboard was recaptured after the text fix; deeper screens should be spot-checked for screen-specific overflow during the next visual QA pass.
+
+2026-05-14 - No backend/runtime blocker found for layout defect sprint. Residual visual risk: final operator acceptance still required for pixel-level density and card proportions.
+
+2026-05-14 - ADB device disconnected after final staging assemble, so final post-shell-padding screenshots could not be recaptured. Previous manual screenshots exist under .swimpay-agent/screenshots/layout-defect/.

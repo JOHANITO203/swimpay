@@ -3354,3 +3354,18 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Added registered SBP placeholder drawable and used it for phone/SBP onboarding and receiving-method list rows.
 - Kept the pass UI-only: no backend/API/database/payment/webhook/receiver/SDK/state-machine behavior changed.
 - Validation passed: `:app:compileStagingKotlin`, `npm run android:assemble:staging`, staging APK install on connected device.
+
+## 2026-05-14 - Android edge-to-edge shell/splash sprint
+- Removed active PremiumTopChrome from the runtime shell: no hamburger, no repeated SwimPay Merchant header on the main app shell.
+- Enabled transparent status/navigation bars and Compose edge-to-edge background handling.
+- Added premium splash with logo and bounded local boot-state synchronization.
+- Rebuilt and installed staging APK on connected device; captured splash/dashboard/review/receiving/integration/settings QA screenshots.
+
+
+## 2026-05-14 - Android text integrity and mojibake fix
+- Added premium text wrappers for important titles, card labels, metrics, body text, bottom nav labels and status chip text.
+- Fixed dashboard greeting layout so Merchant is never split mid-word; date chip now sits in its own row.
+- Cleaned premium UI mojibake patterns from source and updated stale tab tests.
+- Added AndroidPremiumTextIntegrityTest and passed targeted unit guardrail, compileDebugKotlin, assembleStaging and ADB dashboard capture.
+
+2026-05-14 - Android layout defect sprint: fixed premium UI currency to RUB, restored French accents, rebuilt review filters/cards, added nav-safe padding, recalibrated bottom nav, added text/currency guardrails and layout reports. Validation: AndroidPremiumTextIntegrityTest, compileDebugKotlin, android:assemble:staging.

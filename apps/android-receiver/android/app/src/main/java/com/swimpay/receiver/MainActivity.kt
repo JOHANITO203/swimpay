@@ -1,14 +1,20 @@
 package com.swimpay.receiver
 
 import android.Manifest
+import android.graphics.Color
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.FragmentActivity
 import com.swimpay.receiver.ui.premium.PremiumMerchantApp
 import com.swimpay.receiver.ui.premium.PremiumMerchantRuntime
@@ -28,6 +34,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        configureEdgeToEdgeWindow()
         requestMerchantNotificationPermissionIfNeeded()
         notificationAccessStatusReader = NotificationAccessStatusReader(this)
         merchantSettingsStore = SharedPreferencesPremiumMerchantSettingsStore(this)
@@ -56,36 +63,54 @@ class MainActivity : FragmentActivity() {
         )
         setContent {
             val systemDark = isSystemInDarkTheme()
+            val density = LocalDensity.current
             SwimPayMerchantTheme(darkTheme = themeMode.resolve(systemDark)) {
-                PremiumMerchantApp(
-                    runtime = runtime,
-                    merchantSettingsStore = merchantSettingsStore,
-                    uiLocked = uiLocked,
-                    onRequestUnlock = { onUnlocked -> requestSystemUnlock(onUnlocked) },
-                    onThemeModeChanged = { themeMode = it },
-                    onboardingCompletionStore = onboardingCompletionStore,
-                    mobileMerchantSessionStore = mobileMerchantSessionStore,
-                    accountAuthRepository = accountAuthRepository,
-                    receiverDeviceRepository = receiverDeviceRepository,
-                    receiverDeviceStateStore = receiverDeviceStateStore,
-                    receiverRuntimeConfigStore = receiverRuntimeConfigStore,
-                    receiverAppVersion = BuildConfig.VERSION_NAME,
-                    receiverAndroidVersion = Build.VERSION.RELEASE ?: "unknown",
-                    mobileRuntimeFactory = { mobileSession ->
-                        PremiumMerchantRuntime.mobileSession(
-                            mobileSession = mobileSession,
-                            baseUrl = baseUrl,
-                            bankPackageProbe = bankPackageProbe
-                        )
-                    },
-                    googleIdTokenProvider = googleIdTokenProvider::requestIdToken,
-                    notificationAccessEnabled = notificationAccessEnabled,
-                    merchantReviewNotifier = AndroidMerchantReviewNotifier(this),
-                    onOpenNotificationSettings = {
-                        startActivity(NotificationListenerSettingsAction.createIntent(packageName))
-                    }
-                )
+                CompositionLocalProvider(
+                    LocalDensity provides Density(density.density, density.fontScale.coerceAtMost(1.15f))
+                ) {
+                    PremiumMerchantApp(
+                        runtime = runtime,
+                        merchantSettingsStore = merchantSettingsStore,
+                        uiLocked = uiLocked,
+                        onRequestUnlock = { onUnlocked -> requestSystemUnlock(onUnlocked) },
+                        onThemeModeChanged = { themeMode = it },
+                        onboardingCompletionStore = onboardingCompletionStore,
+                        mobileMerchantSessionStore = mobileMerchantSessionStore,
+                        accountAuthRepository = accountAuthRepository,
+                        receiverDeviceRepository = receiverDeviceRepository,
+                        receiverDeviceStateStore = receiverDeviceStateStore,
+                        receiverRuntimeConfigStore = receiverRuntimeConfigStore,
+                        receiverAppVersion = BuildConfig.VERSION_NAME,
+                        receiverAndroidVersion = Build.VERSION.RELEASE ?: "unknown",
+                        mobileRuntimeFactory = { mobileSession ->
+                            PremiumMerchantRuntime.mobileSession(
+                                mobileSession = mobileSession,
+                                baseUrl = baseUrl,
+                                bankPackageProbe = bankPackageProbe
+                            )
+                        },
+                        googleIdTokenProvider = googleIdTokenProvider::requestIdToken,
+                        notificationAccessEnabled = notificationAccessEnabled,
+                        merchantReviewNotifier = AndroidMerchantReviewNotifier(this),
+                        onOpenNotificationSettings = {
+                            startActivity(NotificationListenerSettingsAction.createIntent(packageName))
+                        }
+                    )
+                }
             }
+        }
+    }
+
+    private fun configureEdgeToEdgeWindow() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
         }
     }
 

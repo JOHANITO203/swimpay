@@ -4,7 +4,7 @@ Date: 2026-05-14
 
 ## Result
 
-- Added one documented placeholder asset: `apps/android-receiver/android/app/src/main/res/drawable/ic_payment_sbp_placeholder.xml`.
+- Added one documented SBP-style visual asset: `apps/android-receiver/android/app/src/main/res/drawable/ic_payment_sbp_placeholder.xml`.
 - Registered it in `design/ASSET_REGISTRY.md`.
 - Used the same mark in:
   - receiving method onboarding option;
@@ -13,5 +13,5 @@ Date: 2026-05-14
 
 ## Notes
 
-- This is a placeholder because no official SBP asset exists in-repo.
+- The previous generic placeholder was replaced with the multicolor SBP mark style visible in the provided mockup.
 - No alternate SBP variants were added.

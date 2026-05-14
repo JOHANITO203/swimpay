@@ -622,3 +622,20 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 - [done] Create Codex design workflow, multi-agent workflow and UI/UX adaptation docs.
 - [next] Use Design Polish Mode for the next visual pass.
 - [next] Use Full Visual Rebuild Mode only when the user requests reference-led rebuild.
+
+## 2026-05-14 - Android edge-to-edge shell/splash sprint
+- Done: edge-to-edge Activity window configuration.
+- Done: active shell top chrome removal.
+- Done: premium splash and boot loading state.
+- Done: staging build/install and manual ADB screenshots.
+- Queued: dedicated real-device typography/encoding pass for remaining screen-level visual issues.
+
+
+## 2026-05-14 - Android text integrity and mojibake fix
+- Done: dashboard title no-broken-word layout.
+- Done: premium UI mojibake cleanup.
+- Done: text integrity guardrail test.
+- Done: staging build/install and dashboard screenshot QA.
+- Queued: deeper screen text overflow QA.
+
+- [done] Android Merchant layout defect audit + text/currency fix: RUB currency, French accents, readable review filters/cards, nav-safe padding.

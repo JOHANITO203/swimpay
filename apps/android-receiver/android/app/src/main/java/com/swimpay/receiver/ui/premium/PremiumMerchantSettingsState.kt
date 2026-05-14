@@ -51,9 +51,9 @@ enum class PremiumLockTimeout(
     val durationMs: Long
 ) {
     IMMEDIATE("immediate", "Immediatement", 0L),
-    ONE_MINUTE("one_minute", "Apres 1 min", 60_000L),
-    FIVE_MINUTES("five_minutes", "Apres 5 min", 5 * 60_000L),
-    FIFTEEN_MINUTES("fifteen_minutes", "Apres 15 min", 15 * 60_000L);
+    ONE_MINUTE("one_minute", "Après 1 min", 60_000L),
+    FIVE_MINUTES("five_minutes", "Après 5 min", 5 * 60_000L),
+    FIFTEEN_MINUTES("fifteen_minutes", "Après 15 min", 15 * 60_000L);
 
     companion object {
         fun fromWire(value: String?): PremiumLockTimeout {

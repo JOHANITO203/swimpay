@@ -131,7 +131,7 @@ class PremiumAccountEntryStaticTest {
         listOf(
             "sera branch",
             "sera disponible",
-            "aprÃ¨s connexion au backend",
+            "après connexion au backend",
             "après connexion au backend"
         ).forEach { devCopy ->
             assertFalse("account recovery copy must not look pending/dev-only: $devCopy", combined.contains(devCopy, ignoreCase = true))

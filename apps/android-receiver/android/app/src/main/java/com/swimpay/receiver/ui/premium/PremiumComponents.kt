@@ -77,11 +77,8 @@ fun PremiumAppShell(
     content: @Composable () -> Unit
 ) {
     MockupScreenBackground(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            if (selectedTab == PremiumMainTab.Home) {
-                PremiumTopChrome(profileInitials = profileInitials)
-            }
-            Box(Modifier.weight(1f)) { content() }
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).statusBarsPadding().padding(bottom = 18.dp)) { content() }
             PremiumBottomNav(selectedTab, onTab)
         }
     }
@@ -125,8 +122,15 @@ fun PremiumBottomNav(selected: PremiumMainTab, onTab: (PremiumMainTab) -> Unit) 
         Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .height(80.dp)
-            .background(PremiumMockupColors.DeepNavy.copy(alpha = 0.96f))
+            .height(78.dp)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        PremiumMockupColors.DeepNavy,
+                        PremiumMockupColors.Black
+                    )
+                )
+            )
             .border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
     ) {
             Row(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -136,26 +140,23 @@ fun PremiumBottomNav(selected: PremiumMainTab, onTab: (PremiumMainTab) -> Unit) 
                         Modifier
                             .weight(1f)
                             .premiumTap { onTab(item.first) }
-                            .height(62.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (active) PremiumMockupColors.Green.copy(alpha = 0.10f) else Color.Transparent)
-                            .padding(horizontal = 2.dp, vertical = 6.dp),
+                            .height(58.dp)
+                            .clip(RoundedCornerShape(15.dp))
+                            .background(if (active) PremiumMockupColors.Green.copy(alpha = 0.08f) else Color.Transparent)
+                            .padding(horizontal = 2.dp, vertical = 5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
                             Modifier
-                                .size(26.dp),
+                                .size(25.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(item.second, item.first.accessibilityLabel, tint = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted, modifier = Modifier.size(24.dp))
+                            Icon(item.second, item.first.accessibilityLabel, tint = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted, modifier = Modifier.size(23.dp))
                         }
-                        Text(
+                        PremiumBottomNavLabel(
                             item.first.navLabel,
                             color = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            modifier = Modifier.padding(top = 3.dp)
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
@@ -384,7 +385,7 @@ fun StatusChip(text: String, tone: StatusTone, modifier: Modifier = Modifier) {
         StatusTone.Neutral -> PremiumMockupColors.BorderSoft to PremiumMockupColors.Muted
     }
     Surface(modifier.border(mockupDp(1), fg.copy(alpha = 0.45f), CircleShape), color = fg.copy(alpha = 0.14f), shape = CircleShape) {
-        Text(text, color = fg, fontSize = mockupSp(11), fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = mockupDp(10), vertical = mockupDp(5)))
+        PremiumStatusChipText(text, color = fg, modifier = Modifier.padding(horizontal = mockupDp(10), vertical = mockupDp(5)))
     }
 }
 
@@ -472,7 +473,7 @@ fun PremiumTitle(title: String, body: String? = null, centered: Boolean = false)
 fun ItalicReadyTitle() {
     Text(
         buildAnnotatedString {
-            append("PrÃªt Ã  ")
+            append("Prêt à ")
             withStyle(SpanStyle(color = PremiumMockupColors.Cyan, fontStyle = FontStyle.Italic)) { append("Scanner") }
             append(".")
         },

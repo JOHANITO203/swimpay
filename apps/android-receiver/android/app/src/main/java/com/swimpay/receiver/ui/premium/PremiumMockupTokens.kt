@@ -90,6 +90,7 @@ object PremiumMockupSpacing {
     val ScreenHorizontal = 24.dp
     val Section = 22.dp
     val CardPadding = 22.dp
+    val ScreenBottomWithNav = 132.dp
 }
 
 object PremiumMockupGradient {
