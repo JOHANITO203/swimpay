@@ -650,6 +650,9 @@ fun PremiumSettingsScreen(
     language: PremiumLanguageOption = PremiumLanguageOption.FR,
     onNavigate: (PremiumRoute) -> Unit = {}
 ) {
+    PremiumSecurityScreen()
+    return
+
     val copy = PremiumLocalizedCopy.forLanguage(language)
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(

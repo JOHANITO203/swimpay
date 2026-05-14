@@ -126,3 +126,35 @@ Result:
 - Replaced the rendered integration-detail body with mock-driven sections: API keys, webhook URL, environment/status cards, webhook secret row, warning panel, delivery stats/list and test action.
 - Removed the old integration summary card from the rendered detail screen so the first viewport now starts closer to mock 12.
 - Remaining mismatch: integration detail still uses live/staging values where present, so exact mock fixture text/counts do not match; visual structure is now much closer.
+
+## Settings Main Tab Rebuild - 2026-05-14
+
+Change:
+
+- `PremiumSettingsScreen` now renders the mock-driven `PremiumSecurityScreen` surface directly for the active Settings tab.
+- This removes the old menu/profile/settings hub from the visible Settings tab and aligns the active runtime surface with `14_security_settings.png`.
+
+Validation:
+
+- `npm run android:assemble:staging` passed.
+- ADB capture was attempted, but the target disconnected immediately after build; no valid screenshot was produced for this pass.
+
+Blocker:
+
+- Device unavailable in `adb devices` after the successful build. Reconnect is required for the next screenshot pass.
+
+## Settings Screenshot Verification - 2026-05-14
+
+ADB target returned:
+
+- `adb-R5CWA0FEPZW-Xl6cnq._adb-tls-connect._tcp`
+
+Valid capture:
+
+- `.swimpay-agent/screenshots/android-vs-mock/14_security_settings_main_tab_rebuilt.png`
+
+Result:
+
+- The active Settings bottom-tab now opens the `Sécurité & paramètres` mock-driven surface instead of the previous menu/profile hub.
+- The old Settings hub is no longer visible on the active Settings tab.
+- Remaining mismatch: the screen is still slightly too vertically large/dense compared with `14_security_settings.png`, and the top status area/device overlay affects visual comparison.
