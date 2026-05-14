@@ -88,7 +88,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.swimpay.receiver.BuildConfig
 import com.swimpay.receiver.MerchantReceivingMethodDraft
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
 import com.swimpay.receiver.R
@@ -108,10 +107,6 @@ private fun premiumMockupTextFieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedPlaceholderColor = PremiumMockupColors.MutedDark,
     cursorColor = PremiumMockupColors.Green
 )
-
-private fun premiumDesignFixtureEnabled(): Boolean {
-    return BuildConfig.BUILD_TYPE == "debug" || BuildConfig.BUILD_TYPE == "staging"
-}
 
 private fun premiumReceivingMethodsPreviewState(): PremiumReceivingMethodsUiState {
     return PremiumReceivingMethodsUiState(
@@ -195,14 +190,9 @@ private fun premiumDashboardPreviewState(): PremiumDashboardUiState {
 fun PremiumDashboardScreen(
     state: PremiumScreenState<PremiumDashboardUiState> = PremiumScreenState.content(PremiumDashboardUiState.preview())
 ) {
-    val visualState = if (premiumDesignFixtureEnabled()) {
-        PremiumScreenState.content(premiumDashboardPreviewState())
-    } else {
-        state
-    }
-    when (visualState) {
-        is PremiumScreenState.Content -> PremiumDashboardContent(visualState.value)
-        else -> PremiumStateList(visualState)
+    when (state) {
+        is PremiumScreenState.Content -> PremiumDashboardContent(state.value)
+        else -> PremiumStateList(state)
     }
 }
 
@@ -828,12 +818,7 @@ fun PremiumReceivingMethodsStateScreen(
     onSetDefaultMethod: (String) -> Unit = {},
     onDeleteMethod: (String) -> Unit = {}
 ) {
-    val visualState = if (premiumDesignFixtureEnabled()) {
-        PremiumScreenState.content(premiumReceivingMethodsPreviewState())
-    } else {
-        state
-    }
-    when (visualState) {
+    when (state) {
         is PremiumScreenState.Content -> {
             var draftType by remember { mutableStateOf<ReceivingMethodType?>(null) }
             val bankOptions = PremiumReceivingMethodBankCatalog.availableBanks
@@ -886,9 +871,9 @@ fun PremiumReceivingMethodsStateScreen(
                     }
                     item {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(mockupDp(12))) {
-                            MockupFilterTab("Toutes (${visualState.value.items.size})", true, Modifier.weight(1f))
-                            MockupFilterTab("Actives (${visualState.value.items.count { it.enabled }})", false, Modifier.weight(1f))
-                            MockupFilterTab("Inactives (${visualState.value.items.count { !it.enabled }})", false, Modifier.weight(1f))
+                            MockupFilterTab("Toutes (${state.value.items.size})", true, Modifier.weight(1f))
+                            MockupFilterTab("Actives (${state.value.items.count { it.enabled }})", false, Modifier.weight(1f))
+                            MockupFilterTab("Inactives (${state.value.items.count { !it.enabled }})", false, Modifier.weight(1f))
                         }
                     }
                     if (draftType != null) {
@@ -962,7 +947,7 @@ fun PremiumReceivingMethodsStateScreen(
                             }
                         }
                     }
-                    if (visualState.value.items.isEmpty()) {
+                    if (state.value.items.isEmpty()) {
                         item {
                             MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(22)) {
                                 Column(Modifier.padding(mockupDp(18)), verticalArrangement = Arrangement.spacedBy(mockupDp(6))) {
@@ -972,7 +957,7 @@ fun PremiumReceivingMethodsStateScreen(
                             }
                         }
                     }
-                    items(visualState.value.items) { method ->
+                    items(state.value.items) { method ->
                         PremiumReceivingMethodRow(
                             method = method,
                             onEdit = {
@@ -987,7 +972,7 @@ fun PremiumReceivingMethodsStateScreen(
                 }
             }
         }
-        else -> PremiumStateList(visualState)
+        else -> PremiumStateList(state)
     }
 }
 
@@ -1215,12 +1200,7 @@ fun PremiumReceiverHealthStateScreen(
     state: PremiumScreenState<PremiumReceiverHealthUiState>,
     onOpenNotificationSettings: () -> Unit = {}
 ) {
-    val visualState = if (premiumDesignFixtureEnabled()) {
-        PremiumScreenState.content(premiumReceiverHealthPreviewState())
-    } else {
-        state
-    }
-    when (visualState) {
+    when (state) {
         is PremiumScreenState.Content -> MockupScreenBackground(Modifier.fillMaxSize()) {
             LazyColumn(
                 Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
@@ -1246,10 +1226,10 @@ fun PremiumReceiverHealthStateScreen(
                                 Column(Modifier.weight(1f)) {
                                     Text("Statut global", color = PremiumMockupColors.Muted, fontSize = mockupSp(15))
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(mockupDp(10))) {
-                                        Text(visualState.value.statusTitle, color = PremiumMockupColors.Green, fontWeight = FontWeight.Black, fontSize = mockupSp(24))
+                                        Text(state.value.statusTitle, color = PremiumMockupColors.Green, fontWeight = FontWeight.Black, fontSize = mockupSp(24))
                                         MockupStatusChip("Opérationnel")
                                     }
-                                    Text(visualState.value.statusText, color = PremiumMockupColors.Muted, fontSize = mockupSp(14), lineHeight = mockupSp(20), modifier = Modifier.padding(top = mockupDp(6)))
+                                    Text(state.value.statusText, color = PremiumMockupColors.Muted, fontSize = mockupSp(14), lineHeight = mockupSp(20), modifier = Modifier.padding(top = mockupDp(6)))
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text("Activé depuis", color = PremiumMockupColors.Muted, fontSize = mockupSp(13))
@@ -1291,7 +1271,7 @@ fun PremiumReceiverHealthStateScreen(
                 }
             }
         }
-        else -> PremiumStateList(visualState)
+        else -> PremiumStateList(state)
     }
 }
 
@@ -1413,15 +1393,14 @@ fun PremiumSecurityScreen(
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Sessions actives", color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black)
-                                Text("Gérez les appareils connectés à votre compte.", color = PremiumMockupColors.Muted, fontSize = mockupSp(13))
+                                Text("Les détails multi-appareils seront affichés quand ils seront disponibles.", color = PremiumMockupColors.Muted, fontSize = mockupSp(13), lineHeight = mockupSp(18))
                             }
-                            Text("2 actives", color = PremiumMockupColors.Green, fontSize = mockupSp(14))
+                            Text("Indisponible", color = PremiumMockupColors.Muted, fontSize = mockupSp(14))
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumMockupColors.Muted)
                         }
-                        SecurityDeviceRow("Android • Pixel 7 Pro", "Moscow, Russie • IP 176.59.***.24", "Cet appareil", active = true)
-                        SecurityDeviceRow("Windows • Chrome", "Moscow, Russie • IP 176.59.***.81", "Hier, 14:32", active = false)
-                        Box(Modifier.fillMaxWidth().height(mockupDp(48)).border(mockupDp(1), PremiumMockupColors.Danger, RoundedCornerShape(mockupDp(12))), contentAlignment = Alignment.Center) {
-                            Text("Se déconnecter de toutes les sessions", color = PremiumMockupColors.Danger, fontSize = mockupSp(14), fontWeight = FontWeight.Black)
+                        SecurityDeviceRow("Session locale", "Détails appareil non exposés", "Local", active = true)
+                        Box(Modifier.fillMaxWidth().heightIn(min = mockupDp(48)).border(mockupDp(1), PremiumMockupColors.BorderSoft, RoundedCornerShape(mockupDp(12))).padding(horizontal = mockupDp(14)), contentAlignment = Alignment.Center) {
+                            Text("Gestion des sessions indisponible", color = PremiumMockupColors.Muted, fontSize = mockupSp(14), fontWeight = FontWeight.Black)
                         }
                     }
                 }
@@ -1714,11 +1693,6 @@ fun PremiumIntegrationsListStateScreen(
     onOpenIntegration: () -> Unit = {},
     onAddSite: () -> Unit = {}
 ) {
-    val visualState = if (premiumDesignFixtureEnabled()) {
-        PremiumScreenState.content(premiumConnectedSitePreviewState())
-    } else {
-        state
-    }
     MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
@@ -1736,16 +1710,16 @@ fun PremiumIntegrationsListStateScreen(
                 }
             }
             item {
-                when (visualState) {
-                    is PremiumScreenState.Content -> IntegrationListPrimaryCard(visualState.value, onOpenIntegration)
-                    else -> PremiumStatePanel(visualState)
+                when (state) {
+                    is PremiumScreenState.Content -> IntegrationListPrimaryCard(state.value, onOpenIntegration)
+                    else -> PremiumStatePanel(state)
                 }
             }
             item {
                 Text("Statut d'intégration", color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black)
             }
-            if (visualState is PremiumScreenState.Content) {
-                items(visualState.value.developerRows.ifEmpty { visualState.value.rows }) { row ->
+            if (state is PremiumScreenState.Content) {
+                items(state.value.developerRows.ifEmpty { state.value.rows }) { row ->
                     MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(16)) {
                         Row(
                             Modifier.padding(mockupDp(18)).heightIn(min = mockupDp(76)),
@@ -1757,7 +1731,7 @@ fun PremiumIntegrationsListStateScreen(
                                 Text(row.first, color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black)
                                 Text(row.second, color = PremiumMockupColors.Muted, fontSize = mockupSp(13), lineHeight = mockupSp(18))
                             }
-                            MockupStatusChip("OK")
+                            MockupStatusChip(integrationRuntimeStatusLabel(row.second, state.value.usesLiveApi))
                         }
                     }
                 }
@@ -1810,17 +1784,50 @@ private fun IntegrationListPrimaryCard(
             MockupIconTile(Icons.Default.Public, size = mockupDp(72), tint = PremiumMockupColors.Green)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(mockupDp(4))) {
                 Text(
-                    state.rows.firstOrNull()?.second ?: "merchant.example",
+                    integrationPrimaryTitle(state),
                     color = PremiumMockupColors.White,
                     fontSize = mockupSp(18),
                     fontWeight = FontWeight.Black
                 )
-                Text("Environnement :  Production", color = PremiumMockupColors.Muted, fontSize = mockupSp(14))
-                Text("Statut :  Actif", color = PremiumMockupColors.Green, fontSize = mockupSp(14))
-                Text("Créé le :  21 mai 2025", color = PremiumMockupColors.Muted, fontSize = mockupSp(14))
+                Text("Environnement :  ${integrationRowValue(state, "environnement", "À configurer")}", color = PremiumMockupColors.Muted, fontSize = mockupSp(14))
+                Text("Statut :  ${integrationRuntimeStatusLabel(state.statusText, state.usesLiveApi)}", color = if (state.usesLiveApi) PremiumMockupColors.Green else PremiumMockupColors.Muted, fontSize = mockupSp(14))
+                Text("Créé le :  ${integrationRowValue(state, "créé", "Date indisponible")}", color = PremiumMockupColors.Muted, fontSize = mockupSp(14))
             }
             Chevron()
         }
+    }
+}
+
+private fun integrationPrimaryTitle(state: PremiumConnectedSiteUiState): String {
+    return state.statusTitle
+        .takeIf { it.isNotBlank() }
+        ?: integrationRowValue(state, "site", "Site à configurer")
+}
+
+private fun integrationRowValue(
+    state: PremiumConnectedSiteUiState,
+    key: String,
+    fallback: String
+): String {
+    val normalizedKey = key.lowercase()
+    return (state.rows + state.developerRows)
+        .firstOrNull { row -> row.first.lowercase().contains(normalizedKey) }
+        ?.second
+        ?.takeIf { it.isNotBlank() }
+        ?: fallback
+}
+
+private fun integrationRuntimeStatusLabel(value: String, usesLiveApi: Boolean): String {
+    if (!usesLiveApi) return "À configurer"
+    val normalized = value.lowercase()
+    return when {
+        normalized.contains("ok") -> "OK"
+        normalized.contains("actif") || normalized.contains("active") -> "Actif"
+        normalized.contains("valid") -> "Valide"
+        normalized.contains("livr") -> "Livré"
+        normalized.contains("erreur") || normalized.contains("error") || normalized.contains("404") -> "Erreur"
+        value.isNotBlank() -> value.take(18)
+        else -> "Disponible"
     }
 }
 
@@ -1837,15 +1844,10 @@ fun PremiumConnectedSiteStateScreen(
     onAuthorizeCopy: (onAuthorized: () -> Unit) -> Unit = { onAuthorized -> onAuthorized() },
     onCopyDeveloperExport: (PremiumConnectedSiteUiState) -> String = { value -> value.developerExportText() }
 ) {
-    val visualState = if (premiumDesignFixtureEnabled()) {
-        PremiumScreenState.content(premiumConnectedSitePreviewState())
-    } else {
-        state
-    }
     PremiumStandaloneStateScreen(title = "Détails intégration", onBack = onBack) {
         Column(verticalArrangement = Arrangement.spacedBy(mockupDp(14))) integrationDetailColumn@ {
-            if (visualState is PremiumScreenState.Content) {
-                val value = visualState.value
+            if (state is PremiumScreenState.Content) {
+                val value = state.value
                 var webhookUrl by remember(value.webhookUrl) { mutableStateOf(value.webhookUrl) }
                 val clipboardManager = LocalClipboardManager.current
                 PremiumConnectedSiteMockDetail(
@@ -1954,6 +1956,8 @@ fun PremiumConnectedSiteStateScreen(
                         }
                     }
                 }
+            } else {
+                PremiumStatePanel(state)
             }
         }
     }
@@ -1970,19 +1974,22 @@ private fun PremiumConnectedSiteMockDetail(
     onOpenDeveloperGuide: () -> Unit
 ) {
     val rows = value.developerRows.ifEmpty { value.rows }
-    MockupSignalPill("Integration active")
+    val apiKeyRow = rows.firstOrNull { it.first.contains("publique", true) || it.first.contains("API", true) }
+    val webhookSecret = rows.firstOrNull { it.first.contains("secret", true) }?.second.orEmpty()
+    val webhookStatus = rows.firstOrNull { it.first.contains("statut", true) || it.first.contains("test", true) }?.second.orEmpty()
+    MockupSignalPill(integrationRuntimeStatusLabel(value.statusText, value.usesLiveApi))
     MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(16)) {
         Column(Modifier.padding(mockupDp(16)), verticalArrangement = Arrangement.spacedBy(mockupDp(10))) {
             Text("Clés API", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
             IntegrationDetailValueRow(
-                label = rows.firstOrNull { it.first.contains("publique", true) || it.first.contains("API", true) }?.first ?: "Clé API (publique)",
-                value = rows.firstOrNull { it.first.contains("publique", true) || it.first.contains("API", true) }?.second ?: "sp_live_**************abcd",
+                label = apiKeyRow?.first ?: "Clé API",
+                value = apiKeyRow?.second ?: "À créer",
                 icon = Icons.Default.ContentCopy,
                 onAction = onCopy
             )
             IntegrationDetailValueRow(
                 label = "Clé API (secrète)",
-                value = value.merchantAuthorizationHeaderMasked.ifBlank { "sp_live_**************wxyz" },
+                value = value.merchantAuthorizationHeaderMasked.ifBlank { "Non affichée" },
                 icon = Icons.Default.Visibility,
                 onAction = onCopy
             )
@@ -2005,16 +2012,16 @@ private fun PremiumConnectedSiteMockDetail(
                     .padding(mockupDp(12)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(webhookUrl.ifBlank { "https://merchant.example.com/webhook/swimpay" }, color = PremiumMockupColors.White, fontSize = mockupSp(13), modifier = Modifier.weight(1f))
+                Text(webhookUrl.ifBlank { "Webhook non configuré" }, color = PremiumMockupColors.White, fontSize = mockupSp(13), modifier = Modifier.weight(1f))
                 Icon(Icons.Default.ContentCopy, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(18)))
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(mockupDp(12))) {
-                IntegrationStatCard("Environnement", "Production", PremiumMockupColors.Green, Modifier.weight(1f))
-                IntegrationStatCard("Statut", if (value.usesLiveApi) "Livre (200 OK)" else "A configurer", PremiumMockupColors.Green, Modifier.weight(1f))
+                IntegrationStatCard("Environnement", integrationRowValue(value, "environnement", "À configurer"), PremiumMockupColors.Green, Modifier.weight(1f))
+                IntegrationStatCard("Statut", integrationRuntimeStatusLabel(webhookStatus.ifBlank { value.statusText }, value.usesLiveApi), PremiumMockupColors.Green, Modifier.weight(1f))
             }
             IntegrationDetailValueRow(
                 label = "Secret du webhook",
-                value = rows.firstOrNull { it.first.contains("secret", true) }?.second ?: "whsec_************************2025",
+                value = webhookSecret.ifBlank { "Non configuré" },
                 icon = Icons.Default.Visibility,
                 onAction = onRotateWebhookSecret
             )
@@ -2028,10 +2035,10 @@ private fun PremiumConnectedSiteMockDetail(
     }
     Text("Statistiques de livraison (7 derniers jours)", color = PremiumMockupColors.White, fontSize = mockupSp(18), fontWeight = FontWeight.Black)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(mockupDp(8))) {
-        IntegrationStatCard("Livrés", "98.6%", PremiumMockupColors.Green, Modifier.weight(1f))
-        IntegrationStatCard("Échecs", "1.2%", PremiumMockupColors.Danger, Modifier.weight(1f))
-        IntegrationStatCard("En attente", "0.2%", PremiumMockupColors.Warning, Modifier.weight(1f))
-        IntegrationStatCard("Réponse", "168 ms", PremiumMockupColors.Blue, Modifier.weight(1f))
+        IntegrationStatCard("Livrés", integrationRowValue(value, "livré", "—"), PremiumMockupColors.Green, Modifier.weight(1f))
+        IntegrationStatCard("Échecs", integrationRowValue(value, "échec", "—"), PremiumMockupColors.Danger, Modifier.weight(1f))
+        IntegrationStatCard("En attente", integrationRowValue(value, "attente", "—"), PremiumMockupColors.Warning, Modifier.weight(1f))
+        IntegrationStatCard("Réponse", integrationRowValue(value, "réponse", "—"), PremiumMockupColors.Blue, Modifier.weight(1f))
     }
     MockupGlassCard(Modifier.fillMaxWidth(), radius = mockupDp(16)) {
         Column(Modifier.padding(mockupDp(12)), verticalArrangement = Arrangement.spacedBy(mockupDp(8))) {
@@ -2039,10 +2046,13 @@ private fun PremiumConnectedSiteMockDetail(
                 Text("Dernières livraisons", color = PremiumMockupColors.White, fontSize = mockupSp(17), fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
                 Text("Voir tout", color = PremiumMockupColors.Green, fontSize = mockupSp(13), fontWeight = FontWeight.Black)
             }
-            IntegrationDeliveryRow("21 mai 2025, 09:21:44", "payment.succeeded", "200 OK", PremiumMockupColors.Green)
-            IntegrationDeliveryRow("21 mai 2025, 09:18:30", "notification.detected", "200 OK", PremiumMockupColors.Green)
-            IntegrationDeliveryRow("21 mai 2025, 09:16:12", "payment.succeeded", "404 Not Found", PremiumMockupColors.Danger)
-            IntegrationDeliveryRow("21 mai 2025, 09:12:05", "payment.succeeded", "200 OK", PremiumMockupColors.Green)
+            Text(
+                "Aucune livraison récente disponible",
+                color = PremiumMockupColors.Muted,
+                fontSize = mockupSp(13),
+                lineHeight = mockupSp(18),
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
     MockupGlassCard(Modifier.fillMaxWidth().premiumTap(onTestWebhook), radius = mockupDp(12), border = PremiumMockupColors.Blue.copy(alpha = 0.72f)) {

@@ -460,7 +460,7 @@ class PremiumMerchantRuntime(
                 readyTitle = texts.getOrNull(1) ?: "SwimPay est prêt",
                 readyText = texts.getOrNull(2) ?: "Votre téléphone est connecté et vos paiements peuvent être détectés.",
                 mainMetricLabel = "Paiements confirmés",
-                monthlyAmount = summary?.confirmedAmountLabel() ?: "0 RUB",
+                monthlyAmount = summary?.confirmedAmountLabel() ?: "Données indisponibles",
                 metrics = dashboardMetricCards(summary),
                 chartPoints = chartPoints,
                 chartConfirmedAmountLabel = if (chartPoints.isEmpty()) "—" else formatDashboardChartAmount(chartConfirmedAmountMinor, summary?.currency ?: "RUB"),
@@ -987,7 +987,7 @@ class PremiumMerchantRuntime(
                 "Activez l'accès notifications pour lancer l'écoute intelligente."
             },
             mainMetricLabel = "Paiements confirmés",
-            monthlyAmount = "0 RUB",
+            monthlyAmount = "Données indisponibles",
             metrics = dashboardMetricCards(null),
             recentPayments = emptyList(),
             usesLiveApi = false,
@@ -1235,13 +1235,23 @@ private fun List<MerchantOrderItem>.toDashboardRecentPayments(): List<PremiumRec
 }
 
 private fun dashboardMetricCards(summary: MerchantDashboardMetricsSummary?): List<PremiumMetricUiState> {
+    if (summary == null) {
+        return listOf(
+            PremiumMetricUiState("—", "À confirmer"),
+            PremiumMetricUiState("—", "Confirmés"),
+            PremiumMetricUiState("—", "Rejetés"),
+            PremiumMetricUiState("—", "Expirés"),
+            PremiumMetricUiState("—", "Échecs"),
+            PremiumMetricUiState("—", "Taux")
+        )
+    }
     return listOf(
-        PremiumMetricUiState((summary?.pendingReviewCount ?: 0).toString(), "À confirmer"),
-        PremiumMetricUiState((summary?.confirmedPaymentCount ?: 0).toString(), "Confirmés"),
-        PremiumMetricUiState((summary?.rejectedPaymentCount ?: 0).toString(), "Rejetés"),
-        PremiumMetricUiState((summary?.expiredPaymentCount ?: 0).toString(), "Expirés"),
-        PremiumMetricUiState((summary?.failedCount ?: 0).toString(), "Échecs"),
-        PremiumMetricUiState(summary?.confirmationRateLabel() ?: "0 %", "Taux")
+        PremiumMetricUiState(summary.pendingReviewCount.toString(), "À confirmer"),
+        PremiumMetricUiState(summary.confirmedPaymentCount.toString(), "Confirmés"),
+        PremiumMetricUiState(summary.rejectedPaymentCount.toString(), "Rejetés"),
+        PremiumMetricUiState(summary.expiredPaymentCount.toString(), "Expirés"),
+        PremiumMetricUiState(summary.failedCount.toString(), "Échecs"),
+        PremiumMetricUiState(summary.confirmationRateLabel(), "Taux")
     )
 }
 
@@ -1249,7 +1259,7 @@ private fun formatDashboardChartAmount(amountMinor: Long, currency: String): Str
     val units = amountMinor / 100L
     val cents = kotlin.math.abs(amountMinor % 100L)
     val grouped = "%,d".format(java.util.Locale.US, units).replace(",", " ")
-    val symbol = if (currency == "RUB") "RUB" else currency
+    val symbol = if (currency == "RUB") "₽" else currency
     return if (cents == 0L) {
         "$grouped $symbol"
     } else {

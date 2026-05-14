@@ -639,3 +639,15 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 - Queued: deeper screen text overflow QA.
 
 - [done] Android Merchant layout defect audit + text/currency fix: RUB currency, French accents, readable review filters/cards, nav-safe padding.
+
+## Current Queue - Android Merchant Runtime Wiring (2026-05-14)
+
+- [x] `android_runtime_wiring_audit` - status: completed - source: `.swimpay-agent/ANDROID_RUNTIME_WIRING_AUDIT.md`
+- [x] `android_dashboard_runtime_wiring` - status: completed_validated - source: `.swimpay-agent/ANDROID_DASHBOARD_RUNTIME_WIRING_REPORT.md`
+- [x] `android_reviews_runtime_wiring` - status: completed_validated - source: `.swimpay-agent/ANDROID_REVIEWS_RUNTIME_WIRING_REPORT.md`
+- [x] `android_receiving_methods_runtime_wiring` - status: completed_validated - source: `.swimpay-agent/ANDROID_RECEIVING_METHODS_RUNTIME_WIRING_REPORT.md`
+- [x] `android_integrations_runtime_wiring` - status: completed_with_contract_gap - source: `.swimpay-agent/ANDROID_INTEGRATIONS_RUNTIME_WIRING_REPORT.md`
+- [x] `android_receiver_health_runtime_wiring` - status: completed_validated - source: `.swimpay-agent/ANDROID_RECEIVER_HEALTH_RUNTIME_WIRING_REPORT.md`
+- [x] `android_security_settings_runtime_wiring` - status: completed_with_repository_gap - source: `.swimpay-agent/ANDROID_SECURITY_SETTINGS_RUNTIME_WIRING_REPORT.md`
+- [x] `android_runtime_contract_gaps` - status: documented - source: `.swimpay-agent/ANDROID_RUNTIME_CONTRACT_GAPS.md`
+- [ ] `staging_runtime_device_smoke` - status: pending_operator_device_check - source: `.swimpay-agent/ANDROID_RUNTIME_WIRING_CLOSEOUT.md`

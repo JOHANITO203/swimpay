@@ -279,3 +279,32 @@ Use the new workflow docs for the next visual sprint:
 - Next visual QA pass: spot-check review detail, receiving methods, integrations, receiver health and security settings for layout-specific overflow under real-device font/display settings.
 
 2026-05-14 - Next: operator visual pass on freshly installed staging APK; inspect remaining density differences on dashboard/review/security before Roborazzi freeze.
+
+---
+
+generated_at: 2026-05-14T00:00:00+03:00
+
+## Current Runtime Priority
+
+Android Merchant Runtime Wiring is locally complete. Next action is to install the staging APK and verify that active screens use staging/backend data or honest loading/empty/error states.
+
+## Completed Locally In This Pass
+
+1. Removed debug/staging forced design fixtures from dashboard, reviews, review detail, receiving methods, integrations and receiver health.
+2. Kept previews/goldens mock-capable while preventing staging runtime from using preview fixtures.
+3. Replaced fake integration fallbacks with honest unavailable/configuration states.
+4. Replaced fake security sessions/devices/IPs with an honest unavailable state.
+5. Added runtime wiring guardrail tests.
+6. Passed Kotlin compile, targeted Android JVM tests and staging APK assembly.
+
+## Next Recommended Runtime Action
+
+1. Install the staging APK built by `npm run android:assemble:staging`.
+2. Log in against `https://staging.swimpay.pro`.
+3. Verify dashboard/reviews/receiving methods/integrations/receiver health/security show real data or honest empty/offline states.
+
+## Do Not Do
+
+- Do not add features during this wiring check.
+- Do not redesign screens.
+- Do not use a local debug APK for VPS testing unless explicitly requested.

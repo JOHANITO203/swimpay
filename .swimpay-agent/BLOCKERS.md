@@ -858,3 +858,19 @@ No backend/runtime blockers found for this design-only pass. Remaining blockers 
 2026-05-14 - No backend/runtime blocker found for layout defect sprint. Residual visual risk: final operator acceptance still required for pixel-level density and card proportions.
 
 2026-05-14 - ADB device disconnected after final staging assemble, so final post-shell-padding screenshots could not be recaptured. Previous manual screenshots exist under .swimpay-agent/screenshots/layout-defect/.
+
+## Android Merchant Runtime Wiring (2026-05-14)
+
+- No backend/API/database/payment/webhook/receiver/SDK/state-machine blocker introduced.
+- Resolved locally: staging/debug premium screens no longer force design preview fixtures over runtime state.
+- Resolved locally: integrations runtime no longer falls back to `merchant.example`, fake API keys, fake webhook secret, fake delivery percentages or fake `200 OK` rows.
+- Resolved locally: security settings no longer displays fake devices, fake IP addresses or fake active-session count.
+- Remaining contract gap: Android has no true multi-site integration list model wired; current UI uses the existing connected-site/developer-integration detail state.
+- Remaining contract gap: Android has no remote device/session repository for Security Settings; screen now shows an honest unavailable state.
+- Staging gate: install the newly built staging APK and verify dashboard/reviews/receiving methods/integrations/receiver health/security load real staging data or honest empty states.
+
+## Android Runtime Wiring Validation Note (2026-05-14)
+
+- Full `:app:testDebugUnitTest` was attempted and failed on 11 broad visual/navigation guardrail tests already outside this wiring scope.
+- Targeted runtime wiring guardrails, Android data hydration, and the affected dashboard runtime contract test pass.
+- Compile and staging APK assembly pass.

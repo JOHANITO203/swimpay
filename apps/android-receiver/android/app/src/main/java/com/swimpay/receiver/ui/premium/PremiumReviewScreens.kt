@@ -49,22 +49,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.swimpay.receiver.BuildConfig
 
 @Composable
 fun PremiumReviewsScreen(
     state: PremiumScreenState<PremiumReviewsUiState> = PremiumScreenState.content(PremiumReviewsUiState.preview()),
     onOpenReview: (String) -> Unit = {}
 ) {
-    val designFixtureEnabled = BuildConfig.BUILD_TYPE == "debug" || BuildConfig.BUILD_TYPE == "staging"
-    val visualState = if (designFixtureEnabled) {
-        PremiumScreenState.content(PremiumReviewsUiState.preview())
-    } else {
-        state
-    }
-    when (visualState) {
-        is PremiumScreenState.Content -> PremiumReviewsContent(visualState.value, onOpenReview)
-        else -> PremiumReviewsState(visualState)
+    when (state) {
+        is PremiumScreenState.Content -> PremiumReviewsContent(state.value, onOpenReview)
+        else -> PremiumReviewsState(state)
     }
 }
 
@@ -251,21 +244,15 @@ fun PremiumPaymentDetailScreen(
     onRejectSignal: () -> Unit = {},
     onRejectOrder: () -> Unit = {}
 ) {
-    val designFixtureEnabled = BuildConfig.BUILD_TYPE == "debug" || BuildConfig.BUILD_TYPE == "staging"
-    val visualState = if (designFixtureEnabled) {
-        PremiumScreenState.content(PremiumPaymentDetailUiState.preview())
-    } else {
-        state
-    }
-    when (visualState) {
+    when (state) {
         is PremiumScreenState.Content -> PremiumPaymentDetailContent(
-            state = visualState.value,
+            state = state.value,
             onBack = onBack,
             onConfirmReceived = onConfirmReceived,
             onRejectSignal = onRejectSignal,
             onRejectOrder = onRejectOrder
         )
-        else -> PremiumPaymentDetailState(visualState, onBack)
+        else -> PremiumPaymentDetailState(state, onBack)
     }
 }
 

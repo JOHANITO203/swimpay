@@ -3369,3 +3369,22 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Added AndroidPremiumTextIntegrityTest and passed targeted unit guardrail, compileDebugKotlin, assembleStaging and ADB dashboard capture.
 
 2026-05-14 - Android layout defect sprint: fixed premium UI currency to RUB, restored French accents, rebuilt review filters/cards, added nav-safe padding, recalibrated bottom nav, added text/currency guardrails and layout reports. Validation: AndroidPremiumTextIntegrityTest, compileDebugKotlin, android:assemble:staging.
+
+## 2026-05-14T00:00:00+03:00 - Android Merchant runtime wiring
+
+- Audited premium Android Merchant screens for backend/repository wiring and preview leakage.
+- Removed build-type forced design fixtures from dashboard, reviews, review detail, receiving methods, integrations and receiver health.
+- Preserved previews as preview-only while staging/debug runtime now uses the state passed by `PremiumMerchantRuntime`.
+- Reused existing Android repositories for dashboard, reviews, review detail actions, receiving methods, connected site/developer integration and receiver health/local state.
+- Removed runtime fake integration fallbacks: `merchant.example`, generated API key/secret placeholders, fake delivery percentages and fake `200 OK` delivery rows.
+- Removed fake security session/device/IP rows and replaced them with an honest unavailable state until a real session repository exists.
+- Added `AndroidRuntimeWiringGuardrailTest` static guardrails.
+- Validation passed: `:app:compileDebugKotlin`, targeted `:app:testDebugUnitTest`, and `npm run android:assemble:staging`.
+- No backend/API/database/payment/webhook/receiver/SDK/state-machine code was changed.
+
+## 2026-05-14T00:00:00+03:00 - Android runtime wiring validation addendum
+
+- Attempted full `:app:testDebugUnitTest`; it failed on 11 broad visual/navigation guardrail tests outside the runtime wiring guardrail set.
+- Corrected the dashboard chart confirmed amount formatter to keep the existing `₽` contract for loaded RUB data.
+- Re-ran targeted runtime wiring, Android data hydration and affected dashboard contract tests successfully.
+- Re-ran `:app:compileDebugKotlin` and `npm run android:assemble:staging` successfully.
