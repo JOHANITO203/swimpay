@@ -10,6 +10,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.swimpay.receiver.MerchantReceivingMethodSubmission
+import com.swimpay.receiver.ReceivingMethodType
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -22,6 +24,169 @@ import org.robolectric.annotation.GraphicsMode
 class PremiumGoldenScreenshotTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun loginWelcomeGolden() {
+        capture("01_login_welcome.png", width = 432, height = 932) {
+            PremiumAccountEntryScreen(
+                onCreateAccount = {},
+                onSignIn = {}
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun notificationAccessGolden() {
+        capture("02_notification_access.png", width = 432, height = 932) {
+            PremiumOnboardingFlow(
+                notificationAccessEnabled = false,
+                bankTargetsState = PremiumScreenState.content(goldenBanksState()),
+                openNotificationSettings = {},
+                onDone = {},
+                initialState = PremiumOnboardingSessionState(
+                    currentStep = PremiumOnboardingStep.NOTIFICATION_ACCESS
+                )
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun bankSelectionGolden() {
+        capture("03_bank_selection.png", width = 432, height = 932) {
+            PremiumOnboardingFlow(
+                notificationAccessEnabled = true,
+                bankTargetsState = PremiumScreenState.content(goldenBanksState()),
+                openNotificationSettings = {},
+                onDone = {},
+                initialState = goldenOnboardingState(PremiumOnboardingStep.COMPATIBLE_BANK_SELECTION)
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun receivingSetupGolden() {
+        capture("04_receiving_setup.png", width = 432, height = 932) {
+            PremiumOnboardingFlow(
+                notificationAccessEnabled = true,
+                bankTargetsState = PremiumScreenState.content(goldenBanksState()),
+                openNotificationSettings = {},
+                onDone = {},
+                initialState = goldenOnboardingState(PremiumOnboardingStep.RECEIVING_METHOD)
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun siteAppSetupGolden() {
+        capture("05_site_app_setup.png", width = 432, height = 932) {
+            PremiumOnboardingFlow(
+                notificationAccessEnabled = true,
+                bankTargetsState = PremiumScreenState.content(goldenBanksState()),
+                openNotificationSettings = {},
+                onDone = {},
+                initialState = goldenOnboardingState(PremiumOnboardingStep.CONNECTED_SITE)
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun webhookTestGolden() {
+        capture("06_webhook_test.png", width = 432, height = 932) {
+            PremiumOnboardingFlow(
+                notificationAccessEnabled = true,
+                bankTargetsState = PremiumScreenState.content(goldenBanksState()),
+                openNotificationSettings = {},
+                onDone = {},
+                initialState = goldenOnboardingState(PremiumOnboardingStep.CONFIGURATION_TEST)
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun dashboardHomeGolden() {
+        capture("07_dashboard_home.png", width = 432, height = 932) {
+            PremiumAppShell(selectedTab = PremiumMainTab.Home, onTab = {}, profileInitials = "SP") {
+                PremiumDashboardScreen(PremiumScreenState.content(goldenDashboardState()))
+            }
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun reviewQueueGolden() {
+        capture("08_review_queue.png", width = 432, height = 932) {
+            PremiumAppShell(selectedTab = PremiumMainTab.Reviews, onTab = {}, profileInitials = "SP") {
+                PremiumReviewsScreen(PremiumScreenState.content(goldenReviewsState()))
+            }
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun reviewDetailNumberedGolden() {
+        capture("09_review_detail.png", width = 432, height = 932) {
+            PremiumPaymentDetailScreen(PremiumScreenState.content(goldenReviewDetailState()))
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun receivingMethodsNumberedGolden() {
+        capture("10_receiving_methods.png", width = 432, height = 932) {
+            PremiumAppShell(selectedTab = PremiumMainTab.Menu, onTab = {}, profileInitials = "SP") {
+                PremiumReceivingMethodsStateScreen(PremiumScreenState.content(goldenReceivingMethodsState()))
+            }
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun integrationsListGolden() {
+        capture("11_integrations_list.png", width = 432, height = 932) {
+            PremiumConnectedSiteStateScreen(
+                state = PremiumScreenState.content(goldenConnectedSiteState()),
+                onBack = {}
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun integrationDetailNumberedGolden() {
+        capture("12_integration_detail.png", width = 432, height = 932) {
+            PremiumConnectedSiteStateScreen(
+                state = PremiumScreenState.content(goldenConnectedSiteState()),
+                onBack = {}
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun receiverHealthNumberedGolden() {
+        capture("13_receiver_health.png", width = 432, height = 932) {
+            PremiumAppShell(selectedTab = PremiumMainTab.Menu, onTab = {}, profileInitials = "SP") {
+                PremiumReceiverHealthStateScreen(PremiumScreenState.content(goldenReceiverHealthState()))
+            }
+        }
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w432dp-h932dp-mdpi")
+    fun securitySettingsGolden() {
+        capture("14_security_settings.png", width = 432, height = 932) {
+            PremiumAppShell(selectedTab = PremiumMainTab.Menu, onTab = {}, profileInitials = "SP") {
+                PremiumSecurityScreen(appLock = PremiumAppLockSettings(enabled = true))
+            }
+        }
+    }
 
     @Test
     fun dashboardGolden() {
@@ -85,18 +250,62 @@ class PremiumGoldenScreenshotTest {
         }
     }
 
-    private fun capture(name: String, content: @Composable () -> Unit) {
+    private fun capture(
+        name: String,
+        width: Int = 390,
+        height: Int = 844,
+        content: @Composable () -> Unit
+    ) {
         PremiumColors.useDarkTheme(false)
         composeRule.setContent {
             Box(
                 Modifier
-                    .size(width = 390.dp, height = 844.dp)
+                    .size(width = width.dp, height = height.dp)
                     .background(PremiumColors.Background)
             ) {
                 content()
             }
         }
         composeRule.onRoot().captureRoboImage(filePath = "src/test/snapshots/$name")
+    }
+
+    private fun goldenBanksState(): PremiumBanksUiState {
+        return PremiumBanksUiState(
+            items = listOf(
+                PremiumBankUiItem("sber_ru", "Sberbank", "Detecte", "Notifications autorisees", enabled = true, canActivate = true),
+                PremiumBankUiItem("tbank_ru", "T-Bank", "Detecte", "Notifications autorisees", enabled = true, canActivate = true),
+                PremiumBankUiItem("vtb_ru", "VTB", "Detecte", "Notifications autorisees", enabled = true, canActivate = true),
+                PremiumBankUiItem("alfa_ru", "Alfa-Bank", "Detecte", "Notifications autorisees", enabled = true, canActivate = true),
+                PremiumBankUiItem("gazprombank_ru", "Gazprombank", "Detecte", "Notifications autorisees", enabled = true, canActivate = true)
+            )
+        )
+    }
+
+    private fun goldenOnboardingState(step: PremiumOnboardingStep): PremiumOnboardingSessionState {
+        return PremiumOnboardingSessionState(
+            currentStep = step,
+            completedSteps = PremiumOnboardingStep.requiredSequence
+                .takeWhile { it != step }
+                .toSet(),
+            notificationAccessEnabled = true,
+            detectedCompatibleBankIds = PremiumOnboardingSessionState.SUPPORTED_BANK_PROFILE_IDS,
+            selectedBankIds = PremiumOnboardingSessionState.SUPPORTED_BANK_PROFILE_IDS,
+            receivingMethodDraft = PremiumReceivingMethodDraft.CARD_TRANSFER,
+            receivingMethodConfigured = step.ordinal >= PremiumOnboardingStep.CONNECTED_SITE.ordinal,
+            receivingMethodSubmission = if (step.ordinal >= PremiumOnboardingStep.CONNECTED_SITE.ordinal) {
+                MerchantReceivingMethodSubmission(
+                    bankProfileId = "sber_ru",
+                    type = ReceivingMethodType.CARD_TRANSFER,
+                    rawIdentifier = "4276********4821",
+                    routeCode = "card_4821",
+                    displayLabel = "Sberbank **** 4821",
+                    recommended = true
+                )
+            } else {
+                null
+            },
+            connectedSiteConfigured = step == PremiumOnboardingStep.CONFIGURATION_TEST
+        )
     }
 
     private fun goldenDashboardState(): PremiumDashboardUiState {

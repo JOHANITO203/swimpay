@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -112,10 +113,13 @@ fun PremiumOnboardingFlow(
     notificationAccessEnabled: Boolean,
     bankTargetsState: PremiumScreenState<PremiumBanksUiState> = PremiumScreenState.loading(),
     openNotificationSettings: () -> Unit,
-    onDone: (PremiumOnboardingSessionState) -> Unit
+    onDone: (PremiumOnboardingSessionState) -> Unit,
+    initialState: PremiumOnboardingSessionState = PremiumOnboardingSessionState(
+        notificationAccessEnabled = notificationAccessEnabled
+    )
 ) {
     var state by remember {
-        mutableStateOf(PremiumOnboardingSessionState(notificationAccessEnabled = notificationAccessEnabled))
+        mutableStateOf(initialState.withNotificationAccess(notificationAccessEnabled))
     }
 
     LaunchedEffect(notificationAccessEnabled) {
@@ -345,6 +349,15 @@ private fun ReceivingMethodDetailsStep(
             }
         )
     }
+    var visualMethodSelection by remember(selectedMethod) {
+        mutableStateOf(
+            when (selectedMethod) {
+                PremiumReceivingMethodDraft.PHONE_TRANSFER -> setOf(ReceivingMethodType.PHONE_TRANSFER)
+                PremiumReceivingMethodDraft.CARD_TRANSFER -> setOf(ReceivingMethodType.CARD_TRANSFER)
+                null -> setOf(ReceivingMethodType.CARD_TRANSFER)
+            }
+        )
+    }
     var identifierInput by remember { mutableStateOf("") }
 
     OnboardingShell("Moyen de réception", PremiumOnboardingStep.RECEIVING_METHOD, onBack) {
@@ -356,9 +369,10 @@ private fun ReceivingMethodDetailsStep(
             icon = Icons.Default.ShoppingCart,
             title = "Carte bancaire",
             subtitle = "Recevez les paiements sur votre carte.",
-            selected = methodType == ReceivingMethodType.CARD_TRANSFER,
+            selected = ReceivingMethodType.CARD_TRANSFER in visualMethodSelection,
             onClick = {
                 methodType = ReceivingMethodType.CARD_TRANSFER
+                visualMethodSelection = toggleVisualReceivingMethod(visualMethodSelection, ReceivingMethodType.CARD_TRANSFER)
                 onSelectChoice(PremiumReceivingMethodDraft.CARD_TRANSFER)
             }
         )
@@ -366,33 +380,41 @@ private fun ReceivingMethodDetailsStep(
             icon = Icons.Default.PhoneAndroid,
             title = "Numéro de téléphone",
             subtitle = "Pratique pour les virements via SBP.",
-            selected = methodType == ReceivingMethodType.PHONE_TRANSFER,
+            selected = ReceivingMethodType.PHONE_TRANSFER in visualMethodSelection,
             onClick = {
                 methodType = ReceivingMethodType.PHONE_TRANSFER
+                visualMethodSelection = toggleVisualReceivingMethod(visualMethodSelection, ReceivingMethodType.PHONE_TRANSFER)
                 onSelectChoice(PremiumReceivingMethodDraft.PHONE_TRANSFER)
             }
         )
         Spacer(Modifier.height(6.dp))
-        Text("Choisir la banque", color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
+        Text("Choisir la banque", color = PremiumMockupColors.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(10.dp))
         bankOptions.forEach { bank ->
             val selected = bank.bankProfileId == selectedBankId
-            PremiumCard(
+            MockupGlassCard(
                 Modifier
                     .fillMaxWidth()
                     .padding(bottom = 10.dp)
                     .premiumTap { selectedBankId = bank.bankProfileId },
                 radius = 24.dp,
-                color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
+                border = if (selected) PremiumMockupColors.Green else PremiumMockupColors.BorderSoft
             ) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 42.dp)
+                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                        Text(bank.displayName, color = PremiumMockupColors.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Text("Destination de réception", color = PremiumMockupColors.MutedDark, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
                     Box(
                         Modifier
-                            .size(28.dp)
-                            .background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape)
-                            .border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape)
-                    )
-                    Text(bank.displayName, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 12.dp))
+                            .size(30.dp)
+                            .background(if (selected) PremiumMockupColors.Green else Color.Transparent, RoundedCornerShape(8.dp))
+                            .border(2.dp, if (selected) PremiumMockupColors.Green else PremiumMockupColors.Border, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selected) Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF02070A), modifier = Modifier.size(20.dp))
+                    }
                 }
             }
         }
@@ -403,7 +425,20 @@ private fun ReceivingMethodDetailsStep(
             placeholder = { Text(if (methodType == ReceivingMethodType.CARD_TRANSFER) "Numéro de carte" else "Numéro de téléphone") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            shape = RoundedCornerShape(18.dp)
+            shape = RoundedCornerShape(18.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = PremiumMockupColors.White,
+                unfocusedTextColor = PremiumMockupColors.White,
+                focusedContainerColor = PremiumMockupColors.Field,
+                unfocusedContainerColor = PremiumMockupColors.Field,
+                focusedBorderColor = PremiumMockupColors.Green,
+                unfocusedBorderColor = PremiumMockupColors.Border,
+                focusedLabelColor = PremiumMockupColors.Green,
+                unfocusedLabelColor = PremiumMockupColors.Muted,
+                focusedPlaceholderColor = PremiumMockupColors.MutedDark,
+                unfocusedPlaceholderColor = PremiumMockupColors.MutedDark,
+                cursorColor = PremiumMockupColors.Green
+            )
         )
         Spacer(Modifier.height(18.dp))
         PremiumPrimaryButton(
@@ -420,6 +455,14 @@ private fun ReceivingMethodDetailsStep(
             }
         )
     }
+}
+
+private fun toggleVisualReceivingMethod(
+    current: Set<ReceivingMethodType>,
+    method: ReceivingMethodType
+): Set<ReceivingMethodType> {
+    val next = if (method in current) current - method else current + method
+    return next.ifEmpty { setOf(method) }
 }
 
 @Composable
@@ -546,31 +589,18 @@ private fun OnboardingShell(
     onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(Modifier.fillMaxSize().background(PremiumColors.Background).statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().height(76.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircleAction(Icons.Default.ArrowBack, onClick = onBack)
-            Text(
-                title,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-                color = PremiumColors.SoftText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 3.sp
-            )
-            Box(Modifier.size(34.dp).background(PremiumColors.Surface, CircleShape), contentAlignment = Alignment.Center) {
-                Text("MP", color = PremiumColors.Cyan, fontSize = 9.sp, fontWeight = FontWeight.Black)
-            }
-        }
+    MockupScreenBackground(Modifier.fillMaxSize()) {
         Column(
             Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
+                .padding(horizontal = PremiumMockupSpacing.ScreenHorizontal)
+                .padding(top = 20.dp, bottom = 24.dp),
         ) {
+            MockupTopBar(title = title, stepLabel = "${PremiumOnboardingStep.requiredSequence.indexOf(step) + 1}/6", onBack = onBack)
             ProgressLine(step)
-            Spacer(Modifier.height(36.dp))
+            Spacer(Modifier.height(24.dp))
             content()
         }
     }
@@ -579,16 +609,7 @@ private fun OnboardingShell(
 @Composable
 private fun ProgressLine(step: PremiumOnboardingStep) {
     val activeIndex = PremiumOnboardingStep.requiredSequence.indexOf(step)
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-        PremiumOnboardingStep.requiredSequence.forEachIndexed { index, _ ->
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(4.dp)
-                    .background(if (index <= activeIndex) PremiumColors.Navy else Color.White.copy(alpha = 0.75f), CircleShape)
-            )
-        }
-    }
+    MockupStepIndicator(currentStep = activeIndex + 1, totalSteps = PremiumOnboardingStep.requiredSequence.size)
 }
 
 @Composable
@@ -662,18 +683,16 @@ private fun BankSearchStatusCard(
         )
     }
 
-    PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumToneColors.Selected.background) {
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 24.dp, border = toneColor.copy(alpha = 0.48f)) {
         Row(
-            Modifier.padding(20.dp),
+            Modifier.padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Box(Modifier.size(54.dp).background(PremiumColors.Mint, RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = toneColor, modifier = Modifier.size(28.dp))
-            }
+            MockupIconTile(icon, tint = toneColor, size = 54.dp)
             Column(Modifier.weight(1f)) {
-                Text(title, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
-                Text(body, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(title, color = PremiumMockupColors.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                Text(body, color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -725,7 +744,7 @@ private fun BankRow(
         detected -> "Détectée"
         else -> "Non détectée"
     }
-    PremiumCard(
+    MockupGlassCard(
         Modifier
             .fillMaxWidth()
             .padding(bottom = 14.dp)
@@ -733,24 +752,22 @@ private fun BankRow(
                 if (selectable && detected) onToggleBank(bank.bankProfileId)
             },
         radius = 28.dp,
-        color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
+        border = if (selected) PremiumMockupColors.Green else PremiumMockupColors.BorderSoft
     ) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(50.dp).background(PremiumColors.Mint, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
-                Text(bank.displayName.take(2), color = PremiumColors.Teal, fontWeight = FontWeight.Black, fontSize = 13.sp)
-            }
+            PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 50.dp)
             Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                Text(bank.displayName, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
-                Text(label, color = if (detected) PremiumColors.Teal else PremiumColors.SoftText, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text(bank.displayName, color = PremiumMockupColors.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                Text(label, color = if (detected) PremiumMockupColors.Green else PremiumMockupColors.MutedDark, fontSize = 12.sp, fontWeight = FontWeight.Black)
             }
             Box(
                 Modifier
                     .size(30.dp)
-                    .background(if (selected) PremiumColors.Teal else Color.Transparent, RoundedCornerShape(11.dp))
-                    .border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, RoundedCornerShape(11.dp)),
+                    .background(if (selected) PremiumMockupColors.Green else Color.Transparent, RoundedCornerShape(11.dp))
+                    .border(2.dp, if (selected) PremiumMockupColors.Green else PremiumMockupColors.Border, RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                if (selected) Icon(Icons.Default.VerifiedUser, null, tint = PremiumColors.Surface, modifier = Modifier.size(18.dp))
+                if (selected) Icon(Icons.Default.VerifiedUser, null, tint = PremiumMockupColors.Black, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -764,27 +781,25 @@ private fun ReceivingMethodOption(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    PremiumCard(
+    MockupGlassCard(
         Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap(onClick),
         radius = 30.dp,
-        color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
+        border = if (selected) PremiumMockupColors.Green else PremiumMockupColors.BorderSoft
     ) {
         Row(Modifier.padding(22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            Box(Modifier.size(62.dp).background(PremiumColors.Mint, RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(30.dp))
-            }
+            MockupIconTile(icon, size = 62.dp)
             Column(Modifier.weight(1f)) {
-                Text(title, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                Text(subtitle, color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
+                Text(title, color = PremiumMockupColors.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                Text(subtitle, color = PremiumMockupColors.Muted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
             }
             Box(
                 Modifier
                     .size(30.dp)
-                    .background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape)
-                    .border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape),
+                    .background(if (selected) PremiumMockupColors.Green else Color.Transparent, CircleShape)
+                    .border(2.dp, if (selected) PremiumMockupColors.Green else PremiumMockupColors.Border, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                if (selected) Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Surface, modifier = Modifier.size(18.dp))
+                if (selected) Icon(Icons.Default.CheckCircle, null, tint = PremiumMockupColors.Black, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -792,15 +807,10 @@ private fun ReceivingMethodOption(
 
 @Composable
 private fun ChecklistCard(state: PremiumOnboardingSessionState) {
-    PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 24.dp) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             state.configurationChecklistLabels().forEach { label ->
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Box(Modifier.size(32.dp).background(PremiumColors.Mint, CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Teal, modifier = Modifier.size(20.dp))
-                    }
-                    Text(label, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                }
+                MockupBulletLine(label)
             }
         }
     }
@@ -809,15 +819,15 @@ private fun ChecklistCard(state: PremiumOnboardingSessionState) {
 @Composable
 private fun ResultCard(state: PremiumOnboardingSessionState) {
     val ready = state.configurationTestReady
-    PremiumCard(
+    MockupGlassCard(
         Modifier.fillMaxWidth(),
         radius = 28.dp,
-        color = if (ready) Color(0xFFE8FAF8) else Color(0xFFFFF8EA)
+        border = if (ready) PremiumMockupColors.Green else PremiumMockupColors.Warning
     ) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 if (ready) "Webhook prêt" else "Action nécessaire",
-                color = if (ready) PremiumColors.Success else Color(0xFFB45309),
+                color = if (ready) PremiumMockupColors.Green else PremiumMockupColors.Warning,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Black
             )
@@ -827,7 +837,7 @@ private fun ResultCard(state: PremiumOnboardingSessionState) {
                 } else {
                     state.configurationResultLabels().filterNot { it == "Réussi" }.joinToString(" · ")
                 },
-                color = PremiumColors.Muted,
+                color = PremiumMockupColors.Muted,
                 fontSize = 14.sp,
                 lineHeight = 21.sp,
                 fontWeight = FontWeight.SemiBold
@@ -838,10 +848,10 @@ private fun ResultCard(state: PremiumOnboardingSessionState) {
 
 @Composable
 private fun OnboardingInfoCard(title: String, body: String) {
-    PremiumCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), radius = 30.dp) {
+    MockupGlassCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), radius = 24.dp) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
-            Text(body, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(title, color = PremiumMockupColors.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+            Text(body, color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

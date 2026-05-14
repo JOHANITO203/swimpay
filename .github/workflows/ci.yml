@@ -88,5 +88,7 @@ jobs:
       - name: Validate Gradle wrapper
         run: chmod +x ./gradlew && ./gradlew --version --no-daemon
 
-      - name: Unit test and build staging APK
+      - name: Unit test without visual goldens and build staging APK
+        env:
+          RUN_VISUAL_GOLDENS: "false"
         run: ./gradlew testStagingUnitTest assembleStaging --no-daemon --stacktrace

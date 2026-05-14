@@ -258,8 +258,16 @@ fun PremiumMerchantApp(
                         reviewsState = withContext(Dispatchers.IO) { activeRuntime.loadReviews() }
                         notifyNewActionRequiredReviews(reviewsState)
                     }
-                    PremiumMainTab.Orders -> ordersState = withContext(Dispatchers.IO) { activeRuntime.loadOrders() }
-                    PremiumMainTab.Menu -> {
+                    PremiumMainTab.Receivers -> {
+                        receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                        receiverHealthState = withContext(Dispatchers.IO) {
+                            activeRuntime.loadReceiverHealth(notificationAccessEnabled)
+                        }
+                    }
+                    PremiumMainTab.Integrations -> {
+                        connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.loadConnectedSite() }
+                    }
+                    PremiumMainTab.Settings -> {
                         connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.loadConnectedSite() }
                         configurationState = withContext(Dispatchers.IO) {
                             activeRuntime.runConfigurationTest(currentConfigurationChecklist())
@@ -498,8 +506,13 @@ fun PremiumMerchantApp(
                             route = PremiumNavigation.openReview(it)
                         }
                     )
-                    PremiumMainTab.Orders -> PremiumOrdersScreen(ordersState)
-                    PremiumMainTab.Menu -> PremiumSettingsScreen(
+                    PremiumMainTab.Receivers -> PremiumReceivingMethodsStateScreen(receivingMethodsState)
+                    PremiumMainTab.Integrations -> PremiumIntegrationsListStateScreen(
+                        state = connectedSiteState,
+                        onOpenIntegration = { route = PremiumNavigation.openConnectedSite() },
+                        onAddSite = { route = PremiumNavigation.openConnectedSite() }
+                    )
+                    PremiumMainTab.Settings -> PremiumSettingsScreen(
                         connectedSite = connectedSiteState,
                         configuration = configurationState,
                         merchantProfile = currentMerchantProfileUiState(),
@@ -510,7 +523,7 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.ReceivingMethods -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -572,7 +585,7 @@ fun PremiumMerchantApp(
             state = connectedSiteState,
             onBack = {
                 activeRuntime.clearDeveloperShowOnceExport()
-                route = PremiumRoute.Main(PremiumMainTab.Menu)
+                route = PremiumRoute.Main(PremiumMainTab.Settings)
             },
             onCreateApiKey = {
                 connectedSiteState = PremiumScreenState.loading()
@@ -622,16 +635,16 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.ConfigurationTest -> PremiumConfigurationStateScreen(configurationState) {
-            route = PremiumRoute.Main(PremiumMainTab.Menu)
+            route = PremiumRoute.Main(PremiumMainTab.Settings)
         }
         PremiumRoute.ConfirmationMode -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumConfirmationModeScreen() }
         )
         PremiumRoute.Security -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -703,13 +716,13 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.HelpCenter -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumHelpCenterScreen(language = merchantSettings.language) }
         )
         PremiumRoute.SupportContact -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -734,7 +747,7 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.Language -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -745,7 +758,7 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.Appearance -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -756,19 +769,19 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.Banks -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumBanksStateScreen(banksState) }
         )
         PremiumRoute.ReceiverHealth -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumReceiverHealthStateScreen(receiverHealthState, onOpenNotificationSettings) }
         )
         is PremiumRoute.OrderDetail -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Orders,
+            selectedTab = PremiumMainTab.Home,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {

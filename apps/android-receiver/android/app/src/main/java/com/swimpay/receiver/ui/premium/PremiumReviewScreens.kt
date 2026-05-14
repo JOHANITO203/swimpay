@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -59,33 +59,43 @@ private fun PremiumReviewsContent(
 ) {
     var selectedFilter by remember { mutableStateOf(PremiumReviewFilter.TO_CONFIRM) }
     val filteredItems = selectedFilter.applyTo(state.items)
-    LazyColumn(
-        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
-    ) {
-        item {
-            Text("Paiements à confirmer", color = PremiumColors.Ink, fontSize = 23.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
-            Text("Confirmez uniquement les paiements que vous reconnaissez.", color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 20.sp)
-            Spacer(Modifier.height(28.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                PremiumReviewFilter.entries.forEach { filter ->
-                    FilterLabel(
-                        filter.icon,
-                        "${filter.label} ${filter.countFor(state.items)}",
-                        selectedFilter == filter,
-                        Modifier.weight(filter.weight)
-                    ) {
-                        selectedFilter = filter
+
+    MockupScreenBackground(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier
+                .fillMaxHeight()
+                .statusBarsPadding()
+                .padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+            contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                ReviewQueueHeader(
+                    state = state,
+                    selectedFilter = selectedFilter,
+                    visibleCount = filteredItems.size
+                )
+            }
+            item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    PremiumReviewFilter.entries.forEach { filter ->
+                        ReviewFilterPill(
+                            filter = filter,
+                            count = filter.countFor(state.items),
+                            selected = selectedFilter == filter,
+                            modifier = Modifier.weight(filter.weight)
+                        ) {
+                            selectedFilter = filter
+                        }
                     }
                 }
             }
+            items(filteredItems) { item -> ReviewPaymentCard(item, onOpenReview) }
         }
-        items(filteredItems) { item -> ReviewPaymentCard(item, onOpenReview) }
     }
 }
 
@@ -95,9 +105,9 @@ private enum class PremiumReviewFilter(
     val weight: Float
 ) {
     ALL("Tout", Icons.Default.GridView, 1f),
-    TO_CONFIRM("À confirmer", Icons.Default.Sync, 1.35f),
-    CONFIRMED("Confirmés", Icons.Default.CheckCircle, 1f),
-    REJECTED("Rejetés", Icons.Default.WarningAmber, 1f);
+    TO_CONFIRM("A verifier", Icons.Default.Sync, 1.35f),
+    CONFIRMED("Confirmes", Icons.Default.CheckCircle, 1f),
+    REJECTED("Rejetes", Icons.Default.WarningAmber, 1f);
 
     fun applyTo(items: List<PremiumReviewUiItem>): List<PremiumReviewUiItem> {
         return when (this) {
@@ -113,32 +123,36 @@ private enum class PremiumReviewFilter(
 
 @Composable
 private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>) {
-    LazyColumn(
-        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
-    ) {
-        item {
-            Text("Paiements à confirmer", color = PremiumColors.Ink, fontSize = 23.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
-            Text("Confirmez uniquement les paiements que vous reconnaissez.", color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 20.sp)
+    MockupScreenBackground(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier
+                .fillMaxHeight()
+                .statusBarsPadding()
+                .padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+            contentPadding = PaddingValues(top = 14.dp, bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            item {
+                Text("Revue des paiements", color = PremiumMockupColors.White, fontSize = 25.sp, lineHeight = 30.sp, fontWeight = FontWeight.Black)
+                Text("Les signaux restent en validation manuelle.", color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 20.sp)
+            }
+            item { PremiumStatePanel(state) }
         }
-        item { PremiumStatePanel(state) }
     }
 }
 
 @Composable
 private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) -> Unit) {
-    Surface(
+    val tone = reviewTone(item.reviewStatus)
+    MockupGlassCard(
         Modifier
             .fillMaxWidth()
-            .height(128.dp)
-            .border(1.dp, PremiumColors.Line, RoundedCornerShape(34.dp))
+            .height(154.dp)
             .premiumTap { onOpenReview(item.reviewId) },
-        color = if (item.valid) Color(0xFFF3F7FC) else PremiumColors.Surface,
-        shadowElevation = 4.dp,
-        shape = RoundedCornerShape(34.dp)
+        radius = 26.dp,
+        border = tone.border
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+        Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PremiumBankLogo(
                     bankProfileId = reviewBankProfileId(item.bank),
@@ -146,17 +160,26 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
                     size = 46.dp
                 )
                 Column(Modifier.weight(1f).padding(start = 18.dp)) {
-                    Text(item.amount, color = PremiumColors.Ink, fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Black)
-                    Text(item.bank, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(item.amount, color = PremiumMockupColors.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Black)
+                    Text(item.bank, color = PremiumMockupColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
-                StatusChip(item.status, if (item.valid) StatusTone.Success else StatusTone.Warning)
+                MockupStatusPill(item.status, tone.color)
             }
-            Spacer(Modifier.height(12.dp))
-            Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line))
-            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                StatusChip(item.helper, StatusTone.Neutral)
+            Spacer(Modifier.height(14.dp))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumMockupColors.BorderSoft))
+            Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                MockupStatusPill(item.helper, PremiumMockupColors.MutedDark)
                 Spacer(Modifier.width(10.dp))
-                Text(item.reasons.firstOrNull() ?: "Validation requise", color = PremiumColors.Ink, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    item.reasons.firstOrNull() ?: "Validation manuelle requise",
+                    color = PremiumMockupColors.Muted,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -202,94 +225,44 @@ private fun PremiumPaymentDetailContent(
     onRejectSignal: () -> Unit,
     onRejectOrder: () -> Unit
 ) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(PremiumColors.Background)
-            .statusBarsPadding()
-            .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
-    ) {
-        Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircleAction(Icons.Default.ArrowBack, onClick = onBack)
-            Text("Vérifier ce paiement", modifier = Modifier.weight(1f), color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
-        }
-        LazyColumn(
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+    MockupScreenBackground(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
         ) {
-            item {
-                PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = Color(0xFFFFFBF4)) {
-                    Row(Modifier.padding(22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                        Box(Modifier.size(62.dp).background(Color(0xFFFFF2DD), RoundedCornerShape(24.dp)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.WarningAmber, null, tint = PremiumColors.Warning)
-                        }
-                        Column {
-                            Text(state.statusTitle, color = PremiumColors.Warning, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                            Text(state.statusText, color = PremiumColors.Muted, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
+            Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircleAction(Icons.Default.ArrowBack, onClick = onBack)
+                Text("Verifier ce paiement", modifier = Modifier.weight(1f), color = PremiumMockupColors.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
             }
-            item {
-                PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
-                    Column(Modifier.padding(horizontal = 22.dp, vertical = 12.dp)) {
-                        state.summaryRows.forEach { row ->
-                            Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(row.first, modifier = Modifier.weight(1f), color = PremiumColors.Muted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                                Text(row.second, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                            }
-                        }
-                    }
-                }
-            }
-            item {
-                Text("Pourquoi ce paiement est à vérifier ?", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                PremiumCard(Modifier.fillMaxWidth().padding(top = 12.dp), radius = 24.dp) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        state.reasons.forEach {
-                            Text(it, color = PremiumColors.Muted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
-            }
-            if (state.timeline.isNotEmpty()) {
+            LazyColumn(
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item { ReviewDetailHero(state) }
+                item { ReviewSummaryGlass(state.summaryRows) }
                 item {
-                    Text("Parcours", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                    PremiumCard(Modifier.fillMaxWidth().padding(top = 12.dp), radius = 24.dp) {
-                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            state.timeline.forEachIndexed { index, label ->
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Box(Modifier.size(24.dp).background(PremiumColors.IconTile, RoundedCornerShape(9.dp)), contentAlignment = Alignment.Center) {
-                                        Text("${index + 1}", color = PremiumColors.Blue, fontSize = 11.sp, fontWeight = FontWeight.Black)
-                                    }
-                                    Text(label, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                                }
-                            }
-                        }
+                    Text("Pourquoi verifier ?", color = PremiumMockupColors.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    ReasonsGlass(state.reasons, Modifier.padding(top = 10.dp))
+                }
+                if (state.timeline.isNotEmpty()) {
+                    item {
+                        Text("Parcours", color = PremiumMockupColors.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                        TimelineGlass(state.timeline, Modifier.padding(top = 10.dp))
                     }
                 }
-            }
-            if (state.actionMessage.isNotBlank()) {
-                item {
-                    StatusChip(state.actionMessage, StatusTone.Info)
+                if (state.actionMessage.isNotBlank()) {
+                    item { MockupStatusPill(state.actionMessage, PremiumMockupColors.Cyan) }
                 }
-            }
-            if (state.actionsEnabled) {
-                item {
-                    PremiumPrimaryButton("Confirmer reçu", onClick = onConfirmReceived)
-                    Spacer(Modifier.height(12.dp))
-                    PremiumPrimaryButton("Rejeter le signal", onClick = onRejectSignal)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "Rejeter la commande",
-                        color = PremiumColors.Danger,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 16.sp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .premiumTap(onRejectOrder)
-                            .padding(vertical = 12.dp)
-                    )
+                if (state.actionsEnabled) {
+                    item {
+                        ReviewActionPanel(
+                            onConfirmReceived = onConfirmReceived,
+                            onRejectSignal = onRejectSignal,
+                            onRejectOrder = onRejectOrder
+                        )
+                    }
                 }
             }
         }
@@ -301,35 +274,222 @@ private fun PremiumPaymentDetailState(
     state: PremiumScreenState<PremiumPaymentDetailUiState>,
     onBack: () -> Unit
 ) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(PremiumColors.Background)
-            .statusBarsPadding()
-            .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
-    ) {
-        Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircleAction(Icons.Default.ArrowBack, onClick = onBack)
-            Text("Vérifier ce paiement", modifier = Modifier.weight(1f), color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
-        }
-        LazyColumn(
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+    MockupScreenBackground(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
         ) {
-            item { PremiumStatePanel(state) }
+            Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircleAction(Icons.Default.ArrowBack, onClick = onBack)
+                Text("Verifier ce paiement", modifier = Modifier.weight(1f), color = PremiumMockupColors.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+            }
+            LazyColumn(
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
+                item { PremiumStatePanel(state) }
+            }
         }
     }
 }
 
 @Composable
-private fun FilterLabel(icon: ImageVector, text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
-    Column(modifier.premiumTap(onClick), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            Icon(icon, null, tint = if (selected) PremiumColors.Blue else Color(0xFF555555), modifier = Modifier.size(17.dp))
-            Text(text, color = if (selected) PremiumColors.Blue else Color(0xFF444444), fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1)
+private fun ReviewQueueHeader(
+    state: PremiumReviewsUiState,
+    selectedFilter: PremiumReviewFilter,
+    visibleCount: Int
+) {
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 28.dp, border = PremiumMockupColors.Border) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                MockupIconTile(Icons.Default.WarningAmber, tint = PremiumMockupColors.Warning, size = 58.dp)
+                Column(Modifier.weight(1f)) {
+                    Text("Revue des paiements", color = PremiumMockupColors.White, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.Black)
+                    Text("Validation manuelle a partir de signaux operationnels.", color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ReviewHeaderMetric(selectedFilter.label, "$visibleCount visibles", Modifier.weight(1f))
+                ReviewHeaderMetric("File", "${state.items.size} signaux", Modifier.weight(1f))
+                ReviewHeaderMetric("Mode", if (state.usesLiveApi) "Live" else "Mockup", Modifier.weight(1f))
+            }
+            if (state.safeMessage.isNotBlank()) {
+                Text(state.safeMessage, color = PremiumMockupColors.MutedDark, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
-        if (selected) {
-            Box(Modifier.padding(top = 20.dp).fillMaxWidth().height(2.dp).background(PremiumColors.Blue))
+    }
+}
+
+@Composable
+private fun ReviewHeaderMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .background(PremiumMockupColors.Field, RoundedCornerShape(16.dp))
+            .border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Text(label, color = PremiumMockupColors.MutedDark, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(value, color = PremiumMockupColors.White, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun ReviewFilterPill(
+    filter: PremiumReviewFilter,
+    count: Int,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
+    val border = if (selected) PremiumMockupColors.Green else PremiumMockupColors.BorderSoft
+    val tint = if (selected) PremiumMockupColors.Green else PremiumMockupColors.MutedDark
+    Row(
+        modifier
+            .height(44.dp)
+            .background(if (selected) PremiumMockupColors.Highlight else PremiumMockupColors.Field, RoundedCornerShape(18.dp))
+            .border(1.dp, border, RoundedCornerShape(18.dp))
+            .premiumTap(onClick)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(filter.icon, null, tint = tint, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(5.dp))
+        Text("$count", color = PremiumMockupColors.White, fontSize = 12.sp, fontWeight = FontWeight.Black)
+    }
+}
+
+@Composable
+private fun ReviewDetailHero(state: PremiumPaymentDetailUiState) {
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 30.dp, border = PremiumMockupColors.Warning.copy(alpha = 0.55f)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                MockupIconTile(Icons.Default.WarningAmber, tint = PremiumMockupColors.Warning, size = 60.dp)
+                Column(Modifier.weight(1f)) {
+                    Text(state.statusTitle, color = PremiumMockupColors.Warning, fontSize = 25.sp, lineHeight = 29.sp, fontWeight = FontWeight.Black)
+                    Text(state.statusText, color = PremiumMockupColors.Muted, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(PremiumMockupColors.Field, RoundedCornerShape(16.dp))
+                    .border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 14.dp, vertical = 11.dp)
+            ) {
+                Text(
+                    "Aucune validation automatique : le commercant decide apres revue.",
+                    color = PremiumMockupColors.Muted,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun ReviewSummaryGlass(rows: List<Pair<String, String>>) {
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 26.dp) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
+            rows.forEachIndexed { index, row ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(row.first, modifier = Modifier.weight(1f), color = PremiumMockupColors.MutedDark, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(row.second, color = PremiumMockupColors.White, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (index != rows.lastIndex) {
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumMockupColors.BorderSoft))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReasonsGlass(reasons: List<String>, modifier: Modifier = Modifier) {
+    MockupGlassCard(modifier.fillMaxWidth(), radius = 24.dp) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            reasons.forEach {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(Modifier.size(8.dp).background(PremiumMockupColors.Warning, RoundedCornerShape(99.dp)))
+                    Text(it, color = PremiumMockupColors.Muted, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimelineGlass(timeline: List<String>, modifier: Modifier = Modifier) {
+    MockupGlassCard(modifier.fillMaxWidth(), radius = 24.dp) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            timeline.forEachIndexed { index, label ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        Modifier
+                            .size(28.dp)
+                            .background(PremiumMockupColors.Highlight, RoundedCornerShape(11.dp))
+                            .border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(11.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("${index + 1}", color = PremiumMockupColors.Green, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                    }
+                    Text(label, color = PremiumMockupColors.White, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewActionPanel(
+    onConfirmReceived: () -> Unit,
+    onRejectSignal: () -> Unit,
+    onRejectOrder: () -> Unit
+) {
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 26.dp, border = PremiumMockupColors.Border) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            MockupPrimaryButton("Confirmer recu", onClick = onConfirmReceived)
+            MockupOutlineButton("Rejeter le signal", onClick = onRejectSignal)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .border(1.5.dp, PremiumMockupColors.Danger, RoundedCornerShape(PremiumMockupRadius.Button))
+                    .premiumTap(onRejectOrder),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Rejeter la commande", color = PremiumMockupColors.Danger, fontWeight = FontWeight.Black, fontSize = 16.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MockupStatusPill(text: String, color: Color) {
+    Box(
+        Modifier
+            .background(color.copy(alpha = 0.15f), RoundedCornerShape(999.dp))
+            .border(1.dp, color.copy(alpha = 0.4f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = color, fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private data class ReviewTone(
+    val color: Color,
+    val border: Color
+)
+
+private fun reviewTone(status: ReviewUiStatus): ReviewTone {
+    return when (status) {
+        ReviewUiStatus.CONFIRMED -> ReviewTone(PremiumMockupColors.Green, PremiumMockupColors.Green.copy(alpha = 0.5f))
+        ReviewUiStatus.REJECTED -> ReviewTone(PremiumMockupColors.Danger, PremiumMockupColors.Danger.copy(alpha = 0.45f))
+        ReviewUiStatus.TO_CONFIRM -> ReviewTone(PremiumMockupColors.Warning, PremiumMockupColors.Warning.copy(alpha = 0.45f))
     }
 }

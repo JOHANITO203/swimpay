@@ -186,3 +186,21 @@ Full local validation passed. Next action is staging redeploy and external-app s
 2. Run real-device checkout where sender bank list comes from backend payload and verify logos for all configured banks.
 3. Add observability counter for deterministic fallback hits (/merchant/return-unavailable).
 
+## Android Merchant Design Polish Mode (2026-05-14)
+
+1. Continue `01_login_welcome` visual refactor using `design/VISUAL_GATE_POLICY.md`.
+2. Use `npm run android:compile`, `npm run android:test`, and APK assemble commands for normal polish validation.
+3. Use `npm run android:visual:record` / `npm run android:visual:verify` only when freezing an approved visual state.
+
+## Android Merchant Mockup Polish - Next Action (2026-05-14)
+
+1. Use `01_login_welcome` as the new token baseline for onboarding polish.
+2. Continue with `02_notification_access`: reuse `MockupScreenBackground`, `MockupGlassCard`, `MockupPrimaryButton`, `MockupOutlineButton` and the compact status/banner patterns.
+3. Keep `npm run android:test` as the default validation and run `npm run android:visual:record` only for explicit visual captures.
+4. Do not claim pixel-perfect; continue screen-by-screen visual diff against the reference PNGs.
+
+## 2026-05-14T01:45:00+03:00 - Next Action
+Continue with screen-by-screen manual visual polish, starting with `02_notification_access` and `03_bank_selection`, using the newly recorded numbered Roborazzi screenshots as the comparison target. Build a dedicated production `PremiumIntegrationsListStateScreen` before claiming screen 11 structure is close to the reference.
+
+## 2026-05-14T12:00:00+03:00 - Next Action
+Continue structural matching screen-by-screen without Roborazzi gates. Start with `07_dashboard_home`: rebuild the dashboard hero, chart, metric cards, quick actions and recent activity to match the reference PNG now that the global shell and bottom nav no longer use the old visual language.

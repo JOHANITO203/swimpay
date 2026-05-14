@@ -26,8 +26,9 @@ No checkout-only bank logo variants are allowed. If a bank has no registered off
 
 | Mark | Source path | Current use | Status |
 | --- | --- | --- | --- |
-| Android Compose `SwimPayLogo` | `apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt` | Android login/onboarding brand | Runtime-used and now renders the official launcher asset through `painterResource(R.mipmap.ic_launcher)`. |
+| Android Compose `SwimPayLogo` | `apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt` | Android login/onboarding brand | Runtime-used Compose brand built from the registered `SwimPayWavesMark`; no new resource logo file. |
 | Android Compose `SwimPayWavesMark` | `apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt` | Small top chrome / compact brand mark | Runtime-used vector-style mark for small UI spaces. Must remain token-driven and must not become a new resource logo file. |
+| Android Compose `MockupLogo` | `apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ui/premium/PremiumMockupTokens.kt` | Android merchant mockup-mirror login/onboarding brand | Runtime-used only for the premium mockup mirror surfaces. It reuses Compose drawing and must not become an unregistered resource logo file. |
 | Web dashboard `SwimPayBrand` | `apps/web/src/ui/Components.ts` | Merchant/admin web brand | Secondary/frozen dashboard surface. Do not expand without product decision. |
 | Checkout inline SwimPay mark | `apps/web/src/screens/CheckoutScreen.ts` | Buyer checkout brand | Runtime-used inline SVG aligned to Android compact waves mark and Android premium color tokens. It is not a new asset file and must not become a new resource logo file. |
 

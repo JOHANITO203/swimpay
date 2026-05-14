@@ -35,9 +35,10 @@ enum class PremiumMainTab(
     val accessibilityLabel: String
 ) {
     Home("Accueil", "Accueil"),
-    Reviews("Revue", "Revue"),
-    Orders("Ventes", "Ventes"),
-    Menu("MENU", "Menu")
+    Reviews("En attente", "En attente"),
+    Receivers("Récepteurs", "Récepteurs"),
+    Integrations("Intégrations", "Intégrations"),
+    Settings("Paramètres", "Paramètres")
 }
 
 object PremiumNavigation {

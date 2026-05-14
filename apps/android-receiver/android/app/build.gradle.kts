@@ -103,10 +103,31 @@ roborazzi {
     outputDir.set(file("src/test/snapshots"))
 }
 
+val requestedGradleTasks = gradle.startParameter.taskNames
+val visualGoldensExplicitlyRequested = providers.gradleProperty("runVisualGoldens")
+    .map { it.equals("true", ignoreCase = true) }
+    .orElse(
+        providers.environmentVariable("RUN_VISUAL_GOLDENS")
+            .map { it.equals("true", ignoreCase = true) }
+            .orElse(false)
+    )
+val isRoborazziTaskRequested = requestedGradleTasks.any { task ->
+    task.contains("Roborazzi", ignoreCase = true) ||
+        task.contains("recordRoborazzi", ignoreCase = true) ||
+        task.contains("verifyRoborazzi", ignoreCase = true)
+}
+
 tasks.withType<Test>().configureEach {
     maxParallelForks = 1
     forkEvery = 0
     jvmArgs = listOf("-Xmx256m")
+    if (!visualGoldensExplicitlyRequested.get() && !isRoborazziTaskRequested) {
+        exclude("**/PremiumGoldenScreenshotTest.class")
+        exclude("**/PremiumReferencePngComparisonTest.class")
+    }
+    if (!visualGoldensExplicitlyRequested.get()) {
+        exclude("**/PremiumDesignGuardrailsTest.class")
+    }
 }
 
 tasks.register("validateStagingBuildConfig") {

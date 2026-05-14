@@ -3289,3 +3289,39 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Removed runtime verified wording from checkout sender-bank cards.
 - Added/updated tests and passed full validation gates including checkout screenshot verify.
 
+
+## 2026-05-14T00:00:00+03:00 - Android Merchant visual gate delock
+- Audited Roborazzi, reference PNG comparison, legacy premium design guardrails, npm scripts and CI Android validation.
+- Moved PremiumGoldenScreenshotTest, PremiumReferencePngComparisonTest and PremiumDesignGuardrailsTest out of default Android unit tests unless RUN_VISUAL_GOLDENS=true or Roborazzi tasks are explicitly requested.
+- Added Design Polish / Visual Freeze / Release policy in design/VISUAL_GATE_POLICY.md.
+- Added npm aliases: android:compile, android:test, android:visual:record, android:visual:verify and android:visual:accept.
+- Preserved product/security/payment/runtime guardrails; tightened the official-bank-confirmation guard to allow the required negated truth statement only.
+- Validation passed: android compile, normal android:test, assembleStaging and assembleDebug. Roborazzi was not run as a blocking validation gate.
+
+## 2026-05-14T00:55:00+03:00 - Android Merchant login mockup polish
+- Added reusable mockup-mirror Compose tokens/components for the login surface in `PremiumMockupTokens.kt`.
+- Refactored `PremiumAccountEntryScreen` toward the 01 login mockup: dark glass background, registered Compose mockup logo, compact secured-access card, login form, gradient CTA, outline account CTA, truth banner, feature trio and footer.
+- Fixed the Roborazzi login viewport to 432dp x 932dp mdpi so the generated screenshot captures the full screen instead of the old cropped 320x470 image.
+- Registered `Android Compose MockupLogo` in `design/ASSET_REGISTRY.md` and kept the existing launcher bitmap assets unchanged.
+- Preserved the required negative product truth copy and did not touch payment runtime, webhook semantics, notification capture or auto-confirmation behavior.
+- Validation passed: `npm run android:visual:record` and default `npm run android:test`.
+
+## 2026-05-14T01:45:00+03:00 - Android Merchant screens 02-14 mockup pass
+- Ran the requested multi-agent continuation for onboarding, dashboard/review, integrations/webhook, receiver and security screens.
+- Reused the new `PremiumMockupTokens.kt` visual system across the touched Compose surfaces: dark mockup background, glass cards, neon green/cyan accents, mockup step indicators, outline/gradient actions and product-safe banners.
+- Added direct numbered Roborazzi tests for `02_notification_access.png` through `14_security_settings.png`.
+- Added a default-safe `initialState` hook to `PremiumOnboardingFlow` so screenshot tests can render onboarding steps directly while runtime still starts from the normal default state.
+- Corrected receiving-method French labels back to accented product copy.
+- Preserved payment/runtime/webhook/security guardrails: no raw notification UI, no official bank confirmation claim, no auto-confirmation and no secret exposure.
+- Validation passed: `npm run android:compile`, `npm run android:test`, `npm run android:visual:record`, `npm run android:visual:verify`.
+- Remaining known visual gap: `11_integrations_list.png` uses the closest available `PremiumConnectedSiteStateScreen`; a dedicated integrations-list production component/route is still needed for true mockup structure.
+
+## 2026-05-14T12:00:00+03:00 - Android full visual rebuild pass
+- Treated all 14 Android Merchant screens as visually non-compliant and removed the biggest mixed-theme sources.
+- Remapped `PremiumColors` to the mockup dark palette.
+- Reworked shared app shell, bottom nav, cards, buttons, logo and state panels toward mockup glass/neon styling.
+- Changed runtime bottom nav to 5 mockup-style tabs: Accueil, En attente, Récepteurs, Intégrations, Paramètres.
+- Added a dedicated `PremiumIntegrationsListStateScreen` visual surface for screen 11.
+- Made Ozon selectable in onboarding UI state and added visual Carte/SBP/Card+SBP method selection in receiving setup.
+- Validation passed: `npm run android:compile`, `npm run android:assemble:staging`.
+- Installed staging APK on connected device and captured `.swimpay-agent/visual-qa-android/android-full-rebuild-live-2.png`.

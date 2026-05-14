@@ -570,4 +570,27 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 - [x] checkout_state_renderer_alignment - status: completed_validated - source: .swimpay-agent/CHECKOUT_STATE_RENDERER_FIX_REPORT.md
 - [x] deterministic_return_fallback - status: completed_validated - source: .swimpay-agent/CHECKOUT_RETURN_FALLBACK_FIX_REPORT.md
 - [x] contradiction_fix_closeout - status: completed_validated - source: .swimpay-agent/CHECKOUT_CONTRADICTION_FIX_CLOSEOUT.md
+- [x] `android_visual_gate_delock` - status: completed_validated - source: `.swimpay-agent/VISUAL_GATE_DELOCK_IMPLEMENTATION_REPORT.md`
+- [ ] `android_login_welcome_mockup_polish` - status: pending_design_polish_mode - source: `design/reference/android-merchant/01_login_welcome.png`
 
+## Android Merchant Mockup Polish (2026-05-14)
+
+- [x] `android_login_welcome_mockup_polish` - status: completed_first_visual_pass_capture_recorded - source: `design/reference/android-merchant/01_login_welcome.png`
+- [ ] `android_notification_access_mockup_polish` - status: next - source: `design/reference/android-merchant/02_notification_access.png`
+- [ ] `android_bank_selection_mockup_polish` - status: pending - source: `design/reference/android-merchant/03_bank_selection.png`
+
+## 2026-05-14T01:45:00+03:00 - Android Merchant Visual Queue
+- [done] Add direct numbered Roborazzi captures for 02-14.
+- [done] Record and verify numbered captures after the mockup-token pass.
+- [next] Polish 02 notification access against the PNG reference.
+- [next] Polish 03 bank selection spacing/logo/card density against the PNG reference.
+- [blocked] 11 integrations list needs a dedicated production list screen instead of reusing integration detail.
+
+## 2026-05-14T12:00:00+03:00 - Android visual rebuild queue
+- [done] Neutralize old light `PremiumColors` palette.
+- [done] Replace shared shell/card/button/bottom-nav output with mockup visual language.
+- [done] Add 5-tab bottom nav and dedicated integrations list visual surface.
+- [done] Ozon selectable in onboarding UI state.
+- [done] Carte/SBP/Card+SBP visual selection in receiving setup.
+- [next] Rebuild `07_dashboard_home` structure against mockup 07.
+- [next] Rebuild `02_notification_access` and `03_bank_selection` exact layout.

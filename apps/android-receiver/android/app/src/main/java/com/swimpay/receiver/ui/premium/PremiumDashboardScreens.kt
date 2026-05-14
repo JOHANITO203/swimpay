@@ -86,96 +86,104 @@ fun PremiumDashboardScreen(
 
 @Composable
 private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
-    LazyColumn(
-        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        item {
-            Text("Accueil", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            PremiumCard(Modifier.fillMaxWidth().padding(top = 12.dp), radius = 32.dp, color = PremiumColors.PanelTint) {
-                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(state.readyTitle, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                    Text(state.readyText, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
-                    StatusChip("SwimPay Intelligence", StatusTone.Info, Modifier.padding(top = 4.dp))
-                }
-            }
-        }
-        if (state.backendNoticeTitle.isNotBlank()) {
+    MockupScreenBackground(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+            contentPadding = PaddingValues(bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
             item {
-                PremiumStatePanel(
-                    PremiumScreenState.offline<Unit>(
-                        title = state.backendNoticeTitle,
-                        message = state.backendNoticeText.ifBlank {
-                            "Les données seront synchronisées dès que SwimPay sera connecté."
-                        },
-                        actionLabel = null
-                    )
+                MockupSectionHeader(
+                    title = "Accueil",
+                    body = "Vue operationnelle des signaux, des revues et de l'etat local du Receiver."
                 )
+                MockupGlassCard(Modifier.fillMaxWidth().padding(top = 12.dp), radius = 28.dp) {
+                    Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(state.readyTitle, color = PremiumMockupColors.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                        Text(state.readyText, color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
+                        MockupSignalPill("SwimPay Intelligence", Modifier.padding(top = 4.dp))
+                    }
+                }
             }
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                state.localSystemCards.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        row.forEach { card ->
-                            LocalSystemCard(card, Modifier.weight(1f))
+            if (state.backendNoticeTitle.isNotBlank()) {
+                item {
+                    MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp, border = PremiumMockupColors.Warning.copy(alpha = 0.45f)) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(state.backendNoticeTitle, color = PremiumMockupColors.Warning, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                            Text(
+                                state.backendNoticeText.ifBlank { "Les donnees seront synchronisees des que SwimPay sera connecte." },
+                                color = PremiumMockupColors.Muted,
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
-        }
-        item { MonthlyActivityCard(state.mainMetricLabel, state.monthlyAmount, state.usesLiveApi) }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                state.metrics.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        row.forEach { metric ->
-                            BentoMetricCard(metric.value, metric.label, metric.trend, metricIcon(metric.label), Modifier.weight(1f))
-                        }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-        item {
-            PremiumCard(Modifier.fillMaxWidth().height(260.dp), radius = 70.dp) {
-                Column(Modifier.padding(30.dp)) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("PAIEMENTS CONFIRMÉS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
-                    }
-                    Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        ChartMetricPill("Montant", state.chartConfirmedAmountLabel, Modifier.weight(1f))
-                        ChartMetricPill("Taux", state.chartConfirmationRateLabel, Modifier.weight(1f))
-                    }
-                    TrendLine(
-                        modifier = Modifier.fillMaxWidth().height(126.dp).padding(top = 20.dp),
-                        primaryValues = state.chartPoints.map { it.confirmedAmountMinor.toFloat() },
-                        secondaryValues = state.chartPoints.map { it.confirmationRate.toFloat() }
-                    )
-                }
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("HISTORIQUE RÉCENT", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                Text("Voir tout", color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 13.sp)
-            }
-        }
-        if (state.recentPayments.isEmpty()) {
             item {
-                PremiumStatePanel(
-                    PremiumScreenState.empty<Unit>(
-                        title = state.emptyPaymentsTitle,
-                        message = "Les paiements reconnus par SwimPay apparaîtront ici.",
-                        actionLabel = state.emptyPaymentsAction
-                    )
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    state.localSystemCards.chunked(2).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            row.forEach { card ->
+                                LocalSystemCard(card, Modifier.weight(1f))
+                            }
+                            if (row.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
             }
-        } else {
-            items(state.recentPayments) {
-                RecentPaymentRow(it.amount, it.detail)
+            item { MonthlyActivityCard(state.mainMetricLabel, state.monthlyAmount, state.usesLiveApi) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    state.metrics.chunked(2).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            row.forEach { metric ->
+                                BentoMetricCard(metric.value, metric.label, metric.trend, metricIcon(metric.label), Modifier.weight(1f))
+                            }
+                            if (row.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+            item {
+                MockupGlassCard(Modifier.fillMaxWidth().height(260.dp), radius = 32.dp) {
+                    Column(Modifier.padding(24.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("SIGNAUX RECENTS", color = PremiumMockupColors.White, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                        }
+                        Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ChartMetricPill("Montant", state.chartConfirmedAmountLabel, Modifier.weight(1f))
+                            ChartMetricPill("Taux", state.chartConfirmationRateLabel, Modifier.weight(1f))
+                        }
+                        TrendLine(
+                            modifier = Modifier.fillMaxWidth().height(126.dp).padding(top = 20.dp),
+                            primaryValues = state.chartPoints.map { it.confirmedAmountMinor.toFloat() },
+                            secondaryValues = state.chartPoints.map { it.confirmationRate.toFloat() }
+                        )
+                    }
+                }
+            }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("HISTORIQUE RECENT", color = PremiumMockupColors.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    Text("Voir tout", color = PremiumMockupColors.Cyan, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                }
+            }
+            if (state.recentPayments.isEmpty()) {
+                item {
+                    MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(state.emptyPaymentsTitle, color = PremiumMockupColors.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                            Text("Les signaux reconnus par SwimPay apparaitront ici.", color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 18.sp)
+                            state.emptyPaymentsAction?.let { Text(it, color = PremiumMockupColors.Cyan, fontSize = 12.sp, fontWeight = FontWeight.Black) }
+                        }
+                    }
+                }
+            } else {
+                items(state.recentPayments) {
+                    RecentPaymentRow(it.amount, it.detail)
+                }
             }
         }
     }
@@ -184,30 +192,25 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
 @Composable
 private fun ChartMetricPill(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(
-        modifier.height(52.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(20.dp)),
-        color = PremiumColors.SurfaceAlt,
+        modifier.height(52.dp).border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(18.dp)),
+        color = PremiumMockupColors.Field,
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(Modifier.padding(horizontal = 14.dp), verticalArrangement = Arrangement.Center) {
-            Text(label, color = PremiumColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Black)
-            Text(value, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Text(label, color = PremiumMockupColors.MutedDark, fontSize = 10.sp, fontWeight = FontWeight.Black)
+            Text(value, color = PremiumMockupColors.White, fontSize = 15.sp, fontWeight = FontWeight.Black)
         }
     }
 }
 
 @Composable
 private fun LocalSystemCard(state: PremiumLocalSystemUiState, modifier: Modifier) {
-    Surface(
-        modifier.height(96.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(28.dp)),
-        color = PremiumColors.Surface,
-        shadowElevation = PremiumElevation.Card,
-        shape = RoundedCornerShape(28.dp)
-    ) {
+    MockupGlassCard(modifier.height(96.dp), radius = 22.dp) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.Center) {
-            Text(state.title, color = PremiumColors.Muted, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Black)
-            Text(state.value, color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 4.dp))
+            Text(state.title, color = PremiumMockupColors.MutedDark, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Black)
+            Text(state.value, color = PremiumMockupColors.White, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 4.dp))
             if (state.helper.isNotBlank()) {
-                Text(state.helper, color = PremiumColors.Muted, fontSize = 10.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(state.helper, color = PremiumMockupColors.Muted, fontSize = 10.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -226,20 +229,18 @@ private fun PremiumStateList(state: PremiumScreenState<*>) {
 
 @Composable
 private fun MonthlyActivityCard(label: String, amount: String, usesLiveApi: Boolean) {
-    PremiumGradientPanel(Modifier.fillMaxWidth().height(214.dp), radius = 42.dp) {
+    MockupGlassCard(Modifier.fillMaxWidth().height(214.dp), radius = 30.dp, border = PremiumMockupColors.Cyan.copy(alpha = 0.38f)) {
         Column(Modifier.padding(26.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Box(Modifier.size(46.dp).background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(25.dp))
-                }
-                Text("Aujourd'hui", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black, fontSize = 13.sp)
+                MockupIconTile(Icons.Default.AccountBalanceWallet, size = 46.dp, tint = PremiumMockupColors.Cyan)
+                Text("Aujourd'hui", color = PremiumMockupColors.Muted, fontWeight = FontWeight.Black, fontSize = 13.sp)
             }
             Spacer(Modifier.height(24.dp))
-            Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 15.sp, lineHeight = 19.sp, fontWeight = FontWeight.Black)
+            Text(label, color = PremiumMockupColors.Muted, fontSize = 15.sp, lineHeight = 19.sp, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(6.dp))
-            Text(amount, color = Color.White, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black)
+            Text(amount, color = PremiumMockupColors.White, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(18.dp))
-            StatusChip(if (usesLiveApi) "Live" else "En attente", if (usesLiveApi) StatusTone.Success else StatusTone.Neutral)
+            MockupSignalPill(if (usesLiveApi) "Live" else "En attente")
         }
     }
 }
@@ -258,22 +259,15 @@ private fun metricIcon(label: String): ImageVector {
 
 @Composable
 private fun BentoMetricCard(value: String, label: String, trend: String, icon: ImageVector, modifier: Modifier) {
-    Surface(
-        modifier.height(142.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(34.dp)),
-        color = PremiumColors.Surface,
-        shadowElevation = 6.dp,
-        shape = RoundedCornerShape(34.dp)
-    ) {
+    MockupGlassCard(modifier.height(142.dp), radius = 24.dp) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.Center) {
-            Box(Modifier.size(38.dp).background(PremiumColors.IconTile, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = PremiumColors.Blue, modifier = Modifier.size(21.dp))
-            }
+            MockupIconTile(icon, size = 38.dp, tint = PremiumMockupColors.Cyan)
             Spacer(Modifier.height(8.dp))
-            Text(value, color = PremiumColors.Ink, fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black)
+            Text(value, color = PremiumMockupColors.White, fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black)
             Row {
-                Text(label, color = PremiumColors.Ink, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                Text(label, color = PremiumMockupColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Black)
                 if (trend.isNotBlank()) {
-                    Text(" $trend", color = PremiumColors.Success, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                    Text(" $trend", color = PremiumMockupColors.Green, fontSize = 11.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -282,20 +276,38 @@ private fun BentoMetricCard(value: String, label: String, trend: String, icon: I
 
 @Composable
 private fun RecentPaymentRow(amount: String, detail: String) {
-    Surface(
-        Modifier.fillMaxWidth().height(88.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(32.dp)),
-        color = PremiumColors.Surface,
-        shadowElevation = PremiumElevation.Card,
-        shape = RoundedCornerShape(32.dp)
-    ) {
+    MockupGlassCard(Modifier.fillMaxWidth().height(88.dp), radius = 24.dp) {
         Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(18.dp)).border(1.dp, PremiumColors.Line, RoundedCornerShape(18.dp)))
+            MockupIconTile(Icons.Default.Visibility, size = 48.dp, tint = PremiumMockupColors.Cyan)
             Column(Modifier.weight(1f).padding(start = 18.dp)) {
-                Text(amount, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Text(detail, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(amount, color = PremiumMockupColors.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                Text(detail, color = PremiumMockupColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
-            Chevron()
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumMockupColors.MutedDark)
         }
+    }
+}
+
+@Composable
+private fun MockupSectionHeader(title: String, body: String? = null) {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text(title, color = PremiumMockupColors.White, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.Black)
+        body?.let {
+            Text(it, color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun MockupSignalPill(text: String, modifier: Modifier = Modifier, danger: Boolean = false) {
+    val foreground = if (danger) PremiumMockupColors.Danger else PremiumMockupColors.Green
+    Box(
+        modifier
+            .background(foreground.copy(alpha = 0.13f), RoundedCornerShape(PremiumMockupRadius.Pill))
+            .border(1.dp, foreground.copy(alpha = 0.28f), RoundedCornerShape(PremiumMockupRadius.Pill))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(text, color = foreground, fontSize = 11.sp, fontWeight = FontWeight.Black)
     }
 }
 
@@ -425,53 +437,63 @@ fun PremiumSettingsScreen(
     onNavigate: (PremiumRoute) -> Unit = {}
 ) {
     val copy = PremiumLocalizedCopy.forLanguage(language)
-    LazyColumn(
-        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 22.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(18.dp)
-    ) {
-        item {
-            Spacer(Modifier.height(22.dp))
-            Box(Modifier.size(108.dp).background(PremiumColors.Blue, CircleShape), contentAlignment = Alignment.Center) {
-                Text(merchantProfile.initials, color = PremiumColors.Surface, fontSize = 31.sp, fontWeight = FontWeight.Black)
+    MockupScreenBackground(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+            contentPadding = PaddingValues(bottom = 22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            item {
+                Spacer(Modifier.height(22.dp))
+                Box(
+                    Modifier
+                        .size(108.dp)
+                        .background(PremiumMockupColors.Highlight, CircleShape)
+                        .border(1.dp, PremiumMockupColors.Cyan.copy(alpha = 0.35f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(merchantProfile.initials, color = PremiumMockupColors.White, fontSize = 31.sp, fontWeight = FontWeight.Black)
+                }
+                Text(copy.terminalTitle, color = PremiumMockupColors.White, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 12.dp))
+                Text(merchantProfile.displayName, color = PremiumMockupColors.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(merchantProfile.statusLabel, color = PremiumMockupColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(14.dp))
+                MockupTruthBanner(Modifier.fillMaxWidth())
+                Spacer(Modifier.height(10.dp))
             }
-            Text(copy.terminalTitle, color = PremiumColors.Ink, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 12.dp))
-            Text(merchantProfile.displayName, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Text(merchantProfile.statusLabel, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(24.dp))
-        }
-        item { PremiumConnectedSiteSummary(connectedSite) }
-        item { PremiumConfigurationSummary(configuration) }
-        item {
-            SettingsGroup(copy.paymentsGroup, listOf(
-                PremiumSettingsRow(Icons.Default.AccountBalance, copy.banks) { onNavigate(PremiumNavigation.openBanks()) },
-                PremiumSettingsRow(Icons.Default.CreditCard, copy.receivingMethods) { onNavigate(PremiumNavigation.openReceivingMethods()) },
-                PremiumSettingsRow(Icons.Default.CheckCircle, copy.confirmationMode) { onNavigate(PremiumNavigation.openConfirmationMode()) }
-            ))
-        }
-        item {
-            SettingsGroup(copy.businessGroup, listOf(
-                PremiumSettingsRow(Icons.Default.Link, copy.developerIntegration) { onNavigate(PremiumNavigation.openConnectedSite()) },
-                PremiumSettingsRow(Icons.Default.ShoppingCart, copy.sales) { onNavigate(PremiumRoute.Main(PremiumMainTab.Orders)) },
-                PremiumSettingsRow(Icons.Default.PhoneAndroid, copy.notifications) { onNavigate(PremiumNavigation.openReceiverHealth()) }
-            ))
-        }
-        item {
-            SettingsGroup(copy.applicationGroup, listOf(
-                PremiumSettingsRow(Icons.Default.Palette, copy.appearance) { onNavigate(PremiumNavigation.openAppearance()) },
-                PremiumSettingsRow(Icons.Default.Language, copy.language) { onNavigate(PremiumNavigation.openLanguage()) },
-                PremiumSettingsRow(Icons.Default.Security, copy.security) { onNavigate(PremiumNavigation.openSecurity()) }
-            ))
-        }
-        item {
-            SettingsGroup(copy.helpGroup, listOf(
-                PremiumSettingsRow(Icons.Default.Description, copy.support) { onNavigate(PremiumNavigation.openSupportContact()) },
-                PremiumSettingsRow(Icons.AutoMirrored.Filled.Help, copy.helpCenter) { onNavigate(PremiumNavigation.openHelpCenter()) }
-            ))
-        }
-        item {
-            Text("<-  ${copy.signOut}", color = PremiumColors.Danger, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp, modifier = Modifier.padding(vertical = 28.dp))
+            item { MockupSummaryCard("Integration developpeur", connectedSiteStatus(connectedSite), connectedSiteRows(connectedSite)) }
+            item { MockupSummaryCard("Configuration", configurationStatus(configuration), configurationRows(configuration)) }
+            item {
+                SettingsGroup(copy.paymentsGroup, listOf(
+                    PremiumSettingsRow(Icons.Default.AccountBalance, copy.banks) { onNavigate(PremiumNavigation.openBanks()) },
+                    PremiumSettingsRow(Icons.Default.CreditCard, copy.receivingMethods) { onNavigate(PremiumNavigation.openReceivingMethods()) },
+                    PremiumSettingsRow(Icons.Default.CheckCircle, copy.confirmationMode) { onNavigate(PremiumNavigation.openConfirmationMode()) }
+                ))
+            }
+            item {
+                SettingsGroup(copy.businessGroup, listOf(
+                    PremiumSettingsRow(Icons.Default.Link, copy.developerIntegration) { onNavigate(PremiumNavigation.openConnectedSite()) },
+                    PremiumSettingsRow(Icons.Default.ShoppingCart, copy.sales) { onNavigate(PremiumRoute.Main(PremiumMainTab.Receivers)) },
+                    PremiumSettingsRow(Icons.Default.PhoneAndroid, copy.notifications) { onNavigate(PremiumNavigation.openReceiverHealth()) }
+                ))
+            }
+            item {
+                SettingsGroup(copy.applicationGroup, listOf(
+                    PremiumSettingsRow(Icons.Default.Palette, copy.appearance) { onNavigate(PremiumNavigation.openAppearance()) },
+                    PremiumSettingsRow(Icons.Default.Language, copy.language) { onNavigate(PremiumNavigation.openLanguage()) },
+                    PremiumSettingsRow(Icons.Default.Security, copy.security) { onNavigate(PremiumNavigation.openSecurity()) }
+                ))
+            }
+            item {
+                SettingsGroup(copy.helpGroup, listOf(
+                    PremiumSettingsRow(Icons.Default.Description, copy.support) { onNavigate(PremiumNavigation.openSupportContact()) },
+                    PremiumSettingsRow(Icons.AutoMirrored.Filled.Help, copy.helpCenter) { onNavigate(PremiumNavigation.openHelpCenter()) }
+                ))
+            }
+            item {
+                Text("<-  ${copy.signOut}", color = PremiumMockupColors.Danger, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp, modifier = Modifier.padding(vertical = 28.dp))
+            }
         }
     }
 }
@@ -492,6 +514,20 @@ fun PremiumConnectedSiteSummary(state: PremiumScreenState<PremiumConnectedSiteUi
     }
 }
 
+private fun connectedSiteStatus(state: PremiumScreenState<PremiumConnectedSiteUiState>): String {
+    return when (state) {
+        is PremiumScreenState.Content -> state.value.statusTitle
+        else -> "A configurer"
+    }
+}
+
+private fun connectedSiteRows(state: PremiumScreenState<PremiumConnectedSiteUiState>): List<Pair<String, String>> {
+    return when (state) {
+        is PremiumScreenState.Content -> state.value.rows
+        else -> emptyList()
+    }
+}
+
 @Composable
 fun PremiumConfigurationSummary(state: PremiumScreenState<PremiumConfigurationUiState>) {
     when (state) {
@@ -503,6 +539,33 @@ fun PremiumConfigurationSummary(state: PremiumScreenState<PremiumConfigurationUi
             }
         }
         else -> PremiumStatePanel(state)
+    }
+}
+
+private fun configurationStatus(state: PremiumScreenState<PremiumConfigurationUiState>): String {
+    return when (state) {
+        is PremiumScreenState.Content -> state.value.outcomeTitle
+        else -> "En attente"
+    }
+}
+
+private fun configurationRows(state: PremiumScreenState<PremiumConfigurationUiState>): List<Pair<String, String>> {
+    return when (state) {
+        is PremiumScreenState.Content -> listOf("Etat" to state.value.outcomeText)
+        else -> emptyList()
+    }
+}
+
+@Composable
+private fun MockupSummaryCard(title: String, status: String, rows: List<Pair<String, String>>) {
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, color = PremiumMockupColors.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+            Text(status, color = PremiumMockupColors.Green, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            rows.take(3).forEach { row ->
+                Text("${row.first} - ${row.second}", color = PremiumMockupColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
     }
 }
 
@@ -532,115 +595,131 @@ fun PremiumReceivingMethodsStateScreen(
                     editLabel = ""
                 }
             }
-            LazyColumn(
-                Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-                contentPadding = PaddingValues(bottom = 22.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    Text("Moyens de réception", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    Text("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
-                    Text("Les informations complètes ne sont jamais envoyées dans les webhooks.", color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
-                }
-                item {
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ReceivingMethodActionButton(
-                            label = "Ajouter une carte",
-                            icon = Icons.Default.CreditCard,
-                            onClick = { draftType = ReceivingMethodType.CARD_TRANSFER }
+            MockupScreenBackground(Modifier.fillMaxSize()) {
+                LazyColumn(
+                    Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+                    contentPadding = PaddingValues(bottom = 22.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        MockupSectionHeader(
+                            title = "Moyens de reception",
+                            body = "Ajoutez les cartes ou numeros que vos clients utiliseront pour vous payer."
                         )
-                        ReceivingMethodActionButton(
-                            label = "Ajoutez téléphone SBP",
-                            sbpIcon = true,
-                            onClick = { draftType = ReceivingMethodType.PHONE_TRANSFER }
+                    Text(
+                        "Les informations complètes ne sont jamais envoyées dans les webhooks.",
+                            color = PremiumMockupColors.MutedDark,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = 10.dp)
                         )
                     }
-                }
-                if (draftType != null) {
                     item {
-                        PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp, color = PremiumColors.PanelTint) {
-                            Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                Text("Choisir la banque", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                                bankOptions.forEach { bank ->
-                                    val selected = bank.bankProfileId == selectedBankId
-                                    Row(Modifier.fillMaxWidth().premiumTap { selectedBankId = bank.bankProfileId }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Box(Modifier.size(26.dp).background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape).border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape))
-                                        PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 30.dp, modifier = Modifier.padding(start = 12.dp))
-                                        Text(bank.displayName, color = PremiumColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 10.dp))
-                                    }
-                                }
-                                OutlinedTextField(
-                                    value = identifierInput,
-                                    onValueChange = { identifierInput = it },
-                                    label = { Text("Identifiant utilisé seulement pour l'enregistrement") },
-                                    placeholder = { Text(if (draftType == ReceivingMethodType.CARD_TRANSFER) "Numéro de carte" else "Numéro de téléphone") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(18.dp)
-                                )
-                                PremiumPrimaryButton(
-                                    "Enregistrer",
-                                    enabled = identifierInput.isNotBlank(),
-                                    onClick = {
-                                        val submission = MerchantReceivingMethodDraft(
-                                            bankProfileId = selectedBankId,
-                                            type = draftType ?: ReceivingMethodType.CARD_TRANSFER,
-                                            rawIdentifierInput = identifierInput
-                                        ).toSubmission()
-                                        onSaveDraft(submission)
-                                    }
-                                )
-                            }
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            ReceivingMethodActionButton(
+                                label = "Ajouter une carte",
+                                icon = Icons.Default.CreditCard,
+                                onClick = { draftType = ReceivingMethodType.CARD_TRANSFER }
+                            )
+                            ReceivingMethodActionButton(
+                                label = "Ajoutez telephone SBP",
+                                sbpIcon = true,
+                                onClick = { draftType = ReceivingMethodType.PHONE_TRANSFER }
+                            )
                         }
                     }
-                }
-                editingMethod?.let { method ->
-                    item {
-                        PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp, color = PremiumColors.PanelTint) {
-                            Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                Text("Modifier le libellé", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                                Text(method.subtitle, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
-                                OutlinedTextField(
-                                    value = editLabel,
-                                    onValueChange = { editLabel = it },
-                                    label = { Text("Nom court") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(18.dp)
-                                )
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                                    PremiumOutlineButton("Annuler", modifier = Modifier.weight(1f)) {
-                                        editingMethod = null
-                                        editLabel = ""
+                    if (draftType != null) {
+                        item {
+                            MockupGlassCard(Modifier.fillMaxWidth(), radius = 24.dp) {
+                                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                    Text("Choisir la banque", color = PremiumMockupColors.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                                    bankOptions.forEach { bank ->
+                                        val selected = bank.bankProfileId == selectedBankId
+                                        Row(Modifier.fillMaxWidth().premiumTap { selectedBankId = bank.bankProfileId }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Box(Modifier.size(26.dp).background(if (selected) PremiumMockupColors.Green else Color.Transparent, CircleShape).border(2.dp, if (selected) PremiumMockupColors.Green else PremiumMockupColors.Border, CircleShape))
+                                            PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 30.dp, modifier = Modifier.padding(start = 12.dp))
+                                            Text(bank.displayName, color = PremiumMockupColors.White, fontSize = 14.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 10.dp))
+                                        }
                                     }
+                                    OutlinedTextField(
+                                        value = identifierInput,
+                                        onValueChange = { identifierInput = it },
+                                label = { Text("Identifiant utilisé seulement pour l'enregistrement") },
+                                placeholder = { Text(if (draftType == ReceivingMethodType.CARD_TRANSFER) "Numéro de carte" else "Numéro de téléphone") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(18.dp)
+                                    )
                                     PremiumPrimaryButton(
                                         "Enregistrer",
-                                        modifier = Modifier.weight(1f),
-                                        enabled = editLabel.isNotBlank()
-                                    ) {
-                                        onEditMethod(method.routeId, editLabel)
+                                        enabled = identifierInput.isNotBlank(),
+                                        onClick = {
+                                            val submission = MerchantReceivingMethodDraft(
+                                                bankProfileId = selectedBankId,
+                                                type = draftType ?: ReceivingMethodType.CARD_TRANSFER,
+                                                rawIdentifierInput = identifierInput
+                                            ).toSubmission()
+                                            onSaveDraft(submission)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    editingMethod?.let { method ->
+                        item {
+                            MockupGlassCard(Modifier.fillMaxWidth(), radius = 24.dp) {
+                                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                    Text("Modifier le libelle", color = PremiumMockupColors.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                                    Text(method.subtitle, color = PremiumMockupColors.Muted, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
+                                    OutlinedTextField(
+                                        value = editLabel,
+                                        onValueChange = { editLabel = it },
+                                        label = { Text("Nom court") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(18.dp)
+                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                                        PremiumOutlineButton("Annuler", modifier = Modifier.weight(1f)) {
+                                            editingMethod = null
+                                            editLabel = ""
+                                        }
+                                        PremiumPrimaryButton(
+                                            "Enregistrer",
+                                            modifier = Modifier.weight(1f),
+                                            enabled = editLabel.isNotBlank()
+                                        ) {
+                                            onEditMethod(method.routeId, editLabel)
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                if (state.value.items.isEmpty()) {
-                    item {
-                        PremiumStatePanel(PremiumScreenState.empty<Unit>("Aucun moyen de réception", "Ajoutez une carte ou un téléphone SBP pour commencer."))
+                    if (state.value.items.isEmpty()) {
+                        item {
+                            MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp) {
+                                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("Aucun moyen de reception", color = PremiumMockupColors.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                                    Text("Ajoutez une carte ou un telephone SBP pour commencer.", color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 18.sp)
+                                }
+                            }
+                        }
                     }
-                }
-                items(state.value.items) { method ->
-                    PremiumReceivingMethodRow(
-                        method = method,
-                        onEdit = {
-                            editingMethod = method
-                            editLabel = method.helper?.takeUnless { it.contains("SBP", ignoreCase = true) } ?: method.title
-                        },
-                        onDisable = { onDisableMethod(method.routeId) },
-                        onSetDefault = { onSetDefaultMethod(method.routeId) },
-                        onDelete = { onDeleteMethod(method.routeId) }
-                    )
+                    items(state.value.items) { method ->
+                        PremiumReceivingMethodRow(
+                            method = method,
+                            onEdit = {
+                                editingMethod = method
+                                editLabel = method.helper?.takeUnless { it.contains("SBP", ignoreCase = true) } ?: method.title
+                            },
+                            onDisable = { onDisableMethod(method.routeId) },
+                            onSetDefault = { onSetDefaultMethod(method.routeId) },
+                            onDelete = { onDeleteMethod(method.routeId) }
+                        )
+                    }
                 }
             }
         }
@@ -660,8 +739,8 @@ private fun ReceivingMethodActionButton(
             .fillMaxWidth()
             .height(76.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(PremiumColors.Surface, RoundedCornerShape(24.dp))
-            .border(1.dp, PremiumColors.Line, RoundedCornerShape(24.dp))
+            .background(PremiumMockupColors.Card, RoundedCornerShape(24.dp))
+            .border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(24.dp))
             .premiumTap(onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -669,18 +748,19 @@ private fun ReceivingMethodActionButton(
         Box(
             Modifier
                 .size(48.dp)
-                .background(PremiumColors.Mint, RoundedCornerShape(18.dp)),
+                .background(PremiumMockupColors.Green.copy(alpha = 0.14f), RoundedCornerShape(18.dp))
+                .border(1.dp, PremiumMockupColors.Green.copy(alpha = 0.24f), RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center
         ) {
             if (sbpIcon) {
-                Text("SBP", color = PremiumColors.Teal, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text("SBP", color = PremiumMockupColors.Green, fontSize = 12.sp, fontWeight = FontWeight.Black)
             } else if (icon != null) {
-                Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(25.dp))
+                Icon(icon, null, tint = PremiumMockupColors.Green, modifier = Modifier.size(25.dp))
             }
         }
         Text(
             label,
-            color = PremiumColors.Navy,
+            color = PremiumMockupColors.White,
             fontSize = 15.sp,
             lineHeight = 19.sp,
             fontWeight = FontWeight.Black,
@@ -691,7 +771,7 @@ private fun ReceivingMethodActionButton(
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
             null,
-            tint = PremiumColors.SoftText,
+            tint = PremiumMockupColors.MutedDark,
             modifier = Modifier.size(22.dp)
         )
     }
@@ -752,19 +832,19 @@ private fun PremiumReceivingMethodRow(
     onSetDefault: () -> Unit,
     onDelete: () -> Unit
 ) {
-    PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 24.dp) {
         Row(Modifier.padding(22.dp), verticalAlignment = Alignment.Top) {
             val bankProfileId = bankProfileIdFromDisplay(method.subtitle)
             if (bankProfileId != null) {
                 PremiumBankLogo(bankProfileId = bankProfileId, displayName = method.subtitle, size = 44.dp)
             }
             Column(Modifier.weight(1f).padding(start = if (bankProfileId != null) 14.dp else 0.dp)) {
-                Text(method.title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                Text(method.subtitle, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                Text(method.title, color = PremiumMockupColors.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text(method.subtitle, color = PremiumMockupColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
                 method.helper?.let {
-                    Text(it, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                    Text(it, color = PremiumMockupColors.MutedDark, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
                 }
-                StatusChip(method.status, if (method.enabled) StatusTone.Success else StatusTone.Neutral, Modifier.padding(top = 10.dp))
+                MockupSignalPill(method.status, Modifier.padding(top = 10.dp), danger = !method.enabled)
                 Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         ReceivingMethodMutationButton("Modifier", Icons.Default.Edit, Modifier.weight(1f), onEdit)
@@ -792,20 +872,20 @@ private fun ReceivingMethodMutationButton(
     onClick: () -> Unit,
     destructive: Boolean = false
 ) {
-    val foreground = if (destructive) PremiumColors.Danger else PremiumColors.Blue
+    val mockupForeground = if (destructive) PremiumMockupColors.Danger else PremiumMockupColors.Cyan
     Row(
         modifier
             .height(42.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(PremiumColors.SurfaceAlt, RoundedCornerShape(16.dp))
-            .border(1.dp, PremiumColors.Line, RoundedCornerShape(16.dp))
+            .background(PremiumMockupColors.Field, RoundedCornerShape(16.dp))
+            .border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(16.dp))
             .premiumTap(onClick)
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        Icon(icon, null, tint = foreground, modifier = Modifier.size(16.dp))
-        Text(label, color = foreground, fontWeight = FontWeight.Black, fontSize = 11.sp, modifier = Modifier.padding(start = 6.dp))
+        Icon(icon, null, tint = mockupForeground, modifier = Modifier.size(16.dp))
+        Text(label, color = mockupForeground, fontWeight = FontWeight.Black, fontSize = 11.sp, modifier = Modifier.padding(start = 6.dp))
     }
 }
 
@@ -849,36 +929,47 @@ fun PremiumReceiverHealthStateScreen(
     onOpenNotificationSettings: () -> Unit = {}
 ) {
     when (state) {
-        is PremiumScreenState.Content -> LazyColumn(
-            Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(bottom = 34.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Text("Téléphone Receiver", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text("Ce téléphone permet à SwimPay de détecter les paiements reçus.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
-            }
-            item {
-                PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
-                    Column(Modifier.padding(22.dp)) {
-                        Text(state.value.statusTitle, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 20.sp)
-                        Text(state.value.statusText, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 6.dp))
-                        if (state.value.rows.any { it.first == "Accès notifications" && it.second == "Action requise" }) {
-                            Text("RÉACTIVER L'ACCÈS", color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp).clickable { onOpenNotificationSettings() })
+        is PremiumScreenState.Content -> MockupScreenBackground(Modifier.fillMaxSize()) {
+            LazyColumn(
+                Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+                contentPadding = PaddingValues(bottom = 34.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    MockupSectionHeader(
+                        title = "Telephone Receiver",
+                        body = "Ce telephone capture, filtre, redacte et envoie les signaux autorises. Le backend decide."
+                    )
+                }
+                item {
+                    MockupGlassCard(Modifier.fillMaxWidth(), radius = 26.dp, border = PremiumMockupColors.Cyan.copy(alpha = 0.35f)) {
+                        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                MockupIconTile(Icons.Default.PhoneAndroid, size = 52.dp, tint = PremiumMockupColors.Cyan)
+                                Column(Modifier.weight(1f)) {
+                                    Text(state.value.statusTitle, color = PremiumMockupColors.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                                    Text(state.value.statusText, color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 6.dp))
+                                }
+                            }
+                            if (state.value.rows.any { it.first == "Accès notifications" && it.second == "Action requise" }) {
+                                MockupOutlineButton("Reactiver l'acces", onClick = onOpenNotificationSettings)
+                            }
                         }
                     }
                 }
-            }
-            items(state.value.rows) { row ->
-                PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
-                    Row(Modifier.padding(18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(row.first, modifier = Modifier.weight(1f), color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold)
-                        Text(row.second, color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Black)
+                items(state.value.rows) { row ->
+                    MockupGlassCard(Modifier.fillMaxWidth(), radius = 20.dp) {
+                        Row(Modifier.padding(18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(row.first, modifier = Modifier.weight(1f), color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold)
+                            Text(row.second, color = PremiumMockupColors.White, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Black)
+                        }
                     }
                 }
-            }
-            items(state.value.notices) {
-                Text(it, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp)
+                items(state.value.notices) {
+                    MockupGlassCard(Modifier.fillMaxWidth(), radius = 18.dp, border = PremiumMockupColors.BorderSoft) {
+                        Text(it, color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(16.dp))
+                    }
+                }
             }
         }
         else -> PremiumStateList(state)
@@ -925,34 +1016,36 @@ fun PremiumSecurityScreen(
     onTimeoutSelected: (PremiumLockTimeout) -> Unit = {},
     onGoogleAccountLink: () -> Unit = {}
 ) {
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 34.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Text("Securite", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text("Liez Google pour retrouver le compte, puis protegez l\'acces a l\'app.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
-        }
-        item { GoogleAccountLinkRow(googleAccountLinked, onGoogleAccountLink) }
-        item {
-            PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
-                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(42.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Security, null, tint = PremiumColors.Blue)
+    MockupScreenBackground(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+            contentPadding = PaddingValues(bottom = 34.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                MockupSectionHeader(
+                    title = "Securite",
+                    body = "Liez Google pour retrouver le compte, puis protegez l'acces a l'app."
+                )
+            }
+            item { GoogleAccountLinkRow(googleAccountLinked, onGoogleAccountLink) }
+            item {
+                MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp) {
+                    Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                        MockupIconTile(Icons.Default.Security, size = 42.dp, tint = PremiumMockupColors.Cyan)
+                        Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                            Text("Verrouillage de l'app", color = PremiumMockupColors.White, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+                            Text("La securite du telephone protege uniquement l'interface. Le Receiver continue en arriere-plan.", color = PremiumMockupColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                        Switch(checked = appLock.enabled, onCheckedChange = onToggleAppLock)
                     }
-                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                        Text("Verrouillage de l\'app", color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
-                        Text("La securite du telephone protege uniquement l\'interface. Le Receiver continue en arriere-plan.", color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    Switch(checked = appLock.enabled, onCheckedChange = onToggleAppLock)
                 }
             }
-        }
-        if (appLock.enabled) {
-            items(PremiumLockTimeout.entries) { timeout ->
-                SettingsChoiceRow(Icons.Default.Security, timeout.labelFr, if (timeout == appLock.timeout) "Delai actif" else "Utiliser ce delai", timeout == appLock.timeout) {
-                    onTimeoutSelected(timeout)
+            if (appLock.enabled) {
+                items(PremiumLockTimeout.entries) { timeout ->
+                    MockupSettingsChoiceRow(Icons.Default.Security, timeout.labelFr, if (timeout == appLock.timeout) "Delai actif" else "Utiliser ce delai", timeout == appLock.timeout) {
+                        onTimeoutSelected(timeout)
+                    }
                 }
             }
         }
@@ -960,19 +1053,19 @@ fun PremiumSecurityScreen(
 }
 @Composable
 private fun GoogleAccountLinkRow(linked: Boolean, onClick: () -> Unit) {
-    PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp) {
         Row(
             Modifier.fillMaxWidth().premiumTap(onClick).padding(18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(Modifier.size(42.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(42.dp).background(PremiumMockupColors.Field, RoundedCornerShape(15.dp)).border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
                 PremiumGoogleIcon()
             }
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                Text(if (linked) "Compte Google lie" else "Lier le compte Google", color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
-                Text("Sauvegarde ce profil marchand pour une future reconnexion avec Google.", color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (linked) "Compte Google lie" else "Lier le compte Google", color = PremiumMockupColors.White, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+                Text("Sauvegarde ce profil marchand pour une future reconnexion avec Google.", color = PremiumMockupColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
             }
-            StatusChip(if (linked) "Lie" else "Reconnexion", if (linked) StatusTone.Success else StatusTone.Info)
+            MockupSignalPill(if (linked) "Lie" else "Reconnexion")
         }
     }
 }
@@ -1148,6 +1241,132 @@ private fun SettingsChoiceRow(
 }
 
 @Composable
+private fun MockupSettingsChoiceRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp) {
+        Row(Modifier.fillMaxWidth().premiumTap(onClick).padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+            MockupIconTile(icon, size = 42.dp, tint = if (selected) PremiumMockupColors.Green else PremiumMockupColors.Cyan)
+            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                Text(title, color = PremiumMockupColors.White, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+                Text(subtitle, color = PremiumMockupColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+            }
+            MockupSignalPill(if (selected) "Actif" else "Choisir")
+        }
+    }
+}
+
+@Composable
+fun PremiumIntegrationsListStateScreen(
+    state: PremiumScreenState<PremiumConnectedSiteUiState>,
+    onOpenIntegration: () -> Unit = {},
+    onAddSite: () -> Unit = {}
+) {
+    MockupScreenBackground(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Sites / Intégrations",
+                        color = PremiumMockupColors.White,
+                        fontSize = 26.sp,
+                        lineHeight = 31.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.weight(1f)
+                    )
+                    CircleAction(Icons.Default.Link, onClick = onAddSite)
+                }
+                Text(
+                    "Gérez vos intégrations et le statut de livraison",
+                    color = PremiumMockupColors.Muted,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            item {
+                when (state) {
+                    is PremiumScreenState.Content -> IntegrationListPrimaryCard(state.value, onOpenIntegration)
+                    else -> PremiumStatePanel(state)
+                }
+            }
+            item {
+                Text("Statut d'intégration", color = PremiumMockupColors.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+            }
+            if (state is PremiumScreenState.Content) {
+                items(state.value.developerRows.ifEmpty { state.value.rows }) { row ->
+                    MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp) {
+                        Row(
+                            Modifier.padding(18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            MockupIconTile(Icons.Default.Link, size = 46.dp, tint = PremiumMockupColors.Green)
+                            Column(Modifier.weight(1f)) {
+                                Text(row.first, color = PremiumMockupColors.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                                Text(row.second, color = PremiumMockupColors.Muted, fontSize = 13.sp, lineHeight = 18.sp)
+                            }
+                            MockupStatusChip("OK")
+                        }
+                    }
+                }
+            }
+            item {
+                MockupInfoBanner(
+                    title = "Ressources développeur",
+                    body = "Guide d'intégration SDK et paramètres webhook.",
+                    icon = Icons.Default.Description,
+                    tone = PremiumMockupColors.Blue
+                )
+            }
+            item {
+                MockupPrimaryButton("Ajouter un site / application", onClick = onAddSite)
+            }
+        }
+    }
+}
+
+@Composable
+private fun IntegrationListPrimaryCard(
+    state: PremiumConnectedSiteUiState,
+    onOpenIntegration: () -> Unit
+) {
+    MockupGlassCard(
+        Modifier.fillMaxWidth().premiumTap(onOpenIntegration),
+        radius = 24.dp,
+        border = PremiumMockupColors.Border
+    ) {
+        Row(
+            Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            MockupIconTile(Icons.Default.Link, size = 58.dp, tint = PremiumMockupColors.Green)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    state.rows.firstOrNull()?.second ?: "merchant.example",
+                    color = PremiumMockupColors.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black
+                )
+                MockupStatusChip(if (state.usesLiveApi) "Actif" else "À configurer")
+                Text(state.statusText, color = PremiumMockupColors.Muted, fontSize = 12.sp, lineHeight = 17.sp)
+            }
+            Chevron()
+        }
+    }
+}
+
+@Composable
 fun PremiumConnectedSiteStateScreen(
     state: PremiumScreenState<PremiumConnectedSiteUiState>,
     onBack: () -> Unit,
@@ -1160,7 +1379,7 @@ fun PremiumConnectedSiteStateScreen(
     onAuthorizeCopy: (onAuthorized: () -> Unit) -> Unit = { onAuthorized -> onAuthorized() },
     onCopyDeveloperExport: (PremiumConnectedSiteUiState) -> String = { value -> value.developerExportText() }
 ) {
-    PremiumStandaloneStateScreen(title = "Integration developpeur", onBack = onBack) {
+    PremiumStandaloneStateScreen(title = "Sites / Intégrations", onBack = onBack) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             PremiumConnectedSiteSummary(state)
             if (state is PremiumScreenState.Content) {
@@ -1168,9 +1387,9 @@ fun PremiumConnectedSiteStateScreen(
                 var webhookUrl by remember(value.webhookUrl) { mutableStateOf(value.webhookUrl) }
                 val clipboardManager = LocalClipboardManager.current
 
-                PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
+                MockupGlassCard(Modifier.fillMaxWidth(), radius = 24.dp) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Contrat marchand", color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Text("Clés API et webhook", color = PremiumMockupColors.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
                         value.developerRows.forEach { row ->
                             DeveloperIntegrationValueRow(row.first, row.second)
                         }
@@ -1182,51 +1401,59 @@ fun PremiumConnectedSiteStateScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                            PremiumPrimaryButton(
+                            MockupPrimaryButton(
                                 "Enregistrer URL",
                                 modifier = Modifier.weight(1f),
                                 enabled = value.actionButtonsEnabled && webhookUrl.isNotBlank(),
                                 onClick = { onSaveWebhookUrl(webhookUrl) }
                             )
-                            PremiumOutlineButton(
+                            MockupOutlineButton(
                                 "Tester",
                                 modifier = Modifier.weight(1f),
                                 onClick = { if (value.actionButtonsEnabled) onTestWebhook() }
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                            PremiumBlueButton(
-                                "Creer cle API",
+                            MockupPrimaryButton(
+                                "Créer clé API",
                                 modifier = Modifier.weight(1f),
                                 onClick = { if (value.actionButtonsEnabled) onCreateApiKey() }
                             )
-                            PremiumOutlineButton(
-                                "Rotation cle",
+                            MockupOutlineButton(
+                                "Rotation clé",
                                 modifier = Modifier.weight(1f),
                                 onClick = { if (value.actionButtonsEnabled) onRotateApiKey() }
                             )
                         }
-                        PremiumOutlineButton(
+                        MockupOutlineButton(
                             "Rotation secret webhook",
                             onClick = { if (value.actionButtonsEnabled) onRotateWebhookSecret() }
                         )
-                        PremiumOutlineButton(
+                        MockupOutlineButton(
                             "Guide SDK (PDF)",
                             onClick = onOpenDeveloperGuide
                         )
                     }
                 }
 
-                PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp, color = PremiumColors.PanelTint) {
+                MockupInfoBanner(
+                    "Test webhook backend",
+                    "Le test vérifie uniquement que votre endpoint est joignable. Il ne déclenche aucune confirmation opérationnelle.",
+                    Icons.Default.Link,
+                    PremiumMockupColors.Blue,
+                    Modifier.fillMaxWidth()
+                )
+
+                MockupGlassCard(Modifier.fillMaxWidth(), radius = 24.dp, border = PremiumMockupColors.Blue.copy(alpha = 0.45f)) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("Export staging", color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                            Text("Export staging", color = PremiumMockupColors.White, fontSize = 16.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
                             Box(
                                 Modifier
                                     .size(38.dp)
                                     .clip(RoundedCornerShape(14.dp))
-                                    .background(PremiumColors.Surface, RoundedCornerShape(14.dp))
-                                    .border(1.dp, PremiumColors.Line, RoundedCornerShape(14.dp))
+                                    .background(PremiumMockupColors.Field, RoundedCornerShape(14.dp))
+                                    .border(1.dp, PremiumMockupColors.Border, RoundedCornerShape(14.dp))
                                     .premiumTap {
                                         onAuthorizeCopy {
                                             clipboardManager.setText(AnnotatedString(onCopyDeveloperExport(value)))
@@ -1234,18 +1461,18 @@ fun PremiumConnectedSiteStateScreen(
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.ContentCopy, contentDescription = "Copier", tint = PremiumColors.Blue, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Copier", tint = PremiumMockupColors.Blue, modifier = Modifier.size(18.dp))
                             }
                         }
                         Text(
                             "A placer dans l'environnement de l'app externe. Android et le navigateur ne recoivent pas de secret SDK.",
-                            color = PremiumColors.Muted,
+                            color = PremiumMockupColors.Muted,
                             fontSize = 12.sp,
                             lineHeight = 17.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         value.exportLines.forEach { line ->
-                            Text(line, color = PremiumColors.Navy, fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(line, color = PremiumMockupColors.Cyan, fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -1263,12 +1490,13 @@ private fun DeveloperIntegrationValueRow(
     Column(
         Modifier
             .fillMaxWidth()
-            .background(if (highlight) PremiumColors.Surface else PremiumColors.SurfaceAlt, RoundedCornerShape(16.dp))
+            .background(if (highlight) PremiumMockupColors.CardStrong else PremiumMockupColors.Field, RoundedCornerShape(16.dp))
+            .border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(16.dp))
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Text(label, color = PremiumColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Black)
-        Text(value.ifBlank { "A configurer" }, color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = PremiumMockupColors.MutedDark, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        Text(value.ifBlank { "À configurer" }, color = PremiumMockupColors.White, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -1288,7 +1516,7 @@ private fun PremiumStandaloneStateScreen(
     onBack: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    Box(Modifier.fillMaxSize().background(PremiumColors.Background)) {
+    MockupScreenBackground(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier
                 .fillMaxHeight()
@@ -1308,7 +1536,7 @@ private fun PremiumStandaloneStateScreen(
                     CircleAction(Icons.AutoMirrored.Filled.KeyboardArrowLeft, onClick = onBack)
                     Text(
                         title,
-                        color = PremiumColors.Ink,
+                        color = PremiumMockupColors.White,
                         fontSize = 23.sp,
                         lineHeight = 28.sp,
                         fontWeight = FontWeight.Black,
@@ -1330,8 +1558,8 @@ private data class PremiumSettingsRow(
 @Composable
 private fun SettingsGroup(title: String, rows: List<PremiumSettingsRow>) {
     Column(Modifier.fillMaxWidth()) {
-        Text(title, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.padding(start = 8.dp, bottom = 14.dp))
-        Surface(Modifier.fillMaxWidth().border(1.dp, PremiumColors.Line, RoundedCornerShape(58.dp)), color = PremiumColors.Surface, shape = RoundedCornerShape(58.dp)) {
+        Text(title, color = PremiumMockupColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.padding(start = 8.dp, bottom = 14.dp))
+        MockupGlassCard(Modifier.fillMaxWidth(), radius = 26.dp) {
             Column {
                 rows.forEachIndexed { index, row ->
                     val onClick = row.onClick
@@ -1341,18 +1569,15 @@ private fun SettingsGroup(title: String, rows: List<PremiumSettingsRow>) {
                         Modifier.fillMaxWidth().height(84.dp).padding(horizontal = 24.dp)
                     }
                     Row(rowModifier, verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(46.dp).background(PremiumColors.NeutralChip, RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
-                            Icon(row.icon, null, tint = PremiumColors.Muted)
-                        }
-                        Text(row.label, modifier = Modifier.weight(1f).padding(start = 28.dp), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                        MockupIconTile(row.icon, size = 46.dp, tint = PremiumMockupColors.Cyan)
+                        Text(row.label, modifier = Modifier.weight(1f).padding(start = 20.dp), color = PremiumMockupColors.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
                         if (row.onClick != null) {
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumColors.SoftText)
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumMockupColors.MutedDark)
                         }
                     }
-                    if (index < rows.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line))
+                    if (index < rows.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumMockupColors.BorderSoft))
                 }
             }
         }
     }
 }
-

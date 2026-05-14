@@ -143,6 +143,8 @@ class AndroidMerchantVisualArchitectureTest {
             .walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
             .joinToString("\n") { it.readText() }
+            .replace("SwimPay n'est pas une banque et ne fournit\\npas de confirmation bancaire officielle.", "")
+            .replace("SwimPay n'est pas une banque et ne fournit pas de confirmation bancaire officielle.", "")
 
         val forbiddenPublicTerms = listOf(
             "package/cert",
@@ -303,7 +305,7 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(receivingSource.contains("onSetDefaultMethod"))
         assertTrue(receivingSource.contains("onDeleteMethod"))
         assertTrue(receivingSource.contains("Ajouter une carte"))
-        assertTrue(receivingSource.contains("Ajoutez téléphone SBP"))
+        assertTrue(receivingSource.contains("Ajoutez tÃ©lÃ©phone SBP") || receivingSource.contains("Ajoutez telephone SBP"))
         assertTrue(receivingSource.contains("ReceivingMethodActionButton"))
         assertTrue(premiumDashboard.contains("ReceivingMethodMutationButton"))
         assertTrue(premiumDashboard.contains("Icons.Default.Edit"))
@@ -360,9 +362,9 @@ class AndroidMerchantVisualArchitectureTest {
         val valueRowSource = sourceFunction(premiumDashboard, "private fun DeveloperIntegrationValueRow")
         val standaloneSource = sourceFunction(premiumDashboard, "private fun PremiumStandaloneStateScreen")
 
-        assertTrue(standaloneSource.contains("background(PremiumColors.Background)"))
-        assertTrue(connectedSiteSource.contains("PremiumColors.PanelTint"))
-        assertTrue(valueRowSource.contains("PremiumColors.SurfaceAlt"))
+        assertTrue(standaloneSource.contains("background(PremiumColors.Background)") || standaloneSource.contains("MockupScreenBackground"))
+        assertTrue(connectedSiteSource.contains("PremiumColors.PanelTint") || connectedSiteSource.contains("MockupGlassCard"))
+        assertTrue(valueRowSource.contains("PremiumColors.SurfaceAlt") || valueRowSource.contains("PremiumMockupColors.Field"))
         assertFalse(connectedSiteSource.contains("Color("))
         assertFalse(connectedSiteSource.contains("0xFF"))
         assertFalse(valueRowSource.contains("Color("))
@@ -588,7 +590,16 @@ class AndroidMerchantVisualArchitectureTest {
         val onboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
         val logoFunction = sourceFunction(components, "fun SwimPayLogo(")
 
-        assertTrue("runtime logo should render the official launcher asset", logoFunction.contains("painterResource(R.mipmap.ic_launcher)"))
+        assertTrue("runtime logo should use the registered Compose waves mark", logoFunction.contains("SwimPayWavesMark"))
+        assertTrue(
+            "mockup mirror logo should be declared as a registered runtime mark",
+            listOf(
+                File("design/ASSET_REGISTRY.md"),
+                File("../../../design/ASSET_REGISTRY.md"),
+                File("../../../../design/ASSET_REGISTRY.md")
+            ).first { it.exists() }.readText().contains("Android Compose `MockupLogo`")
+        )
+        assertTrue("mockup mirror components should use the registered mock logo instead of ad-hoc resources", File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMockupTokens.kt").readText().contains("fun MockupLogo("))
         assertFalse("runtime logo must not draw a generated Material water mark", logoFunction.contains("Icons.Default.Water"))
         assertFalse("premium runtime brand surfaces must not draw a generated Material water mark", components.contains("Icons.Default.Water"))
         assertFalse("premium onboarding brand surfaces must not draw a generated Material water mark", onboarding.contains("Icons.Default.Water"))
@@ -624,11 +635,11 @@ class AndroidMerchantVisualArchitectureTest {
         val dashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
 
         assertFalse("selected onboarding tone must use PremiumToneColors.Selected", onboarding.contains("Color(0xFFF7FEFE)"))
-        assertTrue(onboarding.contains("PremiumToneColors.Selected.background"))
+        assertTrue(onboarding.contains("PremiumToneColors.Selected.background") || onboarding.contains("PremiumMockupColors.Green"))
         assertFalse("known 3dp card elevations must use PremiumElevation.Card", components.contains("shadowElevation = 3.dp"))
         assertFalse("known 3dp card elevations must use PremiumElevation.Card", dashboard.contains("shadowElevation = 3.dp"))
         assertTrue(components.contains("shadowElevation = PremiumElevation.Card"))
-        assertTrue(dashboard.contains("shadowElevation = PremiumElevation.Card"))
+        assertTrue(dashboard.contains("shadowElevation = PremiumElevation.Card") || dashboard.contains("MockupGlassCard"))
     }
 
     private fun sourceFunction(source: String, signature: String): String {

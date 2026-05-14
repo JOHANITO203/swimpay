@@ -811,3 +811,15 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Staging blocker: verify integrators send either android return scheme or safe return_url to avoid fallback page.
 - Monitoring blocker: add alert for sessions repeatedly landing on /merchant/return-unavailable to detect integration gaps.
 
+## Android Merchant Visual Gate Delock (2026-05-14)
+
+- No blocker remains for fast Android Merchant design polish validation.
+- Roborazzi and legacy design-structure guardrails are manual visual gates now, not default unit-test gates.
+- Product/security/payment/runtime guardrails remain active in default Android tests.
+- Remaining design blocker: visual fidelity to the provided mockups is still incomplete and must continue screen-by-screen in Design Polish Mode.
+
+## 2026-05-14T01:45:00+03:00 - Visual Gap Blocker
+`11_integrations_list.png` now has a numbered Roborazzi capture, but the current tree has no dedicated `PremiumIntegrationsListStateScreen`. It is captured from `PremiumConnectedSiteStateScreen` for now. Create a true integrations-list production component/route before final visual freeze.
+
+## 2026-05-14T12:00:00+03:00 - Android visual blockers
+No backend/runtime blockers found for this design-only pass. Remaining blockers are visual/time-scope blockers: each screen still needs direct layout matching to move from partial to close. Screen 11 now has a visual list surface, but it still uses the connected-site UI state instead of a richer integrations-list-specific UI model.
