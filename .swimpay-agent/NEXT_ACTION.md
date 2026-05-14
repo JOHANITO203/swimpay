@@ -204,3 +204,13 @@ Continue with screen-by-screen manual visual polish, starting with `02_notificat
 
 ## 2026-05-14T12:00:00+03:00 - Next Action
 Continue structural matching screen-by-screen without Roborazzi gates. Start with `07_dashboard_home`: rebuild the dashboard hero, chart, metric cards, quick actions and recent activity to match the reference PNG now that the global shell and bottom nav no longer use the old visual language.
+
+## 2026-05-14T12:45:00+03:00 - Next Action
+
+Use the new workflow docs for the next visual sprint:
+
+1. Activate Design Polish Mode by saying: `Design Polish Mode`.
+2. Activate Full Visual Rebuild Mode by saying: `Full Visual Rebuild Mode`.
+3. Continue with `07_dashboard_home`, then `02_notification_access` and `03_bank_selection`.
+4. Keep Roborazzi non-blocking until Visual Freeze Mode is explicitly requested.
+5. Do not change backend, API, database, payment runtime, webhook, receiver runtime, SDK or notification processing during design-only work.

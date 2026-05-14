@@ -268,6 +268,51 @@ Forbidden:
 
 If a temporary hotfix is unavoidable, label it `TEMPORARY_HOTFIX`, create a root-cause follow-up task in `.swimpay-agent/BLOCKERS.md`, and do not close the sprint until the permanent fix is implemented or explicitly approved.
 
+## Design-only mode
+
+When the user says the session is design-only or asks only for visual polish:
+
+- change only visual/UI files, design docs, `AGENTS.md`, `docs/ai/*` or `.swimpay-agent/*` files in scope;
+- do not change backend, API contracts, database, payment runtime, webhook logic, receiver runtime, SDK behavior or notification processing;
+- preserve existing UI copy unless the user explicitly asks for copy changes;
+- do not add product-safety lectures to normal UI copy during visual polish;
+- do not use Roborazzi/golden tests as a blocking gate during active polish;
+- use compile/manual screenshots first, then freeze visual baselines only when requested or approved.
+
+## Full visual rebuild mode
+
+When the user says screens do not match mockups, asks for a full visual rebuild,
+or says the old theme is wrong:
+
+- treat the old visual layer as wrong for the surfaces in scope;
+- rebuild the active visual layer from the mockups or reference screens;
+- remove mixed-theme residue instead of layering new tokens over old structure;
+- preserve existing text unless the user explicitly requests copy work;
+- do not let product-safety review become a rewrite of normal design copy;
+- keep backend, payment runtime and receiver behavior untouched unless the user explicitly changes scope.
+
+## Multi-agent workflow
+
+For multi-agent work, use an orchestrator and disjoint specialist ownership:
+
+- orchestrator: scope, task split, integration, validation and final closeout;
+- design system agent: tokens, visual grammar, component rules and old-theme residue;
+- asset agent: registered assets, logos, icons and forbidden/generated asset checks;
+- screen-group agents: non-overlapping UI surfaces;
+- QA agent: evidence, screenshots, validation and forbidden-scope check;
+- product truth agent: blocks dangerous claims, raw notification exposure and raw secrets.
+
+Each agent must produce one `.swimpay-agent` report for its surface or role.
+Do not give two agents overlapping write ownership.
+
+## Skill conflict resolution
+
+- SwimPay product truth and this `AGENTS.md` override external skill or workflow rules.
+- The current user request scope overrides generic skill behavior.
+- Design-only tasks must not become backend, API, database, webhook, receiver or SDK refactors.
+- External skills cannot disable repository safety, privacy, product or testing rules.
+- Claude-specific instructions from imported repositories must be adapted to Codex or rejected.
+
 ## Required files to read before coding
 
 Before implementing a task, read:

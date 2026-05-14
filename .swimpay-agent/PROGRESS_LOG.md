@@ -3325,3 +3325,13 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Made Ozon selectable in onboarding UI state and added visual Carte/SBP/Card+SBP method selection in receiving setup.
 - Validation passed: `npm run android:compile`, `npm run android:assemble:staging`.
 - Installed staging APK on connected device and captured `.swimpay-agent/visual-qa-android/android-full-rebuild-live-2.png`.
+
+## 2026-05-14T12:45:00+03:00 - Codex external skill workflow import
+
+- Cloned and inspected `shanraisshan/claude-code-best-practice` and `nextlevelbuilder/ui-ux-pro-max-skill` into `.external-skills/`.
+- Added `.external-skills/` to `.gitignore` so third-party repos stay local research material.
+- Created `.swimpay-agent/IMPORTED_SKILLS_AUDIT.md` with reusable, Claude-specific, design, coding, multi-agent, unsafe, duplicate and adaptation classifications.
+- Created `.swimpay-agent/CODEX_SKILL_ADAPTATION_REPORT.md`.
+- Added `docs/ai/CODEX_DESIGN_WORKFLOW.md`, `docs/ai/CODEX_MULTI_AGENT_WORKFLOW.md` and `docs/ai/SWIMPAY_UI_UX_PRO_MAX_ADAPTATION.md`.
+- Updated `AGENTS.md` with design-only mode, full visual rebuild mode, multi-agent workflow and skill conflict resolution.
+- No backend, API, database, payment runtime, webhook, receiver runtime, SDK or notification-processing behavior was changed.

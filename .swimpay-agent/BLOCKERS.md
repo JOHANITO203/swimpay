@@ -823,3 +823,10 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 
 ## 2026-05-14T12:00:00+03:00 - Android visual blockers
 No backend/runtime blockers found for this design-only pass. Remaining blockers are visual/time-scope blockers: each screen still needs direct layout matching to move from partial to close. Screen 11 now has a visual list surface, but it still uses the connected-site UI state instead of a richer integrations-list-specific UI model.
+
+## 2026-05-14T12:45:00+03:00 - Codex skill workflow import
+
+- No blocker introduced by the workflow/tooling integration.
+- External repositories were cloned into `.external-skills/` for local audit and are ignored by git.
+- No backend, API, database, payment runtime, webhook, receiver runtime, SDK or notification-processing files were changed.
+- Existing visual blocker remains: Android screens still need screen-by-screen mockup matching before Visual Freeze Mode.

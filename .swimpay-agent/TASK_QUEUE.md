@@ -594,3 +594,14 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 - [done] Carte/SBP/Card+SBP visual selection in receiving setup.
 - [next] Rebuild `07_dashboard_home` structure against mockup 07.
 - [next] Rebuild `02_notification_access` and `03_bank_selection` exact layout.
+
+## 2026-05-14T12:45:00+03:00 - Codex skill workflow import queue
+
+- [done] Clone external workflow repositories into `.external-skills/`.
+- [done] Ignore `.external-skills/` in git.
+- [done] Audit imported skills and workflows for SwimPay safety.
+- [done] Adapt useful rules into Codex-compatible SwimPay docs.
+- [done] Update `AGENTS.md` with concise operational sections.
+- [done] Create Codex design workflow, multi-agent workflow and UI/UX adaptation docs.
+- [next] Use Design Polish Mode for the next visual pass.
+- [next] Use Full Visual Rebuild Mode only when the user requests reference-led rebuild.
