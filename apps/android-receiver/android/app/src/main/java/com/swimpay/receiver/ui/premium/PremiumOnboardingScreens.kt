@@ -2,6 +2,7 @@ package com.swimpay.receiver.ui.premium
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,11 +47,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
+import com.swimpay.receiver.R
 import com.swimpay.receiver.ReceivingMethodType
 import com.swimpay.receiver.MerchantReceivingMethodDraft as MerchantReceivingRouteDraft
 import kotlinx.coroutines.delay
@@ -386,6 +390,7 @@ private fun ReceivingMethodDetailsStep(
             title = "Numéro de téléphone",
             subtitle = "Pratique pour les virements via SBP.",
             selected = ReceivingMethodType.PHONE_TRANSFER in visualMethodSelection,
+            sbp = true,
             onClick = {
                 methodType = ReceivingMethodType.PHONE_TRANSFER
                 visualMethodSelection = toggleVisualReceivingMethod(visualMethodSelection, ReceivingMethodType.PHONE_TRANSFER)
@@ -427,6 +432,14 @@ private fun ReceivingMethodDetailsStep(
             MockupGlassCard(Modifier.fillMaxWidth(), radius = 22.dp, border = PremiumMockupColors.Green.copy(alpha = 0.34f)) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 44.dp)
+                    if (ReceivingMethodType.PHONE_TRANSFER in visualMethodSelection) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_payment_sbp_placeholder),
+                            contentDescription = "SBP",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(34.dp)
+                        )
+                    }
                     Column(Modifier.weight(1f)) {
                         Text("Destination exemple", color = PremiumMockupColors.MutedDark, fontSize = 11.sp, fontWeight = FontWeight.Black)
                         Text(
@@ -513,6 +526,7 @@ private fun ReceivingMethodStep(
             title = "Numéro de téléphone",
             subtitle = "Pratique pour les virements via SBP.",
             selected = selectedMethod == PremiumReceivingMethodDraft.PHONE_TRANSFER,
+            sbp = true,
             onClick = { onSelect(PremiumReceivingMethodDraft.PHONE_TRANSFER) }
         )
         Spacer(Modifier.height(18.dp))
@@ -809,6 +823,7 @@ private fun ReceivingMethodOption(
     title: String,
     subtitle: String,
     selected: Boolean,
+    sbp: Boolean = false,
     onClick: () -> Unit
 ) {
     MockupGlassCard(
@@ -817,7 +832,24 @@ private fun ReceivingMethodOption(
         border = if (selected) PremiumMockupColors.Green else PremiumMockupColors.BorderSoft
     ) {
         Row(Modifier.padding(22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            MockupIconTile(icon, size = 62.dp)
+            if (sbp) {
+                Box(
+                    Modifier
+                        .size(62.dp)
+                        .background(PremiumMockupColors.Green.copy(alpha = 0.14f), RoundedCornerShape(20.dp))
+                        .border(1.dp, PremiumMockupColors.Green.copy(alpha = 0.24f), RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_payment_sbp_placeholder),
+                        contentDescription = "SBP",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(42.dp)
+                    )
+                }
+            } else {
+                MockupIconTile(icon, size = 62.dp)
+            }
             Column(Modifier.weight(1f)) {
                 Text(title, color = PremiumMockupColors.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
                 Text(subtitle, color = PremiumMockupColors.Muted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)

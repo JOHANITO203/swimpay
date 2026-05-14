@@ -1,5 +1,32 @@
 # Next Action
 
+generated_at: 2026-05-14T07:05:00+03:00
+
+## Current Design Priority
+
+Android Merchant readability/responsive polish is installed on the connected device as a staging APK. Next action is operator visual review for readability, bottom-nav comfort and SBP recognition.
+
+## Completed Locally In This Pass
+
+1. Recalibrated premium typography floors and bottom navigation.
+2. Reduced repeated long explanatory copy on active dashboard/review/security surfaces.
+3. Replaced visible review `Risque` wording with priority/review wording.
+4. Added and registered one SBP placeholder visual mark.
+5. Applied SBP mark to onboarding and receiving-method rows.
+6. Passed staging Kotlin compile and staging APK assembly.
+7. Installed the staging APK on the connected device.
+
+## Next Recommended Design Action
+
+1. Review dashboard, review queue/detail, receiving methods, integrations, receiver health and security settings on the phone.
+2. Mark any remaining text that feels too large/small or clipped.
+3. Enter Visual Freeze Mode only after the readable UI is accepted.
+
+## Do Not Do
+
+- Do not change backend/API/database/payment/webhook/receiver/SDK/state-machine code for this design pass.
+- Do not run Roborazzi or update goldens before visual approval.
+
 generated_at: 2026-05-14T00:00:00+03:00
 
 ## Current Design Priority

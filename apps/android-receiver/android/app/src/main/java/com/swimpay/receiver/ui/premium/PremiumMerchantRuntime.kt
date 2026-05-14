@@ -199,7 +199,7 @@ data class PremiumPaymentDetailUiState(
                     "Recu le" to "21 mai 2025, 09:21:12",
                     "Montant" to "9 450,00 RUB",
                     "Confiance" to "78%",
-                    "Risque" to "Montant exact attendu reconnu",
+                    "Priorite" to "Montant exact attendu reconnu",
                     "Moyen de reception" to "Carte **** 5421",
                     "Signal recu" to "Il y a 2 min"
                 ),
@@ -534,7 +534,7 @@ class PremiumMerchantRuntime(
             add((texts.getOrNull(5) ?: "Montant exact attendu") to (texts.getOrNull(6) ?: "0,00 â‚½"))
             add((texts.getOrNull(7) ?: "Montant dÃ©tectÃ©") to (texts.getOrNull(8) ?: "0,00 â‚½"))
             add((texts.getOrNull(9) ?: "Ã‰cart") to (texts.getOrNull(10) ?: "0,00 â‚½"))
-            add((texts.getOrNull(11) ?: "Risque") to (texts.getOrNull(12) ?: "Validation manuelle requise"))
+            add((texts.getOrNull(11) ?: "Priorite") to (texts.getOrNull(12) ?: "Validation manuelle requise"))
             add((texts.getOrNull(13) ?: "Banque") to (texts.getOrNull(14) ?: "Banque choisie"))
             add((texts.getOrNull(15) ?: "Moyen de rÃ©ception") to (texts.getOrNull(16) ?: "Moyen de rÃ©ception"))
             add((texts.getOrNull(17) ?: "RÃ©fÃ©rence") to (texts.getOrNull(18) ?: "<REFERENCE>"))
@@ -1410,4 +1410,3 @@ private object NoopMerchantApiTransport : MerchantApiTransport {
         )
     }
 }
-

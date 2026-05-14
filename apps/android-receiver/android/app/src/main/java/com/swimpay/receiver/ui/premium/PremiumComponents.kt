@@ -125,32 +125,37 @@ fun PremiumBottomNav(selected: PremiumMainTab, onTab: (PremiumMainTab) -> Unit) 
         Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .height(mockupDp(58))
-            .background(PremiumMockupColors.Black.copy(alpha = 0.82f))
+            .height(80.dp)
+            .background(PremiumMockupColors.DeepNavy.copy(alpha = 0.96f))
+            .border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
     ) {
-            Row(Modifier.fillMaxSize().padding(horizontal = mockupDp(8)), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 tabs.forEach { item ->
                     val active = selected == item.first
                     Column(
                         Modifier
                             .weight(1f)
                             .premiumTap { onTab(item.first) }
-                            .padding(horizontal = mockupDp(1), vertical = mockupDp(6)),
+                            .height(62.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (active) PremiumMockupColors.Green.copy(alpha = 0.10f) else Color.Transparent)
+                            .padding(horizontal = 2.dp, vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
                             Modifier
-                                .size(mockupDp(20)),
+                                .size(26.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(item.second, item.first.accessibilityLabel, tint = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted, modifier = Modifier.size(mockupDp(19)))
+                            Icon(item.second, item.first.accessibilityLabel, tint = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted, modifier = Modifier.size(24.dp))
                         }
                         Text(
                             item.first.navLabel,
                             color = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted,
-                            fontSize = mockupSp(12),
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = mockupDp(2))
+                            maxLines = 1,
+                            modifier = Modifier.padding(top = 3.dp)
                         )
                     }
                 }

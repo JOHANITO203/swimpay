@@ -1,5 +1,10 @@
-Ôªø# Blockers
+# Blockers
 
+## Android Merchant Readability Responsive Polish
+
+- No backend/API/payment/webhook/receiver/database/SDK/state-machine blocker introduced.
+- Visual freeze remains blocked by operator approval only.
+- Device screenshot blocker: Samsung media/status overlays can cover the status bar during ADB captures; app content screenshots must be taken after relaunch/focus check.
 ## Checkout Receiver_arming Runtime Blocker (2026-05-13)
 
 - Root-cause fixed in code: creation-time arming state moved from order creation to expected-profile transaction.
@@ -63,10 +68,10 @@
 - Resolved locally: live notification listener and active/snoozed/keyed sweeps require active payment intent, receiver armed state, Expected Payment Profile and locked receiving route before extraction.
 - Resolved locally: local recent observation buffer is redacted-only, TTL-limited, hash-deduplicated and rejects raw phone/card/raw-notification markers.
 - Resolved locally: no-notification fallback review labels are shown as manual bank check/action required.
-- Resolved locally: Android local review notification says ‚ÄúCommande √† v√©rifier‚Äù and does not imply confirmation.
+- Resolved locally: Android local review notification says ìCommande ‡ vÈrifierî and does not imply confirmation.
 - Full validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Compose config, Android JVM tests and Android debug APK build.
-- Resolved on device: ADB smoke passed on Samsung `SM_S916B` / `R5CWA0FEPZW`; review list, local `Commande √† v√©rifier` notification, notification channel and Receiver Health screen were verified.
-- Resolved locally: Receiver Health degraded-state action copy now names the actual degraded condition instead of asking to enable notifications when access is already `Activ√©`.
+- Resolved on device: ADB smoke passed on Samsung `SM_S916B` / `R5CWA0FEPZW`; review list, local `Commande ‡ vÈrifier` notification, notification channel and Receiver Health screen were verified.
+- Resolved locally: Receiver Health degraded-state action copy now names the actual degraded condition instead of asking to enable notifications when access is already `ActivÈ`.
 - Staging check: verify `NO_NOTIFICATION_FALLBACK_WORKER_ENABLED=true` and `NO_NOTIFICATION_FALLBACK_MIN_SECONDS=120` before controlled checkout fallback rehearsal.
 - Not executed: real bank notification capture, auto-confirmation or public webhook semantic changes.
 
@@ -173,7 +178,7 @@
 
 ## Android dashboard metrics wiring
 
-- Resolved locally: Android Accueil now displays `Paiements confirm√©s` with real confirmed amount from backend metrics.
+- Resolved locally: Android Accueil now displays `Paiements confirmÈs` with real confirmed amount from backend metrics.
 - Resolved locally: dashboard shortcut cards are wired to pending review, confirmed, rejected, expired, failed and confirmation-rate metrics.
 - Resolved locally: compact chart consumes backend timeseries and no longer draws fake data when no points exist.
 - Resolved locally: Android payment detail can show safe score and short timeline labels.
@@ -493,7 +498,7 @@
 - Negative categories remain blocked from review creation.
 - `Matching 100 %` is merchant review copy only; it still requires manual confirmation.
 - `Continuer vers ma banque` arms the receiver through `receiver_armed` and does not confirm payment.
-- `J'ai pay√©` remains non-confirming.
+- `J'ai payÈ` remains non-confirming.
 - Buyer source card is modeled only as a recognition hint with encrypted/HMAC/masked/last4 outputs; CVV, expiry, PIN, SMS code and bank password fields are rejected.
 - No backend payment confirmation, webhook ownership, notification capture, raw PII policy, SMS/Accessibility guardrail, LLM rule or auto-confirmation rule was weakened.
 - Fresh code validation passed: android doctor, typecheck, lint, full Vitest suite, TypeScript build, Android JVM tests and Android debug APK build.
@@ -515,8 +520,8 @@
 ## Android Local Merchant State Refinement
 
 - No critical blocker introduced.
-- Accueil now derives the `Moyens de r√©ception` card from the existing receiving-routes repository.
-- `Moyens de r√©ception` values are now `1 actif`, `N actifs`, `√Ä ajouter` or `Connexion en attente`, instead of the conservative `√Ä v√©rifier`.
+- Accueil now derives the `Moyens de rÈception` card from the existing receiving-routes repository.
+- `Moyens de rÈception` values are now `1 actif`, `N actifs`, `¿ ajouter` or `Connexion en attente`, instead of the conservative `¿ vÈrifier`.
 - Ventes now presents an intentional local empty state and does not invent fake live sales/orders.
 - No backend APIs, contracts, workers, database, payment logic, review logic, notification capture, webhooks or auto-confirmation behavior were changed.
 - Remaining non-critical limitation: if the receiving-method repository is unreachable and no persisted local summary exists, Accueil correctly shows `Connexion en attente`.
@@ -524,7 +529,7 @@
 ## Android Data Hydration
 
 - No critical blocker introduced.
-- Android premium screens no longer use generic `Donn√©es indisponibles` copy in the active `ui/premium` source.
+- Android premium screens no longer use generic `DonnÈes indisponibles` copy in the active `ui/premium` source.
 - Accueil now remains alive from local/system state even when dashboard backend hydration is unavailable.
 - Webhook/connected-site state is optional and no longer blocks the rest of the merchant console.
 - Backend offline states use merchant-friendly synchronization copy.
@@ -550,8 +555,8 @@
 - `ui/premium` remains the active Android merchant visual source of truth.
 - Bank Target Lock was added with exact supported package probing only.
 - No `QUERY_ALL_PACKAGES`, SMS permission, Accessibility service or broad installed-app enumeration was added.
-- Premium navigation now covers Accueil, Revue, Ventes, Menu, Mode de confirmation and S√©curit√©.
-- Accueil, Revue, Ventes, Menu, Mode de confirmation and S√©curit√© were aligned to the premium operating model.
+- Premium navigation now covers Accueil, Revue, Ventes, Menu, Mode de confirmation and SÈcuritÈ.
+- Accueil, Revue, Ventes, Menu, Mode de confirmation and SÈcuritÈ were aligned to the premium operating model.
 - Mode de confirmation uses `IA` wording and remains display-only; real-bank auto-confirmation remains disabled.
 - Android still does not confirm orders directly and does not send developer webhooks directly.
 - Android targeted JVM tests passed after setting `ANDROID_HOME` / `ANDROID_SDK_ROOT` to the local SDK path.
@@ -700,7 +705,7 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 - Android review actions remain backend-owned and Android still does not send developer webhooks directly.
 - Targeted and full Android JVM tests passed with in-process Kotlin compilation after an initial local JVM native-memory failure.
 - Real-device ADB install/launch passed on Samsung `SM_S916B` / `R5CWA0FEPZW`.
-- The installed APK mojibake observed through UIAutomator was fixed and revalidated: `Donn√©es indisponibles` and `R√âESSAYER` now render correctly.
+- The installed APK mojibake observed through UIAutomator was fixed and revalidated: `DonnÈes indisponibles` and `R…ESSAYER` now render correctly.
 - Environment blocker: fresh Docker live checks are currently blocked because `//./pipe/dockerDesktopLinuxEngine` is unavailable from this shell. `docker compose ... config` still renders, but `docker compose ... ps` and `http://localhost:8080/api-health` cannot be freshly verified until Docker Desktop is restarted/recovered.
 - Remaining non-critical follow-up: banks, Receiver health and order detail remain premium placeholder state screens pending dedicated frontend contracts.
 
@@ -733,7 +738,7 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 ## Android Visual Golden Baselines / Brand Unification
 
 - No critical local blocker found for Roborazzi debug golden baselines.
-- Golden coverage currently includes Dashboard, Review list, Review detail, Receiver Health, Moyens de r√©ception, Developer Integration and Mode confirmation.
+- Golden coverage currently includes Dashboard, Review list, Review detail, Receiver Health, Moyens de rÈception, Developer Integration and Mode confirmation.
 - Hosted checkout browser screenshot baselines are now automated locally with Chrome headless.
 - Web dashboard brand remains intentionally frozen/secondary and still has a separate generated `S` mark.
 - No real bank notification testing, payment runtime change, webhook change or auto-confirmation was introduced.
@@ -765,7 +770,7 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 ## Review Actions + Payment State Machine
 
 - No local validation blocker remains.
-- Staging must be redeployed with the API fix before Android Merchant `CONFIRMER RE√áU` can succeed online.
+- Staging must be redeployed with the API fix before Android Merchant `CONFIRMER RE«U` can succeed online.
 - Staging DB must apply `019_review_action_state_machine.sql` for the explicit `receiver_arm_expires_at` column.
 - Live staging ADB action success was not claimed before backend redeploy; local tests and APK install/launch passed.
 - Real bank notification testing remains out of scope.
@@ -774,7 +779,7 @@ Last checked during Sprint 7F revalidation: 2026-05-04T01:44:42+03:00.
 
 - No targeted Android Merchant blocker remains.
 - Full repository validation passed locally during the visual/Ozon polish bundle.
-- Receiver Health can only show exact backend receiver fields once the backend exposes a complete `receiver_health` contract to the app; until then unknown values are shown as `√Ä v√©rifier` / `√Ä configurer`, not fake values.
+- Receiver Health can only show exact backend receiver fields once the backend exposes a complete `receiver_health` contract to the app; until then unknown values are shown as `¿ vÈrifier` / `¿ configurer`, not fake values.
 - Real bank notification testing remains out of scope.
 
 ## Checkout Sender Bank / Receiver Route Contract

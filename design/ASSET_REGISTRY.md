@@ -15,6 +15,7 @@ This registry is the visual source of truth for SwimPay Android Merchant and hos
 | Android notification small icon | `apps/android-receiver/android/app/src/main/res/drawable/ic_notification_small.xml` | Android local merchant notifications only | Official monochrome vector status icon. Keep vector-only; do not replace with bitmap. |
 | Bank icons | `apps/android-receiver/android/app/src/main/res/drawable-nodpi/ic_bank_*.png` and documented vector placeholders below | Android bank selector/manager, hosted checkout sender/receiver bank marks | Checkout may embed these same source assets as data URIs so the buyer flow does not create separate bank-logo variants. |
 | Ozon Bank placeholder | `apps/android-receiver/android/app/src/main/res/drawable/ic_bank_ozon.xml` | Android bank selector/manager and review card placeholder | Documented placeholder `OZ` mark because no official Ozon Bank logo asset was provided in-repo. Replace with an official asset only after explicit product/design approval. |
+| SBP placeholder mark | `apps/android-receiver/android/app/src/main/res/drawable/ic_payment_sbp_placeholder.xml` | Android merchant phone-transfer/SBP visual cue | Documented placeholder mark because no official SBP logo asset was provided in-repo. Use one consistent placeholder wherever `SBP` appears until an official approved asset is registered. |
 
 ## Checkout Bank Logo Resolution
 

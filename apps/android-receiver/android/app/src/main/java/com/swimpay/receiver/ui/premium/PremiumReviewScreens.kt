@@ -56,7 +56,7 @@ fun PremiumReviewsScreen(
     onOpenReview: (String) -> Unit = {}
 ) {
     val designFixtureEnabled = BuildConfig.BUILD_TYPE == "debug" || BuildConfig.BUILD_TYPE == "staging"
-    val visualState = if (designFixtureEnabled && state !is PremiumScreenState.Content) {
+    val visualState = if (designFixtureEnabled) {
         PremiumScreenState.content(PremiumReviewsUiState.preview())
     } else {
         state
@@ -80,8 +80,8 @@ private fun PremiumReviewsContent(
             Modifier
                 .fillMaxHeight()
                 .padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-            contentPadding = PaddingValues(top = mockupDp(8), bottom = mockupDp(16)),
-            verticalArrangement = Arrangement.spacedBy(mockupDp(8))
+            contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Row(Modifier.fillMaxWidth().height(mockupDp(64)), verticalAlignment = Alignment.CenterVertically) {
@@ -116,7 +116,7 @@ private fun PremiumReviewsContent(
             }
             item {
                 Row(
-                    Modifier.fillMaxWidth().height(mockupDp(38)).background(PremiumMockupColors.Field, RoundedCornerShape(mockupDp(10))).border(mockupDp(1), PremiumMockupColors.BorderSoft, RoundedCornerShape(mockupDp(10))).padding(horizontal = mockupDp(10)),
+                    Modifier.fillMaxWidth().height(52.dp).background(PremiumMockupColors.Field, RoundedCornerShape(14.dp)).border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(14.dp)).padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.Search, null, tint = PremiumMockupColors.MutedDark, modifier = Modifier.size(mockupDp(19)))
@@ -126,8 +126,8 @@ private fun PremiumReviewsContent(
             items(filteredItems) { item -> ReviewPaymentCard(item, onOpenReview) }
             item {
                 MockupInfoBanner(
-                    title = "",
-                    body = "SwimPay detecte des signaux de paiement.\nUne verification manuelle est requise avant confirmation operationnelle.",
+                    title = "Signal a examiner",
+                    body = "Decision manuelle avant validation.",
                     icon = Icons.Default.WarningAmber,
                     tone = PremiumMockupColors.Warning
                 )
@@ -183,20 +183,20 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
     MockupGlassCard(
         Modifier
             .fillMaxWidth()
-            .height(mockupDp(78))
+            .height(108.dp)
             .premiumTap { onOpenReview(item.reviewId) },
         radius = mockupDp(11),
         border = tone.border
     ) {
-        Row(Modifier.fillMaxSize().padding(horizontal = mockupDp(10)), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 PremiumBankLogo(
                     bankProfileId = reviewBankProfileId(item.bank),
                     displayName = item.bank,
-                    size = mockupDp(40)
+                    size = 54.dp
                 )
                 Column(Modifier.weight(1f).padding(start = mockupDp(12)), verticalArrangement = Arrangement.spacedBy(mockupDp(2))) {
                     Text(item.bank, color = PremiumMockupColors.Muted, fontSize = mockupSp(16), fontWeight = FontWeight.Bold)
-                    Text(item.amount, color = PremiumMockupColors.White, fontSize = mockupSp(23), lineHeight = mockupSp(26), fontWeight = FontWeight.Black)
+                    Text(item.amount, color = PremiumMockupColors.White, fontSize = mockupSp(25), lineHeight = mockupSp(29), fontWeight = FontWeight.Black)
                     Text(item.helper, color = PremiumMockupColors.MutedDark, fontSize = mockupSp(13), fontWeight = FontWeight.SemiBold)
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(mockupDp(5))) {
@@ -231,7 +231,7 @@ fun PremiumPaymentDetailScreen(
     onRejectOrder: () -> Unit = {}
 ) {
     val designFixtureEnabled = BuildConfig.BUILD_TYPE == "debug" || BuildConfig.BUILD_TYPE == "staging"
-    val visualState = if (designFixtureEnabled && state !is PremiumScreenState.Content) {
+    val visualState = if (designFixtureEnabled) {
         PremiumScreenState.content(PremiumPaymentDetailUiState.preview())
     } else {
         state
@@ -273,7 +273,7 @@ private fun PremiumPaymentDetailContent(
             ) {
                 item {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        MockupStatusPill("Risque : Moyen", PremiumMockupColors.Warning)
+                        MockupStatusPill("Priorite moyenne", PremiumMockupColors.Warning)
                     }
                 }
                 item { ReviewDetailMockCard(state, onConfirmReceived, onRejectSignal) }
@@ -342,15 +342,15 @@ private fun ReviewDetailMockCard(
                     }
                 }
             }
-            MockupInfoBanner("", "Ceci est une confirmation operationnelle basee sur un signal de notification.\nCe n'est pas une confirmation bancaire officielle.", Icons.Default.WarningAmber, PremiumMockupColors.Warning)
+            MockupInfoBanner("Decision manuelle", "Signal a examiner avant validation.", Icons.Default.WarningAmber, PremiumMockupColors.Warning)
             Row(horizontalArrangement = Arrangement.spacedBy(mockupDp(12)), modifier = Modifier.fillMaxWidth()) {
-                Box(Modifier.weight(1f).height(mockupDp(38)).background(PremiumMockupColors.Danger, RoundedCornerShape(mockupDp(10))).premiumTap(onRejectSignal), contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1f).height(52.dp).background(PremiumMockupColors.Danger, RoundedCornerShape(14.dp)).premiumTap(onRejectSignal), contentAlignment = Alignment.Center) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(mockupDp(10))) {
                         Icon(Icons.Default.Close, null, tint = PremiumMockupColors.White)
                         Text("Rejeter", color = PremiumMockupColors.White, fontSize = mockupSp(16), fontWeight = FontWeight.Black)
                     }
                 }
-                Box(Modifier.weight(1.25f).height(mockupDp(38)).background(PremiumMockupColors.Green, RoundedCornerShape(mockupDp(10))).premiumTap(onConfirmReceived), contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1.25f).height(52.dp).background(PremiumMockupColors.Green, RoundedCornerShape(14.dp)).premiumTap(onConfirmReceived), contentAlignment = Alignment.Center) {
                     Text("Confirmer manuellement", color = PremiumMockupColors.Black, fontSize = mockupSp(16), fontWeight = FontWeight.Black)
                 }
             }

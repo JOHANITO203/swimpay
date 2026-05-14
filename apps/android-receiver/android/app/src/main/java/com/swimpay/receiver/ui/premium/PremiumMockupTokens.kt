@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.max
 
 object PremiumMockupColors {
     val Black = Color(0xFF000407)
@@ -110,8 +111,16 @@ object PremiumMockupGradient {
 
 @Composable
 fun mockupSp(value: Int): TextUnit {
-    val density = LocalDensity.current
-    return ((value * 0.46f) / density.fontScale).sp
+    val scaled = value * 0.58f
+    val minimum = when {
+        value >= 28 -> 24f
+        value >= 22 -> 22f
+        value >= 18 -> 16f
+        value >= 15 -> 14f
+        value >= 13 -> 13f
+        else -> 12f
+    }
+    return max(scaled, minimum).sp
 }
 
 fun mockupDp(value: Int): Dp {
@@ -250,13 +259,15 @@ fun MockupInfoBanner(
 ) {
     MockupGlassCard(modifier, radius = 18.dp, border = tone.copy(alpha = 0.55f)) {
         Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.Top,
+            Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(icon, null, tint = tone, modifier = Modifier.size(27.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = PremiumMockupColors.White, fontSize = mockupSp(15), fontWeight = FontWeight.Black)
+            Icon(icon, null, tint = tone, modifier = Modifier.size(30.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                if (title.isNotBlank()) {
+                    Text(title, color = PremiumMockupColors.White, fontSize = mockupSp(15), fontWeight = FontWeight.Black)
+                }
                 Text(body, color = PremiumMockupColors.Muted, fontSize = mockupSp(13), lineHeight = mockupSp(18), fontWeight = FontWeight.Medium)
             }
         }

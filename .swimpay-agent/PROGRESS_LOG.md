@@ -3344,3 +3344,13 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Preserved copy meaning; no backend/API/database/payment/webhook/receiver/SDK/state-machine files were changed.
 - Validation passed: `:app:compileDebugKotlin`, `:app:assembleDebug`, device install/launch and live screenshot capture.
 - Roborazzi was not run and goldens were not updated.
+
+## 2026-05-14T07:05:00+03:00 - Android Merchant readability and responsive polish
+
+- Rebalanced premium mockup typography floors so UI text no longer collapses into unreadable mini labels.
+- Recalibrated bottom nav as a larger integrated dark premium surface with readable icons/labels and selected green state.
+- Reduced repeated long explanatory copy on dashboard, review detail and security settings.
+- Replaced visible `Risque : Moyen` review wording with `Priorite moyenne`.
+- Added registered SBP placeholder drawable and used it for phone/SBP onboarding and receiving-method list rows.
+- Kept the pass UI-only: no backend/API/database/payment/webhook/receiver/SDK/state-machine behavior changed.
+- Validation passed: `:app:compileStagingKotlin`, `npm run android:assemble:staging`, staging APK install on connected device.

@@ -1,5 +1,14 @@
 # SwimPay Task Queue
 
+## Current Queue - Android Merchant Readability Responsive Polish (2026-05-14)
+
+- [x] `android_readability_responsive_audit` - status: completed - source: `.swimpay-agent/ANDROID_READABILITY_RESPONSIVE_AUDIT.md`
+- [x] `android_copy_density_reduction` - status: completed - source: `.swimpay-agent/ANDROID_COPY_DENSITY_REDUCTION_REPORT.md`
+- [x] `android_bottom_nav_recalibration` - status: completed_validated - source: `.swimpay-agent/ANDROID_BOTTOM_NAV_RECALIBRATION_REPORT.md`
+- [x] `android_sbp_visual_asset` - status: completed_registered - source: `.swimpay-agent/ANDROID_SBP_VISUAL_ASSET_REPORT.md`
+- [x] `android_responsive_zone_polish_closeout` - status: completed_staging_installed - source: `.swimpay-agent/ANDROID_RESPONSIVE_ZONE_POLISH_CLOSEOUT.md`
+- [ ] `operator_readability_review` - status: pending_operator_visual_review - source: `.swimpay-agent/NEXT_ACTION.md`
+
 ## Current Queue - Android Merchant Full Visual Rebuild (2026-05-14)
 
 - [x] `android_full_visual_rebuild_audit` - status: completed - source: `.swimpay-agent/ANDROID_FULL_VISUAL_REBUILD_AUDIT.md`
