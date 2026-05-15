@@ -27,15 +27,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SignalWifiOff
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -117,8 +118,9 @@ fun PremiumBottomNav(selected: PremiumMainTab, onTab: (PremiumMainTab) -> Unit) 
     val tabs = listOf(
         PremiumMainTab.Home to Icons.Default.Home,
         PremiumMainTab.Reviews to Icons.AutoMirrored.Filled.ReceiptLong,
-        PremiumMainTab.Orders to Icons.Default.ShoppingCart,
-        PremiumMainTab.Menu to Icons.Default.MoreHoriz,
+        PremiumMainTab.Payment to Icons.Default.AccountBalanceWallet,
+        PremiumMainTab.Business to Icons.Default.Business,
+        PremiumMainTab.Settings to Icons.Default.Settings,
     )
     Box(
         Modifier

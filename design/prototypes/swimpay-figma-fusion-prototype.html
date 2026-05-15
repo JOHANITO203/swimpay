@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SwimPay Figma Fusion Prototype</title>
+  <style>
+    :root {
+      --bg-0: #020817;
+      --bg-1: #07111f;
+      --glass: rgba(255, 255, 255, 0.115);
+      --glass-strong: rgba(255, 255, 255, 0.17);
+      --glass-soft: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.22);
+      --border-soft: rgba(255, 255, 255, 0.12);
+      --text: #f8fbff;
+      --muted: rgba(248, 251, 255, 0.68);
+      --faint: rgba(248, 251, 255, 0.48);
+      --green: #39ff88;
+      --green-deep: #22c55e;
+      --cyan: #2dd8ff;
+      --blue: #2491ff;
+      --violet: #8b5cf6;
+      --rose: #f0a1b4;
+      --gold: #ffc933;
+      --red: #ff4d6d;
+      --radius-xl: 30px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 14px;
+      --shadow-glass: 0 24px 70px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      --shadow-green: 0 0 42px rgba(57, 255, 136, 0.16);
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 20% 12%, rgba(121, 121, 255, 0.34), transparent 32%),
+        radial-gradient(circle at 88% 18%, rgba(45, 216, 255, 0.22), transparent 28%),
+        radial-gradient(circle at 12% 90%, rgba(57, 255, 136, 0.20), transparent 31%),
+        linear-gradient(135deg, #020817 0%, #07111f 55%, #0a1730 100%);
+      color: var(--text);
+      font-family: var(--font);
+      padding: 28px;
+    }
+
+    .phone {
+      width: min(393px, 100%);
+      height: 852px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 44px;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(255, 199, 199, 0.18), transparent 32%),
+        radial-gradient(circle at 85% 10%, rgba(130, 113, 251, 0.30), transparent 34%),
+        radial-gradient(circle at 25% 78%, rgba(57, 255, 136, 0.13), transparent 28%),
+        linear-gradient(180deg, rgba(2, 8, 23, 0.96), rgba(4, 15, 28, 0.98));
+      box-shadow: 0 40px 90px rgba(0, 0, 0, 0.54), 0 0 0 1px rgba(255, 255, 255, 0.10);
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(115deg, transparent 0 24%, rgba(255, 255, 255, 0.055) 25%, transparent 42%),
+        radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.045), transparent 38%);
+      filter: blur(0.2px);
+      pointer-events: none;
+    }
+
+    .status {
+      height: 42px;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      padding: 0 24px 8px;
+      position: relative;
+      z-index: 2;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .system-icons {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .dot-icon,
+    .wifi-icon,
+    .battery-icon {
+      display: block;
+      background: #fff;
+    }
+
+    .wifi-icon {
+      width: 16px;
+      height: 12px;
+      clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    }
+
+    .dot-icon {
+      width: 13px;
+      height: 13px;
+      transform: skew(-12deg);
+    }
+
+    .battery-icon {
+      width: 8px;
+      height: 17px;
+      border-radius: 2px;
+    }
+
+    .screen {
+      position: relative;
+      z-index: 1;
+      height: calc(100% - 42px);
+      padding: 18px 20px 104px;
+      overflow: hidden;
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      color: #06101e;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--cyan), #8dfc5a);
+      box-shadow: var(--shadow-green);
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.08;
+      font-weight: 800;
+    }
+
+    .brand-subtitle {
+      margin: 2px 0 0;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .round-button {
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      border: 1px solid var(--border-soft);
+      background: var(--glass);
+      color: var(--text);
+      backdrop-filter: blur(18px);
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .round-button svg {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+      stroke-width: 2.1;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .hello {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .hello h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .hello span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 36px;
+      padding: 8px 12px;
+      border: 1px solid var(--border-soft);
+      border-radius: 999px;
+      background: var(--glass-soft);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      backdrop-filter: blur(16px);
+    }
+
+    .pill-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 18px rgba(57, 255, 136, 0.55);
+    }
+
+    .glass-card {
+      border: 1px solid var(--border);
+      background:
+        radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.18), transparent 36%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06));
+      box-shadow: var(--shadow-glass);
+      backdrop-filter: blur(24px);
+    }
+
+    .intelligence {
+      border-radius: var(--radius-xl);
+      padding: 22px;
+      margin-bottom: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .intelligence::after {
+      content: "";
+      position: absolute;
+      width: 160px;
+      height: 160px;
+      right: -64px;
+      top: -62px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(57, 255, 136, 0.36), transparent 68%);
+      filter: blur(10px);
+    }
+
+    .card-kicker {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .intelligence h2 {
+      position: relative;
+      z-index: 1;
+      margin: 8px 0 8px;
+      font-size: 27px;
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .intelligence p {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .intelligence-stats {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .mini-stat {
+      min-height: 82px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      background: rgba(2, 8, 23, 0.26);
+      padding: 13px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    }
+
+    .mini-stat strong {
+      display: block;
+      font-size: 29px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .mini-stat span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .cards-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .metric-card {
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      min-height: 126px;
+    }
+
+    .metric-head {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .icon-tile {
+      width: 34px;
+      height: 34px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border-soft);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .icon-tile svg {
+      width: 19px;
+      height: 19px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.1;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .metric-card strong {
+      display: block;
+      font-size: 31px;
+      line-height: 1;
+    }
+
+    .metric-card small {
+      display: block;
+      color: var(--faint);
+      font-size: 12px;
+      line-height: 1.3;
+      margin-top: 8px;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 4px 2px 10px;
+    }
+
+    .section-title h3 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+
+    .section-title a {
+      color: var(--green);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .service-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .service {
+      min-height: 91px;
+      border-radius: 22px;
+      border: 1px solid var(--border-soft);
+      background: rgba(255, 255, 255, 0.085);
+      backdrop-filter: blur(20px);
+      padding: 10px 8px;
+      text-align: center;
+      color: var(--text);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    }
+
+    .service .icon-tile {
+      margin: 0 auto 9px;
+      width: 38px;
+      height: 38px;
+      color: var(--cyan);
+    }
+
+    .service strong {
+      display: block;
+      font-size: 11px;
+      line-height: 1.16;
+    }
+
+    .activity {
+      border-radius: var(--radius-lg);
+      padding: 14px;
+    }
+
+    .activity-row {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      gap: 11px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+    }
+
+    .activity-row:last-child {
+      border-bottom: 0;
+    }
+
+    .bank-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: var(--green);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .activity-title {
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .activity-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+      margin-top: 3px;
+    }
+
+    .amount {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .nav {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      height: 76px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 26px;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(28px);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      padding: 9px 8px;
+      z-index: 3;
+    }
+
+    .nav-item {
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      color: rgba(248, 251, 255, 0.58);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .nav-item svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.1;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .nav-item.active {
+      color: var(--green);
+    }
+
+    .nav-icon-active {
+      width: 42px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(57, 255, 136, 0.14);
+      box-shadow: 0 0 22px rgba(57, 255, 136, 0.15);
+    }
+  </style>
+</head>
+<body>
+  <main class="phone" aria-label="Prototype SwimPay fusion Figma">
+    <div class="status">
+      <span>9:41</span>
+      <div class="system-icons" aria-hidden="true">
+        <span class="wifi-icon"></span>
+        <span class="dot-icon"></span>
+        <span class="battery-icon"></span>
+      </div>
+    </div>
+
+    <section class="screen">
+      <header class="topline">
+        <div class="brand">
+          <div class="brand-mark">S</div>
+          <div>
+            <p class="brand-title">SwimPay</p>
+            <p class="brand-subtitle">Merchant</p>
+          </div>
+        </div>
+        <button class="round-button" aria-label="Notifications">
+          <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg>
+        </button>
+      </header>
+
+      <div class="hello">
+        <div>
+          <h1>Bonjour, Merchant</h1>
+          <span>Vos signaux de paiement en un coup d'oeil.</span>
+        </div>
+        <div class="pill"><span class="pill-dot"></span>Actif</div>
+      </div>
+
+      <article class="glass-card intelligence">
+        <div class="card-kicker">SwimPay Intelligence</div>
+        <h2>126 signaux à examiner</h2>
+        <p>Analyse les signaux autorisés et prépare la revue manuelle.</p>
+        <div class="intelligence-stats">
+          <div class="mini-stat">
+            <strong>84</strong>
+            <span>Aujourd'hui</span>
+          </div>
+          <div class="mini-stat">
+            <strong>92%</strong>
+            <span>Correspondance moyenne</span>
+          </div>
+        </div>
+      </article>
+
+      <div class="cards-row">
+        <article class="glass-card metric-card">
+          <div class="metric-head">
+            <span class="icon-tile" style="color: var(--gold)">
+              <svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"></path><circle cx="12" cy="12" r="9"></circle></svg>
+            </span>
+            Revue
+          </div>
+          <strong>32</strong>
+          <small>Priorité haute</small>
+        </article>
+        <article class="glass-card metric-card">
+          <div class="metric-head">
+            <span class="icon-tile" style="color: var(--cyan)">
+              <svg viewBox="0 0 24 24"><path d="M4 18V9"></path><path d="M10 18V5"></path><path d="M16 18v-7"></path><path d="M22 18V3"></path></svg>
+            </span>
+            Récepteurs
+          </div>
+          <strong>5</strong>
+          <small>Banques surveillées</small>
+        </article>
+      </div>
+
+      <div class="section-title">
+        <h3>Actions rapides</h3>
+        <a href="#">Voir tout</a>
+      </div>
+
+      <nav class="service-grid" aria-label="Actions rapides">
+        <button class="service">
+          <span class="icon-tile">
+            <svg viewBox="0 0 24 24"><path d="M9 11h6"></path><path d="M9 15h4"></path><path d="M6 3h9l3 3v15H6z"></path></svg>
+          </span>
+          <strong>File d'examen</strong>
+        </button>
+        <button class="service">
+          <span class="icon-tile" style="color: var(--green)">
+            <svg viewBox="0 0 24 24"><path d="M3 7h18v10H3z"></path><path d="M3 11h18"></path></svg>
+          </span>
+          <strong>Méthodes</strong>
+        </button>
+        <button class="service">
+          <span class="icon-tile" style="color: var(--blue)">
+            <svg viewBox="0 0 24 24"><path d="M10 16l-4-4 4-4"></path><path d="M14 8l4 4-4 4"></path></svg>
+          </span>
+          <strong>Intégration</strong>
+        </button>
+        <button class="service">
+          <span class="icon-tile" style="color: var(--violet)">
+            <svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path></svg>
+          </span>
+          <strong>Aide</strong>
+        </button>
+      </nav>
+
+      <div class="section-title">
+        <h3>Activité récente</h3>
+      </div>
+
+      <article class="glass-card activity">
+        <div class="activity-row">
+          <div class="bank-mark">SB</div>
+          <div>
+            <div class="activity-title">Signal à examiner</div>
+            <div class="activity-meta">Sberbank · Carte **** 5421</div>
+          </div>
+          <div class="amount">9 450 ₽</div>
+        </div>
+        <div class="activity-row">
+          <div class="bank-mark" style="color: var(--gold)">TB</div>
+          <div>
+            <div class="activity-title">Méthode active</div>
+            <div class="activity-meta">T-Bank · Téléphone / SBP</div>
+          </div>
+          <div class="amount">OK</div>
+        </div>
+        <div class="activity-row">
+          <div class="bank-mark" style="color: var(--blue)">API</div>
+          <div>
+            <div class="activity-title">Intégration connectée</div>
+            <div class="activity-meta">Site marchand · dernier test réussi</div>
+          </div>
+          <div class="amount">Actif</div>
+        </div>
+      </article>
+    </section>
+
+    <nav class="nav" aria-label="Navigation principale">
+      <div class="nav-item active">
+        <span class="nav-icon-active"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path></svg></span>
+        Accueil
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"></path><circle cx="12" cy="12" r="9"></circle></svg>
+        Revue
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M3 7h18v10H3z"></path><path d="M3 11h18"></path></svg>
+        Méthodes
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M10 16l-4-4 4-4"></path><path d="M14 8l4 4-4 4"></path></svg>
+        Sites
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"></path></svg>
+        Réglages
+      </div>
+    </nav>
+  </main>
+</body>
+</html>

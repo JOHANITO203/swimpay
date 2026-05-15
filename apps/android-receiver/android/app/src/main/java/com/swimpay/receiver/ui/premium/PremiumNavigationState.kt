@@ -36,8 +36,9 @@ enum class PremiumMainTab(
 ) {
     Home("Accueil", "Accueil"),
     Reviews("Revue", "Revue"),
-    Orders("Ventes", "Ventes"),
-    Menu("MENU", "Menu")
+    Payment("Paiement", "Paiement"),
+    Business("Business", "Business"),
+    Settings("Réglages", "Réglages")
 }
 
 object PremiumNavigation {

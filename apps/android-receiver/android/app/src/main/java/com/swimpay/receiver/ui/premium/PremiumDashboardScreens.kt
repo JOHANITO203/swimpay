@@ -91,44 +91,17 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Text("Accueil", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            PremiumCard(Modifier.fillMaxWidth().padding(top = 12.dp), radius = 32.dp, color = PremiumColors.PanelTint) {
-                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(state.readyTitle, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                    Text(state.readyText, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
-                    StatusChip("SwimPay Intelligence", StatusTone.Info, Modifier.padding(top = 4.dp))
-                }
-            }
+            Text("Bonjour, Merchant", color = PremiumColors.Ink, fontSize = 30.sp, lineHeight = 35.sp, fontWeight = FontWeight.Black)
+            Text("Welcome back", color = PremiumColors.Muted, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
         }
-        if (state.backendNoticeTitle.isNotBlank()) {
-            item {
-                PremiumStatePanel(
-                    PremiumScreenState.offline<Unit>(
-                        title = state.backendNoticeTitle,
-                        message = state.backendNoticeText.ifBlank {
-                            "Les données seront synchronisées dès que SwimPay sera connecté."
-                        },
-                        actionLabel = null
-                    )
-                )
-            }
+        item { MonthlyActivityCard("Paiements reçus", state.monthlyAmount, state.usesLiveApi) }
+        item {
+            Text("Actions rapides", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
         }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                state.localSystemCards.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        row.forEach { card ->
-                            LocalSystemCard(card, Modifier.weight(1f))
-                        }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-        item { MonthlyActivityCard(state.mainMetricLabel, state.monthlyAmount, state.usesLiveApi) }
-        item {
+            val homeMetrics = homeActionMetrics(state.metrics)
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                state.metrics.chunked(2).forEach { row ->
+                homeMetrics.chunked(2).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         row.forEach { metric ->
                             BentoMetricCard(metric.value, metric.label, metric.trend, metricIcon(metric.label), Modifier.weight(1f))
@@ -142,7 +115,7 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
             PremiumCard(Modifier.fillMaxWidth().height(260.dp), radius = 70.dp) {
                 Column(Modifier.padding(30.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("PAIEMENTS CONFIRMÉS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                        Text("ÉVOLUTION DES PAIEMENTS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
                     }
                     Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         ChartMetricPill("Montant", state.chartConfirmedAmountLabel, Modifier.weight(1f))
@@ -158,7 +131,7 @@ private fun PremiumDashboardContent(state: PremiumDashboardUiState) {
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("HISTORIQUE RÉCENT", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                Text("HISTORIQUE DES PAIEMENTS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
                 Text("Voir tout", color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 13.sp)
             }
         }
@@ -252,6 +225,13 @@ private fun metricIcon(label: String): ImageVector {
         "échecs" -> Icons.Default.Link
         "taux" -> Icons.Default.Description
         else -> Icons.Default.Visibility
+    }
+}
+
+private fun homeActionMetrics(metrics: List<PremiumMetricUiState>): List<PremiumMetricUiState> {
+    val desiredOrder = listOf("À confirmer", "Confirmés", "Expirés", "Rejetés")
+    return desiredOrder.map { label ->
+        metrics.firstOrNull { it.label == label } ?: PremiumMetricUiState("0", label)
     }
 }
 
@@ -452,7 +432,7 @@ fun PremiumSettingsScreen(
         item {
             SettingsGroup(copy.businessGroup, listOf(
                 PremiumSettingsRow(Icons.Default.Link, copy.developerIntegration) { onNavigate(PremiumNavigation.openConnectedSite()) },
-                PremiumSettingsRow(Icons.Default.ShoppingCart, copy.sales) { onNavigate(PremiumRoute.Main(PremiumMainTab.Orders)) },
+                PremiumSettingsRow(Icons.Default.ShoppingCart, copy.sales) { onNavigate(PremiumRoute.Main(PremiumMainTab.Business)) },
                 PremiumSettingsRow(Icons.Default.PhoneAndroid, copy.notifications) { onNavigate(PremiumNavigation.openReceiverHealth()) }
             ))
         }

@@ -258,8 +258,9 @@ fun PremiumMerchantApp(
                         reviewsState = withContext(Dispatchers.IO) { activeRuntime.loadReviews() }
                         notifyNewActionRequiredReviews(reviewsState)
                     }
-                    PremiumMainTab.Orders -> ordersState = withContext(Dispatchers.IO) { activeRuntime.loadOrders() }
-                    PremiumMainTab.Menu -> {
+                    PremiumMainTab.Payment -> receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                    PremiumMainTab.Business -> ordersState = withContext(Dispatchers.IO) { activeRuntime.loadOrders() }
+                    PremiumMainTab.Settings -> {
                         connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.loadConnectedSite() }
                         configurationState = withContext(Dispatchers.IO) {
                             activeRuntime.runConfigurationTest(currentConfigurationChecklist())
@@ -498,8 +499,60 @@ fun PremiumMerchantApp(
                             route = PremiumNavigation.openReview(it)
                         }
                     )
-                    PremiumMainTab.Orders -> PremiumOrdersScreen(ordersState)
-                    PremiumMainTab.Menu -> PremiumSettingsScreen(
+                    PremiumMainTab.Payment -> PremiumReceivingMethodsStateScreen(
+                        receivingMethodsState,
+                        clearDraftSignal = receivingMethodClearDraftSignal,
+                        onSaveDraft = { submission ->
+                            receivingMethodsState = PremiumScreenState.loading()
+                            scope.launch {
+                                val mutation = withContext(Dispatchers.IO) {
+                                    activeRuntime.createReceivingMethod(submission)
+                                }
+                                if (mutation is PremiumScreenState.Content) {
+                                    receivingMethodClearDraftSignal += 1
+                                }
+                                receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                            }
+                        },
+                        onEditMethod = { routeId, label ->
+                            receivingMethodsState = PremiumScreenState.loading()
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    activeRuntime.updateReceivingMethodLabel(routeId, label)
+                                }
+                                receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                            }
+                        },
+                        onDisableMethod = { routeId ->
+                            receivingMethodsState = PremiumScreenState.loading()
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    activeRuntime.disableReceivingMethod(routeId)
+                                }
+                                receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                            }
+                        },
+                        onSetDefaultMethod = { routeId ->
+                            receivingMethodsState = PremiumScreenState.loading()
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    activeRuntime.markReceivingMethodRecommended(routeId)
+                                }
+                                receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                            }
+                        },
+                        onDeleteMethod = { routeId ->
+                            receivingMethodsState = PremiumScreenState.loading()
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    activeRuntime.deleteReceivingMethod(routeId)
+                                }
+                                receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                            }
+                        }
+                    )
+                    PremiumMainTab.Business -> PremiumOrdersScreen(ordersState)
+                    PremiumMainTab.Settings -> PremiumSettingsScreen(
                         connectedSite = connectedSiteState,
                         configuration = configurationState,
                         merchantProfile = currentMerchantProfileUiState(),
@@ -510,7 +563,7 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.ReceivingMethods -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Payment,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -572,7 +625,7 @@ fun PremiumMerchantApp(
             state = connectedSiteState,
             onBack = {
                 activeRuntime.clearDeveloperShowOnceExport()
-                route = PremiumRoute.Main(PremiumMainTab.Menu)
+                route = PremiumRoute.Main(PremiumMainTab.Business)
             },
             onCreateApiKey = {
                 connectedSiteState = PremiumScreenState.loading()
@@ -622,16 +675,16 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.ConfigurationTest -> PremiumConfigurationStateScreen(configurationState) {
-            route = PremiumRoute.Main(PremiumMainTab.Menu)
+            route = PremiumRoute.Main(PremiumMainTab.Business)
         }
         PremiumRoute.ConfirmationMode -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumConfirmationModeScreen() }
         )
         PremiumRoute.Security -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -703,13 +756,13 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.HelpCenter -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumHelpCenterScreen(language = merchantSettings.language) }
         )
         PremiumRoute.SupportContact -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -734,7 +787,7 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.Language -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -745,7 +798,7 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.Appearance -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -756,19 +809,19 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.Banks -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Payment,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumBanksStateScreen(banksState) }
         )
         PremiumRoute.ReceiverHealth -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Menu,
+            selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumReceiverHealthStateScreen(receiverHealthState, onOpenNotificationSettings) }
         )
         is PremiumRoute.OrderDetail -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Orders,
+            selectedTab = PremiumMainTab.Business,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
