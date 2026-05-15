@@ -247,11 +247,13 @@ export interface GoogleIdTokenVerifier {
 
 type GoogleTokenInfoFetch = (
   input: string | URL,
-  init?: { method?: string; headers?: Record<string, string> }
+  init?: { method?: string; headers?: Record<string, string>; signal?: AbortSignal }
 ) => Promise<{
   ok: boolean;
   json(): Promise<unknown>;
 }>;
+
+const GOOGLE_TOKENINFO_TIMEOUT_MS = 2_500;
 
 export interface AndroidMerchantSupportTicketCreateInput {
   id: string;
@@ -431,18 +433,27 @@ export async function verifyGoogleIdTokenWithTokenInfo(
   idToken: string,
   acceptedAudiences: readonly string[],
   tokenInfoFetch: GoogleTokenInfoFetch | null = bindGoogleTokenInfoFetch(),
-  now: () => number = () => Date.now()
+  now: () => number = () => Date.now(),
+  timeoutMs: number = GOOGLE_TOKENINFO_TIMEOUT_MS
 ): Promise<GoogleIdTokenVerificationResult | null> {
   if (!idToken.trim() || acceptedAudiences.length === 0 || !tokenInfoFetch) {
     return null;
   }
+  const abortController = typeof AbortController === 'function' ? new AbortController() : null;
+  const timeout = abortController
+    ? setTimeout(() => abortController.abort(), Math.max(1, timeoutMs))
+    : null;
   try {
     const tokenInfoUrl = new URL('https://oauth2.googleapis.com/tokeninfo');
     tokenInfoUrl.searchParams.set('id_token', idToken);
-    const response = await tokenInfoFetch(tokenInfoUrl, {
+    const requestInit: { method: string; headers: Record<string, string>; signal?: AbortSignal } = {
       method: 'GET',
       headers: { Accept: 'application/json' }
-    });
+    };
+    if (abortController) {
+      requestInit.signal = abortController.signal;
+    }
+    const response = await tokenInfoFetch(tokenInfoUrl, requestInit);
     if (!response.ok) {
       return null;
     }
@@ -468,6 +479,10 @@ export async function verifyGoogleIdTokenWithTokenInfo(
     return { googleSub };
   } catch {
     return null;
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
   }
 }
 
@@ -2638,10 +2653,19 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
     const verified = await googleIdTokenVerifier.verifyIdToken(parsed.value.id_token);
     if (!verified) {
+      const diagnostics = googleIdTokenRejectedDiagnostics(parsed.value.id_token, googleIdTokenAudiences);
+      server.log.warn(
+        {
+          provider: 'google',
+          purpose: 'account_recovery',
+          ...diagnostics
+        },
+        'google_id_token_rejected'
+      );
       return reply.status(401).send(
         googleIdTokenRejectedError(
           'account_recovery',
-          googleIdTokenRejectedDiagnostics(parsed.value.id_token, googleIdTokenAudiences)
+          diagnostics
         )
       );
     }
@@ -2697,10 +2721,19 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
     const verified = await googleIdTokenVerifier.verifyIdToken(idToken);
     if (!verified) {
+      const diagnostics = googleIdTokenRejectedDiagnostics(idToken, googleIdTokenAudiences);
+      server.log.warn(
+        {
+          provider: 'google',
+          purpose: 'account_recovery_linking',
+          ...diagnostics
+        },
+        'google_id_token_rejected'
+      );
       return reply.status(401).send(
         googleIdTokenRejectedError(
           'account_recovery_linking',
-          googleIdTokenRejectedDiagnostics(idToken, googleIdTokenAudiences)
+          diagnostics
         )
       );
     }

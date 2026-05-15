@@ -892,6 +892,36 @@ describe('android merchant mobile backend endpoints', () => {
     expect(result).toBeNull();
   });
 
+  it('times out Google tokeninfo fallback without exposing the ID token', async () => {
+    const startedAt = Date.now();
+    const result = await verifyGoogleIdTokenWithTokenInfo(
+      'google-id-token-secret-must-not-log',
+      ['web-client.apps.googleusercontent.com'],
+      async (_input, init) =>
+        new Promise((resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new Error('tokeninfo timeout')));
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                json: async () => ({
+                  aud: 'web-client.apps.googleusercontent.com',
+                  sub: 'google-sub-android-01',
+                  iss: 'https://accounts.google.com',
+                  exp: String(Math.floor(Date.now() / 1000) + 600)
+                })
+              }),
+            1_000
+          );
+        }),
+      () => Date.now(),
+      25
+    );
+
+    expect(result).toBeNull();
+    expect(Date.now() - startedAt).toBeLessThan(500);
+  });
+
   it('requires an Android mobile session before Google profile linking', async () => {
     const { server } = buildAndroidMerchantServer();
 
