@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
@@ -343,7 +344,27 @@ fun Chevron() {
 @Composable
 fun SwimPayWavesMark(modifier: Modifier = Modifier, tint: Color? = null) {
     Canvas(modifier = modifier) {
-        drawCircle(tint ?: PremiumColors.Blue)
+        val color = tint ?: PremiumColors.Cyan
+        val strokeWidth = 2.dp.toPx()
+        
+        // LiquidGlass logo: three waves
+        val spacing = size.height / 4
+        for (i in 0..2) {
+            val y = spacing * (i + 1)
+            val path = Path().apply {
+                moveTo(0f, y)
+                cubicTo(
+                    size.width / 4, y - spacing / 2,
+                    size.width * 3 / 4, y + spacing / 2,
+                    size.width, y
+                )
+            }
+            drawPath(
+                path = path,
+                color = color,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
     }
 }
 
@@ -510,7 +531,7 @@ fun PremiumAppShell(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (onBack != null) {
-                    CircleAction(Icons.AutoMirrored.Filled.KeyboardArrowLeft, onClick = onBack)
+                    CircleAction(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
                     Spacer(Modifier.width(16.dp))
                 }
                 PremiumTitle(modifier = Modifier.weight(1f), title = title)

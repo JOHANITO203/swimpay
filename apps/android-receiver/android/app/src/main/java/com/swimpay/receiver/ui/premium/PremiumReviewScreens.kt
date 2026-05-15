@@ -20,7 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.GridView
@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,14 +62,30 @@ private fun PremiumReviewsContent(
     var selectedFilter by remember { mutableStateOf(PremiumReviewFilter.TO_CONFIRM) }
     val filteredItems = selectedFilter.applyTo(state.items)
     LazyColumn(
-        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(top = 16.dp, bottom = PremiumSpacing.BottomNavHeight + 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("Paiements à confirmer", color = PremiumColors.Ink, fontSize = 23.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
-            Text("Confirmez uniquement les paiements que vous reconnaissez.", color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 20.sp)
-            Spacer(Modifier.height(28.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Paiements à confirmer",
+                    color = PremiumColors.Ink,
+                    style = androidx.compose.ui.text.TextStyle(
+                        fontSize = PremiumType.ScreenTitle,
+                        fontWeight = FontWeight.Black,
+                        lineHeight = 30.sp
+                    )
+                )
+                Text(
+                    text = "Confirmez uniquement les paiements que vous reconnaissez.",
+                    color = PremiumColors.SoftText,
+                    fontSize = PremiumType.Body,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Spacer(Modifier.height(24.dp))
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -115,13 +132,29 @@ private enum class PremiumReviewFilter(
 @Composable
 private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>) {
     LazyColumn(
-        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(top = 16.dp, bottom = PremiumSpacing.BottomNavHeight + 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("Paiements à confirmer", color = PremiumColors.Ink, fontSize = 23.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
-            Text("Confirmez uniquement les paiements que vous reconnaissez.", color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 20.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Paiements à confirmer",
+                    color = PremiumColors.Ink,
+                    style = androidx.compose.ui.text.TextStyle(
+                        fontSize = PremiumType.ScreenTitle,
+                        fontWeight = FontWeight.Black,
+                        lineHeight = 30.sp
+                    )
+                )
+                Text(
+                    text = "Confirmez uniquement les paiements que vous reconnaissez.",
+                    color = PremiumColors.SoftText,
+                    fontSize = PremiumType.Body,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
         item { PremiumStatePanel(state) }
     }
@@ -129,28 +162,40 @@ private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>
 
 @Composable
 private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) -> Unit) {
-    Surface(
-        Modifier
+    LiquidGlassCard(
+        modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, PremiumColors.Line, RoundedCornerShape(30.dp))
             .premiumTap { onOpenReview(item.reviewId) },
-        color = PremiumColors.Surface,
-        shadowElevation = 4.dp,
-        shape = RoundedCornerShape(30.dp)
+        radius = PremiumRadius.CardLarge
     ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier
-                        .size(48.dp)
-                        .background(PremiumColors.Mint, RoundedCornerShape(18.dp)),
+                        .size(PremiumIconSize.Tile)
+                        .background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.CreditCard, null, tint = PremiumColors.Teal, modifier = Modifier.size(26.dp))
+                    Icon(
+                        imageVector = Icons.Default.CreditCard,
+                        contentDescription = null,
+                        tint = PremiumColors.Blue,
+                        modifier = Modifier.size(PremiumIconSize.Default)
+                    )
                 }
                 Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                    Text("Paiement à confirmer", color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Black)
-                    Text(item.helper, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = "Paiement à confirmer",
+                        color = PremiumColors.Ink,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = item.helper,
+                        color = PremiumColors.SoftText,
+                        fontSize = PremiumType.Caption,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
                 StatusChip(item.status, if (item.valid) StatusTone.Success else StatusTone.Warning)
             }
@@ -161,18 +206,56 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
                     size = 44.dp
                 )
                 Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                    Text(item.bank, color = PremiumColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                    Text("Réf. ${item.reviewId}", color = PremiumColors.Muted, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = item.bank,
+                        color = PremiumColors.Ink,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Réf. ${item.reviewId}",
+                        color = PremiumColors.SoftText,
+                        fontSize = PremiumType.Micro,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
                 }
-                Text(item.amount, color = PremiumColors.Ink, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Black)
+                Text(
+                    text = item.amount,
+                    color = PremiumColors.Ink,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black
+                )
             }
             Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Origine", color = PremiumColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Black)
-                    Text(item.reasons.firstOrNull() ?: "Détection automatique", color = PremiumColors.Ink, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "ORIGINE",
+                        color = PremiumColors.SoftText,
+                        fontSize = PremiumType.Micro,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.5.sp
+                    )
+                    Text(
+                        text = item.reasons.firstOrNull() ?: "Détection automatique",
+                        color = PremiumColors.Ink,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-                Text("Examiner", color = PremiumColors.Teal, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Examiner",
+                        color = PremiumColors.Blue,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Chevron()
+                }
             }
         }
     }
@@ -225,60 +308,158 @@ private fun PremiumPaymentDetailContent(
             .statusBarsPadding()
             .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
     ) {
-        Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircleAction(Icons.Default.ArrowBack, onClick = onBack)
-            Text("Vérifier ce paiement", modifier = Modifier.weight(1f), color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(PremiumComponentSize.TopChromeHeight),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CircleAction(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text = "Vérifier ce paiement",
+                modifier = Modifier.weight(1f),
+                color = PremiumColors.Ink,
+                fontSize = PremiumType.ScreenTitle,
+                fontWeight = FontWeight.Black
+            )
         }
         LazyColumn(
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+            contentPadding = PaddingValues(top = 8.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = Color(0xFFFFFBF4)) {
-                    Row(Modifier.padding(22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                        Box(Modifier.size(62.dp).background(Color(0xFFFFF2DD), RoundedCornerShape(24.dp)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.WarningAmber, null, tint = PremiumColors.Warning)
+                LiquidGlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    radius = PremiumRadius.CardLarge,
+                    color = PremiumColors.Warning.copy(alpha = 0.05f)
+                ) {
+                    Row(
+                        Modifier.padding(24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                    ) {
+                        Box(
+                            Modifier
+                                .size(64.dp)
+                                .background(PremiumColors.Warning.copy(alpha = 0.15f), RoundedCornerShape(PremiumRadius.Card)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WarningAmber,
+                                contentDescription = null,
+                                tint = PremiumColors.Warning,
+                                modifier = Modifier.size(32.dp)
+                            )
                         }
                         Column {
-                            Text(state.statusTitle, color = PremiumColors.Warning, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                            Text(state.statusText, color = PremiumColors.Muted, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = state.statusTitle,
+                                color = PremiumColors.Warning,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                text = state.statusText,
+                                color = PremiumColors.SoftText,
+                                fontSize = PremiumType.Body,
+                                lineHeight = 21.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
             }
             item {
-                PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
-                    Column(Modifier.padding(horizontal = 22.dp, vertical = 12.dp)) {
-                        state.summaryRows.forEach { row ->
-                            Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(row.first, modifier = Modifier.weight(1f), color = PremiumColors.Muted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                                Text(row.second, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                LiquidGlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    radius = PremiumRadius.Card
+                ) {
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        state.summaryRows.forEachIndexed { index, row ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = row.first,
+                                    modifier = Modifier.weight(1f),
+                                    color = PremiumColors.SoftText,
+                                    fontSize = PremiumType.Body,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = row.second,
+                                    color = PremiumColors.Ink,
+                                    fontSize = PremiumType.Body,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            if (index < state.summaryRows.size - 1) {
+                                Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line))
                             }
                         }
                     }
                 }
             }
             item {
-                Text("Pourquoi ce paiement est à vérifier ?", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                PremiumCard(Modifier.fillMaxWidth().padding(top = 12.dp), radius = 24.dp) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionLabel("POURQUOI VÉRIFIER ?", Modifier.padding(top = 8.dp))
+                Spacer(Modifier.height(12.dp))
+                LiquidGlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    radius = PremiumRadius.Card
+                ) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         state.reasons.forEach {
-                            Text(it, color = PremiumColors.Muted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Box(Modifier.padding(top = 8.dp).size(6.dp).background(PremiumColors.Warning, RoundedCornerShape(PremiumRadius.Pill)))
+                                Text(
+                                    text = it,
+                                    color = PremiumColors.SoftText,
+                                    fontSize = PremiumType.Body,
+                                    fontWeight = FontWeight.SemiBold,
+                                    lineHeight = 20.sp
+                                )
+                            }
                         }
                     }
                 }
             }
             if (state.timeline.isNotEmpty()) {
                 item {
-                    Text("Parcours", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                    PremiumCard(Modifier.fillMaxWidth().padding(top = 12.dp), radius = 24.dp) {
-                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionLabel("PARCOURS DU PAIEMENT", Modifier.padding(top = 8.dp))
+                    Spacer(Modifier.height(12.dp))
+                    LiquidGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        radius = PremiumRadius.Card
+                    ) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             state.timeline.forEachIndexed { index, label ->
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Box(Modifier.size(24.dp).background(PremiumColors.IconTile, RoundedCornerShape(9.dp)), contentAlignment = Alignment.Center) {
-                                        Text("${index + 1}", color = PremiumColors.Blue, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .size(28.dp)
+                                            .background(PremiumColors.IconTile, RoundedCornerShape(8.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "${index + 1}",
+                                            color = PremiumColors.Blue,
+                                            fontSize = PremiumType.Micro,
+                                            fontWeight = FontWeight.Black
+                                        )
                                     }
-                                    Text(label, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                                    Text(
+                                        text = label,
+                                        color = PremiumColors.Ink,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
                         }
@@ -287,25 +468,39 @@ private fun PremiumPaymentDetailContent(
             }
             if (state.actionMessage.isNotBlank()) {
                 item {
-                    StatusChip(state.actionMessage, StatusTone.Info)
+                    StatusChip(state.actionMessage, StatusTone.Info, Modifier.fillMaxWidth())
                 }
             }
             if (state.actionsEnabled) {
                 item {
-                    PremiumPrimaryButton("Confirmer reçu", onClick = onConfirmReceived)
+                    Spacer(Modifier.height(8.dp))
+                    PremiumPrimaryButton(
+                        text = "Confirmer reçu",
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = onConfirmReceived
+                    )
                     Spacer(Modifier.height(12.dp))
-                    PremiumPrimaryButton("Rejeter le signal", onClick = onRejectSignal)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "Rejeter la commande",
-                        color = PremiumColors.Danger,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 16.sp,
+                    PremiumSecondaryButton(
+                        text = "Rejeter le signal",
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = onRejectSignal
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .premiumTap(onRejectOrder)
-                            .padding(vertical = 12.dp)
-                    )
+                            .height(PremiumComponentSize.TouchTarget)
+                            .premiumTap(onRejectOrder),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Annuler la commande",
+                            color = PremiumColors.Danger,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 15.sp,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
             }
         }
@@ -324,12 +519,24 @@ private fun PremiumPaymentDetailState(
             .statusBarsPadding()
             .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
     ) {
-        Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircleAction(Icons.Default.ArrowBack, onClick = onBack)
-            Text("Vérifier ce paiement", modifier = Modifier.weight(1f), color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(PremiumComponentSize.TopChromeHeight),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CircleAction(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text = "Vérifier ce paiement",
+                modifier = Modifier.weight(1f),
+                color = PremiumColors.Ink,
+                fontSize = PremiumType.ScreenTitle,
+                fontWeight = FontWeight.Black
+            )
         }
         LazyColumn(
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             item { PremiumStatePanel(state) }
@@ -339,13 +546,42 @@ private fun PremiumPaymentDetailState(
 
 @Composable
 private fun FilterLabel(icon: ImageVector, text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
-    Column(modifier.premiumTap(onClick), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            Icon(icon, null, tint = if (selected) PremiumColors.Blue else Color(0xFF555555), modifier = Modifier.size(17.dp))
-            Text(text, color = if (selected) PremiumColors.Blue else Color(0xFF444444), fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1)
-        }
-        if (selected) {
-            Box(Modifier.padding(top = 20.dp).fillMaxWidth().height(2.dp).background(PremiumColors.Blue))
+    Box(
+        modifier
+            .height(PremiumComponentSize.TouchTarget)
+            .premiumTap(onClick)
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (selected) PremiumColors.Cyan else PremiumColors.SoftText,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = text.uppercase(),
+                    color = if (selected) PremiumColors.Cyan else PremiumColors.SoftText,
+                    fontSize = PremiumType.Micro,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp,
+                    maxLines = 1
+                )
+            }
+            if (selected) {
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    Modifier
+                        .width(16.dp)
+                        .height(2.dp)
+                        .background(PremiumColors.Cyan, RoundedCornerShape(PremiumRadius.Pill))
+                )
+            }
         }
     }
 }

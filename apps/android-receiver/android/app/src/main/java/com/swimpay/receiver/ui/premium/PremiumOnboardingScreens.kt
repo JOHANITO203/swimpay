@@ -21,8 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Fingerprint
@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,11 +75,11 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
             SwimPayLogo(markSize = 56.dp)
             Spacer(Modifier.height(22.dp))
             Text(
-                "Terminal marchand",
+                "Terminal marchand".uppercase(),
                 color = PremiumColors.SoftText,
                 fontWeight = FontWeight.Black,
-                fontSize = 12.sp,
-                letterSpacing = 4.sp
+                fontSize = PremiumType.Micro,
+                letterSpacing = 2.sp
             )
             Text(
                 "Configurez SwimPay sur ce téléphone pour suivre les paiements reçus.",
@@ -90,24 +91,24 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
                 modifier = Modifier.padding(top = 12.dp)
             )
             Spacer(Modifier.height(44.dp))
-            PremiumCard(
+            LiquidGlassCard(
                 Modifier
                     .fillMaxWidth()
                     .height(220.dp)
                     .premiumTap(onStart),
-                radius = 30.dp
+                radius = PremiumRadius.CardLarge
             ) {
                 Column(
                     Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Box(Modifier.size(78.dp).background(PremiumColors.IconTile, RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(78.dp).background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile)), contentAlignment = Alignment.Center) {
                         SwimPayWavesMark(Modifier.size(PremiumIconSize.Large), tint = PremiumColors.Cyan)
                     }
                     Spacer(Modifier.height(26.dp))
-                    Text("Configuration initiale", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                    Text("Commencer", color = PremiumColors.SoftText, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                    Text("Configuration initiale", color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
+                    Text("Commencer", color = PremiumColors.SoftText, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                 }
             }
         }
@@ -207,7 +208,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp, vertical = 28.dp)
+                .padding(horizontal = PremiumSpacing.ScreenHorizontalWide, vertical = 28.dp)
                 .padding(bottom = 92.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -216,7 +217,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
             Text(
                 "Recevez vos paiements plus facilement",
                 color = PremiumColors.Ink,
-                fontSize = 30.sp,
+                fontSize = PremiumType.Hero,
                 lineHeight = 34.sp,
                 fontWeight = FontWeight.Black,
                 textAlign = TextAlign.Center
@@ -224,7 +225,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
             Text(
                 "SwimPay détecte les paiements reçus, vous aide à les confirmer et prévient votre site ou votre application.",
                 color = PremiumColors.Muted,
-                fontSize = 15.sp,
+                fontSize = PremiumType.Body,
                 fontWeight = FontWeight.SemiBold,
                 lineHeight = 23.sp,
                 textAlign = TextAlign.Center,
@@ -240,7 +241,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(PremiumColors.Background.copy(alpha = 0.92f))
-                .padding(horizontal = 22.dp, vertical = 18.dp)
+                .padding(horizontal = PremiumSpacing.ScreenHorizontalWide, vertical = 18.dp)
         ) {
             PremiumPrimaryButton("Commencer", onClick = onNext)
         }
@@ -259,14 +260,14 @@ private fun NotificationAccessStep(
             "Connectez votre téléphone",
             "SwimPay a besoin d’accéder aux notifications de cet appareil pour fonctionner."
         )
-        PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp) {
+        LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
             Row(
                 Modifier.padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 Box(
-                    Modifier.size(64.dp).background(PremiumColors.IconTile, RoundedCornerShape(22.dp)),
+                    Modifier.size(64.dp).background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Fingerprint, null, tint = PremiumColors.Warning, modifier = Modifier.size(32.dp))
@@ -275,7 +276,7 @@ private fun NotificationAccessStep(
                     Text(
                         if (notificationAccessEnabled) "Activé" else "Accès nécessaire",
                         color = if (notificationAccessEnabled) PremiumColors.Success else PremiumColors.Ink,
-                        fontSize = 20.sp,
+                        fontSize = PremiumType.ScreenTitle,
                         fontWeight = FontWeight.Black
                     )
                     Text(
@@ -285,7 +286,7 @@ private fun NotificationAccessStep(
                             "Activez l’accès aux notifications pour détecter les paiements reçus."
                         },
                         color = PremiumColors.Muted,
-                        fontSize = 14.sp,
+                        fontSize = PremiumType.Body,
                         lineHeight = 21.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -381,21 +382,21 @@ private fun ReceivingMethodDetailsStep(
             }
         )
         Spacer(Modifier.height(6.dp))
-        Text("Choisir la banque", color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
+        Text("Choisir la banque", color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(10.dp))
         bankOptions.forEach { bank ->
             val selected = bank.bankProfileId == selectedBankId
-            PremiumCard(
+            LiquidGlassCard(
                 Modifier
                     .fillMaxWidth()
                     .padding(bottom = 10.dp)
                     .premiumTap { selectedBankId = bank.bankProfileId },
-                radius = 24.dp,
+                radius = PremiumRadius.Card,
                 color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
             ) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                     PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 44.dp)
-                    Text(bank.displayName, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = 12.dp))
+                    Text(bank.displayName, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = 12.dp))
                     Box(
                         Modifier
                             .size(28.dp)
@@ -490,20 +491,20 @@ private fun ConnectedSiteStep(
             "Connectez votre site ou application",
             "Recevez une mise à jour après votre validation manuelle."
         )
-        PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp) {
+        LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
             Row(
                 Modifier.padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                Box(Modifier.size(58.dp).background(PremiumColors.Mint, RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(58.dp).background(PremiumColors.Mint, RoundedCornerShape(PremiumRadius.Tile)), contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.Link, null, tint = PremiumColors.Teal, modifier = Modifier.size(30.dp))
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
                         if (skipped) "Configuration reportée" else "Prêt à ajouter",
                         color = PremiumColors.Ink,
-                        fontSize = 18.sp,
+                        fontSize = PremiumType.ScreenTitle,
                         fontWeight = FontWeight.Black
                     )
                     Text(
@@ -513,7 +514,7 @@ private fun ConnectedSiteStep(
                             "Ajoutez un endpoint pour lancer ensuite un test webhook backend."
                         },
                         color = PremiumColors.Muted,
-                        fontSize = 13.sp,
+                        fontSize = PremiumType.Body,
                         lineHeight = 20.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -561,8 +562,8 @@ private fun OnboardingShell(
     Box(Modifier.fillMaxSize()) {
         PremiumPaperBackground(Modifier.fillMaxSize())
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            Row(Modifier.fillMaxWidth().height(76.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircleAction(Icons.Default.ArrowBack, onClick = onBack)
+            Row(Modifier.fillMaxWidth().height(PremiumComponentSize.TopChromeHeight).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircleAction(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
                 Text(
                     title,
                     modifier = Modifier.weight(1f),
@@ -577,11 +578,11 @@ private fun OnboardingShell(
                 Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
+                    .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
                     .padding(bottom = 28.dp),
             ) {
                 ProgressLine(step)
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(24.dp))
                 content()
             }
         }
@@ -591,7 +592,14 @@ private fun OnboardingShell(
 @Composable
 private fun ProgressLine(step: PremiumOnboardingStep) {
     val activeIndex = PremiumOnboardingStep.requiredSequence.indexOf(step)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(PremiumComponentSize.TouchTarget)
+            .padding(horizontal = 4.dp)
+    ) {
         PremiumOnboardingStep.requiredSequence.forEachIndexed { index, _ ->
             Box(
                 Modifier
@@ -605,14 +613,14 @@ private fun ProgressLine(step: PremiumOnboardingStep) {
 
 @Composable
 private fun BenefitRow(icon: ImageVector, title: String, body: String) {
-    LiquidGlassCard(Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap {}, radius = 24.dp) {
+    LiquidGlassCard(Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap {}, radius = PremiumRadius.Card) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            Box(Modifier.size(54.dp).background(PremiumColors.Mint, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(54.dp).background(PremiumColors.Mint, RoundedCornerShape(PremiumRadius.Tile)), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(28.dp))
             }
             Column {
-                Text(title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                Text(body, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 20.sp)
+                Text(title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = PremiumType.Body)
+                Text(body, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = PremiumType.Caption, lineHeight = 20.sp)
             }
         }
     }
@@ -674,18 +682,18 @@ private fun BankSearchStatusCard(
         )
     }
 
-    PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumColors.Surface) {
+    LiquidGlassCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), radius = PremiumRadius.CardLarge, color = PremiumColors.Surface) {
         Row(
             Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Box(Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile)), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = toneColor, modifier = Modifier.size(28.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text(title, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
-                Text(body, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(title, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
+                Text(body, color = PremiumColors.Muted, fontSize = PremiumType.Caption, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -737,21 +745,21 @@ private fun BankRow(
         detected -> "Détectée"
         else -> "Non détectée"
     }
-    PremiumCard(
+    LiquidGlassCard(
         Modifier
             .fillMaxWidth()
             .padding(bottom = 14.dp)
             .premiumTap {
                 if (selectable && detected) onToggleBank(bank.bankProfileId)
             },
-        radius = 28.dp,
+        radius = PremiumRadius.Card,
         color = if (selected) PremiumColors.SurfaceAlt else PremiumColors.Surface
     ) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                     PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 52.dp)
             Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                Text(bank.displayName, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
-                Text(label, color = if (detected) PremiumColors.Cyan else PremiumColors.SoftText, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text(bank.displayName, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
+                Text(label, color = if (detected) PremiumColors.Cyan else PremiumColors.SoftText, fontSize = PremiumType.Caption, fontWeight = FontWeight.Black)
             }
             Box(
                 Modifier
@@ -774,13 +782,13 @@ private fun ReceivingMethodOption(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    PremiumCard(
+    LiquidGlassCard(
         Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap(onClick),
-        radius = 30.dp,
+        radius = PremiumRadius.CardLarge,
         color = if (selected) PremiumColors.SurfaceAlt else PremiumColors.Surface
     ) {
         Row(Modifier.padding(22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            Box(Modifier.size(62.dp).background(PremiumColors.IconTile, RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(62.dp).background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile)), contentAlignment = Alignment.Center) {
                 if (title.contains("SBP", ignoreCase = true) || title.contains("téléphone", ignoreCase = true)) {
                     Image(
                         painter = painterResource(R.drawable.ic_payment_sbp_mark),
@@ -793,8 +801,8 @@ private fun ReceivingMethodOption(
                 }
             }
             Column(Modifier.weight(1f)) {
-                Text(title, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                Text(subtitle, color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
+                Text(title, color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
+                Text(subtitle, color = PremiumColors.Muted, fontSize = PremiumType.Body, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
             }
             Box(
                 Modifier
@@ -830,14 +838,14 @@ private fun SwimPayLauncherBadge(size: Dp) {
 
 @Composable
 private fun ChecklistCard(state: PremiumOnboardingSessionState) {
-    PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
+    LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             state.configurationChecklistLabels().forEach { label ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Box(Modifier.size(32.dp).background(PremiumColors.Mint, CircleShape), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Teal, modifier = Modifier.size(20.dp))
                     }
-                    Text(label, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                    Text(label, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -847,16 +855,16 @@ private fun ChecklistCard(state: PremiumOnboardingSessionState) {
 @Composable
 private fun ResultCard(state: PremiumOnboardingSessionState) {
     val ready = state.configurationTestReady
-    PremiumCard(
+    LiquidGlassCard(
         Modifier.fillMaxWidth(),
-        radius = 28.dp,
-        color = if (ready) Color(0xFFE8FAF8) else Color(0xFFFFF8EA)
+        radius = PremiumRadius.Card,
+        color = if (ready) PremiumColors.SurfaceAlt else PremiumColors.Surface
     ) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 if (ready) "Webhook prêt" else "Action nécessaire",
-                color = if (ready) PremiumColors.Success else Color(0xFFB45309),
-                fontSize = 18.sp,
+                color = if (ready) PremiumColors.Success else PremiumColors.Warning,
+                fontSize = PremiumType.Body,
                 fontWeight = FontWeight.Black
             )
             Text(
@@ -866,7 +874,7 @@ private fun ResultCard(state: PremiumOnboardingSessionState) {
                     state.configurationResultLabels().filterNot { it == "Réussi" }.joinToString(" · ")
                 },
                 color = PremiumColors.Muted,
-                fontSize = 14.sp,
+                fontSize = PremiumType.Caption,
                 lineHeight = 21.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -876,10 +884,10 @@ private fun ResultCard(state: PremiumOnboardingSessionState) {
 
 @Composable
 private fun OnboardingInfoCard(title: String, body: String) {
-    PremiumCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), radius = 30.dp) {
+    LiquidGlassCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), radius = PremiumRadius.Card) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
-            Text(body, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(title, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
+            Text(body, color = PremiumColors.Muted, fontSize = PremiumType.Caption, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

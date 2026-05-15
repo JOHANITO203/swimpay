@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,7 +57,7 @@ fun PremiumAccountEntryScreen(
             body = copy.welcomeBody,
             centered = true
         )
-        PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
+        LiquidGlassCard(Modifier.fillMaxWidth()) {
             Column(
                 Modifier.padding(22.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -114,7 +115,7 @@ fun PremiumAccountLoginProviderScreen(
             title = copy.recoverTitle,
             body = copy.recoverBody
         )
-        PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
+        LiquidGlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp)) {
                 PremiumLoginRecoveryProvider.entries.forEach { provider ->
                     PremiumAccountChoiceRowBase(
@@ -205,7 +206,7 @@ private fun PremiumAccountEntryFrame(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp, vertical = 34.dp)
+                .padding(horizontal = PremiumSpacing.ScreenHorizontalWide, vertical = 34.dp)
                 .padding(bottom = 42.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             content = { content() }
@@ -226,24 +227,35 @@ fun PremiumLanguageSwitch(
 ) {
     Row(
         modifier
+            .height(PremiumComponentSize.TopAction)
             .background(PremiumColors.Surface, CircleShape)
             .border(1.dp, PremiumColors.Line, CircleShape)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(Icons.Default.Language, "Langue", tint = PremiumColors.Navy, modifier = Modifier.size(16.dp))
+        Icon(
+            Icons.Default.Language,
+            contentDescription = "Langue",
+            tint = PremiumColors.Navy,
+            modifier = Modifier.size(16.dp)
+        )
         PremiumLanguageOption.entries.forEach { option ->
-            Text(
-                option.shortLabel,
-                color = if (option == language) PremiumColors.Blue else PremiumColors.Muted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Black,
+            Box(
                 modifier = Modifier
+                    .fillMaxHeight()
                     .semantics { role = Role.Button }
                     .premiumTap { onLanguageSelected(option) }
-                    .padding(horizontal = 3.dp)
-            )
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    option.shortLabel,
+                    color = if (option == language) PremiumColors.Blue else PremiumColors.Muted,
+                    fontSize = PremiumType.Caption,
+                    fontWeight = FontWeight.Black
+                )
+            }
         }
     }
 }
@@ -251,16 +263,10 @@ fun PremiumLanguageSwitch(
 @Composable
 private fun AccountEntryBackButton(onBack: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-        Box(
-            Modifier
-                .size(48.dp)
-                .background(PremiumColors.Surface, CircleShape)
-                .border(1.dp, PremiumColors.Line, CircleShape)
-                .premiumTap(onBack),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", tint = PremiumColors.Navy, modifier = Modifier.size(22.dp))
-        }
+        CircleAction(
+            icon = Icons.AutoMirrored.Filled.ArrowBack,
+            onClick = onBack
+        )
     }
 }
 
@@ -299,7 +305,7 @@ private fun PremiumAccountChoiceRowBase(
         .premiumTap(onClick)
 
     if (elevated) {
-        PremiumCard(modifier, radius = 28.dp) {
+        LiquidGlassCard(modifier) {
             PremiumAccountChoiceRowContent(title, description, iconContent)
         }
     } else {
@@ -321,22 +327,22 @@ private fun PremiumAccountChoiceRowContent(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
-            Modifier.size(48.dp).background(PremiumColors.Mint, RoundedCornerShape(18.dp)),
+            Modifier.size(PremiumComponentSize.TouchTarget).background(PremiumColors.Mint, RoundedCornerShape(PremiumRadius.Tile)),
             contentAlignment = Alignment.Center
         ) {
             iconContent()
         }
         Column(Modifier.weight(1f)) {
-            Text(title, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
+            Text(title, color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
             Text(
                 description,
                 color = PremiumColors.Muted,
-                fontSize = 13.sp,
+                fontSize = PremiumType.Body,
                 lineHeight = 19.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
-        Icon(Icons.Default.Security, null, tint = Color(0xFFB7C6D6), modifier = Modifier.size(22.dp))
+        Icon(Icons.Default.Security, null, tint = PremiumColors.SoftText, modifier = Modifier.size(22.dp))
     }
 }

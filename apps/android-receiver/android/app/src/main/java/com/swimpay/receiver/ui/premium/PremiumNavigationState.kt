@@ -27,6 +27,7 @@ sealed interface PremiumRoute {
     data object SupportContact : PremiumRoute
     data object Language : PremiumRoute
     data object Appearance : PremiumRoute
+    data object SignOut : PremiumRoute
     data class OrderDetail(val orderId: String) : PremiumRoute
 }
 
@@ -102,6 +103,8 @@ object PremiumNavigation {
     fun openLanguage(): PremiumRoute = PremiumRoute.Language
 
     fun openAppearance(): PremiumRoute = PremiumRoute.Appearance
+
+    fun signOut(): PremiumRoute = PremiumRoute.SignOut
 }
 
 sealed interface PremiumScreenState<out T> {

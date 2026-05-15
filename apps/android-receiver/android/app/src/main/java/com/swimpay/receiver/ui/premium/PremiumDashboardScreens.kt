@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -102,12 +103,12 @@ private fun PremiumDashboardContent(
 ) {
     LazyColumn(
         Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 22.dp),
+        contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Text("Bonjour, Merchant", color = PremiumColors.Ink, fontSize = 30.sp, lineHeight = 35.sp, fontWeight = FontWeight.Black)
-            Text("Welcome back", color = PremiumColors.Muted, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+            Text("Bonjour, Merchant", color = PremiumColors.Ink, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
+            Text("Welcome back", color = PremiumColors.Muted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
         }
         item { MonthlyActivityCard("Paiements reçus", state.monthlyAmount, state.usesLiveApi) }
         item {
@@ -136,17 +137,17 @@ private fun PremiumDashboardContent(
             }
         }
         item {
-            PremiumCard(Modifier.fillMaxWidth().height(260.dp), radius = 70.dp) {
-                Column(Modifier.padding(30.dp)) {
+            LiquidGlassCard(Modifier.fillMaxWidth().height(260.dp), radius = PremiumRadius.CardLarge) {
+                Column(Modifier.padding(24.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("ÉVOLUTION DES PAIEMENTS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                        Text("ÉVOLUTION DES PAIEMENTS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 13.sp, letterSpacing = 1.sp)
                     }
-                    Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         ChartMetricPill("Montant", state.chartConfirmedAmountLabel, Modifier.weight(1f))
                         ChartMetricPill("Taux", state.chartConfirmationRateLabel, Modifier.weight(1f))
                     }
                     TrendLine(
-                        modifier = Modifier.fillMaxWidth().height(126.dp).padding(top = 20.dp),
+                        modifier = Modifier.fillMaxWidth().height(120.dp).padding(top = 16.dp),
                         primaryValues = state.chartPoints.map { it.confirmedAmountMinor.toFloat() },
                         secondaryValues = state.chartPoints.map { it.confirmationRate.toFloat() }
                     )
@@ -154,14 +155,14 @@ private fun PremiumDashboardContent(
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("HISTORIQUE DES PAIEMENTS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("HISTORIQUE DES PAIEMENTS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 0.5.sp)
                 Text(
                     "Voir tout",
                     color = PremiumColors.Blue,
                     fontWeight = FontWeight.Black,
                     fontSize = 13.sp,
-                    modifier = Modifier.premiumTap(onOpenBusiness)
+                    modifier = Modifier.premiumTap(onOpenBusiness).padding(vertical = 8.dp)
                 )
             }
         }
@@ -228,18 +229,18 @@ private fun PremiumStateList(state: PremiumScreenState<*>) {
 
 @Composable
 private fun MonthlyActivityCard(label: String, amount: String, usesLiveApi: Boolean) {
-    PremiumGradientPanel(Modifier.fillMaxWidth().height(214.dp), radius = 42.dp) {
+    PremiumGradientPanel(Modifier.fillMaxWidth().height(214.dp), radius = PremiumRadius.CardLarge) {
         Column(Modifier.padding(26.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Box(Modifier.size(46.dp).background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(25.dp))
                 }
-                Text("Aujourd'hui", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black, fontSize = 13.sp)
+                Text("Aujourd'hui", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black, fontSize = PremiumType.Caption)
             }
             Spacer(Modifier.height(24.dp))
-            Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 15.sp, lineHeight = 19.sp, fontWeight = FontWeight.Black)
+            Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 15.sp, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(6.dp))
-            Text(amount, color = Color.White, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black)
+            Text(amount, color = Color.White, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(18.dp))
             StatusChip(if (usesLiveApi) "Live" else "En attente", if (usesLiveApi) StatusTone.Success else StatusTone.Neutral)
         }
@@ -274,25 +275,22 @@ private fun BentoMetricCard(
     modifier: Modifier,
     onClick: () -> Unit
 ) {
-    Surface(
+    LiquidGlassCard(
         modifier
             .height(142.dp)
-            .border(1.dp, PremiumColors.Line, RoundedCornerShape(34.dp))
             .premiumTap(onClick),
-        color = PremiumColors.Surface,
-        shadowElevation = 6.dp,
-        shape = RoundedCornerShape(34.dp)
+        radius = PremiumRadius.Card
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.Center) {
             Box(Modifier.size(38.dp).background(PremiumColors.IconTile, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = PremiumColors.Blue, modifier = Modifier.size(21.dp))
             }
             Spacer(Modifier.height(8.dp))
-            Text(value, color = PremiumColors.Ink, fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black)
+            Text(value, color = PremiumColors.Ink, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
             Row {
-                Text(label, color = PremiumColors.Ink, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                Text(label, color = PremiumColors.Ink, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black)
                 if (trend.isNotBlank()) {
-                    Text(" $trend", color = PremiumColors.Success, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                    Text(" $trend", color = PremiumColors.Success, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -301,17 +299,15 @@ private fun BentoMetricCard(
 
 @Composable
 private fun RecentPaymentRow(amount: String, detail: String) {
-    Surface(
-        Modifier.fillMaxWidth().height(88.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(32.dp)),
-        color = PremiumColors.Surface,
-        shadowElevation = PremiumElevation.Card,
-        shape = RoundedCornerShape(32.dp)
+    LiquidGlassCard(
+        Modifier.fillMaxWidth().height(88.dp),
+        radius = PremiumRadius.CardLarge
     ) {
         Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(18.dp)).border(1.dp, PremiumColors.Line, RoundedCornerShape(18.dp)))
             Column(Modifier.weight(1f).padding(start = 18.dp)) {
                 Text(amount, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Text(detail, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(detail, color = PremiumColors.Muted, fontSize = PremiumType.Caption, fontWeight = FontWeight.SemiBold)
             }
             Chevron()
         }
@@ -340,11 +336,11 @@ private fun PremiumOrdersContent(
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(bottom = 34.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Text("Ventes confirmées", color = PremiumColors.Ink, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.Black)
-            Text("Suivez les commandes reliées aux paiements confirmés.", color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text("Ventes confirmées", color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
+            Text("Suivez les commandes reliées aux paiements confirmés.", color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             Spacer(Modifier.height(24.dp))
             BusinessAreaChartCard(state)
             Spacer(Modifier.height(12.dp))
@@ -385,12 +381,12 @@ private fun PremiumOrdersContent(
 @Composable
 private fun BusinessAreaChartCard(state: PremiumOrdersUiState) {
     val chartValues = state.rows.map { parseAmountForChart(it.amount) }.filter { it > 0f }
-    PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
+    LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Activité business", color = PremiumColors.Ink, fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Black)
-                    Text("Paiements confirmés sur la période", color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Activité business", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    Text("Paiements confirmés sur la période", color = PremiumColors.Muted, fontSize = PremiumType.Micro, fontWeight = FontWeight.SemiBold)
                 }
                 StatusChip(state.confirmationRate, StatusTone.Success)
             }
@@ -399,20 +395,20 @@ private fun BusinessAreaChartCard(state: PremiumOrdersUiState) {
                     Modifier
                         .fillMaxWidth()
                         .height(122.dp)
-                        .background(PremiumColors.SurfaceAlt, RoundedCornerShape(24.dp))
-                        .border(1.dp, PremiumColors.Line, RoundedCornerShape(24.dp))
+                        .background(PremiumColors.SurfaceAlt, RoundedCornerShape(20.dp))
+                        .border(1.dp, PremiumColors.Line, RoundedCornerShape(20.dp))
                         .padding(18.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.AutoMirrored.Filled.TrendingUp, null, tint = PremiumColors.SoftText, modifier = Modifier.size(28.dp))
-                    Text("Les courbes apparaîtront après vos premières ventes confirmées.", color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 12.dp))
+                    Text("Les courbes apparaîtront après vos premières ventes confirmées.", color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 12.dp))
                 }
             } else {
                 TrendLine(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(148.dp)
-                        .background(PremiumColors.SurfaceAlt, RoundedCornerShape(24.dp))
+                        .background(PremiumColors.SurfaceAlt, RoundedCornerShape(20.dp))
                         .padding(horizontal = 10.dp, vertical = 14.dp),
                     primaryValues = cumulativeChartValues(chartValues),
                     secondaryValues = chartValues
@@ -444,19 +440,17 @@ private fun cumulativeChartValues(values: List<Float>): List<Float> {
 
 @Composable
 private fun SalesMetricCard(value: String, label: String, icon: ImageVector) {
-    Surface(
-        Modifier.fillMaxWidth().height(92.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(30.dp)),
-        color = PremiumColors.Surface,
-        shadowElevation = 4.dp,
-        shape = RoundedCornerShape(30.dp)
+    LiquidGlassCard(
+        Modifier.fillMaxWidth().height(92.dp),
+        radius = PremiumRadius.CardLarge
     ) {
         Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(42.dp).background(PremiumColors.IconTile, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = PremiumColors.Blue, modifier = Modifier.size(22.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text(value, color = PremiumColors.Ink, fontSize = 22.sp, lineHeight = 25.sp, fontWeight = FontWeight.Black)
-                Text(label, color = PremiumColors.Muted, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Black)
+                Text(value, color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                Text(label, color = PremiumColors.Muted, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
         }
     }
@@ -464,21 +458,21 @@ private fun SalesMetricCard(value: String, label: String, icon: ImageVector) {
 
 @Composable
 private fun OrderCard(id: String, amount: String, status: String, helper: String) {
-    Surface(
-        Modifier.fillMaxWidth().height(112.dp).border(1.dp, PremiumColors.Line, RoundedCornerShape(58.dp)),
-        color = PremiumColors.Surface,
-        shape = RoundedCornerShape(58.dp)
+    LiquidGlassCard(
+        Modifier.fillMaxWidth().height(112.dp),
+        radius = PremiumRadius.CardXL
     ) {
         Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.ShoppingCart, null, tint = PremiumColors.Blue)
             }
-            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+            Column(Modifier.weight(1f).padding(start = 16.dp)) {
                 Text(id, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                Text(helper, color = PremiumColors.Ink, fontSize = 12.sp)
+                Text(helper, color = PremiumColors.Muted, fontSize = PremiumType.Caption, fontWeight = FontWeight.SemiBold)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(amount, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                Text(amount, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                Spacer(Modifier.height(6.dp))
                 StatusChip(status, if (status == "VALIDÉ") StatusTone.Success else StatusTone.Warning)
             }
         }
@@ -534,16 +528,32 @@ fun PremiumSettingsScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 18.dp)
-                    .height(58.dp)
+                    .padding(vertical = 12.dp)
+                    .height(PremiumComponentSize.ButtonHeight)
                     .clip(RoundedCornerShape(PremiumRadius.Pill))
-                    .border(1.dp, PremiumColors.Danger.copy(alpha = 0.30f), RoundedCornerShape(PremiumRadius.Pill))
-                    .padding(horizontal = 22.dp),
+                    .border(
+                        1.dp,
+                        PremiumColors.Danger.copy(alpha = 0.30f),
+                        RoundedCornerShape(PremiumRadius.Pill)
+                    )
+                    .premiumTap { onNavigate(PremiumNavigation.signOut()) },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                Icon(Icons.AutoMirrored.Filled.ExitToApp, null, tint = PremiumColors.Danger, modifier = Modifier.size(20.dp))
-                Text(copy.signOut, color = PremiumColors.Danger, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, modifier = Modifier.padding(start = 10.dp))
+                Icon(
+                    Icons.AutoMirrored.Filled.ExitToApp,
+                    null,
+                    tint = PremiumColors.Danger,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    copy.signOut,
+                    color = PremiumColors.Danger,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.padding(start = 10.dp)
+                )
             }
         }
     }
@@ -554,29 +564,27 @@ private fun SettingsProfileCard(
     copy: PremiumLocalizedCopy,
     merchantProfile: PremiumMerchantProfileUiState
 ) {
-    Surface(
-        Modifier.fillMaxWidth().border(1.dp, PremiumColors.Line, RoundedCornerShape(34.dp)),
-        color = PremiumColors.Surface.copy(alpha = if (PremiumColors.IsDark) 0.94f else 0.90f),
-        shape = RoundedCornerShape(34.dp),
-        shadowElevation = if (PremiumColors.IsDark) 0.dp else PremiumElevation.Card
+    LiquidGlassCard(
+        Modifier.fillMaxWidth(),
+        radius = PremiumRadius.CardXL
     ) {
         Row(
-            Modifier.padding(18.dp),
+            Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(
                 Modifier
-                    .size(58.dp)
+                    .size(60.dp)
                     .background(Brush.linearGradient(PremiumBrandGradient.Primary), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(merchantProfile.initials, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Black)
+                Text(merchantProfile.initials, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
             }
             Column(Modifier.weight(1f)) {
-                Text(copy.terminalTitle, color = PremiumColors.Ink, fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Black)
-                Text(merchantProfile.displayName, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Bold)
-                Text(merchantProfile.statusLabel, color = PremiumColors.SoftText, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(copy.terminalTitle, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                Text(merchantProfile.displayName, color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(merchantProfile.statusLabel, color = PremiumColors.SoftText, fontSize = PremiumType.Micro, fontWeight = FontWeight.SemiBold)
             }
             Box(
                 Modifier
@@ -1187,17 +1195,17 @@ private fun ReceivingMethodMutationButton(
     val foreground = if (destructive) PremiumColors.Danger else PremiumColors.Blue
     Row(
         modifier
-            .height(42.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(PremiumColors.SurfaceAlt, RoundedCornerShape(16.dp))
-            .border(1.dp, PremiumColors.Line, RoundedCornerShape(16.dp))
+            .height(PremiumComponentSize.TouchTarget)
+            .clip(RoundedCornerShape(PremiumRadius.Card))
+            .background(PremiumColors.SurfaceAlt, RoundedCornerShape(PremiumRadius.Card))
+            .border(1.dp, PremiumColors.Line, RoundedCornerShape(PremiumRadius.Card))
             .premiumTap(onClick)
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        Icon(icon, null, tint = foreground, modifier = Modifier.size(16.dp))
-        Text(label, color = foreground, fontWeight = FontWeight.Black, fontSize = 11.sp, modifier = Modifier.padding(start = 6.dp))
+        Icon(icon, null, tint = foreground, modifier = Modifier.size(18.dp))
+        Text(label, color = foreground, fontWeight = FontWeight.Black, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp))
     }
 }
 
@@ -1749,7 +1757,7 @@ private fun PremiumStandaloneStateScreen(
                         .padding(top = 8.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CircleAction(Icons.AutoMirrored.Filled.KeyboardArrowLeft, onClick = onBack)
+                    CircleAction(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
                     Text(
                         title,
                         color = PremiumColors.Ink,
@@ -1775,44 +1783,41 @@ private data class PremiumSettingsRow(
 private fun SettingsGroup(title: String, rows: List<PremiumSettingsRow>) {
     Column(Modifier.fillMaxWidth()) {
         Text(
-            title,
-            color = PremiumColors.Ink,
-            fontSize = 17.sp,
-            lineHeight = 21.sp,
+            title.uppercase(),
+            color = PremiumColors.Muted,
+            fontSize = PremiumType.Micro,
             fontWeight = FontWeight.Black,
-            modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)
+            letterSpacing = 1.sp,
+            modifier = Modifier.padding(start = 8.dp, bottom = 10.dp)
         )
-        Surface(
-            Modifier.fillMaxWidth().border(1.dp, PremiumColors.Line, RoundedCornerShape(30.dp)),
-            color = PremiumColors.Surface.copy(alpha = if (PremiumColors.IsDark) 0.94f else 0.92f),
-            shape = RoundedCornerShape(30.dp),
-            shadowElevation = if (PremiumColors.IsDark) 0.dp else 3.dp
+        LiquidGlassCard(
+            Modifier.fillMaxWidth(),
+            radius = PremiumRadius.CardLarge
         ) {
             Column {
                 rows.forEachIndexed { index, row ->
                     val onClick = row.onClick
                     val rowModifier = if (onClick != null) {
-                        Modifier.fillMaxWidth().height(74.dp).clickable { onClick() }.padding(horizontal = 18.dp)
+                        Modifier.fillMaxWidth().height(PremiumComponentSize.RowHeight).clickable { onClick() }.padding(horizontal = 18.dp)
                     } else {
-                        Modifier.fillMaxWidth().height(74.dp).padding(horizontal = 18.dp)
+                        Modifier.fillMaxWidth().height(PremiumComponentSize.RowHeight).padding(horizontal = 18.dp)
                     }
                     Row(rowModifier, verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(44.dp).background(PremiumColors.IconTile, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                            Icon(row.icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(22.dp))
+                        Box(Modifier.size(44.dp).background(PremiumColors.IconTile, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                            Icon(row.icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(22.dp))
                         }
                         Text(
                             row.label,
                             modifier = Modifier.weight(1f).padding(start = 16.dp),
                             color = PremiumColors.Ink,
                             fontWeight = FontWeight.Black,
-                            fontSize = 15.sp,
-                            lineHeight = 19.sp
+                            fontSize = 15.sp
                         )
                         if (row.onClick != null) {
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumColors.SoftText)
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumColors.SoftText, modifier = Modifier.size(20.dp))
                         }
                     }
-                    if (index < rows.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line))
+                    if (index < rows.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line.copy(alpha = 0.5f)))
                 }
             }
         }

@@ -155,6 +155,11 @@ fun PremiumMerchantApp(
             activeRuntime.clearDeveloperShowOnceExport()
         }
         route = when (target) {
+            PremiumRoute.SignOut -> {
+                mobileMerchantSessionStore.clear()
+                activeRuntime = runtime
+                PremiumRoute.AccountEntry
+            }
             PremiumRoute.ReceivingMethods -> PremiumNavigation.openReceivingMethods()
             PremiumRoute.Banks -> PremiumNavigation.openBanks()
             PremiumRoute.ReceiverHealth -> PremiumNavigation.openReceiverHealth()
@@ -347,6 +352,7 @@ fun PremiumMerchantApp(
             PremiumRoute.SupportContact,
             PremiumRoute.Language,
             PremiumRoute.Appearance,
+            PremiumRoute.SignOut,
             is PremiumRoute.OrderDetail -> Unit
             PremiumRoute.Onboarding -> {
                 banksState = withContext(Dispatchers.IO) {
@@ -384,6 +390,7 @@ fun PremiumMerchantApp(
 
     Box(Modifier.fillMaxSize()) {
         when (val currentRoute = route) {
+            PremiumRoute.SignOut,
             PremiumRoute.AccountEntry -> PremiumAccountEntryScreen(
             language = merchantSettings.language,
             onLanguageSelected = { updateSettings(merchantSettingsStore.saveLanguage(it)) },

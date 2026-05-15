@@ -145,7 +145,8 @@ object PremiumComponentSize {
     val CompactButtonHeight = 44.dp
     val RowHeight = 84.dp
     val TouchTarget = 48.dp
-    val TopAction = 46.dp
+    val TopAction = 48.dp
+    val TopChromeHeight = 72.dp
 }
 
 data class PremiumTone(
