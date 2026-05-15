@@ -24,6 +24,13 @@ class PremiumGoldenScreenshotTest {
     val composeRule = createComposeRule()
 
     @Test
+    fun startupSplashGolden() {
+        capture("premium_startup_splash.png") {
+            PremiumStartupSplashScreen()
+        }
+    }
+
+    @Test
     fun dashboardGolden() {
         capture("premium_dashboard.png") {
             PremiumAppShell(selectedTab = PremiumMainTab.Home, onTab = {}, profileInitials = "SP") {
@@ -81,6 +88,18 @@ class PremiumGoldenScreenshotTest {
         capture("premium_confirmation_mode.png") {
             PremiumAppShell(selectedTab = PremiumMainTab.Settings, onTab = {}, profileInitials = "SP") {
                 PremiumConfirmationModeScreen()
+            }
+        }
+    }
+
+    @Test
+    fun securityGolden() {
+        capture("premium_security.png") {
+            PremiumAppShell(selectedTab = PremiumMainTab.Settings, onTab = {}, profileInitials = "SP") {
+                PremiumSecurityScreen(
+                    appLock = PremiumAppLockSettings(enabled = true, timeout = PremiumLockTimeout.FIVE_MINUTES),
+                    googleAccountLinked = false
+                )
             }
         }
     }

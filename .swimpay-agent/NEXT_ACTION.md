@@ -378,3 +378,22 @@ Android Merchant Runtime Wiring is locally complete. Next action is to install t
 1. Operator verifies the installed rollback staging APK on device `R5CWA0FEPZW`.
 2. Confirm whether the restored 2026-05-13 UI direction is acceptable.
 3. If accepted, only re-apply strictly necessary runtime/session fixes on top of this UI state.
+# Next Action
+
+generated_at: 2026-05-16T00:30:00+03:00
+
+## Current Android Priority
+
+Roborazzi is aligned with the current Android Merchant design tokens. Next step is operator review of the frozen staging visual state, then commit/push when accepted.
+
+## Completed Locally In This Pass
+
+1. Added `premium_startup_splash.png` Roborazzi coverage.
+2. Added `premium_security.png` Roborazzi coverage for the Google row.
+3. Regenerated premium Roborazzi baselines for the current design tokens.
+4. Verified the regenerated baselines.
+
+## Validation
+
+1. `npm run android:screenshot:record`
+2. `npm run android:screenshot:verify`

@@ -122,16 +122,16 @@ class PremiumSettingsSubscreenContractTest {
         val manifest = File("src/main/AndroidManifest.xml").readText()
         val launcher = File("src/main/res/mipmap-anydpi-v26/ic_launcher.xml").readText()
         val launcherRound = File("src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml").readText()
-        val foreground = File("src/main/res/mipmap-xxhdpi/ic_launcher_foreground.webp")
+        val foreground = File("src/main/res/drawable/ic_launcher_foreground.xml")
         val playStoreIcon = File("src/main/play_store_512.png")
 
         assertTrue(manifest.contains("android:icon=\"@mipmap/ic_launcher\""))
-        assertTrue(launcher.contains("@mipmap/ic_launcher_foreground"))
+        assertTrue(launcher.contains("@drawable/ic_launcher_foreground"))
         assertTrue(launcher.contains("@color/ic_launcher_background"))
         assertFalse("Task switcher must not use a monochrome-only launcher layer", launcher.contains("monochrome"))
         assertFalse("Task switcher must not use a monochrome-only round launcher layer", launcherRound.contains("monochrome"))
-        assertTrue(launcherRound.contains("@mipmap/ic_launcher_foreground"))
-        assertTrue("IconKitchen three-wave foreground must be packaged", foreground.length() > 100L)
+        assertTrue(launcherRound.contains("@drawable/ic_launcher_foreground"))
+        assertTrue("Three-wave vector foreground must be packaged", foreground.readText().contains("swimpay three-wave launcher mark"))
         listOf(
             "mipmap-mdpi" to 108,
             "mipmap-hdpi" to 162,

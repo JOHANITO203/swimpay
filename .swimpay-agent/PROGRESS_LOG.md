@@ -3456,3 +3456,10 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Removed later design artifacts added after that commit, including mockup token/text/SBP placeholder guardrail files.
 - Validation passed: `npm run android:assemble:staging`.
 - Installed rollback staging APK on device `R5CWA0FEPZW`.
+## 2026-05-16T00:30:00+03:00 - Android Roborazzi visual freeze
+
+- Entered Visual Freeze for the current Android Merchant design pass.
+- Added Roborazzi coverage for the startup splash and Security Google row.
+- Regenerated premium Android Roborazzi baselines against the current visual tokens.
+- Updated visual/static guardrails for the canonical vector launcher foreground and the removed home-screen `Lancez un test` action.
+- Validation passed: `npm run android:screenshot:record`, `npm run android:screenshot:verify`.

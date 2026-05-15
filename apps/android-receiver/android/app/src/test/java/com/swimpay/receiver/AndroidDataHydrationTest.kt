@@ -35,7 +35,7 @@ class AndroidDataHydrationTest {
         assertTrue(visible.contains("1 actif"))
         assertFalse(visible.contains("À vérifier"))
         assertTrue(visible.contains("Aucun paiement détecté pour le moment"))
-        assertTrue(visible.contains("Lancez un test"))
+        assertFalse(visible.contains("Lancez un test"))
         assertTrue(visible.contains("Connexion en attente"))
         assertTrue(visible.contains("Les données seront synchronisées dès que SwimPay sera connecté."))
         assertSafeMerchantHydrationCopy(visible)
@@ -59,7 +59,7 @@ class AndroidDataHydrationTest {
         assertTrue(content.recentPayments.isEmpty())
         val visible = content.visibleTexts().joinToString(" ")
         assertTrue(visible.contains("Aucun paiement détecté pour le moment"))
-        assertTrue(visible.contains("Lancez un test"))
+        assertFalse(visible.contains("Lancez un test"))
         assertSafeMerchantHydrationCopy(visible)
     }
 
