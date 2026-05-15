@@ -39,7 +39,7 @@ enum class PremiumLoginRecoveryProvider(
 ) {
     GOOGLE(
         label = "Continuer avec Google",
-        description = "Récupérer un compte déjà lié pour la connexion."
+        description = "Se connecter avec un compte Google déjà lié."
     );
 }
 
@@ -60,7 +60,7 @@ data class PremiumAccountRecoveryUiState(
             return PremiumAccountRecoveryUiState(
                 status = PremiumAccountRecoveryStatus.PENDING,
                 title = "Connexion Google",
-                message = "SwimPay vérifie le compte lié et prépare la session mobile."
+                message = "SwimPay vérifie le compte Google et prépare la session mobile."
             )
         }
 

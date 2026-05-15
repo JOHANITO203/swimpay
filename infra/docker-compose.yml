@@ -140,6 +140,9 @@ services:
     environment:
       <<: *swimpay_runtime_env
       SERVICE_NAME: swimpay-api
+      dns:
+      - 1.1.1.1
+      - 8.8.8.8
     depends_on:
       postgres:
         condition: service_healthy

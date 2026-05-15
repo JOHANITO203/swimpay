@@ -105,7 +105,7 @@ class PremiumAccountEntryStaticTest {
     }
 
     @Test
-    fun loginProviderScreenIsRecoveryOnlyAndDoesNotStartOnboarding() {
+    fun loginProviderScreenIsGoogleLoginAndRecoveryWithoutStartingOnboarding() {
         val source = accountEntryScreensSource()
         val stateSource = accountEntryStateSource()
         val loginProviderSource = sourceFunction(source, "fun PremiumAccountLoginProviderScreen")
@@ -113,7 +113,7 @@ class PremiumAccountEntryStaticTest {
         assertTrue(source.contains("Google"))
         assertTrue(source.contains("recovery", ignoreCase = true))
         assertTrue(source.contains("copy.recoverBody"))
-        assertTrue(stateSource.contains("Récupérer un compte déjà lié"))
+        assertTrue(stateSource.contains("Se connecter avec un compte Google déjà lié"))
         assertTrue(loginProviderSource.contains("PremiumGoogleIcon"))
         assertFalse(loginProviderSource.contains("Icons.AutoMirrored.Filled.Login"))
         assertFalse(
@@ -169,7 +169,7 @@ class PremiumAccountEntryStaticTest {
     fun accountEntryVisualGrammarKeepsTouchTargetsAndNoEmojiIcons() {
         val source = accountEntryScreensSource()
 
-        assertTrue("back button must keep the minimum Android touch target", source.contains(".size(48.dp)"))
+        assertTrue("back button must keep the minimum Android touch target", source.contains("PremiumComponentSize.TouchTarget"))
         assertTrue("choice rows should expose button semantics", source.contains("role = Role.Button"))
         assertTrue("choice rows should expose accessible labels", source.contains("contentDescription = \"\$title. \$description\""))
         assertFalse("account entry must use vector icons, not emoji", emojiRegex.containsMatchIn(source))
