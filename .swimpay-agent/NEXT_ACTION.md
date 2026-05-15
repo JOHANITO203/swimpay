@@ -308,3 +308,46 @@ Android Merchant Runtime Wiring is locally complete. Next action is to install t
 - Do not add features during this wiring check.
 - Do not redesign screens.
 - Do not use a local debug APK for VPS testing unless explicitly requested.
+
+## 2026-05-15T01:30:00+03:00 - Button Wiring Next Action
+
+1. Use the freshly installed staging APK on the connected phone.
+2. Smoke-test dashboard quick actions, bottom nav tabs, receiving method actions, Settings -> Google link, app lock toggle, receiver health back arrow and advanced settings.
+3. Continue staging runtime verification against `https://staging.swimpay.pro`.
+
+## 2026-05-15T01:55:00+03:00 - Settings/menu verification
+
+1. On the staging APK, open `Paramètres` from bottom nav.
+2. Verify the simple menu shows `Apparence`, `Langue`, `Sécurité`, `Centre d'aide`, and `Contacter le support`.
+3. Verify `Sécurité` still opens Google link/app lock, while `Langue` and `Apparence` remain separate simple screens.
+
+## 2026-05-15T02:10:00+03:00 - Feature restoration next action
+
+1. Restore simple access to the existing `Orders/Ventes` surface without adding a new feature.
+2. Fix the Settings `Ventes` row so it no longer routes to `Récepteurs`.
+3. Keep integrations scoped to the existing connected-site contract until a real multi-site contract is intentionally added.
+4. Keep Security remote sessions/devices as honest unavailable state until a real repository exists.
+
+## 2026-05-15T02:35:00+03:00 - Merchant simplicity next action
+
+1. Operator device-check Dashboard, Integrations, Receiver Health and Security on the staging APK.
+2. Confirm the default screens feel merchant-friendly and that `Détails techniques` is secondary.
+3. Restore `Orders/Ventes` access as the next separate functional restoration item.
+
+## 2026-05-15T03:05:00+03:00 - Orders/Ventes next action
+
+1. On device, open Paramètres -> Ventes and verify the orders/sales screen opens.
+2. Confirm it shows real staging orders or honest empty/offline state.
+3. Next separate audit: check whether `OrderDetail` had a complete pre-design contract before restoring detail navigation.
+
+## 2026-05-15T03:25:00+03:00 - Preexisting contract audit next action
+
+1. Treat the pre-design contract audit as closed: completed old Android Merchant contracts are restored or present.
+2. Keep `OrderDetail` as a documented partial/stub unless the operator asks for a dedicated Android order-detail wiring pass.
+3. Do not add multi-site integrations or remote session/device management without a separate approved product/contract task.
+
+## 2026-05-15T03:45:00+03:00 - Android UI rollback next action
+
+1. Operator verifies the installed rollback staging APK on device `R5CWA0FEPZW`.
+2. Confirm whether the restored 2026-05-13 UI direction is acceptable.
+3. If accepted, only re-apply strictly necessary runtime/session fixes on top of this UI state.

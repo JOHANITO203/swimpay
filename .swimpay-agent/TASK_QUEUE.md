@@ -651,3 +651,52 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 - [x] `android_security_settings_runtime_wiring` - status: completed_with_repository_gap - source: `.swimpay-agent/ANDROID_SECURITY_SETTINGS_RUNTIME_WIRING_REPORT.md`
 - [x] `android_runtime_contract_gaps` - status: documented - source: `.swimpay-agent/ANDROID_RUNTIME_CONTRACT_GAPS.md`
 - [ ] `staging_runtime_device_smoke` - status: pending_operator_device_check - source: `.swimpay-agent/ANDROID_RUNTIME_WIRING_CLOSEOUT.md`
+
+## 2026-05-15T01:30:00+03:00 - Android button wiring queue
+
+- [x] `android_button_wiring_audit` - status: completed - source: `.swimpay-agent/ANDROID_BUTTON_WIRING_AUDIT.md`
+- [x] `android_button_wiring_fix` - status: completed_validated_installed - source: `.swimpay-agent/ANDROID_BUTTON_WIRING_FIX_REPORT.md`
+- [ ] `android_button_device_smoke` - status: pending_operator_device_check - source: connected staging APK
+
+## 2026-05-15T01:55:00+03:00 - Android business wiring audit queue
+
+- [x] `android_business_logic_screen_audit` - status: completed - source: `.swimpay-agent/ANDROID_BUSINESS_LOGIC_SCREEN_AUDIT.md`
+- [x] `android_settings_menu_restore` - status: completed_validated - source: `.swimpay-agent/ANDROID_SETTINGS_MENU_RESTORE_REPORT.md`
+- [ ] `android_settings_menu_device_check` - status: pending_operator_device_check - source: staging APK
+
+## 2026-05-15T02:10:00+03:00 - Android feature restoration queue
+
+- [x] `android_pre_design_feature_inventory` - status: completed - source: `.swimpay-agent/ANDROID_PRE_DESIGN_FEATURE_INVENTORY.md`
+- [x] `android_feature_restoration_matrix` - status: completed - source: `.swimpay-agent/ANDROID_FEATURE_RESTORATION_MATRIX.md`
+- [x] `android_current_feature_access_audit` - status: completed - source: `.swimpay-agent/ANDROID_CURRENT_FEATURE_ACCESS_AUDIT.md`
+- [x] `android_business_contract_wiring_audit` - status: completed - source: `.swimpay-agent/ANDROID_BUSINESS_CONTRACT_WIRING_AUDIT.md`
+- [x] `android_simplicity_audit` - status: completed - source: `.swimpay-agent/ANDROID_SIMPLICITY_AUDIT.md`
+- [x] `android_feature_restoration_report` - status: completed - source: `.swimpay-agent/ANDROID_FEATURE_RESTORATION_REPORT.md`
+- [ ] `android_orders_ventes_access_restore` - status: pending - source: pre-design `PremiumMainTab.Orders`
+
+## 2026-05-15T02:35:00+03:00 - Android merchant simplicity queue
+
+- [x] `swimpay_intelligence_restore_audit` - status: completed - source: `.swimpay-agent/SWIMPAY_INTELLIGENCE_RESTORE_AUDIT.md`
+- [x] `android_technical_ui_noise_audit` - status: completed - source: `.swimpay-agent/ANDROID_TECHNICAL_UI_NOISE_AUDIT.md`
+- [x] `android_integration_ui_simplification` - status: completed_validated - source: `.swimpay-agent/ANDROID_INTEGRATION_UI_SIMPLIFICATION_REPORT.md`
+- [x] `android_dashboard_simplicity_restore` - status: completed_validated - source: `.swimpay-agent/ANDROID_DASHBOARD_SIMPLICITY_RESTORE_REPORT.md`
+- [x] `android_review_ui_simplification` - status: completed - source: `.swimpay-agent/ANDROID_REVIEW_UI_SIMPLIFICATION_REPORT.md`
+- [x] `android_receiver_health_simplification` - status: completed_validated - source: `.swimpay-agent/ANDROID_RECEIVER_HEALTH_SIMPLIFICATION_REPORT.md`
+- [x] `android_settings_feature_restore` - status: completed_validated - source: `.swimpay-agent/ANDROID_SETTINGS_FEATURE_RESTORE_REPORT.md`
+- [x] `android_no_new_features_guardrail` - status: completed_validated - source: `.swimpay-agent/ANDROID_NO_NEW_FEATURES_GUARDRAIL_REPORT.md`
+- [ ] `android_orders_ventes_access_restore` - status: pending - source: prior feature inventory
+
+## 2026-05-15T03:05:00+03:00 - Android Orders/Ventes queue
+
+- [x] `android_orders_ventes_access_restore` - status: completed_validated - source: `.swimpay-agent/ANDROID_ORDERS_VENTES_RESTORE_REPORT.md`
+- [ ] `android_order_detail_contract_audit` - status: pending - source: pre-design `PremiumRoute.OrderDetail`
+
+## 2026-05-15T03:25:00+03:00 - Android preexisting contract audit queue
+
+- [x] `android_order_detail_contract_audit` - status: completed - source: `.swimpay-agent/ANDROID_PREEXISTING_CONTRACT_REMAINING_AUDIT.md`
+- [ ] `android_order_detail_wiring_optional` - status: pending_operator_decision - source: existing backend `GET /v1/orders/:id`
+
+## 2026-05-15T03:45:00+03:00 - Android UI rollback queue
+
+- [x] `android_ui_rollback_to_7e95985` - status: completed_installed - source: `.swimpay-agent/ANDROID_UI_ROLLBACK_TO_7E95985_REPORT.md`
+- [ ] `operator_device_check_rollback_ui` - status: pending_operator_check - source: device `R5CWA0FEPZW`

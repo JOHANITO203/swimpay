@@ -3068,7 +3068,7 @@ Safety checks:
 - Removed fake menu/profile runtime data: no static `JD`, no fake UID `#7114-4466-8301`, profile now comes from mobile merchant session with honest fallback.
 - Replaced runtime configuration readiness `MerchantConfigurationChecklist.allReady()` with current notification access, receiver bank config, receiving methods, and connected site state.
 - Reworked Receiver Health so it no longer invents fixed bank counts, trusted counts, queue length, or listener status.
-- Replaced fake payment detail timestamp `Signal reçu · Il y a 2 min` with backend timestamp labels or `Signal non horodaté`.
+- Replaced fake payment detail timestamp `Signal reï¿½u ï¿½ Il y a 2 min` with backend timestamp labels or `Signal non horodatï¿½`.
 - Made review tabs actually filter loaded reviews and count real items.
 - Unified receiving method bank lists through `PremiumReceivingMethodBankCatalog` backed by `BankTargetLock.supportedTargets`.
 - Marked missing developer external URL as non-configured and kept example URL explicitly as example.
@@ -3320,7 +3320,7 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Treated all 14 Android Merchant screens as visually non-compliant and removed the biggest mixed-theme sources.
 - Remapped `PremiumColors` to the mockup dark palette.
 - Reworked shared app shell, bottom nav, cards, buttons, logo and state panels toward mockup glass/neon styling.
-- Changed runtime bottom nav to 5 mockup-style tabs: Accueil, En attente, Récepteurs, Intégrations, Paramètres.
+- Changed runtime bottom nav to 5 mockup-style tabs: Accueil, En attente, Rï¿½cepteurs, Intï¿½grations, Paramï¿½tres.
 - Added a dedicated `PremiumIntegrationsListStateScreen` visual surface for screen 11.
 - Made Ozon selectable in onboarding UI state and added visual Carte/SBP/Card+SBP method selection in receiving setup.
 - Validation passed: `npm run android:compile`, `npm run android:assemble:staging`.
@@ -3388,3 +3388,62 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Corrected the dashboard chart confirmed amount formatter to keep the existing `â‚½` contract for loaded RUB data.
 - Re-ran targeted runtime wiring, Android data hydration and affected dashboard contract tests successfully.
 - Re-ran `:app:compileDebugKotlin` and `npm run android:assemble:staging` successfully.
+
+## 2026-05-15T01:30:00+03:00 - Android button wiring fix
+
+- Root cause found: active premium screens had clickable visual components, but several runtime callbacks were default no-op lambdas or not passed from `PremiumMerchantApp`.
+- Wired dashboard quick actions and metric cards to reviews, receiving methods, integrations and receiver health.
+- Wired main `RÃ©cepteurs` tab to receiving-method create/edit/disable/default/delete runtime callbacks.
+- Wired main `ParamÃ¨tres`/security surface to app-lock, timeout and Google account-link callbacks.
+- Added static guardrails preventing the main runtime route from dropping these callbacks again.
+- Validation passed: `npm run android:compile`, targeted `AndroidRuntimeWiringGuardrailTest`, `npm run android:assemble:staging`, `git diff --check`, and staging APK install on connected device.
+
+## 2026-05-15T01:55:00+03:00 - Android settings/menu business wiring audit
+
+- Audited current premium Android Merchant screens against pre-13 May code and reports.
+- Root regression found: `PremiumSettingsScreen` had been replaced by an immediate `PremiumSecurityScreen` render, hiding existing `Langue`, `Apparence`, support and help routes.
+- Restored the main settings tab as the simple operational menu and kept Security as a sub-screen.
+- Documented feature matrix and remaining contract gaps in `.swimpay-agent/ANDROID_BUSINESS_LOGIC_SCREEN_AUDIT.md`.
+- Added guardrail coverage so the settings tab cannot silently become the security detail screen again.
+
+## 2026-05-15T02:10:00+03:00 - Android pre-design feature inventory
+
+- Inspected pre-design commit `2149c8e` and tasks `687` to `705`.
+- Created the screen-by-screen feature inventory requested by the operator.
+- Confirmed old app composition: `Accueil`, `Revue`, `Ventes`, `MENU`, plus secondary routes for receiving methods, banks, connected site, receiver health, confirmation mode, security, help, support, language and appearance.
+- Confirmed current restoration blocker: `Orders/Ventes` remains hidden and the Settings `Ventes` row currently misroutes to `RÃ©cepteurs`.
+
+## 2026-05-15T02:35:00+03:00 - Android merchant simplicity restore
+
+- Restored visible `SwimPay Intelligence` on Dashboard and Receiver Health.
+- Replaced developer-console labels with merchant-facing `Site connectÃ©`, `IntÃ©gration`, `Tester l'intÃ©gration`, `Voir guide`.
+- Moved API key, webhook secret and URL detail rows behind a collapsed `DÃ©tails techniques` section.
+- Removed default receiver-health wording for heartbeat, SQLite and logs.
+- Simplified Security to lock, Google recovery/linking, notifications, confidentiality, help and support.
+- Added static guardrails to keep Intelligence visible and technical terms hidden by default.
+- Validation passed: `npm run android:compile`, targeted staging JVM guardrail, `npm run android:assemble:staging`, `git diff --check`.
+
+## 2026-05-15T03:05:00+03:00 - Android Orders/Ventes restoration
+
+- Restored `PremiumRoute.Orders` and `PremiumNavigation.openOrders()`.
+- Fixed Settings `Ventes` row to open the existing orders feature instead of `RÃ©cepteurs`.
+- Wired the route to `activeRuntime.loadOrders()` and `PremiumOrdersScreen`.
+- Added guardrail coverage for Orders reachability from Settings.
+- Validation passed: `npm run android:compile`, targeted staging JVM guardrail, `npm run android:assemble:staging`, `git diff --check`.
+
+## 2026-05-15T03:25:00+03:00 - Android preexisting contract remaining audit
+
+- Audited pre-design commit `2149c8e` against current Android Merchant routes, runtime loaders, repositories and backend/API contracts.
+- Confirmed the restored `Orders/Ventes` list is the real preexisting orders feature.
+- Confirmed `OrderDetail` existed before design only as a route placeholder; no pre-design Android `loadOrderDetail()` repository/loader or row navigation was found.
+- Confirmed backend `GET /v1/orders/:id` exists, but Android does not currently wrap it in a dedicated merchant order-detail repository.
+- Created `.swimpay-agent/ANDROID_PREEXISTING_CONTRACT_REMAINING_AUDIT.md`.
+
+## 2026-05-15T03:45:00+03:00 - Android UI rollback to 7e95985
+
+- Operator selected commit `7e95985` from 2026-05-13 17:11 as the Android UI rollback point.
+- Created safety branch `backup-before-android-ui-rollback-20260515-030644` and patch backup before restoring files.
+- Restored Android Merchant premium UI/res/test/design registry files to `7e95985` scope.
+- Removed later design artifacts added after that commit, including mockup token/text/SBP placeholder guardrail files.
+- Validation passed: `npm run android:assemble:staging`.
+- Installed rollback staging APK on device `R5CWA0FEPZW`.
