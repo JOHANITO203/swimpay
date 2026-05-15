@@ -3,12 +3,6 @@ package com.swimpay.receiver.ui.premium
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -16,10 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import com.swimpay.receiver.AndroidMerchantAccountCreateResult
 import com.swimpay.receiver.AndroidMerchantAccountProfileType
 import com.swimpay.receiver.AndroidMerchantAuthApiRepository
@@ -42,15 +33,6 @@ import kotlinx.coroutines.withContext
 
 interface PremiumMerchantReviewNotifier {
     fun notifyActionRequired(review: PremiumReviewUiItem)
-}
-
-private enum class PremiumBootUiState {
-    BootLoading,
-    BootAuthenticated,
-    BootUnauthenticated,
-    BootLocked,
-    BootOffline,
-    BootError
 }
 
 object NoopPremiumMerchantReviewNotifier : PremiumMerchantReviewNotifier {
@@ -94,7 +76,6 @@ fun PremiumMerchantApp(
             )
         )
     }
-    var bootState by remember { mutableStateOf(PremiumBootUiState.BootLoading) }
     var dashboardState by remember { mutableStateOf<PremiumScreenState<PremiumDashboardUiState>>(PremiumScreenState.loading()) }
     var reviewsState by remember { mutableStateOf<PremiumScreenState<PremiumReviewsUiState>>(PremiumScreenState.loading()) }
     var paymentDetailState by remember { mutableStateOf<PremiumScreenState<PremiumPaymentDetailUiState>>(PremiumScreenState.loading()) }
@@ -148,16 +129,6 @@ fun PremiumMerchantApp(
             PremiumRoute.Language -> PremiumNavigation.openLanguage()
             PremiumRoute.Appearance -> PremiumNavigation.openAppearance()
             else -> target
-        }
-    }
-
-    LaunchedEffect(uiLocked, onboardingCompletionStore, mobileMerchantSessionStore) {
-        bootState = PremiumBootUiState.BootLoading
-        delay(850)
-        bootState = when {
-            uiLocked -> PremiumBootUiState.BootLocked
-            mobileMerchantSessionStore.hasValidSession() -> PremiumBootUiState.BootAuthenticated
-            else -> PremiumBootUiState.BootUnauthenticated
         }
     }
 
@@ -287,16 +258,8 @@ fun PremiumMerchantApp(
                         reviewsState = withContext(Dispatchers.IO) { activeRuntime.loadReviews() }
                         notifyNewActionRequiredReviews(reviewsState)
                     }
-                    PremiumMainTab.Receivers -> {
-                        receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
-                        receiverHealthState = withContext(Dispatchers.IO) {
-                            activeRuntime.loadReceiverHealth(notificationAccessEnabled)
-                        }
-                    }
-                    PremiumMainTab.Integrations -> {
-                        connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.loadConnectedSite() }
-                    }
-                    PremiumMainTab.Settings -> {
+                    PremiumMainTab.Orders -> ordersState = withContext(Dispatchers.IO) { activeRuntime.loadOrders() }
+                    PremiumMainTab.Menu -> {
                         connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.loadConnectedSite() }
                         configurationState = withContext(Dispatchers.IO) {
                             activeRuntime.runConfigurationTest(currentConfigurationChecklist())
@@ -372,11 +335,6 @@ fun PremiumMerchantApp(
             appLock = merchantSettings.appLock,
             onUnlock = { onRequestUnlock {} }
         )
-        return
-    }
-
-    if (bootState == PremiumBootUiState.BootLoading) {
-        PremiumSplashScreen()
         return
     }
 
@@ -540,13 +498,8 @@ fun PremiumMerchantApp(
                             route = PremiumNavigation.openReview(it)
                         }
                     )
-                    PremiumMainTab.Receivers -> PremiumReceivingMethodsStateScreen(receivingMethodsState)
-                    PremiumMainTab.Integrations -> PremiumIntegrationsListStateScreen(
-                        state = connectedSiteState,
-                        onOpenIntegration = { route = PremiumNavigation.openConnectedSite() },
-                        onAddSite = { route = PremiumNavigation.openConnectedSite() }
-                    )
-                    PremiumMainTab.Settings -> PremiumSettingsScreen(
+                    PremiumMainTab.Orders -> PremiumOrdersScreen(ordersState)
+                    PremiumMainTab.Menu -> PremiumSettingsScreen(
                         connectedSite = connectedSiteState,
                         configuration = configurationState,
                         merchantProfile = currentMerchantProfileUiState(),
@@ -557,7 +510,7 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.ReceivingMethods -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Settings,
+            selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -619,7 +572,7 @@ fun PremiumMerchantApp(
             state = connectedSiteState,
             onBack = {
                 activeRuntime.clearDeveloperShowOnceExport()
-                route = PremiumRoute.Main(PremiumMainTab.Settings)
+                route = PremiumRoute.Main(PremiumMainTab.Menu)
             },
             onCreateApiKey = {
                 connectedSiteState = PremiumScreenState.loading()
@@ -669,16 +622,16 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.ConfigurationTest -> PremiumConfigurationStateScreen(configurationState) {
-            route = PremiumRoute.Main(PremiumMainTab.Settings)
+            route = PremiumRoute.Main(PremiumMainTab.Menu)
         }
         PremiumRoute.ConfirmationMode -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Settings,
+            selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumConfirmationModeScreen() }
         )
         PremiumRoute.Security -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Settings,
+            selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -740,7 +693,7 @@ fun PremiumMerchantApp(
                             } else {
                                 PremiumNavigation.openGoogleAccountLink(
                                     PremiumGoogleAccountLinkUiState.error(
-                                        result?.safeMessage ?: "Association Google annulée ou indisponible."
+                                        result?.safeMessage ?: "Association Google annulee ou indisponible."
                                     )
                                 )
                             }
@@ -750,13 +703,13 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.HelpCenter -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Settings,
+            selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumHelpCenterScreen(language = merchantSettings.language) }
         )
         PremiumRoute.SupportContact -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Settings,
+            selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -781,7 +734,7 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.Language -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Settings,
+            selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -792,7 +745,7 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.Appearance -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Settings,
+            selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -803,19 +756,19 @@ fun PremiumMerchantApp(
             }
         )
         PremiumRoute.Banks -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Settings,
+            selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumBanksStateScreen(banksState) }
         )
         PremiumRoute.ReceiverHealth -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Settings,
+            selectedTab = PremiumMainTab.Menu,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumReceiverHealthStateScreen(receiverHealthState, onOpenNotificationSettings) }
         )
         is PremiumRoute.OrderDetail -> PremiumAppShell(
-            selectedTab = PremiumMainTab.Home,
+            selectedTab = PremiumMainTab.Orders,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
@@ -827,25 +780,6 @@ fun PremiumMerchantApp(
                 )
             }
         )
-    }
-}
-
-@Composable
-private fun PremiumSplashScreen() {
-    MockupScreenBackground(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(mockupDp(22))
-            ) {
-                MockupLogo()
-                CircularProgressIndicator(
-                    modifier = Modifier.size(32.dp),
-                    color = PremiumMockupColors.Green,
-                    strokeWidth = 3.dp
-                )
-            }
-        }
     }
 }
 

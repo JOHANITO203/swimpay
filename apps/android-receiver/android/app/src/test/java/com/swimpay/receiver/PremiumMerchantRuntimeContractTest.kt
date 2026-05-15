@@ -86,7 +86,7 @@ class PremiumMerchantRuntimeContractTest {
                       "route_id": "route_card",
                       "bank_profile_id": "sber_ru",
                       "rail_type": "card_transfer",
-                      "receiver_identifier_masked": "•••• 4821",
+                      "receiver_identifier_masked": "â€¢â€¢â€¢â€¢ 4821",
                       "enabled": true,
                       "recommended": true
                     }
@@ -560,7 +560,7 @@ class PremiumMerchantRuntimeContractTest {
                 RecordingPremiumTransport(
                     MerchantApiResponse(
                         200,
-                        """{"payments_to_review_count":0,"confirmed_today_count":0,"notifications_sent_count":0,"receiver_status":{"display":"Connecté"},"recent_detected_payments":[]}"""
+                        """{"payments_to_review_count":0,"confirmed_today_count":0,"notifications_sent_count":0,"receiver_status":{"display":"ConnectÃ©"},"recent_detected_payments":[]}"""
                     )
                 )
             ),
@@ -712,7 +712,7 @@ class PremiumMerchantRuntimeContractTest {
                     "type": "card",
                     "bank_id": "sber_ru",
                     "label": "Carte caisse",
-                    "masked_value": "•••• 4821",
+                    "masked_value": "â€¢â€¢â€¢â€¢ 4821",
                     "last4": "4821",
                     "status": "active",
                     "is_default": true
@@ -729,7 +729,7 @@ class PremiumMerchantRuntimeContractTest {
                     "type": "card",
                     "bank_id": "sber_ru",
                     "label": "Carte caisse",
-                    "masked_value": "•••• 4821",
+                    "masked_value": "â€¢â€¢â€¢â€¢ 4821",
                     "last4": "4821",
                     "status": "inactive",
                     "is_default": false
@@ -818,7 +818,7 @@ class PremiumMerchantRuntimeContractTest {
         val visible = health.value.visibleTexts().joinToString(" ")
 
         assertTrue(health.value.rows.any { it.first == "Accès notifications" && it.second == "Activé" })
-        assertFalse(visible.contains("Activez l'accès notifications"))
+        assertFalse(visible.contains("Activez l'accÃ¨s notifications"))
         assertTrue(visible.contains("À configurer"))
         assertFalse(visible.contains("5 banques"))
     }

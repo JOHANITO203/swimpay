@@ -1,5 +1,6 @@
 package com.swimpay.receiver.ui.premium
 
+import com.swimpay.receiver.R
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -27,17 +28,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SignalWifiOff
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
@@ -58,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -76,9 +73,10 @@ fun PremiumAppShell(
     profileInitials: String = "S.",
     content: @Composable () -> Unit
 ) {
-    MockupScreenBackground(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f).statusBarsPadding().padding(bottom = 18.dp)) { content() }
+    Box(Modifier.fillMaxSize().background(PremiumColors.Surface)) {
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            PremiumTopChrome(profileInitials = profileInitials)
+            Box(Modifier.weight(1f)) { content() }
             PremiumBottomNav(selectedTab, onTab)
         }
     }
@@ -89,22 +87,27 @@ fun PremiumTopChrome(profileInitials: String = "S.") {
     Row(
         Modifier
             .fillMaxWidth()
-            .height(mockupDp(34))
-            .padding(horizontal = mockupDp(12)),
+            .height(PremiumSpacing.TopChromeHeight)
+            .padding(horizontal = 22.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Icon(Icons.Default.Menu, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(20)))
-        Row(Modifier.weight(1f).padding(start = mockupDp(24)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(mockupDp(8))) {
-            MockupSwimPayMark(Modifier.size(width = mockupDp(28), height = mockupDp(20)))
-            Column {
-                Text("SwimPay", color = PremiumMockupColors.White, fontSize = mockupSp(20), lineHeight = mockupSp(22), fontWeight = FontWeight.Black)
-                Text("Merchant", color = PremiumMockupColors.Green, fontSize = mockupSp(19), lineHeight = mockupSp(21), fontWeight = FontWeight.Black)
-            }
+        Box(
+            Modifier.size(26.dp).background(PremiumColors.Navy, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            SwimPayWavesMark(Modifier.size(PremiumIconSize.Small), tint = PremiumColors.Cyan)
         }
-        Box {
-            Icon(Icons.Default.NotificationsNone, null, tint = PremiumMockupColors.White, modifier = Modifier.size(mockupDp(21)))
-            Box(Modifier.align(Alignment.TopEnd).size(mockupDp(5)).background(PremiumMockupColors.Green, CircleShape))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Surface(Modifier.size(34.dp), shape = CircleShape, color = PremiumColors.Surface, shadowElevation = 2.dp) {
+                Icon(Icons.Default.DarkMode, null, tint = PremiumColors.Muted, modifier = Modifier.padding(8.dp))
+            }
+            Box {
+                Box(Modifier.size(42.dp).background(PremiumColors.Blue, CircleShape), contentAlignment = Alignment.Center) {
+                    Text(profileInitials, color = PremiumColors.Surface, fontWeight = FontWeight.Black)
+                }
+                Box(Modifier.align(Alignment.TopEnd).size(9.dp).background(PremiumColors.Success, CircleShape))
+            }
         }
     }
 }
@@ -114,53 +117,53 @@ fun PremiumBottomNav(selected: PremiumMainTab, onTab: (PremiumMainTab) -> Unit) 
     val tabs = listOf(
         PremiumMainTab.Home to Icons.Default.Home,
         PremiumMainTab.Reviews to Icons.AutoMirrored.Filled.ReceiptLong,
-        PremiumMainTab.Receivers to Icons.Default.CreditCard,
-        PremiumMainTab.Integrations to Icons.Default.Link,
-        PremiumMainTab.Settings to Icons.Default.Settings,
+        PremiumMainTab.Orders to Icons.Default.ShoppingCart,
+        PremiumMainTab.Menu to Icons.Default.MoreHoriz,
     )
     Box(
         Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .height(78.dp)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        PremiumMockupColors.DeepNavy,
-                        PremiumMockupColors.Black
-                    )
-                )
-            )
-            .border(1.dp, PremiumMockupColors.BorderSoft, RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+            .height(96.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-            Row(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Surface(
+            Modifier.fillMaxSize(),
+            color = PremiumColors.Surface,
+            shadowElevation = 16.dp,
+            shape = RoundedCornerShape(30.dp)
+        ) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
                 tabs.forEach { item ->
                     val active = selected == item.first
                     Column(
                         Modifier
-                            .weight(1f)
                             .premiumTap { onTab(item.first) }
-                            .height(58.dp)
-                            .clip(RoundedCornerShape(15.dp))
-                            .background(if (active) PremiumMockupColors.Green.copy(alpha = 0.08f) else Color.Transparent)
-                            .padding(horizontal = 2.dp, vertical = 5.dp),
+                            .padding(horizontal = 6.dp, vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
                             Modifier
-                                .size(25.dp),
+                                .size(if (active) 38.dp else 32.dp)
+                                .background(
+                                    if (active) PremiumColors.Blue else Color.Transparent,
+                                    RoundedCornerShape(14.dp)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(item.second, item.first.accessibilityLabel, tint = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted, modifier = Modifier.size(23.dp))
+                            Icon(item.second, item.first.accessibilityLabel, tint = if (active) PremiumColors.Surface else PremiumColors.Muted, modifier = Modifier.size(22.dp))
                         }
-                        PremiumBottomNavLabel(
+                        Text(
                             item.first.navLabel,
-                            color = if (active) PremiumMockupColors.Green else PremiumMockupColors.Muted,
-                            modifier = Modifier.padding(top = 4.dp)
+                            color = if (active) PremiumColors.Blue else PremiumColors.Muted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(top = 2.dp)
                         )
                     }
                 }
             }
+        }
     }
 }
 
@@ -178,25 +181,45 @@ fun <T> PremiumStatePanel(
         is PremiumScreenState.Offline -> Icons.Default.SignalWifiOff
         is PremiumScreenState.Content -> Icons.Default.CheckCircle
     }
-    MockupGlassCard(modifier.fillMaxWidth(), radius = PremiumRadius.Card) {
+    PremiumCard(modifier.fillMaxWidth(), radius = PremiumRadius.Card) {
         Column(
-            Modifier.padding(mockupDp(24)),
+            Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(mockupDp(12))
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            MockupIconTile(icon, size = mockupDp(58), tint = PremiumMockupColors.Cyan)
-            Text(state.title, color = PremiumMockupColors.White, fontSize = mockupSp(20), fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
-            Text(state.message, color = PremiumMockupColors.Muted, fontSize = mockupSp(14), lineHeight = mockupSp(21), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+            Box(Modifier.size(58.dp).background(PremiumColors.Mint, RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = PremiumColors.Blue, modifier = Modifier.size(28.dp))
+            }
+            Text(state.title, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
+            Text(state.message, color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
             state.actionLabel?.let {
-                PremiumOutlineButton(it, Modifier.padding(top = mockupDp(4)), onAction)
+                PremiumOutlineButton(it, Modifier.padding(top = 4.dp), onAction)
             }
         }
     }
 }
 
 @Composable
-fun SwimPayLogo(markSize: Dp = mockupDp(52)) {
-    MockupLogo(Modifier.scale(markSize.value / 52f))
+fun SwimPayLogo(markSize: Dp = 52.dp) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.size(markSize).background(PremiumColors.Navy, RoundedCornerShape((markSize.value / 4).dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            // Keeps the runtime brand tied to the registered official launcher asset.
+            Icon(painterResource(R.mipmap.ic_launcher), null, tint = Color.Unspecified, modifier = Modifier.size(markSize * 0.64f))
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            buildAnnotatedString {
+                append("Swim")
+                withStyle(SpanStyle(color = PremiumColors.Cyan)) { append("Pay") }
+            },
+            color = PremiumColors.Ink,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Black
+        )
+    }
 }
 
 @Composable
@@ -231,7 +254,12 @@ fun PremiumCard(
     color: Color = PremiumColors.Surface,
     content: @Composable () -> Unit
 ) {
-    MockupGlassCard(modifier, radius = radius, border = PremiumMockupColors.BorderSoft, content = content)
+    Surface(
+        modifier.shadow(18.dp, RoundedCornerShape(radius)),
+        color = color,
+        shape = RoundedCornerShape(radius),
+        content = content
+    )
 }
 
 @Composable
@@ -260,9 +288,11 @@ fun PremiumGradientPanel(
 ) {
     Box(
         modifier
-            .shadow(mockupDp(18), RoundedCornerShape(radius))
+            .shadow(18.dp, RoundedCornerShape(radius))
             .background(
-                Brush.linearGradient(PremiumMockupGradient.Primary),
+                Brush.linearGradient(
+                    colors = listOf(PremiumColors.Blue, Color(0xFF1E7BF0), PremiumColors.ElectricBlue)
+                ),
                 RoundedCornerShape(radius)
             )
     ) {
@@ -273,9 +303,7 @@ fun PremiumGradientPanel(
 @Composable
 fun PremiumIconTile(icon: ImageVector, size: Dp, tint: Color = PremiumColors.Cyan) {
     Box(
-        Modifier.size(size)
-            .background(PremiumMockupColors.Field, RoundedCornerShape(size / 3f))
-            .border(mockupDp(1), PremiumMockupColors.BorderSoft, RoundedCornerShape(size / 3f)),
+        Modifier.size(size).background(PremiumColors.Navy, RoundedCornerShape(size / 3f)),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(size * 0.52f))
@@ -283,7 +311,7 @@ fun PremiumIconTile(icon: ImageVector, size: Dp, tint: Color = PremiumColors.Cya
 }
 
 @Composable
-fun PremiumGoogleIcon(modifier: Modifier = Modifier.size(mockupDp(26))) {
+fun PremiumGoogleIcon(modifier: Modifier = Modifier.size(26.dp)) {
     Canvas(modifier) {
         val strokeWidth = size.minDimension * 0.16f
         val arcStyle = Stroke(width = strokeWidth, cap = StrokeCap.Round)
@@ -326,7 +354,7 @@ fun PremiumPrimaryButton(
         if (enabled) buttonModifier.premiumTap(onClick) else buttonModifier,
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = Color(0xFF02070A), fontWeight = FontWeight.Black, fontSize = mockupSp(17), letterSpacing = mockupSp(0))
+        Text(text.uppercase(), color = PremiumColors.Surface, fontWeight = FontWeight.Black, fontSize = 13.sp, letterSpacing = 1.5.sp)
     }
 }
 
@@ -337,12 +365,12 @@ fun PremiumOutlineButton(text: String, modifier: Modifier = Modifier, onClick: (
             .fillMaxWidth()
             .height(PremiumComponentSize.ButtonHeight)
             .clip(RoundedCornerShape(PremiumRadius.Button))
-            .background(Color.Transparent, RoundedCornerShape(PremiumRadius.Button))
-            .border(mockupDp(1), PremiumMockupColors.Green, RoundedCornerShape(PremiumRadius.Button))
+            .background(PremiumColors.Surface, RoundedCornerShape(PremiumRadius.Button))
+            .border(1.dp, PremiumColors.Line, RoundedCornerShape(PremiumRadius.Button))
             .premiumTap(onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = PremiumMockupColors.Green, fontWeight = FontWeight.Black, fontSize = mockupSp(16), letterSpacing = mockupSp(0))
+        Text(text.uppercase(), color = PremiumColors.Navy, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.2.sp)
     }
 }
 
@@ -360,7 +388,7 @@ fun PremiumBlueButton(text: String, modifier: Modifier = Modifier, onClick: () -
             .premiumTap(onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = Color(0xFF02070A), fontWeight = FontWeight.Black, fontSize = mockupSp(17), letterSpacing = mockupSp(0))
+        Text(text.uppercase(), color = PremiumColors.Surface, fontWeight = FontWeight.Black, fontSize = 13.sp, letterSpacing = 1.5.sp)
     }
 }
 
@@ -368,24 +396,24 @@ fun PremiumBlueButton(text: String, modifier: Modifier = Modifier, onClick: () -
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
-        color = PremiumMockupColors.MutedDark,
-        fontSize = mockupSp(10),
+        color = PremiumColors.SoftText,
+        fontSize = 10.sp,
         fontWeight = FontWeight.Black,
-        letterSpacing = mockupSp(0),
-        modifier = modifier.padding(bottom = mockupDp(14))
+        letterSpacing = 3.sp,
+        modifier = modifier.padding(bottom = 14.dp)
     )
 }
 
 @Composable
 fun StatusChip(text: String, tone: StatusTone, modifier: Modifier = Modifier) {
     val (bg, fg) = when (tone) {
-        StatusTone.Success -> PremiumMockupColors.Green.copy(alpha = 0.14f) to PremiumMockupColors.Green
-        StatusTone.Warning -> PremiumMockupColors.Warning.copy(alpha = 0.14f) to PremiumMockupColors.Warning
-        StatusTone.Info -> PremiumMockupColors.Blue.copy(alpha = 0.14f) to PremiumMockupColors.Blue
-        StatusTone.Neutral -> PremiumMockupColors.BorderSoft to PremiumMockupColors.Muted
+        StatusTone.Success -> PremiumColors.Mint to PremiumColors.Success
+        StatusTone.Warning -> Color(0xFFFFF2DD) to Color(0xFFB45309)
+        StatusTone.Info -> PremiumColors.IconTile to PremiumColors.Blue
+        StatusTone.Neutral -> PremiumColors.NeutralChip to PremiumColors.Ink
     }
-    Surface(modifier.border(mockupDp(1), fg.copy(alpha = 0.45f), CircleShape), color = fg.copy(alpha = 0.14f), shape = CircleShape) {
-        PremiumStatusChipText(text, color = fg, modifier = Modifier.padding(horizontal = mockupDp(10), vertical = mockupDp(5)))
+    Surface(modifier, color = bg, shape = CircleShape) {
+        Text(text, color = fg, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
     }
 }
 
@@ -398,8 +426,8 @@ enum class StatusTone {
 
 @Composable
 fun CircleAction(icon: ImageVector, onClick: () -> Unit = {}) {
-    Surface(Modifier.size(mockupDp(42)).premiumTap(onClick), shape = CircleShape, color = PremiumMockupColors.Field, shadowElevation = mockupDp(0)) {
-        Icon(icon, null, tint = PremiumMockupColors.White, modifier = Modifier.padding(mockupDp(10)))
+    Surface(Modifier.size(42.dp).premiumTap(onClick), shape = CircleShape, color = PremiumColors.Surface, shadowElevation = PremiumElevation.Card) {
+        Icon(icon, null, tint = PremiumColors.Navy, modifier = Modifier.padding(10.dp))
     }
 }
 
@@ -412,7 +440,7 @@ fun TrendLine(
     Canvas(modifier) {
         repeat(5) {
             val y = size.height * (it + 1) / 6f
-            drawLine(PremiumMockupColors.BorderSoft, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.5f)
+            drawLine(PremiumColors.Line, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.5f)
         }
         fun normalizedPoints(values: List<Float>, maxValue: Float): List<Offset> {
             if (values.isEmpty()) return emptyList()
@@ -440,8 +468,8 @@ fun TrendLine(
             }
         }
 
-        drawSeries(primaryValues, PremiumMockupColors.Green, 7f)
-        drawSeries(secondaryValues, PremiumMockupColors.Cyan, 4f)
+        drawSeries(primaryValues, PremiumColors.Blue, 7f)
+        drawSeries(secondaryValues, PremiumColors.Success, 4f)
     }
 }
 
@@ -449,9 +477,9 @@ fun TrendLine(
 fun PremiumTitle(title: String, body: String? = null, centered: Boolean = false) {
     Text(
         title,
-        color = PremiumMockupColors.White,
+        color = PremiumColors.Ink,
         fontSize = PremiumType.Hero,
-        lineHeight = mockupSp(34),
+        lineHeight = 34.sp,
         fontWeight = FontWeight.Black,
         textAlign = if (centered) TextAlign.Center else TextAlign.Start,
         modifier = Modifier.fillMaxWidth()
@@ -459,12 +487,12 @@ fun PremiumTitle(title: String, body: String? = null, centered: Boolean = false)
     if (body != null) {
         Text(
             body,
-            color = PremiumMockupColors.Muted,
+            color = PremiumColors.Muted,
             fontSize = PremiumType.Body,
             fontWeight = FontWeight.SemiBold,
-            lineHeight = mockupSp(23),
+            lineHeight = 23.sp,
             textAlign = if (centered) TextAlign.Center else TextAlign.Start,
-            modifier = Modifier.fillMaxWidth().padding(top = mockupDp(12), bottom = mockupDp(28))
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 28.dp)
         )
     }
 }
@@ -474,11 +502,11 @@ fun ItalicReadyTitle() {
     Text(
         buildAnnotatedString {
             append("Prêt à ")
-            withStyle(SpanStyle(color = PremiumMockupColors.Cyan, fontStyle = FontStyle.Italic)) { append("Scanner") }
+            withStyle(SpanStyle(color = PremiumColors.Cyan, fontStyle = FontStyle.Italic)) { append("Scanner") }
             append(".")
         },
-        color = PremiumMockupColors.White,
-        fontSize = mockupSp(30),
+        color = PremiumColors.Ink,
+        fontSize = 30.sp,
         fontWeight = FontWeight.Black,
         textAlign = TextAlign.Center
     )
@@ -486,5 +514,5 @@ fun ItalicReadyTitle() {
 
 @Composable
 fun Chevron() {
-    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumMockupColors.Muted)
+    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color(0xFFB7B7B7))
 }

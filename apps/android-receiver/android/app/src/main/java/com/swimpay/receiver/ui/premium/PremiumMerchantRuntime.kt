@@ -1,4 +1,4 @@
-﻿package com.swimpay.receiver.ui.premium
+package com.swimpay.receiver.ui.premium
 
 import com.swimpay.receiver.AuthenticatedMerchantSession
 import com.swimpay.receiver.BankTargetLock
@@ -102,7 +102,7 @@ data class PremiumDashboardUiState(
                 readyTitle = "SwimPay est prêt",
                 readyText = "Votre téléphone est connecté et vos paiements peuvent être détectés.",
                 mainMetricLabel = "Paiements confirmés",
-                monthlyAmount = "0 RUB",
+                monthlyAmount = "0 ₽",
                 metrics = listOf(
                     PremiumMetricUiState("0", "À confirmer"),
                     PremiumMetricUiState("0", "Confirmés"),
@@ -122,7 +122,6 @@ data class PremiumDashboardUiState(
         }
     }
 }
-
 data class PremiumReviewUiItem(
     val reviewId: String,
     val amount: String,
@@ -163,11 +162,9 @@ data class PremiumReviewsUiState(
         fun preview(): PremiumReviewsUiState {
             return PremiumReviewsUiState(
                 items = listOf(
-                    PremiumReviewUiItem("rev_demo_1", "9 450,00 RUB", "Sberbank", ReviewUiStatus.TO_CONFIRM, "À vérifier", "Réf. 5421 9988 7721", listOf("Montant exact", "Carte se terminant par 5421"), false),
-                    PremiumReviewUiItem("rev_demo_2", "14 200,00 RUB", "T-Bank", ReviewUiStatus.TO_CONFIRM, "À vérifier", "Réf. 8876 1122 3344", listOf("Référence non visible"), false),
-                    PremiumReviewUiItem("rev_demo_3", "6 800,00 RUB", "VTB", ReviewUiStatus.TO_CONFIRM, "À vérifier", "Réf. 1122 6677 8899", listOf("Validation manuelle"), false),
-                    PremiumReviewUiItem("rev_demo_4", "22 950,00 RUB", "Alfa-Bank", ReviewUiStatus.TO_CONFIRM, "À vérifier", "Réf. 3344 5566 7788", listOf("Validation manuelle"), false),
-                    PremiumReviewUiItem("rev_demo_5", "3 150,00 RUB", "Gazprombank", ReviewUiStatus.TO_CONFIRM, "À vérifier", "Réf. 7788 9900 1122", listOf("Validation manuelle"), false)
+                    PremiumReviewUiItem("rev_demo_1", "58,41 ₽", "Sberbank", ReviewUiStatus.TO_CONFIRM, "À vérifier", "Signal détecté il y a 2 min", listOf("Validation manuelle en bêta"), false),
+                    PremiumReviewUiItem("rev_demo_2", "129,00 ₽", "T-Bank", ReviewUiStatus.TO_CONFIRM, "À vérifier", "Référence non visible", listOf("Référence non visible"), false),
+                    PremiumReviewUiItem("rev_demo_3", "45,00 ₽", "Alfa-Bank", ReviewUiStatus.CONFIRMED, "Validé", "Confirmé manuellement", listOf("Validation manuelle en bêta"), true)
                 ),
                 usesLiveApi = false
             )
@@ -191,20 +188,20 @@ data class PremiumPaymentDetailUiState(
             return PremiumPaymentDetailUiState(
                 reviewId = reviewId,
                 statusTitle = "À vérifier",
-                statusText = "Ce paiement necessite une validation manuelle.",
+                statusText = "Ce paiement nécessite une validation manuelle.",
                 summaryRows = listOf(
+                    "Montant affiché" to "58,41 ₽",
+                    "Montant exact attendu" to "58,80 ₽",
+                    "Montant détecté" to "58,80 ₽",
+                    "Écart" to "0,00 ₽",
+                    "Risque" to "Montant exact attendu reconnu",
                     "Banque" to "Sberbank",
-                    "Methode" to "Carte bancaire",
-                    "Reference" to "#SPM-2025-05-0912",
-                    "Recu le" to "21 mai 2025, 09:21:12",
-                    "Montant" to "9 450,00 RUB",
-                    "Confiance" to "78%",
-                    "Priorité" to "Montant exact attendu reconnu",
-                    "Moyen de reception" to "Carte **** 5421",
-                    "Signal recu" to "Il y a 2 min"
+                    "Moyen de réception" to "Carte · •••• 4821",
+                    "Référence" to "TANGO ALFA",
+                    "Signal reçu" to "Il y a 2 min"
                 ),
-                reasons = listOf("Montant exact", "Carte se terminant par 5421", "Reference dans la notification", "Heure proche"),
-                timeline = listOf("Signal recu", "Review creee"),
+                reasons = listOf("Validation manuelle en bêta", "Référence non visible"),
+                timeline = listOf("Signal reçu", "Review créée"),
                 usesLiveApi = false
             )
         }
@@ -426,7 +423,7 @@ class PremiumMerchantRuntime(
         val texts = result.visibleTexts()
         val recent = texts.drop(12).chunked(3).mapNotNull { chunk ->
             val amount = chunk.getOrNull(0) ?: return@mapNotNull null
-            if (!amount.contains("RUB", ignoreCase = true)) return@mapNotNull null
+            if (!amount.contains("₽") && !amount.contains("RUB", ignoreCase = true)) return@mapNotNull null
             val bank = chunk.getOrNull(1) ?: "Banque choisie"
             val status = chunk.getOrNull(2) ?: "À vérifier"
             PremiumRecentPaymentUiState(amount, "$bank · récemment", status)
@@ -460,7 +457,7 @@ class PremiumMerchantRuntime(
                 readyTitle = texts.getOrNull(1) ?: "SwimPay est prêt",
                 readyText = texts.getOrNull(2) ?: "Votre téléphone est connecté et vos paiements peuvent être détectés.",
                 mainMetricLabel = "Paiements confirmés",
-                monthlyAmount = summary?.confirmedAmountLabel() ?: "Données indisponibles",
+                monthlyAmount = summary?.confirmedAmountLabel() ?: "0 ₽",
                 metrics = dashboardMetricCards(summary),
                 chartPoints = chartPoints,
                 chartConfirmedAmountLabel = if (chartPoints.isEmpty()) "—" else formatDashboardChartAmount(chartConfirmedAmountMinor, summary?.currency ?: "RUB"),
@@ -530,11 +527,11 @@ class PremiumMerchantRuntime(
         }
         val texts = result.visibleTexts()
         val summaryRows = buildList {
-            add((texts.getOrNull(3) ?: "Montant affiché") to (texts.getOrNull(4) ?: "0,00 RUB"))
-            add((texts.getOrNull(5) ?: "Montant exact attendu") to (texts.getOrNull(6) ?: "0,00 RUB"))
-            add((texts.getOrNull(7) ?: "Montant détecté") to (texts.getOrNull(8) ?: "0,00 RUB"))
-            add((texts.getOrNull(9) ?: "Écart") to (texts.getOrNull(10) ?: "0,00 RUB"))
-            add((texts.getOrNull(11) ?: "Priorité") to (texts.getOrNull(12) ?: "Validation manuelle requise"))
+            add((texts.getOrNull(3) ?: "Montant affiché") to (texts.getOrNull(4) ?: "0,00 ₽"))
+            add((texts.getOrNull(5) ?: "Montant exact attendu") to (texts.getOrNull(6) ?: "0,00 ₽"))
+            add((texts.getOrNull(7) ?: "Montant détecté") to (texts.getOrNull(8) ?: "0,00 ₽"))
+            add((texts.getOrNull(9) ?: "Écart") to (texts.getOrNull(10) ?: "0,00 ₽"))
+            add((texts.getOrNull(11) ?: "Risque") to (texts.getOrNull(12) ?: "Validation manuelle requise"))
             add((texts.getOrNull(13) ?: "Banque") to (texts.getOrNull(14) ?: "Banque choisie"))
             add((texts.getOrNull(15) ?: "Moyen de réception") to (texts.getOrNull(16) ?: "Moyen de réception"))
             add((texts.getOrNull(17) ?: "Référence") to (texts.getOrNull(18) ?: "<REFERENCE>"))
@@ -805,28 +802,28 @@ class PremiumMerchantRuntime(
 
     fun createDeveloperApiKey(): PremiumScreenState<PremiumConnectedSiteUiState> {
         return developerIntegrationRepository?.createApiKey(session)?.toConnectedSiteStateWithShowOnceCopy()
-            ?: PremiumScreenState.offline(message = "Intégration développeur indisponible.")
+            ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
     }
 
     fun rotateDeveloperApiKey(): PremiumScreenState<PremiumConnectedSiteUiState> {
         return developerIntegrationRepository?.rotateApiKey(session)?.toConnectedSiteStateWithShowOnceCopy()
-            ?: PremiumScreenState.offline(message = "Intégration développeur indisponible.")
+            ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
     }
 
     fun rotateDeveloperWebhookSecret(): PremiumScreenState<PremiumConnectedSiteUiState> {
         return developerIntegrationRepository?.rotateWebhookSecret(session)?.toConnectedSiteStateWithShowOnceCopy()
-            ?: PremiumScreenState.offline(message = "Intégration développeur indisponible.")
+            ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
     }
 
     fun updateDeveloperWebhookUrl(webhookUrl: String): PremiumScreenState<PremiumConnectedSiteUiState> {
         return developerIntegrationRepository?.updateWebhookUrl(session, webhookUrl)
             ?.toConnectedSiteStateWithCurrentShowOnceCopy()
-            ?: PremiumScreenState.offline(message = "Intégration développeur indisponible.")
+            ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
     }
 
     fun testDeveloperWebhook(): PremiumScreenState<PremiumConnectedSiteUiState> {
         val repository = developerIntegrationRepository
-            ?: return PremiumScreenState.offline(message = "Intégration développeur indisponible.")
+            ?: return PremiumScreenState.offline(message = "Integration developpeur indisponible.")
         val test = repository.testWebhook(session)
         return repository.load(session).copy(safeMessage = test.safeMessage).toConnectedSiteStateWithCurrentShowOnceCopy()
     }
@@ -987,7 +984,7 @@ class PremiumMerchantRuntime(
                 "Activez l'accès notifications pour lancer l'écoute intelligente."
             },
             mainMetricLabel = "Paiements confirmés",
-            monthlyAmount = "Données indisponibles",
+            monthlyAmount = "0 ₽",
             metrics = dashboardMetricCards(null),
             recentPayments = emptyList(),
             usesLiveApi = false,
@@ -1235,23 +1232,13 @@ private fun List<MerchantOrderItem>.toDashboardRecentPayments(): List<PremiumRec
 }
 
 private fun dashboardMetricCards(summary: MerchantDashboardMetricsSummary?): List<PremiumMetricUiState> {
-    if (summary == null) {
-        return listOf(
-            PremiumMetricUiState("—", "À confirmer"),
-            PremiumMetricUiState("—", "Confirmés"),
-            PremiumMetricUiState("—", "Rejetés"),
-            PremiumMetricUiState("—", "Expirés"),
-            PremiumMetricUiState("—", "Échecs"),
-            PremiumMetricUiState("—", "Taux")
-        )
-    }
     return listOf(
-        PremiumMetricUiState(summary.pendingReviewCount.toString(), "À confirmer"),
-        PremiumMetricUiState(summary.confirmedPaymentCount.toString(), "Confirmés"),
-        PremiumMetricUiState(summary.rejectedPaymentCount.toString(), "Rejetés"),
-        PremiumMetricUiState(summary.expiredPaymentCount.toString(), "Expirés"),
-        PremiumMetricUiState(summary.failedCount.toString(), "Échecs"),
-        PremiumMetricUiState(summary.confirmationRateLabel(), "Taux")
+        PremiumMetricUiState((summary?.pendingReviewCount ?: 0).toString(), "À confirmer"),
+        PremiumMetricUiState((summary?.confirmedPaymentCount ?: 0).toString(), "Confirmés"),
+        PremiumMetricUiState((summary?.rejectedPaymentCount ?: 0).toString(), "Rejetés"),
+        PremiumMetricUiState((summary?.expiredPaymentCount ?: 0).toString(), "Expirés"),
+        PremiumMetricUiState((summary?.failedCount ?: 0).toString(), "Échecs"),
+        PremiumMetricUiState(summary?.confirmationRateLabel() ?: "0 %", "Taux")
     )
 }
 

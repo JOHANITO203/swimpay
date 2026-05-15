@@ -190,8 +190,7 @@ data class PremiumOnboardingSessionState(
             "tbank_ru",
             "vtb_ru",
             "alfa_ru",
-            "gazprombank_ru",
-            "ozon_bank"
+            "gazprombank_ru"
         )
     }
 }

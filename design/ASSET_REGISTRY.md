@@ -15,7 +15,6 @@ This registry is the visual source of truth for SwimPay Android Merchant and hos
 | Android notification small icon | `apps/android-receiver/android/app/src/main/res/drawable/ic_notification_small.xml` | Android local merchant notifications only | Official monochrome vector status icon. Keep vector-only; do not replace with bitmap. |
 | Bank icons | `apps/android-receiver/android/app/src/main/res/drawable-nodpi/ic_bank_*.png` and documented vector placeholders below | Android bank selector/manager, hosted checkout sender/receiver bank marks | Checkout may embed these same source assets as data URIs so the buyer flow does not create separate bank-logo variants. |
 | Ozon Bank placeholder | `apps/android-receiver/android/app/src/main/res/drawable/ic_bank_ozon.xml` | Android bank selector/manager and review card placeholder | Documented placeholder `OZ` mark because no official Ozon Bank logo asset was provided in-repo. Replace with an official asset only after explicit product/design approval. |
-| SBP visual mark | `apps/android-receiver/android/app/src/main/res/drawable/ic_payment_sbp_placeholder.xml` | Android merchant phone-transfer/SBP visual cue | Single registered SBP-style mark aligned to the provided Android Merchant mockup. Replace only if an official approved asset file is added. |
 
 ## Checkout Bank Logo Resolution
 
@@ -27,9 +26,8 @@ No checkout-only bank logo variants are allowed. If a bank has no registered off
 
 | Mark | Source path | Current use | Status |
 | --- | --- | --- | --- |
-| Android Compose `SwimPayLogo` | `apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt` | Android login/onboarding brand | Runtime-used Compose brand built from the registered `SwimPayWavesMark`; no new resource logo file. |
+| Android Compose `SwimPayLogo` | `apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt` | Android login/onboarding brand | Runtime-used and now renders the official launcher asset through `painterResource(R.mipmap.ic_launcher)`. |
 | Android Compose `SwimPayWavesMark` | `apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt` | Small top chrome / compact brand mark | Runtime-used vector-style mark for small UI spaces. Must remain token-driven and must not become a new resource logo file. |
-| Android Compose `MockupLogo` | `apps/android-receiver/android/app/src/main/java/com/swimpay/receiver/ui/premium/PremiumMockupTokens.kt` | Android merchant mockup-mirror login/onboarding brand | Runtime-used only for the premium mockup mirror surfaces. It reuses Compose drawing and must not become an unregistered resource logo file. |
 | Web dashboard `SwimPayBrand` | `apps/web/src/ui/Components.ts` | Merchant/admin web brand | Secondary/frozen dashboard surface. Do not expand without product decision. |
 | Checkout inline SwimPay mark | `apps/web/src/screens/CheckoutScreen.ts` | Buyer checkout brand | Runtime-used inline SVG aligned to Android compact waves mark and Android premium color tokens. It is not a new asset file and must not become a new resource logo file. |
 

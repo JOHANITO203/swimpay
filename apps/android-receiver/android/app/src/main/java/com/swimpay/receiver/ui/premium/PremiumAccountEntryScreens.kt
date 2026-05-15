@@ -10,11 +10,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,13 +20,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MailOutline
-import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,132 +47,22 @@ fun PremiumAccountEntryScreen(
     onCreateAccount: () -> Unit,
     onSignIn: () -> Unit
 ) {
-    MockupScreenBackground(Modifier.fillMaxSize()) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = PremiumMockupSpacing.ScreenHorizontal)
-                .padding(top = 50.dp, bottom = 18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            MockupLogo()
-            Spacer(Modifier.height(14.dp))
-            Text(
-                "Bienvenue !",
-                color = PremiumMockupColors.White,
-                fontSize = 29.sp,
-                lineHeight = 34.sp,
-                fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "Gérez vos récepteurs et suivez\nvos paiements en temps réel.",
-                color = PremiumMockupColors.Muted,
-                fontSize = 16.sp,
-                lineHeight = 22.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(24.dp))
-
-            MockupGlassCard(Modifier.fillMaxWidth(), radius = 24.dp) {
-                Row(
-                    Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    MockupIconTile(PremiumIcons.Security, size = 58.dp)
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            "Accès marchand sécurisé",
-                            color = PremiumMockupColors.White,
-                            fontSize = 17.sp,
-                            lineHeight = 21.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Vos données sont chiffrées et protégées.\nAccédez à vos opérations en toute sécurité.",
-                            color = PremiumMockupColors.Muted,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(14.dp))
-            MockupGlassCard(Modifier.fillMaxWidth(), radius = 28.dp) {
-                Column(
-                    Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    Text("Email", color = PremiumMockupColors.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    MockupInputRow(icon = Icons.Default.MailOutline, placeholder = "email@merchant.example")
-                    Text("Mot de passe", color = PremiumMockupColors.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    MockupInputRow(icon = Icons.Default.Lock, placeholder = "Votre mot de passe", trailing = Icons.Default.Visibility)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        Text("Mot de passe oublié ?", color = PremiumMockupColors.Green, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    MockupPrimaryButton("Se connecter", onClick = onSignIn)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(18.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(Modifier.weight(1f).height(1.dp).background(PremiumMockupColors.Border))
-                        Text("ou", color = PremiumMockupColors.MutedDark, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                        Box(Modifier.weight(1f).height(1.dp).background(PremiumMockupColors.Border))
-                    }
-                    MockupOutlineButton("Créer un compte", onClick = onCreateAccount)
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-            MockupTruthBanner(Modifier.fillMaxWidth())
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MockupFeature(
-                    label = "Sécurisé",
-                    body = "Données chiffrées\nde bout en bout",
-                    icon = PremiumIcons.Security,
-                    modifier = Modifier.weight(1f)
-                )
-                Box(Modifier.width(1.dp).height(112.dp).background(PremiumMockupColors.Border))
-                MockupFeature(
-                    label = "Temps réel",
-                    body = "Suivi instantane\ndes paiements",
-                    icon = PremiumIcons.FastDetection,
-                    modifier = Modifier.weight(1f)
-                )
-                Box(Modifier.width(1.dp).height(112.dp).background(PremiumMockupColors.Border))
-                MockupFeature(
-                    label = "Fiable",
-                    body = "Signaux détectés\nmulti-banques",
-                    icon = Icons.Default.NotificationsNone,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumMockupColors.BorderSoft))
-            Spacer(Modifier.height(14.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
+    val copy = PremiumLocalizedCopy.forLanguage(language)
+    PremiumAccountEntryFrame(language = language, onLanguageSelected = onLanguageSelected) {
+        SwimPayLogo(markSize = 56.dp)
+        Spacer(Modifier.height(26.dp))
+        PremiumTitle(
+            title = copy.welcomeTitle,
+            body = copy.welcomeBody,
+            centered = true
+        )
+        PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
+            Column(
+                Modifier.padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(Icons.Default.Lock, null, tint = PremiumMockupColors.MutedDark, modifier = Modifier.size(20.dp))
-                Text(
-                    "Conçu pour la fiabilité opérationnelle",
-                    color = PremiumMockupColors.MutedDark,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                PremiumPrimaryButton(copy.createAccount, onClick = onCreateAccount)
+                PremiumOutlineButton(copy.signIn, onClick = onSignIn)
             }
         }
     }
@@ -315,24 +199,22 @@ private fun PremiumAccountEntryFrame(
     onLanguageSelected: (PremiumLanguageOption) -> Unit,
     content: @Composable () -> Unit
 ) {
-    MockupScreenBackground(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize()) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 22.dp, vertical = 34.dp)
-                    .padding(bottom = 42.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                content = { content() }
-            )
-            PremiumLanguageSwitch(
-                language = language,
-                onLanguageSelected = onLanguageSelected,
-                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 10.dp, end = 16.dp)
-            )
-        }
+    Box(Modifier.fillMaxSize().background(PremiumColors.Background)) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 22.dp, vertical = 34.dp)
+                .padding(bottom = 42.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            content = { content() }
+        )
+        PremiumLanguageSwitch(
+            language = language,
+            onLanguageSelected = onLanguageSelected,
+            modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 10.dp, end = 16.dp)
+        )
     }
 }
 
@@ -344,17 +226,17 @@ fun PremiumLanguageSwitch(
 ) {
     Row(
         modifier
-            .background(PremiumMockupColors.CardStrong, CircleShape)
-            .border(1.dp, PremiumMockupColors.BorderSoft, CircleShape)
+            .background(PremiumColors.Surface, CircleShape)
+            .border(1.dp, PremiumColors.Line, CircleShape)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Icon(Icons.Default.Language, "Langue", tint = PremiumMockupColors.Green, modifier = Modifier.size(16.dp))
+        Icon(Icons.Default.Language, "Langue", tint = PremiumColors.Navy, modifier = Modifier.size(16.dp))
         PremiumLanguageOption.entries.forEach { option ->
             Text(
                 option.shortLabel,
-                color = if (option == language) PremiumMockupColors.White else PremiumMockupColors.MutedDark,
+                color = if (option == language) PremiumColors.Blue else PremiumColors.Muted,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
                 modifier = Modifier
@@ -372,12 +254,12 @@ private fun AccountEntryBackButton(onBack: () -> Unit) {
         Box(
             Modifier
                 .size(48.dp)
-                .background(PremiumMockupColors.CardStrong, CircleShape)
-                .border(1.dp, PremiumMockupColors.BorderSoft, CircleShape)
+                .background(PremiumColors.Surface, CircleShape)
+                .border(1.dp, PremiumColors.Line, CircleShape)
                 .premiumTap(onBack),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", tint = PremiumMockupColors.White, modifier = Modifier.size(22.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", tint = PremiumColors.Navy, modifier = Modifier.size(22.dp))
         }
     }
 }
@@ -396,7 +278,7 @@ private fun PremiumAccountChoiceRow(
         onClick = onClick,
         elevated = elevated
     ) {
-        Icon(icon, null, tint = PremiumMockupColors.Green, modifier = Modifier.size(25.dp))
+        Icon(icon, null, tint = PremiumColors.Blue, modifier = Modifier.size(25.dp))
     }
 }
 
@@ -439,25 +321,22 @@ private fun PremiumAccountChoiceRowContent(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
-            Modifier
-                .size(48.dp)
-                .background(PremiumMockupColors.Green.copy(alpha = 0.14f), RoundedCornerShape(18.dp))
-                .border(1.dp, PremiumMockupColors.Green.copy(alpha = 0.24f), RoundedCornerShape(18.dp)),
+            Modifier.size(48.dp).background(PremiumColors.Mint, RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center
         ) {
             iconContent()
         }
         Column(Modifier.weight(1f)) {
-            Text(title, color = PremiumMockupColors.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+            Text(title, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
             Text(
                 description,
-                color = PremiumMockupColors.Muted,
+                color = PremiumColors.Muted,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
-        Icon(Icons.Default.Security, null, tint = PremiumMockupColors.Cyan, modifier = Modifier.size(22.dp))
+        Icon(Icons.Default.Security, null, tint = Color(0xFFB7C6D6), modifier = Modifier.size(22.dp))
     }
 }
