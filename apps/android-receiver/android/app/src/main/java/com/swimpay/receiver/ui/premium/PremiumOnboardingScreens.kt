@@ -2,6 +2,7 @@ package com.swimpay.receiver.ui.premium
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,63 +46,69 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
+import com.swimpay.receiver.R
 import com.swimpay.receiver.ReceivingMethodType
 import com.swimpay.receiver.MerchantReceivingMethodDraft as MerchantReceivingRouteDraft
 import kotlinx.coroutines.delay
 
 @Composable
 fun PremiumLandingScreen(onStart: () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(PremiumColors.Background)
-            .statusBarsPadding()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        SwimPayLogo(markSize = 56.dp)
-        Spacer(Modifier.height(22.dp))
-        Text(
-            "Terminal marchand",
-            color = PremiumColors.SoftText,
-            fontWeight = FontWeight.Black,
-            fontSize = 12.sp,
-            letterSpacing = 4.sp
-        )
-        Text(
-            "Configurez SwimPay sur ce téléphone pour suivre les paiements reçus.",
-            color = PremiumColors.Muted,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 16.sp,
-            lineHeight = 24.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 12.dp)
-        )
-        Spacer(Modifier.height(44.dp))
-        PremiumCard(
+    Box(Modifier.fillMaxSize()) {
+        PremiumPaperBackground(Modifier.fillMaxSize())
+        Column(
             Modifier
-                .fillMaxWidth()
-                .height(220.dp)
-                .premiumTap(onStart),
-            radius = 30.dp
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Column(
-                Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+            SwimPayLogo(markSize = 56.dp)
+            Spacer(Modifier.height(22.dp))
+            Text(
+                "Terminal marchand",
+                color = PremiumColors.SoftText,
+                fontWeight = FontWeight.Black,
+                fontSize = 12.sp,
+                letterSpacing = 4.sp
+            )
+            Text(
+                "Configurez SwimPay sur ce téléphone pour suivre les paiements reçus.",
+                color = PremiumColors.Muted,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                lineHeight = 24.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+            Spacer(Modifier.height(44.dp))
+            PremiumCard(
+                Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .premiumTap(onStart),
+                radius = 30.dp
             ) {
-                Box(Modifier.size(78.dp).background(PremiumColors.Navy, RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {
-                    SwimPayWavesMark(Modifier.size(PremiumIconSize.Large), tint = PremiumColors.Cyan)
+                Column(
+                    Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(Modifier.size(78.dp).background(PremiumColors.IconTile, RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {
+                        SwimPayWavesMark(Modifier.size(PremiumIconSize.Large), tint = PremiumColors.Cyan)
+                    }
+                    Spacer(Modifier.height(26.dp))
+                    Text("Configuration initiale", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text("Commencer", color = PremiumColors.SoftText, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                 }
-                Spacer(Modifier.height(26.dp))
-                Text("Configuration initiale", color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Text("Commencer", color = PremiumColors.SoftText, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
             }
         }
     }
@@ -194,7 +201,8 @@ fun PremiumOnboardingFlow(
 
 @Composable
 private fun WelcomeStep(onNext: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(PremiumColors.Background).statusBarsPadding()) {
+    Box(Modifier.fillMaxSize().statusBarsPadding()) {
+        PremiumPaperBackground(Modifier.fillMaxSize())
         Column(
             Modifier
                 .fillMaxSize()
@@ -203,7 +211,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
                 .padding(bottom = 92.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SwimPayLogo(markSize = 54.dp)
+            SwimPayLauncherBadge(size = 76.dp)
             Spacer(Modifier.height(26.dp))
             Text(
                 "Recevez vos paiements plus facilement",
@@ -231,7 +239,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(PremiumColors.Background)
+                .background(PremiumColors.Background.copy(alpha = 0.92f))
                 .padding(horizontal = 22.dp, vertical = 18.dp)
         ) {
             PremiumPrimaryButton("Commencer", onClick = onNext)
@@ -258,7 +266,7 @@ private fun NotificationAccessStep(
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 Box(
-                    Modifier.size(64.dp).background(Color(0xFFFFF2DD), RoundedCornerShape(22.dp)),
+                    Modifier.size(64.dp).background(PremiumColors.IconTile, RoundedCornerShape(22.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Fingerprint, null, tint = PremiumColors.Warning, modifier = Modifier.size(32.dp))
@@ -386,13 +394,17 @@ private fun ReceivingMethodDetailsStep(
                 color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
             ) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 44.dp)
+                    Text(bank.displayName, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = 12.dp))
                     Box(
                         Modifier
                             .size(28.dp)
-                            .background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape)
-                            .border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape)
-                    )
-                    Text(bank.displayName, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 12.dp))
+                            .background(if (selected) PremiumColors.Cyan else Color.Transparent, CircleShape)
+                            .border(2.dp, if (selected) PremiumColors.Cyan else PremiumColors.Line, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selected) Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
         }
@@ -546,32 +558,32 @@ private fun OnboardingShell(
     onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(Modifier.fillMaxSize().background(PremiumColors.Background).statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().height(76.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircleAction(Icons.Default.ArrowBack, onClick = onBack)
-            Text(
-                title,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-                color = PremiumColors.SoftText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 3.sp
-            )
-            Box(Modifier.size(34.dp).background(PremiumColors.Surface, CircleShape), contentAlignment = Alignment.Center) {
-                Text("MP", color = PremiumColors.Cyan, fontSize = 9.sp, fontWeight = FontWeight.Black)
+    Box(Modifier.fillMaxSize()) {
+        PremiumPaperBackground(Modifier.fillMaxSize())
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            Row(Modifier.fillMaxWidth().height(76.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircleAction(Icons.Default.ArrowBack, onClick = onBack)
+                Text(
+                    title,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    color = PremiumColors.Cyan,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black
+                )
+                SwimPayLauncherBadge(size = 42.dp)
             }
-        }
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-        ) {
-            ProgressLine(step)
-            Spacer(Modifier.height(36.dp))
-            content()
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 28.dp),
+            ) {
+                ProgressLine(step)
+                Spacer(Modifier.height(32.dp))
+                content()
+            }
         }
     }
 }
@@ -579,13 +591,13 @@ private fun OnboardingShell(
 @Composable
 private fun ProgressLine(step: PremiumOnboardingStep) {
     val activeIndex = PremiumOnboardingStep.requiredSequence.indexOf(step)
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
         PremiumOnboardingStep.requiredSequence.forEachIndexed { index, _ ->
             Box(
                 Modifier
                     .weight(1f)
-                    .height(4.dp)
-                    .background(if (index <= activeIndex) PremiumColors.Navy else Color.White.copy(alpha = 0.75f), CircleShape)
+                    .height(6.dp)
+                    .background(if (index <= activeIndex) PremiumColors.Cyan else PremiumColors.Line, CircleShape)
             )
         }
     }
@@ -593,9 +605,9 @@ private fun ProgressLine(step: PremiumOnboardingStep) {
 
 @Composable
 private fun BenefitRow(icon: ImageVector, title: String, body: String) {
-    PremiumCard(Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap {}, radius = 28.dp) {
+    LiquidGlassCard(Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap {}, radius = 24.dp) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            Box(Modifier.size(54.dp).background(PremiumColors.Mint, RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(54.dp).background(PremiumColors.Mint, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(28.dp))
             }
             Column {
@@ -662,13 +674,13 @@ private fun BankSearchStatusCard(
         )
     }
 
-    PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumToneColors.Selected.background) {
+    PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumColors.Surface) {
         Row(
             Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Box(Modifier.size(54.dp).background(PremiumColors.Mint, RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = toneColor, modifier = Modifier.size(28.dp))
             }
             Column(Modifier.weight(1f)) {
@@ -733,21 +745,19 @@ private fun BankRow(
                 if (selectable && detected) onToggleBank(bank.bankProfileId)
             },
         radius = 28.dp,
-        color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
+        color = if (selected) PremiumColors.SurfaceAlt else PremiumColors.Surface
     ) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(50.dp).background(PremiumColors.Mint, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
-                Text(bank.displayName.take(2), color = PremiumColors.Teal, fontWeight = FontWeight.Black, fontSize = 13.sp)
-            }
+                    PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 52.dp)
             Column(Modifier.weight(1f).padding(start = 16.dp)) {
                 Text(bank.displayName, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
-                Text(label, color = if (detected) PremiumColors.Teal else PremiumColors.SoftText, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text(label, color = if (detected) PremiumColors.Cyan else PremiumColors.SoftText, fontSize = 12.sp, fontWeight = FontWeight.Black)
             }
             Box(
                 Modifier
                     .size(30.dp)
-                    .background(if (selected) PremiumColors.Teal else Color.Transparent, RoundedCornerShape(11.dp))
-                    .border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, RoundedCornerShape(11.dp)),
+                    .background(if (selected) PremiumColors.Cyan else Color.Transparent, RoundedCornerShape(11.dp))
+                    .border(2.dp, if (selected) PremiumColors.Cyan else PremiumColors.Line, RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 if (selected) Icon(Icons.Default.VerifiedUser, null, tint = PremiumColors.Surface, modifier = Modifier.size(18.dp))
@@ -767,11 +777,20 @@ private fun ReceivingMethodOption(
     PremiumCard(
         Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap(onClick),
         radius = 30.dp,
-        color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
+        color = if (selected) PremiumColors.SurfaceAlt else PremiumColors.Surface
     ) {
         Row(Modifier.padding(22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            Box(Modifier.size(62.dp).background(PremiumColors.Mint, RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(30.dp))
+            Box(Modifier.size(62.dp).background(PremiumColors.IconTile, RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
+                if (title.contains("SBP", ignoreCase = true) || title.contains("téléphone", ignoreCase = true)) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_payment_sbp_mark),
+                        contentDescription = "SBP",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(34.dp)
+                    )
+                } else {
+                    Icon(icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(30.dp))
+                }
             }
             Column(Modifier.weight(1f)) {
                 Text(title, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
@@ -780,13 +799,32 @@ private fun ReceivingMethodOption(
             Box(
                 Modifier
                     .size(30.dp)
-                    .background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape)
-                    .border(2.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape),
+                    .background(if (selected) PremiumColors.Cyan else Color.Transparent, CircleShape)
+                    .border(2.dp, if (selected) PremiumColors.Cyan else PremiumColors.Line, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 if (selected) Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Surface, modifier = Modifier.size(18.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun SwimPayLauncherBadge(size: Dp) {
+    Box(
+        Modifier
+            .size(size)
+            .background(PremiumColors.Surface, RoundedCornerShape(size / 3f))
+            .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), RoundedCornerShape(size / 3f))
+            .padding(size / 7f),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(R.mipmap.ic_launcher_foreground),
+            contentDescription = "SwimPay",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 

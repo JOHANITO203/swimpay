@@ -43,11 +43,17 @@ class PremiumNavigationStateTest {
     @Test
     fun premiumTabsHaveStableMerchantLabelsAndNoInvalidFallback() {
         assertEquals(
-            listOf(PremiumMainTab.Home, PremiumMainTab.Reviews, PremiumMainTab.Orders, PremiumMainTab.Menu),
+            listOf(
+                PremiumMainTab.Home,
+                PremiumMainTab.Reviews,
+                PremiumMainTab.Payment,
+                PremiumMainTab.Business,
+                PremiumMainTab.Settings
+            ),
             PremiumMainTab.entries
         )
-        assertEquals(listOf("Accueil", "Revue", "Ventes", "MENU"), PremiumMainTab.entries.map { it.navLabel })
-        assertEquals(listOf("Accueil", "Revue", "Ventes", "Menu"), PremiumMainTab.entries.map { it.accessibilityLabel })
+        assertEquals(listOf("Accueil", "Revue", "Paiement", "Business", "Réglages"), PremiumMainTab.entries.map { it.navLabel })
+        assertEquals(listOf("Accueil", "Revue", "Paiement", "Business", "Réglages"), PremiumMainTab.entries.map { it.accessibilityLabel })
     }
 
     @Test

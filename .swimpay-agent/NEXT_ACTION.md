@@ -1,5 +1,32 @@
 # Next Action
 
+generated_at: 2026-05-15T23:10:00+03:00
+
+## Current Android Priority
+
+Install the updated staging APK and verify onboarding + receiving methods on device.
+
+## Completed Locally In This Pass
+
+1. Ozon Bank selection fixed in onboarding state.
+2. Launcher icon restored in onboarding.
+3. Bank logos polished and reused in onboarding/receiving-method rows.
+4. Receiving-method edit now performs destination replacement via create-then-delete against existing contracts.
+5. Local session restore audited as already present and Keystore-protected.
+
+## Device Test
+
+1. Open onboarding and verify launcher icon, bank logos and Ozon selection.
+2. Add card and SBP receiving methods.
+3. Modify a method with a new destination and verify the old method disappears after backend reload.
+4. Delete a method and verify it disappears after reload.
+5. Google link/recover, force-stop, relaunch and verify local session restore.
+
+## Blocker Watch
+
+- If delete still does not remove an item after reload, capture backend response/logs for `DELETE /v1/merchant/receiving-methods/:method_id`.
+- If replacement creates the new method but keeps the old one, the create succeeded but delete failed; Android reports this as a manual cleanup message.
+
 generated_at: 2026-05-14T07:05:00+03:00
 
 ## Current Design Priority

@@ -834,7 +834,7 @@ class PremiumMerchantRuntimeContractTest {
         val visible = orders.value.visibleTexts().joinToString(" ")
         assertTrue(visible.contains("Aucune vente confirmée"))
         assertTrue(visible.contains("Vos ventes apparaîtront ici après confirmation des paiements."))
-        assertTrue(visible.contains("Lancer un test"))
+        assertFalse(visible.contains("Lancer un test"))
         assertTrue(visible.contains("Voir les paiements à confirmer"))
         assertFalse(visible.contains("ord_123"))
         assertFalse(visible.contains("ord_124"))

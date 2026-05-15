@@ -10,7 +10,7 @@ enum class PremiumLanguageOption(
     val shortLabel: String,
     val displayLabel: String
 ) {
-    FR("fr", "FR", "Francais"),
+    FR("fr", "FR", "Français"),
     EN("en", "EN", "English"),
     RU("ru", "RU", "Русский");
 
@@ -26,7 +26,7 @@ enum class PremiumThemeMode(
     val wireValue: String,
     val labelFr: String
 ) {
-    SYSTEM("system", "Systeme"),
+    SYSTEM("system", "Système"),
     LIGHT("light", "Clair"),
     DARK("dark", "Sombre");
 

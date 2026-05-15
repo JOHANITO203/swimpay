@@ -158,8 +158,14 @@ Android sends explicit action scope for rejection:
 
 Android does not directly send developer webhooks; webhook delivery remains backend responsibility after review action processing.
 
-Android mobile sessions do not call the manual confirmation endpoint. Merchant
-manual confirmation remains outside the Android Receiver boundary.
+Android Merchant may submit the merchant's manual decision through the backend-owned
+manual confirmation endpoint:
+
+- `POST /v1/reviews/:id/confirm`
+
+This is still manual-confirmation-only. Android never confirms locally, never emits
+developer webhooks directly, and never treats a detected notification as official
+bank confirmation.
 
 ## Sprint 7F Mobile Endpoints
 

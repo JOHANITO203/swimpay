@@ -76,7 +76,7 @@ data class PremiumDashboardUiState(
     val backendNoticeTitle: String = "",
     val backendNoticeText: String = "",
     val emptyPaymentsTitle: String = "Aucun paiement détecté pour le moment",
-    val emptyPaymentsAction: String = "Lancez un test"
+    val emptyPaymentsAction: String = ""
 ) {
     fun visibleTexts(): List<String> {
         return listOf(
@@ -287,7 +287,7 @@ data class PremiumOrdersUiState(
     val confirmationRate: String = if (usesLiveApi) "0 %" else "—",
     val emptyTitle: String = "Aucune vente confirmée",
     val emptyMessage: String = "Vos ventes apparaîtront ici après confirmation des paiements.",
-    val primaryActionLabel: String = "Lancer un test",
+    val primaryActionLabel: String = "",
     val secondaryActionLabel: String = "Voir les paiements à confirmer"
 ) {
     fun visibleTexts(): List<String> {

@@ -102,12 +102,13 @@ class PremiumOnboardingFullFlowTest {
     @Test
     fun bankSelectionUsesSupportedDetectedBanksAndIgnoresUnsupportedIds() {
         val state = PremiumOnboardingSessionState()
-            .withDetectedBanks(setOf("sber_ru", "tbank_ru", "evil_bank"))
+            .withDetectedBanks(setOf("sber_ru", "tbank_ru", "ozon_bank", "evil_bank"))
             .withDefaultDetectedBanksSelected()
 
-        assertEquals(setOf("sber_ru", "tbank_ru"), state.detectedCompatibleBankIds)
-        assertEquals(setOf("sber_ru", "tbank_ru"), state.selectedBankIds)
+        assertEquals(setOf("sber_ru", "tbank_ru", "ozon_bank"), state.detectedCompatibleBankIds)
+        assertEquals(setOf("sber_ru", "tbank_ru", "ozon_bank"), state.selectedBankIds)
         assertEquals(state, state.toggleBank("evil_bank"))
+        assertFalse(state.toggleBank("ozon_bank").selectedBankIds.contains("ozon_bank"))
     }
 
     @Test

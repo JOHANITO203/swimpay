@@ -716,6 +716,21 @@ class AndroidMerchantApiWiringTest {
     }
 
     @Test
+    fun ozonBankReceivingMethodDraftUsesSupportedLabelAndCode() {
+        val draft = MerchantReceivingMethodDraft(
+            bankProfileId = "ozon_bank",
+            type = ReceivingMethodType.CARD_TRANSFER,
+            rawIdentifierInput = "2200123412349911"
+        )
+
+        val submission = draft.toSubmission()
+
+        assertEquals("ozon_bank", submission.bankProfileId)
+        assertEquals("OZON-CARD", submission.routeCode)
+        assertEquals("Ozon Банк - Carte bancaire", submission.displayLabel)
+    }
+
+    @Test
     fun receivingMethodRepositoryRejectsInvalidLocalDraftBeforeNetworkSubmit() {
         val transport = RecordingMerchantApiTransport()
         val repository = MerchantReceivingMethodsApiRepository(transport)

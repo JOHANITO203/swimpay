@@ -1,5 +1,12 @@
 # Blockers
 
+## Android Onboarding + Receiving Methods Fix (2026-05-15)
+
+- No backend/API/database/payment/webhook/receiver/SDK blocker introduced.
+- Contract limitation: existing backend patch endpoint does not update raw card/phone values. Android now replaces a destination by creating a new method, then deleting the old method after create success.
+- Device validation pending: confirm Ozon selection, receiving-method delete and replacement against staging on the connected phone.
+- If delete still appears ineffective on device, inspect staging response for `DELETE /v1/merchant/receiving-methods/:method_id` and confirm the reloaded `GET /v1/merchant/receiving-methods` excludes the deleted route.
+
 ## Android Merchant Readability Responsive Polish
 
 - No backend/API/payment/webhook/receiver/database/SDK/state-machine blocker introduced.

@@ -1,5 +1,10 @@
 package com.swimpay.receiver.ui.premium
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
@@ -10,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.swimpay.receiver.AndroidMerchantAccountCreateResult
 import com.swimpay.receiver.AndroidMerchantAccountProfileType
@@ -21,6 +27,7 @@ import com.swimpay.receiver.AndroidMerchantDeviceLookupStatus
 import com.swimpay.receiver.AndroidReceiverDeviceApiRepository
 import com.swimpay.receiver.AuthenticatedMerchantSession
 import com.swimpay.receiver.MerchantConfigurationChecklist
+import com.swimpay.receiver.MerchantReceivingMethodSubmission
 import com.swimpay.receiver.PersistentDeviceStateStore
 import com.swimpay.receiver.ReceiverRuntimeConfig
 import com.swimpay.receiver.ReceiverRuntimeConfigStore
@@ -83,12 +90,14 @@ fun PremiumMerchantApp(
     var configurationState by remember { mutableStateOf<PremiumScreenState<PremiumConfigurationUiState>>(PremiumScreenState.loading()) }
     var receivingMethodsState by remember { mutableStateOf<PremiumScreenState<PremiumReceivingMethodsUiState>>(PremiumScreenState.loading()) }
     var receivingMethodClearDraftSignal by remember { mutableStateOf(0) }
+    var receivingMethodActionMessage by remember { mutableStateOf<String?>(null) }
     var ordersState by remember { mutableStateOf<PremiumScreenState<PremiumOrdersUiState>>(PremiumScreenState.loading()) }
     val receiverPayloadSigner = remember { AndroidKeystorePayloadSigner() }
     var banksState by remember { mutableStateOf<PremiumScreenState<PremiumBanksUiState>>(PremiumScreenState.loading()) }
     var receiverHealthState by remember { mutableStateOf<PremiumScreenState<PremiumReceiverHealthUiState>>(PremiumScreenState.loading()) }
     var merchantSettings by remember(merchantSettingsStore) { mutableStateOf(merchantSettingsStore.load()) }
     var supportResult by remember { mutableStateOf<PremiumSupportTicketResult?>(null) }
+    var showStartupSplash by remember { mutableStateOf(true) }
     val notifiedReviewIds = remember { mutableSetOf<String>() }
     fun notifyNewActionRequiredReviews(state: PremiumScreenState<PremiumReviewsUiState>) {
         if (state !is PremiumScreenState.Content) return
@@ -99,6 +108,35 @@ fun PremiumMerchantApp(
     fun updateSettings(next: PremiumMerchantSettings) {
         merchantSettings = next
         onThemeModeChanged(next.themeMode)
+    }
+    fun receivingMutationMessage(state: PremiumScreenState<PremiumReceivingMethodMutationUiState>): String {
+        return when (state) {
+            is PremiumScreenState.Content -> state.value.message
+            else -> state.message
+        }
+    }
+    fun replaceReceivingMethod(routeId: String, submission: MerchantReceivingMethodSubmission) {
+        receivingMethodActionMessage = null
+        receivingMethodsState = PremiumScreenState.loading()
+        scope.launch {
+            val created = withContext(Dispatchers.IO) {
+                activeRuntime.createReceivingMethod(submission)
+            }
+            if (created is PremiumScreenState.Content) {
+                val deleted = withContext(Dispatchers.IO) {
+                    activeRuntime.deleteReceivingMethod(routeId)
+                }
+                receivingMethodActionMessage = if (deleted is PremiumScreenState.Content) {
+                    "Moyen modifié"
+                } else {
+                    "Nouveau moyen ajouté. Ancien moyen à supprimer manuellement."
+                }
+                receivingMethodClearDraftSignal += 1
+            } else {
+                receivingMethodActionMessage = receivingMutationMessage(created)
+            }
+            receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+        }
     }
     fun currentMerchantProfileUiState(): PremiumMerchantProfileUiState {
         return PremiumMerchantProfileUiState.fromSession(mobileMerchantSessionStore.currentSession())
@@ -331,6 +369,11 @@ fun PremiumMerchantApp(
         }
     }
 
+    LaunchedEffect(Unit) {
+        delay(1_450)
+        showStartupSplash = false
+    }
+
     if (uiLocked) {
         PremiumUnlockRequiredScreen(
             appLock = merchantSettings.appLock,
@@ -339,13 +382,14 @@ fun PremiumMerchantApp(
         return
     }
 
-    when (val currentRoute = route) {
-        PremiumRoute.AccountEntry -> PremiumAccountEntryScreen(
+    Box(Modifier.fillMaxSize()) {
+        when (val currentRoute = route) {
+            PremiumRoute.AccountEntry -> PremiumAccountEntryScreen(
             language = merchantSettings.language,
             onLanguageSelected = { updateSettings(merchantSettingsStore.saveLanguage(it)) },
             onCreateAccount = { route = PremiumNavigation.openAccountProfileChoice() },
             onSignIn = { route = PremiumNavigation.openLoginProviderChoice() }
-        )
+            )
         PremiumRoute.AccountProfileChoice -> PremiumAccountProfileChoiceScreen(
             language = merchantSettings.language,
             onLanguageSelected = { updateSettings(merchantSettingsStore.saveLanguage(it)) },
@@ -492,7 +536,11 @@ fun PremiumMerchantApp(
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
                 when (currentRoute.tab) {
-                    PremiumMainTab.Home -> PremiumDashboardScreen(dashboardState)
+                    PremiumMainTab.Home -> PremiumDashboardScreen(
+                        dashboardState,
+                        onOpenReviews = { route = PremiumRoute.Main(PremiumMainTab.Reviews) },
+                        onOpenBusiness = { route = PremiumRoute.Main(PremiumMainTab.Business) }
+                    )
                     PremiumMainTab.Reviews -> PremiumReviewsScreen(
                         state = reviewsState,
                         onOpenReview = {
@@ -502,12 +550,15 @@ fun PremiumMerchantApp(
                     PremiumMainTab.Payment -> PremiumReceivingMethodsStateScreen(
                         receivingMethodsState,
                         clearDraftSignal = receivingMethodClearDraftSignal,
+                        actionMessage = receivingMethodActionMessage,
                         onSaveDraft = { submission ->
+                            receivingMethodActionMessage = null
                             receivingMethodsState = PremiumScreenState.loading()
                             scope.launch {
                                 val mutation = withContext(Dispatchers.IO) {
                                     activeRuntime.createReceivingMethod(submission)
                                 }
+                                receivingMethodActionMessage = receivingMutationMessage(mutation)
                                 if (mutation is PremiumScreenState.Content) {
                                     receivingMethodClearDraftSignal += 1
                                 }
@@ -515,43 +566,57 @@ fun PremiumMerchantApp(
                             }
                         },
                         onEditMethod = { routeId, label ->
+                            receivingMethodActionMessage = null
                             receivingMethodsState = PremiumScreenState.loading()
                             scope.launch {
-                                withContext(Dispatchers.IO) {
+                                val mutation = withContext(Dispatchers.IO) {
                                     activeRuntime.updateReceivingMethodLabel(routeId, label)
                                 }
+                                receivingMethodActionMessage = receivingMutationMessage(mutation)
                                 receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
                             }
                         },
+                        onReplaceMethod = { routeId, submission ->
+                            replaceReceivingMethod(routeId, submission)
+                        },
                         onDisableMethod = { routeId ->
+                            receivingMethodActionMessage = null
                             receivingMethodsState = PremiumScreenState.loading()
                             scope.launch {
-                                withContext(Dispatchers.IO) {
+                                val mutation = withContext(Dispatchers.IO) {
                                     activeRuntime.disableReceivingMethod(routeId)
                                 }
+                                receivingMethodActionMessage = receivingMutationMessage(mutation)
                                 receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
                             }
                         },
                         onSetDefaultMethod = { routeId ->
+                            receivingMethodActionMessage = null
                             receivingMethodsState = PremiumScreenState.loading()
                             scope.launch {
-                                withContext(Dispatchers.IO) {
+                                val mutation = withContext(Dispatchers.IO) {
                                     activeRuntime.markReceivingMethodRecommended(routeId)
                                 }
+                                receivingMethodActionMessage = receivingMutationMessage(mutation)
                                 receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
                             }
                         },
                         onDeleteMethod = { routeId ->
+                            receivingMethodActionMessage = null
                             receivingMethodsState = PremiumScreenState.loading()
                             scope.launch {
-                                withContext(Dispatchers.IO) {
+                                val mutation = withContext(Dispatchers.IO) {
                                     activeRuntime.deleteReceivingMethod(routeId)
                                 }
+                                receivingMethodActionMessage = receivingMutationMessage(mutation)
                                 receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
                             }
                         }
                     )
-                    PremiumMainTab.Business -> PremiumOrdersScreen(ordersState)
+                    PremiumMainTab.Business -> PremiumOrdersScreen(
+                        ordersState,
+                        onOpenReviews = { route = PremiumRoute.Main(PremiumMainTab.Reviews) }
+                    )
                     PremiumMainTab.Settings -> PremiumSettingsScreen(
                         connectedSite = connectedSiteState,
                         configuration = configurationState,
@@ -570,12 +635,15 @@ fun PremiumMerchantApp(
                 PremiumReceivingMethodsStateScreen(
                     receivingMethodsState,
                     clearDraftSignal = receivingMethodClearDraftSignal,
+                    actionMessage = receivingMethodActionMessage,
                     onSaveDraft = { submission ->
+                        receivingMethodActionMessage = null
                         receivingMethodsState = PremiumScreenState.loading()
                         scope.launch {
                             val mutation = withContext(Dispatchers.IO) {
                                 activeRuntime.createReceivingMethod(submission)
                             }
+                            receivingMethodActionMessage = receivingMutationMessage(mutation)
                             if (mutation is PremiumScreenState.Content) {
                                 receivingMethodClearDraftSignal += 1
                             }
@@ -583,38 +651,49 @@ fun PremiumMerchantApp(
                         }
                     },
                     onEditMethod = { routeId, label ->
+                        receivingMethodActionMessage = null
                         receivingMethodsState = PremiumScreenState.loading()
                         scope.launch {
-                            withContext(Dispatchers.IO) {
+                            val mutation = withContext(Dispatchers.IO) {
                                 activeRuntime.updateReceivingMethodLabel(routeId, label)
                             }
+                            receivingMethodActionMessage = receivingMutationMessage(mutation)
                             receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
                         }
                     },
+                    onReplaceMethod = { routeId, submission ->
+                        replaceReceivingMethod(routeId, submission)
+                    },
                     onDisableMethod = { routeId ->
+                        receivingMethodActionMessage = null
                         receivingMethodsState = PremiumScreenState.loading()
                         scope.launch {
-                            withContext(Dispatchers.IO) {
+                            val mutation = withContext(Dispatchers.IO) {
                                 activeRuntime.disableReceivingMethod(routeId)
                             }
+                            receivingMethodActionMessage = receivingMutationMessage(mutation)
                             receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
                         }
                     },
                     onSetDefaultMethod = { routeId ->
+                        receivingMethodActionMessage = null
                         receivingMethodsState = PremiumScreenState.loading()
                         scope.launch {
-                            withContext(Dispatchers.IO) {
+                            val mutation = withContext(Dispatchers.IO) {
                                 activeRuntime.markReceivingMethodRecommended(routeId)
                             }
+                            receivingMethodActionMessage = receivingMutationMessage(mutation)
                             receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
                         }
                     },
                     onDeleteMethod = { routeId ->
+                        receivingMethodActionMessage = null
                         receivingMethodsState = PremiumScreenState.loading()
                         scope.launch {
-                            withContext(Dispatchers.IO) {
+                            val mutation = withContext(Dispatchers.IO) {
                                 activeRuntime.deleteReceivingMethod(routeId)
                             }
+                            receivingMethodActionMessage = receivingMutationMessage(mutation)
                             receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
                         }
                     }
@@ -820,7 +899,7 @@ fun PremiumMerchantApp(
             profileInitials = currentMerchantProfileUiState().initials,
             content = { PremiumReceiverHealthStateScreen(receiverHealthState, onOpenNotificationSettings) }
         )
-        is PremiumRoute.OrderDetail -> PremiumAppShell(
+            is PremiumRoute.OrderDetail -> PremiumAppShell(
             selectedTab = PremiumMainTab.Business,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
@@ -832,7 +911,15 @@ fun PremiumMerchantApp(
                     )
                 )
             }
-        )
+            )
+        }
+        AnimatedVisibility(
+            visible = showStartupSplash,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            PremiumStartupSplashScreen()
+        }
     }
 }
 

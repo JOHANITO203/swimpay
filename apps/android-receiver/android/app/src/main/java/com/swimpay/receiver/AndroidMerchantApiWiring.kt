@@ -647,7 +647,8 @@ private val MERCHANT_RECEIVING_METHOD_BANK_LABELS: Map<String, String> = mapOf(
     "tbank_ru" to "T-Bank",
     "vtb_ru" to "VTB",
     "alfa_ru" to "Alfa-Bank",
-    "gazprombank_ru" to "Gazprombank"
+    "gazprombank_ru" to "Gazprombank",
+    "ozon_bank" to "Ozon Банк"
 )
 
 private val MERCHANT_RECEIVING_METHOD_BANK_CODES: Map<String, String> = mapOf(
@@ -655,7 +656,8 @@ private val MERCHANT_RECEIVING_METHOD_BANK_CODES: Map<String, String> = mapOf(
     "tbank_ru" to "TBANK",
     "vtb_ru" to "VTB",
     "alfa_ru" to "ALFA",
-    "gazprombank_ru" to "GAZPROMBANK"
+    "gazprombank_ru" to "GAZPROMBANK",
+    "ozon_bank" to "OZON"
 )
 
 private fun routeCodeFor(bankProfileId: String, type: ReceivingMethodType): String {
@@ -2046,6 +2048,7 @@ fun bankDisplayNameFor(bankProfileId: String): String {
         "vtb_ru" -> "VTB"
         "alfa_ru" -> "Alfa-Bank"
         "gazprombank_ru" -> "Gazprombank"
+        "ozon_bank" -> "Ozon Банк"
         else -> "Banque choisie"
     }
 }

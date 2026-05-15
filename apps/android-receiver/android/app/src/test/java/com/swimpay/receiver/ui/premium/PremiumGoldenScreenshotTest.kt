@@ -51,7 +51,7 @@ class PremiumGoldenScreenshotTest {
     @Test
     fun receiverHealthGolden() {
         capture("premium_receiver_health.png") {
-            PremiumAppShell(selectedTab = PremiumMainTab.Menu, onTab = {}, profileInitials = "SP") {
+            PremiumAppShell(selectedTab = PremiumMainTab.Settings, onTab = {}, profileInitials = "SP") {
                 PremiumReceiverHealthStateScreen(PremiumScreenState.content(goldenReceiverHealthState()))
             }
         }
@@ -60,7 +60,7 @@ class PremiumGoldenScreenshotTest {
     @Test
     fun receivingMethodsGolden() {
         capture("premium_receiving_methods.png") {
-            PremiumAppShell(selectedTab = PremiumMainTab.Menu, onTab = {}, profileInitials = "SP") {
+            PremiumAppShell(selectedTab = PremiumMainTab.Payment, onTab = {}, profileInitials = "SP") {
                 PremiumReceivingMethodsStateScreen(PremiumScreenState.content(goldenReceivingMethodsState()))
             }
         }
@@ -79,7 +79,7 @@ class PremiumGoldenScreenshotTest {
     @Test
     fun confirmationModeGolden() {
         capture("premium_confirmation_mode.png") {
-            PremiumAppShell(selectedTab = PremiumMainTab.Menu, onTab = {}, profileInitials = "SP") {
+            PremiumAppShell(selectedTab = PremiumMainTab.Settings, onTab = {}, profileInitials = "SP") {
                 PremiumConfirmationModeScreen()
             }
         }

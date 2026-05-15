@@ -28,54 +28,57 @@ data class PremiumColorPalette(
 
 object PremiumColors {
     private val light = PremiumColorPalette(
-        ink = Color(0xFF071126),
-        navy = Color(0xFF0F172A),
-        blue = Color(0xFF155BD8),
-        electricBlue = Color(0xFF1EA7F2),
-        cyan = Color(0xFF16ADEC),
-        teal = Color(0xFF0EA5A4),
-        mint = Color(0xFFEAF6FA),
-        background = Color(0xFFF2F7FA),
-        surface = Color(0xFFFFFFFF),
-        surfaceAlt = Color(0xFFF6FAFD),
-        line = Color(0xFFE2E8F0),
-        muted = Color(0xFF59708D),
-        softText = Color(0xFF94A3B8),
-        success = Color(0xFF059669),
-        warning = Color(0xFFF59E0B),
-        danger = Color(0xFFE5484D),
-        panelTint = Color(0xFFF7FDFF),
-        iconTile = Color(0xFFEAF3FF),
-        neutralChip = Color(0xFFF3F4F6)
+        ink = Color(0xFFF8FAFF),
+        navy = Color(0xFFFFFFFF),
+        blue = Color(0xFF003BFF),
+        electricBlue = Color(0xFF2F6BFF),
+        cyan = Color(0xFF42D6FF),
+        teal = Color(0xFF003BFF),
+        mint = Color(0xFF0B2A46),
+        background = Color(0xFF000A1F),
+        surface = Color(0xFF07152F),
+        surfaceAlt = Color(0xFF0B1F3D),
+        line = Color(0xFF1A355E),
+        muted = Color(0xFFB7C7E8),
+        softText = Color(0xFF7F95BF),
+        success = Color(0xFF16A34A),
+        warning = Color(0xFFEAB308),
+        danger = Color(0xFFDC2626),
+        panelTint = Color(0xFF081B36),
+        iconTile = Color(0xFF0F2A50),
+        neutralChip = Color(0xFF102848)
     )
     private val dark = PremiumColorPalette(
-        ink = Color(0xFFE8F0FF),
-        navy = Color(0xFFD7E6FF),
-        blue = Color(0xFF68A4FF),
-        electricBlue = Color(0xFF54C0FF),
+        ink = Color(0xFFF8FAFC),
+        navy = Color(0xFFFFFFFF),
+        blue = Color(0xFF2F6BFF),
+        electricBlue = Color(0xFF6EA8FF),
         cyan = Color(0xFF42D6FF),
-        teal = Color(0xFF2DD4BF),
-        mint = Color(0xFF102D3A),
-        background = Color(0xFF07111F),
-        surface = Color(0xFF0D1728),
-        surfaceAlt = Color(0xFF132238),
-        line = Color(0xFF26364E),
-        muted = Color(0xFFA7B7CC),
-        softText = Color(0xFF77869E),
+        teal = Color(0xFF42D6FF),
+        mint = Color(0xFF071B35),
+        background = Color(0xFF000613),
+        surface = Color(0xFF061225),
+        surfaceAlt = Color(0xFF0A1D38),
+        line = Color(0xFF18345D),
+        muted = Color(0xFFB8C8E8),
+        softText = Color(0xFF8299C2),
         success = Color(0xFF34D399),
         warning = Color(0xFFFBBF24),
-        danger = Color(0xFFFF6B72),
-        panelTint = Color(0xFF0F2234),
-        iconTile = Color(0xFF142B47),
-        neutralChip = Color(0xFF1D2B3F)
+        danger = Color(0xFFF87171),
+        panelTint = Color(0xFF07182F),
+        iconTile = Color(0xFF0D274C),
+        neutralChip = Color(0xFF102848)
     )
 
     private var palette: PremiumColorPalette = light
+    private var darkThemeEnabled: Boolean = false
 
     fun useDarkTheme(enabled: Boolean) {
+        darkThemeEnabled = enabled
         palette = if (enabled) dark else light
     }
 
+    val IsDark: Boolean get() = darkThemeEnabled
     val Ink: Color get() = palette.ink
     val Navy: Color get() = palette.navy
     val Blue: Color get() = palette.blue
@@ -98,11 +101,11 @@ object PremiumColors {
 }
 
 object PremiumRadius {
-    val Card = 28.dp
-    val CardLarge = 36.dp
-    val CardXL = 52.dp
-    val Button = 20.dp
-    val Tile = 16.dp
+    val Card = 24.dp
+    val CardLarge = 32.dp
+    val CardXL = 40.dp
+    val Button = 999.dp // Pills as in reference
+    val Tile = 20.dp
     val Pill = 999.dp
 }
 
@@ -151,17 +154,34 @@ data class PremiumTone(
 )
 
 object PremiumToneColors {
-    val Success: PremiumTone get() = PremiumTone(PremiumColors.Success, Color(0xFFE7F7EF))
-    val Warning: PremiumTone get() = PremiumTone(PremiumColors.Warning, Color(0xFFFFF4E5))
-    val Danger: PremiumTone get() = PremiumTone(PremiumColors.Danger, Color(0xFFFDECEC))
-    val Info: PremiumTone get() = PremiumTone(PremiumColors.Blue, PremiumColors.IconTile)
-    val Selected: PremiumTone get() = PremiumTone(PremiumColors.Teal, Color(0xFFF7FEFE))
-    val Disabled: PremiumTone get() = PremiumTone(PremiumColors.SoftText, PremiumColors.NeutralChip)
+    val Success: PremiumTone get() = PremiumTone(PremiumColors.Success, PremiumColors.Success.copy(alpha = 0.12f))
+    val Warning: PremiumTone get() = PremiumTone(PremiumColors.Warning, PremiumColors.Warning.copy(alpha = 0.12f))
+    val Danger: PremiumTone get() = PremiumTone(PremiumColors.Danger, PremiumColors.Danger.copy(alpha = 0.12f))
+    val Info: PremiumTone get() = PremiumTone(PremiumColors.Blue, PremiumColors.Blue.copy(alpha = 0.12f))
+    val Selected: PremiumTone get() = PremiumTone(PremiumColors.Teal, PremiumColors.Teal.copy(alpha = 0.12f))
+    val Disabled: PremiumTone get() = PremiumTone(PremiumColors.SoftText, PremiumColors.Line.copy(alpha = 0.5f))
 }
 
 object PremiumBrandGradient {
-    val Primary: List<Color> get() = listOf(PremiumColors.Teal, PremiumColors.Cyan)
-    val PrimaryDeep: List<Color> get() = listOf(PremiumColors.Teal, PremiumColors.Blue)
+    val Primary: List<Color> get() = if (PremiumColors.IsDark) {
+        listOf(Color(0xFF2F6BFF), Color(0xFF6EA8FF))
+    } else {
+        listOf(Color(0xFF003BFF), Color(0xFF00D4FF))
+    }
+    val PrimaryDeep: List<Color> get() = if (PremiumColors.IsDark) {
+        listOf(Color(0xFF2F6BFF), Color(0xFF07152F))
+    } else {
+        listOf(Color(0xFF003BFF), Color(0xFF002EAD))
+    }
+    val PaymentCard: List<Color> get() = listOf(Color(0xFF000A1F), Color(0xFF07152F), Color(0xFF003BFF))
+    val SbpCard: List<Color> get() = listOf(Color(0xFF000A1F), Color(0xFF062446), Color(0xFF42D6FF))
+    val ReceivingSurface: List<Color> get() = listOf(Color(0xFF07152F), Color(0xFF0A1D38), Color(0xFF061225))
+    val ChartArea: List<Color> get() = listOf(PremiumColors.Blue.copy(alpha = 0.26f), PremiumColors.Cyan.copy(alpha = 0.12f), Color.Transparent)
+    val PaperGlow: List<Color> get() = if (PremiumColors.IsDark) {
+        listOf(Color(0xFF000613), Color(0xFF061225), Color(0xFF00113A), Color(0xFF000613))
+    } else {
+        listOf(Color(0xFF000A1F), Color(0xFF07152F), Color(0xFF002EAD), Color(0xFF000A1F))
+    }
     val Disabled: List<Color> get() = listOf(PremiumColors.Line, PremiumColors.NeutralChip)
 }
 

@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.WarningAmber
@@ -131,32 +132,47 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
     Surface(
         Modifier
             .fillMaxWidth()
-            .height(128.dp)
-            .border(1.dp, PremiumColors.Line, RoundedCornerShape(34.dp))
+            .border(1.dp, PremiumColors.Line, RoundedCornerShape(30.dp))
             .premiumTap { onOpenReview(item.reviewId) },
-        color = if (item.valid) Color(0xFFF3F7FC) else PremiumColors.Surface,
+        color = PremiumColors.Surface,
         shadowElevation = 4.dp,
-        shape = RoundedCornerShape(34.dp)
+        shape = RoundedCornerShape(30.dp)
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(48.dp)
+                        .background(PremiumColors.Mint, RoundedCornerShape(18.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.CreditCard, null, tint = PremiumColors.Teal, modifier = Modifier.size(26.dp))
+                }
+                Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                    Text("Paiement à confirmer", color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Black)
+                    Text(item.helper, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+                }
+                StatusChip(item.status, if (item.valid) StatusTone.Success else StatusTone.Warning)
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PremiumBankLogo(
                     bankProfileId = reviewBankProfileId(item.bank),
                     displayName = item.bank,
-                    size = 46.dp
+                    size = 44.dp
                 )
-                Column(Modifier.weight(1f).padding(start = 18.dp)) {
-                    Text(item.amount, color = PremiumColors.Ink, fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Black)
-                    Text(item.bank, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                    Text(item.bank, color = PremiumColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                    Text("Réf. ${item.reviewId}", color = PremiumColors.Muted, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.SemiBold)
                 }
-                StatusChip(item.status, if (item.valid) StatusTone.Success else StatusTone.Warning)
+                Text(item.amount, color = PremiumColors.Ink, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Black)
             }
-            Spacer(Modifier.height(12.dp))
             Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line))
-            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                StatusChip(item.helper, StatusTone.Neutral)
-                Spacer(Modifier.width(10.dp))
-                Text(item.reasons.firstOrNull() ?: "Validation requise", color = PremiumColors.Ink, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Origine", color = PremiumColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    Text(item.reasons.firstOrNull() ?: "Détection automatique", color = PremiumColors.Ink, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold)
+                }
+                Text("Examiner", color = PremiumColors.Teal, fontSize = 13.sp, fontWeight = FontWeight.Black)
             }
         }
     }

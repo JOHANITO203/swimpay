@@ -1,5 +1,14 @@
 # Progress Log
 
+## 2026-05-15T23:10:00+03:00 - Android onboarding receiving methods fix
+
+- Fixed onboarding Ozon selection by adding `ozon_bank` to supported onboarding bank ids.
+- Restored launcher icon identity in onboarding and reused registered bank logos in onboarding/receiving method rows.
+- Polished bank logo containers with more breathing room, white plate, border and shadow.
+- Corrected receiving method edit semantics: raw card/phone values cannot be patched by the backend, so Android now creates a replacement method and deletes the old one after create success.
+- Confirmed local session restore already exists through `SharedPreferencesPremiumMobileMerchantSessionStore` and Android Keystore token protection.
+- Validation passed: `npm run android:compile` and targeted Android JVM tests.
+
 ## 2026-05-13T00:59:00+03:00 - Checkout return URL and external fulfillment webhook
 
 - Audited the confirmed checkout return path and external fulfillment webhook separately.

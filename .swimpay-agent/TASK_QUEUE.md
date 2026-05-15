@@ -1,5 +1,14 @@
 # SwimPay Task Queue
 
+## Current Queue - Android Onboarding + Receiving Methods Fix (2026-05-15)
+
+- [x] `onboarding_launcher_identity` - status: completed - source: `.swimpay-agent/ANDROID_ONBOARDING_RECEIVING_METHODS_FIX_REPORT.md`
+- [x] `onboarding_ozon_selection` - status: completed_targeted_validated - source: `.swimpay-agent/ANDROID_ONBOARDING_RECEIVING_METHODS_FIX_REPORT.md`
+- [x] `bank_logo_polish` - status: completed_compile_validated - source: `.swimpay-agent/ANDROID_ONBOARDING_RECEIVING_METHODS_FIX_REPORT.md`
+- [x] `receiving_method_destination_replace` - status: completed_targeted_validated - source: `.swimpay-agent/ANDROID_ONBOARDING_RECEIVING_METHODS_FIX_REPORT.md`
+- [x] `local_session_restore_audit` - status: completed - source: `.swimpay-agent/ANDROID_LOCAL_SESSION_RESTORE_AUDIT.md`
+- [ ] `device_onboarding_receiving_smoke` - status: pending_install_and_operator_test - source: `.swimpay-agent/NEXT_ACTION.md`
+
 ## Current Queue - Android Merchant Readability Responsive Polish (2026-05-14)
 
 - [x] `android_readability_responsive_audit` - status: completed - source: `.swimpay-agent/ANDROID_READABILITY_RESPONSIVE_AUDIT.md`
