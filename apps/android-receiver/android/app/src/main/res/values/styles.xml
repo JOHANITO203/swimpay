@@ -3,9 +3,12 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@color/ic_launcher_background</item>
+        <item name="android:colorBackground">@color/ic_launcher_background</item>
         <item name="android:colorAccent">#0B57D0</item>
-        <item name="android:navigationBarColor">#F8FAFD</item>
-        <item name="android:statusBarColor">#F8FAFD</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/ic_launcher_background</item>
+        <item name="android:statusBarColor">@color/ic_launcher_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>

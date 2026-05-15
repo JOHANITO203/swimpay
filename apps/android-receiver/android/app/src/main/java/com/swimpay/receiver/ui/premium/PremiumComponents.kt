@@ -463,7 +463,7 @@ fun TrendLine(
 }
 
 @Composable
-fun PremiumGoogleIcon(modifier: Modifier = Modifier) {
+fun PremiumGoogleIcon(modifier: Modifier = Modifier.size(24.dp)) {
     Canvas(modifier) {
         val stroke = Stroke(width = max(size.minDimension * 0.16f, 2.dp.toPx()), cap = StrokeCap.Round)
         val arcSize = Size(size.width * 0.72f, size.height * 0.72f)
@@ -663,16 +663,15 @@ fun PremiumStartupSplashScreen(modifier: Modifier = Modifier) {
     ) {
         Box(
             Modifier
-                .size(154.dp)
-                .clip(RoundedCornerShape(36.dp))
-                .background(Color(0xFF000A1F))
-                .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(36.dp)),
+                .size(144.dp)
+                .clip(RoundedCornerShape(38.dp))
+                .background(Color(0xFF000A1F)),
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(R.mipmap.ic_launcher_foreground),
+                painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = "SwimPay",
-                modifier = Modifier.size(102.dp)
+                modifier = Modifier.size(108.dp)
             )
         }
     }
