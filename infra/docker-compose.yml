@@ -137,10 +137,11 @@ services:
       context: ..
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+
     environment:
       <<: *swimpay_runtime_env
       SERVICE_NAME: swimpay-api
-      dns:
+    dns:
       - 1.1.1.1
       - 8.8.8.8
     depends_on:
