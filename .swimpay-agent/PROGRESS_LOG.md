@@ -3463,3 +3463,11 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Regenerated premium Android Roborazzi baselines against the current visual tokens.
 - Updated visual/static guardrails for the canonical vector launcher foreground and the removed home-screen `Lancez un test` action.
 - Validation passed: `npm run android:screenshot:record`, `npm run android:screenshot:verify`.
+
+## 2026-05-16T00:40:00+03:00 - GitHub CI log alignment
+
+- Inspected provided GitHub logs archive `logs_69244866122.zip`.
+- Confirmed Docker Compose config was already passing in the provided logs.
+- Fixed root npm readiness false positive by removing the raw Android device serial containing `5C` from `.swimpay-agent/TASK_QUEUE.md`.
+- Excluded Git-ignored external skill clones from ESLint with `.external-skills/**`.
+- Validation passed: Android staging unit/build, `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`.

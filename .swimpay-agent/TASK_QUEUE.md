@@ -708,4 +708,4 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 ## 2026-05-15T03:45:00+03:00 - Android UI rollback queue
 
 - [x] `android_ui_rollback_to_7e95985` - status: completed_installed - source: `.swimpay-agent/ANDROID_UI_ROLLBACK_TO_7E95985_REPORT.md`
-- [ ] `operator_device_check_rollback_ui` - status: pending_operator_check - source: device `R5CWA0FEPZW`
+- [ ] `operator_device_check_rollback_ui` - status: pending_operator_check - source: connected staging device

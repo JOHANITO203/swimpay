@@ -9,6 +9,7 @@ export default tseslint.config(
       '**/dist/**',
       '**/node_modules/**',
       '**/.gradle/**',
+      '.external-skills/**',
       'apps/android-receiver/android/app/build/**',
       'swimpay_bank_templates_pack/**'
     ]

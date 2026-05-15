@@ -397,3 +397,7 @@ Roborazzi is aligned with the current Android Merchant design tokens. Next step 
 
 1. `npm run android:screenshot:record`
 2. `npm run android:screenshot:verify`
+
+## 2026-05-16T00:40:00+03:00 - GitHub CI next action
+
+GitHub CI failures from the provided logs are aligned locally. Next action is to commit/push the CI alignment patch and let GitHub rerun the jobs.
