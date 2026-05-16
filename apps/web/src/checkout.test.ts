@@ -22,8 +22,8 @@ describe('hosted checkout web foundation', () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toContain('text/html');
     expect(response.body).toContain('Payer avec SwimPay');
-    expect(response.body).toContain('Paiement guid&eacute;');
-    expect(response.body).toContain('Suivi en temps reel');
+    expect(response.body).toContain('Paiement guidé');
+    expect(response.body).toContain('Suivi en temps réel');
     expect(response.body).toContain('Retour au marchand');
     expect(response.body).toContain('data-checkout-panel="buyer-identity" hidden');
     expect(response.body).toContain('Vos informations');
@@ -85,6 +85,26 @@ describe('hosted checkout web foundation', () => {
     ]) {
       expect(response.body).toMatch(new RegExp(`\\.bank-logo-${logoAssetKey}[^{]*\\{[^}]*data:image/`, 'u'));
     }
+  });
+
+  it('localizes the checkout entry screen from the lang query without changing checkout contracts', async () => {
+    const server = buildWebServer({
+      environment: 'test',
+      checkoutSessionProvider: new FakeCheckoutSessionProvider()
+    });
+
+    const english = await server.inject({ method: 'GET', url: '/checkout/ps_01?lang=en' });
+    const russian = await server.inject({ method: 'GET', url: '/checkout/ps_01?lang=ru' });
+    const french = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(english.statusCode).toBe(200);
+    expect(english.body).toContain('Pay with SwimPay');
+    expect(english.body).toContain('Guided payment');
+    expect(russian.statusCode).toBe(200);
+    expect(russian.body).toContain('Оплатить через SwimPay');
+    expect(russian.body).toContain('Понятная оплата');
+    expect(french.body).toContain('Payer avec SwimPay');
+    expect(`${english.body}\n${russian.body}\n${french.body}`).not.toMatch(/[\uFFFD\u00C3\u00C2]|(?:\u00D0|\u00D1)[\u0080-\u00ff]/u);
   });
 
   it('reveals only the compatible receiving route after buyer method selection', async () => {

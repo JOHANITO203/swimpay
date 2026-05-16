@@ -888,10 +888,11 @@ fun PremiumMerchantApp(
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             content = {
-                PremiumAppearanceScreen(
-                    selected = merchantSettings.themeMode,
-                    onSelect = { updateSettings(merchantSettingsStore.saveThemeMode(it)) }
-                )
+                    PremiumAppearanceScreen(
+                        selected = merchantSettings.themeMode,
+                        language = merchantSettings.language,
+                        onSelect = { updateSettings(merchantSettingsStore.saveThemeMode(it)) }
+                    )
             }
         )
         PremiumRoute.Banks -> PremiumAppShell(

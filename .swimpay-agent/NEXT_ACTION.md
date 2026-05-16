@@ -401,3 +401,11 @@ Roborazzi is aligned with the current Android Merchant design tokens. Next step 
 ## 2026-05-16T00:40:00+03:00 - GitHub CI next action
 
 GitHub CI failures from the provided logs are aligned locally. Next action is to commit/push the CI alignment patch and let GitHub rerun the jobs.
+
+## 2026-05-16T07:25:00+03:00 - I18N next action
+
+French is now the localization base for landing, Android resources, Android premium account/settings copy and the checkout entry shell. Next action is a separate pass to migrate remaining hardcoded Android business-screen copy and deeper checkout steps into the same `fr/en/ru` model without changing product semantics.
+
+## 2026-05-16T14:25:00+03:00 - Mojibake next action
+
+Keep `packages/bank-templates/src/fixtures.ts` and `packages/bank-templates/src/parser.ts` as the only explicit mojibake allowlist. If more malformed text appears elsewhere, fix the source text instead of expanding the allowlist.

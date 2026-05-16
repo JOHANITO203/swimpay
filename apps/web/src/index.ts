@@ -28,7 +28,7 @@ import {
   renderIntelligenceReviewPage as renderIntelligenceReviewScreen,
   renderIntelligenceUnavailablePage as renderIntelligenceUnavailableScreen
 } from './screens/IntelligenceAdminScreen.js';
-import { renderCheckoutPage as renderCheckoutScreen } from './screens/CheckoutScreen.js';
+import { renderCheckoutPage as renderCheckoutScreen, resolveCheckoutLocale } from './screens/CheckoutScreen.js';
 import { AppShell, escapeHtml } from './ui/Components.js';
 import {
   mapCheckoutStateToBuyerSafeStatus,
@@ -839,7 +839,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
             const testSession = withNativeReturnUrl(mockSession('any'), request.query);
             return renderCheckoutScreen(testSession, defaultRecipient, [], [], [], mapCheckoutStatus(testSession.status).displayStatus, {
               nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query),
-              nativeReturnScheme: readNativeReturnScheme(request.query)
+              nativeReturnScheme: readNativeReturnScheme(request.query),
+              locale: resolveCheckoutLocale(request.query)
             });
        }
        return reply.status(400).send({ error: 'invalid_id' });
@@ -891,7 +892,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       mapCheckoutStatus(session.status).displayStatus,
       {
         nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query),
-        nativeReturnScheme: readNativeReturnScheme(request.query)
+        nativeReturnScheme: readNativeReturnScheme(request.query),
+        locale: resolveCheckoutLocale(request.query)
       }
     );
   });
@@ -1113,6 +1115,10 @@ function checkoutRedirectPath(paymentSessionId: string, request: FastifyRequest)
   const params = new URLSearchParams();
   const returnScheme = readNativeReturnSchemeFromRequest(request);
   const bankLauncherScheme = readNativeBankLauncherScheme(request.body) ?? readNativeBankLauncherScheme(request.query);
+  const locale = resolveCheckoutLocale(request.query);
+  if (locale !== 'fr') {
+    params.set('lang', locale);
+  }
   if (returnScheme) {
     params.set('swimpay_return_scheme', returnScheme);
   }

@@ -1,9 +1,9 @@
 <resources>
-  <string name="app_name">SwimPay Receiver</string>
-  <string name="settings_help_center">Центр помощи</string>
-  <string name="settings_support">Связаться с поддержкой</string>
-  <string name="settings_security">Безопасность</string>
-  <string name="settings_language">Язык</string>
-  <string name="settings_appearance">Тема</string>
-  <string name="settings_confirmation_mode">Режим подтверждения</string>
+    <string name="app_name">SwimPay Merchant</string>
+    <string name="settings_help_center">Центр помощи</string>
+    <string name="settings_support">Связаться с поддержкой</string>
+    <string name="settings_security">Безопасность</string>
+    <string name="settings_language">Язык</string>
+    <string name="settings_appearance">Оформление</string>
+    <string name="settings_confirmation_mode">Режим подтверждения</string>
 </resources>

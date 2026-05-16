@@ -34,6 +34,7 @@ data class PremiumLocalizedCopy(
     val signOut: String,
     val languageBody: String,
     val appearanceBody: String,
+    val theme: String,
     val choose: String,
     val active: String
 ) {
@@ -48,6 +49,15 @@ data class PremiumLocalizedCopy(
         return when (profileType) {
             PremiumMerchantProfileType.PERSONAL -> personalProfileBody
             PremiumMerchantProfileType.COMMERCE -> commerceProfileBody
+        }
+    }
+
+    fun themeModeLabel(mode: PremiumThemeMode): String {
+        return when (this) {
+            fr -> mode.labelFr
+            en -> mode.labelEn
+            ru -> mode.labelRu
+            else -> mode.labelFr
         }
     }
 
@@ -93,7 +103,8 @@ data class PremiumLocalizedCopy(
             helpCenter = "Centre d'aide",
             signOut = "SE DÉCONNECTER",
             languageBody = "Choisissez la langue de l'interface marchand.",
-            appearanceBody = "Appliquez le mode système, clair ou sombre.",
+            appearanceBody = "Le changement est appliqué immédiatement à l'interface.",
+            theme = "Thème",
             choose = "Choisir",
             active = "Actif"
         )
@@ -131,7 +142,8 @@ data class PremiumLocalizedCopy(
             helpCenter = "Help center",
             signOut = "SIGN OUT",
             languageBody = "Choose the merchant interface language.",
-            appearanceBody = "Apply system, light or dark mode.",
+            appearanceBody = "Theme changes apply immediately to the interface.",
+            theme = "Theme",
             choose = "Choose",
             active = "Active"
         )
@@ -150,7 +162,7 @@ data class PremiumLocalizedCopy(
             recoverTitle = "Восстановить аккаунт",
             recoverBody = "Выберите способ восстановления уже созданной сессии.",
             googleRecovery = "Продолжить с Google",
-            googleRecoveryBody = "Восстановить аккаунт, привязанный для входа.",
+            googleRecoveryBody = "Восстановить аккаунт, уже привязанный для входа.",
             terminalTitle = "Торговый терминал",
             paymentsGroup = "ПЛАТЕЖИ",
             banks = "Банки",
@@ -161,7 +173,7 @@ data class PremiumLocalizedCopy(
             sales = "Продажи",
             notifications = "Уведомления",
             applicationGroup = "ПРИЛОЖЕНИЕ",
-            appearance = "Тема",
+            appearance = "Оформление",
             language = "Язык",
             security = "Безопасность",
             helpGroup = "ПОМОЩЬ",
@@ -169,7 +181,8 @@ data class PremiumLocalizedCopy(
             helpCenter = "Центр помощи",
             signOut = "ВЫЙТИ",
             languageBody = "Выберите язык интерфейса продавца.",
-            appearanceBody = "Включите системную, светлую или темную тему.",
+            appearanceBody = "Изменение темы применяется к интерфейсу сразу.",
+            theme = "Тема",
             choose = "Выбрать",
             active = "Активно"
         )

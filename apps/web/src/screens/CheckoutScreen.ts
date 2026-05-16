@@ -15,11 +15,87 @@ type VisualStage = 'intro' | 'info' | 'instructions' | 'status';
 type CheckoutStateTone = 'info' | 'success' | 'warning' | 'danger';
 type TimelineState = 'done' | 'active' | 'pending' | 'danger';
 type BuyerMethodAvailability = Record<BuyerCheckoutPaymentMethod, boolean>;
+export type CheckoutLocale = 'fr' | 'en' | 'ru';
 
 interface CheckoutStateView {
   title: string;
   text: string;
   tone: CheckoutStateTone;
+}
+
+interface CheckoutCopy {
+  pageTitle: string;
+  brandSubtitle: string;
+  progress: [string, string, string, string];
+  introTitle: string;
+  introText: string;
+  featureGuidedLabel: string;
+  featureGuidedText: string;
+  featureTrackingLabel: string;
+  featureTrackingText: string;
+  featureReturnLabel: string;
+  featureReturnText: string;
+  startButton: string;
+  trustNetwork: string;
+  buyerInfoTitle: string;
+}
+
+const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
+  fr: {
+    pageTitle: 'Payer avec SwimPay',
+    brandSubtitle: 'Security Engine',
+    progress: ['Intro', 'Infos', 'Paiement', 'Suivi'],
+    introTitle: 'Simple. Sûr. SwimPay.',
+    introText: "Suivez votre paiement bancaire jusqu'à validation.",
+    featureGuidedLabel: 'Paiement guidé',
+    featureGuidedText: 'Nous vous guidons étape par étape.',
+    featureTrackingLabel: 'Suivi en temps réel',
+    featureTrackingText: "Suivez l'état du paiement sans quitter le parcours.",
+    featureReturnLabel: 'Retour au marchand',
+    featureReturnText: 'Retour au marchand après validation finale.',
+    startButton: "Commencer l’expérience",
+    trustNetwork: 'Réseau de confiance SwimPay',
+    buyerInfoTitle: 'Vos informations',
+  },
+  en: {
+    pageTitle: 'Pay with SwimPay',
+    brandSubtitle: 'Security Engine',
+    progress: ['Intro', 'Info', 'Payment', 'Tracking'],
+    introTitle: 'Simple. Safe. SwimPay.',
+    introText: 'Track your bank payment until final validation.',
+    featureGuidedLabel: 'Guided payment',
+    featureGuidedText: 'We guide you step by step.',
+    featureTrackingLabel: 'Real-time tracking',
+    featureTrackingText: 'Track payment status without leaving the flow.',
+    featureReturnLabel: 'Return to merchant',
+    featureReturnText: 'Return to the merchant after final validation.',
+    startButton: 'Start experience',
+    trustNetwork: 'SwimPay trust network',
+    buyerInfoTitle: 'Your information',
+  },
+  ru: {
+    pageTitle: 'Оплатить через SwimPay',
+    brandSubtitle: 'Security Engine',
+    progress: ['Вход', 'Данные', 'Платеж', 'Статус'],
+    introTitle: 'Просто. Безопасно. SwimPay.',
+    introText: 'Следите за банковским платежом до финальной проверки.',
+    featureGuidedLabel: 'Понятная оплата',
+    featureGuidedText: 'Мы ведем вас шаг за шагом.',
+    featureTrackingLabel: 'Статус в реальном времени',
+    featureTrackingText: 'Следите за статусом платежа в одном сценарии.',
+    featureReturnLabel: 'Возврат к продавцу',
+    featureReturnText: 'Возврат к продавцу после финальной проверки.',
+    startButton: 'Начать',
+    trustNetwork: 'Доверенный контур SwimPay',
+    buyerInfoTitle: 'Ваши данные',
+  },
+};
+
+export function resolveCheckoutLocale(query: unknown): CheckoutLocale {
+  if (!query || typeof query !== 'object' || Array.isArray(query)) return 'fr';
+  const value = (query as { lang?: unknown }).lang;
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return candidate === 'en' || candidate === 'ru' || candidate === 'fr' ? candidate : 'fr';
 }
 
 export function renderCheckoutPage(
@@ -29,8 +105,9 @@ export function renderCheckoutPage(
   routes: readonly BuyerSafeReceivingRoute[],
   launchers: readonly PayerBankLauncherOption[],
   displayStatus: string,
-  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined } = {}
+  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined; locale?: CheckoutLocale | undefined } = {}
 ): string {
+  const copy = checkoutTranslations[options.locale ?? 'fr'];
   const visibleRoutes = filterRoutesForSession(routes, session.payment_method);
   const selectedRoute = visibleRoutes.find((route) => route.route_id === session.selected_receiving_route_id);
   const selectedLauncher = launchers.find((launcher) => launcher.payer_bank_launcher_id === session.selected_payer_bank_launcher_id);
@@ -39,14 +116,14 @@ export function renderCheckoutPage(
   const stage = visualStageForStep(step);
 
   return AppShell({
-    title: 'Payer avec SwimPay',
+    title: copy.pageTitle,
     chrome: 'checkout',
     children: `<section class="screen buyer-checkout checkout-screen-shell" data-current-stage="${stage}">
       <div class="checkout-shell-inner">
-        ${renderCheckoutBrand()}
-        ${renderSegmentProgress(stage)}
+        ${renderCheckoutBrand(copy)}
+        ${renderSegmentProgress(stage, copy)}
         <div class="checkout-flow" data-checkout-stage-host>
-          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability, options)}
+          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability, options, copy)}
         </div>
         ${renderCheckoutTrustFooter()}
       </div>
@@ -66,9 +143,10 @@ function renderCurrentStage(
   selectedLauncher: PayerBankLauncherOption | undefined,
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
-  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined }
+  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined },
+  copy: CheckoutCopy
 ): string {
-  if (step === 'intro') return renderIntroFlow(session, banks, launchers, methodAvailability, options.nativeReturnScheme);
+  if (step === 'intro') return renderIntroFlow(session, banks, launchers, methodAvailability, options.nativeReturnScheme, copy);
   if (step === 'bank') return renderReceiverBankSelection(session, banks, options.nativeReturnScheme);
   if (step === 'route') return renderReceivingRouteSelection(session, banks, visibleRoutes, launchers, methodAvailability, options.nativeReturnScheme);
   if (step === 'launcher') return renderPayerLauncherSelection(session, banks, selectedRoute, launchers, methodAvailability, options.nativeReturnScheme);
@@ -177,19 +255,19 @@ function isFinalBuyerState(session: CheckoutSession): boolean {
   return ['manual_confirmed', 'fulfilled', 'rejected', 'expired'].includes(session.status);
 }
 
-function renderCheckoutBrand(): string {
+function renderCheckoutBrand(copy: CheckoutCopy): string {
   return `<header class="checkout-brand" aria-label="SwimPay">
     <div class="checkout-brand-mark">${swimPayWavesSvg()}</div>
     <div class="checkout-brand-copy">
       <strong>SwimPay</strong>
-      <span>Security Engine</span>
+      <span>${escapeHtml(copy.brandSubtitle)}</span>
     </div>
   </header>`;
 }
 
-function renderSegmentProgress(stage: VisualStage): string {
+function renderSegmentProgress(stage: VisualStage, copy: CheckoutCopy): string {
   const current = stageIndex(stage);
-  const labels = ['Intro', 'Infos', 'Paiement', 'Suivi'];
+  const labels = copy.progress;
   return `<nav class="checkout-progress" data-progress-bar data-active-step="${current}" aria-label="Progression du paiement">
     ${labels.map((label, index) => {
       const segmentState = index + 1 <= current ? 'active' : 'pending';
@@ -210,32 +288,33 @@ function renderIntroFlow(
   banks: readonly ReceiverBankOption[],
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
-  nativeReturnScheme?: string | undefined
+  nativeReturnScheme?: string | undefined,
+  copy?: CheckoutCopy
 ): string {
   if (!hasReceivingMethod(methodAvailability)) {
     return renderNoReceivingMethodsFallback(session, false);
   }
   return `<div class="checkout-stage-host">
-    ${renderIntroStep()}
-    ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, true, 'Vos informations', nativeReturnScheme)}
+    ${renderIntroStep(copy ?? checkoutTranslations.fr)}
+    ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, true, copy?.buyerInfoTitle ?? 'Vos informations', nativeReturnScheme)}
   </div>`;
 }
 
-function renderIntroStep(): string {
+function renderIntroStep(copy: CheckoutCopy): string {
   return `<section class="checkout-stage-card checkout-intro-card" data-checkout-panel="intro" data-visual-stage="intro">
     <div class="checkout-stage-icon">${swimPayWavesSvg()}</div>
     <div class="checkout-stage-head checkout-stage-head-center">
       <p class="checkout-kicker">SwimPay</p>
-      <h1>Simple. S&ucirc;r. SwimPay.</h1>
-      <p>Suivez votre paiement bancaire jusqu'a validation.</p>
+      <h1>${escapeHtml(copy.introTitle)}</h1>
+      <p>${escapeHtml(copy.introText)}</p>
     </div>
     <div class="checkout-feature-list">
-      ${renderFeature('shield', 'Paiement guid&eacute;', 'Nous vous guidons etape par etape.')}
-      ${renderFeature('clock', 'Suivi en temps reel', 'Suivez l&rsquo;etat du paiement sans quitter le parcours.')}
-      ${renderFeature('return', 'Retour au marchand', 'Retour au marchand apres validation finale.')}
+      ${renderFeature('shield', copy.featureGuidedLabel, copy.featureGuidedText)}
+      ${renderFeature('clock', copy.featureTrackingLabel, copy.featureTrackingText)}
+      ${renderFeature('return', copy.featureReturnLabel, copy.featureReturnText)}
     </div>
-    <button class="checkout-primary-action checkout-next" type="button" data-show-panel="buyer-identity" data-progress-step="2">Commencer l&rsquo;experience</button>
-    <p class="checkout-network-note"><span></span> Reseau de confiance SwimPay</p>
+    <button class="checkout-primary-action checkout-next" type="button" data-show-panel="buyer-identity" data-progress-step="2">${escapeHtml(copy.startButton)}</button>
+    <p class="checkout-network-note"><span></span> ${escapeHtml(copy.trustNetwork)}</p>
   </section>`;
 }
 
@@ -243,8 +322,8 @@ function renderFeature(icon: 'shield' | 'clock' | 'return', label: string, text:
   return `<article class="checkout-feature-card">
     <span class="checkout-feature-icon">${iconSvg(icon)}</span>
     <div>
-      <strong>${label}</strong>
-      <small>${text}</small>
+      <strong>${escapeHtml(label)}</strong>
+      <small>${escapeHtml(text)}</small>
     </div>
   </article>`;
 }

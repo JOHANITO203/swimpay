@@ -3471,3 +3471,23 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Fixed root npm readiness false positive by removing the raw Android device serial containing `5C` from `.swimpay-agent/TASK_QUEUE.md`.
 - Excluded Git-ignored external skill clones from ESLint with `.external-skills/**`.
 - Validation passed: Android staging unit/build, `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`.
+
+## 2026-05-16T07:25:00+03:00 - I18N foundation
+
+- Kept French as the base language for the new localization foundation.
+- Added typed landing dictionaries for French, English and Russian Cyrillic, plus `/fr/`, `/en/`, `/ru/` SPA routing support.
+- Normalized Android app-owned string resources with French default, English derivative and Russian Cyrillic derivative.
+- Added checkout `?lang=fr|en|ru` support for the hosted checkout entry shell without changing checkout contracts.
+- Added static guardrails against mojibake/replacement characters on touched i18n surfaces.
+
+## 2026-05-16T07:55:00+03:00 - Android premium i18n cleanup
+
+- Cleaned Android premium account/settings copy in `PremiumLocalizedCopy.kt` with UTF-8 French and Russian Cyrillic.
+- Localized Appearance theme labels for French, English and Russian without changing theme behavior.
+- Extended Android i18n guardrails to premium Kotlin copy and settings state labels.
+
+## 2026-05-16T14:25:00+03:00 - Mojibake surface review
+
+- Scanned repository text surfaces for replacement characters and mojibake markers.
+- Fixed Android premium test mojibake strings.
+- Added repository-level mojibake guardrail with an explicit allowlist for bank-template encoding compatibility fixtures.

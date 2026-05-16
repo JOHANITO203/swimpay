@@ -709,3 +709,13 @@ The previous sprint was Android dashboard metrics wiring. It is not a payment ru
 
 - [x] `android_ui_rollback_to_7e95985` - status: completed_installed - source: `.swimpay-agent/ANDROID_UI_ROLLBACK_TO_7E95985_REPORT.md`
 - [ ] `operator_device_check_rollback_ui` - status: pending_operator_check - source: connected staging device
+
+## 2026-05-16T07:25:00+03:00 - I18N queue
+
+- [x] `landing_i18n_foundation` - status: completed_validated - source: `apps/landing/src/i18n.ts`
+- [x] `android_i18n_resource_baseline` - status: completed_validated - source: `apps/android-receiver/android/app/src/main/res/values*`
+- [x] `android_premium_account_settings_i18n_cleanup` - status: completed_validated - source: `PremiumLocalizedCopy.kt`
+- [x] `checkout_url_i18n_entry_shell` - status: completed_validated - source: `apps/web/src/screens/CheckoutScreen.ts`
+- [x] `repo_mojibake_surface_review` - status: completed_validated - source: `.swimpay-agent/MOJIBAKE_SURFACE_REVIEW.md`
+- [ ] `android_compose_business_copy_i18n_migration` - status: pending_follow_up - source: remaining hardcoded premium business screens
+- [ ] `checkout_full_flow_i18n_migration` - status: pending_follow_up - source: later checkout steps

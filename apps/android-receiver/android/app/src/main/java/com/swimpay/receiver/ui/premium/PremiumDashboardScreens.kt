@@ -1490,18 +1490,23 @@ fun PremiumLanguageScreen(selected: PremiumLanguageOption, onSelect: (PremiumLan
 }
 
 @Composable
-fun PremiumAppearanceScreen(selected: PremiumThemeMode, onSelect: (PremiumThemeMode) -> Unit) {
+fun PremiumAppearanceScreen(
+    selected: PremiumThemeMode,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
+    onSelect: (PremiumThemeMode) -> Unit
+) {
+    val copy = PremiumLocalizedCopy.forLanguage(language)
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(bottom = 34.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("Apparence", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text("Le changement est appliqué immédiatement à l'interface.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(copy.appearance, color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(copy.appearanceBody, color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         item {
-            PremiumThemeSwitcher(selected = selected, onSelect = onSelect)
+            PremiumThemeSwitcher(selected = selected, copy = copy, onSelect = onSelect)
         }
     }
 }
@@ -1509,14 +1514,15 @@ fun PremiumAppearanceScreen(selected: PremiumThemeMode, onSelect: (PremiumThemeM
 @Composable
 private fun PremiumThemeSwitcher(
     selected: PremiumThemeMode,
+    copy: PremiumLocalizedCopy,
     onSelect: (PremiumThemeMode) -> Unit
 ) {
     PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("Thème", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            Text(copy.theme, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 PremiumThemeMode.entries.forEach { mode ->
-                    ThemeModeChoice(mode = mode, active = mode == selected) { onSelect(mode) }
+                    ThemeModeChoice(mode = mode, active = mode == selected, copy = copy) { onSelect(mode) }
                 }
             }
         }
@@ -1527,6 +1533,7 @@ private fun PremiumThemeSwitcher(
 private fun ThemeModeChoice(
     mode: PremiumThemeMode,
     active: Boolean,
+    copy: PremiumLocalizedCopy,
     onClick: () -> Unit
 ) {
     Row(
@@ -1549,8 +1556,8 @@ private fun ThemeModeChoice(
         ) {
             Icon(themeModeIcon(mode), null, tint = if (active) Color.White else PremiumColors.Teal, modifier = Modifier.size(20.dp))
         }
-        Text(mode.labelFr, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = 14.dp))
-        StatusChip(if (active) "Actif" else "Choisir", if (active) StatusTone.Success else StatusTone.Neutral)
+        Text(copy.themeModeLabel(mode), color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = 14.dp))
+        StatusChip(if (active) copy.active else copy.choose, if (active) StatusTone.Success else StatusTone.Neutral)
     }
 }
 

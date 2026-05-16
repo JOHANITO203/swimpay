@@ -24,11 +24,13 @@ enum class PremiumLanguageOption(
 
 enum class PremiumThemeMode(
     val wireValue: String,
-    val labelFr: String
+    val labelFr: String,
+    val labelEn: String,
+    val labelRu: String
 ) {
-    SYSTEM("system", "Système"),
-    LIGHT("light", "Clair"),
-    DARK("dark", "Sombre");
+    SYSTEM("system", "Système", "System", "Система"),
+    LIGHT("light", "Clair", "Light", "Светлая"),
+    DARK("dark", "Sombre", "Dark", "Темная");
 
     fun resolve(systemDark: Boolean): Boolean {
         return when (this) {
@@ -50,10 +52,10 @@ enum class PremiumLockTimeout(
     val labelFr: String,
     val durationMs: Long
 ) {
-    IMMEDIATE("immediate", "Immediatement", 0L),
-    ONE_MINUTE("one_minute", "Apres 1 min", 60_000L),
-    FIVE_MINUTES("five_minutes", "Apres 5 min", 5 * 60_000L),
-    FIFTEEN_MINUTES("fifteen_minutes", "Apres 15 min", 15 * 60_000L);
+    IMMEDIATE("immediate", "Immédiatement", 0L),
+    ONE_MINUTE("one_minute", "Après 1 min", 60_000L),
+    FIVE_MINUTES("five_minutes", "Après 5 min", 5 * 60_000L),
+    FIFTEEN_MINUTES("fifteen_minutes", "Après 15 min", 15 * 60_000L);
 
     companion object {
         fun fromWire(value: String?): PremiumLockTimeout {

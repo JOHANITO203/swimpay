@@ -1,21 +1,26 @@
 import { AlertCircle, CheckCircle2, ChevronRight, Clock, Download, Users } from 'lucide-react';
 import { motion } from 'motion/react';
+import type { LandingCopy } from '../i18n';
 import { cn } from '../lib/utils';
 
 const androidApkUrl = import.meta.env.VITE_ANDROID_APK_URL ?? '/downloads/swimpay-merchant.apk';
 
-const reviewWidgets = [
-  { label: 'À confirmer', value: '12', icon: AlertCircle, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-  { label: 'Confirmés', value: '142', icon: CheckCircle2, color: 'text-accent', bg: 'bg-accent/10' },
-];
-
 const history = [
-  { from: 'Olga K.', amount: '+ 1 200,00 ₽', time: 'Il y a 2m', status: 'confirm' },
-  { from: 'Ivan S.', amount: '+ 850,50 ₽', time: 'Il y a 15m', status: 'pending' },
-  { from: 'Dimitri P.', amount: '+ 14 000,00 ₽', time: 'Il y a 1h', status: 'confirm' },
+  { from: 'Olga K.', amount: '+ 1 200,00 ₽', time: '2m', status: 'confirm' },
+  { from: 'Ivan S.', amount: '+ 850,50 ₽', time: '15m', status: 'pending' },
+  { from: 'Dimitri P.', amount: '+ 14 000,00 ₽', time: '1h', status: 'confirm' },
 ];
 
-export default function Hero() {
+interface HeroProps {
+  copy: LandingCopy['hero'];
+}
+
+export default function Hero({ copy }: HeroProps) {
+  const reviewWidgets = [
+    { label: copy.reviewsPending, value: '12', icon: AlertCircle, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+    { label: copy.reviewsConfirmed, value: '142', icon: CheckCircle2, color: 'text-accent', bg: 'bg-accent/10' },
+  ];
+
   return (
     <section className="relative flex min-h-screen flex-col justify-center overflow-hidden px-4 pb-16 pt-32 sm:px-6 lg:pt-36">
       <div className="pointer-events-none absolute right-[-12rem] top-[-10rem] h-[34rem] w-[34rem] rounded-full bg-blue-500/20 blur-[130px]" />
@@ -30,28 +35,28 @@ export default function Hero() {
         >
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-accent">
             <span className="h-2 w-2 rounded-full bg-accent shadow-[0_0_18px_rgba(0,242,255,0.7)]" />
-            Solution 100% Gratuite & Accessible
+            {copy.badge}
           </div>
 
           <h1 className="mb-7 max-w-3xl font-display text-5xl font-bold leading-[0.95] tracking-[-0.05em] text-white sm:text-6xl lg:text-8xl">
-            Paiements reçus <br />
-            <span className="bg-gradient-to-r from-accent via-blue-300 to-cyan-100 bg-clip-text text-transparent">
-              avec SwimPay
-            </span>
+            {copy.titleA} <br />
+            <span className="bg-gradient-to-r from-accent via-blue-300 to-cyan-100 bg-clip-text text-transparent">{copy.titleB}</span>
           </h1>
 
           <p className="mb-9 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
-            Offrez à vos clients une expérience de paiement guidée. Gérez votre comptabilité et vos accès business via l'app Merchant.{' '}
-            <span className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-1 font-semibold text-white/90">100% Gratuit.</span>
+            {copy.description}{' '}
+            <span className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-1 font-semibold text-white/90">
+              {copy.freeBadge}
+            </span>
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <a href={androidApkUrl} className="group flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-white px-7 py-4 text-base font-bold text-brand-900 transition-all hover:bg-accent">
               <Download size={20} className="transition-transform group-hover:-translate-y-0.5" />
-              Télécharger l’app Merchant
+              {copy.primaryCta}
             </a>
             <a href="#features" className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/12 px-7 py-4 text-base font-bold text-white transition-all hover:bg-white/7">
-              Voir comment ça marche
+              {copy.secondaryCta}
               <ChevronRight size={20} />
             </a>
           </div>
@@ -74,9 +79,9 @@ export default function Hero() {
               </div>
 
               <div className="px-6 pb-5 pt-2">
-                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Espace Merchant</p>
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">{copy.phoneEyebrow}</p>
                 <div className="flex items-center justify-between">
-                  <h2 className="font-display text-xl font-semibold text-white">Dashboard</h2>
+                  <h2 className="font-display text-xl font-semibold text-white">{copy.phoneTitle}</h2>
                   <div className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/5">
                     <Users size={15} className="text-slate-300" />
                   </div>
@@ -87,15 +92,15 @@ export default function Hero() {
                 <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-blue-600 via-indigo-700 to-brand-900 p-6 shadow-2xl">
                   <div className="absolute right-[-3rem] top-[-3rem] h-36 w-36 rounded-full bg-accent/20 blur-3xl" />
                   <div className="absolute bottom-[-3rem] left-[-3rem] h-36 w-36 rounded-full bg-blue-300/10 blur-3xl" />
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-blue-100/65">Paiements reçus</p>
-                  <h3 className="mb-6 font-display text-3xl font-bold tracking-tight text-white">85 920,50 ₽</h3>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-blue-100/65">{copy.walletLabel}</p>
+                  <h3 className="mb-6 font-display text-3xl font-bold tracking-tight text-white">{copy.walletAmount}</h3>
                   <div className="flex items-center justify-between">
                     <div className="flex -space-x-2">
                       {[1, 2, 3].map((item) => (
                         <div key={item} className="h-6 w-6 rounded-full border-2 border-brand-800 bg-slate-700" />
                       ))}
                     </div>
-                    <span className="text-right font-mono text-[10px] tracking-[0.22em] text-blue-100/45">CARTE • 5421</span>
+                    <span className="text-right font-mono text-[10px] tracking-[0.22em] text-blue-100/45">{copy.walletFooter}</span>
                   </div>
                 </div>
               </div>
@@ -115,7 +120,7 @@ export default function Hero() {
               </div>
 
               <div className="flex-1 overflow-hidden px-6">
-                <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">Historique des paiements</p>
+                <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">{copy.historyTitle}</p>
                 <div className="space-y-3">
                   {history.map((item) => (
                     <div key={`${item.from}-${item.time}`} className="flex items-center justify-between border-b border-white/6 py-2">
@@ -150,7 +155,7 @@ export default function Hero() {
                 <Clock size={22} />
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400">Dernier succès</p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-400">{copy.latestSuccess}</p>
                 <p className="font-bold text-white">+ 2 500,00 ₽</p>
               </div>
             </div>

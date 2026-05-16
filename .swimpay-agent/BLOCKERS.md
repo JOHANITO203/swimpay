@@ -924,3 +924,11 @@ No backend/runtime blockers found for this design-only pass. Remaining blockers 
 
 - No rollback blocker: staging build passed and APK installed on device.
 - Follow-up risk: backend/session fixes made after the selected UI commit were intentionally not rolled back; if UI references changed contracts, verify on device before committing.
+
+## I18N Foundation (2026-05-16)
+
+- No backend/API/payment/webhook/receiver/SDK blocker introduced.
+- Resolved locally: Android premium account/settings copy and Appearance theme labels are UTF-8 and language-aware.
+- Resolved locally: Android premium test mojibake strings were cleaned and a repository mojibake guardrail was added.
+- Remaining i18n scope: Android premium business screens still contain hardcoded runtime copy and need a dedicated migration pass.
+- Remaining i18n scope: hosted checkout later steps still contain French hardcoded copy after the intro shell.

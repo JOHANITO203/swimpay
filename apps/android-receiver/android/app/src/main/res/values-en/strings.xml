@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">SwimPay Merchant</string>
+    <string name="settings_help_center">Help center</string>
+    <string name="settings_support">Contact support</string>
+    <string name="settings_security">Security</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_confirmation_mode">Confirmation mode</string>
+</resources>
