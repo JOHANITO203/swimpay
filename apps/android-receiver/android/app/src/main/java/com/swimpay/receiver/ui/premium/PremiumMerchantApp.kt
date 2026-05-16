@@ -719,6 +719,7 @@ fun PremiumMerchantApp(
         )
         PremiumRoute.ConnectedSite -> PremiumConnectedSiteStateScreen(
             state = connectedSiteState,
+            language = merchantSettings.language,
             onBack = {
                 activeRuntime.clearDeveloperShowOnceExport()
                 route = PremiumRoute.Main(PremiumMainTab.Business)
@@ -778,7 +779,7 @@ fun PremiumMerchantApp(
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             language = merchantSettings.language,
-            content = { PremiumConfirmationModeScreen() }
+            content = { PremiumConfirmationModeScreen(language = merchantSettings.language) }
         )
         PremiumRoute.Security -> PremiumAppShell(
             selectedTab = PremiumMainTab.Settings,
@@ -918,14 +919,20 @@ fun PremiumMerchantApp(
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             language = merchantSettings.language,
-            content = { PremiumBanksStateScreen(banksState) }
+            content = { PremiumBanksStateScreen(banksState, language = merchantSettings.language) }
         )
         PremiumRoute.ReceiverHealth -> PremiumAppShell(
             selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
             language = merchantSettings.language,
-            content = { PremiumReceiverHealthStateScreen(receiverHealthState, onOpenNotificationSettings) }
+            content = {
+                PremiumReceiverHealthStateScreen(
+                    receiverHealthState,
+                    onOpenNotificationSettings,
+                    language = merchantSettings.language
+                )
+            }
         )
             is PremiumRoute.OrderDetail -> PremiumAppShell(
             selectedTab = PremiumMainTab.Business,

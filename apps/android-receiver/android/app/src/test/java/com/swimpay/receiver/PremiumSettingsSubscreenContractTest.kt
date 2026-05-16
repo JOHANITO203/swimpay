@@ -63,6 +63,43 @@ class PremiumSettingsSubscreenContractTest {
     }
 
     @Test
+    fun merchantLanguageIsInjectedIntoSecondaryMerchantScreens() {
+        val app = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
+
+        listOf(
+            "PremiumConnectedSiteStateScreen(",
+            "PremiumBanksStateScreen(",
+            "PremiumReceiverHealthStateScreen(",
+            "PremiumConfirmationModeScreen("
+        ).forEach { call ->
+            val callBlock = sourceWindow(app, call, 1_600)
+            assertTrue("$call must receive merchantSettings.language", callBlock.contains("language = merchantSettings.language"))
+        }
+    }
+
+    @Test
+    fun secondaryMerchantScreensUseLocalizedCopyForVisibleLabels() {
+        val dashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+
+        listOf(
+            "fun PremiumConnectedSiteStateScreen",
+            "fun PremiumBanksStateScreen",
+            "fun PremiumReceiverHealthStateScreen",
+            "fun PremiumConfirmationModeScreen"
+        ).forEach { functionName ->
+            val function = sourceFunction(dashboard, functionName)
+            assertTrue("$functionName must accept language", function.contains("language: PremiumLanguageOption"))
+            assertTrue("$functionName must localize visible strings", function.contains("language.ui("))
+        }
+
+        val settings = sourceFunction(dashboard, "fun PremiumSettingsScreen")
+        assertTrue(settings.contains("SettingsGroup(language.ui(\"Compte\")"))
+        assertTrue(settings.contains("SettingsGroup(language.ui(\"Paiements\")"))
+        assertTrue(settings.contains("SettingsGroup(language.ui(\"Aide\")"))
+        assertTrue(settings.contains("language.ui(\"Sites\")"))
+    }
+
+    @Test
     fun premiumUiSourcesDoNotContainMojibakeMarkers() {
         val root = File("src/main/java/com/swimpay/receiver/ui/premium")
         val source = root.walkTopDown()
