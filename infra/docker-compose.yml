@@ -238,7 +238,7 @@ services:
 
 networks:
   swimpay_private:
-    internal: true
+    driver: bridge
   swimpay_public:
 
 volumes:
