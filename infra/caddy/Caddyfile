@@ -19,7 +19,23 @@
 		reverse_proxy swimpay-api:3000
 	}
 
-	handle {
+	handle /checkout/* {
 		reverse_proxy swimpay-web:3001
+	}
+
+	handle /merchant/* {
+		reverse_proxy swimpay-web:3001
+	}
+
+	handle /admin/* {
+		reverse_proxy swimpay-web:3001
+	}
+
+	handle /docs/* {
+		reverse_proxy swimpay-web:3001
+	}
+
+	handle {
+		reverse_proxy swimpay-landing:80
 	}
 }

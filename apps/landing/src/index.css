@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+
+  --color-brand-950: #010816;
+  --color-brand-900: #020617;
+  --color-brand-800: #07152f;
+  --color-brand-700: #0f274f;
+  --color-accent: #00f2ff;
+  --color-electric-blue: #3b82f6;
+  --color-deep-blue: #1e3a8a;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-brand-900 text-slate-100 antialiased selection:bg-accent selection:text-brand-900;
+    min-width: 320px;
+  }
+
+  a,
+  button {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-brand-900;
+  }
+}
+
+.glass {
+  @apply bg-white/[0.055] backdrop-blur-xl border border-white/[0.1] shadow-[0_24px_80px_rgba(0,0,0,0.32)];
+}
+
+.glass-dark {
+  @apply bg-black/50 backdrop-blur-2xl border border-white/[0.08];
+}
+
+.glass-card {
+  @apply bg-gradient-to-br from-white/[0.09] via-white/[0.035] to-transparent backdrop-blur-md border border-white/[0.11] shadow-xl;
+}
+
+.gradient-bg {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(0, 242, 255, 0.16), transparent 28rem),
+    radial-gradient(circle at 82% 8%, rgba(59, 130, 246, 0.22), transparent 34rem),
+    radial-gradient(circle at 48% 110%, rgba(30, 58, 138, 0.24), transparent 34rem),
+    linear-gradient(180deg, #07152f 0%, #061126 38%, #020617 100%);
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+}
+
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/40;
+}
+
+.border-glow {
+  @apply border-white/10 relative;
+}
+
+.border-glow::before {
+  content: "";
+  @apply absolute inset-0 rounded-[inherit] border border-accent/20 opacity-0 transition-opacity duration-500;
+}
+
+.border-glow:hover::before {
+  @apply opacity-100;
+}
+
+.landing-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.landing-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 76%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

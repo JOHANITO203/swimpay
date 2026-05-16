@@ -8,7 +8,8 @@ const dockerizedWorkspaces = [
   { app: 'api', packageName: '@swimpay/api' },
   { app: 'signal-worker', packageName: '@swimpay/signal-worker' },
   { app: 'job-worker', packageName: '@swimpay/job-worker' },
-  { app: 'web', packageName: '@swimpay/web' }
+  { app: 'web', packageName: '@swimpay/web' },
+  { app: 'landing', packageName: '@swimpay/landing' }
 ] as const;
 
 describe('single-server docker compose deployment', () => {
@@ -24,7 +25,8 @@ describe('single-server docker compose deployment', () => {
       'swimpay-api',
       'swimpay-signal-worker',
       'swimpay-job-worker',
-      'swimpay-web'
+      'swimpay-web',
+      'swimpay-landing'
     ]) {
       expect(compose).toContain(`  ${service}:`);
     }
@@ -84,6 +86,25 @@ describe('single-server docker compose deployment', () => {
         ).toContain(`COPY packages/${dependency}/package.json packages/${dependency}/package.json`);
       }
     }
+  });
+
+  test('web image ships the SDK developer PDF used by merchant integration links', () => {
+    const dockerfile = readFileSync(join(root, 'apps', 'web', 'Dockerfile'), 'utf8');
+
+    expect(existsSync(join(root, 'docs', 'SDK_DEVELOPER_INTEGRATION_GUIDE.pdf'))).toBe(true);
+    expect(dockerfile).toContain(
+      'COPY docs/SDK_DEVELOPER_INTEGRATION_GUIDE.pdf ./docs/SDK_DEVELOPER_INTEGRATION_GUIDE.pdf'
+    );
+  });
+
+  test('serves the public landing separately while keeping app routes on the web service', () => {
+    const caddyfile = readFileSync(join(root, 'infra/caddy/Caddyfile'), 'utf8');
+
+    expect(caddyfile).toContain('handle /checkout/*');
+    expect(caddyfile).toContain('handle /merchant/*');
+    expect(caddyfile).toContain('handle /docs/*');
+    expect(caddyfile).toContain('reverse_proxy swimpay-web:3001');
+    expect(caddyfile).toContain('reverse_proxy swimpay-landing:80');
   });
 
   test('keeps checkout staging reconciliation migration aligned with runtime schema dependencies', () => {

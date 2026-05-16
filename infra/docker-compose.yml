@@ -50,6 +50,8 @@ services:
     depends_on:
       swimpay-api:
         condition: service_healthy
+      swimpay-landing:
+        condition: service_healthy
       swimpay-web:
         condition: service_healthy
     ports:
@@ -238,6 +240,23 @@ services:
       retries: 5
     logging: *default_logging
     mem_limit: 256m
+
+  swimpay-landing:
+    build:
+      context: ..
+      dockerfile: apps/landing/Dockerfile
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - swimpay_runtime
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default_logging
+    mem_limit: 128m
 
 networks:
   swimpay_runtime:
