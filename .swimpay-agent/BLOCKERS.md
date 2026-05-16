@@ -932,3 +932,10 @@ No backend/runtime blockers found for this design-only pass. Remaining blockers 
 - Resolved locally: Android premium test mojibake strings were cleaned and a repository mojibake guardrail was added.
 - Remaining i18n scope: Android premium business screens still contain hardcoded runtime copy and need a dedicated migration pass.
 - Remaining i18n scope: hosted checkout later steps still contain French hardcoded copy after the intro shell.
+
+## Feature Contract Capability Findings Repair (2026-05-17)
+
+- No payment/runtime blocker introduced.
+- Remaining release packaging prerequisite: signed release APK build needs `SWIMPAY_ANDROID_RELEASE_STORE_FILE`, `SWIMPAY_ANDROID_RELEASE_STORE_PASSWORD`, `SWIMPAY_ANDROID_RELEASE_KEY_ALIAS` and `SWIMPAY_ANDROID_RELEASE_KEY_PASSWORD` in the build environment.
+- Production compose now also requires `POSTGRES_PASSWORD`; Dokploy must define it explicitly.
+- Web Google BFF redirect/callback remains a documented 501 seam; Android Google ID-token recovery/linking remains separate and covered by tests.

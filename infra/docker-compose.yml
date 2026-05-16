@@ -1,6 +1,6 @@
 x-swimpay-runtime-env: &swimpay_runtime_env
   NODE_ENV: ${NODE_ENV:-production}
-  DATABASE_URL: ${DATABASE_URL:-postgres://swimpay:swimpay_dev_password@postgres:5432/swimpay}
+  DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL from external secret storage}
   VALKEY_URL: ${VALKEY_URL:-redis://valkey:6379}
   NATS_URL: ${NATS_URL:-nats://nats:4222}
   NATS_STREAM_NAME: ${NATS_STREAM_NAME:-SWIMPAY_EVENTS}
@@ -16,9 +16,9 @@ x-swimpay-runtime-env: &swimpay_runtime_env
   GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:8080/auth/google/callback}
   SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID: ${SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID:-}
   SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID: ${SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID:-}
-  CHECKOUT_BASE_URL: ${CHECKOUT_BASE_URL:-http://localhost:3001/checkout}
-  PHONE_HMAC_SECRET: ${PHONE_HMAC_SECRET:-local_dev_phone_hmac_secret}
-  WEBHOOK_SECRET_ENCRYPTION_KEY: ${WEBHOOK_SECRET_ENCRYPTION_KEY:-local_dev_webhook_secret_encryption_key}
+  CHECKOUT_BASE_URL: ${CHECKOUT_BASE_URL:?set CHECKOUT_BASE_URL to the public checkout URL}
+  PHONE_HMAC_SECRET: ${PHONE_HMAC_SECRET:?set PHONE_HMAC_SECRET from external secret storage}
+  WEBHOOK_SECRET_ENCRYPTION_KEY: ${WEBHOOK_SECRET_ENCRYPTION_KEY:?set WEBHOOK_SECRET_ENCRYPTION_KEY from external secret storage}
   WEBHOOK_WORKER_ENABLED: ${WEBHOOK_WORKER_ENABLED:-false}
   WEBHOOK_POLL_INTERVAL_MS: ${WEBHOOK_POLL_INTERVAL_MS:-30000}
   WEBHOOK_WORKER_BATCH_SIZE: ${WEBHOOK_WORKER_BATCH_SIZE:-10}
@@ -85,7 +85,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-swimpay}
       POSTGRES_USER: ${POSTGRES_USER:-swimpay}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-swimpay_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD from external secret storage}
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     volumes:
       - postgres_data:/var/lib/postgresql/data

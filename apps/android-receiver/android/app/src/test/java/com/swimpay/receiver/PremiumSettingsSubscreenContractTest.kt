@@ -106,7 +106,7 @@ class PremiumSettingsSubscreenContractTest {
             .filter { it.isFile && it.extension == "kt" }
             .joinToString("\n") { it.readText(Charsets.UTF_8) }
 
-        listOf("�", "Ã", "Ð", "Ñ", "â", "Â").forEach { forbidden ->
+        listOf("\uFFFD", "\u00C3", "\u00D0", "\u00D1", "\u00E2", "\u00C2").forEach { forbidden ->
             assertFalse("premium UI source contains mojibake marker $forbidden", source.contains(forbidden))
         }
         assertFalse(source.contains("Reessayer"))

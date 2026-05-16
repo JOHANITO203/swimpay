@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+﻿import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -40,7 +40,7 @@ const allowedMojibakeFiles = new Set([
   path.normalize('tests/mojibake-surface.test.ts')
 ]);
 
-const mojibakePattern = /�|Ã|Â|â€™|â€œ|â€|â|ðŸ|Ð|Ñ/u;
+const mojibakePattern = /\uFFFD|\u00C3[\u0080-\u00BF]|\u00C2|\u00E2[\u0080-\u00BF]|\u00EF\u00BF\u00BD|\u00D0[\u0080-\u00BF]|\u00D1[\u0080-\u00BF]/u;
 
 function shouldSkip(filePath: string): boolean {
   const relative = path.relative(repoRoot, filePath);

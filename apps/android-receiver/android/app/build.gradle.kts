@@ -88,7 +88,13 @@ android {
     buildTypes {
         getByName("release") {
             isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             buildConfigField("String", "SWIMPAY_BACKEND_BASE_URL", productionSwimpayBackendBaseUrl.get().toBuildConfigString())
             buildConfigField("String", "SWIMPAY_GOOGLE_SERVER_CLIENT_ID", productionSwimpayGoogleServerClientId.get().toBuildConfigString())
         }

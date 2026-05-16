@@ -91,7 +91,7 @@ class PremiumMerchantSettingsStateTest {
             )
         }.joinToString("\n")
 
-        listOf("�", "Ã", "Ð", "Ñ", "â", "Â").forEach { forbidden ->
+        listOf("\uFFFD", "\u00C3", "\u00D0", "\u00D1", "\u00E2", "\u00C2").forEach { forbidden ->
             assertFalse("localized copy contains mojibake marker $forbidden", visibleText.contains(forbidden))
         }
         assertTrue("Russian copy must use Cyrillic alphabet", PremiumLocalizedCopy.forLanguage(PremiumLanguageOption.RU).language.contains("Я"))

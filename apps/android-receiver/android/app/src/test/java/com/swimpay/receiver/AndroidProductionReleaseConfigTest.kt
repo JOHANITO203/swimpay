@@ -40,6 +40,11 @@ class AndroidProductionReleaseConfigTest {
 
         assertTrue(releaseBlock.contains("productionSwimpayBackendBaseUrl"))
         assertTrue(releaseBlock.contains("productionSwimpayGoogleServerClientId"))
+        assertTrue(releaseBlock.contains("isMinifyEnabled = true"))
+        assertTrue(releaseBlock.contains("isShrinkResources = true"))
+        assertTrue(releaseBlock.contains("proguardFiles("))
+        assertTrue(releaseBlock.contains("proguard-android-optimize.txt"))
+        assertTrue(releaseBlock.contains("proguard-rules.pro"))
         assertFalse(releaseBlock.contains("stagingSwimpayBackendBaseUrl"))
         assertFalse(releaseBlock.contains("swimpayBackendBaseUrl.get()"))
         assertTrue(gradle.contains(".orElse(stagingSwimpayBackendBaseUrl)"))
@@ -58,6 +63,17 @@ class AndroidProductionReleaseConfigTest {
         assertTrue(packageJson.contains(":app:assembleRelease"))
         assertTrue(packageJson.contains("\"android:bundle:release\""))
         assertTrue(packageJson.contains(":app:bundleRelease"))
+    }
+
+    @Test
+    fun releaseProguardRulesKeepAndroidEntrypointsWithoutWeakeningPaymentBoundaries() {
+        val rules = File("proguard-rules.pro").readText()
+
+        assertTrue(rules.contains("com.swimpay.receiver.work"))
+        assertTrue(rules.contains("com.google.android.libraries.identity.googleid"))
+        assertTrue(rules.contains("androidx.credentials"))
+        assertFalse(rules.contains("bank_confirmed"))
+        assertFalse(rules.contains("allow_auto_confirmation"))
     }
 
     private fun sourceBetween(source: String, startMarker: String, endMarker: String): String {

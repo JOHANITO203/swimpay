@@ -1226,9 +1226,21 @@ describe('android merchant mobile backend endpoints', () => {
     expectSafeAndroidMerchantBody(response.body);
   });
 
-  it('returns connected-site status without exposing webhook secrets and gates developer details explicitly', async () => {
-    const { server } = buildAndroidMerchantServer({
-      connectedSite: { url: 'https://merchant.example/swimpay/webhook', status: 'active' }
+  it('returns connected-site status from integration repository without exposing webhook secrets', async () => {
+    const { server, merchantIntegrationRepository } = buildAndroidMerchantServer();
+    await merchantIntegrationRepository.updateWebhookUrl(
+      'mch_01',
+      'https://merchant.example/swimpay/webhook',
+      '2026-05-03T10:04:00.000Z'
+    );
+    merchantIntegrationRepository.seedDelivery('mch_01', {
+      deliveryId: 'delivery_internal_01',
+      status: 'failed',
+      attempts: 2,
+      lastHttpStatus: 500,
+      safeErrorSummary: 'Merchant endpoint rejected the test delivery.',
+      createdAt: '2026-05-03T10:04:30.000Z',
+      deliveredAt: null
     });
 
     const merchantResponse = await server.inject({
@@ -1247,17 +1259,31 @@ describe('android merchant mobile backend endpoints', () => {
       webhook_url_display: 'https://merchant.example/swimpay/webhook',
       status: 'active',
       status_label: 'Connexion active',
-      last_delivery_status: 'none',
-      last_delivery_at: null,
-      latest_deliveries: [],
+      last_delivery_status: 'attention',
+      last_delivery_at: '2026-05-03T10:04:30.000Z',
+      latest_deliveries: null,
       developer_details: null,
       confirmation_type: 'notification_signal',
       official_bank_confirmation: false
     });
+    expect(merchantResponse.body).not.toContain('delivery_internal_01');
+    expect(merchantResponse.body).not.toContain('last_http_status');
+    expect(merchantResponse.body).not.toContain('Merchant endpoint rejected');
     expect(merchantResponse.body).not.toContain('payment.confirmed');
     expect(developerResponse.json().developer_details).toEqual({
       event_types_visible: true,
-      signature_status_visible: true
+      signature_status_visible: true,
+      latest_deliveries: [
+        {
+          delivery_id: 'delivery_internal_01',
+          status: 'failed',
+          attempts: 2,
+          last_http_status: 500,
+          created_at: '2026-05-03T10:04:30.000Z',
+          delivered_at: null,
+          safe_error_summary: 'Merchant endpoint rejected the test delivery.'
+        }
+      ]
     });
     expectSafeAndroidMerchantBody(merchantResponse.body);
     expectSafeAndroidMerchantBody(developerResponse.body);
@@ -1544,7 +1570,7 @@ function buildAndroidMerchantServer(params: {
   };
   const server = buildApiServer(serverOptions);
 
-  return { server, orderRepository, reviewRepository, authBffRepository, eventPublisher };
+  return { server, orderRepository, reviewRepository, authBffRepository, merchantIntegrationRepository, eventPublisher };
 }
 
 class FakeGoogleIdTokenVerifier implements GoogleIdTokenVerifier {

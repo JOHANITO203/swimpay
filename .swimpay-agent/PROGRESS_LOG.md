@@ -3491,3 +3491,19 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Scanned repository text surfaces for replacement characters and mojibake markers.
 - Fixed Android premium test mojibake strings.
 - Added repository-level mojibake guardrail with an explicit allowlist for bank-template encoding compatibility fixtures.
+
+## 2026-05-17T00:27:00+03:00 - Feature contract capability findings repair
+
+- Removed production local-default fallbacks for `DATABASE_URL`, `CHECKOUT_BASE_URL`, `PHONE_HMAC_SECRET` and `WEBHOOK_SECRET_ENCRYPTION_KEY`.
+- Pointed the production checkout template to `https://swimpay.pro/checkout`.
+- Wired Android connected-site status to the existing merchant integration repository when available.
+- Enabled Android release minification/resource shrinking and added ProGuard keep rules for worker/Credential Manager/Google ID-token runtime classes.
+- Added `docs/ANDROID_RELEASE_AND_PRODUCTION_CONFIG.md` and `.swimpay-agent/FEATURE_CONTRACT_CAPABILITY_FINDINGS_REPAIR_REPORT.md`.
+- Validation passed: typecheck, targeted Vitest guardrails/API tests, targeted Android JVM tests, compose config and staging APK assembly.
+
+## 2026-05-17T00:46:00+03:00 - Feature findings review fixes
+
+- Required `POSTGRES_PASSWORD` in Docker Compose instead of falling back to `swimpay_dev_password`.
+- Expanded the repository mojibake guardrail to catch common single-level UTF-8 mojibake.
+- Kept connected-site delivery internals behind explicit developer details while the default merchant response returns only simple delivery health.
+- Validation passed: targeted production/mojibake guardrails, connected-site API test, typecheck, compose config, Android release-config JVM test and staging APK assembly.

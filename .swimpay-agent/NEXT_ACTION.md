@@ -409,3 +409,7 @@ French is now the localization base for landing, Android resources, Android prem
 ## 2026-05-16T14:25:00+03:00 - Mojibake next action
 
 Keep `packages/bank-templates/src/fixtures.ts` and `packages/bank-templates/src/parser.ts` as the only explicit mojibake allowlist. If more malformed text appears elsewhere, fix the source text instead of expanding the allowlist.
+
+## 2026-05-17T00:27:00+03:00 - Release production next action
+
+Before creating the signed production APK, load the release keystore variables into the local build environment or CI secret store, then run `npm run android:assemble:release`. The current code now rejects missing release signing values instead of silently producing an unsafe release.

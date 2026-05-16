@@ -56,7 +56,9 @@ import {
   parseDeliveryLimit,
   toMerchantIntegrationResponse,
   validateWebhookUrl,
-  type MerchantIntegrationRepository
+  type MerchantDeliveryHistoryRow,
+  type MerchantIntegrationRepository,
+  type MerchantIntegrationState
 } from './developer-integration.js';
 import {
   BFF_SESSION_COOKIE_NAME,
@@ -3012,9 +3014,16 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (!merchantId) {
       return;
     }
-    void merchantId;
     const query = request.query as { developer_mode?: string | boolean | undefined };
     const developerMode = query.developer_mode === true || query.developer_mode === 'true';
+    if (merchantIntegrationRepository) {
+      const now = clock().toISOString();
+      const integration = await merchantIntegrationRepository.getIntegration(merchantId, now);
+      const deliveries = await merchantIntegrationRepository.listDeliveries(merchantId, 5);
+      return reply
+        .status(200)
+        .send(toAndroidMerchantConnectedSiteIntegrationResponse(integration, deliveries, developerMode));
+    }
     return reply.status(200).send(toAndroidMerchantConnectedSiteResponse(androidMerchantConnectedSite, developerMode));
   });
 
@@ -4648,6 +4657,44 @@ function toAndroidMerchantPaymentDetailResponse(
     },
     ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
   };
+}
+
+function toAndroidMerchantConnectedSiteIntegrationResponse(
+  integration: MerchantIntegrationState,
+  deliveries: MerchantDeliveryHistoryRow[],
+  developerMode: boolean
+): Record<string, unknown> {
+  const active = integration.webhookStatus === 'active' && Boolean(integration.webhookUrl);
+  const latestDelivery = deliveries[0] ?? null;
+  const merchantDeliveryStatus = latestDelivery ? merchantDeliveryHealthLabel(latestDelivery.status) : 'none';
+  return {
+    webhook_url_display: active ? integration.webhookUrl : null,
+    status: active ? 'active' : 'problem',
+    status_label: active ? 'Connexion active' : 'Action nécessaire',
+    last_delivery_status: merchantDeliveryStatus,
+    last_delivery_at: latestDelivery?.deliveredAt ?? latestDelivery?.createdAt ?? null,
+    latest_deliveries: null,
+    developer_details: developerMode
+      ? {
+          event_types_visible: true,
+          signature_status_visible: true,
+          latest_deliveries: deliveries.map((delivery) => ({
+            delivery_id: delivery.deliveryId,
+            status: delivery.status,
+            attempts: delivery.attempts,
+            last_http_status: delivery.lastHttpStatus,
+            created_at: delivery.createdAt,
+            delivered_at: delivery.deliveredAt,
+            safe_error_summary: delivery.safeErrorSummary
+          }))
+        }
+      : null,
+    ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+  };
+}
+
+function merchantDeliveryHealthLabel(status: string): 'ok' | 'attention' {
+  return ['delivered', 'success', 'succeeded'].includes(status) ? 'ok' : 'attention';
 }
 
 function toAndroidMerchantConnectedSiteResponse(
