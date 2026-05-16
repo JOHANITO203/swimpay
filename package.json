@@ -40,6 +40,8 @@
     "android:visual:accept": "npm run android:screenshot:record && npm run android:screenshot:verify",
     "android:assemble:staging": ".\\apps\\android-receiver\\android\\gradlew.bat -p apps/android-receiver/android :app:assembleStaging --no-daemon --stacktrace --max-workers=1",
     "android:assemble:debug-vps": ".\\apps\\android-receiver\\android\\gradlew.bat -p apps/android-receiver/android :app:assembleDebug \"-PswimpayBackendBaseUrl=https://staging.swimpay.pro\" \"-PswimpayGoogleServerClientId=983049539084-8k91arvoocd6d1q8fbjq1auvmigkeg6u.apps.googleusercontent.com\" --no-daemon --stacktrace --max-workers=1",
+    "android:assemble:release": ".\\apps\\android-receiver\\android\\gradlew.bat -p apps/android-receiver/android :app:assembleRelease --no-daemon --stacktrace --max-workers=1",
+    "android:bundle:release": ".\\apps\\android-receiver\\android\\gradlew.bat -p apps/android-receiver/android :app:bundleRelease --no-daemon --stacktrace --max-workers=1",
     "checkout:screenshot:record": "tsx scripts/checkout-browser-baselines.ts record",
     "checkout:screenshot:verify": "tsx scripts/checkout-browser-baselines.ts verify",
     "backend:doctor": "node scripts/local-backend-doctor.mjs",

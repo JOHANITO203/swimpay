@@ -203,9 +203,9 @@ describe('Developer Integration Wizard', () => {
     expect(normalRead.body).not.toContain('webhook_secret_once');
   });
 
-  it('renders exportable staging values for an external merchant app', async () => {
+  it('renders exportable production values for an external merchant app', async () => {
     const client = new FakeMerchantIntegrationClient({
-      api_base_url: 'https://staging.swimpay.pro'
+      api_base_url: 'https://www.swimpay.pro'
     });
     const server = buildWebServer({ environment: 'test', merchantIntegrationClient: client });
 
@@ -216,18 +216,18 @@ describe('Developer Integration Wizard', () => {
     const createdExportBlock = extractSection(created.body, 'external-app-export');
     const rotatedExportBlock = extractSection(webhookRotated.body, 'external-app-export');
 
-    expect(exportBlock).toContain('Variables staging pour app externe');
-    expect(exportBlock).toContain('SWIMPAY_STAGING_API_BASE_URL=https://staging.swimpay.pro');
-    expect(exportBlock).toContain('SWIMPAY_STAGING_SECRET_KEY=sk_live_');
-    expect(exportBlock).toContain('SWIMPAY_STAGING_WEBHOOK_SECRET=whsec_');
+    expect(exportBlock).toContain('Variables de production pour app externe');
+    expect(exportBlock).toContain('SWIMPAY_API_BASE_URL=https://www.swimpay.pro');
+    expect(exportBlock).toContain('SWIMPAY_SECRET_KEY=sk_live_');
+    expect(exportBlock).toContain('SWIMPAY_WEBHOOK_SECRET=whsec_');
     expect(exportBlock).toContain('SWIMPAY_WEBHOOK_URL=https://merchant.example/webhooks/swimpay');
-    expect(exportBlock).toContain('EXTERNAL_APP_BASE_URL=https://&lt;merchant-staging-endpoint&gt;');
+    expect(exportBlock).toContain('EXTERNAL_APP_BASE_URL=https://&lt;merchant-production-endpoint&gt;');
     expect(exportBlock).toContain('payment.confirmed,payment.rejected,payment.expired');
     expect(exportBlock).toContain('Verifiez que');
     expect(exportBlock).toContain('route publique exacte');
 
-    expect(createdExportBlock).toContain('SWIMPAY_STAGING_SECRET_KEY=sk_test_show_once_secret_value');
-    expect(rotatedExportBlock).toContain('SWIMPAY_STAGING_WEBHOOK_SECRET=whsec_rotated_secret_value');
+    expect(createdExportBlock).toContain('SWIMPAY_SECRET_KEY=sk_test_show_once_secret_value');
+    expect(rotatedExportBlock).toContain('SWIMPAY_WEBHOOK_SECRET=whsec_rotated_secret_value');
     expect(page.body).not.toContain('sk_test_show_once_secret_value');
     expect(page.body).not.toContain('whsec_rotated_secret_value');
   });

@@ -967,7 +967,7 @@ private fun PremiumMerchantProfileType.toAndroidAuthProfileType(): AndroidMercha
 }
 
 private const val DEVELOPER_GUIDE_PDF_PATH = "/docs/sdk-developer-integration-guide.pdf"
-private const val DEVELOPER_GUIDE_FALLBACK_ORIGIN = "https://staging.swimpay.pro"
+private const val DEVELOPER_GUIDE_FALLBACK_ORIGIN = "https://www.swimpay.pro"
 
 private fun resolveDeveloperGuidePdfUrl(): String {
     return runCatching {

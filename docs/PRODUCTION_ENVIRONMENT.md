@@ -1,8 +1,40 @@
 # Production Environment
 
-This document defines the production-mode staging contract for SwimPay V1.
+This document defines the production runtime contract for SwimPay V1.
 
-SwimPay production-mode staging initially used synthetic data only. As of Real Staging Integration, operator-owned real notification testing is allowed only inside the controlled staging scope:
+The current production conversion keeps the validated staging application shape
+and points the public runtime to the production domain. Staging remains the test
+mirror; production must use the public HTTPS host.
+
+Production host:
+
+- `https://www.swimpay.pro`
+
+Checkout URL:
+
+- `https://www.swimpay.pro/checkout`
+
+Android release backend:
+
+- `SWIMPAY_ANDROID_PRODUCTION_BACKEND_BASE_URL=https://www.swimpay.pro`
+
+Android release signing:
+
+- `SWIMPAY_ANDROID_RELEASE_STORE_FILE=/absolute/path/to/swimpay-release.jks`
+- `SWIMPAY_ANDROID_RELEASE_STORE_PASSWORD`
+- `SWIMPAY_ANDROID_RELEASE_KEY_ALIAS`
+- `SWIMPAY_ANDROID_RELEASE_KEY_PASSWORD`
+
+Release keystore files and passwords must stay outside Git.
+
+Google recovery/linking:
+
+- Production release may reuse the currently validated Android Google server
+  client id until a separate production OAuth client is created.
+- If a separate production client is added later, set
+  `SWIMPAY_ANDROID_PRODUCTION_GOOGLE_SERVER_CLIENT_ID`.
+
+SwimPay staging initially used synthetic data only. As of Real Staging Integration, operator-owned real notification testing is allowed only inside the controlled staging scope:
 
 - staging domain only, not public production;
 - operator-owned device and bank account only;
@@ -26,6 +58,14 @@ SwimPay production-mode staging initially used synthetic data only. As of Real S
 - `GOOGLE_OAUTH_CLIENT_ID` when Google recovery/linking is enabled
 - `GOOGLE_OAUTH_CLIENT_SECRET` when Google recovery/linking is enabled
 - `GOOGLE_OAUTH_REDIRECT_URI` when Google recovery/linking is enabled
+
+For the production VPS/Dokploy environment, the expected public values are:
+
+```text
+SWIMPAY_CADDY_SITE_ADDRESS=www.swimpay.pro
+CHECKOUT_BASE_URL=https://www.swimpay.pro/checkout
+GOOGLE_OAUTH_REDIRECT_URI=https://www.swimpay.pro/auth/google/callback
+```
 
 ## Auth Boundaries
 
@@ -68,6 +108,11 @@ For VPS staging, configure the HTTPS staging origin and:
 
 - `https://<staging-host>/auth/google/callback`
 
+For production, configure:
+
+- Authorized JavaScript origin: `https://www.swimpay.pro`
+- Authorized redirect URI: `https://www.swimpay.pro/auth/google/callback`
+
 ## SDK/API Keys
 
 Merchant API keys are server-side only. They must be stored hashed and verified with constant-time hash comparison helpers. Browser and Android snippets must never contain secret keys.
@@ -76,7 +121,7 @@ Merchant API keys are server-side only. They must be stored hashed and verified 
 
 Receiver signals must remain signed and redacted.
 
-Production-mode staging may process one operator-owned real notification test
+Staging may process one operator-owned real notification test
 only inside the controlled staging scope. Raw notification title/body/text, raw
 phone and raw card values are still forbidden for storage, upload and logs.
 

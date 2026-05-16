@@ -1141,7 +1141,7 @@ class AndroidMerchantApiWiringTest {
         assertEquals(MerchantRepositoryState.SUCCESS, loaded.state)
         assertEquals("pk_test_mobile", loaded.integration?.publicKey)
         assertEquals(null, loaded.integration?.secretKeyOnce)
-        assertTrue(loaded.integration?.exportLines()?.contains("SWIMPAY_STAGING_SECRET_KEY=sk_\u2022\u2022\u20221234") == true)
+        assertTrue(loaded.integration?.exportLines()?.contains("SWIMPAY_SECRET_KEY=sk_\u2022\u2022\u20221234") == true)
 
         val created = repository.createApiKey(session)
         assertEquals(MerchantRepositoryState.SUCCESS, created.state)
@@ -1149,7 +1149,7 @@ class AndroidMerchantApiWiringTest {
         assertTrue(created.integration?.showOnceSecrets()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
         assertFalse(created.integration?.exportLines()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
         assertFalse(created.integration?.copyExportLines()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
-        assertTrue(created.integration?.exportLines()?.contains("SWIMPAY_STAGING_SECRET_KEY=sk_\u2022\u2022\u20225678") == true)
+        assertTrue(created.integration?.exportLines()?.contains("SWIMPAY_SECRET_KEY=sk_\u2022\u2022\u20225678") == true)
         assertFalse(created.integration?.copyExportLines(
             merchantAuthorizationHeaderForCopy = "Bearer spm_mobile_session_secret"
         )?.joinToString(" ").orEmpty().contains("SWIMPAY_MERCHANT_AUTHORIZATION=Bearer spm_mobile_session_secret"))

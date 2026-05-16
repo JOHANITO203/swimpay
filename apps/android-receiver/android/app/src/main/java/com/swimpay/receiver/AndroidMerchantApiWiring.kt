@@ -1516,21 +1516,21 @@ data class MerchantDeveloperIntegrationSnapshot(
     }
 
     fun exportLines(
-        apiBaseUrl: String = "https://staging.swimpay.pro",
+        apiBaseUrl: String = "https://www.swimpay.pro",
         externalAppBaseUrl: String = ""
     ): List<String> {
         val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/api/v1/payments/swimpay/webhook # exemple" }
         val externalAppLines = externalAppExportLines(externalAppBaseUrl)
         return listOf(
-            "SWIMPAY_STAGING_API_BASE_URL=$apiBaseUrl",
-            "SWIMPAY_STAGING_SECRET_KEY=${effectiveSecretKey()}",
-            "SWIMPAY_STAGING_WEBHOOK_SECRET=${effectiveWebhookSecret()}",
+            "SWIMPAY_API_BASE_URL=$apiBaseUrl",
+            "SWIMPAY_SECRET_KEY=${effectiveSecretKey()}",
+            "SWIMPAY_WEBHOOK_SECRET=${effectiveWebhookSecret()}",
             "SWIMPAY_WEBHOOK_URL=$safeWebhookUrl"
         ) + externalAppLines + listOf("SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}")
     }
 
     fun copyExportLines(
-        apiBaseUrl: String = "https://staging.swimpay.pro",
+        apiBaseUrl: String = "https://www.swimpay.pro",
         externalAppBaseUrl: String = "",
         secretKeyForCopy: String? = secretKeyOnce,
         webhookSecretForCopy: String? = webhookSecretOnce,
@@ -1542,9 +1542,9 @@ data class MerchantDeveloperIntegrationSnapshot(
         val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/api/v1/payments/swimpay/webhook # exemple" }
         val externalAppLines = externalAppExportLines(externalAppBaseUrl)
         return listOf(
-            "SWIMPAY_STAGING_API_BASE_URL=$apiBaseUrl",
-            "# SWIMPAY_STAGING_SECRET_KEY=$secretKeyMasked # affichez ou renouvelez une cle depuis l'espace marchand",
-            "# SWIMPAY_STAGING_WEBHOOK_SECRET=$webhookSecretMasked # ne copiez pas de secret brut depuis Android",
+            "SWIMPAY_API_BASE_URL=$apiBaseUrl",
+            "# SWIMPAY_SECRET_KEY=$secretKeyMasked # affichez ou renouvelez une cle depuis l'espace marchand",
+            "# SWIMPAY_WEBHOOK_SECRET=$webhookSecretMasked # ne copiez pas de secret brut depuis Android",
             "SWIMPAY_WEBHOOK_URL=$safeWebhookUrl"
         ) + externalAppLines + listOf("SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}")
     }

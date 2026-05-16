@@ -31,9 +31,9 @@ The SwimPay merchant app / Developer Integration Wizard provides the values need
 Required values:
 
 ```text
-SWIMPAY_STAGING_API_BASE_URL=https://staging.swimpay.pro
-SWIMPAY_STAGING_SECRET_KEY=sk_...
-SWIMPAY_STAGING_WEBHOOK_SECRET=whsec_...
+SWIMPAY_API_BASE_URL=https://www.swimpay.pro
+SWIMPAY_SECRET_KEY=sk_...
+SWIMPAY_WEBHOOK_SECRET=whsec_...
 SWIMPAY_WEBHOOK_URL=https://your-backend.example/webhooks/swimpay
 EXTERNAL_APP_BASE_URL=https://your-backend.example
 SWIMPAY_PUBLIC_WEBHOOK_EVENTS=payment.confirmed,payment.rejected,payment.expired
@@ -43,9 +43,9 @@ Meaning:
 
 | Value | Owner | Where it is used |
 | --- | --- | --- |
-| `SWIMPAY_STAGING_API_BASE_URL` | SwimPay | Merchant backend calls SwimPay API |
-| `SWIMPAY_STAGING_SECRET_KEY` | SwimPay | Merchant backend creates orders |
-| `SWIMPAY_STAGING_WEBHOOK_SECRET` | SwimPay | Merchant backend verifies webhooks |
+| `SWIMPAY_API_BASE_URL` | SwimPay | Merchant backend calls SwimPay API |
+| `SWIMPAY_SECRET_KEY` | SwimPay | Merchant backend creates orders |
+| `SWIMPAY_WEBHOOK_SECRET` | SwimPay | Merchant backend verifies webhooks |
 | `SWIMPAY_WEBHOOK_URL` | Merchant developer | Public HTTPS endpoint that receives SwimPay webhooks |
 | `EXTERNAL_APP_BASE_URL` | Merchant developer | Your own app/backend base URL |
 | `SWIMPAY_PUBLIC_WEBHOOK_EVENTS` | SwimPay | Public final events supported in V1 |
@@ -55,7 +55,7 @@ Important:
 - The full API key and full webhook secret are show-once values.
 - If the developer only has masked values such as `sk_****1234` or `whsec_****1234`, they cannot integrate. Rotate/create the value again and copy it immediately.
 - Secrets must stay on the merchant backend.
-- Never put `SWIMPAY_STAGING_SECRET_KEY` or `SWIMPAY_STAGING_WEBHOOK_SECRET` in Android, browser JavaScript, Git, logs or screenshots.
+- Never put `SWIMPAY_SECRET_KEY` or `SWIMPAY_WEBHOOK_SECRET` in Android, browser JavaScript, Git, logs or screenshots.
 
 ## 2. Is this enough to integrate SwimPay SDK?
 
@@ -131,18 +131,18 @@ npm install @swimpay/node
 Recommended backend env:
 
 ```bash
-SWIMPAY_API_BASE_URL=https://staging.swimpay.pro
+SWIMPAY_API_BASE_URL=https://www.swimpay.pro
 SWIMPAY_SECRET_KEY=sk_...
 SWIMPAY_WEBHOOK_SECRET=whsec_...
 EXTERNAL_APP_BASE_URL=https://your-backend.example
 ```
 
-You can map the wizard values directly:
+The wizard now exports these production-ready names directly:
 
 ```bash
-SWIMPAY_API_BASE_URL=$SWIMPAY_STAGING_API_BASE_URL
-SWIMPAY_SECRET_KEY=$SWIMPAY_STAGING_SECRET_KEY
-SWIMPAY_WEBHOOK_SECRET=$SWIMPAY_STAGING_WEBHOOK_SECRET
+SWIMPAY_API_BASE_URL=https://www.swimpay.pro
+SWIMPAY_SECRET_KEY=sk_...
+SWIMPAY_WEBHOOK_SECRET=whsec_...
 ```
 
 ## 5. Create a SwimPay order from your backend
@@ -309,7 +309,7 @@ class CheckoutActivity : AppCompatActivity() {
                     checkoutUrl = checkoutUrl,
                     options = SwimPayCheckoutOptions(
                         returnScheme = "merchantapp",
-                        allowedHosts = setOf("staging.swimpay.pro")
+                        allowedHosts = setOf("www.swimpay.pro")
                     )
                 )
 
@@ -332,7 +332,7 @@ class CheckoutActivity : AppCompatActivity() {
                 checkoutUrl = checkoutUrl,
                 options = SwimPayCheckoutOptions(
                     returnScheme = "merchantapp",
-                    allowedHosts = setOf("staging.swimpay.pro")
+                    allowedHosts = setOf("www.swimpay.pro")
                 )
             )
 
@@ -475,7 +475,7 @@ Before a developer test can work end-to-end, the merchant must have:
 
 If no active receiving method exists, checkout should fail or show merchant configuration incomplete.
 
-## 11. Staging test checklist
+## 11. Production test checklist
 
 Use this order:
 
@@ -556,9 +556,9 @@ const event = swimpay.webhooks.verify(
 
 The developer can integrate SwimPay when they have:
 
-- `SWIMPAY_STAGING_API_BASE_URL`;
-- full `SWIMPAY_STAGING_SECRET_KEY`;
-- full `SWIMPAY_STAGING_WEBHOOK_SECRET`;
+- `SWIMPAY_API_BASE_URL`;
+- full `SWIMPAY_SECRET_KEY`;
+- full `SWIMPAY_WEBHOOK_SECRET`;
 - configured `SWIMPAY_WEBHOOK_URL`;
 - their own `EXTERNAL_APP_BASE_URL`;
 - a backend endpoint that creates orders;

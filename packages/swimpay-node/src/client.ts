@@ -9,7 +9,7 @@ import { OrdersClient } from './orders.js';
 import { parsePublicWebhookEvent, WebhooksClient } from './webhooks.js';
 import type { SwimPayClientOptions } from './types.js';
 
-const DEFAULT_API_BASE_URL = 'https://api.swimpay.app';
+const DEFAULT_API_BASE_URL = 'https://www.swimpay.pro';
 const DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
 
 export class SwimPay {

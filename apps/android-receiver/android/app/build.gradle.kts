@@ -21,8 +21,45 @@ val stagingSwimpayGoogleServerClientId = providers.gradleProperty("swimpayStagin
     .orElse(providers.environmentVariable("SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID"))
     .orElse("983049539084-8k91arvoocd6d1q8fbjq1auvmigkeg6u.apps.googleusercontent.com")
 
+val productionSwimpayBackendBaseUrl = providers.gradleProperty("swimpayProductionBackendBaseUrl")
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_PRODUCTION_BACKEND_BASE_URL"))
+    .orElse("https://www.swimpay.pro")
+
+val productionSwimpayGoogleServerClientId = providers.gradleProperty("swimpayProductionGoogleServerClientId")
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_PRODUCTION_GOOGLE_SERVER_CLIENT_ID"))
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID"))
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID"))
+    .orElse(stagingSwimpayGoogleServerClientId)
+
+val releaseStoreFile = providers.gradleProperty("swimpayReleaseStoreFile")
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_RELEASE_STORE_FILE"))
+    .orElse("")
+
+val releaseStorePassword = providers.gradleProperty("swimpayReleaseStorePassword")
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_RELEASE_STORE_PASSWORD"))
+    .orElse("")
+
+val releaseKeyAlias = providers.gradleProperty("swimpayReleaseKeyAlias")
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_RELEASE_KEY_ALIAS"))
+    .orElse("")
+
+val releaseKeyPassword = providers.gradleProperty("swimpayReleaseKeyPassword")
+    .orElse(providers.environmentVariable("SWIMPAY_ANDROID_RELEASE_KEY_PASSWORD"))
+    .orElse("")
+
 fun String.toBuildConfigString(): String {
     return "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+}
+
+fun String.normalizedBaseUrl(): String = trim().trimEnd('/')
+
+fun requireRemoteAndroidBackend(label: String, backend: String) {
+    require(backend.startsWith("https://")) {
+        "$label Android backend must use HTTPS."
+    }
+    require(!backend.contains("127.0.0.1") && !backend.contains("localhost")) {
+        "$label Android backend must not target localhost."
+    }
 }
 
 android {
@@ -39,7 +76,23 @@ android {
         buildConfigField("String", "SWIMPAY_GOOGLE_SERVER_CLIENT_ID", swimpayGoogleServerClientId.get().toBuildConfigString())
     }
 
+    signingConfigs {
+        create("release") {
+            releaseStoreFile.orNull?.trim()?.takeIf { it.isNotBlank() }?.let { storeFile = file(it) }
+            releaseStorePassword.orNull?.takeIf { it.isNotBlank() }?.let { storePassword = it }
+            releaseKeyAlias.orNull?.takeIf { it.isNotBlank() }?.let { keyAlias = it }
+            releaseKeyPassword.orNull?.takeIf { it.isNotBlank() }?.let { keyPassword = it }
+        }
+    }
+
     buildTypes {
+        getByName("release") {
+            isDebuggable = false
+            signingConfig = signingConfigs.getByName("release")
+            buildConfigField("String", "SWIMPAY_BACKEND_BASE_URL", productionSwimpayBackendBaseUrl.get().toBuildConfigString())
+            buildConfigField("String", "SWIMPAY_GOOGLE_SERVER_CLIENT_ID", productionSwimpayGoogleServerClientId.get().toBuildConfigString())
+        }
+
         create("staging") {
             initWith(getByName("debug"))
             signingConfig = signingConfigs.getByName("debug")
@@ -132,15 +185,10 @@ tasks.withType<Test>().configureEach {
 
 tasks.register("validateStagingBuildConfig") {
     doLast {
-        val backend = stagingSwimpayBackendBaseUrl.get().trim().trimEnd('/')
+        val backend = stagingSwimpayBackendBaseUrl.get().normalizedBaseUrl()
         val googleClientId = stagingSwimpayGoogleServerClientId.get().trim()
 
-        require(backend.startsWith("https://")) {
-            "Staging Android backend must use HTTPS."
-        }
-        require(!backend.contains("127.0.0.1") && !backend.contains("localhost")) {
-            "Staging Android backend must not target localhost."
-        }
+        requireRemoteAndroidBackend("Staging", backend)
         require(googleClientId.isNotBlank()) {
             "Staging Android Google server client ID must be configured."
         }
@@ -150,19 +198,53 @@ tasks.register("validateStagingBuildConfig") {
     }
 }
 
+tasks.register("validateProductionReleaseBuildConfig") {
+    doLast {
+        val backend = productionSwimpayBackendBaseUrl.get().normalizedBaseUrl()
+        val stagingBackend = stagingSwimpayBackendBaseUrl.get().normalizedBaseUrl()
+        val googleClientId = productionSwimpayGoogleServerClientId.get().trim()
+        val storePath = releaseStoreFile.get().trim()
+
+        require(backend.isNotBlank()) {
+            "Production Android backend must be configured with swimpayProductionBackendBaseUrl or SWIMPAY_ANDROID_PRODUCTION_BACKEND_BASE_URL."
+        }
+        requireRemoteAndroidBackend("Production", backend)
+        require(backend != stagingBackend) {
+            "Production Android backend must not reuse the staging backend."
+        }
+        require(googleClientId.isNotBlank()) {
+            "Production Android Google server client ID must be configured."
+        }
+        require(googleClientId.endsWith(".apps.googleusercontent.com")) {
+            "Production Android Google server client ID must be a Google OAuth client ID."
+        }
+        require(storePath.isNotBlank()) {
+            "Release keystore path must be configured with swimpayReleaseStoreFile or SWIMPAY_ANDROID_RELEASE_STORE_FILE."
+        }
+        val store = file(storePath)
+        require(store.exists() && store.isFile) {
+            "Release keystore file does not exist: $storePath"
+        }
+        require(releaseStorePassword.get().isNotBlank()) {
+            "Release keystore password must be configured."
+        }
+        require(releaseKeyAlias.get().isNotBlank()) {
+            "Release key alias must be configured."
+        }
+        require(releaseKeyPassword.get().isNotBlank()) {
+            "Release key password must be configured."
+        }
+    }
+}
+
 tasks.register("validateDebugVpsBuildConfig") {
     doLast {
-        val backend = swimpayBackendBaseUrl.get().trim().trimEnd('/')
+        val backend = swimpayBackendBaseUrl.get().normalizedBaseUrl()
         val googleClientId = swimpayGoogleServerClientId.get().trim()
         val isLocalDebugBackend = backend.startsWith("http://127.0.0.1:") || backend.startsWith("http://10.0.2.2:")
 
         if (!isLocalDebugBackend) {
-            require(backend.startsWith("https://")) {
-                "Debug VPS Android backend must use HTTPS when it is not local adb reverse."
-            }
-            require(!backend.contains("127.0.0.1") && !backend.contains("localhost")) {
-                "Debug VPS Android backend must not target localhost."
-            }
+            requireRemoteAndroidBackend("Debug VPS", backend)
             require(googleClientId.isNotBlank()) {
                 "Debug VPS Android Google server client ID must be configured."
             }
@@ -175,6 +257,10 @@ tasks.register("validateDebugVpsBuildConfig") {
 
 tasks.matching { it.name == "preStagingBuild" }.configureEach {
     dependsOn("validateStagingBuildConfig")
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn("validateProductionReleaseBuildConfig")
 }
 
 tasks.matching { it.name == "preDebugBuild" }.configureEach {
