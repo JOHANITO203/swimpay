@@ -424,3 +424,14 @@ Use `.swimpay-agent/SWIMPAY_READY_TO_SELL_AUDIT.md` as the current launch gate. 
 4. Run checkout -> review -> manual confirmation -> signed webhook smoke.
 5. Build a signed release APK only after release keystore variables are loaded outside git.
 6. Put the intended APK behind the landing download CTA and test `https://www.swimpay.pro`.
+
+## 2026-05-17T02:40:00+03:00 - Release candidate correction notes
+
+Before the next APK release candidate, include and verify:
+
+1. Android receiving-method add form opens directly in the visible area and remains wired to the existing receiving-method repository contract.
+2. Backend API is redeployed with the Android mobile integration permission fix from `.swimpay-agent/ANDROID_INTEGRATION_API_KEY_MOBILE_FIX_REPORT.md`.
+3. `Créer clé API` works from Android Merchant using a valid mobile session.
+4. Show-once API/webhook secrets do not appear after normal reload and mobile bearer tokens are never exported.
+5. Web/BFF CSRF tests remain green.
+6. Run the checkout -> review -> manual confirmation smoke before publishing the release APK link.

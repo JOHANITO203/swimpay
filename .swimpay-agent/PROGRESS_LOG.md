@@ -3515,3 +3515,4 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Identified the blocking commercial gate: signed release APK requires release keystore variables outside git.
 - Identified fragile gates requiring device/operator proof: login/reconnect/signout, receiving methods, checkout-review-webhook, landing APK download.
 - No backend, payment runtime, webhook semantics, receiver runtime or database behavior changed in this pass.
+- 2026-05-17 02:30 +03:00: Fixed Android Merchant `Créer clé API` regression. Root cause was a permission mismatch: Android UI/runtime still called existing `/v1/merchant/integration*` contracts, but Android mobile integration mutation permissions had been removed during security hardening. Restored scoped integration permissions for valid `spm_...` sessions while keeping web/BFF CSRF requirements, show-once secrets, masked normal reads, no mobile bearer export and backend-owned webhook tests.

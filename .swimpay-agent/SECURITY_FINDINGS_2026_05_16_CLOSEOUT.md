@@ -23,6 +23,7 @@
 - Restricted production Google ID-token audiences to the production Android server client ID.
 - Restricted Android Google recovery to active owner/admin merchant memberships.
 - Removed Android mobile integration mutation permissions; mobile sessions retain read and review actions.
+  - 2026-05-17 addendum: this was too broad for the already-existing Android Merchant integration contract and caused `Créer clé API` to fail with `Integration indisponible`. Scoped Android mobile integration permissions were restored in `.swimpay-agent/ANDROID_INTEGRATION_API_KEY_MOBILE_FIX_REPORT.md` while preserving web CSRF, show-once secrets and no mobile bearer export.
 - Rejected card receiving values longer than 16 digits in API and order route normalization.
 - Required pending operator review for every bank-evidence action, including `deprecate`.
 - Made Caddy site address configurable and exposed HTTPS port for production TLS wiring.

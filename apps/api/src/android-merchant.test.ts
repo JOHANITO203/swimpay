@@ -1321,7 +1321,7 @@ describe('android merchant mobile backend endpoints', () => {
     expectSafeAndroidMerchantBody(response.body);
   });
 
-  it('lets Android mobile read developer integration status but not mutate secrets or webhook targets without web CSRF', async () => {
+  it('lets Android mobile use developer integration actions without exposing secrets after show-once responses', async () => {
     const { server } = buildAndroidMerchantServer();
     const createAccount = await server.inject({
       method: 'POST',
@@ -1345,8 +1345,10 @@ describe('android merchant mobile backend endpoints', () => {
     expect(read.json().secret_key_once).toBeUndefined();
 
     const createdKey = await server.inject({ method: 'POST', url: '/v1/merchant/integration/keys', headers });
-    expect(createdKey.statusCode).toBe(403);
-    expect(createdKey.body).not.toMatch(/sk_[A-Za-z0-9_-]+/u);
+    expect(createdKey.statusCode).toBe(201);
+    expect(createdKey.json().secret_key_once).toMatch(/^sk_(test|live)_/u);
+    expect(createdKey.json().secret_key_show_once).toBe(true);
+    expect(createdKey.body).not.toContain(token);
 
     const webhookUrl = await server.inject({
       method: 'PUT',
@@ -1354,11 +1356,18 @@ describe('android merchant mobile backend endpoints', () => {
       headers,
       payload: { webhook_url: 'https://merchant.example/swimpay/webhook' }
     });
-    expect(webhookUrl.statusCode).toBe(403);
-    expect(webhookUrl.body).not.toMatch(/whsec_[A-Za-z0-9_-]+/u);
+    expect(webhookUrl.statusCode).toBe(200);
+    expect(webhookUrl.json().webhook_secret_once).toMatch(/^whsec_/u);
+    expect(webhookUrl.json().webhook_secret_show_once).toBe(true);
+    expect(webhookUrl.body).not.toContain(token);
 
     const testWebhook = await server.inject({ method: 'POST', url: '/v1/merchant/integration/test-webhook', headers });
-    expect(testWebhook.statusCode).toBe(403);
+    expect(testWebhook.statusCode).toBe(202);
+    expect(testWebhook.json()).toMatchObject({
+      testOnly: true,
+      triggersFulfillment: false,
+      officialBankConfirmation: false
+    });
 
     const deliveries = await server.inject({ method: 'GET', url: '/v1/merchant/integration/webhook-deliveries', headers });
     expect(deliveries.statusCode).toBe(200);
@@ -1368,6 +1377,7 @@ describe('android merchant mobile backend endpoints', () => {
     expect(normalRead.statusCode).toBe(200);
     expect(normalRead.json().secret_key_once).toBeUndefined();
     expect(normalRead.json().webhook_secret_once).toBeUndefined();
+    expect(normalRead.body).not.toContain(token);
     expect(normalRead.body).not.toContain('official_bank_confirmation":true');
   });
 

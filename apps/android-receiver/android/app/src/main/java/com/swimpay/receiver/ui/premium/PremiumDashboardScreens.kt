@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -676,8 +677,15 @@ fun PremiumReceivingMethodsStateScreen(
                     editIdentifierInput = ""
                 }
             }
+            val listState = rememberLazyListState()
+            LaunchedEffect(draftType) {
+                if (draftType != null) {
+                    listState.animateScrollToItem(1)
+                }
+            }
             LazyColumn(
                 Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+                state = listState,
                 contentPadding = PaddingValues(bottom = 22.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -688,6 +696,31 @@ fun PremiumReceivingMethodsStateScreen(
                 }
                 actionMessage?.takeIf { it.isNotBlank() }?.let { message ->
                     item { ReceivingMethodFeedbackBanner(message) }
+                }
+                if (draftType != null) {
+                    item {
+                        ReceivingMethodDraftPanel(
+                            draftType = draftType ?: ReceivingMethodType.CARD_TRANSFER,
+                            selectedBankId = selectedBankId,
+                            identifierInput = identifierInput,
+                            bankOptions = bankOptions,
+                            language = language,
+                            onBankSelected = { selectedBankId = it },
+                            onIdentifierChange = { identifierInput = it },
+                            onCancel = {
+                                draftType = null
+                                identifierInput = ""
+                            },
+                            onSave = {
+                                val submission = MerchantReceivingMethodDraft(
+                                    bankProfileId = selectedBankId,
+                                    type = draftType ?: ReceivingMethodType.CARD_TRANSFER,
+                                    rawIdentifierInput = identifierInput
+                                ).toSubmission()
+                                onSaveDraft(submission)
+                            }
+                        )
+                    }
                 }
                 item {
                     MerchantReceivingVerificationCard(
@@ -724,52 +757,6 @@ fun PremiumReceivingMethodsStateScreen(
                             sbpIcon = true,
                             onClick = { draftType = ReceivingMethodType.PHONE_TRANSFER }
                         )
-                    }
-                }
-                if (draftType != null) {
-                    item {
-                        PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumColors.Surface) {
-                            Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                val isCardDraft = draftType == ReceivingMethodType.CARD_TRANSFER
-                                Text(language.ui(if (isCardDraft) "Nouvelle carte" else "Nouveau téléphone SBP"), color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                                Text(language.ui("Choisir la banque"), color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
-                                bankOptions.forEach { bank ->
-                                    ReceivingMethodBankChoiceRow(
-                                        bank = bank,
-                                        selected = bank.bankProfileId == selectedBankId,
-                                        onClick = { selectedBankId = bank.bankProfileId }
-                                    )
-                                }
-                                OutlinedTextField(
-                                    value = identifierInput,
-                                    onValueChange = { identifierInput = it },
-                                    label = { Text(language.ui(if (isCardDraft) "Numéro de carte" else "Numéro de téléphone")) },
-                                    placeholder = { Text(if (isCardDraft) "Ex. 4276 **** 5421" else "Ex. +7 *** *** ** 21") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(18.dp)
-                                )
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                                    PremiumOutlineButton(language.ui("Annuler"), modifier = Modifier.weight(1f)) {
-                                        draftType = null
-                                        identifierInput = ""
-                                    }
-                                    PremiumPrimaryButton(
-                                        language.ui(if (isCardDraft) "Enregistrer la carte" else "Enregistrer"),
-                                        modifier = Modifier.weight(1f),
-                                        enabled = identifierInput.isNotBlank(),
-                                        onClick = {
-                                            val submission = MerchantReceivingMethodDraft(
-                                                bankProfileId = selectedBankId,
-                                                type = draftType ?: ReceivingMethodType.CARD_TRANSFER,
-                                                rawIdentifierInput = identifierInput
-                                            ).toSubmission()
-                                            onSaveDraft(submission)
-                                        }
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
                 editingMethod?.let { method ->
@@ -903,6 +890,96 @@ private fun ReceivingMethodActionButton(
             tint = PremiumColors.SoftText,
             modifier = Modifier.size(22.dp)
         )
+    }
+}
+
+@Composable
+private fun ReceivingMethodDraftPanel(
+    draftType: ReceivingMethodType,
+    selectedBankId: String,
+    identifierInput: String,
+    bankOptions: List<PremiumReceivingMethodBankOption>,
+    language: PremiumLanguageOption,
+    onBankSelected: (String) -> Unit,
+    onIdentifierChange: (String) -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit
+) {
+    val isCardDraft = draftType == ReceivingMethodType.CARD_TRANSFER
+    val title = if (isCardDraft) "Ajouter une carte" else "Ajouter téléphone SBP"
+    val helper = if (isCardDraft) {
+        "Choisissez la banque, puis saisissez le numéro de carte marchand."
+    } else {
+        "Choisissez la banque, puis saisissez le numéro de téléphone marchand."
+    }
+    PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp, color = PremiumColors.Surface) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Box(
+                    Modifier
+                        .size(54.dp)
+                        .background(PremiumColors.IconTile, RoundedCornerShape(20.dp))
+                        .border(1.dp, PremiumColors.Cyan.copy(alpha = 0.18f), RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isCardDraft) {
+                        Icon(Icons.Default.CreditCard, null, tint = PremiumColors.Cyan, modifier = Modifier.size(27.dp))
+                    } else {
+                        Text("SBP", color = PremiumColors.Cyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                    }
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(language.ui(title), color = PremiumColors.Ink, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Black)
+                    Text(language.ui(helper), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(language.ui("Banque compatible"), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black)
+                bankOptions.forEach { bank ->
+                    ReceivingMethodBankChoiceRow(
+                        bank = bank,
+                        selected = bank.bankProfileId == selectedBankId,
+                        onClick = { onBankSelected(bank.bankProfileId) }
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(language.ui("Destination de réception"), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black)
+                OutlinedTextField(
+                    value = identifierInput,
+                    onValueChange = onIdentifierChange,
+                    label = { Text(language.ui(if (isCardDraft) "Numéro de carte" else "Numéro de téléphone")) },
+                    placeholder = { Text(if (isCardDraft) "Ex. 4276 **** 5421" else "Ex. +7 *** *** ** 21") },
+                    leadingIcon = {
+                        if (isCardDraft) {
+                            Icon(Icons.Default.CreditCard, null, tint = PremiumColors.Blue)
+                        } else {
+                            Icon(Icons.Default.PhoneAndroid, null, tint = PremiumColors.Blue)
+                        }
+                    },
+                    supportingText = {
+                        Text(
+                            language.ui("Seule la version masquée sera affichée dans l'app."),
+                            color = PremiumColors.Muted,
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(20.dp)
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                PremiumOutlineButton(language.ui("Annuler"), modifier = Modifier.weight(1f), onClick = onCancel)
+                PremiumPrimaryButton(
+                    language.ui(if (isCardDraft) "Enregistrer la carte" else "Enregistrer"),
+                    modifier = Modifier.weight(1f),
+                    enabled = identifierInput.isNotBlank(),
+                    onClick = onSave
+                )
+            }
+        }
     }
 }
 
