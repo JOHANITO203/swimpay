@@ -167,10 +167,18 @@ class PremiumAccountEntryStaticTest {
     @Test
     fun accountEntryVisualGrammarKeepsTouchTargetsAndNoEmojiIcons() {
         val source = accountEntryScreensSource()
+        val components = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt").readText()
+        val choiceRowBase = sourceFunction(source, "private fun PremiumAccountChoiceRowBase")
 
         assertTrue("back button must keep the minimum Android touch target", source.contains("PremiumComponentSize.TouchTarget"))
         assertTrue("choice rows should expose button semantics", source.contains("role = Role.Button"))
         assertTrue("choice rows should expose accessible labels", source.contains("contentDescription = \"\$title. \$description\""))
+        assertTrue(
+            "non-elevated account choices, including Google recovery, must keep the clickable modifier",
+            choiceRowBase.contains("Box(modifier)")
+        )
+        assertTrue("account entry logo must reuse the launcher foreground for brand consistency", components.contains("painterResource(R.drawable.ic_launcher_foreground)"))
+        assertTrue("account entry must leave a clear zone below the language switch", source.contains("Spacer(Modifier.height(122.dp))"))
         assertFalse("account entry must use vector icons, not emoji", emojiRegex.containsMatchIn(source))
     }
 

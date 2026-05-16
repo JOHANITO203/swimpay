@@ -191,8 +191,18 @@ fun StatusChip(
 
 @Composable
 fun SwimPayLogo(modifier: Modifier = Modifier, markSize: Dp = 48.dp) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        SwimPayWavesMark(Modifier.size(markSize))
+    Box(
+        modifier
+            .size(markSize)
+            .clip(RoundedCornerShape(markSize * 0.24f))
+            .background(Color(0xFF0F172A)),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_foreground),
+            contentDescription = "SwimPay",
+            modifier = Modifier.size(markSize * 0.72f)
+        )
     }
 }
 
@@ -519,6 +529,7 @@ fun PremiumAppShell(
     selectedTab: PremiumMainTab? = null,
     onTab: ((PremiumMainTab) -> Unit)? = null,
     profileInitials: String? = null,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
     content: @Composable (androidx.compose.foundation.layout.PaddingValues) -> Unit
 ) {
     Box(modifier.fillMaxSize()) {
@@ -557,7 +568,7 @@ fun PremiumAppShell(
                 ))
             }
             if (selectedTab != null && onTab != null) {
-                PremiumNavigationBar(selectedTab = selectedTab, onTab = onTab)
+                PremiumNavigationBar(selectedTab = selectedTab, onTab = onTab, language = language)
             }
         }
     }
@@ -701,7 +712,8 @@ fun PremiumStartupSplashScreen(modifier: Modifier = Modifier) {
 @Composable
 fun PremiumNavigationBar(
     selectedTab: PremiumMainTab,
-    onTab: (PremiumMainTab) -> Unit
+    onTab: (PremiumMainTab) -> Unit,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
     Surface(
         Modifier
@@ -729,7 +741,7 @@ fun PremiumNavigationBar(
                 ) {
                     Icon(
                         imageVector = premiumTabIcon(tab),
-                        contentDescription = tab.accessibilityLabel,
+                        contentDescription = language.mainTabLabel(tab),
                         tint = if (selected) PremiumColors.Teal else PremiumColors.SoftText,
                         modifier = Modifier.size(24.dp)
                     )

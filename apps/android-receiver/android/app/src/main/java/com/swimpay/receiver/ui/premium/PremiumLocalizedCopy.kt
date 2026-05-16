@@ -61,6 +61,44 @@ data class PremiumLocalizedCopy(
         }
     }
 
+    fun mainTabLabel(tab: PremiumMainTab): String {
+        return when (this) {
+            fr -> when (tab) {
+                PremiumMainTab.Home -> "Accueil"
+                PremiumMainTab.Reviews -> "Revue"
+                PremiumMainTab.Payment -> "Paiement"
+                PremiumMainTab.Business -> "Business"
+                PremiumMainTab.Settings -> "Réglages"
+            }
+            en -> when (tab) {
+                PremiumMainTab.Home -> "Home"
+                PremiumMainTab.Reviews -> "Review"
+                PremiumMainTab.Payment -> "Payment"
+                PremiumMainTab.Business -> "Business"
+                PremiumMainTab.Settings -> "Settings"
+            }
+            ru -> when (tab) {
+                PremiumMainTab.Home -> "Главная"
+                PremiumMainTab.Reviews -> "Проверка"
+                PremiumMainTab.Payment -> "Платежи"
+                PremiumMainTab.Business -> "Бизнес"
+                PremiumMainTab.Settings -> "Настройки"
+            }
+            else -> tab.navLabel
+        }
+    }
+
+    fun ui(text: String): String {
+        return translations[text]?.let { localized ->
+            when (this) {
+                fr -> localized.fr
+                en -> localized.en
+                ru -> localized.ru
+                else -> localized.fr
+            }
+        } ?: text
+    }
+
     companion object {
         fun forLanguage(language: PremiumLanguageOption): PremiumLocalizedCopy {
             return when (language) {
@@ -69,6 +107,193 @@ data class PremiumLocalizedCopy(
                 PremiumLanguageOption.RU -> ru
             }
         }
+
+        private data class LocalizedText(val fr: String, val en: String, val ru: String)
+
+        private val translations = listOf(
+            LocalizedText("Accueil", "Home", "Главная"),
+            LocalizedText("Revue", "Review", "Проверка"),
+            LocalizedText("Paiement", "Payment", "Платежи"),
+            LocalizedText("Business", "Business", "Бизнес"),
+            LocalizedText("Réglages", "Settings", "Настройки"),
+            LocalizedText("Bonjour, Merchant", "Hello, Merchant", "Здравствуйте, Merchant"),
+            LocalizedText("Welcome back", "Welcome back", "С возвращением"),
+            LocalizedText("Aujourd'hui", "Today", "Сегодня"),
+            LocalizedText("Live", "Live", "Онлайн"),
+            LocalizedText("En attente", "Pending", "Ожидание"),
+            LocalizedText("Paiements reçus", "Received payments", "Полученные платежи"),
+            LocalizedText("Actions rapides", "Quick actions", "Быстрые действия"),
+            LocalizedText("ÉVOLUTION DES PAIEMENTS", "PAYMENT EVOLUTION", "ДИНАМИКА ПЛАТЕЖЕЙ"),
+            LocalizedText("Montant", "Amount", "Сумма"),
+            LocalizedText("Taux", "Rate", "Доля"),
+            LocalizedText("HISTORIQUE DES PAIEMENTS", "PAYMENT HISTORY", "ИСТОРИЯ ПЛАТЕЖЕЙ"),
+            LocalizedText("Voir tout", "See all", "Смотреть все"),
+            LocalizedText("Les paiements reconnus par SwimPay apparaîtront ici.", "Payments recognized by SwimPay will appear here.", "Платежи, распознанные SwimPay, появятся здесь."),
+            LocalizedText("À confirmer", "To confirm", "На проверку"),
+            LocalizedText("Confirmés", "Confirmed", "Подтверждены"),
+            LocalizedText("Rejetés", "Rejected", "Отклонены"),
+            LocalizedText("Expirés", "Expired", "Истекли"),
+            LocalizedText("Échecs", "Failed", "Ошибки"),
+            LocalizedText("Paiements confirmés", "Confirmed payments", "Подтвержденные платежи"),
+            LocalizedText("Aucun paiement détecté pour le moment", "No payment detected yet", "Платежей пока нет"),
+            LocalizedText("Paiements à confirmer", "Payments to confirm", "Платежи на проверку"),
+            LocalizedText("Confirmez uniquement les paiements que vous reconnaissez.", "Only confirm payments you recognize.", "Подтверждайте только знакомые платежи."),
+            LocalizedText("Tout", "All", "Все"),
+            LocalizedText("Paiement à confirmer", "Payment to confirm", "Платеж на проверку"),
+            LocalizedText("Réf.", "Ref.", "Реф."),
+            LocalizedText("ORIGINE", "SOURCE", "ИСТОЧНИК"),
+            LocalizedText("Détection automatique", "Automatic detection", "Автоматическое обнаружение"),
+            LocalizedText("Examiner", "Review", "Проверить"),
+            LocalizedText("Vérifier ce paiement", "Review this payment", "Проверить платеж"),
+            LocalizedText("POURQUOI VÉRIFIER ?", "WHY REVIEW?", "ПОЧЕМУ НУЖНА ПРОВЕРКА?"),
+            LocalizedText("PARCOURS DU PAIEMENT", "PAYMENT TIMELINE", "ХОД ПЛАТЕЖА"),
+            LocalizedText("Confirmer reçu", "Confirm received", "Подтвердить получение"),
+            LocalizedText("Rejeter le signal", "Reject signal", "Отклонить сигнал"),
+            LocalizedText("Annuler la commande", "Cancel order", "Отменить заказ"),
+            LocalizedText("Moyens de réception", "Receiving methods", "Способы получения"),
+            LocalizedText("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer.", "Add the cards or phone numbers your customers will use to pay you.", "Добавьте карты или номера, по которым клиенты будут платить."),
+            LocalizedText("Les informations complètes ne sont jamais envoyées dans les webhooks.", "Full details are never sent in webhooks.", "Полные данные никогда не отправляются в вебхуки."),
+            LocalizedText("Ajouter une carte", "Add a card", "Добавить карту"),
+            LocalizedText("Ajouter téléphone SBP", "Add SBP phone", "Добавить телефон СБП"),
+            LocalizedText("Carte bancaire associée à votre banque", "Bank card linked to your bank", "Банковская карта, связанная с банком"),
+            LocalizedText("Numéro de téléphone associé à une banque", "Phone number linked to a bank", "Телефон, связанный с банком"),
+            LocalizedText("Nouvelle carte", "New card", "Новая карта"),
+            LocalizedText("Nouveau téléphone SBP", "New SBP phone", "Новый телефон СБП"),
+            LocalizedText("Choisir la banque", "Choose bank", "Выберите банк"),
+            LocalizedText("Numéro de carte", "Card number", "Номер карты"),
+            LocalizedText("Numéro de téléphone", "Phone number", "Номер телефона"),
+            LocalizedText("Annuler", "Cancel", "Отмена"),
+            LocalizedText("Enregistrer la carte", "Save card", "Сохранить карту"),
+            LocalizedText("Enregistrer", "Save", "Сохранить"),
+            LocalizedText("Modifier la destination", "Edit destination", "Изменить назначение"),
+            LocalizedText("Entrez la nouvelle carte. L'ancienne sera remplacée après enregistrement.", "Enter the new card. The previous one will be replaced after saving.", "Введите новую карту. Старая будет заменена после сохранения."),
+            LocalizedText("Entrez la nouvelle destination SBP. L'ancienne sera remplacée après enregistrement.", "Enter the new SBP destination. The previous one will be replaced after saving.", "Введите новое назначение СБП. Старое будет заменено после сохранения."),
+            LocalizedText("Libellé affiché", "Display label", "Отображаемое название"),
+            LocalizedText("Nouveau numéro de carte", "New card number", "Новый номер карты"),
+            LocalizedText("Nouveau numéro de téléphone", "New phone number", "Новый номер телефона"),
+            LocalizedText("Aucun moyen de réception", "No receiving method", "Нет способов получения"),
+            LocalizedText("Ajoutez une carte ou un téléphone SBP pour commencer.", "Add a card or SBP phone to start.", "Добавьте карту или телефон СБП, чтобы начать."),
+            LocalizedText("Modifier", "Edit", "Изменить"),
+            LocalizedText("Définir", "Set", "Выбрать"),
+            LocalizedText("Désactiver", "Disable", "Отключить"),
+            LocalizedText("Supprimer", "Delete", "Удалить"),
+            LocalizedText("Désactiver ce moyen ?", "Disable this method?", "Отключить этот способ?"),
+            LocalizedText("Il ne sera plus proposé pour les nouveaux paiements.", "It will no longer be offered for new payments.", "Он больше не будет предлагаться для новых платежей."),
+            LocalizedText("Supprimer ce moyen ?", "Delete this method?", "Удалить этот способ?"),
+            LocalizedText("La destination masquée disparaîtra de cette liste.", "The masked destination will disappear from this list.", "Маскированное назначение исчезнет из списка."),
+            LocalizedText("Actif", "Active", "Активно"),
+            LocalizedText("À configurer", "To configure", "Настроить"),
+            LocalizedText("Ventes", "Sales", "Продажи"),
+            LocalizedText("Ventes confirmées", "Confirmed sales", "Подтвержденные продажи"),
+            LocalizedText("Suivez les commandes reliées aux paiements confirmés.", "Track orders linked to confirmed payments.", "Отслеживайте заказы, связанные с подтвержденными платежами."),
+            LocalizedText("VENTES CONFIRMÉES", "CONFIRMED SALES", "ПОДТВЕРЖДЕННЫЕ ПРОДАЖИ"),
+            LocalizedText("MONTANT CONFIRMÉ", "CONFIRMED AMOUNT", "ПОДТВЕРЖДЕННАЯ СУММА"),
+            LocalizedText("TAUX DE CONFIRMATION", "CONFIRMATION RATE", "ДОЛЯ ПОДТВЕРЖДЕНИЙ"),
+            LocalizedText("Activité business", "Business activity", "Активность бизнеса"),
+            LocalizedText("Paiements confirmés sur la période", "Confirmed payments over the period", "Подтвержденные платежи за период"),
+            LocalizedText("Les courbes apparaîtront après vos premières ventes confirmées.", "Charts will appear after your first confirmed sales.", "Графики появятся после первых подтвержденных продаж."),
+            LocalizedText("Confirmé", "Confirmed", "Подтверждено"),
+            LocalizedText("Aucune vente confirmée", "No confirmed sale", "Подтвержденных продаж нет"),
+            LocalizedText("Vos ventes apparaîtront ici après confirmation des paiements.", "Your sales will appear here after payment confirmation.", "Продажи появятся здесь после подтверждения платежей."),
+            LocalizedText("Voir les paiements à confirmer", "View payments to confirm", "Смотреть платежи на проверку"),
+            LocalizedText("Sécurité", "Security", "Безопасность"),
+            LocalizedText("Apparence", "Appearance", "Оформление"),
+            LocalizedText("Langue", "Language", "Язык"),
+            LocalizedText("Centre d'aide", "Help center", "Центр помощи"),
+            LocalizedText("Contacter le support", "Contact support", "Написать в поддержку"),
+            LocalizedText("Rechercher", "Search", "Поиск"),
+            LocalizedText("Sujet", "Subject", "Тема"),
+            LocalizedText("Message", "Message", "Сообщение"),
+            LocalizedText("Liez Google pour retrouver le compte, puis protégez l'accès à l'app.", "Link Google to recover the account, then protect app access.", "Свяжите Google для восстановления аккаунта и защитите доступ к приложению."),
+            LocalizedText("Verrouillage de l'app", "App lock", "Блокировка приложения"),
+            LocalizedText("La sécurité du téléphone protège uniquement l'interface. Le Receiver continue en arrière-plan.", "Phone security only protects the interface. The Receiver keeps running in the background.", "Защита телефона защищает только интерфейс. Receiver продолжает работать в фоне."),
+            LocalizedText("Délai actif", "Active timeout", "Активная задержка"),
+            LocalizedText("Utiliser ce délai", "Use this timeout", "Использовать эту задержку"),
+            LocalizedText("Compte Google lié", "Google account linked", "Аккаунт Google привязан"),
+            LocalizedText("Lier le compte Google", "Link Google account", "Привязать аккаунт Google"),
+            LocalizedText("Sauvegarde ce profil marchand pour une future reconnexion avec Google.", "Saves this merchant profile for future Google sign-in.", "Сохраняет этот профиль продавца для будущего входа через Google."),
+            LocalizedText("Lié", "Linked", "Привязан"),
+            LocalizedText("Reconnexion", "Reconnect", "Повторный вход"),
+            LocalizedText("Signaux de paiement", "Payment signals", "Платежные сигналы"),
+            LocalizedText("SwimPay lit uniquement les notifications bancaires autorisées, les filtre, les rédacte et les envoie au backend.", "SwimPay only reads authorized bank notifications, filters them, redacts them and sends them to the backend.", "SwimPay читает только разрешенные банковские уведомления, фильтрует, редактирует и отправляет их на сервер."),
+            LocalizedText("J'ai payé", "I paid", "Я оплатил"),
+            LocalizedText("Cette action arme le suivi côté commande. Elle ne confirme jamais un paiement.", "This arms order-side tracking. It never confirms a payment.", "Это включает отслеживание заказа. Это никогда не подтверждает платеж."),
+            LocalizedText("Le marchand décide. Le webhook final part seulement après confirmation manuelle.", "The merchant decides. The final webhook is sent only after manual confirmation.", "Решение принимает продавец. Финальный вебхук отправляется только после ручного подтверждения."),
+            LocalizedText("Webhook", "Webhook", "Вебхук"),
+            LocalizedText("Les webhooks publics V1 restent limités au résultat final confirmé, rejeté ou expiré.", "Public V1 webhooks stay limited to the final confirmed, rejected or expired result.", "Публичные вебхуки V1 ограничены финальным результатом: подтверждено, отклонено или истекло."),
+            LocalizedText("Receiver hors ligne", "Receiver offline", "Receiver не в сети"),
+            LocalizedText("Vérifiez l'accès aux notifications, les banques activées et la connexion du téléphone.", "Check notification access, enabled banks and phone connectivity.", "Проверьте доступ к уведомлениям, активные банки и соединение телефона."),
+            LocalizedText("Aide courte, sûre et compatible avec la vérité produit V1.", "Short help aligned with the V1 product truth.", "Краткая помощь, соответствующая логике продукта V1."),
+            LocalizedText("Aucun résultat", "No result", "Нет результатов"),
+            LocalizedText("Essayez un autre mot-clé.", "Try another keyword.", "Попробуйте другое ключевое слово."),
+            LocalizedText("Envoyez une demande sans notification brute, secret, numéro complet, PIN, CVV ou code SMS.", "Send a request without raw notification text, secrets, full numbers, PIN, CVV or SMS codes.", "Отправьте запрос без сырого текста уведомлений, секретов, полных номеров, PIN, CVV или SMS-кодов."),
+            LocalizedText("Envoyer", "Send", "Отправить"),
+            LocalizedText("Demande envoyée", "Request sent", "Запрос отправлен"),
+            LocalizedText("SwimPay verrouille", "SwimPay is locked", "SwimPay заблокирован"),
+            LocalizedText("Déverrouiller", "Unlock", "Разблокировать"),
+            LocalizedText("Recevez vos paiements plus facilement", "Receive payments more easily", "Получайте платежи проще"),
+            LocalizedText("SwimPay détecte les paiements reçus, vous aide à les confirmer et prévient votre site ou votre application.", "SwimPay detects received payments, helps you confirm them and updates your site or app.", "SwimPay обнаруживает полученные платежи, помогает подтвердить их и уведомляет ваш сайт или приложение."),
+            LocalizedText("Détection rapide", "Fast detection", "Быстрое обнаружение"),
+            LocalizedText("Repérez plus vite les paiements reçus.", "Spot received payments faster.", "Быстрее находите полученные платежи."),
+            LocalizedText("Confirmation simple", "Simple confirmation", "Простое подтверждение"),
+            LocalizedText("Confirmez ou rejetez en quelques secondes.", "Confirm or reject in seconds.", "Подтверждайте или отклоняйте за секунды."),
+            LocalizedText("Business connecté", "Connected business", "Подключенный бизнес"),
+            LocalizedText("Votre site ou application reçoit la mise à jour.", "Your site or app receives the update.", "Ваш сайт или приложение получает обновление."),
+            LocalizedText("Commencer", "Start", "Начать"),
+            LocalizedText("Accès notifications", "Notification access", "Доступ к уведомлениям"),
+            LocalizedText("Connectez votre téléphone", "Connect your phone", "Подключите телефон"),
+            LocalizedText("SwimPay a besoin d'accéder aux notifications de cet appareil pour fonctionner.", "SwimPay needs notification access on this device to work.", "SwimPay нужен доступ к уведомлениям на этом устройстве."),
+            LocalizedText("Activé", "Enabled", "Включено"),
+            LocalizedText("Accès nécessaire", "Access required", "Нужен доступ"),
+            LocalizedText("L'accès notifications est activé.", "Notification access is enabled.", "Доступ к уведомлениям включен."),
+            LocalizedText("Activez l'accès aux notifications pour détecter les paiements reçus.", "Enable notification access to detect received payments.", "Включите доступ к уведомлениям для обнаружения полученных платежей."),
+            LocalizedText("SwimPay ne lit pas vos SMS et ne contrôle pas votre banque.", "SwimPay does not read SMS or control your bank.", "SwimPay не читает SMS и не управляет вашим банком."),
+            LocalizedText("Continuer", "Continue", "Продолжить"),
+            LocalizedText("Activer l'accès", "Enable access", "Включить доступ"),
+            LocalizedText("Choisissez vos banques", "Choose your banks", "Выберите банки"),
+            LocalizedText("SwimPay recherche uniquement les banques compatibles.", "SwimPay only looks for compatible banks.", "SwimPay ищет только совместимые банки."),
+            LocalizedText("Activer ces banques", "Enable these banks", "Включить эти банки"),
+            LocalizedText("Recherche en cours", "Searching", "Поиск"),
+            LocalizedText("Les banques compatibles apparaissent ici sans parcourir toutes les applications.", "Compatible banks appear here without scanning every app.", "Совместимые банки появятся здесь без просмотра всех приложений."),
+            LocalizedText("Recherche terminée", "Search complete", "Поиск завершен"),
+            LocalizedText("Aucune banque détectée", "No bank detected", "Банки не обнаружены"),
+            LocalizedText("{count} banque(s) activée(s).", "{count} bank(s) enabled.", "Включено банков: {count}."),
+            LocalizedText("Sélectionnez les banques détectées que vous utilisez.", "Select the detected banks you use.", "Выберите обнаруженные банки, которыми вы пользуетесь."),
+            LocalizedText("Vous pourrez configurer une banque compatible plus tard.", "You can configure a compatible bank later.", "Совместимый банк можно настроить позже."),
+            LocalizedText("Recherche à relancer", "Search to retry", "Повторите поиск"),
+            LocalizedText("Réessayez dans quelques instants.", "Try again in a moment.", "Попробуйте еще раз через несколько секунд."),
+            LocalizedText("Les banques compatibles apparaîtront ici.", "Compatible banks will appear here.", "Совместимые банки появятся здесь."),
+            LocalizedText("Vous pourrez continuer et configurer une banque plus tard.", "You can continue and configure a bank later.", "Можно продолжить и настроить банк позже."),
+            LocalizedText("Activée", "Enabled", "Включена"),
+            LocalizedText("Détectée", "Detected", "Обнаружена"),
+            LocalizedText("Non détectée", "Not detected", "Не обнаружена"),
+            LocalizedText("Vos clients utiliseront ces informations pour vous payer sur {bank}.", "Customers will use this information to pay you via {bank}.", "Клиенты будут использовать эти данные для оплаты через {bank}."),
+            LocalizedText("Carte bancaire", "Bank card", "Банковская карта"),
+            LocalizedText("Recevez les paiements sur votre carte.", "Receive payments on your card.", "Получайте платежи на карту."),
+            LocalizedText("Pratique pour les virements via SBP.", "Useful for SBP-style phone transfers.", "Удобно для переводов по СБП."),
+            LocalizedText("Identifiant utilisé seulement pour l'enregistrement", "Identifier used only for saving", "Идентификатор используется только для сохранения"),
+            LocalizedText("Enregistrer et continuer", "Save and continue", "Сохранить и продолжить"),
+            LocalizedText("Site ou application", "Site or app", "Сайт или приложение"),
+            LocalizedText("Connectez votre site ou application", "Connect your site or app", "Подключите сайт или приложение"),
+            LocalizedText("Recevez une mise à jour après votre validation manuelle.", "Receive an update after your manual validation.", "Получайте обновление после ручной проверки."),
+            LocalizedText("Configuration reportée", "Configuration postponed", "Настройка отложена"),
+            LocalizedText("Prêt à ajouter", "Ready to add", "Готово к добавлению"),
+            LocalizedText("Vous entrez dans l'app maintenant. Le webhook pourra être ajouté plus tard.", "You enter the app now. The webhook can be added later.", "Вы входите в приложение сейчас. Вебхук можно добавить позже."),
+            LocalizedText("Ajoutez un endpoint pour lancer ensuite un test webhook backend.", "Add an endpoint, then run a backend webhook test.", "Добавьте endpoint, затем запустите серверный тест вебхука."),
+            LocalizedText("Ajouter maintenant", "Add now", "Добавить сейчас"),
+            LocalizedText("Configurer plus tard", "Configure later", "Настроить позже"),
+            LocalizedText("Test", "Test", "Тест"),
+            LocalizedText("Test webhook", "Webhook test", "Тест вебхука"),
+            LocalizedText("Le test est déclenché par le backend vers votre endpoint. Android ne traite aucune notification réelle et ne confirme aucun paiement.", "The backend triggers the test toward your endpoint. Android processes no real notification and confirms no payment.", "Тест запускается сервером на ваш endpoint. Android не обрабатывает реальные уведомления и не подтверждает платежи."),
+            LocalizedText("Lancer le test webhook", "Run webhook test", "Запустить тест вебхука"),
+            LocalizedText("Webhook prêt", "Webhook ready", "Вебхук готов"),
+            LocalizedText("Action nécessaire", "Action required", "Требуется действие"),
+            LocalizedText("Le backend peut envoyer un événement de test vers votre endpoint configuré.", "The backend can send a test event to your configured endpoint.", "Сервер может отправить тестовое событие на настроенный endpoint."),
+            LocalizedText("Réussi", "Done", "Готово"),
+            LocalizedText("Réessayer", "Retry", "Повторить"),
+            LocalizedText("Chargement", "Loading", "Загрузка"),
+            LocalizedText("Connexion en attente", "Connection pending", "Ожидание подключения")
+        ).associateBy { it.fr }
 
         private val fr = PremiumLocalizedCopy(
             welcomeTitle = "Bienvenue sur SwimPay",
@@ -187,4 +412,12 @@ data class PremiumLocalizedCopy(
             active = "Активно"
         )
     }
+}
+
+fun PremiumLanguageOption.mainTabLabel(tab: PremiumMainTab): String {
+    return PremiumLocalizedCopy.forLanguage(this).mainTabLabel(tab)
+}
+
+fun PremiumLanguageOption.ui(text: String): String {
+    return PremiumLocalizedCopy.forLanguage(this).ui(text)
 }

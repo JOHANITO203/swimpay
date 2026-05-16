@@ -181,3 +181,34 @@ sealed interface PremiumScreenState<out T> {
         ): PremiumScreenState<T> = Offline(title, message, actionLabel)
     }
 }
+
+fun <T> PremiumScreenState<T>.localized(language: PremiumLanguageOption): PremiumScreenState<T> {
+    return when (this) {
+        is PremiumScreenState.Content -> this
+        is PremiumScreenState.Loading -> copy(
+            title = language.ui(title),
+            message = language.ui(message),
+            actionLabel = actionLabel?.let(language::ui)
+        )
+        is PremiumScreenState.Empty -> copy(
+            title = language.ui(title),
+            message = language.ui(message),
+            actionLabel = actionLabel?.let(language::ui)
+        )
+        is PremiumScreenState.ActionRequired -> copy(
+            title = language.ui(title),
+            message = language.ui(message),
+            actionLabel = actionLabel?.let(language::ui)
+        )
+        is PremiumScreenState.Error -> copy(
+            title = language.ui(title),
+            message = language.ui(message),
+            actionLabel = actionLabel?.let(language::ui)
+        )
+        is PremiumScreenState.Offline -> copy(
+            title = language.ui(title),
+            message = language.ui(message),
+            actionLabel = actionLabel?.let(language::ui)
+        )
+    }
+}

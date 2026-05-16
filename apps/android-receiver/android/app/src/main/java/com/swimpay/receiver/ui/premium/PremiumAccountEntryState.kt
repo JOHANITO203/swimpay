@@ -94,16 +94,16 @@ data class PremiumAccountRecoveryUiState(
             return PremiumAccountRecoveryUiState(
                 status = PremiumAccountRecoveryStatus.PENDING,
                 title = "Activation du receiver",
-                message = "SwimPay enregistre ce telephone, les banques activees et la file d'envoi securisee."
+                message = "SwimPay enregistre ce téléphone, les banques activées et la file d'envoi sécurisée."
             )
         }
 
         fun receiverError(message: String): PremiumAccountRecoveryUiState {
             return PremiumAccountRecoveryUiState(
                 status = PremiumAccountRecoveryStatus.ERROR,
-                title = "Receiver non active",
+                title = "Receiver non activé",
                 message = message,
-                actionLabel = "Reessayer"
+                actionLabel = "Réessayer"
             )
         }
     }
@@ -133,19 +133,19 @@ data class PremiumGoogleAccountLinkUiState(
         fun success(): PremiumGoogleAccountLinkUiState {
             return PremiumGoogleAccountLinkUiState(
                 status = PremiumGoogleAccountLinkStatus.SUCCESS,
-                title = "Compte Google lie",
-                message = "Ce profil marchand pourra etre retrouve avec Google lors d'une prochaine reconnexion."
+                title = "Compte Google lié",
+                message = "Ce profil marchand pourra être retrouvé avec Google lors d'une prochaine reconnexion."
             )
         }
 
         fun error(
-            message: String = "La liaison Google n'a pas abouti. Reessayez depuis Securite."
+            message: String = "La liaison Google n'a pas abouti. Réessayez depuis Sécurité."
         ): PremiumGoogleAccountLinkUiState {
             return PremiumGoogleAccountLinkUiState(
                 status = PremiumGoogleAccountLinkStatus.ERROR,
                 title = "Liaison impossible",
                 message = message,
-                actionLabel = "Reessayer"
+                actionLabel = "Réessayer"
             )
         }
     }

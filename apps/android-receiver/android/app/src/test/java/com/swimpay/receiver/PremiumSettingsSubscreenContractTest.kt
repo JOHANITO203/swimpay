@@ -45,6 +45,39 @@ class PremiumSettingsSubscreenContractTest {
     }
 
     @Test
+    fun merchantLanguageIsInjectedIntoPrimaryScreens() {
+        val app = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
+
+        listOf(
+            "PremiumDashboardScreen(",
+            "PremiumReviewsScreen(",
+            "PremiumPaymentDetailScreen(",
+            "PremiumReceivingMethodsStateScreen(",
+            "PremiumOrdersScreen(",
+            "PremiumOnboardingFlow(",
+            "PremiumAppShell("
+        ).forEach { call ->
+            val callBlock = sourceWindow(app, call, 1_600)
+            assertTrue("$call must receive merchantSettings.language", callBlock.contains("language = merchantSettings.language"))
+        }
+    }
+
+    @Test
+    fun premiumUiSourcesDoNotContainMojibakeMarkers() {
+        val root = File("src/main/java/com/swimpay/receiver/ui/premium")
+        val source = root.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .joinToString("\n") { it.readText(Charsets.UTF_8) }
+
+        listOf("�", "Ã", "Ð", "Ñ", "â", "Â").forEach { forbidden ->
+            assertFalse("premium UI source contains mojibake marker $forbidden", source.contains(forbidden))
+        }
+        assertFalse(source.contains("Reessayer"))
+        assertFalse(source.contains("Securite"))
+        assertFalse(source.contains("A verifier"))
+    }
+
+    @Test
     fun confirmationModeIsManualOnlyAndNotAnActiveAutoDecisionPath() {
         val dashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
         val confirmation = sourceFunction(dashboard, "fun PremiumConfirmationModeScreen")
@@ -247,5 +280,11 @@ class PremiumSettingsSubscreenContractTest {
         val end = source.indexOf(endMarker, start + startMarker.length)
         assertTrue("missing end marker $endMarker", end >= 0)
         return source.substring(start, end)
+    }
+
+    private fun sourceWindow(source: String, startMarker: String, length: Int): String {
+        val start = source.indexOf(startMarker)
+        assertTrue("missing start marker $startMarker", start >= 0)
+        return source.substring(start, minOf(source.length, start + length))
     }
 }

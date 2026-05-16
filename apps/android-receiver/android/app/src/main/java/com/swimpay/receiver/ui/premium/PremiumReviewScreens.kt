@@ -46,18 +46,20 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun PremiumReviewsScreen(
     state: PremiumScreenState<PremiumReviewsUiState> = PremiumScreenState.content(PremiumReviewsUiState.preview()),
-    onOpenReview: (String) -> Unit = {}
+    onOpenReview: (String) -> Unit = {},
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
     when (state) {
-        is PremiumScreenState.Content -> PremiumReviewsContent(state.value, onOpenReview)
-        else -> PremiumReviewsState(state)
+        is PremiumScreenState.Content -> PremiumReviewsContent(state.value, onOpenReview, language)
+        else -> PremiumReviewsState(state, language)
     }
 }
 
 @Composable
 private fun PremiumReviewsContent(
     state: PremiumReviewsUiState,
-    onOpenReview: (String) -> Unit
+    onOpenReview: (String) -> Unit,
+    language: PremiumLanguageOption
 ) {
     var selectedFilter by remember { mutableStateOf(PremiumReviewFilter.TO_CONFIRM) }
     val filteredItems = selectedFilter.applyTo(state.items)
@@ -69,7 +71,7 @@ private fun PremiumReviewsContent(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Paiements à confirmer",
+                    text = language.ui("Paiements à confirmer"),
                     color = PremiumColors.Ink,
                     style = androidx.compose.ui.text.TextStyle(
                         fontSize = PremiumType.ScreenTitle,
@@ -78,7 +80,7 @@ private fun PremiumReviewsContent(
                     )
                 )
                 Text(
-                    text = "Confirmez uniquement les paiements que vous reconnaissez.",
+                    text = language.ui("Confirmez uniquement les paiements que vous reconnaissez."),
                     color = PremiumColors.SoftText,
                     fontSize = PremiumType.Body,
                     lineHeight = 20.sp,
@@ -94,7 +96,7 @@ private fun PremiumReviewsContent(
                 PremiumReviewFilter.entries.forEach { filter ->
                     FilterLabel(
                         filter.icon,
-                        "${filter.label} ${filter.countFor(state.items)}",
+                        "${language.ui(filter.label)} ${filter.countFor(state.items)}",
                         selectedFilter == filter,
                         Modifier.weight(filter.weight)
                     ) {
@@ -103,7 +105,7 @@ private fun PremiumReviewsContent(
                 }
             }
         }
-        items(filteredItems) { item -> ReviewPaymentCard(item, onOpenReview) }
+        items(filteredItems) { item -> ReviewPaymentCard(item, onOpenReview, language) }
     }
 }
 
@@ -130,7 +132,7 @@ private enum class PremiumReviewFilter(
 }
 
 @Composable
-private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>) {
+private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>, language: PremiumLanguageOption = PremiumLanguageOption.FR) {
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(top = 16.dp, bottom = PremiumSpacing.BottomNavHeight + 20.dp),
@@ -139,7 +141,7 @@ private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Paiements à confirmer",
+                    text = language.ui("Paiements à confirmer"),
                     color = PremiumColors.Ink,
                     style = androidx.compose.ui.text.TextStyle(
                         fontSize = PremiumType.ScreenTitle,
@@ -148,7 +150,7 @@ private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>
                     )
                 )
                 Text(
-                    text = "Confirmez uniquement les paiements que vous reconnaissez.",
+                    text = language.ui("Confirmez uniquement les paiements que vous reconnaissez."),
                     color = PremiumColors.SoftText,
                     fontSize = PremiumType.Body,
                     lineHeight = 20.sp,
@@ -156,12 +158,12 @@ private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>
                 )
             }
         }
-        item { PremiumStatePanel(state) }
+        item { PremiumStatePanel(state.localized(language)) }
     }
 }
 
 @Composable
-private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) -> Unit) {
+private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) -> Unit, language: PremiumLanguageOption) {
     LiquidGlassCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -185,7 +187,7 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
                 }
                 Column(Modifier.weight(1f).padding(start = 14.dp)) {
                     Text(
-                        text = "Paiement à confirmer",
+                        text = language.ui("Paiement à confirmer"),
                         color = PremiumColors.Ink,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black
@@ -197,7 +199,7 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
                         fontWeight = FontWeight.SemiBold
                     )
                 }
-                StatusChip(item.status, if (item.valid) StatusTone.Success else StatusTone.Warning)
+                StatusChip(language.ui(item.status), if (item.valid) StatusTone.Success else StatusTone.Warning)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PremiumBankLogo(
@@ -213,7 +215,7 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Réf. ${item.reviewId}",
+                        text = "${language.ui("Réf.")} ${item.reviewId}",
                         color = PremiumColors.SoftText,
                         fontSize = PremiumType.Micro,
                         fontWeight = FontWeight.Bold,
@@ -231,14 +233,14 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "ORIGINE",
+                        text = language.ui("ORIGINE"),
                         color = PremiumColors.SoftText,
                         fontSize = PremiumType.Micro,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.5.sp
                     )
                     Text(
-                        text = item.reasons.firstOrNull() ?: "Détection automatique",
+                        text = item.reasons.firstOrNull()?.let(language::ui) ?: language.ui("Détection automatique"),
                         color = PremiumColors.Ink,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
@@ -249,7 +251,7 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "Examiner",
+                        text = language.ui("Examiner"),
                         color = PremiumColors.Blue,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black
@@ -279,7 +281,8 @@ fun PremiumPaymentDetailScreen(
     onBack: () -> Unit = {},
     onConfirmReceived: () -> Unit = {},
     onRejectSignal: () -> Unit = {},
-    onRejectOrder: () -> Unit = {}
+    onRejectOrder: () -> Unit = {},
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
     when (state) {
         is PremiumScreenState.Content -> PremiumPaymentDetailContent(
@@ -287,9 +290,10 @@ fun PremiumPaymentDetailScreen(
             onBack = onBack,
             onConfirmReceived = onConfirmReceived,
             onRejectSignal = onRejectSignal,
-            onRejectOrder = onRejectOrder
+            onRejectOrder = onRejectOrder,
+            language = language
         )
-        else -> PremiumPaymentDetailState(state, onBack)
+        else -> PremiumPaymentDetailState(state, onBack, language)
     }
 }
 
@@ -299,7 +303,8 @@ private fun PremiumPaymentDetailContent(
     onBack: () -> Unit,
     onConfirmReceived: () -> Unit,
     onRejectSignal: () -> Unit,
-    onRejectOrder: () -> Unit
+    onRejectOrder: () -> Unit,
+    language: PremiumLanguageOption
 ) {
     Column(
         Modifier
@@ -317,7 +322,7 @@ private fun PremiumPaymentDetailContent(
             CircleAction(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
             Spacer(Modifier.width(16.dp))
             Text(
-                text = "Vérifier ce paiement",
+                text = language.ui("Vérifier ce paiement"),
                 modifier = Modifier.weight(1f),
                 color = PremiumColors.Ink,
                 fontSize = PremiumType.ScreenTitle,
@@ -354,13 +359,13 @@ private fun PremiumPaymentDetailContent(
                         }
                         Column {
                             Text(
-                                text = state.statusTitle,
+                                text = language.ui(state.statusTitle),
                                 color = PremiumColors.Warning,
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Black
                             )
                             Text(
-                                text = state.statusText,
+                                text = language.ui(state.statusText),
                                 color = PremiumColors.SoftText,
                                 fontSize = PremiumType.Body,
                                 lineHeight = 21.sp,
@@ -384,7 +389,7 @@ private fun PremiumPaymentDetailContent(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = row.first,
+                                    text = language.ui(row.first),
                                     modifier = Modifier.weight(1f),
                                     color = PremiumColors.SoftText,
                                     fontSize = PremiumType.Body,
@@ -405,7 +410,7 @@ private fun PremiumPaymentDetailContent(
                 }
             }
             item {
-                SectionLabel("POURQUOI VÉRIFIER ?", Modifier.padding(top = 8.dp))
+                    SectionLabel(language.ui("POURQUOI VÉRIFIER ?"), Modifier.padding(top = 8.dp))
                 Spacer(Modifier.height(12.dp))
                 LiquidGlassCard(
                     modifier = Modifier.fillMaxWidth(),
@@ -416,7 +421,7 @@ private fun PremiumPaymentDetailContent(
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Box(Modifier.padding(top = 8.dp).size(6.dp).background(PremiumColors.Warning, RoundedCornerShape(PremiumRadius.Pill)))
                                 Text(
-                                    text = it,
+                                    text = language.ui(it),
                                     color = PremiumColors.SoftText,
                                     fontSize = PremiumType.Body,
                                     fontWeight = FontWeight.SemiBold,
@@ -429,7 +434,7 @@ private fun PremiumPaymentDetailContent(
             }
             if (state.timeline.isNotEmpty()) {
                 item {
-                    SectionLabel("PARCOURS DU PAIEMENT", Modifier.padding(top = 8.dp))
+                    SectionLabel(language.ui("PARCOURS DU PAIEMENT"), Modifier.padding(top = 8.dp))
                     Spacer(Modifier.height(12.dp))
                     LiquidGlassCard(
                         modifier = Modifier.fillMaxWidth(),
@@ -455,7 +460,7 @@ private fun PremiumPaymentDetailContent(
                                         )
                                     }
                                     Text(
-                                        text = label,
+                                        text = language.ui(label),
                                         color = PremiumColors.Ink,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold
@@ -468,20 +473,20 @@ private fun PremiumPaymentDetailContent(
             }
             if (state.actionMessage.isNotBlank()) {
                 item {
-                    StatusChip(state.actionMessage, StatusTone.Info, Modifier.fillMaxWidth())
+                    StatusChip(language.ui(state.actionMessage), StatusTone.Info, Modifier.fillMaxWidth())
                 }
             }
             if (state.actionsEnabled) {
                 item {
                     Spacer(Modifier.height(8.dp))
                     PremiumPrimaryButton(
-                        text = "Confirmer reçu",
+                        text = language.ui("Confirmer reçu"),
                         modifier = Modifier.fillMaxWidth(),
                         onClick = onConfirmReceived
                     )
                     Spacer(Modifier.height(12.dp))
                     PremiumSecondaryButton(
-                        text = "Rejeter le signal",
+                        text = language.ui("Rejeter le signal"),
                         modifier = Modifier.fillMaxWidth(),
                         onClick = onRejectSignal
                     )
@@ -494,7 +499,7 @@ private fun PremiumPaymentDetailContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Annuler la commande",
+                            text = language.ui("Annuler la commande"),
                             color = PremiumColors.Danger,
                             fontWeight = FontWeight.Black,
                             fontSize = 15.sp,
@@ -510,7 +515,8 @@ private fun PremiumPaymentDetailContent(
 @Composable
 private fun PremiumPaymentDetailState(
     state: PremiumScreenState<PremiumPaymentDetailUiState>,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
     Column(
         Modifier
@@ -528,7 +534,7 @@ private fun PremiumPaymentDetailState(
             CircleAction(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
             Spacer(Modifier.width(16.dp))
             Text(
-                text = "Vérifier ce paiement",
+                text = language.ui("Vérifier ce paiement"),
                 modifier = Modifier.weight(1f),
                 color = PremiumColors.Ink,
                 fontSize = PremiumType.ScreenTitle,
@@ -539,7 +545,7 @@ private fun PremiumPaymentDetailState(
             contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            item { PremiumStatePanel(state) }
+        item { PremiumStatePanel(state.localized(language)) }
         }
     }
 }

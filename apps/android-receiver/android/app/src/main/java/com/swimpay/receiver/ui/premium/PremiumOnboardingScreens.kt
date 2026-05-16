@@ -119,6 +119,7 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
 fun PremiumOnboardingFlow(
     notificationAccessEnabled: Boolean,
     bankTargetsState: PremiumScreenState<PremiumBanksUiState> = PremiumScreenState.loading(),
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
     openNotificationSettings: () -> Unit,
     onDone: (PremiumOnboardingSessionState) -> Unit
 ) {
@@ -160,9 +161,10 @@ fun PremiumOnboardingFlow(
     }
 
     when (state.currentStep) {
-        PremiumOnboardingStep.WELCOME -> WelcomeStep { moveNext() }
+        PremiumOnboardingStep.WELCOME -> WelcomeStep(language) { moveNext() }
         PremiumOnboardingStep.NOTIFICATION_ACCESS -> NotificationAccessStep(
             notificationAccessEnabled = state.notificationAccessEnabled,
+            language = language,
             openNotificationSettings = openNotificationSettings,
             onBack = { state = state.goBack() },
             onNext = { if (state.canContinueFrom()) moveNext() }
@@ -170,6 +172,7 @@ fun PremiumOnboardingFlow(
         PremiumOnboardingStep.COMPATIBLE_BANK_SELECTION -> CompatibleBankSelectionStep(
             bankTargetsState = bankTargetsState,
             selectedBankIds = state.selectedBankIds,
+            language = language,
             onToggleBank = { state = state.toggleBank(it) },
             onBack = { state = state.goBack() },
             onNext = { if (state.canContinueFrom()) moveNext() }
@@ -178,6 +181,7 @@ fun PremiumOnboardingFlow(
             selectedBankDisplayName = state.selectedBankDisplayName(bankTargetsState),
             selectedBankIds = state.selectedBankIds,
             selectedMethod = state.receivingMethodDraft,
+            language = language,
             onSelectChoice = { state = state.withReceivingMethod(it) },
             onSave = {
                 val next = state.withReceivingMethod(it)
@@ -187,12 +191,14 @@ fun PremiumOnboardingFlow(
         )
         PremiumOnboardingStep.CONNECTED_SITE -> ConnectedSiteStep(
             skipped = state.skippedConnectedSite,
+            language = language,
             onBack = { state = state.goBack() },
             onConnectNow = { moveNext(state.connectSite()) },
             onSkip = { moveNext(state.skipConnectedSite()) }
         )
         PremiumOnboardingStep.CONFIGURATION_TEST -> ConfigurationTestStep(
             state = state,
+            language = language,
             onBack = { state = state.goBack() },
             onConnectSite = { state = state.goTo(PremiumOnboardingStep.CONNECTED_SITE).connectSite() },
             onRunTest = { moveNext(state.withConfigurationTestRan()) }
@@ -201,7 +207,7 @@ fun PremiumOnboardingFlow(
 }
 
 @Composable
-private fun WelcomeStep(onNext: () -> Unit) {
+private fun WelcomeStep(language: PremiumLanguageOption, onNext: () -> Unit) {
     Box(Modifier.fillMaxSize().statusBarsPadding()) {
         PremiumPaperBackground(Modifier.fillMaxSize())
         Column(
@@ -215,7 +221,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
             SwimPayLauncherBadge(size = 76.dp)
             Spacer(Modifier.height(26.dp))
             Text(
-                "Recevez vos paiements plus facilement",
+                language.ui("Recevez vos paiements plus facilement"),
                 color = PremiumColors.Ink,
                 fontSize = PremiumType.Hero,
                 lineHeight = 34.sp,
@@ -223,7 +229,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
                 textAlign = TextAlign.Center
             )
             Text(
-                "SwimPay détecte les paiements reçus, vous aide à les confirmer et prévient votre site ou votre application.",
+                language.ui("SwimPay détecte les paiements reçus, vous aide à les confirmer et prévient votre site ou votre application."),
                 color = PremiumColors.Muted,
                 fontSize = PremiumType.Body,
                 fontWeight = FontWeight.SemiBold,
@@ -232,9 +238,9 @@ private fun WelcomeStep(onNext: () -> Unit) {
                 modifier = Modifier.padding(top = 14.dp)
             )
             Spacer(Modifier.height(28.dp))
-            BenefitRow(Icons.Default.Bolt, "Détection rapide", "Repérez plus vite les paiements reçus.")
-            BenefitRow(Icons.Default.CheckCircle, "Confirmation simple", "Confirmez ou rejetez en quelques secondes.")
-            BenefitRow(Icons.Default.Link, "Business connecté", "Votre site ou application reçoit la mise à jour.")
+            BenefitRow(Icons.Default.Bolt, language.ui("Détection rapide"), language.ui("Repérez plus vite les paiements reçus."))
+            BenefitRow(Icons.Default.CheckCircle, language.ui("Confirmation simple"), language.ui("Confirmez ou rejetez en quelques secondes."))
+            BenefitRow(Icons.Default.Link, language.ui("Business connecté"), language.ui("Votre site ou application reçoit la mise à jour."))
         }
         Box(
             Modifier
@@ -243,7 +249,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
                 .background(PremiumColors.Background.copy(alpha = 0.92f))
                 .padding(horizontal = PremiumSpacing.ScreenHorizontalWide, vertical = 18.dp)
         ) {
-            PremiumPrimaryButton("Commencer", onClick = onNext)
+            PremiumPrimaryButton(language.ui("Commencer"), onClick = onNext)
         }
     }
 }
@@ -251,14 +257,15 @@ private fun WelcomeStep(onNext: () -> Unit) {
 @Composable
 private fun NotificationAccessStep(
     notificationAccessEnabled: Boolean,
+    language: PremiumLanguageOption,
     openNotificationSettings: () -> Unit,
     onBack: () -> Unit,
     onNext: () -> Unit
 ) {
-    OnboardingShell("Accès notifications", PremiumOnboardingStep.NOTIFICATION_ACCESS, onBack) {
+    OnboardingShell(language.ui("Accès notifications"), PremiumOnboardingStep.NOTIFICATION_ACCESS, onBack) {
         PremiumTitle(
-            "Connectez votre téléphone",
-            "SwimPay a besoin d’accéder aux notifications de cet appareil pour fonctionner."
+            language.ui("Connectez votre téléphone"),
+            language.ui("SwimPay a besoin d'accéder aux notifications de cet appareil pour fonctionner.")
         )
         LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
             Row(
@@ -274,16 +281,16 @@ private fun NotificationAccessStep(
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (notificationAccessEnabled) "Activé" else "Accès nécessaire",
+                        if (notificationAccessEnabled) language.ui("Activé") else language.ui("Accès nécessaire"),
                         color = if (notificationAccessEnabled) PremiumColors.Success else PremiumColors.Ink,
                         fontSize = PremiumType.ScreenTitle,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         if (notificationAccessEnabled) {
-                            "L’accès notifications est activé."
+                            language.ui("L'accès notifications est activé.")
                         } else {
-                            "Activez l’accès aux notifications pour détecter les paiements reçus."
+                            language.ui("Activez l'accès aux notifications pour détecter les paiements reçus.")
                         },
                         color = PremiumColors.Muted,
                         fontSize = PremiumType.Body,
@@ -294,10 +301,10 @@ private fun NotificationAccessStep(
             }
         }
         Spacer(Modifier.height(22.dp))
-        NoticeRow(Icons.Default.Security, "SwimPay ne lit pas vos SMS et ne contrôle pas votre banque.")
+        NoticeRow(Icons.Default.Security, language.ui("SwimPay ne lit pas vos SMS et ne contrôle pas votre banque."))
         Spacer(Modifier.height(22.dp))
         PremiumPrimaryButton(
-            if (notificationAccessEnabled) "Continuer" else "Activer l’accès",
+            if (notificationAccessEnabled) language.ui("Continuer") else language.ui("Activer l'accès"),
             onClick = if (notificationAccessEnabled) onNext else openNotificationSettings
         )
     }
@@ -307,28 +314,31 @@ private fun NotificationAccessStep(
 private fun CompatibleBankSelectionStep(
     bankTargetsState: PremiumScreenState<PremiumBanksUiState>,
     selectedBankIds: Set<String>,
+    language: PremiumLanguageOption,
     onToggleBank: (String) -> Unit,
     onBack: () -> Unit,
     onNext: () -> Unit
 ) {
-    OnboardingShell("Banques", PremiumOnboardingStep.COMPATIBLE_BANK_SELECTION, onBack) {
+    OnboardingShell(language.ui("Banques"), PremiumOnboardingStep.COMPATIBLE_BANK_SELECTION, onBack) {
         PremiumTitle(
-            "Choisissez vos banques",
-            "SwimPay recherche uniquement les banques compatibles."
+            language.ui("Choisissez vos banques"),
+            language.ui("SwimPay recherche uniquement les banques compatibles.")
         )
         BankSearchStatusCard(
             bankTargetsState = bankTargetsState,
-            selectedCount = selectedBankIds.size
+            selectedCount = selectedBankIds.size,
+            language = language
         )
         Spacer(Modifier.height(16.dp))
         BankRows(
             bankTargetsState = bankTargetsState,
             selectable = true,
             selectedBankIds = selectedBankIds,
+            language = language,
             onToggleBank = onToggleBank
         )
         Spacer(Modifier.height(18.dp))
-        PremiumPrimaryButton("Activer ces banques", onClick = onNext, enabled = selectedBankIds.isNotEmpty())
+        PremiumPrimaryButton(language.ui("Activer ces banques"), onClick = onNext, enabled = selectedBankIds.isNotEmpty())
     }
 }
 
@@ -337,6 +347,7 @@ private fun ReceivingMethodDetailsStep(
     selectedBankDisplayName: String,
     selectedBankIds: Set<String>,
     selectedMethod: PremiumReceivingMethodDraft?,
+    language: PremiumLanguageOption,
     onSelectChoice: (PremiumReceivingMethodDraft) -> Unit,
     onSave: (MerchantReceivingMethodSubmission) -> Unit,
     onBack: () -> Unit
@@ -356,15 +367,15 @@ private fun ReceivingMethodDetailsStep(
     }
     var identifierInput by remember { mutableStateOf("") }
 
-    OnboardingShell("Moyen de réception", PremiumOnboardingStep.RECEIVING_METHOD, onBack) {
+    OnboardingShell(language.ui("Moyen de réception"), PremiumOnboardingStep.RECEIVING_METHOD, onBack) {
         PremiumTitle(
-            "Ajoutez votre moyen de réception",
-            "Vos clients utiliseront ces informations pour vous payer sur $selectedBankDisplayName."
+            language.ui("Ajoutez votre moyen de réception"),
+            language.ui("Vos clients utiliseront ces informations pour vous payer sur {bank}.").replace("{bank}", selectedBankDisplayName)
         )
         ReceivingMethodOption(
             icon = Icons.Default.ShoppingCart,
-            title = "Carte bancaire",
-            subtitle = "Recevez les paiements sur votre carte.",
+            title = language.ui("Carte bancaire"),
+            subtitle = language.ui("Recevez les paiements sur votre carte."),
             selected = methodType == ReceivingMethodType.CARD_TRANSFER,
             onClick = {
                 methodType = ReceivingMethodType.CARD_TRANSFER
@@ -373,8 +384,8 @@ private fun ReceivingMethodDetailsStep(
         )
         ReceivingMethodOption(
             icon = Icons.Default.PhoneAndroid,
-            title = "Numéro de téléphone",
-            subtitle = "Pratique pour les virements via SBP.",
+            title = language.ui("Numéro de téléphone"),
+            subtitle = language.ui("Pratique pour les virements via SBP."),
             selected = methodType == ReceivingMethodType.PHONE_TRANSFER,
             onClick = {
                 methodType = ReceivingMethodType.PHONE_TRANSFER
@@ -382,7 +393,7 @@ private fun ReceivingMethodDetailsStep(
             }
         )
         Spacer(Modifier.height(6.dp))
-        Text("Choisir la banque", color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
+        Text(language.ui("Choisir la banque"), color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(10.dp))
         bankOptions.forEach { bank ->
             val selected = bank.bankProfileId == selectedBankId
@@ -412,15 +423,15 @@ private fun ReceivingMethodDetailsStep(
         OutlinedTextField(
             value = identifierInput,
             onValueChange = { identifierInput = it },
-            label = { Text("Identifiant utilisé seulement pour l'enregistrement") },
-            placeholder = { Text(if (methodType == ReceivingMethodType.CARD_TRANSFER) "Numéro de carte" else "Numéro de téléphone") },
+            label = { Text(language.ui("Identifiant utilisé seulement pour l'enregistrement")) },
+            placeholder = { Text(if (methodType == ReceivingMethodType.CARD_TRANSFER) language.ui("Numéro de carte") else language.ui("Numéro de téléphone")) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(18.dp)
         )
         Spacer(Modifier.height(18.dp))
         PremiumPrimaryButton(
-            "Enregistrer et continuer",
+            language.ui("Enregistrer et continuer"),
             enabled = identifierInput.isNotBlank(),
             onClick = {
                 onSave(
@@ -432,38 +443,6 @@ private fun ReceivingMethodDetailsStep(
                 )
             }
         )
-    }
-}
-
-@Composable
-private fun ReceivingMethodStep(
-    selectedBankDisplayName: String,
-    selectedMethod: PremiumReceivingMethodDraft?,
-    onSelect: (PremiumReceivingMethodDraft) -> Unit,
-    onBack: () -> Unit,
-    onNext: () -> Unit
-) {
-    OnboardingShell("Moyen de réception", PremiumOnboardingStep.RECEIVING_METHOD, onBack) {
-        PremiumTitle(
-            "Ajoutez votre moyen de réception",
-            "Vos clients utiliseront ces informations pour vous payer sur $selectedBankDisplayName."
-        )
-        ReceivingMethodOption(
-            icon = Icons.Default.ShoppingCart,
-            title = "Carte bancaire",
-            subtitle = "Recevez les paiements sur votre carte.",
-            selected = selectedMethod == PremiumReceivingMethodDraft.CARD_TRANSFER || selectedMethod == null,
-            onClick = { onSelect(PremiumReceivingMethodDraft.CARD_TRANSFER) }
-        )
-        ReceivingMethodOption(
-            icon = Icons.Default.PhoneAndroid,
-            title = "Numéro de téléphone",
-            subtitle = "Pratique pour les virements via SBP.",
-            selected = selectedMethod == PremiumReceivingMethodDraft.PHONE_TRANSFER,
-            onClick = { onSelect(PremiumReceivingMethodDraft.PHONE_TRANSFER) }
-        )
-        Spacer(Modifier.height(18.dp))
-        PremiumPrimaryButton("Ajouter", onClick = onNext)
     }
 }
 
@@ -482,14 +461,15 @@ private fun PremiumOnboardingSessionState.selectedBankDisplayName(
 @Composable
 private fun ConnectedSiteStep(
     skipped: Boolean,
+    language: PremiumLanguageOption,
     onBack: () -> Unit,
     onConnectNow: () -> Unit,
     onSkip: () -> Unit
 ) {
-    OnboardingShell("Site ou application", PremiumOnboardingStep.CONNECTED_SITE, onBack) {
+    OnboardingShell(language.ui("Site ou application"), PremiumOnboardingStep.CONNECTED_SITE, onBack) {
         PremiumTitle(
-            "Connectez votre site ou application",
-            "Recevez une mise à jour après votre validation manuelle."
+            language.ui("Connectez votre site ou application"),
+            language.ui("Recevez une mise à jour après votre validation manuelle.")
         )
         LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
             Row(
@@ -502,16 +482,16 @@ private fun ConnectedSiteStep(
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (skipped) "Configuration reportée" else "Prêt à ajouter",
+                        if (skipped) language.ui("Configuration reportée") else language.ui("Prêt à ajouter"),
                         color = PremiumColors.Ink,
                         fontSize = PremiumType.ScreenTitle,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         if (skipped) {
-                            "Vous entrez dans l’app maintenant. Le webhook pourra être ajouté plus tard."
+                            language.ui("Vous entrez dans l'app maintenant. Le webhook pourra être ajouté plus tard.")
                         } else {
-                            "Ajoutez un endpoint pour lancer ensuite un test webhook backend."
+                            language.ui("Ajoutez un endpoint pour lancer ensuite un test webhook backend.")
                         },
                         color = PremiumColors.Muted,
                         fontSize = PremiumType.Body,
@@ -522,32 +502,33 @@ private fun ConnectedSiteStep(
             }
         }
         Spacer(Modifier.height(22.dp))
-        PremiumPrimaryButton("Ajouter maintenant", onClick = onConnectNow)
+        PremiumPrimaryButton(language.ui("Ajouter maintenant"), onClick = onConnectNow)
         Spacer(Modifier.height(12.dp))
-        PremiumOutlineButton("Configurer plus tard", onClick = onSkip)
+        PremiumOutlineButton(language.ui("Configurer plus tard"), onClick = onSkip)
     }
 }
 
 @Composable
 private fun ConfigurationTestStep(
     state: PremiumOnboardingSessionState,
+    language: PremiumLanguageOption,
     onBack: () -> Unit,
     onConnectSite: () -> Unit,
     onRunTest: () -> Unit
 ) {
-    OnboardingShell("Test", PremiumOnboardingStep.CONFIGURATION_TEST, onBack) {
+    OnboardingShell(language.ui("Test"), PremiumOnboardingStep.CONFIGURATION_TEST, onBack) {
         PremiumTitle(
-            "Test webhook",
-            "Le test est déclenché par le backend vers votre endpoint. Android ne traite aucune notification réelle et ne confirme aucun paiement."
+            language.ui("Test webhook"),
+            language.ui("Le test est déclenché par le backend vers votre endpoint. Android ne traite aucune notification réelle et ne confirme aucun paiement.")
         )
-        ChecklistCard(state)
+        ChecklistCard(state, language)
         Spacer(Modifier.height(22.dp))
-        ResultCard(state)
+        ResultCard(state, language)
         Spacer(Modifier.height(18.dp))
         if (state.connectedSiteConfigured) {
-            PremiumPrimaryButton("Lancer le test webhook", onClick = onRunTest)
+            PremiumPrimaryButton(language.ui("Lancer le test webhook"), onClick = onRunTest)
         } else {
-            PremiumPrimaryButton("Ajouter maintenant", onClick = onConnectSite)
+            PremiumPrimaryButton(language.ui("Ajouter maintenant"), onClick = onConnectSite)
         }
     }
 }
@@ -637,33 +618,34 @@ private fun NoticeRow(icon: ImageVector, text: String) {
 @Composable
 private fun BankSearchStatusCard(
     bankTargetsState: PremiumScreenState<PremiumBanksUiState>,
-    selectedCount: Int
+    selectedCount: Int,
+    language: PremiumLanguageOption
 ) {
     val (title, body, icon, toneColor) = when (bankTargetsState) {
         is PremiumScreenState.Loading -> Quadruple(
-            "Recherche en cours",
-            "Les banques compatibles apparaissent ici sans parcourir toutes les applications.",
+            language.ui("Recherche en cours"),
+            language.ui("Les banques compatibles apparaissent ici sans parcourir toutes les applications."),
             Icons.Default.Bolt,
             PremiumColors.Cyan
         )
         is PremiumScreenState.Content -> {
             val detected = bankTargetsState.value.items.count { it.canActivate || it.enabled }
             Quadruple(
-                if (detected > 0) "Recherche terminée" else "Aucune banque détectée",
+                if (detected > 0) language.ui("Recherche terminée") else language.ui("Aucune banque détectée"),
                 if (selectedCount > 0) {
-                    "$selectedCount banque(s) activée(s)."
+                    language.ui("{count} banque(s) activée(s).").replace("{count}", selectedCount.toString())
                 } else if (detected > 0) {
-                    "Sélectionnez les banques détectées que vous utilisez."
+                    language.ui("Sélectionnez les banques détectées que vous utilisez.")
                 } else {
-                    "Vous pourrez configurer une banque compatible plus tard."
+                    language.ui("Vous pourrez configurer une banque compatible plus tard.")
                 },
                 Icons.Default.AccountBalance,
                 if (detected > 0) PremiumColors.Teal else PremiumColors.SoftText
             )
         }
         is PremiumScreenState.Empty -> Quadruple(
-            "Aucune banque détectée",
-            "Vous pourrez configurer une banque compatible plus tard.",
+            language.ui("Aucune banque détectée"),
+            language.ui("Vous pourrez configurer une banque compatible plus tard."),
             Icons.Default.AccountBalance,
             PremiumColors.SoftText
         )
@@ -675,8 +657,8 @@ private fun BankSearchStatusCard(
         )
         is PremiumScreenState.Error,
         is PremiumScreenState.Offline -> Quadruple(
-            "Recherche à relancer",
-            "Réessayez dans quelques instants.",
+            language.ui("Recherche à relancer"),
+            language.ui("Réessayez dans quelques instants."),
             Icons.Default.AccountBalance,
             PremiumColors.Warning
         )
@@ -711,6 +693,7 @@ private fun BankRows(
     bankTargetsState: PremiumScreenState<PremiumBanksUiState>,
     selectable: Boolean,
     selectedBankIds: Set<String>,
+    language: PremiumLanguageOption,
     onToggleBank: (String) -> Unit
 ) {
     when (bankTargetsState) {
@@ -720,15 +703,16 @@ private fun BankRows(
                     bank = bank,
                     selectable = selectable,
                     selected = bank.bankProfileId in selectedBankIds,
+                    language = language,
                     onToggleBank = onToggleBank
                 )
             }
         }
-        is PremiumScreenState.Loading -> OnboardingInfoCard("Recherche en cours", "Les banques compatibles apparaîtront ici.")
-        is PremiumScreenState.Empty -> OnboardingInfoCard("Aucune banque détectée", "Vous pourrez continuer et configurer une banque plus tard.")
+        is PremiumScreenState.Loading -> OnboardingInfoCard(language.ui("Recherche en cours"), language.ui("Les banques compatibles apparaîtront ici."))
+        is PremiumScreenState.Empty -> OnboardingInfoCard(language.ui("Aucune banque détectée"), language.ui("Vous pourrez continuer et configurer une banque plus tard."))
         is PremiumScreenState.ActionRequired -> OnboardingInfoCard(bankTargetsState.title, bankTargetsState.message)
         is PremiumScreenState.Error,
-        is PremiumScreenState.Offline -> OnboardingInfoCard("Recherche à relancer", "Réessayez dans quelques instants.")
+        is PremiumScreenState.Offline -> OnboardingInfoCard(language.ui("Recherche à relancer"), language.ui("Réessayez dans quelques instants."))
     }
 }
 
@@ -737,13 +721,14 @@ private fun BankRow(
     bank: PremiumBankUiItem,
     selectable: Boolean,
     selected: Boolean,
+    language: PremiumLanguageOption,
     onToggleBank: (String) -> Unit
 ) {
     val detected = bank.canActivate || bank.enabled
     val label = when {
-        selectable && selected -> "Activée"
-        detected -> "Détectée"
-        else -> "Non détectée"
+        selectable && selected -> language.ui("Activée")
+        detected -> language.ui("Détectée")
+        else -> language.ui("Non détectée")
     }
     LiquidGlassCard(
         Modifier
@@ -837,7 +822,7 @@ private fun SwimPayLauncherBadge(size: Dp) {
 }
 
 @Composable
-private fun ChecklistCard(state: PremiumOnboardingSessionState) {
+private fun ChecklistCard(state: PremiumOnboardingSessionState, language: PremiumLanguageOption) {
     LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             state.configurationChecklistLabels().forEach { label ->
@@ -845,7 +830,7 @@ private fun ChecklistCard(state: PremiumOnboardingSessionState) {
                     Box(Modifier.size(32.dp).background(PremiumColors.Mint, CircleShape), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Teal, modifier = Modifier.size(20.dp))
                     }
-                    Text(label, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
+                    Text(language.ui(label), color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -853,7 +838,7 @@ private fun ChecklistCard(state: PremiumOnboardingSessionState) {
 }
 
 @Composable
-private fun ResultCard(state: PremiumOnboardingSessionState) {
+private fun ResultCard(state: PremiumOnboardingSessionState, language: PremiumLanguageOption) {
     val ready = state.configurationTestReady
     LiquidGlassCard(
         Modifier.fillMaxWidth(),
@@ -862,16 +847,16 @@ private fun ResultCard(state: PremiumOnboardingSessionState) {
     ) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                if (ready) "Webhook prêt" else "Action nécessaire",
+                if (ready) language.ui("Webhook prêt") else language.ui("Action nécessaire"),
                 color = if (ready) PremiumColors.Success else PremiumColors.Warning,
                 fontSize = PremiumType.Body,
                 fontWeight = FontWeight.Black
             )
             Text(
                 if (ready) {
-                    "Le backend peut envoyer un événement de test vers votre endpoint configuré."
+                    language.ui("Le backend peut envoyer un événement de test vers votre endpoint configuré.")
                 } else {
-                    state.configurationResultLabels().filterNot { it == "Réussi" }.joinToString(" · ")
+                    state.configurationResultLabels().filterNot { it == "Réussi" }.joinToString(" · ") { language.ui(it) }
                 },
                 color = PremiumColors.Muted,
                 fontSize = PremiumType.Caption,

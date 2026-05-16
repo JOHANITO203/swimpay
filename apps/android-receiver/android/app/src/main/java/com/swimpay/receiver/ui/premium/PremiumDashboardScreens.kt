@@ -84,22 +84,25 @@ import com.swimpay.receiver.ReceivingMethodType
 fun PremiumDashboardScreen(
     state: PremiumScreenState<PremiumDashboardUiState> = PremiumScreenState.content(PremiumDashboardUiState.preview()),
     onOpenReviews: () -> Unit = {},
-    onOpenBusiness: () -> Unit = {}
+    onOpenBusiness: () -> Unit = {},
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
     when (state) {
         is PremiumScreenState.Content -> PremiumDashboardContent(
             state.value,
             onOpenReviews = onOpenReviews,
-            onOpenBusiness = onOpenBusiness
+            onOpenBusiness = onOpenBusiness,
+            language = language
         )
-        else -> PremiumStateList(state)
+        else -> PremiumStateList(state, language)
     }
 }
 @Composable
 private fun PremiumDashboardContent(
     state: PremiumDashboardUiState,
     onOpenReviews: () -> Unit,
-    onOpenBusiness: () -> Unit
+    onOpenBusiness: () -> Unit,
+    language: PremiumLanguageOption
 ) {
     LazyColumn(
         Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
@@ -107,12 +110,12 @@ private fun PremiumDashboardContent(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Text("Bonjour, Merchant", color = PremiumColors.Ink, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
-            Text("Welcome back", color = PremiumColors.Muted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+            Text(language.ui("Bonjour, Merchant"), color = PremiumColors.Ink, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
+            Text(language.ui("Welcome back"), color = PremiumColors.Muted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
         }
-        item { MonthlyActivityCard("Paiements reçus", state.monthlyAmount, state.usesLiveApi) }
+        item { MonthlyActivityCard(language.ui("Paiements reçus"), state.monthlyAmount, state.usesLiveApi, language) }
         item {
-            Text("Actions rapides", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
+            Text(language.ui("Actions rapides"), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
         }
         item {
             val homeMetrics = homeActionMetrics(state.metrics)
@@ -122,7 +125,7 @@ private fun PremiumDashboardContent(
                         row.forEach { metric ->
                             BentoMetricCard(
                                 metric.value,
-                                metric.label,
+                                language.ui(metric.label),
                                 metric.trend,
                                 metricIcon(metric.label),
                                 Modifier.weight(1f),
@@ -140,11 +143,11 @@ private fun PremiumDashboardContent(
             LiquidGlassCard(Modifier.fillMaxWidth().height(260.dp), radius = PremiumRadius.CardLarge) {
                 Column(Modifier.padding(24.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("ÉVOLUTION DES PAIEMENTS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 13.sp, letterSpacing = 1.sp)
+                        Text(language.ui("ÉVOLUTION DES PAIEMENTS"), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 13.sp, letterSpacing = 1.sp)
                     }
                     Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        ChartMetricPill("Montant", state.chartConfirmedAmountLabel, Modifier.weight(1f))
-                        ChartMetricPill("Taux", state.chartConfirmationRateLabel, Modifier.weight(1f))
+                        ChartMetricPill(language.ui("Montant"), state.chartConfirmedAmountLabel, Modifier.weight(1f))
+                        ChartMetricPill(language.ui("Taux"), state.chartConfirmationRateLabel, Modifier.weight(1f))
                     }
                     TrendLine(
                         modifier = Modifier.fillMaxWidth().height(120.dp).padding(top = 16.dp),
@@ -156,9 +159,9 @@ private fun PremiumDashboardContent(
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("HISTORIQUE DES PAIEMENTS", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 0.5.sp)
+                Text(language.ui("HISTORIQUE DES PAIEMENTS"), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 0.5.sp)
                 Text(
-                    "Voir tout",
+                    language.ui("Voir tout"),
                     color = PremiumColors.Blue,
                     fontWeight = FontWeight.Black,
                     fontSize = 13.sp,
@@ -170,8 +173,8 @@ private fun PremiumDashboardContent(
             item {
                 PremiumStatePanel(
                     PremiumScreenState.empty<Unit>(
-                        title = state.emptyPaymentsTitle,
-                        message = "Les paiements reconnus par SwimPay apparaîtront ici.",
+                        title = language.ui(state.emptyPaymentsTitle),
+                        message = language.ui("Les paiements reconnus par SwimPay apparaîtront ici."),
                         actionLabel = null
                     )
                 )
@@ -217,32 +220,32 @@ private fun LocalSystemCard(state: PremiumLocalSystemUiState, modifier: Modifier
 }
 
 @Composable
-private fun PremiumStateList(state: PremiumScreenState<*>) {
+private fun PremiumStateList(state: PremiumScreenState<*>, language: PremiumLanguageOption = PremiumLanguageOption.FR) {
     LazyColumn(
         Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(bottom = 22.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        item { PremiumStatePanel(state) }
+        item { PremiumStatePanel(state.localized(language)) }
     }
 }
 
 @Composable
-private fun MonthlyActivityCard(label: String, amount: String, usesLiveApi: Boolean) {
+private fun MonthlyActivityCard(label: String, amount: String, usesLiveApi: Boolean, language: PremiumLanguageOption) {
     PremiumGradientPanel(Modifier.fillMaxWidth().height(214.dp), radius = PremiumRadius.CardLarge) {
         Column(Modifier.padding(26.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Box(Modifier.size(46.dp).background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(25.dp))
                 }
-                Text("Aujourd'hui", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black, fontSize = PremiumType.Caption)
+                Text(language.ui("Aujourd'hui"), color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black, fontSize = PremiumType.Caption)
             }
             Spacer(Modifier.height(24.dp))
             Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 15.sp, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(6.dp))
             Text(amount, color = Color.White, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(18.dp))
-            StatusChip(if (usesLiveApi) "Live" else "En attente", if (usesLiveApi) StatusTone.Success else StatusTone.Neutral)
+            StatusChip(language.ui(if (usesLiveApi) "Live" else "En attente"), if (usesLiveApi) StatusTone.Success else StatusTone.Neutral)
         }
     }
 }
@@ -320,18 +323,20 @@ fun PremiumOrdersScreen(
         "Aucune commande",
         "Les commandes synchronisées apparaîtront ici."
     ),
-    onOpenReviews: () -> Unit = {}
+    onOpenReviews: () -> Unit = {},
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
     when (state) {
-        is PremiumScreenState.Content -> PremiumOrdersContent(state.value, onOpenReviews)
-        else -> PremiumStateList(state)
+        is PremiumScreenState.Content -> PremiumOrdersContent(state.value, onOpenReviews, language)
+        else -> PremiumStateList(state, language)
     }
 }
 
 @Composable
 private fun PremiumOrdersContent(
     state: PremiumOrdersUiState,
-    onOpenReviews: () -> Unit
+    onOpenReviews: () -> Unit,
+    language: PremiumLanguageOption
 ) {
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
@@ -339,33 +344,33 @@ private fun PremiumOrdersContent(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Text("Ventes confirmées", color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
-            Text("Suivez les commandes reliées aux paiements confirmés.", color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+            Text(language.ui("Ventes confirmées"), color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
+            Text(language.ui("Suivez les commandes reliées aux paiements confirmés."), color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             Spacer(Modifier.height(24.dp))
-            BusinessAreaChartCard(state)
+            BusinessAreaChartCard(state, language)
             Spacer(Modifier.height(12.dp))
-            SalesMetricCard(state.confirmedSalesCount, "VENTES CONFIRMÉES", Icons.Default.CheckCircle)
+            SalesMetricCard(state.confirmedSalesCount, language.ui("VENTES CONFIRMÉES"), Icons.Default.CheckCircle)
             Spacer(Modifier.height(12.dp))
-            SalesMetricCard(state.confirmedAmount, "MONTANT CONFIRMÉ", Icons.Default.ShoppingCart)
+            SalesMetricCard(state.confirmedAmount, language.ui("MONTANT CONFIRMÉ"), Icons.Default.ShoppingCart)
             Spacer(Modifier.height(12.dp))
-            SalesMetricCard(state.failedCount, "ÉCHECS", Icons.Default.Security)
+            SalesMetricCard(state.failedCount, language.ui("ÉCHECS"), Icons.Default.Security)
             Spacer(Modifier.height(12.dp))
-            SalesMetricCard(state.confirmationRate, "TAUX DE CONFIRMATION", Icons.Default.Visibility)
+            SalesMetricCard(state.confirmationRate, language.ui("TAUX DE CONFIRMATION"), Icons.Default.Visibility)
         }
         items(state.rows) { row ->
-            OrderCard(row.orderId, row.amount, row.status, row.helper)
+            OrderCard(row.orderId, row.amount, language.ui(row.status), language.ui(row.helper))
         }
         if (state.rows.isEmpty()) {
             item {
                 PremiumStatePanel(
                     PremiumScreenState.empty<Unit>(
-                        title = state.emptyTitle,
-                        message = state.emptyMessage,
+                        title = language.ui(state.emptyTitle),
+                        message = language.ui(state.emptyMessage),
                         actionLabel = null
                     )
                 )
                 Text(
-                    state.secondaryActionLabel,
+                    language.ui(state.secondaryActionLabel),
                     color = PremiumColors.Blue,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Black,
@@ -379,14 +384,14 @@ private fun PremiumOrdersContent(
 }
 
 @Composable
-private fun BusinessAreaChartCard(state: PremiumOrdersUiState) {
+private fun BusinessAreaChartCard(state: PremiumOrdersUiState, language: PremiumLanguageOption) {
     val chartValues = state.rows.map { parseAmountForChart(it.amount) }.filter { it > 0f }
     LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Activité business", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                    Text("Paiements confirmés sur la période", color = PremiumColors.Muted, fontSize = PremiumType.Micro, fontWeight = FontWeight.SemiBold)
+                    Text(language.ui("Activité business"), color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    Text(language.ui("Paiements confirmés sur la période"), color = PremiumColors.Muted, fontSize = PremiumType.Micro, fontWeight = FontWeight.SemiBold)
                 }
                 StatusChip(state.confirmationRate, StatusTone.Success)
             }
@@ -401,7 +406,7 @@ private fun BusinessAreaChartCard(state: PremiumOrdersUiState) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.AutoMirrored.Filled.TrendingUp, null, tint = PremiumColors.SoftText, modifier = Modifier.size(28.dp))
-                    Text("Les courbes apparaîtront après vos premières ventes confirmées.", color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 12.dp))
+                    Text(language.ui("Les courbes apparaîtront après vos premières ventes confirmées."), color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 12.dp))
                 }
             } else {
                 TrendLine(
@@ -415,8 +420,8 @@ private fun BusinessAreaChartCard(state: PremiumOrdersUiState) {
                 )
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ChartMetricPill("Confirmé", state.confirmedAmount, Modifier.weight(1f))
-                ChartMetricPill("Ventes", state.confirmedSalesCount, Modifier.weight(1f))
+                ChartMetricPill(language.ui("Confirmé"), state.confirmedAmount, Modifier.weight(1f))
+                ChartMetricPill(language.ui("Ventes"), state.confirmedSalesCount, Modifier.weight(1f))
             }
         }
     }
@@ -638,7 +643,8 @@ fun PremiumReceivingMethodsStateScreen(
     onReplaceMethod: (String, MerchantReceivingMethodSubmission) -> Unit = { _, _ -> },
     onDisableMethod: (String) -> Unit = {},
     onSetDefaultMethod: (String) -> Unit = {},
-    onDeleteMethod: (String) -> Unit = {}
+    onDeleteMethod: (String) -> Unit = {},
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
     when (state) {
         is PremiumScreenState.Content -> {
@@ -665,9 +671,9 @@ fun PremiumReceivingMethodsStateScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
-                    Text("Moyens de réception", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    Text("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
-                    Text("Les informations complètes ne sont jamais envoyées dans les webhooks.", color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+                    Text(language.ui("Moyens de réception"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text(language.ui("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+                    Text(language.ui("Les informations complètes ne sont jamais envoyées dans les webhooks."), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
                 }
                 actionMessage?.takeIf { it.isNotBlank() }?.let { message ->
                     item { ReceivingMethodFeedbackBanner(message) }
@@ -694,14 +700,14 @@ fun PremiumReceivingMethodsStateScreen(
                 item {
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         ReceivingMethodActionButton(
-                            label = "Ajouter une carte",
-                            helper = "Carte bancaire associée à votre banque",
+                            label = language.ui("Ajouter une carte"),
+                            helper = language.ui("Carte bancaire associée à votre banque"),
                             icon = Icons.Default.CreditCard,
                             onClick = { draftType = ReceivingMethodType.CARD_TRANSFER }
                         )
                         ReceivingMethodActionButton(
-                            label = "Ajouter un téléphone SBP",
-                            helper = "Numéro de téléphone associé à une banque",
+                            label = language.ui("Ajouter téléphone SBP"),
+                            helper = language.ui("Numéro de téléphone associé à une banque"),
                             sbpIcon = true,
                             onClick = { draftType = ReceivingMethodType.PHONE_TRANSFER }
                         )
@@ -712,8 +718,8 @@ fun PremiumReceivingMethodsStateScreen(
                         PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumColors.Surface) {
                             Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                                 val isCardDraft = draftType == ReceivingMethodType.CARD_TRANSFER
-                                Text(if (isCardDraft) "Nouvelle carte" else "Nouveau téléphone SBP", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                                Text("Choisir la banque", color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
+                                Text(language.ui(if (isCardDraft) "Nouvelle carte" else "Nouveau téléphone SBP"), color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                                Text(language.ui("Choisir la banque"), color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
                                 bankOptions.forEach { bank ->
                                     ReceivingMethodBankChoiceRow(
                                         bank = bank,
@@ -724,19 +730,19 @@ fun PremiumReceivingMethodsStateScreen(
                                 OutlinedTextField(
                                     value = identifierInput,
                                     onValueChange = { identifierInput = it },
-                                    label = { Text(if (isCardDraft) "Numéro de carte" else "Numéro de téléphone") },
+                                    label = { Text(language.ui(if (isCardDraft) "Numéro de carte" else "Numéro de téléphone")) },
                                     placeholder = { Text(if (isCardDraft) "Ex. 4276 **** 5421" else "Ex. +7 *** *** ** 21") },
                                     modifier = Modifier.fillMaxWidth(),
                                     singleLine = true,
                                     shape = RoundedCornerShape(18.dp)
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                                    PremiumOutlineButton("Annuler", modifier = Modifier.weight(1f)) {
+                                    PremiumOutlineButton(language.ui("Annuler"), modifier = Modifier.weight(1f)) {
                                         draftType = null
                                         identifierInput = ""
                                     }
                                     PremiumPrimaryButton(
-                                        if (isCardDraft) "Enregistrer la carte" else "Enregistrer",
+                                        language.ui(if (isCardDraft) "Enregistrer la carte" else "Enregistrer"),
                                         modifier = Modifier.weight(1f),
                                         enabled = identifierInput.isNotBlank(),
                                         onClick = {
@@ -762,9 +768,9 @@ fun PremiumReceivingMethodsStateScreen(
                                 } else {
                                     ReceivingMethodType.CARD_TRANSFER
                                 }
-                                Text("Modifier la destination", color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                                Text(language.ui("Modifier la destination"), color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
                                 Text(
-                                    "Entrez la nouvelle ${if (editType == ReceivingMethodType.CARD_TRANSFER) "carte" else "destination SBP"}. L'ancienne sera remplacée après enregistrement.",
+                                    language.ui(if (editType == ReceivingMethodType.CARD_TRANSFER) "Entrez la nouvelle carte. L'ancienne sera remplacée après enregistrement." else "Entrez la nouvelle destination SBP. L'ancienne sera remplacée après enregistrement."),
                                     color = PremiumColors.Muted,
                                     fontSize = 12.sp,
                                     lineHeight = 18.sp,
@@ -780,7 +786,7 @@ fun PremiumReceivingMethodsStateScreen(
                                 OutlinedTextField(
                                     value = editLabel,
                                     onValueChange = { editLabel = it },
-                                    label = { Text("Libellé affiché") },
+                                    label = { Text(language.ui("Libellé affiché")) },
                                     modifier = Modifier.fillMaxWidth(),
                                     singleLine = true,
                                     shape = RoundedCornerShape(18.dp)
@@ -788,20 +794,20 @@ fun PremiumReceivingMethodsStateScreen(
                                 OutlinedTextField(
                                     value = editIdentifierInput,
                                     onValueChange = { editIdentifierInput = it },
-                                    label = { Text(if (editType == ReceivingMethodType.CARD_TRANSFER) "Nouveau numéro de carte" else "Nouveau numéro de téléphone") },
+                                    label = { Text(language.ui(if (editType == ReceivingMethodType.CARD_TRANSFER) "Nouveau numéro de carte" else "Nouveau numéro de téléphone")) },
                                     placeholder = { Text(if (editType == ReceivingMethodType.CARD_TRANSFER) "Ex. 4276 **** 5421" else "Ex. +7 *** *** ** 21") },
                                     modifier = Modifier.fillMaxWidth(),
                                     singleLine = true,
                                     shape = RoundedCornerShape(18.dp)
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                                    PremiumOutlineButton("Annuler", modifier = Modifier.weight(1f)) {
+                                    PremiumOutlineButton(language.ui("Annuler"), modifier = Modifier.weight(1f)) {
                                         editingMethod = null
                                         editLabel = ""
                                         editIdentifierInput = ""
                                     }
                                     PremiumPrimaryButton(
-                                        "Enregistrer",
+                                        language.ui("Enregistrer"),
                                         modifier = Modifier.weight(1f),
                                         enabled = editLabel.isNotBlank() && editIdentifierInput.isNotBlank()
                                     ) {
@@ -819,7 +825,7 @@ fun PremiumReceivingMethodsStateScreen(
                 }
                 if (state.value.items.isEmpty()) {
                     item {
-                        PremiumStatePanel(PremiumScreenState.empty<Unit>("Aucun moyen de réception", "Ajoutez une carte ou un téléphone SBP pour commencer."))
+                        PremiumStatePanel(PremiumScreenState.empty<Unit>(language.ui("Aucun moyen de réception"), language.ui("Ajoutez une carte ou un téléphone SBP pour commencer.")))
                     }
                 }
                 items(state.value.items) { method ->
@@ -833,12 +839,13 @@ fun PremiumReceivingMethodsStateScreen(
                         },
                         onDisable = { onDisableMethod(method.routeId) },
                         onSetDefault = { onSetDefaultMethod(method.routeId) },
-                        onDelete = { onDeleteMethod(method.routeId) }
+                        onDelete = { onDeleteMethod(method.routeId) },
+                        language = language
                     )
                 }
             }
         }
-        else -> PremiumStateList(state)
+        else -> PremiumStateList(state, language)
     }
 }
 
@@ -1091,7 +1098,8 @@ private fun PremiumReceivingMethodRow(
     onEdit: () -> Unit,
     onDisable: () -> Unit,
     onSetDefault: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
     var pendingConfirmation by remember(method.routeId) { mutableStateOf<String?>(null) }
     PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumColors.Surface) {
@@ -1104,7 +1112,7 @@ private fun PremiumReceivingMethodRow(
                 Column(Modifier.weight(1f).padding(start = if (bankProfileId != null) 14.dp else 0.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(method.title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp, lineHeight = 22.sp, modifier = Modifier.weight(1f))
-                        StatusChip(method.status, if (method.enabled) StatusTone.Success else StatusTone.Neutral)
+                        StatusChip(language.ui(method.status), if (method.enabled) StatusTone.Success else StatusTone.Neutral)
                     }
                     Text(method.subtitle, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 6.dp))
                     method.helper?.let {
@@ -1114,27 +1122,28 @@ private fun PremiumReceivingMethodRow(
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    ReceivingMethodMutationButton("Modifier", Icons.Default.Edit, Modifier.weight(1f), onEdit)
+                    ReceivingMethodMutationButton(language.ui("Modifier"), Icons.Default.Edit, Modifier.weight(1f), onEdit)
                     if (!method.recommended) {
-                        ReceivingMethodMutationButton("Définir", Icons.Default.Star, Modifier.weight(1f), onSetDefault)
+                        ReceivingMethodMutationButton(language.ui("Définir"), Icons.Default.Star, Modifier.weight(1f), onSetDefault)
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     if (method.enabled) {
-                        ReceivingMethodMutationButton("Désactiver", Icons.Default.Block, Modifier.weight(1f), onClick = {
+                        ReceivingMethodMutationButton(language.ui("Désactiver"), Icons.Default.Block, Modifier.weight(1f), onClick = {
                             pendingConfirmation = "disable"
                         })
                     }
-                    ReceivingMethodMutationButton("Supprimer", Icons.Default.Delete, Modifier.weight(1f), onClick = {
+                    ReceivingMethodMutationButton(language.ui("Supprimer"), Icons.Default.Delete, Modifier.weight(1f), onClick = {
                         pendingConfirmation = "delete"
                     }, destructive = true)
                 }
             }
             when (pendingConfirmation) {
                 "disable" -> ReceivingMethodConfirmPanel(
-                    title = "Désactiver ce moyen ?",
-                    body = "Il ne sera plus proposé pour les nouveaux paiements.",
-                    confirmLabel = "Désactiver",
+                    title = language.ui("Désactiver ce moyen ?"),
+                    body = language.ui("Il ne sera plus proposé pour les nouveaux paiements."),
+                    confirmLabel = language.ui("Désactiver"),
+                    cancelLabel = language.ui("Annuler"),
                     onCancel = { pendingConfirmation = null },
                     onConfirm = {
                         pendingConfirmation = null
@@ -1142,9 +1151,10 @@ private fun PremiumReceivingMethodRow(
                     }
                 )
                 "delete" -> ReceivingMethodConfirmPanel(
-                    title = "Supprimer ce moyen ?",
-                    body = "La destination masquée disparaîtra de cette liste.",
-                    confirmLabel = "Supprimer",
+                    title = language.ui("Supprimer ce moyen ?"),
+                    body = language.ui("La destination masquée disparaîtra de cette liste."),
+                    confirmLabel = language.ui("Supprimer"),
+                    cancelLabel = language.ui("Annuler"),
                     destructive = true,
                     onCancel = { pendingConfirmation = null },
                     onConfirm = {
@@ -1162,6 +1172,7 @@ private fun ReceivingMethodConfirmPanel(
     title: String,
     body: String,
     confirmLabel: String,
+    cancelLabel: String = "Annuler",
     destructive: Boolean = false,
     onCancel: () -> Unit,
     onConfirm: () -> Unit
@@ -1178,7 +1189,7 @@ private fun ReceivingMethodConfirmPanel(
         Text(title, color = PremiumColors.Ink, fontSize = 15.sp, lineHeight = 19.sp, fontWeight = FontWeight.Black)
         Text(body, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            ReceivingMethodMutationButton("Annuler", Icons.AutoMirrored.Filled.KeyboardArrowLeft, Modifier.weight(1f), onCancel)
+            ReceivingMethodMutationButton(cancelLabel, Icons.AutoMirrored.Filled.KeyboardArrowLeft, Modifier.weight(1f), onCancel)
             ReceivingMethodMutationButton(confirmLabel, if (destructive) Icons.Default.Delete else Icons.Default.Block, Modifier.weight(1f), onConfirm, destructive = destructive)
         }
     }
@@ -1321,6 +1332,7 @@ fun PremiumConfirmationModeScreen() {
 fun PremiumSecurityScreen(
     appLock: PremiumAppLockSettings = PremiumAppLockSettings(),
     googleAccountLinked: Boolean = false,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
     onToggleAppLock: (Boolean) -> Unit = {},
     onTimeoutSelected: (PremiumLockTimeout) -> Unit = {},
     onGoogleAccountLink: () -> Unit = {}
@@ -1331,10 +1343,10 @@ fun PremiumSecurityScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("Securite", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text("Liez Google pour retrouver le compte, puis protegez l\'acces a l\'app.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(language.ui("Sécurité"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Liez Google pour retrouver le compte, puis protégez l'accès à l'app."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
         }
-        item { GoogleAccountLinkRow(googleAccountLinked, onGoogleAccountLink) }
+        item { GoogleAccountLinkRow(googleAccountLinked, language, onGoogleAccountLink) }
         item {
             PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1342,8 +1354,8 @@ fun PremiumSecurityScreen(
                         Icon(Icons.Default.Security, null, tint = PremiumColors.Blue)
                     }
                     Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                        Text("Verrouillage de l\'app", color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
-                        Text("La securite du telephone protege uniquement l\'interface. Le Receiver continue en arriere-plan.", color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+                        Text(language.ui("Verrouillage de l'app"), color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+                        Text(language.ui("La sécurité du téléphone protège uniquement l'interface. Le Receiver continue en arrière-plan."), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
                     }
                     Switch(checked = appLock.enabled, onCheckedChange = onToggleAppLock)
                 }
@@ -1351,7 +1363,7 @@ fun PremiumSecurityScreen(
         }
         if (appLock.enabled) {
             items(PremiumLockTimeout.entries) { timeout ->
-                SettingsChoiceRow(Icons.Default.Security, timeout.labelFr, if (timeout == appLock.timeout) "Delai actif" else "Utiliser ce delai", timeout == appLock.timeout) {
+                SettingsChoiceRow(Icons.Default.Security, timeout.localizedLabel(language), if (timeout == appLock.timeout) language.ui("Délai actif") else language.ui("Utiliser ce délai"), timeout == appLock.timeout) {
                     onTimeoutSelected(timeout)
                 }
             }
@@ -1359,7 +1371,7 @@ fun PremiumSecurityScreen(
     }
 }
 @Composable
-private fun GoogleAccountLinkRow(linked: Boolean, onClick: () -> Unit) {
+private fun GoogleAccountLinkRow(linked: Boolean, language: PremiumLanguageOption, onClick: () -> Unit) {
     PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
         Row(
             Modifier.fillMaxWidth().premiumTap(onClick).padding(18.dp),
@@ -1369,10 +1381,10 @@ private fun GoogleAccountLinkRow(linked: Boolean, onClick: () -> Unit) {
                 PremiumGoogleIcon()
             }
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                Text(if (linked) "Compte Google lie" else "Lier le compte Google", color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
-                Text("Sauvegarde ce profil marchand pour une future reconnexion avec Google.", color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (linked) language.ui("Compte Google lié") else language.ui("Lier le compte Google"), color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+                Text(language.ui("Sauvegarde ce profil marchand pour une future reconnexion avec Google."), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
             }
-            StatusChip(if (linked) "Lie" else "Reconnexion", if (linked) StatusTone.Success else StatusTone.Info)
+            StatusChip(if (linked) language.ui("Lié") else language.ui("Reconnexion"), if (linked) StatusTone.Success else StatusTone.Info)
         }
     }
 }
@@ -1380,12 +1392,12 @@ private fun GoogleAccountLinkRow(linked: Boolean, onClick: () -> Unit) {
 @Composable
 fun PremiumHelpCenterScreen(language: PremiumLanguageOption = PremiumLanguageOption.FR) {
     val topics = listOf(
-        "Signaux de paiement" to "SwimPay lit uniquement les notifications bancaires autorisees, les filtre, les redacte et les envoie au backend.",
-        "Moyens de reception" to "Ajoutez une carte ou un telephone SBP marchand et associez-le a une banque compatible.",
-        "J'ai paye" to "Cette action arme le suivi cote commande. Elle ne confirme jamais un paiement.",
-        "Confirmation manuelle" to "Le marchand decide. Le webhook final part seulement apres confirmation manuelle.",
-        "Webhook" to "Les webhooks publics V1 restent limites au resultat final confirme, rejete ou expire.",
-        "Receiver hors ligne" to "Verifiez l'acces aux notifications, les banques activees et la connexion du telephone."
+        language.ui("Signaux de paiement") to language.ui("SwimPay lit uniquement les notifications bancaires autorisées, les filtre, les rédacte et les envoie au backend."),
+        language.ui("Moyens de réception") to language.ui("Ajoutez une carte ou un téléphone SBP marchand et associez-le à une banque compatible."),
+        language.ui("J'ai payé") to language.ui("Cette action arme le suivi côté commande. Elle ne confirme jamais un paiement."),
+        language.ui("Confirmation manuelle") to language.ui("Le marchand décide. Le webhook final part seulement après confirmation manuelle."),
+        language.ui("Webhook") to language.ui("Les webhooks publics V1 restent limités au résultat final confirmé, rejeté ou expiré."),
+        language.ui("Receiver hors ligne") to language.ui("Vérifiez l'accès aux notifications, les banques activées et la connexion du téléphone.")
     )
     var query by remember { mutableStateOf("") }
     val filtered = topics.filter { (title, body) ->
@@ -1397,12 +1409,12 @@ fun PremiumHelpCenterScreen(language: PremiumLanguageOption = PremiumLanguageOpt
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(if (language == PremiumLanguageOption.EN) "Help center" else "Centre d'aide", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text("Aide courte, sure et compatible avec la verite produit V1.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(language.ui("Centre d'aide"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Aide courte, sûre et compatible avec la vérité produit V1."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("Rechercher") },
+                label = { Text(language.ui("Rechercher")) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
             )
@@ -1416,13 +1428,14 @@ fun PremiumHelpCenterScreen(language: PremiumLanguageOption = PremiumLanguageOpt
             }
         }
         if (filtered.isEmpty()) {
-            item { PremiumStatePanel(PremiumScreenState.empty<Unit>("Aucun resultat", "Essayez un autre mot-cle.")) }
+            item { PremiumStatePanel(PremiumScreenState.empty<Unit>(language.ui("Aucun résultat"), language.ui("Essayez un autre mot-clé."))) }
         }
     }
 }
 
 @Composable
 fun PremiumContactSupportScreen(
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
     result: PremiumSupportTicketResult? = null,
     onSubmit: (PremiumSupportTicketDraft) -> Unit = {}
 ) {
@@ -1437,8 +1450,8 @@ fun PremiumContactSupportScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("Contacter le support", color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text("Envoyez une demande sans notification brute, secret, numero complet, PIN, CVV ou code SMS.", color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(language.ui("Contacter le support"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Envoyez une demande sans notification brute, secret, numéro complet, PIN, CVV ou code SMS."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         item {
             PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
@@ -1448,10 +1461,10 @@ fun PremiumContactSupportScreen(
                             category = item
                         }
                     }
-                    OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text("Sujet") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = message, onValueChange = { message = it }, label = { Text("Message") }, minLines = 4, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text(language.ui("Sujet")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = message, onValueChange = { message = it }, label = { Text(language.ui("Message")) }, minLines = 4, modifier = Modifier.fillMaxWidth())
                     validation?.let { Text(it, color = PremiumColors.Danger, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-                    PremiumPrimaryButton("Envoyer", enabled = validation == null, onClick = { onSubmit(draft) })
+                    PremiumPrimaryButton(language.ui("Envoyer"), enabled = validation == null, onClick = { onSubmit(draft) })
                 }
             }
         }
@@ -1459,7 +1472,7 @@ fun PremiumContactSupportScreen(
             item {
                 PremiumStatePanel(
                     if (it.status == "created") {
-                        PremiumScreenState.empty<Unit>("Demande envoyee", it.safeMessage)
+                        PremiumScreenState.empty<Unit>(language.ui("Demande envoyée"), it.safeMessage)
                     } else {
                         PremiumScreenState.actionRequired<Unit>("Support", it.safeMessage)
                     }
@@ -1570,16 +1583,45 @@ private fun themeModeIcon(mode: PremiumThemeMode): ImageVector = when (mode) {
 @Composable
 fun PremiumUnlockRequiredScreen(
     appLock: PremiumAppLockSettings,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
     onUnlock: () -> Unit
 ) {
     Box(Modifier.fillMaxSize().background(PremiumColors.Background).padding(28.dp), contentAlignment = Alignment.Center) {
         PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
             Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Icon(Icons.Default.Security, null, tint = PremiumColors.Blue, modifier = Modifier.size(36.dp))
-                Text("SwimPay verrouille", color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                Text("Delai: ${appLock.timeout.labelFr}. Le verrouillage protege uniquement l'interface de l'app.", color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 19.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                PremiumPrimaryButton("Deverrouiller", onClick = onUnlock)
+                Text(language.ui("SwimPay verrouille"), color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                Text(
+                    when (language) {
+                        PremiumLanguageOption.EN -> "Timeout: ${appLock.timeout.localizedLabel(language)}. The lock only protects the app interface."
+                        PremiumLanguageOption.RU -> "Тайм-аут: ${appLock.timeout.localizedLabel(language)}. Блокировка защищает только интерфейс приложения."
+                        PremiumLanguageOption.FR -> "Délai: ${appLock.timeout.labelFr}. Le verrouillage protège uniquement l'interface de l'app."
+                    },
+                    color = PremiumColors.Muted,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                PremiumPrimaryButton(language.ui("Déverrouiller"), onClick = onUnlock)
             }
+        }
+    }
+}
+
+private fun PremiumLockTimeout.localizedLabel(language: PremiumLanguageOption): String {
+    return when (language) {
+        PremiumLanguageOption.FR -> labelFr
+        PremiumLanguageOption.EN -> when (this) {
+            PremiumLockTimeout.IMMEDIATE -> "Immediately"
+            PremiumLockTimeout.ONE_MINUTE -> "After 1 min"
+            PremiumLockTimeout.FIVE_MINUTES -> "After 5 min"
+            PremiumLockTimeout.FIFTEEN_MINUTES -> "After 15 min"
+        }
+        PremiumLanguageOption.RU -> when (this) {
+            PremiumLockTimeout.IMMEDIATE -> "Сразу"
+            PremiumLockTimeout.ONE_MINUTE -> "Через 1 мин"
+            PremiumLockTimeout.FIVE_MINUTES -> "Через 5 мин"
+            PremiumLockTimeout.FIFTEEN_MINUTES -> "Через 15 мин"
         }
     }
 }

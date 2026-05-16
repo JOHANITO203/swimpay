@@ -50,8 +50,9 @@ fun PremiumAccountEntryScreen(
 ) {
     val copy = PremiumLocalizedCopy.forLanguage(language)
     PremiumAccountEntryFrame(language = language, onLanguageSelected = onLanguageSelected) {
-        SwimPayLogo(markSize = 56.dp)
-        Spacer(Modifier.height(26.dp))
+        Spacer(Modifier.height(122.dp))
+        SwimPayLogo(markSize = 82.dp)
+        Spacer(Modifier.height(30.dp))
         PremiumTitle(
             title = copy.welcomeTitle,
             body = copy.welcomeBody,
@@ -309,7 +310,9 @@ private fun PremiumAccountChoiceRowBase(
             PremiumAccountChoiceRowContent(title, description, iconContent)
         }
     } else {
-        PremiumAccountChoiceRowContent(title, description, iconContent)
+        Box(modifier) {
+            PremiumAccountChoiceRowContent(title, description, iconContent)
+        }
     }
 }
 

@@ -6,7 +6,9 @@ import com.swimpay.receiver.ui.premium.PremiumColors
 import com.swimpay.receiver.ui.premium.PremiumLanguageOption
 import com.swimpay.receiver.ui.premium.PremiumLocalizedCopy
 import com.swimpay.receiver.ui.premium.PremiumLockTimeout
+import com.swimpay.receiver.ui.premium.PremiumMainTab
 import com.swimpay.receiver.ui.premium.PremiumThemeMode
+import com.swimpay.receiver.ui.premium.mainTabLabel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -66,5 +68,35 @@ class PremiumMerchantSettingsStateTest {
         assertEquals("Language", english.language)
         assertEquals("Язык", russian.language)
         assertNotEquals(french.terminalTitle, english.terminalTitle)
+    }
+
+    @Test
+    fun localizedCopyUsesCleanUtf8ForFrenchEnglishAndCyrillicRussian() {
+        val copies = listOf(
+            PremiumLocalizedCopy.forLanguage(PremiumLanguageOption.FR),
+            PremiumLocalizedCopy.forLanguage(PremiumLanguageOption.EN),
+            PremiumLocalizedCopy.forLanguage(PremiumLanguageOption.RU)
+        )
+        val visibleText = copies.flatMap {
+            listOf(
+                it.welcomeTitle,
+                it.welcomeBody,
+                it.createAccount,
+                it.signIn,
+                it.receivingMethods,
+                it.security,
+                it.appearance,
+                it.language,
+                it.signOut
+            )
+        }.joinToString("\n")
+
+        listOf("�", "Ã", "Ð", "Ñ", "â", "Â").forEach { forbidden ->
+            assertFalse("localized copy contains mojibake marker $forbidden", visibleText.contains(forbidden))
+        }
+        assertTrue("Russian copy must use Cyrillic alphabet", PremiumLocalizedCopy.forLanguage(PremiumLanguageOption.RU).language.contains("Я"))
+        assertEquals("Réglages", PremiumLanguageOption.FR.mainTabLabel(PremiumMainTab.Settings))
+        assertEquals("Settings", PremiumLanguageOption.EN.mainTabLabel(PremiumMainTab.Settings))
+        assertEquals("Настройки", PremiumLanguageOption.RU.mainTabLabel(PremiumMainTab.Settings))
     }
 }

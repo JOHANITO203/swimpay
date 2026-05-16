@@ -199,10 +199,10 @@ data class PremiumSupportTicketDraft(
 ) {
     fun validationError(): String? {
         if (subject.trim().length < 3) return "Ajoutez un sujet lisible."
-        if (message.trim().length < 12) return "Ajoutez quelques details sans secret ni donnee brute."
+        if (message.trim().length < 12) return "Ajoutez quelques détails sans secret ni donnée brute."
         val combined = "${subject}\n$message"
         return if (SupportSafety.forbiddenContentDetected(combined)) {
-            "Retirez les secrets, numeros complets ou texte brut de notification."
+            "Retirez les secrets, numéros complets ou texte brut de notification."
         } else {
             null
         }

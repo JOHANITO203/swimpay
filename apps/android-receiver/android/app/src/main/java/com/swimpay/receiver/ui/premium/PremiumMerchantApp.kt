@@ -281,7 +281,7 @@ fun PremiumMerchantApp(
             } else {
                 route = PremiumNavigation.openAccountRecovery(
                     PremiumAccountRecoveryUiState.receiverError(
-                        result.safeMessage.ifBlank { "Receiver staging indisponible. Verifiez la connexion et reessayez." }
+                        result.safeMessage.ifBlank { "Receiver staging indisponible. Vérifiez la connexion et réessayez." }
                     ),
                     returnRoute = PremiumRoute.Onboarding
                 )
@@ -383,6 +383,7 @@ fun PremiumMerchantApp(
     if (uiLocked) {
         PremiumUnlockRequiredScreen(
             appLock = merchantSettings.appLock,
+            language = merchantSettings.language,
             onUnlock = { onRequestUnlock {} }
         )
         return
@@ -419,9 +420,9 @@ fun PremiumMerchantApp(
                         route = PremiumNavigation.openAccountRecovery(
                             PremiumAccountRecoveryUiState.error(
                                 message = if (lookup?.deviceStatus == AndroidMerchantDeviceLookupStatus.KNOWN_DEVICE) {
-                                    "Ce telephone semble deja lie. Utilisez Se connecter."
+                                    "Ce téléphone semble déjà lié. Utilisez Se connecter."
                                 } else {
-                                    "Impossible de verifier ce telephone pour le moment."
+                                    "Impossible de vérifier ce téléphone pour le moment."
                                 }
                             ),
                             returnRoute = PremiumRoute.AccountProfileChoice
@@ -504,6 +505,7 @@ fun PremiumMerchantApp(
         PremiumRoute.Onboarding -> PremiumOnboardingFlow(
             notificationAccessEnabled = notificationAccessEnabled,
             bankTargetsState = banksState,
+            language = merchantSettings.language,
             openNotificationSettings = onOpenNotificationSettings,
             onDone = { completedState -> finishOnboarding(completedState) }
         )
@@ -535,29 +537,34 @@ fun PremiumMerchantApp(
                         activeRuntime.rejectOrder(currentRoute.reviewId)
                     }
                 }
-            }
+            },
+            language = merchantSettings.language
         )
         is PremiumRoute.Main -> PremiumAppShell(
             selectedTab = currentRoute.tab,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = {
                 when (currentRoute.tab) {
                     PremiumMainTab.Home -> PremiumDashboardScreen(
                         dashboardState,
                         onOpenReviews = { route = PremiumRoute.Main(PremiumMainTab.Reviews) },
-                        onOpenBusiness = { route = PremiumRoute.Main(PremiumMainTab.Business) }
+                        onOpenBusiness = { route = PremiumRoute.Main(PremiumMainTab.Business) },
+                        language = merchantSettings.language
                     )
                     PremiumMainTab.Reviews -> PremiumReviewsScreen(
                         state = reviewsState,
                         onOpenReview = {
                             route = PremiumNavigation.openReview(it)
-                        }
+                        },
+                        language = merchantSettings.language
                     )
                     PremiumMainTab.Payment -> PremiumReceivingMethodsStateScreen(
                         receivingMethodsState,
                         clearDraftSignal = receivingMethodClearDraftSignal,
                         actionMessage = receivingMethodActionMessage,
+                        language = merchantSettings.language,
                         onSaveDraft = { submission ->
                             receivingMethodActionMessage = null
                             receivingMethodsState = PremiumScreenState.loading()
@@ -622,7 +629,8 @@ fun PremiumMerchantApp(
                     )
                     PremiumMainTab.Business -> PremiumOrdersScreen(
                         ordersState,
-                        onOpenReviews = { route = PremiumRoute.Main(PremiumMainTab.Reviews) }
+                        onOpenReviews = { route = PremiumRoute.Main(PremiumMainTab.Reviews) },
+                        language = merchantSettings.language
                     )
                     PremiumMainTab.Settings -> PremiumSettingsScreen(
                         connectedSite = connectedSiteState,
@@ -638,11 +646,13 @@ fun PremiumMerchantApp(
             selectedTab = PremiumMainTab.Payment,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = {
                 PremiumReceivingMethodsStateScreen(
                     receivingMethodsState,
                     clearDraftSignal = receivingMethodClearDraftSignal,
                     actionMessage = receivingMethodActionMessage,
+                    language = merchantSettings.language,
                     onSaveDraft = { submission ->
                         receivingMethodActionMessage = null
                         receivingMethodsState = PremiumScreenState.loading()
@@ -767,16 +777,19 @@ fun PremiumMerchantApp(
             selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = { PremiumConfirmationModeScreen() }
         )
         PremiumRoute.Security -> PremiumAppShell(
             selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = {
                 PremiumSecurityScreen(
                     appLock = merchantSettings.appLock,
                     googleAccountLinked = merchantSettings.googleAccountLinked,
+                    language = merchantSettings.language,
                     onToggleAppLock = { enabled ->
                         if (enabled) {
                             onRequestUnlock {
@@ -810,7 +823,7 @@ fun PremiumMerchantApp(
                             if (session == null) {
                                 route = PremiumNavigation.openGoogleAccountLink(
                                     PremiumGoogleAccountLinkUiState.error(
-                                        "Connectez-vous avant de lier Google a ce profil marchand."
+                                        "Connectez-vous avant de lier Google à ce profil marchand."
                                     )
                                 )
                                 return@launch
@@ -823,7 +836,7 @@ fun PremiumMerchantApp(
                             } else {
                                 AndroidMerchantAccountCreateResult(
                                     status = AndroidMerchantAuthResultStatus.ACTION_REQUIRED,
-                                    safeMessage = "Aucun compte Google selectionne."
+                                    safeMessage = "Aucun compte Google sélectionné."
                                 )
                             }
                             route = if (result?.status == AndroidMerchantAuthResultStatus.SUCCESS) {
@@ -832,7 +845,7 @@ fun PremiumMerchantApp(
                             } else {
                                 PremiumNavigation.openGoogleAccountLink(
                                     PremiumGoogleAccountLinkUiState.error(
-                                        result?.safeMessage ?: "Association Google annulee ou indisponible."
+                                        result?.safeMessage ?: "Association Google annulée ou indisponible."
                                     )
                                 )
                             }
@@ -845,14 +858,17 @@ fun PremiumMerchantApp(
             selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = { PremiumHelpCenterScreen(language = merchantSettings.language) }
         )
         PremiumRoute.SupportContact -> PremiumAppShell(
             selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = {
                 PremiumContactSupportScreen(
+                    language = merchantSettings.language,
                     result = supportResult,
                     onSubmit = { draft ->
                         supportResult = PremiumSupportTicketResult("", "submitting", "", "Envoi en cours")
@@ -876,6 +892,7 @@ fun PremiumMerchantApp(
             selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = {
                 PremiumLanguageScreen(
                     selected = merchantSettings.language,
@@ -887,6 +904,7 @@ fun PremiumMerchantApp(
             selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = {
                     PremiumAppearanceScreen(
                         selected = merchantSettings.themeMode,
@@ -899,18 +917,21 @@ fun PremiumMerchantApp(
             selectedTab = PremiumMainTab.Payment,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = { PremiumBanksStateScreen(banksState) }
         )
         PremiumRoute.ReceiverHealth -> PremiumAppShell(
             selectedTab = PremiumMainTab.Settings,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = { PremiumReceiverHealthStateScreen(receiverHealthState, onOpenNotificationSettings) }
         )
             is PremiumRoute.OrderDetail -> PremiumAppShell(
             selectedTab = PremiumMainTab.Business,
             onTab = { route = PremiumRoute.Main(it) },
             profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
             content = {
                 PremiumStatePanel(
                     PremiumScreenState.empty<Unit>(
