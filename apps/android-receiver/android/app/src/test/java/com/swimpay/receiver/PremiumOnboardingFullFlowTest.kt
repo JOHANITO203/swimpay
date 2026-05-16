@@ -163,7 +163,7 @@ class PremiumOnboardingFullFlowTest {
             "SwimPay détecte les paiements reçus, vous aide à les confirmer et prévient votre site ou votre application.",
             "Connectez votre téléphone",
             "Accès nécessaire",
-            "Activer l’accès",
+            "Activer l'accès",
             "SwimPay recherche uniquement les banques compatibles.",
             "Choisissez vos banques",
             "Activer ces banques",

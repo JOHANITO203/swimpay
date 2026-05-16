@@ -250,7 +250,7 @@ describe('android Gradle wrapper and build validation', () => {
     );
     expect(appBuild).toContain('validateDebugVpsBuildConfig');
     expect(appBuild).toContain('preDebugBuild');
-    expect(appBuild).toContain('Debug VPS Android backend must use HTTPS');
+    expect(appBuild).toContain('requireRemoteAndroidBackend("Debug VPS", backend)');
     expect(appBuild).toContain('Debug VPS Android Google server client ID must be configured');
   });
 

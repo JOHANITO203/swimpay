@@ -66,7 +66,7 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumOnboarding.contains("openNotificationSettings"))
         assertTrue(premiumOnboarding.contains("Recevez vos paiements plus facilement"))
         assertTrue(premiumOnboarding.contains("Connectez votre téléphone"))
-        assertTrue(premiumOnboarding.contains("Activer l’accès"))
+        assertTrue(premiumOnboarding.contains("Activer l'accès"))
         assertTrue(premiumOnboarding.contains("SwimPay recherche uniquement les banques compatibles."))
         assertTrue(premiumOnboarding.contains("Activer ces banques"))
         assertTrue(premiumOnboarding.contains("Connectez votre site ou application"))
@@ -306,7 +306,7 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(receivingSource.contains("onSetDefaultMethod"))
         assertTrue(receivingSource.contains("onDeleteMethod"))
         assertTrue(receivingSource.contains("Ajouter une carte"))
-        assertTrue(receivingSource.contains("Ajouter un téléphone SBP"))
+        assertTrue(receivingSource.contains("Ajouter téléphone SBP"))
         assertTrue(receivingSource.contains("ReceivingMethodActionButton"))
         assertTrue(premiumDashboard.contains("ReceivingMethodMutationButton"))
         assertTrue(premiumDashboard.contains("Icons.Default.Edit"))
@@ -597,11 +597,11 @@ class AndroidMerchantVisualArchitectureTest {
         val onboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
         val logoFunction = sourceFunction(components, "fun SwimPayLogo(")
 
-        assertTrue("runtime logo should reuse the shared SwimPay mark", logoFunction.contains("SwimPayWavesMark"))
+        assertTrue("runtime logo should reuse the launcher foreground asset", logoFunction.contains("R.drawable.ic_launcher_foreground"))
         assertFalse("runtime logo must not draw a generated Material water mark", logoFunction.contains("Icons.Default.Water"))
         assertFalse("premium runtime brand surfaces must not draw a generated Material water mark", components.contains("Icons.Default.Water"))
         assertFalse("premium onboarding brand surfaces must not draw a generated Material water mark", onboarding.contains("Icons.Default.Water"))
-        assertTrue("premium onboarding should reuse the shared waves mark", onboarding.contains("SwimPayWavesMark"))
+        assertTrue("premium onboarding should reuse the launcher badge", onboarding.contains("SwimPayLauncherBadge"))
     }
 
     @Test

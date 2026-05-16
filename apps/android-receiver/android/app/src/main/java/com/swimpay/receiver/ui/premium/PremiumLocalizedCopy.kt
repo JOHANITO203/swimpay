@@ -257,7 +257,7 @@ data class PremiumLocalizedCopy(
             LocalizedText("Aide courte, sûre et compatible avec la vérité produit V1.", "Short help aligned with the V1 product truth.", "Краткая помощь, соответствующая логике продукта V1."),
             LocalizedText("Aucun résultat", "No result", "Нет результатов"),
             LocalizedText("Essayez un autre mot-clé.", "Try another keyword.", "Попробуйте другое ключевое слово."),
-            LocalizedText("Envoyez une demande sans notification brute, secret, numéro complet, PIN, CVV ou code SMS.", "Send a request without raw notification text, secrets, full numbers, PIN, CVV or SMS codes.", "Отправьте запрос без сырого текста уведомлений, секретов, полных номеров, PIN, CVV или SMS-кодов."),
+            LocalizedText("Envoyez une demande sans texte sensible, secret, numéro complet, PIN, CVV ou code SMS.", "Send a request without sensitive text, secrets, full numbers, PIN, CVV or SMS codes.", "Отправьте запрос без чувствительного текста, секретов, полных номеров, PIN, CVV или SMS-кодов."),
             LocalizedText("Envoyer", "Send", "Отправить"),
             LocalizedText("Demande envoyée", "Request sent", "Запрос отправлен"),
             LocalizedText("SwimPay verrouille", "SwimPay is locked", "SwimPay заблокирован"),

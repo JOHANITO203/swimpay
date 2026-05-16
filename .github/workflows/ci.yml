@@ -47,6 +47,11 @@ jobs:
     timeout-minutes: 10
     env:
       ADMIN_TOKEN_HMAC_SECRET: ci_admin_token_hmac_secret_minimum_32_chars
+      CHECKOUT_BASE_URL: https://swimpay.pro/checkout
+      DATABASE_URL: postgresql://swimpay:ci_postgres_password@postgres:5432/swimpay
+      PHONE_HMAC_SECRET: ci_phone_hmac_secret_minimum_32_chars
+      POSTGRES_PASSWORD: ci_postgres_password
+      WEBHOOK_SECRET_ENCRYPTION_KEY: ci_webhook_secret_encryption_key_32_chars
 
     steps:
       - name: Checkout
