@@ -5,7 +5,7 @@ describe('live runtime smoke checks', () => {
   test('accepts the expected private single-server Compose shape', () => {
     const result = inspectComposeConfig({
       networks: {
-        swimpay_private: { internal: true },
+        swimpay_runtime: { internal: false },
         swimpay_public: {}
       },
       services: {
@@ -19,7 +19,7 @@ describe('live runtime smoke checks', () => {
         proxy: {
           ports: [{ target: 80, published: '8080', protocol: 'tcp' }],
           healthcheck: { test: ['CMD', 'true'] },
-          networks: { swimpay_private: null, swimpay_public: null },
+          networks: { swimpay_runtime: null, swimpay_public: null },
           logging: dockerLogging()
         }
       }
@@ -31,7 +31,7 @@ describe('live runtime smoke checks', () => {
   test('rejects public host ports on PostgreSQL, Valkey or NATS', () => {
     const result = inspectComposeConfig({
       networks: {
-        swimpay_private: { internal: true }
+        swimpay_runtime: { internal: false }
       },
       services: {
         postgres: { ...privateService(), ports: [{ target: 5432, published: '5432' }] },
@@ -52,7 +52,7 @@ describe('live runtime smoke checks', () => {
   test('rejects missing runtime healthchecks', () => {
     const result = inspectComposeConfig({
       networks: {
-        swimpay_private: { internal: true }
+        swimpay_runtime: { internal: false }
       },
       services: {
         postgres: privateService(),
@@ -73,7 +73,7 @@ describe('live runtime smoke checks', () => {
 
 function privateService() {
   return {
-    networks: { swimpay_private: null },
+    networks: { swimpay_runtime: null },
     healthcheck: { test: ['CMD', 'true'] },
     logging: dockerLogging()
   };
@@ -81,7 +81,7 @@ function privateService() {
 
 function runtimeService() {
   return {
-    networks: { swimpay_private: null },
+    networks: { swimpay_runtime: null },
     expose: ['3000'],
     healthcheck: { test: ['CMD', 'true'] },
     logging: dockerLogging()

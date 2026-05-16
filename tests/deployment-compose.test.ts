@@ -33,7 +33,7 @@ describe('single-server docker compose deployment', () => {
   });
 
   test('publishes host ports only from the proxy service', () => {
-    const serviceBlocks = compose.split(/\n(?= {2}[a-z0-9-]+:\n)/u).slice(1);
+    const serviceBlocks = compose.split(/\r?\n(?= {2}[a-z0-9-]+:\r?\n)/u).slice(1);
     const servicesWithPorts = serviceBlocks
       .filter((block) => block.includes('\n    ports:'))
       .map((block) => block.match(/^ {2}([a-z0-9-]+):/u)?.[1]);
@@ -45,9 +45,9 @@ describe('single-server docker compose deployment', () => {
 
   test('keeps PostgreSQL, Valkey and NATS private with health checks and log rotation', () => {
     for (const service of ['postgres', 'valkey', 'nats']) {
-      const serviceBlock = compose.match(new RegExp(` {2}${service}:\\n[\\s\\S]*?(?=\\n {2}[a-z0-9-]+:\\n|\\nnetworks:)`, 'u'))?.[0] ?? '';
+      const serviceBlock = compose.match(new RegExp(` {2}${service}:\\r?\\n[\\s\\S]*?(?=\\r?\\n {2}[a-z0-9-]+:\\r?\\n|\\r?\\nnetworks:)`, 'u'))?.[0] ?? '';
 
-      expect(serviceBlock).toContain('swimpay_private');
+      expect(serviceBlock).toContain('swimpay_runtime');
       expect(serviceBlock).toContain('healthcheck:');
       expect(serviceBlock).not.toContain('ports:');
     }

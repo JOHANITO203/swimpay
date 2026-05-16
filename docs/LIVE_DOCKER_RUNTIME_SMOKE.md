@@ -10,7 +10,9 @@ The smoke check validates:
 
 - PostgreSQL, Valkey and NATS are present.
 - PostgreSQL, Valkey and NATS do not publish host ports.
-- `swimpay_private` is an internal Compose network.
+- `swimpay_runtime` is the private Compose runtime network and is not Docker-internal,
+  so API services can verify external providers such as Google while still avoiding
+  direct host port exposure.
 - API, signal worker, job worker and web services define healthchecks.
 - Docker log rotation remains configured.
 - Only the Caddy proxy publishes a host port.
@@ -50,7 +52,7 @@ docker compose --env-file .env.example -f infra/docker-compose.yml logs swimpay-
 
 ## Public Exposure Rule
 
-Only `proxy` may publish a host port. PostgreSQL, Valkey, NATS, API, web and workers must stay on the private Compose network.
+Only `proxy` may publish a host port. PostgreSQL, Valkey, NATS, API, web and workers must stay on the `swimpay_runtime` Compose network without direct host port exposure.
 
 ## Not Implemented
 

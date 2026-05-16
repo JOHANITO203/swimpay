@@ -17,10 +17,14 @@ export const runtimeHealthServices = ['swimpay-api', 'swimpay-signal-worker', 's
 export function inspectComposeConfig(config) {
   const failures = [];
   const services = config.services ?? {};
-  const privateNetwork = config.networks?.swimpay_private;
+  const runtimeNetwork = config.networks?.swimpay_runtime;
 
-  if (!privateNetwork?.internal) {
-    failures.push('swimpay_private network must be internal');
+  if (!runtimeNetwork) {
+    failures.push('swimpay_runtime network must exist');
+  }
+
+  if (runtimeNetwork?.internal === true) {
+    failures.push('swimpay_runtime network must allow outbound provider verification');
   }
 
   for (const serviceName of expectedServices) {
@@ -39,8 +43,8 @@ export function inspectComposeConfig(config) {
       failures.push(`${serviceName} must not publish host ports`);
     }
 
-    if (!service.networks || !Object.hasOwn(service.networks, 'swimpay_private')) {
-      failures.push(`${serviceName} must use swimpay_private`);
+    if (!service.networks || !Object.hasOwn(service.networks, 'swimpay_runtime')) {
+      failures.push(`${serviceName} must use swimpay_runtime`);
     }
 
     if (!service.healthcheck) {
