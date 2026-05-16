@@ -307,7 +307,15 @@ private fun RecentPaymentRow(amount: String, detail: String) {
         radius = PremiumRadius.CardLarge
     ) {
         Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp).background(PremiumColors.SurfaceAlt, RoundedCornerShape(18.dp)).border(1.dp, PremiumColors.Line, RoundedCornerShape(18.dp)))
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .background(PremiumColors.IconTile, RoundedCornerShape(18.dp))
+                    .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), RoundedCornerShape(18.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Cyan, modifier = Modifier.size(24.dp))
+            }
             Column(Modifier.weight(1f).padding(start = 18.dp)) {
                 Text(amount, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
                 Text(detail, color = PremiumColors.Muted, fontSize = PremiumType.Caption, fontWeight = FontWeight.SemiBold)
@@ -867,8 +875,8 @@ private fun ReceivingMethodActionButton(
             .fillMaxWidth()
             .height(88.dp)
             .clip(RoundedCornerShape(28.dp))
-            .background(Brush.linearGradient(PremiumBrandGradient.ReceivingSurface), RoundedCornerShape(28.dp))
-            .border(1.dp, PremiumColors.Line, RoundedCornerShape(28.dp))
+            .background(PremiumColors.Surface, RoundedCornerShape(28.dp))
+            .border(1.dp, PremiumColors.Line.copy(alpha = 0.86f), RoundedCornerShape(28.dp))
             .premiumTap(onClick)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -886,7 +894,7 @@ private fun ReceivingMethodActionButton(
             }
         }
         Column(Modifier.weight(1f).padding(start = 16.dp)) {
-            Text(label, color = PremiumColors.Navy, fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+            Text(label, color = PremiumColors.Ink, fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
             Text(helper, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 3.dp))
         }
         Icon(
@@ -1045,7 +1053,11 @@ private fun MerchantSbpReceivingCard(
                     painter = painterResource(R.drawable.ic_payment_sbp_mark),
                     contentDescription = "SBP",
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.size(42.dp)
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color.White.copy(alpha = 0.94f))
+                        .padding(8.dp)
                 )
             }
             Column {
@@ -1083,10 +1095,10 @@ fun PremiumBankLogo(
     Box(
         modifier
             .size(size)
-            .shadow(10.dp, RoundedCornerShape(size / 2.7f), clip = false)
-            .background(Color.White.copy(alpha = 0.96f), RoundedCornerShape(size / 2.7f))
-            .border(1.dp, PremiumColors.Line.copy(alpha = 0.38f), RoundedCornerShape(size / 2.7f))
-            .padding(size / 5.5f),
+            .shadow(12.dp, RoundedCornerShape(size / 3f), clip = false)
+            .background(Color.White.copy(alpha = 0.98f), RoundedCornerShape(size / 3f))
+            .border(1.dp, PremiumColors.Line.copy(alpha = 0.32f), RoundedCornerShape(size / 3f))
+            .padding(size / 4.6f),
         contentAlignment = Alignment.Center
     ) {
         val icon = bankIconResource(bankProfileId)
@@ -1286,11 +1298,21 @@ fun PremiumReceiverHealthStateScreen(
             }
             item {
                 PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
-                    Column(Modifier.padding(22.dp)) {
-                        Text(language.ui(state.value.statusTitle), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 20.sp)
-                        Text(language.ui(state.value.statusText), color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 6.dp))
-                        if (state.value.rows.any { it.first == "Accès notifications" && it.second == "Action requise" }) {
-                            Text(language.ui("RÉACTIVER L'ACCÈS"), color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp).clickable { onOpenNotificationSettings() })
+                    Row(Modifier.padding(22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Box(
+                            Modifier
+                                .size(52.dp)
+                                .background(PremiumColors.IconTile, RoundedCornerShape(18.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.PhoneAndroid, null, tint = PremiumColors.Cyan, modifier = Modifier.size(26.dp))
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(language.ui(state.value.statusTitle), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                            Text(language.ui(state.value.statusText), color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 6.dp))
+                            if (state.value.rows.any { it.first == "Accès notifications" && it.second == "Action requise" }) {
+                                Text(language.ui("RÉACTIVER L'ACCÈS"), color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp).clickable { onOpenNotificationSettings() })
+                            }
                         }
                     }
                 }
@@ -1299,7 +1321,7 @@ fun PremiumReceiverHealthStateScreen(
                 PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
                     Row(Modifier.padding(18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(language.ui(row.first), modifier = Modifier.weight(1f), color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold)
-                        Text(language.ui(row.second), color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Black)
+                        StatusChip(language.ui(row.second), receiverHealthTone(row.second))
                     }
                 }
             }
@@ -1343,6 +1365,27 @@ fun PremiumConfirmationModeScreen(language: PremiumLanguageOption = PremiumLangu
     }
 }
 
+private fun receiverHealthTone(value: String): PremiumTone {
+    val normalized = value.lowercase()
+    return when {
+        normalized.contains("ok") ||
+            normalized.contains("actif") ||
+            normalized.contains("autorisé") ||
+            normalized.contains("active") ||
+            normalized.contains("authorized") ||
+            normalized.contains("актив") ||
+            normalized.contains("разреш") -> StatusTone.Success
+        normalized.contains("action") ||
+            normalized.contains("requise") ||
+            normalized.contains("required") ||
+            normalized.contains("треб") -> StatusTone.Warning
+        normalized.contains("hors") ||
+            normalized.contains("offline") ||
+            normalized.contains("ошиб") -> StatusTone.Danger
+        else -> StatusTone.Neutral
+    }
+}
+
 @Composable
 fun PremiumSecurityScreen(
     appLock: PremiumAppLockSettings = PremiumAppLockSettings(),
@@ -1378,7 +1421,7 @@ fun PremiumSecurityScreen(
         }
         if (appLock.enabled) {
             items(PremiumLockTimeout.entries) { timeout ->
-                SettingsChoiceRow(Icons.Default.Security, timeout.localizedLabel(language), if (timeout == appLock.timeout) language.ui("Délai actif") else language.ui("Utiliser ce délai"), timeout == appLock.timeout) {
+                SettingsChoiceRow(Icons.Default.Security, timeout.localizedLabel(language), if (timeout == appLock.timeout) language.ui("Délai actif") else language.ui("Utiliser ce délai"), timeout == appLock.timeout, language = language) {
                     onTimeoutSelected(timeout)
                 }
             }
@@ -1472,7 +1515,7 @@ fun PremiumContactSupportScreen(
             PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     PremiumSupportCategory.entries.forEach { item ->
-                        SettingsChoiceRow(Icons.Default.Description, item.labelFr, item.wireValue, item == category) {
+                        SettingsChoiceRow(Icons.Default.Description, language.ui(item.labelFr), item.wireValue, item == category, language = language) {
                             category = item
                         }
                     }
@@ -1510,7 +1553,7 @@ fun PremiumLanguageScreen(selected: PremiumLanguageOption, onSelect: (PremiumLan
             Text(copy.languageBody, color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         items(PremiumLanguageOption.entries) { language ->
-            SettingsChoiceRow(Icons.Default.Language, language.displayLabel, language.tag.uppercase(), language == selected) {
+            SettingsChoiceRow(Icons.Default.Language, language.displayLabel, language.tag.uppercase(), language == selected, language = selected) {
                 onSelect(language)
             }
         }
@@ -1647,6 +1690,7 @@ private fun SettingsChoiceRow(
     title: String,
     subtitle: String,
     selected: Boolean,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
     onClick: () -> Unit
 ) {
     PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
@@ -1658,7 +1702,7 @@ private fun SettingsChoiceRow(
                 Text(title, color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
                 Text(subtitle, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
             }
-            StatusChip(if (selected) "Actif" else "Choisir", if (selected) StatusTone.Success else StatusTone.Neutral)
+            StatusChip(language.ui(if (selected) "Actif" else "Choisir"), if (selected) StatusTone.Success else StatusTone.Neutral)
         }
     }
 }

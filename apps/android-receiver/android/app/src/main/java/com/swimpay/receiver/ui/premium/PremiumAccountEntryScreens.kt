@@ -2,6 +2,7 @@ package com.swimpay.receiver.ui.premium
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -29,16 +31,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.swimpay.receiver.R
 
 @Composable
 fun PremiumAccountEntryScreen(
@@ -51,17 +57,17 @@ fun PremiumAccountEntryScreen(
     val copy = PremiumLocalizedCopy.forLanguage(language)
     PremiumAccountEntryFrame(language = language, onLanguageSelected = onLanguageSelected) {
         Spacer(Modifier.height(122.dp))
-        SwimPayLogo(markSize = 82.dp)
+        SwimPayLauncherBadge(size = 82.dp)
         Spacer(Modifier.height(30.dp))
         PremiumTitle(
             title = copy.welcomeTitle,
             body = copy.welcomeBody,
             centered = true
         )
-        LiquidGlassCard(Modifier.fillMaxWidth()) {
+        LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
             Column(
                 Modifier.padding(22.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 PremiumPrimaryButton(copy.createAccount, onClick = onCreateAccount)
                 PremiumOutlineButton(copy.signIn, onClick = onSignIn)
@@ -116,9 +122,9 @@ fun PremiumAccountLoginProviderScreen(
             title = copy.recoverTitle,
             body = copy.recoverBody
         )
-        LiquidGlassCard(Modifier.fillMaxWidth()) {
+        LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
             Column(Modifier.padding(18.dp)) {
-                PremiumLoginRecoveryProvider.entries.forEach { provider ->
+                PremiumLoginRecoveryProvider.entries.forEach { _ ->
                     PremiumAccountChoiceRowBase(
                         title = copy.googleRecovery,
                         description = copy.googleRecoveryBody,
@@ -285,7 +291,7 @@ private fun PremiumAccountChoiceRow(
         onClick = onClick,
         elevated = elevated
     ) {
-        Icon(icon, null, tint = PremiumColors.Blue, modifier = Modifier.size(25.dp))
+        Icon(icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(25.dp))
     }
 }
 
@@ -306,7 +312,7 @@ private fun PremiumAccountChoiceRowBase(
         .premiumTap(onClick)
 
     if (elevated) {
-        LiquidGlassCard(modifier) {
+        LiquidGlassCard(modifier, radius = PremiumRadius.CardLarge) {
             PremiumAccountChoiceRowContent(title, description, iconContent)
         }
     } else {
@@ -325,12 +331,16 @@ private fun PremiumAccountChoiceRowContent(
     Row(
         Modifier
             .fillMaxWidth()
+            .heightIn(min = 82.dp)
             .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
-            Modifier.size(PremiumComponentSize.TouchTarget).background(PremiumColors.Mint, RoundedCornerShape(PremiumRadius.Tile)),
+            Modifier
+                .size(PremiumComponentSize.TouchTarget)
+                .background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile))
+                .border(1.dp, PremiumColors.Cyan.copy(alpha = 0.28f), RoundedCornerShape(PremiumRadius.Tile)),
             contentAlignment = Alignment.Center
         ) {
             iconContent()
@@ -347,5 +357,30 @@ private fun PremiumAccountChoiceRowContent(
             )
         }
         Icon(Icons.Default.Security, null, tint = PremiumColors.SoftText, modifier = Modifier.size(22.dp))
+    }
+}
+
+@Composable
+private fun SwimPayLauncherBadge(size: Dp) {
+    val launcherShape = RoundedCornerShape(size * 0.24f)
+    Box(
+        Modifier
+            .size(size)
+            .shadow(
+                18.dp,
+                launcherShape,
+                ambientColor = PremiumColors.Cyan.copy(alpha = 0.18f),
+                spotColor = PremiumColors.Cyan.copy(alpha = 0.22f)
+            )
+            .clip(launcherShape)
+            .background(PremiumColors.Background, launcherShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_foreground),
+            contentDescription = "SwimPay",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }

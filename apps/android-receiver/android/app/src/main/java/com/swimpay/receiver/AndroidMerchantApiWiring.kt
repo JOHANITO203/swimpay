@@ -194,6 +194,7 @@ data class AndroidMerchantAccountCreateResult(
 
 object AndroidMerchantAuthApiContract {
     const val DEVICE_LOOKUP_PATH = "/v1/android-merchant/auth/device-lookup"
+    const val DEVICE_RECOVER_PATH = "/v1/android-merchant/auth/device-recover"
     const val CREATE_ACCOUNT_PATH = "/v1/android-merchant/auth/create-account"
     const val GOOGLE_EXCHANGE_PATH = "/v1/android-merchant/auth/google/exchange"
     const val GOOGLE_LINK_PATH = "/v1/android-merchant/auth/google/link"
@@ -201,6 +202,7 @@ object AndroidMerchantAuthApiContract {
 
 data class AndroidMerchantAccountEntryContract(
     val deviceLookupPath: String,
+    val deviceRecoverPath: String,
     val lookupIntents: Set<AndroidMerchantDeviceLookupIntent>,
     val deviceLookupRequiredBeforeCreateAccount: Boolean,
     val deviceLookupRequiredBeforeGoogleRecovery: Boolean,
@@ -211,6 +213,7 @@ data class AndroidMerchantAccountEntryContract(
         fun current(): AndroidMerchantAccountEntryContract {
             return AndroidMerchantAccountEntryContract(
                 deviceLookupPath = AndroidMerchantAuthApiContract.DEVICE_LOOKUP_PATH,
+                deviceRecoverPath = AndroidMerchantAuthApiContract.DEVICE_RECOVER_PATH,
                 lookupIntents = setOf(
                     AndroidMerchantDeviceLookupIntent.CREATE_ACCOUNT,
                     AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT
@@ -283,6 +286,24 @@ class AndroidMerchantAuthApiRepository(
             )
         }
         return accountCreateResultFrom(response)
+    }
+
+    fun recoverKnownDevice(): AndroidMerchantAccountCreateResult {
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = AndroidMerchantAuthApiContract.DEVICE_RECOVER_PATH,
+                body = jsonObject("device_proof" to deviceProofProvider.currentProof().toRequestMap())
+            )
+        )
+        return if (response.statusCode in 200..299) {
+            accountCreateResultFrom(response)
+        } else {
+            AndroidMerchantAccountCreateResult(
+                status = AndroidMerchantAuthResultStatus.ACTION_REQUIRED,
+                safeMessage = "Connexion locale indisponible. Essayez Google."
+            )
+        }
     }
 
     private fun accountCreateResultFrom(response: MerchantApiResponse): AndroidMerchantAccountCreateResult {

@@ -64,6 +64,22 @@ data class PremiumAccountRecoveryUiState(
             )
         }
 
+        fun checkingDevice(): PremiumAccountRecoveryUiState {
+            return PremiumAccountRecoveryUiState(
+                status = PremiumAccountRecoveryStatus.PENDING,
+                title = "Connexion",
+                message = "SwimPay vérifie si ce téléphone peut restaurer votre session."
+            )
+        }
+
+        fun restoringDevice(): PremiumAccountRecoveryUiState {
+            return PremiumAccountRecoveryUiState(
+                status = PremiumAccountRecoveryStatus.PENDING,
+                title = "Session retrouvée",
+                message = "SwimPay restaure l'accès marchand sur ce téléphone."
+            )
+        }
+
         fun creating(): PremiumAccountRecoveryUiState {
             return PremiumAccountRecoveryUiState(
                 status = PremiumAccountRecoveryStatus.PENDING,

@@ -396,7 +396,39 @@ fun PremiumMerchantApp(
             language = merchantSettings.language,
             onLanguageSelected = { updateSettings(merchantSettingsStore.saveLanguage(it)) },
             onCreateAccount = { route = PremiumNavigation.openAccountProfileChoice() },
-            onSignIn = { route = PremiumNavigation.openLoginProviderChoice() }
+            onSignIn = {
+                route = PremiumNavigation.openAccountRecovery(PremiumAccountRecoveryUiState.checkingDevice())
+                scope.launch {
+                    val repository = accountAuthRepository
+                    val lookup = withContext(Dispatchers.IO) {
+                        repository?.lookupDevice(AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT)
+                    }
+                    if (lookup == null || lookup.status == AndroidMerchantAuthResultStatus.ERROR) {
+                        route = PremiumNavigation.openAccountRecovery(
+                            PremiumAccountRecoveryUiState.error(
+                                message = lookup?.safeMessage ?: "Impossible de vérifier ce téléphone pour le moment."
+                            )
+                        )
+                        return@launch
+                    }
+                    if (lookup.deviceStatus == AndroidMerchantDeviceLookupStatus.KNOWN_DEVICE) {
+                        route = PremiumNavigation.openAccountRecovery(PremiumAccountRecoveryUiState.restoringDevice())
+                        val result = withContext(Dispatchers.IO) { repository?.recoverKnownDevice() }
+                        if (result?.status == AndroidMerchantAuthResultStatus.SUCCESS && result.mobileSession != null) {
+                            mobileMerchantSessionStore.save(result.mobileSession)
+                            activeRuntime = mobileRuntimeFactory(result.mobileSession)
+                            route = PremiumNavigation.initialRoute(
+                                onboardingCompleted = onboardingCompletionStore.isCompleted(),
+                                mobileMerchantSessionValid = true
+                            )
+                        } else {
+                            route = PremiumNavigation.openLoginProviderChoice()
+                        }
+                    } else {
+                        route = PremiumNavigation.openLoginProviderChoice()
+                    }
+                }
+            }
             )
         PremiumRoute.AccountProfileChoice -> PremiumAccountProfileChoiceScreen(
             language = merchantSettings.language,

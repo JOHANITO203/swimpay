@@ -284,6 +284,19 @@ export type RecoverAndroidMerchantAccountWithGoogleResult =
   | { kind: 'google_sub_not_linked' }
   | { kind: 'device_already_registered'; device: AndroidMerchantDeviceRecord };
 
+export interface RecoverAndroidMerchantKnownDeviceInput {
+  deviceProofHash: string;
+  mobileSessionId: string;
+  mobileSessionHash: string;
+  expiresAt: string;
+  now: string;
+}
+
+export type RecoverAndroidMerchantKnownDeviceResult =
+  | { kind: 'recovered'; account: AndroidMerchantAccountRecord }
+  | { kind: 'device_not_found' }
+  | { kind: 'recovery_required'; device: AndroidMerchantDeviceRecord };
+
 export interface AuthBffRepository {
   bootstrapDevSession(input: DevBootstrapSessionInput): Promise<BffSessionContext>;
   createSession(input: CreateBffSessionInput): Promise<BffSessionRecord>;
@@ -304,6 +317,9 @@ export interface AuthBffRepository {
   recoverAndroidMerchantAccountWithGoogle(
     input: RecoverAndroidMerchantAccountWithGoogleInput
   ): Promise<RecoverAndroidMerchantAccountWithGoogleResult>;
+  recoverAndroidMerchantKnownDevice(
+    input: RecoverAndroidMerchantKnownDeviceInput
+  ): Promise<RecoverAndroidMerchantKnownDeviceResult>;
 }
 
 export interface MerchantApiKeyPrincipal {
@@ -745,6 +761,63 @@ export class InMemoryAuthBffRepository implements AuthBffRepository {
     };
     this.androidMerchantAccounts.set(user.id, account);
     this.users.set(user.id, { ...user, lastLoginAt: input.now });
+    return { kind: 'recovered', account };
+  }
+
+  async recoverAndroidMerchantKnownDevice(
+    input: RecoverAndroidMerchantKnownDeviceInput
+  ): Promise<RecoverAndroidMerchantKnownDeviceResult> {
+    const device = this.androidMerchantDevices.get(input.deviceProofHash) ?? null;
+    if (!device) {
+      return { kind: 'device_not_found' };
+    }
+    if (device.status !== AndroidMerchantDeviceStatuses.ACTIVE) {
+      return { kind: 'recovery_required', device };
+    }
+    const user = this.users.get(device.userId);
+    if (!user || user.status !== 'active') {
+      return { kind: 'device_not_found' };
+    }
+    const membership = [...this.memberships.values()].find(
+      (candidate) =>
+        candidate.userId === device.userId &&
+        candidate.merchantId === device.merchantId &&
+        candidate.status === 'active' &&
+        (candidate.role === MerchantRoles.OWNER || candidate.role === MerchantRoles.ADMIN)
+    );
+    if (!membership) {
+      return { kind: 'device_not_found' };
+    }
+
+    const updatedDevice = {
+      ...device,
+      updatedAt: input.now,
+      lastSeenAt: input.now
+    };
+    this.androidMerchantDevices.set(input.deviceProofHash, updatedDevice);
+
+    const mobileSession: AndroidMerchantMobileSessionRecord = {
+      id: input.mobileSessionId,
+      userId: device.userId,
+      merchantId: device.merchantId,
+      deviceId: device.id,
+      expiresAt: input.expiresAt,
+      revokedAt: null
+    };
+    this.androidMerchantSessions.set(input.mobileSessionHash, mobileSession);
+
+    const storedAccount = this.androidMerchantAccounts.get(device.userId);
+    const account: AndroidMerchantAccountRecord = {
+      userId: device.userId,
+      merchantId: device.merchantId,
+      deviceId: device.id,
+      profileType: storedAccount?.profileType ?? AndroidMerchantProfileTypes.PERSONAL,
+      displayHandle: storedAccount?.displayHandle ?? user.name ?? `merchant-${device.userId.replaceAll('-', '').slice(0, 8)}`,
+      permissions: androidMerchantMobilePermissions(),
+      mobileSession
+    };
+    this.androidMerchantAccounts.set(device.userId, account);
+    this.users.set(device.userId, { ...user, lastLoginAt: input.now });
     return { kind: 'recovered', account };
   }
 
@@ -1190,6 +1263,99 @@ export class PgAuthBffRepository implements AuthBffRepository {
           return { kind: 'device_already_registered', device: existingDevice.device };
         }
       }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async recoverAndroidMerchantKnownDevice(
+    input: RecoverAndroidMerchantKnownDeviceInput
+  ): Promise<RecoverAndroidMerchantKnownDeviceResult> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const deviceResult = await client.query(
+        `SELECT id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at
+         FROM android_merchant_devices
+         WHERE device_proof_hash = $1 AND status <> 'revoked'
+         FOR UPDATE`,
+        [input.deviceProofHash]
+      );
+      const device = deviceResult.rows[0] ? mapAndroidMerchantDeviceRow(deviceResult.rows[0]) : null;
+      if (!device) {
+        await client.query('ROLLBACK');
+        return { kind: 'device_not_found' };
+      }
+      if (device.status !== AndroidMerchantDeviceStatuses.ACTIVE) {
+        await client.query('ROLLBACK');
+        return { kind: 'recovery_required', device };
+      }
+
+      const membershipResult = await client.query(
+        `SELECT u.id AS user_id, u.name, u.display_handle, mm.merchant_id, mm.role, m.android_profile_type
+         FROM users u
+         JOIN merchant_memberships mm ON mm.user_id = u.id
+         JOIN merchants m ON m.id = mm.merchant_id
+         WHERE u.id = $1
+          AND u.status = 'active'
+          AND mm.merchant_id = $2
+          AND mm.status = 'active'
+          AND mm.role IN ('owner', 'admin')
+          AND m.status = 'active'
+         ORDER BY CASE WHEN mm.role = 'owner' THEN 0 ELSE 1 END, mm.created_at ASC
+         LIMIT 1
+         FOR UPDATE OF u`,
+        [device.userId, device.merchantId]
+      );
+      const membership = membershipResult.rows[0];
+      if (!membership) {
+        await client.query('ROLLBACK');
+        return { kind: 'device_not_found' };
+      }
+
+      const updatedDevice = await client.query(
+        `UPDATE android_merchant_devices
+         SET last_seen_at = $2, updated_at = $2
+         WHERE id = $1
+         RETURNING id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at`,
+        [device.id, input.now]
+      );
+      const sessionResult = await client.query(
+        `INSERT INTO android_merchant_sessions (
+           id, session_hash, user_id, merchant_id, device_id, expires_at, created_at, updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+         RETURNING id, user_id, merchant_id, device_id, expires_at, revoked_at`,
+        [
+          input.mobileSessionId,
+          input.mobileSessionHash,
+          device.userId,
+          device.merchantId,
+          device.id,
+          input.expiresAt,
+          input.now
+        ]
+      );
+      await client.query(`UPDATE users SET last_login_at = $2, updated_at = $2 WHERE id = $1`, [device.userId, input.now]);
+      await client.query('COMMIT');
+      return {
+        kind: 'recovered',
+        account: {
+          userId: String(membership.user_id),
+          merchantId: String(membership.merchant_id),
+          deviceId: mapAndroidMerchantDeviceRow(updatedDevice.rows[0]).id,
+          profileType: parseAndroidMerchantProfileType(String(membership.android_profile_type)),
+          displayHandle:
+            (membership.display_handle ? String(membership.display_handle) : null) ??
+            (membership.name ? String(membership.name) : null) ??
+            `merchant-${String(membership.user_id).replaceAll('-', '').slice(0, 8)}`,
+          permissions: androidMerchantMobilePermissions(),
+          mobileSession: mapAndroidMerchantMobileSessionRow(sessionResult.rows[0])
+        }
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
       throw error;
     } finally {
       client.release();

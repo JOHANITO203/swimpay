@@ -195,7 +195,7 @@ fun SwimPayLogo(modifier: Modifier = Modifier, markSize: Dp = 48.dp) {
         modifier
             .size(markSize)
             .clip(RoundedCornerShape(markSize * 0.24f))
-            .background(Color(0xFF0F172A)),
+            .background(Brush.linearGradient(PremiumBrandGradient.PrimaryDeep)),
         contentAlignment = Alignment.Center
     ) {
         Image(
@@ -353,20 +353,37 @@ fun Chevron() {
 
 @Composable
 fun SwimPayWavesMark(modifier: Modifier = Modifier, tint: Color? = null) {
+    PremiumBrandWavesMark(modifier = modifier, tint = tint)
+}
+
+@Composable
+fun PremiumBrandWavesMark(
+    modifier: Modifier = Modifier,
+    tint: Color? = null,
+    compact: Boolean = false
+) {
     Canvas(modifier = modifier) {
         val color = tint ?: PremiumColors.Cyan
-        val strokeWidth = 2.dp.toPx()
-        
-        // LiquidGlass logo: three waves
-        val spacing = size.height / 4
+        val stroke = if (compact) PremiumBrandMark.WaveStrokeCompact else PremiumBrandMark.WaveStroke
+        val strokeWidth = max(stroke.toPx(), size.minDimension * 0.065f)
+        val waveStart = size.width * PremiumBrandMark.WaveStart
+        val waveEnd = size.width * PremiumBrandMark.WaveEnd
+        val waveWidth = waveEnd - waveStart
+        val spacing = size.height * 0.205f
+        val centerY = size.height * 0.50f
+        val amplitude = size.height * 0.095f
+
         for (i in 0..2) {
-            val y = spacing * (i + 1)
+            val y = centerY + (i - 1) * spacing
             val path = Path().apply {
-                moveTo(0f, y)
+                moveTo(waveStart, y)
                 cubicTo(
-                    size.width / 4, y - spacing / 2,
-                    size.width * 3 / 4, y + spacing / 2,
-                    size.width, y
+                    waveStart + waveWidth * 0.25f,
+                    y - amplitude,
+                    waveStart + waveWidth * 0.75f,
+                    y + amplitude,
+                    waveEnd,
+                    y
                 )
             }
             drawPath(
@@ -375,6 +392,26 @@ fun SwimPayWavesMark(modifier: Modifier = Modifier, tint: Color? = null) {
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
         }
+    }
+}
+
+@Composable
+fun PremiumBrandSignalTile(
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(PremiumRadius.Tile))
+            .background(Brush.linearGradient(PremiumBrandGradient.PrimaryDeep)),
+        contentAlignment = Alignment.Center
+    ) {
+        PremiumBrandWavesMark(
+            modifier = Modifier
+                .fillMaxSize(PremiumBrandMark.WaveEnd - PremiumBrandMark.WaveStart + PremiumBrandMark.TileInset),
+            tint = Color.White,
+            compact = compact
+        )
     }
 }
 

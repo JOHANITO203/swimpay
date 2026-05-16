@@ -1662,6 +1662,7 @@ export interface AuditEvent {
 
 export const AndroidMerchantAccountAuthPaths = {
   DEVICE_LOOKUP: '/v1/android-merchant/auth/device-lookup',
+  DEVICE_RECOVER: '/v1/android-merchant/auth/device-recover',
   CREATE_ACCOUNT: '/v1/android-merchant/auth/create-account',
   GOOGLE_EXCHANGE: '/v1/android-merchant/auth/google/exchange',
   GOOGLE_LINK: '/v1/android-merchant/auth/google/link'
@@ -1770,6 +1771,10 @@ export interface AndroidMerchantDeviceLookupRequest {
   device_proof: AndroidMerchantDeviceProof;
 }
 
+export interface AndroidMerchantDeviceRecoverRequest {
+  device_proof: AndroidMerchantDeviceProof;
+}
+
 export interface AndroidMerchantCreateAccountRequest {
   profile_type: AndroidMerchantProfileType;
   business_label?: string;
@@ -1843,6 +1848,35 @@ export function validateAndroidMerchantDeviceLookupRequest(
     valid: true,
     value: {
       lookup_intent: parseAndroidMerchantDeviceLookupIntentContract(body.lookup_intent),
+      device_proof: deviceProof
+    }
+  };
+}
+
+export function validateAndroidMerchantDeviceRecoverRequest(
+  body: unknown
+): AndroidMerchantAccountValidationResult<AndroidMerchantDeviceRecoverRequest> {
+  if (!isPlainRecord(body)) {
+    return invalidAndroidMerchantAccountPayload();
+  }
+
+  const rawIdentifierField = findRawAndroidMerchantDeviceIdentifierField(body);
+  if (rawIdentifierField) {
+    return {
+      valid: false,
+      code: AndroidMerchantAccountErrorCodes.RAW_DEVICE_IDENTIFIER_REJECTED,
+      field: rawIdentifierField
+    };
+  }
+
+  const deviceProof = parseAndroidMerchantDeviceProofContract(body.device_proof);
+  if (!deviceProof) {
+    return invalidAndroidMerchantAccountPayload('device_proof');
+  }
+
+  return {
+    valid: true,
+    value: {
       device_proof: deviceProof
     }
   };

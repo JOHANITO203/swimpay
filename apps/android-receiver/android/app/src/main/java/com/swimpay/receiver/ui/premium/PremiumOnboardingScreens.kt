@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -44,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -594,12 +596,31 @@ private fun ProgressLine(step: PremiumOnboardingStep) {
 
 @Composable
 private fun BenefitRow(icon: ImageVector, title: String, body: String) {
-    LiquidGlassCard(Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap {}, radius = PremiumRadius.Card) {
-        Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            Box(Modifier.size(54.dp).background(PremiumColors.Mint, RoundedCornerShape(PremiumRadius.Tile)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(28.dp))
+    LiquidGlassCard(
+        Modifier
+            .fillMaxWidth()
+            .padding(bottom = 14.dp),
+        radius = PremiumRadius.CardLarge,
+        color = PremiumColors.Surface
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 88.dp)
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                Modifier
+                    .size(PremiumComponentSize.TouchTarget)
+                    .background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile))
+                    .border(1.dp, PremiumColors.Cyan.copy(alpha = 0.28f), RoundedCornerShape(PremiumRadius.Tile)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(26.dp))
             }
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text(title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = PremiumType.Body)
                 Text(body, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = PremiumType.Caption, lineHeight = 20.sp)
             }
@@ -804,16 +825,22 @@ private fun ReceivingMethodOption(
 
 @Composable
 private fun SwimPayLauncherBadge(size: Dp) {
+    val launcherShape = RoundedCornerShape(size * 0.24f)
     Box(
         Modifier
             .size(size)
-            .background(PremiumColors.Surface, RoundedCornerShape(size / 3f))
-            .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), RoundedCornerShape(size / 3f))
-            .padding(size / 7f),
+            .shadow(
+                18.dp,
+                launcherShape,
+                ambientColor = PremiumColors.Cyan.copy(alpha = 0.18f),
+                spotColor = PremiumColors.Cyan.copy(alpha = 0.22f)
+            )
+            .clip(launcherShape)
+            .background(PremiumColors.Background, launcherShape),
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(R.mipmap.ic_launcher_foreground),
+            painter = painterResource(R.drawable.ic_launcher_foreground),
             contentDescription = "SwimPay",
             contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxSize()

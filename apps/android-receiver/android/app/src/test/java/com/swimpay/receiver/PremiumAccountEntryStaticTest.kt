@@ -148,6 +148,8 @@ class PremiumAccountEntryStaticTest {
         assertTrue(appSource.indexOf("lookupDevice(AndroidMerchantDeviceLookupIntent.CREATE_ACCOUNT)") < appSource.indexOf("createAccount("))
         assertTrue(appSource.contains("lookupDevice(AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT)"))
         assertTrue(appSource.indexOf("lookupDevice(AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT)") < appSource.indexOf("googleExchange"))
+        assertTrue(appSource.contains("recoverKnownDevice()"))
+        assertTrue(appSource.indexOf("lookupDevice(AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT)") < appSource.indexOf("recoverKnownDevice()"))
         assertTrue(appSource.contains("googleExchange"))
         assertTrue(appSource.contains("googleLink"))
         assertTrue(appSource.contains("mobileMerchantSessionStore.save"))
@@ -167,8 +169,10 @@ class PremiumAccountEntryStaticTest {
     @Test
     fun accountEntryVisualGrammarKeepsTouchTargetsAndNoEmojiIcons() {
         val source = accountEntryScreensSource()
+        val onboardingSource = onboardingScreensSource()
         val components = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumComponents.kt").readText()
         val choiceRowBase = sourceFunction(source, "private fun PremiumAccountChoiceRowBase")
+        val launcherBadgeSources = source + "\n" + onboardingSource
 
         assertTrue("back button must keep the minimum Android touch target", source.contains("PremiumComponentSize.TouchTarget"))
         assertTrue("choice rows should expose button semantics", source.contains("role = Role.Button"))
@@ -178,6 +182,9 @@ class PremiumAccountEntryStaticTest {
             choiceRowBase.contains("Box(modifier)")
         )
         assertTrue("account entry logo must reuse the launcher foreground for brand consistency", components.contains("painterResource(R.drawable.ic_launcher_foreground)"))
+        assertTrue("account entry badge must use a Compose-supported vector foreground", source.contains("painterResource(R.drawable.ic_launcher_foreground)"))
+        assertTrue("onboarding badge must use a Compose-supported vector foreground", onboardingSource.contains("painterResource(R.drawable.ic_launcher_foreground)"))
+        assertFalse("Compose badges must not load adaptive launcher icons through painterResource", launcherBadgeSources.contains("painterResource(R.mipmap.ic_launcher)"))
         assertTrue("account entry must leave a clear zone below the language switch", source.contains("Spacer(Modifier.height(122.dp))"))
         assertFalse("account entry must use vector icons, not emoji", emojiRegex.containsMatchIn(source))
     }
@@ -195,6 +202,12 @@ class PremiumAccountEntryStaticTest {
     private fun accountEntryScreensSource(): String {
         val file = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumAccountEntryScreens.kt")
         assertTrue("PremiumAccountEntryScreens.kt must exist", file.exists())
+        return file.readText()
+    }
+
+    private fun onboardingScreensSource(): String {
+        val file = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt")
+        assertTrue("PremiumOnboardingScreens.kt must exist", file.exists())
         return file.readText()
     }
 

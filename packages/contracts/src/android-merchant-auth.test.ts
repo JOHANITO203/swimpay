@@ -11,12 +11,14 @@ import {
   buildAndroidMerchantAccountCreateResponse,
   buildAndroidMerchantDeviceLookupResponse,
   validateAndroidMerchantCreateAccountRequest,
+  validateAndroidMerchantDeviceRecoverRequest,
   validateAndroidMerchantDeviceLookupRequest
 } from './index.js';
 
 describe('android merchant account auth contracts', () => {
   it('declares stable Android account auth endpoint paths', () => {
     expect(AndroidMerchantAccountAuthPaths.DEVICE_LOOKUP).toBe('/v1/android-merchant/auth/device-lookup');
+    expect(AndroidMerchantAccountAuthPaths.DEVICE_RECOVER).toBe('/v1/android-merchant/auth/device-recover');
     expect(AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT).toBe('/v1/android-merchant/auth/create-account');
     expect(AndroidMerchantAccountAuthPaths.GOOGLE_EXCHANGE).toBe('/v1/android-merchant/auth/google/exchange');
     expect(AndroidMerchantAccountAuthPaths.GOOGLE_LINK).toBe('/v1/android-merchant/auth/google/link');
@@ -40,6 +42,30 @@ describe('android merchant account auth contracts', () => {
       validateAndroidMerchantDeviceLookupRequest({
         lookup_intent: AndroidMerchantDeviceLookupIntents.CREATE_ACCOUNT,
         device_proof: safeDeviceProof('install_public_key'),
+        android_id: 'raw-android-id'
+      })
+    ).toEqual({
+      valid: false,
+      code: AndroidMerchantAccountErrorCodes.RAW_DEVICE_IDENTIFIER_REJECTED,
+      field: 'android_id'
+    });
+  });
+
+  it('validates known-device recovery without raw device identifiers', () => {
+    expect(
+      validateAndroidMerchantDeviceRecoverRequest({
+        device_proof: safeDeviceProof('known_device_public_key')
+      })
+    ).toEqual({
+      valid: true,
+      value: {
+        device_proof: safeDeviceProof('known_device_public_key')
+      }
+    });
+
+    expect(
+      validateAndroidMerchantDeviceRecoverRequest({
+        device_proof: safeDeviceProof('known_device_public_key'),
         android_id: 'raw-android-id'
       })
     ).toEqual({

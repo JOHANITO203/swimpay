@@ -25,6 +25,7 @@ import {
   getReceiverBankOption,
   receivingRailForBuyerPaymentMethod,
   validateAndroidMerchantCreateAccountRequest,
+  validateAndroidMerchantDeviceRecoverRequest,
   validateAndroidMerchantDeviceLookupRequest,
   validateIntelligenceFeedbackRequest,
   type AndroidMerchantAccountCreateResponse,
@@ -2641,6 +2642,43 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
 
     return reply.status(201).send(toAndroidMerchantAccountCreateResponse(result.account, mobileSessionToken));
+  });
+
+  server.post(AndroidMerchantAccountAuthPaths.DEVICE_RECOVER, async (request, reply) => {
+    if (!authBffRepository) {
+      return reply.status(503).send(authBffRepositoryUnavailableError());
+    }
+    const parsed = validateAndroidMerchantDeviceRecoverRequest(request.body);
+    if (!parsed.valid) {
+      return reply.status(400).send(androidMerchantAccountContractError(parsed.code, parsed.field));
+    }
+
+    const now = clock();
+    const mobileSessionToken = createAndroidMerchantMobileSessionToken();
+    const result = await authBffRepository.recoverAndroidMerchantKnownDevice({
+      deviceProofHash: hashAndroidMerchantDeviceProof(parsed.value.device_proof.install_public_key),
+      mobileSessionId: randomUUID(),
+      mobileSessionHash: hashAndroidMerchantMobileSessionToken(mobileSessionToken),
+      expiresAt: new Date(now.getTime() + ANDROID_MERCHANT_MOBILE_SESSION_TTL_MS).toISOString(),
+      now: now.toISOString()
+    });
+    if (result.kind === 'recovered') {
+      return reply.status(200).send(toAndroidMerchantAccountCreateResponse(result.account, mobileSessionToken));
+    }
+    if (result.kind === 'recovery_required') {
+      return reply.status(409).send(
+        invalidRequest('This Android merchant device requires account recovery.', {
+          device_status: AndroidMerchantDeviceLookupStatuses.RECOVERY_REQUIRED,
+          recovery_options: ['google']
+        })
+      );
+    }
+    return reply.status(404).send(
+      invalidRequest('Known Android merchant device was not found.', {
+        device_status: AndroidMerchantDeviceLookupStatuses.RECOVERY_REQUIRED,
+        recovery_options: ['google']
+      })
+    );
   });
 
   server.post(AndroidMerchantAccountAuthPaths.GOOGLE_EXCHANGE, async (request, reply) => {

@@ -31,21 +31,21 @@ object PremiumColors {
         ink = Color(0xFFF8FAFF),
         navy = Color(0xFFFFFFFF),
         blue = Color(0xFF003BFF),
-        electricBlue = Color(0xFF2F6BFF),
-        cyan = Color(0xFF42D6FF),
+        electricBlue = Color(0xFF4E86FF),
+        cyan = Color(0xFF4DDBFF),
         teal = Color(0xFF003BFF),
         mint = Color(0xFF0B2A46),
         background = Color(0xFF000A1F),
         surface = Color(0xFF07152F),
-        surfaceAlt = Color(0xFF0B1F3D),
-        line = Color(0xFF1A355E),
+        surfaceAlt = Color(0xFF0A2142),
+        line = Color(0xFF21406B),
         muted = Color(0xFFB7C7E8),
         softText = Color(0xFF7F95BF),
         success = Color(0xFF16A34A),
         warning = Color(0xFFEAB308),
         danger = Color(0xFFDC2626),
         panelTint = Color(0xFF081B36),
-        iconTile = Color(0xFF0F2A50),
+        iconTile = Color(0xFF0E2D56),
         neutralChip = Color(0xFF102848)
     )
     private val dark = PremiumColorPalette(
@@ -53,13 +53,13 @@ object PremiumColors {
         navy = Color(0xFFFFFFFF),
         blue = Color(0xFF2F6BFF),
         electricBlue = Color(0xFF6EA8FF),
-        cyan = Color(0xFF42D6FF),
-        teal = Color(0xFF42D6FF),
+        cyan = Color(0xFF57DEFF),
+        teal = Color(0xFF57DEFF),
         mint = Color(0xFF071B35),
         background = Color(0xFF000613),
         surface = Color(0xFF061225),
-        surfaceAlt = Color(0xFF0A1D38),
-        line = Color(0xFF18345D),
+        surfaceAlt = Color(0xFF0B203D),
+        line = Color(0xFF1D3A66),
         muted = Color(0xFFB8C8E8),
         softText = Color(0xFF8299C2),
         success = Color(0xFF34D399),
@@ -140,6 +140,14 @@ object PremiumIconSize {
     val Tile = 48.dp
 }
 
+object PremiumBrandMark {
+    val WaveStroke = 2.6.dp
+    val WaveStrokeCompact = 2.2.dp
+    val TileInset = 0.18f
+    val WaveStart = 0.16f
+    val WaveEnd = 0.84f
+}
+
 object PremiumComponentSize {
     val ButtonHeight = 56.dp
     val CompactButtonHeight = 44.dp
@@ -167,10 +175,10 @@ object PremiumBrandGradient {
     val Primary: List<Color> get() = if (PremiumColors.IsDark) {
         listOf(Color(0xFF2F6BFF), Color(0xFF6EA8FF))
     } else {
-        listOf(Color(0xFF003BFF), Color(0xFF00D4FF))
+        listOf(Color(0xFF003BFF), Color(0xFF4DDBFF))
     }
     val PrimaryDeep: List<Color> get() = if (PremiumColors.IsDark) {
-        listOf(Color(0xFF2F6BFF), Color(0xFF07152F))
+        listOf(Color(0xFF2F6BFF), Color(0xFF061225))
     } else {
         listOf(Color(0xFF003BFF), Color(0xFF002EAD))
     }

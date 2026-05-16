@@ -164,6 +164,66 @@ class AndroidMerchantApiWiringTest {
     }
 
     @Test
+    fun androidAuthRepositoryRestoresKnownDeviceSessionWithoutGoogle() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "account": {
+                    "user_id": "usr_known",
+                    "merchant_id": "mch_known",
+                    "profile_type": "personal",
+                    "display_handle": "merchant-known",
+                    "permission_profile": "merchant",
+                    "permissions": ["payments.review.read"],
+                    "collected_identity_fields": [],
+                    "google_required": false
+                  },
+                  "device": {
+                    "device_id": "dev_known",
+                    "device_status": "known_device",
+                    "raw_device_identifiers_allowed": false
+                  },
+                  "mobile_session": {
+                    "token": "spm_known_secret",
+                    "token_type": "swimpay_mobile_session",
+                    "expires_at": "2026-06-07T00:00:00.000Z"
+                  },
+                  "onboarding": {
+                    "starts_after_account_creation": true,
+                    "android_confirms_payments": false
+                  }
+                }
+                """.trimIndent()
+            )
+        )
+        val repository = AndroidMerchantAuthApiRepository(
+            transport = transport,
+            deviceProofProvider = StaticAndroidMerchantDeviceProofProvider(
+                AndroidMerchantDeviceProof(
+                    installPublicKey = "install_public_key_known",
+                    challengeId = "challenge_known",
+                    challengeSignature = "signature_known"
+                )
+            )
+        )
+
+        val recovery = repository.recoverKnownDevice()
+
+        assertEquals(AndroidMerchantAuthResultStatus.SUCCESS, recovery.status)
+        val session = recovery.mobileSession
+        requireNotNull(session)
+        assertEquals("mch_known", session.merchantId)
+        assertEquals("usr_known", session.userId)
+        assertEquals("Bearer spm_known_secret", AuthenticatedMerchantSession.mobile(session).authorizationHeader())
+        assertEquals("/v1/android-merchant/auth/device-recover", transport.requests.single().path)
+        assertTrue(transport.requests.single().body.contains("\"device_proof_type\":\"install_keypair_signed_challenge\""))
+        assertFalse(recovery.visibleTexts().joinToString(" ").contains("spm_known_secret"))
+        assertFalse(session.toString().contains("spm_known_secret"))
+    }
+
+    @Test
     fun androidAuthRepositoryReportsSafeGoogleBackendFailureReason() {
         val tokenRejected = googleRepositoryWithResponse(
             MerchantApiResponse(
@@ -351,6 +411,7 @@ class AndroidMerchantApiWiringTest {
         val contract = AndroidMerchantAccountEntryContract.current()
 
         assertEquals(AndroidMerchantAuthApiContract.DEVICE_LOOKUP_PATH, contract.deviceLookupPath)
+        assertEquals(AndroidMerchantAuthApiContract.DEVICE_RECOVER_PATH, contract.deviceRecoverPath)
         assertTrue(contract.lookupIntents.contains(AndroidMerchantDeviceLookupIntent.CREATE_ACCOUNT))
         assertTrue(contract.lookupIntents.contains(AndroidMerchantDeviceLookupIntent.RECOVER_ACCOUNT))
         assertTrue(contract.deviceLookupRequiredBeforeCreateAccount)

@@ -226,6 +226,52 @@ describe('android merchant mobile backend endpoints', () => {
     });
   });
 
+  it('restores a mobile session for a known Android merchant device without Google', async () => {
+    const { server } = buildAndroidMerchantServer();
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('known-local-device')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+
+    const recovered = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.DEVICE_RECOVER,
+      payload: {
+        device_proof: safeDeviceProof('known-local-device')
+      }
+    });
+
+    expect(recovered.statusCode).toBe(200);
+    expect(recovered.json()).toMatchObject({
+      account: {
+        user_id: created.json().account.user_id,
+        merchant_id: created.json().account.merchant_id,
+        display_handle: created.json().account.display_handle,
+        collected_identity_fields: [],
+        google_required: false
+      },
+      device: {
+        device_status: AndroidMerchantDeviceLookupStatuses.KNOWN_DEVICE,
+        raw_device_identifiers_allowed: false
+      },
+      mobile_session: {
+        token_type: 'swimpay_mobile_session'
+      },
+      onboarding: {
+        android_confirms_payments: false
+      }
+    });
+    expect(String(recovered.json().mobile_session.token)).toMatch(/^spm_/u);
+    expect(recovered.json().mobile_session.token).not.toBe(created.json().mobile_session.token);
+    expect(recovered.body).not.toMatch(/google_id_token|first_name|last_name|admin/iu);
+  });
+
   it('accepts Android mobile session bearer tokens for merchant Android surfaces only', async () => {
     const eventPublisher = new FakeEventPublisher();
     const { server } = buildAndroidMerchantServer({ eventPublisher });
