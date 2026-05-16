@@ -59,7 +59,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - swimpay_private
+      - swimpay_runtime
       - swimpay_public
     healthcheck:
       test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
@@ -87,7 +87,7 @@ services:
       - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
       - ../packages/database/migrations:/docker-entrypoint-initdb.d:ro
     networks:
-      - swimpay_private
+      - swimpay_runtime
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -105,7 +105,7 @@ services:
       - valkey_data:/data
       - ./valkey/valkey.conf:/usr/local/etc/valkey/valkey.conf:ro
     networks:
-      - swimpay_private
+      - swimpay_runtime
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 10s
@@ -123,7 +123,7 @@ services:
       - nats_data:/data
       - ./nats/nats.conf:/etc/nats/nats.conf:ro
     networks:
-      - swimpay_private
+      - swimpay_runtime
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8222/healthz"]
       interval: 10s
@@ -151,7 +151,7 @@ services:
     expose:
       - "3000"
     networks:
-      - swimpay_private
+      - swimpay_runtime
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
@@ -177,7 +177,7 @@ services:
     expose:
       - "3010"
     networks:
-      - swimpay_private
+      - swimpay_runtime
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3010/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
@@ -203,7 +203,7 @@ services:
     expose:
       - "3011"
     networks:
-      - swimpay_private
+      - swimpay_runtime
       - swimpay_public
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3011/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -227,7 +227,7 @@ services:
     expose:
       - "3001"
     networks:
-      - swimpay_private
+      - swimpay_runtime
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
@@ -237,7 +237,7 @@ services:
     mem_limit: 256m
 
 networks:
-  swimpay_private:
+  swimpay_runtime:
     driver: bridge
   swimpay_public:
 
