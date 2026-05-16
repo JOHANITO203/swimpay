@@ -413,3 +413,14 @@ Keep `packages/bank-templates/src/fixtures.ts` and `packages/bank-templates/src/
 ## 2026-05-17T00:27:00+03:00 - Release production next action
 
 Before creating the signed production APK, load the release keystore variables into the local build environment or CI secret store, then run `npm run android:assemble:release`. The current code now rejects missing release signing values instead of silently producing an unsafe release.
+
+## 2026-05-17T00:45:00+03:00 - Ready-to-sell next action
+
+Use `.swimpay-agent/SWIMPAY_READY_TO_SELL_AUDIT.md` as the current launch gate. Execute in this order:
+
+1. Push the CI alignment patch and verify GitHub green.
+2. Build/install the latest staging APK and run account/session/signout/reconnect smoke.
+3. Run receiving-method add/edit/delete smoke.
+4. Run checkout -> review -> manual confirmation -> signed webhook smoke.
+5. Build a signed release APK only after release keystore variables are loaded outside git.
+6. Put the intended APK behind the landing download CTA and test `https://www.swimpay.pro`.

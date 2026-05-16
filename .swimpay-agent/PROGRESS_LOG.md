@@ -3507,3 +3507,11 @@ Validation update 2026-05-12T22:20:00+03:00:
 - Expanded the repository mojibake guardrail to catch common single-level UTF-8 mojibake.
 - Kept connected-site delivery internals behind explicit developer details while the default merchant response returns only simple delivery health.
 - Validation passed: targeted production/mojibake guardrails, connected-site API test, typecheck, compose config, Android release-config JVM test and staging APK assembly.
+## 2026-05-17T00:45:00+03:00 - Ready-to-sell audit
+
+- Created `.swimpay-agent/SWIMPAY_READY_TO_SELL_AUDIT.md`.
+- Created `docs/superpowers/plans/2026-05-17-swimpay-ready-to-sell.md`.
+- Classified launch surfaces as ready, fragile, blocking or not beta scope.
+- Identified the blocking commercial gate: signed release APK requires release keystore variables outside git.
+- Identified fragile gates requiring device/operator proof: login/reconnect/signout, receiving methods, checkout-review-webhook, landing APK download.
+- No backend, payment runtime, webhook semantics, receiver runtime or database behavior changed in this pass.

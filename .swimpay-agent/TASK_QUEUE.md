@@ -1,5 +1,16 @@
 # SwimPay Task Queue
 
+## Current Queue - Ready To Sell Private Beta (2026-05-17)
+
+- [x] `ready_to_sell_audit` - status: completed - source: `.swimpay-agent/SWIMPAY_READY_TO_SELL_AUDIT.md`
+- [ ] `github_ci_green_gate` - status: pending_push_and_github_rerun - source: `docs/superpowers/plans/2026-05-17-swimpay-ready-to-sell.md`
+- [ ] `staging_account_device_smoke` - status: pending_device_test - source: `.swimpay-agent/SWIMPAY_READY_TO_SELL_AUDIT.md`
+- [ ] `receiving_methods_device_smoke` - status: pending_device_test - source: `.swimpay-agent/SWIMPAY_READY_TO_SELL_AUDIT.md`
+- [ ] `checkout_review_webhook_smoke` - status: pending_staging_rehearsal - source: `.swimpay-agent/SWIMPAY_READY_TO_SELL_AUDIT.md`
+- [ ] `signed_release_apk` - status: blocked_until_release_keystore_env_loaded - source: `docs/ANDROID_RELEASE_AND_PRODUCTION_CONFIG.md`
+- [ ] `landing_download_smoke` - status: pending_signed_or_labeled_beta_apk - source: `.swimpay-agent/SWIMPAY_READY_TO_SELL_AUDIT.md`
+- [ ] `pilot_merchant_package` - status: pending_after_smokes - source: `docs/superpowers/plans/2026-05-17-swimpay-ready-to-sell.md`
+
 ## Current Queue - Android Onboarding + Receiving Methods Fix (2026-05-15)
 
 - [x] `onboarding_launcher_identity` - status: completed - source: `.swimpay-agent/ANDROID_ONBOARDING_RECEIVING_METHODS_FIX_REPORT.md`
