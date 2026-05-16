@@ -2,9 +2,10 @@
 
 This document defines the production runtime contract for SwimPay V1.
 
-The current production conversion keeps the validated staging application shape
-and points the public runtime to the production domain. Staging remains the test
-mirror; production must use the public HTTPS host.
+The current production conversion keeps the validated staging application shape.
+The public landing page uses the production domain, while the downloadable
+Android release keeps the validated VPS backend until a dedicated production
+API host is routed.
 
 Production host:
 
@@ -16,7 +17,9 @@ Checkout URL:
 
 Android release backend:
 
-- `SWIMPAY_ANDROID_PRODUCTION_BACKEND_BASE_URL=https://www.swimpay.pro`
+- Current downloadable release fallback: `https://staging.swimpay.pro`
+- Optional override when the production API host is ready:
+  `SWIMPAY_ANDROID_PRODUCTION_BACKEND_BASE_URL=https://<production-api-host>`
 
 Android release signing:
 

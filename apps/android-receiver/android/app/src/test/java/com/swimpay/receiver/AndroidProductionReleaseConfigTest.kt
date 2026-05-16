@@ -12,7 +12,7 @@ class AndroidProductionReleaseConfigTest {
 
         assertTrue(gradle.contains("productionSwimpayBackendBaseUrl"))
         assertTrue(gradle.contains("SWIMPAY_ANDROID_PRODUCTION_BACKEND_BASE_URL"))
-        assertTrue(gradle.contains("https://www.swimpay.pro"))
+        assertTrue(gradle.contains("stagingSwimpayBackendBaseUrl"))
         assertTrue(gradle.contains("productionSwimpayGoogleServerClientId"))
         assertTrue(gradle.contains("SWIMPAY_ANDROID_PRODUCTION_GOOGLE_SERVER_CLIENT_ID"))
         assertTrue(gradle.contains("SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID"))
@@ -25,7 +25,7 @@ class AndroidProductionReleaseConfigTest {
     }
 
     @Test
-    fun productionReleaseMustNotSilentlyReuseStagingOrLocalConfig() {
+    fun productionReleaseMustUseExplicitProductionConfigWithSafeStagingFallback() {
         val gradle = File("build.gradle.kts").readText()
         val releaseBlock = sourceBetween(
             gradle,
@@ -42,7 +42,8 @@ class AndroidProductionReleaseConfigTest {
         assertTrue(releaseBlock.contains("productionSwimpayGoogleServerClientId"))
         assertFalse(releaseBlock.contains("stagingSwimpayBackendBaseUrl"))
         assertFalse(releaseBlock.contains("swimpayBackendBaseUrl.get()"))
-        assertTrue(validationBlock.contains("backend != stagingBackend"))
+        assertTrue(gradle.contains(".orElse(stagingSwimpayBackendBaseUrl)"))
+        assertFalse(validationBlock.contains("backend != stagingBackend"))
         assertFalse(validationBlock.contains("googleClientId != stagingGoogleClientId"))
         assertFalse(validationBlock.contains("must not reuse the staging OAuth client"))
         assertTrue(validationBlock.contains("Release keystore"))

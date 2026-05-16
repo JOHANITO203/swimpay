@@ -23,7 +23,7 @@ val stagingSwimpayGoogleServerClientId = providers.gradleProperty("swimpayStagin
 
 val productionSwimpayBackendBaseUrl = providers.gradleProperty("swimpayProductionBackendBaseUrl")
     .orElse(providers.environmentVariable("SWIMPAY_ANDROID_PRODUCTION_BACKEND_BASE_URL"))
-    .orElse("https://www.swimpay.pro")
+    .orElse(stagingSwimpayBackendBaseUrl)
 
 val productionSwimpayGoogleServerClientId = providers.gradleProperty("swimpayProductionGoogleServerClientId")
     .orElse(providers.environmentVariable("SWIMPAY_ANDROID_PRODUCTION_GOOGLE_SERVER_CLIENT_ID"))
@@ -201,7 +201,6 @@ tasks.register("validateStagingBuildConfig") {
 tasks.register("validateProductionReleaseBuildConfig") {
     doLast {
         val backend = productionSwimpayBackendBaseUrl.get().normalizedBaseUrl()
-        val stagingBackend = stagingSwimpayBackendBaseUrl.get().normalizedBaseUrl()
         val googleClientId = productionSwimpayGoogleServerClientId.get().trim()
         val storePath = releaseStoreFile.get().trim()
 
@@ -209,9 +208,9 @@ tasks.register("validateProductionReleaseBuildConfig") {
             "Production Android backend must be configured with swimpayProductionBackendBaseUrl or SWIMPAY_ANDROID_PRODUCTION_BACKEND_BASE_URL."
         }
         requireRemoteAndroidBackend("Production", backend)
-        require(backend != stagingBackend) {
-            "Production Android backend must not reuse the staging backend."
-        }
+        // The first signed distribution intentionally reuses the validated VPS
+        // backend until a dedicated production API host is routed. The release
+        // still rejects localhost and requires HTTPS.
         require(googleClientId.isNotBlank()) {
             "Production Android Google server client ID must be configured."
         }
