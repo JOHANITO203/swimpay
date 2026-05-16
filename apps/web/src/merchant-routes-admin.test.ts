@@ -166,6 +166,29 @@ describe('merchant receiving route admin web surface', () => {
       globalThis.fetch = previousFetch;
     }
   });
+
+  it('keeps unauthenticated admin receiving-route surface disabled outside test/development', async () => {
+    const client = new FakeMerchantRouteAdminClient();
+    const server = buildWebServer({
+      environment: 'production',
+      merchantRouteAdminClient: client
+    });
+
+    const page = await server.inject({
+      method: 'GET',
+      url: '/admin/merchant-receiving-routes'
+    });
+    const create = await server.inject({
+      method: 'POST',
+      url: '/admin/merchant-receiving-routes',
+      payload: { bank_id: 'sber_ru', type: 'card', value: '2202 2012 3456 4821' }
+    });
+
+    expect(page.statusCode).toBe(404);
+    expect(page.json().error.code).toBe('privileged_web_surface_disabled');
+    expect(create.statusCode).toBe(404);
+    expect(client.createdRoutes).toEqual([]);
+  });
 });
 
 class FakeMerchantRouteAdminClient implements MerchantRouteAdminClient {

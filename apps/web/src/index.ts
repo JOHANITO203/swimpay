@@ -494,6 +494,10 @@ export interface MerchantServerBearerOptions {
   allowDevFallback?: boolean | undefined;
 }
 
+export function shouldEnablePrivilegedWebSurfaces(environment: string, explicitFlag = process.env.SWIMPAY_ENABLE_PRIVILEGED_WEB_SURFACES): boolean {
+  return environment === 'test' || (environment === 'development' && explicitFlag === 'true');
+}
+
 const defaultRecipient: CheckoutRecipient = {
   name: 'Compte marchand',
   bank: 'Banque du marchand',
@@ -515,12 +519,16 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     explicitToken: process.env.MERCHANT_INTEGRATION_BEARER_TOKEN,
     allowDevFallback: process.env.SWIMPAY_ALLOW_DEV_MERCHANT_SESSION !== 'false'
   });
+  const privilegedWebSurfacesEnabled = shouldEnablePrivilegedWebSurfaces(options.environment);
   const checkoutSessionProvider = options.checkoutSessionProvider ?? new ApiCheckoutSessionProvider(apiBaseUrl, checkoutMerchantId);
   const adminEvidenceClient = options.adminEvidenceClient ?? new ApiAdminEvidenceClient(apiBaseUrl, process.env.SWIMPAY_ADMIN_TOKEN ?? 'change_me');
   const adminIntelligenceClient = options.adminIntelligenceClient ?? new ApiAdminIntelligenceClient(apiBaseUrl, process.env.SWIMPAY_ADMIN_TOKEN ?? 'change_me');
-  const merchantRouteAdminClient = options.merchantRouteAdminClient
-    ?? (merchantServerBearerToken ? new ApiMerchantRouteAdminClient(apiBaseUrl, merchantServerBearerToken) : null);
-  const merchantIntegrationClient = options.merchantIntegrationClient === undefined
+  const merchantRouteAdminClient = !privilegedWebSurfacesEnabled
+    ? null
+    : options.merchantRouteAdminClient ?? (merchantServerBearerToken ? new ApiMerchantRouteAdminClient(apiBaseUrl, merchantServerBearerToken) : null);
+  const merchantIntegrationClient = !privilegedWebSurfacesEnabled
+    ? null
+    : options.merchantIntegrationClient === undefined
     ? createDefaultMerchantIntegrationClient(apiBaseUrl, merchantServerBearerToken)
     : options.merchantIntegrationClient;
 
@@ -655,26 +663,41 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.get('/merchant/developer-integration', async (_request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     reply.type('text/html; charset=utf-8');
     return renderMerchantIntegrationWizard(merchantIntegrationClient);
   });
 
   server.post('/merchant/developer-integration/keys', async (_request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     reply.type('text/html; charset=utf-8');
     return renderMerchantIntegrationAction(merchantIntegrationClient, (client) => client.ensureKeys(), 'Clé secrète créée.');
   });
 
   server.post('/merchant/developer-integration/keys/rotate', async (_request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     reply.type('text/html; charset=utf-8');
     return renderMerchantIntegrationAction(merchantIntegrationClient, (client) => client.rotateKeys(), 'Clé secrète renouvelée.');
   });
 
   server.post('/merchant/developer-integration/webhook-secret/rotate', async (_request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     reply.type('text/html; charset=utf-8');
     return renderMerchantIntegrationAction(merchantIntegrationClient, (client) => client.rotateWebhookSecret(), 'Secret webhook renouvelé.');
   });
 
   server.post('/merchant/developer-integration/webhook-url', async (request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     const body = (request.body ?? {}) as { webhook_url?: unknown };
     const webhookUrl = typeof body.webhook_url === 'string' ? body.webhook_url : '';
     reply.type('text/html; charset=utf-8');
@@ -686,6 +709,9 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.post('/merchant/developer-integration/test-webhook', async (_request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     if (!merchantIntegrationClient) {
       return reply.status(303).redirect('/merchant/developer-integration?result=unavailable');
     }
@@ -694,6 +720,9 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.post('/merchant/developer-integration/webhook-deliveries/:deliveryId/retry', async (request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     if (!merchantIntegrationClient) {
       return reply.status(303).redirect('/merchant/developer-integration?result=unavailable');
     }
@@ -721,6 +750,9 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.get('/admin/evidence-review', async (_request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     try {
       const [dashboard, auditEvents] = await Promise.all([
         adminEvidenceClient.getDashboard(),
@@ -735,6 +767,9 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.get('/admin/intelligence-review', async (_request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     try {
       const [feedback, unknownShapes] = await Promise.all([
         adminIntelligenceClient.getFeedback(),
@@ -750,6 +785,9 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
 
   // Keep old path for backward compatibility if needed by existing tests, but redirect
   server.get('/admin/merchant-receiving-routes', async (_request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     if (!merchantRouteAdminClient) {
       reply.status(503).type('text/html; charset=utf-8');
       return renderMerchantRoutesUnavailableScreen();
@@ -760,6 +798,9 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.post('/admin/merchant-receiving-routes', async (request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     if (!merchantRouteAdminClient) {
       return reply.status(303).redirect('/admin/merchant-receiving-routes?result=unavailable');
     }
@@ -768,6 +809,9 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.post('/admin/merchant-receiving-routes/:routeId/disable', async (request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     if (!merchantRouteAdminClient) {
       return reply.status(303).redirect('/admin/merchant-receiving-routes?result=unavailable');
     }
@@ -776,6 +820,9 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
   });
 
   server.post('/admin/merchant-receiving-routes/:routeId/recommend', async (request, reply) => {
+    if (!privilegedWebSurfacesEnabled) {
+      return reply.status(404).send({ error: { code: 'privileged_web_surface_disabled' } });
+    }
     if (!merchantRouteAdminClient) {
       return reply.status(303).redirect('/admin/merchant-receiving-routes?result=unavailable');
     }
@@ -1506,7 +1553,7 @@ export function resolveMerchantServerBearerToken(options: MerchantServerBearerOp
     return explicitToken;
   }
 
-  if (options.environment === 'production' || options.allowDevFallback === false) {
+  if (!['development', 'test'].includes(options.environment) || options.allowDevFallback === false) {
     return null;
   }
 

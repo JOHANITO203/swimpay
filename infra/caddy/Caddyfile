@@ -1,8 +1,4 @@
-{
-	auto_https off
-}
-
-:80 {
+{$SWIMPAY_CADDY_SITE_ADDRESS::80} {
 	encode zstd gzip
 
 	handle /v1/* {

@@ -14,9 +14,11 @@ import {
   hmacSha256,
   maskPhone,
   normalizeRussianPhone,
+  validatePublicWebhookUrlSyntax,
   redactLogValue,
   verifyApiKey,
-  verifyWebhookSecret
+  verifyWebhookSecret,
+  assertPublicWebhookUrlEgressAllowed
 } from './index.js';
 
 describe('security helpers', () => {
@@ -191,5 +193,25 @@ describe('security helpers', () => {
     expect(FASTIFY_REDACTION_PATHS).toContain('req.body.pin');
     expect(FASTIFY_REDACTION_PATHS).toContain('req.body.sms_code');
     expect(options.redact.censor).toBe('[REDACTED]');
+  });
+
+  it('rejects private webhook URLs before delivery-time fetch', async () => {
+    expect(validatePublicWebhookUrlSyntax('https://merchant.example/webhooks/swimpay')).toMatchObject({
+      valid: true,
+      value: 'https://merchant.example/webhooks/swimpay'
+    });
+    expect(validatePublicWebhookUrlSyntax('http://merchant.example/webhooks/swimpay')).toMatchObject({
+      valid: false,
+      message: 'Webhook URL must use HTTPS.'
+    });
+    expect(validatePublicWebhookUrlSyntax('https://127.0.0.1/webhooks/swimpay')).toMatchObject({
+      valid: false,
+      message: 'Webhook URL host is not allowed.'
+    });
+    expect(validatePublicWebhookUrlSyntax('https://169.254.169.254/latest/meta-data')).toMatchObject({
+      valid: false,
+      message: 'Webhook URL host is not allowed.'
+    });
+    await expect(assertPublicWebhookUrlEgressAllowed('https://127.0.0.1/webhooks/swimpay')).rejects.toThrow('webhook_url_not_public');
   });
 });

@@ -239,6 +239,21 @@ describe('android Gradle wrapper and build validation', () => {
     expect(appBuild).toContain('googleClientId.isNotBlank()');
   });
 
+  it('makes debug VPS APK builds target staging with Google recovery configured', () => {
+    const rootPackage = readFileSync(join(root, 'package.json'), 'utf8');
+    const appBuild = readAndroid('app/build.gradle.kts');
+
+    expect(rootPackage).toContain('android:assemble:debug-vps');
+    expect(rootPackage).toContain('\\"-PswimpayBackendBaseUrl=https://staging.swimpay.pro\\"');
+    expect(rootPackage).toContain(
+      '\\"-PswimpayGoogleServerClientId=983049539084-8k91arvoocd6d1q8fbjq1auvmigkeg6u.apps.googleusercontent.com\\"'
+    );
+    expect(appBuild).toContain('validateDebugVpsBuildConfig');
+    expect(appBuild).toContain('preDebugBuild');
+    expect(appBuild).toContain('Debug VPS Android backend must use HTTPS');
+    expect(appBuild).toContain('Debug VPS Android Google server client ID must be configured');
+  });
+
   it('declares exact non-debug package visibility for supported bank detection', () => {
     const mainManifest = readAndroid('app/src/main/AndroidManifest.xml');
     const supportedPackages = [

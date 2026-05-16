@@ -157,9 +157,13 @@ describe('Developer Integration Wizard', () => {
       environment: 'test',
       checkoutMerchantId: 'mch_dev'
     })).toBe('test_mch_dev');
+    expect(resolveMerchantServerBearerToken({
+      environment: 'staging',
+      checkoutMerchantId: 'mch_dev'
+    })).toBeNull();
   });
 
-  it('keeps production wizard actions unavailable without an approved server token', async () => {
+  it('keeps production wizard actions unavailable without an authenticated web surface', async () => {
     const previousToken = process.env.MERCHANT_INTEGRATION_BEARER_TOKEN;
     process.env.MERCHANT_INTEGRATION_BEARER_TOKEN = 'test_mch_dev';
     try {
@@ -167,12 +171,11 @@ describe('Developer Integration Wizard', () => {
       const page = await server.inject({ method: 'GET', url: '/merchant/developer-integration' });
       const action = await server.inject({ method: 'POST', url: '/merchant/developer-integration/keys' });
 
-      expect(page.statusCode).toBe(200);
-      expect(page.body).toContain('Connexion en attente');
-      expect(page.body).toContain('disabled aria-disabled="true"');
+      expect(page.statusCode).toBe(404);
+      expect(page.json().error.code).toBe('privileged_web_surface_disabled');
       expect(page.body).not.toMatch(/sk_test_|secret_key_once|whsec_[A-Za-z0-9_-]{8,}/u);
-      expect(action.statusCode).toBe(200);
-      expect(action.body).toContain('Service momentan');
+      expect(action.statusCode).toBe(404);
+      expect(action.json().error.code).toBe('privileged_web_surface_disabled');
       expect(action.body).not.toMatch(/sk_test_|secret_key_once|whsec_[A-Za-z0-9_-]{8,}/u);
     } finally {
       if (previousToken === undefined) {

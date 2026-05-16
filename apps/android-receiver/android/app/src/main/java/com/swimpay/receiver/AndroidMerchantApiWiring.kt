@@ -1536,19 +1536,17 @@ data class MerchantDeveloperIntegrationSnapshot(
         webhookSecretForCopy: String? = webhookSecretOnce,
         merchantAuthorizationHeaderForCopy: String = ""
     ): List<String> {
+        secretKeyForCopy?.let { require(it.isBlank() || it.startsWith("sk_")) }
+        webhookSecretForCopy?.let { require(it.isBlank() || it.startsWith("whsec_")) }
+        merchantAuthorizationHeaderForCopy.takeIf { it.isNotBlank() }?.let { require(it.startsWith("Bearer spm_")) }
         val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/api/v1/payments/swimpay/webhook # exemple" }
         val externalAppLines = externalAppExportLines(externalAppBaseUrl)
-        val merchantAuthLine = merchantAuthorizationHeaderForCopy
-            .trim()
-            .takeIf { it.startsWith("Bearer spm_") }
-            ?.let { listOf("SWIMPAY_MERCHANT_AUTHORIZATION=$it") }
-            ?: listOf("# SWIMPAY_MERCHANT_AUTHORIZATION=Bearer spm_xxx # session mobile requise")
         return listOf(
             "SWIMPAY_STAGING_API_BASE_URL=$apiBaseUrl",
-            "SWIMPAY_STAGING_SECRET_KEY=${secretKeyForCopy?.takeIf { it.isNotBlank() } ?: effectiveSecretKey()}",
-            "SWIMPAY_STAGING_WEBHOOK_SECRET=${webhookSecretForCopy?.takeIf { it.isNotBlank() } ?: effectiveWebhookSecret()}",
+            "# SWIMPAY_STAGING_SECRET_KEY=$secretKeyMasked # affichez ou renouvelez une cle depuis l'espace marchand",
+            "# SWIMPAY_STAGING_WEBHOOK_SECRET=$webhookSecretMasked # ne copiez pas de secret brut depuis Android",
             "SWIMPAY_WEBHOOK_URL=$safeWebhookUrl"
-        ) + externalAppLines + merchantAuthLine + listOf("SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}")
+        ) + externalAppLines + listOf("SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}")
     }
 
     private fun externalAppExportLines(externalAppBaseUrl: String): List<String> {

@@ -6,7 +6,7 @@ import {
   AndroidMerchantDeviceProofTypes,
   AndroidMerchantProfileTypes
 } from '@swimpay/contracts';
-import { InMemoryAuthBffRepository } from './auth-bff.js';
+import { InMemoryAuthBffRepository, MerchantRoles } from './auth-bff.js';
 import { InMemoryMerchantIntegrationRepository } from './developer-integration.js';
 import {
   buildApiServer,
@@ -812,14 +812,24 @@ describe('android merchant mobile backend endpoints', () => {
     expect(link.body).not.toContain('google-link-token-sample');
   });
 
-  it('accepts explicit Android and web Google ID token audiences for account recovery', () => {
+  it('accepts staging/web Google audiences outside production but only Android server audience in production', () => {
     expect(
       resolveGoogleIdTokenAudiences({
         GOOGLE_OAUTH_CLIENT_ID: '"web-client.apps.googleusercontent.com"',
         SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID: 'android-server-client.apps.googleusercontent.com, web-client.apps.googleusercontent.com',
         SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID: 'web-client.apps.googleusercontent.com'
       } as NodeJS.ProcessEnv)
-    ).toEqual(['web-client.apps.googleusercontent.com', 'android-server-client.apps.googleusercontent.com']);
+    ).toEqual(['android-server-client.apps.googleusercontent.com', 'web-client.apps.googleusercontent.com']);
+    expect(
+      resolveGoogleIdTokenAudiences(
+        {
+          GOOGLE_OAUTH_CLIENT_ID: '"web-client.apps.googleusercontent.com"',
+          SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID: 'android-server-client.apps.googleusercontent.com',
+          SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID: 'staging-android-client.apps.googleusercontent.com'
+        } as NodeJS.ProcessEnv,
+        'production'
+      )
+    ).toEqual(['android-server-client.apps.googleusercontent.com']);
   });
 
   it('returns safe Google token audience diagnostics without exposing the ID token', async () => {
@@ -994,6 +1004,62 @@ describe('android merchant mobile backend endpoints', () => {
       }
     });
     expect(String(recovered.json().mobile_session.token)).toMatch(/^spm_/u);
+  });
+
+  it('does not mint Android mobile recovery sessions for non-admin merchant roles', async () => {
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_ID', 'google-web-client.apps.googleusercontent.com');
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_SECRET', 'configured-secret');
+    vi.stubEnv('GOOGLE_OAUTH_REDIRECT_URI', 'https://staging.swimpay.pro/auth/google/callback');
+    const googleVerifier = new FakeGoogleIdTokenVerifier({
+      'link-token': 'google-sub-low-privilege',
+      'recover-token': 'google-sub-low-privilege'
+    });
+    const { server, authBffRepository } = buildAndroidMerchantServer({ googleVerifier });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('google-low')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    const createdBody = created.json();
+    const mobileHeaders = { authorization: `Bearer ${String(createdBody.mobile_session.token)}` };
+
+    const link = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.GOOGLE_LINK,
+      headers: mobileHeaders,
+      payload: { id_token: 'link-token' }
+    });
+    expect(link.statusCode).toBe(200);
+    for (const [membershipId, membership] of authBffRepository.memberships) {
+      if (membership.userId === String(createdBody.account.user_id)) {
+        authBffRepository.memberships.set(membershipId, { ...membership, role: MerchantRoles.VIEWER });
+      }
+    }
+
+    const recovered = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.GOOGLE_EXCHANGE,
+      payload: {
+        id_token: 'recover-token',
+        device_proof: safeDeviceProof('google-low2')
+      }
+    });
+
+    expect(recovered.statusCode).toBe(404);
+    expect(recovered.json().error).toMatchObject({
+      code: 'invalid_request',
+      details: {
+        provider: 'google',
+        purpose: 'account_recovery'
+      }
+    });
+    expect(recovered.body).not.toContain('recover-token');
+    expect(recovered.body).not.toMatch(/spm_[A-Za-z0-9_-]+/u);
   });
 
   it('returns a merchant-safe dashboard summary from reviews and receiving routes', async () => {
@@ -1183,7 +1249,7 @@ describe('android merchant mobile backend endpoints', () => {
     expectSafeAndroidMerchantBody(response.body);
   });
 
-  it('lets an Android merchant mobile session use backend-owned developer integration credentials without web CSRF', async () => {
+  it('lets Android mobile read developer integration status but not mutate secrets or webhook targets without web CSRF', async () => {
     const { server } = buildAndroidMerchantServer();
     const createAccount = await server.inject({
       method: 'POST',
@@ -1207,9 +1273,8 @@ describe('android merchant mobile backend endpoints', () => {
     expect(read.json().secret_key_once).toBeUndefined();
 
     const createdKey = await server.inject({ method: 'POST', url: '/v1/merchant/integration/keys', headers });
-    expect(createdKey.statusCode).toBe(201);
-    expect(createdKey.json().secret_key_once).toMatch(/^sk_/u);
-    expect(createdKey.json().secret_key_show_once).toBe(true);
+    expect(createdKey.statusCode).toBe(403);
+    expect(createdKey.body).not.toMatch(/sk_[A-Za-z0-9_-]+/u);
 
     const webhookUrl = await server.inject({
       method: 'PUT',
@@ -1217,18 +1282,11 @@ describe('android merchant mobile backend endpoints', () => {
       headers,
       payload: { webhook_url: 'https://merchant.example/swimpay/webhook' }
     });
-    expect(webhookUrl.statusCode).toBe(200);
-    expect(webhookUrl.json().webhook_url).toBe('https://merchant.example/swimpay/webhook');
-    expect(webhookUrl.json().webhook_secret_once).toMatch(/^whsec_/u);
+    expect(webhookUrl.statusCode).toBe(403);
+    expect(webhookUrl.body).not.toMatch(/whsec_[A-Za-z0-9_-]+/u);
 
     const testWebhook = await server.inject({ method: 'POST', url: '/v1/merchant/integration/test-webhook', headers });
-    expect(testWebhook.statusCode).toBe(202);
-    expect(testWebhook.json()).toMatchObject({
-      status: 'test_queued',
-      testOnly: true,
-      triggersFulfillment: false,
-      officialBankConfirmation: false
-    });
+    expect(testWebhook.statusCode).toBe(403);
 
     const deliveries = await server.inject({ method: 'GET', url: '/v1/merchant/integration/webhook-deliveries', headers });
     expect(deliveries.statusCode).toBe(200);
@@ -1238,8 +1296,6 @@ describe('android merchant mobile backend endpoints', () => {
     expect(normalRead.statusCode).toBe(200);
     expect(normalRead.json().secret_key_once).toBeUndefined();
     expect(normalRead.json().webhook_secret_once).toBeUndefined();
-    expect(normalRead.body).not.toContain(createdKey.json().secret_key_once);
-    expect(normalRead.body).not.toContain(webhookUrl.json().webhook_secret_once);
     expect(normalRead.body).not.toContain('official_bank_confirmation":true');
   });
 

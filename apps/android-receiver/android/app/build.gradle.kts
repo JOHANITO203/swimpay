@@ -150,6 +150,33 @@ tasks.register("validateStagingBuildConfig") {
     }
 }
 
+tasks.register("validateDebugVpsBuildConfig") {
+    doLast {
+        val backend = swimpayBackendBaseUrl.get().trim().trimEnd('/')
+        val googleClientId = swimpayGoogleServerClientId.get().trim()
+        val isLocalDebugBackend = backend.startsWith("http://127.0.0.1:") || backend.startsWith("http://10.0.2.2:")
+
+        if (!isLocalDebugBackend) {
+            require(backend.startsWith("https://")) {
+                "Debug VPS Android backend must use HTTPS when it is not local adb reverse."
+            }
+            require(!backend.contains("127.0.0.1") && !backend.contains("localhost")) {
+                "Debug VPS Android backend must not target localhost."
+            }
+            require(googleClientId.isNotBlank()) {
+                "Debug VPS Android Google server client ID must be configured."
+            }
+            require(googleClientId.endsWith(".apps.googleusercontent.com")) {
+                "Debug VPS Android Google server client ID must be a Google OAuth client ID."
+            }
+        }
+    }
+}
+
 tasks.matching { it.name == "preStagingBuild" }.configureEach {
     dependsOn("validateStagingBuildConfig")
+}
+
+tasks.matching { it.name == "preDebugBuild" }.configureEach {
+    dependsOn("validateDebugVpsBuildConfig")
 }

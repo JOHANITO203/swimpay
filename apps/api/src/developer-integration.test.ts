@@ -5,14 +5,17 @@ import {
   createDefaultMerchantIntegrationRepository,
   validateWebhookUrl
 } from './developer-integration.js';
+import { CSRF_HEADER_NAME, InMemoryAuthBffRepository } from './auth-bff.js';
 
 const merchantHeaders = { authorization: 'Bearer test_merchant_9e' };
 
 function buildDeveloperIntegrationServer() {
   const merchantIntegrationRepository = new InMemoryMerchantIntegrationRepository();
+  const authBffRepository = new InMemoryAuthBffRepository();
   const server = buildApiServer({
     environment: 'test',
     merchantIntegrationRepository,
+    authBffRepository,
     healthChecks: {
       database: async () => 'skipped',
       nats: async () => 'skipped',
@@ -44,6 +47,27 @@ function buildProductionDeveloperIntegrationServer() {
   return { server, merchantIntegrationRepository };
 }
 
+async function bootstrapWebMerchant(server: ReturnType<typeof buildApiServer>) {
+  const response = await server.inject({
+    method: 'POST',
+    url: '/auth/dev/bootstrap-session',
+    payload: {
+      user_id: '11111111-1111-4111-8111-111111111111',
+      merchant_id: '22222222-2222-4222-8222-222222222222',
+      email: 'owner@example.com',
+      role: 'owner'
+    }
+  });
+  const cookie = response.headers['set-cookie'];
+  return {
+    merchantId: '22222222-2222-4222-8222-222222222222',
+    headers: {
+      cookie: Array.isArray(cookie) ? cookie[0] : String(cookie),
+      [CSRF_HEADER_NAME]: String(response.json().csrf_token)
+    }
+  };
+}
+
 describe('developer integration backend lifecycle', () => {
   it('returns a merchant-scoped credential read model without raw secrets', async () => {
     const { server } = buildDeveloperIntegrationServer();
@@ -67,11 +91,12 @@ describe('developer integration backend lifecycle', () => {
 
   it('shows secret keys once on creation and masks later reads', async () => {
     const { server } = buildDeveloperIntegrationServer();
+    const webMerchant = await bootstrapWebMerchant(server);
 
     const created = await server.inject({
       method: 'POST',
       url: '/v1/merchant/integration/keys',
-      headers: merchantHeaders
+      headers: webMerchant.headers
     });
     expect(created.statusCode).toBe(201);
     expect(created.json().secret_key_once).toMatch(/^sk_test_/u);
@@ -80,7 +105,7 @@ describe('developer integration backend lifecycle', () => {
     const read = await server.inject({
       method: 'GET',
       url: '/v1/merchant/integration',
-      headers: merchantHeaders
+      headers: webMerchant.headers
     });
     expect(read.statusCode).toBe(200);
     expect(read.json().secret_key_once).toBeUndefined();
@@ -89,11 +114,12 @@ describe('developer integration backend lifecycle', () => {
 
   it('generates webhook secret show-once and validates webhook URL safety', async () => {
     const { server } = buildDeveloperIntegrationServer();
+    const webMerchant = await bootstrapWebMerchant(server);
 
     const unsafe = await server.inject({
       method: 'PUT',
       url: '/v1/merchant/integration/webhook-url',
-      headers: merchantHeaders,
+      headers: webMerchant.headers,
       payload: { webhook_url: 'javascript:alert(1)' }
     });
     expect(unsafe.statusCode).toBe(400);
@@ -101,7 +127,7 @@ describe('developer integration backend lifecycle', () => {
     const updated = await server.inject({
       method: 'PUT',
       url: '/v1/merchant/integration/webhook-url',
-      headers: merchantHeaders,
+      headers: webMerchant.headers,
       payload: { webhook_url: 'https://merchant.example/webhooks/swimpay' }
     });
     expect(updated.statusCode).toBe(200);
@@ -111,7 +137,7 @@ describe('developer integration backend lifecycle', () => {
     const read = await server.inject({
       method: 'GET',
       url: '/v1/merchant/integration',
-      headers: merchantHeaders
+      headers: webMerchant.headers
     });
     expect(read.json().webhook_secret_once).toBeUndefined();
     expect(read.body).not.toContain(updated.json().webhook_secret_once);
@@ -153,17 +179,18 @@ describe('developer integration backend lifecycle', () => {
 
   it('queues a backend-owned safe test webhook that cannot trigger fulfillment', async () => {
     const { server } = buildDeveloperIntegrationServer();
+    const webMerchant = await bootstrapWebMerchant(server);
     await server.inject({
       method: 'PUT',
       url: '/v1/merchant/integration/webhook-url',
-      headers: merchantHeaders,
+      headers: webMerchant.headers,
       payload: { webhook_url: 'https://merchant.example/webhooks/swimpay' }
     });
 
     const response = await server.inject({
       method: 'POST',
       url: '/v1/merchant/integration/test-webhook',
-      headers: merchantHeaders
+      headers: webMerchant.headers
     });
 
     expect(response.statusCode).toBe(202);
@@ -177,7 +204,8 @@ describe('developer integration backend lifecycle', () => {
 
   it('returns merchant-scoped public delivery history and retries without exposing payloads or secrets', async () => {
     const { server, merchantIntegrationRepository } = buildDeveloperIntegrationServer();
-    merchantIntegrationRepository.seedDelivery('merchant_9e', {
+    const webMerchant = await bootstrapWebMerchant(server);
+    merchantIntegrationRepository.seedDelivery(webMerchant.merchantId, {
       deliveryId: 'del_failed_01',
       eventId: 'evt_public_01',
       eventType: 'payment.rejected',
@@ -187,7 +215,7 @@ describe('developer integration backend lifecycle', () => {
     const history = await server.inject({
       method: 'GET',
       url: '/v1/merchant/integration/webhook-deliveries',
-      headers: merchantHeaders
+      headers: webMerchant.headers
     });
     expect(history.statusCode).toBe(200);
     expect(history.json().deliveries).toHaveLength(1);
@@ -197,7 +225,7 @@ describe('developer integration backend lifecycle', () => {
     const retry = await server.inject({
       method: 'POST',
       url: '/v1/merchant/integration/webhook-deliveries/del_failed_01/retry',
-      headers: merchantHeaders
+      headers: webMerchant.headers
     });
     expect(retry.statusCode).toBe(202);
     expect(retry.json()).toMatchObject({

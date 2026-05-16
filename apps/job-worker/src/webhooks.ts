@@ -2,7 +2,7 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import pg from 'pg';
 import { PUBLIC_EVENT_SIGNAL_DISCLOSURE } from '@swimpay/events';
 import { MetricNames, type MetricsRegistry } from '@swimpay/observability';
-import { decryptSecret } from '@swimpay/security';
+import { assertPublicWebhookUrlEgressAllowed, decryptSecret } from '@swimpay/security';
 import { runWithWorkerIdempotency, type WorkerIdempotencyLedger } from './idempotency-ledger.js';
 
 const { Pool } = pg;
@@ -361,6 +361,7 @@ export class WebhookDeliveryWorker {
 
 export class FetchWebhookHttpClient implements WebhookHttpClient {
   public async postJson(params: { url: string; headers: Record<string, string>; body: string; timeoutMs: number }) {
+    await assertPublicWebhookUrlEgressAllowed(params.url);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), params.timeoutMs);
     try {

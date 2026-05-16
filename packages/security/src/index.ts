@@ -1,4 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { lookup as dnsLookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 
 export const OperatorRoles = {
   OWNER: 'owner',
@@ -130,6 +132,193 @@ export const SENSITIVE_STORAGE_RULES = {
   phoneDisplayStoredAs: 'masked',
   rawNotificationStoredByDefault: false
 } as const;
+
+export type PublicWebhookUrlValidationResult =
+  | { valid: true; value: string }
+  | { valid: false; message: string };
+
+export function validatePublicWebhookUrlSyntax(input: unknown): PublicWebhookUrlValidationResult {
+  if (typeof input !== 'string' || input.trim().length === 0) {
+    return { valid: false, message: 'Webhook URL is required.' };
+  }
+  const value = input.trim();
+  if (value.length > 2048) {
+    return { valid: false, message: 'Webhook URL is too long.' };
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return { valid: false, message: 'Webhook URL must be a valid URL.' };
+  }
+  if (parsed.protocol !== 'https:') {
+    return { valid: false, message: 'Webhook URL must use HTTPS.' };
+  }
+  if (parsed.username || parsed.password) {
+    return { valid: false, message: 'Webhook URL must not include credentials.' };
+  }
+  if (!isAllowedPublicWebhookHost(parsed.hostname)) {
+    return { valid: false, message: 'Webhook URL host is not allowed.' };
+  }
+  return { valid: true, value };
+}
+
+export async function assertPublicWebhookUrlEgressAllowed(input: string): Promise<void> {
+  const syntax = validatePublicWebhookUrlSyntax(input);
+  if (!syntax.valid) {
+    throw new Error('webhook_url_not_public');
+  }
+  const parsed = new URL(syntax.value);
+  const hostname = normalizePublicWebhookHostname(parsed.hostname);
+  const literalIpVersion = isIP(hostname);
+  if (literalIpVersion !== 0) {
+    if (!isAllowedPublicWebhookIp(hostname)) {
+      throw new Error('webhook_url_not_public');
+    }
+    return;
+  }
+
+  const addresses = await dnsLookup(hostname, { all: true, verbatim: true });
+  if (addresses.length === 0 || addresses.some((address) => !isAllowedPublicWebhookIp(address.address))) {
+    throw new Error('webhook_url_not_public');
+  }
+}
+
+function isAllowedPublicWebhookHost(hostname: string): boolean {
+  const host = normalizePublicWebhookHostname(hostname);
+  if (!host || host.includes('%')) {
+    return false;
+  }
+  if (host === 'localhost' || host.endsWith('.localhost')) {
+    return false;
+  }
+  const ipVersion = isIP(host);
+  if (ipVersion !== 0) {
+    return isAllowedPublicWebhookIp(host);
+  }
+  if (!host.includes('.')) {
+    return false;
+  }
+  return !(
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    host.endsWith('.lan') ||
+    host.endsWith('.home.arpa')
+  );
+}
+
+function normalizePublicWebhookHostname(hostname: string): string {
+  const lower = hostname.trim().toLowerCase();
+  const withoutBrackets = lower.startsWith('[') && lower.endsWith(']') ? lower.slice(1, -1) : lower;
+  return withoutBrackets.replace(/\.+$/u, '');
+}
+
+function isAllowedPublicWebhookIp(host: string): boolean {
+  const ipVersion = isIP(host);
+  if (ipVersion === 4) {
+    return !isUnsafeIpv4(host);
+  }
+  if (ipVersion === 6) {
+    return !isUnsafeIpv6(host);
+  }
+  return false;
+}
+
+function isUnsafeIpv4(host: string): boolean {
+  const parts = host.split('.').map((part) => Number.parseInt(part, 10));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return true;
+  }
+  const [a = 0, b = 0, c = 0] = parts;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 192 && b === 0 && c === 2) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113) ||
+    a >= 224
+  );
+}
+
+function isUnsafeIpv6(host: string): boolean {
+  const groups = expandIpv6(host);
+  if (!groups) {
+    return true;
+  }
+  const [g0 = 0, g1 = 0, g2 = 0, g3 = 0, g4 = 0, g5 = 0, g6 = 0, g7 = 0] = groups;
+  if (groups.every((group) => group === 0)) {
+    return true;
+  }
+  if ([g0, g1, g2, g3, g4, g5, g6].every((group) => group === 0) && g7 === 1) {
+    return true;
+  }
+  if ((g0 & 0xfe00) === 0xfc00 || (g0 & 0xffc0) === 0xfe80 || (g0 & 0xff00) === 0xff00) {
+    return true;
+  }
+  if (g0 === 0x2001 && g1 === 0x0db8) {
+    return true;
+  }
+  if ([g0, g1, g2, g3, g4].every((group) => group === 0) && g5 === 0xffff) {
+    const ipv4 = `${g6 >> 8}.${g6 & 0xff}.${g7 >> 8}.${g7 & 0xff}`;
+    return isUnsafeIpv4(ipv4);
+  }
+  return false;
+}
+
+function expandIpv6(host: string): number[] | null {
+  if (host.includes('%')) {
+    return null;
+  }
+  const compactParts = host.split('::');
+  if (compactParts.length > 2) {
+    return null;
+  }
+  const head = parseIpv6Part(compactParts[0] ?? '');
+  const tail = compactParts.length === 2 ? parseIpv6Part(compactParts[1] ?? '') : [];
+  if (!head || !tail) {
+    return null;
+  }
+  const missingGroups = 8 - head.length - tail.length;
+  if (compactParts.length === 1) {
+    return missingGroups === 0 ? head : null;
+  }
+  if (missingGroups < 1) {
+    return null;
+  }
+  return [...head, ...Array.from({ length: missingGroups }, () => 0), ...tail];
+}
+
+function parseIpv6Part(part: string): number[] | null {
+  if (!part) {
+    return [];
+  }
+  const groups: number[] = [];
+  for (const rawGroup of part.split(':')) {
+    if (!rawGroup) {
+      return null;
+    }
+    if (rawGroup.includes('.')) {
+      if (isIP(rawGroup) !== 4 || isUnsafeIpv4(rawGroup)) {
+        return null;
+      }
+      const [a = 0, b = 0, c = 0, d = 0] = rawGroup.split('.').map((value) => Number.parseInt(value, 10));
+      groups.push((a << 8) + b, (c << 8) + d);
+      continue;
+    }
+    if (!/^[0-9a-f]{1,4}$/iu.test(rawGroup)) {
+      return null;
+    }
+    groups.push(Number.parseInt(rawGroup, 16));
+  }
+  return groups;
+}
 
 export function normalizeRussianPhone(input: string): string | null {
   const digits = input.replace(/\D/g, '');

@@ -54,6 +54,9 @@ services:
         condition: service_healthy
     ports:
       - "${HTTP_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    environment:
+      SWIMPAY_CADDY_SITE_ADDRESS: ${SWIMPAY_CADDY_SITE_ADDRESS:-:80}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

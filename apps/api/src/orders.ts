@@ -2444,7 +2444,7 @@ function normalizeReceiverIdentifier(type: ReceiverIdentifierType, value: string
   }
 
   const digits = value.replace(/\D/g, '');
-  if (digits.length < 13 || digits.length > 19) {
+  if (digits.length < 13 || digits.length > 16) {
     return null;
   }
   return digits;

@@ -92,12 +92,7 @@ const ANDROID_MERCHANT_MOBILE_PERMISSIONS = [
   MerchantPermissions.RECEIVING_METHODS_READ,
   MerchantPermissions.RECEIVING_METHODS_WRITE,
   MerchantPermissions.INTEGRATION_READ,
-  MerchantPermissions.INTEGRATION_KEYS_CREATE,
-  MerchantPermissions.INTEGRATION_KEYS_ROTATE,
-  MerchantPermissions.INTEGRATION_WEBHOOK_UPDATE,
-  MerchantPermissions.INTEGRATION_WEBHOOK_TEST,
   MerchantPermissions.INTEGRATION_DELIVERY_READ,
-  MerchantPermissions.INTEGRATION_DELIVERY_RETRY,
   MerchantPermissions.SETTINGS_READ,
   MerchantPermissions.SETTINGS_WRITE
 ] as const;
@@ -692,7 +687,9 @@ export class InMemoryAuthBffRepository implements AuthBffRepository {
     const memberships = [...this.memberships.values()].filter(
       (membership) => membership.userId === user.id && membership.status === 'active'
     );
-    const membership = memberships.find((candidate) => candidate.role === MerchantRoles.OWNER) ?? memberships[0];
+    const membership = memberships.find(
+      (candidate) => candidate.role === MerchantRoles.OWNER || candidate.role === MerchantRoles.ADMIN
+    );
     if (!membership) {
       return { kind: 'google_sub_not_linked' };
     }
@@ -1098,6 +1095,7 @@ export class PgAuthBffRepository implements AuthBffRepository {
          JOIN merchants m ON m.id = mm.merchant_id
          WHERE mm.user_id = $1
           AND mm.status = 'active'
+          AND mm.role IN ('owner', 'admin')
           AND m.status = 'active'
          ORDER BY CASE WHEN mm.role = 'owner' THEN 0 ELSE 1 END, mm.created_at ASC
          LIMIT 1`,

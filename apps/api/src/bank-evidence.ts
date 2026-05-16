@@ -474,7 +474,7 @@ export class InMemoryBankEvidenceRepository implements BankEvidenceRepository {
       return { kind: 'not_found' };
     }
 
-    if (input.action !== 'deprecate' && evidence.status !== BankEvidenceStatuses.PENDING_OPERATOR_REVIEW) {
+    if (evidence.status !== BankEvidenceStatuses.PENDING_OPERATOR_REVIEW) {
       return { kind: 'not_pending' };
     }
 
@@ -710,7 +710,7 @@ export class PgBankEvidenceRepository implements BankEvidenceRepository {
       }
 
       const evidence = toBankEvidenceRecord(current.rows[0] as BankEvidenceRow);
-      if (input.action !== 'deprecate' && evidence.status !== BankEvidenceStatuses.PENDING_OPERATOR_REVIEW) {
+      if (evidence.status !== BankEvidenceStatuses.PENDING_OPERATOR_REVIEW) {
         await client.query('ROLLBACK');
         return { kind: 'not_pending' };
       }

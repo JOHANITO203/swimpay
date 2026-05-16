@@ -507,7 +507,7 @@ describe('bank package evidence workflow', () => {
 
   it('deprecates evidence without deleting it, enabling trust or auto-confirm', async () => {
     const repository = buildEvidenceRepository({
-      evidence: [reviewOnlyEvidence()]
+      evidence: [pendingEvidence()]
     });
     const server = buildTestServer(repository, { role: 'admin' });
 
@@ -551,6 +551,30 @@ describe('bank package evidence workflow', () => {
     expect(productionTrustRequest.statusCode).toBe(409);
     expect(productionTrustRequest.json().error.code).toBe('bank_evidence_not_review_only');
     expect(repository.verifiedBankAppProfiles.has('sberbank_ru')).toBe(false);
+  });
+
+  it('does not let deprecate bypass the pending evidence review state', async () => {
+    const repository = buildEvidenceRepository({
+      evidence: [reviewOnlyEvidence()]
+    });
+    const server = buildTestServer(repository, { role: 'admin' });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/admin/bank-evidence/bev_existing/deprecate',
+      headers: adminHeaders(),
+      payload: {
+        reason_code: 'stale_evidence',
+        notes: 'operator observed newer package evidence'
+      }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('bank_evidence_not_pending');
+    expect(repository.evidence[0]).toMatchObject({
+      status: 'approved_for_review_only',
+      reviewedBy: 'ops_review'
+    });
   });
 
   it('filters admin evidence review lists without exposing raw PII', async () => {

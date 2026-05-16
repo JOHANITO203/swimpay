@@ -1417,6 +1417,16 @@ describe('payment session api', () => {
         bank_id: 'sber_ru'
       }
     });
+    const cardWithEmbeddedCvv = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        type: 'card',
+        value: '2202 2012 3456 4821 123',
+        bank_id: 'sber_ru'
+      }
+    });
     const invalidPhone = await server.inject({
       method: 'POST',
       url: '/v1/merchant/receiving-methods',
@@ -1428,13 +1438,22 @@ describe('payment session api', () => {
       }
     });
 
-    expect([withCvv.statusCode, withExpiry.statusCode, invalidCard.statusCode, invalidPhone.statusCode]).toEqual([400, 400, 400, 400]);
+    expect([withCvv.statusCode, withExpiry.statusCode, invalidCard.statusCode, cardWithEmbeddedCvv.statusCode, invalidPhone.statusCode]).toEqual([
+      400,
+      400,
+      400,
+      400,
+      400
+    ]);
     expect(withCvv.json().error.details).toMatchObject({ field: 'cvv' });
     expect(withExpiry.json().error.details).toMatchObject({ field: 'expiry' });
     expect(invalidCard.json().error.details).toMatchObject({ type: 'card' });
+    expect(cardWithEmbeddedCvv.json().error.details).toMatchObject({ type: 'card' });
     expect(invalidPhone.json().error.details).toMatchObject({ type: 'phone' });
     expect(repository.receivingRoutes.size).toBe(0);
-    expect(JSON.stringify([withCvv.json(), withExpiry.json(), invalidCard.json(), invalidPhone.json()])).not.toContain('2202201234564821');
+    expect(JSON.stringify([withCvv.json(), withExpiry.json(), invalidCard.json(), cardWithEmbeddedCvv.json(), invalidPhone.json()])).not.toContain(
+      '2202201234564821'
+    );
     expect(JSON.stringify(repository.auditEvents)).not.toContain('2202201234564821');
   });
 
@@ -1480,6 +1499,18 @@ describe('payment session api', () => {
         display_label: 'Sberbank mismatch'
       }
     });
+    const cardWithEmbeddedCvv = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        bank_profile_id: 'sber_ru',
+        rail_type: 'card_transfer',
+        receiver_identifier: '2202 2012 3456 4821 123',
+        route_code: 'SBER-CVV',
+        display_label: 'Sberbank card'
+      }
+    });
 
     expect(multiBank.statusCode).toBe(400);
     expect(multiBank.json().error).toMatchObject({
@@ -1500,6 +1531,11 @@ describe('payment session api', () => {
         receiver_identifier_type: 'card',
         expected_receiver_identifier_type: 'phone'
       }
+    });
+    expect(cardWithEmbeddedCvv.statusCode).toBe(400);
+    expect(cardWithEmbeddedCvv.json().error).toMatchObject({
+      code: 'invalid_request',
+      details: { type: 'card' }
     });
     expect(repository.receivingRoutes.size).toBe(0);
     expect(JSON.stringify(repository.auditEvents)).not.toContain('+7 (999) 123-45-67');

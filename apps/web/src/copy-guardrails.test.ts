@@ -129,4 +129,15 @@ describe('UI Copy Guardrails and Wording', () => {
       expect(response.body).not.toMatch(cardRegex);
     }
   });
+
+  it('does not expose unauthenticated admin review surfaces in production', async () => {
+    const server = buildWebServer({ environment: 'production' });
+    const evidence = await server.inject({ method: 'GET', url: '/admin/evidence-review' });
+    const intelligence = await server.inject({ method: 'GET', url: '/admin/intelligence-review' });
+
+    expect(evidence.statusCode).toBe(404);
+    expect(evidence.json().error.code).toBe('privileged_web_surface_disabled');
+    expect(intelligence.statusCode).toBe(404);
+    expect(intelligence.json().error.code).toBe('privileged_web_surface_disabled');
+  });
 });

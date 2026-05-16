@@ -491,12 +491,15 @@ function parseGoogleExpirySeconds(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function resolveGoogleIdTokenAudiences(env: NodeJS.ProcessEnv): string[] {
-  return [
-    env.GOOGLE_OAUTH_CLIENT_ID,
-    env.SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID,
-    env.SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID
-  ]
+export function resolveGoogleIdTokenAudiences(env: NodeJS.ProcessEnv, environment = env.NODE_ENV ?? 'development'): string[] {
+  const candidates = environment === 'production'
+    ? [env.SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID]
+    : [
+        env.SWIMPAY_ANDROID_GOOGLE_SERVER_CLIENT_ID,
+        env.SWIMPAY_ANDROID_STAGING_GOOGLE_SERVER_CLIENT_ID,
+        env.GOOGLE_OAUTH_CLIENT_ID
+      ];
+  return candidates
     .flatMap((value) => normalizeGoogleIdTokenAudienceEnvValue(value))
     .filter((value): value is string => Boolean(value))
     .filter((value, index, values) => values.indexOf(value) === index);
@@ -555,8 +558,8 @@ function googleIdTokenRejectedDiagnostics(idToken: string, acceptedAudiences: re
   };
 }
 
-export function createDefaultGoogleIdTokenVerifier(env: NodeJS.ProcessEnv): GoogleIdTokenVerifier | null {
-  const audiences = resolveGoogleIdTokenAudiences(env);
+export function createDefaultGoogleIdTokenVerifier(env: NodeJS.ProcessEnv, environment = env.NODE_ENV ?? 'development'): GoogleIdTokenVerifier | null {
+  const audiences = resolveGoogleIdTokenAudiences(env, environment);
   return audiences.length > 0 ? new GoogleAuthLibraryIdTokenVerifier(audiences) : null;
 }
 
@@ -583,8 +586,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const supportTicketRepository = options.supportTicketRepository ?? createDefaultSupportTicketRepository(process.env);
   const authBffRepository = options.authBffRepository ?? createDefaultAuthBffRepository(process.env);
   const merchantApiKeyVerifier = options.merchantApiKeyVerifier ?? createDefaultMerchantApiKeyVerifier(process.env);
-  const googleIdTokenAudiences = resolveGoogleIdTokenAudiences(process.env);
-  const googleIdTokenVerifier = options.googleIdTokenVerifier ?? createDefaultGoogleIdTokenVerifier(process.env);
+  const googleIdTokenAudiences = resolveGoogleIdTokenAudiences(process.env, options.environment);
+  const googleIdTokenVerifier = options.googleIdTokenVerifier ?? createDefaultGoogleIdTokenVerifier(process.env, options.environment);
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const metrics = options.metrics ?? defaultMetricsRegistry;
   const checkoutBaseUrl = options.checkoutBaseUrl ?? process.env.CHECKOUT_BASE_URL ?? 'http://localhost:3001/checkout';
@@ -5115,7 +5118,7 @@ function normalizeReceivingMethodValue(type: 'card' | 'phone', value: string): s
     return normalizeRussianPhone(value);
   }
   const digits = value.replace(/\D/g, '');
-  if (digits.length < 13 || digits.length > 19) {
+  if (digits.length < 13 || digits.length > 16) {
     return null;
   }
   return digits;
