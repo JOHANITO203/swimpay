@@ -143,6 +143,8 @@ data class PremiumLocalizedCopy(
             LocalizedText("Paiements confirmés", "Confirmed payments", "Подтвержденные платежи"),
             LocalizedText("Aucun paiement détecté pour le moment", "No payment detected yet", "Платежей пока нет"),
             LocalizedText("Paiements à confirmer", "Payments to confirm", "Платежи на проверку"),
+            LocalizedText("Aucun paiement à confirmer", "No payment to confirm", "Нет платежей на проверку"),
+            LocalizedText("Les nouveaux paiements apparaîtront ici.", "New payments will appear here.", "Новые платежи появятся здесь."),
             LocalizedText("Confirmez uniquement les paiements que vous reconnaissez.", "Only confirm payments you recognize.", "Подтверждайте только знакомые платежи."),
             LocalizedText("Tout", "All", "Все"),
             LocalizedText("Paiement à confirmer", "Payment to confirm", "Платеж на проверку"),

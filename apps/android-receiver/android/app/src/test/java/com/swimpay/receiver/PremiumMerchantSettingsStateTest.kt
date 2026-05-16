@@ -99,4 +99,17 @@ class PremiumMerchantSettingsStateTest {
         assertEquals("Settings", PremiumLanguageOption.EN.mainTabLabel(PremiumMainTab.Settings))
         assertEquals("Настройки", PremiumLanguageOption.RU.mainTabLabel(PremiumMainTab.Settings))
     }
+
+
+    @Test
+    fun reviewEmptyStateCopyIsLocalized() {
+        val title = "Aucun paiement \u00e0 confirmer"
+        val message = "Les nouveaux paiements appara\u00eetront ici."
+        assertEquals("Aucun paiement \u00e0 confirmer", PremiumLocalizedCopy.forLanguage(PremiumLanguageOption.FR).ui(title))
+        assertEquals("No payment to confirm", PremiumLocalizedCopy.forLanguage(PremiumLanguageOption.EN).ui(title))
+        assertEquals("\u041d\u0435\u0442 \u043f\u043b\u0430\u0442\u0435\u0436\u0435\u0439 \u043d\u0430 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0443", PremiumLocalizedCopy.forLanguage(PremiumLanguageOption.RU).ui(title))
+        assertEquals("New payments will appear here.", PremiumLocalizedCopy.forLanguage(PremiumLanguageOption.EN).ui(message))
+        assertEquals("\u041d\u043e\u0432\u044b\u0435 \u043f\u043b\u0430\u0442\u0435\u0436\u0438 \u043f\u043e\u044f\u0432\u044f\u0442\u0441\u044f \u0437\u0434\u0435\u0441\u044c.", PremiumLocalizedCopy.forLanguage(PremiumLanguageOption.RU).ui(message))
+    }
+
 }
