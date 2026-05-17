@@ -424,18 +424,20 @@ class PremiumMerchantRuntimeContractTest {
         assertFalse(initial.value.developerExportText().contains("whsec_show_once"))
         assertTrue(keyCreated.value.oneTimeSecrets.any { it.second == "sk_live_show_once" })
         assertFalse(keyCreated.value.exportLines.any { it.contains("sk_live_show_once") })
-        assertFalse(keyCreated.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
+        assertTrue(keyCreated.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
+        assertFalse(keyCreated.value.developerExportText().contains("Bearer spm_mobile_session_secret"))
         assertTrue(keyCreated.value.exportLines.any { it == "SWIMPAY_SECRET_KEY=sk_live_****9999" })
         assertTrue(secretRotated.value.oneTimeSecrets.any { it.second == "whsec_show_once" })
         assertFalse(secretRotated.value.exportLines.any { it.contains("whsec_show_once") })
-        assertFalse(secretRotated.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
-        assertFalse(secretRotated.value.developerExportText().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once"))
-        assertFalse(urlUpdated.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
-        assertFalse(urlUpdated.value.developerExportText().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once"))
+        assertTrue(secretRotated.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
+        assertTrue(secretRotated.value.developerExportText().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once"))
+        assertTrue(urlUpdated.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
+        assertTrue(urlUpdated.value.developerExportText().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once"))
         assertEquals("Integration active", urlUpdated.value.statusTitle)
         assertEquals("Webhook de test envoye", webhookTest.value.safeMessage)
-        assertFalse(webhookTest.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
-        assertFalse(webhookTest.value.developerExportText().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once"))
+        assertTrue(webhookTest.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
+        assertTrue(webhookTest.value.developerExportText().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once"))
+        assertFalse(webhookTest.value.developerExportText().contains("Bearer spm_mobile_session_secret"))
 
         val reloaded = runtime.loadConnectedSite() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
         assertFalse(reloaded.value.developerExportText().contains("sk_live_show_once"))
@@ -526,16 +528,19 @@ class PremiumMerchantRuntimeContractTest {
 
         val keyCreated = runtime.createDeveloperApiKey() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
         assertTrue(keyCreated.value.oneTimeSecrets.any { it.second == "sk_live_show_once" })
-        assertFalse(keyCreated.value.developerExportText().contains("sk_live_show_once"))
+        assertTrue(keyCreated.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
+        assertFalse(keyCreated.value.developerExportText().contains("Bearer spm_mobile_session_secret"))
         val copiedText = runtime.consumeDeveloperExportText(keyCreated.value)
 
-        assertFalse(copiedText.contains("sk_live_show_once"))
+        assertTrue(copiedText.contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
+        assertFalse(copiedText.contains("Bearer spm_mobile_session_secret"))
         val afterCopy = runtime.updateDeveloperWebhookUrl("https://merchant.example/swimpay/webhook") as PremiumScreenState.Content<PremiumConnectedSiteUiState>
         assertFalse(afterCopy.value.developerExportText().contains("sk_live_show_once"))
 
         val secretRotated = runtime.rotateDeveloperWebhookSecret() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
         assertTrue(secretRotated.value.oneTimeSecrets.any { it.second == "whsec_show_once" })
-        assertFalse(secretRotated.value.developerExportText().contains("whsec_show_once"))
+        assertTrue(secretRotated.value.developerExportText().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once"))
+        assertFalse(secretRotated.value.developerExportText().contains("Bearer spm_mobile_session_secret"))
         now += PremiumMerchantRuntime.DEVELOPER_SHOW_ONCE_COPY_TTL_MS + 1
         val afterTimeout = runtime.testDeveloperWebhook() as PremiumScreenState.Content<PremiumConnectedSiteUiState>
 

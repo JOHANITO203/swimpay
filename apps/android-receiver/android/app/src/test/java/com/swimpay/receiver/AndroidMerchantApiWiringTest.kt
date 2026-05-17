@@ -1209,7 +1209,7 @@ class AndroidMerchantApiWiringTest {
         assertEquals("sk_test_show_once_android", created.integration?.secretKeyOnce)
         assertTrue(created.integration?.showOnceSecrets()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
         assertFalse(created.integration?.exportLines()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
-        assertFalse(created.integration?.copyExportLines()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
+        assertTrue(created.integration?.copyExportLines()?.joinToString(" ").orEmpty().contains("SWIMPAY_SECRET_KEY=sk_test_show_once_android"))
         assertTrue(created.integration?.exportLines()?.contains("SWIMPAY_SECRET_KEY=sk_\u2022\u2022\u20225678") == true)
         assertFalse(created.integration?.copyExportLines(
             merchantAuthorizationHeaderForCopy = "Bearer spm_mobile_session_secret"
@@ -1223,7 +1223,7 @@ class AndroidMerchantApiWiringTest {
         assertEquals("whsec_show_once_android", webhookSecret.integration?.webhookSecretOnce)
         assertTrue(webhookSecret.integration?.showOnceSecrets()?.joinToString(" ").orEmpty().contains("whsec_show_once_android"))
         assertFalse(webhookSecret.integration?.exportLines()?.joinToString(" ").orEmpty().contains("whsec_show_once_android"))
-        assertFalse(webhookSecret.integration?.copyExportLines()?.joinToString(" ").orEmpty().contains("whsec_show_once_android"))
+        assertTrue(webhookSecret.integration?.copyExportLines()?.joinToString(" ").orEmpty().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once_android"))
 
         val testWebhook = repository.testWebhook(session)
         assertEquals(MerchantRepositoryState.SUCCESS, testWebhook.state)

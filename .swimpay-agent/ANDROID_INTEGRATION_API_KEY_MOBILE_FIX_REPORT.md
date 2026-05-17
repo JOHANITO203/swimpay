@@ -4,7 +4,7 @@ generated_at: 2026-05-17 02:30:49 +03:00
 
 ## Issue
 
-The Android Merchant integration screen exposed `Créer clé API`, but tapping it returned the generic Android message `Integration indisponible`.
+The Android Merchant integration screen exposed `Creer cle API`, but tapping it returned the generic Android message `Integration indisponible`.
 
 ## Root Cause
 
@@ -30,6 +30,17 @@ Restored the scoped Android mobile permissions for the already-existing backend-
 
 This restores the preexisting Android feature without adding a new API contract or changing webhook/payment semantics.
 
+## Secure Developer Copy
+
+The merchant already had a phone-security gate before copying developer data. The copy payload now matches the intended behavior:
+
+- show-once API key and webhook secret are copied after phone security;
+- visible integration rows remain masked;
+- normal reloads never return raw show-once values;
+- the Android mobile merchant bearer token is never copied.
+
+This lets the merchant hand credentials to a developer without exposing their own mobile session.
+
 ## Security Guardrails Preserved
 
 - Web/BFF session mutations still require CSRF.
@@ -46,5 +57,4 @@ This restores the preexisting Android feature without adding a new API contract 
 - `npm test -- apps/api/src/android-merchant.test.ts`
 - `npm test -- apps/api/src/auth-bff.test.ts -t "developer integration|CSRF|mutation"`
 - `npm test -- apps/api/src/prod-mode-staging.test.ts -t "CSRF|integration"`
-- `.\apps\android-receiver\android\gradlew.bat -p apps/android-receiver/android :app:testStagingUnitTest --tests com.swimpay.receiver.PremiumMerchantRuntimeContractTest --tests com.swimpay.receiver.AndroidMerchantApiWiringTest --no-daemon --stacktrace --max-workers=1`
-
+- `.\apps\android-receiver\android\gradlew.bat -p apps/android-receiver/android :app:testStagingUnitTest --tests com.swimpay.receiver.PremiumMerchantRuntimeContractTest --tests com.swimpay.receiver.AndroidMerchantApiWiringTest --tests com.swimpay.receiver.AndroidMerchantVisualArchitectureTest --no-daemon --stacktrace --max-workers=1`
