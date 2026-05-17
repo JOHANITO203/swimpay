@@ -60,7 +60,8 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(cardLayers.contains("graphicsLayer"))
         assertTrue(cardLayers.contains("clip(cardShape)"))
         assertTrue(cardLayers.contains("ContentScale.Crop"))
-        assertTrue(cardLayers.contains("theme.surface.surfaceTextureRes ?: return"))
+        assertTrue(cardLayers.contains("textureRes ?: return"))
+        assertTrue(cardLayers.contains("SurfaceFinishTextureLayer("))
         assertTrue(cardDefaults.contains("DragonGoldPreview"))
         assertTrue(cardDefaults.contains("HomeDashboardDragonGoldCandidate"))
         assertTrue(cardDefaults.contains("HomeDashboardDragonGoldMaterial"))
@@ -232,7 +233,9 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(apiWiring.contains("metrics_timeseries"))
         assertTrue(mainCardDetails.contains("AccountBalanceWallet"))
         assertTrue(mainCard.contains("useDragonGoldHomeCard: Boolean = true"))
-        assertTrue(mainCard.contains("if (useDragonGoldHomeCard)"))
+        assertTrue(mainCard.contains("val cardTheme = when"))
+        assertTrue(mainCard.contains("PremiumColors.IsDark -> CardVisualDefaults.HomeDashboardDark"))
+        assertTrue(mainCard.contains("useDragonGoldHomeCard -> CardVisualDefaults.HomeDashboardDragonGoldMaterial"))
         assertTrue(mainCard.contains("CardVisualDefaults.HomeDashboardDragonGoldMaterial"))
         assertTrue(mainCard.contains("CardVisualDefaults.HomeDashboard"))
         assertTrue(premiumDashboard.contains("homeMetrics.chunked(2)"))
@@ -701,17 +704,23 @@ class AndroidMerchantVisualArchitectureTest {
     }
 
     private fun sourceFunction(source: String, signature: String): String {
-        val start = source.indexOf(signature)
+        val normalizedSource = source.replace("\r\n", "\n")
+        val start = normalizedSource.indexOf(signature)
         require(start >= 0) { "missing source function $signature" }
-        val nextComposable = source.indexOf("\n@Composable", start + signature.length)
-        return if (nextComposable >= 0) source.substring(start, nextComposable) else source.substring(start)
+        val nextComposable = normalizedSource.indexOf("\n@Composable", start + signature.length)
+        return if (nextComposable >= 0) {
+            normalizedSource.substring(start, nextComposable)
+        } else {
+            normalizedSource.substring(start)
+        }
     }
 
     private fun sourceBetween(source: String, startMarker: String, endMarker: String): String {
-        val start = source.indexOf(startMarker)
+        val normalizedSource = source.replace("\r\n", "\n")
+        val start = normalizedSource.indexOf(startMarker)
         require(start >= 0) { "missing start marker $startMarker" }
-        val end = source.indexOf(endMarker, start + startMarker.length)
+        val end = normalizedSource.indexOf(endMarker, start + startMarker.length)
         require(end >= 0) { "missing end marker $endMarker" }
-        return source.substring(start, end)
+        return normalizedSource.substring(start, end)
     }
 }
