@@ -8,6 +8,9 @@ import com.swimpay.receiver.ReceiverHeartbeatPayloadBuilder
 import com.swimpay.receiver.ReceiverListenerLifecycleStore
 import com.swimpay.receiver.ReceiverRuntimeConfig
 import com.swimpay.receiver.ReceiverRuntimeConfigReader
+import com.swimpay.receiver.ReceiverRuntimeConfigSynchronizer
+import com.swimpay.receiver.ReceiverRuntimeConfigWriter
+import com.swimpay.receiver.ActiveIntentWindow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -73,10 +76,64 @@ class ReceiverHeartbeatWorkerTest {
         assertTrue(plan.requiresNetwork)
         assertEquals(15L, plan.repeatIntervalMinutes)
     }
+
+    @Test
+    fun heartbeatResponseSynchronizesBackendOwnedReceiverRuntimeConfig() {
+        val writer = RecordingReceiverRuntimeConfigWriter()
+        val body = """
+            {
+              "receiver_runtime_config": {
+                "merchant_id": "mch_runtime",
+                "enabled_bank_profile_ids": ["sber_ru"],
+                "payment_intent_active": true,
+                "receiver_armed": true,
+                "expected_payment_profile_present": true,
+                "receiving_route_locked": true,
+                "active_payment_sessions_count": 1,
+                "active_until": "2026-05-17T10:20:00.000Z"
+              },
+              "official_bank_confirmation": false
+            }
+        """.trimIndent()
+
+        val synchronized = ReceiverRuntimeConfigSynchronizer.syncFromResponseBody(body, writer)
+
+        assertTrue(synchronized)
+        assertEquals(
+            ReceiverRuntimeConfig(
+                enabledBankProfileIds = setOf("sber_ru"),
+                merchantId = "mch_runtime",
+                paymentIntentActive = true,
+                receiverArmed = true,
+                expectedPaymentProfilePresent = true,
+                receivingRouteLocked = true
+            ),
+            writer.saved.single()
+        )
+    }
 }
 
 private class StaticRuntimeConfigReader(
     private val config: ReceiverRuntimeConfig
 ) : ReceiverRuntimeConfigReader {
     override fun load(): ReceiverRuntimeConfig = config
+}
+
+private class RecordingReceiverRuntimeConfigWriter : ReceiverRuntimeConfigWriter {
+    val saved: MutableList<ReceiverRuntimeConfig> = mutableListOf()
+
+    override fun save(config: ReceiverRuntimeConfig) {
+        saved += config
+    }
+
+    override fun saveActiveIntentWindow(window: ActiveIntentWindow) {
+        saved += ReceiverRuntimeConfig(
+            enabledBankProfileIds = setOf("sber_ru"),
+            merchantId = "mch_runtime",
+            paymentIntentActive = window.paymentIntentActive,
+            receiverArmed = window.receiverArmed,
+            expectedPaymentProfilePresent = window.expectedPaymentProfilePresent,
+            receivingRouteLocked = window.receivingRouteLocked
+        )
+    }
 }

@@ -32,6 +32,7 @@ import com.swimpay.receiver.MerchantReviewActionResultStatus
 import com.swimpay.receiver.MerchantReviewActionsApiRepository
 import com.swimpay.receiver.MerchantReviewQueueApiRepository
 import com.swimpay.receiver.MerchantScreenRepositoryResult
+import com.swimpay.receiver.ReceiverRuntimeConfigWriter
 import com.swimpay.receiver.MerchantSupportTicketApiRepository
 import com.swimpay.receiver.ReceiverRuntimeState
 import com.swimpay.receiver.ReceiverStatusState
@@ -390,6 +391,7 @@ class PremiumMerchantRuntime(
     private val developerIntegrationRepository: MerchantDeveloperIntegrationApiRepository? = null,
     private val supportTicketRepository: MerchantSupportTicketApiRepository? = null,
     private val ordersRepository: MerchantOrdersApiRepository = MerchantOrdersApiRepository(NoopMerchantApiTransport),
+    private val receiverRuntimeConfigWriter: ReceiverRuntimeConfigWriter? = null,
     private val nowEpochMs: () -> Long = System::currentTimeMillis
 ) {
     private var developerSecretKeyOnceForCopy: String? = null
@@ -402,6 +404,7 @@ class PremiumMerchantRuntime(
     fun loadDashboard(notificationAccessEnabled: Boolean = true): PremiumScreenState<PremiumDashboardUiState> {
         val detectedBankCount = detectedSupportedBankCount()
         val result = dashboardRepository.load(session)
+        result.receiverRuntimeConfig?.let { receiverRuntimeConfigWriter?.save(it) }
         val receivingMethodsValue = receivingMethodsDashboardValue()
         if (result.state != MerchantRepositoryState.SUCCESS) {
             return PremiumScreenState.content(
@@ -1061,7 +1064,8 @@ class PremiumMerchantRuntime(
         fun mobileSession(
             mobileSession: PremiumMobileMerchantSession,
             baseUrl: String = DebugBackendConfig.DEFAULT_BASE_URL,
-            bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe()
+            bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe(),
+            receiverRuntimeConfigWriter: ReceiverRuntimeConfigWriter? = null
         ): PremiumMerchantRuntime {
             val transport: MerchantApiTransport = HttpUrlConnectionMerchantApiTransport(baseUrl)
             return PremiumMerchantRuntime(
@@ -1076,7 +1080,8 @@ class PremiumMerchantRuntime(
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
                 bankPackageProbe = bankPackageProbe,
                 developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport),
-                supportTicketRepository = MerchantSupportTicketApiRepository(transport)
+                supportTicketRepository = MerchantSupportTicketApiRepository(transport),
+                receiverRuntimeConfigWriter = receiverRuntimeConfigWriter
             )
         }
 

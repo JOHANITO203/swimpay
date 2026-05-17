@@ -36,6 +36,17 @@ export interface ReceiverHealth {
   clock_skew_ms: number;
 }
 
+export interface ReceiverRuntimeConfigResponse {
+  merchant_id: string;
+  enabled_bank_profile_ids: string[];
+  payment_intent_active: boolean;
+  receiver_armed: boolean;
+  expected_payment_profile_present: boolean;
+  receiving_route_locked: boolean;
+  active_payment_sessions_count: number;
+  active_until: string | null;
+}
+
 export const ReceiverHeartbeatFreshness = {
   degradedAfterMs: 2 * 60 * 1000,
   offlineAfterMs: 10 * 60 * 1000
@@ -356,6 +367,7 @@ export function buildReceiverHeartbeatResponse(params: {
   warnings: readonly AndroidReceiverWarning[];
   queueLength?: number | undefined;
   allowedBankProfileIds?: readonly string[] | undefined;
+  receiverRuntimeConfig?: ReceiverRuntimeConfigResponse | null | undefined;
 }) {
   const effectiveWarnings = receiverWarningsWithHeartbeatFreshness(params);
   const receiverHealth = buildReceiverHealth({
@@ -370,7 +382,8 @@ export function buildReceiverHeartbeatResponse(params: {
     last_heartbeat_at: params.device.lastHeartbeatAt,
     server_time: params.serverTime,
     receiver_mode: effectiveWarnings.length > 0 || receiverHealth.status !== 'healthy' ? 'attention_required' : 'active',
-    active_payment_sessions_count: 0,
+    active_payment_sessions_count: params.receiverRuntimeConfig?.active_payment_sessions_count ?? 0,
+    receiver_runtime_config: params.receiverRuntimeConfig ?? null,
     receiver_health: receiverHealth,
     warnings: effectiveWarnings,
     required_actions: receiverRequiredActions(effectiveWarnings)
@@ -379,6 +392,7 @@ export function buildReceiverHeartbeatResponse(params: {
 
 function buildReceiverHealth(params: {
   device: StoredReceiverDeviceRecord;
+  serverTime: string;
   warnings: readonly AndroidReceiverWarning[];
   queueLength?: number | undefined;
   allowedBankProfileIds?: readonly string[] | undefined;

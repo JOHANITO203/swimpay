@@ -1,6 +1,7 @@
 import { EventTypes, type InternalEventEnvelope } from '@swimpay/events';
 import { describe, expect, it } from 'vitest';
 import {
+  createPaymentExpiredWebhookHandler,
   createReviewFinalWebhookHandler,
   createWebhookDeliveryRequestedHandler,
   parseWebhookWorkerConfig,
@@ -297,6 +298,44 @@ describe('webhook runtime integration', () => {
     });
   });
 
+  it('payment_session.expired handler enqueues a terminal payment.expired webhook delivery', async () => {
+    const enqueuer = new FakePublicWebhookEnqueuer();
+    const handler = createPaymentExpiredWebhookHandler(enqueuer);
+
+    await handler(
+      expiredEvent(EventTypes.PAYMENT_SESSION_EXPIRED, {
+        merchant_id: 'mch_01',
+        order_id: 'ord_01',
+        external_id: 'ORDER_01',
+        payment_session_id: 'ps_01',
+        amount_minor: 13700,
+        currency: 'RUB',
+        reason_label: 'PAYMENT_SESSION_EXPIRED'
+      })
+    );
+
+    expect(enqueuer.events).toEqual([
+      {
+        id: 'evt_expired_01',
+        type: 'payment.expired',
+        created_at: '2026-05-02T10:00:00.000Z',
+        merchant_id: 'mch_01',
+        data: {
+          order_id: 'ord_01',
+          external_id: 'ORDER_01',
+          payment_session_id: 'ps_01',
+          amount_minor: 13700,
+          currency: 'RUB',
+          status: 'expired',
+          decision: 'expired',
+          reason_label: 'PAYMENT_SESSION_EXPIRED',
+          confirmation_type: 'notification_signal',
+          official_bank_confirmation: false
+        }
+      }
+    ]);
+  });
+
   it('polling loop processes pending deliveries only when enabled', async () => {
     const processor = new FakeWebhookDeliveryProcessor();
     const disabled = new WebhookPollingLoop({
@@ -349,6 +388,20 @@ function reviewEvent(
       currency: 'RUB',
       ...data
     }
+  };
+}
+
+function expiredEvent(
+  type: typeof EventTypes.ORDER_EXPIRED | typeof EventTypes.PAYMENT_SESSION_EXPIRED,
+  data: Record<string, unknown>,
+  id = 'evt_expired_01'
+): InternalEventEnvelope {
+  return {
+    id,
+    type,
+    created_at: '2026-05-02T10:00:00.000Z',
+    source: 'swimpay-api',
+    data
   };
 }
 

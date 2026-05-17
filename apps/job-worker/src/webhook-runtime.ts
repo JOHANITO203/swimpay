@@ -132,6 +132,41 @@ export function createReviewFinalWebhookHandler(enqueuer: PublicWebhookEnqueuer)
   };
 }
 
+export function createPaymentExpiredWebhookHandler(enqueuer: PublicWebhookEnqueuer): DurableEventHandler {
+  return async (event: InternalEventEnvelope): Promise<{ kind: 'ok' }> => {
+    if (event.type !== EventTypes.ORDER_EXPIRED && event.type !== EventTypes.PAYMENT_SESSION_EXPIRED) {
+      throw new Error(`Unexpected payment expired webhook event type: ${event.type}`);
+    }
+
+    const merchantId = requireString(event.data.merchant_id, 'merchant_id');
+    const orderId = requireString(event.data.order_id, 'order_id');
+    const externalOrderId = readOptionalString(event.data.external_id);
+    const paymentSessionId = requireString(event.data.payment_session_id, 'payment_session_id');
+    const amountMinor = requireInteger(event.data.amount_minor, 'amount_minor');
+    const currency = requireString(event.data.currency, 'currency');
+
+    await enqueuer.enqueueEvent(
+      createPaymentWebhookEvent({
+        eventId: event.id,
+        type: 'payment.expired',
+        createdAt: event.created_at,
+        merchantId,
+        data: stripUndefined({
+          order_id: orderId,
+          external_id: externalOrderId,
+          payment_session_id: paymentSessionId,
+          amount_minor: amountMinor,
+          currency,
+          status: 'expired',
+          decision: 'expired',
+          reason_label: readOptionalString(event.data.reason_label)
+        })
+      })
+    );
+    return { kind: 'ok' };
+  };
+}
+
 export class WebhookPollingLoop {
   private timer: NodeJS.Timeout | null = null;
   private stopped = true;

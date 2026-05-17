@@ -262,6 +262,53 @@ describe('receiver device api', () => {
     expect(offline.required_actions).toContain('reconnect_notification_listener');
   });
 
+  test('heartbeat response can carry backend-owned receiver runtime config', () => {
+    const response = buildReceiverHeartbeatResponse({
+      device: {
+        id: 'dev_runtime_01',
+        merchantId: 'mch_01',
+        deviceName: 'Merchant Phone',
+        publicKey: receiverPublicKey,
+        appVersion: '1.0.0',
+        androidVersion: '15',
+        status: 'active',
+        trustScore: 0,
+        notificationAccessStatus: true,
+        lastLocalCounter: 0,
+        lastHeartbeatAt: '2026-05-02T10:59:30.000Z',
+        createdAt: '2026-05-02T10:00:00.000Z',
+        updatedAt: '2026-05-02T10:59:30.000Z'
+      },
+      serverTime: '2026-05-02T11:00:00.000Z',
+      warnings: [],
+      queueLength: 0,
+      allowedBankProfileIds: ['sber_ru'],
+      receiverRuntimeConfig: {
+        merchant_id: 'mch_01',
+        enabled_bank_profile_ids: ['sber_ru'],
+        payment_intent_active: true,
+        receiver_armed: true,
+        expected_payment_profile_present: true,
+        receiving_route_locked: true,
+        active_payment_sessions_count: 1,
+        active_until: '2026-05-02T11:20:00.000Z'
+      }
+    });
+
+    expect(response.active_payment_sessions_count).toBe(1);
+    expect(response.receiver_runtime_config).toEqual({
+      merchant_id: 'mch_01',
+      enabled_bank_profile_ids: ['sber_ru'],
+      payment_intent_active: true,
+      receiver_armed: true,
+      expected_payment_profile_present: true,
+      receiving_route_locked: true,
+      active_payment_sessions_count: 1,
+      active_until: '2026-05-02T11:20:00.000Z'
+    });
+    expect(JSON.stringify(response)).not.toContain('fingerprint');
+  });
+
   test('rejects local test bearer receiver registration in production', async () => {
     const repository = new InMemoryReceiverDeviceRepository();
     const server = buildApiServer({
@@ -655,6 +702,7 @@ describe('receiver device api', () => {
       server_time: '2026-05-02T11:00:00.000Z',
       receiver_mode: 'attention_required',
       active_payment_sessions_count: 0,
+      receiver_runtime_config: null,
       receiver_health: {
         status: 'degraded',
         notification_access: false,

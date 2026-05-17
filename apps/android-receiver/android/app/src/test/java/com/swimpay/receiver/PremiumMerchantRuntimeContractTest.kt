@@ -1008,6 +1008,67 @@ class PremiumMerchantRuntimeContractTest {
         assertFalse(state.value.actionsEnabled)
         assertTrue(state.value.summaryRows.any { it.first == "D\u00e9cision" && it.second == "D\u00e9j\u00e0 trait\u00e9" })
     }
+
+    @Test
+    fun premiumRuntimePersistsBackendOwnedReceiverRuntimeConfigFromDashboard() {
+        val writer = RecordingReceiverRuntimeConfigWriter()
+        val transport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "payments_to_review_count": 0,
+                  "confirmed_today_count": 0,
+                  "notifications_sent_count": 0,
+                  "metrics_summary": null,
+                  "metrics_timeseries": null,
+                  "merchant_setup_status": "ready_for_manual_payments",
+                  "payment_ready": true,
+                  "setup_actions": [],
+                  "readiness_message": "Paiements disponibles en validation manuelle.",
+                  "receiver_runtime_config": {
+                    "merchant_id": "mch_demo",
+                    "enabled_bank_profile_ids": ["sber_ru"],
+                    "payment_intent_active": true,
+                    "receiver_armed": true,
+                    "expected_payment_profile_present": true,
+                    "receiving_route_locked": true,
+                    "active_payment_sessions_count": 1,
+                    "active_until": "2026-05-03T10:30:00.000Z"
+                  },
+                  "receiver_status": { "display": "Pret" },
+                  "recent_detected_payments": [],
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
+        )
+        val runtime = PremiumMerchantRuntime(
+            session = AuthenticatedMerchantSession.localDev("mch_demo"),
+            dashboardRepository = MerchantDashboardApiRepository(transport),
+            reviewQueueRepository = MerchantReviewQueueApiRepository(RecordingPremiumTransport()),
+            paymentDetailRepository = MerchantPaymentDetailApiRepository(RecordingPremiumTransport()),
+            reviewActionsRepository = MerchantReviewActionsApiRepository(RecordingPremiumTransport()),
+            receivingMethodsRepository = MerchantReceivingMethodsApiRepository(RecordingPremiumTransport()),
+            connectedSiteRepository = MerchantConnectedSiteApiRepository(RecordingPremiumTransport()),
+            configurationTestRepository = MerchantConfigurationTestApiRepository(RecordingPremiumTransport()),
+            receiverRuntimeConfigWriter = writer
+        )
+
+        runtime.loadDashboard()
+
+        assertEquals(
+            ReceiverRuntimeConfig(
+                enabledBankProfileIds = setOf("sber_ru"),
+                merchantId = "mch_demo",
+                paymentIntentActive = true,
+                receiverArmed = true,
+                expectedPaymentProfilePresent = true,
+                receivingRouteLocked = true
+            ),
+            writer.saved.single()
+        )
+    }
 }
 
 private fun runtimeWith(
@@ -1055,5 +1116,24 @@ private class RecordingPremiumTransport(
         return responses.getOrElse(requests.lastIndex) {
             MerchantApiResponse(500, """{"error":{"code":"missing_test_response"}}""")
         }
+    }
+}
+
+private class RecordingReceiverRuntimeConfigWriter : ReceiverRuntimeConfigWriter {
+    val saved: MutableList<ReceiverRuntimeConfig> = mutableListOf()
+
+    override fun save(config: ReceiverRuntimeConfig) {
+        saved += config
+    }
+
+    override fun saveActiveIntentWindow(window: ActiveIntentWindow) {
+        saved += ReceiverRuntimeConfig(
+            enabledBankProfileIds = setOf("sber_ru"),
+            merchantId = "mch_demo",
+            paymentIntentActive = window.paymentIntentActive,
+            receiverArmed = window.receiverArmed,
+            expectedPaymentProfilePresent = window.expectedPaymentProfilePresent,
+            receivingRouteLocked = window.receivingRouteLocked
+        )
     }
 }

@@ -1128,6 +1128,16 @@ describe('android merchant mobile backend endpoints', () => {
       payment_ready: true,
       setup_actions: [],
       readiness_message: 'Paiements disponibles en validation manuelle.',
+      receiver_runtime_config: {
+        merchant_id: 'mch_01',
+        enabled_bank_profile_ids: ['sber_ru'],
+        payment_intent_active: false,
+        receiver_armed: false,
+        expected_payment_profile_present: false,
+        receiving_route_locked: false,
+        active_payment_sessions_count: 0,
+        active_until: null
+      },
       receiver_status: {
         status: 'action_required',
         label: 'Téléphone',
@@ -1148,6 +1158,37 @@ describe('android merchant mobile backend endpoints', () => {
       confirmation_type: 'notification_signal',
       official_bank_confirmation: false
     });
+    expectSafeAndroidMerchantBody(response.body);
+  });
+
+  it('returns backend-owned receiver runtime config for active checkout windows', async () => {
+    const { server, orderRepository } = buildAndroidMerchantServer();
+    orderRepository.paymentSession.status = 'receiver_armed';
+    orderRepository.paymentSession.paymentMethod = 'card';
+    orderRepository.paymentSession.expectedPaymentFingerprint = 'fingerprint_active_runtime';
+    orderRepository.paymentSession.receiverArmedAt = '2026-05-03T10:02:00.000Z';
+    orderRepository.paymentSession.routeLockedAt = '2026-05-03T10:01:30.000Z';
+    orderRepository.paymentSession.routeLockExpiresAt = '2026-05-03T10:30:00.000Z';
+    orderRepository.order.status = 'receiver_armed';
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/android-merchant/dashboard-summary',
+      headers: merchantHeaders()
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().receiver_runtime_config).toEqual({
+      merchant_id: 'mch_01',
+      enabled_bank_profile_ids: ['sber_ru'],
+      payment_intent_active: true,
+      receiver_armed: true,
+      expected_payment_profile_present: true,
+      receiving_route_locked: true,
+      active_payment_sessions_count: 1,
+      active_until: '2026-05-03T10:30:00.000Z'
+    });
+    expect(response.body).not.toContain('fingerprint_active_runtime');
     expectSafeAndroidMerchantBody(response.body);
   });
 
@@ -1767,6 +1808,30 @@ class FakeOrderRepository implements OrderRepository {
 
   public async listMerchantOrders(merchantId: string): Promise<StoredOrderRecord[]> {
     return merchantId === this.order.merchantId ? [this.order] : [];
+  }
+
+  public async listActiveReceiverPaymentSessions(
+    merchantId: string,
+    now: string
+  ): Promise<Array<{ order: StoredOrderRecord; paymentSession: StoredPaymentSessionRecord }>> {
+    const nowMs = new Date(now).getTime();
+    const validUntilMs = new Date(this.paymentSession.validUntil).getTime();
+    const routeLockExpiresMs = this.paymentSession.routeLockExpiresAt
+      ? new Date(this.paymentSession.routeLockExpiresAt).getTime()
+      : 0;
+    if (
+      merchantId !== this.paymentSession.merchantId ||
+      validUntilMs <= nowMs ||
+      routeLockExpiresMs <= nowMs ||
+      !['receiver_armed', 'awaiting_payment', 'buyer_claimed_paid'].includes(this.paymentSession.status) ||
+      !this.paymentSession.expectedPaymentFingerprint ||
+      !this.paymentSession.paymentMethod ||
+      !this.paymentSession.selectedReceivingRouteId ||
+      !this.paymentSession.selectedReceiverBankProfileId
+    ) {
+      return [];
+    }
+    return [{ order: this.order, paymentSession: this.paymentSession }];
   }
 
   public async getOrderById(merchantId: string, orderId: string): Promise<{ order: StoredOrderRecord; paymentSession: StoredPaymentSessionRecord | null } | null> {

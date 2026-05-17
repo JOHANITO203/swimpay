@@ -89,7 +89,8 @@ class MainActivity : FragmentActivity() {
                             PremiumMerchantRuntime.mobileSession(
                                 mobileSession = mobileSession,
                                 baseUrl = baseUrl,
-                                bankPackageProbe = bankPackageProbe
+                                bankPackageProbe = bankPackageProbe,
+                                receiverRuntimeConfigWriter = receiverRuntimeConfigStore
                             )
                         },
                         googleIdTokenProvider = googleIdTokenProvider::requestIdToken,

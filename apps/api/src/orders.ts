@@ -237,12 +237,21 @@ export type NoNotificationManualCheckResult =
   | { kind: 'not_due'; elapsedSeconds: number }
   | { kind: 'not_eligible'; reason: 'not_armed' | 'expected_profile_missing' | 'signal_or_review_exists' | 'already_requested' };
 
+export interface ActiveReceiverPaymentSession {
+  order: StoredOrderRecord;
+  paymentSession: StoredPaymentSessionRecord;
+}
+
 export interface OrderRepository {
   createOrderWithSession(input: CreateOrderWithSessionInput): Promise<CreateOrderWithSessionResult>;
   listMerchantOrders?(
     merchantId: string,
     input?: { limit?: number | undefined }
   ): Promise<StoredOrderRecord[]>;
+  listActiveReceiverPaymentSessions?(
+    merchantId: string,
+    now: string
+  ): Promise<ActiveReceiverPaymentSession[]>;
   getOrderById(
     merchantId: string,
     orderId: string
@@ -569,6 +578,121 @@ export class PgOrderRepository implements OrderRepository {
     );
 
     return result.rows.map((row) => toOrder(row as Record<string, string | number | Date | null>));
+  }
+
+  public async listActiveReceiverPaymentSessions(
+    merchantId: string,
+    now: string
+  ): Promise<ActiveReceiverPaymentSession[]> {
+    const result = await this.pool.query(
+      `SELECT
+         o.id AS order_id, o.merchant_id, o.external_id, o.return_url, o.product_id, o.product_name,
+         o.product_risk_level, o.amount_minor, o.currency AS order_currency, o.status AS order_status,
+         o.expires_at AS order_expires_at, o.created_at AS order_created_at, o.updated_at AS order_updated_at,
+         ps.id AS payment_session_id, ps.expected_amount_minor, ps.currency AS payment_currency,
+         ps.buyer_phone_hmac, ps.buyer_phone_masked, ps.buyer_name_hmac,
+         ps.reference_code, ps.reference_hmac, ps.status AS payment_status,
+         ps.selected_receiver_bank_id, ps.selected_receiver_bank_profile_id,
+         ps.selected_receiving_route_id, ps.selected_payer_bank_launcher_id,
+         ps.buyer_sender_phone_hmac, ps.buyer_sender_phone_masked,
+         ps.payment_method, ps.sender_bank_id, ps.sender_card_last4, ps.sender_card_masked,
+         ps.sender_card_hmac, ps.sender_phone_masked, ps.sender_phone_hmac,
+         ps.buyer_first_name_raw, ps.buyer_last_name_raw, ps.buyer_name_script_detected,
+         ps.buyer_name_normalized, ps.buyer_name_latin_variants, ps.buyer_name_cyrillic_variants,
+         ps.buyer_name_initial_variants, ps.buyer_name_reversed_order_variants,
+         ps.buyer_name_fingerprint, ps.display_amount_minor, ps.payable_amount_minor,
+         ps.reconciliation_delta_minor, ps.expected_payment_fingerprint,
+         ps.payment_instructions_shown_at, ps.receiver_armed_at, ps.buyer_claimed_paid_at,
+         ps.no_notification_manual_check_requested_at, ps.route_locked_at, ps.route_lock_expires_at,
+         ps.amount_lease_id, ps.valid_from, ps.valid_until,
+         ps.created_at AS payment_created_at, ps.updated_at AS payment_updated_at
+       FROM payment_sessions ps
+       INNER JOIN orders o ON o.id = ps.order_id AND o.merchant_id = ps.merchant_id
+       WHERE ps.merchant_id = $1
+         AND ps.status IN ('receiver_armed', 'awaiting_payment', 'buyer_claimed_paid')
+         AND ps.valid_until > $2::timestamptz
+         AND ps.expected_payment_fingerprint IS NOT NULL
+         AND ps.payment_method IS NOT NULL
+         AND ps.selected_receiving_route_id IS NOT NULL
+         AND ps.selected_receiver_bank_profile_id IS NOT NULL
+         AND ps.route_locked_at IS NOT NULL
+         AND ps.route_lock_expires_at IS NOT NULL
+         AND ps.route_lock_expires_at > $2::timestamptz
+       ORDER BY ps.receiver_armed_at DESC NULLS LAST, ps.updated_at DESC
+       LIMIT 10`,
+      [merchantId, now]
+    );
+
+    return result.rows.map((row) => {
+      const record = row as Record<string, string | number | Date | null>;
+      return {
+        order: toOrder({
+          id: record.order_id,
+          merchant_id: record.merchant_id,
+          external_id: record.external_id,
+          return_url: record.return_url,
+          product_id: record.product_id,
+          product_name: record.product_name,
+          product_risk_level: record.product_risk_level,
+          amount_minor: record.amount_minor,
+          currency: record.order_currency,
+          status: record.order_status,
+          expires_at: record.order_expires_at,
+          created_at: record.order_created_at,
+          updated_at: record.order_updated_at
+        } as Record<string, string | number | Date | null>),
+        paymentSession: toPaymentSession({
+          id: record.payment_session_id,
+          order_id: record.order_id,
+          merchant_id: record.merchant_id,
+          expected_amount_minor: record.expected_amount_minor,
+          currency: record.payment_currency,
+          buyer_phone_hmac: record.buyer_phone_hmac,
+          buyer_phone_masked: record.buyer_phone_masked,
+          buyer_name_hmac: record.buyer_name_hmac,
+          reference_code: record.reference_code,
+          reference_hmac: record.reference_hmac,
+          status: record.payment_status,
+          selected_receiver_bank_id: record.selected_receiver_bank_id,
+          selected_receiver_bank_profile_id: record.selected_receiver_bank_profile_id,
+          selected_receiving_route_id: record.selected_receiving_route_id,
+          selected_payer_bank_launcher_id: record.selected_payer_bank_launcher_id,
+          buyer_sender_phone_hmac: record.buyer_sender_phone_hmac,
+          buyer_sender_phone_masked: record.buyer_sender_phone_masked,
+          payment_method: record.payment_method,
+          sender_bank_id: record.sender_bank_id,
+          sender_card_last4: record.sender_card_last4,
+          sender_card_masked: record.sender_card_masked,
+          sender_card_hmac: record.sender_card_hmac,
+          sender_phone_masked: record.sender_phone_masked,
+          sender_phone_hmac: record.sender_phone_hmac,
+          buyer_first_name_raw: record.buyer_first_name_raw,
+          buyer_last_name_raw: record.buyer_last_name_raw,
+          buyer_name_script_detected: record.buyer_name_script_detected,
+          buyer_name_normalized: record.buyer_name_normalized,
+          buyer_name_latin_variants: record.buyer_name_latin_variants,
+          buyer_name_cyrillic_variants: record.buyer_name_cyrillic_variants,
+          buyer_name_initial_variants: record.buyer_name_initial_variants,
+          buyer_name_reversed_order_variants: record.buyer_name_reversed_order_variants,
+          buyer_name_fingerprint: record.buyer_name_fingerprint,
+          display_amount_minor: record.display_amount_minor,
+          payable_amount_minor: record.payable_amount_minor,
+          reconciliation_delta_minor: record.reconciliation_delta_minor,
+          expected_payment_fingerprint: record.expected_payment_fingerprint,
+          payment_instructions_shown_at: record.payment_instructions_shown_at,
+          receiver_armed_at: record.receiver_armed_at,
+          buyer_claimed_paid_at: record.buyer_claimed_paid_at,
+          no_notification_manual_check_requested_at: record.no_notification_manual_check_requested_at,
+          route_locked_at: record.route_locked_at,
+          route_lock_expires_at: record.route_lock_expires_at,
+          amount_lease_id: record.amount_lease_id,
+          valid_from: record.valid_from,
+          valid_until: record.valid_until,
+          created_at: record.payment_created_at,
+          updated_at: record.payment_updated_at
+        } as Record<string, string | number | Date | null>)
+      };
+    });
   }
 
   public async getOrderById(merchantId: string, orderId: string) {

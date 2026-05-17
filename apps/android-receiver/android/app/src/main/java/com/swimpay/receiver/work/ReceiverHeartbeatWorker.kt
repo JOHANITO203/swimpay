@@ -18,6 +18,7 @@ import com.swimpay.receiver.PersistentDeviceStateStore
 import com.swimpay.receiver.ReceiverHeartbeatPayloadBuilder
 import com.swimpay.receiver.ReceiverListenerLifecycleStore
 import com.swimpay.receiver.ReceiverRuntimeConfigStore
+import com.swimpay.receiver.ReceiverRuntimeConfigSynchronizer
 import com.swimpay.receiver.SharedPreferencesDeviceStateStorage
 import com.swimpay.receiver.SharedPreferencesReceiverListenerLifecycleStorage
 import com.swimpay.receiver.authHeaders
@@ -109,6 +110,10 @@ class ReceiverHeartbeatWorker(
         if (response.statusCode !in 200..299) {
             return Result.retry()
         }
+        ReceiverRuntimeConfigSynchronizer.syncFromResponseBody(
+            body = response.body,
+            writer = ReceiverRuntimeConfigStore(applicationContext)
+        )
         val heartbeatAt = extractString(response.body, "server_time") ?: nowIso
         deviceStateStore.updateHeartbeat(heartbeatAt)
         return Result.success()

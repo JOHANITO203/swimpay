@@ -1281,6 +1281,55 @@ class AndroidMerchantApiWiringTest {
         assertTrue(dashboard.visibleTexts().contains("Ajoutez un moyen de réception pour activer les paiements."))
         assertFalse(dashboard.visibleTexts().contains("SwimPay est prêt"))
     }
+
+    @Test
+    fun dashboardRepositoryParsesBackendOwnedReceiverRuntimeConfig() {
+        val session = AuthenticatedMerchantSession.localDev("mch_demo")
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "payments_to_review_count": 0,
+                  "confirmed_today_count": 0,
+                  "notifications_sent_count": 0,
+                  "merchant_setup_status": "ready_for_manual_payments",
+                  "payment_ready": true,
+                  "setup_actions": [],
+                  "readiness_message": "Paiements disponibles en validation manuelle.",
+                  "receiver_runtime_config": {
+                    "merchant_id": "mch_demo",
+                    "enabled_bank_profile_ids": ["sber_ru"],
+                    "payment_intent_active": true,
+                    "receiver_armed": true,
+                    "expected_payment_profile_present": true,
+                    "receiving_route_locked": true,
+                    "active_payment_sessions_count": 1,
+                    "active_until": "2026-05-03T10:30:00.000Z"
+                  },
+                  "receiver_status": { "display": "Pret" },
+                  "recent_detected_payments": [],
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
+        )
+
+        val dashboard = MerchantDashboardApiRepository(transport).load(session)
+
+        assertEquals(MerchantRepositoryState.SUCCESS, dashboard.state)
+        assertEquals(
+            ReceiverRuntimeConfig(
+                enabledBankProfileIds = setOf("sber_ru"),
+                merchantId = "mch_demo",
+                paymentIntentActive = true,
+                receiverArmed = true,
+                expectedPaymentProfilePresent = true,
+                receivingRouteLocked = true
+            ),
+            dashboard.receiverRuntimeConfig
+        )
+    }
 }
 
 private fun receiverPublicKeyPem(): String = listOf(

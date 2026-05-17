@@ -105,6 +105,7 @@ import {
   validateExpectedPaymentProfileBody,
   validateCreateOrderBody,
   type IdGenerator,
+  type ActiveReceiverPaymentSession,
   type OrderCreateResponse,
   type OrderReadResponse,
   type OrderRepository,
@@ -2366,13 +2367,18 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     }
     metrics.increment(MetricNames.RECEIVER_HEARTBEATS_TOTAL);
 
+    const receiverRuntimeConfig = repository
+      ? await resolveAndroidReceiverRuntimeConfig(repository, merchantContext.merchantId, heartbeatAt)
+      : null;
+
     return reply.status(200).send(
       buildReceiverHeartbeatResponse({
         device,
         serverTime: heartbeatAt,
         warnings: body.warnings ?? [],
         queueLength: body.value.queue_length,
-        allowedBankProfileIds: body.value.allowed_bank_profile_ids
+        allowedBankProfileIds: body.value.allowed_bank_profile_ids,
+        receiverRuntimeConfig
       })
     );
   });
@@ -2898,8 +2904,20 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     const metricTimeseries = merchantMetricsRepository
       ? await merchantMetricsRepository.getTimeseries({ merchantId, range: '30d', bucket: 'day', now: clock() })
       : null;
+    const now = clock().toISOString();
     const readiness = repository ? await resolveMerchantPaymentReadiness(repository, merchantId) : null;
-    return reply.status(200).send(toAndroidMerchantDashboardSummaryResponse(reviews, metricSummary, metricTimeseries, readiness));
+    const receiverRuntimeConfig = repository
+      ? await resolveAndroidReceiverRuntimeConfig(repository, merchantId, now)
+      : null;
+    return reply.status(200).send(
+      toAndroidMerchantDashboardSummaryResponse(
+        reviews,
+        metricSummary,
+        metricTimeseries,
+        readiness,
+        receiverRuntimeConfig
+      )
+    );
   });
 
   server.get('/v1/android-merchant/orders', async (request, reply) => {
@@ -4443,11 +4461,77 @@ function authBffRepositoryUnavailableError() {
   };
 }
 
+interface AndroidReceiverRuntimeConfig {
+  merchant_id: string;
+  enabled_bank_profile_ids: string[];
+  payment_intent_active: boolean;
+  receiver_armed: boolean;
+  expected_payment_profile_present: boolean;
+  receiving_route_locked: boolean;
+  active_payment_sessions_count: number;
+  active_until: string | null;
+}
+
+async function resolveAndroidReceiverRuntimeConfig(
+  repository: OrderRepository,
+  merchantId: string,
+  now: string
+): Promise<AndroidReceiverRuntimeConfig> {
+  const activeSessions = repository.listActiveReceiverPaymentSessions
+    ? await repository.listActiveReceiverPaymentSessions(merchantId, now)
+    : [];
+  const activeBankProfileIds = activeSessions
+    .map((item) => item.paymentSession.selectedReceiverBankProfileId)
+    .filter((id): id is string => Boolean(id));
+  const configuredRoutes = await repository.listReceiverBanksForCheckout(merchantId, '__merchant_receiver_runtime__');
+  const configuredBankProfileIds = configuredRoutes.map((route) => route.bank_profile_id);
+  const enabledBankProfileIds = [...new Set([...activeBankProfileIds, ...configuredBankProfileIds])].sort();
+  const activeUntil = latestActiveUntil(activeSessions);
+
+  return {
+    merchant_id: merchantId,
+    enabled_bank_profile_ids: enabledBankProfileIds,
+    payment_intent_active: activeSessions.length > 0,
+    receiver_armed: activeSessions.some((item) => Boolean(item.paymentSession.receiverArmedAt)),
+    expected_payment_profile_present: activeSessions.some((item) =>
+      Boolean(item.paymentSession.expectedPaymentFingerprint && item.paymentSession.paymentMethod)
+    ),
+    receiving_route_locked: activeSessions.some((item) => isReceivingRouteLockedForRuntime(item.paymentSession, now)),
+    active_payment_sessions_count: activeSessions.length,
+    active_until: activeUntil
+  };
+}
+
+function latestActiveUntil(activeSessions: ActiveReceiverPaymentSession[]): string | null {
+  const latestMs = activeSessions.reduce<number | null>((latest, item) => {
+    const candidate = item.paymentSession.routeLockExpiresAt ?? item.paymentSession.validUntil;
+    const candidateMs = Date.parse(candidate);
+    if (!Number.isFinite(candidateMs)) {
+      return latest;
+    }
+    return latest === null || candidateMs > latest ? candidateMs : latest;
+  }, null);
+  return latestMs === null ? null : new Date(latestMs).toISOString();
+}
+
+function isReceivingRouteLockedForRuntime(
+  paymentSession: StoredPaymentSessionRecord,
+  now: string
+): boolean {
+  if (!paymentSession.selectedReceivingRouteId || !paymentSession.routeLockedAt || !paymentSession.routeLockExpiresAt) {
+    return false;
+  }
+  const nowMs = Date.parse(now);
+  const expiresMs = Date.parse(paymentSession.routeLockExpiresAt);
+  return Number.isFinite(nowMs) && Number.isFinite(expiresMs) && expiresMs > nowMs;
+}
+
 function toAndroidMerchantDashboardSummaryResponse(
   reviews: ReviewListItem[],
   metricSummary: MerchantMetricsSummary | null = null,
   metricTimeseries: MerchantMetricsTimeseries | null = null,
-  readiness: MerchantPaymentReadiness | null = null
+  readiness: MerchantPaymentReadiness | null = null,
+  receiverRuntimeConfig: AndroidReceiverRuntimeConfig | null = null
 ): Record<string, unknown> {
   const sorted = sortAndroidMerchantReviews(reviews);
   const merchantSetupStatus = readiness?.merchant_setup_status ?? 'receiver_required';
@@ -4467,6 +4551,7 @@ function toAndroidMerchantDashboardSummaryResponse(
     payment_ready: paymentReady,
     setup_actions: readiness?.setup_actions ?? ['connect_receiver'],
     readiness_message: readinessMessage,
+    receiver_runtime_config: receiverRuntimeConfig,
     receiver_status: {
       status: 'action_required',
       label: 'Téléphone',

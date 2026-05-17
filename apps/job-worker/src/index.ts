@@ -18,6 +18,7 @@ import { createJobWorkerConsumers } from './consumers.js';
 import { PgWorkerIdempotencyLedger } from './idempotency-ledger.js';
 import { FetchWebhookHttpClient, PgWebhookRepository, WebhookDeliveryWorker } from './webhooks.js';
 import {
+  createPaymentExpiredWebhookHandler,
   createReviewFinalWebhookHandler,
   createWebhookDeliveryRequestedHandler,
   parseWebhookWorkerConfig,
@@ -166,13 +167,17 @@ export function buildJobWorkerHealthResponse(params: {
 
 type WebhookRuntimeProcessor = WebhookDeliveryProcessor & PublicWebhookEnqueuer;
 
-function createJobWorkerHandler(consumer: DurableConsumerDefinition, webhookProcessor: WebhookRuntimeProcessor | null) {
+export function createJobWorkerHandler(consumer: DurableConsumerDefinition, webhookProcessor: WebhookRuntimeProcessor | null) {
   if ((consumer.eventType === EventTypes.REVIEW_CONFIRMED || consumer.eventType === EventTypes.REVIEW_REJECTED) && webhookProcessor) {
     return createReviewFinalWebhookHandler(webhookProcessor);
   }
 
   if (consumer.eventType === EventTypes.WEBHOOK_DELIVERY_REQUESTED && webhookProcessor) {
     return createWebhookDeliveryRequestedHandler(webhookProcessor, () => new Date().toISOString());
+  }
+
+  if ((consumer.eventType === EventTypes.ORDER_EXPIRED || consumer.eventType === EventTypes.PAYMENT_SESSION_EXPIRED) && webhookProcessor) {
+    return createPaymentExpiredWebhookHandler(webhookProcessor);
   }
 
   return createSafeStubHandler('swimpay-job-worker');

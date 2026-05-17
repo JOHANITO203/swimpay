@@ -1283,6 +1283,7 @@ class MerchantDashboardApiRepository(
         val merchantSetupStatus = extractString(response.body, "merchant_setup_status")
         val paymentReady = extractBoolean(response.body, "payment_ready") ?: true
         val readinessMessage = extractString(response.body, "readiness_message")
+        val receiverRuntimeConfig = parseReceiverRuntimeConfig(response.body)
         val readyTitle = if (paymentReady) "SwimPay est prêt" else "Action requise"
         val readyText = readinessMessage ?: if (merchantSetupStatus == "receiving_method_required") {
             "Ajoutez un moyen de réception pour activer les paiements."
@@ -1317,7 +1318,8 @@ class MerchantDashboardApiRepository(
             ) + recentTexts + listOf("Accueil", "Revue", "Commandes", "Plus"),
             usesMockRepository = false,
             dashboardMetricsSummary = metricsSummary,
-            dashboardTimeseries = metricsTimeseries
+            dashboardTimeseries = metricsTimeseries,
+            receiverRuntimeConfig = receiverRuntimeConfig
         )
     }
 
@@ -1866,7 +1868,8 @@ data class MerchantScreenRepositoryResult(
     val dashboardMetricsSummary: MerchantDashboardMetricsSummary? = null,
     val dashboardTimeseries: List<MerchantDashboardTimeseriesPoint> = emptyList(),
     val paymentDetailTimeline: List<String> = emptyList(),
-    val paymentScoreLabel: String? = null
+    val paymentScoreLabel: String? = null,
+    val receiverRuntimeConfig: ReceiverRuntimeConfig? = null
 ) {
     fun visibleTexts(): List<String> = texts + safeMessage
 
@@ -2198,6 +2201,23 @@ fun List<String>.mapMerchantReasonLabels(): List<String> {
     }
     if (labels.isEmpty()) labels.add(MerchantReviewReasonCode.MANUAL_VALIDATION_BETA.merchantLabel)
     return labels.distinct()
+}
+
+fun parseReceiverRuntimeConfig(body: String): ReceiverRuntimeConfig? {
+    val runtimeObject = extractObjectValue(body, "receiver_runtime_config") ?: return null
+    val merchantId = extractString(runtimeObject, "merchant_id")?.takeIf { it.isNotBlank() } ?: return null
+    val bankProfileIds = extractStringArray(runtimeObject, "enabled_bank_profile_ids")
+        .filter { bankId -> BankTargetLock.supportedTargets.any { it.bankProfileId == bankId } }
+        .toSet()
+    if (bankProfileIds.isEmpty()) return null
+    return ReceiverRuntimeConfig(
+        enabledBankProfileIds = bankProfileIds,
+        merchantId = merchantId,
+        paymentIntentActive = extractBoolean(runtimeObject, "payment_intent_active") ?: false,
+        receiverArmed = extractBoolean(runtimeObject, "receiver_armed") ?: false,
+        expectedPaymentProfilePresent = extractBoolean(runtimeObject, "expected_payment_profile_present") ?: false,
+        receivingRouteLocked = extractBoolean(runtimeObject, "receiving_route_locked") ?: false
+    )
 }
 
 private fun String.toMerchantDashboardMetricsSummary(): MerchantDashboardMetricsSummary? {

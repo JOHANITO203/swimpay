@@ -27,7 +27,12 @@ interface ReceiverRuntimeConfigReader {
     fun load(): ReceiverRuntimeConfig
 }
 
-class ReceiverRuntimeConfigStore(context: Context) : ReceiverRuntimeConfigReader {
+interface ReceiverRuntimeConfigWriter {
+    fun save(config: ReceiverRuntimeConfig)
+    fun saveActiveIntentWindow(window: ActiveIntentWindow)
+}
+
+class ReceiverRuntimeConfigStore(context: Context) : ReceiverRuntimeConfigReader, ReceiverRuntimeConfigWriter {
     private val preferences = context.getSharedPreferences("swimpay_receiver_runtime_config", Context.MODE_PRIVATE)
 
     override fun load(): ReceiverRuntimeConfig {
@@ -44,7 +49,7 @@ class ReceiverRuntimeConfigStore(context: Context) : ReceiverRuntimeConfigReader
         )
     }
 
-    fun save(config: ReceiverRuntimeConfig) {
+    override fun save(config: ReceiverRuntimeConfig) {
         val safeBankProfileIds = config.enabledBankProfileIds
             .filter { id -> BankTargetLock.supportedTargets.any { it.bankProfileId == id } }
             .toSet()
@@ -61,7 +66,7 @@ class ReceiverRuntimeConfigStore(context: Context) : ReceiverRuntimeConfigReader
             .apply()
     }
 
-    fun saveActiveIntentWindow(window: ActiveIntentWindow) {
+    override fun saveActiveIntentWindow(window: ActiveIntentWindow) {
         preferences.edit()
             .putBoolean("payment_intent_active", window.paymentIntentActive)
             .putBoolean("receiver_armed", window.receiverArmed)
