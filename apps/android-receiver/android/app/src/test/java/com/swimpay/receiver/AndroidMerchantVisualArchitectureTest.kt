@@ -33,6 +33,45 @@ class AndroidMerchantVisualArchitectureTest {
     }
 
     @Test
+    fun homeCardVisualSupportsLayeredArtworkWithoutChangingDefaultDashboard() {
+        val premiumDir = File("src/main/java/com/swimpay/receiver/ui/premium")
+        val cardVisual = File(premiumDir, "CardVisual.kt").readText()
+        val cardTheme = File(premiumDir, "CardVisualTheme.kt").readText()
+        val cardLayers = File(premiumDir, "CardVisualLayers.kt").readText()
+        val cardDefaults = File(premiumDir, "CardVisualDefaults.kt").readText()
+        val premiumDashboard = File(premiumDir, "PremiumDashboardScreens.kt").readText()
+
+        assertTrue(cardVisual.contains("fun CardVisual("))
+        assertTrue(cardVisual.contains("CardSurfaceLayer("))
+        assertTrue(cardVisual.contains("ArtworkSkinLayer("))
+        assertTrue(cardVisual.contains("SurfaceEffectsLayer("))
+        assertTrue(cardVisual.contains("CardDetailsLayer("))
+        assertTrue(cardTheme.contains("artworkRes: Int?"))
+        assertTrue(cardTheme.contains("artworkAlpha: Float"))
+        assertTrue(cardTheme.contains("artworkScale: Float"))
+        assertTrue(cardTheme.contains("artworkOffsetX: Dp"))
+        assertTrue(cardTheme.contains("artworkOffsetY: Dp"))
+        assertTrue(cardTheme.contains("artworkRotation: Float"))
+        assertTrue(cardLayers.contains("graphicsLayer"))
+        assertTrue(cardLayers.contains("clip(cardShape)"))
+        assertTrue(cardLayers.contains("ContentScale.Crop"))
+        assertTrue(cardDefaults.contains("DragonGoldPreview"))
+        assertTrue(cardDefaults.contains("HomeDashboardDragonGoldCandidate"))
+        assertTrue(cardDefaults.contains("HomeDashboardDragonGoldTrial"))
+        assertTrue(cardDefaults.contains("Color(0xFF02040A)"))
+        assertTrue(cardDefaults.contains("Color(0xFF090D16)"))
+        assertTrue(cardDefaults.contains("Color(0xFF15110A)"))
+        assertTrue(cardDefaults.contains("R.drawable.card_artwork_dragon_gold"))
+        assertTrue(File("src/main/res/drawable-nodpi/card_artwork_dragon_gold.png").exists())
+        assertTrue(premiumDashboard.contains("MonthlyActivityCard"))
+        assertTrue(premiumDashboard.contains("CardVisual("))
+        assertTrue(premiumDashboard.contains("CardVisualDefaults.HomeDashboard"))
+        assertTrue(premiumDashboard.contains("CardVisualDefaults.HomeDashboardDragonGoldCandidate"))
+        assertTrue(premiumDashboard.contains("TODO: migrate card container from fixed height to bank-card aspectRatio(1.586f) after visual parity validation."))
+        assertFalse(premiumDashboard.contains("card_artwork_dragon_gold"))
+    }
+
+    @Test
     fun mainActivityDelegatesVisualRenderingToComposeScreens() {
         val mainActivity = File("src/main/java/com/swimpay/receiver/MainActivity.kt").readText()
         val premiumApp = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt").readText()
@@ -176,11 +215,16 @@ class AndroidMerchantVisualArchitectureTest {
         val premiumRuntime = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantRuntime.kt").readText()
         val apiWiring = File("src/main/java/com/swimpay/receiver/AndroidMerchantApiWiring.kt").readText()
         val mainCard = sourceFunction(premiumDashboard, "private fun MonthlyActivityCard")
+        val mainCardDetails = sourceFunction(premiumDashboard, "internal fun MonthlyActivityCardDetails")
 
         assertTrue(premiumRuntime.contains("Paiements confirm\u00e9s"))
         assertTrue(apiWiring.contains("metrics_summary"))
         assertTrue(apiWiring.contains("metrics_timeseries"))
-        assertTrue(mainCard.contains("AccountBalanceWallet"))
+        assertTrue(mainCardDetails.contains("AccountBalanceWallet"))
+        assertTrue(mainCard.contains("useDragonGoldHomeCard: Boolean = true"))
+        assertTrue(mainCard.contains("if (useDragonGoldHomeCard)"))
+        assertTrue(mainCard.contains("CardVisualDefaults.HomeDashboardDragonGoldCandidate"))
+        assertTrue(mainCard.contains("CardVisualDefaults.HomeDashboard"))
         assertTrue(premiumDashboard.contains("homeMetrics.chunked(2)"))
         assertTrue(premiumDashboard.contains("state.chartConfirmedAmountLabel"))
         assertTrue(premiumDashboard.contains("state.chartConfirmationRateLabel"))

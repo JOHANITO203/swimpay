@@ -75,6 +75,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -234,23 +235,97 @@ private fun PremiumStateList(state: PremiumScreenState<*>, language: PremiumLang
 }
 
 @Composable
-private fun MonthlyActivityCard(label: String, amount: String, usesLiveApi: Boolean, language: PremiumLanguageOption) {
-    PremiumGradientPanel(Modifier.fillMaxWidth().height(214.dp), radius = PremiumRadius.CardLarge) {
-        Column(Modifier.padding(26.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Box(Modifier.size(46.dp).background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(25.dp))
-                }
-                Text(language.ui("Aujourd'hui"), color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black, fontSize = PremiumType.Caption)
-            }
-            Spacer(Modifier.height(24.dp))
-            Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 15.sp, fontWeight = FontWeight.Black)
-            Spacer(Modifier.height(6.dp))
-            Text(amount, color = Color.White, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
-            Spacer(Modifier.height(18.dp))
-            StatusChip(language.ui(if (usesLiveApi) "Live" else "En attente"), if (usesLiveApi) StatusTone.Success else StatusTone.Neutral)
-        }
+private fun MonthlyActivityCard(
+    label: String,
+    amount: String,
+    usesLiveApi: Boolean,
+    language: PremiumLanguageOption,
+    useDragonGoldHomeCard: Boolean = true
+) {
+    val cardTheme = if (useDragonGoldHomeCard) {
+        CardVisualDefaults.HomeDashboardDragonGoldCandidate
+    } else {
+        CardVisualDefaults.HomeDashboard
     }
+
+    CardVisual(
+        // TODO: migrate card container from fixed height to bank-card aspectRatio(1.586f) after visual parity validation.
+        modifier = Modifier.fillMaxWidth().height(214.dp),
+        theme = cardTheme
+    ) {
+        MonthlyActivityCardDetails(label, amount, usesLiveApi, language)
+    }
+}
+
+@Composable
+internal fun MonthlyActivityCardDetails(
+    label: String,
+    amount: String,
+    usesLiveApi: Boolean,
+    language: PremiumLanguageOption
+) {
+    Column(Modifier.padding(26.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Box(Modifier.size(46.dp).background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(25.dp))
+            }
+            Text(language.ui("Aujourd'hui"), color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black, fontSize = PremiumType.Caption)
+        }
+        Spacer(Modifier.height(24.dp))
+        Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 15.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(6.dp))
+        Text(amount, color = Color.White, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(18.dp))
+        StatusChip(language.ui(if (usesLiveApi) "Live" else "En attente"), if (usesLiveApi) StatusTone.Success else StatusTone.Neutral)
+    }
+}
+
+@Preview(name = "Home card legacy blue fallback", showBackground = true, backgroundColor = 0xFF000A1F, widthDp = 390, heightDp = 250)
+@Composable
+private fun CardVisualHomeLegacyBluePreview() {
+    PremiumColors.useDarkTheme(false)
+    CardVisual(
+        modifier = Modifier.fillMaxWidth().height(214.dp),
+        theme = CardVisualDefaults.HomeDashboard
+    ) {
+        MonthlyActivityCardDetails("Paiements reçus", "12 450 RUB", true, PremiumLanguageOption.FR)
+    }
+}
+
+@Preview(name = "Home card dragon gold", showBackground = true, backgroundColor = 0xFF000A1F, widthDp = 390, heightDp = 250)
+@Composable
+private fun CardVisualDragonGoldPreview() {
+    PremiumColors.useDarkTheme(false)
+    CardVisual(
+        modifier = Modifier.fillMaxWidth().height(214.dp),
+        theme = CardVisualDefaults.DragonGoldPreview
+    ) {
+        MonthlyActivityCardDetails("Paiements reçus", "12 450 RUB", true, PremiumLanguageOption.FR)
+    }
+}
+
+@Preview(name = "Home card dragon gold candidate", showBackground = true, backgroundColor = 0xFF000A1F, widthDp = 390, heightDp = 250)
+@Composable
+private fun CardVisualDragonGoldCandidatePreview() {
+    PremiumColors.useDarkTheme(false)
+    CardVisual(
+        modifier = Modifier.fillMaxWidth().height(214.dp),
+        theme = CardVisualDefaults.HomeDashboardDragonGoldCandidate
+    ) {
+        MonthlyActivityCardDetails("Paiements reçus", "12 450 RUB", true, PremiumLanguageOption.FR)
+    }
+}
+
+@Preview(name = "Home dashboard default dragon gold", showBackground = true, backgroundColor = 0xFF000A1F, widthDp = 390, heightDp = 250)
+@Composable
+private fun MonthlyActivityCardDragonGoldDefaultPreview() {
+    PremiumColors.useDarkTheme(false)
+    MonthlyActivityCard(
+        label = "Paiements reçus",
+        amount = "12 450 RUB",
+        usesLiveApi = true,
+        language = PremiumLanguageOption.FR
+    )
 }
 
 private fun metricIcon(label: String): ImageVector {
