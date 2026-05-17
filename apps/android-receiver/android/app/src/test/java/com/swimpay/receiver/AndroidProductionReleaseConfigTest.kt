@@ -56,6 +56,32 @@ class AndroidProductionReleaseConfigTest {
     }
 
     @Test
+    fun releaseBuildKeepsTheStagingRuntimeShapeWhileOnlyHardeningPackaging() {
+        val gradle = File("build.gradle.kts").readText()
+        val releaseBlock = sourceBetween(
+            gradle,
+            "getByName(\"release\")",
+            "create(\"staging\")"
+        )
+        val stagingBlock = sourceBetween(
+            gradle,
+            "create(\"staging\")",
+            "buildFeatures"
+        )
+
+        assertTrue(releaseBlock.contains("isDebuggable = false"))
+        assertTrue(stagingBlock.contains("isDebuggable = false"))
+        assertTrue(releaseBlock.contains("SWIMPAY_BACKEND_BASE_URL"))
+        assertTrue(stagingBlock.contains("SWIMPAY_BACKEND_BASE_URL"))
+        assertTrue(releaseBlock.contains("SWIMPAY_GOOGLE_SERVER_CLIENT_ID"))
+        assertTrue(stagingBlock.contains("SWIMPAY_GOOGLE_SERVER_CLIENT_ID"))
+        assertTrue(releaseBlock.contains("isMinifyEnabled = true"))
+        assertTrue(releaseBlock.contains("isShrinkResources = true"))
+        assertFalse(releaseBlock.contains("matchingFallbacks += listOf(\"debug\")"))
+        assertFalse(releaseBlock.contains("signingConfigs.getByName(\"debug\")"))
+    }
+
+    @Test
     fun packageScriptsExposeReleaseBuildCommands() {
         val packageJson = File("../../../../package.json").readText()
 
