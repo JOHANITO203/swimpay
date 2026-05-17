@@ -8,32 +8,42 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.swimpay.receiver.ui.premium.PremiumColors
 
-// Palette officielle Google Blue / Material 3
-val GoogleBlue = Color(0xFF0B57D0)
-val GoogleBlueVariant = Color(0xFFD3E3FD)
-val SuccessGreen = Color(0xFF22C55E)
-val AlertOrange = Color(0xFFF59E0B)
-
-private val LightColorScheme = lightColorScheme(
-    primary = GoogleBlue,
-    onPrimary = Color.White,
-    primaryContainer = GoogleBlueVariant,
-    onPrimaryContainer = GoogleBlue,
-    secondary = Color(0xFF535F70),
-    background = Color(0xFFF8FAFD),
-    surface = Color.White,
-    onSurface = Color(0xFF1B1B1F),
-    surfaceVariant = Color(0xFFE1E2EC)
+private fun premiumLightColorScheme() = lightColorScheme(
+    primary = PremiumColors.Blue,
+    onPrimary = PremiumColors.Ink,
+    primaryContainer = PremiumColors.IconTile,
+    onPrimaryContainer = PremiumColors.Cyan,
+    secondary = PremiumColors.Teal,
+    onSecondary = PremiumColors.Ink,
+    secondaryContainer = PremiumColors.SurfaceAlt,
+    onSecondaryContainer = PremiumColors.Muted,
+    background = PremiumColors.Background,
+    onBackground = PremiumColors.Ink,
+    surface = PremiumColors.Surface,
+    onSurface = PremiumColors.Ink,
+    surfaceVariant = PremiumColors.SurfaceAlt,
+    onSurfaceVariant = PremiumColors.Muted,
+    outline = PremiumColors.Line,
+    error = PremiumColors.Danger
 )
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFA8C7FA),
-    onPrimary = Color(0xFF062E6F),
-    primaryContainer = Color(0xFF0842A0),
-    onPrimaryContainer = Color(0xFFD3E3FD),
-    background = Color(0xFF1B1B1F),
-    surface = Color(0xFF111114),
-    onSurface = Color(0xFFE3E2E6)
+private fun premiumDarkColorScheme() = darkColorScheme(
+    primary = PremiumColors.Blue,
+    onPrimary = Color.White,
+    primaryContainer = PremiumColors.IconTile,
+    onPrimaryContainer = PremiumColors.Cyan,
+    secondary = PremiumColors.Teal,
+    onSecondary = Color.White,
+    secondaryContainer = PremiumColors.SurfaceAlt,
+    onSecondaryContainer = PremiumColors.Muted,
+    background = PremiumColors.Background,
+    onBackground = PremiumColors.Ink,
+    surface = PremiumColors.Surface,
+    onSurface = PremiumColors.Ink,
+    surfaceVariant = PremiumColors.SurfaceAlt,
+    onSurfaceVariant = PremiumColors.Muted,
+    outline = PremiumColors.Line,
+    error = PremiumColors.Danger
 )
 
 @Composable
@@ -41,8 +51,8 @@ fun SwimPayMerchantTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     PremiumColors.useDarkTheme(darkTheme)
+    val colorScheme = if (darkTheme) premiumDarkColorScheme() else premiumLightColorScheme()
 
     MaterialTheme(
         colorScheme = colorScheme,
