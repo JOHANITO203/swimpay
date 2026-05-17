@@ -52,6 +52,7 @@ APK:
 
 - `apps/android-receiver/android/app/build/outputs/apk/release/app-release.apk`
 - size: `18148359` bytes
+- SHA-256: `61F88D50F06E706B7322E3C4F7AEBD52538ACBE9B946D4BA080480D7E1E67D49`
 - application id: `com.swimpay.receiver`
 - version: `0.1.0`
 - versionCode: `1`
@@ -66,6 +67,14 @@ APK signature verification:
 - `apksigner verify --verbose --print-certs`: passed
 - APK Signature Scheme v2: true
 - signer count: 1
+- signer DN: `CN=SwimPay Android Release, OU=SwimPay, O=SwimPay, L=Paris, ST=Paris, C=FR`
+
+Landing download APK:
+
+- `apps/landing/public/downloads/swimpay-merchant.apk`
+- size: `18148359` bytes
+- SHA-256: `61F88D50F06E706B7322E3C4F7AEBD52538ACBE9B946D4BA080480D7E1E67D49`
+- refreshed from the release APK after the Android CI guardrail fix.
 
 ## Validation Commands
 
@@ -76,6 +85,14 @@ Passed:
 npm run android:assemble:release
 npm run android:assemble:staging
 npm run android:bundle:release
+npm run build --workspace @swimpay/landing
+```
+
+Final refresh verification passed after replacing the landing APK:
+
+```powershell
+npm run android:assemble:release
+npm run build --workspace @swimpay/landing
 ```
 
 ## Behavior Statement
@@ -101,4 +118,3 @@ Before public distribution, install the generated release APK on the target devi
 4. verify receiving methods screen;
 5. verify review flow;
 6. verify notification listener and receiver health state.
-
