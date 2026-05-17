@@ -51,23 +51,23 @@ object PremiumColors {
     private val dark = PremiumColorPalette(
         ink = Color(0xFFF8FAFC),
         navy = Color(0xFFFFFFFF),
-        blue = Color(0xFF2F6BFF),
-        electricBlue = Color(0xFF6EA8FF),
-        cyan = Color(0xFF57DEFF),
-        teal = Color(0xFF57DEFF),
-        mint = Color(0xFF071B35),
-        background = Color(0xFF000613),
-        surface = Color(0xFF061225),
-        surfaceAlt = Color(0xFF0B203D),
-        line = Color(0xFF1D3A66),
-        muted = Color(0xFFB8C8E8),
-        softText = Color(0xFF8299C2),
-        success = Color(0xFF34D399),
-        warning = Color(0xFFFBBF24),
-        danger = Color(0xFFF87171),
-        panelTint = Color(0xFF07182F),
-        iconTile = Color(0xFF0D274C),
-        neutralChip = Color(0xFF102848)
+        blue = Color(0xFFE04A3F),
+        electricBlue = Color(0xFFFF735A),
+        cyan = Color(0xFFFFB7A6),
+        teal = Color(0xFFE2362F),
+        mint = Color(0xFF261011),
+        background = Color(0xFF050406),
+        surface = Color(0xE60B0A0E),
+        surfaceAlt = Color(0xD9141015),
+        line = Color(0x73A2423D),
+        muted = Color(0xFFE4CBC5),
+        softText = Color(0xFFB8958F),
+        success = Color(0xFF7CCB8F),
+        warning = Color(0xFFE1A34A),
+        danger = Color(0xFFFF6958),
+        panelTint = Color(0xD9110B0F),
+        iconTile = Color(0xCC231015),
+        neutralChip = Color(0xB8251719)
     )
 
     private var palette: PremiumColorPalette = light
@@ -173,24 +173,31 @@ object PremiumToneColors {
 
 object PremiumBrandGradient {
     val Primary: List<Color> get() = if (PremiumColors.IsDark) {
-        listOf(Color(0xFF2F6BFF), Color(0xFF6EA8FF))
+        listOf(Color(0xFF7A1518), Color(0xFFE04A3F), Color(0xFFFF735A))
     } else {
         listOf(Color(0xFF5E93B3), Color(0xFFB9ECFF))
     }
     val PrimaryDeep: List<Color> get() = if (PremiumColors.IsDark) {
-        listOf(Color(0xFF2F6BFF), Color(0xFF061225))
+        listOf(Color(0xFF6E1116), Color(0xFF1B0A0D), Color(0xFF060406))
     } else {
         listOf(Color(0xFF0B2742), Color(0xFF5E93B3))
     }
-    val PaymentCard: List<Color> get() = listOf(Color(0xFF000A1F), Color(0xFF0A1828), Color(0xFF123A59))
-    val SbpCard: List<Color> get() = listOf(Color(0xFF000A1F), Color(0xFF0A2740), Color(0xFF78BFD8))
-    val ReceivingSurface: List<Color> get() = listOf(Color(0xFF071827), Color(0xFF0D253C), Color(0xFF061225))
-    val ChartArea: List<Color> get() = listOf(PremiumColors.Blue.copy(alpha = 0.26f), PremiumColors.Cyan.copy(alpha = 0.12f), Color.Transparent)
-    val PaperGlow: List<Color> get() = if (PremiumColors.IsDark) {
-        listOf(Color(0xFF000613), Color(0xFF061225), Color(0xFF00113A), Color(0xFF000613))
+    val PaymentCard: List<Color> get() = if (PremiumColors.IsDark) {
+        listOf(Color(0xFF080507), Color(0xFF1A0D10), Color(0xFF3C1215))
     } else {
-        listOf(Color(0xFF000A1F), Color(0xFF07152F), Color(0xFF002EAD), Color(0xFF000A1F))
+        listOf(Color(0xFF000A1F), Color(0xFF0A1828), Color(0xFF123A59))
     }
+    val SbpCard: List<Color> get() = if (PremiumColors.IsDark) {
+        listOf(Color(0xFF080507), Color(0xFF211014), Color(0xFF6E1918))
+    } else {
+        listOf(Color(0xFF000A1F), Color(0xFF0A2740), Color(0xFF78BFD8))
+    }
+    val ReceivingSurface: List<Color> get() = if (PremiumColors.IsDark) {
+        listOf(Color(0xFF070506), Color(0xFF150B0E), Color(0xFF261014))
+    } else {
+        listOf(Color(0xFF071827), Color(0xFF0D253C), Color(0xFF061225))
+    }
+    val ChartArea: List<Color> get() = listOf(PremiumColors.Blue.copy(alpha = 0.22f), PremiumColors.Cyan.copy(alpha = 0.10f), Color.Transparent)
     val Disabled: List<Color> get() = listOf(PremiumColors.Line, PremiumColors.NeutralChip)
 }
 

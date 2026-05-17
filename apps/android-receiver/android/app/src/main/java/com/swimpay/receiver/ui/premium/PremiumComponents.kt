@@ -634,28 +634,22 @@ fun PremiumPaperBackground(
             context.packageName
         )
     }
+    val darkBackgroundRes = remember(context) {
+        context.resources.getIdentifier(
+            "app_bg_dark_demonic_samurai",
+            "drawable",
+            context.packageName
+        )
+    }
     Box(modifier) {
-        Canvas(Modifier.matchParentSize().background(PremiumColors.Background)) {
-            if (PremiumColors.IsDark) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFF0E7490).copy(alpha = 0.24f), Color.Transparent),
-                        center = Offset(size.width * 0.88f, size.height * 0.12f),
-                        radius = size.minDimension * 0.74f
-                    ),
-                    radius = size.minDimension * 0.74f,
-                    center = Offset(size.width * 0.88f, size.height * 0.12f)
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFF10B981).copy(alpha = 0.16f), Color.Transparent),
-                        center = Offset(size.width * 0.10f, size.height * 0.84f),
-                        radius = size.minDimension * 0.70f
-                    ),
-                    radius = size.minDimension * 0.70f,
-                    center = Offset(size.width * 0.10f, size.height * 0.84f)
-                )
-            }
+        Box(Modifier.matchParentSize().background(PremiumColors.Background))
+        if (PremiumColors.IsDark && darkBackgroundRes != 0) {
+            Image(
+                painter = painterResource(id = darkBackgroundRes),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
         }
         if (useMythBackgroundOverlay && !PremiumColors.IsDark && mythOverlayRes != 0) {
             Image(

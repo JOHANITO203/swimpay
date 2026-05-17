@@ -1,6 +1,7 @@
 package com.swimpay.receiver.ui.premium
 
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
@@ -13,7 +14,16 @@ data class CardSurfaceTheme(
     val surfaceTextureRes: Int? = null,
     val surfaceTextureAlpha: Float = 0.16f,
     val surfaceTextureScale: Float = 1f,
-    val surfaceTextureContentScale: ContentScale = ContentScale.Crop
+    val surfaceTextureContentScale: ContentScale = ContentScale.Crop,
+    val surfaceAccentTextureRes: Int? = null,
+    val surfaceAccentTextureAlpha: Float = 0.16f,
+    val surfaceAccentTextureScale: Float = 1f,
+    val surfaceAccentTextureContentScale: ContentScale = ContentScale.Crop,
+    val surfaceFinishTextureRes: Int? = null,
+    val surfaceFinishTextureAlpha: Float = 0.16f,
+    val surfaceFinishTextureScale: Float = 1f,
+    val surfaceFinishTextureContentScale: ContentScale = ContentScale.Crop,
+    val surfaceFinishTextureBlendMode: BlendMode = BlendMode.SrcOver
 )
 
 data class CardArtworkTheme(

@@ -242,10 +242,10 @@ private fun MonthlyActivityCard(
     language: PremiumLanguageOption,
     useDragonGoldHomeCard: Boolean = true
 ) {
-    val cardTheme = if (useDragonGoldHomeCard) {
-        CardVisualDefaults.HomeDashboardDragonGoldMaterial
-    } else {
-        CardVisualDefaults.HomeDashboard
+    val cardTheme = when {
+        PremiumColors.IsDark -> CardVisualDefaults.HomeDashboardDark
+        useDragonGoldHomeCard -> CardVisualDefaults.HomeDashboardDragonGoldMaterial
+        else -> CardVisualDefaults.HomeDashboard
     }
 
     CardVisual(
@@ -255,6 +255,18 @@ private fun MonthlyActivityCard(
     ) {
         MonthlyActivityCardDetails(label, amount, usesLiveApi, language)
     }
+}
+
+@Preview(name = "Home card dark oni yatagarasu", showBackground = true, backgroundColor = 0xFF000613, widthDp = 390, heightDp = 250)
+@Composable
+private fun MonthlyActivityCardDarkOniYatagarasuPreview() {
+    PremiumColors.useDarkTheme(true)
+    MonthlyActivityCard(
+        label = "Paiements reçus",
+        amount = "12 450 RUB",
+        usesLiveApi = true,
+        language = PremiumLanguageOption.FR
+    )
 }
 
 @Composable

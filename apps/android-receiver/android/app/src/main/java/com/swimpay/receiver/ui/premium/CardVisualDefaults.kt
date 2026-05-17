@@ -58,6 +58,34 @@ object CardVisualDefaults {
             )
         )
 
+    val HomeDashboardDark: CardVisualTheme
+        get() = CardVisualTheme(
+            surface = CardSurfaceTheme(
+                background = listOf(
+                    Color(0xFF050405),
+                    Color(0xFF12090B),
+                    Color(0xFF241014)
+                ),
+                radius = PremiumRadius.CardLarge,
+                edgeColor = Color(0xFFFFB7A6).copy(alpha = 0.26f),
+                surfaceTextureRes = R.drawable.card_surface_dark_black_brushed_workbench,
+                surfaceTextureAlpha = 0.86f,
+                surfaceTextureScale = 1f,
+                surfaceAccentTextureRes = R.drawable.card_overlay_dark_feathered_armor,
+                surfaceAccentTextureAlpha = 0.44f,
+                surfaceAccentTextureScale = 1f
+            ),
+            artwork = CardArtworkTheme(
+                artworkRes = R.drawable.card_artwork_dark_oni_yatagarasu,
+                artworkAlpha = 0.78f,
+                artworkScale = 1.03f,
+                artworkOffsetX = 0.dp,
+                artworkOffsetY = 0.dp,
+                artworkRotation = 0f
+            ),
+            effects = CardEffectsTheme(reflection = true)
+        )
+
     val HomeDashboardDragonGoldTrial: CardVisualTheme
         get() = HomeDashboardDragonGoldMaterial
 }
