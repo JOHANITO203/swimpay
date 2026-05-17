@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.work.WorkManager
+import com.swimpay.receiver.work.ReceiverHeartbeatWorker
 import com.swimpay.receiver.ui.premium.PremiumMerchantApp
 import com.swimpay.receiver.ui.premium.PremiumMerchantRuntime
 import com.swimpay.receiver.ui.premium.PremiumThemeMode
@@ -61,6 +63,7 @@ class MainActivity : FragmentActivity() {
             transport = merchantTransport,
             backendBaseUrl = baseUrl
         )
+        ReceiverHeartbeatWorker.enqueuePeriodic(WorkManager.getInstance(this))
         setContent {
             val systemDark = isSystemInDarkTheme()
             val density = LocalDensity.current

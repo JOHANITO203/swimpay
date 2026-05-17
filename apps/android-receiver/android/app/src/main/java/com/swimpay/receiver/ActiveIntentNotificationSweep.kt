@@ -87,7 +87,8 @@ data class ActiveIntentNotificationSweepResult(
     val reason: String,
     val acceptedCount: Int,
     val ignoredCount: Int,
-    val observations: List<RedactedRecentObservation>
+    val observations: List<RedactedRecentObservation>,
+    val uploadableResults: List<ReceiverNotificationPipelineResult> = emptyList()
 )
 
 class ActiveIntentNotificationSweep(
@@ -107,7 +108,8 @@ class ActiveIntentNotificationSweep(
                 reason = "active_payment_intent_required",
                 acceptedCount = 0,
                 ignoredCount = snapshots.size,
-                observations = emptyList()
+                observations = emptyList(),
+                uploadableResults = emptyList()
             )
         }
 
@@ -123,12 +125,14 @@ class ActiveIntentNotificationSweep(
             debugEnabled = debugEnabled,
             enabledBankPackages = enabledBankPackages
         )
+        val uploadableResults = mutableListOf<ReceiverNotificationPipelineResult>()
         val observations = safeSnapshots.mapNotNull { snapshot ->
             val result = processor.process(listOf(snapshot))
             if (!result.accepted) {
                 return@mapNotNull null
             }
             val payload = result.payload ?: return@mapNotNull null
+            uploadableResults += result
             val observation = RedactedRecentObservation(
                 packageName = payload["package_name"].toString(),
                 bankId = payload["bank_profile_id"].toString(),
@@ -149,7 +153,8 @@ class ActiveIntentNotificationSweep(
             reason = "redacted_observations_ready_for_signed_upload",
             acceptedCount = observations.size,
             ignoredCount = snapshots.size - safeSnapshots.size,
-            observations = observations
+            observations = observations,
+            uploadableResults = uploadableResults
         )
     }
 

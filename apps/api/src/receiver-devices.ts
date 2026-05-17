@@ -36,6 +36,11 @@ export interface ReceiverHealth {
   clock_skew_ms: number;
 }
 
+export const ReceiverHeartbeatFreshness = {
+  degradedAfterMs: 2 * 60 * 1000,
+  offlineAfterMs: 10 * 60 * 1000
+} as const;
+
 export interface StoredReceiverDeviceRecord {
   id: string;
   merchantId: string;
@@ -352,7 +357,11 @@ export function buildReceiverHeartbeatResponse(params: {
   queueLength?: number | undefined;
   allowedBankProfileIds?: readonly string[] | undefined;
 }) {
-  const receiverHealth = buildReceiverHealth(params);
+  const effectiveWarnings = receiverWarningsWithHeartbeatFreshness(params);
+  const receiverHealth = buildReceiverHealth({
+    ...params,
+    warnings: effectiveWarnings
+  });
   return {
     device_id: params.device.id,
     device_status: params.device.status,
@@ -360,11 +369,11 @@ export function buildReceiverHeartbeatResponse(params: {
     notification_access: params.device.notificationAccessStatus,
     last_heartbeat_at: params.device.lastHeartbeatAt,
     server_time: params.serverTime,
-    receiver_mode: params.warnings.length > 0 ? 'attention_required' : 'active',
+    receiver_mode: effectiveWarnings.length > 0 || receiverHealth.status !== 'healthy' ? 'attention_required' : 'active',
     active_payment_sessions_count: 0,
     receiver_health: receiverHealth,
-    warnings: [...params.warnings],
-    required_actions: receiverRequiredActions(params.warnings)
+    warnings: effectiveWarnings,
+    required_actions: receiverRequiredActions(effectiveWarnings)
   };
 }
 
@@ -375,12 +384,13 @@ function buildReceiverHealth(params: {
   allowedBankProfileIds?: readonly string[] | undefined;
 }): ReceiverHealth {
   const listenerConnectedRecently =
+    !isReceiverHeartbeatStale(params.device, params.serverTime, ReceiverHeartbeatFreshness.degradedAfterMs) &&
     params.device.status !== 'inactive' &&
     params.device.status !== 'needs_reconnect' &&
     !params.warnings.includes(AndroidReceiverWarnings.LISTENER_DISCONNECTED);
 
   return {
-    status: deriveReceiverHealthStatus(params.device),
+    status: deriveReceiverHealthStatus(params.device, params.serverTime),
     notification_access: params.device.notificationAccessStatus,
     listener_connected_recently: listenerConnectedRecently,
     last_heartbeat_at: params.device.lastHeartbeatAt,
@@ -392,7 +402,16 @@ function buildReceiverHealth(params: {
   };
 }
 
-export function deriveReceiverHealthStatus(device: StoredReceiverDeviceRecord): ReceiverHealthStatus {
+export function deriveReceiverHealthStatus(
+  device: StoredReceiverDeviceRecord,
+  serverTime?: string | undefined
+): ReceiverHealthStatus {
+  if (serverTime && isReceiverHeartbeatStale(device, serverTime, ReceiverHeartbeatFreshness.offlineAfterMs)) {
+    return 'offline';
+  }
+  if (serverTime && isReceiverHeartbeatStale(device, serverTime, ReceiverHeartbeatFreshness.degradedAfterMs)) {
+    return 'degraded';
+  }
   if (device.status === 'active' && device.notificationAccessStatus) {
     return 'healthy';
   }
@@ -400,6 +419,34 @@ export function deriveReceiverHealthStatus(device: StoredReceiverDeviceRecord): 
     return 'offline';
   }
   return 'degraded';
+}
+
+function receiverWarningsWithHeartbeatFreshness(params: {
+  device: StoredReceiverDeviceRecord;
+  serverTime: string;
+  warnings: readonly AndroidReceiverWarning[];
+}): AndroidReceiverWarning[] {
+  const warnings = new Set(params.warnings);
+  if (isReceiverHeartbeatStale(params.device, params.serverTime, ReceiverHeartbeatFreshness.degradedAfterMs)) {
+    warnings.add(AndroidReceiverWarnings.LISTENER_DISCONNECTED);
+  }
+  return [...warnings];
+}
+
+function isReceiverHeartbeatStale(
+  device: StoredReceiverDeviceRecord,
+  serverTime: string,
+  staleAfterMs: number
+): boolean {
+  if (!device.lastHeartbeatAt) {
+    return false;
+  }
+  const serverMs = Date.parse(serverTime);
+  const heartbeatMs = Date.parse(device.lastHeartbeatAt);
+  if (!Number.isFinite(serverMs) || !Number.isFinite(heartbeatMs)) {
+    return false;
+  }
+  return serverMs - heartbeatMs > staleAfterMs;
 }
 
 function normalizeHeartbeatAliases(body: unknown): unknown {

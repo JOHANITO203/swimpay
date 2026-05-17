@@ -117,6 +117,39 @@ class ActiveIntentNotificationSweepTest {
     }
 
     @Test
+    fun exposesAcceptedSweepResultsForSignedOutboxUpload() {
+        val sweep = ActiveIntentNotificationSweep(
+            debugEnabled = false,
+            enabledBankPackages = setOf("ru.sberbankmobile")
+        )
+        val supported = StagingSyntheticNotificationHarness.supportedBankSnapshot(
+            packageName = "ru.sberbankmobile",
+            title = "Incoming transfer 137 RUB",
+            text = "Transfer from Ivan +79991234567. Ref SWP-ABC123",
+            postTime = 1_775_000_100_000L
+        )
+
+        val result = sweep.processSnapshots(
+            window = ActiveIntentWindow(
+                paymentIntentActive = true,
+                receiverArmed = true,
+                expectedPaymentProfilePresent = true,
+                receivingRouteLocked = true
+            ),
+            source = ActiveNotificationSweepSource.ACTIVE_NOTIFICATIONS,
+            snapshots = listOf(supported)
+        )
+
+        val uploadable = result.uploadableResults.single()
+        assertTrue(uploadable.accepted)
+        val payload = uploadable.payload ?: error("payload required")
+        assertEquals("ru.sberbankmobile", payload["package_name"])
+        assertEquals(false, payload["raw_text_present"])
+        assertFalse(payload.toString().contains("+79991234567"))
+        assertFalse(payload.toString().contains("SWP-ABC123"))
+    }
+
+    @Test
     fun redactedRecentBufferPurgesExpiredEntriesAndDeduplicatesByHash() {
         var now = java.time.Instant.parse("2026-05-12T10:02:00.000Z").toEpochMilli()
         val buffer = RedactedRecentNotificationBuffer(

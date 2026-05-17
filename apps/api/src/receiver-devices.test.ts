@@ -14,7 +14,7 @@ import {
   hashCsrfToken,
   serializeSessionCookie
 } from './auth-bff.js';
-import { deriveReceiverDeviceOperationalStatus } from './receiver-devices.js';
+import { buildReceiverHeartbeatResponse, deriveReceiverDeviceOperationalStatus } from './receiver-devices.js';
 import { createReceiverSignalSignature } from './signals.js';
 import type {
   CreateReceiverDeviceInput,
@@ -215,6 +215,53 @@ async function createProductionReceiverServerWithSession(repository: InMemoryRec
 }
 
 describe('receiver device api', () => {
+  test('marks receiver health degraded or offline when heartbeat is stale', () => {
+    const baseDevice: StoredReceiverDeviceRecord = {
+      id: 'dev_stale_01',
+      merchantId: 'mch_01',
+      deviceName: 'Merchant Phone',
+      publicKey: receiverPublicKey,
+      appVersion: '1.0.0',
+      androidVersion: '15',
+      status: 'active',
+      trustScore: 0,
+      notificationAccessStatus: true,
+      lastLocalCounter: 0,
+      lastHeartbeatAt: '2026-05-02T10:55:30.000Z',
+      createdAt: '2026-05-02T10:00:00.000Z',
+      updatedAt: '2026-05-02T10:55:30.000Z'
+    };
+
+    const degraded = buildReceiverHeartbeatResponse({
+      device: baseDevice,
+      serverTime: '2026-05-02T11:00:00.000Z',
+      warnings: [],
+      queueLength: 0,
+      allowedBankProfileIds: ['sber_ru']
+    });
+
+    expect(degraded.receiver_health.status).toBe('degraded');
+    expect(degraded.receiver_mode).toBe('attention_required');
+    expect(degraded.required_actions).toContain('reconnect_notification_listener');
+
+    const offline = buildReceiverHeartbeatResponse({
+      device: {
+        ...baseDevice,
+        lastHeartbeatAt: '2026-05-02T10:44:00.000Z',
+        updatedAt: '2026-05-02T10:44:00.000Z'
+      },
+      serverTime: '2026-05-02T11:00:00.000Z',
+      warnings: [],
+      queueLength: 0,
+      allowedBankProfileIds: ['sber_ru']
+    });
+
+    expect(offline.receiver_health.status).toBe('offline');
+    expect(offline.receiver_health.listener_connected_recently).toBe(false);
+    expect(offline.receiver_mode).toBe('attention_required');
+    expect(offline.required_actions).toContain('reconnect_notification_listener');
+  });
+
   test('rejects local test bearer receiver registration in production', async () => {
     const repository = new InMemoryReceiverDeviceRepository();
     const server = buildApiServer({

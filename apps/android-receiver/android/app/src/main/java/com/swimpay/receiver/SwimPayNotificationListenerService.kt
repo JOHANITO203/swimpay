@@ -12,6 +12,7 @@ import com.swimpay.receiver.work.SignalUploadWorker
 
 class SwimPayNotificationListenerService : NotificationListenerService() {
     override fun onListenerConnected() {
+        ReceiverListenerLifecycleStore(SharedPreferencesReceiverListenerLifecycleStorage(this)).markConnected()
         val active = try {
             getActiveNotifications()?.toList().orEmpty()
         } catch (_: RuntimeException) {
@@ -27,6 +28,10 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
             }
             runNotificationSweep(ActiveNotificationSweepSource.SNOOZED_NOTIFICATIONS, snoozed)
         }
+    }
+
+    override fun onListenerDisconnected() {
+        ReceiverListenerLifecycleStore(SharedPreferencesReceiverListenerLifecycleStorage(this)).markDisconnected()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -65,26 +70,11 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        val outboxStore = AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(this))
-        val deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(this))
-        val enqueue = if (BuildConfig.DEBUG) {
-            DebugReceiverSmokeController(
-                debugEnabled = true,
-                deviceStateStore = deviceStateStore,
-                outboxStore = outboxStore
-            ).enqueueProcessedNotificationSignal(result)
-        } else {
-            ReceiverRuntimeOutboxController(
-                merchantId = runtimeConfig.merchantId,
-                payloadSigner = AndroidKeystorePayloadSigner(),
-                deviceStateStore = deviceStateStore,
-                outboxStore = outboxStore
-            ).enqueueProcessedNotificationSignal(result).let {
-                DebugSmokeResult(success = it.success, safeMessage = it.safeMessage)
-            }
-        }
+        val enqueue = enqueuePipelineResult(runtimeConfig, result)
         Log.i(TAG, "outbox_enqueue_success=${enqueue.success} message=${enqueue.safeMessage}")
-        SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0)
+        if (enqueue.success) {
+            SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0)
+        }
 
         val recalled = try {
             getActiveNotifications(arrayOf(sbn.key))?.toList().orEmpty()
@@ -128,6 +118,40 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
             TAG,
             "active_notification_sweep source=$source accepted=${result.acceptedCount} ignored=${result.ignoredCount} reason=${result.reason}"
         )
+        var queued = 0
+        for (uploadable in result.uploadableResults) {
+            val enqueue = enqueuePipelineResult(runtimeConfig, uploadable)
+            if (enqueue.success) {
+                queued += 1
+            }
+        }
+        if (queued > 0) {
+            SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0)
+        }
+    }
+
+    private fun enqueuePipelineResult(
+        runtimeConfig: ReceiverRuntimeConfig,
+        result: ReceiverNotificationPipelineResult
+    ): DebugSmokeResult {
+        val outboxStore = AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(this))
+        val deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(this))
+        return if (BuildConfig.DEBUG) {
+            DebugReceiverSmokeController(
+                debugEnabled = true,
+                deviceStateStore = deviceStateStore,
+                outboxStore = outboxStore
+            ).enqueueProcessedNotificationSignal(result)
+        } else {
+            ReceiverRuntimeOutboxController(
+                merchantId = runtimeConfig.merchantId,
+                payloadSigner = AndroidKeystorePayloadSigner(),
+                deviceStateStore = deviceStateStore,
+                outboxStore = outboxStore
+            ).enqueueProcessedNotificationSignal(result).let {
+                DebugSmokeResult(success = it.success, safeMessage = it.safeMessage)
+            }
+        }
     }
 
     companion object {
