@@ -284,16 +284,19 @@ fun PremiumPaymentDetailScreen(
     onRejectOrder: () -> Unit = {},
     language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
-    when (state) {
-        is PremiumScreenState.Content -> PremiumPaymentDetailContent(
-            state = state.value,
-            onBack = onBack,
-            onConfirmReceived = onConfirmReceived,
-            onRejectSignal = onRejectSignal,
-            onRejectOrder = onRejectOrder,
-            language = language
-        )
-        else -> PremiumPaymentDetailState(state, onBack, language)
+    Box(Modifier.fillMaxSize()) {
+        PremiumPaperBackground(Modifier.fillMaxSize())
+        when (state) {
+            is PremiumScreenState.Content -> PremiumPaymentDetailContent(
+                state = state.value,
+                onBack = onBack,
+                onConfirmReceived = onConfirmReceived,
+                onRejectSignal = onRejectSignal,
+                onRejectOrder = onRejectOrder,
+                language = language
+            )
+            else -> PremiumPaymentDetailState(state, onBack, language)
+        }
     }
 }
 
@@ -309,7 +312,6 @@ private fun PremiumPaymentDetailContent(
     Column(
         Modifier
             .fillMaxSize()
-            .background(PremiumColors.Background)
             .statusBarsPadding()
             .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
     ) {
@@ -521,7 +523,6 @@ private fun PremiumPaymentDetailState(
     Column(
         Modifier
             .fillMaxSize()
-            .background(PremiumColors.Background)
             .statusBarsPadding()
             .padding(horizontal = PremiumSpacing.ScreenHorizontalWide)
     ) {

@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -31,6 +32,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -612,111 +615,150 @@ fun PremiumAppShell(
 }
 
 @Composable
-fun PremiumPaperBackground(modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "PremiumPaperBackground")
-    val glowPhase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 14000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "paperGlowPhase"
-    )
-    Canvas(modifier.background(PremiumColors.Background)) {
-        drawRect(
-            brush = Brush.linearGradient(
-                PremiumBrandGradient.PaperGlow,
-                start = Offset.Zero,
-                end = Offset(size.width, size.height)
-            )
+fun PremiumPaperBackground(
+    modifier: Modifier = Modifier,
+    useNaturalLightLayer: Boolean = true,
+    useDragonRimLightLayer: Boolean = true,
+    useSoftContrastLayer: Boolean = true,
+    useMythBackgroundOverlay: Boolean = true,
+    mythBackgroundOverlayAlpha: Float = 1f,
+    mythBackgroundOverlayScale: Float = 1f,
+    mythBackgroundOverlayOffsetX: Dp = 0.dp,
+    mythBackgroundOverlayOffsetY: Dp = 0.dp
+) {
+    val context = LocalContext.current
+    val mythOverlayRes = remember(context) {
+        context.resources.getIdentifier(
+            "app_bg_ryujin_tsukuyomi_overlay",
+            "drawable",
+            context.packageName
         )
-        if (PremiumColors.IsDark) {
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF0E7490).copy(alpha = 0.24f), Color.Transparent),
-                    center = Offset(size.width * 0.88f, size.height * 0.12f),
-                    radius = size.minDimension * 0.74f
-                ),
-                radius = size.minDimension * 0.74f,
-                center = Offset(size.width * 0.88f, size.height * 0.12f)
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF10B981).copy(alpha = 0.16f), Color.Transparent),
-                    center = Offset(size.width * 0.10f, size.height * 0.84f),
-                    radius = size.minDimension * 0.70f
-                ),
-                radius = size.minDimension * 0.70f,
-                center = Offset(size.width * 0.10f, size.height * 0.84f)
-            )
-        } else {
-            val drift = (glowPhase - 0.5f) * 2f
-            drawRect(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF000A1F),
-                        Color(0xFF041736),
-                        Color(0xFF002EAD),
-                        Color(0xFF000A1F)
+    }
+    Box(modifier) {
+        Canvas(Modifier.matchParentSize().background(PremiumColors.Background)) {
+            if (PremiumColors.IsDark) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF0E7490).copy(alpha = 0.24f), Color.Transparent),
+                        center = Offset(size.width * 0.88f, size.height * 0.12f),
+                        radius = size.minDimension * 0.74f
                     ),
-                    start = Offset(size.width * 0.04f, 0f),
-                    end = Offset(size.width, size.height)
+                    radius = size.minDimension * 0.74f,
+                    center = Offset(size.width * 0.88f, size.height * 0.12f)
                 )
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF003BFF).copy(alpha = 0.34f), Color.Transparent),
-                    center = Offset(size.width * (-0.06f + drift * 0.03f), size.height * 0.08f),
-                    radius = size.minDimension * 1.05f
-                ),
-                radius = size.minDimension * 1.05f,
-                center = Offset(size.width * (-0.06f + drift * 0.03f), size.height * 0.08f)
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF42D6FF).copy(alpha = 0.24f), Color.Transparent),
-                    center = Offset(size.width * (1.02f - drift * 0.04f), size.height * 0.20f),
-                    radius = size.minDimension * 0.96f
-                ),
-                radius = size.minDimension * 0.96f,
-                center = Offset(size.width * (1.02f - drift * 0.04f), size.height * 0.20f)
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF6EA8FF).copy(alpha = 0.18f), Color.Transparent),
-                    center = Offset(size.width * (0.20f + drift * 0.05f), size.height * 0.84f),
-                    radius = size.minDimension * 0.90f
-                ),
-                radius = size.minDimension * 0.90f,
-                center = Offset(size.width * (0.20f + drift * 0.05f), size.height * 0.84f)
-            )
-            val shapePath = Path().apply {
-                moveTo(size.width * 0.62f, size.height * 0.06f)
-                cubicTo(size.width * 0.88f, size.height * 0.04f, size.width * 1.05f, size.height * 0.20f, size.width * 0.94f, size.height * 0.38f)
-                cubicTo(size.width * 0.82f, size.height * 0.58f, size.width * 0.48f, size.height * 0.48f, size.width * 0.52f, size.height * 0.26f)
-                close()
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF10B981).copy(alpha = 0.16f), Color.Transparent),
+                        center = Offset(size.width * 0.10f, size.height * 0.84f),
+                        radius = size.minDimension * 0.70f
+                    ),
+                    radius = size.minDimension * 0.70f,
+                    center = Offset(size.width * 0.10f, size.height * 0.84f)
+                )
             }
-            drawPath(
-                path = shapePath,
-                brush = Brush.linearGradient(
-                    listOf(
-                        Color.White.copy(alpha = 0.06f),
-                        Color(0xFF42D6FF).copy(alpha = 0.04f)
-                    )
-                ),
+        }
+        if (useMythBackgroundOverlay && !PremiumColors.IsDark && mythOverlayRes != 0) {
+            Image(
+                painter = painterResource(id = mythOverlayRes),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer {
+                        alpha = mythBackgroundOverlayAlpha
+                        scaleX = mythBackgroundOverlayScale
+                        scaleY = mythBackgroundOverlayScale
+                        translationX = mythBackgroundOverlayOffsetX.toPx()
+                        translationY = mythBackgroundOverlayOffsetY.toPx()
+                    }
             )
         }
-        drawRect(
-            brush = Brush.verticalGradient(
-                if (PremiumColors.IsDark) {
-                    listOf(Color(0xFF0B1726).copy(alpha = 0.38f), Color.Transparent)
-                } else {
-                    listOf(Color(0xFF42D6FF).copy(alpha = 0.08f), Color.Transparent)
-                }
-            ),
-            size = Size(size.width, min(size.height, 190.dp.toPx()))
-        )
+        if (useNaturalLightLayer && !PremiumColors.IsDark) {
+            Canvas(Modifier.matchParentSize()) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFF3FBFF).copy(alpha = 0.22f),
+                            Color(0xFFBDEBFF).copy(alpha = 0.09f),
+                            Color(0xFF8FD8FF).copy(alpha = 0.035f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.31f, size.height * 0.66f),
+                        radius = size.minDimension * 0.58f
+                    ),
+                    radius = size.minDimension * 0.58f,
+                    center = Offset(size.width * 0.31f, size.height * 0.66f)
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFEAF8FF).copy(alpha = 0.11f),
+                            Color(0xFF9AD8F5).copy(alpha = 0.04f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.88f, size.height * 0.40f),
+                        radius = size.minDimension * 0.46f
+                    ),
+                    radius = size.minDimension * 0.46f,
+                    center = Offset(size.width * 0.88f, size.height * 0.40f)
+                )
+            }
+        }
+        if (useDragonRimLightLayer && !PremiumColors.IsDark) {
+            Canvas(Modifier.matchParentSize()) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFB9ECFF).copy(alpha = 0.10f),
+                            Color(0xFF6EA8C8).copy(alpha = 0.035f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.60f, size.height * 0.32f),
+                        radius = size.minDimension * 0.30f
+                    ),
+                    radius = size.minDimension * 0.30f,
+                    center = Offset(size.width * 0.60f, size.height * 0.32f)
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFB9ECFF).copy(alpha = 0.12f),
+                            Color(0xFF6EA8C8).copy(alpha = 0.045f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.50f, size.height * 0.73f),
+                        radius = size.minDimension * 0.34f
+                    ),
+                    radius = size.minDimension * 0.34f,
+                    center = Offset(size.width * 0.50f, size.height * 0.73f)
+                )
+            }
+        }
+        if (useSoftContrastLayer && !PremiumColors.IsDark) {
+            Canvas(Modifier.matchParentSize()) {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF000A1F).copy(alpha = 0.10f),
+                            Color.Transparent,
+                            Color(0xFF000A1F).copy(alpha = 0.18f)
+                        )
+                    )
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF000A1F).copy(alpha = 0.12f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.50f, size.height * 0.22f),
+                        radius = size.minDimension * 0.62f
+                    ),
+                    radius = size.minDimension * 0.62f,
+                    center = Offset(size.width * 0.50f, size.height * 0.22f)
+                )
+            }
+        }
     }
 }
 
