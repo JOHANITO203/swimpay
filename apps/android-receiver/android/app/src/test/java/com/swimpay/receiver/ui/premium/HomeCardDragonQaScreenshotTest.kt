@@ -43,14 +43,21 @@ class HomeCardDragonQaScreenshotTest {
     @Test
     fun capturesHomeCardDragonGoldDefaultCandidateScreenshot() {
         capture("home_card_dragon_gold_default_candidate_390.png", width = 390) {
-            HomeCardQaCard(CardVisualDefaults.HomeDashboardDragonGoldCandidate)
+            HomeCardQaCard(CardVisualDefaults.HomeDashboardDragonGoldMaterial)
         }
     }
 
     @Test
     fun capturesHomeCardDragonGoldDefaultCandidateSmallWidthScreenshot() {
         capture("home_card_dragon_gold_default_candidate_320.png", width = 320) {
-            HomeCardQaCard(CardVisualDefaults.HomeDashboardDragonGoldCandidate)
+            HomeCardQaCard(CardVisualDefaults.HomeDashboardDragonGoldMaterial)
+        }
+    }
+
+    @Test
+    fun capturesHomeCardDragonGoldMaterialScreenshot() {
+        capture("home_card_dragon_gold_material_390.png", width = 390) {
+            HomeCardQaCard(CardVisualDefaults.HomeDashboardDragonGoldMaterial)
         }
     }
 

@@ -15,6 +15,7 @@ fun CardVisual(
     val cardShape = RoundedCornerShape(theme.surface.radius)
     Box(modifier) {
         CardSurfaceLayer(theme = theme, cardShape = cardShape)
+        SurfaceTextureLayer(theme = theme, cardShape = cardShape)
         ArtworkSkinLayer(theme = theme, cardShape = cardShape)
         SurfaceEffectsLayer(theme = theme, cardShape = cardShape)
         CardDetailsLayer(content)

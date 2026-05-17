@@ -243,7 +243,7 @@ private fun MonthlyActivityCard(
     useDragonGoldHomeCard: Boolean = true
 ) {
     val cardTheme = if (useDragonGoldHomeCard) {
-        CardVisualDefaults.HomeDashboardDragonGoldCandidate
+        CardVisualDefaults.HomeDashboardDragonGoldMaterial
     } else {
         CardVisualDefaults.HomeDashboard
     }
@@ -282,35 +282,36 @@ internal fun MonthlyActivityCardDetails(
 
 @Preview(name = "Home card legacy blue fallback", showBackground = true, backgroundColor = 0xFF000A1F, widthDp = 390, heightDp = 250)
 @Composable
-private fun CardVisualHomeLegacyBluePreview() {
+private fun MonthlyActivityCardLegacyBluePreview() {
     PremiumColors.useDarkTheme(false)
-    CardVisual(
-        modifier = Modifier.fillMaxWidth().height(214.dp),
-        theme = CardVisualDefaults.HomeDashboard
-    ) {
-        MonthlyActivityCardDetails("Paiements reçus", "12 450 RUB", true, PremiumLanguageOption.FR)
-    }
+    MonthlyActivityCard(
+        label = "Paiements reçus",
+        amount = "12 450 RUB",
+        usesLiveApi = true,
+        language = PremiumLanguageOption.FR,
+        useDragonGoldHomeCard = false
+    )
 }
 
 @Preview(name = "Home card dragon gold", showBackground = true, backgroundColor = 0xFF000A1F, widthDp = 390, heightDp = 250)
 @Composable
-private fun CardVisualDragonGoldPreview() {
+private fun MonthlyActivityCardDragonGoldPreview() {
     PremiumColors.useDarkTheme(false)
-    CardVisual(
-        modifier = Modifier.fillMaxWidth().height(214.dp),
-        theme = CardVisualDefaults.DragonGoldPreview
-    ) {
-        MonthlyActivityCardDetails("Paiements reçus", "12 450 RUB", true, PremiumLanguageOption.FR)
-    }
+    MonthlyActivityCard(
+        label = "Paiements reçus",
+        amount = "12 450 RUB",
+        usesLiveApi = true,
+        language = PremiumLanguageOption.FR
+    )
 }
 
-@Preview(name = "Home card dragon gold candidate", showBackground = true, backgroundColor = 0xFF000A1F, widthDp = 390, heightDp = 250)
+@Preview(name = "Home card dragon gold material", showBackground = true, backgroundColor = 0xFF000A1F, widthDp = 390, heightDp = 250)
 @Composable
-private fun CardVisualDragonGoldCandidatePreview() {
+private fun MonthlyActivityCardDragonGoldMaterialPreview() {
     PremiumColors.useDarkTheme(false)
     CardVisual(
         modifier = Modifier.fillMaxWidth().height(214.dp),
-        theme = CardVisualDefaults.HomeDashboardDragonGoldCandidate
+        theme = CardVisualDefaults.HomeDashboardDragonGoldMaterial
     ) {
         MonthlyActivityCardDetails("Paiements reçus", "12 450 RUB", true, PremiumLanguageOption.FR)
     }

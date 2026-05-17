@@ -34,6 +34,24 @@ fun BoxScope.CardSurfaceLayer(theme: CardVisualTheme, cardShape: Shape) {
 }
 
 @Composable
+fun BoxScope.SurfaceTextureLayer(theme: CardVisualTheme, cardShape: Shape) {
+    val textureRes = theme.surface.surfaceTextureRes ?: return
+    Image(
+        painter = painterResource(id = textureRes),
+        contentDescription = null,
+        contentScale = theme.surface.surfaceTextureContentScale,
+        modifier = Modifier
+            .matchParentSize()
+            .clip(cardShape)
+            .graphicsLayer {
+                alpha = theme.surface.surfaceTextureAlpha
+                scaleX = theme.surface.surfaceTextureScale
+                scaleY = theme.surface.surfaceTextureScale
+            }
+    )
+}
+
+@Composable
 fun BoxScope.ArtworkSkinLayer(theme: CardVisualTheme, cardShape: Shape) {
     val artworkRes = theme.artwork.artworkRes ?: return
     Image(

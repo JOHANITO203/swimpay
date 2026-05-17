@@ -49,6 +49,15 @@ object CardVisualDefaults {
             )
         )
 
+    val HomeDashboardDragonGoldMaterial: CardVisualTheme
+        get() = HomeDashboardDragonGoldCandidate.copy(
+            surface = HomeDashboardDragonGoldCandidate.surface.copy(
+                surfaceTextureRes = R.drawable.card_texture_brushed_black_metal,
+                surfaceTextureAlpha = 0.16f,
+                surfaceTextureScale = 1f
+            )
+        )
+
     val HomeDashboardDragonGoldTrial: CardVisualTheme
-        get() = HomeDashboardDragonGoldCandidate
+        get() = HomeDashboardDragonGoldMaterial
 }

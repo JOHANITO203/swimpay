@@ -2,13 +2,18 @@ package com.swimpay.receiver.ui.premium
 
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 data class CardSurfaceTheme(
     val background: List<Color>,
     val radius: Dp,
-    val edgeColor: Color
+    val edgeColor: Color,
+    val surfaceTextureRes: Int? = null,
+    val surfaceTextureAlpha: Float = 0.16f,
+    val surfaceTextureScale: Float = 1f,
+    val surfaceTextureContentScale: ContentScale = ContentScale.Crop
 )
 
 data class CardArtworkTheme(
