@@ -1210,6 +1210,12 @@ class AndroidMerchantApiWiringTest {
         assertTrue(created.integration?.showOnceSecrets()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
         assertFalse(created.integration?.exportLines()?.joinToString(" ").orEmpty().contains("sk_test_show_once_android"))
         assertTrue(created.integration?.copyExportLines()?.joinToString(" ").orEmpty().contains("SWIMPAY_SECRET_KEY=sk_test_show_once_android"))
+        assertTrue(created.integration?.copyExportLines()?.joinToString("\n").orEmpty().contains("SWIMPAY_MERCHANT_ID=mch_mobile"))
+        assertTrue(created.integration?.copyExportLines()?.joinToString("\n").orEmpty().contains("SWIMPAY_PUBLIC_KEY=pk_test_mobile"))
+        assertTrue(created.integration?.copyExportLines()?.joinToString("\n").orEmpty().contains("SWIMPAY_SECRET_KEY_VISIBLE=sk_\u2022\u2022\u20225678"))
+        assertTrue(created.integration?.copyExportLines()?.joinToString("\n").orEmpty().contains("SWIMPAY_WEBHOOK_SECRET_VISIBLE=whsec_"))
+        assertTrue(created.integration?.copyExportLines()?.joinToString("\n").orEmpty().contains("SWIMPAY_WEBHOOK_STATUS=active"))
+        assertTrue(created.integration?.copyExportLines()?.joinToString("\n").orEmpty().contains("SWIMPAY_INTEGRATION_TYPE=both"))
         assertTrue(created.integration?.exportLines()?.contains("SWIMPAY_SECRET_KEY=sk_\u2022\u2022\u20225678") == true)
         assertFalse(created.integration?.copyExportLines(
             merchantAuthorizationHeaderForCopy = "Bearer spm_mobile_session_secret"

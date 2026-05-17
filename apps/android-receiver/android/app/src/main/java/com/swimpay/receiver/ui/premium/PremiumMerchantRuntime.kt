@@ -1158,7 +1158,8 @@ private fun MerchantDeveloperIntegrationSnapshot.toPremiumConnectedSiteUiState(
         copyExportLines = copyExportLines(
             secretKeyForCopy = secretKeyForCopy,
             webhookSecretForCopy = webhookSecretForCopy,
-            merchantAuthorizationHeaderForCopy = merchantAuthorizationHeaderForCopy
+            merchantAuthorizationHeaderForCopy = merchantAuthorizationHeaderForCopy,
+            merchantAuthorizationHeaderMasked = merchantAuthorizationHeaderMasked
         ),
         oneTimeSecrets = showOnceSecrets(
             secretKeyForCopy = secretKeyForCopy,

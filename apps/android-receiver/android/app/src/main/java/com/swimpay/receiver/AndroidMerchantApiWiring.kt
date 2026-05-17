@@ -1520,6 +1520,7 @@ data class MerchantDeveloperIntegrationSnapshot(
     val webhookSecretOnce: String?,
     val webhookUrl: String,
     val webhookStatus: String,
+    val integrationType: String,
     val publicWebhookEvents: List<String>
 ) {
     fun effectiveSecretKey(): String = secretKeyMasked
@@ -1555,11 +1556,13 @@ data class MerchantDeveloperIntegrationSnapshot(
         externalAppBaseUrl: String = "",
         secretKeyForCopy: String? = secretKeyOnce,
         webhookSecretForCopy: String? = webhookSecretOnce,
-        merchantAuthorizationHeaderForCopy: String = ""
+        merchantAuthorizationHeaderForCopy: String = "",
+        merchantAuthorizationHeaderMasked: String = ""
     ): List<String> {
         secretKeyForCopy?.let { require(it.isBlank() || it.startsWith("sk_")) }
         webhookSecretForCopy?.let { require(it.isBlank() || it.startsWith("whsec_")) }
         merchantAuthorizationHeaderForCopy.takeIf { it.isNotBlank() }?.let { require(it.startsWith("Bearer spm_")) }
+        merchantAuthorizationHeaderMasked.takeIf { it.isNotBlank() }?.let { require(it != merchantAuthorizationHeaderForCopy) }
         val safeWebhookUrl = webhookUrl.ifBlank { "https://votre-app.example/api/v1/payments/swimpay/webhook # exemple" }
         val externalAppLines = externalAppExportLines(externalAppBaseUrl)
         val secretKeyLine = secretKeyForCopy
@@ -1570,12 +1573,24 @@ data class MerchantDeveloperIntegrationSnapshot(
             ?.takeIf { it.isNotBlank() }
             ?.let { "SWIMPAY_WEBHOOK_SECRET=$it" }
             ?: "# SWIMPAY_WEBHOOK_SECRET=$webhookSecretMasked # affichez ou renouvelez le secret webhook depuis l'espace marchand"
+        val publicEventsCsv = publicWebhookEvents.joinToString(",")
         return listOf(
+            "# SwimPay Integration - champs visibles",
+            "SWIMPAY_MERCHANT_ID=$merchantId",
+            "SWIMPAY_MERCHANT_AUTHORIZATION_MASKED=${merchantAuthorizationHeaderMasked.ifBlank { "Session mobile masquee" }}",
+            "SWIMPAY_PUBLIC_KEY=$publicKey",
+            "SWIMPAY_SECRET_KEY_VISIBLE=$secretKeyMasked",
+            "SWIMPAY_WEBHOOK_SECRET_VISIBLE=$webhookSecretMasked",
+            "SWIMPAY_WEBHOOK_STATUS=$webhookStatus",
+            "SWIMPAY_INTEGRATION_TYPE=$integrationType",
+            "SWIMPAY_PUBLIC_WEBHOOK_EVENTS_VISIBLE=${publicWebhookEvents.joinToString(", ")}",
+            "",
+            "# Variables serveur a donner au developpeur",
             "SWIMPAY_API_BASE_URL=$apiBaseUrl",
             secretKeyLine,
             webhookSecretLine,
             "SWIMPAY_WEBHOOK_URL=$safeWebhookUrl"
-        ) + externalAppLines + listOf("SWIMPAY_PUBLIC_WEBHOOK_EVENTS=${publicWebhookEvents.joinToString(",")}")
+        ) + externalAppLines + listOf("SWIMPAY_PUBLIC_WEBHOOK_EVENTS=$publicEventsCsv")
     }
 
     private fun externalAppExportLines(externalAppBaseUrl: String): List<String> {
@@ -2062,6 +2077,7 @@ fun String.toMerchantDeveloperIntegrationSnapshot(): MerchantDeveloperIntegratio
         webhookSecretOnce = extractString(this, "webhook_secret_once"),
         webhookUrl = extractString(this, "webhook_url") ?: "",
         webhookStatus = extractString(this, "webhook_status") ?: "not_configured",
+        integrationType = extractString(this, "integration_type") ?: "both",
         publicWebhookEvents = extractStringArray(this, "public_webhook_events").ifEmpty {
             listOf("payment.confirmed", "payment.rejected", "payment.expired")
         }

@@ -1,5 +1,8 @@
 ﻿package com.swimpay.receiver.ui.premium
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
@@ -69,9 +72,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -1804,7 +1806,7 @@ fun PremiumConnectedSiteStateScreen(
             if (state is PremiumScreenState.Content) {
                 val value = state.value
                 var webhookUrl by remember(value.webhookUrl) { mutableStateOf(value.webhookUrl) }
-                val clipboardManager = LocalClipboardManager.current
+                val context = LocalContext.current
 
                 PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1867,7 +1869,7 @@ fun PremiumConnectedSiteStateScreen(
                                     .border(1.dp, PremiumColors.Line, RoundedCornerShape(14.dp))
                                     .premiumTap {
                                         onAuthorizeCopy {
-                                            clipboardManager.setText(AnnotatedString(onCopyDeveloperExport(value)))
+                                            context.copyDeveloperExportToClipboard(onCopyDeveloperExport(value))
                                         }
                                     },
                                 contentAlignment = Alignment.Center
@@ -1890,6 +1892,11 @@ fun PremiumConnectedSiteStateScreen(
             }
         }
     }
+}
+
+private fun Context.copyDeveloperExportToClipboard(exportText: String) {
+    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("SwimPay developer export", exportText))
 }
 
 @Composable
