@@ -17,6 +17,7 @@ import {
   escapeHtml
 } from '../ui/Components.js';
 import type { MerchantIntegrationPayload, MerchantRouteAdminRoute, MerchantWebhookDeliveryPayload } from '../index.js';
+import { swimPaySdkButtonIconDataUri } from './SdkButtonIconAsset.js';
 
 const bankOptions = [
   ['Sberbank', 'S', 'Activée'],
@@ -716,6 +717,15 @@ function renderSnippet(title: string, code: string): string {
 }
 
 function renderWebIntegrationSnippets(): string {
+  const sdkButtonIconDataUri = swimPaySdkButtonIconDataUri();
+  const sdkButtonIconCss = `.swimpay-button-icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: center / contain no-repeat url("${sdkButtonIconDataUri}");
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.18));
+}`;
   const install = 'npm install @swimpay/node';
   const createOrder = `import { SwimPay } from "@swimpay/node";
 
@@ -738,6 +748,10 @@ return checkout.checkoutUrl;`;
 window.location.href = checkout.checkoutUrl;`;
   const webButton = `<style>
 .swimpay-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   min-height: 56px;
   border: 0;
   border-radius: 18px;
@@ -747,13 +761,18 @@ window.location.href = checkout.checkoutUrl;`;
   font: 800 16px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   cursor: pointer;
   box-shadow: 0 14px 32px rgba(0, 151, 167, 0.26);
+  white-space: nowrap;
 }
+${sdkButtonIconCss}
 .swimpay-button:disabled {
   cursor: progress;
   opacity: 0.72;
 }
 </style>
-<button id="swimpay-button" class="swimpay-button" type="button">Payer avec SwimPay</button>
+<button id="swimpay-button" class="swimpay-button" type="button">
+  <span class="swimpay-button-icon" aria-hidden="true"></span>
+  <span>Payer avec SwimPay</span>
+</button>
 
 <script>
 const button = document.getElementById("swimpay-button");

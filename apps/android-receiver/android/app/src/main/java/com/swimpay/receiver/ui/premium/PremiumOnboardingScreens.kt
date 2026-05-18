@@ -78,14 +78,14 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
             Spacer(Modifier.height(22.dp))
             Text(
                 "Terminal marchand".uppercase(),
-                color = PremiumColors.SoftText,
+                color = PremiumColors.PageMuted,
                 fontWeight = FontWeight.Black,
                 fontSize = PremiumType.Micro,
                 letterSpacing = 2.sp
             )
             Text(
                 "Configurez SwimPay sur ce téléphone pour suivre les paiements reçus.",
-                color = PremiumColors.Muted,
+                color = PremiumColors.PageMuted,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
@@ -395,7 +395,7 @@ private fun ReceivingMethodDetailsStep(
             }
         )
         Spacer(Modifier.height(6.dp))
-        Text(language.ui("Choisir la banque"), color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
+        Text(language.ui("Choisir la banque"), color = PremiumColors.PageInk, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(10.dp))
         bankOptions.forEach { bank ->
             val selected = bank.bankProfileId == selectedBankId
@@ -631,8 +631,8 @@ private fun BenefitRow(icon: ImageVector, title: String, body: String) {
 @Composable
 private fun NoticeRow(icon: ImageVector, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Icon(icon, null, tint = PremiumColors.SoftText, modifier = Modifier.size(28.dp))
-        Text(text, color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
+        Icon(icon, null, tint = PremiumColors.PageMuted, modifier = Modifier.size(28.dp))
+        Text(text, color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

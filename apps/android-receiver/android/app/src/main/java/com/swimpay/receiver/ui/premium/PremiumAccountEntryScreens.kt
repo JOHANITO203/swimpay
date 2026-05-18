@@ -207,7 +207,8 @@ private fun PremiumAccountEntryFrame(
     onLanguageSelected: (PremiumLanguageOption) -> Unit,
     content: @Composable () -> Unit
 ) {
-    Box(Modifier.fillMaxSize().background(PremiumColors.Background)) {
+    Box(Modifier.fillMaxSize()) {
+        PremiumPaperBackground(Modifier.matchParentSize())
         Column(
             Modifier
                 .fillMaxSize()
@@ -244,7 +245,7 @@ fun PremiumLanguageSwitch(
         Icon(
             Icons.Default.Language,
             contentDescription = "Langue",
-            tint = PremiumColors.Navy,
+            tint = PremiumColors.Ink,
             modifier = Modifier.size(16.dp)
         )
         PremiumLanguageOption.entries.forEach { option ->

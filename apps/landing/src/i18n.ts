@@ -2,10 +2,16 @@ export type LandingLocale = 'fr' | 'en' | 'ru';
 
 export interface LandingCopy {
   nav: {
+    home: string;
     features: string;
     app: string;
+    security: string;
+    pricing: string;
+    faq: string;
+    trust: string;
     download: string;
     downloadApp: string;
+    dockLabel: string;
     openMenu: string;
     closeMenu: string;
   };
@@ -26,13 +32,21 @@ export interface LandingCopy {
     reviewsConfirmed: string;
     historyTitle: string;
     latestSuccess: string;
+    proofs: Array<{
+      title: string;
+      description: string;
+    }>;
   };
   features: {
+    eyebrow: string;
     title: string;
     description: string;
     cards: Array<{
       title: string;
       description: string;
+      meta: string;
+      status: string;
+      tags: string[];
     }>;
   };
   showcase: {
@@ -79,22 +93,28 @@ export const landingLocales: LandingLocale[] = ['fr', 'en', 'ru'];
 export const landingTranslations: Record<LandingLocale, LandingCopy> = {
   fr: {
     nav: {
+      home: 'Accueil',
       features: 'Fonctionnalités',
       app: "L'application",
+      security: 'Sécurité',
+      pricing: 'Tarifs',
+      faq: 'FAQ',
+      trust: 'Sécurité',
       download: 'Télécharger',
       downloadApp: "Télécharger l'app",
+      dockLabel: 'Navigation principale de la landing page',
       openMenu: 'Ouvrir le menu',
       closeMenu: 'Fermer le menu',
     },
     hero: {
-      badge: 'Solution 100% gratuite & accessible',
-      titleA: 'Paiements reçus',
-      titleB: 'avec SwimPay',
+      badge: 'Pré-release gratuite pour marchands',
+      titleA: 'Recevez et suivez',
+      titleB: 'vos paiements simplement',
       description:
-        "Offrez à vos clients une expérience de paiement guidée. Gérez votre comptabilité et vos accès business via l'app Merchant.",
-      freeBadge: '100% gratuit.',
+        "SwimPay réunit une app marchande pour suivre la comptabilité de votre business et un SDK qui installe un paiement one-click entre marchand et acheteur.",
+      freeBadge: 'Gratuit au lancement.',
       primaryCta: "Télécharger l'app Merchant",
-      secondaryCta: 'Voir comment ça marche',
+      secondaryCta: 'En savoir +',
       phoneEyebrow: 'Espace Merchant',
       phoneTitle: 'Dashboard',
       walletLabel: 'Paiements reçus',
@@ -103,74 +123,101 @@ export const landingTranslations: Record<LandingLocale, LandingCopy> = {
       reviewsPending: 'À confirmer',
       reviewsConfirmed: 'Confirmés',
       historyTitle: 'Historique des paiements',
-      latestSuccess: 'Dernier succès',
+      latestSuccess: 'Dernier signal reconnu',
+      proofs: [
+        { title: 'App marchande', description: 'Suivez paiements, statuts et comptabilité.' },
+        { title: 'SDK one-click', description: 'Installez un paiement guidé côté acheteur.' },
+        { title: 'Identité préservée', description: 'Pas de prélèvement de fonds par SwimPay.' },
+      ],
     },
     features: {
-      title: 'Pensé pour les marchands',
-      description: "Une interface épurée qui se concentre sur l'essentiel : la santé financière de votre activité.",
+      eyebrow: 'App + SDK',
+      title: 'Une couche paiement légère pour marchands',
+      description:
+        "La landing doit montrer l'essentiel : télécharger l'APK, comprendre l'app Merchant, et installer le SDK checkout gratuitement en pré-release.",
       cards: [
         {
-          title: 'Paiements reçus lisibles',
+          title: 'SDK paiement one-click',
           description:
-            'Le véritable hook de SwimPay : offrir une expérience guidée sur vos applications pour réduire la friction côté marchand.',
+            "Ajoutez un bouton SwimPay à votre app ou site. Le client est guidé, puis revient vers votre parcours marchand.",
+          meta: 'SDK',
+          status: 'Pré-release',
+          tags: ['checkout', 'one-click', 'gratuit'],
         },
         {
-          title: 'Carte et téléphone / SBP',
+          title: 'APK Merchant',
           description:
-            'Une solution accessible à tous les acteurs, avec des méthodes de réception carte et téléphone clairement présentées.',
+            "Téléchargez l'application Android pour suivre vos paiements reçus, vos statuts et la santé de votre business.",
+          meta: 'Android',
+          status: 'APK',
+          tags: ['app', 'business'],
         },
         {
-          title: 'Comptabilité automatisée',
+          title: 'Comptabilité lisible',
           description:
-            "Suivez vos flux financiers sans effort. L'app Merchant centralise vos chiffres pour une gestion comptable limpide.",
+            "Gardez une vue simple sur les entrées, les dossiers à relire, l'historique et les événements terminaux.",
+          meta: 'Ledger',
+          status: 'Suivi',
+          tags: ['compta', 'statuts'],
         },
         {
-          title: 'Gestion des accès business',
+          title: 'Flux sans prélèvement',
           description:
-            'Contrôlez qui accède à vos données. Gérez les permissions de vos collaborateurs directement depuis votre mobile.',
+            "SwimPay ne collecte pas les fonds et ne se place pas comme PSP : il organise le parcours, les signaux et la revue.",
+          meta: 'Trust',
+          status: 'Clair',
+          tags: ['no PSP', 'fonds'],
+        },
+        {
+          title: 'Données minimisées',
+          description:
+            "L'identité de l'acheteur reste préservée : pas de collecte cachée, pas de lecture SMS, pas de scraping bancaire.",
+          meta: 'Privacy',
+          status: 'Privé',
+          tags: ['privacy', 'android'],
         },
       ],
     },
     showcase: {
-      titleA: 'Accessible à tous.',
-      titleB: 'Gratuit pour toujours.',
+      titleA: 'Télécharger l’APK.',
+      titleB: 'Installer le SDK.',
       description:
-        'Que vous soyez un auto-entrepreneur ou une entreprise établie, SwimPay reste simple, lisible et accessible.',
-      points: ['Analyses de volume quotidiennes simplifiées', 'Suivi des taux de conversion en temps réel', 'Gestion unifiée multi-méthodes'],
+        "SwimPay est pensé pour le lancement : une app marchande pour piloter le business et un SDK pour ajouter le paiement guidé à vos surfaces.",
+      points: ['APK Android téléchargeable', 'SDK checkout gratuit en pré-release', 'Pas de prélèvement de fonds par SwimPay'],
       activityLabel: 'Activité business',
       chartTitle: 'Évolution des paiements',
       period: '7 jours',
       totalVolume: 'Volume total',
       weekGrowth: '+12% cette semaine',
       success: 'Succès',
-      excellentYield: 'Excellent rendement',
+      excellentYield: 'Rendement stable',
     },
     trust: {
-      title: 'Une confirmation reste entre vos mains',
-      descriptionA: 'SwimPay prépare la revue.',
-      descriptionB: 'Le marchand garde la décision finale sur chaque transaction.',
-      chips: ['Sécurisé', 'Propriétaire', 'Android Only'],
+      title: 'Simple, gratuit au lancement, respectueux des données',
+      descriptionA: "SwimPay sert le marchand : suivi comptable, checkout guidé, revue claire.",
+      descriptionB: "L'identité utilisateur est minimisée et SwimPay ne prélève pas les fonds.",
+      chips: ['APK', 'SDK', 'Privacy', 'Pré-release'],
     },
     download: {
-      titleA: 'Prêt à passer à',
-      titleB: 'SwimPay Merchant ?',
+      titleA: 'Installer',
+      titleB: 'SwimPay Merchant',
       description:
-        "Téléchargez l'application officielle dès maintenant et commencez à gérer vos paiements avec une clarté absolue.",
+        "Téléchargez l'APK Merchant, puis installez le SDK dans votre app ou site pour tester le paiement one-click gratuitement pendant la pré-release.",
       bullets: [
-        'Méthodes carte et téléphone / SBP côté marchand',
-        "Zéro frais d'installation ou d'abonnement",
-        "Sécurité et confidentialité au cœur de l'app",
+        'APK Android Merchant disponible directement',
+        'SDK checkout pour site ou application',
+        'Pas de fonds prélevés par SwimPay',
       ],
-      version: 'APK Merchant v1.2.4',
-      versionSubtitle: 'Version stable • Format APK direct',
+      version: 'APK Merchant',
+      versionSubtitle: 'Build Android • Téléchargement direct',
       cta: 'Télécharger',
       qrLabel: 'Scanner pour mobile',
       androidSupport: 'Android 12/13/14',
-      apkSupport: 'Support APK direct',
+      apkSupport: 'APK direct',
     },
     footer: {
       description:
-        'Paiements reçus lisibles. Comptabilité simplifiée. Accès Business maîtrisés. La solution gratuite pour tous les marchands.',
+        'SwimPay aide les marchands à suivre leur comptabilité business et à installer un paiement guidé one-click gratuitement en pré-release.',
       privacy: 'Politique de confidentialité',
       terms: "Conditions d'utilisation",
       legal: 'Non affilié à un système bancaire officiel.',
@@ -178,22 +225,28 @@ export const landingTranslations: Record<LandingLocale, LandingCopy> = {
   },
   en: {
     nav: {
+      home: 'Home',
       features: 'Features',
       app: 'The app',
+      security: 'Security',
+      pricing: 'Pricing',
+      faq: 'FAQ',
+      trust: 'Security',
       download: 'Download',
-      downloadApp: 'Download the app',
+      downloadApp: 'Download app',
+      dockLabel: 'Landing page main navigation',
       openMenu: 'Open menu',
       closeMenu: 'Close menu',
     },
     hero: {
-      badge: '100% free & accessible solution',
-      titleA: 'Received payments',
-      titleB: 'with SwimPay',
+      badge: 'Free merchant pre-release',
+      titleA: 'Receive and track',
+      titleB: 'payments simply',
       description:
-        'Give customers a guided payment experience. Manage accounting clarity and business access from the Merchant app.',
-      freeBadge: '100% free.',
+        'SwimPay combines a merchant app for business accounting visibility with an SDK that installs one-click payment between merchant and buyer.',
+      freeBadge: 'Free during launch.',
       primaryCta: 'Download Merchant app',
-      secondaryCta: 'See how it works',
+      secondaryCta: 'Learn more',
       phoneEyebrow: 'Merchant space',
       phoneTitle: 'Dashboard',
       walletLabel: 'Received payments',
@@ -202,63 +255,97 @@ export const landingTranslations: Record<LandingLocale, LandingCopy> = {
       reviewsPending: 'To review',
       reviewsConfirmed: 'Confirmed',
       historyTitle: 'Payment history',
-      latestSuccess: 'Latest success',
+      latestSuccess: 'Latest recognized signal',
+      proofs: [
+        { title: 'Merchant app', description: 'Track payments, statuses and accounting.' },
+        { title: 'One-click SDK', description: 'Install guided payment for buyers.' },
+        { title: 'Identity preserved', description: 'SwimPay does not collect funds.' },
+      ],
     },
     features: {
-      title: 'Built for merchants',
-      description: 'A clean interface focused on what matters: the financial health of your activity.',
+      eyebrow: 'App + SDK',
+      title: 'A lightweight payment layer for merchants',
+      description:
+        'The landing must show the essentials: download the APK, understand the Merchant app, and install the checkout SDK for free during pre-release.',
       cards: [
         {
-          title: 'Readable received payments',
-          description: 'SwimPay gives your apps a guided payment experience and reduces merchant-side friction.',
+          title: 'One-click payment SDK',
+          description:
+            'Add a SwimPay button to your app or website. The buyer is guided, then returns to your merchant flow.',
+          meta: 'SDK',
+          status: 'Pre-release',
+          tags: ['checkout', 'one-click', 'free'],
         },
         {
-          title: 'Card and phone / SBP labels',
-          description: 'Receiving methods are presented clearly for card and phone-number transfers.',
+          title: 'Merchant APK',
+          description:
+            'Download the Android app to track received payments, statuses and business health.',
+          meta: 'Android',
+          status: 'APK',
+          tags: ['app', 'business'],
         },
         {
-          title: 'Simplified accounting',
-          description: 'Track money flow with less effort. Merchant keeps the numbers easy to read.',
+          title: 'Readable accounting',
+          description:
+            'Keep a simple view over incoming entries, items to review, history and terminal events.',
+          meta: 'Ledger',
+          status: 'Tracking',
+          tags: ['accounting', 'status'],
         },
         {
-          title: 'Business access control',
-          description: 'Control who can access business data and manage permissions from mobile.',
+          title: 'No fund collection',
+          description:
+            'SwimPay does not collect funds and does not act as a PSP: it organizes the flow, signals and review.',
+          meta: 'Trust',
+          status: 'Clear',
+          tags: ['no PSP', 'funds'],
+        },
+        {
+          title: 'Minimized data',
+          description:
+            'Buyer identity stays protected: no hidden collection, no SMS reading, no bank app scraping.',
+          meta: 'Privacy',
+          status: 'Private',
+          tags: ['privacy', 'android'],
         },
       ],
     },
     showcase: {
-      titleA: 'Accessible to everyone.',
-      titleB: 'Free forever.',
-      description: 'Whether you are self-employed or running a company, SwimPay stays simple, readable and accessible.',
-      points: ['Simplified daily volume insights', 'Real-time conversion tracking', 'Unified multi-method management'],
+      titleA: 'Download the APK.',
+      titleB: 'Install the SDK.',
+      description:
+        'SwimPay is built for launch: a merchant app to run the business and an SDK to add guided payment to your surfaces.',
+      points: ['Direct Android APK download', 'Free checkout SDK during pre-release', 'No funds collected by SwimPay'],
       activityLabel: 'Business activity',
       chartTitle: 'Payment evolution',
       period: '7 days',
       totalVolume: 'Total volume',
       weekGrowth: '+12% this week',
       success: 'Success',
-      excellentYield: 'Excellent yield',
+      excellentYield: 'Stable yield',
     },
     trust: {
-      title: 'The final decision stays with you',
-      descriptionA: 'SwimPay prepares the review.',
-      descriptionB: 'The merchant keeps the final decision on every transaction.',
-      chips: ['Secure', 'Owner-controlled', 'Android only'],
+      title: 'Simple, free at launch, respectful of data',
+      descriptionA: 'SwimPay serves merchants: accounting visibility, guided checkout, clear review.',
+      descriptionB: 'User identity is minimized and SwimPay does not collect funds.',
+      chips: ['APK', 'SDK', 'Privacy', 'Pre-release'],
     },
     download: {
-      titleA: 'Ready for',
-      titleB: 'SwimPay Merchant?',
-      description: 'Download the official app and start managing payments with full clarity.',
-      bullets: ['Merchant-side card and phone / SBP methods', 'No setup or subscription fees', 'Security and privacy at the heart of the app'],
-      version: 'Merchant APK v1.2.4',
-      versionSubtitle: 'Stable version • Direct APK format',
+      titleA: 'Install',
+      titleB: 'SwimPay Merchant',
+      description:
+        'Download the Merchant APK, then install the SDK in your app or website to test one-click payment for free during pre-release.',
+      bullets: ['Direct Merchant Android APK', 'Checkout SDK for app or website', 'No funds collected by SwimPay'],
+      version: 'Merchant APK',
+      versionSubtitle: 'Android build • Direct download',
       cta: 'Download',
       qrLabel: 'Scan on mobile',
       androidSupport: 'Android 12/13/14',
-      apkSupport: 'Direct APK support',
+      apkSupport: 'Direct APK',
     },
     footer: {
-      description: 'Readable received payments. Simplified accounting. Controlled business access. Free for merchants.',
+      description:
+        'SwimPay helps merchants track business accounting and install guided one-click payment for free during pre-release.',
       privacy: 'Privacy policy',
       terms: 'Terms of use',
       legal: 'Not affiliated with an official banking system.',
@@ -266,22 +353,28 @@ export const landingTranslations: Record<LandingLocale, LandingCopy> = {
   },
   ru: {
     nav: {
+      home: 'Главная',
       features: 'Возможности',
       app: 'Приложение',
+      security: 'Безопасность',
+      pricing: 'Тарифы',
+      faq: 'FAQ',
+      trust: 'Безопасность',
       download: 'Скачать',
       downloadApp: 'Скачать приложение',
+      dockLabel: 'Основная навигация лендинга',
       openMenu: 'Открыть меню',
       closeMenu: 'Закрыть меню',
     },
     hero: {
-      badge: 'Бесплатное и доступное решение',
-      titleA: 'Полученные платежи',
-      titleB: 'со SwimPay',
+      badge: 'Бесплатная pre-release для продавцов',
+      titleA: 'Получайте и отслеживайте',
+      titleB: 'платежи проще',
       description:
-        'Дайте клиентам понятный сценарий оплаты. Управляйте платежами, учетом и доступами бизнеса в приложении Merchant.',
-      freeBadge: '100% бесплатно.',
+        'SwimPay объединяет merchant app для учета бизнеса и SDK, который добавляет one-click оплату между продавцом и покупателем.',
+      freeBadge: 'Бесплатно на запуске.',
       primaryCta: 'Скачать Merchant',
-      secondaryCta: 'Как это работает',
+      secondaryCta: 'Подробнее',
       phoneEyebrow: 'Кабинет Merchant',
       phoneTitle: 'Панель',
       walletLabel: 'Полученные платежи',
@@ -290,63 +383,97 @@ export const landingTranslations: Record<LandingLocale, LandingCopy> = {
       reviewsPending: 'На проверку',
       reviewsConfirmed: 'Подтверждены',
       historyTitle: 'История платежей',
-      latestSuccess: 'Последний успех',
+      latestSuccess: 'Последний распознанный сигнал',
+      proofs: [
+        { title: 'Merchant app', description: 'Платежи, статусы и учет бизнеса.' },
+        { title: 'One-click SDK', description: 'Направленная оплата для покупателя.' },
+        { title: 'Identity preserved', description: 'SwimPay не собирает средства.' },
+      ],
     },
     features: {
-      title: 'Для продавцов',
-      description: 'Чистый интерфейс фокусируется на главном: состоянии платежей и бизнеса.',
+      eyebrow: 'App + SDK',
+      title: 'Легкий платежный слой для продавцов',
+      description:
+        'Лендинг показывает главное: скачать APK, понять Merchant app и установить checkout SDK бесплатно во время pre-release.',
       cards: [
         {
-          title: 'Платежи читаются сразу',
-          description: 'SwimPay делает сценарий оплаты понятнее и снижает трение для продавца.',
+          title: 'SDK one-click оплаты',
+          description:
+            'Добавьте кнопку SwimPay в приложение или сайт. Покупатель проходит сценарий и возвращается в merchant flow.',
+          meta: 'SDK',
+          status: 'Pre-release',
+          tags: ['checkout', 'one-click', 'free'],
         },
         {
-          title: 'Карта и телефон / SBP',
-          description: 'Способы получения по карте и номеру телефона показываются ясно и привычно.',
+          title: 'Merchant APK',
+          description:
+            'Скачайте Android-приложение, чтобы отслеживать полученные платежи, статусы и здоровье бизнеса.',
+          meta: 'Android',
+          status: 'APK',
+          tags: ['app', 'business'],
         },
         {
-          title: 'Простой учет',
-          description: 'Следите за потоками платежей без лишней сложности. Merchant собирает цифры в одном месте.',
+          title: 'Понятный учет',
+          description:
+            'Держите простую картину по входящим платежам, review, истории и терминальным событиям.',
+          meta: 'Ledger',
+          status: 'Tracking',
+          tags: ['accounting', 'status'],
         },
         {
-          title: 'Доступы бизнеса',
-          description: 'Управляйте тем, кто видит данные бизнеса, прямо с телефона.',
+          title: 'Без сбора средств',
+          description:
+            'SwimPay не собирает средства и не является PSP: он организует flow, сигналы и review.',
+          meta: 'Trust',
+          status: 'Clear',
+          tags: ['no PSP', 'funds'],
+        },
+        {
+          title: 'Минимум данных',
+          description:
+            'Идентичность покупателя защищена: без скрытого сбора, без чтения SMS, без scraping банковских приложений.',
+          meta: 'Privacy',
+          status: 'Private',
+          tags: ['privacy', 'android'],
         },
       ],
     },
     showcase: {
-      titleA: 'Доступно всем.',
-      titleB: 'Бесплатно навсегда.',
-      description: 'Для самозанятых и компаний SwimPay остается простым, понятным и доступным.',
-      points: ['Упрощенная дневная аналитика', 'Отслеживание конверсии в реальном времени', 'Единое управление способами получения'],
+      titleA: 'Скачайте APK.',
+      titleB: 'Установите SDK.',
+      description:
+        'SwimPay создан для запуска: merchant app для управления бизнесом и SDK для направленной оплаты на ваших поверхностях.',
+      points: ['Прямая загрузка Android APK', 'Checkout SDK бесплатно в pre-release', 'SwimPay не собирает средства'],
       activityLabel: 'Активность бизнеса',
       chartTitle: 'Динамика платежей',
       period: '7 дней',
       totalVolume: 'Общий объем',
       weekGrowth: '+12% за неделю',
       success: 'Успех',
-      excellentYield: 'Отличный результат',
+      excellentYield: 'Стабильный результат',
     },
     trust: {
-      title: 'Решение остается за вами',
-      descriptionA: 'SwimPay готовит платеж к проверке.',
-      descriptionB: 'Продавец принимает финальное решение по каждой операции.',
-      chips: ['Безопасно', 'Под вашим контролем', 'Только Android'],
+      title: 'Просто, бесплатно на запуске, бережно к данным',
+      descriptionA: 'SwimPay служит продавцу: учет, checkout, понятный review.',
+      descriptionB: 'Идентичность пользователя минимизируется, а SwimPay не собирает средства.',
+      chips: ['APK', 'SDK', 'Privacy', 'Pre-release'],
     },
     download: {
-      titleA: 'Готовы перейти на',
-      titleB: 'SwimPay Merchant?',
-      description: 'Скачайте официальное приложение и управляйте платежами с полной ясностью.',
-      bullets: ['Карта и телефон / SBP на стороне продавца', 'Без платы за установку и подписку', 'Безопасность и приватность в основе приложения'],
-      version: 'Merchant APK v1.2.4',
-      versionSubtitle: 'Стабильная версия • Прямой APK',
+      titleA: 'Установить',
+      titleB: 'SwimPay Merchant',
+      description:
+        'Скачайте Merchant APK, затем установите SDK в приложение или сайт, чтобы бесплатно протестировать one-click оплату во время pre-release.',
+      bullets: ['Прямой Merchant Android APK', 'Checkout SDK для app или сайта', 'SwimPay не собирает средства'],
+      version: 'Merchant APK',
+      versionSubtitle: 'Android build • Прямая загрузка',
       cta: 'Скачать',
       qrLabel: 'Сканировать с телефона',
       androidSupport: 'Android 12/13/14',
       apkSupport: 'Прямой APK',
     },
     footer: {
-      description: 'Понятные полученные платежи. Простой учет. Управляемые доступы бизнеса. Бесплатно для продавцов.',
+      description:
+        'SwimPay помогает продавцам отслеживать учет бизнеса и бесплатно установить one-click платеж в pre-release.',
       privacy: 'Политика конфиденциальности',
       terms: 'Условия использования',
       legal: 'Не связано с официальной банковской системой.',

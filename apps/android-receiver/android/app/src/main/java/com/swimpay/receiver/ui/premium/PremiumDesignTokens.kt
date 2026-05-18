@@ -28,25 +28,25 @@ data class PremiumColorPalette(
 
 object PremiumColors {
     private val light = PremiumColorPalette(
-        ink = Color(0xFFF8FAFF),
-        navy = Color(0xFFFFFFFF),
+        ink = Color(0xFF06111A),
+        navy = Color(0xFF0B2742),
         blue = Color(0xFF6EA8C8),
         electricBlue = Color(0xFFA7D8F2),
         cyan = Color(0xFFB9ECFF),
         teal = Color(0xFF78BFD8),
         mint = Color(0xFF153450),
-        background = Color(0xFF000A1F),
-        surface = Color(0xE60A1828),
-        surfaceAlt = Color(0xCC102A42),
-        line = Color(0x4D8FC9E8),
-        muted = Color(0xFFB9D4E6),
-        softText = Color(0xFF89A9BE),
+        background = Color(0xFFF3FBFF),
+        surface = Color(0xF7FFFFFF),
+        surfaceAlt = Color(0xF2F7FDFF),
+        line = Color(0xD9CFF4FF),
+        muted = Color(0xFF243746),
+        softText = Color(0xFF526879),
         success = Color(0xFF47C88A),
         warning = Color(0xFFD6B56D),
         danger = Color(0xFFE16B78),
-        panelTint = Color(0xD90A2035),
-        iconTile = Color(0xCC12304A),
-        neutralChip = Color(0xB816354E)
+        panelTint = Color(0xF2F2FAFD),
+        iconTile = Color(0xF2E9FBFF),
+        neutralChip = Color(0xE6EAF8FF)
     )
     private val dark = PremiumColorPalette(
         ink = Color(0xFFF8FAFC),
@@ -80,6 +80,8 @@ object PremiumColors {
 
     val IsDark: Boolean get() = darkThemeEnabled
     val Ink: Color get() = palette.ink
+    val PageInk: Color get() = palette.ink
+    val PageMuted: Color get() = palette.muted
     val Navy: Color get() = palette.navy
     val Blue: Color get() = palette.blue
     val ElectricBlue: Color get() = palette.electricBlue

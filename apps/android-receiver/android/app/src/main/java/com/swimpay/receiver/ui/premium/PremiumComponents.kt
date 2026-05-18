@@ -56,14 +56,48 @@ fun LiquidGlassCard(
     color: Color = PremiumColors.Surface,
     content: @Composable () -> Unit
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(radius),
-        color = color,
-        border = BorderStroke(1.dp, PremiumColors.Line),
-        shadowElevation = 0.dp // Flat design with border as per reference
+    val shape = RoundedCornerShape(radius)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(premiumPolishedSurfaceBrush(color))
+            .border(1.dp, premiumPolishedSurfaceBorder(color), shape)
     ) {
         content()
+    }
+}
+
+private fun premiumPolishedSurfaceBrush(color: Color): Brush {
+    val usesThemeSurface = color == PremiumColors.Surface || color == PremiumColors.SurfaceAlt || color == PremiumColors.PanelTint
+    return if (usesThemeSurface) {
+        if (PremiumColors.IsDark) {
+            Brush.linearGradient(
+                listOf(
+                    Color(0xFF111114),
+                    Color(0xFF060607),
+                    Color(0xFF181113)
+                )
+            )
+        } else {
+            Brush.linearGradient(
+                listOf(
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFBFEFF),
+                    Color(0xFFEAF8FF)
+                )
+            )
+        }
+    } else {
+        Brush.linearGradient(listOf(color, color))
+    }
+}
+
+private fun premiumPolishedSurfaceBorder(color: Color): Color {
+    val usesThemeSurface = color == PremiumColors.Surface || color == PremiumColors.SurfaceAlt || color == PremiumColors.PanelTint
+    return if (usesThemeSurface) {
+        if (PremiumColors.IsDark) Color.White.copy(alpha = 0.10f) else Color(0xFFD7F7FF)
+    } else {
+        PremiumColors.Line
     }
 }
 
@@ -90,8 +124,8 @@ fun PremiumStatePanel(
                 is PremiumScreenState.Error, is PremiumScreenState.Offline -> {
                     Icon(Icons.Default.Info, null, tint = PremiumColors.Danger, modifier = Modifier.size(48.dp))
                     Spacer(Modifier.height(16.dp))
-                    Text(state.title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text(state.message, color = PremiumColors.Ink, textAlign = TextAlign.Center)
+                    Text(state.title, color = PremiumColors.PageInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(state.message, color = PremiumColors.PageMuted, textAlign = TextAlign.Center)
                     if (state.actionLabel != null) {
                         Button(onClick = onAction, modifier = Modifier.padding(top = 16.dp)) {
                             Text(state.actionLabel!!)
@@ -99,8 +133,8 @@ fun PremiumStatePanel(
                     }
                 }
                 is PremiumScreenState.Empty -> {
-                    Text(state.title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text(state.message, color = PremiumColors.Muted, textAlign = TextAlign.Center)
+                    Text(state.title, color = PremiumColors.PageInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(state.message, color = PremiumColors.PageMuted, textAlign = TextAlign.Center)
                     if (state.actionLabel != null) {
                         PremiumPrimaryButton(state.actionLabel!!, Modifier.padding(top = 16.dp), onClick = onAction)
                     }
@@ -142,7 +176,7 @@ fun PremiumTitle(
     modifier: Modifier = Modifier,
     text: String? = null, // For compatibility
     centered: Boolean = false,
-    color: Color = PremiumColors.Ink,
+    color: Color = PremiumColors.PageInk,
     fontSize: androidx.compose.ui.unit.TextUnit = PremiumType.ScreenTitle,
     fontWeight: FontWeight = FontWeight.Black
 ) {
@@ -160,7 +194,7 @@ fun PremiumTitle(
             Spacer(Modifier.height(8.dp))
             Text(
                 text = body,
-                color = PremiumColors.Muted,
+                color = PremiumColors.PageMuted,
                 fontSize = PremiumType.Body,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = if (centered) TextAlign.Center else TextAlign.Start,
@@ -425,7 +459,13 @@ fun PremiumCard(
     color: Color = PremiumColors.Surface,
     content: @Composable () -> Unit
 ) {
-    Surface(modifier, shape = RoundedCornerShape(radius), color = color) {
+    val shape = RoundedCornerShape(radius)
+    Box(
+        modifier
+            .clip(shape)
+            .background(premiumPolishedSurfaceBrush(color))
+            .border(1.dp, premiumPolishedSurfaceBorder(color), shape)
+    ) {
         content()
     }
 }
@@ -627,39 +667,34 @@ fun PremiumPaperBackground(
     mythBackgroundOverlayOffsetY: Dp = 0.dp
 ) {
     val context = LocalContext.current
-    val mythOverlayRes = remember(context) {
+    val backgroundResName = if (PremiumColors.IsDark) {
+        "app_bg_dark_minimal_gradient"
+    } else {
+        "app_bg_light_minimal_gradient"
+    }
+    val backgroundRes = remember(context, backgroundResName) {
         context.resources.getIdentifier(
-            "app_bg_ryujin_tsukuyomi_overlay",
+            backgroundResName,
             "drawable",
             context.packageName
         )
     }
-    val darkBackgroundRes = remember(context) {
-        context.resources.getIdentifier(
-            "app_bg_dark_demonic_samurai",
-            "drawable",
-            context.packageName
-        )
+    val backgroundAlpha = if (!PremiumColors.IsDark && useMythBackgroundOverlay) {
+        mythBackgroundOverlayAlpha
+    } else {
+        1f
     }
     Box(modifier) {
         Box(Modifier.matchParentSize().background(PremiumColors.Background))
-        if (PremiumColors.IsDark && darkBackgroundRes != 0) {
+        if (backgroundRes != 0 && (PremiumColors.IsDark || useMythBackgroundOverlay)) {
             Image(
-                painter = painterResource(id = darkBackgroundRes),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize()
-            )
-        }
-        if (useMythBackgroundOverlay && !PremiumColors.IsDark && mythOverlayRes != 0) {
-            Image(
-                painter = painterResource(id = mythOverlayRes),
+                painter = painterResource(id = backgroundRes),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .matchParentSize()
                     .graphicsLayer {
-                        alpha = mythBackgroundOverlayAlpha
+                        alpha = backgroundAlpha
                         scaleX = mythBackgroundOverlayScale
                         scaleY = mythBackgroundOverlayScale
                         translationX = mythBackgroundOverlayOffsetX.toPx()
@@ -667,92 +702,150 @@ fun PremiumPaperBackground(
                     }
             )
         }
-        if (useNaturalLightLayer && !PremiumColors.IsDark) {
-            Canvas(Modifier.matchParentSize()) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFFF3FBFF).copy(alpha = 0.22f),
-                            Color(0xFFBDEBFF).copy(alpha = 0.09f),
-                            Color(0xFF8FD8FF).copy(alpha = 0.035f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.31f, size.height * 0.66f),
-                        radius = size.minDimension * 0.58f
-                    ),
-                    radius = size.minDimension * 0.58f,
-                    center = Offset(size.width * 0.31f, size.height * 0.66f)
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFFEAF8FF).copy(alpha = 0.11f),
-                            Color(0xFF9AD8F5).copy(alpha = 0.04f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.88f, size.height * 0.40f),
-                        radius = size.minDimension * 0.46f
-                    ),
-                    radius = size.minDimension * 0.46f,
-                    center = Offset(size.width * 0.88f, size.height * 0.40f)
-                )
-            }
+        if (useNaturalLightLayer) {
+            BackgroundMaterialVeil(Modifier.matchParentSize())
         }
-        if (useDragonRimLightLayer && !PremiumColors.IsDark) {
-            Canvas(Modifier.matchParentSize()) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFFB9ECFF).copy(alpha = 0.10f),
-                            Color(0xFF6EA8C8).copy(alpha = 0.035f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.60f, size.height * 0.32f),
-                        radius = size.minDimension * 0.30f
-                    ),
-                    radius = size.minDimension * 0.30f,
-                    center = Offset(size.width * 0.60f, size.height * 0.32f)
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFFB9ECFF).copy(alpha = 0.12f),
-                            Color(0xFF6EA8C8).copy(alpha = 0.045f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.50f, size.height * 0.73f),
-                        radius = size.minDimension * 0.34f
-                    ),
-                    radius = size.minDimension * 0.34f,
-                    center = Offset(size.width * 0.50f, size.height * 0.73f)
-                )
-            }
+        if (useDragonRimLightLayer) {
+            BackgroundAmbientHalo(Modifier.matchParentSize())
         }
-        if (useSoftContrastLayer && !PremiumColors.IsDark) {
-            Canvas(Modifier.matchParentSize()) {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF000A1F).copy(alpha = 0.10f),
-                            Color.Transparent,
-                            Color(0xFF000A1F).copy(alpha = 0.18f)
-                        )
-                    )
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF000A1F).copy(alpha = 0.12f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.50f, size.height * 0.22f),
-                        radius = size.minDimension * 0.62f
-                    ),
-                    radius = size.minDimension * 0.62f,
-                    center = Offset(size.width * 0.50f, size.height * 0.22f)
-                )
-            }
+        if (useSoftContrastLayer) {
+            BackgroundNavigationComfort(Modifier.matchParentSize())
         }
+    }
+}
+
+@Composable
+private fun BackgroundMaterialVeil(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val shadow = if (PremiumColors.IsDark) Color(0xFF050406) else Color(0xFF7FB7D1)
+
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = if (PremiumColors.IsDark) 0.018f else 0.18f),
+                    Color.Transparent,
+                    shadow.copy(alpha = if (PremiumColors.IsDark) 0.11f else 0.055f)
+                )
+            )
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = if (PremiumColors.IsDark) 0.026f else 0.038f),
+                    Color.Transparent
+                ),
+                center = Offset(size.width * 0.50f, size.height * 0.26f),
+                radius = size.minDimension * 0.92f
+            ),
+            radius = size.minDimension * 0.92f,
+            center = Offset(size.width * 0.50f, size.height * 0.26f)
+        )
+    }
+}
+
+@Composable
+private fun BackgroundAmbientHalo(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        if (PremiumColors.IsDark) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFFFF735A).copy(alpha = 0.12f),
+                        Color(0xFFE04A3F).copy(alpha = 0.045f),
+                        Color.Transparent
+                    ),
+                    center = Offset(size.width * 0.82f, size.height * 0.26f),
+                    radius = size.minDimension * 0.58f
+                ),
+                radius = size.minDimension * 0.58f,
+                center = Offset(size.width * 0.82f, size.height * 0.26f)
+            )
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF7A1518).copy(alpha = 0.13f),
+                        Color.Transparent
+                    ),
+                    center = Offset(size.width * 0.16f, size.height * 0.78f),
+                    radius = size.minDimension * 0.64f
+                ),
+                radius = size.minDimension * 0.64f,
+                center = Offset(size.width * 0.16f, size.height * 0.78f)
+            )
+        } else {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFFB9ECFF).copy(alpha = 0.12f),
+                        Color(0xFF6EA8C8).copy(alpha = 0.045f),
+                        Color.Transparent
+                    ),
+                    center = Offset(size.width * 0.84f, size.height * 0.30f),
+                    radius = size.minDimension * 0.58f
+                ),
+                radius = size.minDimension * 0.58f,
+                center = Offset(size.width * 0.84f, size.height * 0.30f)
+            )
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF153450).copy(alpha = 0.16f),
+                        Color.Transparent
+                    ),
+                    center = Offset(size.width * 0.18f, size.height * 0.80f),
+                    radius = size.minDimension * 0.68f
+                ),
+                radius = size.minDimension * 0.68f,
+                center = Offset(size.width * 0.18f, size.height * 0.80f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun BackgroundNavigationComfort(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val base = if (PremiumColors.IsDark) Color(0xFF050406) else Color(0xFF7FB7D1)
+        if (!PremiumColors.IsDark) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF0B2742).copy(alpha = 0.26f),
+                        Color(0xFF5E93B3).copy(alpha = 0.12f),
+                        Color.Transparent
+                    ),
+                    startY = 0f,
+                    endY = size.height * 0.16f
+                ),
+                topLeft = Offset.Zero,
+                size = Size(size.width, size.height * 0.16f)
+            )
+        }
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    base.copy(alpha = if (PremiumColors.IsDark) 0.42f else 0.08f),
+                    base.copy(alpha = if (PremiumColors.IsDark) 0.06f else 0.025f),
+                    Color.Transparent,
+                    base.copy(alpha = if (PremiumColors.IsDark) 0.08f else 0.03f),
+                    base.copy(alpha = if (PremiumColors.IsDark) 0.48f else 0.12f)
+                ),
+                startY = 0f,
+                endY = size.height
+            )
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = if (PremiumColors.IsDark) 0.035f else 0.045f),
+                    Color.Transparent
+                ),
+                center = Offset(size.width * 0.50f, size.height * 0.38f),
+                radius = size.minDimension * 0.86f
+            ),
+            radius = size.minDimension * 0.86f,
+            center = Offset(size.width * 0.50f, size.height * 0.38f)
+        )
     }
 }
 
@@ -814,7 +907,7 @@ fun PremiumNavigationBar(
                 ) {
                     Icon(
                         imageVector = premiumTabIcon(tab),
-                        contentDescription = language.mainTabLabel(tab),
+                        contentDescription = PremiumLocalizedCopy.forLanguage(language).mainTabLabel(tab),
                         tint = if (selected) PremiumColors.Teal else PremiumColors.SoftText,
                         modifier = Modifier.size(24.dp)
                     )

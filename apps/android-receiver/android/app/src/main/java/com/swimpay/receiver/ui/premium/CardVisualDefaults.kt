@@ -42,9 +42,9 @@ object CardVisualDefaults {
         get() = DragonGoldPreview.copy(
             surface = DragonGoldPreview.surface.copy(
                 background = listOf(
-                    Color(0xFF02040A),
-                    Color(0xFF090D16),
-                    Color(0xFF15110A)
+                    Color(0xFF010204),
+                    Color(0xFF030509),
+                    Color(0xFF0A0704)
                 )
             )
         )
@@ -53,8 +53,13 @@ object CardVisualDefaults {
         get() = HomeDashboardDragonGoldCandidate.copy(
             surface = HomeDashboardDragonGoldCandidate.surface.copy(
                 surfaceTextureRes = R.drawable.card_texture_brushed_black_metal,
-                surfaceTextureAlpha = 0.16f,
+                surfaceTextureAlpha = 0.32f,
                 surfaceTextureScale = 1f
+            ),
+            effects = CardEffectsTheme(
+                reflection = true,
+                goldGlow = true,
+                goldGlowIntensity = 1.0f
             )
         )
 

@@ -36,7 +36,9 @@ data class CardArtworkTheme(
 )
 
 data class CardEffectsTheme(
-    val reflection: Boolean = false
+    val reflection: Boolean = false,
+    val goldGlow: Boolean = false,
+    val goldGlowIntensity: Float = 1f
 )
 
 data class CardVisualTheme(

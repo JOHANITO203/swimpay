@@ -10,21 +10,21 @@ interface ShowcaseProps {
 
 export default function Showcase({ copy }: ShowcaseProps) {
   return (
-    <section id="showcase" className="border-y border-white/6 bg-brand-800/35 py-24">
+    <section id="showcase" className="border-y border-[color:var(--sp-line)] bg-[color:var(--sp-section)] py-24">
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 sm:px-6 lg:grid-cols-2">
         <motion.div initial={{ opacity: 0, x: -24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-          <h2 className="mb-7 font-display text-4xl font-bold leading-tight tracking-tight text-white md:text-5xl">
+          <h2 className="mb-7 font-display text-4xl font-black leading-tight tracking-tight text-white md:text-5xl">
             {copy.titleA} <br />
-            <span className="text-accent">{copy.titleB}</span>
+            <span className="text-white/70">{copy.titleB}</span>
           </h2>
-          <p className="mb-8 text-lg leading-8 text-slate-400">{copy.description}</p>
+          <p className="mb-8 text-lg leading-8 text-white/62">{copy.description}</p>
 
           <ul className="space-y-4">
             {copy.points.map((text, index) => {
               const Icon = pointIcons[index % pointIcons.length];
               return (
-                <li key={text} className="flex items-center gap-4 font-medium text-slate-200">
-                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent/15 text-accent">
+                <li key={text} className="flex items-center gap-4 font-medium text-white/82">
+                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10 text-white">
                     <Icon size={20} />
                   </div>
                   {text}
@@ -41,7 +41,7 @@ export default function Showcase({ copy }: ShowcaseProps) {
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">{copy.activityLabel}</p>
                 <h3 className="mt-1 font-display text-2xl font-bold text-white">{copy.chartTitle}</h3>
               </div>
-              <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-bold text-accent">{copy.period}</span>
+              <span className="rounded-full border border-[color:var(--sp-accent-soft)] bg-[color:var(--sp-chip)] px-3 py-1 text-xs font-bold text-[color:var(--sp-accent)]">{copy.period}</span>
             </div>
 
             <div className="mb-8 flex h-48 items-end justify-between gap-2">
@@ -52,7 +52,7 @@ export default function Showcase({ copy }: ShowcaseProps) {
                   whileInView={{ height: `${height}%` }}
                   transition={{ delay: index * 0.04, duration: 0.65 }}
                   viewport={{ once: true }}
-                  className="flex-1 rounded-t-xl bg-gradient-to-t from-blue-600 to-accent shadow-[0_0_24px_rgba(0,242,255,0.12)]"
+                  className="flex-1 rounded-t-xl bg-gradient-to-t from-black to-white shadow-[0_0_24px_rgba(0,0,0,0.16)]"
                 />
               ))}
             </div>

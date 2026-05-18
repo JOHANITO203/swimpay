@@ -1,0 +1,10 @@
+{
+  "name": "SwimPay Merchant",
+  "short_name": "SwimPay",
+  "description": "APK Android marchand et SDK checkout one-click gratuit en pré-release.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "lang": "fr"
+}

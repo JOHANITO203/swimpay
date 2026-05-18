@@ -76,7 +76,7 @@ private fun PremiumReviewsContent(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = language.ui("Paiements à confirmer"),
-                    color = PremiumColors.Ink,
+                    color = PremiumColors.PageInk,
                     style = androidx.compose.ui.text.TextStyle(
                         fontSize = PremiumType.ScreenTitle,
                         fontWeight = FontWeight.Black,
@@ -85,7 +85,7 @@ private fun PremiumReviewsContent(
                 )
                 Text(
                     text = language.ui("Confirmez uniquement les paiements que vous reconnaissez."),
-                    color = PremiumColors.SoftText,
+                    color = PremiumColors.PageMuted,
                     fontSize = PremiumType.Body,
                     lineHeight = 20.sp,
                     fontWeight = FontWeight.Medium
@@ -146,7 +146,7 @@ private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = language.ui("Paiements à confirmer"),
-                    color = PremiumColors.Ink,
+                    color = PremiumColors.PageInk,
                     style = androidx.compose.ui.text.TextStyle(
                         fontSize = PremiumType.ScreenTitle,
                         fontWeight = FontWeight.Black,
@@ -155,7 +155,7 @@ private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>
                 )
                 Text(
                     text = language.ui("Confirmez uniquement les paiements que vous reconnaissez."),
-                    color = PremiumColors.SoftText,
+                    color = PremiumColors.PageMuted,
                     fontSize = PremiumType.Body,
                     lineHeight = 20.sp,
                     fontWeight = FontWeight.Medium
@@ -376,7 +376,7 @@ private fun PremiumPaymentDetailContent(
             Text(
                 text = language.ui("Vérifier ce paiement"),
                 modifier = Modifier.weight(1f),
-                color = PremiumColors.Ink,
+                color = PremiumColors.PageInk,
                 fontSize = PremiumType.ScreenTitle,
                 fontWeight = FontWeight.Black
             )
@@ -677,7 +677,7 @@ private fun PremiumPaymentDetailState(
             Text(
                 text = language.ui("Vérifier ce paiement"),
                 modifier = Modifier.weight(1f),
-                color = PremiumColors.Ink,
+                color = PremiumColors.PageInk,
                 fontSize = PremiumType.ScreenTitle,
                 fontWeight = FontWeight.Black
             )
@@ -708,12 +708,12 @@ private fun FilterLabel(icon: ImageVector, text: String, selected: Boolean, modi
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (selected) PremiumColors.Cyan else PremiumColors.SoftText,
+                    tint = if (selected) PremiumColors.Cyan else PremiumColors.PageMuted,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = text.uppercase(),
-                    color = if (selected) PremiumColors.Cyan else PremiumColors.SoftText,
+                    color = if (selected) PremiumColors.Cyan else PremiumColors.PageMuted,
                     fontSize = PremiumType.Micro,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp,

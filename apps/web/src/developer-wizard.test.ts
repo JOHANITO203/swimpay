@@ -286,6 +286,8 @@ describe('Developer Integration Wizard', () => {
     const android = extractSection(response.body, 'android-integration-snippets');
 
     expect(webButton).toContain('swimpay-button');
+    expect(webButton).toContain('swimpay-button-icon');
+    expect(webButton).toContain('data:image/png;base64,');
     expect(webButton).toContain('Payer avec SwimPay');
     expect(webButton).toContain('/api/orders/${orderId}/swimpay-checkout');
     expect(webButton).toContain('checkout.checkoutUrl');

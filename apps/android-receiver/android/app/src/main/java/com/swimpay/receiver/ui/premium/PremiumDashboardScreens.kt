@@ -114,12 +114,12 @@ private fun PremiumDashboardContent(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Text(language.ui("Bonjour, Merchant"), color = PremiumColors.Ink, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
-            Text(language.ui("Welcome back"), color = PremiumColors.Muted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+            Text(language.ui("Bonjour, Merchant"), color = PremiumColors.PageInk, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
+            Text(language.ui("Welcome back"), color = PremiumColors.PageMuted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
         }
         item { MonthlyActivityCard(language.ui("Paiements reçus"), state.monthlyAmount, state.usesLiveApi, language) }
         item {
-            Text(language.ui("Actions rapides"), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
+            Text(language.ui("Actions rapides"), color = PremiumColors.PageInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
         }
         item {
             val homeMetrics = homeActionMetrics(state.metrics)
@@ -163,7 +163,7 @@ private fun PremiumDashboardContent(
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(language.ui("HISTORIQUE DES PAIEMENTS"), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 0.5.sp)
+                Text(language.ui("HISTORIQUE DES PAIEMENTS"), color = PremiumColors.PageInk, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 0.5.sp)
                 Text(
                     language.ui("Voir tout"),
                     color = PremiumColors.Blue,
@@ -369,26 +369,91 @@ private fun BentoMetricCard(
     modifier: Modifier,
     onClick: () -> Unit
 ) {
-    LiquidGlassCard(
+    val shape = RoundedCornerShape(PremiumRadius.Card)
+    val textColor = bentoMetricTextColor()
+    val mutedColor = bentoMetricMutedColor()
+    Box(
         modifier
             .height(142.dp)
-            .premiumTap(onClick),
-        radius = PremiumRadius.Card
+            .clip(shape)
+            .background(bentoMetricSurfaceBrush())
+            .border(1.dp, bentoMetricBorderColor(), shape)
+            .premiumTap(onClick)
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.Center) {
-            Box(Modifier.size(38.dp).background(PremiumColors.IconTile, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = PremiumColors.Blue, modifier = Modifier.size(21.dp))
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .background(bentoMetricIconTileColor(), RoundedCornerShape(14.dp))
+                    .border(1.dp, bentoMetricIconBorderColor(), RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = bentoMetricIconColor(), modifier = Modifier.size(21.dp))
             }
             Spacer(Modifier.height(8.dp))
-            Text(value, color = PremiumColors.Ink, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
+            Text(value, color = textColor, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
             Row {
-                Text(label, color = PremiumColors.Ink, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black)
+                Text(label, color = mutedColor, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black)
                 if (trend.isNotBlank()) {
                     Text(" $trend", color = PremiumColors.Success, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black)
                 }
             }
         }
     }
+}
+
+private fun bentoMetricSurfaceBrush(): Brush = if (PremiumColors.IsDark) {
+    Brush.linearGradient(
+        listOf(
+            Color(0xFF111113),
+            Color(0xFF050506),
+            Color(0xFF171214)
+        )
+    )
+} else {
+    Brush.linearGradient(
+        listOf(
+            Color(0xFFFFFFFF),
+            Color(0xFFF7FDFF),
+            Color(0xFFEAF8FF)
+        )
+    )
+}
+
+private fun bentoMetricTextColor(): Color = if (PremiumColors.IsDark) {
+    Color.White
+} else {
+    Color(0xFF06111A)
+}
+
+private fun bentoMetricMutedColor(): Color = if (PremiumColors.IsDark) {
+    Color.White.copy(alpha = 0.72f)
+} else {
+    Color(0xFF1B2B38).copy(alpha = 0.78f)
+}
+
+private fun bentoMetricBorderColor(): Color = if (PremiumColors.IsDark) {
+    Color.White.copy(alpha = 0.10f)
+} else {
+    Color(0xFFCFF4FF).copy(alpha = 0.92f)
+}
+
+private fun bentoMetricIconTileColor(): Color = if (PremiumColors.IsDark) {
+    Color.White.copy(alpha = 0.08f)
+} else {
+    Color(0xFFE9FBFF)
+}
+
+private fun bentoMetricIconBorderColor(): Color = if (PremiumColors.IsDark) {
+    Color.White.copy(alpha = 0.08f)
+} else {
+    Color(0xFFB9ECFF).copy(alpha = 0.74f)
+}
+
+private fun bentoMetricIconColor(): Color = if (PremiumColors.IsDark) {
+    Color.White
+} else {
+    Color(0xFF0B5E78)
 }
 
 @Composable
@@ -443,8 +508,8 @@ private fun PremiumOrdersContent(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Text(language.ui("Ventes confirmées"), color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
-            Text(language.ui("Suivez les commandes reliées aux paiements confirmés."), color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+            Text(language.ui("Ventes confirmées"), color = PremiumColors.PageInk, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
+            Text(language.ui("Suivez les commandes reliées aux paiements confirmés."), color = PremiumColors.PageMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             Spacer(Modifier.height(24.dp))
             BusinessAreaChartCard(state, language)
             Spacer(Modifier.height(12.dp))
@@ -780,9 +845,9 @@ fun PremiumReceivingMethodsStateScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
-                    Text(language.ui("Moyens de réception"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    Text(language.ui("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
-                    Text(language.ui("Les informations complètes ne sont jamais envoyées dans les webhooks."), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+                    Text(language.ui("Moyens de réception"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text(language.ui("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
+                    Text(language.ui("Les informations complètes ne sont jamais envoyées dans les webhooks."), color = PremiumColors.PageMuted, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
                 }
                 actionMessage?.takeIf { it.isNotBlank() }?.let { message ->
                     item { ReceivingMethodFeedbackBanner(message) }
@@ -1422,8 +1487,8 @@ fun PremiumBanksStateScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text(language.ui("Recherche des banques compatibles"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text(language.ui("SwimPay vérifie uniquement les banques compatibles sur ce téléphone."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+                Text(language.ui("Recherche des banques compatibles"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text(language.ui("SwimPay vérifie uniquement les banques compatibles sur ce téléphone."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
             }
             items(state.value.items) { bank ->
                 PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
@@ -1460,8 +1525,8 @@ fun PremiumReceiverHealthStateScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text(language.ui("Téléphone Receiver"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text(language.ui("Ce téléphone permet à SwimPay de détecter les paiements reçus."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+                Text(language.ui("Téléphone Receiver"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text(language.ui("Ce téléphone permet à SwimPay de détecter les paiements reçus."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
             }
             item {
                 PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
@@ -1508,8 +1573,8 @@ fun PremiumConfirmationModeScreen(language: PremiumLanguageOption = PremiumLangu
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(language.ui("Mode de confirmation"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text(language.ui("Choisissez le niveau d'aide pour vérifier vos paiements."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(language.ui("Mode de confirmation"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Choisissez le niveau d'aide pour vérifier vos paiements."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         item {
             PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumColors.PanelTint) {
@@ -1568,8 +1633,8 @@ fun PremiumSecurityScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(language.ui("Sécurité"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text(language.ui("Liez Google pour retrouver le compte, puis protégez l'accès à l'app."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(language.ui("Sécurité"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Liez Google pour retrouver le compte, puis protégez l'accès à l'app."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         item { GoogleAccountLinkRow(googleAccountLinked, language, onGoogleAccountLink) }
         item {
@@ -1634,8 +1699,8 @@ fun PremiumHelpCenterScreen(language: PremiumLanguageOption = PremiumLanguageOpt
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(language.ui("Centre d'aide"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text(language.ui("Aide courte, sûre et compatible avec la vérité produit V1."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(language.ui("Centre d'aide"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Aide courte, sûre et compatible avec la vérité produit V1."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -1675,8 +1740,8 @@ fun PremiumContactSupportScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(language.ui("Contacter le support"), color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text(language.ui("Envoyez une demande sans notification brute, secret, numéro complet, PIN, CVV ou code SMS."), color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(language.ui("Contacter le support"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Envoyez une demande sans notification brute, secret, numéro complet, PIN, CVV ou code SMS."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         item {
             PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
@@ -1716,8 +1781,8 @@ fun PremiumLanguageScreen(selected: PremiumLanguageOption, onSelect: (PremiumLan
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(copy.language, color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text(copy.languageBody, color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(copy.language, color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(copy.languageBody, color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         items(PremiumLanguageOption.entries) { language ->
             SettingsChoiceRow(Icons.Default.Language, language.displayLabel, language.tag.uppercase(), language == selected, language = selected) {
@@ -1740,8 +1805,8 @@ fun PremiumAppearanceScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(copy.appearance, color = PremiumColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text(copy.appearanceBody, color = PremiumColors.Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(copy.appearance, color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(copy.appearanceBody, color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         item {
             PremiumThemeSwitcher(selected = selected, copy = copy, onSelect = onSelect)
@@ -2022,7 +2087,8 @@ private fun PremiumStandaloneStateScreen(
     onBack: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    Box(Modifier.fillMaxSize().background(PremiumColors.Background)) {
+    Box(Modifier.fillMaxSize()) {
+        PremiumPaperBackground(Modifier.matchParentSize())
         LazyColumn(
             Modifier
                 .fillMaxHeight()
@@ -2042,7 +2108,7 @@ private fun PremiumStandaloneStateScreen(
                     CircleAction(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
                     Text(
                         title,
-                        color = PremiumColors.Ink,
+                        color = PremiumColors.PageInk,
                         fontSize = 23.sp,
                         lineHeight = 28.sp,
                         fontWeight = FontWeight.Black,
@@ -2066,7 +2132,7 @@ private fun SettingsGroup(title: String, rows: List<PremiumSettingsRow>) {
     Column(Modifier.fillMaxWidth()) {
         Text(
             title.uppercase(),
-            color = PremiumColors.Muted,
+            color = PremiumColors.PageMuted,
             fontSize = PremiumType.Micro,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp,

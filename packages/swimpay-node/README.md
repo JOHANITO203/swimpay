@@ -77,6 +77,10 @@ Browser code should only redirect to a checkout URL created by your server.
 ```html
 <style>
 .swimpay-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   min-height: 56px;
   border: 0;
   border-radius: 18px;
@@ -86,13 +90,25 @@ Browser code should only redirect to a checkout URL created by your server.
   font: 800 16px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   cursor: pointer;
   box-shadow: 0 14px 32px rgba(0, 151, 167, 0.26);
+  white-space: nowrap;
+}
+.swimpay-button-icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: center / contain no-repeat url("./assets/swimpay-sdk-button-icon-96.png");
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.18));
 }
 .swimpay-button:disabled {
   cursor: progress;
   opacity: 0.72;
 }
 </style>
-<button id="swimpay-button" class="swimpay-button" type="button">Payer avec SwimPay</button>
+<button id="swimpay-button" class="swimpay-button" type="button">
+  <span class="swimpay-button-icon" aria-hidden="true"></span>
+  <span>Payer avec SwimPay</span>
+</button>
 ```
 
 ```ts
