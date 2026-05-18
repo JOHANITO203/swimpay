@@ -22,6 +22,10 @@ describe('hosted checkout web foundation', () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toContain('text/html');
     expect(response.body).toContain('Payer avec SwimPay');
+    expect(response.body).toContain('checkout-language-selector');
+    expect(response.body).toContain('href="?lang=fr"');
+    expect(response.body).toContain('href="?lang=en"');
+    expect(response.body).toContain('href="?lang=ru"');
     expect(response.body).toContain('Paiement guidé');
     expect(response.body).toContain('Suivi en temps réel');
     expect(response.body).toContain('Retour au marchand');
@@ -100,11 +104,84 @@ describe('hosted checkout web foundation', () => {
     expect(english.statusCode).toBe(200);
     expect(english.body).toContain('Pay with SwimPay');
     expect(english.body).toContain('Guided payment');
+    expect(english.body).toContain('Payment method');
+    expect(english.body).toContain('Sending bank');
     expect(russian.statusCode).toBe(200);
     expect(russian.body).toContain('Оплатить через SwimPay');
     expect(russian.body).toContain('Понятная оплата');
+    expect(russian.body).toContain('Способ оплаты');
+    expect(russian.body).toContain('Банк отправителя');
     expect(french.body).toContain('Payer avec SwimPay');
     expect(`${english.body}\n${russian.body}\n${french.body}`).not.toMatch(/[\uFFFD\u00C3\u00C2]|(?:\u00D0|\u00D1)[\u0080-\u00ff]/u);
+  });
+
+  it('localizes every hosted checkout step and guards against mojibake or French residue', async () => {
+    const stages: CheckoutSession[] = [
+      { ...new FakeCheckoutSessionProvider().session, checkout_state: 'buyer_identity', buyer_safe_status: 'not_validated' },
+      {
+        ...new FakeCheckoutSessionProvider().session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        checkout_state: 'receiver_bank_selection',
+        buyer_safe_status: 'not_validated'
+      },
+      {
+        ...new FakeCheckoutSessionProvider().session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        checkout_state: 'receiving_route_selection',
+        buyer_safe_status: 'not_validated'
+      },
+      {
+        ...new FakeCheckoutSessionProvider().session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_sber_card',
+        checkout_state: 'payer_bank_launcher_selection',
+        buyer_safe_status: 'not_validated'
+      },
+      {
+        ...new FakeCheckoutSessionProvider().session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_sber_card',
+        selected_payer_bank_launcher_id: 'sber_ru',
+        checkout_state: 'payment_instructions',
+        buyer_safe_status: 'awaiting_payment'
+      },
+      {
+        ...new FakeCheckoutSessionProvider().session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_sber_card',
+        selected_payer_bank_launcher_id: 'sber_ru',
+        status: 'buyer_claimed_paid',
+        checkout_state: 'buyer_claimed_paid',
+        buyer_safe_status: 'searching_signal'
+      }
+    ];
+
+    for (const locale of ['en', 'ru'] as const) {
+      for (const session of stages) {
+        const provider = new FakeCheckoutSessionProvider();
+        provider.session = session;
+        const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+        const response = await server.inject({ method: 'GET', url: `/checkout/ps_01?lang=${locale}` });
+        const visibleBody = stripScriptsAndStyles(response.body);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).not.toMatch(/[\uFFFD\u00C3\u00C2]|(?:\u00D0|\u00D1)[\u0080-\u00ff]/u);
+        expect(response.body).toContain(locale === 'en' ? 'data-copy-success-label="Copied"' : 'data-copy-success-label="Скопировано"');
+        expect(visibleBody).not.toMatch(/Paiement|Banque|Methode|Indisponible|Disponible|Telephone|Carte|Retour|Continuer|Selection|Copier|marchand|J&#39;ai/u);
+      }
+    }
   });
 
   it('reveals only the compatible receiving route after buyer method selection', async () => {
@@ -343,7 +420,7 @@ describe('hosted checkout web foundation', () => {
     );
     expect(response.body).toContain('J&#39;ai paye');
     expect(response.body).toContain('Copier les details');
-    expect(response.body).toContain('Completez le paiement dans');
+    expect(response.body).toContain('Session active');
     expect(response.body).toContain('copy-icon-btn');
     expect(response.body).not.toContain('Continuer sur mobile');
     expect(response.body).not.toContain('QR');
@@ -987,11 +1064,11 @@ describe('hosted checkout web foundation', () => {
       method: 'POST',
       url: '/checkout/ps_01/receiving-route',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      payload: 'receiving_route_id=route_sber_card'
+      payload: 'receiving_route_id=route_sber_card&lang=ru'
     });
 
     expect(response.statusCode).toBe(303);
-    expect(response.headers.location).toBe('/checkout/ps_01');
+    expect(response.headers.location).toBe('/checkout/ps_01?lang=ru');
   });
 
   it('renders structured fallback instead of crashing on stale forced payment method POST', async () => {
@@ -1022,6 +1099,34 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('Methode indisponible');
     expect(response.body).toContain('Ce marchand accepte actuellement : Carte.');
     expect(response.body).toContain('Payer par carte');
+    expect(response.body).not.toContain('+7 999 123-45-67');
+  });
+
+  it('localizes structured checkout fallback after an English or Russian form post', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'card_transfer');
+    provider.submitExpectedPaymentProfile = async () => {
+      throw structuredCheckoutConflict('no_receiving_route_for_method', {
+        available_payment_methods: { card: true, sbp: false },
+        unavailable_reason: 'method_not_supported_by_merchant',
+        fallback_actions: ['switch_to_card', 'refresh_methods', 'return_to_merchant']
+      });
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/checkout/ps_01/expected-payment-profile',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      payload: 'buyer_first_name=Ivan&buyer_last_name=Petrov&payment_method=sbp&sender_bank_id=sber_ru&sender_phone=%2B7%20999%20123-45-67&lang=ru'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Способ недоступен');
+    expect(response.body).toContain('Продавец сейчас принимает: карта.');
+    expect(response.body).toContain('Оплатить картой');
+    expect(response.body).toContain('Обновить способы');
+    expect(response.body).not.toMatch(/Methode|Ce marchand|Payer par carte|Actualiser les methodes|Retour au marchand/u);
     expect(response.body).not.toContain('+7 999 123-45-67');
   });
 
@@ -1382,6 +1487,12 @@ type StructuredCheckoutErrorCode =
   | 'checkout_selection_incomplete'
   | 'checkout_session_expired'
   | 'no_receiving_route_for_method';
+
+function stripScriptsAndStyles(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/giu, '')
+    .replace(/<script[\s\S]*?<\/script>/giu, '');
+}
 
 function structuredCheckoutConflict(
   code: StructuredCheckoutErrorCode,

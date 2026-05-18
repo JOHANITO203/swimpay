@@ -16,6 +16,11 @@ type CheckoutStateTone = 'info' | 'success' | 'warning' | 'danger';
 type TimelineState = 'done' | 'active' | 'pending' | 'danger';
 type BuyerMethodAvailability = Record<BuyerCheckoutPaymentMethod, boolean>;
 export type CheckoutLocale = 'fr' | 'en' | 'ru';
+type CheckoutRenderOptions = {
+  nativeBankLauncherScheme?: string | undefined;
+  nativeReturnScheme?: string | undefined;
+  locale?: CheckoutLocale | undefined;
+};
 
 interface CheckoutStateView {
   title: string;
@@ -26,6 +31,8 @@ interface CheckoutStateView {
 interface CheckoutCopy {
   pageTitle: string;
   brandSubtitle: string;
+  languageLabel: string;
+  progressLabel: string;
   progress: [string, string, string, string];
   introTitle: string;
   introText: string;
@@ -38,12 +45,113 @@ interface CheckoutCopy {
   startButton: string;
   trustNetwork: string;
   buyerInfoTitle: string;
+  buyerInfoText: string;
+  firstNameLabel: string;
+  firstNamePlaceholder: string;
+  lastNameLabel: string;
+  lastNamePlaceholder: string;
+  paymentMethodLabel: string;
+  cardMethodLabel: string;
+  phoneMethodLabel: string;
+  senderBankLabel: string;
+  senderCardLabel: string;
+  senderPhoneLabel: string;
+  securityLine: string;
+  continueButton: string;
+  backHomeButton: string;
+  changeMethodTitle: string;
+  availableLabel: string;
+  unavailableLabel: string;
+  manualOpenLabel: string;
+  receiverBankTitle: string;
+  receiverBankText: string;
+  nextArrowLabel: string;
+  routeKicker: string;
+  routeTitle: string;
+  routeText: string;
+  recipientPhoneLabel: string;
+  recipientCardLabel: string;
+  useActionLabel: string;
+  launcherKicker: string;
+  launcherTitle: string;
+  launcherText: string;
+  launcherOpenAvailableLabel: string;
+  launcherManualInstructionsLabel: string;
+  instructionsKicker: string;
+  instructionsTitle: string;
+  instructionsText: string;
+  destinationPhoneLabel: string;
+  destinationCardLabel: string;
+  destinationPhoneCopyLabel: string;
+  destinationCardCopyLabel: string;
+  phoneMethodFullLabel: string;
+  receivingBankLabel: string;
+  senderBankCopyLabel: string;
+  amountLabel: string;
+  referenceLabel: string;
+  activeSessionLabel: string;
+  openBankButton: string;
+  openBankSrLabel: string;
+  copyDetailsButton: string;
+  copyDetailsAria: string;
+  copyActionLabel: string;
+  copySuccessLabel: string;
+  copyErrorLabel: string;
+  paidButton: string;
+  signalNotice: string;
+  safeNotice: string;
+  retryButton: string;
+  contactMerchantButton: string;
+  refreshingLabel: string;
+  returnToMerchantButton: string;
+  timelineLabel: string;
+  timelineSearchingSignal: string;
+  timelineSignalDetected: string;
+  timelineMerchantValidation: string;
+  timelinePaymentValidated: string;
+  expiredTitle: string;
+  expiredText: string;
+  rejectedTitle: string;
+  rejectedText: string;
+  validatedTitle: string;
+  validatedText: string;
+  merchantValidationTitle: string;
+  merchantValidationText: string;
+  signalDetectedTitle: string;
+  signalDetectedText: string;
+  inProgressTitle: string;
+  inProgressText: string;
+  summaryTitle: string;
+  summaryAmountLabel: string;
+  summaryDestinationLabel: string;
+  summaryBankLabel: string;
+  summaryStatusLabel: string;
+  paymentUnavailableTitle: string;
+  noReceivingMethodText: string;
+  refreshButton: string;
+  chooseAvailableMethodText: string;
+  merchantAcceptsCardText: string;
+  merchantAcceptsPhoneText: string;
+  payByCardButton: string;
+  payByPhoneButton: string;
+  refreshMethodsButton: string;
+  fallbackDestinationUnavailableTitle: string;
+  fallbackAmountUnavailableTitle: string;
+  fallbackSelectionIncompleteTitle: string;
+  fallbackSessionExpiredTitle: string;
+  fallbackMethodUnavailableTitle: string;
+  fallbackReceivingRouteUnavailableText: string;
+  fallbackAmountLeaseUnavailableText: string;
+  fallbackSelectionIncompleteText: string;
+  fallbackSessionExpiredText: string;
 }
 
 const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
   fr: {
     pageTitle: 'Payer avec SwimPay',
     brandSubtitle: 'Security Engine',
+    languageLabel: 'Langue du checkout',
+    progressLabel: 'Progression du paiement',
     progress: ['Intro', 'Infos', 'Paiement', 'Suivi'],
     introTitle: 'Simple. Sûr. SwimPay.',
     introText: "Suivez votre paiement bancaire jusqu'à validation.",
@@ -56,10 +164,111 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     startButton: "Commencer l’expérience",
     trustNetwork: 'Réseau de confiance SwimPay',
     buyerInfoTitle: 'Vos informations',
+    buyerInfoText: 'Veuillez remplir le formulaire de données ci-dessous',
+    firstNameLabel: 'Prenom',
+    firstNamePlaceholder: 'Jean',
+    lastNameLabel: 'Nom',
+    lastNamePlaceholder: 'Dupont',
+    paymentMethodLabel: 'Methode de paiement',
+    cardMethodLabel: 'Carte',
+    phoneMethodLabel: 'SBP / telephone',
+    senderBankLabel: "Banque d'envoi",
+    senderCardLabel: "Carte d'envoi",
+    senderPhoneLabel: "Telephone d'envoi",
+    securityLine: 'SwimPay ne collecte pas vos données sensibles',
+    continueButton: 'Continuer',
+    backHomeButton: "Retour a l'accueil",
+    changeMethodTitle: 'Changer de methode',
+    availableLabel: 'Disponible',
+    unavailableLabel: 'Indisponible',
+    manualOpenLabel: 'Ouverture manuelle possible',
+    receiverBankTitle: 'Banque du marchand',
+    receiverBankText: 'Choisissez la banque configuree pour recevoir ce paiement.',
+    nextArrowLabel: '->',
+    routeKicker: 'Instructions de paiement',
+    routeTitle: 'Destination',
+    routeText: 'Selectionnez la destination compatible avec votre methode.',
+    recipientPhoneLabel: 'Telephone du destinataire',
+    recipientCardLabel: 'Carte du destinataire',
+    useActionLabel: 'Utiliser',
+    launcherKicker: 'Details du virement',
+    launcherTitle: 'Ouvrir ma banque',
+    launcherText: "Choisissez l'application bancaire a ouvrir.",
+    launcherOpenAvailableLabel: 'Ouverture si disponible',
+    launcherManualInstructionsLabel: 'Instructions manuelles',
+    instructionsKicker: 'Instructions de paiement',
+    instructionsTitle: 'Details du virement',
+    instructionsText: 'Veuillez effectuer le virement avec les details exacts ci-dessous.',
+    destinationPhoneLabel: 'Telephone destinataire',
+    destinationCardLabel: 'Carte destinataire',
+    destinationPhoneCopyLabel: 'Telephone du destinataire',
+    destinationCardCopyLabel: 'Carte du destinataire',
+    phoneMethodFullLabel: 'Telephone SBP',
+    receivingBankLabel: 'Banque de reception',
+    senderBankCopyLabel: "Banque d'envoi",
+    amountLabel: 'Montant exact',
+    referenceLabel: 'Reference',
+    activeSessionLabel: 'Session active',
+    openBankButton: 'Aller a ma banque',
+    openBankSrLabel: 'Ouvrir ma banque',
+    copyDetailsButton: 'Copier tous les details',
+    copyDetailsAria: 'Copier les details',
+    copyActionLabel: 'Copier',
+    copySuccessLabel: 'Copie',
+    copyErrorLabel: 'Erreur',
+    paidButton: "J'ai paye",
+    signalNotice: 'Signal detecte, en attente de validation marchand.',
+    safeNotice: "SwimPay suit le signal cote marchand. Ce n'est pas un recu bancaire officiel.",
+    retryButton: 'Reessayer',
+    contactMerchantButton: 'Contacter le marchand',
+    refreshingLabel: 'Actualisation...',
+    returnToMerchantButton: 'Retourner au marchand',
+    timelineLabel: 'Suivi du paiement',
+    timelineSearchingSignal: 'Recherche du signal',
+    timelineSignalDetected: 'Signal detecte',
+    timelineMerchantValidation: 'En attente de validation marchand',
+    timelinePaymentValidated: 'Paiement confirme',
+    expiredTitle: 'Paiement expire',
+    expiredText: "Le paiement n'a pas ete valide a temps.",
+    rejectedTitle: 'Paiement rejete',
+    rejectedText: 'Veuillez reessayer ou contacter le marchand.',
+    validatedTitle: 'Paiement confirme',
+    validatedText: 'Votre commande peut maintenant etre traitee.',
+    merchantValidationTitle: 'Validation marchand',
+    merchantValidationText: 'Le marchand verifie ce paiement.',
+    signalDetectedTitle: 'Signal detecte',
+    signalDetectedText: 'Signal detecte, en attente de validation marchand.',
+    inProgressTitle: 'Paiement en cours',
+    inProgressText: 'SwimPay suit le signal de paiement cote marchand.',
+    summaryTitle: 'Resume',
+    summaryAmountLabel: 'Montant',
+    summaryDestinationLabel: 'Destination',
+    summaryBankLabel: 'Banque',
+    summaryStatusLabel: 'Statut',
+    paymentUnavailableTitle: 'Paiement indisponible',
+    noReceivingMethodText: "Ce marchand n'a pas encore configure de moyen de reception actif.",
+    refreshButton: 'Actualiser',
+    chooseAvailableMethodText: 'Choisissez une methode disponible.',
+    merchantAcceptsCardText: 'Ce marchand accepte actuellement : Carte.',
+    merchantAcceptsPhoneText: 'Ce marchand accepte actuellement : SBP / telephone.',
+    payByCardButton: 'Payer par carte',
+    payByPhoneButton: 'Payer par SBP',
+    refreshMethodsButton: 'Actualiser les methodes',
+    fallbackDestinationUnavailableTitle: 'Destination indisponible',
+    fallbackAmountUnavailableTitle: 'Montant indisponible',
+    fallbackSelectionIncompleteTitle: 'Selection incomplete',
+    fallbackSessionExpiredTitle: 'Session expiree',
+    fallbackMethodUnavailableTitle: 'Methode indisponible',
+    fallbackReceivingRouteUnavailableText: "La destination selectionnee n'est plus disponible pour ce paiement.",
+    fallbackAmountLeaseUnavailableText: "Le montant exact reserve n'est plus disponible pour cette tentative.",
+    fallbackSelectionIncompleteText: 'Des informations de paiement manquent avant de continuer.',
+    fallbackSessionExpiredText: 'Cette session de paiement a expire.',
   },
   en: {
     pageTitle: 'Pay with SwimPay',
     brandSubtitle: 'Security Engine',
+    languageLabel: 'Checkout language',
+    progressLabel: 'Payment progress',
     progress: ['Intro', 'Info', 'Payment', 'Tracking'],
     introTitle: 'Simple. Safe. SwimPay.',
     introText: 'Track your bank payment until final validation.',
@@ -72,10 +281,111 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     startButton: 'Start experience',
     trustNetwork: 'SwimPay trust network',
     buyerInfoTitle: 'Your information',
+    buyerInfoText: 'Fill in the payment recognition form below',
+    firstNameLabel: 'First name',
+    firstNamePlaceholder: 'John',
+    lastNameLabel: 'Last name',
+    lastNamePlaceholder: 'Smith',
+    paymentMethodLabel: 'Payment method',
+    cardMethodLabel: 'Card',
+    phoneMethodLabel: 'SBP / phone',
+    senderBankLabel: 'Sending bank',
+    senderCardLabel: 'Sending card',
+    senderPhoneLabel: 'Sending phone',
+    securityLine: 'SwimPay does not collect sensitive payment data',
+    continueButton: 'Continue',
+    backHomeButton: 'Back to start',
+    changeMethodTitle: 'Change method',
+    availableLabel: 'Available',
+    unavailableLabel: 'Unavailable',
+    manualOpenLabel: 'Manual opening available',
+    receiverBankTitle: 'Merchant bank',
+    receiverBankText: 'Choose the bank configured to receive this payment.',
+    nextArrowLabel: '->',
+    routeKicker: 'Payment instructions',
+    routeTitle: 'Destination',
+    routeText: 'Select the destination compatible with your method.',
+    recipientPhoneLabel: 'Recipient phone',
+    recipientCardLabel: 'Recipient card',
+    useActionLabel: 'Use',
+    launcherKicker: 'Transfer details',
+    launcherTitle: 'Open my bank',
+    launcherText: 'Choose the banking app to open.',
+    launcherOpenAvailableLabel: 'Opens if available',
+    launcherManualInstructionsLabel: 'Manual instructions',
+    instructionsKicker: 'Payment instructions',
+    instructionsTitle: 'Transfer details',
+    instructionsText: 'Make the transfer with the exact details below.',
+    destinationPhoneLabel: 'Recipient phone',
+    destinationCardLabel: 'Recipient card',
+    destinationPhoneCopyLabel: 'Recipient phone',
+    destinationCardCopyLabel: 'Recipient card',
+    phoneMethodFullLabel: 'SBP phone',
+    receivingBankLabel: 'Receiving bank',
+    senderBankCopyLabel: 'Sending bank',
+    amountLabel: 'Exact amount',
+    referenceLabel: 'Reference',
+    activeSessionLabel: 'Active session',
+    openBankButton: 'Go to my bank',
+    openBankSrLabel: 'Open my bank',
+    copyDetailsButton: 'Copy all details',
+    copyDetailsAria: 'Copy details',
+    copyActionLabel: 'Copy',
+    copySuccessLabel: 'Copied',
+    copyErrorLabel: 'Error',
+    paidButton: 'I have paid',
+    signalNotice: 'Signal detected, waiting for merchant validation.',
+    safeNotice: 'SwimPay tracks the merchant-side payment signal. This is not an official bank receipt.',
+    retryButton: 'Try again',
+    contactMerchantButton: 'Contact merchant',
+    refreshingLabel: 'Refreshing...',
+    returnToMerchantButton: 'Return to merchant',
+    timelineLabel: 'Payment tracking',
+    timelineSearchingSignal: 'Searching for signal',
+    timelineSignalDetected: 'Signal detected',
+    timelineMerchantValidation: 'Waiting for merchant validation',
+    timelinePaymentValidated: 'Payment validated',
+    expiredTitle: 'Payment expired',
+    expiredText: 'The payment was not validated in time.',
+    rejectedTitle: 'Payment rejected',
+    rejectedText: 'Try again or contact the merchant.',
+    validatedTitle: 'Payment validated',
+    validatedText: 'Your order can now be processed.',
+    merchantValidationTitle: 'Merchant validation',
+    merchantValidationText: 'The merchant is reviewing this payment.',
+    signalDetectedTitle: 'Signal detected',
+    signalDetectedText: 'Signal detected, waiting for merchant validation.',
+    inProgressTitle: 'Payment in progress',
+    inProgressText: 'SwimPay is tracking the merchant-side payment signal.',
+    summaryTitle: 'Summary',
+    summaryAmountLabel: 'Amount',
+    summaryDestinationLabel: 'Destination',
+    summaryBankLabel: 'Bank',
+    summaryStatusLabel: 'Status',
+    paymentUnavailableTitle: 'Payment unavailable',
+    noReceivingMethodText: 'This merchant has not configured an active receiving method yet.',
+    refreshButton: 'Refresh',
+    chooseAvailableMethodText: 'Choose an available method.',
+    merchantAcceptsCardText: 'This merchant currently accepts: Card.',
+    merchantAcceptsPhoneText: 'This merchant currently accepts: SBP / phone.',
+    payByCardButton: 'Pay by card',
+    payByPhoneButton: 'Pay by SBP',
+    refreshMethodsButton: 'Refresh methods',
+    fallbackDestinationUnavailableTitle: 'Destination unavailable',
+    fallbackAmountUnavailableTitle: 'Amount unavailable',
+    fallbackSelectionIncompleteTitle: 'Selection incomplete',
+    fallbackSessionExpiredTitle: 'Session expired',
+    fallbackMethodUnavailableTitle: 'Method unavailable',
+    fallbackReceivingRouteUnavailableText: 'The selected destination is no longer available for this payment.',
+    fallbackAmountLeaseUnavailableText: 'The reserved exact amount is no longer available for this attempt.',
+    fallbackSelectionIncompleteText: 'Payment information is missing before continuing.',
+    fallbackSessionExpiredText: 'This payment session has expired.',
   },
   ru: {
     pageTitle: 'Оплатить через SwimPay',
     brandSubtitle: 'Security Engine',
+    languageLabel: 'Язык чекаута',
+    progressLabel: 'Ход оплаты',
     progress: ['Вход', 'Данные', 'Платеж', 'Статус'],
     introTitle: 'Просто. Безопасно. SwimPay.',
     introText: 'Следите за банковским платежом до финальной проверки.',
@@ -88,6 +398,105 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     startButton: 'Начать',
     trustNetwork: 'Доверенный контур SwimPay',
     buyerInfoTitle: 'Ваши данные',
+    buyerInfoText: 'Заполните форму для распознавания платежа',
+    firstNameLabel: 'Имя',
+    firstNamePlaceholder: 'Иван',
+    lastNameLabel: 'Фамилия',
+    lastNamePlaceholder: 'Иванов',
+    paymentMethodLabel: 'Способ оплаты',
+    cardMethodLabel: 'Карта',
+    phoneMethodLabel: 'СБП / телефон',
+    senderBankLabel: 'Банк отправителя',
+    senderCardLabel: 'Карта отправителя',
+    senderPhoneLabel: 'Телефон отправителя',
+    securityLine: 'SwimPay не собирает чувствительные платежные данные',
+    continueButton: 'Продолжить',
+    backHomeButton: 'Назад к началу',
+    changeMethodTitle: 'Изменить способ',
+    availableLabel: 'Доступно',
+    unavailableLabel: 'Недоступно',
+    manualOpenLabel: 'Можно открыть вручную',
+    receiverBankTitle: 'Банк продавца',
+    receiverBankText: 'Выберите банк, настроенный для приема этого платежа.',
+    nextArrowLabel: '->',
+    routeKicker: 'Инструкция по оплате',
+    routeTitle: 'Получатель',
+    routeText: 'Выберите реквизиты, совместимые с вашим способом оплаты.',
+    recipientPhoneLabel: 'Телефон получателя',
+    recipientCardLabel: 'Карта получателя',
+    useActionLabel: 'Выбрать',
+    launcherKicker: 'Детали перевода',
+    launcherTitle: 'Открыть банк',
+    launcherText: 'Выберите банковское приложение.',
+    launcherOpenAvailableLabel: 'Откроется при доступности',
+    launcherManualInstructionsLabel: 'Ручная инструкция',
+    instructionsKicker: 'Инструкция по оплате',
+    instructionsTitle: 'Детали перевода',
+    instructionsText: 'Выполните перевод точно по данным ниже.',
+    destinationPhoneLabel: 'Телефон получателя',
+    destinationCardLabel: 'Карта получателя',
+    destinationPhoneCopyLabel: 'Телефон получателя',
+    destinationCardCopyLabel: 'Карта получателя',
+    phoneMethodFullLabel: 'Телефон СБП',
+    receivingBankLabel: 'Банк получателя',
+    senderBankCopyLabel: 'Банк отправителя',
+    amountLabel: 'Точная сумма',
+    referenceLabel: 'Назначение',
+    activeSessionLabel: 'Активная сессия',
+    openBankButton: 'Перейти в банк',
+    openBankSrLabel: 'Открыть банк',
+    copyDetailsButton: 'Скопировать все данные',
+    copyDetailsAria: 'Скопировать данные',
+    copyActionLabel: 'Скопировать',
+    copySuccessLabel: 'Скопировано',
+    copyErrorLabel: 'Ошибка',
+    paidButton: 'Я оплатил',
+    signalNotice: 'Сигнал обнаружен, ожидается проверка продавцом.',
+    safeNotice: 'SwimPay отслеживает сигнал на стороне продавца. Это не официальная банковская квитанция.',
+    retryButton: 'Повторить',
+    contactMerchantButton: 'Связаться с продавцом',
+    refreshingLabel: 'Обновление...',
+    returnToMerchantButton: 'Вернуться к продавцу',
+    timelineLabel: 'Отслеживание платежа',
+    timelineSearchingSignal: 'Поиск сигнала',
+    timelineSignalDetected: 'Сигнал обнаружен',
+    timelineMerchantValidation: 'Ожидание проверки продавцом',
+    timelinePaymentValidated: 'Платеж проверен',
+    expiredTitle: 'Платеж истек',
+    expiredText: 'Платеж не был проверен вовремя.',
+    rejectedTitle: 'Платеж отклонен',
+    rejectedText: 'Повторите попытку или свяжитесь с продавцом.',
+    validatedTitle: 'Платеж проверен',
+    validatedText: 'Заказ можно обрабатывать.',
+    merchantValidationTitle: 'Проверка продавцом',
+    merchantValidationText: 'Продавец проверяет этот платеж.',
+    signalDetectedTitle: 'Сигнал обнаружен',
+    signalDetectedText: 'Сигнал обнаружен, ожидается проверка продавцом.',
+    inProgressTitle: 'Платеж в процессе',
+    inProgressText: 'SwimPay отслеживает платежный сигнал на стороне продавца.',
+    summaryTitle: 'Сводка',
+    summaryAmountLabel: 'Сумма',
+    summaryDestinationLabel: 'Получатель',
+    summaryBankLabel: 'Банк',
+    summaryStatusLabel: 'Статус',
+    paymentUnavailableTitle: 'Оплата недоступна',
+    noReceivingMethodText: 'Продавец еще не настроил активный способ приема платежа.',
+    refreshButton: 'Обновить',
+    chooseAvailableMethodText: 'Выберите доступный способ.',
+    merchantAcceptsCardText: 'Продавец сейчас принимает: карта.',
+    merchantAcceptsPhoneText: 'Продавец сейчас принимает: СБП / телефон.',
+    payByCardButton: 'Оплатить картой',
+    payByPhoneButton: 'Оплатить через СБП',
+    refreshMethodsButton: 'Обновить способы',
+    fallbackDestinationUnavailableTitle: 'Получатель недоступен',
+    fallbackAmountUnavailableTitle: 'Сумма недоступна',
+    fallbackSelectionIncompleteTitle: 'Выбор не завершен',
+    fallbackSessionExpiredTitle: 'Сессия истекла',
+    fallbackMethodUnavailableTitle: 'Способ недоступен',
+    fallbackReceivingRouteUnavailableText: 'Выбранные реквизиты больше недоступны для этого платежа.',
+    fallbackAmountLeaseUnavailableText: 'Зарезервированная точная сумма больше недоступна для этой попытки.',
+    fallbackSelectionIncompleteText: 'Перед продолжением не хватает платежных данных.',
+    fallbackSessionExpiredText: 'Эта платежная сессия истекла.',
   },
 };
 
@@ -105,9 +514,11 @@ export function renderCheckoutPage(
   routes: readonly BuyerSafeReceivingRoute[],
   launchers: readonly PayerBankLauncherOption[],
   displayStatus: string,
-  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined; locale?: CheckoutLocale | undefined } = {}
+  options: CheckoutRenderOptions = {}
 ): string {
-  const copy = checkoutTranslations[options.locale ?? 'fr'];
+  const locale = options.locale ?? 'fr';
+  const copy = checkoutTranslations[locale];
+  const renderOptions: CheckoutRenderOptions = { ...options, locale };
   const visibleRoutes = filterRoutesForSession(routes, session.payment_method);
   const selectedRoute = visibleRoutes.find((route) => route.route_id === session.selected_receiving_route_id);
   const selectedLauncher = launchers.find((launcher) => launcher.payer_bank_launcher_id === session.selected_payer_bank_launcher_id);
@@ -118,12 +529,12 @@ export function renderCheckoutPage(
   return AppShell({
     title: copy.pageTitle,
     chrome: 'checkout',
-    children: `<section class="screen buyer-checkout checkout-screen-shell" data-current-stage="${stage}">
+    children: `<section class="screen buyer-checkout checkout-screen-shell" data-current-stage="${stage}" data-copy-success-label="${escapeHtml(copy.copySuccessLabel)}" data-copy-error-label="${escapeHtml(copy.copyErrorLabel)}">
       <div class="checkout-shell-inner">
-        ${renderCheckoutBrand(copy)}
+        ${renderCheckoutBrand(copy, locale, renderOptions)}
         ${renderSegmentProgress(stage, copy)}
         <div class="checkout-flow" data-checkout-stage-host>
-          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability, options, copy)}
+          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability, renderOptions, copy)}
         </div>
         ${renderCheckoutTrustFooter()}
       </div>
@@ -143,15 +554,15 @@ function renderCurrentStage(
   selectedLauncher: PayerBankLauncherOption | undefined,
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
-  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined },
+  options: CheckoutRenderOptions,
   copy: CheckoutCopy
 ): string {
-  if (step === 'intro') return renderIntroFlow(session, banks, launchers, methodAvailability, options.nativeReturnScheme, copy);
-  if (step === 'bank') return renderReceiverBankSelection(session, banks, options.nativeReturnScheme);
-  if (step === 'route') return renderReceivingRouteSelection(session, banks, visibleRoutes, launchers, methodAvailability, options.nativeReturnScheme);
-  if (step === 'launcher') return renderPayerLauncherSelection(session, banks, selectedRoute, launchers, methodAvailability, options.nativeReturnScheme);
-  if (step === 'instructions') return renderInstructionsStep(session, banks, selectedRoute, selectedLauncher, launchers, methodAvailability, options);
-  return renderWaitingStatusStep(session, displayStatus, selectedRoute, selectedLauncher);
+  if (step === 'intro') return renderIntroFlow(session, banks, launchers, methodAvailability, options, copy);
+  if (step === 'bank') return renderReceiverBankSelection(session, banks, options, copy);
+  if (step === 'route') return renderReceivingRouteSelection(session, banks, visibleRoutes, launchers, methodAvailability, options, copy);
+  if (step === 'launcher') return renderPayerLauncherSelection(session, banks, selectedRoute, launchers, methodAvailability, options, copy);
+  if (step === 'instructions') return renderInstructionsStep(session, banks, selectedRoute, selectedLauncher, launchers, methodAvailability, options, copy);
+  return renderWaitingStatusStep(session, displayStatus, selectedRoute, selectedLauncher, copy);
 }
 
 function resolveCheckoutStep(session: CheckoutSession): BuyerCheckoutStep {
@@ -255,20 +666,51 @@ function isFinalBuyerState(session: CheckoutSession): boolean {
   return ['manual_confirmed', 'fulfilled', 'rejected', 'expired'].includes(session.status);
 }
 
-function renderCheckoutBrand(copy: CheckoutCopy): string {
+function renderCheckoutBrand(
+  copy: CheckoutCopy,
+  locale: CheckoutLocale,
+  options: CheckoutRenderOptions
+): string {
   return `<header class="checkout-brand" aria-label="SwimPay">
-    <div class="checkout-brand-mark">${swimPayWavesSvg()}</div>
-    <div class="checkout-brand-copy">
-      <strong>SwimPay</strong>
-      <span>${escapeHtml(copy.brandSubtitle)}</span>
+    <div class="checkout-brand-main">
+      <div class="checkout-brand-mark">${swimPayWavesSvg()}</div>
+      <div class="checkout-brand-copy">
+        <strong>SwimPay</strong>
+        <span>${escapeHtml(copy.brandSubtitle)}</span>
+      </div>
     </div>
+    ${renderCheckoutLanguageSelector(locale, copy, options)}
   </header>`;
+}
+
+function renderCheckoutLanguageSelector(
+  currentLocale: CheckoutLocale,
+  copy: CheckoutCopy,
+  options: CheckoutRenderOptions
+): string {
+  const locales: CheckoutLocale[] = ['fr', 'en', 'ru'];
+  return `<nav class="checkout-language-selector" aria-label="${escapeHtml(copy.languageLabel)}">
+    ${locales.map((locale) => {
+      const isActive = locale === currentLocale;
+      return `<a href="${escapeHtml(buildCheckoutLanguageHref(locale, options))}" hreflang="${locale}" lang="${locale}" class="${isActive ? 'selected' : ''}" aria-current="${isActive ? 'true' : 'false'}">${locale.toUpperCase()}</a>`;
+    }).join('')}
+  </nav>`;
+}
+
+function buildCheckoutLanguageHref(
+  locale: CheckoutLocale,
+  options: CheckoutRenderOptions
+): string {
+  const params = new URLSearchParams({ lang: locale });
+  if (options.nativeBankLauncherScheme) params.set('swimpay_bank_launcher_scheme', options.nativeBankLauncherScheme);
+  if (options.nativeReturnScheme) params.set('swimpay_return_scheme', options.nativeReturnScheme);
+  return `?${params.toString()}`;
 }
 
 function renderSegmentProgress(stage: VisualStage, copy: CheckoutCopy): string {
   const current = stageIndex(stage);
   const labels = copy.progress;
-  return `<nav class="checkout-progress" data-progress-bar data-active-step="${current}" aria-label="Progression du paiement">
+  return `<nav class="checkout-progress" data-progress-bar data-active-step="${current}" aria-label="${escapeHtml(copy.progressLabel)}">
     ${labels.map((label, index) => {
       const segmentState = index + 1 <= current ? 'active' : 'pending';
       return `<span class="checkout-progress-segment checkout-progress-${segmentState}" aria-label="${escapeHtml(label)}"></span>`;
@@ -288,15 +730,15 @@ function renderIntroFlow(
   banks: readonly ReceiverBankOption[],
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
-  nativeReturnScheme?: string | undefined,
+  options: CheckoutRenderOptions = {},
   copy?: CheckoutCopy
 ): string {
   if (!hasReceivingMethod(methodAvailability)) {
-    return renderNoReceivingMethodsFallback(session, false);
+    return renderNoReceivingMethodsFallback(session, false, copy ?? checkoutTranslations.fr, options);
   }
   return `<div class="checkout-stage-host">
     ${renderIntroStep(copy ?? checkoutTranslations.fr)}
-    ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, true, copy?.buyerInfoTitle ?? 'Vos informations', nativeReturnScheme)}
+    ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, true, copy?.buyerInfoTitle ?? 'Vos informations', options, copy ?? checkoutTranslations.fr)}
   </div>`;
 }
 
@@ -309,7 +751,7 @@ function renderIntroStep(copy: CheckoutCopy): string {
       <p>${escapeHtml(copy.introText)}</p>
     </div>
     <div class="checkout-feature-list">
-      ${renderFeature('shield', copy.featureGuidedLabel, copy.featureGuidedText)}
+      ${renderFeature('card', copy.featureGuidedLabel, copy.featureGuidedText)}
       ${renderFeature('clock', copy.featureTrackingLabel, copy.featureTrackingText)}
       ${renderFeature('return', copy.featureReturnLabel, copy.featureReturnText)}
     </div>
@@ -318,7 +760,7 @@ function renderIntroStep(copy: CheckoutCopy): string {
   </section>`;
 }
 
-function renderFeature(icon: 'shield' | 'clock' | 'return', label: string, text: string): string {
+function renderFeature(icon: 'card' | 'clock' | 'return', label: string, text: string): string {
   return `<article class="checkout-feature-card">
     <span class="checkout-feature-icon">${iconSvg(icon)}</span>
     <div>
@@ -335,10 +777,11 @@ function renderBuyerIdentityStep(
   methodAvailability: BuyerMethodAvailability,
   hidden = false,
   title = 'Vos informations',
-  nativeReturnScheme?: string | undefined
+  options: CheckoutRenderOptions = {},
+  copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
   if (!hasReceivingMethod(methodAvailability)) {
-    return renderNoReceivingMethodsFallback(session, hidden);
+    return renderNoReceivingMethodsFallback(session, hidden, copy, options);
   }
   const selectedMethod = getSelectedBuyerMethod(session, methodAvailability);
   const singleMethodInput = methodAvailability.card !== methodAvailability.sbp
@@ -349,44 +792,44 @@ function renderBuyerIdentityStep(
   return `<section class="checkout-stage-card checkout-info-card" data-checkout-panel="buyer-identity" ${hidden ? 'hidden' : ''} data-visual-stage="info">
     <div class="checkout-stage-head">
       <h1>${escapeHtml(title)}</h1>
-      <p>Veuillez remplir le formulaire de données ci-dessous</p>
+      <p>${escapeHtml(copy.buyerInfoText)}</p>
     </div>
     <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/expected-payment-profile" class="expected-profile-form">
-      ${renderNativeReturnHiddenInput(nativeReturnScheme)}
+      ${renderCheckoutHiddenInputs(options)}
       ${singleMethodInput}
       <div class="checkout-input-grid">
-        ${renderTextInput('Prenom', 'buyer_first_name', 'Jean', 'given-name')}
-        ${renderTextInput('Nom', 'buyer_last_name', 'Dupont', 'family-name')}
+        ${renderTextInput(copy.firstNameLabel, 'buyer_first_name', copy.firstNamePlaceholder, 'given-name')}
+        ${renderTextInput(copy.lastNameLabel, 'buyer_last_name', copy.lastNamePlaceholder, 'family-name')}
       </div>
       <div class="checkout-field-block">
-        <span class="checkout-field-label">Methode de paiement</span>
-        <div class="method-toggle" role="radiogroup" aria-label="Methode de paiement">
-          ${methodAvailability.card ? renderPaymentMethodCard('card', 'Carte', 'card', cardActive, !singleMethodInput) : ''}
-          ${methodAvailability.sbp ? renderPaymentMethodCard('sbp', 'SBP / telephone', 'phone', sbpActive, !singleMethodInput) : ''}
+        <span class="checkout-field-label">${escapeHtml(copy.paymentMethodLabel)}</span>
+        <div class="method-toggle" role="radiogroup" aria-label="${escapeHtml(copy.paymentMethodLabel)}">
+          ${methodAvailability.card ? renderPaymentMethodCard('card', copy.cardMethodLabel, 'card', cardActive, !singleMethodInput, copy) : ''}
+          ${methodAvailability.sbp ? renderPaymentMethodCard('sbp', copy.phoneMethodLabel, 'phone', sbpActive, !singleMethodInput, copy) : ''}
         </div>
       </div>
-      ${renderSenderBankSelector(session, launchers)}
+      ${renderSenderBankSelector(session, launchers, copy)}
       <div class="method-field-stack">
-        ${methodAvailability.card ? `<label class="checkout-field" data-method-field="card" ${cardActive ? '' : 'hidden'}>Carte d'envoi
+        ${methodAvailability.card ? `<label class="checkout-field" data-method-field="card" ${cardActive ? '' : 'hidden'}>${escapeHtml(copy.senderCardLabel)}
           <input name="sender_card_number" inputmode="numeric" autocomplete="cc-number" placeholder="4242 &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull;" ${cardActive ? '' : 'disabled'}>
         </label>` : ''}
-        ${methodAvailability.sbp ? `<label class="checkout-field" data-method-field="sbp" ${sbpActive ? '' : 'hidden'}>Telephone d'envoi
+        ${methodAvailability.sbp ? `<label class="checkout-field" data-method-field="sbp" ${sbpActive ? '' : 'hidden'}>${escapeHtml(copy.senderPhoneLabel)}
           <input name="sender_phone" type="tel" autocomplete="tel" placeholder="+7 ..." ${sbpActive ? '' : 'disabled'}>
         </label>` : ''}
       </div>
-      <p class="checkout-security-line"><span></span> SwimPay ne collecte pas vos données sensibles</p>
-      <button class="checkout-primary-action" type="submit">Continuer</button>
-      <button class="checkout-ghost-action" type="button" data-show-panel="intro" data-progress-step="1">Retour a l'accueil</button>
+      <p class="checkout-security-line"><span></span> ${escapeHtml(copy.securityLine)}</p>
+      <button class="checkout-primary-action" type="submit">${escapeHtml(copy.continueButton)}</button>
+      <button class="checkout-ghost-action" type="button" data-show-panel="intro" data-progress-step="1">${escapeHtml(copy.backHomeButton)}</button>
     </form>
   </section>`;
 }
 
-function renderSenderBankSelector(session: CheckoutSession, launchers: readonly PayerBankLauncherOption[]): string {
+function renderSenderBankSelector(session: CheckoutSession, launchers: readonly PayerBankLauncherOption[], copy: CheckoutCopy = checkoutTranslations.fr): string {
   const senderBanks = resolveSenderBankChoices(session, launchers);
   const selected = resolveSelectedSenderBankId(session, senderBanks);
   return `<div class="checkout-field-block">
-    <span class="checkout-field-label">Banque d'envoi</span>
-    <div class="sender-bank-selector" role="radiogroup" aria-label="Banque d'envoi">
+    <span class="checkout-field-label">${escapeHtml(copy.senderBankLabel)}</span>
+    <div class="sender-bank-selector" role="radiogroup" aria-label="${escapeHtml(copy.senderBankLabel)}">
       ${senderBanks.map((bank) => {
         const active = bank.sender_bank_id === selected;
         const logoAssetKey = bank.logo_asset_key ?? bankLogoAssetKey(bank.sender_bank_id);
@@ -396,7 +839,7 @@ function renderSenderBankSelector(session: CheckoutSession, launchers: readonly 
           ${renderBankLogoMark(logoAssetKey, bank.display_name)}
           <span>
             <strong>${escapeHtml(bank.display_name)}</strong>
-            <small>${senderBankStatusLabel(bank)}</small>
+            <small>${senderBankStatusLabel(bank, copy)}</small>
           </span>
         </label>`;
       }).join('')}
@@ -444,14 +887,14 @@ function resolveSelectedSenderBankId(
   return senderBanks.find((bank) => bank.selectable !== false)?.sender_bank_id ?? senderBanks[0]?.sender_bank_id ?? '';
 }
 
-function senderBankStatusLabel(bank: SenderBankChoice): string {
+function senderBankStatusLabel(bank: SenderBankChoice, copy: CheckoutCopy = checkoutTranslations.fr): string {
   if (bank.selectable === false) {
-    return 'Indisponible';
+    return escapeHtml(copy.unavailableLabel);
   }
   if (bank.runtime_capture_status === 'runtime_verified') {
-    return 'Disponible';
+    return escapeHtml(copy.availableLabel);
   }
-  return 'Ouverture manuelle possible';
+  return escapeHtml(copy.manualOpenLabel);
 }
 
 function renderTextInput(label: string, name: string, placeholder: string, autocomplete: string): string {
@@ -465,7 +908,8 @@ function renderPaymentMethodCard(
   label: string,
   icon: 'card' | 'phone',
   selected: boolean,
-  submitsValue = true
+  submitsValue = true,
+  copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
   const inputAttributes = [
     'type="radio"',
@@ -477,7 +921,7 @@ function renderPaymentMethodCard(
     <input ${inputAttributes}>
     <span class="payment-method-icon">${iconSvg(icon)}</span>
     <strong>${escapeHtml(label)}</strong>
-    <small>${escapeHtml(`${label} disponible`)}</small>
+    <small>${escapeHtml(`${label} ${copy.availableLabel.toLowerCase()}`)}</small>
   </label>`;
 }
 
@@ -509,25 +953,26 @@ function renderBankLogoMark(logoAssetKey: string, displayName: string): string {
 function renderReceiverBankSelection(
   session: CheckoutSession,
   banks: readonly ReceiverBankOption[],
-  nativeReturnScheme?: string | undefined
+  options: CheckoutRenderOptions = {},
+  copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
   return `<section class="checkout-stage-card checkout-info-card" data-visual-stage="info">
     <div class="checkout-stage-head">
-      <h1>Banque du marchand</h1>
-      <p>Choisissez la banque configuree pour recevoir ce paiement.</p>
+      <h1>${escapeHtml(copy.receiverBankTitle)}</h1>
+      <p>${escapeHtml(copy.receiverBankText)}</p>
     </div>
     <div class="checkout-option-list">${banks.map((bank) => {
       const available = (bank.available_route_count ?? 0) > 0;
       return `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/receiver-bank" class="selection-form">
-        ${renderNativeReturnHiddenInput(nativeReturnScheme)}
+        ${renderCheckoutHiddenInputs(options)}
         <input type="hidden" name="receiver_bank_id" value="${escapeHtml(bank.receiver_bank_id)}">
         <button class="checkout-option-card" type="submit" ${available ? '' : 'disabled'}>
           ${renderBankLogoMark(bank.logo_asset_key, bank.display_name)}
           <span class="checkout-option-copy">
             <strong>${escapeHtml(bank.display_name)}</strong>
-            <small>${available ? 'Disponible' : 'Indisponible'}</small>
+            <small>${escapeHtml(available ? copy.availableLabel : copy.unavailableLabel)}</small>
           </span>
-          <span class="checkout-option-arrow">-&gt;</span>
+          <span class="checkout-option-arrow">${escapeHtml(copy.nextArrowLabel)}</span>
         </button>
       </form>`;
     }).join('')}</div>
@@ -540,26 +985,27 @@ function renderReceivingRouteSelection(
   routes: readonly BuyerSafeReceivingRoute[],
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
-  nativeReturnScheme?: string | undefined
+  options: CheckoutRenderOptions = {},
+  copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
   if (hasStructuredCheckoutFallback(session) || routes.length === 0) {
     return `<div class="checkout-stage-host">
-      ${renderStructuredFallback(session, methodAvailability)}
-      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, 'Changer de methode', nativeReturnScheme)}
+      ${renderStructuredFallback(session, methodAvailability, copy, options)}
+      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, copy.changeMethodTitle, options, copy)}
     </div>`;
   }
 
   return `<section class="checkout-stage-card" data-visual-stage="instructions">
     <div class="checkout-stage-head">
-      <p class="checkout-kicker">Instructions de paiement</p>
-      <h1>Destination</h1>
-      <p>Selectionnez la destination compatible avec votre methode.</p>
+      <p class="checkout-kicker">${escapeHtml(copy.routeKicker)}</p>
+      <h1>${escapeHtml(copy.routeTitle)}</h1>
+      <p>${escapeHtml(copy.routeText)}</p>
     </div>
     <div class="checkout-option-list">${routes.map((route) => {
       const isPhone = route.rail_type === 'phone_transfer';
-      const title = isPhone ? 'Telephone du destinataire' : 'Carte du destinataire';
+      const title = isPhone ? copy.recipientPhoneLabel : copy.recipientCardLabel;
       return `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/receiving-route" class="selection-form">
-        ${renderNativeReturnHiddenInput(nativeReturnScheme)}
+        ${renderCheckoutHiddenInputs(options)}
         <input type="hidden" name="receiving_route_id" value="${escapeHtml(route.route_id)}">
         <button class="checkout-option-card route-option-card" type="submit">
           <span class="payment-method-icon">${iconSvg(isPhone ? 'phone' : 'card')}</span>
@@ -567,7 +1013,7 @@ function renderReceivingRouteSelection(
             <strong>${title}</strong>
             <small>${escapeHtml(route.receiver_identifier_masked)}</small>
           </span>
-          <span class="checkout-option-arrow">Utiliser</span>
+          <span class="checkout-option-arrow">${escapeHtml(copy.useActionLabel)}</span>
         </button>
       </form>`;
     }).join('')}</div>
@@ -580,33 +1026,34 @@ function renderPayerLauncherSelection(
   selectedRoute: BuyerSafeReceivingRoute | undefined,
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
-  nativeReturnScheme?: string | undefined
+  options: CheckoutRenderOptions = {},
+  copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
   if (!selectedRoute) {
     return `<div class="checkout-stage-host">
-      ${renderStructuredFallback(session, methodAvailability)}
-      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, 'Changer de methode', nativeReturnScheme)}
+      ${renderStructuredFallback(session, methodAvailability, copy, options)}
+      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, copy.changeMethodTitle, options, copy)}
     </div>`;
   }
 
   const orderedLaunchers = orderLaunchers(launchers, session.sender_bank_id);
   return `<section class="checkout-stage-card" data-visual-stage="instructions">
     <div class="checkout-stage-head">
-      <p class="checkout-kicker">Details du virement</p>
-      <h1>Ouvrir ma banque</h1>
-      <p>Choisissez l'application bancaire a ouvrir.</p>
+      <p class="checkout-kicker">${escapeHtml(copy.launcherKicker)}</p>
+      <h1>${escapeHtml(copy.launcherTitle)}</h1>
+      <p>${escapeHtml(copy.launcherText)}</p>
     </div>
-    ${renderInstructionPreview(session, selectedRoute)}
+    ${renderInstructionPreview(session, selectedRoute, copy)}
     <div class="checkout-option-list">${orderedLaunchers.map((launcher) => `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/payer-bank-launcher" class="selection-form">
-      ${renderNativeReturnHiddenInput(nativeReturnScheme)}
+      ${renderCheckoutHiddenInputs(options)}
       <input type="hidden" name="payer_bank_launcher_id" value="${escapeHtml(launcher.payer_bank_launcher_id)}">
       <button class="checkout-option-card" type="submit">
         ${renderBankLogoMark(bankLogoAssetKey(launcher.payer_bank_launcher_id), launcher.display_name)}
         <span class="checkout-option-copy">
           <strong>${escapeHtml(launcher.display_name)}</strong>
-          <small>${launcher.launch_url ? 'Ouverture si disponible' : 'Instructions manuelles'}</small>
+          <small>${escapeHtml(launcher.launch_url ? copy.launcherOpenAvailableLabel : copy.launcherManualInstructionsLabel)}</small>
         </span>
-        <span class="checkout-option-arrow">-&gt;</span>
+        <span class="checkout-option-arrow">${escapeHtml(copy.nextArrowLabel)}</span>
       </button>
     </form>`).join('')}</div>
   </section>`;
@@ -619,74 +1066,81 @@ function renderInstructionsStep(
   selectedLauncher: PayerBankLauncherOption | undefined,
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
-  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined }
+  options: { nativeBankLauncherScheme?: string | undefined; nativeReturnScheme?: string | undefined },
+  copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
   if (!selectedRoute) {
     return `<div class="checkout-stage-host">
-      ${renderStructuredFallback(session, methodAvailability)}
-      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, 'Changer de methode', options.nativeReturnScheme)}
+      ${renderStructuredFallback(session, methodAvailability, copy, options)}
+      ${renderBuyerIdentityStep(session, banks, launchers, methodAvailability, false, copy.changeMethodTitle, options, copy)}
     </div>`;
   }
 
   const isPhone = selectedRoute.rail_type === 'phone_transfer';
   const amount = session.payable_amount ?? session.amount;
-  const destinationLabel = isPhone ? 'Telephone destinataire' : 'Carte destinataire';
-  const destinationCopyLabel = isPhone ? 'Telephone du destinataire' : 'Carte du destinataire';
-  const methodLabel = isPhone ? 'Telephone SBP' : 'Carte';
+  const destinationLabel = isPhone ? copy.destinationPhoneLabel : copy.destinationCardLabel;
+  const destinationCopyLabel = isPhone ? copy.destinationPhoneCopyLabel : copy.destinationCardCopyLabel;
+  const methodLabel = isPhone ? copy.phoneMethodFullLabel : copy.cardMethodLabel;
   const receiverBank = banks.find((bank) => bank.bank_profile_id === selectedRoute.bank_profile_id);
-  const bankLabel = receiverBank?.display_name ?? 'Banque de reception';
+  const bankLabel = receiverBank?.display_name ?? copy.receivingBankLabel;
   const receiverBankLogoAssetKey = receiverBank?.logo_asset_key ?? bankLogoAssetKey(selectedRoute.bank_profile_id);
-  const senderBankLabel = selectedLauncher?.display_name ?? session.sender_bank_name ?? "Banque d'envoi";
+  const senderBankLabel = selectedLauncher?.display_name ?? session.sender_bank_name ?? copy.senderBankCopyLabel;
   const senderBankLogoAssetKey = selectedLauncher
     ? bankLogoAssetKey(selectedLauncher.payer_bank_launcher_id)
     : session.sender_bank_logo_asset_key ?? (session.sender_bank_id ? bankLogoAssetKey(session.sender_bank_id) : 'ic_bank_unknown');
   const bankLaunchUrl = resolveBankLaunchUrl(selectedLauncher, options.nativeBankLauncherScheme);
-  const checkoutReturnPath = checkoutPathWithNativeReturn(session.payment_session_id, options.nativeReturnScheme);
+  const checkoutReturnPath = checkoutPathWithOptions(session.payment_session_id, options);
   const summary = [
-    `Montant exact: ${amount.value} ${amount.currency}`,
-    `Reference: ${session.reference}`,
+    `${copy.amountLabel}: ${amount.value} ${amount.currency}`,
+    `${copy.referenceLabel}: ${session.reference}`,
     `${destinationCopyLabel}: ${selectedRoute.receiver_identifier_masked}`,
-    `Banque de reception: ${bankLabel}`,
-    `Banque d'envoi: ${htmlToPlainText(senderBankLabel)}`
+    `${copy.receivingBankLabel}: ${bankLabel}`,
+    `${copy.senderBankCopyLabel}: ${htmlToPlainText(senderBankLabel)}`
   ].join('\\n');
 
   return `<section class="checkout-stage-card checkout-instructions-card" data-visual-stage="instructions">
     <div class="checkout-stage-head checkout-stage-head-center">
-      <p class="checkout-kicker">Instructions de paiement</p>
-      <h1>Details du virement</h1>
-      <p>Veuillez effectuer le virement avec les details exacts ci-dessous.</p>
+      <p class="checkout-kicker">${escapeHtml(copy.instructionsKicker)}</p>
+      <h1>${escapeHtml(copy.instructionsTitle)}</h1>
+      <p>${escapeHtml(copy.instructionsText)}</p>
     </div>
     <div class="checkout-session-pill">
-      <span><i></i> Session active <span class="sr-only">Completez le paiement dans</span></span>
+      <span><i></i> ${escapeHtml(copy.activeSessionLabel)}</span>
       <strong data-countdown-target="${escapeHtml(session.expires_at)}">--:--</strong>
     </div>
     <div class="payment-details-card">
-      ${renderCopyablePaymentRow('Montant exact', `${amount.value} ${amount.currency}`, `${amount.value} ${amount.currency}`)}
-      ${renderCopyablePaymentRow('Reference', session.reference, session.reference)}
-      ${renderCopyablePaymentRow(destinationLabel, selectedRoute.receiver_identifier_masked, '', true, session.payment_session_id, destinationCopyLabel)}
-      ${renderCopyableBankRow('Banque de reception', bankLabel, bankLabel, receiverBankLogoAssetKey)}
-      ${renderCopyableBankRow("Banque d'envoi", senderBankLabel, htmlToPlainText(senderBankLabel), senderBankLogoAssetKey)}
-      ${renderCopyablePaymentRow('Methode', methodLabel, methodLabel)}
+      ${renderCopyablePaymentRow(copy.amountLabel, `${amount.value} ${amount.currency}`, `${amount.value} ${amount.currency}`, false, undefined, undefined, copy)}
+      ${renderCopyablePaymentRow(copy.referenceLabel, session.reference, session.reference, false, undefined, undefined, copy)}
+      ${renderCopyablePaymentRow(destinationLabel, selectedRoute.receiver_identifier_masked, '', true, session.payment_session_id, destinationCopyLabel, copy)}
+      ${renderCopyableBankRow(copy.receivingBankLabel, bankLabel, bankLabel, receiverBankLogoAssetKey, copy)}
+      ${renderCopyableBankRow(copy.senderBankCopyLabel, senderBankLabel, htmlToPlainText(senderBankLabel), senderBankLogoAssetKey, copy)}
+      ${renderCopyablePaymentRow(copy.paymentMethodLabel, methodLabel, methodLabel, false, undefined, undefined, copy)}
     </div>
     <div class="instruction-actions">
       <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/continue-to-bank" data-bank-launch-form data-launch-url="${escapeHtml(bankLaunchUrl)}" data-checkout-url="${escapeHtml(checkoutReturnPath)}" data-selected-sender-bank-id="${escapeHtml(session.sender_bank_id ?? selectedLauncher?.payer_bank_launcher_id ?? '')}" data-payer-bank-launcher-id="${escapeHtml(selectedLauncher?.payer_bank_launcher_id ?? '')}">
-        ${renderNativeReturnHiddenInput(options.nativeReturnScheme)}
-        <button class="checkout-primary-action" type="submit">Aller a ma banque ${iconSvg('external')}<span class="sr-only">Ouvrir ma banque</span></button>
+        ${renderCheckoutHiddenInputs(options)}
+        <button class="checkout-primary-action" type="submit">${escapeHtml(copy.openBankButton)} ${iconSvg('external')}<span class="sr-only">${escapeHtml(copy.openBankSrLabel)}</span></button>
       </form>
-      <button class="checkout-secondary-action" type="button" data-copy-value="${escapeHtml(summary)}" aria-label="Copier les details">Copier tous les details</button>
+      <button class="checkout-secondary-action" type="button" data-copy-value="${escapeHtml(summary)}" aria-label="${escapeHtml(copy.copyDetailsAria)}">${escapeHtml(copy.copyDetailsButton)}</button>
       <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/claimed-paid">
-        ${renderNativeReturnHiddenInput(options.nativeReturnScheme)}
-        ${Button({ text: "J'ai paye", id: 'paid-button', variant: 'ghost', class: 'checkout-ghost-action checkout-paid-action', type: 'submit' })}
+        ${renderCheckoutHiddenInputs(options)}
+        ${Button({ text: copy.paidButton, id: 'paid-button', variant: 'ghost', class: 'checkout-ghost-action checkout-paid-action', type: 'submit' })}
       </form>
     </div>
   </section>`;
 }
 
-function renderCopyableBankRow(label: string, displayValue: string, copyValue: string, logoAssetKey: string): string {
+function renderCopyableBankRow(
+  label: string,
+  displayValue: string,
+  copyValue: string,
+  logoAssetKey: string,
+  copy: CheckoutCopy = checkoutTranslations.fr
+): string {
   return `<div class="payment-row payment-row-bank" data-logo-asset-key="${escapeHtml(logoAssetKey)}">
     <span>${escapeHtml(label)}</span>
     <strong>${renderBankLogoMark(logoAssetKey, displayValue)}${escapeHtml(displayValue)}</strong>
-    <button class="copy-icon-btn" type="button" data-copy-value="${escapeHtml(copyValue)}" aria-label="Copier ${escapeHtml(label)}">${iconSvg('copy')}</button>
+    <button class="copy-icon-btn" type="button" data-copy-value="${escapeHtml(copyValue)}" aria-label="${escapeHtml(`${copy.copyActionLabel} ${label}`)}">${iconSvg('copy')}</button>
   </div>`;
 }
 
@@ -694,43 +1148,53 @@ function htmlToPlainText(value: string): string {
   return value.replace(/&#39;/gu, "'");
 }
 
-function renderNoReceivingMethodsFallback(session: CheckoutSession, hidden = false): string {
+function renderNoReceivingMethodsFallback(
+  session: CheckoutSession,
+  hidden = false,
+  copy: CheckoutCopy = checkoutTranslations.fr,
+  options: CheckoutRenderOptions = {}
+): string {
   return `<section class="checkout-stage-card checkout-empty-card checkout-configuration-card" data-checkout-panel="buyer-identity" ${hidden ? 'hidden' : ''} data-visual-stage="info">
     <div class="checkout-stage-icon">!</div>
-    <h1>Paiement indisponible</h1>
-    <p>Ce marchand n&#39;a pas encore configure de moyen de reception actif.</p>
+    <h1>${escapeHtml(copy.paymentUnavailableTitle)}</h1>
+    <p>${escapeHtml(copy.noReceivingMethodText)}</p>
     <div class="checkout-empty-actions">
-      <a class="checkout-secondary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Actualiser</a>
-      ${renderReturnToMerchantAction(session)}
+      <a class="checkout-secondary-action" href="${escapeHtml(checkoutPathWithOptions(session.payment_session_id, options))}">${escapeHtml(copy.refreshButton)}</a>
+      ${renderReturnToMerchantAction(session, copy)}
     </div>
   </section>`;
 }
 
-function renderStructuredFallback(session: CheckoutSession, methodAvailability: BuyerMethodAvailability): string {
+function renderStructuredFallback(
+  session: CheckoutSession,
+  methodAvailability: BuyerMethodAvailability,
+  copy: CheckoutCopy = checkoutTranslations.fr,
+  options: CheckoutRenderOptions = {}
+): string {
   const hasCard = methodAvailability.card;
   const hasSbp = methodAvailability.sbp;
   const availableText = hasCard && hasSbp
-    ? 'Choisissez une methode disponible.'
+    ? copy.chooseAvailableMethodText
     : hasCard
-      ? 'Ce marchand accepte actuellement : Carte.'
+      ? copy.merchantAcceptsCardText
       : hasSbp
-        ? 'Ce marchand accepte actuellement : SBP / telephone.'
-        : 'Ce marchand n&#39;a pas encore configure de moyen de reception actif.';
+        ? copy.merchantAcceptsPhoneText
+        : copy.noReceivingMethodText;
   const fallbackActions = getFallbackActions(session, methodAvailability);
   const actions = [
     fallbackActions.has('switch_to_card') && hasCard
-      ? `<button class="checkout-primary-action" type="button" data-show-panel="buyer-identity" data-progress-step="2" data-select-method="card">Payer par carte</button>`
+      ? `<button class="checkout-primary-action" type="button" data-show-panel="buyer-identity" data-progress-step="2" data-select-method="card">${escapeHtml(copy.payByCardButton)}</button>`
       : '',
     fallbackActions.has('switch_to_sbp') && hasSbp
-      ? `<button class="checkout-primary-action" type="button" data-show-panel="buyer-identity" data-progress-step="2" data-select-method="sbp">Payer par SBP</button>`
+      ? `<button class="checkout-primary-action" type="button" data-show-panel="buyer-identity" data-progress-step="2" data-select-method="sbp">${escapeHtml(copy.payByPhoneButton)}</button>`
       : '',
     fallbackActions.has('refresh_methods')
-      ? `<a class="checkout-secondary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Actualiser les methodes</a>`
+      ? `<a class="checkout-secondary-action" href="${escapeHtml(checkoutPathWithOptions(session.payment_session_id, options))}">${escapeHtml(copy.refreshMethodsButton)}</a>`
       : '',
-    fallbackActions.has('return_to_merchant') ? renderReturnToMerchantAction(session) : ''
+    fallbackActions.has('return_to_merchant') ? renderReturnToMerchantAction(session, copy) : ''
   ].filter(Boolean).join('');
-  const title = checkoutFallbackTitle(session.checkout_error_code, methodAvailability);
-  const explanation = checkoutFallbackExplanation(session.checkout_error_code);
+  const title = checkoutFallbackTitle(session.checkout_error_code, methodAvailability, copy);
+  const explanation = checkoutFallbackExplanation(session.checkout_error_code, copy);
 
   return `<section class="checkout-stage-card checkout-empty-card checkout-configuration-card" data-visual-stage="instructions">
     <div class="checkout-stage-icon">!</div>
@@ -743,28 +1207,29 @@ function renderStructuredFallback(session: CheckoutSession, methodAvailability: 
 
 function checkoutFallbackTitle(
   code: StructuredCheckoutFallbackCode | undefined,
-  methodAvailability: BuyerMethodAvailability
+  methodAvailability: BuyerMethodAvailability,
+  copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
-  if (code === 'receiving_route_unavailable') return 'Destination indisponible';
-  if (code === 'amount_lease_unavailable') return 'Montant indisponible';
-  if (code === 'checkout_selection_incomplete') return 'Selection incomplete';
-  if (code === 'checkout_session_expired') return 'Session expiree';
-  if (!hasReceivingMethod(methodAvailability)) return 'Paiement indisponible';
-  return 'Methode indisponible';
+  if (code === 'receiving_route_unavailable') return copy.fallbackDestinationUnavailableTitle;
+  if (code === 'amount_lease_unavailable') return copy.fallbackAmountUnavailableTitle;
+  if (code === 'checkout_selection_incomplete') return copy.fallbackSelectionIncompleteTitle;
+  if (code === 'checkout_session_expired') return copy.fallbackSessionExpiredTitle;
+  if (!hasReceivingMethod(methodAvailability)) return copy.paymentUnavailableTitle;
+  return copy.fallbackMethodUnavailableTitle;
 }
 
-function checkoutFallbackExplanation(code: StructuredCheckoutFallbackCode | undefined): string {
+function checkoutFallbackExplanation(code: StructuredCheckoutFallbackCode | undefined, copy: CheckoutCopy = checkoutTranslations.fr): string {
   if (code === 'receiving_route_unavailable') {
-    return "La destination selectionnee n'est plus disponible pour ce paiement.";
+    return copy.fallbackReceivingRouteUnavailableText;
   }
   if (code === 'amount_lease_unavailable') {
-    return "Le montant exact reserve n'est plus disponible pour cette tentative.";
+    return copy.fallbackAmountLeaseUnavailableText;
   }
   if (code === 'checkout_selection_incomplete') {
-    return 'Des informations de paiement manquent avant de continuer.';
+    return copy.fallbackSelectionIncompleteText;
   }
   if (code === 'checkout_session_expired') {
-    return 'Cette session de paiement a expire.';
+    return copy.fallbackSessionExpiredText;
   }
   return '';
 }
@@ -784,25 +1249,35 @@ function getFallbackActions(
   return new Set(actions.filter(Boolean));
 }
 
-function renderReturnToMerchantAction(session: CheckoutSession): string {
+function renderReturnToMerchantAction(session: CheckoutSession, copy: CheckoutCopy = checkoutTranslations.fr): string {
   const returnUrl = resolveBuyerReturnUrl(session);
   if (returnUrl) {
-    return `<a class="checkout-ghost-action" href="${escapeHtml(returnUrl)}">Retour au marchand</a>`;
+    return `<a class="checkout-ghost-action" href="${escapeHtml(returnUrl)}">${escapeHtml(copy.featureReturnLabel)}</a>`;
   }
-  return `<a class="checkout-ghost-action" href="${escapeHtml(checkoutStableReturnFallbackUrl(session))}">Retour au marchand</a>`;
+  return `<a class="checkout-ghost-action" href="${escapeHtml(checkoutStableReturnFallbackUrl(session))}">${escapeHtml(copy.featureReturnLabel)}</a>`;
 }
 
-function renderNativeReturnHiddenInput(nativeReturnScheme?: string | undefined): string {
-  return `<input type="hidden" name="swimpay_return_scheme" value="${escapeHtml(nativeReturnScheme ?? '')}">`;
+function renderCheckoutHiddenInputs(options: CheckoutRenderOptions = {}): string {
+  return [
+    `<input type="hidden" name="swimpay_return_scheme" value="${escapeHtml(options.nativeReturnScheme ?? '')}">`,
+    `<input type="hidden" name="lang" value="${escapeHtml(options.locale ?? 'fr')}">`
+  ].join('');
 }
 
-function checkoutPathWithNativeReturn(paymentSessionId: string, nativeReturnScheme?: string | undefined): string {
+function checkoutPathWithOptions(paymentSessionId: string, options: CheckoutRenderOptions = {}): string {
   const base = `/checkout/${encodeURIComponent(paymentSessionId)}`;
-  if (!nativeReturnScheme) {
-    return base;
+  const params = new URLSearchParams();
+  if (options.locale && options.locale !== 'fr') {
+    params.set('lang', options.locale);
   }
-  const params = new URLSearchParams({ swimpay_return_scheme: nativeReturnScheme });
-  return `${base}?${params.toString()}`;
+  if (options.nativeReturnScheme) {
+    params.set('swimpay_return_scheme', options.nativeReturnScheme);
+  }
+  if (options.nativeBankLauncherScheme) {
+    params.set('swimpay_bank_launcher_scheme', options.nativeBankLauncherScheme);
+  }
+  const query = params.toString();
+  return `${base}${query ? `?${query}` : ''}`;
 }
 
 function resolveBuyerReturnUrl(session: CheckoutSession): string | undefined {
@@ -852,7 +1327,8 @@ function renderCopyablePaymentRow(
   copyValue: string,
   destination = false,
   paymentSessionId = '',
-  ariaLabel = label
+  ariaLabel = label,
+  copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
   const attr = destination
     ? `data-copy-destination="${escapeHtml(paymentSessionId)}"`
@@ -860,16 +1336,20 @@ function renderCopyablePaymentRow(
   return `<div class="payment-row">
     <span>${escapeHtml(label)}</span>
     <strong>${escapeHtml(displayValue)}</strong>
-    <button class="copy-icon-btn" type="button" ${attr} aria-label="Copier ${escapeHtml(ariaLabel)}">${iconSvg('copy')}</button>
+    <button class="copy-icon-btn" type="button" ${attr} aria-label="${escapeHtml(`${copy.copyActionLabel} ${ariaLabel}`)}">${iconSvg('copy')}</button>
   </div>`;
 }
 
-function renderInstructionPreview(session: CheckoutSession, selectedRoute: BuyerSafeReceivingRoute): string {
+function renderInstructionPreview(
+  session: CheckoutSession,
+  selectedRoute: BuyerSafeReceivingRoute,
+  copy: CheckoutCopy = checkoutTranslations.fr
+): string {
   const amount = session.payable_amount ?? session.amount;
-  const destinationLabel = selectedRoute.rail_type === 'phone_transfer' ? 'Telephone' : 'Carte';
+  const destinationLabel = selectedRoute.rail_type === 'phone_transfer' ? copy.destinationPhoneLabel : copy.destinationCardLabel;
   return `<div class="instruction-preview">
-    <div><span>Montant exact</span><strong>${escapeHtml(amount.value)} ${escapeHtml(amount.currency)}</strong></div>
-    <div><span>Reference</span><strong>${escapeHtml(session.reference)}</strong></div>
+    <div><span>${escapeHtml(copy.amountLabel)}</span><strong>${escapeHtml(amount.value)} ${escapeHtml(amount.currency)}</strong></div>
+    <div><span>${escapeHtml(copy.referenceLabel)}</span><strong>${escapeHtml(session.reference)}</strong></div>
     <div><span>${destinationLabel}</span><strong>${escapeHtml(selectedRoute.receiver_identifier_masked)}</strong></div>
   </div>`;
 }
@@ -878,106 +1358,108 @@ function renderWaitingStatusStep(
   session: CheckoutSession,
   displayStatus: string,
   selectedRoute: BuyerSafeReceivingRoute | undefined,
-  selectedLauncher: PayerBankLauncherOption | undefined
+  selectedLauncher: PayerBankLauncherOption | undefined,
+  copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
-  const state = checkoutStateView(session);
+  const state = checkoutStateView(session, copy);
   return `<section class="checkout-stage-card checkout-status-card buyer-state-${state.tone}" data-visual-stage="status" data-checkout-status-poll-url="/checkout/${escapeHtml(session.payment_session_id)}/status" data-checkout-current-status="${escapeHtml(session.status)}" data-checkout-current-safe-status="${escapeHtml(session.buyer_safe_status ?? '')}">
     <div class="checkout-stage-head">
       <h1>${escapeHtml(state.title)}</h1>
       <p>${escapeHtml(state.text)}</p>
     </div>
-    ${renderPaymentTimeline(session)}
-    ${renderStatusMessage(session)}
-    ${renderStatusSummary(session, displayStatus, selectedRoute, selectedLauncher)}
-    ${renderWaitingAction(session)}
+    ${renderPaymentTimeline(session, copy)}
+    ${renderStatusMessage(session, copy)}
+    ${renderStatusSummary(session, displayStatus, selectedRoute, selectedLauncher, copy)}
+    ${renderWaitingAction(session, copy)}
   </section>`;
 }
 
-function renderStatusMessage(session: CheckoutSession): string {
+function renderStatusMessage(session: CheckoutSession, copy: CheckoutCopy = checkoutTranslations.fr): string {
   if (session.status === 'signal_detected' || session.status === 'matching' || session.status === 'needs_review') {
-    return `<div class="checkout-signal-notice">Signal detecte, en attente de validation marchand.</div>`;
+    return `<div class="checkout-signal-notice">${escapeHtml(copy.signalNotice)}</div>`;
   }
   return `<div class="checkout-safe-notice">
     <span class="checkout-info-icon">i</span>
-    <p>SwimPay suit le signal cote marchand. Ce n'est pas un recu bancaire officiel.</p>
+    <p>${escapeHtml(copy.safeNotice)}</p>
   </div>`;
 }
 
-function renderWaitingAction(session: CheckoutSession): string {
+function renderWaitingAction(session: CheckoutSession, copy: CheckoutCopy = checkoutTranslations.fr): string {
   if (session.status === 'manual_confirmed' || session.status === 'fulfilled') {
-    return renderReturnToMerchantPrimaryAction(session);
+    return renderReturnToMerchantPrimaryAction(session, copy);
   }
   if (session.status === 'expired') {
-    return `<a class="checkout-primary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">Reessayer</a>`;
+    return `<a class="checkout-primary-action" href="/checkout/${escapeHtml(session.payment_session_id)}">${escapeHtml(copy.retryButton)}</a>`;
   }
   if (session.status === 'rejected') {
-    return `<a class="checkout-secondary-action" href="${escapeHtml(checkoutStableReturnFallbackUrl(session))}">Contacter le marchand</a>`;
+    return `<a class="checkout-secondary-action" href="${escapeHtml(checkoutStableReturnFallbackUrl(session))}">${escapeHtml(copy.contactMerchantButton)}</a>`;
   }
-  return `<a class="checkout-secondary-action checkout-refresh-action" href="/checkout/${escapeHtml(session.payment_session_id)}"><span></span>Actualisation...</a>`;
+  return `<a class="checkout-secondary-action checkout-refresh-action" href="/checkout/${escapeHtml(session.payment_session_id)}"><span></span>${escapeHtml(copy.refreshingLabel)}</a>`;
 }
 
-function renderReturnToMerchantPrimaryAction(session: CheckoutSession): string {
+function renderReturnToMerchantPrimaryAction(session: CheckoutSession, copy: CheckoutCopy = checkoutTranslations.fr): string {
   const returnUrl = resolveBuyerReturnUrl(session);
   if (returnUrl) {
-    return `<a class="checkout-primary-action" href="${escapeHtml(returnUrl)}">Retourner au marchand <span aria-hidden="true">-&gt;</span></a>`;
+    return `<a class="checkout-primary-action" href="${escapeHtml(returnUrl)}">${escapeHtml(copy.returnToMerchantButton)} <span aria-hidden="true">-&gt;</span></a>`;
   }
-  return `<a class="checkout-primary-action" href="${escapeHtml(checkoutStableReturnFallbackUrl(session))}">Retourner au marchand <span aria-hidden="true">-&gt;</span></a>`;
+  return `<a class="checkout-primary-action" href="${escapeHtml(checkoutStableReturnFallbackUrl(session))}">${escapeHtml(copy.returnToMerchantButton)} <span aria-hidden="true">-&gt;</span></a>`;
 }
 
-function renderPaymentTimeline(session: CheckoutSession): string {
+function renderPaymentTimeline(session: CheckoutSession, copy: CheckoutCopy = checkoutTranslations.fr): string {
   const confirmed = session.status === 'manual_confirmed' || session.status === 'fulfilled';
   const rejectedOrExpired = session.status === 'rejected' || session.status === 'expired';
   const signal = ['signal_detected', 'matching', 'needs_review', 'manual_confirmed', 'fulfilled'].includes(session.status);
   const review = ['needs_review', 'manual_confirmed', 'fulfilled'].includes(session.status);
   const claimedPaid = ['buyer_claimed_paid', 'signal_detected', 'matching', 'needs_review', 'manual_confirmed', 'fulfilled'].includes(session.status);
   const items: Array<[string, TimelineState]> = [
-    ['Recherche du signal', signal || review || confirmed ? 'done' : rejectedOrExpired ? 'danger' : claimedPaid ? 'active' : 'pending'],
-    ['Signal detecte', signal || review || confirmed ? 'done' : 'pending'],
-    ['En attente de validation marchand', confirmed ? 'done' : review ? 'active' : 'pending'],
-    ['Paiement confirme', confirmed ? 'done' : rejectedOrExpired ? 'danger' : 'pending']
+    [copy.timelineSearchingSignal, signal || review || confirmed ? 'done' : rejectedOrExpired ? 'danger' : claimedPaid ? 'active' : 'pending'],
+    [copy.timelineSignalDetected, signal || review || confirmed ? 'done' : 'pending'],
+    [copy.timelineMerchantValidation, confirmed ? 'done' : review ? 'active' : 'pending'],
+    [copy.timelinePaymentValidated, confirmed ? 'done' : rejectedOrExpired ? 'danger' : 'pending']
   ];
 
-  return `<div class="payment-timeline" aria-label="Suivi du paiement">
+  return `<div class="payment-timeline" aria-label="${escapeHtml(copy.timelineLabel)}">
     ${items.map(([label, state]) => `<div class="timeline-item timeline-${state}">
       <span>${state === 'done' ? iconSvg('check') : ''}</span><strong>${escapeHtml(label)}</strong>
     </div>`).join('')}
   </div>`;
 }
 
-function checkoutStateView(session: CheckoutSession): CheckoutStateView {
+function checkoutStateView(session: CheckoutSession, copy: CheckoutCopy = checkoutTranslations.fr): CheckoutStateView {
   const safe = session.buyer_safe_status;
   if (session.status === 'expired' || safe === 'expired') {
-    return { title: 'Paiement expire', text: "Le paiement n'a pas ete valide a temps.", tone: 'warning' };
+    return { title: copy.expiredTitle, text: copy.expiredText, tone: 'warning' };
   }
   if (session.status === 'rejected' || safe === 'rejected') {
-    return { title: 'Paiement rejete', text: 'Veuillez reessayer ou contacter le marchand.', tone: 'danger' };
+    return { title: copy.rejectedTitle, text: copy.rejectedText, tone: 'danger' };
   }
   if (session.status === 'manual_confirmed' || session.status === 'fulfilled' || safe === 'confirmed') {
-    return { title: 'Paiement confirme', text: 'Votre commande peut maintenant etre traitee.', tone: 'success' };
+    return { title: copy.validatedTitle, text: copy.validatedText, tone: 'success' };
   }
   if (session.status === 'needs_review' || session.status === 'matching' || safe === 'needs_review') {
-    return { title: 'Validation marchand', text: 'Le marchand verifie ce paiement.', tone: 'warning' };
+    return { title: copy.merchantValidationTitle, text: copy.merchantValidationText, tone: 'warning' };
   }
   if (session.status === 'signal_detected' || safe === 'signal_detected') {
-    return { title: 'Signal detecte', text: 'Signal detecte, en attente de validation marchand.', tone: 'info' };
+    return { title: copy.signalDetectedTitle, text: copy.signalDetectedText, tone: 'info' };
   }
-  return { title: 'Paiement en cours', text: 'SwimPay suit le signal de paiement cote marchand.', tone: 'info' };
+  return { title: copy.inProgressTitle, text: copy.inProgressText, tone: 'info' };
 }
 
 function renderStatusSummary(
   session: CheckoutSession,
   displayStatus: string,
   selectedRoute: BuyerSafeReceivingRoute | undefined,
-  selectedLauncher: PayerBankLauncherOption | undefined
+  selectedLauncher: PayerBankLauncherOption | undefined,
+  copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
   const amount = session.payable_amount ?? session.amount;
   return `<div class="checkout-status-summary">
-    <h2>Resume</h2>
-    ${renderSummaryRow('Montant', `${amount.value} ${amount.currency}`)}
-    ${renderSummaryRow('Reference', session.reference)}
-    ${selectedRoute ? renderSummaryRow('Destination', selectedRoute.receiver_identifier_masked) : ''}
-    ${selectedLauncher ? renderSummaryRow('Banque', selectedLauncher.display_name) : ''}
-    <div class="summary-row"><span>Statut</span><strong class="summary-pill">${escapeHtml(displayStatus)}</strong></div>
+    <h2>${escapeHtml(copy.summaryTitle)}</h2>
+    ${renderSummaryRow(copy.summaryAmountLabel, `${amount.value} ${amount.currency}`)}
+    ${renderSummaryRow(copy.referenceLabel, session.reference)}
+    ${selectedRoute ? renderSummaryRow(copy.summaryDestinationLabel, selectedRoute.receiver_identifier_masked) : ''}
+    ${selectedLauncher ? renderSummaryRow(copy.summaryBankLabel, selectedLauncher.display_name) : ''}
+    <div class="summary-row"><span>${escapeHtml(copy.summaryStatusLabel)}</span><strong class="summary-pill">${escapeHtml(displayStatus)}</strong></div>
   </div>`;
 }
 
@@ -1044,20 +1526,19 @@ function resolveBankLaunchUrl(
 }
 
 function swimPayWavesSvg(): string {
-  return `<svg viewBox="0 0 48 48" aria-hidden="true" class="swimpay-waves-mark">
-    <path d="M14 17h20"/>
-    <path d="M14 24h20"/>
-    <path d="M14 31h20"/>
-    <path d="M15.5 12.5a13 13 0 0 0 0 23"/>
+  return `<svg viewBox="0 0 108 108" aria-hidden="true" class="swimpay-waves-mark">
+    <path d="M28 39C36 31 45 31 54 39C63 47 72 47 80 39"/>
+    <path d="M28 54C36 46 45 46 54 54C63 62 72 62 80 54"/>
+    <path d="M28 69C36 61 45 61 54 69C63 77 72 77 80 69"/>
   </svg>`;
 }
 
-function iconSvg(icon: 'shield' | 'clock' | 'return' | 'card' | 'phone' | 'copy' | 'external' | 'check'): string {
-  if (icon === 'shield') {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-2.9 8.5-7 10-4.1-1.5-7-5.4-7-10V6l7-3z"/><path d="M9 12l2 2 4-5"/></svg>`;
-  }
+function iconSvg(icon: 'clock' | 'shield' | 'return' | 'card' | 'phone' | 'copy' | 'external' | 'check'): string {
   if (icon === 'clock') {
     return `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg>`;
+  }
+  if (icon === 'shield') {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-2.9 8.5-7 10-4.1-1.5-7-5.4-7-10V6l7-3z"/><path d="M9 12l2 2 4-5"/></svg>`;
   }
   if (icon === 'return') {
     return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H5v4"/><path d="M5 11c1.2-3.2 4.2-5 7.5-4.5 4 .6 6.8 4.2 6.2 8.2-.6 3.9-4.2 6.7-8.1 6.1"/></svg>`;
@@ -1271,11 +1752,14 @@ function buyerCheckoutScript(): string {
         }
       }
 
-      function markCopy(button, ok) {
-        const original = button.getAttribute('data-copy-label') || button.textContent || 'Copy';
-        button.setAttribute('data-copy-label', original);
-        button.textContent = ok ? 'Copie' : 'Erreur';
-        button.classList.toggle('copy-ok', ok);
+       function markCopy(button, ok) {
+         const original = button.getAttribute('data-copy-label') || button.textContent || 'Copy';
+         const shell = document.querySelector('.checkout-screen-shell');
+         const successLabel = shell?.getAttribute('data-copy-success-label') || 'Copie';
+         const errorLabel = shell?.getAttribute('data-copy-error-label') || 'Erreur';
+         button.setAttribute('data-copy-label', original);
+         button.textContent = ok ? successLabel : errorLabel;
+         button.classList.toggle('copy-ok', ok);
         setTimeout(() => {
           button.textContent = original;
           button.classList.remove('copy-ok');
@@ -1330,10 +1814,16 @@ function buyerCheckoutStyles(): string {
     .checkout-brand {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 13px;
+      justify-content: space-between;
+      gap: 16px;
       margin: 2px auto 34px;
       animation: checkoutFadeUp 460ms cubic-bezier(0.23, 1, 0.32, 1) both;
+    }
+    .checkout-brand-main {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      min-width: 0;
     }
     .checkout-brand-mark {
       width: 50px;
@@ -1378,6 +1868,39 @@ function buyerCheckoutStyles(): string {
       font-weight: 900;
       letter-spacing: 0.22em;
       text-transform: uppercase;
+    }
+    .checkout-language-selector {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(226, 234, 240, 0.82);
+      box-shadow: 0 8px 18px rgba(6, 20, 38, 0.05);
+      flex: 0 0 auto;
+    }
+    .checkout-language-selector a {
+      min-width: 34px;
+      min-height: 32px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--sp-soft-text);
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0;
+      transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+    .checkout-language-selector a:active {
+      transform: scale(0.96);
+    }
+    .checkout-language-selector a.selected {
+      color: var(--sp-surface);
+      background: linear-gradient(135deg, var(--sp-teal), var(--sp-blue));
+      box-shadow: 0 8px 16px rgba(0, 175, 194, 0.2);
     }
     .checkout-progress {
       display: grid;

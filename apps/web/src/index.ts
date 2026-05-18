@@ -865,7 +865,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
           paymentSessionId,
           checkoutSessionProvider,
           recipient: options.recipient ?? defaultRecipient,
-          session
+          session,
+          options: checkoutRenderOptionsFromRequest(request)
         });
         if (renderedFallback) {
           reply.type('text/html; charset=utf-8');
@@ -925,7 +926,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
         paymentSessionId: params.paymentSessionId,
         checkoutSessionProvider,
         recipient: options.recipient ?? defaultRecipient,
-        session: session ?? undefined
+        session: session ?? undefined,
+        options: checkoutRenderOptionsFromRequest(request)
       });
       if (!renderedFallback) {
         throw error;
@@ -951,7 +953,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
         paymentSessionId: params.paymentSessionId,
         checkoutSessionProvider,
         recipient: options.recipient ?? defaultRecipient,
-        preferredPaymentMethod: body.payment_method
+        preferredPaymentMethod: body.payment_method,
+        options: checkoutRenderOptionsFromRequest(request)
       });
       if (!renderedFallback) {
         throw error;
@@ -974,7 +977,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
         paymentSessionId: params.paymentSessionId,
         checkoutSessionProvider,
         recipient: options.recipient ?? defaultRecipient,
-        session: session ?? undefined
+        session: session ?? undefined,
+        options: checkoutRenderOptionsFromRequest(request)
       });
       if (!renderedFallback) {
         throw error;
@@ -1001,7 +1005,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
         paymentSessionId: params.paymentSessionId,
         checkoutSessionProvider,
         recipient: options.recipient ?? defaultRecipient,
-        session: session ?? undefined
+        session: session ?? undefined,
+        options: checkoutRenderOptionsFromRequest(request)
       });
       if (!renderedFallback) {
         throw error;
@@ -1034,7 +1039,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
         error,
         paymentSessionId: params.paymentSessionId,
         checkoutSessionProvider,
-        recipient: options.recipient ?? defaultRecipient
+        recipient: options.recipient ?? defaultRecipient,
+        options: checkoutRenderOptionsFromRequest(request)
       });
       if (!renderedFallback) {
         throw error;
@@ -1111,11 +1117,29 @@ function readNativeReturnSchemeFromRequest(request: FastifyRequest): string | un
   return bodyScheme ?? readNativeReturnScheme(request.query);
 }
 
+function readCheckoutLocaleFromRequest(request: FastifyRequest): ReturnType<typeof resolveCheckoutLocale> {
+  const queryLocale = resolveCheckoutLocale(request.query);
+  const bodyLocale = resolveCheckoutLocale(request.body);
+  return queryLocale !== 'fr' ? queryLocale : bodyLocale;
+}
+
+function checkoutRenderOptionsFromRequest(request: FastifyRequest): {
+  nativeBankLauncherScheme?: string | undefined;
+  nativeReturnScheme?: string | undefined;
+  locale: ReturnType<typeof resolveCheckoutLocale>;
+} {
+  return {
+    nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query) ?? readNativeBankLauncherScheme(request.body),
+    nativeReturnScheme: readNativeReturnSchemeFromRequest(request),
+    locale: readCheckoutLocaleFromRequest(request)
+  };
+}
+
 function checkoutRedirectPath(paymentSessionId: string, request: FastifyRequest): string {
   const params = new URLSearchParams();
   const returnScheme = readNativeReturnSchemeFromRequest(request);
   const bankLauncherScheme = readNativeBankLauncherScheme(request.body) ?? readNativeBankLauncherScheme(request.query);
-  const locale = resolveCheckoutLocale(request.query);
+  const locale = readCheckoutLocaleFromRequest(request);
   if (locale !== 'fr') {
     params.set('lang', locale);
   }
@@ -1201,6 +1225,11 @@ async function renderStructuredCheckoutFallbackFromError(params: {
   recipient: CheckoutRecipient;
   preferredPaymentMethod?: 'card' | 'sbp' | undefined;
   session?: CheckoutSession | undefined;
+  options?: {
+    nativeBankLauncherScheme?: string | undefined;
+    nativeReturnScheme?: string | undefined;
+    locale?: ReturnType<typeof resolveCheckoutLocale> | undefined;
+  } | undefined;
 }): Promise<string | null> {
   const structuredError = getStructuredCheckoutFallbackError(params.error);
   if (!structuredError) {
@@ -1237,7 +1266,8 @@ async function renderStructuredCheckoutFallbackFromError(params: {
     receiverBanks.receiver_banks,
     receivingRoutes.routes,
     payerBankLaunchers.payer_bank_launchers,
-    mapCheckoutStatus(session.status).displayStatus
+    mapCheckoutStatus(session.status).displayStatus,
+    params.options
   );
 }
 
