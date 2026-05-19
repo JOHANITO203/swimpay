@@ -673,7 +673,7 @@ function renderCheckoutBrand(
 ): string {
   return `<header class="checkout-brand" aria-label="SwimPay">
     <div class="checkout-brand-main">
-      <div class="checkout-brand-mark">${swimPayWavesSvg()}</div>
+      <div class="checkout-brand-mark">${swimPayLauncherSymbolSvg()}</div>
       <div class="checkout-brand-copy">
         <strong>SwimPay</strong>
         <span>${escapeHtml(copy.brandSubtitle)}</span>
@@ -1525,11 +1525,9 @@ function resolveBankLaunchUrl(
   return selectedLauncher.launch_url ?? '';
 }
 
-function swimPayWavesSvg(): string {
-  return `<svg viewBox="0 0 108 108" aria-hidden="true" class="swimpay-waves-mark">
-    <path d="M28 39C36 31 45 31 54 39C63 47 72 47 80 39"/>
-    <path d="M28 54C36 46 45 46 54 54C63 62 72 62 80 54"/>
-    <path d="M28 69C36 61 45 61 54 69C63 77 72 77 80 69"/>
+function swimPayLauncherSymbolSvg(): string {
+  return `<svg viewBox="0 0 256 256" aria-hidden="true" class="swimpay-launcher-symbol-mark">
+    <path d="M 184.83,27.69 L 183.22,27 L 180,27.46 L 88.66,72.55 L 81.99,76.92 L 76.69,82.22 L 73.24,87.51 L 70.71,92.8 L 69.1,98.09 L 68.41,102.46 L 68.41,110.74 L 70.48,119.26 L 73.7,125.47 L 78.08,130.76 L 83.37,134.9 L 123.17,155.61 L 123.4,156.76 L 85.9,175.39 L 80.38,179.31 L 75.54,184.6 L 73.01,189.2 L 70.94,196.79 L 70.71,224.17 L 71.17,226.93 L 72.32,228.31 L 75.31,228.77 L 77.85,227.85 L 169.87,182.07 L 173.78,179.31 L 178.15,174.93 L 182.76,168.26 L 184.83,163.66 L 187.13,155.38 L 187.36,146.64 L 185.29,136.28 L 181.38,128.92 L 176.54,123.86 L 173.32,121.33 L 135.36,101.77 L 135.13,100.39 L 172.63,81.53 L 178.38,76.69 L 181.84,72.32 L 185.06,65.19 L 186.21,58.52 L 186.21,32.29 L 185.75,28.84 Z"/>
   </svg>`;
 }
 
@@ -1831,15 +1829,20 @@ function buyerCheckoutStyles(): string {
       border-radius: 16px;
       display: grid;
       place-items: center;
-      color: var(--sp-cyan);
+      color: #FFFFFF;
       font-family: 'Outfit', 'Inter', sans-serif;
       font-size: 25px;
       font-weight: 900;
       font-style: italic;
-      background: var(--sp-navy);
-      box-shadow: 0 16px 28px rgba(21, 91, 216, 0.18);
+      background: #060708;
+      box-shadow: 0 16px 28px rgba(6, 7, 8, 0.2);
     }
-    .checkout-brand-mark svg,
+    .checkout-brand-mark svg {
+      width: 34px;
+      height: 34px;
+      fill: currentColor;
+      filter: drop-shadow(0 3px 8px rgba(255, 255, 255, 0.12));
+    }
     .checkout-stage-icon svg {
       width: 34px;
       height: 34px;
@@ -1863,7 +1866,7 @@ function buyerCheckoutStyles(): string {
     }
     .checkout-brand-copy span {
       margin-top: 8px;
-      color: var(--sp-cyan);
+      color: var(--sp-muted);
       font-size: 10px;
       font-weight: 900;
       letter-spacing: 0.22em;

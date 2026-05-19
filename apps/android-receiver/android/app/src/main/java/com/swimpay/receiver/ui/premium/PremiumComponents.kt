@@ -82,8 +82,8 @@ private fun premiumPolishedSurfaceBrush(color: Color): Brush {
             Brush.linearGradient(
                 listOf(
                     Color(0xFFFFFFFF),
-                    Color(0xFFFBFEFF),
-                    Color(0xFFEAF8FF)
+                    Color(0xFFFBFCFD),
+                    Color(0xFFF0F2F4)
                 )
             )
         }
@@ -95,7 +95,7 @@ private fun premiumPolishedSurfaceBrush(color: Color): Brush {
 private fun premiumPolishedSurfaceBorder(color: Color): Color {
     val usesThemeSurface = color == PremiumColors.Surface || color == PremiumColors.SurfaceAlt || color == PremiumColors.PanelTint
     return if (usesThemeSurface) {
-        if (PremiumColors.IsDark) Color.White.copy(alpha = 0.10f) else Color(0xFFD7F7FF)
+        if (PremiumColors.IsDark) Color.White.copy(alpha = 0.10f) else Color(0xFFD5DADF)
     } else {
         PremiumColors.Line
     }
@@ -228,17 +228,29 @@ fun StatusChip(
 
 @Composable
 fun SwimPayLogo(modifier: Modifier = Modifier, markSize: Dp = 48.dp) {
+    SwimPayLauncherBadge(size = markSize, modifier = modifier)
+}
+
+@Composable
+fun SwimPayLauncherBadge(
+    size: Dp,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = "SwimPay"
+) {
+    val launcherShape = RoundedCornerShape(size * 0.24f)
     Box(
         modifier
-            .size(markSize)
-            .clip(RoundedCornerShape(markSize * 0.24f))
-            .background(Brush.linearGradient(PremiumBrandGradient.PrimaryDeep)),
+            .size(size)
+            .clip(launcherShape)
+            .background(Color(0xFF060708), launcherShape)
+            .border(1.dp, Color.White.copy(alpha = 0.10f), launcherShape),
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(R.drawable.ic_launcher_foreground),
-            contentDescription = "SwimPay",
-            modifier = Modifier.size(markSize * 0.72f)
+            painter = painterResource(R.mipmap.ic_launcher_foreground),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize()
         )
     }
 }
@@ -481,7 +493,7 @@ fun PremiumGradientPanel(
             .clip(RoundedCornerShape(radius))
             .background(
                 Brush.linearGradient(
-                    listOf(PremiumColors.Teal, PremiumColors.Blue, PremiumColors.ElectricBlue)
+                    PremiumBrandGradient.Primary
                 )
             )
     ) {
@@ -717,7 +729,7 @@ fun PremiumPaperBackground(
 @Composable
 private fun BackgroundMaterialVeil(modifier: Modifier = Modifier) {
     Canvas(modifier) {
-        val shadow = if (PremiumColors.IsDark) Color(0xFF050406) else Color(0xFF7FB7D1)
+        val shadow = if (PremiumColors.IsDark) Color(0xFF050406) else Color(0xFF454C54)
 
         drawRect(
             brush = Brush.verticalGradient(
@@ -776,8 +788,8 @@ private fun BackgroundAmbientHalo(modifier: Modifier = Modifier) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color(0xFFB9ECFF).copy(alpha = 0.12f),
-                        Color(0xFF6EA8C8).copy(alpha = 0.045f),
+                        Color(0xFFFFFFFF).copy(alpha = 0.18f),
+                        Color(0xFFDCE2E8).copy(alpha = 0.09f),
                         Color.Transparent
                     ),
                     center = Offset(size.width * 0.84f, size.height * 0.30f),
@@ -789,7 +801,7 @@ private fun BackgroundAmbientHalo(modifier: Modifier = Modifier) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color(0xFF153450).copy(alpha = 0.16f),
+                        Color(0xFF111315).copy(alpha = 0.14f),
                         Color.Transparent
                     ),
                     center = Offset(size.width * 0.18f, size.height * 0.80f),
@@ -805,13 +817,13 @@ private fun BackgroundAmbientHalo(modifier: Modifier = Modifier) {
 @Composable
 private fun BackgroundNavigationComfort(modifier: Modifier = Modifier) {
     Canvas(modifier) {
-        val base = if (PremiumColors.IsDark) Color(0xFF050406) else Color(0xFF7FB7D1)
+        val base = if (PremiumColors.IsDark) Color(0xFF050406) else Color(0xFF3F464D)
         if (!PremiumColors.IsDark) {
             drawRect(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF0B2742).copy(alpha = 0.26f),
-                        Color(0xFF5E93B3).copy(alpha = 0.12f),
+                        Color(0xFF050607).copy(alpha = 0.20f),
+                        Color(0xFF30363D).copy(alpha = 0.08f),
                         Color.Transparent
                     ),
                     startY = 0f,
@@ -854,7 +866,7 @@ fun PremiumStartupSplashScreen(modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxSize()
-            .background(Color(0xFF000A1F))
+            .background(Color(0xFF060708))
             .statusBarsPadding()
             .navigationBarsPadding(),
         contentAlignment = Alignment.Center
@@ -863,11 +875,11 @@ fun PremiumStartupSplashScreen(modifier: Modifier = Modifier) {
             Modifier
                 .size(144.dp)
                 .clip(RoundedCornerShape(38.dp))
-                .background(Color(0xFF000A1F)),
+                .background(Color(0xFF060708)),
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(R.drawable.ic_launcher_foreground),
+                painter = painterResource(R.mipmap.ic_launcher_foreground),
                 contentDescription = "SwimPay",
                 modifier = Modifier.size(108.dp)
             )

@@ -2,7 +2,6 @@ package com.swimpay.receiver.ui.premium
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,20 +30,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.swimpay.receiver.R
 
 @Composable
 fun PremiumAccountEntryScreen(
@@ -358,30 +351,5 @@ private fun PremiumAccountChoiceRowContent(
             )
         }
         Icon(Icons.Default.Security, null, tint = PremiumColors.SoftText, modifier = Modifier.size(22.dp))
-    }
-}
-
-@Composable
-private fun SwimPayLauncherBadge(size: Dp) {
-    val launcherShape = RoundedCornerShape(size * 0.24f)
-    Box(
-        Modifier
-            .size(size)
-            .shadow(
-                18.dp,
-                launcherShape,
-                ambientColor = PremiumColors.Cyan.copy(alpha = 0.18f),
-                spotColor = PremiumColors.Cyan.copy(alpha = 0.22f)
-            )
-            .clip(launcherShape)
-            .background(PremiumColors.Background, launcherShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Image(
-            painter = painterResource(R.drawable.ic_launcher_foreground),
-            contentDescription = "SwimPay",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize()
-        )
     }
 }

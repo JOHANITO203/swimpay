@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneAndroid
@@ -45,8 +46,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -54,7 +53,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
 import com.swimpay.receiver.R
@@ -105,9 +103,7 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Box(Modifier.size(78.dp).background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile)), contentAlignment = Alignment.Center) {
-                        SwimPayWavesMark(Modifier.size(PremiumIconSize.Large), tint = PremiumColors.Cyan)
-                    }
+                    SwimPayLauncherBadge(size = 78.dp)
                     Spacer(Modifier.height(26.dp))
                     Text("Configuration initiale", color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
                     Text("Commencer", color = PremiumColors.SoftText, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
@@ -395,38 +391,25 @@ private fun ReceivingMethodDetailsStep(
             }
         )
         Spacer(Modifier.height(6.dp))
-        Text(language.ui("Choisir la banque"), color = PremiumColors.PageInk, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(10.dp))
-        bankOptions.forEach { bank ->
-            val selected = bank.bankProfileId == selectedBankId
-            LiquidGlassCard(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp)
-                    .premiumTap { selectedBankId = bank.bankProfileId },
-                radius = PremiumRadius.Card,
-                color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
-            ) {
-                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 44.dp)
-                    Text(bank.displayName, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = 12.dp))
-                    Box(
-                        Modifier
-                            .size(28.dp)
-                            .background(if (selected) PremiumColors.Cyan else Color.Transparent, CircleShape)
-                            .border(2.dp, if (selected) PremiumColors.Cyan else PremiumColors.Line, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (selected) Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
-        }
+        CompactReceivingBankSelector(
+            selectedBankId = selectedBankId,
+            bankOptions = bankOptions,
+            language = language,
+            onBankSelected = { selectedBankId = it }
+        )
+        Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = identifierInput,
             onValueChange = { identifierInput = it },
             label = { Text(language.ui("Identifiant utilisé seulement pour l'enregistrement")) },
             placeholder = { Text(if (methodType == ReceivingMethodType.CARD_TRANSFER) language.ui("Numéro de carte") else language.ui("Numéro de téléphone")) },
+            leadingIcon = {
+                if (methodType == ReceivingMethodType.CARD_TRANSFER) {
+                    Icon(Icons.Default.CreditCard, null, tint = PremiumColors.Blue)
+                } else {
+                    Icon(Icons.Default.PhoneAndroid, null, tint = PremiumColors.Blue)
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(18.dp)
@@ -820,31 +803,6 @@ private fun ReceivingMethodOption(
                 if (selected) Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Surface, modifier = Modifier.size(18.dp))
             }
         }
-    }
-}
-
-@Composable
-private fun SwimPayLauncherBadge(size: Dp) {
-    val launcherShape = RoundedCornerShape(size * 0.24f)
-    Box(
-        Modifier
-            .size(size)
-            .shadow(
-                18.dp,
-                launcherShape,
-                ambientColor = PremiumColors.Cyan.copy(alpha = 0.18f),
-                spotColor = PremiumColors.Cyan.copy(alpha = 0.22f)
-            )
-            .clip(launcherShape)
-            .background(PremiumColors.Background, launcherShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Image(
-            painter = painterResource(R.drawable.ic_launcher_foreground),
-            contentDescription = "SwimPay",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize()
-        )
     }
 }
 

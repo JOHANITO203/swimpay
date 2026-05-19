@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { landingLocalePath, landingLocales, type LandingCopy, type LandingLocale } from '../i18n';
 import { cn } from '../lib/utils';
 import { swimPayLandingTokens } from '../designTokens';
+import BrandMark from './BrandMark';
 
 interface NavbarProps {
   locale: LandingLocale;
@@ -28,6 +29,7 @@ export default function Navbar({ locale, copy }: NavbarProps) {
         className="flex w-full max-w-[94rem] items-center justify-between px-2 py-1"
       >
         <a href={landingLocalePath(locale)} className="flex min-w-0 items-center gap-3" aria-label="Accueil SwimPay Merchant">
+          <BrandMark size="md" />
           <span className="truncate font-display text-2xl font-black tracking-tight text-white sm:text-3xl">
             SwimPay
           </span>

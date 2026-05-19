@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -75,6 +77,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -414,8 +417,8 @@ private fun bentoMetricSurfaceBrush(): Brush = if (PremiumColors.IsDark) {
     Brush.linearGradient(
         listOf(
             Color(0xFFFFFFFF),
-            Color(0xFFF7FDFF),
-            Color(0xFFEAF8FF)
+            Color(0xFFFAFBFC),
+            Color(0xFFF0F2F4)
         )
     )
 }
@@ -435,25 +438,25 @@ private fun bentoMetricMutedColor(): Color = if (PremiumColors.IsDark) {
 private fun bentoMetricBorderColor(): Color = if (PremiumColors.IsDark) {
     Color.White.copy(alpha = 0.10f)
 } else {
-    Color(0xFFCFF4FF).copy(alpha = 0.92f)
+    Color(0xFFD3D8DE).copy(alpha = 0.92f)
 }
 
 private fun bentoMetricIconTileColor(): Color = if (PremiumColors.IsDark) {
     Color.White.copy(alpha = 0.08f)
 } else {
-    Color(0xFFE9FBFF)
+    Color(0xFFFFFFFF)
 }
 
 private fun bentoMetricIconBorderColor(): Color = if (PremiumColors.IsDark) {
     Color.White.copy(alpha = 0.08f)
 } else {
-    Color(0xFFB9ECFF).copy(alpha = 0.74f)
+    Color(0xFFD4DAE0).copy(alpha = 0.86f)
 }
 
 private fun bentoMetricIconColor(): Color = if (PremiumColors.IsDark) {
     Color.White
 } else {
-    Color(0xFF0B5E78)
+    Color(0xFF111315)
 }
 
 @Composable
@@ -931,13 +934,12 @@ fun PremiumReceivingMethodsStateScreen(
                                     lineHeight = 18.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
-                                bankOptions.forEach { bank ->
-                                    ReceivingMethodBankChoiceRow(
-                                        bank = bank,
-                                        selected = bank.bankProfileId == editBankId,
-                                        onClick = { editBankId = bank.bankProfileId }
-                                    )
-                                }
+                                CompactReceivingBankSelector(
+                                    selectedBankId = editBankId,
+                                    bankOptions = bankOptions,
+                                    language = language,
+                                    onBankSelected = { editBankId = it }
+                                )
                                 OutlinedTextField(
                                     value = editLabel,
                                     onValueChange = { editLabel = it },
@@ -1088,16 +1090,12 @@ private fun ReceivingMethodDraftPanel(
                     Text(language.ui(helper), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(language.ui("Banque compatible"), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black)
-                bankOptions.forEach { bank ->
-                    ReceivingMethodBankChoiceRow(
-                        bank = bank,
-                        selected = bank.bankProfileId == selectedBankId,
-                        onClick = { onBankSelected(bank.bankProfileId) }
-                    )
-                }
-            }
+            CompactReceivingBankSelector(
+                selectedBankId = selectedBankId,
+                bankOptions = bankOptions,
+                language = language,
+                onBankSelected = onBankSelected
+            )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(language.ui("Destination de réception"), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black)
                 OutlinedTextField(
@@ -1139,37 +1137,72 @@ private fun ReceivingMethodDraftPanel(
 }
 
 @Composable
-private fun ReceivingMethodBankChoiceRow(
+fun CompactReceivingBankSelector(
+    selectedBankId: String,
+    bankOptions: List<PremiumReceivingMethodBankOption>,
+    language: PremiumLanguageOption,
+    onBankSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            language.ui("Banque compatible"),
+            color = PremiumColors.Muted,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Black
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 1.dp)
+        ) {
+            items(bankOptions, key = { it.bankProfileId }) { bank ->
+                CompactReceivingBankChip(
+                    bank = bank,
+                    selected = bank.bankProfileId == selectedBankId,
+                    onClick = { onBankSelected(bank.bankProfileId) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactReceivingBankChip(
     bank: PremiumReceivingMethodBankOption,
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val shape = RoundedCornerShape(18.dp)
     Row(
         Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) PremiumColors.Blue.copy(alpha = 0.14f) else PremiumColors.SurfaceAlt.copy(alpha = 0.46f))
-            .border(1.dp, if (selected) PremiumColors.Cyan.copy(alpha = 0.54f) else PremiumColors.Line.copy(alpha = 0.72f), RoundedCornerShape(20.dp))
+            .height(52.dp)
+            .clip(shape)
+            .background(if (selected) PremiumColors.IconTile else PremiumColors.SurfaceAlt.copy(alpha = 0.58f))
+            .border(1.dp, if (selected) PremiumColors.Cyan.copy(alpha = 0.62f) else PremiumColors.Line.copy(alpha = 0.72f), shape)
             .premiumTap(onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 42.dp)
+        PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 32.dp)
         Text(
             bank.displayName,
             color = PremiumColors.Ink,
-            fontSize = 14.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Black,
-            modifier = Modifier.weight(1f).padding(start = 12.dp)
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(76.dp)
         )
         Box(
             Modifier
-                .size(26.dp)
+                .size(18.dp)
                 .background(if (selected) PremiumColors.Cyan else Color.Transparent, CircleShape)
-                .border(2.dp, if (selected) PremiumColors.Cyan else PremiumColors.Line, CircleShape),
+                .border(1.5.dp, if (selected) PremiumColors.Cyan else PremiumColors.Line, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            if (selected) Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(18.dp))
+            if (selected) Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(13.dp))
         }
     }
 }

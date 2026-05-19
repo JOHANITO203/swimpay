@@ -14,19 +14,19 @@ describe('checkout visual brand contract', () => {
     expect(checkoutSource).toContain('--sp-background: #F2F7FA');
   });
 
-  it('renders the checkout SwimPay mark with the compact app waves geometry', () => {
-    expect(checkoutSource).toContain('class="swimpay-waves-mark"');
-    expect(checkoutSource).toContain('<path d="M14 17h20"/>');
-    expect(checkoutSource).toContain('<path d="M14 24h20"/>');
-    expect(checkoutSource).toContain('<path d="M14 31h20"/>');
-    expect(checkoutSource).toContain('<path d="M15.5 12.5a13 13 0 0 0 0 23"/>');
-    expect(checkoutSource).toContain('background: var(--sp-navy);');
-    expect(checkoutSource).toContain('color: var(--sp-cyan);');
+  it('renders the checkout SwimPay header mark with the official launcher symbol geometry', () => {
+    expect(checkoutSource).toContain('class="swimpay-launcher-symbol-mark"');
+    expect(checkoutSource).toContain('function swimPayLauncherSymbolSvg');
+    expect(checkoutSource).toContain('M 184.83,27.69');
+    expect(checkoutSource).toContain('L 70.71,224.17');
+    expect(checkoutSource).toContain('background: #060708;');
+    expect(checkoutSource).toContain('color: #FFFFFF;');
+    expect(checkoutSource).not.toContain('class="swimpay-waves-mark"');
   });
 
   it('documents that checkout mark is an aligned runtime rendering, not a new asset file', () => {
-    expect(assetRegistry).toContain('Checkout inline SwimPay mark');
-    expect(assetRegistry).toContain('aligned to Android compact waves mark');
+    expect(assetRegistry).toContain('Checkout inline SwimPay launcher mark');
+    expect(assetRegistry).toContain('aligned to the official Android launcher symbol');
     expect(assetRegistry).toContain('must not become a new resource logo file');
   });
 });
