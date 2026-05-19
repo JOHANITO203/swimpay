@@ -37,9 +37,10 @@ class PremiumMerchantSettingsStateTest {
     }
 
     @Test
-    fun invalidLanguageTagsFallbackToFrench() {
-        assertEquals(PremiumLanguageOption.FR, PremiumLanguageOption.fromTag("../../../secret"))
-        assertEquals(PremiumLanguageOption.FR, PremiumLanguageOption.fromTag("de"))
+    fun invalidLanguageTagsFallbackToRussianDefault() {
+        assertEquals(PremiumLanguageOption.RU, PremiumLanguageOption.DEFAULT)
+        assertEquals(PremiumLanguageOption.RU, PremiumLanguageOption.fromTag("../../../secret"))
+        assertEquals(PremiumLanguageOption.RU, PremiumLanguageOption.fromTag("de"))
         assertEquals(PremiumLanguageOption.EN, PremiumLanguageOption.fromTag("EN"))
     }
 

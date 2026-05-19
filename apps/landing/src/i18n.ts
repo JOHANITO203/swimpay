@@ -88,7 +88,51 @@ export interface LandingCopy {
   };
 }
 
-export const landingLocales: LandingLocale[] = ['fr', 'en', 'ru'];
+export interface LandingSeoCopy {
+  htmlLang: string;
+  ogLocale: string;
+  title: string;
+  description: string;
+  keywords: string;
+  imageAlt: string;
+}
+
+export const defaultLandingLocale: LandingLocale = 'ru';
+
+export const landingLocales: LandingLocale[] = ['ru', 'fr', 'en'];
+
+export const landingSeoTranslations: Record<LandingLocale, LandingSeoCopy> = {
+  ru: {
+    htmlLang: 'ru',
+    ogLocale: 'ru_RU',
+    title: 'SwimPay Merchant - Android APK и SDK checkout one-click',
+    description:
+      'SwimPay Merchant предлагает Android APK для продавцов и бесплатный checkout SDK one-click в pre-release: учет платежей бизнеса, без сбора средств SwimPay.',
+    keywords:
+      'SwimPay, Android APK для продавцов, merchant app, SDK checkout, one-click оплата, учет платежей бизнеса, webhook платежа',
+    imageAlt: 'SwimPay Merchant, Android APK для продавцов и SDK checkout one-click',
+  },
+  fr: {
+    htmlLang: 'fr',
+    ogLocale: 'fr_FR',
+    title: 'SwimPay Merchant - APK marchand et SDK checkout one-click',
+    description:
+      "SwimPay Merchant propose un APK Android marchand et un SDK checkout one-click gratuit en pré-release pour suivre l'activité de paiement sans prélèvement de fonds par SwimPay.",
+    keywords:
+      'SwimPay, APK marchand, application marchand Android, SDK checkout, paiement one-click, suivi comptabilité business, webhook paiement',
+    imageAlt: 'SwimPay Merchant, APK Android marchand et SDK checkout one-click',
+  },
+  en: {
+    htmlLang: 'en',
+    ogLocale: 'en_US',
+    title: 'SwimPay Merchant - Android merchant APK and one-click checkout SDK',
+    description:
+      'SwimPay Merchant provides an Android merchant APK and a free pre-release one-click checkout SDK for business payment tracking without SwimPay collecting funds.',
+    keywords:
+      'SwimPay, merchant Android APK, merchant app, checkout SDK, one-click payment, business accounting tracking, payment webhook',
+    imageAlt: 'SwimPay Merchant, Android merchant APK and one-click checkout SDK',
+  },
+};
 
 export const landingTranslations: Record<LandingLocale, LandingCopy> = {
   fr: {
@@ -134,7 +178,7 @@ export const landingTranslations: Record<LandingLocale, LandingCopy> = {
       eyebrow: 'App + SDK',
       title: 'Une couche paiement légère pour marchands',
       description:
-        "La landing doit montrer l'essentiel : télécharger l'APK, comprendre l'app Merchant, et installer le SDK checkout gratuitement en pré-release.",
+        "SwimPay présente les outils essentiels pour lancer simplement : l'app Merchant, le suivi comptable et le SDK checkout one-click.",
       cards: [
         {
           title: 'SDK paiement one-click',
@@ -266,7 +310,7 @@ export const landingTranslations: Record<LandingLocale, LandingCopy> = {
       eyebrow: 'App + SDK',
       title: 'A lightweight payment layer for merchants',
       description:
-        'The landing must show the essentials: download the APK, understand the Merchant app, and install the checkout SDK for free during pre-release.',
+        'SwimPay gives merchants the essentials to launch simply: the Merchant app, accounting visibility and the one-click checkout SDK.',
       cards: [
         {
           title: 'One-click payment SDK',
@@ -394,7 +438,7 @@ export const landingTranslations: Record<LandingLocale, LandingCopy> = {
       eyebrow: 'App + SDK',
       title: 'Легкий платежный слой для продавцов',
       description:
-        'Лендинг показывает главное: скачать APK, понять Merchant app и установить checkout SDK бесплатно во время pre-release.',
+        'SwimPay дает продавцам основные инструменты для запуска: Merchant app, учет платежей и checkout SDK one-click.',
       cards: [
         {
           title: 'SDK one-click оплаты',
@@ -483,7 +527,7 @@ export const landingTranslations: Record<LandingLocale, LandingCopy> = {
 
 export function resolveLandingLocale(pathname = window.location.pathname): LandingLocale {
   const segment = pathname.split('/').filter(Boolean)[0];
-  return isLandingLocale(segment) ? segment : 'fr';
+  return isLandingLocale(segment) ? segment : defaultLandingLocale;
 }
 
 export function isLandingLocale(value: unknown): value is LandingLocale {
@@ -491,5 +535,6 @@ export function isLandingLocale(value: unknown): value is LandingLocale {
 }
 
 export function landingLocalePath(locale: LandingLocale): string {
+  if (locale === defaultLandingLocale) return '/';
   return `/${locale}/`;
 }

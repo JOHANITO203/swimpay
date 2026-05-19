@@ -7,10 +7,16 @@ import DownloadSection from './components/DownloadSection';
 import Footer from './components/Footer';
 import LandingDock from './components/LandingDock';
 import { landingTranslations, resolveLandingLocale } from './i18n';
+import { useEffect } from 'react';
+import { applyLandingMetadata } from './seo';
 
 export default function App() {
   const locale = resolveLandingLocale();
   const copy = landingTranslations[locale];
+
+  useEffect(() => {
+    applyLandingMetadata(locale);
+  }, [locale]);
 
   return (
     <div id="top" className="landing-shell min-h-screen gradient-bg font-sans">

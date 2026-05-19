@@ -15,9 +15,11 @@ enum class PremiumLanguageOption(
     RU("ru", "RU", "Русский");
 
     companion object {
+        val DEFAULT: PremiumLanguageOption = RU
+
         fun fromTag(value: String?): PremiumLanguageOption {
             val normalized = value?.trim()?.lowercase(Locale.US).orEmpty()
-            return entries.firstOrNull { it.tag == normalized } ?: FR
+            return entries.firstOrNull { it.tag == normalized } ?: DEFAULT
         }
     }
 }
@@ -71,7 +73,7 @@ data class PremiumAppLockSettings(
 )
 
 data class PremiumMerchantSettings(
-    val language: PremiumLanguageOption = PremiumLanguageOption.FR,
+    val language: PremiumLanguageOption = PremiumLanguageOption.DEFAULT,
     val themeMode: PremiumThemeMode = PremiumThemeMode.SYSTEM,
     val appLock: PremiumAppLockSettings = PremiumAppLockSettings(),
     val googleAccountLinked: Boolean = false
@@ -135,7 +137,7 @@ class SharedPreferencesPremiumMerchantSettingsStore(
 
     override fun load(): PremiumMerchantSettings {
         return PremiumMerchantSettings(
-            language = PremiumLanguageOption.fromTag(preferences.getString(KEY_LANGUAGE, PremiumLanguageOption.FR.tag)),
+            language = PremiumLanguageOption.fromTag(preferences.getString(KEY_LANGUAGE, PremiumLanguageOption.DEFAULT.tag)),
             themeMode = PremiumThemeMode.fromWire(preferences.getString(KEY_THEME, PremiumThemeMode.SYSTEM.wireValue)),
             googleAccountLinked = preferences.getBoolean(KEY_GOOGLE_ACCOUNT_LINKED, false),
             appLock = PremiumAppLockSettings(
