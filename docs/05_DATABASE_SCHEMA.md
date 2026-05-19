@@ -170,9 +170,13 @@ partial uniqueness index on `(merchant_id, rail_type, receiver_identifier_hmac)`
 for deduplication without raw destination storage.
 
 Migration `013_receiving_route_soft_delete.sql` adds `deleted_at`. Merchant
-delete actions soft-delete the route, disable it, remove default status and hide
-it from merchant lists and checkout selection while preserving historical
-payment session references.
+delete actions soft-delete the route, disable it, remove default status, move
+`lifecycle_status` to `deleted`, and hide it from merchant lists and checkout
+selection while preserving historical payment session references. The
+merchant-facing `DELETE /v1/merchant/receiving-methods/:method_id` response
+must include explicit deletion proof (`deleted: true`, matching
+`deleted_method_id`, `status: "deleted"` and `lifecycle_status: "deleted"`) so
+mobile clients do not treat a weak `2xx` response as a completed deletion.
 
 Checkout selection fields are buyer-flow state only. Receiver-bank selection means the
 merchant-side receiving bank chosen for detection and review routing. Payer-bank

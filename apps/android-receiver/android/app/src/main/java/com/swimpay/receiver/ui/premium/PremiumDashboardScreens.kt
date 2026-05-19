@@ -82,6 +82,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.swimpay.receiver.MerchantReceivingMethodDraft
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
 import com.swimpay.receiver.R
@@ -1438,18 +1439,91 @@ private fun PremiumReceivingMethodRow(
                         onDisable()
                     }
                 )
-                "delete" -> ReceivingMethodConfirmPanel(
-                    title = language.ui("Supprimer ce moyen ?"),
-                    body = language.ui("La destination masquée disparaîtra de cette liste."),
-                    confirmLabel = language.ui("Supprimer"),
-                    cancelLabel = language.ui("Annuler"),
-                    destructive = true,
+                "delete" -> ReceivingMethodDeleteDialog(
+                    language = language,
                     onCancel = { pendingConfirmation = null },
                     onConfirm = {
                         pendingConfirmation = null
                         onDelete()
                     }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReceivingMethodDeleteDialog(
+    language: PremiumLanguageOption,
+    onCancel: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onCancel) {
+        PremiumCard(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            radius = 28.dp,
+            color = PremiumColors.Surface
+        ) {
+            Column(
+                Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(PremiumColors.Danger.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Delete, null, tint = PremiumColors.Danger, modifier = Modifier.size(22.dp))
+                    }
+                    Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                        Text(
+                            language.ui("Supprimer ce moyen ?"),
+                            color = PremiumColors.Ink,
+                            fontSize = 18.sp,
+                            lineHeight = 22.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            language.ui("Action définitive"),
+                            color = PremiumColors.Muted,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Text(
+                    language.ui("La destination masquée disparaîtra de cette liste."),
+                    color = PremiumColors.Muted,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    ReceivingMethodMutationButton(
+                        label = language.ui("Annuler"),
+                        icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        modifier = Modifier.weight(1f),
+                        onClick = onCancel
+                    )
+                    ReceivingMethodMutationButton(
+                        label = language.ui("Confirmer"),
+                        icon = Icons.Default.Delete,
+                        modifier = Modifier.weight(1f),
+                        onClick = onConfirm,
+                        destructive = true
+                    )
+                }
             }
         }
     }
@@ -1504,7 +1578,17 @@ private fun ReceivingMethodMutationButton(
         horizontalArrangement = Arrangement.Center
     ) {
         Icon(icon, null, tint = foreground, modifier = Modifier.size(18.dp))
-        Text(label, color = foreground, fontWeight = FontWeight.Black, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp))
+        Text(
+            label,
+            color = foreground,
+            fontWeight = FontWeight.Black,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .padding(start = 8.dp)
+                .weight(1f, fill = false)
+        )
     }
 }
 

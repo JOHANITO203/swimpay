@@ -1531,6 +1531,10 @@ function swimPayLauncherSymbolSvg(): string {
   </svg>`;
 }
 
+function swimPayWavesSvg(): string {
+  return swimPayLauncherSymbolSvg();
+}
+
 function iconSvg(icon: 'clock' | 'shield' | 'return' | 'card' | 'phone' | 'copy' | 'external' | 'check'): string {
   if (icon === 'clock') {
     return `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg>`;

@@ -1830,6 +1830,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return reply.status(200).send({
       method: toMerchantReceivingMethodResponse(result.route),
       deleted: true,
+      deleted_method_id: params.method_id,
       official_bank_confirmation: false
     });
   });
@@ -5419,7 +5420,8 @@ function toMerchantReceivingMethodResponse(route: StoredMerchantReceivingRouteRe
   };
 }
 
-function receivingMethodStatusForRoute(route: StoredMerchantReceivingRouteRecord): 'active' | 'inactive' | 'pending_disable' | 'revoked' {
+function receivingMethodStatusForRoute(route: StoredMerchantReceivingRouteRecord): 'active' | 'inactive' | 'pending_disable' | 'revoked' | 'deleted' {
+  if (route.lifecycle_status === 'deleted' || route.deleted_at) return 'deleted';
   if (route.lifecycle_status === 'pending_disable') return 'pending_disable';
   if (route.lifecycle_status === 'revoked') return 'revoked';
   return route.enabled && route.lifecycle_status === 'active' ? 'active' : 'inactive';

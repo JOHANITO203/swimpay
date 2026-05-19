@@ -894,6 +894,18 @@ class MerchantReceivingMethodsApiRepository(
                 body = body
             )
         )
+        if (method == "DELETE" && response.statusCode in 200..299) {
+            val deletionConfirmed = extractBoolean(response.body, "deleted") == true &&
+                extractString(response.body, "deleted_method_id") == routeId
+            if (!deletionConfirmed) {
+                return MerchantReceivingMethodMutationResult(
+                    state = MerchantRepositoryState.ERROR,
+                    display = null,
+                    clearedSubmission = submission.cleared(),
+                    safeMessage = "Suppression non confirmee"
+                )
+            }
+        }
         return mutationResultFrom(response, submission)
     }
 
@@ -2048,7 +2060,7 @@ private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
     val label = extractString(this, "label") ?: extractString(this, "display_label")
     val masked = extractString(this, "masked_value") ?: extractString(this, "receiver_identifier_masked").orEmpty()
     val status = extractString(this, "status")
-    val enabled = if (status == "inactive") false else extractBoolean(this, "enabled") ?: true
+    val enabled = if (status in setOf("inactive", "pending_disable", "revoked", "deleted")) false else extractBoolean(this, "enabled") ?: true
     val recommended = extractBoolean(this, "is_default") ?: extractBoolean(this, "recommended") ?: false
     val type = when (railType) {
         ReceivingMethodType.CARD_TRANSFER.wireValue -> ReceivingMethodType.CARD_TRANSFER
@@ -2280,4 +2292,3 @@ fun formatMinorAmountCompact(amountMinor: Long, currency: String): String {
 fun urlPath(value: String): String {
     return value.replace(Regex("[^A-Za-z0-9_\\-.]"), "")
 }
-

@@ -126,8 +126,14 @@ The create payload is `type`, `value`, `bank_id`, optional `label`,
 submission and cleared from frontend state only after a successful backend
 mutation; error states must keep the local draft visible for correction and
 must not display saved raw values.
-Delete is a backend soft-delete: the method disappears from merchant and
-checkout lists, but historical references remain masked and auditable.
+Delete is a backend-enforced soft-delete: the method disappears from merchant
+and checkout lists, cannot be selected for new checkout sessions, and remains
+only as a masked historical reference for audit/session history. A successful
+`DELETE` response must include `deleted: true`, `deleted_method_id` matching the
+requested method id, `method.status: "deleted"` and
+`method.lifecycle_status: "deleted"`. Android must treat any `2xx` delete
+response without this proof as an error and refresh the list only from backend
+source of truth.
 
 ### Review Queue
 

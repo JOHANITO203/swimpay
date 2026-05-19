@@ -317,7 +317,8 @@ interface MerchantReceivingMethodApiPayload {
   masked_value?: string | undefined;
   receiver_identifier_masked?: string | undefined;
   last4?: string | undefined;
-  status?: 'active' | 'inactive' | 'pending_verification' | undefined;
+  status?: 'active' | 'inactive' | 'pending_disable' | 'pending_verification' | 'revoked' | 'deleted' | undefined;
+  lifecycle_status?: 'active' | 'pending_disable' | 'disabled' | 'revoked' | 'deleted' | undefined;
   is_default?: boolean | undefined;
   created_at?: string | undefined;
   updated_at?: string | undefined;
@@ -1419,7 +1420,7 @@ function toMerchantRouteAdminRoute(method: MerchantReceivingMethodApiPayload): M
     receiver_identifier_masked: method.masked_value ?? method.receiver_identifier_masked ?? '',
     route_code: label,
     display_label: label,
-    enabled: method.status !== 'inactive',
+    enabled: !['inactive', 'pending_disable', 'revoked', 'deleted'].includes(method.status ?? method.lifecycle_status ?? 'active'),
     recommended: Boolean(method.is_default),
     review_policy: type === 'phone' ? 'eligible_low_risk_later' : 'review_first',
     updated_at: method.updated_at ?? method.created_at

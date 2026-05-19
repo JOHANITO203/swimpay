@@ -661,9 +661,12 @@ class AndroidMerchantApiWiringTest {
                     "label": "Carte magasin",
                     "masked_value": "•••• 9911",
                     "last4": "9911",
-                    "status": "inactive",
+                    "status": "deleted",
+                    "lifecycle_status": "deleted",
                     "is_default": false
                   },
+                  "deleted": true,
+                  "deleted_method_id": "route_card_2",
                   "official_bank_confirmation": false
                 }
                 """.trimIndent()
@@ -716,8 +719,40 @@ class AndroidMerchantApiWiringTest {
 
         val deleted = repository.delete(session, "route_card_2")
         assertEquals(MerchantRepositoryState.SUCCESS, deleted.state)
+        assertEquals("Désactivée", deleted.display?.status)
         assertEquals("DELETE", transport.requests[5].method)
         assertEquals("/v1/merchant/receiving-methods/route_card_2", transport.requests[5].path)
+    }
+
+    @Test
+    fun receivingMethodDeleteRequiresBackendDeletedContract() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "method": {
+                    "id": "route_card_2",
+                    "type": "card",
+                    "bank_id": "sber_ru",
+                    "label": "Carte magasin",
+                    "masked_value": "â€¢â€¢â€¢â€¢ 9911",
+                    "last4": "9911",
+                    "status": "inactive",
+                    "is_default": false
+                  },
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
+        )
+        val repository = MerchantReceivingMethodsApiRepository(transport)
+        val result = repository.delete(AuthenticatedMerchantSession.localDev("mch_demo"), "route_card_2")
+
+        assertEquals(MerchantRepositoryState.ERROR, result.state)
+        assertEquals("Suppression non confirmee", result.safeMessage)
+        assertEquals("DELETE", transport.requests.single().method)
+        assertEquals("/v1/merchant/receiving-methods/route_card_2", transport.requests.single().path)
     }
 
     @Test

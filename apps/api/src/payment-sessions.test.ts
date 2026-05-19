@@ -1368,14 +1368,18 @@ describe('payment session api', () => {
     expect(deleted.json()).toMatchObject({
       method: {
         id: 'route_1',
-        status: 'inactive',
+        status: 'deleted',
+        lifecycle_status: 'deleted',
         official_bank_confirmation: false
       },
       deleted: true,
+      deleted_method_id: 'route_1',
       official_bank_confirmation: false
     });
     expect(listed.statusCode).toBe(200);
     expect(listed.json().methods).toEqual([]);
+    await expect(repository.listReceiverBanksForCheckout('mch_01', 'ps_after_delete')).resolves.toEqual([]);
+    await expect(repository.listReceivingRoutesForCheckoutBank('mch_01', 'ps_after_delete', 'tbank_ru')).resolves.toEqual([]);
     expect(repository.receivingRoutes.get('route_1')).toMatchObject({ deleted_at: expect.any(String), enabled: false });
     expect(repository.auditEvents.map((event) => event.eventType)).toContain('merchant_receiving_route.deleted');
     expect(JSON.stringify([created.json(), deleted.json(), listed.json(), repository.auditEvents])).not.toContain('+7 999 123-45-67');
