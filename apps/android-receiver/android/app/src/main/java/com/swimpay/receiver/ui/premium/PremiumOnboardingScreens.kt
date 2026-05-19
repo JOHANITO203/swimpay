@@ -742,7 +742,7 @@ private fun BankRow(
                 if (selectable && detected) onToggleBank(bank.bankProfileId)
             },
         radius = PremiumRadius.Card,
-        color = if (selected) PremiumColors.SurfaceAlt else PremiumColors.Surface
+        color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
     ) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                     PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 52.dp)
@@ -753,8 +753,8 @@ private fun BankRow(
             Box(
                 Modifier
                     .size(30.dp)
-                    .background(if (selected) PremiumColors.Cyan else Color.Transparent, RoundedCornerShape(11.dp))
-                    .border(2.dp, if (selected) PremiumColors.Cyan else PremiumColors.Line, RoundedCornerShape(11.dp)),
+                    .background(if (selected) PremiumToneColors.Selected.foreground else Color.Transparent, RoundedCornerShape(11.dp))
+                    .border(2.dp, if (selected) PremiumToneColors.Selected.foreground else PremiumColors.Line, RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 if (selected) Icon(Icons.Default.VerifiedUser, null, tint = PremiumColors.Surface, modifier = Modifier.size(18.dp))
@@ -774,7 +774,7 @@ private fun ReceivingMethodOption(
     LiquidGlassCard(
         Modifier.fillMaxWidth().padding(bottom = 16.dp).premiumTap(onClick),
         radius = PremiumRadius.CardLarge,
-        color = if (selected) PremiumColors.SurfaceAlt else PremiumColors.Surface
+        color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
     ) {
         Row(Modifier.padding(22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             Box(Modifier.size(62.dp).background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile)), contentAlignment = Alignment.Center) {
@@ -796,8 +796,8 @@ private fun ReceivingMethodOption(
             Box(
                 Modifier
                     .size(30.dp)
-                    .background(if (selected) PremiumColors.Cyan else Color.Transparent, CircleShape)
-                    .border(2.dp, if (selected) PremiumColors.Cyan else PremiumColors.Line, CircleShape),
+                    .background(if (selected) PremiumToneColors.Selected.foreground else Color.Transparent, CircleShape)
+                    .border(2.dp, if (selected) PremiumToneColors.Selected.foreground else PremiumColors.Line, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 if (selected) Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Surface, modifier = Modifier.size(18.dp))

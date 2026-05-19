@@ -765,9 +765,13 @@ class PremiumMerchantRuntimeContractTest {
                     "label": "Carte caisse",
                     "masked_value": "\u2022\u2022\u2022\u2022 4821",
                     "last4": "4821",
-                    "status": "inactive",
+                    "status": "deleted",
+                    "lifecycle_status": "deleted",
                     "is_default": false
-                  }
+                  },
+                  "deleted": true,
+                  "deleted_method_id": "route_card",
+                  "official_bank_confirmation": false
                 }
                 """.trimIndent()
             )
