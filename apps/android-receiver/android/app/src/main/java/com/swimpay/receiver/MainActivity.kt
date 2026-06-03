@@ -36,8 +36,10 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ReceiverExitInfoReader.logLastExitReason(this)
         configureEdgeToEdgeWindow()
         requestMerchantNotificationPermissionIfNeeded()
+        requestBatteryExemptionIfNeeded()
         notificationAccessStatusReader = NotificationAccessStatusReader(this)
         merchantSettingsStore = SharedPreferencesPremiumMerchantSettingsStore(this)
         appUnlocker = AndroidSystemAppUnlocker(this)
@@ -64,6 +66,7 @@ class MainActivity : FragmentActivity() {
             backendBaseUrl = baseUrl
         )
         ReceiverHeartbeatWorker.enqueuePeriodic(WorkManager.getInstance(this))
+        ReceiverForegroundService.start(this)
         setContent {
             val systemDark = isSystemInDarkTheme()
             val density = LocalDensity.current
@@ -153,8 +156,31 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    /**
+     * Asks the user to exempt SwimPay from battery optimizations once, at install,
+     * if it is not already exempt. Battery exemption is a prerequisite for surviving
+     * Doze; on OEMs the autostart allowlist (OemAutostartGuide) is the further step
+     * surfaced during onboarding.
+     */
+    private fun requestBatteryExemptionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return
+        }
+        if (BatteryOptimizationStatusReader(this).isIgnoringBatteryOptimizations()) {
+            return
+        }
+        val prompts = getSharedPreferences(ONBOARDING_PROMPTS_PREFS, MODE_PRIVATE)
+        if (prompts.getBoolean(KEY_BATTERY_PROMPTED, false)) {
+            return
+        }
+        prompts.edit().putBoolean(KEY_BATTERY_PROMPTED, true).apply()
+        runCatching { startActivity(BatteryOptimizationRequestAction.createIntent(packageName)) }
+    }
+
     companion object {
         private const val MERCHANT_REVIEW_NOTIFICATION_PERMISSION_REQUEST = 6201
+        private const val ONBOARDING_PROMPTS_PREFS = "swimpay_receiver_onboarding_prompts"
+        private const val KEY_BATTERY_PROMPTED = "battery_exemption_prompted"
     }
 
     /*

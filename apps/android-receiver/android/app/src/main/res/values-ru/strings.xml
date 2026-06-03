@@ -6,4 +6,11 @@
     <string name="settings_language">Язык</string>
     <string name="settings_appearance">Оформление</string>
     <string name="settings_confirmation_mode">Режим подтверждения</string>
+    <string name="receiver_fgs_channel_name">Сервис SwimPay</string>
+    <string name="receiver_fgs_channel_description">Держит SwimPay активным для обнаружения входящих платежей.</string>
+    <string name="receiver_fgs_title">SwimPay активен</string>
+    <string name="receiver_fgs_text">Отслеживание входящих платежей включено.</string>
+    <string name="receiver_offline_alert_channel_name">Оповещения ресивера SwimPay</string>
+    <string name="receiver_offline_alert_title">SwimPay не получает платежи</string>
+    <string name="receiver_offline_alert_text">Снова включите доступ к уведомлениям, чтобы продолжить обнаружение платежей.</string>
 </resources>

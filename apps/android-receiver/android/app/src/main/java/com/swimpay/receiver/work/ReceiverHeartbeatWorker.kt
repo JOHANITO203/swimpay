@@ -15,8 +15,12 @@ import com.swimpay.receiver.HttpUrlConnectionMerchantApiTransport
 import com.swimpay.receiver.MerchantApiRequest
 import com.swimpay.receiver.NotificationAccessStatusReader
 import com.swimpay.receiver.PersistentDeviceStateStore
+import com.swimpay.receiver.ReceiverForegroundService
 import com.swimpay.receiver.ReceiverHeartbeatPayloadBuilder
 import com.swimpay.receiver.ReceiverListenerLifecycleStore
+import com.swimpay.receiver.ReceiverOfflineAlertNotifier
+import com.swimpay.receiver.ReceiverSelfHealInput
+import com.swimpay.receiver.ReceiverSelfHealPolicy
 import com.swimpay.receiver.ReceiverRuntimeConfigStore
 import com.swimpay.receiver.ReceiverRuntimeConfigSynchronizer
 import com.swimpay.receiver.SharedPreferencesDeviceStateStorage
@@ -76,6 +80,30 @@ class ReceiverHeartbeatWorker(
         val deviceStateStore = PersistentDeviceStateStore(SharedPreferencesDeviceStateStorage(applicationContext))
         val deviceState = deviceStateStore.load() ?: return Result.success()
         val nowIso = java.time.Instant.now().toString()
+
+        // Backup guardrail (the foreground service self-heal loop is the fast path):
+        // if capture is down, re-arm the listener and alert the merchant locally.
+        val lifecycle = ReceiverListenerLifecycleStore(
+            SharedPreferencesReceiverListenerLifecycleStorage(applicationContext)
+        ).load()
+        val selfHeal = ReceiverSelfHealPolicy.decide(
+            ReceiverSelfHealInput(
+                notificationAccessEnabled = NotificationAccessStatusReader(applicationContext).isEnabled(),
+                listenerConnected = lifecycle.connected,
+                lastDisconnectedAtIso = lifecycle.lastDisconnectedAt,
+                nowIso = nowIso
+            )
+        )
+        if (selfHeal.shouldRequestRebind) {
+            ReceiverForegroundService.requestListenerRebind(applicationContext)
+        }
+        val offlineNotifier = ReceiverOfflineAlertNotifier(applicationContext)
+        if (selfHeal.shouldAlertMerchantOffline) {
+            offlineNotifier.alert()
+        } else if (selfHeal.reason == "healthy") {
+            offlineNotifier.clear()
+        }
+
         val outboxStore = AndroidEncryptedOutboxStore(AndroidOutboxStorageFactory.createMigrating(applicationContext))
         val payload = runCatching {
             ReceiverHeartbeatPayloadBuilder(

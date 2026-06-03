@@ -6,4 +6,11 @@
     <string name="settings_language">Langue</string>
     <string name="settings_appearance">Apparence</string>
     <string name="settings_confirmation_mode">Mode de confirmation</string>
+    <string name="receiver_fgs_channel_name">Service SwimPay</string>
+    <string name="receiver_fgs_channel_description">Garde SwimPay actif pour détecter les paiements reçus.</string>
+    <string name="receiver_fgs_title">SwimPay actif</string>
+    <string name="receiver_fgs_text">Détection des paiements reçus en cours.</string>
+    <string name="receiver_offline_alert_channel_name">Alertes receiver SwimPay</string>
+    <string name="receiver_offline_alert_title">SwimPay ne reçoit plus</string>
+    <string name="receiver_offline_alert_text">Réactivez l’accès aux notifications pour continuer à détecter les paiements.</string>
 </resources>

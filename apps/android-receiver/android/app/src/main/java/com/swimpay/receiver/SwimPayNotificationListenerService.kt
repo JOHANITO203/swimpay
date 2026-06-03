@@ -28,10 +28,17 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
             }
             runNotificationSweep(ActiveNotificationSweepSource.SNOOZED_NOTIFICATIONS, snoozed)
         }
+
+        // Flush whatever was captured while the listener was unbound, not only on
+        // the next posted notification.
+        runCatching { SignalUploadWorker.enqueueExpedited(WorkManager.getInstance(this)) }
     }
 
     override fun onListenerDisconnected() {
         ReceiverListenerLifecycleStore(SharedPreferencesReceiverListenerLifecycleStorage(this)).markDisconnected()
+        // The OEM unbound us in the background: ask the platform to re-bind so the
+        // next bank notification is not lost.
+        ReceiverForegroundService.requestListenerRebind(this)
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -73,7 +80,7 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
         val enqueue = enqueuePipelineResult(runtimeConfig, result)
         Log.i(TAG, "outbox_enqueue_success=${enqueue.success} message=${enqueue.safeMessage}")
         if (enqueue.success) {
-            SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0)
+            SignalUploadWorker.enqueueExpedited(WorkManager.getInstance(this))
         }
 
         val recalled = try {
@@ -126,7 +133,7 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
             }
         }
         if (queued > 0) {
-            SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0)
+            SignalUploadWorker.enqueueExpedited(WorkManager.getInstance(this))
         }
     }
 
