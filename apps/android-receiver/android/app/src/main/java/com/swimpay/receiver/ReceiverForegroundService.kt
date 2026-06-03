@@ -99,10 +99,16 @@ class ReceiverForegroundService : Service() {
             // that was captured before it went down.
             runCatching { SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0) }
         }
+        val offlineNotifier = ReceiverOfflineAlertNotifier(this)
+        if (decision.shouldAlertMerchantOffline) {
+            offlineNotifier.alert()
+        } else if (decision.reason == "healthy") {
+            offlineNotifier.clear()
+        }
         Log.i(
             TAG,
             "self_heal reason=${decision.reason} rebind=${decision.shouldRequestRebind} " +
-                "offline_ms=${decision.offlineDurationMs ?: -1}"
+                "alert=${decision.shouldAlertMerchantOffline} offline_ms=${decision.offlineDurationMs ?: -1}"
         )
     }
 

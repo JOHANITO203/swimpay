@@ -10,4 +10,7 @@
     <string name="receiver_fgs_channel_description">Keeps SwimPay active so incoming payments are detected.</string>
     <string name="receiver_fgs_title">SwimPay active</string>
     <string name="receiver_fgs_text">Watching for incoming payments.</string>
+    <string name="receiver_offline_alert_channel_name">SwimPay receiver alerts</string>
+    <string name="receiver_offline_alert_title">SwimPay is offline</string>
+    <string name="receiver_offline_alert_text">Re-enable notification access to keep detecting payments.</string>
 </resources>
