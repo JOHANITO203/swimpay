@@ -2650,9 +2650,31 @@ export function parseAmountMinor(value: string): number | null {
   return amount > 0 ? amount : null;
 }
 
-export function formatAmountMinor(amountMinor: number): string {
-  const major = Math.floor(amountMinor / 100);
-  const minor = String(amountMinor % 100).padStart(2, '0');
+const CURRENCY_MINOR_DIGITS: Readonly<Record<string, number>> = {
+  RUB: 2,
+  USD: 2,
+  EUR: 2,
+  XOF: 0,
+  XAF: 0
+};
+
+/** Decimal places for a currency. Defaults to 2 (preserves V1 RUB behavior); XOF/XAF (franc CFA) use 0. */
+export function currencyMinorDigits(currency?: string): number {
+  if (!currency) {
+    return 2;
+  }
+  return CURRENCY_MINOR_DIGITS[currency.toUpperCase()] ?? 2;
+}
+
+export function formatAmountMinor(amountMinor: number, currency?: string): string {
+  const digits = currencyMinorDigits(currency);
+  if (digits === 0) {
+    // Franc CFA (XOF/XAF): no sub-unit, the minor amount IS the integer amount.
+    return String(Math.trunc(amountMinor));
+  }
+  const factor = 10 ** digits;
+  const major = Math.floor(amountMinor / factor);
+  const minor = String(amountMinor % factor).padStart(digits, '0');
   return `${major}.${minor}`;
 }
 

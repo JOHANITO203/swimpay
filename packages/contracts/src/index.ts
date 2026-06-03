@@ -377,10 +377,10 @@ export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
  * West Africa (UEMOA / XOF) payer launchers. Packages + USSD codes are sourced
  * docs; deeplink_schemes are decoded from the real app AndroidManifest
  * (see docs/WEST_AFRICA_PAYER_LAUNCHERS.md + scripts/apk-deeplink-harvest.sh).
- * The open/prefill path is NOT yet device-validated, so every entry is
- * enabled:false / tested_status:'not_validated' / runtime_verified:false — they
- * are data only and are NOT surfaced by toAvailableSenderBanks (which defaults to
- * the RU registry). Routing will select this registry by merchant country.
+ * The open/prefill path is NOT yet device-validated, so every entry keeps
+ * tested_status:'not_validated' / runtime_verified:false, but is enabled and
+ * surfaced to buyers for XOF/XAF sessions via payerLaunchersForCurrency(). The
+ * always-present copy_details_manual_transfer fallback covers a deeplink miss.
  *
  * Amount prefill capability is expressed by {amount}/{recipient} placeholders in
  * ussd_transfer_template (Orange SN/ML one-shot); can_prefill_amount stays false
@@ -392,66 +392,80 @@ export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOpti
     deeplinkSchemes: ['sameaosnapp'],
     launchStrategy: 'ussd_dial',
     ussdTransferTemplate: '#144#21*{recipient}*{amount}*{secret}#',
-    enabled: false
+    enabled: true
   }),
   payerLauncher('orange_money_ci', 'Orange Money / Max it', ['com.orange.myorange.oci', 'com.orange.orangemoneyafrique'], {
     country: 'CI',
     deeplinkSchemes: ['omk', 'orangemoneyafrique'],
     launchStrategy: 'deeplink_then_package',
-    enabled: false
+    enabled: true
   }),
   payerLauncher('orange_money_africa', 'Orange Money Africa', ['com.orange.orangemoneyafrique'], {
     country: 'CI',
     deeplinkSchemes: ['omk', 'orangemoneyafrique'],
     launchStrategy: 'deeplink_then_package',
-    enabled: false
+    enabled: true
   }),
   payerLauncher('wave_sn', 'Wave', ['com.wave.personal'], {
     country: 'SN',
     deeplinkSchemes: ['wave'],
     launchStrategy: 'deeplink_then_package',
-    enabled: false
+    enabled: true
   }),
   payerLauncher('mtn_momo_ci', 'MTN MoMo', ['mtnft.momo.consumer'], {
     country: 'CI',
     launchStrategy: 'package_hint_only',
     ussdTransferTemplate: '*133#',
-    enabled: false
+    enabled: true
   }),
   payerLauncher('moov_money_ci', 'Moov Money', ['ci.moovmoney.mmpayapi'], {
     country: 'CI',
     launchStrategy: 'package_hint_only',
     ussdTransferTemplate: '*155#',
-    enabled: false
+    enabled: true
   }),
   payerLauncher('free_money_sn', 'Free Money / Mixx by Yas', ['sn.free.app'], {
     country: 'SN',
     launchStrategy: 'package_hint_only',
     ussdTransferTemplate: '#150#',
-    enabled: false
+    enabled: true
   }),
   payerLauncher('wizall_sn', 'Wizall Money', ['com.wizall.wizallclient'], {
     country: 'SN',
     launchStrategy: 'package_hint_only',
-    enabled: false
+    enabled: true
   }),
   payerLauncher('djamo_ci', 'Djamo', ['com.djamo.app'], {
     country: 'CI',
     launchStrategy: 'package_hint_only',
-    enabled: false
+    enabled: true
   }),
   payerLauncher('sg_connect_ci', 'SG Connect', ['com.socgen.bankup'], {
     country: 'CI',
     deeplinkSchemes: ['socgen.unibank.front'],
     launchStrategy: 'deeplink_then_package',
-    enabled: false
+    enabled: true
   }),
   payerLauncher('ecobank_ci', 'Ecobank', ['com.app.ecobank'], {
     country: 'CI',
     launchStrategy: 'package_hint_only',
-    enabled: false
+    enabled: true
   })
 ] as const;
+
+const XOF_CURRENCIES = new Set(['XOF', 'XAF']);
+
+/**
+ * Selects the payer-bank launcher registry for a payment session's currency.
+ * XOF/XAF (franc CFA / UEMOA) -> West Africa launchers; everything else -> RU.
+ * This activates West Africa on the buyer side without touching the
+ * device-validated RU flow.
+ */
+export function payerLaunchersForCurrency(currency: string | undefined): readonly PayerBankLauncherOption[] {
+  return currency && XOF_CURRENCIES.has(currency.toUpperCase())
+    ? WestAfricaPayerBankLauncherRegistry
+    : PayerBankLauncherRegistry;
+}
 
 export interface CheckoutStateInput {
   paymentSessionStatus: PaymentSessionStatus;

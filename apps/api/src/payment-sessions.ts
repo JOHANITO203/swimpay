@@ -4,6 +4,7 @@ import {
   getPayerBankLauncherOption,
   getReceiverBankOption,
   toAvailableSenderBanks,
+  payerLaunchersForCurrency,
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
   toBuyerSafeReceivingRoute,
@@ -258,7 +259,7 @@ export function toPaymentSessionReadResponse(params: {
     checkout_state: checkoutState,
     buyer_safe_status: mapCheckoutStateToBuyerSafeStatus(checkoutState),
     amount: {
-      value: formatAmountMinor(params.paymentSession.expectedAmountMinor),
+      value: formatAmountMinor(params.paymentSession.expectedAmountMinor, params.paymentSession.currency),
       currency: params.paymentSession.currency
     },
     reference: params.paymentSession.referenceCode,
@@ -282,17 +283,17 @@ export function toPaymentSessionReadResponse(params: {
       ? bankLogoAssetKey(params.paymentSession.selectedReceiverBankId)
       : undefined,
     display_amount: params.paymentSession.displayAmountMinor !== undefined
-      ? { value: formatAmountMinor(params.paymentSession.displayAmountMinor), currency: params.paymentSession.currency }
+      ? { value: formatAmountMinor(params.paymentSession.displayAmountMinor, params.paymentSession.currency), currency: params.paymentSession.currency }
       : undefined,
     payable_amount: params.paymentSession.payableAmountMinor !== undefined
-      ? { value: formatAmountMinor(params.paymentSession.payableAmountMinor), currency: params.paymentSession.currency }
+      ? { value: formatAmountMinor(params.paymentSession.payableAmountMinor, params.paymentSession.currency), currency: params.paymentSession.currency }
       : undefined,
     reconciliation_delta_minor: params.paymentSession.reconciliationDeltaMinor,
     route_locked_at: params.paymentSession.routeLockedAt,
     route_lock_expires_at: params.paymentSession.routeLockExpiresAt,
     available_payment_methods: availability?.available_payment_methods,
     available_receiving_methods: availability?.available_receiving_methods,
-    available_sender_banks: toAvailableSenderBanks(),
+    available_sender_banks: toAvailableSenderBanks(payerLaunchersForCurrency(params.paymentSession.currency)),
     available_routes: availability?.available_routes,
     available_compatibility_pairs: availability?.available_compatibility_pairs,
     unavailable_reason: availability?.unavailable_reason,
