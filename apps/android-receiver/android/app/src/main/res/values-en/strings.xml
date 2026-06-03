@@ -6,4 +6,8 @@
     <string name="settings_language">Language</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_confirmation_mode">Confirmation mode</string>
+    <string name="receiver_fgs_channel_name">SwimPay service</string>
+    <string name="receiver_fgs_channel_description">Keeps SwimPay active so incoming payments are detected.</string>
+    <string name="receiver_fgs_title">SwimPay active</string>
+    <string name="receiver_fgs_text">Watching for incoming payments.</string>
 </resources>

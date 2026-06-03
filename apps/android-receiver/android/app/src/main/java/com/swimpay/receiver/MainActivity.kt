@@ -64,6 +64,7 @@ class MainActivity : FragmentActivity() {
             backendBaseUrl = baseUrl
         )
         ReceiverHeartbeatWorker.enqueuePeriodic(WorkManager.getInstance(this))
+        ReceiverForegroundService.start(this)
         setContent {
             val systemDark = isSystemInDarkTheme()
             val density = LocalDensity.current
