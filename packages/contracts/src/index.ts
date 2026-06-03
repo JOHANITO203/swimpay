@@ -197,9 +197,12 @@ export type PayerBankLaunchStrategy =
   | 'deeplink_then_package'
   | 'explicit_activity_then_package'
   | 'package_hint_only'
+  | 'ussd_dial'
   | 'manual_only';
 export type PayerBankFallbackStrategy = 'copy_details_manual_transfer';
 export type PayerBankLauncherTestedStatus = 'validated' | 'not_validated';
+/** ISO-3166 codes for payer launchers. RU = V1 device-validated; the rest are UEMOA / XOF (West Africa). */
+export type PayerBankCountry = 'RU' | 'SN' | 'CI' | 'ML' | 'BF' | 'BJ' | 'TG' | 'NE' | 'GW';
 export type PaymentCompatibilityStatus =
   | 'compatible'
   | 'incompatible_method'
@@ -258,13 +261,14 @@ export interface PayerBankLauncherOption {
   payer_bank_launcher_id: string;
   bank_id: string;
   display_name: string;
-  country: 'RU';
+  country: PayerBankCountry;
   android_package_candidates: readonly string[];
   android_package_hint: string | null;
   android_explicit_activity_name?: string | undefined;
   deeplink_uri_template: string | null;
   deeplink_schemes: readonly string[];
   launch_url: string | null;
+  ussd_transfer_template?: string | undefined;
   launch_strategy: PayerBankLaunchStrategy;
   fallback_strategy: PayerBankFallbackStrategy;
   can_prefill_receiver_card: false;
@@ -366,6 +370,86 @@ export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
     runtimeVerified: true,
     runtimeVerifiedSource: 'real_device_deeplink_open_only',
     testedStatus: 'validated'
+  })
+] as const;
+
+/**
+ * West Africa (UEMOA / XOF) payer launchers. Packages + USSD codes are sourced
+ * docs; deeplink_schemes are decoded from the real app AndroidManifest
+ * (see docs/WEST_AFRICA_PAYER_LAUNCHERS.md + scripts/apk-deeplink-harvest.sh).
+ * The open/prefill path is NOT yet device-validated, so every entry is
+ * enabled:false / tested_status:'not_validated' / runtime_verified:false — they
+ * are data only and are NOT surfaced by toAvailableSenderBanks (which defaults to
+ * the RU registry). Routing will select this registry by merchant country.
+ *
+ * Amount prefill capability is expressed by {amount}/{recipient} placeholders in
+ * ussd_transfer_template (Orange SN/ML one-shot); can_prefill_amount stays false
+ * to preserve the V1 launcher invariant. {secret}/PIN is never auto-filled.
+ */
+export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
+  payerLauncher('orange_money_sn', 'Orange Money / Max it', ['com.orange.myorange.osn', 'com.orange.mobile.orangemoney'], {
+    country: 'SN',
+    deeplinkSchemes: ['sameaosnapp'],
+    launchStrategy: 'ussd_dial',
+    ussdTransferTemplate: '#144#21*{recipient}*{amount}*{secret}#',
+    enabled: false
+  }),
+  payerLauncher('orange_money_ci', 'Orange Money / Max it', ['com.orange.myorange.oci', 'com.orange.orangemoneyafrique'], {
+    country: 'CI',
+    deeplinkSchemes: ['omk', 'orangemoneyafrique'],
+    launchStrategy: 'deeplink_then_package',
+    enabled: false
+  }),
+  payerLauncher('orange_money_africa', 'Orange Money Africa', ['com.orange.orangemoneyafrique'], {
+    country: 'CI',
+    deeplinkSchemes: ['omk', 'orangemoneyafrique'],
+    launchStrategy: 'deeplink_then_package',
+    enabled: false
+  }),
+  payerLauncher('wave_sn', 'Wave', ['com.wave.personal'], {
+    country: 'SN',
+    deeplinkSchemes: ['wave'],
+    launchStrategy: 'deeplink_then_package',
+    enabled: false
+  }),
+  payerLauncher('mtn_momo_ci', 'MTN MoMo', ['mtnft.momo.consumer'], {
+    country: 'CI',
+    launchStrategy: 'package_hint_only',
+    ussdTransferTemplate: '*133#',
+    enabled: false
+  }),
+  payerLauncher('moov_money_ci', 'Moov Money', ['ci.moovmoney.mmpayapi'], {
+    country: 'CI',
+    launchStrategy: 'package_hint_only',
+    ussdTransferTemplate: '*155#',
+    enabled: false
+  }),
+  payerLauncher('free_money_sn', 'Free Money / Mixx by Yas', ['sn.free.app'], {
+    country: 'SN',
+    launchStrategy: 'package_hint_only',
+    ussdTransferTemplate: '#150#',
+    enabled: false
+  }),
+  payerLauncher('wizall_sn', 'Wizall Money', ['com.wizall.wizallclient'], {
+    country: 'SN',
+    launchStrategy: 'package_hint_only',
+    enabled: false
+  }),
+  payerLauncher('djamo_ci', 'Djamo', ['com.djamo.app'], {
+    country: 'CI',
+    launchStrategy: 'package_hint_only',
+    enabled: false
+  }),
+  payerLauncher('sg_connect_ci', 'SG Connect', ['com.socgen.bankup'], {
+    country: 'CI',
+    deeplinkSchemes: ['socgen.unibank.front'],
+    launchStrategy: 'deeplink_then_package',
+    enabled: false
+  }),
+  payerLauncher('ecobank_ci', 'Ecobank', ['com.app.ecobank'], {
+    country: 'CI',
+    launchStrategy: 'package_hint_only',
+    enabled: false
   })
 ] as const;
 
@@ -1286,6 +1370,9 @@ function payerLauncher(
     runtimeVerified?: boolean;
     runtimeVerifiedSource?: string;
     testedStatus?: PayerBankLauncherTestedStatus;
+    country?: PayerBankCountry;
+    ussdTransferTemplate?: string;
+    enabled?: boolean;
   } = {}
 ): PayerBankLauncherOption {
   const androidPackageHint = androidPackageCandidates[0] ?? null;
@@ -1294,12 +1381,12 @@ function payerLauncher(
     payer_bank_launcher_id: payerBankLauncherId,
     bank_id: payerBankLauncherId,
     display_name: displayName,
-    country: 'RU',
+    country: options.country ?? 'RU',
     android_package_candidates: androidPackageCandidates,
     android_package_hint: androidPackageHint,
     deeplink_uri_template: options.deeplinkUriTemplate ?? null,
     deeplink_schemes: options.deeplinkSchemes ?? [],
-    launch_url: androidPackageHint
+    launch_url: androidPackageHint && launchStrategy !== 'ussd_dial'
       ? androidLaunchUrl({
           packageName: androidPackageHint,
           explicitActivityName: launchStrategy === 'explicit_activity_then_package' ? options.androidExplicitActivityName : undefined,
@@ -1313,7 +1400,7 @@ function payerLauncher(
     can_prefill_amount: false,
     can_prefill_reference: false,
     tested_status: options.testedStatus ?? 'not_validated',
-    enabled: true,
+    enabled: options.enabled ?? true,
     detection_supported: false,
     runtime_verified: options.runtimeVerified ?? false,
     does_not_confirm_payment: true,
@@ -1321,6 +1408,7 @@ function payerLauncher(
   };
   assignIfDefined(launcher, 'android_explicit_activity_name', options.androidExplicitActivityName);
   assignIfDefined(launcher, 'runtime_verified_source', options.runtimeVerifiedSource);
+  assignIfDefined(launcher, 'ussd_transfer_template', options.ussdTransferTemplate);
   return launcher;
 }
 
