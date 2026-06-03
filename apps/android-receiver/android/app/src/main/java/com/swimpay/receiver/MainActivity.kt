@@ -36,6 +36,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ReceiverExitInfoReader.logLastExitReason(this)
         configureEdgeToEdgeWindow()
         requestMerchantNotificationPermissionIfNeeded()
         requestBatteryExemptionIfNeeded()
