@@ -31,3 +31,4 @@ apps/android-receiver/android/.kotlin/
 apps/android-receiver/android/build/
 apps/android-receiver/android/app/build/
 .external-skills/
+.apk-research/
