@@ -30,6 +30,7 @@ export interface MatchingSignal {
   currency?: string | undefined;
   senderPhoneHmac?: string | undefined;
   referenceHmac?: string | undefined;
+  senderNameHintHash?: string | undefined;
   directionLabel: DirectionLabel;
   observedAt: string;
   signatureValid: boolean;
@@ -49,6 +50,8 @@ export interface MatchingCandidateSession {
   buyerSenderPhoneHmac?: string | undefined;
   buyerFirstNameRaw?: string | undefined;
   buyerLastNameRaw?: string | undefined;
+  buyerNameStrongMatchHashes?: readonly string[] | undefined;
+  buyerNameInitialMatchHashes?: readonly string[] | undefined;
   referenceHmac?: string | undefined;
   selectedReceiverBankId?: string | undefined;
   selectedReceiverBankProfileId?: string | undefined;
@@ -141,6 +144,7 @@ export interface PaymentIntentGateSignal {
   shapeHash: string;
   referenceHmac?: string | undefined;
   senderPhoneHmac?: string | undefined;
+  senderNameHintHash?: string | undefined;
   receivingRouteId?: string | undefined;
   observedAt: string;
 }
@@ -160,6 +164,8 @@ export interface PaymentIntentGateIntent {
   selectedReceivingMethod: 'phone_transfer' | 'card_transfer';
   buyerFirstName: string;
   buyerLastName: string;
+  buyerNameStrongMatchHashes?: readonly string[] | undefined;
+  buyerNameInitialMatchHashes?: readonly string[] | undefined;
   buyerPhoneHmac?: string | undefined;
   buyerPhoneMasked?: string | undefined;
   buyerSourceCardHmac?: string | undefined;
@@ -232,6 +238,32 @@ const PAYMENT_INTENT_GATE_INCOMING_CATEGORIES = new Set<PaymentIntentGateClassif
   'incoming_card_transfer',
   'incoming_sbp_transfer'
 ]);
+
+/**
+ * Sender-name compatibility from already-hashed evidence (never raw names).
+ * The buyer side derives variant hashes (full/latin/cyrillic/reversed = strong,
+ * initials = weak); the signal carries the hashed sender-name hint. A match is
+ * weak, additive evidence only: per ADR 0005 and task 355 it must never resolve a
+ * collision or, on its own, make a signal an expected-payment candidate.
+ */
+export function evaluateSenderNameCompatibility(
+  senderNameHintHash: string | undefined,
+  strongMatchHashes: readonly string[] | undefined,
+  initialMatchHashes: readonly string[] | undefined
+): MatchConfidenceVector['sender_name'] {
+  if (!senderNameHintHash) {
+    return 'missing';
+  }
+  if (strongMatchHashes && strongMatchHashes.includes(senderNameHintHash)) {
+    return 'strong';
+  }
+  if (initialMatchHashes && initialMatchHashes.includes(senderNameHintHash)) {
+    return 'weak';
+  }
+  return 'mismatch';
+}
+
+const NAME_COMPATIBLE_SCORE_BONUS = 5;
 
 export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecisionOutput {
   const earlyRejection = evaluateHardRejection(input.signal);
@@ -416,6 +448,15 @@ export function computeScore(
     score += 5;
   }
 
+  const senderName = evaluateSenderNameCompatibility(
+    signal.senderNameHintHash,
+    session.buyerNameStrongMatchHashes,
+    session.buyerNameInitialMatchHashes
+  );
+  if (senderName === 'strong' || senderName === 'weak') {
+    score += NAME_COMPATIBLE_SCORE_BONUS;
+  }
+
   return Math.max(0, Math.min(100, score));
 }
 
@@ -513,6 +554,17 @@ function computeReasonCodes(
 
   if (context.templateTrusted) {
     codes.push('trusted_template');
+  }
+
+  const senderName = evaluateSenderNameCompatibility(
+    signal.senderNameHintHash,
+    session.buyerNameStrongMatchHashes,
+    session.buyerNameInitialMatchHashes
+  );
+  if (senderName === 'strong' || senderName === 'weak') {
+    codes.push('name_compatible');
+  } else if (senderName === 'mismatch') {
+    codes.push('name_mismatch');
   }
 
   return codes;
@@ -858,7 +910,11 @@ function buildPaymentIntentGateConfidenceVector(
     receiver_route: hasGateRouteMatch(signal, selected) ? 'exact' : signal.receivingRouteId ? 'compatible' : 'missing',
     bank_package: signal.packageName ? 'package_only' : 'unknown',
     template: signal.shapeHash && signal.shapeHash !== 'unknown' ? 'unknown_shape' : 'unknown_shape',
-    sender_name: 'missing',
+    sender_name: evaluateSenderNameCompatibility(
+      signal.senderNameHintHash,
+      selected.buyerNameStrongMatchHashes,
+      selected.buyerNameInitialMatchHashes
+    ),
     sender_phone: hasGateSenderPhoneMatch(signal, selected) ? 'hmac_match' : 'not_observed',
     sender_card: 'not_observed',
     reference: hasGateReferenceMatch(signal, selected) ? 'exact' : signal.referenceHmac ? 'mismatch' : 'not_observed',
@@ -890,7 +946,11 @@ function buildMatchConfidenceVector(
         : 'missing',
     bank_package: context.bankAppTrusted ? 'trusted_cert' : signal.bankProfileId ? 'package_only' : 'unknown',
     template: context.templateTrusted ? 'known_high' : 'unknown_shape',
-    sender_name: 'missing',
+    sender_name: evaluateSenderNameCompatibility(
+      signal.senderNameHintHash,
+      selected.buyerNameStrongMatchHashes,
+      selected.buyerNameInitialMatchHashes
+    ),
     sender_phone: hasPhoneMatch(signal, selected) ? 'hmac_match' : 'not_observed',
     sender_card: 'not_observed',
     reference: hasReferenceMatch(signal, selected) ? 'exact' : signal.referenceHmac ? 'mismatch' : 'not_observed',
@@ -980,6 +1040,14 @@ function gateIntentScore(signal: PaymentIntentGateSignal, intent: PaymentIntentG
   }
   if (hasGateSenderPhoneMatch(signal, intent)) {
     score += 20;
+  }
+  const senderName = evaluateSenderNameCompatibility(
+    signal.senderNameHintHash,
+    intent.buyerNameStrongMatchHashes,
+    intent.buyerNameInitialMatchHashes
+  );
+  if (senderName === 'strong' || senderName === 'weak') {
+    score += NAME_COMPATIBLE_SCORE_BONUS;
   }
   return score;
 }
