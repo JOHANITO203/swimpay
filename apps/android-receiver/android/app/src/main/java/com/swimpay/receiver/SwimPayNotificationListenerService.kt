@@ -28,10 +28,17 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
             }
             runNotificationSweep(ActiveNotificationSweepSource.SNOOZED_NOTIFICATIONS, snoozed)
         }
+
+        // Flush whatever was captured while the listener was unbound, not only on
+        // the next posted notification.
+        runCatching { SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0) }
     }
 
     override fun onListenerDisconnected() {
         ReceiverListenerLifecycleStore(SharedPreferencesReceiverListenerLifecycleStorage(this)).markDisconnected()
+        // The OEM unbound us in the background: ask the platform to re-bind so the
+        // next bank notification is not lost.
+        ReceiverForegroundService.requestListenerRebind(this)
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
