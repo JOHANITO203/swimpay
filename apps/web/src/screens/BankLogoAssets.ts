@@ -24,7 +24,16 @@ const BANK_LOGO_FILES: Readonly<Record<string, { path: string; mime: string }>> 
   ic_bank_gazprombank: {
     path: 'apps/android-receiver/android/app/src/main/res/drawable-nodpi/ic_bank_gazprombank.png',
     mime: 'image/png'
-  }
+  },
+  ic_bank_orange_money: { path: 'apps/web/assets/payer-logos/orange_money.svg', mime: 'image/svg+xml' },
+  ic_bank_wave: { path: 'apps/web/assets/payer-logos/wave.svg', mime: 'image/svg+xml' },
+  ic_bank_mtn_momo: { path: 'apps/web/assets/payer-logos/mtn_momo.svg', mime: 'image/svg+xml' },
+  ic_bank_moov: { path: 'apps/web/assets/payer-logos/moov.svg', mime: 'image/svg+xml' },
+  ic_bank_free_money: { path: 'apps/web/assets/payer-logos/free_money.svg', mime: 'image/svg+xml' },
+  ic_bank_wizall: { path: 'apps/web/assets/payer-logos/wizall.svg', mime: 'image/svg+xml' },
+  ic_bank_djamo: { path: 'apps/web/assets/payer-logos/djamo.svg', mime: 'image/svg+xml' },
+  ic_bank_sg: { path: 'apps/web/assets/payer-logos/sg.svg', mime: 'image/svg+xml' },
+  ic_bank_ecobank: { path: 'apps/web/assets/payer-logos/ecobank.svg', mime: 'image/svg+xml' }
 };
 
 const bankLogoDataUriCache = new Map<string, string>();

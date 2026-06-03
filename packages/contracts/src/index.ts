@@ -1348,6 +1348,26 @@ export function bankLogoAssetKey(bankProfileId: string): string {
       return 'ic_bank_gazprombank';
     case 'ozon_bank':
       return 'ic_bank_ozon';
+    case 'orange_money_sn':
+    case 'orange_money_ci':
+    case 'orange_money_africa':
+      return 'ic_bank_orange_money';
+    case 'wave_sn':
+      return 'ic_bank_wave';
+    case 'mtn_momo_ci':
+      return 'ic_bank_mtn_momo';
+    case 'moov_money_ci':
+      return 'ic_bank_moov';
+    case 'free_money_sn':
+      return 'ic_bank_free_money';
+    case 'wizall_sn':
+      return 'ic_bank_wizall';
+    case 'djamo_ci':
+      return 'ic_bank_djamo';
+    case 'sg_connect_ci':
+      return 'ic_bank_sg';
+    case 'ecobank_ci':
+      return 'ic_bank_ecobank';
     default:
       return 'ic_bank_unknown';
   }
