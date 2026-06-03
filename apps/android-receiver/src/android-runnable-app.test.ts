@@ -275,7 +275,7 @@ describe('android Gradle wrapper and build validation', () => {
     const gradleProperties = readAndroid('gradle.properties');
 
     expect(gradleProperties).toContain('org.gradle.jvmargs=');
-    expect(gradleProperties).toContain('-XX:MaxMetaspaceSize=512m');
+    expect(gradleProperties).toContain('-XX:MaxMetaspaceSize=1g');
   });
 });
 

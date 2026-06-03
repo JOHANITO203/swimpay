@@ -18,8 +18,8 @@ data class OemAutostartTarget(
  * beyond the standard battery-optimization exemption.
  *
  * The target table is pure/testable; launching is a thin try-each wrapper that
- * relies on ActivityNotFoundException rather than package-visibility queries
- * (so it needs neither QUERY_ALL_PACKAGES nor per-OEM <queries> entries).
+ * relies on ActivityNotFoundException rather than package-visibility lookups
+ * (so it needs no broad package-visibility permission and no per-OEM query entries).
  */
 object OemAutostartGuide {
     val targets: List<OemAutostartTarget> = listOf(
