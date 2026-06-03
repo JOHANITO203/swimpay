@@ -31,7 +31,7 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
 
         // Flush whatever was captured while the listener was unbound, not only on
         // the next posted notification.
-        runCatching { SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0) }
+        runCatching { SignalUploadWorker.enqueueExpedited(WorkManager.getInstance(this)) }
     }
 
     override fun onListenerDisconnected() {
@@ -80,7 +80,7 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
         val enqueue = enqueuePipelineResult(runtimeConfig, result)
         Log.i(TAG, "outbox_enqueue_success=${enqueue.success} message=${enqueue.safeMessage}")
         if (enqueue.success) {
-            SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0)
+            SignalUploadWorker.enqueueExpedited(WorkManager.getInstance(this))
         }
 
         val recalled = try {
@@ -133,7 +133,7 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
             }
         }
         if (queued > 0) {
-            SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0)
+            SignalUploadWorker.enqueueExpedited(WorkManager.getInstance(this))
         }
     }
 

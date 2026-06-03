@@ -29,7 +29,7 @@ class ReceiverBootReceiver : BroadcastReceiver() {
         runCatching {
             val workManager = WorkManager.getInstance(context)
             ReceiverHeartbeatWorker.enqueuePeriodic(workManager)
-            SignalUploadWorker.enqueue(workManager, 0)
+            SignalUploadWorker.enqueueExpedited(workManager)
         }.onFailure { Log.w(TAG, "work scheduling on boot failed: ${it.javaClass.simpleName}") }
 
         // Best-effort: refused on Android 12+ for a background specialUse start

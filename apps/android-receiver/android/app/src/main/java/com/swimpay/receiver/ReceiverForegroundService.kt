@@ -97,7 +97,7 @@ class ReceiverForegroundService : Service() {
             requestListenerRebind(this)
             // The listener is being re-armed; opportunistically drain anything
             // that was captured before it went down.
-            runCatching { SignalUploadWorker.enqueue(WorkManager.getInstance(this), 0) }
+            runCatching { SignalUploadWorker.enqueueExpedited(WorkManager.getInstance(this)) }
         }
         val offlineNotifier = ReceiverOfflineAlertNotifier(this)
         if (decision.shouldAlertMerchantOffline) {
@@ -142,7 +142,8 @@ class ReceiverForegroundService : Service() {
                 .onFailure { Log.w(TAG, "requestRebind failed: ${it.javaClass.simpleName}") }
         }
 
-        private fun ensureChannel(context: Context) {
+        /** Idempotent; also reused by the expedited upload worker's foreground info. */
+        fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
                 return
             }
@@ -157,7 +158,7 @@ class ReceiverForegroundService : Service() {
             context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
 
-        private fun buildNotification(context: Context): Notification {
+        fun buildNotification(context: Context): Notification {
             return NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification_small)
                 .setContentTitle(context.getString(R.string.receiver_fgs_title))
