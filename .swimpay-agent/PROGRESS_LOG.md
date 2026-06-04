@@ -1,5 +1,13 @@
 # Progress Log
 
+## 2026-06-04 - Production merchant purge (orphan cleanup)
+
+- Purged 18 orphan/probe merchants from the live database in ONE transaction, keeping only the active merchant d8db6373 (merchant-318ce516), identified by triple evidence: latest order (06-03), today's reveal audits from the phone, today's sliding session renewal.
+- Deleted with them: 57 orders, 57 payment sessions, 29 amount leases, 13 signals, 30 reviews/actions, 17 webhook endpoints/integrations, 16 api keys, 37 android sessions, 19 android devices, 11 receiver devices, 414 audit events, 18 orphan users.
+- Guard rail in-script (expected-count check) + pre/post pg_dump backups on vm44909: swimpay-pre-purge-20260604-055543.dump / swimpay-post-purge-20260604-060846.dump in /root/backups.
+- Post-purge state verified: 1 merchant, 9 orders, 1 route, 1 active session, webhook active.
+- Ops note: dedicated SSH key installed for vm44909 (no more password files); live-schema quirk found: intelligence_feedback/intelligence_unknown_shapes/audit_events use TEXT merchant_id (no FK), unlike the migration files.
+
 ## 2026-06-04 - Developer handoff copy + connected-site screen reorganization (Android)
 
 - Reorganized the developer integration screen into 4 cards: Connexion (URL + provision), Identifiants (masked values), Partage développeur (handoff copy + reveal), Maintenance (rotations + SDK guide).
