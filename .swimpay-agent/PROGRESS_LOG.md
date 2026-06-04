@@ -1,5 +1,19 @@
 # Progress Log
 
+## 2026-06-04 - Atomic merchant integration provisioning + webhook readiness invariant
+
+- Root-caused the production "paid but nothing received" class bug: `integration_type='both'` was asserted by default while the webhook half (`webhook_endpoints` row + `webhook_status='active'`) was optional and separable; `syncWebhookEndpoint` silently early-returned without a URL and `updateWebhookUrl` set `active` non-transactionally before the endpoint existed.
+- Added migration `023_integration_atomic_provisioning.sql`: additive `merchant_integrations.secret_key_encrypted` + `merchant_secret_reveal_audit` table.
+- `PgMerchantIntegrationRepository`: new `provisionIntegration` (api key + webhook secret + `webhook_endpoints` + `webhook_status='active'` in ONE transaction, full rollback on failure); `updateWebhookUrl` and `rotateWebhookSecret` are now transactional with the endpoint registered BEFORE the status flips to active; `rotateApiKey` stores an AES-256-GCM encrypted copy of the secret key; consistent integration-row lock ordering across all writers.
+- `integration_ready` is now computed (key present AND webhook active AND URL present) and exposed in every integration response - `integration_type='both'` is no longer trusted as readiness.
+- New endpoints: `POST /v1/merchant/integration/provision` (atomic full binding) and `POST /v1/merchant/integration/secrets/reveal` (re-consultable secrets, new `integration.secrets.reveal` permission for owner/admin + Android mobile sessions only, never API keys; rate limited; audited in `merchant_secret_reveal_audit`; legacy hash-only keys answer `requires_rotation`).
+- Product invariant: `POST /v1/orders` with an API-key principal now returns a loud `409 merchant_webhook_setup_required` while `webhook_status != 'active'` (read-only readiness check, no upsert side effects).
+- Job worker: `enqueueEvent` with zero active endpoints now logs `webhook_event_dropped_no_active_endpoint` (ERROR) and increments `webhook_events_without_active_endpoint_total` instead of silently dropping the confirmation.
+- Android: "Tout connecter (clé + webhook)" provision button; "Révéler les secrets" gated by a dedicated `SecretRevealBiometricGate` (BIOMETRIC_STRONG with device-credential fallback, fail-closed) feeding the existing show-once copy channel; `integration_ready` surfaced on the connected-site screen.
+- Session robustness: `POST /v1/android-merchant/auth/session-refresh` (sliding renewal, Pg + InMemory) called at every app start; Android `createAccount` now auto-falls back to `device-recover` on `409 device_already_registered`, re-attaching to the EXISTING merchant instead of dead-ending (stops duplicate-merchant churn).
+- Validation passed: `tsc -b`, vitest 769/769 (88 files), Gradle `:app:testDebugUnitTest` green (mojibake guard fixed by accenting the new premium UI string).
+- Migrations remain additive; existing endpoints unchanged in shape (additive fields only); the deliberate behavior change is the 409 order gate - the active production merchant must register its webhook URL once via the hardened surface.
+
 ## 2026-05-15T23:10:00+03:00 - Android onboarding receiving methods fix
 
 - Fixed onboarding Ozon selection by adding `ozon_bank` to supported onboarding bank ids.

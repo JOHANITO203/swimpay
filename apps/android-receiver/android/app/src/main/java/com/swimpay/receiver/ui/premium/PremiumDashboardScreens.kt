@@ -2065,6 +2065,8 @@ fun PremiumConnectedSiteStateScreen(
     onRotateApiKey: () -> Unit = {},
     onRotateWebhookSecret: () -> Unit = {},
     onSaveWebhookUrl: (String) -> Unit = {},
+    onProvisionIntegration: (String) -> Unit = {},
+    onRevealSecrets: () -> Unit = {},
     onTestWebhook: () -> Unit = {},
     onOpenDeveloperGuide: () -> Unit = {},
     onAuthorizeCopy: (onAuthorized: () -> Unit) -> Unit = { onAuthorized -> onAuthorized() },
@@ -2090,6 +2092,12 @@ fun PremiumConnectedSiteStateScreen(
                             label = { Text("Webhook URL") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
+                        )
+                        PremiumPrimaryButton(
+                            language.ui("Tout connecter (clé + webhook)"),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = value.actionButtonsEnabled && webhookUrl.isNotBlank(),
+                            onClick = { onProvisionIntegration(webhookUrl) }
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                             PremiumPrimaryButton(
@@ -2119,6 +2127,10 @@ fun PremiumConnectedSiteStateScreen(
                         PremiumOutlineButton(
                             language.ui("Rotation secret webhook"),
                             onClick = { if (value.actionButtonsEnabled) onRotateWebhookSecret() }
+                        )
+                        PremiumOutlineButton(
+                            language.ui("Révéler les secrets"),
+                            onClick = { if (value.actionButtonsEnabled) onRevealSecrets() }
                         )
                         PremiumOutlineButton(
                             language.ui("Guide SDK (PDF)"),

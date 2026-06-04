@@ -31,6 +31,7 @@ export const MerchantPermissions = {
   INTEGRATION_READ: 'integration.read',
   INTEGRATION_KEYS_CREATE: 'integration.keys.create',
   INTEGRATION_KEYS_ROTATE: 'integration.keys.rotate',
+  INTEGRATION_SECRETS_REVEAL: 'integration.secrets.reveal',
   INTEGRATION_WEBHOOK_UPDATE: 'integration.webhook.update',
   INTEGRATION_WEBHOOK_TEST: 'integration.webhook.test',
   INTEGRATION_DELIVERY_READ: 'integration.delivery.read',
@@ -94,6 +95,7 @@ const ANDROID_MERCHANT_MOBILE_PERMISSIONS = [
   MerchantPermissions.INTEGRATION_READ,
   MerchantPermissions.INTEGRATION_KEYS_CREATE,
   MerchantPermissions.INTEGRATION_KEYS_ROTATE,
+  MerchantPermissions.INTEGRATION_SECRETS_REVEAL,
   MerchantPermissions.INTEGRATION_WEBHOOK_UPDATE,
   MerchantPermissions.INTEGRATION_WEBHOOK_TEST,
   MerchantPermissions.INTEGRATION_DELIVERY_READ,
@@ -312,6 +314,11 @@ export interface AuthBffRepository {
     mobileSessionHash: string,
     now: string
   ): Promise<AndroidMerchantMobileSessionRecord | null>;
+  refreshAndroidMerchantMobileSession(input: {
+    mobileSessionHash: string;
+    expiresAt: string;
+    now: string;
+  }): Promise<AndroidMerchantMobileSessionRecord | null>;
   lookupAndroidMerchantDevice(input: AndroidMerchantDeviceLookupInput): Promise<AndroidMerchantDeviceLookupResult>;
   createAndroidMerchantAccount(input: CreateAndroidMerchantAccountInput): Promise<CreateAndroidMerchantAccountResult>;
   linkAndroidMerchantGoogleSub(input: {
@@ -585,6 +592,20 @@ export class InMemoryAuthBffRepository implements AuthBffRepository {
       return null;
     }
     return session;
+  }
+
+  async refreshAndroidMerchantMobileSession(input: {
+    mobileSessionHash: string;
+    expiresAt: string;
+    now: string;
+  }): Promise<AndroidMerchantMobileSessionRecord | null> {
+    const session = await this.getAndroidMerchantMobileSessionByHash(input.mobileSessionHash, input.now);
+    if (!session) {
+      return null;
+    }
+    const refreshed: AndroidMerchantMobileSessionRecord = { ...session, expiresAt: input.expiresAt };
+    this.androidMerchantSessions.set(input.mobileSessionHash, refreshed);
+    return refreshed;
   }
 
   async lookupAndroidMerchantDevice(input: AndroidMerchantDeviceLookupInput): Promise<AndroidMerchantDeviceLookupResult> {
@@ -981,6 +1002,28 @@ export class PgAuthBffRepository implements AuthBffRepository {
         AND d.status = 'active'
        LIMIT 1`,
       [mobileSessionHash, now]
+    );
+    return result.rows[0] ? mapAndroidMerchantMobileSessionRow(result.rows[0]) : null;
+  }
+
+  async refreshAndroidMerchantMobileSession(input: {
+    mobileSessionHash: string;
+    expiresAt: string;
+    now: string;
+  }): Promise<AndroidMerchantMobileSessionRecord | null> {
+    const result = await this.pool.query(
+      `UPDATE android_merchant_sessions s
+       SET expires_at = $2, updated_at = $3
+       FROM android_merchant_devices d
+       WHERE s.session_hash = $1
+        AND s.revoked_at IS NULL
+        AND s.expires_at > $3
+        AND d.id = s.device_id
+        AND d.user_id = s.user_id
+        AND d.merchant_id = s.merchant_id
+        AND d.status = 'active'
+       RETURNING s.id, s.user_id, s.merchant_id, s.device_id, s.expires_at, s.revoked_at`,
+      [input.mobileSessionHash, input.expiresAt, input.now]
     );
     return result.rows[0] ? mapAndroidMerchantMobileSessionRow(result.rows[0]) : null;
   }

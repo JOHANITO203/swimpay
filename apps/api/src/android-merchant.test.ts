@@ -226,6 +226,42 @@ describe('android merchant mobile backend endpoints', () => {
     });
   });
 
+  it('extends an Android merchant mobile session with sliding renewal and rejects invalid tokens', async () => {
+    let nowIso = '2026-05-03T10:05:00.000Z';
+    const { server } = buildAndroidMerchantServer({ clock: () => new Date(nowIso) });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('refresh-device')
+      }
+    });
+    expect(created.statusCode).toBe(201);
+    const token = created.json().mobile_session.token;
+    const initialExpiresAt = created.json().mobile_session.expires_at;
+
+    nowIso = '2026-05-13T10:05:00.000Z';
+    const refreshed = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.SESSION_REFRESH,
+      headers: { authorization: `Bearer ${token}` }
+    });
+    expect(refreshed.statusCode).toBe(200);
+    expect(refreshed.json().mobile_session.sliding_renewal).toBe(true);
+    expect(new Date(refreshed.json().mobile_session.expires_at).getTime()).toBeGreaterThan(
+      new Date(initialExpiresAt).getTime()
+    );
+
+    const invalid = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.SESSION_REFRESH,
+      headers: { authorization: 'Bearer spm_unknown_token' }
+    });
+    expect(invalid.statusCode).toBe(401);
+  });
+
   it('restores a mobile session for a known Android merchant device without Google', async () => {
     const { server } = buildAndroidMerchantServer();
 
@@ -1582,6 +1618,7 @@ function buildAndroidMerchantServer(params: {
   connectedSite?: { url: string; status: 'active' | 'problem' };
   googleVerifier?: GoogleIdTokenVerifier;
   merchantMetricsRepository?: MerchantMetricsRepository;
+  clock?: () => Date;
 } = {}) {
   const orderRepository = new FakeOrderRepository();
   const reviewRepository = new FakeReviewRepository();
@@ -1614,7 +1651,7 @@ function buildAndroidMerchantServer(params: {
       eventId: () => 'evt_review_01'
     },
     androidMerchantDeliveryIdGenerator: () => 'delivery_test_01',
-    clock: () => new Date('2026-05-03T10:05:00.000Z'),
+    clock: params.clock ?? (() => new Date('2026-05-03T10:05:00.000Z')),
     ...(params.googleVerifier ? { googleIdTokenVerifier: params.googleVerifier } : {}),
     ...(params.connectedSite ? { androidMerchantConnectedSite: params.connectedSite } : {}),
     ...(params.merchantMetricsRepository ? { merchantMetricsRepository: params.merchantMetricsRepository } : {})

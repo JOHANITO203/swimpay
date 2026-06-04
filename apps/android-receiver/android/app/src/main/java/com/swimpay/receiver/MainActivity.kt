@@ -30,6 +30,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var notificationAccessStatusReader: NotificationAccessStatusReader
     private lateinit var merchantSettingsStore: SharedPreferencesPremiumMerchantSettingsStore
     private lateinit var appUnlocker: AndroidSystemAppUnlocker
+    private lateinit var secretRevealGate: SecretRevealBiometricGate
     private var notificationAccessEnabled by mutableStateOf(false)
     private var themeMode by mutableStateOf(PremiumThemeMode.SYSTEM)
     private var uiLocked by mutableStateOf(false)
@@ -43,6 +44,7 @@ class MainActivity : FragmentActivity() {
         notificationAccessStatusReader = NotificationAccessStatusReader(this)
         merchantSettingsStore = SharedPreferencesPremiumMerchantSettingsStore(this)
         appUnlocker = AndroidSystemAppUnlocker(this)
+        secretRevealGate = SecretRevealBiometricGate(this)
         notificationAccessEnabled = notificationAccessStatusReader.isEnabled()
         themeMode = merchantSettingsStore.load().themeMode
         val baseUrl = AndroidMerchantBackendConfig.configuredBaseUrl()
@@ -79,6 +81,9 @@ class MainActivity : FragmentActivity() {
                         merchantSettingsStore = merchantSettingsStore,
                         uiLocked = uiLocked,
                         onRequestUnlock = { onUnlocked -> requestSystemUnlock(onUnlocked) },
+                        onRequestSecretReveal = { onAuthorized, onUnavailable ->
+                            secretRevealGate.requestSecretReveal(onAuthorized, onUnavailable)
+                        },
                         onThemeModeChanged = { themeMode = it },
                         onboardingCompletionStore = onboardingCompletionStore,
                         mobileMerchantSessionStore = mobileMerchantSessionStore,

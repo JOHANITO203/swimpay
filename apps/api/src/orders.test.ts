@@ -723,10 +723,11 @@ function buildTestServer(repository: InMemoryOrderRepository, metrics?: InMemory
 
 function buildProductionOrderServer(repository: InMemoryOrderRepository) {
   const merchantApiKeyVerifier = new InMemoryMerchantApiKeyVerifier();
+  const merchantIntegrationRepository = new InMemoryMerchantIntegrationRepository();
   const server = buildApiServer({
     environment: 'production',
     orderRepository: repository,
-    merchantIntegrationRepository: new InMemoryMerchantIntegrationRepository(),
+    merchantIntegrationRepository,
     merchantApiKeyVerifier,
     phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
     checkoutBaseUrl: 'https://pay.swimpay.example/checkout',
@@ -748,7 +749,7 @@ function buildProductionOrderServer(repository: InMemoryOrderRepository) {
       tokenHmacSecret: 'production_admin_hmac_secret_for_tests'
     }
   });
-  return { server, merchantApiKeyVerifier };
+  return { server, merchantApiKeyVerifier, merchantIntegrationRepository };
 }
 
 const validOrderPayload = {
@@ -1184,7 +1185,7 @@ describe('order api', () => {
 
   test('enforces API key scopes for SDK order creation and reads', async () => {
     const repository = new InMemoryOrderRepository();
-    const { server, merchantApiKeyVerifier } = buildProductionOrderServer(repository);
+    const { server, merchantApiKeyVerifier, merchantIntegrationRepository } = buildProductionOrderServer(repository);
     merchantApiKeyVerifier.seedRawKey('sk_live_read_only', {
       merchantId: 'merchant_prod_01',
       apiKeyId: 'key_read_only',
@@ -1195,6 +1196,11 @@ describe('order api', () => {
       apiKeyId: 'key_write_only',
       scopes: ['orders.write']
     });
+    await merchantIntegrationRepository.updateWebhookUrl(
+      'merchant_prod_01',
+      'https://merchant.example/webhooks/swimpay',
+      '2026-05-02T09:00:00.000Z'
+    );
 
     const forbiddenCreate = await server.inject({
       method: 'POST',
@@ -1226,6 +1232,45 @@ describe('order api', () => {
       headers: { authorization: 'Bearer sk_live_read_only' }
     });
     expect(read.statusCode).toBe(200);
+  });
+
+  test('blocks API-key order creation with a loud 409 while the merchant webhook is not active', async () => {
+    const repository = new InMemoryOrderRepository();
+    const { server, merchantApiKeyVerifier, merchantIntegrationRepository } = buildProductionOrderServer(repository);
+    merchantApiKeyVerifier.seedRawKey('sk_live_no_webhook', {
+      merchantId: 'merchant_prod_02',
+      apiKeyId: 'key_no_webhook',
+      scopes: ['orders.write']
+    });
+
+    const blocked = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer sk_live_no_webhook' },
+      payload: validOrderPayload
+    });
+    expect(blocked.statusCode).toBe(409);
+    expect(blocked.json().error.code).toBe('merchant_webhook_setup_required');
+    expect(blocked.json().error.details).toMatchObject({
+      webhook_status: 'not_configured',
+      integration_ready: false,
+      setup_actions: ['configure_webhook']
+    });
+    expect(repository.orders.size).toBe(0);
+
+    await merchantIntegrationRepository.updateWebhookUrl(
+      'merchant_prod_02',
+      'https://merchant.example/webhooks/swimpay',
+      '2026-05-02T09:00:00.000Z'
+    );
+
+    const created = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer sk_live_no_webhook' },
+      payload: validOrderPayload
+    });
+    expect(created.statusCode).toBe(201);
   });
 
   test('fails fast when production phone HMAC secret is missing', () => {

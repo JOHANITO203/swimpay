@@ -92,6 +92,52 @@ describe('webhook worker foundation', () => {
     expect(httpClient.requests).toHaveLength(0);
   });
 
+  it('logs a loud error and increments a dedicated metric when no active endpoint can receive the event', async () => {
+    const repository = new InMemoryWebhookRepository({
+      deliveryId: () => 'del_orphan'
+    });
+    const metrics = new InMemoryMetricsRegistry();
+    const errorLogs: Array<{ message: string; fields?: Record<string, unknown> | undefined }> = [];
+    const worker = new WebhookDeliveryWorker({
+      repository,
+      httpClient: new FakeWebhookHttpClient([{ status: 200 }]),
+      metrics,
+      logger: {
+        info: () => {},
+        warn: () => {},
+        error: (message, fields) => errorLogs.push({ message, fields })
+      }
+    });
+
+    const result = await worker.enqueueEvent(
+      createPaymentWebhookEvent({
+        eventId: 'evt_orphan',
+        type: 'payment.confirmed',
+        createdAt: '2026-05-02T10:00:00.000Z',
+        merchantId: 'mch_without_endpoint',
+        data: {
+          order_id: 'ord_01',
+          payment_session_id: 'ps_01',
+          decision: 'manual_confirmed'
+        }
+      })
+    );
+
+    expect(result).toEqual({ created: 0, skippedDuplicates: 0 });
+    expect(repository.deliveries).toHaveLength(0);
+    expect(errorLogs).toContainEqual(
+      expect.objectContaining({
+        message: 'webhook_event_dropped_no_active_endpoint',
+        fields: expect.objectContaining({
+          merchant_id: 'mch_without_endpoint',
+          event_id: 'evt_orphan',
+          event_type: 'payment.confirmed'
+        })
+      })
+    );
+    expect(metrics.counterValue(MetricNames.WEBHOOK_EVENTS_WITHOUT_ACTIVE_ENDPOINT_TOTAL)).toBe(1);
+  });
+
   it('does not allow endpoints to subscribe to internal fulfillment event names', async () => {
     const repository = new InMemoryWebhookRepository({
       deliveryId: () => 'del_confirmed'

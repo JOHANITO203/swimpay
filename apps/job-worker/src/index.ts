@@ -59,7 +59,7 @@ export async function createJobWorkerRuntime(
   const nats = new NatsJetStreamRuntime(natsConfig, logger, metrics);
   const consumers = createJobWorkerConsumers(natsConfig.durablePrefix);
   const statusTracker = new RuntimeStatusTracker();
-  const webhookProcessor = createDefaultWebhookProcessor(env, webhookConfig, metrics);
+  const webhookProcessor = createDefaultWebhookProcessor(env, webhookConfig, metrics, logger);
   const noNotificationFallbackProcessor = createDefaultNoNotificationFallbackProcessor(env, noNotificationFallbackConfig);
   const webhookPollingLoop = webhookProcessor
     ? new WebhookPollingLoop({
@@ -195,7 +195,8 @@ function createSafeStubHandler(workerName: string) {
 function createDefaultWebhookProcessor(
   env: NodeJS.ProcessEnv,
   config: WebhookWorkerConfig,
-  metrics: MetricsRegistry
+  metrics: MetricsRegistry,
+  logger: SafeEventLogger
 ): WebhookRuntimeProcessor | null {
   if (!env.DATABASE_URL) {
     return null;
@@ -207,7 +208,8 @@ function createDefaultWebhookProcessor(
     idempotencyLedger: new PgWorkerIdempotencyLedger(env.DATABASE_URL),
     maxAttempts: config.maxAttempts,
     requestTimeoutMs: config.requestTimeoutMs,
-    metrics
+    metrics,
+    logger
   });
 }
 

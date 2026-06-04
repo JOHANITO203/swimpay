@@ -1287,6 +1287,169 @@ class AndroidMerchantApiWiringTest {
     }
 
     @Test
+    fun developerIntegrationRepositoryProvisionsAtomicallyAndRevealsSecretsWithRotationFlags() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                201,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_test_mobile",
+                  "secret_key_masked": "sk_•••8888",
+                  "secret_key_once": "sk_test_provisioned_once",
+                  "webhook_secret_masked": "whsec_•••7777",
+                  "webhook_secret_once": "whsec_provisioned_once",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "integration_ready": true,
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "secret_key": "sk_test_revealed_clear",
+                  "webhook_secret": "whsec_revealed_clear",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "secret_key_requires_rotation": false,
+                  "webhook_secret_requires_rotation": true,
+                  "reveal_audited": true
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(429, """{"error":{"code":"secret_reveal_rate_limited"}}""")
+        )
+        val session = AuthenticatedMerchantSession.mobile("mch_mobile", "spm_mobile_session_secret")
+        val repository = MerchantDeveloperIntegrationApiRepository(transport)
+
+        val provisioned = repository.provisionIntegration(session, " https://merchant.example/swimpay/webhook ")
+        assertEquals(MerchantRepositoryState.SUCCESS, provisioned.state)
+        assertEquals("sk_test_provisioned_once", provisioned.integration?.secretKeyOnce)
+        assertEquals("whsec_provisioned_once", provisioned.integration?.webhookSecretOnce)
+        assertTrue(provisioned.integration?.integrationReady == true)
+
+        val revealed = repository.revealSecrets(session)
+        assertEquals(MerchantRepositoryState.SUCCESS, revealed.state)
+        assertEquals("sk_test_revealed_clear", revealed.secretKey)
+        assertEquals("whsec_revealed_clear", revealed.webhookSecret)
+        assertFalse(revealed.secretKeyRequiresRotation)
+        assertTrue(revealed.webhookSecretRequiresRotation)
+
+        val rateLimited = repository.revealSecrets(session)
+        assertEquals(MerchantRepositoryState.ERROR, rateLimited.state)
+        assertEquals(null, rateLimited.secretKey)
+        assertTrue(rateLimited.safeMessage.contains("Reessayez"))
+
+        assertEquals("/v1/merchant/integration/provision", transport.requests[0].path)
+        assertTrue(transport.requests[0].body.contains("\"webhook_url\":\"https://merchant.example/swimpay/webhook\""))
+        assertEquals("/v1/merchant/integration/secrets/reveal", transport.requests[1].path)
+        assertEquals("{}", transport.requests[1].body)
+        assertTrue(transport.requests.all { it.headers["Authorization"] == "Bearer spm_mobile_session_secret" })
+    }
+
+    @Test
+    fun androidAuthRepositoryRecoversExistingMerchantWhenDeviceAlreadyRegistered() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                409,
+                """
+                {
+                  "error": {
+                    "code": "invalid_request",
+                    "message": "This Android merchant device proof is already linked to an account.",
+                    "details": { "device_status": "known_device" }
+                  }
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "account": {
+                    "user_id": "usr_existing",
+                    "merchant_id": "mch_existing",
+                    "display_handle": "merchant-existing"
+                  },
+                  "mobile_session": {
+                    "token": "spm_recovered_secret",
+                    "expires_at": "2026-07-03T10:05:00.000Z"
+                  }
+                }
+                """.trimIndent()
+            )
+        )
+        val repository = AndroidMerchantAuthApiRepository(
+            transport = transport,
+            deviceProofProvider = StaticAndroidMerchantDeviceProofProvider(
+                AndroidMerchantDeviceProof(
+                    installPublicKey = "install_public_key_recover",
+                    challengeId = "challenge_recover",
+                    challengeSignature = "signature_recover"
+                )
+            )
+        )
+
+        val result = repository.createAccount(AndroidMerchantAccountProfileType.PERSONAL)
+
+        assertEquals(AndroidMerchantAuthResultStatus.SUCCESS, result.status)
+        assertEquals("mch_existing", result.mobileSession?.merchantId)
+        assertEquals("usr_existing", result.mobileSession?.userId)
+        assertEquals("/v1/android-merchant/auth/create-account", transport.requests[0].path)
+        assertEquals("/v1/android-merchant/auth/device-recover", transport.requests[1].path)
+    }
+
+    @Test
+    fun androidAuthRepositoryRefreshesMobileSessionWithSlidingRenewal() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "mobile_session": {
+                    "expires_at": "2026-08-01T00:00:00.000Z",
+                    "sliding_renewal": true
+                  }
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(401, """{"error":{"code":"invalid_request"}}""")
+        )
+        val repository = AndroidMerchantAuthApiRepository(
+            transport = transport,
+            deviceProofProvider = StaticAndroidMerchantDeviceProofProvider(
+                AndroidMerchantDeviceProof(
+                    installPublicKey = "install_public_key_refresh",
+                    challengeId = "challenge_refresh",
+                    challengeSignature = "signature_refresh"
+                )
+            )
+        )
+        val session = AndroidMerchantMobileSession(
+            merchantId = "mch_mobile",
+            userId = "usr_mobile",
+            displayHandle = "merchant-12345678",
+            mobileSessionToken = "spm_mobile_session_secret",
+            expiresAtEpochMs = 1_000L
+        )
+
+        val refreshed = repository.refreshMobileSession(session)
+
+        requireNotNull(refreshed)
+        assertEquals("mch_mobile", refreshed.merchantId)
+        assertTrue(refreshed.expiresAtEpochMs > session.expiresAtEpochMs)
+        assertEquals("Bearer spm_mobile_session_secret", AuthenticatedMerchantSession.mobile(refreshed).authorizationHeader())
+        assertEquals("/v1/android-merchant/auth/session-refresh", transport.requests[0].path)
+        assertEquals("Bearer spm_mobile_session_secret", transport.requests[0].headers["Authorization"])
+
+        val expired = repository.refreshMobileSession(session)
+        assertEquals(null, expired)
+    }
+
+    @Test
     fun dashboardRepositoryShowsReceivingMethodReadinessAction() {
         val session = AuthenticatedMerchantSession.localDev("mch_demo")
         val transport = RecordingMerchantApiTransport(

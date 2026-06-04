@@ -198,6 +198,7 @@ object AndroidMerchantAuthApiContract {
     const val CREATE_ACCOUNT_PATH = "/v1/android-merchant/auth/create-account"
     const val GOOGLE_EXCHANGE_PATH = "/v1/android-merchant/auth/google/exchange"
     const val GOOGLE_LINK_PATH = "/v1/android-merchant/auth/google/link"
+    const val SESSION_REFRESH_PATH = "/v1/android-merchant/auth/session-refresh"
 }
 
 data class AndroidMerchantAccountEntryContract(
@@ -280,6 +281,15 @@ class AndroidMerchantAuthApiRepository(
             )
         )
         if (response.statusCode !in 200..299) {
+            if (
+                response.statusCode == 409 &&
+                extractString(response.body, "device_status") == AndroidMerchantDeviceLookupStatus.KNOWN_DEVICE.wireValue
+            ) {
+                // Same physical device, account already registered: re-attach to the
+                // EXISTING merchant via device recovery instead of dead-ending. This
+                // is what prevents merchants from re-creating duplicate accounts.
+                return recoverKnownDevice()
+            }
             return AndroidMerchantAccountCreateResult(
                 status = AndroidMerchantAuthResultStatus.ACTION_REQUIRED,
                 safeMessage = "Compte non créé"
@@ -304,6 +314,29 @@ class AndroidMerchantAuthApiRepository(
                 safeMessage = "Connexion locale indisponible. Essayez Google."
             )
         }
+    }
+
+    fun refreshMobileSession(session: AndroidMerchantMobileSession): AndroidMerchantMobileSession? {
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = AndroidMerchantAuthApiContract.SESSION_REFRESH_PATH,
+                headers = mapOf("Authorization" to "Bearer ${session.authorizationTokenForRuntime()}"),
+                body = jsonObject()
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return null
+        }
+        val mobileSession = extractObjectValue(response.body, "mobile_session").orEmpty()
+        val expiresAt = extractString(mobileSession, "expires_at") ?: return null
+        return AndroidMerchantMobileSession(
+            merchantId = session.merchantId,
+            userId = session.userId,
+            displayHandle = session.displayHandle,
+            mobileSessionToken = session.authorizationTokenForRuntime(),
+            expiresAtEpochMs = parseIsoEpochMs(expiresAt)
+        )
     }
 
     private fun accountCreateResultFrom(response: MerchantApiResponse): AndroidMerchantAccountCreateResult {
@@ -1535,7 +1568,8 @@ data class MerchantDeveloperIntegrationSnapshot(
     val webhookUrl: String,
     val webhookStatus: String,
     val integrationType: String,
-    val publicWebhookEvents: List<String>
+    val publicWebhookEvents: List<String>,
+    val integrationReady: Boolean = false
 ) {
     fun effectiveSecretKey(): String = secretKeyMasked
 
@@ -1650,6 +1684,16 @@ data class MerchantDeveloperIntegrationResult(
     }
 }
 
+data class MerchantSecretRevealResult(
+    val state: MerchantRepositoryState,
+    val secretKey: String?,
+    val webhookSecret: String?,
+    val webhookUrl: String?,
+    val secretKeyRequiresRotation: Boolean,
+    val webhookSecretRequiresRotation: Boolean,
+    val safeMessage: String
+)
+
 class MerchantDeveloperIntegrationApiRepository(
     private val transport: MerchantApiTransport
 ) {
@@ -1675,6 +1719,61 @@ class MerchantDeveloperIntegrationApiRepository(
             "PUT",
             "/v1/merchant/integration/webhook-url",
             jsonObject("webhook_url" to webhookUrl.trim())
+        )
+    }
+
+    fun provisionIntegration(session: AuthenticatedMerchantSession, webhookUrl: String): MerchantDeveloperIntegrationResult {
+        return requestIntegration(
+            session,
+            "POST",
+            "/v1/merchant/integration/provision",
+            jsonObject("webhook_url" to webhookUrl.trim())
+        )
+    }
+
+    fun revealSecrets(session: AuthenticatedMerchantSession): MerchantSecretRevealResult {
+        if (!session.isAuthenticated) {
+            return MerchantSecretRevealResult(
+                state = MerchantRepositoryState.ACTION_REQUIRED,
+                secretKey = null,
+                webhookSecret = null,
+                webhookUrl = null,
+                secretKeyRequiresRotation = false,
+                webhookSecretRequiresRotation = false,
+                safeMessage = "Session marchand requise"
+            )
+        }
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = "/v1/merchant/integration/secrets/reveal",
+                headers = authHeaders(session),
+                body = jsonObject()
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return MerchantSecretRevealResult(
+                state = MerchantRepositoryState.ERROR,
+                secretKey = null,
+                webhookSecret = null,
+                webhookUrl = null,
+                secretKeyRequiresRotation = false,
+                webhookSecretRequiresRotation = false,
+                safeMessage = if (response.statusCode == 429) {
+                    "Trop de demandes. Reessayez plus tard."
+                } else {
+                    "Revelation des secrets indisponible"
+                }
+            )
+        }
+        return MerchantSecretRevealResult(
+            state = MerchantRepositoryState.SUCCESS,
+            secretKey = extractString(response.body, "secret_key"),
+            webhookSecret = extractString(response.body, "webhook_secret"),
+            webhookUrl = extractString(response.body, "webhook_url"),
+            secretKeyRequiresRotation = extractBoolean(response.body, "secret_key_requires_rotation") == true,
+            webhookSecretRequiresRotation = extractBoolean(response.body, "webhook_secret_requires_rotation") == true,
+            safeMessage = "Secrets reveles. Copiez-les maintenant."
         )
     }
 
@@ -2095,7 +2194,8 @@ fun String.toMerchantDeveloperIntegrationSnapshot(): MerchantDeveloperIntegratio
         integrationType = extractString(this, "integration_type") ?: "both",
         publicWebhookEvents = extractStringArray(this, "public_webhook_events").ifEmpty {
             listOf("payment.confirmed", "payment.rejected", "payment.expired")
-        }
+        },
+        integrationReady = extractBoolean(this, "integration_ready") == true
     )
 }
 

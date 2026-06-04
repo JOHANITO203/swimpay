@@ -58,7 +58,8 @@ import {
   validateWebhookUrl,
   type MerchantDeliveryHistoryRow,
   type MerchantIntegrationRepository,
-  type MerchantIntegrationState
+  type MerchantIntegrationState,
+  type WebhookReadiness
 } from './developer-integration.js';
 import {
   BFF_SESSION_COOKIE_NAME,
@@ -204,6 +205,8 @@ import {
 const { Pool } = pg;
 const COPY_DETAILS_RATE_LIMIT_MAX = 3;
 const COPY_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const SECRET_REVEAL_RATE_LIMIT_MAX = 5;
+const SECRET_REVEAL_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const COPY_DETAILS_REVEAL_TTL_MS = 2 * 60 * 1000;
 const ANDROID_MERCHANT_MOBILE_SESSION_TTL_MS = 60 * 60 * 24 * 30 * 1000;
 const SDK_API_KEY_SCOPES = {
@@ -609,6 +612,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const clock = options.clock ?? (() => new Date());
   const startedAt = options.startedAt ?? new Date();
   const copyDetailsLimiter = new Map<string, { windowStartedAtMs: number; count: number }>();
+  const secretRevealLimiter = new Map<string, { windowStartedAtMs: number; count: number }>();
 
   server.addHook('onRequest', async (request, reply) => {
     const incoming = Array.isArray(request.headers['x-correlation-id'])
@@ -1141,6 +1145,83 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     );
   });
 
+  server.post('/v1/merchant/integration/provision', async (request, reply) => {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_KEYS_CREATE, {
+      requireCsrf: true,
+      allowAndroidMobile: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
+    }
+    if (!merchantIntegrationRepository) {
+      return reply.status(503).send(developerIntegrationUnavailableError());
+    }
+    const body = request.body as { webhook_url?: unknown } | null;
+    const webhookUrl = validateWebhookUrl(body?.webhook_url);
+    if (!webhookUrl.valid) {
+      return reply.status(400).send(invalidRequest(webhookUrl.message, { field: 'webhook_url' }));
+    }
+
+    const result = await merchantIntegrationRepository.provisionIntegration(
+      merchantContext.merchantId,
+      webhookUrl.value,
+      clock().toISOString()
+    );
+    request.log.info(
+      { merchant_id: merchantContext.merchantId, source: merchantContext.source },
+      'merchant_integration_provisioned'
+    );
+    return reply.status(201).send(toMerchantIntegrationResponse(result));
+  });
+
+  server.post('/v1/merchant/integration/secrets/reveal', async (request, reply) => {
+    const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_SECRETS_REVEAL, {
+      requireCsrf: true,
+      allowAndroidMobile: true
+    });
+    if (!merchantContext) {
+      if (reply.sent) return reply;
+      return reply.status(401).send(invalidRequest('An authenticated merchant session is required for developer integration.', {}));
+    }
+    if (!merchantIntegrationRepository) {
+      return reply.status(503).send(developerIntegrationUnavailableError());
+    }
+    if (isSecretRevealRateLimited(secretRevealLimiter, merchantContext.merchantId, clock().getTime())) {
+      reply.header('Retry-After', String(Math.ceil(SECRET_REVEAL_RATE_LIMIT_WINDOW_MS / 1000)));
+      return reply.status(429).send({
+        error: {
+          code: 'secret_reveal_rate_limited',
+          message: 'Secret reveal was requested too often. Try again later.',
+          details: {}
+        }
+      });
+    }
+
+    const reveal = await merchantIntegrationRepository.revealSecrets(
+      merchantContext.merchantId,
+      merchantContext.source,
+      clock().toISOString()
+    );
+    request.log.info(
+      {
+        merchant_id: merchantContext.merchantId,
+        source: merchantContext.source,
+        revealed_fields: [...(reveal.secretKey ? ['secret_key'] : []), ...(reveal.webhookSecret ? ['webhook_secret'] : [])]
+      },
+      'merchant_secret_reveal'
+    );
+    return reply.status(200).send({
+      merchant_id: merchantContext.merchantId,
+      secret_key: reveal.secretKey,
+      webhook_secret: reveal.webhookSecret,
+      webhook_url: reveal.webhookUrl,
+      secret_key_requires_rotation: reveal.secretKeyRequiresRotation,
+      webhook_secret_requires_rotation: reveal.webhookSecretRequiresRotation,
+      reveal_audited: true
+    });
+  });
+
   server.post('/v1/merchant/integration/test-webhook', async (request, reply) => {
     const merchantContext = await resolveMerchantContext(request, reply, MerchantPermissions.INTEGRATION_WEBHOOK_TEST, {
       requireCsrf: true,
@@ -1227,6 +1308,17 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     const readiness = await resolveMerchantPaymentReadiness(repository, merchantId);
     if (merchantContext.source === 'api_key' && !readiness.payment_ready) {
       return reply.status(409).send(merchantPaymentSetupRequiredError(readiness));
+    }
+
+    if (merchantContext.source === 'api_key' && merchantIntegrationRepository) {
+      const webhookReadiness = await merchantIntegrationRepository.getWebhookReadiness(merchantId);
+      if (webhookReadiness.webhookStatus !== 'active') {
+        request.log.error(
+          { merchant_id: merchantId, webhook_status: webhookReadiness.webhookStatus },
+          'order_creation_blocked_webhook_not_active'
+        );
+        return reply.status(409).send(merchantWebhookSetupRequiredError(webhookReadiness));
+      }
     }
 
     const createInput = buildOrderCreateInput({
@@ -2688,6 +2780,43 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         recovery_options: ['google']
       })
     );
+  });
+
+  server.post(AndroidMerchantAccountAuthPaths.SESSION_REFRESH, async (request, reply) => {
+    const mobileSession = await requireAndroidMerchantMobileSession(request, reply);
+    if (!mobileSession) {
+      return;
+    }
+    if (!authBffRepository) {
+      return reply.status(503).send(authBffRepositoryUnavailableError());
+    }
+    const bearerToken = parseBearerToken(request.headers.authorization);
+    if (!bearerToken) {
+      return reply.status(401).send(
+        invalidRequest('An Android merchant mobile session is required for this endpoint.', {
+          authorization: 'Bearer spm_<mobile_session_token>'
+        })
+      );
+    }
+    const now = clock();
+    const refreshed = await authBffRepository.refreshAndroidMerchantMobileSession({
+      mobileSessionHash: hashAndroidMerchantMobileSessionToken(bearerToken),
+      expiresAt: new Date(now.getTime() + ANDROID_MERCHANT_MOBILE_SESSION_TTL_MS).toISOString(),
+      now: now.toISOString()
+    });
+    if (!refreshed) {
+      return reply.status(401).send(
+        invalidRequest('Android merchant mobile session could not be refreshed.', {
+          recovery_options: ['device_recover', 'google']
+        })
+      );
+    }
+    return reply.status(200).send({
+      mobile_session: {
+        expires_at: refreshed.expiresAt,
+        sliding_renewal: true
+      }
+    });
   });
 
   server.post(AndroidMerchantAccountAuthPaths.GOOGLE_EXCHANGE, async (request, reply) => {
@@ -5061,6 +5190,21 @@ async function resolveMerchantPaymentReadiness(
   };
 }
 
+function merchantWebhookSetupRequiredError(readiness: WebhookReadiness): Record<string, unknown> {
+  return {
+    error: {
+      code: 'merchant_webhook_setup_required',
+      message: 'Merchant must register an active webhook endpoint before accepting orders.',
+      details: {
+        webhook_status: readiness.webhookStatus,
+        integration_ready: readiness.integrationReady,
+        setup_actions: ['configure_webhook'],
+        setup_hint: 'Register the webhook URL via PUT /v1/merchant/integration/webhook-url or provision the full integration via POST /v1/merchant/integration/provision.'
+      }
+    }
+  };
+}
+
 function merchantPaymentSetupRequiredError(readiness: MerchantPaymentReadiness): Record<string, unknown> {
   return {
     error: {
@@ -5116,6 +5260,25 @@ function isCopyDetailsRateLimited(
   }
 
   if (current.count >= COPY_DETAILS_RATE_LIMIT_MAX) {
+    return true;
+  }
+
+  current.count += 1;
+  return false;
+}
+
+function isSecretRevealRateLimited(
+  limiter: Map<string, { windowStartedAtMs: number; count: number }>,
+  key: string,
+  nowMs: number
+): boolean {
+  const current = limiter.get(key);
+  if (!current || nowMs - current.windowStartedAtMs >= SECRET_REVEAL_RATE_LIMIT_WINDOW_MS) {
+    limiter.set(key, { windowStartedAtMs: nowMs, count: 1 });
+    return false;
+  }
+
+  if (current.count >= SECRET_REVEAL_RATE_LIMIT_MAX) {
     return true;
   }
 

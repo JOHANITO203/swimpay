@@ -115,7 +115,7 @@ function buildProductionStagingServer() {
       valkey: async () => 'skipped'
     }
   });
-  return { server, authBffRepository, merchantApiKeyVerifier, orderRepository, receiverDeviceRepository };
+  return { server, authBffRepository, merchantIntegrationRepository, merchantApiKeyVerifier, orderRepository, receiverDeviceRepository };
 }
 
 async function createProductionSession(authBffRepository: InMemoryAuthBffRepository, role = 'owner') {
@@ -190,12 +190,17 @@ describe('production-mode staging boundaries', () => {
   });
 
   it('validates production SDK API key order creation and rejects unsafe order fields', async () => {
-    const { server, merchantApiKeyVerifier, orderRepository } = buildProductionStagingServer();
+    const { server, merchantApiKeyVerifier, merchantIntegrationRepository, orderRepository } = buildProductionStagingServer();
     merchantApiKeyVerifier.seedRawKey('sk_live_stage_server_only', {
       merchantId: '22222222-2222-4222-8222-222222222222',
       apiKeyId: 'key_stage_01',
       scopes: ['orders.write']
     });
+    await merchantIntegrationRepository.updateWebhookUrl(
+      '22222222-2222-4222-8222-222222222222',
+      'https://merchant.example/webhooks/swimpay',
+      '2026-05-07T11:00:00.000Z'
+    );
 
     const testBearer = await server.inject({
       method: 'POST',

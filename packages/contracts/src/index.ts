@@ -1787,7 +1787,8 @@ export const AndroidMerchantAccountAuthPaths = {
   DEVICE_RECOVER: '/v1/android-merchant/auth/device-recover',
   CREATE_ACCOUNT: '/v1/android-merchant/auth/create-account',
   GOOGLE_EXCHANGE: '/v1/android-merchant/auth/google/exchange',
-  GOOGLE_LINK: '/v1/android-merchant/auth/google/link'
+  GOOGLE_LINK: '/v1/android-merchant/auth/google/link',
+  SESSION_REFRESH: '/v1/android-merchant/auth/session-refresh'
 } as const;
 
 export type AndroidMerchantAccountAuthPath =

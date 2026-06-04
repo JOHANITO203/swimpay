@@ -1,6 +1,6 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import pg from 'pg';
-import { PUBLIC_EVENT_SIGNAL_DISCLOSURE } from '@swimpay/events';
+import { PUBLIC_EVENT_SIGNAL_DISCLOSURE, type SafeEventLogger } from '@swimpay/events';
 import { MetricNames, type MetricsRegistry } from '@swimpay/observability';
 import { assertPublicWebhookUrlEgressAllowed, decryptSecret } from '@swimpay/security';
 import { runWithWorkerIdempotency, type WorkerIdempotencyLedger } from './idempotency-ledger.js';
@@ -129,6 +129,7 @@ export interface WebhookDeliveryWorkerOptions {
   requestTimeoutMs?: number | undefined;
   claimTimeoutMs?: number | undefined;
   metrics?: MetricsRegistry | undefined;
+  logger?: SafeEventLogger | undefined;
 }
 
 export const WEBHOOK_RETRY_DELAYS_MS = [
@@ -164,6 +165,17 @@ export class WebhookDeliveryWorker {
     const endpoints = await this.options.repository.listActiveEndpoints(event.merchant_id, event.type);
     let created = 0;
     let skippedDuplicates = 0;
+
+    if (endpoints.length === 0) {
+      // A confirmed payment with nobody to notify is a merchant-facing outage, never a silent no-op.
+      this.options.logger?.error('webhook_event_dropped_no_active_endpoint', {
+        merchant_id: event.merchant_id,
+        event_id: event.id,
+        event_type: event.type
+      });
+      this.options.metrics?.increment(MetricNames.WEBHOOK_EVENTS_WITHOUT_ACTIVE_ENDPOINT_TOTAL);
+      return { created: 0, skippedDuplicates: 0 };
+    }
 
     for (const endpoint of endpoints) {
       const result = await this.options.repository.createDelivery({

@@ -368,6 +368,7 @@ class PremiumMerchantRuntimeContractTest {
                   "webhook_secret_masked": "whsec_****2222",
                   "webhook_url": "https://merchant.example/swimpay/webhook",
                   "webhook_status": "active",
+                  "integration_ready": true,
                   "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
                 }
                 """.trimIndent()
@@ -446,7 +447,7 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(secretRotated.value.developerExportText().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once"))
         assertTrue(urlUpdated.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
         assertTrue(urlUpdated.value.developerExportText().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once"))
-        assertEquals("Integration active", urlUpdated.value.statusTitle)
+        assertEquals("Integration prete", urlUpdated.value.statusTitle)
         assertEquals("Webhook de test envoye", webhookTest.value.safeMessage)
         assertTrue(webhookTest.value.developerExportText().contains("SWIMPAY_SECRET_KEY=sk_live_show_once"))
         assertTrue(webhookTest.value.developerExportText().contains("SWIMPAY_WEBHOOK_SECRET=whsec_show_once"))

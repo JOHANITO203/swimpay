@@ -54,6 +54,8 @@ fun PremiumMerchantApp(
     merchantSettingsStore: PremiumMerchantSettingsStore = InMemoryPremiumMerchantSettingsStore(),
     uiLocked: Boolean = false,
     onRequestUnlock: (onUnlocked: () -> Unit) -> Unit = { onUnlocked -> onUnlocked() },
+    onRequestSecretReveal: (onAuthorized: () -> Unit, onUnavailable: (String) -> Unit) -> Unit =
+        { onAuthorized, _ -> onAuthorized() },
     onThemeModeChanged: (PremiumThemeMode) -> Unit = {},
     onboardingCompletionStore: PremiumOnboardingCompletionStore = InMemoryPremiumOnboardingStateStore(),
     mobileMerchantSessionStore: PremiumMobileMerchantSessionStore = InMemoryPremiumMobileMerchantSessionStore(),
@@ -74,6 +76,18 @@ fun PremiumMerchantApp(
     val scope = rememberCoroutineScope()
     var activeRuntime by remember(mobileMerchantSessionStore) {
         mutableStateOf(mobileMerchantSessionStore.currentSession()?.let(mobileRuntimeFactory) ?: runtime)
+    }
+    LaunchedEffect(mobileMerchantSessionStore, accountAuthRepository) {
+        // Sliding session renewal: every app start extends the mobile session so an
+        // active merchant never hits the fixed TTL wall and loses the binding.
+        val repository = accountAuthRepository ?: return@LaunchedEffect
+        val session = mobileMerchantSessionStore.currentSession() ?: return@LaunchedEffect
+        val refreshed = withContext(Dispatchers.IO) {
+            runCatching { repository.refreshMobileSession(session) }.getOrNull()
+        }
+        if (refreshed != null) {
+            mobileMerchantSessionStore.save(refreshed)
+        }
     }
     var route by remember(onboardingCompletionStore, mobileMerchantSessionStore) {
         mutableStateOf(
@@ -779,6 +793,28 @@ fun PremiumMerchantApp(
                 scope.launch {
                     connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.updateDeveloperWebhookUrl(webhookUrl) }
                 }
+            },
+            onProvisionIntegration = { webhookUrl ->
+                connectedSiteState = PremiumScreenState.loading()
+                scope.launch {
+                    connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.provisionDeveloperIntegration(webhookUrl) }
+                }
+            },
+            onRevealSecrets = {
+                onRequestSecretReveal(
+                    {
+                        connectedSiteState = PremiumScreenState.loading()
+                        scope.launch {
+                            connectedSiteState = withContext(Dispatchers.IO) { activeRuntime.revealDeveloperSecrets() }
+                        }
+                    },
+                    { unavailableMessage ->
+                        connectedSiteState = PremiumScreenState.actionRequired(
+                            "Sécurité appareil requise",
+                            unavailableMessage
+                        )
+                    }
+                )
             },
             onTestWebhook = {
                 connectedSiteState = PremiumScreenState.loading()

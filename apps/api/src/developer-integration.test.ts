@@ -234,6 +234,132 @@ describe('developer integration backend lifecycle', () => {
     });
   });
 
+  it('provisions the full integration atomically and computes integration_ready', async () => {
+    const { server } = buildDeveloperIntegrationServer();
+    const webMerchant = await bootstrapWebMerchant(server);
+
+    const before = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/integration',
+      headers: webMerchant.headers
+    });
+    expect(before.json().integration_ready).toBe(false);
+
+    const invalid = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/integration/provision',
+      headers: webMerchant.headers,
+      payload: { webhook_url: 'javascript:alert(1)' }
+    });
+    expect(invalid.statusCode).toBe(400);
+
+    const provisioned = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/integration/provision',
+      headers: webMerchant.headers,
+      payload: { webhook_url: 'https://merchant.example/webhooks/swimpay' }
+    });
+    expect(provisioned.statusCode).toBe(201);
+    const body = provisioned.json();
+    expect(body.secret_key_once).toMatch(/^sk_test_/u);
+    expect(body.webhook_secret_once).toMatch(/^whsec_/u);
+    expect(body.webhook_url).toBe('https://merchant.example/webhooks/swimpay');
+    expect(body.webhook_status).toBe('active');
+    expect(body.integration_ready).toBe(true);
+
+    const after = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/integration',
+      headers: webMerchant.headers
+    });
+    expect(after.json().integration_ready).toBe(true);
+    expect(after.json().secret_key_once).toBeUndefined();
+    expect(after.body).not.toContain(body.secret_key_once);
+  });
+
+  it('keeps integration_ready false while only half of the binding exists', async () => {
+    const { server } = buildDeveloperIntegrationServer();
+    const webMerchant = await bootstrapWebMerchant(server);
+
+    await server.inject({ method: 'POST', url: '/v1/merchant/integration/keys', headers: webMerchant.headers });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/integration/webhook-secret/rotate',
+      headers: webMerchant.headers
+    });
+
+    const read = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/integration',
+      headers: webMerchant.headers
+    });
+    expect(read.json().webhook_status).toBe('not_configured');
+    expect(read.json().integration_ready).toBe(false);
+  });
+
+  it('re-reveals stored secrets behind the reveal endpoint and records an audit trail', async () => {
+    const { server, merchantIntegrationRepository } = buildDeveloperIntegrationServer();
+    const webMerchant = await bootstrapWebMerchant(server);
+
+    const provisioned = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/integration/provision',
+      headers: webMerchant.headers,
+      payload: { webhook_url: 'https://merchant.example/webhooks/swimpay' }
+    });
+    const onceKey = provisioned.json().secret_key_once;
+    const onceWebhook = provisioned.json().webhook_secret_once;
+
+    const reveal = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/integration/secrets/reveal',
+      headers: webMerchant.headers
+    });
+    expect(reveal.statusCode).toBe(200);
+    expect(reveal.json().secret_key).toBe(onceKey);
+    expect(reveal.json().webhook_secret).toBe(onceWebhook);
+    expect(reveal.json().webhook_url).toBe('https://merchant.example/webhooks/swimpay');
+    expect(reveal.json().secret_key_requires_rotation).toBe(false);
+    expect(reveal.json().webhook_secret_requires_rotation).toBe(false);
+    expect(merchantIntegrationRepository.revealAudit).toHaveLength(1);
+    expect(merchantIntegrationRepository.revealAudit[0]).toMatchObject({
+      merchantId: webMerchant.merchantId,
+      revealedFields: ['secret_key', 'webhook_secret'],
+      source: 'bff_session'
+    });
+
+    const read = await server.inject({
+      method: 'GET',
+      url: '/v1/merchant/integration',
+      headers: webMerchant.headers
+    });
+    expect(read.body).not.toContain(onceKey);
+    expect(read.body).not.toContain(onceWebhook);
+  });
+
+  it('rate limits repeated secret reveal requests', async () => {
+    const { server } = buildDeveloperIntegrationServer();
+    const webMerchant = await bootstrapWebMerchant(server);
+    await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/integration/provision',
+      headers: webMerchant.headers,
+      payload: { webhook_url: 'https://merchant.example/webhooks/swimpay' }
+    });
+
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/v1/merchant/integration/secrets/reveal',
+        headers: webMerchant.headers
+      });
+      statuses.push(response.statusCode);
+    }
+    expect(statuses.slice(0, 5)).toEqual([200, 200, 200, 200, 200]);
+    expect(statuses[5]).toBe(429);
+  });
+
   it('keeps product truth guardrails on developer integration responses', async () => {
     const { server } = buildDeveloperIntegrationServer();
     const response = await server.inject({
@@ -254,6 +380,8 @@ describe('developer integration backend lifecycle', () => {
       { method: 'POST', url: '/v1/merchant/integration/keys/rotate' },
       { method: 'POST', url: '/v1/merchant/integration/webhook-secret/rotate' },
       { method: 'PUT', url: '/v1/merchant/integration/webhook-url', payload: { webhook_url: 'https://merchant.example/hooks' } },
+      { method: 'POST', url: '/v1/merchant/integration/provision', payload: { webhook_url: 'https://merchant.example/hooks' } },
+      { method: 'POST', url: '/v1/merchant/integration/secrets/reveal' },
       { method: 'POST', url: '/v1/merchant/integration/test-webhook' },
       { method: 'GET', url: '/v1/merchant/integration/webhook-deliveries' },
       { method: 'POST', url: '/v1/merchant/integration/webhook-deliveries/del_failed/retry' }

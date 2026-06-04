@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { PUBLIC_EVENT_SIGNAL_DISCLOSURE } from '@swimpay/events';
-import { encryptSecret, hashApiKey, hashWebhookSecret, validatePublicWebhookUrlSyntax } from '@swimpay/security';
+import { decryptSecret, encryptSecret, hashApiKey, hashWebhookSecret, validatePublicWebhookUrlSyntax } from '@swimpay/security';
 
 const { Pool } = pg;
 
@@ -36,6 +36,26 @@ export interface SecretLifecycleResult {
 export interface WebhookUrlUpdateResult {
   integration: MerchantIntegrationState;
   webhookSecretOnce?: string | undefined;
+}
+
+export interface IntegrationProvisionResult {
+  integration: MerchantIntegrationState;
+  secretKeyOnce: string;
+  webhookSecretOnce: string;
+}
+
+export interface IntegrationSecretsReveal {
+  secretKey: string | null;
+  webhookSecret: string | null;
+  webhookUrl: string | null;
+  secretKeyRequiresRotation: boolean;
+  webhookSecretRequiresRotation: boolean;
+}
+
+export interface WebhookReadiness {
+  webhookStatus: WebhookStatus;
+  webhookUrl: string | null;
+  integrationReady: boolean;
 }
 
 export interface MerchantDeliveryHistoryRow {
@@ -73,12 +93,16 @@ export interface MerchantIntegrationRepository {
   rotateApiKey(merchantId: string, now: string): Promise<SecretLifecycleResult>;
   rotateWebhookSecret(merchantId: string, now: string): Promise<SecretLifecycleResult>;
   updateWebhookUrl(merchantId: string, webhookUrl: string, now: string): Promise<WebhookUrlUpdateResult>;
+  provisionIntegration(merchantId: string, webhookUrl: string, now: string): Promise<IntegrationProvisionResult>;
+  revealSecrets(merchantId: string, source: string, now: string): Promise<IntegrationSecretsReveal>;
+  getWebhookReadiness(merchantId: string): Promise<WebhookReadiness>;
   listDeliveries(merchantId: string, limit: number): Promise<MerchantDeliveryHistoryRow[]>;
   enqueueTestWebhook(merchantId: string, now: string): Promise<WebhookTestResult>;
   retryDelivery(merchantId: string, deliveryId: string, now: string): Promise<WebhookRetryResult>;
 }
 
 export class InMemoryMerchantIntegrationRepository implements MerchantIntegrationRepository {
+  public readonly revealAudit: Array<{ merchantId: string; revealedFields: string[]; source: string; createdAt: string }> = [];
   private readonly integrations = new Map<string, MerchantIntegrationMutable>();
   private readonly deliveries: MerchantDeliveryMutable[] = [];
 
@@ -94,6 +118,7 @@ export class InMemoryMerchantIntegrationRepository implements MerchantIntegratio
 
     const secretKeyOnce = generateSecretKey();
     integration.secretKeyHash = hashApiKey(secretKeyOnce);
+    integration.secretKeyClear = secretKeyOnce;
     integration.secretKeyMasked = maskSecret(secretKeyOnce);
     integration.secretKeyCreatedAt = now;
     integration.secretKeyLastRotatedAt = now;
@@ -105,6 +130,7 @@ export class InMemoryMerchantIntegrationRepository implements MerchantIntegratio
     const integration = this.ensureIntegration(merchantId, now);
     const secretKeyOnce = generateSecretKey();
     integration.secretKeyHash = hashApiKey(secretKeyOnce);
+    integration.secretKeyClear = secretKeyOnce;
     integration.secretKeyMasked = maskSecret(secretKeyOnce);
     integration.secretKeyCreatedAt ??= now;
     integration.secretKeyLastRotatedAt = now;
@@ -116,6 +142,7 @@ export class InMemoryMerchantIntegrationRepository implements MerchantIntegratio
     const integration = this.ensureIntegration(merchantId, now);
     const webhookSecretOnce = generateWebhookSecret();
     integration.webhookSecretHash = hashWebhookSecret(webhookSecretOnce);
+    integration.webhookSecretClear = webhookSecretOnce;
     integration.webhookSecretMasked = maskSecret(webhookSecretOnce);
     integration.webhookSecretCreatedAt ??= now;
     integration.webhookSecretLastRotatedAt = now;
@@ -129,6 +156,7 @@ export class InMemoryMerchantIntegrationRepository implements MerchantIntegratio
     if (!integration.webhookSecretHash) {
       webhookSecretOnce = generateWebhookSecret();
       integration.webhookSecretHash = hashWebhookSecret(webhookSecretOnce);
+      integration.webhookSecretClear = webhookSecretOnce;
       integration.webhookSecretMasked = maskSecret(webhookSecretOnce);
       integration.webhookSecretCreatedAt = now;
       integration.webhookSecretLastRotatedAt = now;
@@ -137,6 +165,55 @@ export class InMemoryMerchantIntegrationRepository implements MerchantIntegratio
     integration.webhookStatus = 'active';
     integration.updatedAt = now;
     return { integration: toIntegrationState(integration), webhookSecretOnce };
+  }
+
+  public async provisionIntegration(merchantId: string, webhookUrl: string, now: string): Promise<IntegrationProvisionResult> {
+    const apiKey = await this.rotateApiKey(merchantId, now);
+    const webhookSecret = await this.rotateWebhookSecret(merchantId, now);
+    await this.updateWebhookUrl(merchantId, webhookUrl, now);
+    const integration = this.ensureIntegration(merchantId, now);
+    return {
+      integration: toIntegrationState(integration),
+      secretKeyOnce: apiKey.secretKeyOnce as string,
+      webhookSecretOnce: webhookSecret.webhookSecretOnce as string
+    };
+  }
+
+  public async revealSecrets(merchantId: string, source: string, now: string): Promise<IntegrationSecretsReveal> {
+    const integration = this.integrations.get(merchantId);
+    if (!integration) {
+      return {
+        secretKey: null,
+        webhookSecret: null,
+        webhookUrl: null,
+        secretKeyRequiresRotation: false,
+        webhookSecretRequiresRotation: false
+      };
+    }
+    const revealedFields = [
+      ...(integration.secretKeyClear ? ['secret_key'] : []),
+      ...(integration.webhookSecretClear ? ['webhook_secret'] : [])
+    ];
+    this.revealAudit.push({ merchantId, revealedFields, source, createdAt: now });
+    return {
+      secretKey: integration.secretKeyClear,
+      webhookSecret: integration.webhookSecretClear,
+      webhookUrl: integration.webhookUrl,
+      secretKeyRequiresRotation: integration.secretKeyMasked !== null && integration.secretKeyClear === null,
+      webhookSecretRequiresRotation: integration.webhookSecretMasked !== null && integration.webhookSecretClear === null
+    };
+  }
+
+  public async getWebhookReadiness(merchantId: string): Promise<WebhookReadiness> {
+    const integration = this.integrations.get(merchantId);
+    if (!integration) {
+      return { webhookStatus: 'not_configured', webhookUrl: null, integrationReady: false };
+    }
+    return {
+      webhookStatus: integration.webhookStatus,
+      webhookUrl: integration.webhookUrl,
+      integrationReady: isIntegrationReady(toIntegrationState(integration))
+    };
   }
 
   public async listDeliveries(merchantId: string, limit: number): Promise<MerchantDeliveryHistoryRow[]> {
@@ -237,10 +314,12 @@ export class InMemoryMerchantIntegrationRepository implements MerchantIntegratio
       merchantId,
       publicKey: generatePublicKey(),
       secretKeyHash: null,
+      secretKeyClear: null,
       secretKeyMasked: null,
       secretKeyCreatedAt: null,
       secretKeyLastRotatedAt: null,
       webhookSecretHash: null,
+      webhookSecretClear: null,
       webhookSecretMasked: null,
       webhookSecretCreatedAt: null,
       webhookSecretLastRotatedAt: null,
@@ -287,7 +366,10 @@ export class PgMerchantIntegrationRepository implements MerchantIntegrationRepos
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      await ensureMerchantRow(client, merchantId, now);
+      await this.ensureIntegrationRowWithClient(client, merchantId, now);
+      // Lock the integration row first so concurrent provision/rotate calls for the
+      // same merchant serialize in a consistent order instead of deadlocking.
+      await client.query(`SELECT merchant_id FROM merchant_integrations WHERE merchant_id = $1 FOR UPDATE`, [merchantId]);
       await client.query(`UPDATE api_keys SET status = 'revoked', revoked_at = $2 WHERE merchant_id = $1 AND status = 'active'`, [
         merchantId,
         now
@@ -299,18 +381,15 @@ export class PgMerchantIntegrationRepository implements MerchantIntegrationRepos
         [merchantId, hashApiKey(secretKeyOnce), JSON.stringify(['orders.write', 'orders.read', 'webhooks.read']), now]
       );
       await client.query(
-        `INSERT INTO merchant_integrations (
-          merchant_id, public_key, api_key_id, secret_key_masked, secret_key_created_at,
-          secret_key_last_rotated_at, integration_type, created_at, updated_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $5, 'both', $5, $5)
-        ON CONFLICT (merchant_id) DO UPDATE SET
-          api_key_id = EXCLUDED.api_key_id,
-          secret_key_masked = EXCLUDED.secret_key_masked,
-          secret_key_created_at = COALESCE(merchant_integrations.secret_key_created_at, EXCLUDED.secret_key_created_at),
-          secret_key_last_rotated_at = EXCLUDED.secret_key_last_rotated_at,
-          updated_at = EXCLUDED.updated_at`,
-        [merchantId, generatePublicKey(), apiKey.rows[0]?.id, masked, now]
+        `UPDATE merchant_integrations
+         SET api_key_id = $2,
+             secret_key_masked = $3,
+             secret_key_encrypted = $4,
+             secret_key_created_at = COALESCE(secret_key_created_at, $5::timestamptz),
+             secret_key_last_rotated_at = $5::timestamptz,
+             updated_at = $5::timestamptz
+         WHERE merchant_id = $1`,
+        [merchantId, apiKey.rows[0]?.id, masked, encryptSecret(secretKeyOnce, this.secretEncryptionKey), now]
       );
       await client.query('COMMIT');
     } catch (error) {
@@ -325,61 +404,208 @@ export class PgMerchantIntegrationRepository implements MerchantIntegrationRepos
 
   public async rotateWebhookSecret(merchantId: string, now: string): Promise<SecretLifecycleResult> {
     const webhookSecretOnce = generateWebhookSecret();
-    await this.ensureIntegration(merchantId, now);
-    await this.pool.query(
-      `UPDATE merchant_integrations
-       SET webhook_secret_hash = $2,
-           webhook_secret_encrypted = $3,
-           webhook_secret_masked = $4,
-           webhook_secret_created_at = COALESCE(webhook_secret_created_at, $5::timestamptz),
-           webhook_secret_last_rotated_at = $5::timestamptz,
-           updated_at = $5::timestamptz
-       WHERE merchant_id = $1`,
-      [merchantId, hashWebhookSecret(webhookSecretOnce), encryptSecret(webhookSecretOnce, this.secretEncryptionKey), maskSecret(webhookSecretOnce), now]
-    );
-    await this.syncWebhookEndpoint(merchantId, now);
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.ensureIntegrationRowWithClient(client, merchantId, now);
+      await client.query(`SELECT merchant_id FROM merchant_integrations WHERE merchant_id = $1 FOR UPDATE`, [merchantId]);
+      await client.query(
+        `UPDATE merchant_integrations
+         SET webhook_secret_hash = $2,
+             webhook_secret_encrypted = $3,
+             webhook_secret_masked = $4,
+             webhook_secret_created_at = COALESCE(webhook_secret_created_at, $5::timestamptz),
+             webhook_secret_last_rotated_at = $5::timestamptz,
+             updated_at = $5::timestamptz
+         WHERE merchant_id = $1`,
+        [merchantId, hashWebhookSecret(webhookSecretOnce), encryptSecret(webhookSecretOnce, this.secretEncryptionKey), maskSecret(webhookSecretOnce), now]
+      );
+      await this.syncWebhookEndpointWithClient(client, merchantId, now);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
     return { integration: await this.hydrateIntegration(merchantId), webhookSecretOnce };
   }
 
   public async updateWebhookUrl(merchantId: string, webhookUrl: string, now: string): Promise<WebhookUrlUpdateResult> {
-    await this.ensureIntegration(merchantId, now);
     let webhookSecretOnce: string | undefined;
-    const existing = await this.pool.query(
-      `SELECT webhook_secret_hash FROM merchant_integrations WHERE merchant_id = $1`,
-      [merchantId]
-    );
-    if (!existing.rows[0]?.webhook_secret_hash) {
-      webhookSecretOnce = generateWebhookSecret();
-      await this.pool.query(
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.ensureIntegrationRowWithClient(client, merchantId, now);
+      const existing = await client.query(
+        `SELECT webhook_secret_hash FROM merchant_integrations WHERE merchant_id = $1 FOR UPDATE`,
+        [merchantId]
+      );
+      if (!existing.rows[0]?.webhook_secret_hash) {
+        webhookSecretOnce = generateWebhookSecret();
+        await client.query(
+          `UPDATE merchant_integrations
+           SET webhook_secret_hash = $2,
+               webhook_secret_encrypted = $3,
+               webhook_secret_masked = $4,
+               webhook_secret_created_at = $5::timestamptz,
+               webhook_secret_last_rotated_at = $5::timestamptz,
+               updated_at = $5::timestamptz
+           WHERE merchant_id = $1`,
+          [
+            merchantId,
+            hashWebhookSecret(webhookSecretOnce),
+            encryptSecret(webhookSecretOnce, this.secretEncryptionKey),
+            maskSecret(webhookSecretOnce),
+            now
+          ]
+        );
+      }
+      await client.query(
         `UPDATE merchant_integrations
-         SET webhook_secret_hash = $2,
-             webhook_secret_encrypted = $3,
-             webhook_secret_masked = $4,
-             webhook_secret_created_at = $5::timestamptz,
-             webhook_secret_last_rotated_at = $5::timestamptz,
-             updated_at = $5::timestamptz
+         SET webhook_url = $2,
+             updated_at = $3::timestamptz
+         WHERE merchant_id = $1`,
+        [merchantId, webhookUrl, now]
+      );
+      const endpointId = await this.syncWebhookEndpointWithClient(client, merchantId, now);
+      if (!endpointId) {
+        throw new Error('Webhook endpoint registration failed during webhook URL update.');
+      }
+      await client.query(
+        `UPDATE merchant_integrations
+         SET webhook_status = 'active',
+             updated_at = $2::timestamptz
+         WHERE merchant_id = $1`,
+        [merchantId, now]
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    return { integration: await this.hydrateIntegration(merchantId), webhookSecretOnce };
+  }
+
+  public async provisionIntegration(merchantId: string, webhookUrl: string, now: string): Promise<IntegrationProvisionResult> {
+    const secretKeyOnce = generateSecretKey();
+    const webhookSecretOnce = generateWebhookSecret();
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.ensureIntegrationRowWithClient(client, merchantId, now);
+      await client.query(`SELECT merchant_id FROM merchant_integrations WHERE merchant_id = $1 FOR UPDATE`, [merchantId]);
+      await client.query(`UPDATE api_keys SET status = 'revoked', revoked_at = $2 WHERE merchant_id = $1 AND status = 'active'`, [
+        merchantId,
+        now
+      ]);
+      const apiKey = await client.query(
+        `INSERT INTO api_keys (merchant_id, key_hash, scopes, status, created_at)
+         VALUES ($1, $2, $3::jsonb, 'active', $4)
+         RETURNING id`,
+        [merchantId, hashApiKey(secretKeyOnce), JSON.stringify(['orders.write', 'orders.read', 'webhooks.read']), now]
+      );
+      await client.query(
+        `UPDATE merchant_integrations
+         SET api_key_id = $2,
+             secret_key_masked = $3,
+             secret_key_encrypted = $4,
+             secret_key_created_at = COALESCE(secret_key_created_at, $9::timestamptz),
+             secret_key_last_rotated_at = $9::timestamptz,
+             webhook_secret_hash = $5,
+             webhook_secret_encrypted = $6,
+             webhook_secret_masked = $7,
+             webhook_secret_created_at = COALESCE(webhook_secret_created_at, $9::timestamptz),
+             webhook_secret_last_rotated_at = $9::timestamptz,
+             webhook_url = $8,
+             updated_at = $9::timestamptz
          WHERE merchant_id = $1`,
         [
           merchantId,
+          apiKey.rows[0]?.id,
+          maskSecret(secretKeyOnce),
+          encryptSecret(secretKeyOnce, this.secretEncryptionKey),
           hashWebhookSecret(webhookSecretOnce),
           encryptSecret(webhookSecretOnce, this.secretEncryptionKey),
           maskSecret(webhookSecretOnce),
+          webhookUrl,
           now
         ]
       );
+      const endpointId = await this.syncWebhookEndpointWithClient(client, merchantId, now);
+      if (!endpointId) {
+        throw new Error('Atomic provisioning failed to register the webhook endpoint.');
+      }
+      await client.query(
+        `UPDATE merchant_integrations
+         SET webhook_status = 'active',
+             updated_at = $2::timestamptz
+         WHERE merchant_id = $1`,
+        [merchantId, now]
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
-    await this.pool.query(
-      `UPDATE merchant_integrations
-       SET webhook_url = $2,
-           webhook_status = 'active',
-           updated_at = $3::timestamptz
-       WHERE merchant_id = $1`,
-      [merchantId, webhookUrl, now]
-    );
-    await this.syncWebhookEndpoint(merchantId, now);
 
-    return { integration: await this.hydrateIntegration(merchantId), webhookSecretOnce };
+    return { integration: await this.hydrateIntegration(merchantId), secretKeyOnce, webhookSecretOnce };
+  }
+
+  public async revealSecrets(merchantId: string, source: string, now: string): Promise<IntegrationSecretsReveal> {
+    const result = await this.pool.query(
+      `SELECT secret_key_masked, secret_key_encrypted, webhook_secret_masked, webhook_secret_encrypted, webhook_url
+       FROM merchant_integrations
+       WHERE merchant_id = $1`,
+      [merchantId]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return {
+        secretKey: null,
+        webhookSecret: null,
+        webhookUrl: null,
+        secretKeyRequiresRotation: false,
+        webhookSecretRequiresRotation: false
+      };
+    }
+    const secretKey = row.secret_key_encrypted ? decryptSecret(row.secret_key_encrypted, this.secretEncryptionKey) : null;
+    const webhookSecret = row.webhook_secret_encrypted ? decryptSecret(row.webhook_secret_encrypted, this.secretEncryptionKey) : null;
+    const revealedFields = [...(secretKey ? ['secret_key'] : []), ...(webhookSecret ? ['webhook_secret'] : [])];
+    await this.pool.query(
+      `INSERT INTO merchant_secret_reveal_audit (merchant_id, revealed_fields, source, created_at)
+       VALUES ($1, $2::jsonb, $3, $4)`,
+      [merchantId, JSON.stringify(revealedFields), source, now]
+    );
+    return {
+      secretKey,
+      webhookSecret,
+      webhookUrl: row.webhook_url ?? null,
+      secretKeyRequiresRotation: Boolean(row.secret_key_masked) && !secretKey,
+      webhookSecretRequiresRotation: Boolean(row.webhook_secret_masked) && !webhookSecret
+    };
+  }
+
+  public async getWebhookReadiness(merchantId: string): Promise<WebhookReadiness> {
+    const result = await this.pool.query(
+      `SELECT webhook_status, webhook_url, secret_key_masked FROM merchant_integrations WHERE merchant_id = $1`,
+      [merchantId]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return { webhookStatus: 'not_configured', webhookUrl: null, integrationReady: false };
+    }
+    return {
+      webhookStatus: row.webhook_status as WebhookStatus,
+      webhookUrl: row.webhook_url ?? null,
+      integrationReady: Boolean(row.secret_key_masked) && row.webhook_status === 'active' && Boolean(row.webhook_url)
+    };
   }
 
   public async listDeliveries(merchantId: string, limit: number): Promise<MerchantDeliveryHistoryRow[]> {
@@ -528,17 +754,27 @@ export class PgMerchantIntegrationRepository implements MerchantIntegrationRepos
     return toIntegrationState(fromIntegrationRow(row.rows[0] as MerchantIntegrationRow));
   }
 
-  private async syncWebhookEndpoint(merchantId: string, now: string): Promise<void> {
-    const integration = await this.pool.query(
+  private async ensureIntegrationRowWithClient(client: pg.PoolClient, merchantId: string, now: string): Promise<void> {
+    await ensureMerchantRow(client, merchantId, now);
+    await client.query(
+      `INSERT INTO merchant_integrations (merchant_id, public_key, integration_type, created_at, updated_at)
+       VALUES ($1, $2, 'both', $3, $3)
+       ON CONFLICT (merchant_id) DO NOTHING`,
+      [merchantId, generatePublicKey(), now]
+    );
+  }
+
+  private async syncWebhookEndpointWithClient(client: pg.PoolClient, merchantId: string, now: string): Promise<string | null> {
+    const integration = await client.query(
       `SELECT webhook_url, webhook_secret_hash, webhook_secret_encrypted, webhook_endpoint_id FROM merchant_integrations WHERE merchant_id = $1`,
       [merchantId]
     );
     const row = integration.rows[0];
     if (!row?.webhook_url || !row.webhook_secret_hash) {
-      return;
+      return null;
     }
     const endpointId = row.webhook_endpoint_id ?? randomUUID();
-    await this.pool.query(
+    await client.query(
       `INSERT INTO webhook_endpoints (
         id, merchant_id, url, secret_hash, secret_encrypted, enabled_events, status, created_at, updated_at
       )
@@ -560,10 +796,11 @@ export class PgMerchantIntegrationRepository implements MerchantIntegrationRepos
         now
       ]
     );
-    await this.pool.query(
+    await client.query(
       `UPDATE merchant_integrations SET webhook_endpoint_id = $2, updated_at = $3 WHERE merchant_id = $1`,
       [merchantId, endpointId, now]
     );
+    return endpointId;
   }
 
   private async getActiveEndpoint(merchantId: string): Promise<{ id: string } | null> {
@@ -575,7 +812,13 @@ export class PgMerchantIntegrationRepository implements MerchantIntegrationRepos
   }
 }
 
-export function toMerchantIntegrationResponse(input: SecretLifecycleResult | WebhookUrlUpdateResult | MerchantIntegrationState) {
+export function isIntegrationReady(integration: MerchantIntegrationState): boolean {
+  return integration.secretKeyMasked !== null && integration.webhookStatus === 'active' && integration.webhookUrl !== null;
+}
+
+export function toMerchantIntegrationResponse(
+  input: SecretLifecycleResult | WebhookUrlUpdateResult | IntegrationProvisionResult | MerchantIntegrationState
+) {
   const integration = 'integration' in input ? input.integration : input;
   const response: Record<string, unknown> = {
     merchant_id: integration.merchantId,
@@ -588,6 +831,7 @@ export function toMerchantIntegrationResponse(input: SecretLifecycleResult | Web
     webhook_secret_last_rotated_at: integration.webhookSecretLastRotatedAt,
     webhook_url: integration.webhookUrl,
     webhook_status: integration.webhookStatus,
+    integration_ready: isIntegrationReady(integration),
     integration_type: integration.integrationType,
     created_at: integration.createdAt,
     updated_at: integration.updatedAt,
@@ -650,10 +894,12 @@ interface MerchantIntegrationMutable {
   merchantId: string;
   publicKey: string;
   secretKeyHash: string | null;
+  secretKeyClear: string | null;
   secretKeyMasked: string | null;
   secretKeyCreatedAt: string | null;
   secretKeyLastRotatedAt: string | null;
   webhookSecretHash: string | null;
+  webhookSecretClear: string | null;
   webhookSecretMasked: string | null;
   webhookSecretCreatedAt: string | null;
   webhookSecretLastRotatedAt: string | null;
@@ -683,6 +929,7 @@ interface MerchantIntegrationRow {
   merchant_id: string;
   public_key: string;
   secret_key_masked: string | null;
+  secret_key_encrypted?: string | null;
   secret_key_created_at: string | Date | null;
   secret_key_last_rotated_at: string | Date | null;
   webhook_secret_hash: string | null;
@@ -702,10 +949,12 @@ function fromIntegrationRow(row: MerchantIntegrationRow): MerchantIntegrationMut
     merchantId: row.merchant_id,
     publicKey: row.public_key,
     secretKeyHash: null,
+    secretKeyClear: null,
     secretKeyMasked: row.secret_key_masked,
     secretKeyCreatedAt: row.secret_key_created_at ? toIso(row.secret_key_created_at) : null,
     secretKeyLastRotatedAt: row.secret_key_last_rotated_at ? toIso(row.secret_key_last_rotated_at) : null,
     webhookSecretHash: row.webhook_secret_hash,
+    webhookSecretClear: null,
     webhookSecretMasked: row.webhook_secret_masked,
     webhookSecretCreatedAt: row.webhook_secret_created_at ? toIso(row.webhook_secret_created_at) : null,
     webhookSecretLastRotatedAt: row.webhook_secret_last_rotated_at ? toIso(row.webhook_secret_last_rotated_at) : null,

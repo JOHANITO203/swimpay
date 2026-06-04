@@ -19,6 +19,7 @@ export const MetricNames = {
   REVIEWS_CONFIRMED_TOTAL: 'reviews_confirmed_total',
   REVIEWS_REJECTED_TOTAL: 'reviews_rejected_total',
   WEBHOOK_DELIVERIES_PENDING: 'webhook_deliveries_pending',
+  WEBHOOK_EVENTS_WITHOUT_ACTIVE_ENDPOINT_TOTAL: 'webhook_events_without_active_endpoint_total',
   WEBHOOK_DELIVERIES_DELIVERED_TOTAL: 'webhook_deliveries_delivered_total',
   WEBHOOK_DELIVERIES_FAILED_TOTAL: 'webhook_deliveries_failed_total',
   WEBHOOK_DELIVERIES_DEAD_TOTAL: 'webhook_deliveries_dead_total',

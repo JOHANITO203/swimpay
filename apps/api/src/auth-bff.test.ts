@@ -282,12 +282,17 @@ describe('Auth BFF foundation', () => {
   });
 
   it('keeps dev bootstrap disabled in production and accepts stored API keys for order creation', async () => {
-    const { server, merchantApiKeyVerifier, orderRepository } = buildAuthServer('production');
+    const { server, merchantApiKeyVerifier, merchantIntegrationRepository, orderRepository } = buildAuthServer('production');
     merchantApiKeyVerifier.seedRawKey('sk_live_server_only', {
       merchantId: '55555555-5555-4555-8555-555555555555',
       apiKeyId: 'key_01',
       scopes: ['orders.write']
     });
+    await merchantIntegrationRepository.updateWebhookUrl(
+      '55555555-5555-4555-8555-555555555555',
+      'https://merchant.example/webhooks/swimpay',
+      '2026-05-07T09:00:00.000Z'
+    );
 
     const devBootstrap = await server.inject({ method: 'POST', url: '/auth/dev/bootstrap-session' });
     expect(devBootstrap.statusCode).toBe(404);

@@ -824,6 +824,47 @@ class PremiumMerchantRuntime(
             ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
     }
 
+    fun provisionDeveloperIntegration(webhookUrl: String): PremiumScreenState<PremiumConnectedSiteUiState> {
+        return developerIntegrationRepository?.provisionIntegration(session, webhookUrl)
+            ?.toConnectedSiteStateWithShowOnceCopy()
+            ?: PremiumScreenState.offline(message = "Integration developpeur indisponible.")
+    }
+
+    fun revealDeveloperSecrets(): PremiumScreenState<PremiumConnectedSiteUiState> {
+        val repository = developerIntegrationRepository
+            ?: return PremiumScreenState.offline(message = "Integration developpeur indisponible.")
+        val reveal = repository.revealSecrets(session)
+        if (reveal.state != MerchantRepositoryState.SUCCESS) {
+            return when (reveal.state) {
+                MerchantRepositoryState.ACTION_REQUIRED ->
+                    PremiumScreenState.actionRequired("Action requise", reveal.safeMessage)
+                else -> PremiumScreenState.offline(message = reveal.safeMessage)
+            }
+        }
+        var hasRevealedSecret = false
+        reveal.secretKey?.takeIf { it.isNotBlank() }?.let {
+            developerSecretKeyOnceForCopy = it
+            hasRevealedSecret = true
+        }
+        reveal.webhookSecret?.takeIf { it.isNotBlank() }?.let {
+            integrationWebhookSecretOnceForCopy = it
+            hasRevealedSecret = true
+        }
+        if (hasRevealedSecret) {
+            developerShowOnceCopyExpiresAtEpochMs = nowEpochMs() + DEVELOPER_SHOW_ONCE_COPY_TTL_MS
+        }
+        val safeMessage = buildList {
+            add(reveal.safeMessage)
+            if (reveal.secretKeyRequiresRotation) {
+                add("Cle API creee avant la mise a jour: faites une rotation pour la consulter.")
+            }
+            if (reveal.webhookSecretRequiresRotation) {
+                add("Secret webhook cree avant la mise a jour: faites une rotation pour le consulter.")
+            }
+        }.joinToString(" ")
+        return repository.load(session).copy(safeMessage = safeMessage).toConnectedSiteStateWithCurrentShowOnceCopy()
+    }
+
     fun testDeveloperWebhook(): PremiumScreenState<PremiumConnectedSiteUiState> {
         val repository = developerIntegrationRepository
             ?: return PremiumScreenState.offline(message = "Integration developpeur indisponible.")
@@ -1143,11 +1184,16 @@ private fun MerchantDeveloperIntegrationSnapshot.toPremiumConnectedSiteUiState(
 ): PremiumConnectedSiteUiState {
     val active = webhookStatus == "active"
     return PremiumConnectedSiteUiState(
-        statusTitle = if (active) "Integration active" else "Integration a configurer",
-        statusText = "SwimPay backend genere les identifiants. Le SDK les utilise cote app externe.",
+        statusTitle = if (integrationReady) "Integration prete" else "Integration a completer",
+        statusText = if (integrationReady) {
+            "Cle API et webhook actifs. Les confirmations de paiement sont renvoyees a votre application."
+        } else {
+            "Sans webhook actif, les commandes sont refusees: votre application ne recevrait jamais les confirmations."
+        },
         rows = listOf(
             "Webhook URL" to webhookUrl.ifBlank { "A configurer" },
-            "Statut" to if (active) "Actif" else "Action requise"
+            "Statut" to if (active) "Actif" else "Action requise",
+            "Integration complete" to if (integrationReady) "Oui" else "Non - webhook a configurer"
         ),
         usesLiveApi = true,
         safeMessage = safeMessage,
