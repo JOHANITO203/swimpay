@@ -3,7 +3,7 @@ import { getPayerBankLauncherOption, getReceiverBankOption } from '@swimpay/cont
 import { buildApiServer, type OrderRepository, type StoredOrderRecord, type StoredPaymentSessionRecord } from './server.js';
 import { InMemoryMerchantApiKeyVerifier } from './auth-bff.js';
 import { bankCertificationAllowsCheckoutRoute, decryptReceiverIdentifier, selectAmountLeaseCandidate } from './orders.js';
-import { isPaymentSessionTransitionAllowed, resolvePaymentSessionStatusForRead } from './payment-sessions.js';
+import { isPaymentSessionTransitionAllowed, resolvePaymentSessionStatusForRead, toPayerBankLaunchersResponse } from './payment-sessions.js';
 
 interface TestReceivingRoute {
   route_id: string;
@@ -2783,5 +2783,28 @@ describe('payment session api', () => {
         code: 'checkout_session_expired'
       }
     });
+  });
+});
+
+describe('payer bank launchers stay symmetric with the session currency', () => {
+  function sessionWithCurrency(currency: string): StoredPaymentSessionRecord {
+    return { id: 'ps_currency_probe', currency } as unknown as StoredPaymentSessionRecord;
+  }
+
+  test('XOF session exposes only West Africa payer launchers', () => {
+    const ids = toPayerBankLaunchersResponse(sessionWithCurrency('XOF')).payer_bank_launchers.map(
+      (launcher) => launcher.payer_bank_launcher_id
+    );
+    expect(ids).toContain('wave_sn');
+    expect(ids).toContain('orange_money_sn');
+    expect(ids).not.toContain('sber_ru');
+  });
+
+  test('RUB session exposes only Russian payer launchers', () => {
+    const ids = toPayerBankLaunchersResponse(sessionWithCurrency('RUB')).payer_bank_launchers.map(
+      (launcher) => launcher.payer_bank_launcher_id
+    );
+    expect(ids).toContain('sber_ru');
+    expect(ids).not.toContain('wave_sn');
   });
 });

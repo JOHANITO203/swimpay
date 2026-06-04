@@ -1,5 +1,4 @@
 import {
-  PayerBankLauncherRegistry,
   V1ReceiverBankOptions,
   getPayerBankLauncherOption,
   getReceiverBankOption,
@@ -510,7 +509,10 @@ export function toReceiverBanksResponse(
 export function toPayerBankLaunchersResponse(paymentSession: StoredPaymentSessionRecord): PayerBankLaunchersResponse {
   return stripUndefined({
     payment_session_id: paymentSession.id,
-    payer_bank_launchers: PayerBankLauncherRegistry,
+    // Currency-scoped, identical source of truth as available_sender_banks
+    // (toPaymentSessionReadResponse): a session never shows payer banks it
+    // cannot route. XOF/XAF -> West Africa launchers, everything else -> RU.
+    payer_bank_launchers: payerLaunchersForCurrency(paymentSession.currency),
     selected_payer_bank_launcher_id: paymentSession.selectedPayerBankLauncherId,
     does_not_confirm_payment: true,
     official_bank_confirmation: false
