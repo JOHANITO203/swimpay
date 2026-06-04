@@ -606,7 +606,7 @@ fun PremiumMerchantApp(
                         },
                         language = merchantSettings.language
                     )
-                    PremiumMainTab.Payment -> PremiumReceivingMethodsStateScreen(
+                    PremiumMainTab.Payment -> PremiumReceivingMethodsHub(
                         receivingMethodsState,
                         clearDraftSignal = receivingMethodClearDraftSignal,
                         actionMessage = receivingMethodActionMessage,
@@ -694,7 +694,7 @@ fun PremiumMerchantApp(
             profileInitials = currentMerchantProfileUiState().initials,
             language = merchantSettings.language,
             content = {
-                PremiumReceivingMethodsStateScreen(
+                PremiumReceivingMethodsHub(
                     receivingMethodsState,
                     clearDraftSignal = receivingMethodClearDraftSignal,
                     actionMessage = receivingMethodActionMessage,

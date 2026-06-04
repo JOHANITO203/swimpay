@@ -40,6 +40,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
@@ -818,6 +819,7 @@ fun PremiumReceivingMethodsStateScreen(
     onDisableMethod: (String) -> Unit = {},
     onSetDefaultMethod: (String) -> Unit = {},
     onDeleteMethod: (String) -> Unit = {},
+    onBack: (() -> Unit)? = null,
     language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
     when (state) {
@@ -851,6 +853,9 @@ fun PremiumReceivingMethodsStateScreen(
                 contentPadding = PaddingValues(bottom = 22.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                onBack?.let { back ->
+                    item { ReceivingMethodBreadcrumb(language.ui("Banques russes"), back) }
+                }
                 item {
                     Text(language.ui("Moyens de réception"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
                     Text(language.ui("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
@@ -998,6 +1003,324 @@ fun PremiumReceivingMethodsStateScreen(
                             editIdentifierInput = ""
                             editBankId = bankProfileIdFromDisplay(method.subtitle) ?: bankOptions.firstOrNull()?.bankProfileId.orEmpty()
                         },
+                        onDisable = { onDisableMethod(method.routeId) },
+                        onSetDefault = { onSetDefaultMethod(method.routeId) },
+                        onDelete = { onDeleteMethod(method.routeId) },
+                        language = language
+                    )
+                }
+            }
+        }
+        else -> PremiumStateList(state, language)
+    }
+}
+
+private enum class ReceivingMethodFamily { RUSSIAN, WEST_AFRICA }
+
+/**
+ * Receiving-methods hub: a family chooser (Russian banking / West Africa mobile
+ * money). The current Russian screen becomes a sub-screen; the West Africa
+ * sub-screen is new. Both render sites (Payment tab + standalone route) use this.
+ */
+@Composable
+fun PremiumReceivingMethodsHub(
+    state: PremiumScreenState<PremiumReceivingMethodsUiState>,
+    clearDraftSignal: Int = 0,
+    actionMessage: String? = null,
+    onSaveDraft: (MerchantReceivingMethodSubmission) -> Unit = {},
+    onEditMethod: (String, String) -> Unit = { _, _ -> },
+    onReplaceMethod: (String, MerchantReceivingMethodSubmission) -> Unit = { _, _ -> },
+    onDisableMethod: (String) -> Unit = {},
+    onSetDefaultMethod: (String) -> Unit = {},
+    onDeleteMethod: (String) -> Unit = {},
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
+) {
+    var family by remember { mutableStateOf<ReceivingMethodFamily?>(null) }
+    when (family) {
+        null -> PremiumReceivingMethodFamilyChooser(state, language) { family = it }
+        ReceivingMethodFamily.RUSSIAN -> PremiumReceivingMethodsStateScreen(
+            state = state,
+            clearDraftSignal = clearDraftSignal,
+            actionMessage = actionMessage,
+            onSaveDraft = onSaveDraft,
+            onEditMethod = onEditMethod,
+            onReplaceMethod = onReplaceMethod,
+            onDisableMethod = onDisableMethod,
+            onSetDefaultMethod = onSetDefaultMethod,
+            onDeleteMethod = onDeleteMethod,
+            onBack = { family = null },
+            language = language
+        )
+        ReceivingMethodFamily.WEST_AFRICA -> PremiumWestAfricaReceivingScreen(
+            state = state,
+            clearDraftSignal = clearDraftSignal,
+            actionMessage = actionMessage,
+            onSaveDraft = onSaveDraft,
+            onDisableMethod = onDisableMethod,
+            onSetDefaultMethod = onSetDefaultMethod,
+            onDeleteMethod = onDeleteMethod,
+            onBack = { family = null },
+            language = language
+        )
+    }
+}
+
+private fun PremiumReceivingMethodsUiState.westAfricaCount(): Int =
+    items.count { it.title.contains("mobile money", ignoreCase = true) }
+
+private fun PremiumReceivingMethodsUiState.russianCount(): Int =
+    items.size - westAfricaCount()
+
+@Composable
+private fun PremiumReceivingMethodFamilyChooser(
+    state: PremiumScreenState<PremiumReceivingMethodsUiState>,
+    language: PremiumLanguageOption,
+    onPick: (ReceivingMethodFamily) -> Unit
+) {
+    val value = (state as? PremiumScreenState.Content)?.value
+    Column(
+        Modifier
+            .fillMaxHeight()
+            .padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Spacer(Modifier.height(4.dp))
+        Text(language.ui("Moyens de réception"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+        Text(
+            language.ui("Choisissez comment vous recevez l'argent de vos clients."),
+            color = PremiumColors.PageMuted,
+            fontSize = 14.sp,
+            lineHeight = 20.sp
+        )
+        ReceivingMethodFamilyTile(
+            icon = Icons.Default.AccountBalance,
+            title = language.ui("Banques russes"),
+            helper = language.ui("Carte · SBP · RUB"),
+            count = value?.russianCount() ?: 0,
+            language = language,
+            onClick = { onPick(ReceivingMethodFamily.RUSSIAN) }
+        )
+        ReceivingMethodFamilyTile(
+            icon = Icons.Default.AccountBalanceWallet,
+            title = language.ui("Mobile money (Afrique de l'Ouest)"),
+            helper = language.ui("Orange · Wave · MTN · XOF"),
+            count = value?.westAfricaCount() ?: 0,
+            language = language,
+            onClick = { onPick(ReceivingMethodFamily.WEST_AFRICA) }
+        )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(22.dp))
+                .background(PremiumColors.IconTile, RoundedCornerShape(22.dp))
+                .border(1.dp, PremiumColors.Line.copy(alpha = 0.7f), RoundedCornerShape(22.dp))
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Info, null, tint = PremiumColors.Cyan, modifier = Modifier.size(20.dp))
+            Text(
+                language.ui("Les paiements ouest-africains sont confirmés manuellement (modèle SwimPay)."),
+                color = PremiumColors.Muted,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 10.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReceivingMethodFamilyTile(
+    icon: ImageVector,
+    title: String,
+    helper: String,
+    count: Int,
+    language: PremiumLanguageOption,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(88.dp)
+            .clip(RoundedCornerShape(28.dp))
+            .background(PremiumColors.Surface, RoundedCornerShape(28.dp))
+            .border(1.dp, PremiumColors.Line.copy(alpha = 0.86f), RoundedCornerShape(28.dp))
+            .premiumTap(onClick)
+            .padding(horizontal = 18.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(26.dp))
+        }
+        Column(Modifier.weight(1f).padding(start = 16.dp)) {
+            Text(title, color = PremiumColors.Ink, fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+            Text(helper, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 3.dp))
+        }
+        if (count > 0) {
+            StatusChip(
+                language.ui(if (count > 1) "$count actifs" else "$count actif"),
+                StatusTone.Success
+            )
+        } else {
+            StatusChip(language.ui("À configurer"), StatusTone.Neutral)
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            null,
+            tint = PremiumColors.SoftText,
+            modifier = Modifier.padding(start = 8.dp).size(22.dp)
+        )
+    }
+}
+
+@Composable
+private fun ReceivingMethodBreadcrumb(label: String, onBack: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().premiumTap(onBack).padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = PremiumColors.Cyan, modifier = Modifier.size(22.dp))
+        Text(label, color = PremiumColors.Cyan, fontSize = 13.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 2.dp))
+    }
+}
+
+private fun westAfricaCountryShort(country: String): String = when {
+    country.contains("Ivoire", ignoreCase = true) -> "CI"
+    country.contains("néga", ignoreCase = true) || country.contains("nega", ignoreCase = true) -> "SN"
+    else -> country.take(2).uppercase()
+}
+
+@Composable
+fun PremiumWestAfricaReceivingScreen(
+    state: PremiumScreenState<PremiumReceivingMethodsUiState>,
+    clearDraftSignal: Int = 0,
+    actionMessage: String? = null,
+    onSaveDraft: (MerchantReceivingMethodSubmission) -> Unit = {},
+    onDisableMethod: (String) -> Unit = {},
+    onSetDefaultMethod: (String) -> Unit = {},
+    onDeleteMethod: (String) -> Unit = {},
+    onBack: (() -> Unit)? = null,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
+) {
+    when (state) {
+        is PremiumScreenState.Content -> {
+            val wallets = WestAfricaReceivingCatalog.wallets
+            val walletOptions = remember {
+                wallets.map {
+                    PremiumReceivingMethodBankOption(
+                        bankProfileId = it.bankProfileId,
+                        displayName = "${it.displayName} ${westAfricaCountryShort(it.country)}"
+                    )
+                }
+            }
+            var selectedWalletId by remember { mutableStateOf(wallets.firstOrNull()?.bankProfileId.orEmpty()) }
+            var phoneInput by remember { mutableStateOf("") }
+            LaunchedEffect(clearDraftSignal) {
+                if (clearDraftSignal > 0) {
+                    phoneInput = ""
+                }
+            }
+            val waItems = state.value.items.filter { it.title.contains("mobile money", ignoreCase = true) }
+            LazyColumn(
+                Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+                contentPadding = PaddingValues(bottom = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                onBack?.let { back ->
+                    item { ReceivingMethodBreadcrumb(language.ui("Mobile money"), back) }
+                }
+                item {
+                    Text(language.ui("Mobile money (Afrique de l'Ouest)"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        language.ui("Ajoutez le wallet sur lequel vos clients vous paient en franc CFA (XOF)."),
+                        color = PremiumColors.PageMuted,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                }
+                actionMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                    item { ReceivingMethodFeedbackBanner(message) }
+                }
+                item {
+                    PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp, color = PremiumColors.Surface) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Box(
+                                    Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(20.dp))
+                                        .border(1.dp, PremiumColors.Cyan.copy(alpha = 0.18f), RoundedCornerShape(20.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Cyan, modifier = Modifier.size(27.dp))
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text(language.ui("Ajouter un wallet"), color = PremiumColors.Ink, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Black)
+                                    Text(
+                                        language.ui("Choisissez votre wallet, puis saisissez le numéro qui reçoit l'argent."),
+                                        color = PremiumColors.Muted,
+                                        fontSize = 12.sp,
+                                        lineHeight = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            }
+                            CompactReceivingBankSelector(
+                                selectedBankId = selectedWalletId,
+                                bankOptions = walletOptions,
+                                language = language,
+                                onBankSelected = { selectedWalletId = it }
+                            )
+                            OutlinedTextField(
+                                value = phoneInput,
+                                onValueChange = { phoneInput = it },
+                                label = { Text(language.ui("Numéro mobile money")) },
+                                placeholder = { Text("Ex. +221 77 123 45 67") },
+                                leadingIcon = { Icon(Icons.Default.PhoneAndroid, null, tint = PremiumColors.Blue) },
+                                supportingText = {
+                                    Text(
+                                        language.ui("Format international. Seule la version masquée sera affichée."),
+                                        color = PremiumColors.Muted,
+                                        fontSize = 11.sp,
+                                        lineHeight = 14.sp
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            PremiumPrimaryButton(
+                                language.ui("Enregistrer le wallet"),
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = selectedWalletId.isNotBlank() && phoneInput.isNotBlank()
+                            ) {
+                                val submission = MerchantReceivingMethodDraft(
+                                    bankProfileId = selectedWalletId,
+                                    type = ReceivingMethodType.MOBILE_MONEY,
+                                    rawIdentifierInput = phoneInput
+                                ).toSubmission()
+                                onSaveDraft(submission)
+                            }
+                        }
+                    }
+                }
+                if (waItems.isEmpty()) {
+                    item {
+                        PremiumStatePanel(
+                            PremiumScreenState.empty<Unit>(
+                                language.ui("Aucun wallet mobile money"),
+                                language.ui("Ajoutez un wallet Orange Money, Wave ou MTN pour encaisser en XOF.")
+                            )
+                        )
+                    }
+                }
+                items(waItems) { method ->
+                    PremiumReceivingMethodRow(
+                        method = method,
+                        onEdit = {},
                         onDisable = { onDisableMethod(method.routeId) },
                         onSetDefault = { onSetDefaultMethod(method.routeId) },
                         onDelete = { onDeleteMethod(method.routeId) },

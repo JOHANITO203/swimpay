@@ -52,7 +52,7 @@ class PremiumSettingsSubscreenContractTest {
             "PremiumDashboardScreen(",
             "PremiumReviewsScreen(",
             "PremiumPaymentDetailScreen(",
-            "PremiumReceivingMethodsStateScreen(",
+            "PremiumReceivingMethodsHub(",
             "PremiumOrdersScreen(",
             "PremiumOnboardingFlow(",
             "PremiumAppShell("

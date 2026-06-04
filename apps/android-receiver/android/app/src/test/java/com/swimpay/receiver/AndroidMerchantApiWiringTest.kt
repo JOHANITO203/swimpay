@@ -1,5 +1,6 @@
 package com.swimpay.receiver
 
+import com.swimpay.receiver.ui.premium.WestAfricaReceivingCatalog
 import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -824,6 +825,62 @@ class AndroidMerchantApiWiringTest {
         assertEquals("ozon_bank", submission.bankProfileId)
         assertEquals("OZON-CARD", submission.routeCode)
         assertEquals("Ozon Банк - Carte bancaire", submission.displayLabel)
+    }
+
+    @Test
+    fun westAfricaMobileMoneyDraftBuildsMobileMoneySubmission() {
+        val transport = RecordingMerchantApiTransport(
+            MerchantApiResponse(
+                201,
+                """
+                {
+                  "route": {
+                    "route_id": "route_wa_1",
+                    "bank_profile_id": "wave_sn",
+                    "rail_type": "mobile_money",
+                    "receiver_identifier_masked": "+••• ••• ••67",
+                    "route_code": "WAVE_SN-MM",
+                    "display_label": "Wave - Mobile money",
+                    "enabled": true,
+                    "recommended": false,
+                    "review_policy": "review_first"
+                  },
+                  "official_bank_confirmation": false
+                }
+                """.trimIndent()
+            )
+        )
+        val repository = MerchantReceivingMethodsApiRepository(transport)
+        val session = AuthenticatedMerchantSession.localDev("mch_demo")
+        val submission = MerchantReceivingMethodDraft(
+            bankProfileId = "wave_sn",
+            type = ReceivingMethodType.MOBILE_MONEY,
+            rawIdentifierInput = "+221 77 123 45 67"
+        ).toSubmission()
+
+        val created = repository.create(session, submission)
+
+        assertEquals("wave_sn", submission.bankProfileId)
+        assertEquals(ReceivingMethodType.MOBILE_MONEY, submission.type)
+        assertEquals("WAVE_SN-MM", submission.routeCode)
+        assertEquals("Wave - Mobile money", submission.displayLabel)
+        assertEquals(MerchantRepositoryState.SUCCESS, created.state)
+
+        val body = transport.requests.single().body
+        assertTrue(body.contains("\"bank_id\":\"wave_sn\""))
+        assertTrue(body.contains("\"type\":\"mobile_money\""))
+        assertTrue(body.contains("\"value\":\"+221 77 123 45 67\""))
+        assertFalse(created.visibleTexts().joinToString(" ").contains("221771234567"))
+    }
+
+    @Test
+    fun westAfricaReceivingCatalogMirrorsBackendProfileIds() {
+        val ids = WestAfricaReceivingCatalog.bankProfileIds
+        assertTrue(ids.contains("orange_money_sn"))
+        assertTrue(ids.contains("wave_sn"))
+        assertTrue(ids.contains("mtn_momo_ci"))
+        assertEquals(10, WestAfricaReceivingCatalog.wallets.size)
+        assertFalse(ids.contains("sber_ru"))
     }
 
     @Test

@@ -702,7 +702,17 @@ private val MERCHANT_RECEIVING_METHOD_BANK_LABELS: Map<String, String> = mapOf(
     "vtb_ru" to "VTB",
     "alfa_ru" to "Alfa-Bank",
     "gazprombank_ru" to "Gazprombank",
-    "ozon_bank" to "Ozon Банк"
+    "ozon_bank" to "Ozon Банк",
+    "orange_money_sn" to "Orange Money SN",
+    "orange_money_ci" to "Orange Money CI",
+    "wave_sn" to "Wave",
+    "mtn_momo_ci" to "MTN MoMo",
+    "moov_money_ci" to "Moov Money",
+    "free_money_sn" to "Free Money",
+    "wizall_sn" to "Wizall",
+    "djamo_ci" to "Djamo",
+    "ecobank_ci" to "Ecobank",
+    "sg_connect_ci" to "SG Connect"
 )
 
 private val MERCHANT_RECEIVING_METHOD_BANK_CODES: Map<String, String> = mapOf(
