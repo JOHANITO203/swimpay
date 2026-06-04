@@ -93,7 +93,8 @@ enum class ReceivingMethodType(
     val merchantLabel: String
 ) {
     CARD_TRANSFER("card_transfer", "Carte bancaire"),
-    PHONE_TRANSFER("phone_transfer", "Numéro de téléphone")
+    PHONE_TRANSFER("phone_transfer", "Numéro de téléphone"),
+    MOBILE_MONEY("mobile_money", "Mobile money")
 }
 
 data class MerchantReceivingMethodDisplay(
@@ -140,6 +141,7 @@ data class MerchantReceivingMethodDisplay(
             val maskedIdentifier = when (type) {
                 ReceivingMethodType.CARD_TRANSFER -> maskCard(rawIdentifier)
                 ReceivingMethodType.PHONE_TRANSFER -> maskPhone(rawIdentifier)
+                ReceivingMethodType.MOBILE_MONEY -> maskPhone(rawIdentifier)
             }
             val actions = buildList {
                 add("Modifier")

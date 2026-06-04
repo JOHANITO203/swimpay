@@ -1,5 +1,33 @@
 # Progress Log
 
+## 2026-06-04 - West Africa receiving symmetry (Phase 2, full)
+
+Closed the encaissement/reception asymmetry: the buyer side could offer XOF/West
+Africa payer methods while the merchant could only receive on RU rails, and XOF
+orders could not even exist.
+
+- Phase 1 (commit 3ecabad): payer-bank-launchers endpoint made currency-symmetric.
+- 2.1: rail_type `mobile_money` + currency-aware parseAmountMinor; platform order
+  currencies {RUB, XOF, XAF}; receivingRailForBuyerPaymentMethod extended;
+  migration 024 (additive: receiving-route mobile_money CHECK + currency column,
+  bank_profiles.currency).
+- 2.2: WestAfricaReceiverBankProfiles (mirror of payer launcher providers) +
+  AllReceiverBankProfiles; WA phone normalization + international masking;
+  migration 025 (WA bank_profiles, XOF, review_only). Route validation accepts WA
+  profiles and requires a WA profile for the mobile_money rail.
+- 2.3: resolveMerchantPaymentReadiness learns mobile_money + receivable_currencies;
+  POST /v1/orders refuses an api_key order in a currency the merchant has no active
+  route for -> 409 merchant_currency_route_required. Core symmetry gate.
+- 2.4: high-level /v1/merchant/receiving-methods accepts type mobile_money; Android
+  ReceivingMethodType.MOBILE_MONEY wired through all exhaustive when-sites so a WA
+  route is configurable and operable in the manual confirmation model.
+- Intentionally NOT done (needs field data, see docs/WEST_AFRICA_RECEIVING_SYMMETRY.md):
+  automated notification capture for Orange/Wave/MTN (WA profiles stay review_only,
+  runtime_verified false; manual flow works) and a polished Android WA picker.
+- Verified: tsc -b, vitest 779/779 (88 files), Gradle :app:testDebugUnitTest green.
+- Migrations 024 + 025 are additive and still need manual application on the live DB
+  (initdb.d only runs on first init), same plink+psql procedure as 023.
+
 ## 2026-06-04 - Production merchant purge (orphan cleanup)
 
 - Purged 18 orphan/probe merchants from the live database in ONE transaction, keeping only the active merchant d8db6373 (merchant-318ce516), identified by triple evidence: latest order (06-03), today's reveal audits from the phone, today's sliding session renewal.

@@ -2786,6 +2786,66 @@ describe('payment session api', () => {
   });
 });
 
+describe('West Africa mobile money receiving methods (end-to-end create paths)', () => {
+  test('low-level receiving-routes endpoint creates a mobile_money WA route', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        bank_profile_id: 'wave_sn',
+        rail_type: 'mobile_money',
+        receiver_identifier: '+221 77 123 45 67',
+        route_code: 'WAVE-SN',
+        display_label: 'Wave Senegal'
+      }
+    });
+    expect(response.statusCode).toBe(201);
+    const route = response.json().route;
+    expect(route.rail_type).toBe('mobile_money');
+    expect(route.receiver_identifier_type).toBe('phone');
+    expect(route.receiver_identifier_last4).toBe('4567');
+    expect(route.receiver_identifier_masked).not.toContain('221');
+    expect(JSON.stringify(response.json())).not.toContain('221771234567');
+  });
+
+  test('high-level receiving-methods endpoint accepts type mobile_money', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-methods',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        type: 'mobile_money',
+        bank_id: 'orange_money_sn',
+        value: '+221 77 987 65 43'
+      }
+    });
+    expect(response.statusCode).toBe(201);
+  });
+
+  test('rejects mobile_money on a Russian profile', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository);
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        bank_profile_id: 'sber_ru',
+        rail_type: 'mobile_money',
+        receiver_identifier: '+221 77 123 45 67',
+        route_code: 'BAD-MM',
+        display_label: 'Bad'
+      }
+    });
+    expect(response.statusCode).toBe(400);
+  });
+});
+
 describe('payer bank launchers stay symmetric with the session currency', () => {
   function sessionWithCurrency(currency: string): StoredPaymentSessionRecord {
     return { id: 'ps_currency_probe', currency } as unknown as StoredPaymentSessionRecord;

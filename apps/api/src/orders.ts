@@ -6,7 +6,8 @@ import {
   ReceivingRouteReviewPolicies,
   ReceiverIdentifierTypes,
   PayerBankLauncherRegistry,
-  V1ReceiverBankOptions,
+  AllReceiverBankProfiles,
+  WestAfricaReceiverBankProfiles,
   deriveExpectedPaymentProfile,
   maskReceiverIdentifier,
   receivingRailForBuyerPaymentMethod,
@@ -2455,9 +2456,15 @@ export function buildMerchantReceivingRouteRecord(input: {
   encryptionSecret: string;
   now: string;
 }): StoredMerchantReceivingRouteRecord | ApiErrorResponse {
-  if (!V1ReceiverBankOptions.some((bank) => bank.bank_profile_id === input.bankProfileId)) {
+  if (!AllReceiverBankProfiles.some((bank) => bank.bank_profile_id === input.bankProfileId)) {
     return invalidRequest('bank_profile_id is not supported for receiving routes.', {
       bank_profile_id: input.bankProfileId
+    });
+  }
+  if (input.railType === 'mobile_money' && !WestAfricaReceiverBankProfiles.some((bank) => bank.bank_profile_id === input.bankProfileId)) {
+    return invalidRequest('mobile_money rail requires a West Africa receiving profile.', {
+      bank_profile_id: input.bankProfileId,
+      rail_type: input.railType
     });
   }
   if (!ReceivingRouteRailTypes.includes(input.railType)) {
@@ -2470,7 +2477,7 @@ export function buildMerchantReceivingRouteRecord(input: {
   if (!input.receiverIdentifier.trim()) {
     return invalidRequest('receiver_identifier is required.', {});
   }
-  const normalizedIdentifier = normalizeReceiverIdentifier(receiverIdentifierType, input.receiverIdentifier);
+  const normalizedIdentifier = normalizeReceiverIdentifier(receiverIdentifierType, input.receiverIdentifier, input.railType);
   if (!normalizedIdentifier) {
     return invalidRequest('receiver_identifier is not valid for the selected receiving route.', {
       type: receiverIdentifierType
@@ -2498,7 +2505,9 @@ export function buildMerchantReceivingRouteRecord(input: {
     receiver_identifier_type: receiverIdentifierType,
     receiver_identifier_encrypted: encryptReceiverIdentifier(input.receiverIdentifier, input.encryptionSecret),
     receiver_identifier_hmac: hmacSha256(`${input.merchantId}:${input.railType}:${normalizedIdentifier}`, input.encryptionSecret),
-    receiver_identifier_masked: maskReceiverIdentifier(receiverIdentifierType, normalizedIdentifier),
+    receiver_identifier_masked: maskReceiverIdentifier(receiverIdentifierType, normalizedIdentifier, {
+      international: input.railType === 'mobile_money'
+    }),
     receiver_identifier_last4: normalizedIdentifier.replace(/\D/g, '').slice(-4),
     route_code: routeCode,
     display_label: displayLabel,
@@ -2543,15 +2552,20 @@ function isReceivingRouteUsableForSession(
 }
 
 export function receiverIdentifierTypeForRail(railType: ReceivingRouteRailType): ReceiverIdentifierType {
-  return railType === 'phone_transfer' ? 'phone' : 'card';
+  // Mobile money accounts are addressed by phone number, like SBP.
+  return railType === 'phone_transfer' || railType === 'mobile_money' ? 'phone' : 'card';
 }
 
 export function defaultReviewPolicyForRail(railType: ReceivingRouteRailType): ReceivingRouteReviewPolicy {
+  // Only the device-validated RU SBP rail is eligible for low-risk-later; new
+  // rails (card, mobile money) stay review-first until proven.
   return railType === 'phone_transfer' ? 'eligible_low_risk_later' : 'review_first';
 }
 
 function amountLeaseRailForRoute(railType: ReceivingRouteRailType): AmountLeaseRail {
-  return railType === 'phone_transfer' ? 'sbp' : 'card';
+  // Mobile money is phone-addressed; reuse the 'sbp' lease bucket so amount
+  // de-duplication stays within the existing amount_leases.rail CHECK domain.
+  return railType === 'phone_transfer' || railType === 'mobile_money' ? 'sbp' : 'card';
 }
 
 function normalizeReconciliationDelta(value: number): number {
@@ -2562,8 +2576,15 @@ function normalizeReconciliationDelta(value: number): number {
   return value;
 }
 
-function normalizeReceiverIdentifier(type: ReceiverIdentifierType, value: string): string | null {
+function normalizeReceiverIdentifier(
+  type: ReceiverIdentifierType,
+  value: string,
+  railType?: ReceivingRouteRailType
+): string | null {
   if (type === 'phone') {
+    if (railType === 'mobile_money') {
+      return normalizeWestAfricaMobileNumber(value);
+    }
     return normalizeRussianPhone(value);
   }
 
@@ -2572,6 +2593,19 @@ function normalizeReceiverIdentifier(type: ReceiverIdentifierType, value: string
     return null;
   }
   return digits;
+}
+
+/**
+ * Normalizes a West Africa (UEMOA) mobile-money number to E.164 digits.
+ * Permissive on purpose: the merchant enters their OWN receiving number.
+ * Keeps a leading country code, strips formatting, requires 8..15 digits.
+ */
+function normalizeWestAfricaMobileNumber(value: string): string | null {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length < 8 || digits.length > 15) {
+    return null;
+  }
+  return `+${digits}`;
 }
 
 function encryptReceiverIdentifier(value: string, secret: string): string {
@@ -2640,13 +2674,25 @@ export function parseMerchantId(
   return match[1] ?? null;
 }
 
-export function parseAmountMinor(value: string): number | null {
-  if (!/^\d+(\.\d{2})$/.test(value)) {
-    return null;
+export function parseAmountMinor(value: string, currency?: string): number | null {
+  const digits = currencyMinorDigits(currency);
+  if (digits === 0) {
+    // Franc CFA (XOF/XAF) and other zero-decimal currencies: the value IS the
+    // integer minor amount, no fractional part allowed.
+    if (!/^\d+$/.test(value)) {
+      return null;
+    }
+    const amount = Number.parseInt(value, 10);
+    return amount > 0 ? amount : null;
   }
 
+  const decimalPattern = new RegExp(`^\\d+\\.\\d{${digits}}$`);
+  if (!decimalPattern.test(value)) {
+    return null;
+  }
   const [major = '0', minor = '0'] = value.split('.');
-  const amount = Number.parseInt(major, 10) * 100 + Number.parseInt(minor, 10);
+  const factor = 10 ** digits;
+  const amount = Number.parseInt(major, 10) * factor + Number.parseInt(minor, 10);
   return amount > 0 ? amount : null;
 }
 
@@ -2657,6 +2703,11 @@ const CURRENCY_MINOR_DIGITS: Readonly<Record<string, number>> = {
   XOF: 0,
   XAF: 0
 };
+
+// Platform-supported order currencies. Per-merchant symmetry (the merchant must
+// actually have a receiving route in the currency) is enforced separately at the
+// order-creation handler, so this set is the platform ceiling, not the per-merchant rule.
+export const ACCEPTED_ORDER_CURRENCIES: ReadonlySet<string> = new Set(['RUB', 'XOF', 'XAF']);
 
 /** Decimal places for a currency. Defaults to 2 (preserves V1 RUB behavior); XOF/XAF (franc CFA) use 0. */
 export function currencyMinorDigits(currency?: string): number {
@@ -2754,13 +2805,17 @@ export function buildOrderCreateInput(params: {
   idGenerator: IdGenerator;
   clock: () => Date;
 }): CreateOrderWithSessionInput | ApiErrorResponse {
-  const amountMinor = parseAmountMinor(params.body.amount.value);
+  const currency = params.body.amount.currency;
+  const amountMinor = parseAmountMinor(params.body.amount.value, currency);
 
-  if (amountMinor === null || params.body.amount.currency !== 'RUB') {
-    return invalidRequest('Order amount must be positive and currency must be RUB.', {
-      amount: params.body.amount.value,
-      currency: params.body.amount.currency
-    });
+  if (amountMinor === null || !ACCEPTED_ORDER_CURRENCIES.has(currency)) {
+    return invalidRequest(
+      `Order amount must be positive and currency must be one of: ${[...ACCEPTED_ORDER_CURRENCIES].join(', ')}.`,
+      {
+        amount: params.body.amount.value,
+        currency
+      }
+    );
   }
 
   const now = params.clock();

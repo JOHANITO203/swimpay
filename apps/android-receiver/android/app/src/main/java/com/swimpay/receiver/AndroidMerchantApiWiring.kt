@@ -719,6 +719,7 @@ private fun routeCodeFor(bankProfileId: String, type: ReceivingMethodType): Stri
     val methodCode = when (type) {
         ReceivingMethodType.CARD_TRANSFER -> "CARD"
         ReceivingMethodType.PHONE_TRANSFER -> "PHONE"
+        ReceivingMethodType.MOBILE_MONEY -> "MM"
     }
     return "$bankCode-$methodCode"
 }
@@ -2127,6 +2128,7 @@ private fun receivingMethodProductType(type: ReceivingMethodType): String {
     return when (type) {
         ReceivingMethodType.CARD_TRANSFER -> "card"
         ReceivingMethodType.PHONE_TRANSFER -> "phone"
+        ReceivingMethodType.MOBILE_MONEY -> "mobile_money"
     }
 }
 
@@ -2143,6 +2145,11 @@ private fun validateReceivingMethodSubmission(submission: MerchantReceivingMetho
             } else {
                 "Moyen de réception invalide"
             }
+        }
+        ReceivingMethodType.MOBILE_MONEY -> {
+            // West Africa mobile money: permissive E.164 (8..15 digits).
+            val digits = submission.rawIdentifier.filter { it.isDigit() }
+            if (digits.length in 8..15) null else "Moyen de réception invalide"
         }
     }
 }
@@ -2164,6 +2171,7 @@ private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
     val type = when (railType) {
         ReceivingMethodType.CARD_TRANSFER.wireValue -> ReceivingMethodType.CARD_TRANSFER
         ReceivingMethodType.PHONE_TRANSFER.wireValue -> ReceivingMethodType.PHONE_TRANSFER
+        ReceivingMethodType.MOBILE_MONEY.wireValue -> ReceivingMethodType.MOBILE_MONEY
         else -> return null
     }
     val actions = buildList {

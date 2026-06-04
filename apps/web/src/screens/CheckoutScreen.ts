@@ -623,7 +623,8 @@ function getBuyerMethodAvailability(
   routes: readonly BuyerSafeReceivingRoute[]
 ): BuyerMethodAvailability {
   if (session.available_payment_methods) {
-    return session.available_payment_methods;
+    const methods = session.available_payment_methods;
+    return { card: methods.card, sbp: methods.sbp, mobile_money: methods.mobile_money ?? false };
   }
   const rails = new Set<ReceivingRouteRailType>();
   for (const bank of banks) {
@@ -636,12 +637,13 @@ function getBuyerMethodAvailability(
   }
   return {
     card: rails.has('card_transfer'),
-    sbp: rails.has('phone_transfer')
+    sbp: rails.has('phone_transfer'),
+    mobile_money: rails.has('mobile_money')
   };
 }
 
 function hasReceivingMethod(availability: BuyerMethodAvailability): boolean {
-  return availability.card || availability.sbp;
+  return availability.card || availability.sbp || availability.mobile_money;
 }
 
 function hasStructuredCheckoutFallback(session: CheckoutSession): boolean {

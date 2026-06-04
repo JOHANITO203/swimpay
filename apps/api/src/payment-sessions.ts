@@ -146,6 +146,7 @@ export interface CheckoutStatusResponse {
 export interface AvailableCheckoutPaymentMethods {
   card: boolean;
   sbp: boolean;
+  mobile_money: boolean;
 }
 
 export interface AvailableCheckoutRoute {
@@ -391,7 +392,12 @@ export function buildCheckoutAvailability(
     .filter((route) => route.enabled && route.lifecycle_status === 'active')
     .map((route) => ({
       route_id: route.route_id,
-      method_type: route.rail_type === 'phone_transfer' ? 'sbp' as const : 'card' as const,
+      method_type:
+        route.rail_type === 'phone_transfer'
+          ? ('sbp' as const)
+          : route.rail_type === 'mobile_money'
+            ? ('mobile_money' as const)
+            : ('card' as const),
       receiver_bank_id: route.bank_profile_id,
       bank_id: route.bank_profile_id,
       masked_value: route.receiver_identifier_masked,
@@ -402,7 +408,12 @@ export function buildCheckoutAvailability(
     const receiverBank = getReceiverBankOption(route.receiver_bank_id);
     return {
       method: route.method_type,
-      label: route.method_type === 'card' ? 'Carte' as const : 'SBP' as const,
+      label:
+        route.method_type === 'card'
+          ? ('Carte' as const)
+          : route.method_type === 'mobile_money'
+            ? ('Mobile money' as const)
+            : ('SBP' as const),
       available: true,
       route_id: route.route_id,
       receiver_bank_id: route.receiver_bank_id,
@@ -413,9 +424,10 @@ export function buildCheckoutAvailability(
   });
   const methods: AvailableCheckoutPaymentMethods = {
     card: availableRoutes.some((route) => route.method_type === 'card'),
-    sbp: availableRoutes.some((route) => route.method_type === 'sbp')
+    sbp: availableRoutes.some((route) => route.method_type === 'sbp'),
+    mobile_money: availableRoutes.some((route) => route.method_type === 'mobile_money')
   };
-  const unavailableReason = !methods.card && !methods.sbp
+  const unavailableReason = !methods.card && !methods.sbp && !methods.mobile_money
     ? 'merchant_no_active_receiving_method'
     : paymentSession.paymentMethod && !methods[paymentSession.paymentMethod]
       ? 'method_not_supported_by_merchant'

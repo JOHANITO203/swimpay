@@ -11,10 +11,60 @@ import {
 } from './server.js';
 import {
   PgOrderRepository,
+  buildMerchantReceivingRouteRecord,
   type PaymentSessionCheckoutMutationResult,
   type SaveExpectedPaymentProfileInput,
   type StoredMerchantReceivingRouteRecord
 } from './orders.js';
+
+describe('West Africa mobile money receiving routes', () => {
+  const baseInput = {
+    routeId: 'route_wa_01',
+    merchantId: 'mch_wa',
+    receiverIdentifier: '+221 77 123 45 67',
+    routeCode: 'WAVE-SN-1',
+    displayLabel: 'Wave Senegal',
+    encryptionSecret: 'test_secret',
+    now: '2026-06-04T10:00:00.000Z'
+  };
+
+  test('accepts a mobile_money route on a West Africa profile and masks internationally', () => {
+    const route = buildMerchantReceivingRouteRecord({
+      ...baseInput,
+      bankProfileId: 'wave_sn',
+      railType: 'mobile_money'
+    });
+    expect('error' in route).toBe(false);
+    if ('error' in route) return;
+    expect(route.rail_type).toBe('mobile_money');
+    expect(route.receiver_identifier_type).toBe('phone');
+    expect(route.review_policy).toBe('review_first');
+    expect(route.receiver_identifier_masked).not.toContain('+7');
+    expect(route.receiver_identifier_last4).toBe('4567');
+    expect(route.receiver_identifier_encrypted).not.toContain('221');
+  });
+
+  test('rejects a mobile_money route pointed at a Russian profile', () => {
+    const route = buildMerchantReceivingRouteRecord({
+      ...baseInput,
+      bankProfileId: 'sber_ru',
+      railType: 'mobile_money'
+    });
+    expect('error' in route).toBe(true);
+    if ('error' in route) {
+      expect(route.error.message).toContain('West Africa');
+    }
+  });
+
+  test('rejects an unknown bank profile', () => {
+    const route = buildMerchantReceivingRouteRecord({
+      ...baseInput,
+      bankProfileId: 'not_a_bank',
+      railType: 'mobile_money'
+    });
+    expect('error' in route).toBe(true);
+  });
+});
 
 function checkoutReadyRoute(merchantId: string): StoredMerchantReceivingRouteRecord {
   return {
@@ -1122,7 +1172,7 @@ describe('order api', () => {
     expect(response.json()).toEqual({
       error: {
         code: 'invalid_request',
-        message: 'Order amount must be positive and currency must be RUB.',
+        message: 'Order amount must be positive and currency must be one of: RUB, XOF, XAF.',
         details: {
           amount: '0.00',
           currency: 'USD'
@@ -1271,6 +1321,47 @@ describe('order api', () => {
       payload: validOrderPayload
     });
     expect(created.statusCode).toBe(201);
+  });
+
+  test('blocks an API-key order in a currency the merchant cannot receive, and accepts it once a matching route exists', async () => {
+    const repository = new InMemoryOrderRepository();
+    const { server, merchantApiKeyVerifier, merchantIntegrationRepository } = buildProductionOrderServer(repository);
+    merchantApiKeyVerifier.seedRawKey('sk_live_xof', {
+      merchantId: 'merchant_xof',
+      apiKeyId: 'key_xof',
+      scopes: ['orders.write']
+    });
+    await merchantIntegrationRepository.updateWebhookUrl(
+      'merchant_xof',
+      'https://merchant.example/webhooks/swimpay',
+      '2026-05-02T09:00:00.000Z'
+    );
+
+    // Default merchant has only a RUB (sber_ru) route -> XOF must be refused.
+    const blocked = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer sk_live_xof' },
+      payload: { ...validOrderPayload, amount: { value: '1000', currency: 'XOF' } }
+    });
+    expect(blocked.statusCode).toBe(409);
+    expect(blocked.json().error.code).toBe('merchant_currency_route_required');
+    expect(blocked.json().error.details).toMatchObject({
+      requested_currency: 'XOF',
+      receivable_currencies: ['RUB']
+    });
+
+    // Give the merchant a West Africa (XOF) receiving route -> XOF now accepted.
+    repository.listReceiverBanksForCheckout = async (merchantId: string) => [
+      { ...checkoutReadyRoute(merchantId), bank_profile_id: 'wave_sn', rail_type: 'mobile_money', receiver_identifier_type: 'phone' }
+    ];
+    const accepted = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer sk_live_xof' },
+      payload: { ...validOrderPayload, amount: { value: '1000', currency: 'XOF' } }
+    });
+    expect(accepted.statusCode).toBe(201);
   });
 
   test('fails fast when production phone HMAC secret is missing', () => {

@@ -423,7 +423,7 @@ describe('checkout bank selection contracts', () => {
   });
 
   it('defines hybrid merchant receiving routes with masked buyer-safe output', () => {
-    expect(ReceivingRouteRailTypes).toEqual(['phone_transfer', 'card_transfer']);
+    expect(ReceivingRouteRailTypes).toEqual(['phone_transfer', 'card_transfer', 'mobile_money']);
     expect(ReceiverIdentifierTypes).toEqual(['phone', 'card']);
     expect(ReceivingRouteReviewPolicies).toEqual(['review_first', 'eligible_low_risk_later']);
 

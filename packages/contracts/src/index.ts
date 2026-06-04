@@ -69,10 +69,10 @@ export type BuyerSafeCheckoutStatus = (typeof BuyerSafeCheckoutStatuses)[number]
 export type ReceiverBankBuyerStatus = 'available' | 'review_required_beta' | 'temporarily_unavailable';
 export type ReceiverRouteBuyerStatus = 'review_beta' | 'temporarily_unavailable';
 
-export const BuyerCheckoutPaymentMethods = ['card', 'sbp'] as const;
+export const BuyerCheckoutPaymentMethods = ['card', 'sbp', 'mobile_money'] as const;
 export type BuyerCheckoutPaymentMethod = (typeof BuyerCheckoutPaymentMethods)[number];
 
-export const ReceivingRouteRailTypes = ['phone_transfer', 'card_transfer'] as const;
+export const ReceivingRouteRailTypes = ['phone_transfer', 'card_transfer', 'mobile_money'] as const;
 export type ReceivingRouteRailType = (typeof ReceivingRouteRailTypes)[number];
 
 export const ReceiverIdentifierTypes = ['phone', 'card'] as const;
@@ -102,12 +102,20 @@ export interface MerchantPaymentReadiness {
   available_payment_methods: {
     card: boolean;
     sbp: boolean;
+    mobile_money: boolean;
   };
+  /** Currencies the merchant has at least one active receiving route for. */
+  receivable_currencies: readonly string[];
   setup_actions: readonly string[];
   unavailable_reason?: 'merchant_no_active_receiving_method' | undefined;
   manual_fallback_ready: boolean;
   signal_assisted_ready: boolean;
   official_bank_confirmation: false;
+}
+
+/** Currency a receiving bank profile collects in. West Africa profiles = XOF; RU = RUB. */
+export function receivingCurrencyForBankProfile(bankProfileId: string): string {
+  return WestAfricaReceiverBankProfiles.some((bank) => bank.bank_profile_id === bankProfileId) ? 'XOF' : 'RUB';
 }
 
 export const ReceivingRouteRiskReasonCodes = [
@@ -323,6 +331,32 @@ export const V1ReceiverBankOptions: readonly ReceiverBankOption[] = [
   })
 ] as const;
 
+/**
+ * West Africa (UEMOA / XOF) receiving profiles — the merchant-side mirror of
+ * WestAfricaPayerBankLauncherRegistry. Mobile-money wallets receive on a phone
+ * number (rail mobile_money); they are kept in a separate registry so the RU
+ * checkout receiver list is not polluted. Validation and resolution use the
+ * combined AllReceiverBankProfiles.
+ */
+export const WestAfricaReceiverBankProfiles: readonly ReceiverBankOption[] = [
+  receiverBank('orange_money_sn', 'Orange Money (Sénégal)'),
+  receiverBank('orange_money_ci', "Orange Money (Côte d'Ivoire)"),
+  receiverBank('wave_sn', 'Wave (Sénégal)'),
+  receiverBank('mtn_momo_ci', "MTN MoMo (Côte d'Ivoire)"),
+  receiverBank('moov_money_ci', "Moov Money (Côte d'Ivoire)"),
+  receiverBank('free_money_sn', 'Free Money / Mixx by Yas (Sénégal)'),
+  receiverBank('wizall_sn', 'Wizall Money (Sénégal)'),
+  receiverBank('djamo_ci', "Djamo (Côte d'Ivoire)"),
+  receiverBank('ecobank_ci', "Ecobank (Côte d'Ivoire)"),
+  receiverBank('sg_connect_ci', "SG Connect (Côte d'Ivoire)")
+] as const;
+
+/** Every receiver bank profile the platform recognises (RU V1 + West Africa). */
+export const AllReceiverBankProfiles: readonly ReceiverBankOption[] = [
+  ...V1ReceiverBankOptions,
+  ...WestAfricaReceiverBankProfiles
+] as const;
+
 export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
   payerLauncher('sber_ru', 'Sberbank', ['ru.sberbankmobile'], {
     androidExplicitActivityName:
@@ -477,7 +511,7 @@ export interface CheckoutStateInput {
 }
 
 export function getReceiverBankOption(receiverBankId: string): ReceiverBankOption | null {
-  return V1ReceiverBankOptions.find((bank) => bank.receiver_bank_id === receiverBankId) ?? null;
+  return AllReceiverBankProfiles.find((bank) => bank.receiver_bank_id === receiverBankId) ?? null;
 }
 
 export function getPayerBankLauncherOption(payerBankLauncherId: string): PayerBankLauncherOption | null {
@@ -586,10 +620,18 @@ export function toBuyerSafeReceivingRoute(route: MerchantReceivingRoute): BuyerS
   return value;
 }
 
-export function maskReceiverIdentifier(type: ReceiverIdentifierType, value: string): string {
+export function maskReceiverIdentifier(
+  type: ReceiverIdentifierType,
+  value: string,
+  options: { international?: boolean } = {}
+): string {
   const digits = value.replace(/\D/g, '');
   if (type === 'phone') {
     const lastTwo = digits.slice(-2).padStart(2, '*');
+    if (options.international) {
+      // West Africa / mobile money: no Russian +7 assumption.
+      return `+••• ••• ••${lastTwo}`;
+    }
     return `+7 *** *** **${lastTwo}`;
   }
 
@@ -1046,7 +1088,15 @@ export function deriveExpectedPaymentProfile(input: ExpectedPaymentProfileInput)
 }
 
 export function receivingRailForBuyerPaymentMethod(method: BuyerCheckoutPaymentMethod): ReceivingRouteRailType {
-  return method === 'card' ? 'card_transfer' : 'phone_transfer';
+  switch (method) {
+    case 'card':
+      return 'card_transfer';
+    case 'mobile_money':
+      return 'mobile_money';
+    case 'sbp':
+    default:
+      return 'phone_transfer';
+  }
 }
 
 export function buildPaymentIntent(input: BuildPaymentIntentInput): PaymentIntent {

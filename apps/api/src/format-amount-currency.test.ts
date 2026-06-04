@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { currencyMinorDigits, formatAmountMinor } from './orders.js';
+import { currencyMinorDigits, formatAmountMinor, parseAmountMinor } from './orders.js';
 
 describe('currency-aware amount formatting', () => {
   it('defaults to 2 decimals (RUB / V1 behavior preserved)', () => {
@@ -20,5 +20,18 @@ describe('currency-aware amount formatting', () => {
 
   it('falls back to 2 decimals for unknown currencies', () => {
     expect(currencyMinorDigits('ZZZ')).toBe(2);
+  });
+
+  it('parses amounts according to the currency decimal regime', () => {
+    // RUB / default: 2 mandatory decimals
+    expect(parseAmountMinor('137.00')).toBe(13700);
+    expect(parseAmountMinor('137.35', 'RUB')).toBe(13735);
+    expect(parseAmountMinor('137', 'RUB')).toBeNull();
+    expect(parseAmountMinor('0.00', 'RUB')).toBeNull();
+    // XOF / XAF: integer franc amount, no decimals
+    expect(parseAmountMinor('1000', 'XOF')).toBe(1000);
+    expect(parseAmountMinor('1037', 'XAF')).toBe(1037);
+    expect(parseAmountMinor('10.00', 'XOF')).toBeNull();
+    expect(parseAmountMinor('0', 'XOF')).toBeNull();
   });
 });

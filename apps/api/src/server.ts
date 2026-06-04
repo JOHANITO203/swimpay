@@ -19,10 +19,12 @@ import {
   AndroidMerchantDeviceLookupStatuses,
   ReceivingRouteRailTypes,
   V1StaticBankProfiles,
+  AllReceiverBankProfiles,
   buildAndroidMerchantAccountCreateResponse,
   buildAndroidMerchantDeviceLookupResponse,
   getPayerBankLauncherOption,
   getReceiverBankOption,
+  receivingCurrencyForBankProfile,
   receivingRailForBuyerPaymentMethod,
   validateAndroidMerchantCreateAccountRequest,
   validateAndroidMerchantDeviceRecoverRequest,
@@ -1321,6 +1323,20 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       }
     }
 
+    // Symmetry gate: never accept an order in a currency the merchant has no
+    // active receiving route for (e.g. an XOF order against a RUB-only merchant).
+    if (
+      merchantContext.source === 'api_key' &&
+      typeof body.amount?.currency === 'string' &&
+      !readiness.receivable_currencies.includes(body.amount.currency)
+    ) {
+      request.log.error(
+        { merchant_id: merchantId, requested_currency: body.amount.currency, receivable_currencies: readiness.receivable_currencies },
+        'order_creation_blocked_currency_not_receivable'
+      );
+      return reply.status(409).send(merchantCurrencyRouteRequiredError(body.amount.currency, readiness.receivable_currencies));
+    }
+
     const createInput = buildOrderCreateInput({
       body,
       merchantId,
@@ -1685,7 +1701,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       routeId,
       merchantId,
       bankProfileId: body.bank_id,
-      railType: body.type === 'phone' ? 'phone_transfer' : 'card_transfer',
+      railType:
+        body.type === 'phone' ? 'phone_transfer' : body.type === 'mobile_money' ? 'mobile_money' : 'card_transfer',
       receiverIdentifier: body.value,
       routeCode: buildReceivingMethodRouteCode({
         bankId: body.bank_id,
@@ -5161,8 +5178,12 @@ async function resolveMerchantPaymentReadiness(
   const routes = await repository.listReceiverBanksForCheckout(merchantId, '__merchant_readiness__');
   const methods = {
     card: routes.some((route) => route.rail_type === 'card_transfer'),
-    sbp: routes.some((route) => route.rail_type === 'phone_transfer')
+    sbp: routes.some((route) => route.rail_type === 'phone_transfer'),
+    mobile_money: routes.some((route) => route.rail_type === 'mobile_money')
   };
+  const receivableCurrencies = [
+    ...new Set(routes.map((route) => receivingCurrencyForBankProfile(route.bank_profile_id)))
+  ];
 
   if (routes.length === 0) {
     return {
@@ -5170,6 +5191,7 @@ async function resolveMerchantPaymentReadiness(
       payment_ready: false,
       active_receiving_route_count: 0,
       available_payment_methods: methods,
+      receivable_currencies: receivableCurrencies,
       setup_actions: ['add_receiving_method'],
       unavailable_reason: 'merchant_no_active_receiving_method',
       manual_fallback_ready: false,
@@ -5183,6 +5205,7 @@ async function resolveMerchantPaymentReadiness(
     payment_ready: true,
     active_receiving_route_count: routes.length,
     available_payment_methods: methods,
+    receivable_currencies: receivableCurrencies,
     setup_actions: [],
     manual_fallback_ready: true,
     signal_assisted_ready: false,
@@ -5200,6 +5223,24 @@ function merchantWebhookSetupRequiredError(readiness: WebhookReadiness): Record<
         integration_ready: readiness.integrationReady,
         setup_actions: ['configure_webhook'],
         setup_hint: 'Register the webhook URL via PUT /v1/merchant/integration/webhook-url or provision the full integration via POST /v1/merchant/integration/provision.'
+      }
+    }
+  };
+}
+
+function merchantCurrencyRouteRequiredError(
+  requestedCurrency: string,
+  receivableCurrencies: readonly string[]
+): Record<string, unknown> {
+  return {
+    error: {
+      code: 'merchant_currency_route_required',
+      message: 'Merchant has no active receiving route for the requested order currency.',
+      details: {
+        requested_currency: requestedCurrency,
+        receivable_currencies: receivableCurrencies,
+        setup_actions: ['add_receiving_method'],
+        setup_hint: 'Add a receiving method in this currency (e.g. a West Africa mobile money route for XOF) before creating orders in it.'
       }
     }
   };
@@ -5356,7 +5397,7 @@ function validateReceivingRouteCreateBody(body: unknown): ReceivingRouteCreateBo
 }
 
 interface ReceivingMethodCreateBody {
-  type: 'card' | 'phone';
+  type: 'card' | 'phone' | 'mobile_money';
   value: string;
   bank_id: string;
   label?: string | undefined;
@@ -5381,8 +5422,8 @@ function validateReceivingMethodCreateBody(body: unknown): ReceivingMethodCreate
     is_default?: unknown;
     status?: unknown;
   };
-  if (candidate.type !== 'card' && candidate.type !== 'phone') {
-    return invalidRequest('type must be card or phone.', { type: candidate.type });
+  if (candidate.type !== 'card' && candidate.type !== 'phone' && candidate.type !== 'mobile_money') {
+    return invalidRequest('type must be card, phone or mobile_money.', { type: candidate.type });
   }
   if (typeof candidate.bank_id !== 'string' || !candidate.bank_id.trim()) {
     return invalidRequest('bank_id is required.', {});
@@ -5447,9 +5488,13 @@ function validateReceivingMethodPatchBody(body: unknown): ReceivingMethodPatchBo
   return patch;
 }
 
-function normalizeReceivingMethodValue(type: 'card' | 'phone', value: string): string | null {
+function normalizeReceivingMethodValue(type: 'card' | 'phone' | 'mobile_money', value: string): string | null {
   if (type === 'phone') {
     return normalizeRussianPhone(value);
+  }
+  if (type === 'mobile_money') {
+    const digits = value.replace(/\D/g, '');
+    return digits.length >= 8 && digits.length <= 15 ? `+${digits}` : null;
   }
   const digits = value.replace(/\D/g, '');
   if (digits.length < 13 || digits.length > 16) {
@@ -5477,16 +5522,25 @@ function findForbiddenReceivingCredentialField(value: unknown): string | null {
 
 function buildReceivingMethodRouteCode(input: {
   bankId: string;
-  type: 'card' | 'phone';
+  type: 'card' | 'phone' | 'mobile_money';
   last4: string;
   routeId: string;
 }): string {
   return `${input.bankId}-${input.type}-${input.last4}-${input.routeId}`;
 }
 
-function buildReceivingMethodDefaultLabel(bankId: string, type: 'card' | 'phone'): string {
-  const bank = V1StaticBankProfiles.find((profile) => profile.bank_profile_id === bankId)?.display_name ?? bankId;
-  return type === 'phone' ? `${bank} telephone` : `${bank} card`;
+function buildReceivingMethodDefaultLabel(bankId: string, type: 'card' | 'phone' | 'mobile_money'): string {
+  const bank =
+    AllReceiverBankProfiles.find((profile) => profile.bank_profile_id === bankId)?.display_name ??
+    V1StaticBankProfiles.find((profile) => profile.bank_profile_id === bankId)?.display_name ??
+    bankId;
+  if (type === 'phone') {
+    return `${bank} telephone`;
+  }
+  if (type === 'mobile_money') {
+    return `${bank} mobile money`;
+  }
+  return `${bank} card`;
 }
 
 function validateReceivingRoutePatchBody(
