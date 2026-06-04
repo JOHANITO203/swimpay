@@ -1,8 +1,11 @@
 ﻿package com.swimpay.receiver.ui.premium
 
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Build
+import android.os.PersistableBundle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
@@ -2067,6 +2070,7 @@ fun PremiumConnectedSiteStateScreen(
     onSaveWebhookUrl: (String) -> Unit = {},
     onProvisionIntegration: (String) -> Unit = {},
     onRevealSecrets: () -> Unit = {},
+    onCopyAllForDeveloper: () -> Unit = {},
     onTestWebhook: () -> Unit = {},
     onOpenDeveloperGuide: () -> Unit = {},
     onAuthorizeCopy: (onAuthorized: () -> Unit) -> Unit = { onAuthorized -> onAuthorized() },
@@ -2082,10 +2086,7 @@ fun PremiumConnectedSiteStateScreen(
 
                 PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(language.ui("Contrat marchand"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                        value.developerRows.forEach { row ->
-                            DeveloperIntegrationValueRow(row.first, row.second, language = language)
-                        }
+                        Text(language.ui("Connexion"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
                         OutlinedTextField(
                             value = webhookUrl,
                             onValueChange = { webhookUrl = it },
@@ -2100,11 +2101,10 @@ fun PremiumConnectedSiteStateScreen(
                             onClick = { onProvisionIntegration(webhookUrl) }
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                            PremiumPrimaryButton(
+                            PremiumOutlineButton(
                                 language.ui("Enregistrer URL"),
                                 modifier = Modifier.weight(1f),
-                                enabled = value.actionButtonsEnabled && webhookUrl.isNotBlank(),
-                                onClick = { onSaveWebhookUrl(webhookUrl) }
+                                onClick = { if (value.actionButtonsEnabled && webhookUrl.isNotBlank()) onSaveWebhookUrl(webhookUrl) }
                             )
                             PremiumOutlineButton(
                                 language.ui("Tester"),
@@ -2112,6 +2112,44 @@ fun PremiumConnectedSiteStateScreen(
                                 onClick = { if (value.actionButtonsEnabled) onTestWebhook() }
                             )
                         }
+                    }
+                }
+
+                PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(language.ui("Identifiants"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        value.developerRows.forEach { row ->
+                            DeveloperIntegrationValueRow(row.first, row.second, language = language)
+                        }
+                    }
+                }
+
+                PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(language.ui("Partage développeur"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Text(
+                            language.ui("Copie en un geste toutes les valeurs révélées (clé API, secret webhook, URL) à transmettre à votre développeur. Sécurité de l'appareil exigée."),
+                            color = PremiumColors.Muted,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        PremiumPrimaryButton(
+                            language.ui("Copier tout pour mon développeur"),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = value.actionButtonsEnabled,
+                            onClick = { onCopyAllForDeveloper() }
+                        )
+                        PremiumOutlineButton(
+                            language.ui("Révéler les secrets"),
+                            onClick = { if (value.actionButtonsEnabled) onRevealSecrets() }
+                        )
+                    }
+                }
+
+                PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(language.ui("Maintenance"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                             PremiumBlueButton(
                                 language.ui("Créer clé API"),
@@ -2127,10 +2165,6 @@ fun PremiumConnectedSiteStateScreen(
                         PremiumOutlineButton(
                             language.ui("Rotation secret webhook"),
                             onClick = { if (value.actionButtonsEnabled) onRotateWebhookSecret() }
-                        )
-                        PremiumOutlineButton(
-                            language.ui("Révéler les secrets"),
-                            onClick = { if (value.actionButtonsEnabled) onRevealSecrets() }
                         )
                         PremiumOutlineButton(
                             language.ui("Guide SDK (PDF)"),
@@ -2176,9 +2210,16 @@ fun PremiumConnectedSiteStateScreen(
     }
 }
 
-private fun Context.copyDeveloperExportToClipboard(exportText: String) {
+internal fun Context.copyDeveloperExportToClipboard(exportText: String) {
     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText("SwimPay developer export", exportText))
+    val clip = ClipData.newPlainText("SwimPay developer export", exportText)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        // Mask the clipboard preview: this export can contain live SDK secrets.
+        clip.description.extras = PersistableBundle().apply {
+            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+        }
+    }
+    clipboard.setPrimaryClip(clip)
 }
 
 @Composable

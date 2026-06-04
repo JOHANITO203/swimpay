@@ -471,6 +471,77 @@ class PremiumMerchantRuntimeContractTest {
     }
 
     @Test
+    fun copyDeveloperHandoffExportRevealsAndBuildsClearExportAfterSecurityGate() {
+        val transport = RecordingPremiumTransport(
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "secret_key": "sk_live_handoff_clear",
+                  "webhook_secret": "whsec_handoff_clear",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "secret_key_requires_rotation": false,
+                  "webhook_secret_requires_rotation": false,
+                  "reveal_audited": true
+                }
+                """.trimIndent()
+            ),
+            MerchantApiResponse(
+                200,
+                """
+                {
+                  "merchant_id": "mch_mobile",
+                  "public_key": "pk_live_masked",
+                  "secret_key_masked": "sk_live_****9999",
+                  "webhook_secret_masked": "whsec_****2222",
+                  "webhook_url": "https://merchant.example/swimpay/webhook",
+                  "webhook_status": "active",
+                  "integration_ready": true,
+                  "public_webhook_events": ["payment.confirmed", "payment.rejected", "payment.expired"]
+                }
+                """.trimIndent()
+            )
+        )
+        val runtime = runtimeWithDeveloperIntegration(
+            AuthenticatedMerchantSession.mobile("mch_mobile", "spm_mobile_session_secret"),
+            transport
+        )
+
+        val handoff = runtime.copyDeveloperHandoffExport()
+
+        val exportText = handoff.exportText
+        requireNotNull(exportText)
+        assertTrue(exportText.contains("SWIMPAY_SECRET_KEY=sk_live_handoff_clear"))
+        assertTrue(exportText.contains("SWIMPAY_WEBHOOK_SECRET=whsec_handoff_clear"))
+        assertTrue(exportText.contains("SWIMPAY_MERCHANT_ID=mch_mobile"))
+        assertTrue(exportText.contains("SWIMPAY_PUBLIC_KEY=pk_live_masked"))
+        assertTrue(exportText.contains("SWIMPAY_WEBHOOK_URL=https://merchant.example/swimpay/webhook"))
+        assertFalse(exportText.contains("spm_mobile_session_secret"))
+        val content = handoff.state as PremiumScreenState.Content<PremiumConnectedSiteUiState>
+        assertTrue(content.value.safeMessage.contains("presse-papiers"))
+        assertEquals("/v1/merchant/integration/secrets/reveal", transport.requests[0].path)
+        assertEquals("/v1/merchant/integration", transport.requests[1].path)
+        assertTrue(transport.requests.all { it.headers["Authorization"] == "Bearer spm_mobile_session_secret" })
+    }
+
+    @Test
+    fun copyDeveloperHandoffExportFailsClosedWhenRevealIsUnavailable() {
+        val transport = RecordingPremiumTransport(
+            MerchantApiResponse(429, """{"error":{"code":"secret_reveal_rate_limited"}}""")
+        )
+        val runtime = runtimeWithDeveloperIntegration(
+            AuthenticatedMerchantSession.mobile("mch_mobile", "spm_mobile_session_secret"),
+            transport
+        )
+
+        val handoff = runtime.copyDeveloperHandoffExport()
+
+        assertEquals(null, handoff.exportText)
+        assertTrue(handoff.state !is PremiumScreenState.Content<*>)
+    }
+
+    @Test
     fun developerShowOnceExportClearsAfterCopyAndTimeout() {
         val transport = RecordingPremiumTransport(
             MerchantApiResponse(

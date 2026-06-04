@@ -1,5 +1,12 @@
 # Progress Log
 
+## 2026-06-04 - Developer handoff copy + connected-site screen reorganization (Android)
+
+- Reorganized the developer integration screen into 4 cards: Connexion (URL + provision), Identifiants (masked values), Partage développeur (handoff copy + reveal), Maintenance (rotations + SDK guide).
+- New one-tap handoff flow: "Copier tout pour mon développeur" passes the strong biometric gate once, reveals server-side (audited), and copies the FULL clear export (sk_, whsec_, webhook URL, merchant id, public key, events) to the clipboard - no more 2-minute show-once window for this flow.
+- Clipboard content is flagged sensitive on Android 13+ (masked system preview).
+- Validation: Gradle unit tests green (incl. 2 new handoff contract tests); release APK rebuilt, installed and verified on the production device. Migration 023 was applied manually on the live VPS database (vm44909) the same day, fixing the 500s on provision/reveal.
+
 ## 2026-06-04 - Atomic merchant integration provisioning + webhook readiness invariant
 
 - Root-caused the production "paid but nothing received" class bug: `integration_type='both'` was asserted by default while the webhook half (`webhook_endpoints` row + `webhook_status='active'`) was optional and separable; `syncWebhookEndpoint` silently early-returned without a URL and `updateWebhookUrl` set `active` non-transactionally before the endpoint existed.

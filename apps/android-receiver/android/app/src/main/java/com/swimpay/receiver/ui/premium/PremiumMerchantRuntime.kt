@@ -17,6 +17,7 @@ import com.swimpay.receiver.MerchantDashboardMetricsSummary
 import com.swimpay.receiver.MerchantDeveloperIntegrationApiRepository
 import com.swimpay.receiver.MerchantDeveloperIntegrationResult
 import com.swimpay.receiver.MerchantDeveloperIntegrationSnapshot
+import com.swimpay.receiver.MerchantSecretRevealResult
 import com.swimpay.receiver.MerchantOrderItem
 import com.swimpay.receiver.MerchantPaymentDetailApiRepository
 import com.swimpay.receiver.MerchantOrdersApiRepository
@@ -359,6 +360,11 @@ data class PremiumConnectedSiteUiState(
         }
     }
 }
+
+data class PremiumDeveloperHandoffResult(
+    val exportText: String?,
+    val state: PremiumScreenState<PremiumConnectedSiteUiState>
+)
 
 data class PremiumConfigurationUiState(
     val checklist: List<String>,
@@ -835,12 +841,58 @@ class PremiumMerchantRuntime(
             ?: return PremiumScreenState.offline(message = "Integration developpeur indisponible.")
         val reveal = repository.revealSecrets(session)
         if (reveal.state != MerchantRepositoryState.SUCCESS) {
-            return when (reveal.state) {
-                MerchantRepositoryState.ACTION_REQUIRED ->
-                    PremiumScreenState.actionRequired("Action requise", reveal.safeMessage)
-                else -> PremiumScreenState.offline(message = reveal.safeMessage)
-            }
+            return revealErrorState(reveal)
         }
+        storeRevealedSecretsForCopy(reveal)
+        val safeMessage = buildList {
+            add(reveal.safeMessage)
+            addRotationNotes(reveal)
+        }.joinToString(" ")
+        return repository.load(session).copy(safeMessage = safeMessage).toConnectedSiteStateWithCurrentShowOnceCopy()
+    }
+
+    fun copyDeveloperHandoffExport(): PremiumDeveloperHandoffResult {
+        val repository = developerIntegrationRepository
+            ?: return PremiumDeveloperHandoffResult(
+                exportText = null,
+                state = PremiumScreenState.offline(message = "Integration developpeur indisponible.")
+            )
+        val reveal = repository.revealSecrets(session)
+        if (reveal.state != MerchantRepositoryState.SUCCESS) {
+            return PremiumDeveloperHandoffResult(exportText = null, state = revealErrorState(reveal))
+        }
+        storeRevealedSecretsForCopy(reveal)
+        val loaded = repository.load(session)
+        val exportText = loaded.integration?.copyExportLines(
+            secretKeyForCopy = reveal.secretKey,
+            webhookSecretForCopy = reveal.webhookSecret,
+            merchantAuthorizationHeaderMasked = session.maskedAuthorizationHeader()
+        )?.joinToString("\n")
+        val safeMessage = buildList {
+            add(
+                if (exportText != null) {
+                    "Acces developpeur copie dans le presse-papiers. Collez-le a votre developpeur."
+                } else {
+                    "Export developpeur indisponible."
+                }
+            )
+            addRotationNotes(reveal)
+        }.joinToString(" ")
+        return PremiumDeveloperHandoffResult(
+            exportText = exportText,
+            state = loaded.copy(safeMessage = safeMessage).toConnectedSiteStateWithCurrentShowOnceCopy()
+        )
+    }
+
+    private fun revealErrorState(reveal: MerchantSecretRevealResult): PremiumScreenState<PremiumConnectedSiteUiState> {
+        return when (reveal.state) {
+            MerchantRepositoryState.ACTION_REQUIRED ->
+                PremiumScreenState.actionRequired("Action requise", reveal.safeMessage)
+            else -> PremiumScreenState.offline(message = reveal.safeMessage)
+        }
+    }
+
+    private fun storeRevealedSecretsForCopy(reveal: MerchantSecretRevealResult) {
         var hasRevealedSecret = false
         reveal.secretKey?.takeIf { it.isNotBlank() }?.let {
             developerSecretKeyOnceForCopy = it
@@ -853,16 +905,15 @@ class PremiumMerchantRuntime(
         if (hasRevealedSecret) {
             developerShowOnceCopyExpiresAtEpochMs = nowEpochMs() + DEVELOPER_SHOW_ONCE_COPY_TTL_MS
         }
-        val safeMessage = buildList {
-            add(reveal.safeMessage)
-            if (reveal.secretKeyRequiresRotation) {
-                add("Cle API creee avant la mise a jour: faites une rotation pour la consulter.")
-            }
-            if (reveal.webhookSecretRequiresRotation) {
-                add("Secret webhook cree avant la mise a jour: faites une rotation pour le consulter.")
-            }
-        }.joinToString(" ")
-        return repository.load(session).copy(safeMessage = safeMessage).toConnectedSiteStateWithCurrentShowOnceCopy()
+    }
+
+    private fun MutableList<String>.addRotationNotes(reveal: MerchantSecretRevealResult) {
+        if (reveal.secretKeyRequiresRotation) {
+            add("Cle API creee avant la mise a jour: faites une rotation pour la consulter.")
+        }
+        if (reveal.webhookSecretRequiresRotation) {
+            add("Secret webhook cree avant la mise a jour: faites une rotation pour le consulter.")
+        }
     }
 
     fun testDeveloperWebhook(): PremiumScreenState<PremiumConnectedSiteUiState> {

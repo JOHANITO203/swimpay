@@ -816,6 +816,26 @@ fun PremiumMerchantApp(
                     }
                 )
             },
+            onCopyAllForDeveloper = {
+                onRequestSecretReveal(
+                    {
+                        connectedSiteState = PremiumScreenState.loading()
+                        scope.launch {
+                            val handoff = withContext(Dispatchers.IO) { activeRuntime.copyDeveloperHandoffExport() }
+                            handoff.exportText?.let { exportText ->
+                                context.copyDeveloperExportToClipboard(exportText)
+                            }
+                            connectedSiteState = handoff.state
+                        }
+                    },
+                    { unavailableMessage ->
+                        connectedSiteState = PremiumScreenState.actionRequired(
+                            "Sécurité appareil requise",
+                            unavailableMessage
+                        )
+                    }
+                )
+            },
             onTestWebhook = {
                 connectedSiteState = PremiumScreenState.loading()
                 scope.launch {
