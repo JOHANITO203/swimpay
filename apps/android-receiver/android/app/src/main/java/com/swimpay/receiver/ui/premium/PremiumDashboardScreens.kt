@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -1071,6 +1072,8 @@ private fun PremiumReceivingMethodsUiState.westAfricaCount(): Int =
 private fun PremiumReceivingMethodsUiState.russianCount(): Int =
     items.size - westAfricaCount()
 
+private val RUSSIAN_PREVIEW_BANK_IDS = listOf("sber_ru", "tbank_ru", "vtb_ru", "alfa_ru", "gazprombank_ru", "ozon_bank")
+
 @Composable
 private fun PremiumReceivingMethodFamilyChooser(
     state: PremiumScreenState<PremiumReceivingMethodsUiState>,
@@ -1078,102 +1081,242 @@ private fun PremiumReceivingMethodFamilyChooser(
     onPick: (ReceivingMethodFamily) -> Unit
 ) {
     val value = (state as? PremiumScreenState.Content)?.value
-    Column(
+    LazyColumn(
         Modifier
             .fillMaxHeight()
             .padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp)
     ) {
-        Spacer(Modifier.height(4.dp))
-        Text(language.ui("Moyens de réception"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
-        Text(
-            language.ui("Choisissez comment vous recevez l'argent de vos clients."),
-            color = PremiumColors.PageMuted,
-            fontSize = 14.sp,
-            lineHeight = 20.sp
-        )
-        ReceivingMethodFamilyTile(
-            icon = Icons.Default.AccountBalance,
-            title = language.ui("Banques russes"),
-            helper = language.ui("Carte · SBP · RUB"),
-            count = value?.russianCount() ?: 0,
-            language = language,
-            onClick = { onPick(ReceivingMethodFamily.RUSSIAN) }
-        )
-        ReceivingMethodFamilyTile(
-            icon = Icons.Default.AccountBalanceWallet,
-            title = language.ui("Mobile money (Afrique de l'Ouest)"),
-            helper = language.ui("Orange · Wave · MTN · XOF"),
-            count = value?.westAfricaCount() ?: 0,
-            language = language,
-            onClick = { onPick(ReceivingMethodFamily.WEST_AFRICA) }
-        )
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(22.dp))
-                .background(PremiumColors.IconTile, RoundedCornerShape(22.dp))
-                .border(1.dp, PremiumColors.Line.copy(alpha = 0.7f), RoundedCornerShape(22.dp))
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.Info, null, tint = PremiumColors.Cyan, modifier = Modifier.size(20.dp))
-            Text(
-                language.ui("Les paiements ouest-africains sont confirmés manuellement (modèle SwimPay)."),
-                color = PremiumColors.Muted,
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 10.dp)
-            )
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(language.ui("Moyens de réception"), color = PremiumColors.PageInk, fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black)
+                Text(
+                    language.ui("Choisissez comment vous recevez l'argent de vos clients."),
+                    color = PremiumColors.PageMuted,
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp
+                )
+            }
+        }
+        item {
+            ReceivingMethodFamilyCard(
+                icon = Icons.Default.AccountBalance,
+                accent = PremiumColors.Cyan,
+                title = language.ui("Banques russes"),
+                subtitle = language.ui("Carte bancaire et SBP, encaissement en roubles (RUB)."),
+                count = value?.russianCount() ?: 0,
+                cta = language.ui(if ((value?.russianCount() ?: 0) > 0) "Gérer mes banques" else "Configurer"),
+                language = language,
+                onClick = { onPick(ReceivingMethodFamily.RUSSIAN) }
+            ) {
+                BrandPreviewRow(extra = 0) {
+                    RUSSIAN_PREVIEW_BANK_IDS.forEach { id ->
+                        PremiumBankLogo(bankProfileId = id, displayName = id, size = 40.dp)
+                    }
+                }
+            }
+        }
+        item {
+            val wallets = WestAfricaReceivingCatalog.wallets
+            ReceivingMethodFamilyCard(
+                icon = Icons.Default.AccountBalanceWallet,
+                accent = Color(0xFFFF7900),
+                title = language.ui("Mobile money"),
+                subtitle = language.ui("Orange, Wave, MTN et plus — encaissement en franc CFA (XOF)."),
+                count = value?.westAfricaCount() ?: 0,
+                cta = language.ui(if ((value?.westAfricaCount() ?: 0) > 0) "Gérer mes wallets" else "Configurer"),
+                language = language,
+                onClick = { onPick(ReceivingMethodFamily.WEST_AFRICA) }
+            ) {
+                BrandPreviewRow(extra = (wallets.size - 6).coerceAtLeast(0)) {
+                    wallets.take(6).forEach { WestAfricaWalletBadge(it, 40.dp) }
+                }
+            }
+        }
+        item {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(PremiumColors.IconTile, RoundedCornerShape(22.dp))
+                    .border(1.dp, PremiumColors.Line.copy(alpha = 0.7f), RoundedCornerShape(22.dp))
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Info, null, tint = PremiumColors.Cyan, modifier = Modifier.size(22.dp))
+                Text(
+                    language.ui("Les paiements ouest-africains sont confirmés manuellement (modèle SwimPay)."),
+                    color = PremiumColors.Muted,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 12.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun ReceivingMethodFamilyTile(
+private fun ReceivingMethodFamilyCard(
     icon: ImageVector,
+    accent: Color,
     title: String,
-    helper: String,
+    subtitle: String,
     count: Int,
+    cta: String,
     language: PremiumLanguageOption,
+    onClick: () -> Unit,
+    preview: @Composable () -> Unit
+) {
+    PremiumCard(
+        Modifier.fillMaxWidth().premiumTap(onClick),
+        radius = 32.dp,
+        color = PremiumColors.Surface
+    ) {
+        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(62.dp)
+                        .background(accent.copy(alpha = 0.14f), RoundedCornerShape(22.dp))
+                        .border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(22.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = accent, modifier = Modifier.size(30.dp))
+                }
+                Column(Modifier.weight(1f).padding(start = 16.dp)) {
+                    Text(title, color = PremiumColors.Ink, fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Black)
+                    Text(subtitle, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+            preview()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (count > 0) {
+                    StatusChip(language.ui(if (count > 1) "$count actifs" else "$count actif"), StatusTone.Success)
+                } else {
+                    StatusChip(language.ui("À configurer"), StatusTone.Neutral)
+                }
+                Spacer(Modifier.weight(1f))
+                Text(cta, color = PremiumColors.Cyan, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    null,
+                    tint = PremiumColors.Cyan,
+                    modifier = Modifier.padding(start = 4.dp).size(22.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrandPreviewRow(extra: Int, badges: @Composable RowScope.() -> Unit) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        badges()
+        if (extra > 0) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .background(PremiumColors.SurfaceAlt.copy(alpha = 0.7f), RoundedCornerShape(13.dp))
+                    .border(1.dp, PremiumColors.Line.copy(alpha = 0.7f), RoundedCornerShape(13.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("+$extra", color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.Black)
+            }
+        }
+    }
+}
+
+@Composable
+fun WestAfricaWalletBadge(option: WestAfricaReceivingOption, size: Dp) {
+    val brand = Color(option.brandArgb)
+    Box(
+        Modifier
+            .size(size)
+            .clip(RoundedCornerShape(size * 0.32f))
+            .background(brand)
+            .border(1.dp, Color.Black.copy(alpha = 0.06f), RoundedCornerShape(size * 0.32f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            option.monogram,
+            color = if (option.darkInk) PremiumColors.Ink else Color.White,
+            fontSize = (size.value * 0.32f).sp,
+            lineHeight = (size.value * 0.32f).sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun WestAfricaWalletSelectCard(
+    option: WestAfricaReceivingOption,
+    selected: Boolean,
     onClick: () -> Unit
 ) {
+    val shape = RoundedCornerShape(20.dp)
+    val brand = Color(option.brandArgb)
     Row(
         Modifier
             .fillMaxWidth()
-            .height(88.dp)
-            .clip(RoundedCornerShape(28.dp))
-            .background(PremiumColors.Surface, RoundedCornerShape(28.dp))
-            .border(1.dp, PremiumColors.Line.copy(alpha = 0.86f), RoundedCornerShape(28.dp))
+            .height(72.dp)
+            .clip(shape)
+            .background(if (selected) brand.copy(alpha = 0.10f) else PremiumColors.SurfaceAlt.copy(alpha = 0.5f))
+            .border(1.5.dp, if (selected) brand else PremiumColors.Line.copy(alpha = 0.7f), shape)
             .premiumTap(onClick)
-            .padding(horizontal = 18.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        WestAfricaWalletBadge(option, 44.dp)
+        Column(Modifier.weight(1f)) {
+            Text(option.displayName, color = PremiumColors.Ink, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(option.country, color = PremiumColors.Muted, fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
         Box(
-            Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(20.dp)),
+            Modifier
+                .size(20.dp)
+                .background(if (selected) brand else Color.Transparent, CircleShape)
+                .border(1.5.dp, if (selected) brand else PremiumColors.Line, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(26.dp))
+            if (selected) Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(14.dp))
         }
-        Column(Modifier.weight(1f).padding(start = 16.dp)) {
-            Text(title, color = PremiumColors.Ink, fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
-            Text(helper, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 3.dp))
+    }
+}
+
+@Composable
+private fun WestAfricaWalletGrid(
+    wallets: List<WestAfricaReceivingOption>,
+    selectedId: String,
+    language: PremiumLanguageOption,
+    onSelect: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(language.ui("Choisissez votre wallet"), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black)
+        wallets.chunked(2).forEach { rowWallets ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                rowWallets.forEach { wallet ->
+                    Box(Modifier.weight(1f)) {
+                        WestAfricaWalletSelectCard(
+                            option = wallet,
+                            selected = wallet.bankProfileId == selectedId,
+                            onClick = { onSelect(wallet.bankProfileId) }
+                        )
+                    }
+                }
+                if (rowWallets.size == 1) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
         }
-        if (count > 0) {
-            StatusChip(
-                language.ui(if (count > 1) "$count actifs" else "$count actif"),
-                StatusTone.Success
-            )
-        } else {
-            StatusChip(language.ui("À configurer"), StatusTone.Neutral)
-        }
-        Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            null,
-            tint = PremiumColors.SoftText,
-            modifier = Modifier.padding(start = 8.dp).size(22.dp)
-        )
     }
 }
 
@@ -1186,12 +1329,6 @@ private fun ReceivingMethodBreadcrumb(label: String, onBack: () -> Unit) {
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = PremiumColors.Cyan, modifier = Modifier.size(22.dp))
         Text(label, color = PremiumColors.Cyan, fontSize = 13.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 2.dp))
     }
-}
-
-private fun westAfricaCountryShort(country: String): String = when {
-    country.contains("Ivoire", ignoreCase = true) -> "CI"
-    country.contains("néga", ignoreCase = true) || country.contains("nega", ignoreCase = true) -> "SN"
-    else -> country.take(2).uppercase()
 }
 
 @Composable
@@ -1209,14 +1346,6 @@ fun PremiumWestAfricaReceivingScreen(
     when (state) {
         is PremiumScreenState.Content -> {
             val wallets = WestAfricaReceivingCatalog.wallets
-            val walletOptions = remember {
-                wallets.map {
-                    PremiumReceivingMethodBankOption(
-                        bankProfileId = it.bankProfileId,
-                        displayName = "${it.displayName} ${westAfricaCountryShort(it.country)}"
-                    )
-                }
-            }
             var selectedWalletId by remember { mutableStateOf(wallets.firstOrNull()?.bankProfileId.orEmpty()) }
             var phoneInput by remember { mutableStateOf("") }
             LaunchedEffect(clearDraftSignal) {
@@ -1268,11 +1397,11 @@ fun PremiumWestAfricaReceivingScreen(
                                     )
                                 }
                             }
-                            CompactReceivingBankSelector(
-                                selectedBankId = selectedWalletId,
-                                bankOptions = walletOptions,
+                            WestAfricaWalletGrid(
+                                wallets = wallets,
+                                selectedId = selectedWalletId,
                                 language = language,
-                                onBankSelected = { selectedWalletId = it }
+                                onSelect = { selectedWalletId = it }
                             )
                             OutlinedTextField(
                                 value = phoneInput,
