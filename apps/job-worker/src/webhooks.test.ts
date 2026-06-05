@@ -484,6 +484,43 @@ describe('webhook worker foundation', () => {
     }
   });
 
+  it('pins the PII guard boundary: bare identifiers blocked, masked identifier allowed', () => {
+    // The bare/derived identifier keys must stay blocked.
+    for (const field of ['receiver_identifier', 'receiver_identifier_encrypted', 'receiver_identifier_hmac', 'receiver_identifier_last4', 'receiver_phone_masked'] as const) {
+      expect(() =>
+        createPaymentWebhookEvent({
+          eventId: `evt_${field}`,
+          type: 'payment.confirmed',
+          createdAt: '2026-05-02T10:00:00.000Z',
+          merchantId: 'mch_01',
+          data: {
+            order_id: 'ord_01',
+            receiving_route: { [field]: 'value' }
+          }
+        })
+      ).toThrow('Webhook event data must not contain raw PII fields.');
+    }
+
+    // The masked identifier carries the safe display form and is intentionally permitted.
+    expect(() =>
+      createPaymentWebhookEvent({
+        eventId: 'evt_masked_ok',
+        type: 'payment.confirmed',
+        createdAt: '2026-05-02T10:00:00.000Z',
+        merchantId: 'mch_01',
+        data: {
+          order_id: 'ord_01',
+          receiving_route: {
+            route_code: 'USD-WISE-MAIN',
+            rail_type: 'wallet_transfer',
+            bank_profile_id: 'wise_int',
+            receiver_identifier_masked: 'j•••@•••.com'
+          }
+        }
+      })
+    ).not.toThrow();
+  });
+
   it('replays a delivery with the original event id and a new delivery id', async () => {
     let deliveryCounter = 0;
     const repository = new InMemoryWebhookRepository({
