@@ -33,10 +33,21 @@ describe('detectCurrencyFromDisplayPrice', () => {
   });
 
   it('handles locale separators decidably', () => {
-    expect(detectCurrencyFromDisplayPrice('1.000,50 EUR')).toMatchObject({ amount_minor: 100050 }); // EU style
+    expect(detectCurrencyFromDisplayPrice('1.000,50 EUR')).toEqual({ kind: 'detected', currency: 'EUR', amount_minor: 100050, needs_conversion: true, raw_input: '1.000,50 EUR' }); // EU style
     expect(detectCurrencyFromDisplayPrice('1,000.50 $')).toMatchObject({ amount_minor: 100050 }); // US style
     expect(detectCurrencyFromDisplayPrice('1,000 $')).toMatchObject({ amount_minor: 100000 }); // 3 digits after lone separator = grouping
     expect(detectCurrencyFromDisplayPrice('1.5 $')).toMatchObject({ amount_minor: 150 }); // 1 digit = decimal
+  });
+
+  it('rejects a malformed decimal that collides with grouping notation', () => {
+    expect(detectCurrencyFromDisplayPrice('$10.999')).toEqual({ kind: 'invalid_amount', raw_input: '$10.999' });
+    expect(detectCurrencyFromDisplayPrice('10.999 EUR')).toMatchObject({ currency: 'EUR', amount_minor: 1099900 }); // EU dot-grouping stays legitimate
+    expect(detectCurrencyFromDisplayPrice('10,999 RUB')).toEqual({ kind: 'invalid_amount', raw_input: '10,999 RUB' }); // comma is RUB's decimal separator
+  });
+
+  it('treats conflicting currency signals as ambiguous', () => {
+    expect(detectCurrencyFromDisplayPrice('USD 5 EUR')).toEqual({ kind: 'ambiguous', raw_input: 'USD 5 EUR' });
+    expect(detectCurrencyFromDisplayPrice('€5 $')).toEqual({ kind: 'ambiguous', raw_input: '€5 $' });
   });
 
   it('rejects ambiguous or invalid input — never guesses', () => {
