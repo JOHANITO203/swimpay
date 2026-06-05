@@ -1317,7 +1317,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     const resolvedAmount = await resolveOrderAmount(body, fxRateService);
     if ('error' in resolvedAmount) {
-      const errorCode = (resolvedAmount as ApiErrorResponse).error.code;
+      const errorCode = resolvedAmount.error.code;
       if (errorCode === 'fx_rate_unavailable') {
         request.log.error(
           { merchant_id: merchantId, display_price_present: Boolean(body.display_price) },

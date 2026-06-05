@@ -2881,6 +2881,8 @@ export interface OrderAmountResolution {
  * Resolves the order amount/currency. Explicit amount has precedence (V1
  * behavior, untouched). display_price goes through detection: native
  * RUB/USD/XOF stay as-is, any other detected currency is FX-converted to USD.
+ * Note: XAF stays accepted as an EXPLICIT amount currency, but a detected
+ * "XAF" display price is convertible (→ USD) — natives are RUB/USD/XOF only.
  */
 export async function resolveOrderAmount(
   body: CreateOrderRequestBody,
