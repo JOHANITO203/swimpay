@@ -629,11 +629,17 @@ export function maskReceiverIdentifier(
 ): string {
   if (type === 'email') {
     const [local = '', domain = ''] = value.split('@');
+    // Wallet providers (Wise, PayPal, etc.) always use dotted domains; if no dot is present
+    // the tld hint is intentionally omitted rather than leaking an undotted domain.
     const tld = domain.includes('.') ? domain.slice(domain.lastIndexOf('.')) : '';
     return `${local.slice(0, 1)}•••@•••${tld}`;
   }
   if (type === 'tag') {
     const tag = value.replace(/^@/u, '');
+    // first char + last two would cover the whole tag for short handles — show only a trailing hint.
+    if (tag.length <= 3) {
+      return `@•••${tag.slice(-1)}`;
+    }
     return `@${tag.slice(0, 1)}•••${tag.slice(-2)}`;
   }
 

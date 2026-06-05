@@ -467,9 +467,12 @@ describe('checkout bank selection contracts', () => {
     expect(JSON.stringify(phoneRoute)).not.toContain('receiver_identifier_encrypted');
   });
 
-  it('masks wallet email and tag identifiers without leaking the value', () => {
+  it('masks wallet email and tag identifiers without leaking short values', () => {
     expect(maskReceiverIdentifier('email', 'john.doe@gmail.com')).toBe('j•••@•••.com');
     expect(maskReceiverIdentifier('tag', 'wisetag67')).toBe('@w•••67');
+    expect(maskReceiverIdentifier('tag', 'abc')).toBe('@•••c');
+    expect(maskReceiverIdentifier('tag', 'ab')).toBe('@•••b');
+    expect(maskReceiverIdentifier('tag', 'abcd')).toBe('@a•••cd');
   });
 
   it('masks receiver identifiers and keeps card routes review-first by policy', () => {
