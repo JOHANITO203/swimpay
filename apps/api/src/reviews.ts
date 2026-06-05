@@ -116,6 +116,20 @@ export type ReviewActionResult =
       confirmationType?: 'notification_signal' | 'manual_bank_check' | undefined;
       reasonLabel?: string | undefined;
       idempotent?: boolean | undefined;
+      currencyDetection?: {
+        source: string;
+        rawInput?: string | undefined;
+        originalCurrency?: string | undefined;
+        originalAmountMinor?: number | undefined;
+        fxRate?: string | undefined;
+        fxRateTimestamp?: string | undefined;
+      } | undefined;
+      receivingRoute?: {
+        routeCode: string;
+        railType: string;
+        bankProfileId: string;
+        receiverIdentifierMasked: string;
+      } | undefined;
     }
   | { kind: 'not_found' }
   | { kind: 'not_open' }
@@ -604,10 +618,16 @@ export class PgReviewRepository implements ReviewRepository {
         `SELECT
            rq.id, rq.merchant_id, rq.order_id, rq.payment_session_id, rq.signal_id, rq.status,
            o.status AS order_status, o.external_id, o.amount_minor, o.currency,
-           ps.status AS payment_session_status
+           o.detection_source, o.detection_raw_input, o.original_currency, o.original_amount_minor,
+           o.fx_rate, o.fx_rate_timestamp,
+           ps.status AS payment_session_status,
+           mrr.route_code AS route_code, mrr.rail_type AS route_rail_type,
+           mrr.bank_profile_id AS route_bank_profile_id,
+           mrr.receiver_identifier_masked AS route_receiver_identifier_masked
          FROM review_queue rq
          LEFT JOIN orders o ON o.id = rq.order_id AND o.merchant_id = rq.merchant_id
          LEFT JOIN payment_sessions ps ON ps.id = rq.payment_session_id AND ps.merchant_id = rq.merchant_id
+         LEFT JOIN merchant_receiving_routes mrr ON mrr.id = ps.selected_receiving_route_id AND mrr.merchant_id = rq.merchant_id
          WHERE rq.merchant_id = $1 AND rq.id = $2
          FOR UPDATE OF rq`,
         [input.merchantId, input.reviewId]
@@ -764,7 +784,30 @@ export class PgReviewRepository implements ReviewRepository {
         orderStatus: outcome.stateStatus,
         paymentSessionStatus: outcome.stateStatus,
         confirmationType: review.signal_id ? 'notification_signal' : 'manual_bank_check',
-        reasonLabel: review.signal_id ? undefined : 'NO_NOTIFICATION_MANUAL_FALLBACK_CONFIRMED'
+        reasonLabel: review.signal_id ? undefined : 'NO_NOTIFICATION_MANUAL_FALLBACK_CONFIRMED',
+        currencyDetection: review.detection_source
+          ? {
+              source: String(review.detection_source),
+              rawInput: review.detection_raw_input ? String(review.detection_raw_input) : undefined,
+              originalCurrency: review.original_currency ? String(review.original_currency) : undefined,
+              originalAmountMinor:
+                review.original_amount_minor === null || review.original_amount_minor === undefined
+                  ? undefined
+                  : Number(review.original_amount_minor),
+              fxRate: review.fx_rate ? String(review.fx_rate) : undefined,
+              fxRateTimestamp: review.fx_rate_timestamp
+                ? new Date(String(review.fx_rate_timestamp)).toISOString()
+                : undefined
+            }
+          : undefined,
+        receivingRoute: review.route_code
+          ? {
+              routeCode: String(review.route_code),
+              railType: String(review.route_rail_type),
+              bankProfileId: String(review.route_bank_profile_id),
+              receiverIdentifierMasked: String(review.route_receiver_identifier_masked)
+            }
+          : undefined
       };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -948,7 +991,29 @@ export function buildReviewActionEvent(params: {
       rejection_scope: params.result.rejectionScope,
       reason: params.result.reason,
       reason_label: params.result.reasonLabel,
-      ...disclosure
+      ...disclosure,
+      ...(params.result.currencyDetection
+        ? {
+            currency_detection: {
+              source: params.result.currencyDetection.source,
+              raw_input: params.result.currencyDetection.rawInput,
+              original_currency: params.result.currencyDetection.originalCurrency,
+              original_amount_minor: params.result.currencyDetection.originalAmountMinor,
+              fx_rate: params.result.currencyDetection.fxRate,
+              fx_rate_timestamp: params.result.currencyDetection.fxRateTimestamp
+            }
+          }
+        : {}),
+      ...(params.result.receivingRoute
+        ? {
+            receiving_route: {
+              route_code: params.result.receivingRoute.routeCode,
+              rail_type: params.result.receivingRoute.railType,
+              bank_profile_id: params.result.receivingRoute.bankProfileId,
+              receiver_identifier_masked: params.result.receivingRoute.receiverIdentifierMasked
+            }
+          }
+        : {})
     }
   };
 }
@@ -1107,6 +1172,16 @@ interface ReviewActionRow {
   currency: string;
   order_status?: string | null;
   payment_session_status?: string | null;
+  detection_source?: string | null;
+  detection_raw_input?: string | null;
+  original_currency?: string | null;
+  original_amount_minor?: number | string | null;
+  fx_rate?: string | null;
+  fx_rate_timestamp?: string | Date | null;
+  route_code?: string | null;
+  route_rail_type?: string | null;
+  route_bank_profile_id?: string | null;
+  route_receiver_identifier_masked?: string | null;
 }
 
 interface PreviousRejectionActionRow {

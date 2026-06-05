@@ -127,6 +127,74 @@ describe('webhook runtime integration', () => {
     ]);
   });
 
+  it('review.confirmed handler threads currency_detection and receiving_route blocks into payload additively', async () => {
+    const enqueuer = new FakePublicWebhookEnqueuer();
+    const handler = createReviewFinalWebhookHandler(enqueuer);
+
+    await handler(
+      reviewEvent(EventTypes.REVIEW_CONFIRMED, {
+        merchant_id: 'mch_01',
+        review_id: 'rev_01',
+        order_id: 'ord_01',
+        payment_session_id: 'ps_01',
+        confirmation_type: 'notification_signal',
+        official_bank_confirmation: false,
+        currency_detection: {
+          source: 'display_price_parsed',
+          raw_input: '€9.99',
+          original_currency: 'EUR',
+          original_amount_minor: 999,
+          fx_rate: '1.0852',
+          fx_rate_timestamp: '2026-06-05T10:00:00Z'
+        },
+        receiving_route: {
+          route_code: 'USD-WISE-MAIN',
+          rail_type: 'wallet_transfer',
+          bank_profile_id: 'wise_int',
+          receiver_identifier_masked: 'j•••@•••.com'
+        }
+      })
+    );
+
+    expect(enqueuer.events).toHaveLength(1);
+    const data = enqueuer.events[0]!.data;
+    expect(data['currency_detection']).toEqual({
+      source: 'display_price_parsed',
+      raw_input: '€9.99',
+      original_currency: 'EUR',
+      original_amount_minor: 999,
+      fx_rate: '1.0852',
+      fx_rate_timestamp: '2026-06-05T10:00:00Z'
+    });
+    expect(data['receiving_route']).toEqual({
+      route_code: 'USD-WISE-MAIN',
+      rail_type: 'wallet_transfer',
+      bank_profile_id: 'wise_int',
+      receiver_identifier_masked: 'j•••@•••.com'
+    });
+  });
+
+  it('review.confirmed handler omits currency_detection and receiving_route when absent — backward-compatible', async () => {
+    const enqueuer = new FakePublicWebhookEnqueuer();
+    const handler = createReviewFinalWebhookHandler(enqueuer);
+
+    await handler(
+      reviewEvent(EventTypes.REVIEW_CONFIRMED, {
+        merchant_id: 'mch_01',
+        review_id: 'rev_01',
+        order_id: 'ord_01',
+        payment_session_id: 'ps_01',
+        confirmation_type: 'notification_signal',
+        official_bank_confirmation: false
+      })
+    );
+
+    expect(enqueuer.events).toHaveLength(1);
+    const data = enqueuer.events[0]!.data;
+    expect('currency_detection' in data).toBe(false);
+    expect('receiving_route' in data).toBe(false);
+  });
+
   it('review.confirmed handler creates a public delivery request for active endpoints', async () => {
     const repository = new InMemoryWebhookRepository({
       deliveryId: () => 'del_01'

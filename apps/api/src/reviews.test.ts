@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { EventTypes, type EventEnvelope } from '@swimpay/events';
 import { buildApiServer, type ReviewRepository } from './server.js';
 import {
+  buildReviewActionEvent,
   buildReviewCreateInput,
   validateReviewActionBody,
   type ReviewActionInput,
@@ -600,6 +601,86 @@ describe('review creation foundation', () => {
     });
     expect(JSON.stringify(input)).not.toContain('+79991234567');
     expect(JSON.stringify(input)).not.toContain('raw notification');
+  });
+});
+
+describe('buildReviewActionEvent', () => {
+  it('includes currency_detection and receiving_route in event data when result carries them', () => {
+    const result: Extract<ReviewActionResult, { kind: 'updated' }> = {
+      kind: 'updated',
+      reviewId: 'rev_01',
+      status: 'confirmed',
+      orderId: 'ord_01',
+      externalOrderId: 'external_ord_01',
+      paymentSessionId: 'ps_01',
+      amountMinor: 1084,
+      currency: 'USD',
+      orderStatus: 'manual_confirmed',
+      paymentSessionStatus: 'manual_confirmed',
+      confirmationType: 'notification_signal',
+      currencyDetection: {
+        source: 'display_price_parsed',
+        rawInput: '€9.99',
+        originalCurrency: 'EUR',
+        originalAmountMinor: 999,
+        fxRate: '1.0852',
+        fxRateTimestamp: '2026-06-05T10:00:00.000Z'
+      },
+      receivingRoute: {
+        routeCode: 'USD-WISE-MAIN',
+        railType: 'wallet_transfer',
+        bankProfileId: 'wise_int',
+        receiverIdentifierMasked: 'j•••@•••.com'
+      }
+    };
+
+    const event = buildReviewActionEvent({
+      eventId: 'evt_01',
+      result,
+      merchantId: 'mch_01',
+      occurredAt: '2026-06-05T10:00:00.000Z'
+    });
+
+    expect(event.data['currency_detection']).toEqual({
+      source: 'display_price_parsed',
+      raw_input: '€9.99',
+      original_currency: 'EUR',
+      original_amount_minor: 999,
+      fx_rate: '1.0852',
+      fx_rate_timestamp: '2026-06-05T10:00:00.000Z'
+    });
+    expect(event.data['receiving_route']).toEqual({
+      route_code: 'USD-WISE-MAIN',
+      rail_type: 'wallet_transfer',
+      bank_profile_id: 'wise_int',
+      receiver_identifier_masked: 'j•••@•••.com'
+    });
+  });
+
+  it('omits currency_detection and receiving_route from event data when result does not carry them', () => {
+    const result: Extract<ReviewActionResult, { kind: 'updated' }> = {
+      kind: 'updated',
+      reviewId: 'rev_01',
+      status: 'confirmed',
+      orderId: 'ord_01',
+      externalOrderId: 'external_ord_01',
+      paymentSessionId: 'ps_01',
+      amountMinor: 13700,
+      currency: 'RUB',
+      orderStatus: 'manual_confirmed',
+      paymentSessionStatus: 'manual_confirmed',
+      confirmationType: 'notification_signal'
+    };
+
+    const event = buildReviewActionEvent({
+      eventId: 'evt_01',
+      result,
+      merchantId: 'mch_01',
+      occurredAt: '2026-05-02T10:00:00.000Z'
+    });
+
+    expect('currency_detection' in event.data).toBe(false);
+    expect('receiving_route' in event.data).toBe(false);
   });
 });
 

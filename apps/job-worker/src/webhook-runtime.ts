@@ -124,7 +124,9 @@ export function createReviewFinalWebhookHandler(enqueuer: PublicWebhookEnqueuer)
           currency,
           status: publicStatus,
           decision: 'manual_confirmed',
-          reason_label: readOptionalString(event.data.reason_label)
+          reason_label: readOptionalString(event.data.reason_label),
+          currency_detection: readOptionalRecord(event.data.currency_detection),
+          receiving_route: readOptionalRecord(event.data.receiving_route)
         })
       })
     );
@@ -239,6 +241,10 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function readOptionalRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
 }
 
 function requireString(value: unknown, field: string): string {
