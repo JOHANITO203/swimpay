@@ -41,7 +41,7 @@ const ISO_CODES = new Set(Object.keys(DETECTION_MINOR_DIGITS));
 
 export function detectCurrencyFromDisplayPrice(input: string): CurrencyDetectionResult {
   const raw = input;
-  const trimmed = input.trim().toUpperCase().replace(/ /g, ' '); // nbsp -> space
+  const trimmed = input.trim().toUpperCase().replace(/\u00A0/g, ' '); // nbsp -> space
   if (!trimmed) {
     return { kind: 'ambiguous', raw_input: raw };
   }
