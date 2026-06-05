@@ -5366,17 +5366,29 @@ function validateReceivingRouteCreateBody(body: unknown): ReceivingRouteCreateBo
     return invalidRequest('bank_profile_id is required.', {});
   }
   if (typeof candidate.rail_type !== 'string' || !ReceivingRouteRailTypes.includes(candidate.rail_type as ReceivingRouteRailType)) {
-    return invalidRequest('rail_type must be phone_transfer or card_transfer.', { rail_type: candidate.rail_type });
+    return invalidRequest(`rail_type must be one of: ${ReceivingRouteRailTypes.join(', ')}.`, { rail_type: candidate.rail_type });
   }
   const railType = candidate.rail_type as ReceivingRouteRailType;
   if ('receiver_identifier_type' in candidate && candidate.receiver_identifier_type !== undefined) {
-    const expectedReceiverIdentifierType = receiverIdentifierTypeForRail(railType);
-    if (candidate.receiver_identifier_type !== expectedReceiverIdentifierType) {
-      return invalidRequest('receiver_identifier_type must match rail_type.', {
-        rail_type: railType,
-        receiver_identifier_type: candidate.receiver_identifier_type,
-        expected_receiver_identifier_type: expectedReceiverIdentifierType
-      });
+    // Wallet rails derive the identifier type from the value (email / tag / phone),
+    // so any of the three is acceptable when provided explicitly.
+    if (railType === 'wallet_transfer') {
+      if (candidate.receiver_identifier_type !== 'email' && candidate.receiver_identifier_type !== 'tag' && candidate.receiver_identifier_type !== 'phone') {
+        return invalidRequest('receiver_identifier_type must match rail_type.', {
+          rail_type: railType,
+          receiver_identifier_type: candidate.receiver_identifier_type,
+          expected_receiver_identifier_type: 'email'
+        });
+      }
+    } else {
+      const expectedReceiverIdentifierType = receiverIdentifierTypeForRail(railType);
+      if (candidate.receiver_identifier_type !== expectedReceiverIdentifierType) {
+        return invalidRequest('receiver_identifier_type must match rail_type.', {
+          rail_type: railType,
+          receiver_identifier_type: candidate.receiver_identifier_type,
+          expected_receiver_identifier_type: expectedReceiverIdentifierType
+        });
+      }
     }
   }
   if (typeof candidate.receiver_identifier !== 'string' || !candidate.receiver_identifier.trim()) {
