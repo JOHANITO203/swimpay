@@ -107,9 +107,12 @@ import {
   parseMerchantId,
   PgOrderRepository,
   receiverIdentifierTypeForRail,
+  resolveOrderAmount,
   validateExpectedPaymentProfileBody,
   validateCreateOrderBody,
+  type ApiErrorResponse,
   type IdGenerator,
+  type OrderAmountResolution,
   type ActiveReceiverPaymentSession,
   type OrderCreateResponse,
   type OrderReadResponse,
@@ -166,6 +169,7 @@ import {
   type ReviewListItem,
   type ReviewRepository
 } from './reviews.js';
+import { FxRateService } from './fx.js';
 import {
   buildAdminTemplateStatusInput,
   parseAdminLimit,
@@ -319,6 +323,7 @@ export interface ApiServerOptions {
   };
   adminAuth?: OperatorAuthConfig;
   metrics?: MetricsRegistry;
+  fxRateService?: Pick<FxRateService, 'quoteToUsd'> | null;
   clock?: () => Date;
   startedAt?: Date;
 }
@@ -602,6 +607,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const metrics = options.metrics ?? defaultMetricsRegistry;
   const checkoutBaseUrl = options.checkoutBaseUrl ?? process.env.CHECKOUT_BASE_URL ?? 'http://localhost:3001/checkout';
+  const fxRateService = options.fxRateService === undefined ? new FxRateService() : options.fxRateService;
   const idGenerator = options.idGenerator ?? createDefaultIdGenerator();
   const receiverDeviceIdGenerator = options.receiverDeviceIdGenerator ?? (() => randomUUID());
   const signalIdGenerator = options.signalIdGenerator ?? createDefaultSignalIdGenerator();
@@ -1309,6 +1315,19 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       });
     }
 
+    const resolvedAmount = await resolveOrderAmount(body, fxRateService);
+    if ('error' in resolvedAmount) {
+      const errorCode = (resolvedAmount as ApiErrorResponse).error.code;
+      if (errorCode === 'fx_rate_unavailable') {
+        request.log.error(
+          { merchant_id: merchantId, display_price_present: Boolean(body.display_price) },
+          'order_creation_blocked_fx_rate_unavailable'
+        );
+        return reply.status(409).send(resolvedAmount);
+      }
+      return reply.status(400).send(resolvedAmount);
+    }
+
     const readiness = await resolveMerchantPaymentReadiness(repository, merchantId);
     if (merchantContext.source === 'api_key' && !readiness.payment_ready) {
       return reply.status(409).send(merchantPaymentSetupRequiredError(readiness));
@@ -1329,14 +1348,13 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     // active receiving route for (e.g. an XOF order against a RUB-only merchant).
     if (
       merchantContext.source === 'api_key' &&
-      typeof body.amount?.currency === 'string' &&
-      !readiness.receivable_currencies.includes(body.amount.currency)
+      !readiness.receivable_currencies.includes(resolvedAmount.currency)
     ) {
       request.log.error(
-        { merchant_id: merchantId, requested_currency: body.amount.currency, receivable_currencies: readiness.receivable_currencies },
+        { merchant_id: merchantId, requested_currency: resolvedAmount.currency, receivable_currencies: readiness.receivable_currencies },
         'order_creation_blocked_currency_not_receivable'
       );
-      return reply.status(409).send(merchantCurrencyRouteRequiredError(body.amount.currency, readiness.receivable_currencies));
+      return reply.status(409).send(merchantCurrencyRouteRequiredError(resolvedAmount.currency, readiness.receivable_currencies));
     }
 
     const createInput = buildOrderCreateInput({
@@ -1344,7 +1362,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       merchantId,
       phoneHmacSecret,
       idGenerator,
-      clock
+      clock,
+      resolvedAmount
     });
 
     if ('error' in createInput) {
@@ -1372,7 +1391,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       status: result.paymentSession.status,
       checkout_url: `${checkoutBaseUrl}/${result.paymentSession.id}`,
       amount: {
-        value: formatAmountMinor(result.order.amountMinor),
+        value: formatAmountMinor(result.order.amountMinor, result.order.currency),
         currency: result.order.currency
       },
       reference: result.paymentSession.referenceCode,
@@ -6277,7 +6296,7 @@ function toOrderReadResponse(order: StoredOrderRecord, paymentSessionId: string 
     payment_session_id: paymentSessionId,
     return_url: order.returnUrl,
     amount: {
-      value: formatAmountMinor(order.amountMinor),
+      value: formatAmountMinor(order.amountMinor, order.currency),
       currency: order.currency
     },
     expires_at: order.expiresAt,

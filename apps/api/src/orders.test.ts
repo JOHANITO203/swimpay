@@ -16,6 +16,7 @@ import {
   type SaveExpectedPaymentProfileInput,
   type StoredMerchantReceivingRouteRecord
 } from './orders.js';
+import type { FxQuoteResult } from './fx.js';
 
 describe('West Africa mobile money receiving routes', () => {
   const baseInput = {
@@ -1240,7 +1241,7 @@ describe('order api', () => {
     expect(response.json()).toEqual({
       error: {
         code: 'invalid_request',
-        message: 'Order amount must be positive and currency must be one of: RUB, XOF, XAF.',
+        message: 'Order amount must be positive and currency must be one of: RUB, XOF, XAF, USD.',
         details: {
           amount: '0.00',
           currency: 'USD'
@@ -1430,6 +1431,169 @@ describe('order api', () => {
       payload: { ...validOrderPayload, amount: { value: '1000', currency: 'XOF' } }
     });
     expect(accepted.statusCode).toBe(201);
+  });
+
+  // --- display_price pipeline tests (Task 8) ---
+
+  const fxStub: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult> } = {
+    quoteToUsd: async () => ({
+      kind: 'ok' as const,
+      quote: { rate: '1.0852', rateTimestamp: '2026-06-05T10:00:00.000Z', amountMinorUsd: 1084 }
+    })
+  };
+
+  function buildDisplayPriceServer(repository: InMemoryOrderRepository, fx: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult> } = fxStub) {
+    return buildApiServer({
+      environment: 'test',
+      orderRepository: repository,
+      fxRateService: fx,
+      phoneHmacSecret: 'test_secret',
+      checkoutBaseUrl: 'https://pay.test/checkout',
+      idGenerator: {
+        orderId: () => 'ord_dp_01',
+        paymentSessionId: () => 'ps_dp_01',
+        auditEventId: () => 'aud_dp_01',
+        referenceCode: () => 'SWP-DP01'
+      },
+      clock: () => new Date('2026-06-05T10:00:00.000Z'),
+      healthChecks: {
+        database: async () => 'skipped',
+        nats: async () => 'skipped',
+        valkey: async () => 'skipped'
+      }
+    });
+  }
+
+  test('display_price EUR→USD: detects €9.99, converts via fx stub, stores trace fields', async () => {
+    const repository = new InMemoryOrderRepository();
+    repository.listReceiverBanksForCheckout = async (merchantId: string) => [
+      {
+        ...checkoutReadyRoute(merchantId),
+        bank_profile_id: 'wise_int',
+        rail_type: 'wallet_transfer',
+        receiver_identifier_type: 'email'
+      }
+    ];
+    const server = buildDisplayPriceServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_eur' },
+      payload: { external_id: 'dp_eur_001', display_price: '€9.99' }
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.amount).toEqual({ value: '10.84', currency: 'USD' });
+
+    const stored = repository.orders.get('ord_dp_01');
+    expect(stored).toBeDefined();
+    expect(stored?.amountMinor).toBe(1084);
+    expect(stored?.currency).toBe('USD');
+    expect(stored?.detectionSource).toBe('display_price_parsed');
+    expect(stored?.detectionRawInput).toBe('€9.99');
+    expect(stored?.originalCurrency).toBe('EUR');
+    expect(stored?.originalAmountMinor).toBe(999);
+    expect(stored?.fxRate).toBe('1.0852');
+    expect(stored?.fxRateTimestamp).toBe('2026-06-05T10:00:00.000Z');
+  });
+
+  test('display_price native XOF: detects 1 000 FCFA, no conversion, no fx fields', async () => {
+    const repository = new InMemoryOrderRepository();
+    repository.listReceiverBanksForCheckout = async (merchantId: string) => [
+      {
+        ...checkoutReadyRoute(merchantId),
+        bank_profile_id: 'wave_ci',
+        rail_type: 'mobile_money',
+        receiver_identifier_type: 'phone'
+      }
+    ];
+    const server = buildDisplayPriceServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_xof' },
+      payload: { external_id: 'dp_xof_001', display_price: '1 000 FCFA' }
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.amount).toEqual({ value: '1000', currency: 'XOF' });
+
+    const stored = repository.orders.get('ord_dp_01');
+    expect(stored?.amountMinor).toBe(1000);
+    expect(stored?.currency).toBe('XOF');
+    expect(stored?.detectionSource).toBe('display_price_parsed');
+    expect(stored?.detectionRawInput).toBe('1 000 FCFA');
+    expect(stored?.originalCurrency).toBeUndefined();
+    expect(stored?.fxRate).toBeUndefined();
+  });
+
+  test('display_price ambiguous: returns 400 with currency_detection_ambiguous', async () => {
+    const repository = new InMemoryOrderRepository();
+    const server = buildDisplayPriceServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_ambiguous' },
+      payload: { external_id: 'dp_ambiguous_001', display_price: '1000' }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe('currency_detection_ambiguous');
+  });
+
+  test('display_price FX unavailable: fx stub returns unavailable → 409', async () => {
+    const failFx: typeof fxStub = {
+      quoteToUsd: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const })
+    };
+    const repository = new InMemoryOrderRepository();
+    repository.listReceiverBanksForCheckout = async (merchantId: string) => [
+      {
+        ...checkoutReadyRoute(merchantId),
+        bank_profile_id: 'wise_int',
+        rail_type: 'wallet_transfer',
+        receiver_identifier_type: 'email'
+      }
+    ];
+    const server = buildDisplayPriceServer(repository, failFx);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_fxfail' },
+      payload: { external_id: 'dp_fxfail_001', display_price: '€9.99' }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('fx_rate_unavailable');
+  });
+
+  test('explicit amount takes precedence over display_price: RUB order has no detection fields', async () => {
+    const repository = new InMemoryOrderRepository();
+    const server = buildDisplayPriceServer(repository);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_explicit' },
+      payload: {
+        external_id: 'dp_explicit_001',
+        amount: { value: '137.00', currency: 'RUB' },
+        display_price: '$5'
+      }
+    });
+
+    expect(response.statusCode).toBe(201);
+    const stored = repository.orders.get('ord_dp_01');
+    expect(stored?.currency).toBe('RUB');
+    expect(stored?.amountMinor).toBe(13700);
+    expect(stored?.detectionSource).toBeUndefined();
+    expect(stored?.originalCurrency).toBeUndefined();
+    expect(stored?.fxRate).toBeUndefined();
   });
 
   test('fails fast when production phone HMAC secret is missing', () => {

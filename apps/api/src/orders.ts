@@ -12,6 +12,7 @@ import {
   deriveExpectedPaymentProfile,
   maskReceiverIdentifier,
   receivingRailForBuyerPaymentMethod,
+  detectCurrencyFromDisplayPrice,
   type BuyerCheckoutPaymentMethod,
   type ExpectedPaymentProfile,
   type MerchantReceivingRoute,
@@ -22,6 +23,7 @@ import {
   type ReceivingRouteReviewPolicy,
   type ReceiverIdentifierType
 } from '@swimpay/contracts';
+import type { FxRateService } from './fx.js';
 
 const { Pool } = pg;
 
@@ -35,6 +37,12 @@ export interface StoredOrderRecord {
   productRiskLevel: string;
   amountMinor: number;
   currency: string;
+  detectionSource?: 'display_price_parsed' | undefined;
+  detectionRawInput?: string | undefined;
+  originalCurrency?: string | undefined;
+  originalAmountMinor?: number | undefined;
+  fxRate?: string | undefined;
+  fxRateTimestamp?: string | undefined;
   status: OrderStatus;
   expiresAt: string;
   createdAt: string;
@@ -401,10 +409,11 @@ export interface CreateOrderRequestBody {
   merchant_return_url?: string | undefined;
   app_link_url?: string | undefined;
   android_deep_link?: string | undefined;
-  amount: {
+  amount?: {
     value: string;
     currency: string;
-  };
+  } | undefined;
+  display_price?: string | undefined;
   buyer?: {
     bank_phone?: string | undefined;
     name?: string | undefined;
@@ -487,8 +496,9 @@ export class PgOrderRepository implements OrderRepository {
       await client.query(
         `INSERT INTO orders (
           id, merchant_id, external_id, return_url, product_id, product_name, product_risk_level,
-          amount_minor, currency, status, expires_at, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          amount_minor, currency, status, expires_at, created_at, updated_at,
+          detection_source, detection_raw_input, original_currency, original_amount_minor, fx_rate, fx_rate_timestamp
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
         [
           input.order.id,
           input.order.merchantId,
@@ -502,7 +512,13 @@ export class PgOrderRepository implements OrderRepository {
           input.order.status,
           input.order.expiresAt,
           input.order.createdAt,
-          input.order.updatedAt
+          input.order.updatedAt,
+          input.order.detectionSource ?? null,
+          input.order.detectionRawInput ?? null,
+          input.order.originalCurrency ?? null,
+          input.order.originalAmountMinor ?? null,
+          input.order.fxRate ?? null,
+          input.order.fxRateTimestamp ?? null
         ]
       );
 
@@ -570,7 +586,9 @@ export class PgOrderRepository implements OrderRepository {
     const limit = Math.max(1, Math.min(input.limit ?? 50, 100));
     const result = await this.pool.query(
       `SELECT id, merchant_id, external_id, product_id, product_name, product_risk_level,
-        return_url, amount_minor, currency, status, expires_at, created_at, updated_at
+        return_url, amount_minor, currency, detection_source, detection_raw_input,
+        original_currency, original_amount_minor, fx_rate, fx_rate_timestamp,
+        status, expires_at, created_at, updated_at
        FROM orders
        WHERE merchant_id = $1
          AND status IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')
@@ -700,7 +718,9 @@ export class PgOrderRepository implements OrderRepository {
   public async getOrderById(merchantId: string, orderId: string) {
     const orderResult = await this.pool.query(
       `SELECT id, merchant_id, external_id, product_id, product_name, product_risk_level,
-        return_url, amount_minor, currency, status, expires_at, created_at, updated_at
+        return_url, amount_minor, currency, detection_source, detection_raw_input,
+        original_currency, original_amount_minor, fx_rate, fx_rate_timestamp,
+        status, expires_at, created_at, updated_at
        FROM orders WHERE merchant_id = $1 AND id = $2`,
       [merchantId, orderId]
     );
@@ -729,21 +749,7 @@ export class PgOrderRepository implements OrderRepository {
       [merchantId, orderId]
     );
 
-    const order: StoredOrderRecord = {
-      id: String(row.id),
-      merchantId: String(row.merchant_id),
-      externalId: String(row.external_id),
-      returnUrl: row.return_url ? String(row.return_url) : undefined,
-      productId: row.product_id ? String(row.product_id) : undefined,
-      productName: row.product_name ? String(row.product_name) : undefined,
-      productRiskLevel: String(row.product_risk_level),
-      amountMinor: Number(row.amount_minor),
-      currency: String(row.currency),
-      status: String(row.status) as OrderStatus,
-      expiresAt: new Date(String(row.expires_at)).toISOString(),
-      createdAt: new Date(String(row.created_at)).toISOString(),
-      updatedAt: new Date(String(row.updated_at)).toISOString()
-    };
+    const order: StoredOrderRecord = toOrder(row);
 
     const paymentSession = paymentResult.rowCount ? toPaymentSession(paymentResult.rows[0] as Record<string, string | number | Date | null>) : null;
 
@@ -776,7 +782,9 @@ export class PgOrderRepository implements OrderRepository {
     const paymentSession = toPaymentSession(paymentResult.rows[0] as Record<string, string | number | Date | null>);
     const orderResult = await this.pool.query(
       `SELECT id, merchant_id, external_id, product_id, product_name, product_risk_level,
-        return_url, amount_minor, currency, status, expires_at, created_at, updated_at
+        return_url, amount_minor, currency, detection_source, detection_raw_input,
+        original_currency, original_amount_minor, fx_rate, fx_rate_timestamp,
+        status, expires_at, created_at, updated_at
        FROM orders WHERE merchant_id = $1 AND id = $2`,
       [merchantId, paymentSession.orderId]
     );
@@ -817,7 +825,9 @@ export class PgOrderRepository implements OrderRepository {
     const paymentSession = toPaymentSession(paymentResult.rows[0] as Record<string, string | number | Date | null>);
     const orderResult = await this.pool.query(
       `SELECT id, merchant_id, external_id, product_id, product_name, product_risk_level,
-        return_url, amount_minor, currency, status, expires_at, created_at, updated_at
+        return_url, amount_minor, currency, detection_source, detection_raw_input,
+        original_currency, original_amount_minor, fx_rate, fx_rate_timestamp,
+        status, expires_at, created_at, updated_at
        FROM orders WHERE merchant_id = $1 AND id = $2`,
       [paymentSession.merchantId, paymentSession.orderId]
     );
@@ -2275,6 +2285,12 @@ function toOrder(row: Record<string, string | number | Date | null>): StoredOrde
     productRiskLevel: String(row.product_risk_level),
     amountMinor: Number(row.amount_minor),
     currency: String(row.currency),
+    detectionSource: row.detection_source ? (String(row.detection_source) as 'display_price_parsed') : undefined,
+    detectionRawInput: row.detection_raw_input ? String(row.detection_raw_input) : undefined,
+    originalCurrency: row.original_currency ? String(row.original_currency) : undefined,
+    originalAmountMinor: row.original_amount_minor != null ? Number(row.original_amount_minor) : undefined,
+    fxRate: row.fx_rate ? String(row.fx_rate) : undefined,
+    fxRateTimestamp: row.fx_rate_timestamp ? new Date(String(row.fx_rate_timestamp)).toISOString() : undefined,
     status: String(row.status) as OrderStatus,
     expiresAt: new Date(String(row.expires_at)).toISOString(),
     createdAt: new Date(String(row.created_at)).toISOString(),
@@ -2747,6 +2763,8 @@ const CURRENCY_MINOR_DIGITS: Readonly<Record<string, number>> = {
   RUB: 2,
   USD: 2,
   EUR: 2,
+  GBP: 2,
+  JPY: 0,
   XOF: 0,
   XAF: 0
 };
@@ -2754,7 +2772,7 @@ const CURRENCY_MINOR_DIGITS: Readonly<Record<string, number>> = {
 // Platform-supported order currencies. Per-merchant symmetry (the merchant must
 // actually have a receiving route in the currency) is enforced separately at the
 // order-creation handler, so this set is the platform ceiling, not the per-merchant rule.
-export const ACCEPTED_ORDER_CURRENCIES: ReadonlySet<string> = new Set(['RUB', 'XOF', 'XAF']);
+export const ACCEPTED_ORDER_CURRENCIES: ReadonlySet<string> = new Set(['RUB', 'XOF', 'XAF', 'USD']);
 
 /** Decimal places for a currency. Defaults to 2 (preserves V1 RUB behavior); XOF/XAF (franc CFA) use 0. */
 export function currencyMinorDigits(currency?: string): number {
@@ -2792,17 +2810,20 @@ export function validateCreateOrderBody(body: unknown): CreateOrderRequestBody |
     });
   }
 
-  const candidate = body as Partial<CreateOrderRequestBody>;
-  const amount = candidate.amount;
+  const candidate = body as Partial<CreateOrderRequestBody> & Record<string, unknown>;
+  const amount = candidate.amount as { value?: unknown; currency?: unknown } | undefined;
+  const displayPrice = typeof candidate.display_price === 'string' ? candidate.display_price : undefined;
 
-  if (
-    typeof candidate.external_id !== 'string' ||
-    !candidate.external_id.trim() ||
-    !amount ||
-    typeof amount.value !== 'string' ||
-    typeof amount.currency !== 'string'
-  ) {
+  if (typeof candidate.external_id !== 'string' || !candidate.external_id.trim()) {
     return invalidRequest('Order request is missing required fields.', {});
+  }
+
+  if (amount !== undefined && (typeof amount.value !== 'string' || typeof amount.currency !== 'string')) {
+    return invalidRequest('Order request is missing required fields.', {});
+  }
+
+  if (!amount && !displayPrice) {
+    return invalidRequest('Order requires either amount or display_price.', {});
   }
 
   const requestedReturnUrl =
@@ -2815,7 +2836,7 @@ export function validateCreateOrderBody(body: unknown): CreateOrderRequestBody |
   if (requestedReturnUrl !== undefined && typeof requestedReturnUrl !== 'string') {
     return invalidRequest('Order return_url must be a string when provided.', { field: 'return_url' });
   }
-  const returnUrl = requestedReturnUrl === undefined ? undefined : normalizeOrderReturnUrl(requestedReturnUrl);
+  const returnUrl = requestedReturnUrl === undefined ? undefined : normalizeOrderReturnUrl(requestedReturnUrl as string);
   if (requestedReturnUrl !== undefined && !returnUrl) {
     return invalidRequest('Order return_url must be a safe HTTPS URL, app link or custom app scheme without secrets.', {
       field: 'return_url'
@@ -2823,15 +2844,13 @@ export function validateCreateOrderBody(body: unknown): CreateOrderRequestBody |
   }
 
   return {
-    external_id: candidate.external_id.trim(),
+    external_id: (candidate.external_id as string).trim(),
     return_url: returnUrl,
-    amount: {
-      value: amount.value,
-      currency: amount.currency
-    },
-    buyer: candidate.buyer,
-    product: candidate.product,
-    expires_in_seconds: candidate.expires_in_seconds
+    amount: amount ? { value: amount.value as string, currency: amount.currency as string } : undefined,
+    display_price: displayPrice?.trim() || undefined,
+    buyer: candidate.buyer as CreateOrderRequestBody['buyer'],
+    product: candidate.product as CreateOrderRequestBody['product'],
+    expires_in_seconds: candidate.expires_in_seconds as number | undefined
   };
 }
 
@@ -2845,25 +2864,98 @@ export function invalidRequest(message: string, details: Record<string, unknown>
   };
 }
 
+export interface OrderAmountResolution {
+  amountMinor: number;
+  currency: string;
+  detection?: {
+    source: 'display_price_parsed';
+    rawInput: string;
+    originalCurrency?: string | undefined;
+    originalAmountMinor?: number | undefined;
+    fxRate?: string | undefined;
+    fxRateTimestamp?: string | undefined;
+  } | undefined;
+}
+
+/**
+ * Resolves the order amount/currency. Explicit amount has precedence (V1
+ * behavior, untouched). display_price goes through detection: native
+ * RUB/USD/XOF stay as-is, any other detected currency is FX-converted to USD.
+ */
+export async function resolveOrderAmount(
+  body: CreateOrderRequestBody,
+  fx: Pick<FxRateService, 'quoteToUsd'> | null
+): Promise<OrderAmountResolution | ApiErrorResponse> {
+  if (body.amount) {
+    const currency = body.amount.currency;
+    const amountMinor = parseAmountMinor(body.amount.value, currency);
+    if (amountMinor === null || !ACCEPTED_ORDER_CURRENCIES.has(currency)) {
+      return invalidRequest(
+        `Order amount must be positive and currency must be one of: ${[...ACCEPTED_ORDER_CURRENCIES].join(', ')}.`,
+        { amount: body.amount.value, currency }
+      );
+    }
+    return { amountMinor, currency };
+  }
+
+  const detected = detectCurrencyFromDisplayPrice(body.display_price ?? '');
+  if (detected.kind !== 'detected') {
+    return {
+      error: {
+        code: detected.kind === 'ambiguous' ? 'currency_detection_ambiguous' : 'invalid_request',
+        message:
+          detected.kind === 'ambiguous'
+            ? 'display_price currency could not be detected unambiguously. Include a currency symbol or ISO code.'
+            : 'display_price amount is not valid for the detected currency.',
+        details: { display_price: body.display_price }
+      }
+    };
+  }
+
+  if (!detected.needs_conversion) {
+    return {
+      amountMinor: detected.amount_minor,
+      currency: detected.currency,
+      detection: { source: 'display_price_parsed', rawInput: detected.raw_input }
+    };
+  }
+
+  if (!fx) {
+    return { error: { code: 'fx_rate_unavailable', message: 'FX conversion is not configured.', details: {} } };
+  }
+  const quoted = await fx.quoteToUsd(detected.currency, detected.amount_minor, currencyMinorDigits(detected.currency));
+  if (quoted.kind !== 'ok') {
+    return {
+      error: {
+        code: 'fx_rate_unavailable',
+        message: 'No current FX rate is available to convert the detected currency to USD.',
+        details: { original_currency: detected.currency }
+      }
+    };
+  }
+  return {
+    amountMinor: quoted.quote.amountMinorUsd,
+    currency: 'USD',
+    detection: {
+      source: 'display_price_parsed',
+      rawInput: detected.raw_input,
+      originalCurrency: detected.currency,
+      originalAmountMinor: detected.amount_minor,
+      fxRate: quoted.quote.rate,
+      fxRateTimestamp: quoted.quote.rateTimestamp
+    }
+  };
+}
+
 export function buildOrderCreateInput(params: {
   body: CreateOrderRequestBody;
   merchantId: string;
   phoneHmacSecret: string;
   idGenerator: IdGenerator;
   clock: () => Date;
+  resolvedAmount: OrderAmountResolution;
 }): CreateOrderWithSessionInput | ApiErrorResponse {
-  const currency = params.body.amount.currency;
-  const amountMinor = parseAmountMinor(params.body.amount.value, currency);
-
-  if (amountMinor === null || !ACCEPTED_ORDER_CURRENCIES.has(currency)) {
-    return invalidRequest(
-      `Order amount must be positive and currency must be one of: ${[...ACCEPTED_ORDER_CURRENCIES].join(', ')}.`,
-      {
-        amount: params.body.amount.value,
-        currency
-      }
-    );
-  }
+  const { amountMinor, currency, detection } = params.resolvedAmount;
 
   const now = params.clock();
   const expiresInSeconds = params.body.expires_in_seconds ?? 900;
@@ -2883,7 +2975,13 @@ export function buildOrderCreateInput(params: {
     productName: params.body.product?.name,
     productRiskLevel: params.body.product?.risk_level ?? 'low',
     amountMinor,
-    currency: params.body.amount.currency,
+    currency,
+    detectionSource: detection?.source,
+    detectionRawInput: detection?.rawInput,
+    originalCurrency: detection?.originalCurrency,
+    originalAmountMinor: detection?.originalAmountMinor,
+    fxRate: detection?.fxRate,
+    fxRateTimestamp: detection?.fxRateTimestamp,
     status: 'payment_session_created',
     expiresAt: expiresAt.toISOString(),
     createdAt: now.toISOString(),
@@ -2895,7 +2993,7 @@ export function buildOrderCreateInput(params: {
     orderId,
     merchantId: params.merchantId,
     expectedAmountMinor: amountMinor,
-    currency: params.body.amount.currency,
+    currency,
     buyerPhoneHmac: normalizedPhone ? hmacSha256(normalizedPhone, params.phoneHmacSecret) : undefined,
     buyerPhoneMasked: normalizedPhone ? maskPhone(normalizedPhone) : undefined,
     buyerNameHmac: buyerName ? hmacSha256(buyerName, params.phoneHmacSecret) : undefined,
@@ -2919,7 +3017,7 @@ export function buildOrderCreateInput(params: {
         external_id: params.body.external_id,
         return_url_present: Boolean(params.body.return_url),
         amount_minor: amountMinor,
-        currency: params.body.amount.currency,
+        currency,
         payment_session_id: paymentSessionId,
         buyer_phone_masked: paymentSession.buyerPhoneMasked
       }
@@ -2933,7 +3031,7 @@ export function buildOrderCreateInput(params: {
       payloadRedacted: {
         order_id: orderId,
         expected_amount_minor: amountMinor,
-        currency: params.body.amount.currency,
+        currency,
         valid_until: expiresAt.toISOString()
       }
     }
