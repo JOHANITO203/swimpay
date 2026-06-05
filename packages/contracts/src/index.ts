@@ -115,8 +115,11 @@ export interface MerchantPaymentReadiness {
   official_bank_confirmation: false;
 }
 
-/** Currency a receiving bank profile collects in. West Africa profiles = XOF; RU = RUB. */
+/** Currency a receiving bank profile collects in. International = USD; West Africa = XOF; RU = RUB. */
 export function receivingCurrencyForBankProfile(bankProfileId: string): string {
+  if (InternationalReceiverBankProfiles.some((bank) => bank.bank_profile_id === bankProfileId)) {
+    return 'USD';
+  }
   return WestAfricaReceiverBankProfiles.some((bank) => bank.bank_profile_id === bankProfileId) ? 'XOF' : 'RUB';
 }
 
@@ -211,8 +214,8 @@ export type PayerBankLaunchStrategy =
   | 'manual_only';
 export type PayerBankFallbackStrategy = 'copy_details_manual_transfer';
 export type PayerBankLauncherTestedStatus = 'validated' | 'not_validated';
-/** ISO-3166 codes for payer launchers. RU = V1 device-validated; the rest are UEMOA / XOF (West Africa). */
-export type PayerBankCountry = 'RU' | 'SN' | 'CI' | 'ML' | 'BF' | 'BJ' | 'TG' | 'NE' | 'GW';
+/** ISO-3166 codes for payer launchers. RU = V1 device-validated; UEMOA codes = XOF (West Africa); INT = international neobanks (USD). */
+export type PayerBankCountry = 'RU' | 'SN' | 'CI' | 'ML' | 'BF' | 'BJ' | 'TG' | 'NE' | 'GW' | 'INT';
 export type PaymentCompatibilityStatus =
   | 'compatible'
   | 'incompatible_method'
@@ -353,10 +356,22 @@ export const WestAfricaReceiverBankProfiles: readonly ReceiverBankOption[] = [
   receiverBank('sg_connect_ci', "SG Connect (Côte d'Ivoire)")
 ] as const;
 
-/** Every receiver bank profile the platform recognises (RU V1 + West Africa). */
+/**
+ * International (USD) neobank receiving profiles — wallet_transfer rail, manual
+ * review only (no notification parsers yet, detection_supported false). The
+ * merchant-side mirror of InternationalPayerBankLauncherRegistry.
+ */
+export const InternationalReceiverBankProfiles: readonly ReceiverBankOption[] = [
+  receiverBank('wise_int', 'Wise', { packageName: 'com.transferwise.android', detectionSupported: false }),
+  receiverBank('revolut_int', 'Revolut', { packageName: 'com.revolut.revolut', detectionSupported: false }),
+  receiverBank('payoneer_int', 'Payoneer', { packageName: 'com.payoneer.android', detectionSupported: false })
+] as const;
+
+/** Every receiver bank profile the platform recognises (RU V1 + West Africa + international USD). */
 export const AllReceiverBankProfiles: readonly ReceiverBankOption[] = [
   ...V1ReceiverBankOptions,
-  ...WestAfricaReceiverBankProfiles
+  ...WestAfricaReceiverBankProfiles,
+  ...InternationalReceiverBankProfiles
 ] as const;
 
 export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
@@ -489,18 +504,33 @@ export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOpti
   })
 ] as const;
 
+/**
+ * International (USD) payer launchers — neobank apps. Not device-validated:
+ * package_hint_only / not_validated, with the standard manual-copy fallback.
+ */
+export const InternationalPayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
+  payerLauncher('wise_int', 'Wise', ['com.transferwise.android'], { country: 'INT', enabled: true }),
+  payerLauncher('revolut_int', 'Revolut', ['com.revolut.revolut'], { country: 'INT', enabled: true }),
+  payerLauncher('payoneer_int', 'Payoneer', ['com.payoneer.android'], { country: 'INT', enabled: true })
+] as const;
+
 const XOF_CURRENCIES = new Set(['XOF', 'XAF']);
 
 /**
  * Selects the payer-bank launcher registry for a payment session's currency.
- * XOF/XAF (franc CFA / UEMOA) -> West Africa launchers; everything else -> RU.
- * This activates West Africa on the buyer side without touching the
+ * XOF/XAF (franc CFA / UEMOA) -> West Africa launchers; USD -> international neobank launchers; everything else -> RU.
+ * This activates West Africa and international USD on the buyer side without touching the
  * device-validated RU flow.
  */
 export function payerLaunchersForCurrency(currency: string | undefined): readonly PayerBankLauncherOption[] {
-  return currency && XOF_CURRENCIES.has(currency.toUpperCase())
-    ? WestAfricaPayerBankLauncherRegistry
-    : PayerBankLauncherRegistry;
+  const normalized = currency?.toUpperCase();
+  if (normalized && XOF_CURRENCIES.has(normalized)) {
+    return WestAfricaPayerBankLauncherRegistry;
+  }
+  if (normalized === 'USD') {
+    return InternationalPayerBankLauncherRegistry;
+  }
+  return PayerBankLauncherRegistry;
 }
 
 export interface CheckoutStateInput {
@@ -517,7 +547,10 @@ export function getReceiverBankOption(receiverBankId: string): ReceiverBankOptio
 }
 
 export function getPayerBankLauncherOption(payerBankLauncherId: string): PayerBankLauncherOption | null {
-  return PayerBankLauncherRegistry.find((launcher) => launcher.payer_bank_launcher_id === payerBankLauncherId) ?? null;
+  return (
+    [...PayerBankLauncherRegistry, ...WestAfricaPayerBankLauncherRegistry, ...InternationalPayerBankLauncherRegistry]
+      .find((launcher) => launcher.payer_bank_launcher_id === payerBankLauncherId) ?? null
+  );
 }
 
 export function toAvailableSenderBanks(
@@ -1375,6 +1408,7 @@ function receiverBank(
     runtimeVerifiedAt?: string;
     packageName?: string;
     packageCertSha256?: string;
+    detectionSupported?: boolean;
   } = {}
 ): ReceiverBankOption {
   const option: ReceiverBankOption = {
@@ -1390,7 +1424,7 @@ function receiverBank(
     package_cert_sha256: options.packageCertSha256 ?? 'documented_unknown',
     status: 'review_required_beta',
     review_only: true,
-    detection_supported: true,
+    detection_supported: options.detectionSupported ?? true,
     merchant_receiver_account_id: null,
     beta_ready: true,
     disabled_reason: null,
@@ -1436,6 +1470,12 @@ export function bankLogoAssetKey(bankProfileId: string): string {
       return 'ic_bank_sg';
     case 'ecobank_ci':
       return 'ic_bank_ecobank';
+    case 'wise_int':
+      return 'ic_bank_wise';
+    case 'revolut_int':
+      return 'ic_bank_revolut';
+    case 'payoneer_int':
+      return 'ic_bank_payoneer';
     default:
       return 'ic_bank_unknown';
   }

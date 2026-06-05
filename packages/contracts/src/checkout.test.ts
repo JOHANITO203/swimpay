@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AllReceiverBankProfiles,
   BuyerSafeCheckoutStatuses,
   CheckoutSessionStates,
   FallbackReviewReasons,
+  InternationalPayerBankLauncherRegistry,
+  InternationalReceiverBankProfiles,
   PayerBankLauncherRegistry,
   ReceivingRouteReviewPolicies,
   ReceivingRouteRiskReasonCodes,
@@ -17,6 +20,8 @@ import {
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
   maskReceiverIdentifier,
+  payerLaunchersForCurrency,
+  receivingCurrencyForBankProfile,
   toBuyerSafeReceivingRoute
 } from './index.js';
 
@@ -508,5 +513,29 @@ describe('checkout bank selection contracts', () => {
         wordSource: ['TANGO', 'ALFA', 'NOVA']
       })
     ).toBe('TANGO ALFA NOVA');
+  });
+});
+
+describe('international USD rail', () => {
+  it('exposes the neobank receiver profiles with detection disabled', () => {
+    expect(InternationalReceiverBankProfiles.map((b) => b.bank_profile_id)).toEqual(['wise_int', 'revolut_int', 'payoneer_int']);
+    for (const profile of InternationalReceiverBankProfiles) {
+      expect(profile.detection_supported).toBe(false);
+      expect(profile.status).toBe('review_required_beta');
+    }
+    expect(AllReceiverBankProfiles.map((b) => b.bank_profile_id)).toContain('wise_int');
+  });
+
+  it('routes USD sessions to international launchers and resolves their currency', () => {
+    expect(payerLaunchersForCurrency('USD')).toBe(InternationalPayerBankLauncherRegistry);
+    expect(payerLaunchersForCurrency('usd')).toBe(InternationalPayerBankLauncherRegistry);
+    expect(receivingCurrencyForBankProfile('wise_int')).toBe('USD');
+    expect(receivingCurrencyForBankProfile('sber_ru')).toBe('RUB');
+  });
+
+  it('resolves any registry launcher by id (fixes the WA selection gap)', () => {
+    expect(getPayerBankLauncherOption('wise_int')?.country).toBe('INT');
+    expect(getPayerBankLauncherOption('orange_money_ci')).not.toBeNull();
+    expect(getPayerBankLauncherOption('sber_ru')).not.toBeNull();
   });
 });
