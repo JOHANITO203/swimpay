@@ -13,7 +13,11 @@ export type CurrencyDetectionResult =
 
 const NATIVE_CURRENCIES = new Set(['RUB', 'USD', 'XOF']);
 
-/** Minor digits per detected currency; aligned with apps/api currencyMinorDigits(). */
+/**
+ * Minor digits per detected currency. Superset of apps/api CURRENCY_MINOR_DIGITS:
+ * the extra convertible currencies here all use 2 decimals, which matches that
+ * map's default fallback, so the two stay consistent at runtime.
+ */
 const DETECTION_MINOR_DIGITS: Readonly<Record<string, number>> = {
   RUB: 2, USD: 2, EUR: 2, GBP: 2, XOF: 0, XAF: 0, JPY: 0,
   CAD: 2, AUD: 2, CHF: 2, CNY: 2, TRY: 2, AED: 2, KZT: 2, UAH: 2, NGN: 2, GHS: 2
