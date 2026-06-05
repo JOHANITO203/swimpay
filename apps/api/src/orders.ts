@@ -2641,7 +2641,7 @@ function normalizeWestAfricaMobileNumber(value: string): string | null {
  * Wise/Revolut also use a tag (@wisetag / @revtag), Revolut accepts a phone.
  * The merchant enters their OWN identifier, so validation stays permissive.
  */
-function normalizeWalletIdentifier(value: string): { type: ReceiverIdentifierType; normalized: string } | null {
+export function normalizeWalletIdentifier(value: string): { type: ReceiverIdentifierType; normalized: string } | null {
   const trimmed = value.trim();
   if (trimmed.includes('@') && !trimmed.startsWith('@')) {
     const email = trimmed.toLowerCase();

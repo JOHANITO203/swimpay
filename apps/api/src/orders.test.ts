@@ -117,6 +117,21 @@ describe('wallet_transfer receiving routes', () => {
     });
     expect(record).toHaveProperty('error');
   });
+
+  it('rejects an identifier that is neither email, tag nor phone on a wallet route', () => {
+    const record = buildMerchantReceivingRouteRecord({
+      routeId: 'route_w4',
+      merchantId: 'mer_01',
+      bankProfileId: 'wise_int',
+      railType: 'wallet_transfer',
+      receiverIdentifier: 'plaintext',
+      routeCode: 'usd-wise-bad',
+      displayLabel: 'Wise bad',
+      encryptionSecret: 'test_secret',
+      now: '2026-06-05T10:00:00.000Z'
+    });
+    expect(record).toHaveProperty('error');
+  });
 });
 
 function checkoutReadyRoute(merchantId: string): StoredMerchantReceivingRouteRecord {

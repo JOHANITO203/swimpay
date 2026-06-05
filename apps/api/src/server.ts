@@ -103,6 +103,7 @@ import {
   buildOrderCreateInput,
   formatAmountMinor,
   invalidRequest,
+  normalizeWalletIdentifier,
   parseMerchantId,
   PgOrderRepository,
   receiverIdentifierTypeForRail,
@@ -5377,7 +5378,7 @@ function validateReceivingRouteCreateBody(body: unknown): ReceivingRouteCreateBo
         return invalidRequest('receiver_identifier_type must match rail_type.', {
           rail_type: railType,
           receiver_identifier_type: candidate.receiver_identifier_type,
-          expected_receiver_identifier_type: 'email'
+          expected_receiver_identifier_type: 'email | tag | phone'
         });
       }
     } else {
@@ -5404,7 +5405,10 @@ function validateReceivingRouteCreateBody(body: unknown): ReceivingRouteCreateBo
   return {
     bank_profile_id: candidate.bank_profile_id.trim(),
     rail_type: railType,
-    receiver_identifier_type: receiverIdentifierTypeForRail(railType),
+    receiver_identifier_type:
+      railType === 'wallet_transfer'
+        ? normalizeWalletIdentifier(candidate.receiver_identifier)?.type ?? 'email'
+        : receiverIdentifierTypeForRail(railType),
     receiver_identifier: candidate.receiver_identifier.trim(),
     route_code: candidate.route_code.trim(),
     display_label: candidate.display_label.trim(),
