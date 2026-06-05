@@ -7,6 +7,7 @@ import {
   ReceiverIdentifierTypes,
   PayerBankLauncherRegistry,
   AllReceiverBankProfiles,
+  InternationalReceiverBankProfiles,
   WestAfricaReceiverBankProfiles,
   deriveExpectedPaymentProfile,
   maskReceiverIdentifier,
@@ -2467,21 +2468,40 @@ export function buildMerchantReceivingRouteRecord(input: {
       rail_type: input.railType
     });
   }
+  if (input.railType === 'wallet_transfer' && !InternationalReceiverBankProfiles.some((bank) => bank.bank_profile_id === input.bankProfileId)) {
+    return invalidRequest('wallet_transfer rail requires an international receiving profile.', {
+      bank_profile_id: input.bankProfileId,
+      rail_type: input.railType
+    });
+  }
   if (!ReceivingRouteRailTypes.includes(input.railType)) {
     return invalidRequest('rail_type is not supported.', { rail_type: input.railType });
   }
-  const receiverIdentifierType = receiverIdentifierTypeForRail(input.railType);
-  if (!ReceiverIdentifierTypes.includes(receiverIdentifierType)) {
-    return invalidRequest('receiver identifier type is not supported.', { rail_type: input.railType });
-  }
-  if (!input.receiverIdentifier.trim()) {
-    return invalidRequest('receiver_identifier is required.', {});
-  }
-  const normalizedIdentifier = normalizeReceiverIdentifier(receiverIdentifierType, input.receiverIdentifier, input.railType);
-  if (!normalizedIdentifier) {
-    return invalidRequest('receiver_identifier is not valid for the selected receiving route.', {
-      type: receiverIdentifierType
-    });
+  let receiverIdentifierType: ReceiverIdentifierType;
+  let normalizedIdentifier: string | null;
+  if (input.railType === 'wallet_transfer') {
+    const wallet = normalizeWalletIdentifier(input.receiverIdentifier);
+    if (!wallet) {
+      return invalidRequest('receiver_identifier is not valid for a wallet receiving route.', {
+        rail_type: input.railType
+      });
+    }
+    receiverIdentifierType = wallet.type;
+    normalizedIdentifier = wallet.normalized;
+  } else {
+    receiverIdentifierType = receiverIdentifierTypeForRail(input.railType);
+    if (!ReceiverIdentifierTypes.includes(receiverIdentifierType)) {
+      return invalidRequest('receiver identifier type is not supported.', { rail_type: input.railType });
+    }
+    if (!input.receiverIdentifier.trim()) {
+      return invalidRequest('receiver_identifier is required.', {});
+    }
+    normalizedIdentifier = normalizeReceiverIdentifier(receiverIdentifierType, input.receiverIdentifier, input.railType);
+    if (!normalizedIdentifier) {
+      return invalidRequest('receiver_identifier is not valid for the selected receiving route.', {
+        type: receiverIdentifierType
+      });
+    }
   }
   const routeCode = sanitizeRouteCode(input.routeCode);
   if (!routeCode) {
@@ -2506,9 +2526,12 @@ export function buildMerchantReceivingRouteRecord(input: {
     receiver_identifier_encrypted: encryptReceiverIdentifier(input.receiverIdentifier, input.encryptionSecret),
     receiver_identifier_hmac: hmacSha256(`${input.merchantId}:${input.railType}:${normalizedIdentifier}`, input.encryptionSecret),
     receiver_identifier_masked: maskReceiverIdentifier(receiverIdentifierType, normalizedIdentifier, {
-      international: input.railType === 'mobile_money'
+      international: input.railType === 'mobile_money' || input.railType === 'wallet_transfer'
     }),
-    receiver_identifier_last4: normalizedIdentifier.replace(/\D/g, '').slice(-4),
+    receiver_identifier_last4:
+      receiverIdentifierType === 'email' || receiverIdentifierType === 'tag'
+        ? normalizedIdentifier.slice(-4)
+        : normalizedIdentifier.replace(/\D/g, '').slice(-4),
     route_code: routeCode,
     display_label: displayLabel,
     enabled: input.enabled ?? true,
@@ -2552,7 +2575,11 @@ function isReceivingRouteUsableForSession(
 }
 
 export function receiverIdentifierTypeForRail(railType: ReceivingRouteRailType): ReceiverIdentifierType {
-  // Mobile money accounts are addressed by phone number, like SBP.
+  // Mobile money accounts are addressed by phone number, like SBP. Wallet rails
+  // resolve their identifier type from the value (normalizeWalletIdentifier).
+  if (railType === 'wallet_transfer') {
+    return 'email';
+  }
   return railType === 'phone_transfer' || railType === 'mobile_money' ? 'phone' : 'card';
 }
 
@@ -2563,9 +2590,10 @@ export function defaultReviewPolicyForRail(railType: ReceivingRouteRailType): Re
 }
 
 function amountLeaseRailForRoute(railType: ReceivingRouteRailType): AmountLeaseRail {
-  // Mobile money is phone-addressed; reuse the 'sbp' lease bucket so amount
-  // de-duplication stays within the existing amount_leases.rail CHECK domain.
-  return railType === 'phone_transfer' || railType === 'mobile_money' ? 'sbp' : 'card';
+  // Mobile money and wallet transfers are account-addressed; reuse the 'sbp' lease
+  // bucket so amount de-duplication stays within the existing amount_leases.rail
+  // CHECK domain.
+  return railType === 'card_transfer' ? 'card' : 'sbp';
 }
 
 function normalizeReconciliationDelta(value: number): number {
@@ -2606,6 +2634,25 @@ function normalizeWestAfricaMobileNumber(value: string): string | null {
     return null;
   }
   return `+${digits}`;
+}
+
+/**
+ * Normalizes a wallet (neobank) receiving identifier. Wise/Payoneer use email,
+ * Wise/Revolut also use a tag (@wisetag / @revtag), Revolut accepts a phone.
+ * The merchant enters their OWN identifier, so validation stays permissive.
+ */
+function normalizeWalletIdentifier(value: string): { type: ReceiverIdentifierType; normalized: string } | null {
+  const trimmed = value.trim();
+  if (trimmed.includes('@') && !trimmed.startsWith('@')) {
+    const email = trimmed.toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u.test(email) ? { type: 'email', normalized: email } : null;
+  }
+  if (trimmed.startsWith('@')) {
+    const tag = trimmed.slice(1).toLowerCase();
+    return /^[a-z0-9_]{3,32}$/u.test(tag) ? { type: 'tag', normalized: tag } : null;
+  }
+  const phone = normalizeWestAfricaMobileNumber(trimmed);
+  return phone ? { type: 'phone', normalized: phone } : null;
 }
 
 function encryptReceiverIdentifier(value: string, secret: string): string {

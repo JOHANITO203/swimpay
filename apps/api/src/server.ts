@@ -1988,7 +1988,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
             available_methods: availableBuyerMethodsForRoutes(allRoutes),
             available_payment_methods: availableMethods,
             fallback_actions: buildFallbackActionsForAvailableMethods(availableMethods),
-            unavailable_reason: availableMethods.card || availableMethods.sbp
+            unavailable_reason: availableMethods.card || availableMethods.sbp || availableMethods.mobile_money || availableMethods.wallet
               ? 'method_not_supported_by_merchant'
               : 'merchant_no_active_receiving_method'
           }

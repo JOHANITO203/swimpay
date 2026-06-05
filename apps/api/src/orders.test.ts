@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, it, test, vi } from 'vitest';
 import { InMemoryMetricsRegistry, MetricNames } from '@swimpay/observability';
 import { InMemoryMerchantApiKeyVerifier } from './auth-bff.js';
 import { InMemoryMerchantIntegrationRepository } from './developer-integration.js';
@@ -63,6 +63,59 @@ describe('West Africa mobile money receiving routes', () => {
       railType: 'mobile_money'
     });
     expect('error' in route).toBe(true);
+  });
+});
+
+describe('wallet_transfer receiving routes', () => {
+  it('creates a wallet_transfer route on an international profile with email identifier', () => {
+    const record = buildMerchantReceivingRouteRecord({
+      routeId: 'route_w1',
+      merchantId: 'mer_01',
+      bankProfileId: 'wise_int',
+      railType: 'wallet_transfer',
+      receiverIdentifier: 'John.Doe@Gmail.com',
+      routeCode: 'usd-wise-main',
+      displayLabel: 'Wise USD',
+      encryptionSecret: 'test_secret',
+      now: '2026-06-05T10:00:00.000Z'
+    });
+    expect(record).toMatchObject({
+      rail_type: 'wallet_transfer',
+      receiver_identifier_type: 'email',
+      receiver_identifier_masked: 'j•••@•••.com',
+      receiver_identifier_last4: '.com',
+      review_policy: 'review_first'
+    });
+  });
+
+  it('creates a wallet_transfer route with a tag identifier', () => {
+    const record = buildMerchantReceivingRouteRecord({
+      routeId: 'route_w2',
+      merchantId: 'mer_01',
+      bankProfileId: 'revolut_int',
+      railType: 'wallet_transfer',
+      receiverIdentifier: '@revtag67',
+      routeCode: 'usd-revolut',
+      displayLabel: 'Revolut USD',
+      encryptionSecret: 'test_secret',
+      now: '2026-06-05T10:00:00.000Z'
+    });
+    expect(record).toMatchObject({ receiver_identifier_type: 'tag', receiver_identifier_masked: '@r•••67' });
+  });
+
+  it('rejects wallet_transfer on a non-international profile', () => {
+    const record = buildMerchantReceivingRouteRecord({
+      routeId: 'route_w3',
+      merchantId: 'mer_01',
+      bankProfileId: 'sber_ru',
+      railType: 'wallet_transfer',
+      receiverIdentifier: 'a@b.com',
+      routeCode: 'bad',
+      displayLabel: 'Bad',
+      encryptionSecret: 'test_secret',
+      now: '2026-06-05T10:00:00.000Z'
+    });
+    expect(record).toHaveProperty('error');
   });
 });
 
