@@ -68,10 +68,36 @@ Emitted only after merchant manual confirmation in V1.
       "value": "137.00",
       "currency": "RUB"
     },
-    "payment_reference": "TANGO ALFA"
+    "payment_reference": "TANGO ALFA",
+    "currency_detection": {
+      "source": "display_price_parsed",
+      "raw_input": "€9.99",
+      "original_currency": "EUR",
+      "original_amount_minor": 999,
+      "fx_rate": "1.0852",
+      "fx_rate_timestamp": "2026-06-05T10:00:00.000Z"
+    },
+    "receiving_route": {
+      "route_code": "USD-WISE-MAIN",
+      "rail_type": "wallet_transfer",
+      "bank_profile_id": "wise_int",
+      "receiver_identifier_masked": "j•••@•••.com"
+    }
   }
 }
 ```
+
+### Additive blocks — presence conditions
+
+| Block | Present when | Absent when |
+|---|---|---|
+| `currency_detection` | Order was created via `display_price` | Order used explicit `amount` |
+| `currency_detection.original_currency` / `original_amount_minor` / `fx_rate` / `fx_rate_timestamp` | A currency conversion occurred (detected currency ≠ native RUB/USD/XOF) | Detected currency was already a native currency |
+| `receiving_route` | A receiving route was locked for the session | No route was locked (e.g. RUB / manual flow) |
+
+Both blocks are absent on `payment.rejected` and `payment.expired`.
+
+`receiver_identifier_masked` is the only identifier form ever included in the payload. The raw identifier is never exposed across any public surface (webhook, API, audit log).
 
 ### `payment.rejected`
 

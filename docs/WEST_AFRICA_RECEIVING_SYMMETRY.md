@@ -1,5 +1,14 @@
 # West Africa receiving symmetry (Phase 2)
 
+> **Update 2026-06-05 (migrations 026–027):** The West Africa provider set has
+> been reduced to three active CI profiles: **Wave CI / Orange Money CI / MTN
+> MoMo CI** on both payer-launcher and receiver sides. The eight original WA
+> profiles (`orange_money_sn`, `wave_sn`, `free_money_sn`, `wizall_sn`,
+> `moov_money_ci`, `djamo_ci`, `ecobank_ci`, `sg_connect_ci`) are retired
+> (`selectable = false`, routes `pending_disable`). Phase 2.2 below still
+> documents the original symmetric design; the current operational set is the
+> CI trio only.
+
 ## Why
 Before Phase 2, the buyer side (checkout) could offer West Africa / XOF payer
 methods (Orange Money, Wave, MTN…) while the merchant side could only **receive**

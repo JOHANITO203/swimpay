@@ -87,6 +87,28 @@ CREATE TABLE orders (
 );
 ```
 
+Migration `026` adds six nullable FX-trace columns (all NULL for orders created
+via explicit `amount`):
+
+```sql
+ALTER TABLE orders
+  ADD COLUMN detection_source       TEXT,
+  ADD COLUMN detection_raw_input    TEXT,
+  ADD COLUMN original_currency      TEXT,
+  ADD COLUMN original_amount_minor  BIGINT,
+  ADD COLUMN fx_rate                TEXT,
+  ADD COLUMN fx_rate_timestamp      TIMESTAMPTZ;
+```
+
+| Column | Type | Purpose |
+|---|---|---|
+| `detection_source` | TEXT | How the currency was determined, e.g. `display_price_parsed` |
+| `detection_raw_input` | TEXT | The raw `display_price` string submitted by the merchant |
+| `original_currency` | TEXT | The currency code detected before any FX conversion |
+| `original_amount_minor` | BIGINT | The amount in the original detected currency (minor units) |
+| `fx_rate` | TEXT | The ECB exchange rate applied (e.g. `"1.0852"`), present only when a conversion occurred |
+| `fx_rate_timestamp` | TIMESTAMPTZ | Timestamp of the FX rate snapshot used for conversion |
+
 ### `payment_sessions`
 
 ```sql
@@ -137,8 +159,8 @@ CREATE TABLE merchant_receiving_routes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   merchant_id UUID NOT NULL REFERENCES merchants(id),
   bank_profile_id TEXT NOT NULL REFERENCES bank_profiles(id),
-  rail_type TEXT NOT NULL CHECK (rail_type IN ('phone_transfer', 'card_transfer')),
-  receiver_identifier_type TEXT NOT NULL CHECK (receiver_identifier_type IN ('phone', 'card')),
+  rail_type TEXT NOT NULL CHECK (rail_type IN ('phone_transfer', 'card_transfer', 'mobile_money', 'wallet_transfer')),
+  receiver_identifier_type TEXT NOT NULL CHECK (receiver_identifier_type IN ('phone', 'card', 'email', 'tag')),
   receiver_identifier_encrypted TEXT NOT NULL,
   receiver_identifier_hmac TEXT,
   receiver_identifier_masked TEXT NOT NULL,
@@ -229,6 +251,40 @@ vtb_ru
 alfa_ru
 gazprombank_ru
 ```
+
+Migration `025` adds West Africa mobile-money profiles. Migration `026` adds the
+`selectable` column. Migration `027` adds international wallet profiles and marks
+the retired WA profiles non-selectable:
+
+```sql
+ALTER TABLE bank_profiles ADD COLUMN selectable BOOLEAN NOT NULL DEFAULT true;
+```
+
+**International wallet profiles** (added migration 027, currency USD, country INT):
+
+```text
+wise_int
+revolut_int
+payoneer_int
+```
+
+**West Africa — Wave CI** (added migration 025, currency XOF, country CI):
+
+```text
+wave_ci
+```
+
+**Retired West Africa profiles** (migration 027, `selectable = false`, active
+routes moved to `lifecycle_status = pending_disable`):
+
+```text
+orange_money_sn, wave_sn, free_money_sn, wizall_sn
+moov_money_ci, djamo_ci, ecobank_ci, sg_connect_ci
+```
+
+These rows are preserved for historical payment session references; they are
+excluded from checkout selection and merchant route lists. The active West Africa
+set is: `wave_ci`, `orange_money_ci`, `mtn_momo_ci`.
 
 ### `bank_app_signatures`
 
