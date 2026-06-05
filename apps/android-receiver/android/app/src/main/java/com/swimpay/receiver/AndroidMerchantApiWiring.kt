@@ -706,6 +706,7 @@ private val MERCHANT_RECEIVING_METHOD_BANK_LABELS: Map<String, String> = mapOf(
     "orange_money_sn" to "Orange Money SN",
     "orange_money_ci" to "Orange Money CI",
     "wave_sn" to "Wave",
+    "wave_ci" to "Wave",
     "mtn_momo_ci" to "MTN MoMo",
     "moov_money_ci" to "Moov Money",
     "free_money_sn" to "Free Money",

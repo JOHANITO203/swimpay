@@ -5,6 +5,7 @@ package com.swimpay.receiver.ui.premium
  * of the backend WestAfricaReceiverBankProfiles. Used by the WA receiving
  * sub-screen so a merchant can add a mobile money receiving method. Ids match the
  * backend bank_profile_id exactly (validated server-side).
+ * Reduced 2026-06-05 to the Côte d'Ivoire trio mirroring the backend registry reduction.
  */
 data class WestAfricaReceivingOption(
     val bankProfileId: String,
@@ -20,16 +21,9 @@ data class WestAfricaReceivingOption(
 
 object WestAfricaReceivingCatalog {
     val wallets: List<WestAfricaReceivingOption> = listOf(
-        WestAfricaReceivingOption("orange_money_sn", "Orange Money", "Sénégal", 0xFFFF7900, "OM"),
-        WestAfricaReceivingOption("wave_sn", "Wave", "Sénégal", 0xFF1DC8FF, "W", darkInk = true),
-        WestAfricaReceivingOption("free_money_sn", "Free Money", "Sénégal", 0xFFD6122B, "F"),
-        WestAfricaReceivingOption("wizall_sn", "Wizall", "Sénégal", 0xFF00A86B, "Wz"),
+        WestAfricaReceivingOption("wave_ci", "Wave", "Côte d'Ivoire", 0xFF1DC8FF, "W", darkInk = true),
         WestAfricaReceivingOption("orange_money_ci", "Orange Money", "Côte d'Ivoire", 0xFFFF7900, "OM"),
-        WestAfricaReceivingOption("mtn_momo_ci", "MTN MoMo", "Côte d'Ivoire", 0xFFFFCB05, "MTN", darkInk = true),
-        WestAfricaReceivingOption("moov_money_ci", "Moov Money", "Côte d'Ivoire", 0xFF2B6CB0, "M"),
-        WestAfricaReceivingOption("djamo_ci", "Djamo", "Côte d'Ivoire", 0xFF6C5CE7, "Dj"),
-        WestAfricaReceivingOption("ecobank_ci", "Ecobank", "Côte d'Ivoire", 0xFF004A8F, "Eco"),
-        WestAfricaReceivingOption("sg_connect_ci", "SG Connect", "Côte d'Ivoire", 0xFFE60028, "SG")
+        WestAfricaReceivingOption("mtn_momo_ci", "MTN MoMo", "Côte d'Ivoire", 0xFFFFCB05, "MTN", darkInk = true)
     )
 
     fun byId(bankProfileId: String): WestAfricaReceivingOption? =
