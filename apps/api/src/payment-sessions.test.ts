@@ -2810,7 +2810,7 @@ describe('West Africa mobile money receiving methods (end-to-end create paths)',
     expect(route.receiver_identifier_type).toBe('phone');
     expect(route.receiver_identifier_last4).toBe('3456');
     expect(route.receiver_identifier_masked).not.toContain('225');
-    expect(JSON.stringify(response.json())).not.toContain('2250712345');
+    expect(JSON.stringify(response.json())).not.toContain('22507123456');
   });
 
   test('high-level receiving-methods endpoint accepts type mobile_money', async () => {

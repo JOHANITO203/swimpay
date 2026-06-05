@@ -428,9 +428,8 @@ export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
  * surfaced to buyers for XOF/XAF sessions via payerLaunchersForCurrency(). The
  * always-present copy_details_manual_transfer fallback covers a deeplink miss.
  *
- * Amount prefill capability is expressed by {amount}/{recipient} placeholders in
- * ussd_transfer_template (Orange SN/ML one-shot); can_prefill_amount stays false
- * to preserve the V1 launcher invariant. {secret}/PIN is never auto-filled.
+ * No amount-prefill templates remain in this registry; MTN MoMo CI uses a static
+ * USSD dial code only. {secret}/PIN is never auto-filled.
  *
  * Reduced to Côte d'Ivoire (CI) actors only: Wave CI, Orange Money CI, MTN MoMo CI.
  */
@@ -1401,6 +1400,9 @@ export function bankLogoAssetKey(bankProfileId: string): string {
       return 'ic_bank_gazprombank';
     case 'ozon_bank':
       return 'ic_bank_ozon';
+    // Retired WA providers (orange_money_sn, orange_money_africa, wave_sn, moov,
+    // free_money, wizall, djamo, sg_connect, ecobank) are kept below so stored
+    // receiving-route records and order history can still resolve a logo asset.
     case 'orange_money_sn':
     case 'orange_money_ci':
     case 'orange_money_africa':
