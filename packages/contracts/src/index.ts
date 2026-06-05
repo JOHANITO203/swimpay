@@ -1,4 +1,5 @@
 import type { EventType } from '@swimpay/events';
+export { detectCurrencyFromDisplayPrice, type CurrencyDetectionResult } from './currency-detection.js';
 
 export const OrderStatuses = [
   'created',
@@ -69,13 +70,13 @@ export type BuyerSafeCheckoutStatus = (typeof BuyerSafeCheckoutStatuses)[number]
 export type ReceiverBankBuyerStatus = 'available' | 'review_required_beta' | 'temporarily_unavailable';
 export type ReceiverRouteBuyerStatus = 'review_beta' | 'temporarily_unavailable';
 
-export const BuyerCheckoutPaymentMethods = ['card', 'sbp', 'mobile_money'] as const;
+export const BuyerCheckoutPaymentMethods = ['card', 'sbp', 'mobile_money', 'wallet'] as const;
 export type BuyerCheckoutPaymentMethod = (typeof BuyerCheckoutPaymentMethods)[number];
 
-export const ReceivingRouteRailTypes = ['phone_transfer', 'card_transfer', 'mobile_money'] as const;
+export const ReceivingRouteRailTypes = ['phone_transfer', 'card_transfer', 'mobile_money', 'wallet_transfer'] as const;
 export type ReceivingRouteRailType = (typeof ReceivingRouteRailTypes)[number];
 
-export const ReceiverIdentifierTypes = ['phone', 'card'] as const;
+export const ReceiverIdentifierTypes = ['phone', 'card', 'email', 'tag'] as const;
 export type ReceiverIdentifierType = (typeof ReceiverIdentifierTypes)[number];
 
 export const ReceivingRouteReviewPolicies = ['review_first', 'eligible_low_risk_later'] as const;
@@ -103,6 +104,7 @@ export interface MerchantPaymentReadiness {
     card: boolean;
     sbp: boolean;
     mobile_money: boolean;
+    wallet: boolean;
   };
   /** Currencies the merchant has at least one active receiving route for. */
   receivable_currencies: readonly string[];
@@ -113,8 +115,11 @@ export interface MerchantPaymentReadiness {
   official_bank_confirmation: false;
 }
 
-/** Currency a receiving bank profile collects in. West Africa profiles = XOF; RU = RUB. */
+/** Currency a receiving bank profile collects in. International = USD; West Africa = XOF; RU = RUB. */
 export function receivingCurrencyForBankProfile(bankProfileId: string): string {
+  if (InternationalReceiverBankProfiles.some((bank) => bank.bank_profile_id === bankProfileId)) {
+    return 'USD';
+  }
   return WestAfricaReceiverBankProfiles.some((bank) => bank.bank_profile_id === bankProfileId) ? 'XOF' : 'RUB';
 }
 
@@ -209,8 +214,8 @@ export type PayerBankLaunchStrategy =
   | 'manual_only';
 export type PayerBankFallbackStrategy = 'copy_details_manual_transfer';
 export type PayerBankLauncherTestedStatus = 'validated' | 'not_validated';
-/** ISO-3166 codes for payer launchers. RU = V1 device-validated; the rest are UEMOA / XOF (West Africa). */
-export type PayerBankCountry = 'RU' | 'SN' | 'CI' | 'ML' | 'BF' | 'BJ' | 'TG' | 'NE' | 'GW';
+/** ISO-3166 codes for payer launchers. RU = V1 device-validated; UEMOA codes = XOF (West Africa); INT = international neobanks (USD). */
+export type PayerBankCountry = 'RU' | 'SN' | 'CI' | 'ML' | 'BF' | 'BJ' | 'TG' | 'NE' | 'GW' | 'INT';
 export type PaymentCompatibilityStatus =
   | 'compatible'
   | 'incompatible_method'
@@ -306,7 +311,7 @@ export interface AvailableSenderBank {
 
 export interface AvailableReceivingMethod {
   method: BuyerCheckoutPaymentMethod;
-  label: 'Carte' | 'SBP';
+  label: 'Carte' | 'SBP' | 'Mobile money' | 'Wallet';
   available: boolean;
   route_id: string;
   receiver_bank_id: string;
@@ -337,24 +342,31 @@ export const V1ReceiverBankOptions: readonly ReceiverBankOption[] = [
  * number (rail mobile_money); they are kept in a separate registry so the RU
  * checkout receiver list is not polluted. Validation and resolution use the
  * combined AllReceiverBankProfiles.
+ *
+ * Reduced to Côte d'Ivoire (CI) actors only: Wave CI, Orange Money CI, MTN MoMo CI.
  */
 export const WestAfricaReceiverBankProfiles: readonly ReceiverBankOption[] = [
-  receiverBank('orange_money_sn', 'Orange Money (Sénégal)'),
+  receiverBank('wave_ci', "Wave (Côte d'Ivoire)"),
   receiverBank('orange_money_ci', "Orange Money (Côte d'Ivoire)"),
-  receiverBank('wave_sn', 'Wave (Sénégal)'),
-  receiverBank('mtn_momo_ci', "MTN MoMo (Côte d'Ivoire)"),
-  receiverBank('moov_money_ci', "Moov Money (Côte d'Ivoire)"),
-  receiverBank('free_money_sn', 'Free Money / Mixx by Yas (Sénégal)'),
-  receiverBank('wizall_sn', 'Wizall Money (Sénégal)'),
-  receiverBank('djamo_ci', "Djamo (Côte d'Ivoire)"),
-  receiverBank('ecobank_ci', "Ecobank (Côte d'Ivoire)"),
-  receiverBank('sg_connect_ci', "SG Connect (Côte d'Ivoire)")
+  receiverBank('mtn_momo_ci', "MTN MoMo (Côte d'Ivoire)")
 ] as const;
 
-/** Every receiver bank profile the platform recognises (RU V1 + West Africa). */
+/**
+ * International (USD) neobank receiving profiles — wallet_transfer rail, manual
+ * review only (no notification parsers yet, detection_supported false). The
+ * merchant-side mirror of InternationalPayerBankLauncherRegistry.
+ */
+export const InternationalReceiverBankProfiles: readonly ReceiverBankOption[] = [
+  receiverBank('wise_int', 'Wise', { packageName: 'com.transferwise.android', detectionSupported: false }),
+  receiverBank('revolut_int', 'Revolut', { packageName: 'com.revolut.revolut', detectionSupported: false }),
+  receiverBank('payoneer_int', 'Payoneer', { packageName: 'com.payoneer.android', detectionSupported: false })
+] as const;
+
+/** Every receiver bank profile the platform recognises (RU V1 + West Africa + international USD). */
 export const AllReceiverBankProfiles: readonly ReceiverBankOption[] = [
   ...V1ReceiverBankOptions,
-  ...WestAfricaReceiverBankProfiles
+  ...WestAfricaReceiverBankProfiles,
+  ...InternationalReceiverBankProfiles
 ] as const;
 
 export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
@@ -416,16 +428,16 @@ export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
  * surfaced to buyers for XOF/XAF sessions via payerLaunchersForCurrency(). The
  * always-present copy_details_manual_transfer fallback covers a deeplink miss.
  *
- * Amount prefill capability is expressed by {amount}/{recipient} placeholders in
- * ussd_transfer_template (Orange SN/ML one-shot); can_prefill_amount stays false
- * to preserve the V1 launcher invariant. {secret}/PIN is never auto-filled.
+ * No amount-prefill templates remain in this registry; MTN MoMo CI uses a static
+ * USSD dial code only. {secret}/PIN is never auto-filled.
+ *
+ * Reduced to Côte d'Ivoire (CI) actors only: Wave CI, Orange Money CI, MTN MoMo CI.
  */
 export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
-  payerLauncher('orange_money_sn', 'Orange Money / Max it', ['com.orange.myorange.osn', 'com.orange.mobile.orangemoney'], {
-    country: 'SN',
-    deeplinkSchemes: ['sameaosnapp'],
-    launchStrategy: 'ussd_dial',
-    ussdTransferTemplate: '#144#21*{recipient}*{amount}*{secret}#',
+  payerLauncher('wave_ci', 'Wave', ['com.wave.personal'], {
+    country: 'CI',
+    deeplinkSchemes: ['wave'],
+    launchStrategy: 'deeplink_then_package',
     enabled: true
   }),
   payerLauncher('orange_money_ci', 'Orange Money / Max it', ['com.orange.myorange.oci', 'com.orange.orangemoneyafrique'], {
@@ -434,71 +446,41 @@ export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOpti
     launchStrategy: 'deeplink_then_package',
     enabled: true
   }),
-  payerLauncher('orange_money_africa', 'Orange Money Africa', ['com.orange.orangemoneyafrique'], {
-    country: 'CI',
-    deeplinkSchemes: ['omk', 'orangemoneyafrique'],
-    launchStrategy: 'deeplink_then_package',
-    enabled: true
-  }),
-  payerLauncher('wave_sn', 'Wave', ['com.wave.personal'], {
-    country: 'SN',
-    deeplinkSchemes: ['wave'],
-    launchStrategy: 'deeplink_then_package',
-    enabled: true
-  }),
   payerLauncher('mtn_momo_ci', 'MTN MoMo', ['mtnft.momo.consumer'], {
     country: 'CI',
     launchStrategy: 'package_hint_only',
     ussdTransferTemplate: '*133#',
     enabled: true
-  }),
-  payerLauncher('moov_money_ci', 'Moov Money', ['ci.moovmoney.mmpayapi'], {
-    country: 'CI',
-    launchStrategy: 'package_hint_only',
-    ussdTransferTemplate: '*155#',
-    enabled: true
-  }),
-  payerLauncher('free_money_sn', 'Free Money / Mixx by Yas', ['sn.free.app'], {
-    country: 'SN',
-    launchStrategy: 'package_hint_only',
-    ussdTransferTemplate: '#150#',
-    enabled: true
-  }),
-  payerLauncher('wizall_sn', 'Wizall Money', ['com.wizall.wizallclient'], {
-    country: 'SN',
-    launchStrategy: 'package_hint_only',
-    enabled: true
-  }),
-  payerLauncher('djamo_ci', 'Djamo', ['com.djamo.app'], {
-    country: 'CI',
-    launchStrategy: 'package_hint_only',
-    enabled: true
-  }),
-  payerLauncher('sg_connect_ci', 'SG Connect', ['com.socgen.bankup'], {
-    country: 'CI',
-    deeplinkSchemes: ['socgen.unibank.front'],
-    launchStrategy: 'deeplink_then_package',
-    enabled: true
-  }),
-  payerLauncher('ecobank_ci', 'Ecobank', ['com.app.ecobank'], {
-    country: 'CI',
-    launchStrategy: 'package_hint_only',
-    enabled: true
   })
+] as const;
+
+/**
+ * International (USD) payer launchers — neobank apps. Not device-validated:
+ * package_hint_only / not_validated, with the standard manual-copy fallback.
+ */
+export const InternationalPayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
+  payerLauncher('wise_int', 'Wise', ['com.transferwise.android'], { country: 'INT', enabled: true }),
+  payerLauncher('revolut_int', 'Revolut', ['com.revolut.revolut'], { country: 'INT', enabled: true }),
+  payerLauncher('payoneer_int', 'Payoneer', ['com.payoneer.android'], { country: 'INT', enabled: true })
 ] as const;
 
 const XOF_CURRENCIES = new Set(['XOF', 'XAF']);
 
 /**
  * Selects the payer-bank launcher registry for a payment session's currency.
- * XOF/XAF (franc CFA / UEMOA) -> West Africa launchers; everything else -> RU.
- * This activates West Africa on the buyer side without touching the
+ * XOF/XAF (franc CFA / UEMOA) -> West Africa launchers; USD -> international neobank launchers; everything else -> RU.
+ * This activates West Africa and international USD on the buyer side without touching the
  * device-validated RU flow.
  */
 export function payerLaunchersForCurrency(currency: string | undefined): readonly PayerBankLauncherOption[] {
-  return currency && XOF_CURRENCIES.has(currency.toUpperCase())
-    ? WestAfricaPayerBankLauncherRegistry
-    : PayerBankLauncherRegistry;
+  const normalized = currency?.toUpperCase();
+  if (normalized && XOF_CURRENCIES.has(normalized)) {
+    return WestAfricaPayerBankLauncherRegistry;
+  }
+  if (normalized === 'USD') {
+    return InternationalPayerBankLauncherRegistry;
+  }
+  return PayerBankLauncherRegistry;
 }
 
 export interface CheckoutStateInput {
@@ -515,7 +497,10 @@ export function getReceiverBankOption(receiverBankId: string): ReceiverBankOptio
 }
 
 export function getPayerBankLauncherOption(payerBankLauncherId: string): PayerBankLauncherOption | null {
-  return PayerBankLauncherRegistry.find((launcher) => launcher.payer_bank_launcher_id === payerBankLauncherId) ?? null;
+  return (
+    [...PayerBankLauncherRegistry, ...WestAfricaPayerBankLauncherRegistry, ...InternationalPayerBankLauncherRegistry]
+      .find((launcher) => launcher.payer_bank_launcher_id === payerBankLauncherId) ?? null
+  );
 }
 
 export function toAvailableSenderBanks(
@@ -625,11 +610,27 @@ export function maskReceiverIdentifier(
   value: string,
   options: { international?: boolean } = {}
 ): string {
+  if (type === 'email') {
+    const [local = '', domain = ''] = value.split('@');
+    // Wallet providers (Wise, PayPal, etc.) always use dotted domains; if no dot is present
+    // the tld hint is intentionally omitted rather than leaking an undotted domain.
+    const tld = domain.includes('.') ? domain.slice(domain.lastIndexOf('.')) : '';
+    return `${local.slice(0, 1)}•••@•••${tld}`;
+  }
+  if (type === 'tag') {
+    const tag = value.replace(/^@/u, '');
+    // first char + last two would cover the whole tag for short handles — show only a trailing hint.
+    if (tag.length <= 3) {
+      return `@•••${tag.slice(-1)}`;
+    }
+    return `@${tag.slice(0, 1)}•••${tag.slice(-2)}`;
+  }
+
   const digits = value.replace(/\D/g, '');
   if (type === 'phone') {
     const lastTwo = digits.slice(-2).padStart(2, '*');
     if (options.international) {
-      // West Africa / mobile money: no Russian +7 assumption.
+      // West Africa / mobile money / wallets: no Russian +7 assumption.
       return `+••• ••• ••${lastTwo}`;
     }
     return `+7 *** *** **${lastTwo}`;
@@ -1357,6 +1358,7 @@ function receiverBank(
     runtimeVerifiedAt?: string;
     packageName?: string;
     packageCertSha256?: string;
+    detectionSupported?: boolean;
   } = {}
 ): ReceiverBankOption {
   const option: ReceiverBankOption = {
@@ -1372,7 +1374,7 @@ function receiverBank(
     package_cert_sha256: options.packageCertSha256 ?? 'documented_unknown',
     status: 'review_required_beta',
     review_only: true,
-    detection_supported: true,
+    detection_supported: options.detectionSupported ?? true,
     merchant_receiver_account_id: null,
     beta_ready: true,
     disabled_reason: null,
@@ -1398,11 +1400,15 @@ export function bankLogoAssetKey(bankProfileId: string): string {
       return 'ic_bank_gazprombank';
     case 'ozon_bank':
       return 'ic_bank_ozon';
+    // Retired WA providers (orange_money_sn, orange_money_africa, wave_sn, moov,
+    // free_money, wizall, djamo, sg_connect, ecobank) are kept below so stored
+    // receiving-route records and order history can still resolve a logo asset.
     case 'orange_money_sn':
     case 'orange_money_ci':
     case 'orange_money_africa':
       return 'ic_bank_orange_money';
     case 'wave_sn':
+    case 'wave_ci':
       return 'ic_bank_wave';
     case 'mtn_momo_ci':
       return 'ic_bank_mtn_momo';
@@ -1418,6 +1424,12 @@ export function bankLogoAssetKey(bankProfileId: string): string {
       return 'ic_bank_sg';
     case 'ecobank_ci':
       return 'ic_bank_ecobank';
+    case 'wise_int':
+      return 'ic_bank_wise';
+    case 'revolut_int':
+      return 'ic_bank_revolut';
+    case 'payoneer_int':
+      return 'ic_bank_payoneer';
     default:
       return 'ic_bank_unknown';
   }

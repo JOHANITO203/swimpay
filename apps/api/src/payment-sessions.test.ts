@@ -1882,7 +1882,9 @@ describe('payment session api', () => {
           available_methods: ['card'],
           available_payment_methods: {
             card: true,
-            sbp: false
+            sbp: false,
+            mobile_money: false,
+            wallet: false
           },
           fallback_actions: ['switch_to_card', 'refresh_methods', 'return_to_merchant'],
           unavailable_reason: 'method_not_supported_by_merchant'
@@ -2795,20 +2797,20 @@ describe('West Africa mobile money receiving methods (end-to-end create paths)',
       url: '/v1/merchant/receiving-routes',
       headers: { authorization: 'Bearer test_mch_01' },
       payload: {
-        bank_profile_id: 'wave_sn',
+        bank_profile_id: 'wave_ci',
         rail_type: 'mobile_money',
-        receiver_identifier: '+221 77 123 45 67',
-        route_code: 'WAVE-SN',
-        display_label: 'Wave Senegal'
+        receiver_identifier: '+225 07 12 34 56',
+        route_code: 'WAVE-CI',
+        display_label: 'Wave Côte d\'Ivoire'
       }
     });
     expect(response.statusCode).toBe(201);
     const route = response.json().route;
     expect(route.rail_type).toBe('mobile_money');
     expect(route.receiver_identifier_type).toBe('phone');
-    expect(route.receiver_identifier_last4).toBe('4567');
-    expect(route.receiver_identifier_masked).not.toContain('221');
-    expect(JSON.stringify(response.json())).not.toContain('221771234567');
+    expect(route.receiver_identifier_last4).toBe('3456');
+    expect(route.receiver_identifier_masked).not.toContain('225');
+    expect(JSON.stringify(response.json())).not.toContain('22507123456');
   });
 
   test('high-level receiving-methods endpoint accepts type mobile_money', async () => {
@@ -2820,8 +2822,8 @@ describe('West Africa mobile money receiving methods (end-to-end create paths)',
       headers: { authorization: 'Bearer test_mch_01' },
       payload: {
         type: 'mobile_money',
-        bank_id: 'orange_money_sn',
-        value: '+221 77 987 65 43'
+        bank_id: 'orange_money_ci',
+        value: '+225 07 98 76 54'
       }
     });
     expect(response.statusCode).toBe(201);
@@ -2855,8 +2857,8 @@ describe('payer bank launchers stay symmetric with the session currency', () => 
     const ids = toPayerBankLaunchersResponse(sessionWithCurrency('XOF')).payer_bank_launchers.map(
       (launcher) => launcher.payer_bank_launcher_id
     );
-    expect(ids).toContain('wave_sn');
-    expect(ids).toContain('orange_money_sn');
+    expect(ids).toContain('wave_ci');
+    expect(ids).toContain('orange_money_ci');
     expect(ids).not.toContain('sber_ru');
   });
 
@@ -2865,6 +2867,6 @@ describe('payer bank launchers stay symmetric with the session currency', () => 
       (launcher) => launcher.payer_bank_launcher_id
     );
     expect(ids).toContain('sber_ru');
-    expect(ids).not.toContain('wave_sn');
+    expect(ids).not.toContain('wave_ci');
   });
 });

@@ -147,6 +147,7 @@ export interface AvailableCheckoutPaymentMethods {
   card: boolean;
   sbp: boolean;
   mobile_money: boolean;
+  wallet: boolean;
 }
 
 export interface AvailableCheckoutRoute {
@@ -397,7 +398,9 @@ export function buildCheckoutAvailability(
           ? ('sbp' as const)
           : route.rail_type === 'mobile_money'
             ? ('mobile_money' as const)
-            : ('card' as const),
+            : route.rail_type === 'wallet_transfer'
+              ? ('wallet' as const)
+              : ('card' as const),
       receiver_bank_id: route.bank_profile_id,
       bank_id: route.bank_profile_id,
       masked_value: route.receiver_identifier_masked,
@@ -413,7 +416,9 @@ export function buildCheckoutAvailability(
           ? ('Carte' as const)
           : route.method_type === 'mobile_money'
             ? ('Mobile money' as const)
-            : ('SBP' as const),
+            : route.method_type === 'wallet'
+              ? ('Wallet' as const)
+              : ('SBP' as const),
       available: true,
       route_id: route.route_id,
       receiver_bank_id: route.receiver_bank_id,
@@ -425,9 +430,10 @@ export function buildCheckoutAvailability(
   const methods: AvailableCheckoutPaymentMethods = {
     card: availableRoutes.some((route) => route.method_type === 'card'),
     sbp: availableRoutes.some((route) => route.method_type === 'sbp'),
-    mobile_money: availableRoutes.some((route) => route.method_type === 'mobile_money')
+    mobile_money: availableRoutes.some((route) => route.method_type === 'mobile_money'),
+    wallet: availableRoutes.some((route) => route.method_type === 'wallet')
   };
-  const unavailableReason = !methods.card && !methods.sbp && !methods.mobile_money
+  const unavailableReason = !methods.card && !methods.sbp && !methods.mobile_money && !methods.wallet
     ? 'merchant_no_active_receiving_method'
     : paymentSession.paymentMethod && !methods[paymentSession.paymentMethod]
       ? 'method_not_supported_by_merchant'

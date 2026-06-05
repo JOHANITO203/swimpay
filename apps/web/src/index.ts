@@ -97,7 +97,7 @@ export interface CheckoutSession {
   display_amount?: { value: string; currency: string } | undefined;
   payable_amount?: { value: string; currency: string } | undefined;
   reconciliation_delta_minor?: number | undefined;
-  available_payment_methods?: { card: boolean; sbp: boolean; mobile_money?: boolean } | undefined;
+  available_payment_methods?: { card: boolean; sbp: boolean; mobile_money?: boolean; wallet?: boolean } | undefined;
   available_receiving_methods?: AvailableReceivingMethod[] | undefined;
   available_sender_banks?: AvailableSenderBank[] | undefined;
   available_routes?: Array<{
@@ -148,7 +148,7 @@ interface CheckoutProviderErrorBody {
     code?: string | undefined;
     message?: string | undefined;
     details?: {
-      available_payment_methods?: { card: boolean; sbp: boolean; mobile_money?: boolean } | undefined;
+      available_payment_methods?: { card: boolean; sbp: boolean; mobile_money?: boolean; wallet?: boolean } | undefined;
       unavailable_reason?: CheckoutUnavailableReason | undefined;
       fallback_actions?: CheckoutFallbackAction[] | undefined;
       payment_method?: 'card' | 'sbp' | undefined;

@@ -61,6 +61,61 @@ The merchant backend must call this endpoint. Buyer-facing web or Android client
 }
 ```
 
+#### `display_price` (optional)
+
+A formatted price string that the merchant's storefront already displays to the
+buyer, e.g. `"€9.99"`, `"1 000 FCFA"`, `"$10.99"`, `"999 ₽"`. When present,
+SwimPay parses the currency and amount from the string and resolves the order
+currency automatically.
+
+Rules:
+
+- `amount` takes precedence when both `amount` and `display_price` are provided.
+- At least one of `amount` or `display_price` is required (error: `"Order requires either amount or display_price."`).
+- Native currencies (RUB, USD, XOF) pass through as-is. Any other recognised
+  currency (EUR, GBP, XAF, JPY, CAD, AUD, CHF, CNY, TRY, AED, KZT, UAH, NGN,
+  GHS) is converted to USD at the current ECB rate (frankfurter.dev, cached 1 h,
+  stale tolerated ≤ 24 h).
+- Bare `$` is interpreted as USD. Prefixed dollar variants (CA$, A$) are
+  rejected. Bare numbers with no currency symbol are rejected.
+- Conflicting currency signals within the same string are rejected.
+- Decimal separator is per-currency: `,` for RUB / EUR / TRY / UAH / KZT;
+  `.` otherwise. A lone canonical-decimal separator with a 3-digit tail is
+  invalid (e.g. `$10.999`); the other separator is treated as a grouping
+  separator.
+
+Accepted `display_price` examples:
+
+```
+"999 ₽"          → RUB 99900 minor (native, no conversion)
+"1 000 FCFA"     → XOF 1000 minor (native, zero-decimal currency, no conversion)
+"€9.99"          → EUR 999 minor → converted to USD at live ECB rate
+```
+
+#### Accepted order currencies
+
+`amount.currency` must be one of: `RUB`, `XOF`, `XAF`, `USD`.
+
+`XAF` is accepted as an explicit `amount.currency`. A `display_price` string
+detected as XAF is treated as a non-native currency and converted to USD (native
+currencies for display_price detection are RUB, USD, and XOF only).
+
+#### Currency symmetry gate
+
+The symmetry gate applies to the **resolved** currency (after any FX conversion).
+If the merchant has no active receiving route for the resolved currency, the order
+is refused with `409 merchant_currency_route_required`. For example, a
+`display_price` of `"€9.99"` resolves to USD; if the merchant has no active USD
+receiving route, the order is rejected.
+
+#### Order creation error codes
+
+| Code | HTTP | Meaning |
+|---|---|---|
+| `currency_detection_ambiguous` | 400 | `display_price` currency could not be determined: bare number, unrecognised code, prefixed dollar (`CA$`, `A$`), or conflicting currency signals |
+| `invalid_request` | 400 | `display_price` currency was detected but the amount string is syntactically invalid for it (e.g. a 3-digit tail after the currency's canonical decimal separator: `$10.999`, or decimals on a zero-decimal currency: `10.5 FCFA`) |
+| `fx_rate_unavailable` | 409 | FX conversion required but the live rate could not be retrieved within the staleness window (≤ 24 h), or FX is unconfigured |
+
 ### Response
 
 ```json
@@ -392,6 +447,44 @@ Response:
 ```
 
 Repeating the same rejection scope is idempotent. Escalating a resolved rejection to another scope returns `review_rejection_scope_conflict`.
+
+## GET/POST `/v1/merchant/receiving-methods`
+
+Manages the merchant's receiving routes for hosted checkout.
+
+### Rail types
+
+| `rail_type` | Description | Accepted `bank_profile_id` values |
+|---|---|---|
+| `phone_transfer` | Domestic phone/SBP transfer (RUB) | Russian bank profiles (e.g. `sber_ru`) |
+| `card_transfer` | Card-to-card transfer (RUB) | Russian bank profiles |
+| `mobile_money` | West Africa mobile money (XOF) | WA profiles (e.g. `wave_ci`, `orange_money_ci`, `mtn_momo_ci`) |
+| `wallet_transfer` | International wallet (USD) | `wise_int`, `revolut_int`, `payoneer_int` |
+
+### `wallet_transfer` routes
+
+`wallet_transfer` routes target international wallet profiles only (`wise_int`,
+`revolut_int`, `payoneer_int`). These profiles settle in USD.
+
+Supported `receiver_identifier_type` values and formats:
+
+| Type | Format | Example |
+|---|---|---|
+| `email` | Standard e-mail address | `jane@example.com` |
+| `tag` | `@` prefix, 3–32 chars `[a-z0-9_]` | `@janedoe` |
+| `phone` | E.164 international phone number | `+14155552671` |
+
+Masked forms returned by the API (raw identifier is never exposed):
+
+| Type | Masked example |
+|---|---|
+| `email` | `j•••@•••.com` |
+| `tag` (≥ 4 chars) | `@w•••67` |
+| `tag` (≤ 3 chars) | `@•••c` |
+| `phone` | `+••• ••• ••67` |
+
+USD checkout sessions display the merchant's active `wallet_transfer` routes as
+payer launchers (Wise / Revolut / Payoneer).
 
 ## POST `/v1/webhook-endpoints`
 

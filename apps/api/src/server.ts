@@ -33,6 +33,7 @@ import {
   type AndroidMerchantAccountCreateResponse,
   type AndroidMerchantAccountErrorCode,
   type AndroidMerchantDeviceProof,
+  type BuyerCheckoutPaymentMethod,
   type CheckoutFallbackAction,
   type CheckoutUnavailableReason,
   type MerchantPaymentReadiness,
@@ -102,9 +103,11 @@ import {
   buildOrderCreateInput,
   formatAmountMinor,
   invalidRequest,
+  normalizeWalletIdentifier,
   parseMerchantId,
   PgOrderRepository,
   receiverIdentifierTypeForRail,
+  resolveOrderAmount,
   validateExpectedPaymentProfileBody,
   validateCreateOrderBody,
   type IdGenerator,
@@ -164,6 +167,7 @@ import {
   type ReviewListItem,
   type ReviewRepository
 } from './reviews.js';
+import { FxRateService } from './fx.js';
 import {
   buildAdminTemplateStatusInput,
   parseAdminLimit,
@@ -317,6 +321,7 @@ export interface ApiServerOptions {
   };
   adminAuth?: OperatorAuthConfig;
   metrics?: MetricsRegistry;
+  fxRateService?: Pick<FxRateService, 'quoteToUsd'> | null;
   clock?: () => Date;
   startedAt?: Date;
 }
@@ -600,6 +605,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const eventPublisher = options.eventPublisher ?? createDefaultEventPublisher(process.env);
   const metrics = options.metrics ?? defaultMetricsRegistry;
   const checkoutBaseUrl = options.checkoutBaseUrl ?? process.env.CHECKOUT_BASE_URL ?? 'http://localhost:3001/checkout';
+  const fxRateService = options.fxRateService === undefined ? new FxRateService() : options.fxRateService;
   const idGenerator = options.idGenerator ?? createDefaultIdGenerator();
   const receiverDeviceIdGenerator = options.receiverDeviceIdGenerator ?? (() => randomUUID());
   const signalIdGenerator = options.signalIdGenerator ?? createDefaultSignalIdGenerator();
@@ -1307,6 +1313,19 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       });
     }
 
+    const resolvedAmount = await resolveOrderAmount(body, fxRateService);
+    if ('error' in resolvedAmount) {
+      const errorCode = resolvedAmount.error.code;
+      if (errorCode === 'fx_rate_unavailable') {
+        request.log.error(
+          { merchant_id: merchantId, display_price_present: Boolean(body.display_price) },
+          'order_creation_blocked_fx_rate_unavailable'
+        );
+        return reply.status(409).send(resolvedAmount);
+      }
+      return reply.status(400).send(resolvedAmount);
+    }
+
     const readiness = await resolveMerchantPaymentReadiness(repository, merchantId);
     if (merchantContext.source === 'api_key' && !readiness.payment_ready) {
       return reply.status(409).send(merchantPaymentSetupRequiredError(readiness));
@@ -1327,14 +1346,13 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     // active receiving route for (e.g. an XOF order against a RUB-only merchant).
     if (
       merchantContext.source === 'api_key' &&
-      typeof body.amount?.currency === 'string' &&
-      !readiness.receivable_currencies.includes(body.amount.currency)
+      !readiness.receivable_currencies.includes(resolvedAmount.currency)
     ) {
       request.log.error(
-        { merchant_id: merchantId, requested_currency: body.amount.currency, receivable_currencies: readiness.receivable_currencies },
+        { merchant_id: merchantId, requested_currency: resolvedAmount.currency, receivable_currencies: readiness.receivable_currencies },
         'order_creation_blocked_currency_not_receivable'
       );
-      return reply.status(409).send(merchantCurrencyRouteRequiredError(body.amount.currency, readiness.receivable_currencies));
+      return reply.status(409).send(merchantCurrencyRouteRequiredError(resolvedAmount.currency, readiness.receivable_currencies));
     }
 
     const createInput = buildOrderCreateInput({
@@ -1342,12 +1360,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       merchantId,
       phoneHmacSecret,
       idGenerator,
-      clock
+      clock,
+      resolvedAmount
     });
-
-    if ('error' in createInput) {
-      return reply.status(400).send(createInput);
-    }
 
     const result = await repository.createOrderWithSession(createInput);
     if (result.kind === 'duplicate_external_id') {
@@ -1370,7 +1385,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       status: result.paymentSession.status,
       checkout_url: `${checkoutBaseUrl}/${result.paymentSession.id}`,
       amount: {
-        value: formatAmountMinor(result.order.amountMinor),
+        value: formatAmountMinor(result.order.amountMinor, result.order.currency),
         currency: result.order.currency
       },
       reference: result.paymentSession.referenceCode,
@@ -1972,7 +1987,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (compatibleRoutes.length === 0) {
       const availableMethods = {
         card: availableBuyerMethodsForRoutes(allRoutes).includes('card'),
-        sbp: availableBuyerMethodsForRoutes(allRoutes).includes('sbp')
+        sbp: availableBuyerMethodsForRoutes(allRoutes).includes('sbp'),
+        mobile_money: availableBuyerMethodsForRoutes(allRoutes).includes('mobile_money'),
+        wallet: availableBuyerMethodsForRoutes(allRoutes).includes('wallet')
       };
       return reply.status(409).send({
         error: {
@@ -1985,7 +2002,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
             available_methods: availableBuyerMethodsForRoutes(allRoutes),
             available_payment_methods: availableMethods,
             fallback_actions: buildFallbackActionsForAvailableMethods(availableMethods),
-            unavailable_reason: availableMethods.card || availableMethods.sbp
+            unavailable_reason: availableMethods.card || availableMethods.sbp || availableMethods.mobile_money || availableMethods.wallet
               ? 'method_not_supported_by_merchant'
               : 'merchant_no_active_receiving_method'
           }
@@ -4157,14 +4174,20 @@ function filterRoutesForExpectedPaymentMethod(
 
 function availableBuyerMethodsForRoutes(
   routes: readonly StoredMerchantReceivingRouteRecord[]
-): Array<'card' | 'sbp'> {
+): Array<BuyerCheckoutPaymentMethod> {
   const rails = new Set<ReceivingRouteRailType>(routes.map((route) => route.rail_type));
-  const methods: Array<'card' | 'sbp'> = [];
+  const methods: Array<BuyerCheckoutPaymentMethod> = [];
   if (rails.has('card_transfer')) {
     methods.push('card');
   }
   if (rails.has('phone_transfer')) {
     methods.push('sbp');
+  }
+  if (rails.has('mobile_money')) {
+    methods.push('mobile_money');
+  }
+  if (rails.has('wallet_transfer')) {
+    methods.push('wallet');
   }
   return methods;
 }
@@ -4981,7 +5004,7 @@ function sortAndroidMerchantReviews<T extends { createdAt: string }>(reviews: T[
 
 function amountResponse(amountMinor: number | undefined, currency: string | undefined): { value: string; currency: string } {
   return {
-    value: formatAmountMinor(amountMinor ?? 0),
+    value: formatAmountMinor(amountMinor ?? 0, currency),
     currency: currency ?? 'RUB'
   };
 }
@@ -5179,7 +5202,8 @@ async function resolveMerchantPaymentReadiness(
   const methods = {
     card: routes.some((route) => route.rail_type === 'card_transfer'),
     sbp: routes.some((route) => route.rail_type === 'phone_transfer'),
-    mobile_money: routes.some((route) => route.rail_type === 'mobile_money')
+    mobile_money: routes.some((route) => route.rail_type === 'mobile_money'),
+    wallet: routes.some((route) => route.rail_type === 'wallet_transfer')
   };
   const receivableCurrencies = [
     ...new Set(routes.map((route) => receivingCurrencyForBankProfile(route.bank_profile_id)))
@@ -5356,17 +5380,29 @@ function validateReceivingRouteCreateBody(body: unknown): ReceivingRouteCreateBo
     return invalidRequest('bank_profile_id is required.', {});
   }
   if (typeof candidate.rail_type !== 'string' || !ReceivingRouteRailTypes.includes(candidate.rail_type as ReceivingRouteRailType)) {
-    return invalidRequest('rail_type must be phone_transfer or card_transfer.', { rail_type: candidate.rail_type });
+    return invalidRequest(`rail_type must be one of: ${ReceivingRouteRailTypes.join(', ')}.`, { rail_type: candidate.rail_type });
   }
   const railType = candidate.rail_type as ReceivingRouteRailType;
   if ('receiver_identifier_type' in candidate && candidate.receiver_identifier_type !== undefined) {
-    const expectedReceiverIdentifierType = receiverIdentifierTypeForRail(railType);
-    if (candidate.receiver_identifier_type !== expectedReceiverIdentifierType) {
-      return invalidRequest('receiver_identifier_type must match rail_type.', {
-        rail_type: railType,
-        receiver_identifier_type: candidate.receiver_identifier_type,
-        expected_receiver_identifier_type: expectedReceiverIdentifierType
-      });
+    // Wallet rails derive the identifier type from the value (email / tag / phone),
+    // so any of the three is acceptable when provided explicitly.
+    if (railType === 'wallet_transfer') {
+      if (candidate.receiver_identifier_type !== 'email' && candidate.receiver_identifier_type !== 'tag' && candidate.receiver_identifier_type !== 'phone') {
+        return invalidRequest('receiver_identifier_type must match rail_type.', {
+          rail_type: railType,
+          receiver_identifier_type: candidate.receiver_identifier_type,
+          expected_receiver_identifier_type: 'email | tag | phone'
+        });
+      }
+    } else {
+      const expectedReceiverIdentifierType = receiverIdentifierTypeForRail(railType);
+      if (candidate.receiver_identifier_type !== expectedReceiverIdentifierType) {
+        return invalidRequest('receiver_identifier_type must match rail_type.', {
+          rail_type: railType,
+          receiver_identifier_type: candidate.receiver_identifier_type,
+          expected_receiver_identifier_type: expectedReceiverIdentifierType
+        });
+      }
     }
   }
   if (typeof candidate.receiver_identifier !== 'string' || !candidate.receiver_identifier.trim()) {
@@ -5382,7 +5418,10 @@ function validateReceivingRouteCreateBody(body: unknown): ReceivingRouteCreateBo
   return {
     bank_profile_id: candidate.bank_profile_id.trim(),
     rail_type: railType,
-    receiver_identifier_type: receiverIdentifierTypeForRail(railType),
+    receiver_identifier_type:
+      railType === 'wallet_transfer'
+        ? normalizeWalletIdentifier(candidate.receiver_identifier)?.type ?? 'email'
+        : receiverIdentifierTypeForRail(railType),
     receiver_identifier: candidate.receiver_identifier.trim(),
     route_code: candidate.route_code.trim(),
     display_label: candidate.display_label.trim(),
@@ -6251,7 +6290,7 @@ function toOrderReadResponse(order: StoredOrderRecord, paymentSessionId: string 
     payment_session_id: paymentSessionId,
     return_url: order.returnUrl,
     amount: {
-      value: formatAmountMinor(order.amountMinor),
+      value: formatAmountMinor(order.amountMinor, order.currency),
       currency: order.currency
     },
     expires_at: order.expiresAt,

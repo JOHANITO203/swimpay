@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AllReceiverBankProfiles,
   BuyerSafeCheckoutStatuses,
   CheckoutSessionStates,
   FallbackReviewReasons,
+  InternationalPayerBankLauncherRegistry,
+  InternationalReceiverBankProfiles,
   PayerBankLauncherRegistry,
   ReceivingRouteReviewPolicies,
   ReceivingRouteRiskReasonCodes,
@@ -17,6 +20,8 @@ import {
   mapCheckoutStateToBuyerSafeStatus,
   mapPaymentSessionToCheckoutState,
   maskReceiverIdentifier,
+  payerLaunchersForCurrency,
+  receivingCurrencyForBankProfile,
   toBuyerSafeReceivingRoute
 } from './index.js';
 
@@ -423,8 +428,8 @@ describe('checkout bank selection contracts', () => {
   });
 
   it('defines hybrid merchant receiving routes with masked buyer-safe output', () => {
-    expect(ReceivingRouteRailTypes).toEqual(['phone_transfer', 'card_transfer', 'mobile_money']);
-    expect(ReceiverIdentifierTypes).toEqual(['phone', 'card']);
+    expect(ReceivingRouteRailTypes).toEqual(['phone_transfer', 'card_transfer', 'mobile_money', 'wallet_transfer']);
+    expect(ReceiverIdentifierTypes).toEqual(['phone', 'card', 'email', 'tag']);
     expect(ReceivingRouteReviewPolicies).toEqual(['review_first', 'eligible_low_risk_later']);
 
     const phoneRoute = toBuyerSafeReceivingRoute({
@@ -467,6 +472,14 @@ describe('checkout bank selection contracts', () => {
     expect(JSON.stringify(phoneRoute)).not.toContain('receiver_identifier_encrypted');
   });
 
+  it('masks wallet email and tag identifiers without leaking short values', () => {
+    expect(maskReceiverIdentifier('email', 'john.doe@gmail.com')).toBe('j•••@•••.com');
+    expect(maskReceiverIdentifier('tag', 'wisetag67')).toBe('@w•••67');
+    expect(maskReceiverIdentifier('tag', 'abc')).toBe('@•••c');
+    expect(maskReceiverIdentifier('tag', 'ab')).toBe('@•••b');
+    expect(maskReceiverIdentifier('tag', 'abcd')).toBe('@a•••cd');
+  });
+
   it('masks receiver identifiers and keeps card routes review-first by policy', () => {
     expect(maskReceiverIdentifier('phone', '+7 (999) 123-45-67')).toBe('+7 *** *** **67');
     expect(maskReceiverIdentifier('card', '2202201234567890')).toBe('2202 **** **** 7890');
@@ -500,5 +513,29 @@ describe('checkout bank selection contracts', () => {
         wordSource: ['TANGO', 'ALFA', 'NOVA']
       })
     ).toBe('TANGO ALFA NOVA');
+  });
+});
+
+describe('international USD rail', () => {
+  it('exposes the neobank receiver profiles with detection disabled', () => {
+    expect(InternationalReceiverBankProfiles.map((b) => b.bank_profile_id)).toEqual(['wise_int', 'revolut_int', 'payoneer_int']);
+    for (const profile of InternationalReceiverBankProfiles) {
+      expect(profile.detection_supported).toBe(false);
+      expect(profile.status).toBe('review_required_beta');
+    }
+    expect(AllReceiverBankProfiles.map((b) => b.bank_profile_id)).toContain('wise_int');
+  });
+
+  it('routes USD sessions to international launchers and resolves their currency', () => {
+    expect(payerLaunchersForCurrency('USD')).toBe(InternationalPayerBankLauncherRegistry);
+    expect(payerLaunchersForCurrency('usd')).toBe(InternationalPayerBankLauncherRegistry);
+    expect(receivingCurrencyForBankProfile('wise_int')).toBe('USD');
+    expect(receivingCurrencyForBankProfile('sber_ru')).toBe('RUB');
+  });
+
+  it('resolves any registry launcher by id (fixes the WA selection gap)', () => {
+    expect(getPayerBankLauncherOption('wise_int')?.country).toBe('INT');
+    expect(getPayerBankLauncherOption('orange_money_ci')).not.toBeNull();
+    expect(getPayerBankLauncherOption('sber_ru')).not.toBeNull();
   });
 });
