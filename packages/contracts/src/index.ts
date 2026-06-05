@@ -342,18 +342,13 @@ export const V1ReceiverBankOptions: readonly ReceiverBankOption[] = [
  * number (rail mobile_money); they are kept in a separate registry so the RU
  * checkout receiver list is not polluted. Validation and resolution use the
  * combined AllReceiverBankProfiles.
+ *
+ * Reduced to Côte d'Ivoire (CI) actors only: Wave CI, Orange Money CI, MTN MoMo CI.
  */
 export const WestAfricaReceiverBankProfiles: readonly ReceiverBankOption[] = [
-  receiverBank('orange_money_sn', 'Orange Money (Sénégal)'),
+  receiverBank('wave_ci', "Wave (Côte d'Ivoire)"),
   receiverBank('orange_money_ci', "Orange Money (Côte d'Ivoire)"),
-  receiverBank('wave_sn', 'Wave (Sénégal)'),
-  receiverBank('mtn_momo_ci', "MTN MoMo (Côte d'Ivoire)"),
-  receiverBank('moov_money_ci', "Moov Money (Côte d'Ivoire)"),
-  receiverBank('free_money_sn', 'Free Money / Mixx by Yas (Sénégal)'),
-  receiverBank('wizall_sn', 'Wizall Money (Sénégal)'),
-  receiverBank('djamo_ci', "Djamo (Côte d'Ivoire)"),
-  receiverBank('ecobank_ci', "Ecobank (Côte d'Ivoire)"),
-  receiverBank('sg_connect_ci', "SG Connect (Côte d'Ivoire)")
+  receiverBank('mtn_momo_ci', "MTN MoMo (Côte d'Ivoire)")
 ] as const;
 
 /**
@@ -436,13 +431,14 @@ export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
  * Amount prefill capability is expressed by {amount}/{recipient} placeholders in
  * ussd_transfer_template (Orange SN/ML one-shot); can_prefill_amount stays false
  * to preserve the V1 launcher invariant. {secret}/PIN is never auto-filled.
+ *
+ * Reduced to Côte d'Ivoire (CI) actors only: Wave CI, Orange Money CI, MTN MoMo CI.
  */
 export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
-  payerLauncher('orange_money_sn', 'Orange Money / Max it', ['com.orange.myorange.osn', 'com.orange.mobile.orangemoney'], {
-    country: 'SN',
-    deeplinkSchemes: ['sameaosnapp'],
-    launchStrategy: 'ussd_dial',
-    ussdTransferTemplate: '#144#21*{recipient}*{amount}*{secret}#',
+  payerLauncher('wave_ci', 'Wave', ['com.wave.personal'], {
+    country: 'CI',
+    deeplinkSchemes: ['wave'],
+    launchStrategy: 'deeplink_then_package',
     enabled: true
   }),
   payerLauncher('orange_money_ci', 'Orange Money / Max it', ['com.orange.myorange.oci', 'com.orange.orangemoneyafrique'], {
@@ -451,55 +447,10 @@ export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOpti
     launchStrategy: 'deeplink_then_package',
     enabled: true
   }),
-  payerLauncher('orange_money_africa', 'Orange Money Africa', ['com.orange.orangemoneyafrique'], {
-    country: 'CI',
-    deeplinkSchemes: ['omk', 'orangemoneyafrique'],
-    launchStrategy: 'deeplink_then_package',
-    enabled: true
-  }),
-  payerLauncher('wave_sn', 'Wave', ['com.wave.personal'], {
-    country: 'SN',
-    deeplinkSchemes: ['wave'],
-    launchStrategy: 'deeplink_then_package',
-    enabled: true
-  }),
   payerLauncher('mtn_momo_ci', 'MTN MoMo', ['mtnft.momo.consumer'], {
     country: 'CI',
     launchStrategy: 'package_hint_only',
     ussdTransferTemplate: '*133#',
-    enabled: true
-  }),
-  payerLauncher('moov_money_ci', 'Moov Money', ['ci.moovmoney.mmpayapi'], {
-    country: 'CI',
-    launchStrategy: 'package_hint_only',
-    ussdTransferTemplate: '*155#',
-    enabled: true
-  }),
-  payerLauncher('free_money_sn', 'Free Money / Mixx by Yas', ['sn.free.app'], {
-    country: 'SN',
-    launchStrategy: 'package_hint_only',
-    ussdTransferTemplate: '#150#',
-    enabled: true
-  }),
-  payerLauncher('wizall_sn', 'Wizall Money', ['com.wizall.wizallclient'], {
-    country: 'SN',
-    launchStrategy: 'package_hint_only',
-    enabled: true
-  }),
-  payerLauncher('djamo_ci', 'Djamo', ['com.djamo.app'], {
-    country: 'CI',
-    launchStrategy: 'package_hint_only',
-    enabled: true
-  }),
-  payerLauncher('sg_connect_ci', 'SG Connect', ['com.socgen.bankup'], {
-    country: 'CI',
-    deeplinkSchemes: ['socgen.unibank.front'],
-    launchStrategy: 'deeplink_then_package',
-    enabled: true
-  }),
-  payerLauncher('ecobank_ci', 'Ecobank', ['com.app.ecobank'], {
-    country: 'CI',
-    launchStrategy: 'package_hint_only',
     enabled: true
   })
 ] as const;
@@ -1455,6 +1406,7 @@ export function bankLogoAssetKey(bankProfileId: string): string {
     case 'orange_money_africa':
       return 'ic_bank_orange_money';
     case 'wave_sn':
+    case 'wave_ci':
       return 'ic_bank_wave';
     case 'mtn_momo_ci':
       return 'ic_bank_mtn_momo';

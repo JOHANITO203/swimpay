@@ -31,7 +31,7 @@ describe('West Africa mobile money receiving routes', () => {
   test('accepts a mobile_money route on a West Africa profile and masks internationally', () => {
     const route = buildMerchantReceivingRouteRecord({
       ...baseInput,
-      bankProfileId: 'wave_sn',
+      bankProfileId: 'wave_ci',
       railType: 'mobile_money'
     });
     expect('error' in route).toBe(false);
@@ -1353,7 +1353,7 @@ describe('order api', () => {
 
     // Give the merchant a West Africa (XOF) receiving route -> XOF now accepted.
     repository.listReceiverBanksForCheckout = async (merchantId: string) => [
-      { ...checkoutReadyRoute(merchantId), bank_profile_id: 'wave_sn', rail_type: 'mobile_money', receiver_identifier_type: 'phone' }
+      { ...checkoutReadyRoute(merchantId), bank_profile_id: 'wave_ci', rail_type: 'mobile_money', receiver_identifier_type: 'phone' }
     ];
     const accepted = await server.inject({
       method: 'POST',
