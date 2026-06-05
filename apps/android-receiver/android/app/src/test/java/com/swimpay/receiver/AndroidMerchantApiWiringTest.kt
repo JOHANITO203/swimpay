@@ -836,10 +836,10 @@ class AndroidMerchantApiWiringTest {
                 {
                   "route": {
                     "route_id": "route_wa_1",
-                    "bank_profile_id": "wave_sn",
+                    "bank_profile_id": "wave_ci",
                     "rail_type": "mobile_money",
                     "receiver_identifier_masked": "+••• ••• ••67",
-                    "route_code": "WAVE_SN-MM",
+                    "route_code": "WAVE_CI-MM",
                     "display_label": "Wave - Mobile money",
                     "enabled": true,
                     "recommended": false,
@@ -853,21 +853,21 @@ class AndroidMerchantApiWiringTest {
         val repository = MerchantReceivingMethodsApiRepository(transport)
         val session = AuthenticatedMerchantSession.localDev("mch_demo")
         val submission = MerchantReceivingMethodDraft(
-            bankProfileId = "wave_sn",
+            bankProfileId = "wave_ci",
             type = ReceivingMethodType.MOBILE_MONEY,
             rawIdentifierInput = "+221 77 123 45 67"
         ).toSubmission()
 
         val created = repository.create(session, submission)
 
-        assertEquals("wave_sn", submission.bankProfileId)
+        assertEquals("wave_ci", submission.bankProfileId)
         assertEquals(ReceivingMethodType.MOBILE_MONEY, submission.type)
-        assertEquals("WAVE_SN-MM", submission.routeCode)
+        assertEquals("WAVE_CI-MM", submission.routeCode)
         assertEquals("Wave - Mobile money", submission.displayLabel)
         assertEquals(MerchantRepositoryState.SUCCESS, created.state)
 
         val body = transport.requests.single().body
-        assertTrue(body.contains("\"bank_id\":\"wave_sn\""))
+        assertTrue(body.contains("\"bank_id\":\"wave_ci\""))
         assertTrue(body.contains("\"type\":\"mobile_money\""))
         assertTrue(body.contains("\"value\":\"+221 77 123 45 67\""))
         assertFalse(created.visibleTexts().joinToString(" ").contains("221771234567"))
@@ -876,11 +876,13 @@ class AndroidMerchantApiWiringTest {
     @Test
     fun westAfricaReceivingCatalogMirrorsBackendProfileIds() {
         val ids = WestAfricaReceivingCatalog.bankProfileIds
-        assertTrue(ids.contains("orange_money_sn"))
-        assertTrue(ids.contains("wave_sn"))
+        assertTrue(ids.contains("wave_ci"))
+        assertTrue(ids.contains("orange_money_ci"))
         assertTrue(ids.contains("mtn_momo_ci"))
-        assertEquals(10, WestAfricaReceivingCatalog.wallets.size)
+        assertEquals(3, WestAfricaReceivingCatalog.wallets.size)
         assertFalse(ids.contains("sber_ru"))
+        assertFalse(ids.contains("wave_sn"))
+        assertFalse(ids.contains("orange_money_sn"))
     }
 
     @Test

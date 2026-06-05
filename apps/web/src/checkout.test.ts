@@ -1479,6 +1479,227 @@ describe('hosted checkout web foundation', () => {
     expect(provider.session.status).toBe('receiver_armed');
     expect(provider.session.status).not.toBe('manual_confirmed');
   });
+
+  describe('rail-aware rendering', () => {
+    it('renders mobile_money route card with FR mobile-money labels and masked identifier', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'mobile_money',
+        sender_bank_id: 'orange_money_ci',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        checkout_state: 'receiving_route_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Compte mobile money');
+      expect(response.body).toContain('+••• ••• ••67');
+      expect(response.body).not.toContain('Carte du destinataire');
+      expect(response.body).not.toContain('Telephone du destinataire');
+    });
+
+    it('renders wallet route card with FR wallet labels and masked identifier', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'wallet',
+        sender_bank_id: 'wise_int',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        checkout_state: 'receiving_route_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Wallet du marchand');
+      expect(response.body).toContain('j•••@•••.com');
+      expect(response.body).not.toContain('Carte du destinataire');
+      expect(response.body).not.toContain('Telephone du destinataire');
+    });
+
+    it('renders wallet instructions with correct FR email destination label and method label', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'wallet',
+        sender_bank_id: 'wise_int',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_wallet',
+        selected_payer_bank_launcher_id: 'wise_int',
+        checkout_state: 'payment_instructions',
+        buyer_safe_status: 'awaiting_payment'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('E-mail du wallet');
+      expect(response.body).toContain('Wallet international');
+      expect(response.body).not.toContain('Carte destinataire');
+    });
+
+    it('renders mobile_money instructions with correct FR destination label and method label', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'mobile_money',
+        sender_bank_id: 'orange_money_ci',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_momo',
+        selected_payer_bank_launcher_id: 'orange_money_ci',
+        checkout_state: 'payment_instructions',
+        buyer_safe_status: 'awaiting_payment'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Numéro mobile money');
+      expect(response.body).toContain('Mobile money');
+      expect(response.body).not.toContain('Carte destinataire');
+    });
+
+    it('renders wallet route card in EN with correct recipient label', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'wallet',
+        sender_bank_id: 'wise_int',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        checkout_state: 'receiving_route_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01?lang=en' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Merchant wallet');
+      expect(response.body).not.toContain('Recipient card');
+      expect(response.body).not.toContain('Recipient phone');
+    });
+
+    it('renders wallet route card in RU with correct recipient label', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'wallet',
+        sender_bank_id: 'wise_int',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        checkout_state: 'receiving_route_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01?lang=ru' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Кошелёк продавца');
+      expect(response.body).not.toContain('Карта получателя');
+      expect(response.body).not.toContain('Телефон получателя');
+    });
+
+    it('renders wallet instructions in EN with email destination label and method label', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'wallet',
+        sender_bank_id: 'wise_int',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_wallet',
+        selected_payer_bank_launcher_id: 'wise_int',
+        checkout_state: 'payment_instructions',
+        buyer_safe_status: 'awaiting_payment'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01?lang=en' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Wallet email');
+      expect(response.body).toContain('International wallet');
+      expect(response.body).not.toContain('Recipient card');
+    });
+
+    it('renders wallet instructions in RU with email destination label and method label', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'wallet',
+        sender_bank_id: 'wise_int',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_wallet',
+        selected_payer_bank_launcher_id: 'wise_int',
+        checkout_state: 'payment_instructions',
+        buyer_safe_status: 'awaiting_payment'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01?lang=ru' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('E-mail кошелька');
+      expect(response.body).toContain('Международный кошелёк');
+      expect(response.body).not.toContain('Карта получателя');
+    });
+
+    it('renders mobile_money route card in EN with mobile-money labels and masked identifier', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'mobile_money',
+        sender_bank_id: 'orange_money_ci',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        checkout_state: 'receiving_route_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01?lang=en' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Mobile money account');
+      expect(response.body).toContain('+••• ••• ••67');
+      expect(response.body).not.toContain('Recipient card');
+    });
+
+    it('renders mobile_money route card in RU with mobile-money labels and masked identifier', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'mobile_money',
+        sender_bank_id: 'orange_money_ci',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        checkout_state: 'receiving_route_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01?lang=ru' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Счёт mobile money');
+      expect(response.body).not.toContain('Карта получателя');
+    });
+  });
 });
 
 type StructuredCheckoutErrorCode =
@@ -1575,6 +1796,44 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
       receiver_identifier_last4: '7890',
       route_code: 'SBER-CARD',
       display_label: 'Sberbank card',
+      enabled: true,
+      recommended: false,
+      review_policy: 'review_first',
+      lifecycle_status: 'active',
+      created_at: '2026-05-02T10:00:00.000Z',
+      updated_at: '2026-05-02T10:00:00.000Z'
+    }),
+    toBuyerSafeReceivingRoute({
+      route_id: 'route_momo',
+      merchant_id: 'mch_01',
+      bank_profile_id: 'orange_money_ci',
+      rail_type: 'mobile_money',
+      receiver_identifier_type: 'phone',
+      receiver_identifier_encrypted: 'encrypted',
+      receiver_identifier_hmac: 'hmac_sha256:momo',
+      receiver_identifier_masked: '+••• ••• ••67',
+      receiver_identifier_last4: '0067',
+      route_code: 'OM-CI',
+      display_label: 'Orange Money CI',
+      enabled: true,
+      recommended: false,
+      review_policy: 'review_first',
+      lifecycle_status: 'active',
+      created_at: '2026-05-02T10:00:00.000Z',
+      updated_at: '2026-05-02T10:00:00.000Z'
+    }),
+    toBuyerSafeReceivingRoute({
+      route_id: 'route_wallet',
+      merchant_id: 'mch_01',
+      bank_profile_id: 'wise_int',
+      rail_type: 'wallet_transfer',
+      receiver_identifier_type: 'email',
+      receiver_identifier_encrypted: 'encrypted',
+      receiver_identifier_hmac: 'hmac_sha256:wallet',
+      receiver_identifier_masked: 'j•••@•••.com',
+      receiver_identifier_last4: '.com',
+      route_code: 'USD-WISE',
+      display_label: 'Wise USD',
       enabled: true,
       recommended: false,
       review_policy: 'review_first',
