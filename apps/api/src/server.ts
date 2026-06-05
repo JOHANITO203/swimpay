@@ -1366,10 +1366,6 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       resolvedAmount
     });
 
-    if ('error' in createInput) {
-      return reply.status(400).send(createInput);
-    }
-
     const result = await repository.createOrderWithSession(createInput);
     if (result.kind === 'duplicate_external_id') {
       return reply.status(409).send({
@@ -5010,7 +5006,7 @@ function sortAndroidMerchantReviews<T extends { createdAt: string }>(reviews: T[
 
 function amountResponse(amountMinor: number | undefined, currency: string | undefined): { value: string; currency: string } {
   return {
-    value: formatAmountMinor(amountMinor ?? 0),
+    value: formatAmountMinor(amountMinor ?? 0, currency),
     currency: currency ?? 'RUB'
   };
 }

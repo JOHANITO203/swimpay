@@ -840,7 +840,10 @@ function buildTestServer(repository: InMemoryOrderRepository, metrics?: InMemory
   });
 }
 
-function buildProductionOrderServer(repository: InMemoryOrderRepository) {
+function buildProductionOrderServer(
+  repository: InMemoryOrderRepository,
+  opts?: { fxRateService?: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult> } }
+) {
   const merchantApiKeyVerifier = new InMemoryMerchantApiKeyVerifier();
   const merchantIntegrationRepository = new InMemoryMerchantIntegrationRepository();
   const server = buildApiServer({
@@ -850,6 +853,7 @@ function buildProductionOrderServer(repository: InMemoryOrderRepository) {
     merchantApiKeyVerifier,
     phoneHmacSecret: 'production_phone_hmac_secret_for_tests',
     checkoutBaseUrl: 'https://pay.swimpay.example/checkout',
+    ...(opts?.fxRateService !== undefined && { fxRateService: opts.fxRateService }),
     idGenerator: {
       orderId: () => 'ord_prod_01',
       paymentSessionId: () => 'ps_prod_01',
@@ -1431,6 +1435,40 @@ describe('order api', () => {
       payload: { ...validOrderPayload, amount: { value: '1000', currency: 'XOF' } }
     });
     expect(accepted.statusCode).toBe(201);
+  });
+
+  test('api_key symmetry gate runs post-FX-conversion: display_price €9.99 on RUB-only merchant yields 409 merchant_currency_route_required with requested_currency=USD', async () => {
+    const repository = new InMemoryOrderRepository();
+    const dpFxStub: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult> } = {
+      quoteToUsd: async () => ({
+        kind: 'ok' as const,
+        quote: { rate: '1.0852', rateTimestamp: '2026-06-05T10:00:00.000Z', amountMinorUsd: 1084 }
+      })
+    };
+    const { server, merchantApiKeyVerifier, merchantIntegrationRepository } = buildProductionOrderServer(repository, { fxRateService: dpFxStub });
+    merchantApiKeyVerifier.seedRawKey('sk_live_dp_sym', {
+      merchantId: 'merchant_dp_sym',
+      apiKeyId: 'key_dp_sym',
+      scopes: ['orders.write']
+    });
+    await merchantIntegrationRepository.updateWebhookUrl(
+      'merchant_dp_sym',
+      'https://merchant.example/webhooks/swimpay',
+      '2026-05-02T09:00:00.000Z'
+    );
+    // Default repo returns only a sber_ru (RUB) route — no USD route.
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer sk_live_dp_sym' },
+      payload: { external_id: 'ord-dp-sym', display_price: '€9.99' }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('merchant_currency_route_required');
+    // The gate must fire on the RESOLVED (post-FX) currency, not the display_price currency.
+    expect(response.json().error.details.requested_currency).toBe('USD');
   });
 
   // --- display_price pipeline tests (Task 8) ---

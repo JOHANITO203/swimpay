@@ -2954,7 +2954,7 @@ export function buildOrderCreateInput(params: {
   idGenerator: IdGenerator;
   clock: () => Date;
   resolvedAmount: OrderAmountResolution;
-}): CreateOrderWithSessionInput | ApiErrorResponse {
+}): CreateOrderWithSessionInput {
   const { amountMinor, currency, detection } = params.resolvedAmount;
 
   const now = params.clock();
