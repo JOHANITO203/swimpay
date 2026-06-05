@@ -85,7 +85,7 @@ export interface CheckoutSession {
   receiver_method_type?: 'card' | 'sbp' | undefined;
   selected_payer_bank_launcher_id?: string | undefined;
   buyer_sender_phone_masked?: string | undefined;
-  payment_method?: 'card' | 'sbp' | undefined;
+  payment_method?: 'card' | 'sbp' | 'mobile_money' | 'wallet' | undefined;
   sender_bank_id?: string | undefined;
   sender_card_masked?: string | undefined;
   sender_phone_masked?: string | undefined;

@@ -144,6 +144,16 @@ interface CheckoutCopy {
   fallbackAmountLeaseUnavailableText: string;
   fallbackSelectionIncompleteText: string;
   fallbackSessionExpiredText: string;
+  recipientMobileMoneyLabel: string;
+  destinationMobileMoneyLabel: string;
+  destinationMobileMoneyCopyLabel: string;
+  mobileMoneyMethodLabel: string;
+  recipientWalletLabel: string;
+  destinationWalletEmailLabel: string;
+  destinationWalletTagLabel: string;
+  destinationWalletPhoneLabel: string;
+  destinationWalletCopyLabel: string;
+  walletMethodLabel: string;
 }
 
 const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
@@ -263,6 +273,16 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     fallbackAmountLeaseUnavailableText: "Le montant exact reserve n'est plus disponible pour cette tentative.",
     fallbackSelectionIncompleteText: 'Des informations de paiement manquent avant de continuer.',
     fallbackSessionExpiredText: 'Cette session de paiement a expire.',
+    recipientMobileMoneyLabel: 'Compte mobile money',
+    destinationMobileMoneyLabel: 'Numéro mobile money',
+    destinationMobileMoneyCopyLabel: 'Numéro mobile money',
+    mobileMoneyMethodLabel: 'Mobile money',
+    recipientWalletLabel: 'Wallet du marchand',
+    destinationWalletEmailLabel: 'E-mail du wallet',
+    destinationWalletTagLabel: 'Tag du wallet',
+    destinationWalletPhoneLabel: 'Numéro lié au wallet',
+    destinationWalletCopyLabel: 'Identifiant du wallet',
+    walletMethodLabel: 'Wallet international',
   },
   en: {
     pageTitle: 'Pay with SwimPay',
@@ -380,6 +400,16 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     fallbackAmountLeaseUnavailableText: 'The reserved exact amount is no longer available for this attempt.',
     fallbackSelectionIncompleteText: 'Payment information is missing before continuing.',
     fallbackSessionExpiredText: 'This payment session has expired.',
+    recipientMobileMoneyLabel: 'Mobile money account',
+    destinationMobileMoneyLabel: 'Mobile money number',
+    destinationMobileMoneyCopyLabel: 'Mobile money number',
+    mobileMoneyMethodLabel: 'Mobile money',
+    recipientWalletLabel: 'Merchant wallet',
+    destinationWalletEmailLabel: 'Wallet email',
+    destinationWalletTagLabel: 'Wallet tag',
+    destinationWalletPhoneLabel: 'Wallet phone number',
+    destinationWalletCopyLabel: 'Wallet identifier',
+    walletMethodLabel: 'International wallet',
   },
   ru: {
     pageTitle: 'Оплатить через SwimPay',
@@ -497,6 +527,16 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     fallbackAmountLeaseUnavailableText: 'Зарезервированная точная сумма больше недоступна для этой попытки.',
     fallbackSelectionIncompleteText: 'Перед продолжением не хватает платежных данных.',
     fallbackSessionExpiredText: 'Эта платежная сессия истекла.',
+    recipientMobileMoneyLabel: 'Счёт mobile money',
+    destinationMobileMoneyLabel: 'Номер mobile money',
+    destinationMobileMoneyCopyLabel: 'Номер mobile money',
+    mobileMoneyMethodLabel: 'Mobile money',
+    recipientWalletLabel: 'Кошелёк продавца',
+    destinationWalletEmailLabel: 'E-mail кошелька',
+    destinationWalletTagLabel: 'Тег кошелька',
+    destinationWalletPhoneLabel: 'Номер кошелька',
+    destinationWalletCopyLabel: 'Идентификатор кошелька',
+    walletMethodLabel: 'Международный кошелёк',
   },
 };
 
@@ -614,7 +654,66 @@ function filterRoutesForSession(
 ): readonly BuyerSafeReceivingRoute[] {
   if (paymentMethod === 'card') return routes.filter((route) => route.rail_type === 'card_transfer');
   if (paymentMethod === 'sbp') return routes.filter((route) => route.rail_type === 'phone_transfer');
+  if (paymentMethod === 'mobile_money') return routes.filter((route) => route.rail_type === 'mobile_money');
+  if (paymentMethod === 'wallet') return routes.filter((route) => route.rail_type === 'wallet_transfer');
   return routes;
+}
+
+interface RailDescriptor {
+  icon: 'phone' | 'card' | 'mobile' | 'wallet';
+  recipientLabel: string;
+  destinationLabel: string;
+  destinationCopyLabel: string;
+  methodLabel: string;
+}
+
+/** Per-rail rendering descriptor — the single source for icons and labels at the
+ * route-selection, instructions and preview render points. */
+function railDescriptor(
+  route: Pick<BuyerSafeReceivingRoute, 'rail_type' | 'receiver_identifier_type'>,
+  copy: CheckoutCopy
+): RailDescriptor {
+  switch (route.rail_type) {
+    case 'phone_transfer':
+      return {
+        icon: 'phone',
+        recipientLabel: copy.recipientPhoneLabel,
+        destinationLabel: copy.destinationPhoneLabel,
+        destinationCopyLabel: copy.destinationPhoneCopyLabel,
+        methodLabel: copy.phoneMethodFullLabel
+      };
+    case 'mobile_money':
+      return {
+        icon: 'mobile',
+        recipientLabel: copy.recipientMobileMoneyLabel,
+        destinationLabel: copy.destinationMobileMoneyLabel,
+        destinationCopyLabel: copy.destinationMobileMoneyCopyLabel,
+        methodLabel: copy.mobileMoneyMethodLabel
+      };
+    case 'wallet_transfer': {
+      const destinationLabel =
+        route.receiver_identifier_type === 'tag'
+          ? copy.destinationWalletTagLabel
+          : route.receiver_identifier_type === 'phone'
+            ? copy.destinationWalletPhoneLabel
+            : copy.destinationWalletEmailLabel;
+      return {
+        icon: 'wallet',
+        recipientLabel: copy.recipientWalletLabel,
+        destinationLabel,
+        destinationCopyLabel: copy.destinationWalletCopyLabel,
+        methodLabel: copy.walletMethodLabel
+      };
+    }
+    default:
+      return {
+        icon: 'card',
+        recipientLabel: copy.recipientCardLabel,
+        destinationLabel: copy.destinationCardLabel,
+        destinationCopyLabel: copy.destinationCardCopyLabel,
+        methodLabel: copy.cardMethodLabel
+      };
+  }
 }
 
 function getBuyerMethodAvailability(
@@ -1005,13 +1104,13 @@ function renderReceivingRouteSelection(
       <p>${escapeHtml(copy.routeText)}</p>
     </div>
     <div class="checkout-option-list">${routes.map((route) => {
-      const isPhone = route.rail_type === 'phone_transfer';
-      const title = isPhone ? copy.recipientPhoneLabel : copy.recipientCardLabel;
+      const descriptor = railDescriptor(route, copy);
+      const title = descriptor.recipientLabel;
       return `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/receiving-route" class="selection-form">
         ${renderCheckoutHiddenInputs(options)}
         <input type="hidden" name="receiving_route_id" value="${escapeHtml(route.route_id)}">
         <button class="checkout-option-card route-option-card" type="submit">
-          <span class="payment-method-icon">${iconSvg(isPhone ? 'phone' : 'card')}</span>
+          <span class="payment-method-icon">${iconSvg(descriptor.icon)}</span>
           <span class="checkout-option-copy">
             <strong>${title}</strong>
             <small>${escapeHtml(route.receiver_identifier_masked)}</small>
@@ -1079,11 +1178,11 @@ function renderInstructionsStep(
     </div>`;
   }
 
-  const isPhone = selectedRoute.rail_type === 'phone_transfer';
+  const descriptor = railDescriptor(selectedRoute, copy);
   const amount = session.payable_amount ?? session.amount;
-  const destinationLabel = isPhone ? copy.destinationPhoneLabel : copy.destinationCardLabel;
-  const destinationCopyLabel = isPhone ? copy.destinationPhoneCopyLabel : copy.destinationCardCopyLabel;
-  const methodLabel = isPhone ? copy.phoneMethodFullLabel : copy.cardMethodLabel;
+  const destinationLabel = descriptor.destinationLabel;
+  const destinationCopyLabel = descriptor.destinationCopyLabel;
+  const methodLabel = descriptor.methodLabel;
   const receiverBank = banks.find((bank) => bank.bank_profile_id === selectedRoute.bank_profile_id);
   const bankLabel = receiverBank?.display_name ?? copy.receivingBankLabel;
   const receiverBankLogoAssetKey = receiverBank?.logo_asset_key ?? bankLogoAssetKey(selectedRoute.bank_profile_id);
@@ -1349,7 +1448,7 @@ function renderInstructionPreview(
   copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
   const amount = session.payable_amount ?? session.amount;
-  const destinationLabel = selectedRoute.rail_type === 'phone_transfer' ? copy.destinationPhoneLabel : copy.destinationCardLabel;
+  const destinationLabel = railDescriptor(selectedRoute, copy).destinationLabel;
   return `<div class="instruction-preview">
     <div><span>${escapeHtml(copy.amountLabel)}</span><strong>${escapeHtml(amount.value)} ${escapeHtml(amount.currency)}</strong></div>
     <div><span>${escapeHtml(copy.referenceLabel)}</span><strong>${escapeHtml(session.reference)}</strong></div>
@@ -1538,7 +1637,7 @@ function swimPayWavesSvg(): string {
   return swimPayLauncherSymbolSvg();
 }
 
-function iconSvg(icon: 'clock' | 'shield' | 'return' | 'card' | 'phone' | 'copy' | 'external' | 'check'): string {
+function iconSvg(icon: 'clock' | 'shield' | 'return' | 'card' | 'phone' | 'copy' | 'external' | 'check' | 'mobile' | 'wallet'): string {
   if (icon === 'clock') {
     return `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg>`;
   }
@@ -1559,6 +1658,12 @@ function iconSvg(icon: 'clock' | 'shield' | 'return' | 'card' | 'phone' | 'copy'
   }
   if (icon === 'external') {
     return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5"/><path d="M10 14L19 5"/><path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg>`;
+  }
+  if (icon === 'mobile') {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="3"/><path d="M10 6h4"/><circle cx="12" cy="17" r="1"/></svg>`;
+  }
+  if (icon === 'wallet') {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"/><path d="M4 8V7a2 2 0 0 1 2-2h10"/><circle cx="16.5" cy="12.5" r="1"/></svg>`;
   }
   return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>`;
 }
