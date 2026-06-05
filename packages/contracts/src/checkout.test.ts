@@ -423,8 +423,8 @@ describe('checkout bank selection contracts', () => {
   });
 
   it('defines hybrid merchant receiving routes with masked buyer-safe output', () => {
-    expect(ReceivingRouteRailTypes).toEqual(['phone_transfer', 'card_transfer', 'mobile_money']);
-    expect(ReceiverIdentifierTypes).toEqual(['phone', 'card']);
+    expect(ReceivingRouteRailTypes).toEqual(['phone_transfer', 'card_transfer', 'mobile_money', 'wallet_transfer']);
+    expect(ReceiverIdentifierTypes).toEqual(['phone', 'card', 'email', 'tag']);
     expect(ReceivingRouteReviewPolicies).toEqual(['review_first', 'eligible_low_risk_later']);
 
     const phoneRoute = toBuyerSafeReceivingRoute({
@@ -465,6 +465,11 @@ describe('checkout bank selection contracts', () => {
       official_bank_confirmation: false
     });
     expect(JSON.stringify(phoneRoute)).not.toContain('receiver_identifier_encrypted');
+  });
+
+  it('masks wallet email and tag identifiers without leaking the value', () => {
+    expect(maskReceiverIdentifier('email', 'john.doe@gmail.com')).toBe('j•••@•••.com');
+    expect(maskReceiverIdentifier('tag', 'wisetag67')).toBe('@w•••67');
   });
 
   it('masks receiver identifiers and keeps card routes review-first by policy', () => {

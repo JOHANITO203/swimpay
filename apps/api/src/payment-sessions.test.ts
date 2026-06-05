@@ -1882,7 +1882,9 @@ describe('payment session api', () => {
           available_methods: ['card'],
           available_payment_methods: {
             card: true,
-            sbp: false
+            sbp: false,
+            mobile_money: false,
+            wallet: false
           },
           fallback_actions: ['switch_to_card', 'refresh_methods', 'return_to_merchant'],
           unavailable_reason: 'method_not_supported_by_merchant'

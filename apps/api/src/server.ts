@@ -33,6 +33,7 @@ import {
   type AndroidMerchantAccountCreateResponse,
   type AndroidMerchantAccountErrorCode,
   type AndroidMerchantDeviceProof,
+  type BuyerCheckoutPaymentMethod,
   type CheckoutFallbackAction,
   type CheckoutUnavailableReason,
   type MerchantPaymentReadiness,
@@ -1972,7 +1973,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (compatibleRoutes.length === 0) {
       const availableMethods = {
         card: availableBuyerMethodsForRoutes(allRoutes).includes('card'),
-        sbp: availableBuyerMethodsForRoutes(allRoutes).includes('sbp')
+        sbp: availableBuyerMethodsForRoutes(allRoutes).includes('sbp'),
+        mobile_money: availableBuyerMethodsForRoutes(allRoutes).includes('mobile_money'),
+        wallet: availableBuyerMethodsForRoutes(allRoutes).includes('wallet')
       };
       return reply.status(409).send({
         error: {
@@ -4157,14 +4160,20 @@ function filterRoutesForExpectedPaymentMethod(
 
 function availableBuyerMethodsForRoutes(
   routes: readonly StoredMerchantReceivingRouteRecord[]
-): Array<'card' | 'sbp'> {
+): Array<BuyerCheckoutPaymentMethod> {
   const rails = new Set<ReceivingRouteRailType>(routes.map((route) => route.rail_type));
-  const methods: Array<'card' | 'sbp'> = [];
+  const methods: Array<BuyerCheckoutPaymentMethod> = [];
   if (rails.has('card_transfer')) {
     methods.push('card');
   }
   if (rails.has('phone_transfer')) {
     methods.push('sbp');
+  }
+  if (rails.has('mobile_money')) {
+    methods.push('mobile_money');
+  }
+  if (rails.has('wallet_transfer')) {
+    methods.push('wallet');
   }
   return methods;
 }
@@ -5179,7 +5188,8 @@ async function resolveMerchantPaymentReadiness(
   const methods = {
     card: routes.some((route) => route.rail_type === 'card_transfer'),
     sbp: routes.some((route) => route.rail_type === 'phone_transfer'),
-    mobile_money: routes.some((route) => route.rail_type === 'mobile_money')
+    mobile_money: routes.some((route) => route.rail_type === 'mobile_money'),
+    wallet: routes.some((route) => route.rail_type === 'wallet_transfer')
   };
   const receivableCurrencies = [
     ...new Set(routes.map((route) => receivingCurrencyForBankProfile(route.bank_profile_id)))

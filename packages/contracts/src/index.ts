@@ -70,13 +70,13 @@ export type BuyerSafeCheckoutStatus = (typeof BuyerSafeCheckoutStatuses)[number]
 export type ReceiverBankBuyerStatus = 'available' | 'review_required_beta' | 'temporarily_unavailable';
 export type ReceiverRouteBuyerStatus = 'review_beta' | 'temporarily_unavailable';
 
-export const BuyerCheckoutPaymentMethods = ['card', 'sbp', 'mobile_money'] as const;
+export const BuyerCheckoutPaymentMethods = ['card', 'sbp', 'mobile_money', 'wallet'] as const;
 export type BuyerCheckoutPaymentMethod = (typeof BuyerCheckoutPaymentMethods)[number];
 
-export const ReceivingRouteRailTypes = ['phone_transfer', 'card_transfer', 'mobile_money'] as const;
+export const ReceivingRouteRailTypes = ['phone_transfer', 'card_transfer', 'mobile_money', 'wallet_transfer'] as const;
 export type ReceivingRouteRailType = (typeof ReceivingRouteRailTypes)[number];
 
-export const ReceiverIdentifierTypes = ['phone', 'card'] as const;
+export const ReceiverIdentifierTypes = ['phone', 'card', 'email', 'tag'] as const;
 export type ReceiverIdentifierType = (typeof ReceiverIdentifierTypes)[number];
 
 export const ReceivingRouteReviewPolicies = ['review_first', 'eligible_low_risk_later'] as const;
@@ -104,6 +104,7 @@ export interface MerchantPaymentReadiness {
     card: boolean;
     sbp: boolean;
     mobile_money: boolean;
+    wallet: boolean;
   };
   /** Currencies the merchant has at least one active receiving route for. */
   receivable_currencies: readonly string[];
@@ -307,7 +308,7 @@ export interface AvailableSenderBank {
 
 export interface AvailableReceivingMethod {
   method: BuyerCheckoutPaymentMethod;
-  label: 'Carte' | 'SBP';
+  label: 'Carte' | 'SBP' | 'Mobile money' | 'Wallet';
   available: boolean;
   route_id: string;
   receiver_bank_id: string;
@@ -626,11 +627,21 @@ export function maskReceiverIdentifier(
   value: string,
   options: { international?: boolean } = {}
 ): string {
+  if (type === 'email') {
+    const [local = '', domain = ''] = value.split('@');
+    const tld = domain.includes('.') ? domain.slice(domain.lastIndexOf('.')) : '';
+    return `${local.slice(0, 1)}•••@•••${tld}`;
+  }
+  if (type === 'tag') {
+    const tag = value.replace(/^@/u, '');
+    return `@${tag.slice(0, 1)}•••${tag.slice(-2)}`;
+  }
+
   const digits = value.replace(/\D/g, '');
   if (type === 'phone') {
     const lastTwo = digits.slice(-2).padStart(2, '*');
     if (options.international) {
-      // West Africa / mobile money: no Russian +7 assumption.
+      // West Africa / mobile money / wallets: no Russian +7 assumption.
       return `+••• ••• ••${lastTwo}`;
     }
     return `+7 *** *** **${lastTwo}`;
