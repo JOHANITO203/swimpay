@@ -53,4 +53,26 @@ describe('FxRateService', () => {
     const result = await service.quoteToUsd('JPY', 500, 0); // ¥500 → $3.25
     expect(result).toMatchObject({ kind: 'ok', quote: { amountMinorUsd: 325 } });
   });
+
+  it('avoids the float two-step under-rounding on half-cent boundaries', async () => {
+    const service = new FxRateService({ fetchImpl: fetchReturning(1.45), clock: () => new Date('2026-06-05T10:00:00Z') });
+    const result = await service.quoteToUsd('EUR', 10, 2); // €0.10 × 1.45 = $0.145 → 15 cents (half-up)
+    expect(result).toMatchObject({ kind: 'ok', quote: { amountMinorUsd: 15 } });
+  });
+
+  it('normalizes currency case for the cache key', async () => {
+    const fetchImpl = fetchReturning(2);
+    const service = new FxRateService({ fetchImpl, clock: () => new Date('2026-06-05T10:00:00Z') });
+    await service.quoteToUsd('eur', 100, 2);
+    await service.quoteToUsd('EUR', 100, 2);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('caches rates per currency', async () => {
+    const fetchImpl = fetchReturning(2);
+    const service = new FxRateService({ fetchImpl, clock: () => new Date('2026-06-05T10:00:00Z') });
+    await service.quoteToUsd('EUR', 100, 2);
+    await service.quoteToUsd('GBP', 100, 2);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
 });

@@ -59,9 +59,13 @@ export class FxRateService {
       return { kind: 'unavailable', reason: 'fx_rate_unavailable' };
     }
 
-    const amountMajor = amountMinor / 10 ** minorDigits;
     // Math.round is half-up for positive values — the documented rounding rule.
-    const amountMinorUsd = Math.round(amountMajor * cached.rate * 100);
+    // Single multiply by (100 / 10**minorDigits) instead of (/10**d then *100):
+    // the two-step form under-rounds some half-cent boundaries by 1¢. Residual
+    // error from the rate's double representation (e.g. "1.005" stored slightly
+    // below 1.005) is irreducible without decimal arithmetic and acceptable on
+    // this review-only rail — the exact rate string is exposed in the webhook.
+    const amountMinorUsd = Math.round(amountMinor * cached.rate * (100 / 10 ** minorDigits));
     if (!Number.isSafeInteger(amountMinorUsd) || amountMinorUsd <= 0) {
       return { kind: 'unavailable', reason: 'fx_rate_unavailable' };
     }
