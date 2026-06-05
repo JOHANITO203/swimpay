@@ -12,7 +12,7 @@ export interface ParsedBankNotification {
   directionLabel: DirectionLabel;
   rail?: 'sbp' | 'card' | undefined;
   amountMinor?: number | undefined;
-  currency?: 'RUB' | undefined;
+  currency?: 'RUB' | 'XOF' | 'USD' | undefined;
   senderNameHint?: string | undefined;
   senderBankHint?: string | undefined;
   sourceLabel?: string | undefined;
@@ -146,8 +146,27 @@ export function extractAmountMinor(text: string): number | null {
   return majorMinor + fractionalMinor;
 }
 
-export function extractCurrency(text: string): 'RUB' | null {
-  return /(?:₽|руб\.?|â‚½|Ñ€ÑƒÐ±\.?|RUB)(?=$|[\s.,;:])/iu.test(text) ? 'RUB' : null;
+const RUB_CURRENCY_PATTERN = /(?:₽|руб\.?|â‚½|Ñ€ÑƒÐ±\.?|RUB)(?=$|[\s.,;:])/iu;
+const XOF_CURRENCY_PATTERN = /(?:^|[\s])(?:FCFA|F\sCFA|XOF|CFA)(?=$|[\s.,;:])/iu;
+// Bare $ is USD unless letter-prefixed (CA$, A$); US$ and the USD code are word-bounded.
+const USD_CURRENCY_PATTERN = /(?:(?<![A-Za-z])\$|(?:^|[\s])(?:US\$|USD)(?=$|[\s.,;:]))/u;
+// Matches a letter-prefixed dollar that is NOT the US$ combination (e.g. CA$, A$ but not US$).
+// US$ is handled by USD_CURRENCY_PATTERN; other letter-prefixed dollars (CA$, A$, AU$) block USD.
+// 'S$' only counts as prefixed when NOT preceded by [Uu] (to allow US$).
+const PREFIXED_DOLLAR_PATTERN = /(?:(?<![Uu])[Ss]|[A-RT-Za-rt-z])\$/u;
+
+export function extractCurrency(text: string): 'RUB' | 'XOF' | 'USD' | null {
+  const rub = RUB_CURRENCY_PATTERN.test(text);
+  const xof = XOF_CURRENCY_PATTERN.test(text);
+  const usd = !PREFIXED_DOLLAR_PATTERN.test(text) && USD_CURRENCY_PATTERN.test(text);
+  const matches = [rub, xof, usd].filter(Boolean).length;
+  if (matches !== 1) {
+    // No marker, or conflicting currency markers — never guess.
+    return null;
+  }
+  if (rub) return 'RUB';
+  if (xof) return 'XOF';
+  return 'USD';
 }
 
 interface SbpIncomingVariant {
@@ -286,7 +305,7 @@ export function hasNegativeKeywordGate(text: string): boolean {
 export function scoreParsedSignal(input: {
   directionLabel: DirectionLabel;
   amountMinor?: number | null | undefined;
-  currency?: 'RUB' | null | undefined;
+  currency?: 'RUB' | 'XOF' | 'USD' | null | undefined;
   senderPhoneNormalized?: string | null | undefined;
   maskedPhoneDetected?: boolean | null | undefined;
   referenceCode?: string | null | undefined;
