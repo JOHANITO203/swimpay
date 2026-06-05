@@ -88,7 +88,7 @@ Accepted `display_price` examples:
 
 ```
 "999 ₽"          → RUB 99900 minor (native, no conversion)
-"1 000 FCFA"     → XOF 100000 minor (native, no conversion)
+"1 000 FCFA"     → XOF 1000 minor (native, zero-decimal currency, no conversion)
 "€9.99"          → EUR 999 minor → converted to USD at live ECB rate
 ```
 
@@ -112,8 +112,8 @@ receiving route, the order is rejected.
 
 | Code | HTTP | Meaning |
 |---|---|---|
-| `currency_detection_ambiguous` | 400 | `display_price` string contains conflicting currency signals or an unrecognised format |
-| `invalid_request` | 400 | `display_price` string was parsed but the resulting amount is malformed (e.g. disallowed prefixed dollar, bare number, 3-digit tail after canonical decimal separator) |
+| `currency_detection_ambiguous` | 400 | `display_price` currency could not be determined: bare number, unrecognised code, prefixed dollar (`CA$`, `A$`), or conflicting currency signals |
+| `invalid_request` | 400 | `display_price` currency was detected but the amount string is syntactically invalid for it (e.g. a 3-digit tail after the currency's canonical decimal separator: `$10.999`, or decimals on a zero-decimal currency: `10.5 FCFA`) |
 | `fx_rate_unavailable` | 409 | FX conversion required but the live rate could not be retrieved within the staleness window (≤ 24 h), or FX is unconfigured |
 
 ### Response
@@ -479,8 +479,8 @@ Masked forms returned by the API (raw identifier is never exposed):
 | Type | Masked example |
 |---|---|
 | `email` | `j•••@•••.com` |
-| `tag` (≥ 5 chars) | `@w•••67` |
-| `tag` (< 5 chars) | `@•••c` |
+| `tag` (≥ 4 chars) | `@w•••67` |
+| `tag` (≤ 3 chars) | `@•••c` |
 | `phone` | `+••• ••• ••67` |
 
 USD checkout sessions display the merchant's active `wallet_transfer` routes as

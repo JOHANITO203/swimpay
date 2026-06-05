@@ -252,13 +252,9 @@ alfa_ru
 gazprombank_ru
 ```
 
-Migration `025` adds West Africa mobile-money profiles. Migration `026` adds the
-`selectable` column. Migration `027` adds international wallet profiles and marks
-the retired WA profiles non-selectable:
-
-```sql
-ALTER TABLE bank_profiles ADD COLUMN selectable BOOLEAN NOT NULL DEFAULT true;
-```
+Migration `025` adds West Africa mobile-money profiles (the `selectable` column
+itself dates from migration `021`). Migration `027` adds international wallet
+profiles and marks the retired WA profiles non-selectable.
 
 **International wallet profiles** (added migration 027, currency USD, country INT):
 
@@ -268,7 +264,7 @@ revolut_int
 payoneer_int
 ```
 
-**West Africa — Wave CI** (added migration 025, currency XOF, country CI):
+**West Africa — Wave CI** (added migration 027, currency XOF, country CI):
 
 ```text
 wave_ci
