@@ -1,4 +1,5 @@
 import type { EventType } from '@swimpay/events';
+export { detectCurrencyFromDisplayPrice, type CurrencyDetectionResult } from './currency-detection.js';
 
 export const OrderStatuses = [
   'created',
