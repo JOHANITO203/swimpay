@@ -2068,6 +2068,7 @@ export class PgOrderRepository implements OrderRepository {
              payable_amount_minor = NULL,
              reconciliation_delta_minor = NULL,
              amount_lease_id = NULL,
+             expected_payment_fingerprint = NULL,
              base_currency = COALESCE(base_currency, $5),
              base_amount_minor = COALESCE(base_amount_minor, $6),
              buyer_fx_rate = $7,

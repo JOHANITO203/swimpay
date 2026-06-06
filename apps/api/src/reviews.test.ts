@@ -155,6 +155,96 @@ describe('review queue api', () => {
     });
   });
 
+  it('confirm webhook reports buyer-selected session currency/amount when session has been requoted', async () => {
+    const repository = new FakeReviewRepository();
+    // Order is RUB 9000.00 (900000 minor), but buyer selected USD 11000 minor
+    repository.items.set('rev_currency_01', {
+      ...openReviewItem(),
+      id: 'rev_currency_01',
+      amountMinor: 900000,
+      currency: 'RUB',
+      sessionCurrency: 'USD',
+      sessionPayableAmountMinor: 11000,
+      sessionExpectedAmountMinor: 11000
+    });
+    const events = new FakeEventPublisher();
+    const server = buildTestServer(repository, events);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_currency_01/confirm',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { actor_id: 'usr_01', reason: 'confirmed by merchant' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    // HTTP response uses session values
+    expect(body.amount_minor).toBeUndefined(); // not in HTTP response shape
+    // Event must use session currency/amount
+    const event = events.events[0];
+    expect(event?.data['amount_minor']).toBe(11000);
+    expect(event?.data['currency']).toBe('USD');
+    expect(event?.data['buyer_currency_selection']).toMatchObject({ selected_currency: 'USD' });
+  });
+
+  it('confirm webhook falls back to order currency/amount when session columns are null (legacy)', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_legacy_01', {
+      ...openReviewItem(),
+      id: 'rev_legacy_01',
+      amountMinor: 13700,
+      currency: 'RUB'
+      // no sessionCurrency / sessionPayableAmountMinor — legacy path
+    });
+    const events = new FakeEventPublisher();
+    const server = buildTestServer(repository, events);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_legacy_01/confirm',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { actor_id: 'usr_01' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const event = events.events[0];
+    // Falls back to order values byte-identically
+    expect(event?.data['amount_minor']).toBe(13700);
+    expect(event?.data['currency']).toBe('RUB');
+    expect(event?.data['buyer_currency_selection']).toBeUndefined();
+  });
+
+  it('reject webhook reports buyer-selected session currency/amount when session has been requoted', async () => {
+    const repository = new FakeReviewRepository();
+    repository.items.set('rev_currency_02', {
+      ...openReviewItem(),
+      id: 'rev_currency_02',
+      amountMinor: 900000,
+      currency: 'RUB',
+      sessionCurrency: 'USD',
+      sessionPayableAmountMinor: 11000,
+      sessionExpectedAmountMinor: 11000
+    });
+    repository.orderStatuses.set('ord_01', 'awaiting_payment');
+    repository.paymentSessionStatuses.set('ps_01', 'awaiting_payment');
+    const events = new FakeEventPublisher();
+    const server = buildTestServer(repository, events);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/reviews/rev_currency_02/reject',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { scope: 'order', reason: 'merchant_cancelled' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const event = events.events[0];
+    expect(event?.data['amount_minor']).toBe(11000);
+    expect(event?.data['currency']).toBe('USD');
+    expect(event?.data['buyer_currency_selection']).toMatchObject({ selected_currency: 'USD' });
+  });
+
   it('confirms a no-notification fallback review as manual bank check only after merchant action', async () => {
     const repository = new FakeReviewRepository();
     repository.items.set('rev_fallback_01', {
@@ -866,6 +956,8 @@ class FakeReviewRepository implements ReviewRepository {
       if (review.status === 'rejected') {
         const previous = this.actions.find((action) => action.reviewId === input.reviewId && action.action === 'rejected');
         if (previous?.scope === scope) {
+          const idempotentCurrency = review.sessionCurrency ?? review.currency ?? 'RUB';
+          const idempotentAmountMinor = review.sessionPayableAmountMinor ?? review.sessionExpectedAmountMinor ?? review.amountMinor ?? 13700;
           return {
             kind: 'updated' as const,
             reviewId: review.id,
@@ -873,8 +965,8 @@ class FakeReviewRepository implements ReviewRepository {
             orderId: review.orderId,
             externalOrderId: `external_${review.orderId}`,
             paymentSessionId: review.paymentSessionId,
-            amountMinor: review.amountMinor ?? 13700,
-            currency: review.currency ?? 'RUB',
+            amountMinor: idempotentAmountMinor,
+            currency: idempotentCurrency,
             orderStatus: (this.orderStatuses.get(review.orderId) ?? 'awaiting_payment') as ReviewActionResultUpdated['orderStatus'],
             paymentSessionStatus: (this.paymentSessionStatuses.get(review.paymentSessionId) ?? 'awaiting_payment') as ReviewActionResultUpdated['paymentSessionStatus'],
             rejectionScope: previous.scope,
@@ -940,6 +1032,8 @@ class FakeReviewRepository implements ReviewRepository {
       });
     }
 
+    const effectiveCurrency = review.sessionCurrency ?? review.currency ?? 'RUB';
+    const effectiveAmountMinor = review.sessionPayableAmountMinor ?? review.sessionExpectedAmountMinor ?? review.amountMinor ?? 13700;
     return {
       kind: 'updated' as const,
       reviewId: review.id,
@@ -947,14 +1041,17 @@ class FakeReviewRepository implements ReviewRepository {
       orderId: review.orderId,
       externalOrderId: `external_${review.orderId}`,
       paymentSessionId: review.paymentSessionId,
-      amountMinor: review.amountMinor ?? 13700,
-      currency: review.currency ?? 'RUB',
+      amountMinor: effectiveAmountMinor,
+      currency: effectiveCurrency,
       orderStatus: (this.orderStatuses.get(review.orderId) ?? 'awaiting_payment') as ReviewActionResultUpdated['orderStatus'],
       paymentSessionStatus: (this.paymentSessionStatuses.get(review.paymentSessionId) ?? 'awaiting_payment') as ReviewActionResultUpdated['paymentSessionStatus'],
       rejectionScope: scope,
       reason: input.reason as ReviewRejectionReason | undefined,
       confirmationType: review.signalId ? 'notification_signal' as const : 'manual_bank_check' as const,
-      reasonLabel: review.signalId ? undefined : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED'
+      reasonLabel: review.signalId ? undefined : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED',
+      buyerCurrencySelection: review.sessionCurrency
+        ? { selectedCurrency: effectiveCurrency }
+        : undefined
     };
   }
 
@@ -984,6 +1081,8 @@ class FakeReviewRepository implements ReviewRepository {
       objectId: review.id
     });
 
+    const effectiveCurrency = review.sessionCurrency ?? review.currency ?? 'RUB';
+    const effectiveAmountMinor = review.sessionPayableAmountMinor ?? review.sessionExpectedAmountMinor ?? review.amountMinor ?? 13700;
     return Promise.resolve({
       kind: 'updated' as const,
       reviewId: review.id,
@@ -991,8 +1090,8 @@ class FakeReviewRepository implements ReviewRepository {
       orderId: review.orderId,
       externalOrderId: `external_${review.orderId}`,
       paymentSessionId: review.paymentSessionId,
-      amountMinor: review.amountMinor ?? 13700,
-      currency: review.currency ?? 'RUB',
+      amountMinor: effectiveAmountMinor,
+      currency: effectiveCurrency,
       orderStatus: stateStatus,
       paymentSessionStatus: stateStatus,
       confirmationType: review.signalId ? 'notification_signal' as const : 'manual_bank_check' as const,
@@ -1000,7 +1099,10 @@ class FakeReviewRepository implements ReviewRepository {
         ? undefined
         : reviewStatus === 'confirmed'
           ? 'NO_NOTIFICATION_MANUAL_FALLBACK_CONFIRMED'
-          : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED'
+          : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED',
+      buyerCurrencySelection: review.sessionCurrency
+        ? { selectedCurrency: effectiveCurrency }
+        : undefined
     });
   }
 }

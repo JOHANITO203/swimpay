@@ -2510,7 +2510,13 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     switch (result.kind) {
       case 'requoted': {
-        const payableCurrencyCount = readiness.receivable_currencies.length;
+        const availableRoutes = await repository!.listReceiverBanksForCheckout(
+          loaded.paymentSession.merchantId,
+          params.id
+        );
+        const payableCurrencyCount = [
+          ...new Set(availableRoutes.map((r) => receivingCurrencyForBankProfile(r.bank_profile_id)))
+        ].length;
         return reply.status(200).send(
           toCheckoutStatusResponse({
             order: loaded.order,
