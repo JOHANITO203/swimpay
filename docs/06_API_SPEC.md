@@ -161,6 +161,52 @@ Safe derived fields may include:
 
 Raw buyer source card and raw phone values must not be logged, rendered in merchant UI or sent in webhooks.
 
+## Hosted checkout flow
+
+The hosted checkout page steps the buyer through a sequence of states. The
+current state is returned by every checkout mutation response and by `GET
+/v1/checkout/:id/status`.
+
+Typical state sequence:
+
+```
+buyer_identity
+  ↓  (when merchant has ≥ 2 receivable currencies and no currency is locked)
+currency_selection
+  ↓
+receiver_bank_selection  (or receiving_route_selection when rails bypass bank step)
+  ↓
+receiving_route_selection
+  ↓
+payer_bank_launcher_selection  (USD wallet routes only)
+  ↓
+payment_instructions
+  ↓
+awaiting_payment
+```
+
+### `currency_selection` state
+
+The `currency_selection` step is inserted **between** `buyer_identity` and
+`receiver_bank_selection` when all of the following are true:
+
+- The merchant has 2 or more active receivable currencies
+  (`payableCurrencyCount >= 2`).
+- The buyer has not yet made a currency selection (`currency_selected_at` is
+  null).
+- No receiving route and no receiver bank have been locked for the session.
+
+The step is **skipped automatically** when the merchant has only one receivable
+currency. Existing single-currency integrations are unaffected.
+
+Re-selection is permitted (via `POST /v1/checkout/:id/currency`) until a
+receiving route is locked. Once a route is locked the `currency_selection` step
+is no longer offered and the currency cannot be changed.
+
+The live quote is locked until the session expires (`valid_until`). No
+background re-quoting occurs between the buyer's selection and payment
+instructions; the rate shown is the rate used.
+
 ## POST `/v1/checkout/{payment_session_id}/continue-to-bank`
 
 Arms the merchant Receiver after the buyer chooses to continue to their bank.
@@ -226,6 +272,125 @@ Returns order status.
   "latest_event": "payment_session.receiver_armed"
 }
 ```
+
+## GET `/v1/checkout/:id/payable-currencies`
+
+Returns the list of currencies the buyer can pay in for this checkout session,
+each with a live quote from the session's base currency. No authentication
+required (buyer-facing endpoint, same auth model as other `/v1/checkout/` paths).
+
+### Response
+
+```json
+{
+  "currencies": [
+    {
+      "currency": "RUB",
+      "amount_minor": 99900,
+      "formatted": "999 ₽",
+      "is_current": true
+    },
+    {
+      "currency": "USD",
+      "amount_minor": 1099,
+      "formatted": "$10.99",
+      "is_current": false,
+      "quote": {
+        "rate": "0.011045",
+        "source": "cbr",
+        "base_currency": "RUB",
+        "base_amount_minor": 99900
+      }
+    },
+    {
+      "currency": "XOF",
+      "amount_minor": 6560,
+      "formatted": "6560 FCFA",
+      "is_current": false,
+      "quote": {
+        "rate": "0.65596",
+        "source": "ecb+uemoa_peg",
+        "base_currency": "RUB",
+        "base_amount_minor": 99900
+      }
+    }
+  ]
+}
+```
+
+### Behavior
+
+- Quotes are computed from the session's **base currency** (`base_currency` /
+  `base_amount_minor` when set; otherwise the session's current `currency` /
+  `expected_amount_minor`). This ensures re-selection always quotes from the
+  original session amount, never from a previously selected currency.
+- The current session currency is always present in the list with `is_current:
+  true` and no `quote` block.
+- Currencies for which an FX rate cannot be obtained are **silently omitted**
+  from the list. The endpoint never returns a 5xx because a rate source is
+  unavailable.
+- FX sources: ECB via frankfurter.dev (`source: "ecb"`), Central Bank of Russia
+  daily XML (`source: "cbr"`), fixed UEMOA peg 655.957 XOF/EUR (`source:
+  "uemoa_peg"`). Multi-leg paths join source labels with `+` (e.g.
+  `"ecb+uemoa_peg"`, `"cbr+ecb"`). Rates are composed without intermediate
+  rounding; a single final round is applied to the target minor amount.
+
+### Errors
+
+| Code | HTTP | Meaning |
+|---|---|---|
+| `not_found` | 404 | Payment session does not exist or is expired |
+
+---
+
+## POST `/v1/checkout/:id/currency`
+
+Re-quotes the session in the selected currency. Must be called before a
+receiving route is locked. Identity selection (posting the current currency) is
+allowed and marks the currency selection step complete without changing amounts.
+
+### Request
+
+```json
+{
+  "currency": "USD"
+}
+```
+
+### Response
+
+Same shape as other checkout mutation responses: the refreshed checkout state
+including the new `checkout_state`.
+
+### Behavior
+
+- Validates the requested currency is in the merchant's receivable set; rejects
+  unknown currencies with `currency_not_payable`.
+- Quotes from the session base currency to the selected currency (same FX
+  sources as the listing endpoint). On FX failure, returns `fx_rate_unavailable`
+  rather than silently proceeding.
+- Calls the `requotePaymentSessionCurrency` repository method inside a
+  transaction: the previous amount lease is released, the session currency and
+  amounts are updated, and `currency_selected_at` is set.
+- `base_currency` and `base_amount_minor` are frozen at the first selection
+  (`COALESCE`-semantics: never overwritten on re-selection). Subsequent
+  re-selections always quote from the original base.
+- The quote is locked until the session expires (`valid_until`). No implicit
+  re-quoting occurs; re-selection requires an explicit POST.
+- Re-selection is allowed as long as `selected_receiving_route_id` is null.
+  Once a route is locked the session cannot be re-quoted.
+
+### Errors
+
+| Code | HTTP | Meaning |
+|---|---|---|
+| `currency_not_payable` | 400 | The requested currency is not in the merchant's receivable set |
+| `fx_rate_unavailable` | 409 | A rate could not be obtained for the requested currency |
+| `route_already_locked` | 409 | A receiving route has already been selected; the currency can no longer be changed |
+| `checkout_step_out_of_order` | 409 | Session is in a terminal or non-requotable state |
+| `not_found` | 404 | Payment session does not exist |
+
+---
 
 ## GET `/v1/payment-sessions/{id}`
 
