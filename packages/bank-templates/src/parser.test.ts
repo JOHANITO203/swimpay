@@ -64,6 +64,21 @@ describe('bank notification parser', () => {
     expect(extractCurrency('перевод 500 руб.')).toBe('RUB');
   });
 
+  it('extracts USD through the full parse pipeline despite text normalization lowercasing', () => {
+    // normalizeRuText lowercases before extraction — the USD pattern must be case-insensitive.
+    const parsed = parseBankNotification({
+      bankProfileId: 'wise_int',
+      text: 'You received US$ 25.00 from John Doe'
+    });
+    expect(parsed.currency).toBe('USD');
+
+    const codeOnly = parseBankNotification({
+      bankProfileId: 'wise_int',
+      text: 'Incoming transfer 137.50 USD'
+    });
+    expect(codeOnly.currency).toBe('USD');
+  });
+
   it.each([
     ['+7 999 123-45-67'],
     ['8 (999) 123-45-67'],

@@ -149,7 +149,8 @@ export function extractAmountMinor(text: string): number | null {
 const RUB_CURRENCY_PATTERN = /(?:₽|руб\.?|â‚½|Ñ€ÑƒÐ±\.?|RUB)(?=$|[\s.,;:])/iu;
 const XOF_CURRENCY_PATTERN = /(?:^|[\s])(?:FCFA|F\sCFA|XOF|CFA)(?=$|[\s.,;:])/iu;
 // Bare $ is USD unless letter-prefixed (CA$, A$); US$ and the USD code are word-bounded.
-const USD_CURRENCY_PATTERN = /(?:(?<![A-Za-z])\$|(?:^|[\s])(?:US\$|USD)(?=$|[\s.,;:]))/u;
+// Case-insensitive: the parse pipeline lowercases text (normalizeRuText) before extraction.
+const USD_CURRENCY_PATTERN = /(?:(?<![A-Za-z])\$|(?:^|[\s])(?:US\$|USD)(?=$|[\s.,;:]))/iu;
 // Matches a letter-prefixed dollar that is NOT the US$ combination (e.g. CA$, A$ but not US$).
 // US$ is handled by USD_CURRENCY_PATTERN; other letter-prefixed dollars (CA$, A$, AU$) block USD.
 // 'S$' only counts as prefixed when NOT preceded by [Uu] (to allow US$).
