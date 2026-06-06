@@ -23,9 +23,9 @@ export type FxQuoteResult =
 
 export interface FxRouteQuote {
   rate: string;            // composed rate as decimal string
-  rateTimestamp: string;
+  rateTimestamp: string;  // ISO timestamp of the OLDEST fetched rate leg used (fetch time, not call time)
   amountMinorTarget: number;
-  source: 'ecb' | 'cbr' | 'uemoa_peg' | 'ecb+uemoa_peg' | 'cbr+ecb' | 'cbr+ecb+uemoa_peg' | 'identity';
+  source: string;          // legs joined in path order, e.g. 'ecb', 'cbr+uemoa_peg', 'identity'
 }
 
 export type FxRouteResult =
@@ -117,12 +117,11 @@ export class FxRateService {
       return { kind: 'unavailable', reason: 'fx_rate_unavailable' };
     }
 
-    const nowMs = this.clock().getTime();
     return {
       kind: 'ok',
       quote: {
         rate: String(unit.rate),
-        rateTimestamp: new Date(nowMs).toISOString(),
+        rateTimestamp: new Date(unit.oldestFetchedAtMs).toISOString(),
         amountMinorTarget,
         source: unit.source,
       },
@@ -151,99 +150,100 @@ export class FxRateService {
   // ─── Internal router ───────────────────────────────────────────────────────
 
   /**
-   * Returns the composed rate (no rounding) + the source label.
+   * Returns the composed rate (no rounding), the source label, and the oldest
+   * fetchedAt timestamp (ms) across all non-peg, non-identity legs used.
+   * - identity  → oldestFetchedAtMs = call time (nowMs)
+   * - peg-only  → oldestFetchedAtMs = call time (peg is a constant, not fetched)
+   * - fetched legs → MIN of all legs' fetchedAt
    * Returns null if the route is unreachable or a required data source is down.
    */
   private async unitRate(
     src: string,
     tgt: string,
-  ): Promise<{ rate: number; source: FxRouteQuote['source'] } | null> {
+  ): Promise<{ rate: number; source: string; oldestFetchedAtMs: number } | null> {
+    const nowMs = this.clock().getTime();
+
     // Identity
     if (src === tgt) {
-      return { rate: 1, source: 'identity' };
+      return { rate: 1, source: 'identity', oldestFetchedAtMs: nowMs };
     }
 
     // XOF source: convert XOF → EUR (÷ peg), then EUR → target
     if (src === 'XOF') {
       if (tgt === 'EUR') {
-        return { rate: 1 / UEMOA_XOF_PER_EUR, source: 'uemoa_peg' };
+        return { rate: 1 / UEMOA_XOF_PER_EUR, source: 'uemoa_peg', oldestFetchedAtMs: nowMs };
       }
       const eurToTgt = await this.unitRate('EUR', tgt);
       if (eurToTgt === null) return null;
       const combined = (1 / UEMOA_XOF_PER_EUR) * eurToTgt.rate;
-      const leg = eurToTgt.source === 'identity' ? 'uemoa_peg' : (`uemoa_peg+${eurToTgt.source}` as FxRouteQuote['source']);
-      return { rate: combined, source: leg };
+      const leg = eurToTgt.source === 'identity' ? 'uemoa_peg' : `uemoa_peg+${eurToTgt.source}`;
+      // peg is constant — oldest comes from the fetched EUR→target leg
+      return { rate: combined, source: leg, oldestFetchedAtMs: eurToTgt.oldestFetchedAtMs };
     }
 
     // XOF target: compose S → EUR, then × peg
     if (tgt === 'XOF') {
       if (src === 'EUR') {
-        return { rate: UEMOA_XOF_PER_EUR, source: 'uemoa_peg' };
+        return { rate: UEMOA_XOF_PER_EUR, source: 'uemoa_peg', oldestFetchedAtMs: nowMs };
       }
       const srcToEur = await this.unitRate(src, 'EUR');
       if (srcToEur === null) return null;
       const combined = srcToEur.rate * UEMOA_XOF_PER_EUR;
       // Label: prepend the ECB/CBR leg, append the peg
-      const peg: FxRouteQuote['source'] = srcToEur.source === 'identity'
-        ? 'uemoa_peg'
-        : (`${srcToEur.source}+uemoa_peg` as FxRouteQuote['source']);
-      return { rate: combined, source: peg };
+      const peg = srcToEur.source === 'identity' ? 'uemoa_peg' : `${srcToEur.source}+uemoa_peg`;
+      return { rate: combined, source: peg, oldestFetchedAtMs: srcToEur.oldestFetchedAtMs };
     }
 
     // RUB source: 1 / cbrRatePerUnit(target) if listed; else RUB→EUR→target
     if (src === 'RUB') {
       if (tgt === 'EUR') {
         // RUB→EUR: CBR lists EUR per nominal → invert
-        const rubPerEur = await this.cbrRatePerUnit('EUR');
+        const rubPerEur = await this.cbrRatePerUnitWithAge('EUR');
         if (rubPerEur === null) return null;
-        return { rate: 1 / rubPerEur, source: 'cbr' };
+        return { rate: 1 / rubPerEur.ratePerUnit, source: 'cbr', oldestFetchedAtMs: rubPerEur.fetchedAt };
       }
       // Try CBR direct inverse for the target
-      const rubPerTgt = await this.cbrRatePerUnit(tgt);
+      const rubPerTgt = await this.cbrRatePerUnitWithAge(tgt);
       if (rubPerTgt !== null) {
-        return { rate: 1 / rubPerTgt, source: 'cbr' };
+        return { rate: 1 / rubPerTgt.ratePerUnit, source: 'cbr', oldestFetchedAtMs: rubPerTgt.fetchedAt };
       }
       // Fallback: RUB→EUR (CBR) then EUR→target (ECB or peg)
-      const rubPerEur = await this.cbrRatePerUnit('EUR');
+      const rubPerEur = await this.cbrRatePerUnitWithAge('EUR');
       if (rubPerEur === null) return null;
       const eurToTgt = await this.unitRate('EUR', tgt);
       if (eurToTgt === null) return null;
-      const combined = (1 / rubPerEur) * eurToTgt.rate;
-      const leg: FxRouteQuote['source'] = eurToTgt.source === 'identity'
-        ? 'cbr'
-        : (`cbr+${eurToTgt.source}` as FxRouteQuote['source']);
-      return { rate: combined, source: leg };
+      const combined = (1 / rubPerEur.ratePerUnit) * eurToTgt.rate;
+      const leg = eurToTgt.source === 'identity' ? 'cbr' : `cbr+${eurToTgt.source}`;
+      return { rate: combined, source: leg, oldestFetchedAtMs: Math.min(rubPerEur.fetchedAt, eurToTgt.oldestFetchedAtMs) };
     }
 
     // RUB target: cbrRatePerUnit(source) if listed; else source→EUR→RUB
     if (tgt === 'RUB') {
       if (src === 'EUR') {
-        const rubPerEur = await this.cbrRatePerUnit('EUR');
+        const rubPerEur = await this.cbrRatePerUnitWithAge('EUR');
         if (rubPerEur === null) return null;
-        return { rate: rubPerEur, source: 'cbr' };
+        return { rate: rubPerEur.ratePerUnit, source: 'cbr', oldestFetchedAtMs: rubPerEur.fetchedAt };
       }
       // Try CBR direct listing for the source
-      const rubPerSrc = await this.cbrRatePerUnit(src);
+      const rubPerSrc = await this.cbrRatePerUnitWithAge(src);
       if (rubPerSrc !== null) {
-        return { rate: rubPerSrc, source: 'cbr' };
+        return { rate: rubPerSrc.ratePerUnit, source: 'cbr', oldestFetchedAtMs: rubPerSrc.fetchedAt };
       }
       // Fallback: source→EUR (ECB) then EUR→RUB (CBR)
       const srcToEur = await this.unitRate(src, 'EUR');
       if (srcToEur === null) return null;
-      const rubPerEur = await this.cbrRatePerUnit('EUR');
+      const rubPerEur = await this.cbrRatePerUnitWithAge('EUR');
       if (rubPerEur === null) return null;
-      const combined = srcToEur.rate * rubPerEur;
-      const leg: FxRouteQuote['source'] = srcToEur.source === 'identity'
-        ? 'cbr'
-        : (`${srcToEur.source}+cbr` as FxRouteQuote['source']);
-      return { rate: combined, source: leg };
+      const combined = srcToEur.rate * rubPerEur.ratePerUnit;
+      const leg = srcToEur.source === 'identity' ? 'cbr' : `${srcToEur.source}+cbr`;
+      return { rate: combined, source: leg, oldestFetchedAtMs: Math.min(srcToEur.oldestFetchedAtMs, rubPerEur.fetchedAt) };
     }
 
     // ECB direct (both currencies in ECB graph)
     if (isEcbCurrency(src) && isEcbCurrency(tgt)) {
-      const rate = await this.fetchEcbRate(src, tgt);
-      if (rate === null) return null;
-      return { rate, source: 'ecb' };
+      const result = await this.fetchEcbRateWithAge(src, tgt);
+      if (result === null) return null;
+      return { rate: result.rate, source: 'ecb', oldestFetchedAtMs: result.fetchedAt };
     }
 
     // No path found
@@ -253,7 +253,8 @@ export class FxRateService {
   // ─── ECB fetch (generalised) ───────────────────────────────────────────────
 
   /**
-   * Fetch ECB rate for src→tgt.
+   * Fetch ECB rate for src→tgt, returning rate + the fetchedAt timestamp of
+   * the cached entry (i.e. when the data was actually fetched, not call time).
    *
    * Strategy:
    *   - src === 'EUR'  → fetch base=EUR&symbols=tgt directly (rates[tgt])
@@ -265,37 +266,41 @@ export class FxRateService {
    *
    * All values are cached under 'BASE->SYMBOL' keys to share across calls.
    */
-  private async fetchEcbRate(source: string, target: string): Promise<number | null> {
+  private async fetchEcbRateWithAge(source: string, target: string): Promise<{ rate: number; fetchedAt: number } | null> {
     const src = source.toUpperCase();
     const tgt = target.toUpperCase();
     const nowMs = this.clock().getTime();
 
     if (src === 'EUR') {
-      return this.fetchEcbCachedRate('EUR', tgt, nowMs);
+      return this.fetchEcbCachedRateWithAge('EUR', tgt, nowMs);
     }
 
     if (tgt === 'USD') {
-      return this.fetchEcbCachedRate(src, 'USD', nowMs);
+      return this.fetchEcbCachedRateWithAge(src, 'USD', nowMs);
     }
 
     if (tgt === 'EUR') {
-      const eurToSrc = await this.fetchEcbCachedRate('EUR', src, nowMs);
-      if (eurToSrc === null) return null;
-      return 1 / eurToSrc;
+      const entry = await this.fetchEcbCachedRateWithAge('EUR', src, nowMs);
+      if (entry === null) return null;
+      return { rate: 1 / entry.rate, fetchedAt: entry.fetchedAt };
     }
 
     // Cross-rate: (EUR → tgt) / (EUR → src)
-    const eurToSrc = await this.fetchEcbCachedRate('EUR', src, nowMs);
-    const eurToTgt = await this.fetchEcbCachedRate('EUR', tgt, nowMs);
-    if (eurToSrc === null || eurToTgt === null) return null;
-    return eurToTgt / eurToSrc;
+    const entryEurToSrc = await this.fetchEcbCachedRateWithAge('EUR', src, nowMs);
+    const entryEurToTgt = await this.fetchEcbCachedRateWithAge('EUR', tgt, nowMs);
+    if (entryEurToSrc === null || entryEurToTgt === null) return null;
+    return {
+      rate: entryEurToTgt.rate / entryEurToSrc.rate,
+      fetchedAt: Math.min(entryEurToSrc.fetchedAt, entryEurToTgt.fetchedAt),
+    };
   }
 
   /**
    * Fetch and cache the rate for a specific base→symbol pair.
+   * Returns the cached entry (rate + the time it was actually fetched), or null if unavailable.
    * The cache key is 'BASE->SYMBOL'.
    */
-  private async fetchEcbCachedRate(base: string, symbol: string, nowMs: number): Promise<number | null> {
+  private async fetchEcbCachedRateWithAge(base: string, symbol: string, nowMs: number): Promise<{ rate: number; fetchedAt: number } | null> {
     const key = `${base}->${symbol}`;
     let cached = this.cache.get(key);
 
@@ -310,7 +315,7 @@ export class FxRateService {
     if (!cached || nowMs - cached.fetchedAt > this.staleMaxMs) {
       return null;
     }
-    return cached.rate;
+    return { rate: cached.rate, fetchedAt: cached.fetchedAt };
   }
 
   private async fetchRate(source: string, target: string): Promise<number | null> {
@@ -332,10 +337,11 @@ export class FxRateService {
   // ─── CBR fetch ─────────────────────────────────────────────────────────────
 
   /**
-   * Returns RUB per 1 unit of `code`.
+   * Returns RUB per 1 unit of `code`, along with the fetchedAt timestamp of
+   * the cached entry (when the data was actually fetched, not call time).
    * One document fetch populates ALL codes in the cache.
    */
-  private async cbrRatePerUnit(code: string): Promise<number | null> {
+  private async cbrRatePerUnitWithAge(code: string): Promise<{ ratePerUnit: number; fetchedAt: number } | null> {
     const nowMs = this.clock().getTime();
     const cached = this.cbrCache.get(code);
     if (!cached || nowMs - cached.fetchedAt > this.ttlMs) {
@@ -345,7 +351,7 @@ export class FxRateService {
     if (!entry || nowMs - entry.fetchedAt > this.staleMaxMs) {
       return null;
     }
-    return entry.ratePerUnit;
+    return { ratePerUnit: entry.ratePerUnit, fetchedAt: entry.fetchedAt };
   }
 
   private async refreshCbr(nowMs: number): Promise<void> {

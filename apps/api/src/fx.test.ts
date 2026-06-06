@@ -154,4 +154,48 @@ describe('FxRateService.quote (multi-source router)', () => {
     const result = await service.quoteToUsd('EUR', 999, 2);
     expect(result).toMatchObject({ kind: 'ok', quote: { amountMinorUsd: 1084 } });
   });
+
+  it('quotes XOF->USD with label uemoa_peg+ecb (source label fix)', async () => {
+    // 6560 XOF (zero decimal), EUR/USD=1.0852, rate = (1/655.957)*1.0852
+    // Math.round(6560 * (1/655.957) * 1.0852 * (100/1)) = 1085
+    const service = new FxRateService({ fetchImpl: fetchReturning(1.0852), clock });
+    const result = await service.quote('XOF', 'USD', 6560, 0, 2);
+    expect(result).toMatchObject({ kind: 'ok', quote: { amountMinorTarget: 1085, source: 'uemoa_peg+ecb' } });
+  });
+
+  it('quotes XOF->RUB with label uemoa_peg+cbr (source label fix)', async () => {
+    // 65596 XOF (zero decimal), EUR=86.2750 RUB/1 unit, rate = (1/655.957)*86.275
+    // Math.round(65596 * (1/655.957) * 86.275 * (100/1)) = 862754
+    const service = new FxRateService({
+      fetchImpl: fetchReturning(1.0852),
+      cbrFetchImpl: cbrFetchReturning({ EUR: { nominal: 1, value: '86,2750' } }),
+      clock,
+    });
+    const result = await service.quote('XOF', 'RUB', 65596, 0, 2);
+    expect(result).toMatchObject({ kind: 'ok', quote: { amountMinorTarget: 862754, source: 'uemoa_peg+cbr' } });
+  });
+});
+
+describe('FxRateService.quote — fetch-time rateTimestamp', () => {
+  it('rateTimestamp reflects the stale fetch time, not the call time, when serving from cache after TTL expiry', async () => {
+    const T0_ISO = '2026-06-05T10:00:00.000Z';
+    const T0 = Date.parse(T0_ISO);
+    let nowMs = T0;
+    let failing = false;
+    const fetchImpl = vi.fn(async () => {
+      if (failing) throw new Error('network down');
+      return new Response(JSON.stringify({ rates: { USD: 1.5 } }), { status: 200 });
+    });
+    const service = new FxRateService({ fetchImpl, clock: () => new Date(nowMs) });
+
+    // Fresh fetch at T0
+    const fresh = await service.quote('EUR', 'USD', 1000, 2, 2);
+    expect(fresh).toMatchObject({ kind: 'ok', quote: { rateTimestamp: T0_ISO } });
+
+    // TTL expires, provider fails → stale rate served with T0 fetch time
+    failing = true;
+    nowMs = T0 + 2 * 60 * 60_000; // +2h
+    const stale = await service.quote('EUR', 'USD', 1000, 2, 2);
+    expect(stale).toMatchObject({ kind: 'ok', quote: { rateTimestamp: T0_ISO } });
+  });
 });
