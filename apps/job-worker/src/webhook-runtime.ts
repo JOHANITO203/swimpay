@@ -190,6 +190,7 @@ export function createCurrencyMismatchWebhookHandler(enqueuer: PublicWebhookEnqu
         type: 'payment.currency_mismatch',
         createdAt: event.created_at,
         merchantId,
+        includeSignalDisclosure: false,
         data: stripUndefined({
           order_id: orderId,
           external_id: externalOrderId,

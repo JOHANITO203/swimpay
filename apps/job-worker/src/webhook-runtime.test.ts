@@ -439,9 +439,10 @@ describe('webhook runtime integration', () => {
       expected_amount_minor: 1000,
       signal_amount_minor: 13700,
       matched_on: 'reference',
-      confirmation_type: 'notification_signal',
       official_bank_confirmation: false
     });
+    expect('confirmation_type' in event!.data).toBe(false);
+    expect('signal_id' in event!.data).toBe(false);
   });
 
   it('currency_mismatch handler rejects other event types', async () => {

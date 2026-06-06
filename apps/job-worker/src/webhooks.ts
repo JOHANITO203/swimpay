@@ -1025,11 +1025,17 @@ export function createPaymentWebhookEvent<TData extends Record<string, unknown>>
   createdAt: string;
   merchantId: string;
   data: TData;
+  includeSignalDisclosure?: boolean;
 }): PublicWebhookEvent<TData> {
   assertPublicWebhookEventType(params.type);
   if (containsRawPiiMarker(params.data)) {
     throw new Error('Webhook event data must not contain raw PII fields.');
   }
+
+  const disclosure =
+    (params.includeSignalDisclosure ?? true)
+      ? PUBLIC_EVENT_SIGNAL_DISCLOSURE
+      : { official_bank_confirmation: false as const };
 
   return {
     id: params.eventId,
@@ -1038,8 +1044,8 @@ export function createPaymentWebhookEvent<TData extends Record<string, unknown>>
     merchant_id: params.merchantId,
     data: {
       ...params.data,
-      ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
-    }
+      ...disclosure
+    } as TData & typeof PUBLIC_EVENT_SIGNAL_DISCLOSURE
   };
 }
 
