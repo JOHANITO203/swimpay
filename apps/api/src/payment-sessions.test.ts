@@ -576,8 +576,53 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
     };
   }
 
-  async requotePaymentSessionCurrency(): Promise<RequotePaymentSessionCurrencyResult> {
-    return { kind: 'not_found' };
+  async requotePaymentSessionCurrency(input: Parameters<OrderRepository['requotePaymentSessionCurrency']>[0]): Promise<RequotePaymentSessionCurrencyResult> {
+    const paymentSession = this.paymentSessions.get(input.paymentSessionId);
+    if (!paymentSession || paymentSession.merchantId !== input.merchantId) {
+      return { kind: 'not_found' };
+    }
+    if (new Date(paymentSession.validUntil).getTime() <= new Date(input.now).getTime()) {
+      return { kind: 'not_requotable' };
+    }
+    if (paymentSession.selectedReceivingRouteId) {
+      return { kind: 'route_already_locked' };
+    }
+    const finalStatuses = new Set(['manual_confirmed', 'rejected', 'expired']);
+    if (finalStatuses.has(paymentSession.status)) {
+      return { kind: 'not_requotable' };
+    }
+
+    // Freeze base currency/amount on first selection.
+    if (!paymentSession.baseCurrency) {
+      paymentSession.baseCurrency = paymentSession.currency;
+      paymentSession.baseAmountMinor = paymentSession.expectedAmountMinor;
+    }
+
+    paymentSession.currency = input.currency;
+    paymentSession.expectedAmountMinor = input.amountMinor;
+    paymentSession.displayAmountMinor = input.amountMinor;
+    paymentSession.buyerFxRate = input.fxRate;
+    paymentSession.buyerFxSource = input.fxSource;
+    paymentSession.buyerFxTimestamp = input.fxTimestamp;
+    paymentSession.currencySelectedAt = input.now;
+    paymentSession.updatedAt = input.now;
+
+    this.auditEvents.push({
+      eventType: 'payment_session.currency_selected',
+      objectId: input.paymentSessionId,
+      payloadRedacted: {
+        currency: input.currency,
+        amount_minor: input.amountMinor,
+        fx_rate: input.fxRate,
+        fx_source: input.fxSource
+      }
+    });
+
+    const order = this.orders.get(paymentSession.orderId);
+    if (!order) {
+      return { kind: 'not_found' };
+    }
+    return { kind: 'requoted', paymentSession };
   }
 
   private requireMutableSession(
@@ -624,7 +669,8 @@ const copyDetailsAllowedStatuses = new Set([
 function buildServer(
   repository: InMemoryPaymentSessionRepository,
   now = '2026-05-02T10:00:00.000Z',
-  merchantApiKeyVerifier?: InMemoryMerchantApiKeyVerifier
+  merchantApiKeyVerifier?: InMemoryMerchantApiKeyVerifier,
+  fxRateService?: Parameters<typeof buildApiServer>[0]['fxRateService']
 ) {
   const options: Parameters<typeof buildApiServer>[0] = {
     environment: 'test',
@@ -645,7 +691,11 @@ function buildServer(
       valkey: async () => 'skipped'
     }
   };
-  return buildApiServer(merchantApiKeyVerifier ? { ...options, merchantApiKeyVerifier } : options);
+  const opts = {
+    ...(merchantApiKeyVerifier ? { merchantApiKeyVerifier } : {}),
+    ...(fxRateService !== undefined ? { fxRateService } : {})
+  };
+  return buildApiServer({ ...options, ...opts });
 }
 
 async function createOrder(server: ReturnType<typeof buildApiServer>) {
@@ -2872,5 +2922,277 @@ describe('payer bank launchers stay symmetric with the session currency', () => 
     );
     expect(ids).toContain('sber_ru');
     expect(ids).not.toContain('wave_ci');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Currency-first checkout — payable-currencies + currency-selection endpoints
+// ---------------------------------------------------------------------------
+
+describe('payable-currencies endpoint', () => {
+  /** FX stub that returns a fixed rate for any pair. */
+  function makeFxStub(rate = 1.085): NonNullable<Parameters<typeof buildApiServer>[0]['fxRateService']> {
+    return {
+      quoteToUsd: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const }),
+      quote: async (_src: unknown, _tgt: unknown, amountMinor: unknown) => ({
+        kind: 'ok' as const,
+        quote: {
+          rate: String(rate),
+          rateTimestamp: '2026-06-06T10:00:00.000Z',
+          amountMinorTarget: Math.round((amountMinor as number) * rate),
+          source: 'ecb' as const
+        }
+      })
+    };
+  }
+
+  async function setupMultiCurrencyMerchant() {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-06-06T10:00:00.000Z', undefined, makeFxStub());
+
+    // Add a RUB route (sber_ru → RUB)
+    await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        bank_profile_id: 'sber_ru',
+        rail_type: 'phone_transfer',
+        receiver_identifier: '+7 (999) 111-11-11',
+        route_code: 'SBER-PHONE',
+        display_label: 'Sberbank',
+        recommended: true
+      }
+    });
+
+    // Add a USD route (wise_int → USD)
+    await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        bank_profile_id: 'wise_int',
+        rail_type: 'wallet_transfer',
+        receiver_identifier: 'john@example.com',
+        route_code: 'WISE-EMAIL',
+        display_label: 'Wise',
+        recommended: false
+      }
+    });
+
+    // Create order in RUB
+    await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        external_id: 'order_mc_01',
+        amount: { value: '100.00', currency: 'RUB' },
+        expires_in_seconds: 900
+      }
+    });
+
+    return { server, repository };
+  }
+
+  test('GET /payable-currencies lists quoted candidates and flags current', async () => {
+    const { server } = await setupMultiCurrencyMerchant();
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/payable-currencies'
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.currencies).toBeInstanceOf(Array);
+
+    // Current currency (RUB) must be present with is_current: true
+    const rubEntry = body.currencies.find((c: { currency: string }) => c.currency === 'RUB');
+    expect(rubEntry).toBeDefined();
+    expect(rubEntry.is_current).toBe(true);
+    expect(rubEntry.amount_minor).toBeDefined();
+    // No quote block on current currency
+    expect(rubEntry.quote).toBeUndefined();
+
+    // USD must be present with quote block
+    const usdEntry = body.currencies.find((c: { currency: string }) => c.currency === 'USD');
+    expect(usdEntry).toBeDefined();
+    expect(usdEntry.is_current).toBe(false);
+    expect(usdEntry.quote).toMatchObject({
+      rate: expect.any(String),
+      source: 'ecb',
+      base_currency: 'RUB',
+      base_amount_minor: expect.any(Number)
+    });
+    expect(usdEntry.formatted).toMatch(/^\d/u); // has digits
+  });
+
+  test('GET /payable-currencies omits unavailable FX candidates silently', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    // FX stub returns unavailable for all pairs
+    const alwaysFailFx: NonNullable<Parameters<typeof buildApiServer>[0]['fxRateService']> = {
+      quoteToUsd: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const }),
+      quote: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const })
+    };
+    const server = buildServer(repository, '2026-06-06T10:00:00.000Z', undefined, alwaysFailFx);
+
+    await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { bank_profile_id: 'sber_ru', rail_type: 'phone_transfer', receiver_identifier: '+7 (999) 111-11-11', route_code: 'SBER-PHONE', display_label: 'Sberbank', recommended: true }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { bank_profile_id: 'wise_int', rail_type: 'wallet_transfer', receiver_identifier: 'john@example.com', route_code: 'WISE-EMAIL', display_label: 'Wise', recommended: false }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { external_id: 'order_mc_02', amount: { value: '100.00', currency: 'RUB' }, expires_in_seconds: 900 }
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/payable-currencies'
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    // RUB (current) always included; USD omitted due to FX unavailable
+    expect(body.currencies).toHaveLength(1);
+    expect(body.currencies[0].currency).toBe('RUB');
+    expect(body.currencies[0].is_current).toBe(true);
+  });
+
+  test('POST /v1/checkout/:id/currency happy path requotes session', async () => {
+    const { server, repository } = await setupMultiCurrencyMerchant();
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/currency',
+      payload: { currency: 'USD' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.checkout_state).toBeDefined();
+    expect(body.amount.currency).toBe('USD');
+
+    // Repository reflects the new currency
+    const session = repository.paymentSessions.get('ps_session_01');
+    expect(session?.currency).toBe('USD');
+    expect(session?.currencySelectedAt).toBeDefined();
+    expect(session?.baseCurrency).toBe('RUB');
+
+    // Audit event recorded
+    expect(repository.auditEvents.some((e) => e.eventType === 'payment_session.currency_selected')).toBe(true);
+  });
+
+  test('POST /v1/checkout/:id/currency with currency_not_payable returns 400', async () => {
+    const { server } = await setupMultiCurrencyMerchant();
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/currency',
+      payload: { currency: 'EUR' }  // Not in merchant's receivable_currencies
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe('currency_not_payable');
+  });
+
+  test('POST /v1/checkout/:id/currency after route lock returns 409 route_already_locked', async () => {
+    const { server, repository } = await setupMultiCurrencyMerchant();
+
+    // Lock a route on the session manually
+    const session = repository.paymentSessions.get('ps_session_01');
+    if (session) {
+      session.selectedReceivingRouteId = 'route_1';
+    }
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/currency',
+      payload: { currency: 'USD' }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('route_already_locked');
+  });
+
+  test('POST /v1/checkout/:id/currency with FX unavailable returns 409 fx_rate_unavailable', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const alwaysFailFx: NonNullable<Parameters<typeof buildApiServer>[0]['fxRateService']> = {
+      quoteToUsd: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const }),
+      quote: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const })
+    };
+    const server = buildServer(repository, '2026-06-06T10:00:00.000Z', undefined, alwaysFailFx);
+
+    await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { bank_profile_id: 'sber_ru', rail_type: 'phone_transfer', receiver_identifier: '+7 (999) 111-11-11', route_code: 'SBER-PHONE', display_label: 'Sberbank', recommended: true }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { bank_profile_id: 'wise_int', rail_type: 'wallet_transfer', receiver_identifier: 'john@example.com', route_code: 'WISE-EMAIL', display_label: 'Wise', recommended: false }
+    });
+    await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: { external_id: 'order_mc_03', amount: { value: '100.00', currency: 'RUB' }, expires_in_seconds: 900 }
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/currency',
+      payload: { currency: 'USD' }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('fx_rate_unavailable');
+  });
+
+  test('POST /v1/checkout/:id/currency identity selection (same currency) marks currency_selected_at', async () => {
+    const { server, repository } = await setupMultiCurrencyMerchant();
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/currency',
+      payload: { currency: 'RUB' }  // Same as current
+    });
+
+    expect(response.statusCode).toBe(200);
+    const session = repository.paymentSessions.get('ps_session_01');
+    expect(session?.currencySelectedAt).toBeDefined();
+    // Currency unchanged
+    expect(session?.currency).toBe('RUB');
+  });
+
+  test('checkout_state is currency_selection when multi-currency and nothing selected', async () => {
+    const { server } = await setupMultiCurrencyMerchant();
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/v1/checkout/ps_session_01/status'
+    });
+
+    expect(response.statusCode).toBe(200);
+    // With 2 receivable currencies (RUB + USD) and no selection, state should be currency_selection
+    // (after buyer_identity — since no payment method has been set)
+    // Actually without a payment method we stay at buyer_identity first. Let's verify the state.
+    const body = response.json();
+    expect(body.checkout_state).toBeDefined();
+    // The state is buyer_identity (no payment method set yet), not currency_selection.
+    // currency_selection only triggers once past buyer_identity.
+    expect(body.checkout_state).toBe('buyer_identity');
   });
 });

@@ -39,6 +39,7 @@ export type PaymentSessionStatus = (typeof PaymentSessionStatuses)[number];
 
 export const CheckoutSessionStates = [
   'buyer_identity',
+  'currency_selection',
   'receiver_bank_selection',
   'receiving_route_selection',
   'payer_bank_launcher_selection',
@@ -490,6 +491,14 @@ export interface CheckoutStateInput {
   selectedReceivingRouteId?: string | null | undefined;
   selectedPayerBankLauncherId?: string | null | undefined;
   paymentInstructionsShownAt?: string | null | undefined;
+  /** Number of currencies the merchant can receive for this session. When >= 2 and no
+   * currency selection has been made yet, the checkout must present the currency step.
+   * Undefined means the caller has not provided this information (legacy path — behaviour
+   * is byte-identical to before this field was added). */
+  payableCurrencyCount?: number | undefined;
+  /** ISO timestamp of when the buyer last selected a currency (set by requotePaymentSessionCurrency).
+   * Non-null means the currency step has already been completed. */
+  currencySelectedAt?: string | null | undefined;
 }
 
 export function getReceiverBankOption(receiverBankId: string): ReceiverBankOption | null {
@@ -544,6 +553,18 @@ export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): Che
       if (!input.paymentMethod && !input.selectedReceiverBankId) {
         return 'buyer_identity';
       }
+      // currency_selection: shown when >= 2 receivable currencies exist, no currency
+      // choice has been made yet, and no bank/route is already locked.
+      // payableCurrencyCount undefined = legacy caller, skip this step for back-compat.
+      if (
+        input.payableCurrencyCount !== undefined &&
+        input.payableCurrencyCount >= 2 &&
+        !input.currencySelectedAt &&
+        !input.selectedReceiverBankId &&
+        !input.selectedReceivingRouteId
+      ) {
+        return 'currency_selection';
+      }
       if (!input.selectedReceiverBankId) {
         return 'receiver_bank_selection';
       }
@@ -563,6 +584,7 @@ export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): Che
 export function mapCheckoutStateToBuyerSafeStatus(state: CheckoutSessionState): BuyerSafeCheckoutStatus {
   switch (state) {
     case 'buyer_identity':
+    case 'currency_selection':
     case 'receiver_bank_selection':
     case 'receiving_route_selection':
     case 'payer_bank_launcher_selection':

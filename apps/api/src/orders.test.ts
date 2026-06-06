@@ -17,7 +17,7 @@ import {
   type SaveExpectedPaymentProfileInput,
   type StoredMerchantReceivingRouteRecord
 } from './orders.js';
-import type { FxQuoteResult } from './fx.js';
+import type { FxQuoteResult, FxRouteResult } from './fx.js';
 
 describe('West Africa mobile money receiving routes', () => {
   const baseInput = {
@@ -907,7 +907,7 @@ function buildTestServer(repository: InMemoryOrderRepository, metrics?: InMemory
 
 function buildProductionOrderServer(
   repository: InMemoryOrderRepository,
-  opts?: { fxRateService?: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult> } }
+  opts?: { fxRateService?: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult>; quote: (...args: unknown[]) => Promise<FxRouteResult> } }
 ) {
   const merchantApiKeyVerifier = new InMemoryMerchantApiKeyVerifier();
   const merchantIntegrationRepository = new InMemoryMerchantIntegrationRepository();
@@ -1543,11 +1543,12 @@ describe('order api', () => {
 
   test('api_key symmetry gate runs post-FX-conversion: display_price €9.99 on RUB-only merchant yields 409 merchant_currency_route_required with requested_currency=USD', async () => {
     const repository = new InMemoryOrderRepository();
-    const dpFxStub: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult> } = {
+    const dpFxStub: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult>; quote: (...args: unknown[]) => Promise<FxRouteResult> } = {
       quoteToUsd: async () => ({
         kind: 'ok' as const,
         quote: { rate: '1.0852', rateTimestamp: '2026-06-05T10:00:00.000Z', amountMinorUsd: 1084 }
-      })
+      }),
+      quote: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const })
     };
     const { server, merchantApiKeyVerifier, merchantIntegrationRepository } = buildProductionOrderServer(repository, { fxRateService: dpFxStub });
     merchantApiKeyVerifier.seedRawKey('sk_live_dp_sym', {
@@ -1577,14 +1578,15 @@ describe('order api', () => {
 
   // --- display_price pipeline tests (Task 8) ---
 
-  const fxStub: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult> } = {
+  const fxStub: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult>; quote: (...args: unknown[]) => Promise<FxRouteResult> } = {
     quoteToUsd: async () => ({
       kind: 'ok' as const,
       quote: { rate: '1.0852', rateTimestamp: '2026-06-05T10:00:00.000Z', amountMinorUsd: 1084 }
-    })
+    }),
+    quote: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const })
   };
 
-  function buildDisplayPriceServer(repository: InMemoryOrderRepository, fx: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult> } = fxStub) {
+  function buildDisplayPriceServer(repository: InMemoryOrderRepository, fx: { quoteToUsd: (...args: unknown[]) => Promise<FxQuoteResult>; quote: (...args: unknown[]) => Promise<FxRouteResult> } = fxStub) {
     return buildApiServer({
       environment: 'test',
       orderRepository: repository,
@@ -1690,7 +1692,8 @@ describe('order api', () => {
 
   test('display_price FX unavailable: fx stub returns unavailable → 409', async () => {
     const failFx: typeof fxStub = {
-      quoteToUsd: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const })
+      quoteToUsd: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const }),
+      quote: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const })
     };
     const repository = new InMemoryOrderRepository();
     repository.listReceiverBanksForCheckout = async (merchantId: string) => [

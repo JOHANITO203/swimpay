@@ -94,6 +94,9 @@ export interface PaymentSessionReadResponse {
   unavailable_reason?: CheckoutUnavailableReason | undefined;
   fallback_actions?: readonly CheckoutFallbackAction[] | undefined;
   return_url?: string | undefined;
+  /** Present when baseCurrency is set and differs from the current session currency.
+   * Enables dual-currency display: shows the original base amount alongside the quoted amount. */
+  base_amount?: { value: string; currency: string } | undefined;
   official_bank_confirmation: false;
 }
 
@@ -140,6 +143,7 @@ export interface CheckoutStatusResponse {
   fallback_actions?: readonly CheckoutFallbackAction[] | undefined;
   receiver_bank_status?: ReceiverBankOption['status'] | undefined;
   return_url?: string | undefined;
+  base_amount?: { value: string; currency: string } | undefined;
   official_bank_confirmation: false;
 }
 
@@ -241,9 +245,15 @@ export function toPaymentSessionReadResponse(params: {
   paymentSession: StoredPaymentSessionRecord;
   now: Date;
   availableRoutes?: readonly MerchantReceivingRoute[] | undefined;
+  /** Count of currencies the merchant can receive. When provided and >= 2, triggers the
+   * currency_selection step if no currency has been chosen yet.
+   * Computed from merchant receivable_currencies BEFORE FX quoting (availability of FX
+   * only affects which currencies appear in the GET /payable-currencies listing, not
+   * whether the step itself is shown). */
+  payableCurrencyCount?: number | undefined;
 }): PaymentSessionReadResponse {
   const status = resolvePaymentSessionStatusForRead(params.paymentSession, params.now);
-  const checkoutState = checkoutStateForPaymentSession(params.paymentSession, status);
+  const checkoutState = checkoutStateForPaymentSession(params.paymentSession, status, params.payableCurrencyCount);
   const availability = params.availableRoutes ? buildCheckoutAvailability(params.paymentSession, params.availableRoutes) : null;
   const senderBank = params.paymentSession.senderBankId
     ? getPayerBankLauncherOption(params.paymentSession.senderBankId)
@@ -300,6 +310,16 @@ export function toPaymentSessionReadResponse(params: {
     unavailable_reason: availability?.unavailable_reason,
     fallback_actions: availability?.fallback_actions,
     return_url: params.order.returnUrl,
+    // Dual-currency display: show original base amount when a re-quote has changed the currency.
+    base_amount:
+      params.paymentSession.baseCurrency &&
+      params.paymentSession.baseAmountMinor !== undefined &&
+      params.paymentSession.baseCurrency !== params.paymentSession.currency
+        ? {
+            value: formatAmountMinor(params.paymentSession.baseAmountMinor, params.paymentSession.baseCurrency),
+            currency: params.paymentSession.baseCurrency
+          }
+        : undefined,
     official_bank_confirmation: false
   }) as unknown as PaymentSessionReadResponse;
 }
@@ -309,6 +329,7 @@ export function toCheckoutStatusResponse(params: {
   paymentSession: StoredPaymentSessionRecord;
   now: Date;
   availableRoutes?: readonly MerchantReceivingRoute[] | undefined;
+  payableCurrencyCount?: number | undefined;
 }): CheckoutStatusResponse {
   const read = toPaymentSessionReadResponse(params);
   const receiverBank = params.paymentSession.selectedReceiverBankId
@@ -643,7 +664,8 @@ export function buildCheckoutActionResponse(params: {
 
 function checkoutStateForPaymentSession(
   paymentSession: StoredPaymentSessionRecord,
-  status: PaymentSessionStatus
+  status: PaymentSessionStatus,
+  payableCurrencyCount?: number | undefined
 ): CheckoutSessionState {
   return mapPaymentSessionToCheckoutState({
     paymentSessionStatus: status,
@@ -651,7 +673,11 @@ function checkoutStateForPaymentSession(
     selectedReceiverBankId: paymentSession.selectedReceiverBankId,
     selectedReceivingRouteId: paymentSession.selectedReceivingRouteId,
     selectedPayerBankLauncherId: paymentSession.selectedPayerBankLauncherId,
-    paymentInstructionsShownAt: paymentSession.paymentInstructionsShownAt
+    paymentInstructionsShownAt: paymentSession.paymentInstructionsShownAt,
+    // Thread currency-selection gating. When undefined, mapPaymentSessionToCheckoutState
+    // preserves byte-identical legacy behavior (the currency_selection state is never reached).
+    payableCurrencyCount,
+    currencySelectedAt: paymentSession.currencySelectedAt
   });
 }
 
