@@ -69,9 +69,17 @@ export interface ReceiverSignalRequestBody {
   received_at?: string | undefined;
   snapshot_count?: number | undefined;
   coalesced?: boolean | undefined;
+  channel_id?: string | undefined;
   payload: ReceiverSignalPayload;
   signature: string;
   signature_payload?: Record<string, unknown> | undefined;
+}
+
+export interface BankNotificationChannelRow {
+  bank_profile_id: string;
+  channel_id: string;
+  status: 'pending' | 'confirmed' | 'rejected';
+  sample_count: number;
 }
 
 export interface StoredReceiverSignal {
@@ -103,6 +111,8 @@ export interface StoredReceiverSignal {
   parserVersion: string;
   signatureValid: true;
   status: 'received';
+  channelId?: string | undefined;
+  channelRecognized?: boolean | undefined;
 }
 
 export interface SignalIngestionInput {
@@ -285,6 +295,29 @@ export class PgSignalRepository implements ReceiverSignalRepository {
         return { kind: 'package_signature_rejected' };
       }
 
+      // Channel-ID learning: never blocks ingestion.
+      if (input.signal.channelId) {
+        const channelRow = await client.query(
+          `SELECT status FROM bank_notification_channels
+           WHERE bank_profile_id = $1 AND channel_id = $2`,
+          [input.signal.bankProfileId, input.signal.channelId]
+        );
+        if (channelRow.rowCount && channelRow.rowCount > 0) {
+          const channelStatus = String((channelRow.rows[0] as { status: string }).status);
+          if (channelStatus === 'confirmed') {
+            input.signal.channelRecognized = true;
+          }
+        } else {
+          await client.query(
+            `INSERT INTO bank_notification_channels (bank_profile_id, channel_id, status, sample_count)
+             VALUES ($1, $2, 'pending', 1)
+             ON CONFLICT (bank_profile_id, channel_id)
+             DO UPDATE SET sample_count = bank_notification_channels.sample_count + 1`,
+            [input.signal.bankProfileId, input.signal.channelId]
+          );
+        }
+      }
+
       await client.query(
         `INSERT INTO notification_signals (
           id, merchant_id, device_id, bank_profile_id, event_id, notification_hash, semantic_hash,
@@ -292,14 +325,14 @@ export class PgSignalRepository implements ReceiverSignalRepository {
           receiver_confidence, evidence_envelope_json,
           local_counter, observed_at, received_at, amount_minor, currency,
           sender_phone_hmac, sender_phone_masked, reference_hmac, reference_code_masked,
-          direction_label, parser_version, signature_valid, status, created_at
+          direction_label, parser_version, signature_valid, status, created_at, channel_id
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7,
           $8, $9, $10, $11, $12, $13,
           $14, $15::jsonb,
           $16, $17, $18, $19, $20,
           $21, $22, $23, $24,
-          $25, $26, $27, $28, $29
+          $25, $26, $27, $28, $29, $30
         )`,
         [
           input.signal.id,
@@ -330,7 +363,8 @@ export class PgSignalRepository implements ReceiverSignalRepository {
           input.signal.parserVersion,
           input.signal.signatureValid,
           input.signal.status,
-          input.signal.receivedAt
+          input.signal.receivedAt,
+          input.signal.channelId ?? null
         ]
       );
 
@@ -407,6 +441,7 @@ export function validateReceiverSignalBody(body: unknown): ReceiverSignalValidat
         received_at: value.received_at,
         snapshot_count: value.snapshot_count,
         coalesced: value.coalesced,
+        channel_id: value.channel_id,
         payload: {
           title_redacted: value.redacted_title,
           body_redacted: value.redacted_body,
@@ -646,6 +681,7 @@ export function buildSignalIngestionInput(params: {
       parserVersion: 'android-local-v1',
       signatureValid: true,
       status: 'received',
+      channelId: params.body.channel_id,
       evidenceEnvelope: buildSignalEvidenceEnvelope({
         body: params.body,
         signalId: params.signalId,

@@ -2443,6 +2443,7 @@ export interface AndroidReceiverSignalUploadRequest extends AndroidSignalCoalesc
   signal_quality_hint?: number;
   redacted_title?: string;
   redacted_body?: string;
+  channel_id?: string;
   payload_hash: string;
   raw_text_present: false;
   signature: string;
@@ -2946,6 +2947,7 @@ export function validateAndroidReceiverSignalUploadRequest(
   }
   assignIfDefined(value, 'redacted_title', optionalString(body.redacted_title));
   assignIfDefined(value, 'redacted_body', optionalString(body.redacted_body));
+  assignIfDefined(value, 'channel_id', optionalString(body.channel_id));
 
   return {
     valid: true,

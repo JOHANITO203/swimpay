@@ -6,6 +6,7 @@ import { buildApiServer } from './server.js';
 import {
   ReceiverSignatureAlgorithms,
   verifyReceiverSignalSignature,
+  type BankNotificationChannelRow,
   type ReceiverSignalDevice,
   type ReceiverSignalRepository,
   type SignalIngestionInput,
@@ -444,6 +445,95 @@ describe('receiver signal ingestion api', () => {
     expect(response.body).not.toContain('raw bank notification');
     expect(metrics.counterValue(MetricNames.RECEIVER_SIGNALS_REJECTED_TOTAL)).toBe(1);
   });
+
+  describe('channel-id capture and learning', () => {
+    it('marks channel_recognized when channel_id matches a confirmed bank_notification_channels row', async () => {
+      const repository = new FakeSignalRepository();
+      // Seed a confirmed channel row
+      repository.seedChannel('sber_ru', 'sber_push_channel', 'confirmed');
+
+      const server = buildApiServer({
+        environment: 'test',
+        healthChecks: skippedHealthChecks(),
+        signalRepository: repository,
+        eventPublisher: new FakeEventPublisher(),
+        signalIdGenerator: () => 'sig_ch_01'
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/v1/receiver/signals',
+        payload: createValidSignal({ channel_id: 'sber_push_channel', event_id: 'evt_ch_01', notification_hash: 'd'.repeat(64) })
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(repository.storedSignals).toHaveLength(1);
+      expect(repository.storedSignals[0]?.signal.channelId).toBe('sber_push_channel');
+      expect(repository.storedSignals[0]?.signal.channelRecognized).toBe(true);
+    });
+
+    it('upserts a pending bank_notification_channels row for an unknown channel_id and still ingests the signal', async () => {
+      const repository = new FakeSignalRepository();
+      const server = buildApiServer({
+        environment: 'test',
+        healthChecks: skippedHealthChecks(),
+        signalRepository: repository,
+        eventPublisher: new FakeEventPublisher(),
+        signalIdGenerator: () => 'sig_ch_02'
+      });
+
+      // First occurrence — should create a pending row with sample_count = 1
+      const response1 = await server.inject({
+        method: 'POST',
+        url: '/v1/receiver/signals',
+        payload: createValidSignal({ channel_id: 'unknown_channel', event_id: 'evt_ch_02', notification_hash: 'e'.repeat(64) })
+      });
+
+      expect(response1.statusCode).toBe(201);
+      expect(repository.storedSignals).toHaveLength(1);
+      expect(repository.storedSignals[0]?.signal.channelId).toBe('unknown_channel');
+      expect(repository.storedSignals[0]?.signal.channelRecognized).toBe(false);
+
+      const row1 = repository.getChannel('sber_ru', 'unknown_channel');
+      expect(row1).toBeDefined();
+      expect(row1?.status).toBe('pending');
+      expect(row1?.sample_count).toBe(1);
+
+      // Second occurrence — sample_count should increment to 2
+      const response2 = await server.inject({
+        method: 'POST',
+        url: '/v1/receiver/signals',
+        payload: createValidSignal({ channel_id: 'unknown_channel', event_id: 'evt_ch_03', notification_hash: 'f'.repeat(64), local_counter: 2 })
+      });
+
+      expect(response2.statusCode).toBe(201);
+      const row2 = repository.getChannel('sber_ru', 'unknown_channel');
+      expect(row2?.sample_count).toBe(2);
+    });
+
+    it('ingests normally when no channel_id is provided (unchanged behavior)', async () => {
+      const repository = new FakeSignalRepository();
+      const server = buildApiServer({
+        environment: 'test',
+        healthChecks: skippedHealthChecks(),
+        signalRepository: repository,
+        eventPublisher: new FakeEventPublisher(),
+        signalIdGenerator: () => 'sig_ch_04'
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/v1/receiver/signals',
+        payload: createValidSignal({ event_id: 'evt_ch_04', notification_hash: 'g'.repeat(64) })
+        // no channel_id
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(repository.storedSignals).toHaveLength(1);
+      expect(repository.storedSignals[0]?.signal.channelId).toBeUndefined();
+      expect(repository.storedSignals[0]?.signal.channelRecognized).toBeUndefined();
+    });
+  });
 });
 
 function skippedHealthChecks() {
@@ -473,6 +563,16 @@ class FakeSignalRepository implements ReceiverSignalRepository {
   };
   private readonly eventIds = new Set<string>();
   private readonly notificationHashes = new Set<string>();
+  private readonly channels = new Map<string, BankNotificationChannelRow>();
+
+  public seedChannel(bankProfileId: string, channelId: string, status: 'pending' | 'confirmed' | 'rejected'): void {
+    const key = `${bankProfileId}:${channelId}`;
+    this.channels.set(key, { bank_profile_id: bankProfileId, channel_id: channelId, status, sample_count: 1 });
+  }
+
+  public getChannel(bankProfileId: string, channelId: string): BankNotificationChannelRow | undefined {
+    return this.channels.get(`${bankProfileId}:${channelId}`);
+  }
 
   public async getReceiverDevice(params: {
     merchantId: string;
@@ -496,6 +596,28 @@ class FakeSignalRepository implements ReceiverSignalRepository {
 
     if (input.signal.localCounter <= this.device.lastLocalCounter) {
       return { kind: 'local_counter_regression' };
+    }
+
+    // Channel learning logic (mirrors PgSignalRepository)
+    if (input.signal.channelId) {
+      const key = `${input.signal.bankProfileId}:${input.signal.channelId}`;
+      const existing = this.channels.get(key);
+      if (existing) {
+        if (existing.status === 'confirmed') {
+          input.signal.channelRecognized = true;
+        } else {
+          existing.sample_count += 1;
+          input.signal.channelRecognized = false;
+        }
+      } else {
+        this.channels.set(key, {
+          bank_profile_id: input.signal.bankProfileId,
+          channel_id: input.signal.channelId,
+          status: 'pending',
+          sample_count: 1
+        });
+        input.signal.channelRecognized = false;
+      }
     }
 
     this.eventIds.add(input.signal.eventId);
