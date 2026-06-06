@@ -3195,4 +3195,86 @@ describe('payable-currencies endpoint', () => {
     // currency_selection only triggers once past buyer_identity.
     expect(body.checkout_state).toBe('buyer_identity');
   });
+
+  // ---------------------------------------------------------------------------
+  // Minor finding 10: GET /v1/payment-sessions/:id must surface currency_selection
+  // ---------------------------------------------------------------------------
+
+  test('GET /v1/payment-sessions/:id returns currency_selection after buyer_identity (RUB sber_ru + XOF orange_money_ci)', async () => {
+    // Build a merchant with two routes spanning two receivable currencies:
+    //   sber_ru    → phone_transfer → RUB
+    //   orange_money_ci → mobile_money → XOF
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-06-06T10:00:00.000Z', undefined, makeFxStub());
+
+    // Register sber_ru phone route (RUB)
+    await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        bank_profile_id: 'sber_ru',
+        rail_type: 'phone_transfer',
+        receiver_identifier: '+7 (999) 111-11-11',
+        route_code: 'SBER-PHONE-MCF',
+        display_label: 'Sberbank',
+        recommended: true
+      }
+    });
+
+    // Register orange_money_ci mobile_money route (XOF)
+    await server.inject({
+      method: 'POST',
+      url: '/v1/merchant/receiving-routes',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        bank_profile_id: 'orange_money_ci',
+        rail_type: 'mobile_money',
+        receiver_identifier: '+225 07 123 45 67',
+        route_code: 'OM-CI-MCF',
+        display_label: 'Orange Money',
+        recommended: false
+      }
+    });
+
+    // Create an order in RUB
+    await server.inject({
+      method: 'POST',
+      url: '/v1/orders',
+      headers: { authorization: 'Bearer test_mch_01' },
+      payload: {
+        external_id: 'order_mc_10',
+        amount: { value: '100.00', currency: 'RUB' },
+        expires_in_seconds: 900
+      }
+    });
+
+    // At this point the session is at buyer_identity (no paymentMethod, no bank selected).
+    const beforeIdentity = await server.inject({ method: 'GET', url: '/v1/payment-sessions/ps_session_01' });
+    expect(beforeIdentity.statusCode).toBe(200);
+    expect(beforeIdentity.json().checkout_state).toBe('buyer_identity');
+
+    // Advance past buyer_identity: set paymentMethod without selecting a receiver bank.
+    // This mirrors what happens when a buyer chooses a payment method but the merchant
+    // serves multiple currencies — the currency picker must be shown next.
+    repository.paymentSessions.get('ps_session_01')!.paymentMethod = 'sbp';
+
+    // Primary assertion: GET /v1/payment-sessions/:id now returns currency_selection.
+    const afterIdentity = await server.inject({ method: 'GET', url: '/v1/payment-sessions/ps_session_01' });
+    expect(afterIdentity.statusCode).toBe(200);
+    expect(afterIdentity.json().checkout_state).toBe('currency_selection');
+
+    // After POST /v1/checkout/:id/currency (identity selection — keep RUB),
+    // currencySelectedAt is stamped and the state should advance to receiver_bank_selection.
+    const currencySelect = await server.inject({
+      method: 'POST',
+      url: '/v1/checkout/ps_session_01/currency',
+      payload: { currency: 'RUB' }
+    });
+    expect(currencySelect.statusCode).toBe(200);
+
+    const afterCurrency = await server.inject({ method: 'GET', url: '/v1/payment-sessions/ps_session_01' });
+    expect(afterCurrency.statusCode).toBe(200);
+    expect(afterCurrency.json().checkout_state).toBe('receiver_bank_selection');
+  });
 });

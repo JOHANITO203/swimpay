@@ -1472,12 +1472,20 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       result.paymentSession.id
     );
 
+    // Compute payable currency count from routes — same logic as the status endpoint.
+    // When >= 2 currencies are available and no currency has been chosen yet, the
+    // checkout_state will be 'currency_selection' so the web checkout can render the
+    // currency picker.  Passing undefined here (old behaviour) would have left the state
+    // stuck at buyer_identity / receiver_bank_selection and the picker would never appear.
+    const payableCurrencyCount = [...new Set(availableRoutes.map((r) => receivingCurrencyForBankProfile(r.bank_profile_id)))].length;
+
     return reply.status(200).send(
       toPaymentSessionReadResponse({
         order: result.order,
         paymentSession: result.paymentSession,
         now: clock(),
-        availableRoutes
+        availableRoutes,
+        payableCurrencyCount
       })
     );
   });
