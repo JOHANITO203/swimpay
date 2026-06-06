@@ -69,7 +69,9 @@ export type StructuredCheckoutFallbackCode =
   | 'amount_lease_unavailable'
   | 'checkout_selection_incomplete'
   | 'checkout_session_expired'
-  | 'no_receiving_route_for_method';
+  | 'no_receiving_route_for_method'
+  | 'fx_rate_unavailable'
+  | 'route_already_locked';
 
 export interface PayableCurrencyOption {
   currency: string;
@@ -484,7 +486,9 @@ const structuredCheckoutFallbackCodes = new Set<StructuredCheckoutFallbackCode>(
   'amount_lease_unavailable',
   'checkout_selection_incomplete',
   'checkout_session_expired',
-  'no_receiving_route_for_method'
+  'no_receiving_route_for_method',
+  'fx_rate_unavailable',
+  'route_already_locked'
 ]);
 
 const checkoutUnavailableReasons = new Set<CheckoutUnavailableReason>([
@@ -943,15 +947,28 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     const params = request.params as { paymentSessionId: string };
     const body = request.body as { currency?: string };
     const currency = typeof body.currency === 'string' ? body.currency : '';
+    let session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
     try {
       await checkoutSessionProvider.selectCurrency(params.paymentSessionId, currency);
-    } catch {
-      // fall through — redirect to GET with fresh state
+      session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    } catch (error) {
+      const renderedFallback = await renderStructuredCheckoutFallbackFromError({
+        error,
+        paymentSessionId: params.paymentSessionId,
+        checkoutSessionProvider,
+        recipient: options.recipient ?? defaultRecipient,
+        session: session ?? undefined,
+        options: checkoutRenderOptionsFromRequest(request)
+      });
+      if (!renderedFallback) {
+        throw error;
+      }
+      reply.type('text/html; charset=utf-8');
+      return renderedFallback;
     }
     if (shouldRedirectCheckoutFormPost(request.headers)) {
       return reply.status(303).redirect(checkoutRedirectPath(params.paymentSessionId, request));
     }
-    const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
     if (!session) return reply.status(404).send({ error: 'not_found' });
     return reply.status(200).send(toCheckoutStatusResponse(session));
   });

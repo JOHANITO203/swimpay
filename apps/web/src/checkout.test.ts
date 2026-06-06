@@ -1856,6 +1856,54 @@ describe('hosted checkout web foundation', () => {
       expect(response.body).toContain('≈ 999.00 RUB');
     });
 
+    it('does not show approx line on the base-currency (RUB) card', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated',
+        base_amount: { value: '999.00', currency: 'RUB' }
+      };
+      // Only the RUB base-currency option — no quote, is_current
+      provider.payableCurrencies = [
+        { currency: 'RUB', amount_minor: 99900, formatted: '999 ₽', is_current: true, quote: undefined }
+      ];
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Payer 999 ₽');
+      // Base-currency card must NOT carry the approx line
+      expect(response.body).not.toContain('≈ 999.00 RUB');
+    });
+
+    it('renders structured fallback when selectCurrency throws fx_rate_unavailable', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated',
+        base_amount: { value: '999.00', currency: 'RUB' }
+      };
+      provider.payableCurrencies = threeCurrencies;
+      provider.selectCurrency = async () => {
+        throw structuredCheckoutConflict('fx_rate_unavailable', {});
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/checkout/ps_01/currency',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        payload: 'currency=USD'
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('checkout-stage-icon');
+      expect(response.body).not.toContain('Internal Server Error');
+    });
+
     it('instructions step shows approx base when base_amount differs from payable currency', async () => {
       const provider = new FakeCheckoutSessionProvider();
       provider.session = {
@@ -1909,7 +1957,9 @@ type StructuredCheckoutErrorCode =
   | 'amount_lease_unavailable'
   | 'checkout_selection_incomplete'
   | 'checkout_session_expired'
-  | 'no_receiving_route_for_method';
+  | 'no_receiving_route_for_method'
+  | 'fx_rate_unavailable'
+  | 'route_already_locked';
 
 function stripScriptsAndStyles(html: string): string {
   return html
