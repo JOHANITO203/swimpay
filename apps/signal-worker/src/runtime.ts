@@ -125,6 +125,15 @@ export interface SignalRuntimeIdGenerator {
   auditEventId(): string;
 }
 
+export interface CrossCurrencyProbeHit {
+  orderId: string;
+  externalId: string;
+  paymentSessionId: string;
+  expectedCurrency: string;
+  expectedAmountMinor: number;
+  matchedOn: 'reference' | 'amount';
+}
+
 export interface SignalRuntimeRepository {
   findSignal(input: { signalId?: string | undefined; eventId?: string | undefined }): Promise<SignalRuntimeSignal | null>;
   getExistingResult(signalId: string): Promise<SignalRuntimeResult | null>;
@@ -135,6 +144,14 @@ export interface SignalRuntimeRepository {
   createReview(input: RuntimeReviewInput): Promise<{ created: boolean; reviewId: string }>;
   writeAuditEvent(event: SignalRuntimeAuditEvent): Promise<void>;
   publishInternalEvent(event: InternalEventEnvelope): Promise<void>;
+  probeCrossCurrencySessions(input: {
+    merchantId: string;
+    signalCurrency: string;
+    amountMinor: number | undefined;
+    referenceCode: string | undefined;
+    observedAt: string;
+  }): Promise<CrossCurrencyProbeHit | null>;
+  markCurrencyMismatchNotified(signalId: string, notifiedAt: string): Promise<boolean>;
 }
 
 export interface SignalRuntimeProcessorOptions {
@@ -148,6 +165,7 @@ interface ParsedSignalRuntimeFields {
   directionLabel: MatchingSignal['directionLabel'];
   amountMinor?: number | undefined;
   currency?: string | undefined;
+  referenceCode?: string | undefined;
   signalQuality: number;
   reasonCodes: string[];
 }
@@ -262,6 +280,7 @@ export class SignalRuntimeProcessor {
     });
     const gateReasonCodes = uniqueReasonCodes([...parsed.reasonCodes, ...gate.reasonCodes]);
     if (!gate.reviewCreationAllowed) {
+      await this.maybeNotifyCurrencyMismatch(hydratedSignal, parsed, now);
       return this.ignoreUnrelatedSignal({
         signal: hydratedSignal,
         parsed,
@@ -352,6 +371,7 @@ export class SignalRuntimeProcessor {
     }
 
     if (match.decision === 'wait' && !match.selected) {
+      await this.maybeNotifyCurrencyMismatch(hydratedSignal, parsed, now);
       return this.ignoreUnrelatedSignal({
         signal: hydratedSignal,
         parsed,
@@ -554,6 +574,48 @@ export class SignalRuntimeProcessor {
     }
   }
 
+  private async maybeNotifyCurrencyMismatch(
+    signal: SignalRuntimeSignal,
+    parsed: ParsedSignalRuntimeFields,
+    now: string
+  ): Promise<void> {
+    if (!signal.currency) {
+      return;
+    }
+    try {
+      const hit = await this.options.repository.probeCrossCurrencySessions({
+        merchantId: signal.merchantId,
+        signalCurrency: signal.currency,
+        amountMinor: signal.amountMinor,
+        referenceCode: parsed.referenceCode,
+        observedAt: signal.observedAt
+      });
+      if (!hit) {
+        return;
+      }
+      const marked = await this.options.repository.markCurrencyMismatchNotified(signal.id, now);
+      if (!marked) {
+        return; // already notified — at most one event per signal
+      }
+      await this.emitRuntimeEvent(EventTypes.SIGNAL_CURRENCY_MISMATCH, signal, now, {
+        signal_id: signal.id,
+        merchant_id: signal.merchantId,
+        order_id: hit.orderId,
+        external_id: hit.externalId,
+        payment_session_id: hit.paymentSessionId,
+        expected_currency: hit.expectedCurrency,
+        signal_currency: signal.currency,
+        signal_amount_minor: signal.amountMinor ?? null,
+        expected_amount_minor: hit.expectedAmountMinor,
+        matched_on: hit.matchedOn
+      });
+    } catch (error) {
+      // Probe failures must not break signal processing — swallow and log
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[signal-worker] maybeNotifyCurrencyMismatch failed:', message);
+    }
+  }
+
   private async emitRuntimeEvent(
     type: EventType,
     signal: SignalRuntimeSignal,
@@ -615,6 +677,14 @@ export class InMemorySignalRuntimeRepository implements SignalRuntimeRepository 
   public readonly publishedEvents: InternalEventEnvelope[] = [];
   public readonly orders = new Map<string, { status: string }>();
   public readonly paymentSessions = new Map<string, { status: string }>();
+  public readonly currencyMismatchNotifiedSignalIds: string[] = [];
+
+  /** Set to a hit object in tests that need probeCrossCurrencySessions to return a result. */
+  public crossCurrencyHit: CrossCurrencyProbeHit | null = null;
+  /** Set to true in tests to simulate the signal already being dedup-marked. */
+  public alreadyCurrencyMismatchNotified = false;
+  /** Counts how many times probeCrossCurrencySessions was called (for no-probe assertions). */
+  public probeCrossCurrencyCallCount = 0;
 
   public constructor(private readonly params: {
     signals: SignalRuntimeSignal[];
@@ -700,6 +770,27 @@ export class InMemorySignalRuntimeRepository implements SignalRuntimeRepository 
 
   public async publishInternalEvent(event: InternalEventEnvelope): Promise<void> {
     this.publishedEvents.push(event);
+  }
+
+  public async probeCrossCurrencySessions(input: {
+    merchantId: string;
+    signalCurrency: string;
+    amountMinor: number | undefined;
+    referenceCode: string | undefined;
+    observedAt: string;
+  }): Promise<CrossCurrencyProbeHit | null> {
+    void input;
+    this.probeCrossCurrencyCallCount++;
+    return this.crossCurrencyHit;
+  }
+
+  public async markCurrencyMismatchNotified(signalId: string, notifiedAt: string): Promise<boolean> {
+    void notifiedAt; // used only in the Pg implementation
+    if (this.alreadyCurrencyMismatchNotified) {
+      return false;
+    }
+    this.currencyMismatchNotifiedSignalIds.push(signalId);
+    return true;
   }
 
   private markSignalStatus(signalId: string, status: string): void {
@@ -893,6 +984,66 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
     return result.rows.map((row) => toSession(row as SessionRow));
   }
 
+  public async probeCrossCurrencySessions(input: {
+    merchantId: string;
+    signalCurrency: string;
+    amountMinor: number | undefined;
+    referenceCode: string | undefined;
+    observedAt: string;
+  }): Promise<CrossCurrencyProbeHit | null> {
+    if (input.amountMinor === undefined && !input.referenceCode) {
+      return null;
+    }
+    const result = await this.pool.query(
+      `SELECT
+        o.id AS order_id,
+        o.external_id,
+        ps.id AS payment_session_id,
+        ps.currency AS expected_currency,
+        COALESCE(ps.payable_amount_minor, ps.expected_amount_minor) AS expected_amount_minor,
+        (UPPER(COALESCE(ps.reference_code, '')) = UPPER(COALESCE($4, ''))) AS reference_matched
+       FROM payment_sessions ps
+       JOIN orders o ON o.id = ps.order_id AND o.merchant_id = ps.merchant_id
+       WHERE ps.merchant_id = $1
+         AND ps.currency <> $2
+         AND $5::timestamptz BETWEEN ps.valid_from AND ps.valid_until
+         AND ps.status NOT IN ('manual_confirmed', 'rejected', 'expired')
+         AND o.status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')
+         AND (
+           ($4::text IS NOT NULL AND UPPER(ps.reference_code) = UPPER($4))
+           OR ($3::bigint IS NOT NULL AND (
+             COALESCE(ps.payable_amount_minor, ps.expected_amount_minor) = $3
+             OR ps.display_amount_minor = $3
+           ))
+         )
+       ORDER BY reference_matched DESC, ps.created_at ASC
+       LIMIT 1`,
+      [input.merchantId, input.signalCurrency, input.amountMinor ?? null, input.referenceCode ?? null, input.observedAt]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return null;
+    }
+    return {
+      orderId: String(row.order_id),
+      externalId: String(row.external_id),
+      paymentSessionId: String(row.payment_session_id),
+      expectedCurrency: String(row.expected_currency),
+      expectedAmountMinor: Number(row.expected_amount_minor),
+      matchedOn: row.reference_matched === true ? 'reference' : 'amount'
+    };
+  }
+
+  public async markCurrencyMismatchNotified(signalId: string, notifiedAt: string): Promise<boolean> {
+    const result = await this.pool.query(
+      `UPDATE notification_signals
+       SET currency_mismatch_notified_at = $2
+       WHERE id = $1 AND currency_mismatch_notified_at IS NULL`,
+      [signalId, notifiedAt]
+    );
+    return result.rowCount === 1;
+  }
+
   public async markSignalParsed(input: { signalId: string; parsed: ParsedSignalRuntimeFields; parsedAt: string }): Promise<void> {
     await this.pool.query(
       `UPDATE notification_signals
@@ -1052,6 +1203,7 @@ function parseSignal(signal: SignalRuntimeSignal): ParsedSignalRuntimeFields {
     directionLabel,
     amountMinor: parsed?.amountMinor ?? signal.amountMinor,
     currency: parsed?.currency ?? signal.currency,
+    referenceCode: parsed?.referenceCode,
     signalQuality: parsed?.signalQuality ?? signal.signalQuality ?? 0,
     reasonCodes
   };
