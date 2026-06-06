@@ -1006,7 +1006,7 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
         ps.id AS payment_session_id,
         ps.currency AS expected_currency,
         COALESCE(ps.payable_amount_minor, ps.expected_amount_minor) AS expected_amount_minor,
-        (UPPER(COALESCE(ps.reference_code, '')) = UPPER(COALESCE($4, ''))) AS reference_matched
+        ($4::text IS NOT NULL AND ps.reference_code IS NOT NULL AND UPPER(ps.reference_code) = UPPER($4)) AS reference_matched
        FROM payment_sessions ps
        JOIN orders o ON o.id = ps.order_id AND o.merchant_id = ps.merchant_id
        WHERE ps.merchant_id = $1
