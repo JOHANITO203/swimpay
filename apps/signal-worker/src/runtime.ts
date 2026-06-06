@@ -280,7 +280,7 @@ export class SignalRuntimeProcessor {
     });
     const gateReasonCodes = uniqueReasonCodes([...parsed.reasonCodes, ...gate.reasonCodes]);
     if (!gate.reviewCreationAllowed) {
-      await this.maybeNotifyCurrencyMismatch(hydratedSignal, parsed, now);
+      await this.maybeNotifyCurrencyMismatch(hydratedSignal, parsed, now, candidates.length);
       return this.ignoreUnrelatedSignal({
         signal: hydratedSignal,
         parsed,
@@ -371,7 +371,7 @@ export class SignalRuntimeProcessor {
     }
 
     if (match.decision === 'wait' && !match.selected) {
-      await this.maybeNotifyCurrencyMismatch(hydratedSignal, parsed, now);
+      await this.maybeNotifyCurrencyMismatch(hydratedSignal, parsed, now, candidates.length);
       return this.ignoreUnrelatedSignal({
         signal: hydratedSignal,
         parsed,
@@ -577,8 +577,13 @@ export class SignalRuntimeProcessor {
   private async maybeNotifyCurrencyMismatch(
     signal: SignalRuntimeSignal,
     parsed: ParsedSignalRuntimeFields,
-    now: string
+    now: string,
+    sameCurrencyCandidateCount: number
   ): Promise<void> {
+    if (sameCurrencyCandidateCount > 0) {
+      // A same-currency candidate existed — the no-review cause is not a currency mismatch.
+      return;
+    }
     if (!signal.currency) {
       return;
     }

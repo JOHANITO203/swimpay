@@ -660,6 +660,47 @@ describe('signal runtime processor', () => {
     const mismatchEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.SIGNAL_CURRENCY_MISMATCH);
     expect(mismatchEvents).toHaveLength(0);
   });
+
+  it('does not emit currency_mismatch when a same-currency candidate existed (wrong amount) even if a cross-currency session matches', async () => {
+    // A same-currency session exists but its amount does NOT match the signal (different amount),
+    // so listCandidateSessions returns it (same currency, same amount in this repo's filter — actually
+    // the in-memory repo filters on amount AND currency, so to have a same-currency candidate we need
+    // the signal amount to match the session amount).
+    // We build a session with the SAME currency (RUB) and the SAME amount so that listCandidateSessions
+    // returns it (candidates.length === 1), but configure the gate so reviewCreationAllowed=false
+    // (bank profile mismatch forces gate early-exit via no_payable_amount_match / receiver_bank_mismatch).
+    const { processor, repository } = createProcessor({
+      signal: buildCrossCurrencySignal({
+        // Use a different bankProfileId so the gate / match blocks review creation
+        bankProfileId: 'tbank_ru'
+      }),
+      sessions: [
+        buildSession({
+          // Same currency (RUB), same amount (13700) → candidate IS returned by listCandidateSessions
+          // But bank profile is sber_ru while signal is tbank_ru → gate blocks review
+          currency: 'RUB',
+          expectedAmountMinor: 13700
+        })
+      ]
+    });
+    // Arm the cross-currency hit so it would fire if the guard is absent
+    repository.crossCurrencyHit = {
+      orderId: 'ord_xof_03',
+      externalId: 'ext_order_77',
+      paymentSessionId: 'ps_xof_03',
+      expectedCurrency: 'XOF',
+      expectedAmountMinor: 500000,
+      matchedOn: 'amount'
+    };
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    // The guard must short-circuit BEFORE probeCrossCurrencySessions is called
+    expect(repository.probeCrossCurrencyCallCount).toBe(0);
+    const mismatchEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.SIGNAL_CURRENCY_MISMATCH);
+    expect(mismatchEvents).toHaveLength(0);
+  });
 });
 
 function safetyMetricForDirection(direction: SignalRuntimeSignal['directionLabel']) {
