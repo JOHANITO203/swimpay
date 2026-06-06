@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { getPayerBankLauncherOption, getReceiverBankOption } from '@swimpay/contracts';
 import { buildApiServer, type OrderRepository, type StoredOrderRecord, type StoredPaymentSessionRecord } from './server.js';
 import { InMemoryMerchantApiKeyVerifier } from './auth-bff.js';
-import { bankCertificationAllowsCheckoutRoute, decryptReceiverIdentifier, selectAmountLeaseCandidate } from './orders.js';
+import { bankCertificationAllowsCheckoutRoute, decryptReceiverIdentifier, selectAmountLeaseCandidate, type RequotePaymentSessionCurrencyResult } from './orders.js';
 import { isPaymentSessionTransitionAllowed, resolvePaymentSessionStatusForRead, toPayerBankLaunchersResponse } from './payment-sessions.js';
 
 interface TestReceivingRoute {
@@ -574,6 +574,10 @@ class InMemoryPaymentSessionRepository implements OrderRepository {
       paymentSessionId: input.paymentSessionId,
       reasonLabel: 'NO_NOTIFICATION_AFTER_ARMED_PAYMENT_INTENT' as const
     };
+  }
+
+  async requotePaymentSessionCurrency(): Promise<RequotePaymentSessionCurrencyResult> {
+    return { kind: 'not_found' };
   }
 
   private requireMutableSession(

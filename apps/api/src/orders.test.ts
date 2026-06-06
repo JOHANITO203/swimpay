@@ -259,6 +259,12 @@ class FakeCheckoutPgClient {
       route_locked_at: null,
       route_lock_expires_at: null,
       amount_lease_id: options.amountLeaseId ?? null,
+      base_currency: null,
+      base_amount_minor: null,
+      buyer_fx_rate: null,
+      buyer_fx_source: null,
+      buyer_fx_timestamp: null,
+      currency_selected_at: null,
       valid_from: now,
       valid_until: validUntil,
       created_at: now,
@@ -499,6 +505,30 @@ class FakeCheckoutPgClient {
     if (text.includes('UPDATE orders') && text.includes("SET status = 'receiver_arming'")) {
       this.orderRow.status = 'receiver_arming';
       this.orderRow.updated_at = values[2];
+      return emptyPgResult();
+    }
+    if (text.includes('UPDATE payment_sessions') && text.includes('currency_selected_at')) {
+      // requotePaymentSessionCurrency UPDATE
+      // $1=merchantId $2=sessionId $3=currency $4=amountMinor $5=prevCurrency $6=prevAmount
+      // $7=fxRate $8=fxSource $9=fxTimestamp $10=currencySelectedAt $11=now
+      this.paymentSessionRow.currency = values[2];
+      this.paymentSessionRow.expected_amount_minor = values[3];
+      this.paymentSessionRow.display_amount_minor = values[3];
+      this.paymentSessionRow.payable_amount_minor = null;
+      this.paymentSessionRow.reconciliation_delta_minor = null;
+      this.paymentSessionRow.amount_lease_id = null;
+      // COALESCE(base_currency, prev): keep existing if already set
+      if (!this.paymentSessionRow.base_currency) {
+        this.paymentSessionRow.base_currency = values[4];
+      }
+      if (this.paymentSessionRow.base_amount_minor === null || this.paymentSessionRow.base_amount_minor === undefined) {
+        this.paymentSessionRow.base_amount_minor = values[5];
+      }
+      this.paymentSessionRow.buyer_fx_rate = values[6];
+      this.paymentSessionRow.buyer_fx_source = values[7];
+      this.paymentSessionRow.buyer_fx_timestamp = values[8];
+      this.paymentSessionRow.currency_selected_at = values[9];
+      this.paymentSessionRow.updated_at = values[10];
       return emptyPgResult();
     }
     if (text.includes('INSERT INTO audit_events')) {
@@ -805,6 +835,36 @@ class InMemoryOrderRepository implements OrderRepository {
 
   async requestNoNotificationManualCheck() {
     return { kind: 'not_found' as const };
+  }
+
+  async requotePaymentSessionCurrency(input: Parameters<OrderRepository['requotePaymentSessionCurrency']>[0]) {
+    const found = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+    if (!found) {
+      return { kind: 'not_found' as const };
+    }
+    const { paymentSession } = found;
+    if (['manual_confirmed', 'rejected', 'expired'].includes(paymentSession.status)) {
+      return { kind: 'not_requotable' as const };
+    }
+    if (paymentSession.selectedReceivingRouteId) {
+      return { kind: 'route_already_locked' as const };
+    }
+    // Freeze base_* on first requote
+    if (!paymentSession.baseCurrency) {
+      paymentSession.baseCurrency = paymentSession.currency;
+      paymentSession.baseAmountMinor = paymentSession.expectedAmountMinor;
+    }
+    paymentSession.currency = input.currency;
+    paymentSession.expectedAmountMinor = input.amountMinor;
+    paymentSession.displayAmountMinor = input.amountMinor;
+    paymentSession.payableAmountMinor = undefined;
+    paymentSession.reconciliationDeltaMinor = undefined;
+    paymentSession.amountLeaseId = undefined;
+    paymentSession.buyerFxRate = input.fxRate;
+    paymentSession.buyerFxSource = input.fxSource;
+    paymentSession.buyerFxTimestamp = input.fxTimestamp;
+    paymentSession.currencySelectedAt = input.now;
+    return { kind: 'requoted' as const, paymentSession };
   }
 
   private async requireMutablePaymentSession(merchantId: string, paymentSessionId: string) {
@@ -1694,5 +1754,152 @@ describe('order api', () => {
         }
       })
     ).toThrow(/PHONE_HMAC_SECRET/u);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// requotePaymentSessionCurrency – PG-level repository tests
+// ---------------------------------------------------------------------------
+
+describe('requotePaymentSessionCurrency', () => {
+  const baseRequoteInput = {
+    merchantId: 'mch_pg_01',
+    paymentSessionId: 'ps_pg_01',
+    auditEventId: 'aud_requote_01',
+    now: '2026-06-06T10:00:00.000Z'
+  };
+
+  test('happy path: requotes RUB→USD, freezes base_*, releases lease, nulls payable fields', async () => {
+    const client = new FakeCheckoutPgClient({ sessionStatus: 'created' });
+    // Give the session an active lease so we can assert it is released
+    client.amountLeases.push({
+      id: 'lease_rub_01',
+      merchant_id: 'mch_pg_01',
+      payment_session_id: 'ps_pg_01',
+      route_id: 'route_pg_card',
+      rail: 'card',
+      display_amount_minor: 99900,
+      reconciliation_delta_minor: 7,
+      payable_amount_minor: 99907,
+      currency: 'RUB',
+      status: 'active',
+      expires_at: '2026-06-06T10:15:00.000Z',
+      created_at: '2026-06-06T09:50:00.000Z',
+      updated_at: '2026-06-06T09:50:00.000Z'
+    });
+    client.paymentSessionRow.expected_amount_minor = 99900;
+    client.paymentSessionRow.currency = 'RUB';
+    client.paymentSessionRow.amount_lease_id = 'lease_rub_01';
+
+    const repository = buildPgOrderRepositoryForTest(client);
+
+    const result = await repository.requotePaymentSessionCurrency({
+      ...baseRequoteInput,
+      currency: 'USD',
+      amountMinor: 1234,
+      fxRate: '0.01234',
+      fxSource: 'cbr',
+      fxTimestamp: '2026-06-06T10:00:00.000Z'
+    });
+
+    expect(result.kind).toBe('requoted');
+    if (result.kind !== 'requoted') return;
+
+    // Currency and amounts updated
+    expect(result.paymentSession.currency).toBe('USD');
+    expect(result.paymentSession.expectedAmountMinor).toBe(1234);
+
+    // base_* frozen to pre-requote values
+    expect(result.paymentSession.baseCurrency).toBe('RUB');
+    expect(result.paymentSession.baseAmountMinor).toBe(99900);
+
+    // FX trace stored
+    expect(result.paymentSession.buyerFxRate).toBe('0.01234');
+    expect(result.paymentSession.buyerFxSource).toBe('cbr');
+    expect(result.paymentSession.buyerFxTimestamp).toBe('2026-06-06T10:00:00.000Z');
+    expect(result.paymentSession.currencySelectedAt).toBe('2026-06-06T10:00:00.000Z');
+
+    // Lease released, payable fields nulled
+    expect(result.paymentSession.amountLeaseId).toBeUndefined();
+    expect(result.paymentSession.payableAmountMinor).toBeUndefined();
+    expect(result.paymentSession.reconciliationDeltaMinor).toBeUndefined();
+
+    // The original lease row is now 'released'
+    const releasedLease = client.amountLeases.find((l) => l.id === 'lease_rub_01');
+    expect(releasedLease?.status).toBe('released');
+
+    // An audit event was recorded
+    expect(client.queries.some((q) => q.text.includes('INSERT INTO audit_events'))).toBe(true);
+  });
+
+  test('second requote keeps base_* frozen to first selection (USD → XOF, base still RUB)', async () => {
+    const client = new FakeCheckoutPgClient({ sessionStatus: 'created' });
+    // Simulate session already requoted once: currency=USD, base_*=RUB
+    client.paymentSessionRow.currency = 'USD';
+    client.paymentSessionRow.expected_amount_minor = 1234;
+    client.paymentSessionRow.base_currency = 'RUB';
+    client.paymentSessionRow.base_amount_minor = 99900;
+    client.paymentSessionRow.buyer_fx_rate = '0.01234';
+    client.paymentSessionRow.buyer_fx_source = 'cbr';
+    client.paymentSessionRow.buyer_fx_timestamp = '2026-06-06T10:00:00.000Z';
+    client.paymentSessionRow.currency_selected_at = '2026-06-06T10:00:00.000Z';
+
+    const repository = buildPgOrderRepositoryForTest(client);
+
+    const result = await repository.requotePaymentSessionCurrency({
+      ...baseRequoteInput,
+      currency: 'XOF',
+      amountMinor: 6045,
+      fxRate: '4.898',
+      fxSource: 'cbr+uemoa_peg',
+      fxTimestamp: '2026-06-06T10:01:00.000Z'
+    });
+
+    expect(result.kind).toBe('requoted');
+    if (result.kind !== 'requoted') return;
+
+    // base_* must remain frozen to FIRST selection (RUB / 99900)
+    expect(result.paymentSession.baseCurrency).toBe('RUB');
+    expect(result.paymentSession.baseAmountMinor).toBe(99900);
+
+    // New amounts reflect XOF
+    expect(result.paymentSession.currency).toBe('XOF');
+    expect(result.paymentSession.expectedAmountMinor).toBe(6045);
+    expect(result.paymentSession.buyerFxSource).toBe('cbr+uemoa_peg');
+  });
+
+  test('returns route_already_locked when selected_receiving_route_id is set', async () => {
+    const client = new FakeCheckoutPgClient({ sessionStatus: 'created' });
+    client.paymentSessionRow.selected_receiving_route_id = 'route_pg_card';
+
+    const repository = buildPgOrderRepositoryForTest(client);
+
+    const result = await repository.requotePaymentSessionCurrency({
+      ...baseRequoteInput,
+      currency: 'USD',
+      amountMinor: 1234,
+      fxRate: '0.01234',
+      fxSource: 'cbr',
+      fxTimestamp: '2026-06-06T10:00:00.000Z'
+    });
+
+    expect(result.kind).toBe('route_already_locked');
+  });
+
+  test('returns not_requotable for final-status sessions (manual_confirmed)', async () => {
+    const client = new FakeCheckoutPgClient({ sessionStatus: 'manual_confirmed' });
+
+    const repository = buildPgOrderRepositoryForTest(client);
+
+    const result = await repository.requotePaymentSessionCurrency({
+      ...baseRequoteInput,
+      currency: 'USD',
+      amountMinor: 1234,
+      fxRate: '0.01234',
+      fxSource: 'cbr',
+      fxTimestamp: '2026-06-06T10:00:00.000Z'
+    });
+
+    expect(result.kind).toBe('not_requotable');
   });
 });

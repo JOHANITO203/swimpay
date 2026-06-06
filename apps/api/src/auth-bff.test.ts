@@ -5,7 +5,7 @@ import {
   type StoredOrderRecord,
   type StoredPaymentSessionRecord
 } from './server.js';
-import type { StoredMerchantReceivingRouteRecord } from './orders.js';
+import type { RequotePaymentSessionCurrencyResult, StoredMerchantReceivingRouteRecord } from './orders.js';
 import { InMemoryMerchantIntegrationRepository } from './developer-integration.js';
 import {
   AdminRoles,
@@ -135,6 +135,10 @@ class MinimalOrderRepository implements OrderRepository {
 
   async requestNoNotificationManualCheck() {
     return { kind: 'not_found' as const };
+  }
+
+  async requotePaymentSessionCurrency(): Promise<RequotePaymentSessionCurrencyResult> {
+    return { kind: 'not_found' };
   }
 }
 

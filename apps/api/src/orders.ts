@@ -94,6 +94,12 @@ export interface StoredPaymentSessionRecord {
   routeLockedAt?: string | undefined;
   routeLockExpiresAt?: string | undefined;
   amountLeaseId?: string | undefined;
+  baseCurrency?: string | undefined;
+  baseAmountMinor?: number | undefined;
+  buyerFxRate?: string | undefined;
+  buyerFxSource?: string | undefined;
+  buyerFxTimestamp?: string | undefined;
+  currencySelectedAt?: string | undefined;
   validFrom: string;
   validUntil: string;
   createdAt: string;
@@ -317,6 +323,17 @@ export interface OrderRepository {
   markPaymentInstructionsShown(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
   markBuyerClaimedPaid(input: CheckoutMutationBaseInput): Promise<PaymentSessionCheckoutMutationResult>;
   requestNoNotificationManualCheck(input: RequestNoNotificationManualCheckInput): Promise<NoNotificationManualCheckResult>;
+  requotePaymentSessionCurrency(input: {
+    merchantId: string;
+    paymentSessionId: string;
+    currency: string;
+    amountMinor: number;
+    fxRate: string;
+    fxSource: string;
+    fxTimestamp: string;
+    auditEventId: string;
+    now: string;
+  }): Promise<RequotePaymentSessionCurrencyResult>;
 }
 
 export type AmountLeaseRail = 'sbp' | 'card';
@@ -342,6 +359,12 @@ const CHECKOUT_SELECTABLE_BANK_ROUTE_CERTIFICATION_STATUSES = new Set<BankRouteC
 ]);
 
 const ROUTE_FINAL_SESSION_STATUSES = new Set<PaymentSessionStatus>(['manual_confirmed', 'rejected', 'expired']);
+
+export type RequotePaymentSessionCurrencyResult =
+  | { kind: 'requoted'; paymentSession: StoredPaymentSessionRecord }
+  | { kind: 'route_already_locked' }
+  | { kind: 'not_requotable' }
+  | { kind: 'not_found' };
 
 class AmountLeaseUnavailableError extends Error {
   public constructor() {
@@ -749,6 +772,8 @@ export class PgOrderRepository implements OrderRepository {
         expected_payment_fingerprint, payment_instructions_shown_at, receiver_armed_at,
         buyer_claimed_paid_at, no_notification_manual_check_requested_at,
         route_locked_at, route_lock_expires_at, amount_lease_id,
+        base_currency, base_amount_minor, buyer_fx_rate, buyer_fx_source,
+        buyer_fx_timestamp, currency_selected_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND order_id = $2
        ORDER BY created_at DESC LIMIT 1`,
@@ -776,6 +801,8 @@ export class PgOrderRepository implements OrderRepository {
         expected_payment_fingerprint, payment_instructions_shown_at, receiver_armed_at,
         buyer_claimed_paid_at, no_notification_manual_check_requested_at,
         route_locked_at, route_lock_expires_at, amount_lease_id,
+        base_currency, base_amount_minor, buyer_fx_rate, buyer_fx_source,
+        buyer_fx_timestamp, currency_selected_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE merchant_id = $1 AND id = $2`,
       [merchantId, paymentSessionId]
@@ -819,6 +846,8 @@ export class PgOrderRepository implements OrderRepository {
         expected_payment_fingerprint, payment_instructions_shown_at, receiver_armed_at,
         buyer_claimed_paid_at, no_notification_manual_check_requested_at,
         route_locked_at, route_lock_expires_at, amount_lease_id,
+        base_currency, base_amount_minor, buyer_fx_rate, buyer_fx_source,
+        buyer_fx_timestamp, currency_selected_at,
         valid_from, valid_until, created_at, updated_at
        FROM payment_sessions WHERE id = $1`,
       [paymentSessionId]
@@ -1951,6 +1980,146 @@ export class PgOrderRepository implements OrderRepository {
     });
   }
 
+  public async requotePaymentSessionCurrency(input: {
+    merchantId: string;
+    paymentSessionId: string;
+    currency: string;
+    amountMinor: number;
+    fxRate: string;
+    fxSource: string;
+    fxTimestamp: string;
+    auditEventId: string;
+    now: string;
+  }): Promise<RequotePaymentSessionCurrencyResult> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      // Lock the session row
+      const current = await client.query(
+        `SELECT id, order_id, merchant_id, expected_amount_minor, currency, buyer_phone_hmac,
+          buyer_phone_masked, buyer_name_hmac, reference_code, reference_hmac, status,
+          selected_receiver_bank_id, selected_receiver_bank_profile_id, selected_receiving_route_id,
+          selected_payer_bank_launcher_id, buyer_sender_phone_hmac, buyer_sender_phone_masked,
+          payment_method, sender_bank_id, sender_card_last4, sender_card_masked, sender_card_hmac,
+          sender_phone_masked, sender_phone_hmac, buyer_first_name_raw, buyer_last_name_raw,
+          buyer_name_script_detected, buyer_name_normalized, buyer_name_latin_variants,
+          buyer_name_cyrillic_variants, buyer_name_initial_variants, buyer_name_reversed_order_variants,
+          buyer_name_fingerprint, display_amount_minor, payable_amount_minor, reconciliation_delta_minor,
+          expected_payment_fingerprint, payment_instructions_shown_at, receiver_armed_at,
+          buyer_claimed_paid_at, no_notification_manual_check_requested_at,
+          route_locked_at, route_lock_expires_at, amount_lease_id,
+          base_currency, base_amount_minor, buyer_fx_rate, buyer_fx_source,
+          buyer_fx_timestamp, currency_selected_at,
+          valid_from, valid_until, created_at, updated_at
+         FROM payment_sessions WHERE merchant_id = $1 AND id = $2 FOR UPDATE`,
+        [input.merchantId, input.paymentSessionId]
+      );
+
+      if (current.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_found' };
+      }
+
+      const row = current.rows[0] as Record<string, string | number | Date | null>;
+      const sessionStatus = String(row.status) as PaymentSessionStatus;
+
+      // Guard: final statuses cannot be requoted
+      if (ROUTE_FINAL_SESSION_STATUSES.has(sessionStatus)) {
+        await client.query('ROLLBACK');
+        return { kind: 'not_requotable' };
+      }
+
+      // Guard: route is already locked
+      if (row.selected_receiving_route_id !== null && row.selected_receiving_route_id !== undefined) {
+        await client.query('ROLLBACK');
+        return { kind: 'route_already_locked' };
+      }
+
+      // Release any active amount lease for this session
+      await client.query(
+        `UPDATE amount_leases
+         SET status = 'released', updated_at = $3::timestamptz
+         WHERE merchant_id = $1
+           AND payment_session_id = $2
+           AND status = 'active'`,
+        [input.merchantId, input.paymentSessionId, input.now]
+      );
+
+      // Previous currency/amount for base_* freeze (COALESCE: first requote captures creation values)
+      const prevCurrency = String(row.currency);
+      const prevAmountMinor = Number(row.expected_amount_minor);
+
+      // Update the session: set new currency/amount, freeze base_* on first selection, store FX trace
+      await client.query(
+        `UPDATE payment_sessions
+         SET currency = $3,
+             expected_amount_minor = $4,
+             display_amount_minor = $4,
+             payable_amount_minor = NULL,
+             reconciliation_delta_minor = NULL,
+             amount_lease_id = NULL,
+             base_currency = COALESCE(base_currency, $5),
+             base_amount_minor = COALESCE(base_amount_minor, $6),
+             buyer_fx_rate = $7,
+             buyer_fx_source = $8,
+             buyer_fx_timestamp = $9::timestamptz,
+             currency_selected_at = $10::timestamptz,
+             updated_at = $11
+         WHERE merchant_id = $1 AND id = $2`,
+        [
+          input.merchantId,
+          input.paymentSessionId,
+          input.currency,
+          input.amountMinor,
+          prevCurrency,
+          prevAmountMinor,
+          input.fxRate,
+          input.fxSource,
+          input.fxTimestamp,
+          input.now,
+          input.now
+        ]
+      );
+
+      // Audit event — no PII: only currencies, amounts, rate/source/timestamp
+      await client.query(
+        `INSERT INTO audit_events (
+          id, merchant_id, event_type, object_type, object_id, actor_type, payload_redacted, created_at
+        ) VALUES ($1, $2, 'payment_session.currency_selected', 'payment_session', $3, 'api', $4::jsonb, $5)`,
+        [
+          input.auditEventId,
+          input.merchantId,
+          input.paymentSessionId,
+          JSON.stringify({
+            from_currency: prevCurrency,
+            to_currency: input.currency,
+            amount_minor: input.amountMinor,
+            fx_rate: input.fxRate,
+            fx_source: input.fxSource,
+            fx_timestamp: input.fxTimestamp
+          }),
+          input.now
+        ]
+      );
+
+      await client.query('COMMIT');
+
+      const updated = await this.getPaymentSessionById(input.merchantId, input.paymentSessionId);
+      if (!updated) {
+        return { kind: 'not_found' };
+      }
+
+      return { kind: 'requoted', paymentSession: updated.paymentSession };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   private async mutateCheckoutSession(params: {
     input: CheckoutMutationBaseInput;
     allowedStatuses?: readonly PaymentSessionStatus[] | undefined;
@@ -2393,6 +2562,12 @@ function toPaymentSession(row: Record<string, string | number | Date | null>): S
       ? new Date(String(row.route_lock_expires_at)).toISOString()
       : undefined,
     amountLeaseId: row.amount_lease_id ? String(row.amount_lease_id) : undefined,
+    baseCurrency: row.base_currency ? String(row.base_currency) : undefined,
+    baseAmountMinor: row.base_amount_minor !== null && row.base_amount_minor !== undefined ? Number(row.base_amount_minor) : undefined,
+    buyerFxRate: row.buyer_fx_rate ? String(row.buyer_fx_rate) : undefined,
+    buyerFxSource: row.buyer_fx_source ? String(row.buyer_fx_source) : undefined,
+    buyerFxTimestamp: row.buyer_fx_timestamp ? new Date(String(row.buyer_fx_timestamp)).toISOString() : undefined,
+    currencySelectedAt: row.currency_selected_at ? new Date(String(row.currency_selected_at)).toISOString() : undefined,
     validFrom: new Date(String(row.valid_from)).toISOString(),
     validUntil: new Date(String(row.valid_until)).toISOString(),
     createdAt: new Date(String(row.created_at)).toISOString(),

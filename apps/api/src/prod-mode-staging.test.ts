@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildApiServer, type OrderRepository, type StoredOrderRecord } from './server.js';
-import type { StoredMerchantReceivingRouteRecord } from './orders.js';
+import type { RequotePaymentSessionCurrencyResult, StoredMerchantReceivingRouteRecord } from './orders.js';
 import { InMemoryAuthBffRepository, InMemoryMerchantApiKeyVerifier, buildSessionCookieOptions, createCsrfToken, createOpaqueSessionToken, hashBffSessionToken, hashCsrfToken, serializeSessionCookie } from './auth-bff.js';
 import { InMemoryMerchantIntegrationRepository } from './developer-integration.js';
 import { deriveReceiverDeviceOperationalStatus, type CreateReceiverDeviceInput, type ReceiverDeviceRepository, type StoredReceiverDeviceRecord, type UpdateReceiverHeartbeatInput } from './receiver-devices.js';
@@ -55,6 +55,7 @@ class StagingOrderRepository implements OrderRepository {
   async markPaymentInstructionsShown() { return { kind: 'not_found' as const }; }
   async markBuyerClaimedPaid() { return { kind: 'not_found' as const }; }
   async requestNoNotificationManualCheck() { return { kind: 'not_found' as const }; }
+  async requotePaymentSessionCurrency(): Promise<RequotePaymentSessionCurrencyResult> { return { kind: 'not_found' }; }
 }
 
 class StagingReceiverRepository implements ReceiverDeviceRepository {

@@ -28,6 +28,7 @@ import type {
   PaymentSessionCheckoutMutationResult,
   ReceivingRouteCopyDetailsResult,
   ReceivingRouteMutationResult,
+  RequotePaymentSessionCurrencyResult,
   SaveBuyerSenderPhoneHintInput,
   SelectPayerBankLauncherInput,
   SelectReceiverBankInput,
@@ -1967,6 +1968,10 @@ class FakeOrderRepository implements OrderRepository {
   }
 
   public async requestNoNotificationManualCheck(): Promise<NoNotificationManualCheckResult> {
+    return { kind: 'not_found' };
+  }
+
+  public async requotePaymentSessionCurrency(): Promise<RequotePaymentSessionCurrencyResult> {
     return { kind: 'not_found' };
   }
 }
