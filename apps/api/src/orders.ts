@@ -654,6 +654,8 @@ export class PgOrderRepository implements OrderRepository {
          ps.payment_instructions_shown_at, ps.receiver_armed_at, ps.buyer_claimed_paid_at,
          ps.no_notification_manual_check_requested_at, ps.route_locked_at, ps.route_lock_expires_at,
          ps.amount_lease_id, ps.valid_from, ps.valid_until,
+         ps.base_currency, ps.base_amount_minor, ps.buyer_fx_rate, ps.buyer_fx_source,
+         ps.buyer_fx_timestamp, ps.currency_selected_at,
          ps.created_at AS payment_created_at, ps.updated_at AS payment_updated_at
        FROM payment_sessions ps
        INNER JOIN orders o ON o.id = ps.order_id AND o.merchant_id = ps.merchant_id
@@ -737,6 +739,12 @@ export class PgOrderRepository implements OrderRepository {
           amount_lease_id: record.amount_lease_id,
           valid_from: record.valid_from,
           valid_until: record.valid_until,
+          base_currency: record.base_currency,
+          base_amount_minor: record.base_amount_minor,
+          buyer_fx_rate: record.buyer_fx_rate,
+          buyer_fx_source: record.buyer_fx_source,
+          buyer_fx_timestamp: record.buyer_fx_timestamp,
+          currency_selected_at: record.currency_selected_at,
           created_at: record.payment_created_at,
           updated_at: record.payment_updated_at
         } as Record<string, string | number | Date | null>)

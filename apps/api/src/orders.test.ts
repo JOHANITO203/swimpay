@@ -179,6 +179,7 @@ interface FakeAmountLeaseRow {
 
 class FakeCheckoutPgClient {
   public readonly queries: Array<{ text: string; values: readonly unknown[] }> = [];
+  public sessionMissing = false;
   public orderRow: FakePgRow;
   public paymentSessionRow: FakePgRow;
   public routeRow: FakePgRow;
@@ -323,6 +324,9 @@ class FakeCheckoutPgClient {
       return emptyPgResult();
     }
     if (text.trimStart().startsWith('SELECT') && text.includes('FROM payment_sessions WHERE merchant_id = $1 AND id = $2')) {
+      if (this.sessionMissing) {
+        return { rowCount: 0, rows: [] };
+      }
       return { rowCount: 1, rows: [{ ...this.paymentSessionRow }] };
     }
     if (text.trimStart().startsWith('SELECT') && text.includes('FROM orders WHERE merchant_id = $1 AND id = $2')) {
@@ -1901,5 +1905,22 @@ describe('requotePaymentSessionCurrency', () => {
     });
 
     expect(result.kind).toBe('not_requotable');
+  });
+
+  test('returns not_found when the session does not exist for the merchant', async () => {
+    const client = new FakeCheckoutPgClient({ sessionStatus: 'created' });
+    client.sessionMissing = true;
+    const repository = buildPgOrderRepositoryForTest(client);
+
+    const result = await repository.requotePaymentSessionCurrency({
+      ...baseRequoteInput,
+      currency: 'USD',
+      amountMinor: 1234,
+      fxRate: '0.01234',
+      fxSource: 'cbr',
+      fxTimestamp: '2026-06-06T10:00:00.000Z'
+    });
+
+    expect(result.kind).toBe('not_found');
   });
 });
