@@ -73,7 +73,11 @@
 - [ ] **Step 3: Implement.** `ParsedBankNotification.currency` (line 15) becomes `currency?: 'RUB' | 'XOF' | 'USD' | undefined;`. Replace `extractCurrency` (lines 149-151) with:
 
 ```typescript
-const RUB_CURRENCY_PATTERN = /(?:₽|руб\.?|â‚½|Ñ€ÑƒÐ±\.?|RUB)(?=$|[\s.,;:])/iu;
+// RUB_CURRENCY_PATTERN: lift the EXISTING inline regex from extractCurrency verbatim into
+// this const — it intentionally contains mojibake alternates of the ruble markers which must
+// stay byte-identical (and which this plan does not reproduce: the repo mojibake guardrail
+// allows them only in parser.ts/fixtures.ts).
+const RUB_CURRENCY_PATTERN = /<existing extractCurrency regex, moved verbatim>/iu;
 const XOF_CURRENCY_PATTERN = /(?:^|[\s])(?:FCFA|F\sCFA|XOF|CFA)(?=$|[\s.,;:])/iu;
 // Bare $ is USD unless letter-prefixed (CA$, A$); US$ and the USD code are word-bounded.
 const USD_CURRENCY_PATTERN = /(?:(?<![A-Za-z])\$|(?:^|[\s])(?:US\$|USD)(?=$|[\s.,;:]))/u;
