@@ -497,6 +497,15 @@ Creates webhook endpoint.
 }
 ```
 
+#### Supported event types
+
+| Event type | Description | Default for new integrations |
+|---|---|---|
+| `payment.confirmed` | Emitted after merchant manual confirmation. Fulfillment-safe. | Yes |
+| `payment.rejected` | Emitted on explicit order/payment rejection. Fulfillment-safe. | Yes |
+| `payment.expired` | Emitted when the payment session expires without confirmation. Fulfillment-safe. | Yes |
+| `payment.currency_mismatch` | Informational only. Fired when a captured signal's currency differs from all active sessions for the merchant but a cross-currency session matches by reference or minor-amount. No review is created; no fulfillment action. Existing endpoints must opt in. | Yes (new provisioning only) |
+
 V1 public webhook endpoints are for post-review or terminal outcomes only. Internal signal/review states must not be used by merchant systems to release goods.
 
 ## GET `/v1/webhook-deliveries`
