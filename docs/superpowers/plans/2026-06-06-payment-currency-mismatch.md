@@ -98,7 +98,7 @@ export function extractCurrency(text: string): 'RUB' | 'XOF' | 'USD' | null {
 }
 ```
 
-CAUTION: the existing RUB regex contains intentional mojibake alternates (`â‚½`, `Ñ€ÑƒÐ±`) — keep them byte-identical. Trace 'USDT': `USD` requires `(?=$|[\s.,;:])` after, 'T' follows → no match ✓. 'CFAO': `CFA` requires boundary after, 'O' follows → no match ✓. 'CA$ 10': PREFIXED_DOLLAR kills usd; no other marker → null ✓. '100 RUB then 50 USD': rub+usd → 2 matches → null ✓. NOTE the existing call site (line 73) and `markSignalParsed` need no change (currency flows as string).
+CAUTION: the existing RUB regex contains intentional mojibake alternates (garbled ruble-sign and 'rub' byte sequences — see parser.ts, not reproduced here because of the repo mojibake guardrail) — keep them byte-identical. Trace 'USDT': `USD` requires `(?=$|[\s.,;:])` after, 'T' follows → no match ✓. 'CFAO': `CFA` requires boundary after, 'O' follows → no match ✓. 'CA$ 10': PREFIXED_DOLLAR kills usd; no other marker → null ✓. '100 RUB then 50 USD': rub+usd → 2 matches → null ✓. NOTE the existing call site (line 73) and `markSignalParsed` need no change (currency flows as string).
 
 - [ ] **Step 4:** `npx vitest run packages/bank-templates/src` → ALL PASS (existing RUB `it.each` at line 35-39 must stay green). Then `npm run typecheck` — `parsed.currency` consumers may need union widening fallout; fix additively and list every touched file.
 
