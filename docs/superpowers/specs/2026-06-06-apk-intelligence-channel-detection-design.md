@@ -58,6 +58,13 @@ Reprend la couche texte du sous-projet 4 (chemin INT anglais + profils INT learn
 | Faux positif texte résiduel | channel-ID gate en amont + fix OTP/3-décimales ; texte ne décide plus seul |
 | Volume harvest 12 apps | phasé 4a/4b ; pipeline scripté |
 
+## 8bis. Arbitrages résolus (2026-06-06, après harvest local complet)
+
+- **Harvest local complet** : les 13 APK fournis par l'opérateur ont livré les certs de **tous** les profils SwimPay (RU : sber/tbank/vtb/alfa/gazprombank/ozon ; WA : wave_ci/orange_money_ci=Orange Max it/mtn_momo_ci ; INT : wise/revolut/payoneer) + Tap Tap Send. Détail dans `docs/APK_INTELLIGENCE.md`. → **Pinning généralisé en un seul cycle** (plus de phasage 4a/4b ; 4b absorbé).
+- **mtn_momo_ci** : packages **alternates** `com.consumerug` ET `mtnft.momo.consumer` (capture Android + registre launcher) — le réel installé sur les téléphones CI peut être l'un ou l'autre selon version.
+- **Tap Tap Send** : **launcher payeur WA** (app d'envoi qui renforce les corridors WA), PAS un profil receveur/parser. Entrée dans le registre payeur WA (deeplinks `taptapsend`/`taptapsendmoney`, cert `e10a90f4…`). Aucun parser de notif (sender-side).
+- **Orange Max it** = `com.orange.myorange.oci` = le package `orange_money_ci` existant (cert `b67affc…`).
+
 ## 9. Déploiement
 
 Migrations 030/031 avant push (031 ajoute une colonne lue sur le chemin signal + une table). APK republié. WA/RU (4b) déployé séparément avec sa migration 032.
