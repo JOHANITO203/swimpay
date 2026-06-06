@@ -461,6 +461,18 @@ export function extractUsdAmountMinor(text: string): number | null {
   if (!match?.[1]) {
     return null;
   }
+  // Reject a 3+-decimal mantissa: the matched number must not be part of a longer decimal sequence.
+  // This guards against '10.999 USD' where the trailing regex matches '999' (after the dot).
+  // Test whether the match begins with a sequence that has 3 or more decimal digits.
+  if (/\.\d{3,}/.test(match[1])) {
+    return null;
+  }
+  // Also guard the trailing-USD path: reject if the character immediately before the match index
+  // is a digit or a dot (meaning the match started inside a longer decimal like '.999' from '10.999').
+  const matchIndex = match.index ?? 0;
+  if (matchIndex > 0 && /[\d.]/.test(t[matchIndex - 1]!)) {
+    return null;
+  }
   const normalized = match[1].replace(/,/g, '');
   const [major = '0', minor = ''] = normalized.split('.');
   const amount = Number.parseInt(major, 10) * 100 + (minor ? Number.parseInt(minor.padEnd(2, '0').slice(0, 2), 10) : 0);
@@ -475,8 +487,9 @@ const INTL_OUTGOING_KEYWORDS = [
   'you sent', 'you paid', 'payment sent', 'sent to', 'you transferred', 'transfer sent', 'withdrawal', 'you withdrew'
 ];
 const INTL_NOISE_KEYWORDS = [
-  'incoming call', 'add money', 'top up', 'confirm your email', 'verify', 'passcode', 'log in', 'login',
-  'security', 'card delivered', 'statement', 'reward', 'cashback', 'promo', 'offer'
+  'incoming call', 'add money', 'top up', 'confirm your email', 'verify', 'verification', 'one-time',
+  'passcode', 'code', 'otp', 'log in', 'login', 'security', 'card delivered', 'statement',
+  'reward', 'cashback', 'promo', 'offer', 'reminder'
 ];
 
 /** English money-received direction for INT profiles. Conservative: unknown unless clearly incoming. */
@@ -488,9 +501,15 @@ export function classifyIntlDirection(text: string): DirectionLabel {
   if (INTL_OUTGOING_KEYWORDS.some((k) => n.includes(k))) {
     return 'outgoing_payment';
   }
-  // 'received'/'from' with a money token, or explicit received phrasing.
-  const incoming = INTL_INCOMING_KEYWORDS.some((k) => n.includes(k)) || (/\breceived\b/u.test(n) && /\bfrom\b/u.test(n));
-  return incoming ? 'incoming_customer_transfer' : 'unknown';
+  // Keywords that require a money token (amount) to be treated as incoming.
+  // Without an amount, 'sent you' and 'paid you' could be informational/OTP text.
+  const AMOUNT_GATED_INCOMING = ['sent you', 'paid you'];
+  const hasAmount = extractUsdAmountMinor(text) !== null;
+  const amountGatedMatch = AMOUNT_GATED_INCOMING.some((k) => n.includes(k)) && hasAmount;
+  // Remaining incoming keywords are always sufficient (e.g. 'you received', 'payment from').
+  const UNCONDITIONAL_INCOMING = INTL_INCOMING_KEYWORDS.filter((k) => !AMOUNT_GATED_INCOMING.includes(k));
+  const unconditionalMatch = UNCONDITIONAL_INCOMING.some((k) => n.includes(k)) || (/\breceived\b/u.test(n) && /\bfrom\b/u.test(n));
+  return amountGatedMatch || unconditionalMatch ? 'incoming_customer_transfer' : 'unknown';
 }
 
 function parseInternationalNotification(input: ParseBankNotificationInput): ParsedBankNotification {

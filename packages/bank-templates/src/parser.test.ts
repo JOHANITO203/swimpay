@@ -220,4 +220,20 @@ describe('international neobank parsing (USD)', () => {
       expect(p!.supportedLocales).toEqual(['en']);
     }
   });
+
+  it('does not classify OTP/security messages as incoming', () => {
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'We sent you a verification code' }).directionLabel).toBe('unknown');
+    expect(parseBankNotification({ bankProfileId: 'revolut_int', text: 'Your one-time passcode is 123456' }).directionLabel).toBe('unknown');
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'Reminder: complete your profile' }).directionLabel).toBe('unknown');
+  });
+
+  it('requires an amount for the "sent you" phrasing to be incoming', () => {
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'John sent you $20.00' }).directionLabel).toBe('incoming_customer_transfer');
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'We sent you details' }).directionLabel).toBe('unknown');
+  });
+
+  it('rejects malformed 3-decimal USD amounts', () => {
+    expect(extractUsdAmountMinor('10.999 USD')).toBeNull();
+    expect(extractUsdAmountMinor('$10.99')).toBe(1099);
+  });
 });
