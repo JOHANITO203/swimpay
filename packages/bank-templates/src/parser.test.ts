@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  V1_BANK_PROFILES,
   classifyDirection,
   detectMaskedPhone,
   extractAmountMinor,
   extractCurrency,
   extractReferenceCode,
   extractRussianPhone,
+  extractUsdAmountMinor,
   hasNegativeKeywordGate,
   normalizeRuText,
   normalizeRussianPhone,
@@ -171,5 +173,51 @@ describe('bank notification parser', () => {
       expect.arrayContaining(['rail_card_detected', 'receiver_route_focused_matching_hint', 'receiver_card_last4_extracted'])
     );
     expect(parsed.allowAutoConfirmCandidate).toBe(false);
+  });
+});
+
+describe('international neobank parsing (USD)', () => {
+  it('extracts USD amount in common notification formats', () => {
+    expect(extractUsdAmountMinor('You received $50.00 from John Doe')).toBe(5000);
+    expect(extractUsdAmountMinor('1,234.56 USD received')).toBe(123456);
+    expect(extractUsdAmountMinor('Received US$ 9.99')).toBe(999);
+    expect(extractUsdAmountMinor('Payment of $1,000 from Acme')).toBe(100000);
+    expect(extractUsdAmountMinor('CA$ 10.00 received')).toBeNull(); // prefixed dollar, not USD
+    expect(extractUsdAmountMinor('no money here')).toBeNull();
+  });
+
+  it('parses a Wise money-received notification as incoming USD', () => {
+    const parsed = parseBankNotification({ bankProfileId: 'wise_int', text: 'You received $50.00 from John Doe' });
+    expect(parsed.directionLabel).toBe('incoming_customer_transfer');
+    expect(parsed.currency).toBe('USD');
+    expect(parsed.amountMinor).toBe(5000);
+    expect(parsed.allowAutoConfirmCandidate).toBe(false); // neobanks never auto-confirm
+    expect(parsed.signalQuality).toBeGreaterThan(0);
+  });
+
+  it('parses Revolut-style fragments as incoming USD', () => {
+    const parsed = parseBankNotification({ bankProfileId: 'revolut_int', text: '$25.00 from Alice — Received on the 6th' });
+    expect(parsed.directionLabel).toBe('incoming_customer_transfer');
+    expect(parsed.amountMinor).toBe(2500);
+    expect(parsed.currency).toBe('USD');
+  });
+
+  it('classifies outgoing and noise as non-incoming on INT profiles', () => {
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'You sent $50.00 to Bob' }).directionLabel).not.toBe('incoming_customer_transfer');
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'You paid $12.00 at Store' }).directionLabel).not.toBe('incoming_customer_transfer');
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'Add money instantly to your account' }).directionLabel).toBe('unknown');
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'Incoming call from +1...' }).directionLabel).toBe('unknown');
+    expect(parseBankNotification({ bankProfileId: 'payoneer_int', text: 'Confirm your email address' }).directionLabel).toBe('unknown');
+  });
+
+  it('registers the three INT learning profiles (country INT, autoconfirm disabled)', () => {
+    for (const id of ['wise_int', 'revolut_int', 'payoneer_int']) {
+      const p = V1_BANK_PROFILES.find((x) => x.bankProfileId === id);
+      expect(p).toBeDefined();
+      expect(p!.country).toBe('INT');
+      expect(p!.status).toBe('learning');
+      expect(p!.autoConfirmStatus).toBe('disabled');
+      expect(p!.supportedLocales).toEqual(['en']);
+    }
   });
 });

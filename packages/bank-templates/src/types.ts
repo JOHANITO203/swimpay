@@ -31,7 +31,7 @@ export interface TrustedBankApp {
 export interface BankProfile {
   bankProfileId: string;
   displayName: string;
-  country: 'RU';
+  country: 'RU' | 'INT';
   status: Exclude<BankTemplateStatus, 'new'>;
   autoConfirmStatus: 'disabled' | 'review_only' | 'shadow_testing' | 'trusted_low_amount' | 'trusted';
   trustedApps: TrustedBankApp[];

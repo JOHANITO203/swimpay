@@ -33,7 +33,10 @@ export const V1_BANK_PROFILES: BankProfile[] = [
   createLearningProfile('vtb_ru', 'VTB Bank'),
   createLearningProfile('alfa_ru', 'Alfa-Bank'),
   createLearningProfile('gazprombank_ru', 'Gazprombank'),
-  createLearningProfile('ozon_bank', 'Ozon Банк')
+  createLearningProfile('ozon_bank', 'Ozon Банк'),
+  createInternationalLearningProfile('wise_int', 'Wise'),
+  createInternationalLearningProfile('revolut_int', 'Revolut'),
+  createInternationalLearningProfile('payoneer_int', 'Payoneer')
 ];
 
 const NEGATIVE_KEYWORDS = {
@@ -65,6 +68,9 @@ const INCOMING_KEYWORDS = [
 ] as const;
 
 export function parseBankNotification(input: ParseBankNotificationInput): ParsedBankNotification {
+  if (input.bankProfileId.endsWith('_int')) {
+    return parseInternationalNotification(input);
+  }
   const normalizedText = normalizeRuText(input.text);
   const sbpVariant = extractSbpIncomingVariant(input.text);
   const cardVariant = extractCardIncomingVariant(input.text);
@@ -424,5 +430,100 @@ function createLearningProfile(bankProfileId: string, displayName: string): Bank
     trustedApps: [],
     supportedLocales: ['ru-RU'],
     fieldPriority: ['EXTRA_TITLE', 'EXTRA_TEXT', 'EXTRA_BIG_TEXT', 'EXTRA_TEXT_LINES', 'EXTRA_SUB_TEXT', 'tickerText']
+  };
+}
+
+function createInternationalLearningProfile(bankProfileId: string, displayName: string): BankProfile {
+  return {
+    bankProfileId,
+    displayName,
+    country: 'INT',
+    status: 'learning',
+    autoConfirmStatus: 'disabled',
+    trustedApps: [],
+    supportedLocales: ['en'],
+    fieldPriority: ['EXTRA_TITLE', 'EXTRA_TEXT', 'EXTRA_BIG_TEXT', 'EXTRA_TEXT_LINES', 'EXTRA_SUB_TEXT', 'tickerText']
+  };
+}
+
+/** Locale-neutral normalization for international (English) notifications. */
+export function normalizeIntlText(text: string): string {
+  return text.normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/** USD amount from neobank notifications: $1,234.56 / 1234.56 USD / US$ 9.99. */
+export function extractUsdAmountMinor(text: string): number | null {
+  const t = text.normalize('NFKC');
+  // $-prefixed (reject letter-prefixed like CA$) or trailing USD/US$.
+  const match =
+    t.match(/(?<![A-Za-z])(?:US\$|\$)\s?(\d[\d,]*(?:\.\d{1,2})?)/u) ??
+    t.match(/(\d[\d,]*(?:\.\d{1,2})?)\s?(?:US\$|USD)(?=$|[\s.,;:])/iu);
+  if (!match?.[1]) {
+    return null;
+  }
+  const normalized = match[1].replace(/,/g, '');
+  const [major = '0', minor = ''] = normalized.split('.');
+  const amount = Number.parseInt(major, 10) * 100 + (minor ? Number.parseInt(minor.padEnd(2, '0').slice(0, 2), 10) : 0);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+const INTL_INCOMING_KEYWORDS = [
+  'you received', 'received $', 'received us$', 'received usd', '%1$s received', 'received from',
+  'got paid', 'payment from', 'sent you', 'paid you', 'money from', 'you got'
+];
+const INTL_OUTGOING_KEYWORDS = [
+  'you sent', 'you paid', 'payment sent', 'sent to', 'you transferred', 'transfer sent', 'withdrawal', 'you withdrew'
+];
+const INTL_NOISE_KEYWORDS = [
+  'incoming call', 'add money', 'top up', 'confirm your email', 'verify', 'passcode', 'log in', 'login',
+  'security', 'card delivered', 'statement', 'reward', 'cashback', 'promo', 'offer'
+];
+
+/** English money-received direction for INT profiles. Conservative: unknown unless clearly incoming. */
+export function classifyIntlDirection(text: string): DirectionLabel {
+  const n = normalizeIntlText(text);
+  if (INTL_NOISE_KEYWORDS.some((k) => n.includes(k))) {
+    return 'unknown';
+  }
+  if (INTL_OUTGOING_KEYWORDS.some((k) => n.includes(k))) {
+    return 'outgoing_payment';
+  }
+  // 'received'/'from' with a money token, or explicit received phrasing.
+  const incoming = INTL_INCOMING_KEYWORDS.some((k) => n.includes(k)) || (/\breceived\b/u.test(n) && /\bfrom\b/u.test(n));
+  return incoming ? 'incoming_customer_transfer' : 'unknown';
+}
+
+function parseInternationalNotification(input: ParseBankNotificationInput): ParsedBankNotification {
+  const normalizedText = normalizeIntlText(input.text);
+  const directionLabel = classifyIntlDirection(input.text);
+  const amountMinor = extractUsdAmountMinor(input.text) ?? undefined;
+  const currency = extractCurrency(input.text) ?? undefined;
+  const referenceCode = extractReferenceCode(normalizedText) ?? undefined;
+  const reasonCodes: string[] = [];
+  if (directionLabel === 'incoming_customer_transfer') reasonCodes.push('intl_incoming_detected');
+  if (amountMinor !== undefined) reasonCodes.push('amount_extracted');
+  if (currency === 'USD') reasonCodes.push('currency_usd');
+  if (referenceCode) reasonCodes.push('reference_extracted');
+  reasonCodes.push('intl_review_only_never_auto_confirm');
+
+  return {
+    bankProfileId: input.bankProfileId,
+    normalizedText,
+    directionLabel,
+    rail: undefined,
+    amountMinor,
+    currency,
+    senderNameHint: undefined,
+    senderBankHint: undefined,
+    sourceLabel: undefined,
+    cardNetwork: undefined,
+    receiverCardLast4: undefined,
+    balanceAfterMinor: undefined,
+    senderPhoneNormalized: undefined,
+    maskedPhoneDetected: false,
+    referenceCode,
+    signalQuality: scoreParsedSignal({ directionLabel, amountMinor, currency, referenceCode }),
+    allowAutoConfirmCandidate: false, // neobanks never auto-confirm in v1
+    reasonCodes
   };
 }
