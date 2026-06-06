@@ -84,7 +84,7 @@ describe('developer integration backend lifecycle', () => {
     expect(body.public_key).toMatch(/^pk_test_/u);
     expect(body.secret_key_masked).toBeNull();
     expect(body.webhook_secret_masked).toBeNull();
-    expect(body.public_webhook_events).toEqual(['payment.confirmed', 'payment.rejected', 'payment.expired']);
+    expect(body.public_webhook_events).toEqual(['payment.confirmed', 'payment.rejected', 'payment.expired', 'payment.currency_mismatch']);
     expect(body.official_bank_confirmation).toBe(false);
     expect(response.body).not.toMatch(/sk_test_[A-Za-z0-9_-]+|whsec_[A-Za-z0-9_-]+/u);
   });

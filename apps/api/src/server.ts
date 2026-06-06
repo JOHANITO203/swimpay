@@ -57,6 +57,7 @@ import {
 import {
   createDefaultMerchantIntegrationRepository,
   parseDeliveryLimit,
+  PUBLIC_V1_WEBHOOK_EVENTS,
   toMerchantIntegrationResponse,
   validateWebhookUrl,
   type MerchantDeliveryHistoryRow,
@@ -1261,7 +1262,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     return reply.status(200).send({
       deliveries: await merchantIntegrationRepository.listDeliveries(merchantContext.merchantId, parseDeliveryLimit(query.limit)),
-      public_webhook_events: ['payment.confirmed', 'payment.rejected', 'payment.expired'],
+      public_webhook_events: PUBLIC_V1_WEBHOOK_EVENTS,
       raw_payload_included: false,
       official_bank_confirmation: false
     });

@@ -5,7 +5,7 @@ import { decryptSecret, encryptSecret, hashApiKey, hashWebhookSecret, validatePu
 
 const { Pool } = pg;
 
-export const PUBLIC_V1_WEBHOOK_EVENTS = ['payment.confirmed', 'payment.rejected', 'payment.expired'] as const;
+export const PUBLIC_V1_WEBHOOK_EVENTS = ['payment.confirmed', 'payment.rejected', 'payment.expired', 'payment.currency_mismatch'] as const;
 
 export type PublicV1WebhookEventType = (typeof PUBLIC_V1_WEBHOOK_EVENTS)[number];
 export type IntegrationType = 'web' | 'android' | 'both';

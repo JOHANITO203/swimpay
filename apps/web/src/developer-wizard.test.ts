@@ -89,7 +89,7 @@ class FakeMerchantIntegrationClient implements MerchantIntegrationClient {
       webhook_url: 'https://merchant.example/webhooks/swimpay',
       webhook_status: 'active',
       integration_type: 'both',
-      public_webhook_events: ['payment.confirmed', 'payment.rejected', 'payment.expired'],
+      public_webhook_events: ['payment.confirmed', 'payment.rejected', 'payment.expired', 'payment.currency_mismatch'],
       payment_confirmed_after_manual_confirmation: true,
       official_bank_confirmation: false,
       ...this.overrides,
@@ -222,7 +222,7 @@ describe('Developer Integration Wizard', () => {
     expect(exportBlock).toContain('SWIMPAY_WEBHOOK_SECRET=whsec_');
     expect(exportBlock).toContain('SWIMPAY_WEBHOOK_URL=https://merchant.example/webhooks/swimpay');
     expect(exportBlock).toContain('EXTERNAL_APP_BASE_URL=https://&lt;merchant-production-endpoint&gt;');
-    expect(exportBlock).toContain('payment.confirmed,payment.rejected,payment.expired');
+    expect(exportBlock).toContain('payment.confirmed,payment.rejected,payment.expired,payment.currency_mismatch');
     expect(exportBlock).toContain('Verifiez que');
     expect(exportBlock).toContain('route publique exacte');
 

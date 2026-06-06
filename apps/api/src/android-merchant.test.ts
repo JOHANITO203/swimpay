@@ -1416,7 +1416,7 @@ describe('android merchant mobile backend endpoints', () => {
     const read = await server.inject({ method: 'GET', url: '/v1/merchant/integration', headers });
     expect(read.statusCode).toBe(200);
     expect(read.json()).toMatchObject({
-      public_webhook_events: ['payment.confirmed', 'payment.rejected', 'payment.expired'],
+      public_webhook_events: ['payment.confirmed', 'payment.rejected', 'payment.expired', 'payment.currency_mismatch'],
       official_bank_confirmation: false
     });
     expect(read.json().secret_key_once).toBeUndefined();
@@ -1448,7 +1448,7 @@ describe('android merchant mobile backend endpoints', () => {
 
     const deliveries = await server.inject({ method: 'GET', url: '/v1/merchant/integration/webhook-deliveries', headers });
     expect(deliveries.statusCode).toBe(200);
-    expect(deliveries.json().public_webhook_events).toEqual(['payment.confirmed', 'payment.rejected', 'payment.expired']);
+    expect(deliveries.json().public_webhook_events).toEqual(['payment.confirmed', 'payment.rejected', 'payment.expired', 'payment.currency_mismatch']);
 
     const normalRead = await server.inject({ method: 'GET', url: '/v1/merchant/integration', headers });
     expect(normalRead.statusCode).toBe(200);

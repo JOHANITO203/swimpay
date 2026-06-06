@@ -5,6 +5,8 @@ import {
   SwimPayWebhookTimestampError
 } from './errors.js';
 import type {
+  SwimPayCurrencyMismatchEventData,
+  SwimPayPaymentEventData,
   SwimPayPublicWebhookDecision,
   SwimPayPublicWebhookEvent,
   SwimPayPublicWebhookEventType,
@@ -14,7 +16,8 @@ import type {
 const PUBLIC_EVENT_TYPES = new Set<SwimPayPublicWebhookEventType>([
   'payment.confirmed',
   'payment.rejected',
-  'payment.expired'
+  'payment.expired',
+  'payment.currency_mismatch'
 ]);
 
 const PUBLIC_DECISIONS = new Set<SwimPayPublicWebhookDecision>(['manual_confirmed', 'manual_rejected', 'expired']);
@@ -87,6 +90,10 @@ export function parsePublicWebhookEvent(payload: unknown): SwimPayPublicWebhookE
     throw new SwimPayValidationError('officialBankConfirmation must be false.');
   }
 
+  if (type === 'payment.currency_mismatch') {
+    return parseCurrencyMismatchEvent(id, createdAt, eventData);
+  }
+
   const orderId = stringFrom(eventData.order_id) ?? stringFrom(eventData.orderId);
   const paymentSessionId = stringFrom(eventData.payment_session_id) ?? stringFrom(eventData.paymentSessionId);
   const amountMinor = amountMinorFrom(eventData);
@@ -108,7 +115,7 @@ export function parsePublicWebhookEvent(payload: unknown): SwimPayPublicWebhookE
 
   return stripUndefined({
     id,
-    type: type as SwimPayPublicWebhookEventType,
+    type: type as 'payment.confirmed' | 'payment.rejected' | 'payment.expired',
     createdAt,
     data: stripUndefined({
       externalOrderId: stringFrom(eventData.external_id) ?? stringFrom(eventData.externalOrderId),
@@ -119,7 +126,51 @@ export function parsePublicWebhookEvent(payload: unknown): SwimPayPublicWebhookE
       confirmationType,
       officialBankConfirmation: false,
       decision: decision as SwimPayPublicWebhookDecision | undefined
-    })
+    }) as SwimPayPaymentEventData
+  }) as SwimPayPublicWebhookEvent;
+}
+
+function parseCurrencyMismatchEvent(id: string, createdAt: string, eventData: Record<string, unknown>): SwimPayPublicWebhookEvent {
+  const orderId = stringFrom(eventData.order_id) ?? stringFrom(eventData.orderId);
+  const paymentSessionId = stringFrom(eventData.payment_session_id) ?? stringFrom(eventData.paymentSessionId);
+  const expectedCurrency = stringFrom(eventData.expected_currency) ?? stringFrom(eventData.expectedCurrency);
+  const signalCurrency = stringFrom(eventData.signal_currency) ?? stringFrom(eventData.signalCurrency);
+  const expectedAmountMinor = Number.isInteger(eventData.expected_amount_minor)
+    ? (eventData.expected_amount_minor as number)
+    : Number.isInteger(eventData.expectedAmountMinor)
+      ? (eventData.expectedAmountMinor as number)
+      : undefined;
+  const matchedOn = stringFrom(eventData.matched_on) ?? stringFrom(eventData.matchedOn);
+
+  if (!orderId || !paymentSessionId || !expectedCurrency || !signalCurrency || expectedAmountMinor === undefined || !matchedOn) {
+    throw new SwimPayValidationError('Webhook event data is missing required currency_mismatch fields.');
+  }
+
+  if (matchedOn !== 'reference' && matchedOn !== 'amount') {
+    throw new SwimPayValidationError('Unsupported matched_on value for currency_mismatch event.');
+  }
+
+  const signalAmountMinor = Number.isInteger(eventData.signal_amount_minor)
+    ? (eventData.signal_amount_minor as number)
+    : Number.isInteger(eventData.signalAmountMinor)
+      ? (eventData.signalAmountMinor as number)
+      : undefined;
+
+  return stripUndefined({
+    id,
+    type: 'payment.currency_mismatch' as const,
+    createdAt,
+    data: stripUndefined({
+      orderId,
+      externalOrderId: stringFrom(eventData.external_id) ?? stringFrom(eventData.externalOrderId),
+      paymentSessionId,
+      expectedCurrency,
+      signalCurrency,
+      expectedAmountMinor,
+      signalAmountMinor,
+      matchedOn: matchedOn as 'reference' | 'amount',
+      officialBankConfirmation: false
+    }) as SwimPayCurrencyMismatchEventData
   }) as SwimPayPublicWebhookEvent;
 }
 
