@@ -1343,9 +1343,9 @@ function fingerprintNameVariants(values: readonly string[]): string {
   return uniqueNameVariants(values).sort().join('|');
 }
 
-function deriveReconciliationDeltaMinor(paymentSessionId: string, reference: string): number {
+function deriveReconciliationDeltaMinor(paymentSessionId: string, reference: string, maxDelta = 99): number {
   const seed = [...`${paymentSessionId}:${reference}`].reduce((total, char) => total + char.charCodeAt(0), 0);
-  return (seed % 99) + 1;
+  return (seed % maxDelta) + 1;
 }
 
 function receiverBank(

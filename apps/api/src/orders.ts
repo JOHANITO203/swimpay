@@ -350,6 +350,11 @@ class AmountLeaseUnavailableError extends Error {
   }
 }
 
+/** Reconciliation deltas stay <=1% of the display amount (min 1 minor unit, max 99). */
+export function maxReconciliationDeltaMinor(displayAmountMinor: number): number {
+  return Math.min(99, Math.max(1, Math.floor(displayAmountMinor / 100)));
+}
+
 export function selectAmountLeaseCandidate(input: {
   displayAmountMinor: number;
   preferredDeltaMinor: number;
@@ -359,10 +364,11 @@ export function selectAmountLeaseCandidate(input: {
     return null;
   }
 
-  const preferredDelta = normalizeReconciliationDelta(input.preferredDeltaMinor);
+  const maxDelta = maxReconciliationDeltaMinor(input.displayAmountMinor);
+  const preferredDelta = normalizeReconciliationDelta(input.preferredDeltaMinor, maxDelta);
   const deltas = [
     preferredDelta,
-    ...Array.from({ length: 99 }, (_value, index) => index + 1).filter((delta) => delta !== preferredDelta)
+    ...Array.from({ length: maxDelta }, (_value, index) => index + 1).filter((delta) => delta !== preferredDelta)
   ];
 
   for (const delta of deltas) {
@@ -2612,12 +2618,11 @@ function amountLeaseRailForRoute(railType: ReceivingRouteRailType): AmountLeaseR
   return railType === 'card_transfer' ? 'card' : 'sbp';
 }
 
-function normalizeReconciliationDelta(value: number): number {
-  if (!Number.isInteger(value) || value < 1 || value > 99) {
+function normalizeReconciliationDelta(value: number, maxDelta = 99): number {
+  if (!Number.isInteger(value) || value < 1) {
     return 1;
   }
-
-  return value;
+  return value > maxDelta ? 1 + ((value - 1) % maxDelta) : value;
 }
 
 function normalizeReceiverIdentifier(

@@ -12,6 +12,7 @@ import {
 import {
   PgOrderRepository,
   buildMerchantReceivingRouteRecord,
+  selectAmountLeaseCandidate,
   type PaymentSessionCheckoutMutationResult,
   type SaveExpectedPaymentProfileInput,
   type StoredMerchantReceivingRouteRecord
@@ -892,6 +893,45 @@ const validOrderPayload = {
   },
   expires_in_seconds: 900
 };
+
+describe('selectAmountLeaseCandidate', () => {
+  describe('per-currency reconciliation cap', () => {
+    it('caps the delta at 1% of the display amount', () => {
+      // $5.00 -> maxDelta = max(1, floor(500/100)) = 5
+      const candidate = selectAmountLeaseCandidate({
+        displayAmountMinor: 500,
+        preferredDeltaMinor: 42, // out of cap -> renormalized within 1..5
+        unavailablePayableAmounts: new Set()
+      });
+      expect(candidate).not.toBeNull();
+      expect(candidate!.reconciliationDeltaMinor).toBeGreaterThanOrEqual(1);
+      expect(candidate!.reconciliationDeltaMinor).toBeLessThanOrEqual(5);
+    });
+
+    it('keeps the historical 1..99 range for large amounts', () => {
+      const candidate = selectAmountLeaseCandidate({
+        displayAmountMinor: 100000, // 1000 RUB -> floor(1000)=99 cap
+        preferredDeltaMinor: 67,
+        unavailablePayableAmounts: new Set()
+      });
+      expect(candidate!.reconciliationDeltaMinor).toBe(67);
+    });
+
+    it('always allows at least delta 1 on tiny amounts', () => {
+      const candidate = selectAmountLeaseCandidate({
+        displayAmountMinor: 50, // floor(0.5) -> clamped to 1
+        preferredDeltaMinor: 1,
+        unavailablePayableAmounts: new Set()
+      });
+      expect(candidate!.reconciliationDeltaMinor).toBe(1);
+    });
+
+    it('returns null when every capped payable amount is taken', () => {
+      const taken = new Set([501, 502, 503, 504, 505]);
+      expect(selectAmountLeaseCandidate({ displayAmountMinor: 500, preferredDeltaMinor: 1, unavailablePayableAmounts: taken })).toBeNull();
+    });
+  });
+});
 
 describe('pg order repository checkout amount leases', () => {
   test('saveExpectedPaymentProfile allocates and persists an amount lease for the selected receiving route', async () => {
