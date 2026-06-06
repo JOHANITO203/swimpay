@@ -61,6 +61,9 @@ switch (event.type) {
     break;
   case "payment.expired":
     break;
+  case "payment.currency_mismatch":
+    // Informational only — signal currency differed from session currency; no fulfillment action.
+    break;
 }
 ```
 

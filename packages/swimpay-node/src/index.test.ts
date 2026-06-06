@@ -290,6 +290,53 @@ describe('@swimpay/node webhook verification', () => {
     } satisfies SwimPayPublicWebhookEvent);
   });
 
+  it('verifies a valid raw-body signature and returns a typed payment.currency_mismatch event', () => {
+    const rawBody = Buffer.from(
+      JSON.stringify({
+        id: 'evt_cm_01',
+        type: 'payment.currency_mismatch',
+        created_at: '2026-06-06T10:00:00.000Z',
+        data: {
+          order_id: 'ord_01',
+          external_id: 'ORDER_8888',
+          payment_session_id: 'ps_01',
+          expected_currency: 'XOF',
+          signal_currency: 'RUB',
+          expected_amount_minor: 1000,
+          signal_amount_minor: 13700,
+          matched_on: 'reference',
+          official_bank_confirmation: false
+        }
+      })
+    );
+    const timestamp = new Date().toISOString();
+    const signature = signWebhook('whsec_test', timestamp, rawBody);
+    const swimpay = new SwimPay({ secretKey: 'sk_test' });
+
+    const event = swimpay.webhooks.verify(rawBody, {
+      'swimpay-event-id': 'evt_cm_01',
+      'swimpay-timestamp': timestamp,
+      'swimpay-signature': signature
+    }, 'whsec_test');
+
+    expect(event).toEqual({
+      id: 'evt_cm_01',
+      type: 'payment.currency_mismatch',
+      createdAt: '2026-06-06T10:00:00.000Z',
+      data: {
+        orderId: 'ord_01',
+        externalOrderId: 'ORDER_8888',
+        paymentSessionId: 'ps_01',
+        expectedCurrency: 'XOF',
+        signalCurrency: 'RUB',
+        expectedAmountMinor: 1000,
+        signalAmountMinor: 13700,
+        matchedOn: 'reference',
+        officialBankConfirmation: false
+      }
+    } satisfies SwimPayPublicWebhookEvent);
+  });
+
   it.each([
     ['payment.rejected', 'manual_rejected'],
     ['payment.expired', 'expired']

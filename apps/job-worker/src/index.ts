@@ -18,6 +18,7 @@ import { createJobWorkerConsumers } from './consumers.js';
 import { PgWorkerIdempotencyLedger } from './idempotency-ledger.js';
 import { FetchWebhookHttpClient, PgWebhookRepository, WebhookDeliveryWorker } from './webhooks.js';
 import {
+  createCurrencyMismatchWebhookHandler,
   createPaymentExpiredWebhookHandler,
   createReviewFinalWebhookHandler,
   createWebhookDeliveryRequestedHandler,
@@ -178,6 +179,10 @@ export function createJobWorkerHandler(consumer: DurableConsumerDefinition, webh
 
   if ((consumer.eventType === EventTypes.ORDER_EXPIRED || consumer.eventType === EventTypes.PAYMENT_SESSION_EXPIRED) && webhookProcessor) {
     return createPaymentExpiredWebhookHandler(webhookProcessor);
+  }
+
+  if (consumer.eventType === EventTypes.SIGNAL_CURRENCY_MISMATCH && webhookProcessor) {
+    return createCurrencyMismatchWebhookHandler(webhookProcessor);
   }
 
   return createSafeStubHandler('swimpay-job-worker');

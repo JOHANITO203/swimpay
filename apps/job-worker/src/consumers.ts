@@ -5,7 +5,8 @@ const JOB_WORKER_EVENT_TYPES = [
   EventTypes.REVIEW_REJECTED,
   EventTypes.WEBHOOK_DELIVERY_REQUESTED,
   EventTypes.ORDER_EXPIRED,
-  EventTypes.PAYMENT_SESSION_EXPIRED
+  EventTypes.PAYMENT_SESSION_EXPIRED,
+  EventTypes.SIGNAL_CURRENCY_MISMATCH
 ] as const;
 
 export const JOB_WORKER_CONSUMERS: readonly DurableConsumerDefinition[] = createJobWorkerConsumers('swimpay');

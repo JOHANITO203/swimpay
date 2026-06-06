@@ -27,7 +27,7 @@ V1 rules:
 - Webhooks for fulfillment fire only after merchant confirmation or explicit terminal outcome.
 - Auto-confirmation is disabled for V1 public release.
 
-Every public payment webhook must include:
+Every fulfillment webhook (`payment.confirmed`, `payment.rejected`, `payment.expired`) must include:
 
 ```json
 {
@@ -35,6 +35,8 @@ Every public payment webhook must include:
   "official_bank_confirmation": false
 }
 ```
+
+`payment.currency_mismatch` is an informational event, not a fulfillment event. It does not include `confirmation_type` (nothing is confirmed). It does include `official_bank_confirmation: false`.
 
 ## Headers
 
@@ -139,6 +141,51 @@ Emitted when the payment session expires without a confirmed payment.
   }
 }
 ```
+
+### `payment.currency_mismatch`
+
+Informational event fired when a captured bank signal carries a currency different from every active session's currency for that merchant, AND a cross-currency session of the same merchant matches by reference code (priority) or exact minor-amount equality.
+
+Conditions:
+
+- Fired only when **no** same-currency candidate session existed at all for this merchant.
+- At most one event per signal (deduped server-side via migration 028).
+- Matching and review behavior are completely unchanged: the signal is still excluded and no review is created.
+
+```json
+{
+  "id": "evt_05",
+  "type": "payment.currency_mismatch",
+  "created_at": "2026-06-05T12:00:00Z",
+  "data": {
+    "order_id": "ord_01",
+    "external_id": "order_888",
+    "payment_session_id": "ps_01",
+    "expected_currency": "XOF",
+    "signal_currency": "RUB",
+    "expected_amount_minor": 1000,
+    "signal_amount_minor": 13700,
+    "matched_on": "reference",
+    "official_bank_confirmation": false
+  }
+}
+```
+
+#### Payload field notes
+
+| Field | Presence | Notes |
+|---|---|---|
+| `external_id` | Optional | Absent when the order was created without an `external_id` |
+| `signal_amount_minor` | Optional | Absent when the signal carried no parseable amount |
+| `confirmation_type` | Never present | Nothing is confirmed; this is not a fulfillment event |
+| `matched_on` | Always | `"reference"` — matched by reference code (stronger); `"amount"` — matched by raw integer minor-amount equality across currencies (no FX applied, weaker correlation) |
+| `official_bank_confirmation` | Always `false` | SwimPay is not a bank or PSP |
+
+#### Subscription
+
+New integrations (provisioning): included by default in `enabled_events`.
+
+Existing endpoints: must opt in by updating their `enabled_events` to include `payment.currency_mismatch`.
 
 ## Non-fulfillment Internal Events
 

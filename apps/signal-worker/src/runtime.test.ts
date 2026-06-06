@@ -521,6 +521,186 @@ describe('signal runtime processor', () => {
     expect(repository.reviews).toHaveLength(1);
     expect(repository.webhookEvents).toEqual([]);
   });
+  // ─── Cross-currency probe tests ──────────────────────────────────────────
+  //
+  // The probe fires from the gate-early-exit path (no same-currency sessions →
+  // gate returns reviewCreationAllowed:false → ignoreUnrelatedSignal called).
+  // The probe also fires from the wait/!selected branch if evaluateSignalMatch
+  // receives an empty reviewableCandidates list.
+  //
+  function buildCrossCurrencySignal(overrides: Partial<SignalRuntimeSignal> = {}): SignalRuntimeSignal {
+    return buildSignal({
+      amountMinor: 13700,
+      currency: 'RUB',
+      directionLabel: 'incoming_customer_transfer',
+      titleRedacted: 'Incoming transfer 137 RUB',
+      bodyRedacted: '',
+      ...overrides
+    });
+  }
+
+  it('emits signal.currency_mismatch when a cross-currency session matches by reference', async () => {
+    // sessions:[] → no same-currency match → gate early exit → probe fires
+    const { processor, repository } = createProcessor({
+      signal: buildCrossCurrencySignal(),
+      sessions: []
+    });
+    repository.crossCurrencyHit = {
+      orderId: 'ord_xof_01',
+      externalId: 'ext_order_42',
+      paymentSessionId: 'ps_xof_01',
+      expectedCurrency: 'XOF',
+      expectedAmountMinor: 500000,
+      matchedOn: 'reference'
+    };
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    // Existing wait/no-selected behaviour is preserved
+    expect(result.decision).toBe('rejected');
+    expect(result.reasonCodes).toContain('no_active_payment_intent_no_review');
+
+    // Currency-mismatch event must be emitted
+    const mismatchEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.SIGNAL_CURRENCY_MISMATCH);
+    expect(mismatchEvents).toHaveLength(1);
+    expect(mismatchEvents[0]?.data).toEqual({
+      signal_id: 'sig_01',
+      merchant_id: 'mch_01',
+      order_id: 'ord_xof_01',
+      external_id: 'ext_order_42',
+      payment_session_id: 'ps_xof_01',
+      expected_currency: 'XOF',
+      signal_currency: 'RUB',
+      signal_amount_minor: 13700,
+      expected_amount_minor: 500000,
+      matched_on: 'reference'
+    });
+    expect(repository.currencyMismatchNotifiedSignalIds).toContain('sig_01');
+  });
+
+  it('emits signal.currency_mismatch with matched_on:amount when only amount matches', async () => {
+    const { processor, repository } = createProcessor({
+      signal: buildCrossCurrencySignal(),
+      sessions: []
+    });
+    repository.crossCurrencyHit = {
+      orderId: 'ord_xof_02',
+      externalId: 'ext_order_99',
+      paymentSessionId: 'ps_xof_02',
+      expectedCurrency: 'XOF',
+      expectedAmountMinor: 13700,
+      matchedOn: 'amount'
+    };
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    const mismatchEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.SIGNAL_CURRENCY_MISMATCH);
+    expect(mismatchEvents).toHaveLength(1);
+    expect(mismatchEvents[0]?.data.matched_on).toBe('amount');
+    expect(mismatchEvents[0]?.data.signal_currency).toBe('RUB');
+    expect(mismatchEvents[0]?.data.expected_currency).toBe('XOF');
+  });
+
+  it('does not emit signal.currency_mismatch when no cross-currency session corresponds', async () => {
+    const { processor, repository } = createProcessor({
+      signal: buildCrossCurrencySignal(),
+      sessions: []
+    });
+    // crossCurrencyHit left as null (default)
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    const mismatchEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.SIGNAL_CURRENCY_MISMATCH);
+    expect(mismatchEvents).toHaveLength(0);
+  });
+
+  it('does not probe twice when markCurrencyMismatchNotified returns false (already notified)', async () => {
+    const { processor, repository } = createProcessor({
+      signal: buildCrossCurrencySignal(),
+      sessions: []
+    });
+    repository.crossCurrencyHit = {
+      orderId: 'ord_xof_01',
+      externalId: 'ext_order_42',
+      paymentSessionId: 'ps_xof_01',
+      expectedCurrency: 'XOF',
+      expectedAmountMinor: 500000,
+      matchedOn: 'reference'
+    };
+    repository.alreadyCurrencyMismatchNotified = true;
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    const mismatchEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.SIGNAL_CURRENCY_MISMATCH);
+    expect(mismatchEvents).toHaveLength(0);
+  });
+
+  it('does not probe signals without a parsed currency', async () => {
+    const noCurrencySignal = buildCrossCurrencySignal({ currency: undefined, titleRedacted: '', bodyRedacted: '' });
+    const { processor, repository } = createProcessor({
+      signal: noCurrencySignal,
+      sessions: []
+    });
+    repository.crossCurrencyHit = {
+      orderId: 'ord_xof_01',
+      externalId: 'ext_order_42',
+      paymentSessionId: 'ps_xof_01',
+      expectedCurrency: 'XOF',
+      expectedAmountMinor: 500000,
+      matchedOn: 'reference'
+    };
+
+    await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    // probeCrossCurrencySessions should never have been called
+    expect(repository.probeCrossCurrencyCallCount).toBe(0);
+    const mismatchEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.SIGNAL_CURRENCY_MISMATCH);
+    expect(mismatchEvents).toHaveLength(0);
+  });
+
+  it('does not emit currency_mismatch when a same-currency candidate existed (wrong amount) even if a cross-currency session matches', async () => {
+    // A same-currency session exists but its amount does NOT match the signal (different amount),
+    // so listCandidateSessions returns it (same currency, same amount in this repo's filter — actually
+    // the in-memory repo filters on amount AND currency, so to have a same-currency candidate we need
+    // the signal amount to match the session amount).
+    // We build a session with the SAME currency (RUB) and the SAME amount so that listCandidateSessions
+    // returns it (candidates.length === 1), but configure the gate so reviewCreationAllowed=false
+    // (bank profile mismatch forces gate early-exit via no_payable_amount_match / receiver_bank_mismatch).
+    const { processor, repository } = createProcessor({
+      signal: buildCrossCurrencySignal({
+        // Use a different bankProfileId so the gate / match blocks review creation
+        bankProfileId: 'tbank_ru'
+      }),
+      sessions: [
+        buildSession({
+          // Same currency (RUB), same amount (13700) → candidate IS returned by listCandidateSessions
+          // But bank profile is sber_ru while signal is tbank_ru → gate blocks review
+          currency: 'RUB',
+          expectedAmountMinor: 13700
+        })
+      ]
+    });
+    // Arm the cross-currency hit so it would fire if the guard is absent
+    repository.crossCurrencyHit = {
+      orderId: 'ord_xof_03',
+      externalId: 'ext_order_77',
+      paymentSessionId: 'ps_xof_03',
+      expectedCurrency: 'XOF',
+      expectedAmountMinor: 500000,
+      matchedOn: 'amount'
+    };
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('rejected');
+    // The guard must short-circuit BEFORE probeCrossCurrencySessions is called
+    expect(repository.probeCrossCurrencyCallCount).toBe(0);
+    const mismatchEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.SIGNAL_CURRENCY_MISMATCH);
+    expect(mismatchEvents).toHaveLength(0);
+  });
 });
 
 function safetyMetricForDirection(direction: SignalRuntimeSignal['directionLabel']) {

@@ -10,9 +10,10 @@ const { Pool } = pg;
 export type PublicWebhookEventType =
   | 'payment.confirmed'
   | 'payment.rejected'
-  | 'payment.expired';
+  | 'payment.expired'
+  | 'payment.currency_mismatch';
 
-const PUBLIC_WEBHOOK_EVENT_TYPES = new Set<string>(['payment.confirmed', 'payment.rejected', 'payment.expired']);
+const PUBLIC_WEBHOOK_EVENT_TYPES = new Set<string>(['payment.confirmed', 'payment.rejected', 'payment.expired', 'payment.currency_mismatch']);
 
 export const WEBHOOK_DELIVERY_STATUSES = {
   PENDING: 'pending',
@@ -1024,11 +1025,17 @@ export function createPaymentWebhookEvent<TData extends Record<string, unknown>>
   createdAt: string;
   merchantId: string;
   data: TData;
+  includeSignalDisclosure?: boolean;
 }): PublicWebhookEvent<TData> {
   assertPublicWebhookEventType(params.type);
   if (containsRawPiiMarker(params.data)) {
     throw new Error('Webhook event data must not contain raw PII fields.');
   }
+
+  const disclosure =
+    (params.includeSignalDisclosure ?? true)
+      ? PUBLIC_EVENT_SIGNAL_DISCLOSURE
+      : { official_bank_confirmation: false as const };
 
   return {
     id: params.eventId,
@@ -1037,8 +1044,8 @@ export function createPaymentWebhookEvent<TData extends Record<string, unknown>>
     merchant_id: params.merchantId,
     data: {
       ...params.data,
-      ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
-    }
+      ...disclosure
+    } as TData & typeof PUBLIC_EVENT_SIGNAL_DISCLOSURE
   };
 }
 

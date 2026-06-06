@@ -169,6 +169,44 @@ export function createPaymentExpiredWebhookHandler(enqueuer: PublicWebhookEnqueu
   };
 }
 
+export function createCurrencyMismatchWebhookHandler(enqueuer: PublicWebhookEnqueuer): DurableEventHandler {
+  return async (event: InternalEventEnvelope): Promise<{ kind: 'ok' }> => {
+    if (event.type !== EventTypes.SIGNAL_CURRENCY_MISMATCH) {
+      throw new Error(`Unexpected currency mismatch webhook event type: ${event.type}`);
+    }
+
+    const merchantId = requireString(event.data.merchant_id, 'merchant_id');
+    const orderId = requireString(event.data.order_id, 'order_id');
+    const externalOrderId = readOptionalString(event.data.external_id);
+    const paymentSessionId = requireString(event.data.payment_session_id, 'payment_session_id');
+    const expectedCurrency = requireString(event.data.expected_currency, 'expected_currency');
+    const signalCurrency = requireString(event.data.signal_currency, 'signal_currency');
+    const expectedAmountMinor = requireInteger(event.data.expected_amount_minor, 'expected_amount_minor');
+    const matchedOn = requireString(event.data.matched_on, 'matched_on');
+
+    await enqueuer.enqueueEvent(
+      createPaymentWebhookEvent({
+        eventId: event.id,
+        type: 'payment.currency_mismatch',
+        createdAt: event.created_at,
+        merchantId,
+        includeSignalDisclosure: false,
+        data: stripUndefined({
+          order_id: orderId,
+          external_id: externalOrderId,
+          payment_session_id: paymentSessionId,
+          expected_currency: expectedCurrency,
+          signal_currency: signalCurrency,
+          expected_amount_minor: expectedAmountMinor,
+          signal_amount_minor: Number.isInteger(event.data.signal_amount_minor) ? (event.data.signal_amount_minor as number) : undefined,
+          matched_on: matchedOn
+        })
+      })
+    );
+    return { kind: 'ok' };
+  };
+}
+
 export class WebhookPollingLoop {
   private timer: NodeJS.Timeout | null = null;
   private stopped = true;

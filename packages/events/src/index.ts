@@ -26,6 +26,7 @@ export const EventTypes = {
   SIGNAL_PARSED: 'signal.parsed',
   SIGNAL_REJECTED: 'signal.rejected',
   SIGNAL_QUALITY_SCORED: 'signal.quality_scored',
+  SIGNAL_CURRENCY_MISMATCH: 'signal.currency_mismatch',
   TEMPLATE_OBSERVED: 'template.observed',
   TEMPLATE_DRIFT_DETECTED: 'template.drift_detected',
   MATCH_CANDIDATES_FOUND: 'match.candidates_found',

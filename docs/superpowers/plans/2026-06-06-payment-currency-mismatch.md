@@ -73,7 +73,11 @@
 - [ ] **Step 3: Implement.** `ParsedBankNotification.currency` (line 15) becomes `currency?: 'RUB' | 'XOF' | 'USD' | undefined;`. Replace `extractCurrency` (lines 149-151) with:
 
 ```typescript
-const RUB_CURRENCY_PATTERN = /(?:₽|руб\.?|â‚½|Ñ€ÑƒÐ±\.?|RUB)(?=$|[\s.,;:])/iu;
+// RUB_CURRENCY_PATTERN: lift the EXISTING inline regex from extractCurrency verbatim into
+// this const — it intentionally contains mojibake alternates of the ruble markers which must
+// stay byte-identical (and which this plan does not reproduce: the repo mojibake guardrail
+// allows them only in parser.ts/fixtures.ts).
+const RUB_CURRENCY_PATTERN = /<existing extractCurrency regex, moved verbatim>/iu;
 const XOF_CURRENCY_PATTERN = /(?:^|[\s])(?:FCFA|F\sCFA|XOF|CFA)(?=$|[\s.,;:])/iu;
 // Bare $ is USD unless letter-prefixed (CA$, A$); US$ and the USD code are word-bounded.
 const USD_CURRENCY_PATTERN = /(?:(?<![A-Za-z])\$|(?:^|[\s])(?:US\$|USD)(?=$|[\s.,;:]))/u;
@@ -94,7 +98,7 @@ export function extractCurrency(text: string): 'RUB' | 'XOF' | 'USD' | null {
 }
 ```
 
-CAUTION: the existing RUB regex contains intentional mojibake alternates (`â‚½`, `Ñ€ÑƒÐ±`) — keep them byte-identical. Trace 'USDT': `USD` requires `(?=$|[\s.,;:])` after, 'T' follows → no match ✓. 'CFAO': `CFA` requires boundary after, 'O' follows → no match ✓. 'CA$ 10': PREFIXED_DOLLAR kills usd; no other marker → null ✓. '100 RUB then 50 USD': rub+usd → 2 matches → null ✓. NOTE the existing call site (line 73) and `markSignalParsed` need no change (currency flows as string).
+CAUTION: the existing RUB regex contains intentional mojibake alternates (garbled ruble-sign and 'rub' byte sequences — see parser.ts, not reproduced here because of the repo mojibake guardrail) — keep them byte-identical. Trace 'USDT': `USD` requires `(?=$|[\s.,;:])` after, 'T' follows → no match ✓. 'CFAO': `CFA` requires boundary after, 'O' follows → no match ✓. 'CA$ 10': PREFIXED_DOLLAR kills usd; no other marker → null ✓. '100 RUB then 50 USD': rub+usd → 2 matches → null ✓. NOTE the existing call site (line 73) and `markSignalParsed` need no change (currency flows as string).
 
 - [ ] **Step 4:** `npx vitest run packages/bank-templates/src` → ALL PASS (existing RUB `it.each` at line 35-39 must stay green). Then `npm run typecheck` — `parsed.currency` consumers may need union widening fallout; fix additively and list every touched file.
 

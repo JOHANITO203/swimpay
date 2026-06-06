@@ -39,6 +39,47 @@ describe('bank notification parser', () => {
   });
 
   it.each([
+    ['Vous avez recu 1 000 FCFA de M. Diallo', 'XOF'],
+    ['Recu 2500 F CFA via Wave', 'XOF'],
+    ['Transfert de 5000 XOF recu', 'XOF'],
+    ['You received $10.99 from John', 'USD'],
+    ['Incoming transfer 137.50 USD', 'USD'],
+    ['Received US$ 25.00', 'USD']
+  ])('extracts non-RUB currency from %s', (text, expected) => {
+    expect(extractCurrency(text)).toBe(expected);
+  });
+
+  it.each([
+    ['You received CA$ 10.00'],        // prefixed dollar — never USD
+    ['A$25 received'],
+    ['CFAO Motors payment received'],  // CFA must be word-bounded
+    ['USDT deposit confirmed'],        // USD must be word-bounded
+    ['Received 100 RUB then 50 USD']   // conflicting currencies — never guess
+  ])('returns null for ambiguous or unbounded currency text %s', (text) => {
+    expect(extractCurrency(text)).toBeNull();
+  });
+
+  it('keeps RUB extraction unchanged and RUB wins its own contexts', () => {
+    expect(extractCurrency('Поступление 137.50 ₽')).toBe('RUB');
+    expect(extractCurrency('перевод 500 руб.')).toBe('RUB');
+  });
+
+  it('extracts USD through the full parse pipeline despite text normalization lowercasing', () => {
+    // normalizeRuText lowercases before extraction — the USD pattern must be case-insensitive.
+    const parsed = parseBankNotification({
+      bankProfileId: 'wise_int',
+      text: 'You received US$ 25.00 from John Doe'
+    });
+    expect(parsed.currency).toBe('USD');
+
+    const codeOnly = parseBankNotification({
+      bankProfileId: 'wise_int',
+      text: 'Incoming transfer 137.50 USD'
+    });
+    expect(codeOnly.currency).toBe('USD');
+  });
+
+  it.each([
     ['+7 999 123-45-67'],
     ['8 (999) 123-45-67'],
     ['89991234567'],
