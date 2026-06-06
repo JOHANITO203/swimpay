@@ -1,5 +1,10 @@
 # Design — Parsers de notifications néobanques (Wise / Revolut / Payoneer)
 
+> **SUPERSÉDÉ (2026-06-06)** par `2026-06-06-apk-intelligence-channel-detection-design.md` :
+> la détection bascule sur channel-ID + cert d'abord (le texte devient appoint), le
+> harvest s'étend aux 3 familles, et le sous-projet est phasé 4a/4b. Le parser texte EN
+> et les profils INT décrits ici restent valides comme couche « appoint » du nouveau design.
+
 **Date :** 2026-06-06
 **Statut :** Validé (best-effort + learning ; 3 apps ; anglais v1 ; detection_supported true dès ce cycle). Harvest réel effectué — voir `docs/NEOBANK_NOTIFICATION_TEMPLATES.md`.
 **Périmètre :** `packages/bank-templates`, Android `BankTargetLock`, migration 030 (certs harvestés), `packages/contracts` (detection_supported), republication APK, docs. **Hors scope :** auto-confirm néobanque (jamais), FR/RU (via learning), parsing email/in-app.
