@@ -10,9 +10,10 @@ const { Pool } = pg;
 export type PublicWebhookEventType =
   | 'payment.confirmed'
   | 'payment.rejected'
-  | 'payment.expired';
+  | 'payment.expired'
+  | 'payment.currency_mismatch';
 
-const PUBLIC_WEBHOOK_EVENT_TYPES = new Set<string>(['payment.confirmed', 'payment.rejected', 'payment.expired']);
+const PUBLIC_WEBHOOK_EVENT_TYPES = new Set<string>(['payment.confirmed', 'payment.rejected', 'payment.expired', 'payment.currency_mismatch']);
 
 export const WEBHOOK_DELIVERY_STATUSES = {
   PENDING: 'pending',

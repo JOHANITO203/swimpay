@@ -1,6 +1,7 @@
 import { EventTypes, type InternalEventEnvelope } from '@swimpay/events';
 import { describe, expect, it } from 'vitest';
 import {
+  createCurrencyMismatchWebhookHandler,
   createPaymentExpiredWebhookHandler,
   createReviewFinalWebhookHandler,
   createWebhookDeliveryRequestedHandler,
@@ -402,6 +403,58 @@ describe('webhook runtime integration', () => {
         }
       }
     ]);
+  });
+
+  it('signal.currency_mismatch handler enqueues a payment.currency_mismatch webhook', async () => {
+    const enqueuer = new FakePublicWebhookEnqueuer();
+    const handler = createCurrencyMismatchWebhookHandler(enqueuer);
+    await handler({
+      id: 'evt_cm_1',
+      type: EventTypes.SIGNAL_CURRENCY_MISMATCH,
+      created_at: '2026-06-06T10:00:00.000Z',
+      source: 'signal-worker',
+      data: {
+        signal_id: 'sig_01',
+        merchant_id: 'mch_01',
+        order_id: 'ord_01',
+        external_id: 'order_888',
+        payment_session_id: 'ps_01',
+        expected_currency: 'XOF',
+        signal_currency: 'RUB',
+        signal_amount_minor: 13700,
+        expected_amount_minor: 1000,
+        matched_on: 'reference'
+      }
+    });
+    expect(enqueuer.events).toHaveLength(1);
+    const event = enqueuer.events[0];
+    expect(event!.type).toBe('payment.currency_mismatch');
+    expect(event!.merchant_id).toBe('mch_01');
+    expect(event!.data).toEqual({
+      order_id: 'ord_01',
+      external_id: 'order_888',
+      payment_session_id: 'ps_01',
+      expected_currency: 'XOF',
+      signal_currency: 'RUB',
+      expected_amount_minor: 1000,
+      signal_amount_minor: 13700,
+      matched_on: 'reference',
+      confirmation_type: 'notification_signal',
+      official_bank_confirmation: false
+    });
+  });
+
+  it('currency_mismatch handler rejects other event types', async () => {
+    const handler = createCurrencyMismatchWebhookHandler(new FakePublicWebhookEnqueuer());
+    await expect(
+      handler({
+        id: 'evt_review_01',
+        type: EventTypes.REVIEW_CONFIRMED,
+        created_at: '2026-05-02T10:00:00.000Z',
+        source: 'swimpay-api',
+        data: {}
+      })
+    ).rejects.toThrow();
   });
 
   it('polling loop processes pending deliveries only when enabled', async () => {
