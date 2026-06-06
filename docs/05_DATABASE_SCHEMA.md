@@ -150,6 +150,33 @@ ALTER TABLE payment_sessions
 
 Raw buyer sender phone is not stored.
 
+Migration `029` adds buyer currency selection trace columns (all nullable; legacy
+sessions that predate the currency-first checkout feature never set them):
+
+```sql
+ALTER TABLE payment_sessions ADD COLUMN IF NOT EXISTS base_currency TEXT;
+ALTER TABLE payment_sessions ADD COLUMN IF NOT EXISTS base_amount_minor BIGINT;
+ALTER TABLE payment_sessions ADD COLUMN IF NOT EXISTS buyer_fx_rate TEXT;
+ALTER TABLE payment_sessions ADD COLUMN IF NOT EXISTS buyer_fx_source TEXT;
+ALTER TABLE payment_sessions ADD COLUMN IF NOT EXISTS buyer_fx_timestamp TIMESTAMPTZ;
+ALTER TABLE payment_sessions ADD COLUMN IF NOT EXISTS currency_selected_at TIMESTAMPTZ;
+```
+
+| Column | Type | Purpose |
+|---|---|---|
+| `base_currency` | TEXT | The session's original currency at creation time, frozen at the buyer's first currency selection. Used as the quoting base for re-selections. |
+| `base_amount_minor` | BIGINT | The session's original expected amount in minor units, frozen alongside `base_currency` at first selection. |
+| `buyer_fx_rate` | TEXT | The composed FX rate applied at the most recent buyer currency selection (decimal string). `'1'` for identity selection. |
+| `buyer_fx_source` | TEXT | FX rate source used: `'ecb'`, `'cbr'`, `'uemoa_peg'`, or a `+`-joined multi-leg label (e.g. `'ecb+uemoa_peg'`). `'identity'` when the buyer selected the session's current currency. |
+| `buyer_fx_timestamp` | TIMESTAMPTZ | Timestamp of the rate snapshot used at selection time. |
+| `currency_selected_at` | TIMESTAMPTZ | When the buyer confirmed their currency selection. Non-null indicates the `currency_selection` checkout step is complete. |
+
+`base_currency` and `base_amount_minor` use `COALESCE` semantics on write: they
+are set once (to the pre-selection values of `currency` and
+`expected_amount_minor`) and never overwritten by subsequent re-selections. This
+ensures every re-quote starts from the original order amount, not from the
+previously selected currency's amount.
+
 ### `merchant_receiving_routes`
 
 Merchant-side receiving destinations for hosted checkout.

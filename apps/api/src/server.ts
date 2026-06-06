@@ -102,6 +102,7 @@ import {
   buildMerchantReceivingRouteRecord,
   buildExpectedPaymentProfileMutation,
   buildOrderCreateInput,
+  currencyMinorDigits,
   formatAmountMinor,
   invalidRequest,
   normalizeWalletIdentifier,
@@ -322,7 +323,7 @@ export interface ApiServerOptions {
   };
   adminAuth?: OperatorAuthConfig;
   metrics?: MetricsRegistry;
-  fxRateService?: Pick<FxRateService, 'quoteToUsd'> | null;
+  fxRateService?: Pick<FxRateService, 'quoteToUsd' | 'quote'> | null;
   clock?: () => Date;
   startedAt?: Date;
 }
@@ -1471,12 +1472,20 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       result.paymentSession.id
     );
 
+    // Compute payable currency count from routes — same logic as the status endpoint.
+    // When >= 2 currencies are available and no currency has been chosen yet, the
+    // checkout_state will be 'currency_selection' so the web checkout can render the
+    // currency picker.  Passing undefined here (old behaviour) would have left the state
+    // stuck at buyer_identity / receiver_bank_selection and the picker would never appear.
+    const payableCurrencyCount = [...new Set(availableRoutes.map((r) => receivingCurrencyForBankProfile(r.bank_profile_id)))].length;
+
     return reply.status(200).send(
       toPaymentSessionReadResponse({
         order: result.order,
         paymentSession: result.paymentSession,
         now: clock(),
-        availableRoutes
+        availableRoutes,
+        payableCurrencyCount
       })
     );
   });
@@ -2336,6 +2345,214 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     );
   });
 
+  // ---------------------------------------------------------------------------
+  // Currency-first checkout — payable currencies listing + currency selection
+  // ---------------------------------------------------------------------------
+
+  server.get('/v1/checkout/:id/payable-currencies', async (request, reply) => {
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
+    }
+
+    const readiness = await resolveMerchantPaymentReadiness(repository!, loaded.paymentSession.merchantId);
+    const baseCurrency = (loaded.paymentSession.baseCurrency ?? loaded.paymentSession.currency).toUpperCase();
+    const baseAmountMinor = loaded.paymentSession.baseAmountMinor ?? loaded.paymentSession.expectedAmountMinor;
+    const currentCurrency = loaded.paymentSession.currency.toUpperCase();
+
+    // Current currency is always present, no quote block.
+    const currencies: Array<{
+      currency: string;
+      amount_minor: number;
+      formatted: string;
+      is_current: boolean;
+      quote?: { rate: string; source: string; base_currency: string; base_amount_minor: number };
+    }> = [
+      {
+        currency: currentCurrency,
+        amount_minor: loaded.paymentSession.expectedAmountMinor,
+        formatted: formatAmountMinor(loaded.paymentSession.expectedAmountMinor, currentCurrency),
+        is_current: true
+      }
+    ];
+
+    // For each receivable currency != current currency, try to quote from base.
+    for (const candidate of readiness.receivable_currencies) {
+      const candidateUpper = candidate.toUpperCase();
+      if (candidateUpper === currentCurrency) {
+        continue;
+      }
+      if (!fxRateService) {
+        // FX service not configured — silently omit all non-current currencies.
+        continue;
+      }
+      try {
+        const result = await fxRateService.quote(
+          baseCurrency,
+          candidateUpper,
+          baseAmountMinor,
+          currencyMinorDigits(baseCurrency),
+          currencyMinorDigits(candidateUpper)
+        );
+        if (result.kind !== 'ok') {
+          // Silently omit unavailable candidates — never 500 on FX downtime.
+          continue;
+        }
+        currencies.push({
+          currency: candidateUpper,
+          amount_minor: result.quote.amountMinorTarget,
+          formatted: formatAmountMinor(result.quote.amountMinorTarget, candidateUpper),
+          is_current: false,
+          quote: {
+            rate: result.quote.rate,
+            source: result.quote.source,
+            base_currency: baseCurrency,
+            base_amount_minor: baseAmountMinor
+          }
+        });
+      } catch {
+        // Silently omit on unexpected errors.
+      }
+    }
+
+    return reply.status(200).send({ currencies });
+  });
+
+  server.post('/v1/checkout/:id/currency', async (request, reply) => {
+    const loaded = await loadCheckoutSession({ request, reply, repository });
+    if (!loaded) {
+      return reply;
+    }
+    const params = request.params as { id?: string };
+    if (!params.id) {
+      return reply.status(400).send(invalidRequest('Payment session id is required.', {}));
+    }
+
+    const body = request.body as { currency?: unknown } | undefined;
+    if (typeof body?.currency !== 'string') {
+      return reply.status(400).send(invalidRequest('currency is required.', {}));
+    }
+    const selectedCurrency = body.currency.toUpperCase();
+
+    // Compute payable currencies (before FX quoting — only availability check).
+    const readiness = await resolveMerchantPaymentReadiness(repository!, loaded.paymentSession.merchantId);
+    const payableCurrencies = new Set(readiness.receivable_currencies.map((c) => c.toUpperCase()));
+    const currentCurrency = loaded.paymentSession.currency.toUpperCase();
+
+    if (!payableCurrencies.has(selectedCurrency)) {
+      return reply.status(400).send({
+        error: {
+          code: 'currency_not_payable',
+          message: 'The selected currency is not payable for this checkout.',
+          details: { currency: selectedCurrency, payable_currencies: [...payableCurrencies] }
+        }
+      });
+    }
+
+    // Determine the amount in the selected currency.
+    const baseCurrency = (loaded.paymentSession.baseCurrency ?? loaded.paymentSession.currency).toUpperCase();
+    const baseAmountMinor = loaded.paymentSession.baseAmountMinor ?? loaded.paymentSession.expectedAmountMinor;
+    let amountMinor: number;
+    let fxRate: string;
+    let fxSource: string;
+    let fxTimestamp: string;
+
+    if (selectedCurrency === currentCurrency) {
+      // Identity selection: marks currency_selected_at without changing amounts.
+      amountMinor = loaded.paymentSession.expectedAmountMinor;
+      fxRate = '1';
+      fxSource = 'identity';
+      fxTimestamp = clock().toISOString();
+    } else if (!fxRateService) {
+      // FX service not configured — cannot quote a non-identity currency.
+      return reply.status(409).send({
+        error: {
+          code: 'fx_rate_unavailable',
+          message: 'Exchange rate is currently unavailable for the selected currency.',
+          details: { currency: selectedCurrency }
+        }
+      });
+    } else {
+      // Quote from base currency to selected currency.
+      const result = await fxRateService.quote(
+        baseCurrency,
+        selectedCurrency,
+        baseAmountMinor,
+        currencyMinorDigits(baseCurrency),
+        currencyMinorDigits(selectedCurrency)
+      );
+      if (result.kind !== 'ok') {
+        return reply.status(409).send({
+          error: {
+            code: 'fx_rate_unavailable',
+            message: 'Exchange rate is currently unavailable for the selected currency.',
+            details: { currency: selectedCurrency }
+          }
+        });
+      }
+      amountMinor = result.quote.amountMinorTarget;
+      fxRate = result.quote.rate;
+      fxSource = result.quote.source;
+      fxTimestamp = result.quote.rateTimestamp;
+    }
+
+    const result = await repository!.requotePaymentSessionCurrency({
+      merchantId: loaded.paymentSession.merchantId,
+      paymentSessionId: params.id,
+      currency: selectedCurrency,
+      amountMinor,
+      fxRate,
+      fxSource,
+      fxTimestamp,
+      auditEventId: idGenerator.auditEventId(),
+      now: clock().toISOString()
+    });
+
+    switch (result.kind) {
+      case 'requoted': {
+        const availableRoutes = await repository!.listReceiverBanksForCheckout(
+          loaded.paymentSession.merchantId,
+          params.id
+        );
+        const payableCurrencyCount = [
+          ...new Set(availableRoutes.map((r) => receivingCurrencyForBankProfile(r.bank_profile_id)))
+        ].length;
+        return reply.status(200).send(
+          toCheckoutStatusResponse({
+            order: loaded.order,
+            paymentSession: result.paymentSession,
+            now: clock(),
+            payableCurrencyCount
+          })
+        );
+      }
+      case 'route_already_locked':
+        return reply.status(409).send({
+          error: {
+            code: 'route_already_locked',
+            message: 'A receiving route is already locked for this session; currency cannot be changed.',
+            details: {}
+          }
+        });
+      case 'not_requotable':
+        return reply.status(409).send({
+          error: {
+            code: 'checkout_step_out_of_order',
+            message: 'Currency cannot be changed from the current payment session status.',
+            details: {}
+          }
+        });
+      case 'not_found':
+        return reply.status(404).send({
+          error: {
+            code: 'not_found',
+            message: 'Payment session was not found.',
+            details: {}
+          }
+        });
+    }
+  });
+
   server.post('/v1/checkout/:id/payment-instructions-shown', async (request, reply) => {
     const result = await mutateSimpleCheckoutAction({ request, reply, repository, idGenerator, clock, action: 'instructions' });
     if (!result) {
@@ -2380,13 +2597,19 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       loaded.paymentSession.id
     );
 
+    // Count receivable currencies from routes so the currency_selection step can be
+    // triggered correctly. Computed here (before FX quoting) — the step gate opens when
+    // >= 2 receivable currencies exist, regardless of FX availability.
+    const receivableCurrencies = [...new Set(availableRoutes.map((r) => receivingCurrencyForBankProfile(r.bank_profile_id)))];
+
     reply.header('Cache-Control', 'no-store').header('Pragma', 'no-cache');
     return reply.status(200).send(
       toCheckoutStatusResponse({
         order: loaded.order,
         paymentSession: loaded.paymentSession,
         now: clock(),
-        availableRoutes
+        availableRoutes,
+        payableCurrencyCount: receivableCurrencies.length
       })
     );
   });

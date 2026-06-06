@@ -126,6 +126,7 @@ export function createReviewFinalWebhookHandler(enqueuer: PublicWebhookEnqueuer)
           decision: 'manual_confirmed',
           reason_label: readOptionalString(event.data.reason_label),
           currency_detection: readOptionalRecord(event.data.currency_detection),
+          buyer_currency_selection: readOptionalRecord(event.data.buyer_currency_selection),
           receiving_route: readOptionalRecord(event.data.receiving_route)
         })
       })

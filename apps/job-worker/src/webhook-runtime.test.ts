@@ -196,6 +196,61 @@ describe('webhook runtime integration', () => {
     expect('receiving_route' in data).toBe(false);
   });
 
+  it('review.confirmed handler threads buyer_currency_selection block into payload additively', async () => {
+    const enqueuer = new FakePublicWebhookEnqueuer();
+    const handler = createReviewFinalWebhookHandler(enqueuer);
+
+    await handler(
+      reviewEvent(EventTypes.REVIEW_CONFIRMED, {
+        merchant_id: 'mch_01',
+        review_id: 'rev_01',
+        order_id: 'ord_01',
+        payment_session_id: 'ps_01',
+        confirmation_type: 'notification_signal',
+        official_bank_confirmation: false,
+        buyer_currency_selection: {
+          selected_currency: 'RUB',
+          base_currency: 'USD',
+          base_amount_minor: 1000,
+          fx_rate: '79.5000',
+          fx_source: 'cbr',
+          fx_rate_timestamp: '2026-06-06T10:00:00.000Z'
+        }
+      })
+    );
+
+    expect(enqueuer.events).toHaveLength(1);
+    const data = enqueuer.events[0]!.data;
+    expect(data['buyer_currency_selection']).toEqual({
+      selected_currency: 'RUB',
+      base_currency: 'USD',
+      base_amount_minor: 1000,
+      fx_rate: '79.5000',
+      fx_source: 'cbr',
+      fx_rate_timestamp: '2026-06-06T10:00:00.000Z'
+    });
+  });
+
+  it('review.confirmed handler omits buyer_currency_selection when absent — backward-compatible', async () => {
+    const enqueuer = new FakePublicWebhookEnqueuer();
+    const handler = createReviewFinalWebhookHandler(enqueuer);
+
+    await handler(
+      reviewEvent(EventTypes.REVIEW_CONFIRMED, {
+        merchant_id: 'mch_01',
+        review_id: 'rev_01',
+        order_id: 'ord_01',
+        payment_session_id: 'ps_01',
+        confirmation_type: 'notification_signal',
+        official_bank_confirmation: false
+      })
+    );
+
+    expect(enqueuer.events).toHaveLength(1);
+    const data = enqueuer.events[0]!.data;
+    expect('buyer_currency_selection' in data).toBe(false);
+  });
+
   it('review.confirmed handler creates a public delivery request for active endpoints', async () => {
     const repository = new InMemoryWebhookRepository({
       deliveryId: () => 'del_01'

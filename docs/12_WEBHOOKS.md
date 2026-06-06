@@ -95,9 +95,37 @@ Emitted only after merchant manual confirmation in V1.
 |---|---|---|
 | `currency_detection` | Order was created via `display_price` | Order used explicit `amount` |
 | `currency_detection.original_currency` / `original_amount_minor` / `fx_rate` / `fx_rate_timestamp` | A currency conversion occurred (detected currency ≠ native RUB/USD/XOF) | Detected currency was already a native currency |
+| `buyer_currency_selection` | The buyer made an explicit currency selection during checkout (`currency_selected_at` is set on the session) | No currency selection step was reached (single-currency merchant, or selection was skipped) |
 | `receiving_route` | A receiving route was locked for the session | No route was locked (e.g. RUB / manual flow) |
 
-Both blocks are absent on `payment.rejected` and `payment.expired`.
+All additive blocks are absent on `payment.rejected` and `payment.expired`.
+
+### `buyer_currency_selection` block
+
+Present on `payment.confirmed` only when the buyer explicitly chose a currency
+during the checkout `currency_selection` step.
+
+```json
+"buyer_currency_selection": {
+  "selected_currency": "USD",
+  "base_currency": "RUB",
+  "base_amount_minor": 99900,
+  "fx_rate": "0.011045",
+  "fx_source": "cbr",
+  "fx_rate_timestamp": "2026-06-06T10:00:00.000Z"
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `selected_currency` | string | The currency the buyer selected; matches `data.amount.currency` |
+| `base_currency` | string | The session's original currency at order creation (frozen at first selection) |
+| `base_amount_minor` | integer | The session's original amount in minor units (frozen at first selection) |
+| `fx_rate` | string | The composed exchange rate applied (decimal string), e.g. `"0.011045"`. `"1"` for identity selection |
+| `fx_source` | string | Rate source: `"ecb"`, `"cbr"`, `"uemoa_peg"`, or a `+`-joined multi-leg path (e.g. `"ecb+uemoa_peg"`, `"cbr+ecb"`). `"identity"` when the buyer selected the already-current currency |
+| `fx_rate_timestamp` | string (ISO 8601) | Timestamp of the rate snapshot used at selection time |
+
+All fields are non-PII. The block is absent (not `null`) when no selection was made.
 
 `receiver_identifier_masked` is the only identifier form ever included in the payload. The raw identifier is never exposed across any public surface (webhook, API, audit log).
 

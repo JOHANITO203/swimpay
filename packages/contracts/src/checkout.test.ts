@@ -325,6 +325,7 @@ describe('checkout bank selection contracts', () => {
 
   it('maps checkout states to buyer-safe statuses without confirming early states', () => {
     expect(CheckoutSessionStates).toContain('buyer_identity');
+    expect(CheckoutSessionStates).toContain('currency_selection');
     expect(CheckoutSessionStates).toContain('receiver_bank_selection');
     expect(BuyerSafeCheckoutStatuses).toEqual([
       'awaiting_payment',
@@ -348,6 +349,117 @@ describe('checkout bank selection contracts', () => {
     expect(isCheckoutStatePaymentConfirming('buyer_claimed_paid')).toBe(false);
     expect(isCheckoutStatePaymentConfirming('signal_detected')).toBe(false);
     expect(isCheckoutStatePaymentConfirming('confirmed')).toBe(true);
+  });
+
+  it('returns currency_selection when >=2 payable currencies and nothing selected', () => {
+    // >=2 currencies, payment method chosen, no bank selected, no currency selected → currency_selection
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'card',
+        selectedReceiverBankId: null,
+        selectedReceivingRouteId: null,
+        selectedPayerBankLauncherId: null,
+        paymentInstructionsShownAt: null,
+        payableCurrencyCount: 2,
+        currencySelectedAt: null
+      })
+    ).toBe('currency_selection');
+
+    // Same with 3 currencies
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'card',
+        selectedReceiverBankId: null,
+        selectedReceivingRouteId: null,
+        selectedPayerBankLauncherId: null,
+        paymentInstructionsShownAt: null,
+        payableCurrencyCount: 3,
+        currencySelectedAt: null
+      })
+    ).toBe('currency_selection');
+
+    // Only 1 currency → fall through to normal state (receiver_bank_selection since method set)
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'card',
+        selectedReceiverBankId: null,
+        selectedReceivingRouteId: null,
+        selectedPayerBankLauncherId: null,
+        paymentInstructionsShownAt: null,
+        payableCurrencyCount: 1,
+        currencySelectedAt: null
+      })
+    ).toBe('receiver_bank_selection');
+
+    // Currency already selected → skip currency_selection (fall through)
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'card',
+        selectedReceiverBankId: null,
+        selectedReceivingRouteId: null,
+        selectedPayerBankLauncherId: null,
+        paymentInstructionsShownAt: null,
+        payableCurrencyCount: 2,
+        currencySelectedAt: '2026-06-06T10:00:00.000Z'
+      })
+    ).toBe('receiver_bank_selection');
+
+    // payableCurrencyCount undefined (legacy caller) → no change to existing behavior
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'card',
+        selectedReceiverBankId: null,
+        selectedPayerBankLauncherId: null,
+        paymentInstructionsShownAt: null
+      })
+    ).toBe('receiver_bank_selection');
+
+    // Non-regression: route already selected → late stages unaffected
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'receiver_arming',
+        paymentMethod: 'sbp',
+        selectedReceiverBankId: 'sber_ru',
+        selectedReceivingRouteId: 'route_sber_phone',
+        selectedPayerBankLauncherId: null,
+        paymentInstructionsShownAt: null,
+        payableCurrencyCount: 3,
+        currencySelectedAt: null
+      })
+    ).toBe('payer_bank_launcher_selection');
+
+    // Non-regression: confirmed stays confirmed regardless of currency count
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'manual_confirmed',
+        paymentMethod: 'sbp',
+        selectedReceiverBankId: 'sber_ru',
+        selectedReceivingRouteId: 'route_sber_phone',
+        selectedPayerBankLauncherId: 'tbank_ru',
+        paymentInstructionsShownAt: '2026-05-03T12:00:00.000Z',
+        payableCurrencyCount: 5,
+        currencySelectedAt: null
+      })
+    ).toBe('confirmed');
+
+    // Non-regression: awaiting_payment stays
+    expect(
+      mapPaymentSessionToCheckoutState({
+        paymentSessionStatus: 'awaiting_payment',
+        paymentMethod: 'sbp',
+        selectedReceiverBankId: 'sber_ru',
+        selectedReceivingRouteId: 'route_sber_phone',
+        selectedPayerBankLauncherId: 'tbank_ru',
+        paymentInstructionsShownAt: '2026-05-03T12:00:00.000Z',
+        payableCurrencyCount: 3,
+        currencySelectedAt: null
+      })
+    ).toBe('awaiting_payment');
   });
 
   it('derives checkout state from persisted session selections and runtime status', () => {

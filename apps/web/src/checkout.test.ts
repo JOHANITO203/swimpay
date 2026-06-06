@@ -8,7 +8,7 @@ import {
   type CheckoutUnavailableReason,
   type CheckoutSessionState
 } from '@swimpay/contracts';
-import { ApiCheckoutSessionProvider, buildWebServer, type CheckoutSession, type CheckoutSessionProvider } from './index.js';
+import { ApiCheckoutSessionProvider, buildWebServer, type CheckoutSession, type CheckoutSessionProvider, type PayableCurrencyOption, type PayableCurrenciesPayload } from './index.js';
 
 describe('hosted checkout web foundation', () => {
   it('renders the initial checkout as an intro-first guided flow', async () => {
@@ -1700,6 +1700,256 @@ describe('hosted checkout web foundation', () => {
       expect(response.body).not.toContain('Карта получателя');
     });
   });
+
+  describe('currency selection step', () => {
+    const threeCurrencies: PayableCurrencyOption[] = [
+      {
+        currency: 'RUB',
+        amount_minor: 99900,
+        formatted: '999 ₽',
+        is_current: true,
+        quote: undefined
+      },
+      {
+        currency: 'USD',
+        amount_minor: 1345,
+        formatted: '$13.45',
+        is_current: false,
+        quote: { rate: '0.01345', source: 'cbr', base_currency: 'RUB', base_amount_minor: 99900 }
+      },
+      {
+        currency: 'XOF',
+        amount_minor: 6100,
+        formatted: '6100 FCFA',
+        is_current: false,
+        quote: { rate: '6.1', source: 'ecb+uemoa_peg', base_currency: 'RUB', base_amount_minor: 99900 }
+      }
+    ];
+
+    it('renders one option card per currency with formatted amounts and the current badge (FR)', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated',
+        base_amount: { value: '999.00', currency: 'RUB' }
+      };
+      provider.payableCurrencies = threeCurrencies;
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Choisissez votre devise de paiement');
+      expect(response.body).toContain('Devise');
+      expect(response.body).toContain('Le montant est converti au taux du jour.');
+      // 3 currency cards
+      expect(response.body).toContain('Payer 999 ₽');
+      expect(response.body).toContain('Payer $13.45');
+      expect(response.body).toContain('Payer 6100 FCFA');
+      // current badge on RUB
+      expect(response.body).toContain('Actuelle');
+      // hidden currency inputs
+      expect(response.body).toContain('name="currency" value="RUB"');
+      expect(response.body).toContain('name="currency" value="USD"');
+      expect(response.body).toContain('name="currency" value="XOF"');
+      // posts to /checkout/:id/currency
+      expect(response.body).toContain(`action="/checkout/ps_01/currency"`);
+    });
+
+    it('renders currency step in EN with English labels', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated',
+        base_amount: { value: '999.00', currency: 'RUB' }
+      };
+      provider.payableCurrencies = threeCurrencies;
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01?lang=en' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Choose your payment currency');
+      expect(response.body).toContain('Currency');
+      expect(response.body).toContain('Pay 999 ₽');
+      expect(response.body).toContain('Pay $13.45');
+      expect(response.body).toContain('Current');
+      expect(response.body).not.toContain('Actuelle');
+      expect(response.body).not.toContain('Choisissez');
+    });
+
+    it('renders currency step in RU with Russian labels', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated',
+        base_amount: { value: '999.00', currency: 'RUB' }
+      };
+      provider.payableCurrencies = threeCurrencies;
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01?lang=ru' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Выберите валюту платежа');
+      expect(response.body).toContain('Валюта');
+      expect(response.body).toContain('Оплатить 999 ₽');
+      expect(response.body).toContain('Оплатить $13.45');
+      expect(response.body).toContain('Текущая');
+      expect(response.body).not.toContain('Actuelle');
+    });
+
+    it('posts currency to /checkout/:id/currency and redirects for browser form post', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      provider.payableCurrencies = threeCurrencies;
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/checkout/ps_01/currency',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        payload: 'currency=USD&lang=en'
+      });
+
+      expect(response.statusCode).toBe(303);
+      expect(response.headers.location).toBe('/checkout/ps_01?lang=en');
+      expect(provider.lastSelectedCurrency).toBe('USD');
+    });
+
+    it('does not render the currency step for a single-currency session (non-regression)', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      // No currency_selection state — default session has no checkout_state set
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      // Must render intro, not currency selection
+      expect(response.body).toContain('Commencer');
+      expect(response.body).not.toContain('Choisissez votre devise de paiement');
+      expect(response.body).not.toContain('name="currency"');
+    });
+
+    it('shows approx base amount on currency cards when quote differs from base', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated',
+        base_amount: { value: '999.00', currency: 'RUB' }
+      };
+      provider.payableCurrencies = threeCurrencies;
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      // USD card has a quote and base differs from USD — should show approx line
+      expect(response.body).toContain('≈ 999.00 RUB');
+    });
+
+    it('does not show approx line on the base-currency (RUB) card', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated',
+        base_amount: { value: '999.00', currency: 'RUB' }
+      };
+      // Only the RUB base-currency option — no quote, is_current
+      provider.payableCurrencies = [
+        { currency: 'RUB', amount_minor: 99900, formatted: '999 ₽', is_current: true, quote: undefined }
+      ];
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Payer 999 ₽');
+      // Base-currency card must NOT carry the approx line
+      expect(response.body).not.toContain('≈ 999.00 RUB');
+    });
+
+    it('renders structured fallback when selectCurrency throws fx_rate_unavailable', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated',
+        base_amount: { value: '999.00', currency: 'RUB' }
+      };
+      provider.payableCurrencies = threeCurrencies;
+      provider.selectCurrency = async () => {
+        throw structuredCheckoutConflict('fx_rate_unavailable', {});
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/checkout/ps_01/currency',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        payload: 'currency=USD'
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('checkout-stage-icon');
+      expect(response.body).not.toContain('Internal Server Error');
+    });
+
+    it('instructions step shows approx base when base_amount differs from payable currency', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_sber_card',
+        selected_payer_bank_launcher_id: 'sber_ru',
+        checkout_state: 'payment_instructions',
+        buyer_safe_status: 'awaiting_payment',
+        amount: { value: '13.45', currency: 'USD' },
+        payable_amount: { value: '13.45', currency: 'USD' },
+        base_amount: { value: '999.00', currency: 'RUB' }
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('≈ 999.00 RUB');
+    });
+
+    it('instructions step does NOT show approx when base_amount is absent', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.session = {
+        ...provider.session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_sber_card',
+        selected_payer_bank_launcher_id: 'sber_ru',
+        checkout_state: 'payment_instructions',
+        buyer_safe_status: 'awaiting_payment'
+        // no base_amount
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).not.toContain('≈');
+    });
+  });
 });
 
 type StructuredCheckoutErrorCode =
@@ -1707,7 +1957,9 @@ type StructuredCheckoutErrorCode =
   | 'amount_lease_unavailable'
   | 'checkout_selection_incomplete'
   | 'checkout_session_expired'
-  | 'no_receiving_route_for_method';
+  | 'no_receiving_route_for_method'
+  | 'fx_rate_unavailable'
+  | 'route_already_locked';
 
 function stripScriptsAndStyles(html: string): string {
   return html
@@ -1762,6 +2014,9 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
     expires_at: '2026-05-02T10:15:00.000Z',
     product_name: 'Premium Pack'
   };
+
+  public payableCurrencies: PayableCurrencyOption[] = [];
+  public lastSelectedCurrency: string | undefined = undefined;
 
   public routes = [
     toBuyerSafeReceivingRoute({
@@ -1973,6 +2228,22 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
       status: 'receiver_armed',
       checkout_state: 'awaiting_payment',
       buyer_safe_status: 'awaiting_payment'
+    };
+    return this.session;
+  }
+
+  public async getPayableCurrencies(paymentSessionId: string): Promise<PayableCurrenciesPayload> {
+    void paymentSessionId;
+    return { currencies: this.payableCurrencies };
+  }
+
+  public async selectCurrency(_paymentSessionId: string, currency: string) {
+    this.lastSelectedCurrency = currency;
+    this.session = {
+      ...this.session,
+      amount: { value: this.session.amount.value, currency },
+      checkout_state: 'receiver_bank_selection',
+      buyer_safe_status: 'not_validated'
     };
     return this.session;
   }

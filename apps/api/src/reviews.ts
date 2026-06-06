@@ -51,6 +51,10 @@ export interface ReviewListItem {
   referenceCodeMasked?: string | undefined;
   createdAt: string;
   resolvedAt?: string | undefined;
+  // Buyer-selected session currency/amount (present when session was requoted)
+  sessionCurrency?: string | undefined;
+  sessionPayableAmountMinor?: number | undefined;
+  sessionExpectedAmountMinor?: number | undefined;
 }
 
 export interface ReviewSignalMatchInput {
@@ -123,6 +127,14 @@ export type ReviewActionResult =
         originalAmountMinor?: number | undefined;
         fxRate?: string | undefined;
         fxRateTimestamp?: string | undefined;
+      } | undefined;
+      buyerCurrencySelection?: {
+        selectedCurrency: string;
+        baseCurrency?: string | undefined;
+        baseAmountMinor?: number | undefined;
+        fxRate?: string | undefined;
+        fxSource?: string | undefined;
+        fxTimestamp?: string | undefined;
       } | undefined;
       receivingRoute?: {
         routeCode: string;
@@ -368,7 +380,12 @@ export class PgReviewRepository implements ReviewRepository {
         `SELECT
            rq.id, rq.merchant_id, rq.order_id, rq.payment_session_id, rq.signal_id, rq.status,
            o.status AS order_status, o.external_id, o.amount_minor, o.currency,
-           ps.status AS payment_session_status
+           ps.status AS payment_session_status,
+           ps.currency AS session_currency,
+           ps.payable_amount_minor AS session_payable_amount_minor,
+           ps.expected_amount_minor AS session_expected_amount_minor,
+           ps.currency_selected_at,
+           ps.base_currency, ps.base_amount_minor, ps.buyer_fx_rate, ps.buyer_fx_source, ps.buyer_fx_timestamp
          FROM review_queue rq
          LEFT JOIN orders o ON o.id = rq.order_id AND o.merchant_id = rq.merchant_id
          LEFT JOIN payment_sessions ps ON ps.id = rq.payment_session_id AND ps.merchant_id = rq.merchant_id
@@ -392,21 +409,30 @@ export class PgReviewRepository implements ReviewRepository {
           const previous = await findPreviousRejectionAction(client, input.merchantId, input.reviewId);
           if (previous?.scope === effectiveScope) {
             await client.query('COMMIT');
-            return {
-              kind: 'updated',
-              reviewId: input.reviewId,
-              status: 'rejected',
-              orderId: String(review.order_id),
-              externalOrderId: String(review.external_id),
-              paymentSessionId: String(review.payment_session_id),
-              amountMinor: Number(review.amount_minor),
-              currency: String(review.currency),
-              orderStatus: currentOrderStatus,
-              paymentSessionStatus: currentSessionStatus,
-              rejectionScope: previous.scope,
-              reason: previous.reason,
-              idempotent: true
-            };
+            {
+              const idempotentCurrency = String(review.session_currency ?? review.currency);
+              const idempotentAmountMinor = Number(
+                review.session_payable_amount_minor ?? review.session_expected_amount_minor ?? review.amount_minor
+              );
+              return {
+                kind: 'updated',
+                reviewId: input.reviewId,
+                status: 'rejected',
+                orderId: String(review.order_id),
+                externalOrderId: String(review.external_id),
+                paymentSessionId: String(review.payment_session_id),
+                amountMinor: idempotentAmountMinor,
+                currency: idempotentCurrency,
+                orderStatus: currentOrderStatus,
+                paymentSessionStatus: currentSessionStatus,
+                rejectionScope: previous.scope,
+                reason: previous.reason,
+                idempotent: true,
+                buyerCurrencySelection: review.currency_selected_at
+                  ? { selectedCurrency: idempotentCurrency }
+                  : undefined
+              };
+            }
           }
 
           await client.query('ROLLBACK');
@@ -577,22 +603,43 @@ export class PgReviewRepository implements ReviewRepository {
 
       await client.query('COMMIT');
 
-      return {
-        kind: 'updated',
-        reviewId: input.reviewId,
-        status: 'rejected',
-        orderId: String(review.order_id),
-        externalOrderId: String(review.external_id),
-        paymentSessionId: String(review.payment_session_id),
-        amountMinor: Number(review.amount_minor),
-        currency: String(review.currency),
-        orderStatus,
-        paymentSessionStatus,
-        rejectionScope: effectiveScope,
-        reason,
-        confirmationType: review.signal_id ? 'notification_signal' : 'manual_bank_check',
-        reasonLabel: review.signal_id ? undefined : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED'
-      };
+      {
+        const rejectCurrency = String(review.session_currency ?? review.currency);
+        const rejectAmountMinor = Number(
+          review.session_payable_amount_minor ?? review.session_expected_amount_minor ?? review.amount_minor
+        );
+        return {
+          kind: 'updated',
+          reviewId: input.reviewId,
+          status: 'rejected',
+          orderId: String(review.order_id),
+          externalOrderId: String(review.external_id),
+          paymentSessionId: String(review.payment_session_id),
+          amountMinor: rejectAmountMinor,
+          currency: rejectCurrency,
+          orderStatus,
+          paymentSessionStatus,
+          rejectionScope: effectiveScope,
+          reason,
+          confirmationType: review.signal_id ? 'notification_signal' : 'manual_bank_check',
+          reasonLabel: review.signal_id ? undefined : 'NO_NOTIFICATION_MANUAL_FALLBACK_REJECTED',
+          buyerCurrencySelection: review.currency_selected_at
+            ? {
+                selectedCurrency: rejectCurrency,
+                baseCurrency: review.base_currency ? String(review.base_currency) : undefined,
+                baseAmountMinor:
+                  review.base_amount_minor === null || review.base_amount_minor === undefined
+                    ? undefined
+                    : Number(review.base_amount_minor),
+                fxRate: review.buyer_fx_rate ? String(review.buyer_fx_rate) : undefined,
+                fxSource: review.buyer_fx_source ? String(review.buyer_fx_source) : undefined,
+                fxTimestamp: review.buyer_fx_timestamp
+                  ? new Date(String(review.buyer_fx_timestamp)).toISOString()
+                  : undefined
+              }
+            : undefined
+        };
+      }
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -621,6 +668,10 @@ export class PgReviewRepository implements ReviewRepository {
            o.detection_source, o.detection_raw_input, o.original_currency, o.original_amount_minor,
            o.fx_rate, o.fx_rate_timestamp,
            ps.status AS payment_session_status,
+           ps.base_currency, ps.base_amount_minor, ps.buyer_fx_rate, ps.buyer_fx_source, ps.buyer_fx_timestamp, ps.currency_selected_at,
+           ps.currency AS session_currency,
+           ps.payable_amount_minor AS session_payable_amount_minor,
+           ps.expected_amount_minor AS session_expected_amount_minor,
            mrr.route_code AS route_code, mrr.rail_type AS route_rail_type,
            mrr.bank_profile_id AS route_bank_profile_id,
            mrr.receiver_identifier_masked AS route_receiver_identifier_masked
@@ -772,6 +823,10 @@ export class PgReviewRepository implements ReviewRepository {
 
       await client.query('COMMIT');
 
+      const effectiveCurrency = String(review.session_currency ?? review.currency);
+      const effectiveAmountMinor = Number(
+        review.session_payable_amount_minor ?? review.session_expected_amount_minor ?? review.amount_minor
+      );
       return {
         kind: 'updated',
         reviewId: input.reviewId,
@@ -779,8 +834,8 @@ export class PgReviewRepository implements ReviewRepository {
         orderId: String(review.order_id),
         externalOrderId: String(review.external_id),
         paymentSessionId: String(review.payment_session_id),
-        amountMinor: Number(review.amount_minor),
-        currency: String(review.currency),
+        amountMinor: effectiveAmountMinor,
+        currency: effectiveCurrency,
         orderStatus: outcome.stateStatus,
         paymentSessionStatus: outcome.stateStatus,
         confirmationType: review.signal_id ? 'notification_signal' : 'manual_bank_check',
@@ -797,6 +852,21 @@ export class PgReviewRepository implements ReviewRepository {
               fxRate: review.fx_rate ? String(review.fx_rate) : undefined,
               fxRateTimestamp: review.fx_rate_timestamp
                 ? new Date(String(review.fx_rate_timestamp)).toISOString()
+                : undefined
+            }
+          : undefined,
+        buyerCurrencySelection: review.currency_selected_at
+          ? {
+              selectedCurrency: effectiveCurrency,
+              baseCurrency: review.base_currency ? String(review.base_currency) : undefined,
+              baseAmountMinor:
+                review.base_amount_minor === null || review.base_amount_minor === undefined
+                  ? undefined
+                  : Number(review.base_amount_minor),
+              fxRate: review.buyer_fx_rate ? String(review.buyer_fx_rate) : undefined,
+              fxSource: review.buyer_fx_source ? String(review.buyer_fx_source) : undefined,
+              fxTimestamp: review.buyer_fx_timestamp
+                ? new Date(String(review.buyer_fx_timestamp)).toISOString()
                 : undefined
             }
           : undefined,
@@ -1004,6 +1074,18 @@ export function buildReviewActionEvent(params: {
             }
           }
         : {}),
+      ...(params.result.buyerCurrencySelection
+        ? {
+            buyer_currency_selection: {
+              selected_currency: params.result.buyerCurrencySelection.selectedCurrency,
+              base_currency: params.result.buyerCurrencySelection.baseCurrency,
+              base_amount_minor: params.result.buyerCurrencySelection.baseAmountMinor,
+              fx_rate: params.result.buyerCurrencySelection.fxRate,
+              fx_source: params.result.buyerCurrencySelection.fxSource,
+              fx_rate_timestamp: params.result.buyerCurrencySelection.fxTimestamp
+            }
+          }
+        : {}),
       ...(params.result.receivingRoute
         ? {
             receiving_route: {
@@ -1039,28 +1121,28 @@ export function toReviewListResponse(items: ReviewListItem[]): ReviewListRespons
 
       if (item.amountMinor !== undefined && item.currency) {
         response.amount = {
-          value: formatAmountMinor(item.amountMinor),
+          value: formatAmountMinor(item.amountMinor, item.currency),
           currency: item.currency
         };
       }
 
       if (item.displayAmountMinor !== undefined && item.currency) {
         response.display_amount = {
-          value: formatAmountMinor(item.displayAmountMinor),
+          value: formatAmountMinor(item.displayAmountMinor, item.currency),
           currency: item.currency
         };
       }
 
       if (item.payableAmountMinor !== undefined && item.currency) {
         response.payable_amount = {
-          value: formatAmountMinor(item.payableAmountMinor),
+          value: formatAmountMinor(item.payableAmountMinor, item.currency),
           currency: item.currency
         };
       }
 
       if (item.detectedAmountMinor !== undefined && item.currency) {
         response.detected_amount = {
-          value: formatAmountMinor(item.detectedAmountMinor),
+          value: formatAmountMinor(item.detectedAmountMinor, item.currency),
           currency: item.currency
         };
       }
@@ -1178,10 +1260,19 @@ interface ReviewActionRow {
   original_amount_minor?: number | string | null;
   fx_rate?: string | null;
   fx_rate_timestamp?: string | Date | null;
+  base_currency?: string | null;
+  base_amount_minor?: number | string | null;
+  buyer_fx_rate?: string | null;
+  buyer_fx_source?: string | null;
+  buyer_fx_timestamp?: string | Date | null;
+  currency_selected_at?: string | Date | null;
   route_code?: string | null;
   route_rail_type?: string | null;
   route_bank_profile_id?: string | null;
   route_receiver_identifier_masked?: string | null;
+  session_currency?: string | null;
+  session_payable_amount_minor?: number | string | null;
+  session_expected_amount_minor?: number | string | null;
 }
 
 interface PreviousRejectionActionRow {
