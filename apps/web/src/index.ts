@@ -71,6 +71,23 @@ export type StructuredCheckoutFallbackCode =
   | 'checkout_session_expired'
   | 'no_receiving_route_for_method';
 
+export interface PayableCurrencyOption {
+  currency: string;
+  amount_minor: number;
+  formatted: string;
+  is_current: boolean;
+  quote?: {
+    rate: string;
+    source: string;
+    base_currency: string;
+    base_amount_minor: number;
+  } | undefined;
+}
+
+export interface PayableCurrenciesPayload {
+  currencies: PayableCurrencyOption[];
+}
+
 export interface CheckoutSession {
   payment_session_id: string;
   order_id: string;
@@ -78,6 +95,7 @@ export interface CheckoutSession {
   status: CheckoutStatus;
   checkout_state?: CheckoutSessionState | undefined;
   buyer_safe_status?: BuyerSafeCheckoutStatus | undefined;
+  base_amount?: { value: string; currency: string } | undefined;
   selected_receiver_bank_id?: string | undefined;
   selected_receiver_bank_profile_id?: string | undefined;
   selected_receiving_route_id?: string | undefined;
@@ -141,6 +159,8 @@ export interface CheckoutSessionProvider {
   markReceiverArmed(paymentSessionId: string): Promise<CheckoutSession>;
   markPaymentInstructionsShown(paymentSessionId: string): Promise<CheckoutSession>;
   markBuyerClaimedPaid(paymentSessionId: string): Promise<CheckoutClaimedPaidResponse>;
+  getPayableCurrencies(paymentSessionId: string): Promise<PayableCurrenciesPayload>;
+  selectCurrency(paymentSessionId: string, currency: string): Promise<CheckoutSession>;
 }
 
 interface CheckoutProviderErrorBody {
@@ -884,6 +904,10 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
       ? await checkoutSessionProvider.getReceivingRoutes(paymentSessionId, session.selected_receiver_bank_id)
       : { routes: [] };
 
+    const payableCurrenciesPayload = session.checkout_state === 'currency_selection'
+      ? await checkoutSessionProvider.getPayableCurrencies(paymentSessionId).catch(() => null)
+      : null;
+
     reply.type('text/html; charset=utf-8');
     return renderCheckoutScreen(
       session,
@@ -896,7 +920,8 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
         nativeBankLauncherScheme: readNativeBankLauncherScheme(request.query),
         nativeReturnScheme: readNativeReturnScheme(request.query),
         locale: resolveCheckoutLocale(request.query)
-      }
+      },
+      payableCurrenciesPayload?.currencies ?? undefined
     );
   });
 
@@ -912,6 +937,23 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
     const params = request.params as { paymentSessionId?: string };
     reply.header('Cache-Control', 'no-store').header('Pragma', 'no-cache');
     return reply.status(200).send(await checkoutSessionProvider.getReceivingRouteCopyDetails(params.paymentSessionId!));
+  });
+
+  server.post('/checkout/:paymentSessionId/currency', async (request, reply) => {
+    const params = request.params as { paymentSessionId: string };
+    const body = request.body as { currency?: string };
+    const currency = typeof body.currency === 'string' ? body.currency : '';
+    try {
+      await checkoutSessionProvider.selectCurrency(params.paymentSessionId, currency);
+    } catch {
+      // fall through — redirect to GET with fresh state
+    }
+    if (shouldRedirectCheckoutFormPost(request.headers)) {
+      return reply.status(303).redirect(checkoutRedirectPath(params.paymentSessionId, request));
+    }
+    const session = await checkoutSessionProvider.getCheckoutSession(params.paymentSessionId);
+    if (!session) return reply.status(404).send({ error: 'not_found' });
+    return reply.status(200).send(toCheckoutStatusResponse(session));
   });
 
   server.post('/checkout/:paymentSessionId/receiver-bank', async (request, reply) => {
@@ -1407,6 +1449,13 @@ export class ApiCheckoutSessionProvider implements CheckoutSessionProvider {
   async markReceiverArmed(id: string) { return this.f<CheckoutSession>(`/v1/checkout/${id}/continue-to-bank`, { method: 'POST' }); }
   async markPaymentInstructionsShown(id: string) { return this.f<CheckoutSession>(`/v1/checkout/${id}/payment-instructions-shown`, { method: 'POST' }); }
   async markBuyerClaimedPaid(id: string) { return this.f<CheckoutClaimedPaidResponse>(`/v1/checkout/${id}/claimed-paid`, { method: 'POST' }); }
+  async getPayableCurrencies(id: string) { return this.f<PayableCurrenciesPayload>(`/v1/checkout/${id}/payable-currencies`); }
+  async selectCurrency(id: string, currency: string) {
+    return this.f<CheckoutSession>(`/v1/checkout/${id}/currency`, {
+      method: 'POST',
+      body: JSON.stringify({ currency })
+    });
+  }
 }
 
 function toMerchantRouteAdminRoute(method: MerchantReceivingMethodApiPayload): MerchantRouteAdminRoute {

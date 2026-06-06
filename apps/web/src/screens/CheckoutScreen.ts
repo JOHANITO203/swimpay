@@ -8,9 +8,9 @@ import type {
   ReceiverBankOption,
   ReceivingRouteRailType
 } from '@swimpay/contracts';
-import type { CheckoutSession, CheckoutRecipient, StructuredCheckoutFallbackCode } from '../index.js';
+import type { CheckoutSession, CheckoutRecipient, PayableCurrencyOption, StructuredCheckoutFallbackCode } from '../index.js';
 
-type BuyerCheckoutStep = 'intro' | 'bank' | 'route' | 'launcher' | 'instructions' | 'waiting';
+type BuyerCheckoutStep = 'intro' | 'currency' | 'bank' | 'route' | 'launcher' | 'instructions' | 'waiting';
 type VisualStage = 'intro' | 'info' | 'instructions' | 'status';
 type CheckoutStateTone = 'info' | 'success' | 'warning' | 'danger';
 type TimelineState = 'done' | 'active' | 'pending' | 'danger';
@@ -154,6 +154,12 @@ interface CheckoutCopy {
   destinationWalletPhoneLabel: string;
   destinationWalletCopyLabel: string;
   walletMethodLabel: string;
+  currencyKicker: string;
+  currencyTitle: string;
+  currencyText: string;
+  payInLabel: string;
+  approxBaseLabel: string;
+  currentCurrencyBadge: string;
 }
 
 const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
@@ -283,6 +289,12 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     destinationWalletPhoneLabel: 'Numéro lié au wallet',
     destinationWalletCopyLabel: 'Identifiant du wallet',
     walletMethodLabel: 'Wallet international',
+    currencyKicker: 'Devise',
+    currencyTitle: 'Choisissez votre devise de paiement',
+    currencyText: 'Le montant est converti au taux du jour.',
+    payInLabel: 'Payer',
+    approxBaseLabel: '≈',
+    currentCurrencyBadge: 'Actuelle',
   },
   en: {
     pageTitle: 'Pay with SwimPay',
@@ -410,6 +422,12 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     destinationWalletPhoneLabel: 'Wallet phone number',
     destinationWalletCopyLabel: 'Wallet identifier',
     walletMethodLabel: 'International wallet',
+    currencyKicker: 'Currency',
+    currencyTitle: 'Choose your payment currency',
+    currencyText: 'Amount is converted at today\'s exchange rate.',
+    payInLabel: 'Pay',
+    approxBaseLabel: '≈',
+    currentCurrencyBadge: 'Current',
   },
   ru: {
     pageTitle: 'Оплатить через SwimPay',
@@ -537,6 +555,12 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     destinationWalletPhoneLabel: 'Номер кошелька',
     destinationWalletCopyLabel: 'Идентификатор кошелька',
     walletMethodLabel: 'Международный кошелёк',
+    currencyKicker: 'Валюта',
+    currencyTitle: 'Выберите валюту платежа',
+    currencyText: 'Сумма конвертируется по курсу дня.',
+    payInLabel: 'Оплатить',
+    approxBaseLabel: '≈',
+    currentCurrencyBadge: 'Текущая',
   },
 };
 
@@ -554,7 +578,8 @@ export function renderCheckoutPage(
   routes: readonly BuyerSafeReceivingRoute[],
   launchers: readonly PayerBankLauncherOption[],
   displayStatus: string,
-  options: CheckoutRenderOptions = {}
+  options: CheckoutRenderOptions = {},
+  payableCurrencies?: readonly PayableCurrencyOption[] | undefined
 ): string {
   const locale = options.locale ?? 'fr';
   const copy = checkoutTranslations[locale];
@@ -574,7 +599,7 @@ export function renderCheckoutPage(
         ${renderCheckoutBrand(copy, locale, renderOptions)}
         ${renderSegmentProgress(stage, copy)}
         <div class="checkout-flow" data-checkout-stage-host>
-          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability, renderOptions, copy)}
+          ${renderCurrentStage(step, session, displayStatus, banks, visibleRoutes, selectedRoute, selectedLauncher, launchers, methodAvailability, renderOptions, copy, payableCurrencies)}
         </div>
         ${renderCheckoutTrustFooter()}
       </div>
@@ -595,9 +620,11 @@ function renderCurrentStage(
   launchers: readonly PayerBankLauncherOption[],
   methodAvailability: BuyerMethodAvailability,
   options: CheckoutRenderOptions,
-  copy: CheckoutCopy
+  copy: CheckoutCopy,
+  payableCurrencies?: readonly PayableCurrencyOption[] | undefined
 ): string {
   if (step === 'intro') return renderIntroFlow(session, banks, launchers, methodAvailability, options, copy);
+  if (step === 'currency') return renderCurrencySelectionStep(session, payableCurrencies ?? [], options, copy);
   if (step === 'bank') return renderReceiverBankSelection(session, banks, options, copy);
   if (step === 'route') return renderReceivingRouteSelection(session, banks, visibleRoutes, launchers, methodAvailability, options, copy);
   if (step === 'launcher') return renderPayerLauncherSelection(session, banks, selectedRoute, launchers, methodAvailability, options, copy);
@@ -621,6 +648,8 @@ function canonicalStepFromCheckoutState(session: CheckoutSession): BuyerCheckout
   switch (session.checkout_state) {
     case 'buyer_identity':
       return 'intro';
+    case 'currency_selection':
+      return 'currency';
     case 'receiver_bank_selection':
       return 'bank';
     case 'receiving_route_selection':
@@ -643,7 +672,8 @@ function canonicalStepFromCheckoutState(session: CheckoutSession): BuyerCheckout
 }
 
 function visualStageForStep(step: BuyerCheckoutStep): VisualStage {
-  if (step === 'intro' || step === 'bank') return step === 'intro' ? 'intro' : 'info';
+  if (step === 'intro') return 'intro';
+  if (step === 'currency' || step === 'bank') return 'info';
   if (step === 'route' || step === 'launcher' || step === 'instructions') return 'instructions';
   return 'status';
 }
@@ -1052,6 +1082,36 @@ function renderBankLogoMark(logoAssetKey: string, displayName: string): string {
   return `<span class="bank-logo-mark bank-logo-${escapeHtml(logoAssetKey)}${hasImage ? ' bank-logo-image' : ''}" data-logo-asset-key="${escapeHtml(logoAssetKey)}" role="img" aria-label="${escapeHtml(displayName)}"><span aria-hidden="true">${escapeHtml(initials)}</span></span>`;
 }
 
+function renderCurrencySelectionStep(
+  session: CheckoutSession,
+  currencies: readonly PayableCurrencyOption[],
+  options: CheckoutRenderOptions = {},
+  copy: CheckoutCopy = checkoutTranslations.fr
+): string {
+  return `<section class="checkout-stage-card checkout-info-card" data-visual-stage="info">
+    <div class="checkout-stage-head">
+      <p class="checkout-kicker">${escapeHtml(copy.currencyKicker)}</p>
+      <h1>${escapeHtml(copy.currencyTitle)}</h1>
+      <p>${escapeHtml(copy.currencyText)}</p>
+    </div>
+    <div class="checkout-option-list">${currencies.map((option) => {
+      const baseAmount = session.base_amount;
+      const showApprox = option.quote && baseAmount && (option.currency !== baseAmount.currency);
+      return `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/currency" class="selection-form">
+        ${renderCheckoutHiddenInputs(options)}
+        <input type="hidden" name="currency" value="${escapeHtml(option.currency)}">
+        <button class="checkout-option-card" type="submit">
+          <span class="checkout-option-copy">
+            <strong>${escapeHtml(copy.payInLabel)} ${escapeHtml(option.formatted)}</strong>
+            ${showApprox ? `<small>${escapeHtml(copy.approxBaseLabel)} ${escapeHtml(baseAmount!.value)} ${escapeHtml(baseAmount!.currency)}</small>` : ''}
+          </span>
+          ${option.is_current ? `<span class="checkout-current-badge">${escapeHtml(copy.currentCurrencyBadge)}</span>` : `<span class="checkout-option-arrow">${escapeHtml(copy.nextArrowLabel)}</span>`}
+        </button>
+      </form>`;
+    }).join('')}</div>
+  </section>`;
+}
+
 function renderReceiverBankSelection(
   session: CheckoutSession,
   banks: readonly ReceiverBankOption[],
@@ -1180,6 +1240,11 @@ function renderInstructionsStep(
 
   const descriptor = railDescriptor(selectedRoute, copy);
   const amount = session.payable_amount ?? session.amount;
+  const baseAmount = session.base_amount;
+  const showApprox = baseAmount && baseAmount.currency !== amount.currency;
+  const amountDisplay = showApprox
+    ? `${amount.value} ${amount.currency} ${copy.approxBaseLabel} ${baseAmount!.value} ${baseAmount!.currency}`
+    : `${amount.value} ${amount.currency}`;
   const destinationLabel = descriptor.destinationLabel;
   const destinationCopyLabel = descriptor.destinationCopyLabel;
   const methodLabel = descriptor.methodLabel;
@@ -1193,7 +1258,7 @@ function renderInstructionsStep(
   const bankLaunchUrl = resolveBankLaunchUrl(selectedLauncher, options.nativeBankLauncherScheme);
   const checkoutReturnPath = checkoutPathWithOptions(session.payment_session_id, options);
   const summary = [
-    `${copy.amountLabel}: ${amount.value} ${amount.currency}`,
+    `${copy.amountLabel}: ${amountDisplay}`,
     `${copy.referenceLabel}: ${session.reference}`,
     `${destinationCopyLabel}: ${selectedRoute.receiver_identifier_masked}`,
     `${copy.receivingBankLabel}: ${bankLabel}`,
@@ -1211,7 +1276,7 @@ function renderInstructionsStep(
       <strong data-countdown-target="${escapeHtml(session.expires_at)}">--:--</strong>
     </div>
     <div class="payment-details-card">
-      ${renderCopyablePaymentRow(copy.amountLabel, `${amount.value} ${amount.currency}`, `${amount.value} ${amount.currency}`, false, undefined, undefined, copy)}
+      ${renderCopyablePaymentRow(copy.amountLabel, amountDisplay, `${amount.value} ${amount.currency}`, false, undefined, undefined, copy)}
       ${renderCopyablePaymentRow(copy.referenceLabel, session.reference, session.reference, false, undefined, undefined, copy)}
       ${renderCopyablePaymentRow(destinationLabel, selectedRoute.receiver_identifier_masked, '', true, session.payment_session_id, destinationCopyLabel, copy)}
       ${renderCopyableBankRow(copy.receivingBankLabel, bankLabel, bankLabel, receiverBankLogoAssetKey, copy)}
@@ -1448,9 +1513,11 @@ function renderInstructionPreview(
   copy: CheckoutCopy = checkoutTranslations.fr
 ): string {
   const amount = session.payable_amount ?? session.amount;
+  const baseAmount = session.base_amount;
+  const showApprox = baseAmount && baseAmount.currency !== amount.currency;
   const destinationLabel = railDescriptor(selectedRoute, copy).destinationLabel;
   return `<div class="instruction-preview">
-    <div><span>${escapeHtml(copy.amountLabel)}</span><strong>${escapeHtml(amount.value)} ${escapeHtml(amount.currency)}</strong></div>
+    <div><span>${escapeHtml(copy.amountLabel)}</span><strong>${escapeHtml(amount.value)} ${escapeHtml(amount.currency)}${showApprox ? ` <small>${escapeHtml(copy.approxBaseLabel)} ${escapeHtml(baseAmount!.value)} ${escapeHtml(baseAmount!.currency)}</small>` : ''}</strong></div>
     <div><span>${escapeHtml(copy.referenceLabel)}</span><strong>${escapeHtml(session.reference)}</strong></div>
     <div><span>${destinationLabel}</span><strong>${escapeHtml(selectedRoute.receiver_identifier_masked)}</strong></div>
   </div>`;
