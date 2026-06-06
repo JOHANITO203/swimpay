@@ -4,6 +4,7 @@ import { buildApiServer, type ReviewRepository } from './server.js';
 import {
   buildReviewActionEvent,
   buildReviewCreateInput,
+  toReviewListResponse,
   validateReviewActionBody,
   type ReviewActionInput,
   type ReviewActionResult,
@@ -681,6 +682,99 @@ describe('buildReviewActionEvent', () => {
 
     expect('currency_detection' in event.data).toBe(false);
     expect('receiving_route' in event.data).toBe(false);
+  });
+
+  it('includes buyer_currency_selection in event data when result carries it', () => {
+    const result: Extract<ReviewActionResult, { kind: 'updated' }> = {
+      kind: 'updated',
+      reviewId: 'rev_02',
+      status: 'confirmed',
+      orderId: 'ord_02',
+      externalOrderId: 'external_ord_02',
+      paymentSessionId: 'ps_02',
+      amountMinor: 79500,
+      currency: 'RUB',
+      orderStatus: 'manual_confirmed',
+      paymentSessionStatus: 'manual_confirmed',
+      confirmationType: 'notification_signal',
+      buyerCurrencySelection: {
+        selectedCurrency: 'RUB',
+        baseCurrency: 'USD',
+        baseAmountMinor: 1000,
+        fxRate: '79.5000',
+        fxSource: 'cbr',
+        fxTimestamp: '2026-06-06T10:00:00.000Z'
+      }
+    };
+
+    const event = buildReviewActionEvent({
+      eventId: 'evt_02',
+      result,
+      merchantId: 'mch_01',
+      occurredAt: '2026-06-06T10:00:00.000Z'
+    });
+
+    expect(event.data['buyer_currency_selection']).toEqual({
+      selected_currency: 'RUB',
+      base_currency: 'USD',
+      base_amount_minor: 1000,
+      fx_rate: '79.5000',
+      fx_source: 'cbr',
+      fx_rate_timestamp: '2026-06-06T10:00:00.000Z'
+    });
+    expect('currency_detection' in event.data).toBe(false);
+  });
+
+  it('omits buyer_currency_selection from event data when result does not carry it', () => {
+    const result: Extract<ReviewActionResult, { kind: 'updated' }> = {
+      kind: 'updated',
+      reviewId: 'rev_03',
+      status: 'confirmed',
+      orderId: 'ord_03',
+      externalOrderId: 'external_ord_03',
+      paymentSessionId: 'ps_03',
+      amountMinor: 13700,
+      currency: 'RUB',
+      orderStatus: 'manual_confirmed',
+      paymentSessionStatus: 'manual_confirmed',
+      confirmationType: 'notification_signal'
+    };
+
+    const event = buildReviewActionEvent({
+      eventId: 'evt_03',
+      result,
+      merchantId: 'mch_01',
+      occurredAt: '2026-06-06T10:00:00.000Z'
+    });
+
+    expect('buyer_currency_selection' in event.data).toBe(false);
+  });
+});
+
+describe('toReviewListResponse XOF currency formatting', () => {
+  it('formats XOF amounts as integers (no decimal places)', () => {
+    const item: ReviewListItem = {
+      id: 'rev_xof',
+      merchantId: 'mch_01',
+      orderId: 'ord_xof',
+      paymentSessionId: 'ps_xof',
+      reasonCode: 'requires_review',
+      status: 'open',
+      amountMinor: 1000,
+      displayAmountMinor: 1000,
+      payableAmountMinor: 1000,
+      detectedAmountMinor: 1000,
+      currency: 'XOF',
+      positiveReasonCodes: [],
+      negativeReasonCodes: ['requires_review'],
+      createdAt: '2026-06-06T10:00:00.000Z'
+    };
+
+    const response = toReviewListResponse([item]);
+    expect(response.reviews[0]!.amount?.value).toBe('1000');
+    expect(response.reviews[0]!.display_amount?.value).toBe('1000');
+    expect(response.reviews[0]!.payable_amount?.value).toBe('1000');
+    expect(response.reviews[0]!.detected_amount?.value).toBe('1000');
   });
 });
 
