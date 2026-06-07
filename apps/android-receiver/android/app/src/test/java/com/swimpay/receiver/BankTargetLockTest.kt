@@ -6,6 +6,7 @@ import com.swimpay.receiver.ui.premium.PremiumScreenState
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -19,13 +20,45 @@ class BankTargetLockTest {
                 "ru.vtb24.mobilebanking.android",
                 "ru.alfabank.mobile.android",
                 "ru.gazprombank.android.mobilebank.app",
-                "ru.ozon.fintech.finance"
+                "ru.ozon.fintech.finance",
+                "mtnft.momo.consumer",
+                "com.transferwise.android",
+                "com.revolut.revolut",
+                "com.payoneer.android"
             ),
             BankTargetLock.supportedTargets.map { it.packageName }
         )
 
         assertTrue(BankTargetLock.isSupportedPackage("ru.sberbankmobile"))
         assertFalse(BankTargetLock.isSupportedPackage("com.example.unrelated"))
+        // MTN alternate package must also be recognised as supported
+        assertTrue(BankTargetLock.isSupportedPackage("com.consumerug"))
+    }
+
+    @Test
+    fun bankProfileIdForPackageMapsNeobankAndMtnAlternate() {
+        // Neobanks
+        assertEquals("wise_int", BankTargetLock.bankProfileIdForPackage("com.transferwise.android"))
+        assertEquals("revolut_int", BankTargetLock.bankProfileIdForPackage("com.revolut.revolut"))
+        assertEquals("payoneer_int", BankTargetLock.bankProfileIdForPackage("com.payoneer.android"))
+        // MTN primary and alternate both map to the same profile
+        assertEquals("mtn_momo_ci", BankTargetLock.bankProfileIdForPackage("mtnft.momo.consumer"))
+        assertEquals("mtn_momo_ci", BankTargetLock.bankProfileIdForPackage("com.consumerug"))
+        // Unknown returns null
+        assertNull(BankTargetLock.bankProfileIdForPackage("com.example.unknown"))
+        // Existing Russian bank unchanged
+        assertEquals("sber_ru", BankTargetLock.bankProfileIdForPackage("ru.sberbankmobile"))
+    }
+
+    @Test
+    fun resolveTargetsProducesExactlyOneMtnRowDespiteTwoPackages() {
+        // com.consumerug is an alternate package for MTN — must NOT produce a second bank row
+        val allProfileIds = BankTargetLock.supportedTargets.map { it.bankProfileId }
+        val mtnCount = allProfileIds.count { it == "mtn_momo_ci" }
+        assertEquals(
+            "mtn_momo_ci must appear exactly once in supportedTargets (no duplicate UI rows)",
+            1, mtnCount
+        )
     }
 
     @Test
@@ -48,7 +81,7 @@ class BankTargetLockTest {
         )
 
         assertEquals(
-            listOf("Sberbank", "T-Bank", "VTB", "Alfa-Bank", "Gazprombank", "Ozon Банк"),
+            listOf("Sberbank", "T-Bank", "VTB", "Alfa-Bank", "Gazprombank", "Ozon Банк", "MTN MoMo", "Wise", "Revolut", "Payoneer"),
             states.map { it.target.displayName }
         )
         assertEquals(BankTargetVisibleStatus.ENABLED, states.first { it.bankProfileId == "sber_ru" }.visibleStatus)
@@ -79,6 +112,9 @@ class BankTargetLockTest {
         assertFalse(targetLock.contains("QUERY_ALL_PACKAGES"))
         BankTargetLock.supportedTargets.forEach { target ->
             assertTrue(mainManifest.contains(target.packageName))
+            target.alternatePackageNames.forEach { alt ->
+                assertTrue("alternate package $alt must appear in manifest queries", mainManifest.contains(alt))
+            }
         }
     }
 

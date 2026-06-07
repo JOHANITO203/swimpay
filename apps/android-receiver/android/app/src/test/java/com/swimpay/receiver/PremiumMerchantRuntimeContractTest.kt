@@ -899,7 +899,7 @@ class PremiumMerchantRuntimeContractTest {
         val runtime = PremiumMerchantRuntime.disconnected()
 
         val banks = runtime.loadBanks() as PremiumScreenState.Content<PremiumBanksUiState>
-        assertEquals(listOf("Sberbank", "T-Bank", "VTB", "Alfa-Bank", "Gazprombank", "Ozon Банк"), banks.value.items.map { it.displayName })
+        assertEquals(listOf("Sberbank", "T-Bank", "VTB", "Alfa-Bank", "Gazprombank", "Ozon Банк", "MTN MoMo", "Wise", "Revolut", "Payoneer"), banks.value.items.map { it.displayName })
         assertTrue(banks.value.items.all { it.status in setOf("Détectée", "Non détectée", "Activée", "À configurer") })
         assertTrue(banks.value.items.filter { it.status == "Détectée" }.all { it.canActivate })
         assertTrue(banks.value.items.filter { it.status == "Non détectée" }.none { it.canActivate })

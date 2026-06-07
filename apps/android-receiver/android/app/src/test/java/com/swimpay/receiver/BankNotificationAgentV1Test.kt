@@ -41,7 +41,8 @@ class BankNotificationAgentV1Test {
         val profiles = StaticBankProfileRegistry.v1Profiles()
 
         assertEquals(
-            setOf("sber_ru", "tbank_ru", "vtb_ru", "alfa_ru", "gazprombank_ru", "ozon_bank"),
+            setOf("sber_ru", "tbank_ru", "vtb_ru", "alfa_ru", "gazprombank_ru", "ozon_bank",
+                "mtn_momo_ci", "wise_int", "revolut_int", "payoneer_int"),
             profiles.map { it.bankProfileId }.toSet()
         )
         assertTrue(profiles.all { it.version == BankProfileVersion("intelligence-v1") })

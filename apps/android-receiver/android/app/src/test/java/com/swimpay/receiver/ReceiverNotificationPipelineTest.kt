@@ -119,6 +119,41 @@ class ReceiverNotificationPipelineTest {
     }
 
     @Test
+    fun payloadIncludesChannelIdFromSnapshot() {
+        val processor = ReceiverNotificationPipeline(debugEnabled = true)
+        val result = processor.process(
+            listOf(
+                SyntheticNotificationFixtures.incomingTransferSnapshot()
+                    .copy(channelId = "bank_alerts")
+            )
+        )
+
+        assertTrue(result.accepted)
+        val payload = result.payload ?: error("payload expected")
+        assertEquals("bank_alerts", payload["channel_id"])
+    }
+
+    @Test
+    fun payloadChannelIdIsNullableWhenSnapshotHasNoChannelId() {
+        val processor = ReceiverNotificationPipeline(debugEnabled = true)
+        val result = processor.process(
+            listOf(
+                SyntheticNotificationFixtures.incomingTransferSnapshot()
+                    .copy(channelId = null)
+            )
+        )
+
+        assertTrue(result.accepted)
+        val payload = result.payload ?: error("payload expected")
+        // When channelId is null, key should either be absent or map to null — either is fine
+        val channelId = payload["channel_id"]
+        assertTrue(
+            "channel_id must be null or absent when snapshot has no channelId",
+            channelId == null
+        )
+    }
+
+    @Test
     fun negativeSyntheticNotificationsDoNotBecomePaymentConfirmation() {
         val processor = ReceiverNotificationPipeline(debugEnabled = true)
         val categories = listOf("cashback", "refund", "outgoing", "promo", "failed")

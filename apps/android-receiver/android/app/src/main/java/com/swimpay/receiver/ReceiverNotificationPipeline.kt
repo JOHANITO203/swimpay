@@ -174,6 +174,7 @@ class ReceiverNotificationPipeline(
             "redacted_body" to redacted.redactedBody,
             "raw_text_present" to false
         )
+        coalesced.representative.channelId?.let { payload["channel_id"] = it }
 
         return ReceiverNotificationPipelineResult(
             accepted = true,

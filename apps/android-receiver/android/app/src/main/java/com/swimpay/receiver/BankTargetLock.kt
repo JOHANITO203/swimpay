@@ -24,7 +24,12 @@ enum class BankTargetVisibleStatus(val label: String) {
 data class SupportedBankTarget(
     val bankProfileId: String,
     val displayName: String,
-    val packageName: String
+    val packageName: String,
+    /** Additional package names that belong to the same bank profile (e.g. regional variants).
+     *  These are recognised by [BankTargetLock.isSupportedPackage] and
+     *  [BankTargetLock.bankProfileIdForPackage] but do NOT produce extra entries in
+     *  [BankTargetLock.resolveTargets], preventing duplicate UI rows. */
+    val alternatePackageNames: Set<String> = emptySet()
 )
 
 data class BankTargetState(
@@ -65,17 +70,30 @@ object BankTargetLock {
         SupportedBankTarget("vtb_ru", "VTB", "ru.vtb24.mobilebanking.android"),
         SupportedBankTarget("alfa_ru", "Alfa-Bank", "ru.alfabank.mobile.android"),
         SupportedBankTarget("gazprombank_ru", "Gazprombank", "ru.gazprombank.android.mobilebank.app"),
-        SupportedBankTarget("ozon_bank", "Ozon Банк", "ru.ozon.fintech.finance")
+        SupportedBankTarget("ozon_bank", "Ozon Банк", "ru.ozon.fintech.finance"),
+        SupportedBankTarget("mtn_momo_ci", "MTN MoMo", "mtnft.momo.consumer",
+            alternatePackageNames = setOf("com.consumerug")),
+        SupportedBankTarget("wise_int", "Wise", "com.transferwise.android"),
+        SupportedBankTarget("revolut_int", "Revolut", "com.revolut.revolut"),
+        SupportedBankTarget("payoneer_int", "Payoneer", "com.payoneer.android")
     )
 
-    private val supportedPackages: Set<String> = supportedTargets.map { it.packageName }.toSet()
+    /** All package names recognised by this lock — primary + alternates. */
+    private val supportedPackages: Set<String> = buildSet {
+        for (target in supportedTargets) {
+            add(target.packageName)
+            addAll(target.alternatePackageNames)
+        }
+    }
 
     fun isSupportedPackage(packageName: String): Boolean {
         return packageName in supportedPackages
     }
 
     fun bankProfileIdForPackage(packageName: String): String? {
-        return supportedTargets.firstOrNull { it.packageName == packageName }?.bankProfileId
+        return supportedTargets.firstOrNull {
+            it.packageName == packageName || packageName in it.alternatePackageNames
+        }?.bankProfileId
     }
 
     fun resolveTargets(

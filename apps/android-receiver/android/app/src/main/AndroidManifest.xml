@@ -7,6 +7,13 @@
     <package android:name="ru.alfabank.mobile.android" />
     <package android:name="ru.gazprombank.android.mobilebank.app" />
     <package android:name="ru.ozon.fintech.finance" />
+    <!-- MTN MoMo CI — primary and alternate package -->
+    <package android:name="mtnft.momo.consumer" />
+    <package android:name="com.consumerug" />
+    <!-- International neobanks -->
+    <package android:name="com.transferwise.android" />
+    <package android:name="com.revolut.revolut" />
+    <package android:name="com.payoneer.android" />
   </queries>
 
   <uses-permission android:name="android.permission.INTERNET" />
