@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = path.resolve(__dirname, '..');
 
 const ignoredSegments = new Set([
+  '.apk-research',
   '.external-skills',
   '.git',
   '.gradle',
@@ -31,6 +32,7 @@ const ignoredExtensions = new Set([
   '.pdf',
   '.png',
   '.webp',
+  '.xapk',
   '.zip'
 ]);
 
