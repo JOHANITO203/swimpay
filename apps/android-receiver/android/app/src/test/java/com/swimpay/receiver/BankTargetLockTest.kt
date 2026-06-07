@@ -95,6 +95,32 @@ class BankTargetLockTest {
     }
 
     @Test
+    fun mtnIsDetectedAndEnabledViaItsAlternatePackageAndAllowsItsNotifications() {
+        // Real devices ship MTN MoMo CI as com.consumerug (the alternate), not the
+        // primary mtnft.momo.consumer. Detection, activation, and the notification
+        // allowlist must all work off the alternate.
+        val probe = FakeExactPackageProbe(setOf("com.consumerug"))
+
+        val states = BankTargetLock.resolveTargets(
+            probe = probe,
+            selectedBankProfileIds = setOf("mtn_momo_ci"),
+            enabledBankProfileIds = setOf("mtn_momo_ci"),
+            listenerReady = true
+        )
+
+        val mtn = states.first { it.bankProfileId == "mtn_momo_ci" }
+        assertEquals(BankTargetVisibleStatus.ENABLED, mtn.visibleStatus)
+        assertTrue(mtn.canActivate)
+
+        val enabled = BankTargetLock.enabledPackages(states)
+        // Both the primary and the alternate are allowed once MTN is enabled.
+        assertTrue(enabled.contains("mtnft.momo.consumer"))
+        assertTrue(enabled.contains("com.consumerug"))
+        assertTrue(BankTargetLock.isNotificationAllowed("com.consumerug", enabled))
+        assertTrue(BankTargetLock.isNotificationAllowed("mtnft.momo.consumer", enabled))
+    }
+
+    @Test
     fun packageVisibilityAndProbeDoNotUseBroadInstalledAppEnumeration() {
         val mainManifest = File("src/main/AndroidManifest.xml").readText()
         val debugManifest = File("src/debug/AndroidManifest.xml").readText()

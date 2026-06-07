@@ -472,6 +472,33 @@ describe('receiver signal ingestion api', () => {
       expect(repository.storedSignals[0]?.signal.channelRecognized).toBe(true);
     });
 
+    it('keeps a confirmed channel recognized and still counts the sighting (unified upsert, no branch no-op)', async () => {
+      const repository = new FakeSignalRepository();
+      repository.seedChannel('sber_ru', 'sber_push_channel', 'confirmed');
+
+      const server = buildApiServer({
+        environment: 'test',
+        healthChecks: skippedHealthChecks(),
+        signalRepository: repository,
+        eventPublisher: new FakeEventPublisher(),
+        signalIdGenerator: () => 'sig_ch_cfm'
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/v1/receiver/signals',
+        payload: createValidSignal({ channel_id: 'sber_push_channel', event_id: 'evt_ch_cfm', notification_hash: 'a'.repeat(64) })
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(repository.storedSignals[0]?.signal.channelRecognized).toBe(true);
+      // A re-sighting of a confirmed channel increments sample_count (atomic upsert),
+      // guarding against a regression to the old "confirmed -> do nothing" branch.
+      const row = repository.getChannel('sber_ru', 'sber_push_channel');
+      expect(row?.status).toBe('confirmed');
+      expect(row?.sample_count).toBe(2);
+    });
+
     it('upserts a pending bank_notification_channels row for an unknown channel_id and still ingests the signal', async () => {
       const repository = new FakeSignalRepository();
       const server = buildApiServer({
@@ -598,17 +625,15 @@ class FakeSignalRepository implements ReceiverSignalRepository {
       return { kind: 'local_counter_regression' };
     }
 
-    // Channel learning logic (mirrors PgSignalRepository)
+    // Channel learning logic (mirrors PgSignalRepository's atomic upsert:
+    // every re-sighting increments sample_count; channel_recognized reflects
+    // the post-upsert status, so only a confirmed channel marks it true).
     if (input.signal.channelId) {
       const key = `${input.signal.bankProfileId}:${input.signal.channelId}`;
       const existing = this.channels.get(key);
       if (existing) {
-        if (existing.status === 'confirmed') {
-          input.signal.channelRecognized = true;
-        } else {
-          existing.sample_count += 1;
-          input.signal.channelRecognized = false;
-        }
+        existing.sample_count += 1;
+        input.signal.channelRecognized = existing.status === 'confirmed';
       } else {
         this.channels.set(key, {
           bank_profile_id: input.signal.bankProfileId,

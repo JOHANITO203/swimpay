@@ -295,26 +295,24 @@ export class PgSignalRepository implements ReceiverSignalRepository {
         return { kind: 'package_signature_rejected' };
       }
 
-      // Channel-ID learning: never blocks ingestion.
+      // Channel-ID learning: never blocks ingestion. Atomic upsert so every
+      // re-sighting increments sample_count (no SELECT-then-update race); the
+      // RETURNING status reflects the row after the upsert, so a confirmed
+      // channel marks the signal channel_recognized.
       if (input.signal.channelId) {
         const channelRow = await client.query(
-          `SELECT status FROM bank_notification_channels
-           WHERE bank_profile_id = $1 AND channel_id = $2`,
+          `INSERT INTO bank_notification_channels (bank_profile_id, channel_id, status, sample_count)
+           VALUES ($1, $2, 'pending', 1)
+           ON CONFLICT (bank_profile_id, channel_id)
+           DO UPDATE SET sample_count = bank_notification_channels.sample_count + 1
+           RETURNING status`,
           [input.signal.bankProfileId, input.signal.channelId]
         );
-        if (channelRow.rowCount && channelRow.rowCount > 0) {
-          const channelStatus = String((channelRow.rows[0] as { status: string }).status);
-          if (channelStatus === 'confirmed') {
-            input.signal.channelRecognized = true;
-          }
-        } else {
-          await client.query(
-            `INSERT INTO bank_notification_channels (bank_profile_id, channel_id, status, sample_count)
-             VALUES ($1, $2, 'pending', 1)
-             ON CONFLICT (bank_profile_id, channel_id)
-             DO UPDATE SET sample_count = bank_notification_channels.sample_count + 1`,
-            [input.signal.bankProfileId, input.signal.channelId]
-          );
+        const channelStatus = channelRow.rowCount && channelRow.rowCount > 0
+          ? String((channelRow.rows[0] as { status: string }).status)
+          : 'pending';
+        if (channelStatus === 'confirmed') {
+          input.signal.channelRecognized = true;
         }
       }
 

@@ -1,5 +1,8 @@
--- 031 — Notification channel learning. Device captures channelId; recognised
--- channels raise confidence, unknown ones are recorded pending for operator review.
+-- 031 — Notification channel learning. Device captures channelId; a signal from a
+-- confirmed (bank_profile_id, channel_id) pair is flagged channel_recognized at
+-- ingestion (forward hook for confidence weighting), and unknown channels are
+-- recorded pending (sample_count accrues) for operator review. Never blocks
+-- ingestion and never auto-confirms.
 ALTER TABLE notification_signals ADD COLUMN IF NOT EXISTS channel_id TEXT;
 
 CREATE TABLE IF NOT EXISTS bank_notification_channels (

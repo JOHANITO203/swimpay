@@ -105,7 +105,11 @@ object BankTargetLock {
         learningActiveBankProfileIds: Set<String> = emptySet()
     ): List<BankTargetState> {
         return supportedTargets.map { target ->
-            val detected = probe.isInstalled(target.packageName)
+            // Detection considers the primary AND any alternate package (e.g. MTN
+            // MoMo CI ships as com.consumerug on real devices), so a user who has
+            // only an alternate installed still sees the bank as detected/activatable.
+            val detected = probe.isInstalled(target.packageName) ||
+                target.alternatePackageNames.any { probe.isInstalled(it) }
             val selected = target.bankProfileId in selectedBankProfileIds
             val enabled = detected && target.bankProfileId in enabledBankProfileIds
             val states = buildSet {
@@ -131,9 +135,11 @@ object BankTargetLock {
     }
 
     fun enabledPackages(states: List<BankTargetState>): Set<String> {
+        // Include alternates so a notification from an alternate package (e.g. the
+        // real MTN MoMo CI com.consumerug) is allowed once the bank is enabled.
         return states
             .filter { BankTargetInternalState.TARGET_ENABLED in it.internalStates }
-            .map { it.target.packageName }
+            .flatMap { listOf(it.target.packageName) + it.target.alternatePackageNames }
             .toSet()
     }
 

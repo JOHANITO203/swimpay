@@ -505,7 +505,12 @@ export function classifyIntlDirection(text: string): DirectionLabel {
   // Without an amount, 'sent you' and 'paid you' could be informational/OTP text.
   const AMOUNT_GATED_INCOMING = ['sent you', 'paid you'];
   const hasAmount = extractUsdAmountMinor(text) !== null;
-  const amountGatedMatch = AMOUNT_GATED_INCOMING.some((k) => n.includes(k)) && hasAmount;
+  // Reject the bank/service-as-sender promo form ("We sent you $50", "We've paid
+  // you $5", "I sent you ...") — first-person subject means the app, not a peer,
+  // is the sender, so it is a credit/promo notification, never a customer payment.
+  const BANK_AS_SENDER = /\b(?:we|i)(?:'ve|\s+have|\s+just)?\s+(?:sent|paid)\s+you\b/u;
+  const amountGatedMatch =
+    AMOUNT_GATED_INCOMING.some((k) => n.includes(k)) && hasAmount && !BANK_AS_SENDER.test(n);
   // Remaining incoming keywords are always sufficient (e.g. 'you received', 'payment from').
   const UNCONDITIONAL_INCOMING = INTL_INCOMING_KEYWORDS.filter((k) => !AMOUNT_GATED_INCOMING.includes(k));
   const unconditionalMatch = UNCONDITIONAL_INCOMING.some((k) => n.includes(k)) || (/\breceived\b/u.test(n) && /\bfrom\b/u.test(n));

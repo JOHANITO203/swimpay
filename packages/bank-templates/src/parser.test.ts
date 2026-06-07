@@ -232,6 +232,16 @@ describe('international neobank parsing (USD)', () => {
     expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'We sent you details' }).directionLabel).toBe('unknown');
   });
 
+  it('does not classify bank/service-as-sender promos ("We sent you $X") as incoming', () => {
+    // First-person subject = the app credited/promo'd the user, not a peer payment.
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'We sent you $50.00' }).directionLabel).toBe('unknown');
+    expect(parseBankNotification({ bankProfileId: 'revolut_int', text: "We've paid you $5.00" }).directionLabel).toBe('unknown');
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'We have sent you $10.00 to get started' }).directionLabel).toBe('unknown');
+    expect(parseBankNotification({ bankProfileId: 'payoneer_int', text: 'I sent you $15.00' }).directionLabel).toBe('unknown');
+    // A real peer transfer with a named sender is still incoming.
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'Maria sent you $20.00' }).directionLabel).toBe('incoming_customer_transfer');
+  });
+
   it('rejects malformed 3-decimal USD amounts', () => {
     expect(extractUsdAmountMinor('10.999 USD')).toBeNull();
     expect(extractUsdAmountMinor('$10.99')).toBe(1099);
