@@ -67,6 +67,16 @@ const INCOMING_KEYWORDS = [
   'transfer from'
 ] as const;
 
+// "Received FROM a sender" forms that share a verb with the generic outgoing gate
+// (оплата / payment). The payment model is person-to-person, but business/company
+// accounts also pay: "Оплата от ООО …" / "Payment from Acme Inc" is the company
+// paying US (incoming), not us paying a merchant. These must beat the outgoing gate
+// while the unambiguous "Оплата покупки" / "payment sent" stays outgoing.
+const INCOMING_FROM_SENDER_KEYWORDS = [
+  'оплата от',
+  'payment from'
+] as const;
+
 export function parseBankNotification(input: ParseBankNotificationInput): ParsedBankNotification {
   if (input.bankProfileId.endsWith('_int')) {
     return parseInternationalNotification(input);
@@ -291,6 +301,12 @@ export function classifyDirection(text: string): DirectionLabel {
 
   if (containsAny(normalized, NEGATIVE_KEYWORDS.outgoingTransfer)) {
     return 'outgoing_transfer';
+  }
+
+  // A company paying us ("Оплата от …" / "Payment from …") is incoming — must win
+  // over the generic outgoing 'оплата'/'payment' gate below.
+  if (containsAny(normalized, INCOMING_FROM_SENDER_KEYWORDS)) {
+    return 'incoming_customer_transfer';
   }
 
   if (containsAny(normalized, NEGATIVE_KEYWORDS.outgoing)) {

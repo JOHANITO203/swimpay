@@ -105,6 +105,22 @@ describe('bank notification parser', () => {
     expect(direction).not.toBe('incoming_customer_transfer');
   });
 
+  it('classifies a business/company account paying us as incoming (P2P model, but companies pay too)', () => {
+    // "Оплата от {company}" = a company paying US (incoming), must beat the generic
+    // outgoing 'оплата' gate; "Оплата покупки" (us paying a merchant) stays outgoing.
+    expect(classifyDirection('Оплата от ООО Ромашка 500 ₽. Комментарий SWP-A8K2')).toBe('incoming_customer_transfer');
+    expect(classifyDirection('Payment from Acme Inc 500 RUB')).toBe('incoming_customer_transfer');
+    expect(classifyDirection('Оплата покупки 137 RUB')).toBe('outgoing_payment');
+
+    const parsed = parseBankNotification({
+      bankProfileId: 'sber_ru',
+      text: 'Оплата от ООО Ромашка 500 ₽. Комментарий SWP-A8K2'
+    });
+    expect(parsed.directionLabel).toBe('incoming_customer_transfer');
+    expect(parsed.amountMinor).toBe(50000);
+    expect(parsed.referenceCode).toBe('SWP-A8K2');
+  });
+
   it('extracts SwimPay reference codes case-insensitively', () => {
     expect(extractReferenceCode('Комментарий swp-a8k2')).toBe('SWP-A8K2');
   });
@@ -240,6 +256,12 @@ describe('international neobank parsing (USD)', () => {
     expect(parseBankNotification({ bankProfileId: 'payoneer_int', text: 'I sent you $15.00' }).directionLabel).toBe('unknown');
     // A real peer transfer with a named sender is still incoming.
     expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'Maria sent you $20.00' }).directionLabel).toBe('incoming_customer_transfer');
+  });
+
+  it('treats company/business senders as incoming on INT profiles (not only persons)', () => {
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'Acme Inc sent you $500.00' }).directionLabel).toBe('incoming_customer_transfer');
+    expect(parseBankNotification({ bankProfileId: 'wise_int', text: 'Payment from Acme Corp $1,200.00' }).directionLabel).toBe('incoming_customer_transfer');
+    expect(parseBankNotification({ bankProfileId: 'revolut_int', text: 'You received $300.00 from Globex LLC' }).directionLabel).toBe('incoming_customer_transfer');
   });
 
   it('rejects malformed 3-decimal USD amounts', () => {
