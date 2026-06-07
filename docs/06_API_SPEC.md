@@ -470,6 +470,7 @@ Receives a signed payment signal from Android Receiver.
   "bank_profile_id": "sber_ru",
   "package_name": "TO_VERIFY_FROM_DEVICE",
   "package_cert_sha256": "TO_VERIFY_FROM_DEVICE",
+  "channel_id": "bank_alerts",
   "notification_hash": "sha256_hash",
   "local_counter": 1821,
   "observed_at": "2026-05-01T21:01:12Z",
@@ -503,7 +504,12 @@ Receives a signed payment signal from Android Receiver.
 - Verify event id uniqueness.
 - Verify notification hash uniqueness.
 - Verify local counter is increasing.
-- Store signal.
+- Store signal (including the optional `channel_id`).
+- Channel-ID learning (migration 031): if `channel_id` is present, look it up in
+  `bank_notification_channels` for the signal's `bank_profile_id`. A `confirmed`
+  pair marks the stored signal `channel_recognized`; an unseen pair is recorded
+  `pending` (incrementing `sample_count`) for operator confirmation. This never
+  blocks ingestion and never auto-confirms a payment.
 - Emit `signal.received`.
 
 ## GET `/v1/payment-signals`

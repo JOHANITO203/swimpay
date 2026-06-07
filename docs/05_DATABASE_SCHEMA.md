@@ -405,6 +405,7 @@ CREATE TABLE notification_signals (
   received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   amount_minor BIGINT,
   currency TEXT,
+  channel_id TEXT,                   -- added by migration 031: device-reported notification channel id
   sender_phone_hmac TEXT,
   sender_phone_masked TEXT,
   reference_hmac TEXT,
@@ -418,6 +419,27 @@ CREATE TABLE notification_signals (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (event_id),
   UNIQUE (notification_hash)
+);
+```
+
+### `bank_notification_channels`
+
+Channel-ID learning table (migration 031). The device uploads each notification's
+Android `channelId`; the backend marks a signal `channel_recognized` when the
+`(bank_profile_id, channel_id)` pair is `confirmed`, and records previously-unseen
+channels as `pending` (incrementing `sample_count`) for operator confirmation.
+This never blocks ingestion and never auto-confirms a payment. Russian bank
+channels are seeded `confirmed` by the migration.
+
+```sql
+CREATE TABLE bank_notification_channels (
+  bank_profile_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  confirmed_at TIMESTAMPTZ,
+  sample_count INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (bank_profile_id, channel_id)
 );
 ```
 
