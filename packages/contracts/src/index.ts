@@ -353,14 +353,16 @@ export const WestAfricaReceiverBankProfiles: readonly ReceiverBankOption[] = [
 ] as const;
 
 /**
- * International (USD) neobank receiving profiles — wallet_transfer rail, manual
- * review only (no notification parsers yet, detection_supported false). The
+ * International (USD) neobank receiving profiles — wallet_transfer rail. The
+ * neobank notification parser (extraction-only, auto-confirm disabled) now ships,
+ * so detection_supported is true; status stays review_required_beta (a parsed
+ * neobank signal always goes to manual review, never auto-confirms). The
  * merchant-side mirror of InternationalPayerBankLauncherRegistry.
  */
 export const InternationalReceiverBankProfiles: readonly ReceiverBankOption[] = [
-  receiverBank('wise_int', 'Wise', { packageName: 'com.transferwise.android', detectionSupported: false }),
-  receiverBank('revolut_int', 'Revolut', { packageName: 'com.revolut.revolut', detectionSupported: false }),
-  receiverBank('payoneer_int', 'Payoneer', { packageName: 'com.payoneer.android', detectionSupported: false })
+  receiverBank('wise_int', 'Wise', { packageName: 'com.transferwise.android' }),
+  receiverBank('revolut_int', 'Revolut', { packageName: 'com.revolut.revolut' }),
+  receiverBank('payoneer_int', 'Payoneer', { packageName: 'com.payoneer.android' })
 ] as const;
 
 /** Every receiver bank profile the platform recognises (RU V1 + West Africa + international USD). */
@@ -458,11 +460,23 @@ export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOpti
 /**
  * International (USD) payer launchers — neobank apps. Not device-validated:
  * package_hint_only / not_validated, with the standard manual-copy fallback.
+ *
+ * Tap Tap Send is a USD *send* method: the buyer funds via Tap Tap Send and the
+ * money is received on a West-Africa rail the buyer declares separately (so we
+ * parse the WA receiver's notification, not Tap Tap Send's — it is a payer
+ * launcher only, never a receiving profile). Deeplink schemes are manifest-
+ * harvested (docs/APK_INTELLIGENCE.md); reception reinforces the WA rails.
  */
 export const InternationalPayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
   payerLauncher('wise_int', 'Wise', ['com.transferwise.android'], { country: 'INT', enabled: true }),
   payerLauncher('revolut_int', 'Revolut', ['com.revolut.revolut'], { country: 'INT', enabled: true }),
-  payerLauncher('payoneer_int', 'Payoneer', ['com.payoneer.android'], { country: 'INT', enabled: true })
+  payerLauncher('payoneer_int', 'Payoneer', ['com.payoneer.android'], { country: 'INT', enabled: true }),
+  payerLauncher('taptapsend', 'Tap Tap Send', ['com.taptapsend'], {
+    country: 'INT',
+    deeplinkSchemes: ['taptapsend', 'taptapsendmoney'],
+    launchStrategy: 'deeplink_then_package',
+    enabled: true
+  })
 ] as const;
 
 const XOF_CURRENCIES = new Set(['XOF', 'XAF']);

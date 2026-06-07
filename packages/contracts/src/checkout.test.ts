@@ -629,11 +629,12 @@ describe('checkout bank selection contracts', () => {
 });
 
 describe('international USD rail', () => {
-  it('exposes the neobank receiver profiles with detection disabled', () => {
+  it('exposes the neobank receiver profiles with detection enabled (review-only, no auto-confirm)', () => {
     expect(InternationalReceiverBankProfiles.map((b) => b.bank_profile_id)).toEqual(['wise_int', 'revolut_int', 'payoneer_int']);
     for (const profile of InternationalReceiverBankProfiles) {
-      expect(profile.detection_supported).toBe(false);
+      expect(profile.detection_supported).toBe(true);
       expect(profile.status).toBe('review_required_beta');
+      expect(profile.auto_confirm_enabled).toBe(false);
     }
     expect(AllReceiverBankProfiles.map((b) => b.bank_profile_id)).toContain('wise_int');
   });
@@ -643,6 +644,21 @@ describe('international USD rail', () => {
     expect(payerLaunchersForCurrency('usd')).toBe(InternationalPayerBankLauncherRegistry);
     expect(receivingCurrencyForBankProfile('wise_int')).toBe('USD');
     expect(receivingCurrencyForBankProfile('sber_ru')).toBe('RUB');
+  });
+
+  it('offers Tap Tap Send as a USD payer launcher (send method; reception on a WA rail), not a receiver profile', () => {
+    const taptap = InternationalPayerBankLauncherRegistry.find((l) => l.payer_bank_launcher_id === 'taptapsend');
+    expect(taptap, 'taptapsend must be a USD payer launcher').toBeDefined();
+    expect(taptap!.country).toBe('INT');
+    expect(taptap!.enabled).toBe(true);
+    expect(taptap!.android_package_candidates).toEqual(['com.taptapsend']);
+    expect(taptap!.deeplink_schemes).toEqual(['taptapsend', 'taptapsendmoney']);
+    expect(taptap!.launch_strategy).toBe('deeplink_then_package');
+    expect(taptap!.tested_status).toBe('not_validated');
+    expect(taptap!.does_not_confirm_payment).toBe(true);
+    // Tap Tap Send is a payer launcher only — never a receiving profile.
+    expect(InternationalReceiverBankProfiles.map((b) => b.bank_profile_id)).not.toContain('taptapsend');
+    expect(AllReceiverBankProfiles.map((b) => b.bank_profile_id)).not.toContain('taptapsend');
   });
 
   it('resolves any registry launcher by id (fixes the WA selection gap)', () => {
