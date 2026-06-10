@@ -268,4 +268,49 @@ describe('international neobank parsing (USD)', () => {
     expect(extractUsdAmountMinor('10.999 USD')).toBeNull();
     expect(extractUsdAmountMinor('$10.99')).toBe(1099);
   });
+
+  it('sets rail=wallet on the INT path while staying incoming USD', () => {
+    const parsed = parseBankNotification({ bankProfileId: 'wise_int', text: 'You received $50.00 from John' });
+    expect(parsed.rail).toBe('wallet');
+    expect(parsed.directionLabel).toBe('incoming_customer_transfer');
+    expect(parsed.currency).toBe('USD');
+    expect(parsed.amountMinor).toBe(5000);
+  });
+});
+
+describe('West-Africa mobile money parsing (XOF)', () => {
+  it('parses a Wave received notification with rail, amount, sender phone and reference', () => {
+    const parsed = parseBankNotification({
+      bankProfileId: 'wave_ci',
+      text: 'Vous avez recu 2 500 FCFA de +225 07 00 00 00 00. Ref SWP-A8K2'
+    });
+    expect(parsed.rail).toBe('mobile_money');
+    expect(parsed.amountMinor).toBe(250000);
+    expect(parsed.currency).toBe('XOF');
+    expect(parsed.referenceCode).toBe('SWP-A8K2');
+    expect(parsed.directionLabel).toBe('incoming_customer_transfer');
+    expect(parsed.senderPhoneNormalized).toBe('+2250700000000');
+    expect(parsed.allowAutoConfirmCandidate).toBe(false);
+  });
+
+  it('parses an Orange Money payment-received notification as incoming', () => {
+    const parsed = parseBankNotification({
+      bankProfileId: 'orange_money_ci',
+      text: 'Paiement recu 5 000 FCFA'
+    });
+    expect(parsed.rail).toBe('mobile_money');
+    expect(parsed.directionLabel).toBe('incoming_customer_transfer');
+    expect(parsed.amountMinor).toBe(500000);
+    expect(parsed.currency).toBe('XOF');
+  });
+
+  it('does not classify an outgoing WA transfer as incoming', () => {
+    const parsed = parseBankNotification({
+      bankProfileId: 'mtn_momo_ci',
+      text: 'Vous avez envoyé 1 000 FCFA'
+    });
+    expect(parsed.rail).toBe('mobile_money');
+    expect(parsed.directionLabel).not.toBe('incoming_customer_transfer');
+    expect(parsed.allowAutoConfirmCandidate).toBe(false);
+  });
 });

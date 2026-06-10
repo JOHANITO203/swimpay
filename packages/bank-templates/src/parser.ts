@@ -10,7 +10,7 @@ export interface ParsedBankNotification {
   bankProfileId: string;
   normalizedText: string;
   directionLabel: DirectionLabel;
-  rail?: 'sbp' | 'card' | undefined;
+  rail?: 'sbp' | 'card' | 'mobile_money' | 'wallet' | undefined;
   amountMinor?: number | undefined;
   currency?: 'RUB' | 'XOF' | 'USD' | undefined;
   senderNameHint?: string | undefined;
@@ -80,6 +80,9 @@ const INCOMING_FROM_SENDER_KEYWORDS = [
 export function parseBankNotification(input: ParseBankNotificationInput): ParsedBankNotification {
   if (input.bankProfileId.endsWith('_int')) {
     return parseInternationalNotification(input);
+  }
+  if (input.bankProfileId.endsWith('_ci')) {
+    return parseWestAfricaNotification(input);
   }
   const normalizedText = normalizeRuText(input.text);
   const sbpVariant = extractSbpIncomingVariant(input.text);
@@ -550,7 +553,7 @@ function parseInternationalNotification(input: ParseBankNotificationInput): Pars
     bankProfileId: input.bankProfileId,
     normalizedText,
     directionLabel,
-    rail: undefined,
+    rail: 'wallet',
     amountMinor,
     currency,
     senderNameHint: undefined,
@@ -564,6 +567,128 @@ function parseInternationalNotification(input: ParseBankNotificationInput): Pars
     referenceCode,
     signalQuality: scoreParsedSignal({ directionLabel, amountMinor, currency, referenceCode }),
     allowAutoConfirmCandidate: false, // neobanks never auto-confirm in v1
+    reasonCodes
+  };
+}
+
+const WA_INCOMING_KEYWORDS = [
+  'recu', 'reçu', 'recue', 'reçue', 'recus', 'reçus', 'recues', 'reçues',
+  'reception', 'réception', 'avez recu', 'avez reçu', 'paiement recu', 'paiement reçu',
+  'transfert recu', 'transfert reçu', 'argent recu', 'argent reçu'
+];
+const WA_OUTGOING_KEYWORDS = [
+  'envoye', 'envoyé', 'envoi', 'avez envoye', 'avez envoyé', 'transfert envoye', 'transfert envoyé',
+  'retrait', 'retire', 'retiré', 'paiement effectue', 'paiement effectué', 'paye', 'payé', 'debit', 'débit'
+];
+const WA_FAILED_KEYWORDS = ['echoue', 'échoué', 'echec', 'échec', 'annule', 'annulé', 'rejete', 'rejeté'];
+
+/** XOF/FCFA amount (locale-neutral, space-grouped). "2 500 FCFA" → 250000 minor.
+ * XOF has no minor subunit in practice; minor = major * 100 to match the system's
+ * minor-unit convention. The currency token must be adjacent so phone-number digit
+ * groups are never mistaken for an amount. */
+export function extractXofAmountMinor(text: string): number | null {
+  const t = text.normalize('NFKC');
+  const match = t.match(/(\d[\d  ]*\d|\d)\s*(?:FCFA|F\sCFA|XOF|CFA)(?=$|[\s.,;:])/iu);
+  if (!match?.[1]) {
+    return null;
+  }
+  const digits = match[1].replace(/[\s ]/gu, '');
+  const major = Number.parseInt(digits, 10);
+  if (!Number.isFinite(major)) {
+    return null;
+  }
+  const amount = major * 100;
+  return amount > 0 ? amount : null;
+}
+
+/** West-African phone (e.g. +225 07 00 00 00 00). Best-effort: returns the
+ * E.164-normalized number if an international (+country code) form is present,
+ * else undefined. Masked numbers are reported via maskedPhoneDetected. */
+export function extractWestAfricanPhone(text: string): string | null {
+  const match = text.match(/\+\d{1,3}(?:[\s.()-]*\d){8,12}/u);
+  if (!match?.[0]) {
+    return null;
+  }
+  const digits = match[0].replace(/\D/g, '');
+  // Need at least a country code + a plausible national number.
+  return digits.length >= 9 && digits.length <= 15 ? `+${digits}` : null;
+}
+
+/** French mobile-money direction. Conservative: incoming only when received-money
+ * phrasing is present and no outgoing/failed gate fires first. */
+export function classifyWestAfricaDirection(text: string): DirectionLabel {
+  const n = normalizeIntlText(text);
+  if (WA_FAILED_KEYWORDS.some((k) => n.includes(k))) {
+    return 'failed_transfer';
+  }
+  if (WA_OUTGOING_KEYWORDS.some((k) => n.includes(k))) {
+    return 'outgoing_transfer';
+  }
+  if (WA_INCOMING_KEYWORDS.some((k) => n.includes(k))) {
+    return 'incoming_customer_transfer';
+  }
+  return 'unknown';
+}
+
+function parseWestAfricaNotification(input: ParseBankNotificationInput): ParsedBankNotification {
+  const normalizedText = normalizeIntlText(input.text);
+  const directionLabel = classifyWestAfricaDirection(input.text);
+  const amountMinor = extractXofAmountMinor(input.text) ?? undefined;
+  const currency = extractCurrency(input.text) ?? undefined;
+  const referenceCode = extractReferenceCode(normalizedText) ?? undefined;
+  const senderPhoneNormalized = extractWestAfricanPhone(input.text) ?? undefined;
+  const maskedPhoneDetected = !senderPhoneNormalized && detectMaskedPhone(input.text);
+
+  const reasonCodes: string[] = [];
+  if (directionLabel === 'incoming_customer_transfer') {
+    reasonCodes.push(BankTemplateReasonCodes.INCOMING_KEYWORD_DETECTED);
+  } else if (directionLabel === 'outgoing_transfer') {
+    reasonCodes.push(BankTemplateReasonCodes.OUTGOING_KEYWORD_DETECTED);
+  } else if (directionLabel === 'failed_transfer') {
+    reasonCodes.push(BankTemplateReasonCodes.FAILED_KEYWORD_DETECTED);
+  } else {
+    reasonCodes.push(BankTemplateReasonCodes.AMBIGUOUS_DIRECTION);
+  }
+  if (directionLabel !== 'incoming_customer_transfer' && directionLabel !== 'unknown') {
+    reasonCodes.push(BankTemplateReasonCodes.NOT_CUSTOMER_TRANSFER);
+  }
+  reasonCodes.push(amountMinor ? BankTemplateReasonCodes.AMOUNT_EXTRACTED : BankTemplateReasonCodes.AMOUNT_MISSING);
+  reasonCodes.push('rail_mobile_money_detected');
+  if (senderPhoneNormalized) {
+    reasonCodes.push(BankTemplateReasonCodes.PHONE_EXTRACTED);
+  } else if (maskedPhoneDetected) {
+    reasonCodes.push(BankTemplateReasonCodes.PHONE_MASKED);
+  } else {
+    reasonCodes.push(BankTemplateReasonCodes.PHONE_MISSING);
+  }
+  reasonCodes.push(referenceCode ? BankTemplateReasonCodes.REFERENCE_EXTRACTED : BankTemplateReasonCodes.REFERENCE_MISSING);
+  reasonCodes.push('wa_review_only_never_auto_confirm');
+
+  return {
+    bankProfileId: input.bankProfileId,
+    normalizedText,
+    directionLabel,
+    rail: 'mobile_money',
+    amountMinor,
+    currency,
+    senderNameHint: undefined,
+    senderBankHint: undefined,
+    sourceLabel: undefined,
+    cardNetwork: undefined,
+    receiverCardLast4: undefined,
+    balanceAfterMinor: undefined,
+    senderPhoneNormalized,
+    maskedPhoneDetected,
+    referenceCode,
+    signalQuality: scoreParsedSignal({
+      directionLabel,
+      amountMinor,
+      currency,
+      senderPhoneNormalized,
+      maskedPhoneDetected,
+      referenceCode
+    }),
+    allowAutoConfirmCandidate: false, // WA review-only in this task; auto-confirm is a later task
     reasonCodes
   };
 }
