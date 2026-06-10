@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateSignalMatch, type MatchingCandidateSession, type MatchingSignal } from './index.js';
+import { evaluateSignalMatch, railFromSignal, type MatchingCandidateSession, type MatchingSignal } from './index.js';
 
 const baseSignal: MatchingSignal = {
   id: 'sig_01',
@@ -245,6 +245,21 @@ describe('matching core', () => {
     });
 
     expect(result.confidenceVector.channel).toBe('not_applicable');
+  });
+
+  it('classe le rail mobile_money et wallet (hors RU)', () => {
+    expect(railFromSignal({ ...baseSignal, railHint: 'mobile_money' })).toBe('mobile_money');
+    expect(railFromSignal({ ...baseSignal, railHint: 'wallet' })).toBe('wallet');
+  });
+
+  it('propage le railHint mobile_money jusqu au vecteur de confiance', () => {
+    const result = evaluateSignalMatch({
+      signal: { ...baseSignal, railHint: 'mobile_money' },
+      sessions: [baseSession],
+      context: trustedContext
+    });
+
+    expect(result.confidenceVector.rail).toBe('mobile_money');
   });
 
   it.each([

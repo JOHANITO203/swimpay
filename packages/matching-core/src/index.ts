@@ -36,6 +36,7 @@ export interface MatchingSignal {
   signatureValid: boolean;
   signalAlreadyUsed: boolean;
   channelRecognition?: 'recognized' | 'pending_unknown' | 'not_applicable' | undefined;
+  railHint?: 'sbp' | 'card' | 'mobile_money' | 'wallet' | undefined;
 }
 
 export interface MatchingCandidateSession {
@@ -100,7 +101,7 @@ export interface MatchDecisionOutput {
 
 export interface MatchConfidenceVector {
   amount: 'exact' | 'delta_match' | 'mismatch';
-  rail: 'sbp' | 'card' | 'unknown';
+  rail: 'sbp' | 'card' | 'mobile_money' | 'wallet' | 'unknown';
   channel: 'recognized' | 'pending_unknown' | 'not_applicable';
   direction: 'incoming' | 'outgoing' | 'refund' | 'cashback' | 'promo' | 'unknown';
   time_window: 'inside' | 'late' | 'too_old';
@@ -263,6 +264,16 @@ export function evaluateSenderNameCompatibility(
     return 'weak';
   }
   return 'mismatch';
+}
+
+/**
+ * Rail classification from the signal's parser-provided hint. Additive and
+ * non-decisional: when the parser knows the receiving rail (sbp/card for RU,
+ * mobile_money for West-Africa, wallet for USD) it sets `railHint`; otherwise
+ * the vector falls back to session-derived rail or 'unknown'.
+ */
+export function railFromSignal(signal: MatchingSignal): MatchConfidenceVector['rail'] {
+  return signal.railHint ?? 'unknown';
 }
 
 const NAME_COMPATIBLE_SCORE_BONUS = 5;
@@ -940,7 +951,13 @@ function buildMatchConfidenceVector(
   const insideWindow = isObservedInsideWindow(signal.observedAt, selected.validFrom, selected.validUntil);
   return {
     amount: signal.amountMinor === matchingAmountMinor(selected) ? 'exact' : signal.amountMinor === selected.displayAmountMinor ? 'delta_match' : 'mismatch',
-    rail: selected.railType === 'card_transfer' ? 'card' : selected.railType === 'phone_transfer' ? 'sbp' : 'unknown',
+    rail: signal.railHint
+      ? railFromSignal(signal)
+      : selected.railType === 'card_transfer'
+        ? 'card'
+        : selected.railType === 'phone_transfer'
+          ? 'sbp'
+          : 'unknown',
     channel: signal.channelRecognition ?? 'not_applicable',
     direction: confidenceDirectionFromMatching(signal.directionLabel),
     time_window: insideWindow ? 'inside' : Date.parse(signal.observedAt) > Date.parse(selected.validUntil) ? 'late' : 'too_old',
