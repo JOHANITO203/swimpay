@@ -1,7 +1,7 @@
 # Spec — P3 : Ne jamais manquer + résilience hors-ligne
 
 **Date :** 2026-06-10
-**Statut :** validé (design)
+**Statut :** validé (design) — **AUDIT 2026-06-10 : déjà implémenté + testé dans le code (voir « Résultat d'audit » en fin de doc). Aucun nouveau code requis.**
 **Type :** colonne (fiabilité) — sous-projet « P3 »
 
 ## Problème
@@ -58,3 +58,20 @@ La chaîne de capture est fragile : si le `NotificationListenerService` se déco
 - **P1** : précision reconnaissance/matching/décision (specé).
 - **M** : identité d'hôte SDK (specé, différé).
 - **P3** (ce document) : garantit que P1 reçoit **toujours** un signal fiable, même après une coupure réseau ou listener.
+
+## Résultat d'audit (2026-06-10)
+Audit du code existant : **le périmètre P3 est déjà implémenté et couvert par des tests** (travail antérieur). Aucun nouveau code écrit (règle : chirurgical / YAGNI / ne pas réécrire du code qui marche).
+
+| Mécanisme | Implémenté | Test |
+|---|---|---|
+| Rebind listener à la déconnexion | `SwimPayNotificationListenerService.onListenerDisconnected` → `ReceiverForegroundService.requestListenerRebind` + backup heartbeat | — |
+| Sweep de rattrapage (reconnect) | `onListenerConnected` → actives + snoozed + keyed-recall → `ActiveIntentNotificationSweep` (dédup hash) | `ActiveIntentNotificationSweepTest` |
+| Self-heal + détection révocation accès notif | `ReceiverSelfHealPolicy` + `NotificationAccessStatusReader` + `ReceiverOfflineAlertNotifier` (heartbeat 15 min) | `ReceiverSelfHealPolicyTest`, `ReceiverHeartbeatWorkerTest` |
+| Lifecycle listener | `ReceiverListenerLifecycleStore` | `ReceiverListenerLifecycleStoreTest` |
+| Outbox chiffré + durcissement | `AndroidEncryptedOutboxStore` | `AndroidEncryptedOutboxStoreTest`, `OutboxStorageHardeningTest` |
+| Retry / store-and-forward | `ReceiverRetryPolicy` + `SignalUploadFlusher` + `SignalUploadWorker` (expédié) | `RetryPolicyTest`, `SignalUploadFlusherTest` |
+| Anti-rejeu / gap | compteur local monotone + `local_counter_regression` (backend) | (signals) |
+
+**Vérification :** `npm run android:test` → BUILD SUCCESSFUL (toute la suite unitaire, dont la résilience).
+
+**Seul écart vs spec :** pas de **sweep périodique** hors-événement. Jugé **YAGNI** : le sweep-au-reconnect + le self-heal heartbeat (force rebind→reconnect→sweep) couvrent déjà le « ne jamais manquer ». À ajouter seulement si des cas réels de perte apparaissent.
