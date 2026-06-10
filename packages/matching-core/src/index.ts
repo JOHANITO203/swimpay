@@ -1,7 +1,7 @@
 export const MATCHING_CORE_FOUNDATION = {
   deterministic: true,
   amountOnlyAutoConfirmAllowed: false,
-  finalDecisionImplemented: false
+  finalDecisionImplemented: true
 } as const;
 
 export type DirectionLabel =
@@ -18,7 +18,7 @@ export type DirectionLabel =
   | 'unknown'
   | 'unknown_ambiguous_direction';
 
-export type MatchingDecision = 'needs_review' | 'rejected' | 'wait';
+export type MatchingDecision = 'auto_confirm' | 'needs_review' | 'rejected' | 'wait';
 export type BankProfileTrustStatus = 'learning' | 'shadow_testing' | 'trusted_low_amount' | 'trusted' | 'degraded' | 'review_only' | 'disabled';
 export type TemplateTrustStatus = 'new' | 'learning' | 'shadow_testing' | 'trusted_low_amount' | 'trusted' | 'degraded' | 'review_only' | 'disabled';
 
@@ -81,6 +81,12 @@ export interface MatchingContext {
   templateTrusted: boolean;
   deviceTrusted: boolean;
   merchantTrusted: boolean;
+  /**
+   * Global merchant trigger for auto-confirmation. Undefined is treated as
+   * 'manual' (safe default): the engine never emits `auto_confirm` unless the
+   * merchant has explicitly opted into 'auto'.
+   */
+  autoConfirmMode?: 'auto' | 'manual' | undefined;
 }
 
 export interface EvaluateSignalMatchInput {
@@ -276,6 +282,30 @@ export function railFromSignal(signal: MatchingSignal): MatchConfidenceVector['r
   return signal.railHint ?? 'unknown';
 }
 
+/**
+ * Strict floor that a confidence vector must clear before the engine may emit
+ * `auto_confirm`. Safety-critical: a false positive confirms an unpaid order, so
+ * every condition is conservative and ANDed together.
+ *
+ * - A strong identity key is mandatory (exact reference OR sender phone/card
+ *   HMAC match). Amount-only evidence can never reach auto-confirm.
+ * - `pending_unknown` on a channel-bearing rail blocks auto-confirm;
+ *   `not_applicable` (no stable channel for this rail) does not block.
+ */
+export function meetsAutoConfirmFloor(v: MatchConfidenceVector): boolean {
+  const strongKey = v.reference === 'exact' || v.sender_phone === 'hmac_match' || v.sender_card === 'hmac_match';
+  // pending_unknown on a channel-bearing rail blocks auto; not_applicable (no stable channel) does not.
+  const channelOk = v.channel === 'recognized' || v.channel === 'not_applicable';
+  return (
+    strongKey &&
+    v.amount === 'exact' &&
+    v.time_window === 'inside' &&
+    v.bank_package === 'trusted_cert' &&
+    channelOk &&
+    v.collision_pressure === 0
+  );
+}
+
 const NAME_COMPATIBLE_SCORE_BONUS = 5;
 
 export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecisionOutput {
@@ -354,6 +384,7 @@ export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecis
 
   reasonCodes.add('no_collision');
   reasonCodes.add('requires_review');
+  const confidenceVector = buildMatchConfidenceVector(input.signal, best.candidate, input.context, candidates.length);
   if (
     isStrongManualReviewCandidate({
       signal: input.signal,
@@ -364,13 +395,29 @@ export function evaluateSignalMatch(input: EvaluateSignalMatchInput): MatchDecis
   ) {
     reasonCodes.add('manual_confirmation_required_v1');
     reasonCodes.add('strong_match_manual_review');
+
+    // Final decision (engine-only): only a merchant that has explicitly opted
+    // into 'auto', on a non-collision strong match that clears the strict floor,
+    // earns auto_confirm. Every other case keeps the current needs_review path.
+    if (input.context.autoConfirmMode === 'auto' && !collisionDetected && meetsAutoConfirmFloor(confidenceVector)) {
+      reasonCodes.add('auto_confirm_floor_met');
+      return {
+        decision: 'auto_confirm',
+        score: best.score,
+        collisionDetected: false,
+        confidenceVector,
+        selected: best.candidate,
+        candidates,
+        reasonCodes: [...reasonCodes]
+      };
+    }
   }
 
   return {
     decision: 'needs_review',
     score: best.score,
     collisionDetected: false,
-    confidenceVector: buildMatchConfidenceVector(input.signal, best.candidate, input.context, candidates.length),
+    confidenceVector,
     selected: best.candidate,
     candidates,
     reasonCodes: [...reasonCodes]
