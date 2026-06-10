@@ -25,7 +25,14 @@ import { MetricNames, type MetricsRegistry } from '@swimpay/observability';
 
 const { Pool } = pg;
 
-export type SignalRuntimeDecision = 'needs_review' | 'rejected';
+export type SignalRuntimeDecision = 'auto_confirm' | 'needs_review' | 'rejected';
+
+/**
+ * Global merchant trigger for auto-confirmation (merchants.auto_confirm_mode,
+ * migration 032). Default 'manual' is safe: nothing auto-confirms until a
+ * merchant explicitly opts into 'auto'.
+ */
+export type AutoConfirmMode = 'auto' | 'manual';
 
 export interface SignalRuntimeSignal {
   id: string;
@@ -48,6 +55,9 @@ export interface SignalRuntimeSignal {
   referenceCodeMasked?: string | undefined;
   receivingRouteId?: string | undefined;
   directionLabel?: MatchingSignal['directionLabel'] | undefined;
+  rail?: 'sbp' | 'card' | 'mobile_money' | 'wallet' | undefined;
+  channelId?: string | undefined;
+  channelRecognized?: boolean | undefined;
   signalQuality?: number | undefined;
   parserVersion?: string | undefined;
   templateId?: string | undefined;
@@ -79,6 +89,11 @@ export interface SignalRuntimeTrustContext {
   deviceStatus: string;
   deviceTrustScore: number;
   merchantTrusted: boolean;
+  /**
+   * Merchant-level auto-confirmation trigger (merchants.auto_confirm_mode).
+   * Absent/undefined is treated as 'manual' (safe default).
+   */
+  autoConfirmMode?: AutoConfirmMode | undefined;
 }
 
 export interface SignalRuntimeResult {
@@ -142,6 +157,12 @@ export interface SignalRuntimeRepository {
   markSignalParsed(input: { signalId: string; parsed: ParsedSignalRuntimeFields; parsedAt: string }): Promise<void>;
   recordRejected(input: RuntimeRecordInput): Promise<void>;
   createReview(input: RuntimeReviewInput): Promise<{ created: boolean; reviewId: string }>;
+  /**
+   * Idempotently transition the matched order + payment session to confirmed.
+   * Safety-critical: if the order is already confirmed this must be a no-op and
+   * report `alreadyConfirmed: true` so the caller emits no duplicate event.
+   */
+  confirmMatch(input: RuntimeConfirmInput): Promise<SignalRuntimeConfirmResult>;
   writeAuditEvent(event: SignalRuntimeAuditEvent): Promise<void>;
   publishInternalEvent(event: InternalEventEnvelope): Promise<void>;
   probeCrossCurrencySessions(input: {
@@ -166,6 +187,7 @@ interface ParsedSignalRuntimeFields {
   amountMinor?: number | undefined;
   currency?: string | undefined;
   referenceCode?: string | undefined;
+  rail?: 'sbp' | 'card' | 'mobile_money' | 'wallet' | undefined;
   signalQuality: number;
   reasonCodes: string[];
 }
@@ -179,6 +201,17 @@ interface RuntimeRecordInput {
 
 interface RuntimeReviewInput extends RuntimeRecordInput {
   review: SignalRuntimeReviewItem;
+}
+
+interface RuntimeConfirmInput extends RuntimeRecordInput {
+  matchId: string;
+}
+
+export interface SignalRuntimeConfirmResult {
+  /** True when this call transitioned the order/session to confirmed. */
+  confirmed: boolean;
+  /** True when the order was already confirmed (idempotent no-op). */
+  alreadyConfirmed: boolean;
 }
 
 const DEFAULT_ID_GENERATOR: SignalRuntimeIdGenerator = {
@@ -381,6 +414,18 @@ export class SignalRuntimeProcessor {
       });
     }
 
+    if (match.decision === 'auto_confirm' && match.selected) {
+      return this.confirmSignal({
+        signal: hydratedSignal,
+        parsed,
+        now,
+        selected: match.selected as SignalRuntimeSessionCandidate,
+        score: match.score,
+        reasonCodes,
+        confidenceVector: match.confidenceVector
+      });
+    }
+
     return this.reviewSignal({
       signal: hydratedSignal,
       parsed,
@@ -486,6 +531,67 @@ export class SignalRuntimeProcessor {
     ) {
       this.options.metrics?.increment(MetricNames.UNTRUSTED_BANK_REVIEW_TOTAL);
     }
+    return result;
+  }
+
+  /**
+   * Executes an `auto_confirm` decision. SAFETY-CRITICAL: it confirms a payment.
+   * It only runs when the matching engine returned `auto_confirm` (merchant
+   * opted into 'auto' AND the strict floor is met). It is idempotent — if the
+   * order is already confirmed it is a no-op and emits no duplicate event — and
+   * it never creates a review.
+   */
+  private async confirmSignal(input: {
+    signal: SignalRuntimeSignal;
+    parsed: ParsedSignalRuntimeFields;
+    now: string;
+    selected: SignalRuntimeSessionCandidate;
+    score: number;
+    reasonCodes: string[];
+    confidenceVector?: MatchConfidenceVector | undefined;
+  }): Promise<SignalRuntimeResult> {
+    const result: SignalRuntimeResult = {
+      signalId: input.signal.id,
+      decision: 'auto_confirm',
+      score: input.score,
+      collisionDetected: false,
+      reasonCodes: input.reasonCodes,
+      confidenceVector: input.confidenceVector,
+      orderId: input.selected.orderId,
+      paymentSessionId: input.selected.paymentSessionId,
+      ...routeContextFromSession(input.selected)
+    };
+
+    const confirmation = await this.options.repository.confirmMatch({
+      signal: input.signal,
+      parsed: input.parsed,
+      now: input.now,
+      result,
+      matchId: this.idGenerator.matchId()
+    });
+
+    // Idempotent no-op: the order was already confirmed. Do not double-confirm,
+    // do not emit a duplicate confirmation event, do not increment the metric.
+    if (confirmation.alreadyConfirmed) {
+      return result;
+    }
+
+    await this.emitRuntimeEvent(EventTypes.PAYMENT_CONFIRMED, input.signal, input.now, {
+      signal_id: input.signal.id,
+      order_id: input.selected.orderId,
+      payment_session_id: input.selected.paymentSessionId,
+      score: input.score,
+      reason_codes: input.reasonCodes,
+      ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+    });
+    await this.writeAudit(EventTypes.PAYMENT_CONFIRMED, input.signal, input.now, {
+      order_id: input.selected.orderId,
+      payment_session_id: input.selected.paymentSessionId,
+      reason_codes: input.reasonCodes,
+      score: input.score,
+      ...PUBLIC_EVENT_SIGNAL_DISCLOSURE
+    });
+    this.options.metrics?.increment(MetricNames.SIGNALS_AUTO_CONFIRMED_TOTAL);
     return result;
   }
 
@@ -683,6 +789,10 @@ export class InMemorySignalRuntimeRepository implements SignalRuntimeRepository 
   public readonly orders = new Map<string, { status: string }>();
   public readonly paymentSessions = new Map<string, { status: string }>();
   public readonly currencyMismatchNotifiedSignalIds: string[] = [];
+  /** Orders already confirmed (manual or auto) — drives idempotent confirmMatch. */
+  public readonly confirmedOrderIds = new Set<string>();
+  /** Counts confirmMatch invocations (for assertions). */
+  public confirmMatchCallCount = 0;
 
   /** Set to a hit object in tests that need probeCrossCurrencySessions to return a result. */
   public crossCurrencyHit: CrossCurrencyProbeHit | null = null;
@@ -769,6 +879,28 @@ export class InMemorySignalRuntimeRepository implements SignalRuntimeRepository 
     return { created: true, reviewId: input.review.id };
   }
 
+  public async confirmMatch(input: RuntimeConfirmInput): Promise<SignalRuntimeConfirmResult> {
+    this.confirmMatchCallCount++;
+    const orderId = input.result.orderId;
+    const paymentSessionId = input.result.paymentSessionId;
+
+    // Idempotent: an already-confirmed order is a no-op.
+    if (orderId && this.confirmedOrderIds.has(orderId)) {
+      return { confirmed: false, alreadyConfirmed: true };
+    }
+
+    this.matches.push(input.result);
+    if (orderId) {
+      this.confirmedOrderIds.add(orderId);
+      this.orders.set(orderId, { status: 'manual_confirmed' });
+    }
+    if (paymentSessionId) {
+      this.paymentSessions.set(paymentSessionId, { status: 'manual_confirmed' });
+    }
+    this.markSignalStatus(input.signal.id, 'matched');
+    return { confirmed: true, alreadyConfirmed: false };
+  }
+
   public async writeAuditEvent(event: SignalRuntimeAuditEvent): Promise<void> {
     this.auditEvents.push(event);
   }
@@ -824,9 +956,14 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
         ns.observed_at, ns.received_at, ns.amount_minor, ns.currency, ns.sender_phone_hmac,
         ns.sender_phone_masked, ns.reference_hmac, ns.reference_code_masked, ns.direction_label,
         ns.signal_quality, ns.parser_version, ns.template_id, ns.signature_valid, ns.status,
+        ns.channel_id,
+        (bnc.status = 'confirmed') AS channel_recognized,
         ae.payload_redacted->>'title_redacted' AS title_redacted,
         ae.payload_redacted->>'body_redacted' AS body_redacted
        FROM notification_signals ns
+       LEFT JOIN bank_notification_channels bnc
+         ON bnc.bank_profile_id = ns.bank_profile_id
+        AND bnc.channel_id = ns.channel_id
        LEFT JOIN LATERAL (
          SELECT payload_redacted
          FROM audit_events
@@ -894,9 +1031,11 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
         rd.status AS device_status,
         rd.trust_score,
         bas.status AS exact_bank_app_status,
-        COALESCE(brc.runtime_status, 'unknown') AS bank_route_certification_status
+        COALESCE(brc.runtime_status, 'unknown') AS bank_route_certification_status,
+        COALESCE(m.auto_confirm_mode, 'manual') AS auto_confirm_mode
        FROM notification_signals ns
        JOIN receiver_devices rd ON rd.id = ns.device_id AND rd.merchant_id = ns.merchant_id
+       LEFT JOIN merchants m ON m.id = ns.merchant_id
        LEFT JOIN bank_profiles bp ON bp.id = ns.bank_profile_id
        LEFT JOIN bank_templates bt ON bt.id = ns.template_id
        LEFT JOIN bank_app_signatures bas
@@ -918,7 +1057,8 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
       templateStatus: normalizeTemplateStatus(row?.template_status),
       deviceStatus: String(row?.device_status ?? 'unknown'),
       deviceTrustScore: Number(row?.trust_score ?? 0),
-      merchantTrusted: true
+      merchantTrusted: true,
+      autoConfirmMode: normalizeAutoConfirmMode(row?.auto_confirm_mode)
     };
   }
 
@@ -1163,6 +1303,111 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
     }
   }
 
+  public async confirmMatch(input: RuntimeConfirmInput): Promise<SignalRuntimeConfirmResult> {
+    const orderId = input.result.orderId;
+    const paymentSessionId = input.result.paymentSessionId;
+    if (!orderId || !paymentSessionId) {
+      // Without a selected order/session there is nothing to confirm.
+      return { confirmed: false, alreadyConfirmed: false };
+    }
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Lock the order row to serialize concurrent confirm attempts.
+      const orderRow = await client.query(
+        `SELECT status FROM orders WHERE merchant_id = $1 AND id = $2 FOR UPDATE`,
+        [input.signal.merchantId, orderId]
+      );
+      if (orderRow.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return { confirmed: false, alreadyConfirmed: false };
+      }
+
+      // Idempotency: an existing manual_confirmed signal_match means the order is
+      // already confirmed — no-op, no duplicate event.
+      const alreadyConfirmed = await client.query(
+        `SELECT 1 FROM signal_matches
+         WHERE order_id = $1 AND decision = 'manual_confirmed'
+         LIMIT 1`,
+        [orderId]
+      );
+      if (alreadyConfirmed.rowCount && alreadyConfirmed.rowCount > 0) {
+        await client.query('ROLLBACK');
+        return { confirmed: false, alreadyConfirmed: true };
+      }
+
+      await client.query(
+        `INSERT INTO signal_matches (
+          id, signal_id, order_id, payment_session_id, score, decision, collision_detected, reasons_json,
+          confidence_vector_json, collision_pressure, created_at
+        )
+        VALUES ($1, $2, $3, $4, $5, 'manual_confirmed', false, $6::jsonb, $7::jsonb, $8, $9)`,
+        [
+          input.matchId,
+          input.signal.id,
+          orderId,
+          paymentSessionId,
+          input.result.score,
+          JSON.stringify(input.result.reasonCodes),
+          JSON.stringify(input.result.confidenceVector ?? {}),
+          input.result.confidenceVector?.collision_pressure ?? 0,
+          input.now
+        ]
+      );
+
+      const orderUpdate = await client.query(
+        `UPDATE orders
+         SET status = 'manual_confirmed', updated_at = $2
+         WHERE merchant_id = $1 AND id = $3
+           AND status NOT IN ('manual_confirmed', 'fulfilled', 'rejected', 'expired')`,
+        [input.signal.merchantId, input.now, orderId]
+      );
+
+      const paymentSessionUpdate = await client.query(
+        `UPDATE payment_sessions
+         SET status = 'manual_confirmed',
+             route_lock_expires_at = NULL,
+             receiver_arm_expires_at = NULL,
+             amount_lease_id = NULL,
+             updated_at = $2
+         WHERE merchant_id = $1 AND id = $3
+           AND status NOT IN ('manual_confirmed', 'rejected', 'expired')`,
+        [input.signal.merchantId, input.now, paymentSessionId]
+      );
+
+      // If neither state row transitioned, treat as already-confirmed (idempotent).
+      if (orderUpdate.rowCount !== 1 || paymentSessionUpdate.rowCount !== 1) {
+        await client.query('ROLLBACK');
+        return { confirmed: false, alreadyConfirmed: true };
+      }
+
+      await client.query(
+        `UPDATE amount_leases
+         SET status = 'used',
+             updated_at = $3::timestamptz
+         WHERE merchant_id = $1
+           AND payment_session_id = $2
+           AND status = 'active'`,
+        [input.signal.merchantId, paymentSessionId, input.now]
+      );
+
+      await client.query(`UPDATE notification_signals SET status = 'matched' WHERE id = $1`, [input.signal.id]);
+      await client.query('COMMIT');
+      return { confirmed: true, alreadyConfirmed: false };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (isConfirmedUniqueViolation(error)) {
+        // A concurrent confirm won the race — idempotent no-op.
+        return { confirmed: false, alreadyConfirmed: true };
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   public async writeAuditEvent(event: SignalRuntimeAuditEvent): Promise<void> {
     await this.pool.query(
       `INSERT INTO audit_events (
@@ -1209,6 +1454,7 @@ function parseSignal(signal: SignalRuntimeSignal): ParsedSignalRuntimeFields {
     amountMinor: parsed?.amountMinor ?? signal.amountMinor,
     currency: parsed?.currency ?? signal.currency,
     referenceCode: parsed?.referenceCode,
+    rail: parsed?.rail ?? signal.rail,
     signalQuality: parsed?.signalQuality ?? signal.signalQuality ?? 0,
     reasonCodes
   };
@@ -1220,6 +1466,7 @@ function hydrateSignalWithParsed(signal: SignalRuntimeSignal, parsed: ParsedSign
     amountMinor: parsed.amountMinor ?? signal.amountMinor,
     currency: parsed.currency ?? signal.currency,
     directionLabel: parsed.directionLabel,
+    rail: parsed.rail ?? signal.rail,
     signalQuality: parsed.signalQuality,
     parserVersion: 'bank-template-runtime-v1',
     status: 'parsed'
@@ -1426,8 +1673,29 @@ function toMatchingSignal(signal: SignalRuntimeSignal): MatchingSignal {
     directionLabel: signal.directionLabel ?? 'unknown',
     observedAt: signal.observedAt,
     signatureValid: signal.signatureValid,
-    signalAlreadyUsed: signal.status === 'matched'
+    signalAlreadyUsed: signal.status === 'matched',
+    railHint: railHintFromSignal(signal),
+    channelRecognition: channelRecognitionFromSignal(signal)
   };
+}
+
+function railHintFromSignal(signal: SignalRuntimeSignal): MatchingSignal['railHint'] {
+  return signal.rail === 'sbp' || signal.rail === 'card' || signal.rail === 'mobile_money' || signal.rail === 'wallet'
+    ? signal.rail
+    : undefined;
+}
+
+function channelRecognitionFromSignal(signal: SignalRuntimeSignal): MatchingSignal['channelRecognition'] {
+  if (signal.channelRecognized === true) {
+    return 'recognized';
+  }
+  // A channel was observed but is not (yet) a confirmed (bank, channel) pair →
+  // pending_unknown, which blocks auto-confirm on channel-bearing rails. No
+  // channel observed at all → not_applicable (neutral).
+  if (signal.channelId) {
+    return 'pending_unknown';
+  }
+  return 'not_applicable';
 }
 
 function toMatchingContext(context: SignalRuntimeTrustContext): MatchingContext {
@@ -1436,7 +1704,8 @@ function toMatchingContext(context: SignalRuntimeTrustContext): MatchingContext 
     bankAppTrusted: context.bankAppVerificationStatus === 'verified',
     templateTrusted: context.templateStatus === 'trusted' || context.templateStatus === 'trusted_low_amount',
     deviceTrusted: context.deviceStatus === 'active' && context.deviceTrustScore >= 80,
-    merchantTrusted: context.merchantTrusted
+    merchantTrusted: context.merchantTrusted,
+    autoConfirmMode: context.autoConfirmMode ?? 'manual'
   };
 }
 
@@ -1533,6 +1802,14 @@ function stripUndefined(value: Record<string, unknown>): Record<string, unknown>
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
 }
 
+function isConfirmedUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error) || error.code !== '23505') {
+    return false;
+  }
+  const constraint = 'constraint' in error ? String(error.constraint) : '';
+  return constraint.includes('unique_confirmed_order') || constraint.includes('unique_used_signal_confirmed');
+}
+
 function parseReasonCodes(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.filter((item): item is string => typeof item === 'string');
@@ -1568,6 +1845,10 @@ function normalizeTemplateStatus(value: unknown): TemplateTrustStatus | 'unknown
     : 'unknown';
 }
 
+function normalizeAutoConfirmMode(value: unknown): AutoConfirmMode {
+  return value === 'auto' ? 'auto' : 'manual';
+}
+
 function normalizeBankRouteCertificationStatus(value: unknown): NonNullable<SignalRuntimeTrustContext['bankRouteCertificationStatus']> {
   return ['certified', 'observed', 'experimental', 'review_only', 'package_validation_pending', 'disabled', 'unknown'].includes(String(value))
     ? (String(value) as NonNullable<SignalRuntimeTrustContext['bankRouteCertificationStatus']>)
@@ -1598,6 +1879,8 @@ interface SignalRow {
   template_id: string | null;
   signature_valid: boolean;
   status: string;
+  channel_id?: string | null;
+  channel_recognized?: boolean | null;
   title_redacted?: string | null;
   body_redacted?: string | null;
 }
@@ -1609,6 +1892,7 @@ interface TrustRow {
   trust_score: number | string | null;
   exact_bank_app_status: string | null;
   bank_route_certification_status: string | null;
+  auto_confirm_mode: string | null;
 }
 
 interface SessionRow {
@@ -1679,6 +1963,8 @@ function toSignal(row: SignalRow): SignalRuntimeSignal {
     referenceHmac: row.reference_hmac ?? undefined,
     referenceCodeMasked: row.reference_code_masked ?? undefined,
     directionLabel: coerceDirectionLabel(row.direction_label ?? 'unknown'),
+    channelId: row.channel_id ?? undefined,
+    channelRecognized: row.channel_recognized === true ? true : undefined,
     signalQuality: row.signal_quality === null ? undefined : Number(row.signal_quality),
     parserVersion: row.parser_version ?? undefined,
     templateId: row.template_id ?? undefined,

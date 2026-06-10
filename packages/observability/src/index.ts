@@ -7,6 +7,7 @@ export const MetricNames = {
   SIGNALS_PARSED_TOTAL: 'signals_parsed_total',
   SIGNALS_REJECTED_TOTAL: 'signals_rejected_total',
   SIGNALS_NEEDS_REVIEW_TOTAL: 'signals_needs_review_total',
+  SIGNALS_AUTO_CONFIRMED_TOTAL: 'signals_auto_confirmed_total',
   SIGNALS_DUPLICATE_TOTAL: 'signals_duplicate_total',
   UNSAFE_CASHBACK_BLOCKED_TOTAL: 'unsafe_cashback_blocked_total',
   UNSAFE_REFUND_BLOCKED_TOTAL: 'unsafe_refund_blocked_total',

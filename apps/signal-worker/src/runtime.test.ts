@@ -701,6 +701,96 @@ describe('signal runtime processor', () => {
     const mismatchEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.SIGNAL_CURRENCY_MISMATCH);
     expect(mismatchEvents).toHaveLength(0);
   });
+
+  // ─── Auto-confirm execution (SAFETY-CRITICAL, merchant opt-in) ────────────
+  //
+  // The default buildSignal()+buildSession()+trustedContext is a strong,
+  // non-collision, floor-clearing match (amount exact, reference exact, sender
+  // phone hmac match, trusted_cert, inside window). With auto_confirm_mode='auto'
+  // the engine returns 'auto_confirm' and the worker must EXECUTE the confirm.
+  const autoTrustContext: SignalRuntimeTrustContext = { ...trustedContext, autoConfirmMode: 'auto' };
+
+  it('auto: floor-clearing match confirms the order, emits payment.confirmed, creates no review', async () => {
+    const metrics = new InMemoryMetricsRegistry();
+    const { processor, repository } = createProcessor({ trustContext: autoTrustContext, metrics });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('auto_confirm');
+    expect(result.orderId).toBe('ord_01');
+    expect(result.paymentSessionId).toBe('ps_01');
+    expect(result.reasonCodes).toContain('auto_confirm_floor_met');
+
+    // Order/session transitioned to confirmed
+    expect(repository.orders.get('ord_01')?.status).toBe('manual_confirmed');
+    expect(repository.paymentSessions.get('ps_01')?.status).toBe('manual_confirmed');
+    expect(repository.confirmMatchCallCount).toBe(1);
+
+    // Confirmation event emitted, no review created
+    const confirmedEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.PAYMENT_CONFIRMED);
+    expect(confirmedEvents).toHaveLength(1);
+    expect(repository.reviews).toHaveLength(0);
+    expect(repository.publishedEvents.map((e) => e.type)).not.toContain(EventTypes.REVIEW_CREATED);
+    expect(repository.publishedEvents.map((e) => e.type)).not.toContain(EventTypes.DECISION_NEEDS_REVIEW);
+
+    // Metrics + no PII leak
+    expect(metrics.counterValue(MetricNames.SIGNALS_AUTO_CONFIRMED_TOTAL)).toBe(1);
+    expect(metrics.counterValue(MetricNames.SIGNALS_NEEDS_REVIEW_TOTAL)).toBe(0);
+    expect(metrics.counterValue(MetricNames.REVIEWS_CREATED_TOTAL)).toBe(0);
+    expect(JSON.stringify(repository.publishedEvents)).not.toContain('+7 999');
+  });
+
+  it('manual (default mode): the same floor-clearing match still routes to needs_review', async () => {
+    const metrics = new InMemoryMetricsRegistry();
+    const { processor, repository } = createProcessor({ metrics });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('needs_review');
+    expect(result.reasonCodes).toContain('manual_confirmation_required_v1');
+    expect(repository.reviews).toHaveLength(1);
+    expect(repository.confirmMatchCallCount).toBe(0);
+    expect(repository.orders.get('ord_01')?.status).toBe('needs_review');
+    expect(repository.publishedEvents.map((e) => e.type)).not.toContain(EventTypes.PAYMENT_CONFIRMED);
+    expect(metrics.counterValue(MetricNames.SIGNALS_AUTO_CONFIRMED_TOTAL)).toBe(0);
+  });
+
+  it('auto: a collision never auto-confirms — it routes to needs_review', async () => {
+    const { processor, repository } = createProcessor({
+      trustContext: autoTrustContext,
+      sessions: [
+        buildSession({ orderId: 'ord_01', paymentSessionId: 'ps_01' }),
+        buildSession({ orderId: 'ord_02', paymentSessionId: 'ps_02' })
+      ]
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('needs_review');
+    expect(result.collisionDetected).toBe(true);
+    expect(repository.confirmMatchCallCount).toBe(0);
+    expect(repository.reviews).toHaveLength(1);
+    expect(repository.publishedEvents.map((e) => e.type)).not.toContain(EventTypes.PAYMENT_CONFIRMED);
+  });
+
+  it('auto: an already-confirmed order is an idempotent no-op (no double confirm, no duplicate event)', async () => {
+    const metrics = new InMemoryMetricsRegistry();
+    const { processor, repository } = createProcessor({ trustContext: autoTrustContext, metrics });
+    // Pre-seed the order as already confirmed (simulating a prior confirm)
+    repository.confirmedOrderIds.add('ord_01');
+    repository.orders.set('ord_01', { status: 'manual_confirmed' });
+    repository.paymentSessions.set('ps_01', { status: 'manual_confirmed' });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('auto_confirm');
+    expect(repository.confirmMatchCallCount).toBe(1);
+    // No duplicate confirmation event and no metric increment for the no-op
+    const confirmedEvents = repository.publishedEvents.filter((e) => e.type === EventTypes.PAYMENT_CONFIRMED);
+    expect(confirmedEvents).toHaveLength(0);
+    expect(metrics.counterValue(MetricNames.SIGNALS_AUTO_CONFIRMED_TOTAL)).toBe(0);
+    expect(repository.reviews).toHaveLength(0);
+  });
 });
 
 function safetyMetricForDirection(direction: SignalRuntimeSignal['directionLabel']) {

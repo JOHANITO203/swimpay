@@ -34,6 +34,7 @@ export const EventTypes = {
   MATCH_SCORED: 'match.scored',
   DECISION_NEEDS_REVIEW: 'decision.needs_review',
   DECISION_REJECTED: 'decision.rejected',
+  PAYMENT_CONFIRMED: 'payment.confirmed',
   REVIEW_CREATED: 'review.created',
   REVIEW_CONFIRMED: 'review.confirmed',
   REVIEW_REJECTED: 'review.rejected',
@@ -82,6 +83,7 @@ export const SWIMPAY_EVENTS_STREAM_SUBJECTS = [
   'template.*',
   'match.*',
   'decision.*',
+  'payment.*',
   'review.*',
   'webhook.*'
 ] as const;

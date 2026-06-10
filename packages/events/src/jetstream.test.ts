@@ -75,6 +75,7 @@ describe('nats jetstream foundations', () => {
         'template.*',
         'match.*',
         'decision.*',
+        'payment.*',
         'review.*',
         'webhook.*'
       ],
