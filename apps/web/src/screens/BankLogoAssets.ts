@@ -28,6 +28,10 @@ const BANK_LOGO_FILES: Readonly<Record<string, { path: string; mime: string }>> 
   ic_bank_orange_money: { path: 'apps/web/assets/payer-logos/orange_money.svg', mime: 'image/svg+xml' },
   ic_bank_wave: { path: 'apps/web/assets/payer-logos/wave.svg', mime: 'image/svg+xml' },
   ic_bank_mtn_momo: { path: 'apps/web/assets/payer-logos/mtn_momo.svg', mime: 'image/svg+xml' },
+  // International neobanks — official brand marks (Simple Icons, brand colour, SVG).
+  ic_bank_wise: { path: 'apps/web/assets/payer-logos/wise.svg', mime: 'image/svg+xml' },
+  ic_bank_payoneer: { path: 'apps/web/assets/payer-logos/payoneer.svg', mime: 'image/svg+xml' },
+  ic_bank_revolut: { path: 'apps/web/assets/payer-logos/revolut.svg', mime: 'image/svg+xml' },
   ic_bank_moov: { path: 'apps/web/assets/payer-logos/moov.svg', mime: 'image/svg+xml' },
   ic_bank_free_money: { path: 'apps/web/assets/payer-logos/free_money.svg', mime: 'image/svg+xml' },
   ic_bank_wizall: { path: 'apps/web/assets/payer-logos/wizall.svg', mime: 'image/svg+xml' },

@@ -1687,6 +1687,13 @@ private fun bankIconResource(bankProfileId: String): Int? {
         "alfa_ru" -> R.drawable.ic_bank_alfa
         "gazprombank_ru" -> R.drawable.ic_bank_gazprombank
         "ozon_bank" -> R.drawable.ic_bank_ozon
+        // West Africa + International — official launcher icons harvested from each app's APK.
+        "wave_ci" -> R.drawable.ic_bank_wave
+        "orange_money_ci" -> R.drawable.ic_bank_orange_money
+        "mtn_momo_ci" -> R.drawable.ic_bank_mtn_momo
+        "wise_int" -> R.drawable.ic_bank_wise
+        "payoneer_int" -> R.drawable.ic_bank_payoneer
+        "revolut_int" -> R.drawable.ic_bank_revolut
         else -> null
     }
 }
