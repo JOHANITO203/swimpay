@@ -70,8 +70,8 @@ android {
         applicationId = "com.swimpay.receiver"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
         buildConfigField("String", "SWIMPAY_BACKEND_BASE_URL", swimpayBackendBaseUrl.get().toBuildConfigString())
         buildConfigField("String", "SWIMPAY_GOOGLE_SERVER_CLIENT_ID", swimpayGoogleServerClientId.get().toBuildConfigString())
     }
