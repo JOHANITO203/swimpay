@@ -227,6 +227,26 @@ describe('matching core', () => {
     expect(result.reasonCodes).toContain('order_already_confirmed');
   });
 
+  it('exposes the channel dimension of the recognition couplet', () => {
+    const result = evaluateSignalMatch({
+      signal: { ...baseSignal, channelRecognition: 'recognized' },
+      sessions: [baseSession],
+      context: trustedContext
+    });
+
+    expect(result.confidenceVector.channel).toBe('recognized');
+  });
+
+  it('defaults channel to not_applicable when not provided', () => {
+    const result = evaluateSignalMatch({
+      signal: baseSignal,
+      sessions: [baseSession],
+      context: trustedContext
+    });
+
+    expect(result.confidenceVector.channel).toBe('not_applicable');
+  });
+
   it.each([
     'incoming_cashback',
     'incoming_refund',

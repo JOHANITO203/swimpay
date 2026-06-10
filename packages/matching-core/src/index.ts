@@ -35,6 +35,7 @@ export interface MatchingSignal {
   observedAt: string;
   signatureValid: boolean;
   signalAlreadyUsed: boolean;
+  channelRecognition?: 'recognized' | 'pending_unknown' | 'not_applicable' | undefined;
 }
 
 export interface MatchingCandidateSession {
@@ -100,6 +101,7 @@ export interface MatchDecisionOutput {
 export interface MatchConfidenceVector {
   amount: 'exact' | 'delta_match' | 'mismatch';
   rail: 'sbp' | 'card' | 'unknown';
+  channel: 'recognized' | 'pending_unknown' | 'not_applicable';
   direction: 'incoming' | 'outgoing' | 'refund' | 'cashback' | 'promo' | 'unknown';
   time_window: 'inside' | 'late' | 'too_old';
   receiver_route: 'exact' | 'compatible' | 'missing';
@@ -879,6 +881,7 @@ function buildEmptyConfidenceVector(
   return {
     amount: 'mismatch',
     rail: 'unknown',
+    channel: 'not_applicable',
     direction: 'unknown',
     time_window: timeWindow === 'active' ? 'inside' : timeWindow === 'expired' ? 'late' : 'too_old',
     receiver_route: 'missing',
@@ -905,6 +908,7 @@ function buildPaymentIntentGateConfidenceVector(
         ? 'delta_match'
         : 'mismatch',
     rail: selected.selectedReceivingMethod === 'card_transfer' ? 'card' : selected.selectedReceivingMethod === 'phone_transfer' ? 'sbp' : 'unknown',
+    channel: 'not_applicable',
     direction: confidenceDirectionFromGate(signal.classification),
     time_window: paymentWindowStatus === 'active' ? 'inside' : paymentWindowStatus === 'expired' ? 'late' : 'too_old',
     receiver_route: hasGateRouteMatch(signal, selected) ? 'exact' : signal.receivingRouteId ? 'compatible' : 'missing',
@@ -937,6 +941,7 @@ function buildMatchConfidenceVector(
   return {
     amount: signal.amountMinor === matchingAmountMinor(selected) ? 'exact' : signal.amountMinor === selected.displayAmountMinor ? 'delta_match' : 'mismatch',
     rail: selected.railType === 'card_transfer' ? 'card' : selected.railType === 'phone_transfer' ? 'sbp' : 'unknown',
+    channel: signal.channelRecognition ?? 'not_applicable',
     direction: confidenceDirectionFromMatching(signal.directionLabel),
     time_window: insideWindow ? 'inside' : Date.parse(signal.observedAt) > Date.parse(selected.validUntil) ? 'late' : 'too_old',
     receiver_route: signal.bankProfileId && selected.selectedReceiverBankProfileId && signal.bankProfileId === selected.selectedReceiverBankProfileId
