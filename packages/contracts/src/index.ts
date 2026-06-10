@@ -215,6 +215,10 @@ export type PayerBankLaunchStrategy =
   | 'manual_only';
 export type PayerBankFallbackStrategy = 'copy_details_manual_transfer';
 export type PayerBankLauncherTestedStatus = 'validated' | 'not_validated';
+/** Merchant-global auto-confirmation trigger (P1). Default 'manual' = safe: a matched
+ *  payment always goes to review unless the merchant opts into 'auto', and even then
+ *  only the strict matching-core floor can auto-confirm. */
+export type AutoConfirmMode = 'manual' | 'auto';
 /** ISO-3166 codes for payer launchers. RU = V1 device-validated; UEMOA codes = XOF (West Africa); INT = international neobanks (USD). */
 export type PayerBankCountry = 'RU' | 'SN' | 'CI' | 'ML' | 'BF' | 'BJ' | 'TG' | 'NE' | 'GW' | 'INT';
 export type PaymentCompatibilityStatus =
