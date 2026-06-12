@@ -116,6 +116,59 @@ class ReceivingMethodAddFlowCatalogTest {
     }
 
     @Test
+    fun internationalRegionTileIsNavigableAndRoutesToTheUnifiedAddFlow() {
+        // NAVIGABILITY GUARD: the INTERNATIONAL region group must carry a non-null
+        // family so its tile navigates (onClick = { region.family?.let(onPick) }).
+        // Previously it was `family = null` (non-navigating), so a merchant could not
+        // reach an add flow for international banks from the International tile.
+        val intGroup = sourceBetween(
+            dashboardSource,
+            "kind = ReceivingRegionKind.INTERNATIONAL",
+            "kind = ReceivingRegionKind.RUSSIA"
+        )
+        assertTrue(
+            "INTERNATIONAL region group must be navigable (family != null)",
+            intGroup.contains("family = ReceivingMethodFamily.INTERNATIONAL")
+        )
+        assertFalse(
+            "INTERNATIONAL region group must no longer be non-navigating (family = null)",
+            intGroup.contains("family = null")
+        )
+
+        // ROUTING GUARD: the hub must route INTERNATIONAL to the unified add flow
+        // (PremiumReceivingMethodsStateScreen) — the same screen RUSSIAN lands on.
+        val hub = sourceBetween(
+            dashboardSource,
+            "when (family) {",
+            "fun PremiumReceivingMethodFamilyChooser"
+        )
+        assertTrue(
+            "INTERNATIONAL must route to the unified add flow",
+            hub.contains("ReceivingMethodFamily.INTERNATIONAL -> PremiumReceivingMethodsStateScreen") ||
+                (hub.contains("ReceivingMethodFamily.INTERNATIONAL ->\n") &&
+                    hub.contains("PremiumReceivingMethodsStateScreen")) ||
+                // RUSSIAN + INTERNATIONAL may share one branch arm.
+                (hub.contains("ReceivingMethodFamily.INTERNATIONAL") &&
+                    hub.contains("PremiumReceivingMethodsStateScreen"))
+        )
+    }
+
+    @Test
+    fun internationalAddFlowOffersTheInternationalBanks() {
+        // BEHAVIOURAL PROOF: the add flow the International tile routes to offers the
+        // real international neobanks, so a merchant CAN add Wise / Revolut / Payoneer.
+        val ids = addFlowBankOptions().map { it.bankProfileId }
+        listOf("wise_int", "revolut_int", "payoneer_int").forEach { id ->
+            assertTrue("International add flow must offer $id", ids.contains(id))
+            assertEquals(
+                "International bank $id must belong to the INTERNATIONAL region",
+                ReceivingRegion.INTERNATIONAL,
+                ReceivingCatalog.allMethods.first { it.bankProfileId == id }.region
+            )
+        }
+    }
+
+    @Test
     fun westAfricaWalletsAreNotFakedAsDetectedThroughTheAddFlow() {
         // Honesty: adding Wave / Orange Money CI derives an EMPTY notification allowlist
         // (no receiver package), so they are never falsely "monitored".

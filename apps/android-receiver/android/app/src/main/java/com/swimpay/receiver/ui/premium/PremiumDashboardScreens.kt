@@ -1761,7 +1761,7 @@ fun PremiumReceivingMethodsStateScreen(
     }
 }
 
-private enum class ReceivingMethodFamily { RUSSIAN, WEST_AFRICA }
+private enum class ReceivingMethodFamily { RUSSIAN, WEST_AFRICA, INTERNATIONAL }
 
 /**
  * Receiving-methods hub: a family chooser (Russian banking / West Africa mobile
@@ -1785,7 +1785,12 @@ fun PremiumReceivingMethodsHub(
     var family by remember { mutableStateOf<ReceivingMethodFamily?>(null) }
     when (family) {
         null -> PremiumReceivingMethodFamilyChooser(state, language) { family = it }
-        ReceivingMethodFamily.RUSSIAN -> PremiumReceivingMethodsStateScreen(
+        // RUSSIAN and INTERNATIONAL both land on the same unified add flow
+        // (PremiumReceivingMethodsStateScreen) — its draft panel offers the FULL
+        // ReceivingCatalog.allMethods (RU banks + INT neobanks + WA wallets), so a
+        // merchant can pick Wise / Revolut / Payoneer from the International tile.
+        ReceivingMethodFamily.RUSSIAN,
+        ReceivingMethodFamily.INTERNATIONAL -> PremiumReceivingMethodsStateScreen(
             state = state,
             clearDraftSignal = clearDraftSignal,
             actionMessage = actionMessage,
@@ -2083,7 +2088,8 @@ private const val RECEIVING_REGION_PREVIEW_ROWS = 3
  * region (official logo via bankProfileId + display name); region [count] = the real
  * catalog size for the region. No masked accounts, amounts or detection state are
  * derived or invented — this is a chooser of what is addable. The INTERNATIONAL group
- * has no dedicated receiving sub-screen yet, so it is non-navigating (family = null).
+ * routes to the unified add flow (PremiumReceivingMethodsStateScreen, same as RUSSIAN),
+ * whose draft panel offers the full catalog incl. the international neobanks.
  */
 private fun receivingRegionGroupsCatalog(): List<ReceivingRegionGroup> {
     fun entries(region: ReceivingRegion): List<ReceivingRegionMethodEntry> =
@@ -2123,7 +2129,7 @@ private fun receivingRegionGroupsCatalog(): List<ReceivingRegionGroup> {
         group(
             kind = ReceivingRegionKind.INTERNATIONAL,
             region = ReceivingRegion.INTERNATIONAL,
-            family = null,
+            family = ReceivingMethodFamily.INTERNATIONAL,
             accent = PremiumColors.Success,
             title = "International",
             familyChip = "Néobanques"
