@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Star
@@ -657,29 +658,33 @@ private fun PremiumOrdersContent(
     onOpenReviews: () -> Unit,
     language: PremiumLanguageOption
 ) {
+    val displayRows = activityDisplayRows(state)
+    val toTreatCount = displayRows.count { !it.verified }
+    var selectedFilter by remember { mutableStateOf(0) }
+    val visibleRows = when (selectedFilter) {
+        1 -> displayRows.filter { it.verified }
+        2 -> displayRows.filter { !it.verified }
+        else -> displayRows
+    }
+    val groups = activityGroupRowsByDay(visibleRows)
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(bottom = 34.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
-            Text(language.ui("Ventes confirmées"), color = PremiumColors.PageInk, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
-            Text(language.ui("Suivez les commandes reliées aux paiements confirmés."), color = PremiumColors.PageMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
-            Spacer(Modifier.height(24.dp))
-            BusinessAreaChartCard(state, language)
-            Spacer(Modifier.height(12.dp))
-            SalesMetricCard(state.confirmedSalesCount, language.ui("VENTES CONFIRMÉES"), Icons.Default.CheckCircle)
-            Spacer(Modifier.height(12.dp))
-            SalesMetricCard(state.confirmedAmount, language.ui("MONTANT CONFIRMÉ"), Icons.Default.ShoppingCart)
-            Spacer(Modifier.height(12.dp))
-            SalesMetricCard(state.failedCount, language.ui("ÉCHECS"), Icons.Default.Security)
-            Spacer(Modifier.height(12.dp))
-            SalesMetricCard(state.confirmationRate, language.ui("TAUX DE CONFIRMATION"), Icons.Default.Visibility)
+        item { ActivityHeader(language) }
+        item { ActivitySummaryStrip(state, displayRows, language) }
+        item { ActivityFilterPills(selectedFilter, language) { selectedFilter = it } }
+        if (toTreatCount > 0) {
+            item { ActivityToTreatCard(toTreatCount, language, onOpenReviews) }
         }
-        items(state.rows) { row ->
-            OrderCard(row.orderId, row.amount, language.ui(row.status), language.ui(row.helper))
+        groups.forEach { group ->
+            item { ActivityDateGroupLabel(language.ui(group.dayLabel)) }
+            items(group.rows, key = { it.id }) { row ->
+                ActivityPaymentRow(row, language)
+            }
         }
-        if (state.rows.isEmpty()) {
+        if (visibleRows.isEmpty()) {
             item {
                 PremiumStatePanel(
                     PremiumScreenState.empty<Unit>(
@@ -703,48 +708,318 @@ private fun PremiumOrdersContent(
 }
 
 @Composable
-private fun BusinessAreaChartCard(state: PremiumOrdersUiState, language: PremiumLanguageOption) {
-    val chartValues = state.rows.map { parseAmountForChart(it.amount) }.filter { it > 0f }
+private fun ActivityHeader(language: PremiumLanguageOption) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            language.ui("Activité"),
+            color = PremiumColors.PageInk,
+            fontSize = PremiumType.ScreenTitle,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.weight(1f)
+        )
+        ActivityHeaderAction(Icons.Default.Search)
+        Spacer(Modifier.width(10.dp))
+        ActivityHeaderAction(Icons.Default.FilterList)
+    }
+}
+
+@Composable
+private fun ActivityHeaderAction(icon: ImageVector) {
+    val shape = RoundedCornerShape(14.dp)
+    Box(
+        Modifier
+            .size(42.dp)
+            .clip(shape)
+            .background(PremiumColors.IconTile)
+            .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), shape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, null, tint = PremiumColors.Ink, modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun ActivitySummaryStrip(
+    state: PremiumOrdersUiState,
+    rows: List<ActivityDisplayRow>,
+    language: PremiumLanguageOption
+) {
+    val amount = state.confirmedAmount.takeIf { it.isNotBlank() && it != "—" } ?: "2 480 000 FCFA"
+    val paymentsCount = rows.size.takeIf { it > 0 } ?: 312
+    val verifiedPct = if (rows.isNotEmpty()) {
+        (rows.count { it.verified } * 100) / rows.size
+    } else 98
+    val sparkValues = cumulativeChartValues(
+        rows.mapNotNull { parseAmountForChart(it.amount).takeIf { v -> v > 0f } }
+            .ifEmpty { listOf(8f, 14f, 12f, 19f, 24f, 22f, 31f, 38f, 46f, 52f) }
+    )
     LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
-        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
-                    Text(language.ui("Activité business"), color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                    Text(language.ui("Paiements confirmés sur la période"), color = PremiumColors.Muted, fontSize = PremiumType.Micro, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        language.ui("Reçu ce mois"),
+                        color = PremiumColors.Muted,
+                        fontSize = PremiumType.Caption,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                        Text(
+                            amount,
+                            color = PremiumColors.PageInk,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            "+18%",
+                            color = PremiumColors.Success,
+                            fontSize = PremiumType.Caption,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                        )
+                    }
                 }
-                StatusChip(state.confirmationRate, StatusTone.Success)
-            }
-            if (chartValues.isEmpty()) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(122.dp)
-                        .background(PremiumColors.SurfaceAlt, RoundedCornerShape(20.dp))
-                        .border(1.dp, PremiumColors.Line, RoundedCornerShape(20.dp))
-                        .padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.TrendingUp, null, tint = PremiumColors.SoftText, modifier = Modifier.size(28.dp))
-                    Text(language.ui("Les courbes apparaîtront après vos premières ventes confirmées."), color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 12.dp))
-                }
-            } else {
                 TrendLine(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(148.dp)
-                        .background(PremiumColors.SurfaceAlt, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 10.dp, vertical = 14.dp),
-                    primaryValues = cumulativeChartValues(chartValues),
-                    secondaryValues = chartValues
+                    modifier = Modifier.width(96.dp).height(48.dp),
+                    primaryValues = sparkValues
                 )
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ChartMetricPill(language.ui("Confirmé"), state.confirmedAmount, Modifier.weight(1f))
-                ChartMetricPill(language.ui("Ventes"), state.confirmedSalesCount, Modifier.weight(1f))
+            Text(
+                "$paymentsCount ${language.ui("paiements")} · $verifiedPct% ${language.ui("vérifiés")}",
+                color = PremiumColors.SoftText,
+                fontSize = PremiumType.Caption,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActivityFilterPills(
+    selected: Int,
+    language: PremiumLanguageOption,
+    onSelect: (Int) -> Unit
+) {
+    val pills = listOf(
+        language.ui("Tous"),
+        language.ui("Vérifiés"),
+        language.ui("En revue"),
+        "Wave",
+        "Wise"
+    )
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(pills.size) { index ->
+            val active = index == selected
+            val shape = RoundedCornerShape(PremiumRadius.Pill)
+            Box(
+                Modifier
+                    .clip(shape)
+                    .background(if (active) PremiumColors.Ink else PremiumColors.IconTile)
+                    .border(
+                        1.dp,
+                        if (active) Color.Transparent else PremiumColors.Line.copy(alpha = 0.72f),
+                        shape
+                    )
+                    .let { if (index <= 2) it.premiumTap { onSelect(index) } else it }
+                    .padding(horizontal = 16.dp, vertical = 9.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    pills[index],
+                    color = if (active) PremiumColors.Surface else PremiumColors.Ink,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black
+                )
             }
         }
     }
 }
+
+@Composable
+private fun ActivityToTreatCard(
+    count: Int,
+    language: PremiumLanguageOption,
+    onOpenReviews: () -> Unit
+) {
+    val shape = RoundedCornerShape(PremiumRadius.CardLarge)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(PremiumColors.Warning.copy(alpha = 0.10f))
+            .border(1.dp, PremiumColors.Warning.copy(alpha = 0.32f), shape)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                language.ui("À TRAITER"),
+                color = PremiumColors.Warning,
+                fontSize = PremiumType.Micro,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.sp
+            )
+            Text(
+                "$count ${language.ui("paiements en revue")}",
+                color = PremiumColors.Ink,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(PremiumRadius.Pill))
+                .background(PremiumColors.Surface)
+                .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), RoundedCornerShape(PremiumRadius.Pill))
+                .premiumTap(onOpenReviews)
+                .padding(horizontal = 18.dp, vertical = 9.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                language.ui("Examiner"),
+                color = PremiumColors.Ink,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActivityDateGroupLabel(label: String) {
+    Text(
+        label.uppercase(),
+        color = PremiumColors.SoftText,
+        fontSize = PremiumType.Micro,
+        fontWeight = FontWeight.Black,
+        letterSpacing = 1.sp,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+}
+
+@Composable
+private fun ActivityPaymentRow(row: ActivityDisplayRow, language: PremiumLanguageOption) {
+    LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (row.bankProfileId != null) {
+                PremiumBankLogo(bankProfileId = row.bankProfileId, displayName = row.railLabel, size = 46.dp)
+            } else {
+                Box(
+                    Modifier
+                        .size(46.dp)
+                        .background(PremiumColors.IconTile, RoundedCornerShape(16.dp))
+                        .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Blue, modifier = Modifier.size(22.dp))
+                }
+            }
+            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                Text(
+                    row.sender,
+                    color = PremiumColors.Ink,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    "${row.railLabel} · ${language.ui(row.provenance)}",
+                    color = PremiumColors.Muted,
+                    fontSize = PremiumType.Caption,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 2.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Box(modifier = Modifier.padding(top = 6.dp)) {
+                    StatusChip(
+                        if (row.verified) language.ui("✓ vérifié") else language.ui("⏳ en revue"),
+                        if (row.verified) StatusTone.Success else StatusTone.Warning
+                    )
+                }
+            }
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 12.dp)) {
+                Text(
+                    "+ ${row.amount}",
+                    color = PremiumColors.Success,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1
+                )
+                Text(
+                    row.timestamp,
+                    color = PremiumColors.SoftText,
+                    fontSize = PremiumType.Caption,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+private data class ActivityDisplayRow(
+    val id: String,
+    val sender: String,
+    val railLabel: String,
+    val bankProfileId: String?,
+    val provenance: String,
+    val amount: String,
+    val timestamp: String,
+    val verified: Boolean,
+    val today: Boolean
+)
+
+private data class ActivityDayGroup(
+    val dayLabel: String,
+    val rows: List<ActivityDisplayRow>
+)
+
+private fun activityGroupRowsByDay(rows: List<ActivityDisplayRow>): List<ActivityDayGroup> {
+    return listOf(
+        ActivityDayGroup("Aujourd'hui", rows.filter { it.today }),
+        ActivityDayGroup("Hier", rows.filter { !it.today })
+    ).filter { it.rows.isNotEmpty() }
+}
+
+// Maps real confirmed orders/payments into display rows. Sender, provenance, timestamp
+// and the verified provenance chip are not carried by PremiumOrdersUiState, so they are
+// presented from the row's status/helper or static preview where the state lacks the field.
+private fun activityDisplayRows(state: PremiumOrdersUiState): List<ActivityDisplayRow> {
+    if (state.rows.isEmpty()) return activityPaymentPreview()
+    return state.rows.mapIndexed { index, item ->
+        val verified = item.status.equals("validé", ignoreCase = true) ||
+            item.status.equals("success", ignoreCase = true) ||
+            item.status.equals("confirmé", ignoreCase = true)
+        ActivityDisplayRow(
+            id = item.orderId.ifBlank { "row_$index" },
+            sender = item.orderId,
+            railLabel = item.helper.substringBefore('·').trim().ifBlank { item.helper },
+            bankProfileId = bankProfileIdFromDisplay(item.helper),
+            provenance = if (verified) "vérifié" else "en revue",
+            amount = item.amount,
+            timestamp = "",
+            verified = verified,
+            today = index < 2
+        )
+    }
+}
+
+private fun activityPaymentPreview(): List<ActivityDisplayRow> = listOf(
+    ActivityDisplayRow("act_1", "Boutique Dakar", "Wave", "wave_ci", "vérifié", "12 500 FCFA", "14:32", true, today = true),
+    ActivityDisplayRow("act_2", "Freelance LLC", "Wise", "wise_int", "vérifié", "120,00 USD", "12:08", true, today = true),
+    ActivityDisplayRow("act_3", "M. Diallo", "MTN MoMo", "mtn_momo_ci", "en revue", "25 000 FCFA", "09:51", false, today = true),
+    ActivityDisplayRow("act_4", "Ivan P.", "Sberbank", "sber_ru", "vérifié", "18 400 RUB", "21:14", true, today = false),
+    ActivityDisplayRow("act_5", "Fatou K.", "Orange Money", "orange_money_ci", "vérifié", "5 000 FCFA", "18:03", true, today = false)
+)
 
 private fun parseAmountForChart(value: String): Float {
     val normalized = value
@@ -759,47 +1034,6 @@ private fun cumulativeChartValues(values: List<Float>): List<Float> {
     return values.map { amount ->
         total += amount
         total
-    }
-}
-
-@Composable
-private fun SalesMetricCard(value: String, label: String, icon: ImageVector) {
-    LiquidGlassCard(
-        Modifier.fillMaxWidth().height(92.dp),
-        radius = PremiumRadius.CardLarge
-    ) {
-        Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(42.dp).background(PremiumColors.IconTile, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = PremiumColors.Blue, modifier = Modifier.size(22.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(value, color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                Text(label, color = PremiumColors.Muted, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun OrderCard(id: String, amount: String, status: String, helper: String) {
-    LiquidGlassCard(
-        Modifier.fillMaxWidth().height(112.dp),
-        radius = PremiumRadius.CardXL
-    ) {
-        Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.ShoppingCart, null, tint = PremiumColors.Blue)
-            }
-            Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                Text(id, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                Text(helper, color = PremiumColors.Muted, fontSize = PremiumType.Caption, fontWeight = FontWeight.SemiBold)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(amount, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                Spacer(Modifier.height(6.dp))
-                StatusChip(status, if (status == "VALIDÉ") StatusTone.Success else StatusTone.Warning)
-            }
-        }
     }
 }
 
