@@ -479,8 +479,18 @@ fun PremiumMerchantApp(
                         )
                         return@launch
                     }
+                    val idToken = googleIdTokenProvider()
+                    if (idToken.isNullOrBlank()) {
+                        route = PremiumNavigation.openAccountRecovery(
+                            PremiumAccountRecoveryUiState.error(
+                                message = "Connexion Google annulée ou indisponible."
+                            ),
+                            returnRoute = PremiumRoute.AccountProfileChoice
+                        )
+                        return@launch
+                    }
                     val result = withContext(Dispatchers.IO) {
-                        repository?.createAccount(profileType.toAndroidAuthProfileType())
+                        repository?.createAccount(idToken, profileType.toAndroidAuthProfileType())
                     }
                     if (result?.status == AndroidMerchantAuthResultStatus.SUCCESS && result.mobileSession != null) {
                         mobileMerchantSessionStore.save(result.mobileSession)

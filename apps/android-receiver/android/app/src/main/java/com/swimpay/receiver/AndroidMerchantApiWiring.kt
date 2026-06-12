@@ -265,10 +265,12 @@ class AndroidMerchantAuthApiRepository(
     }
 
     fun createAccount(
+        idToken: String,
         profileType: AndroidMerchantAccountProfileType,
         businessLabel: String? = null
     ): AndroidMerchantAccountCreateResult {
         val bodyEntries = buildList<Pair<String, Any?>> {
+            add("id_token" to idToken)
             add("profile_type" to profileType.wireValue)
             if (!businessLabel.isNullOrBlank()) add("business_label" to businessLabel.trim())
             add("device_proof" to deviceProofProvider.currentProof().toRequestMap())

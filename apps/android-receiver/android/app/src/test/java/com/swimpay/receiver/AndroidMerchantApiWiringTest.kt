@@ -110,7 +110,11 @@ class AndroidMerchantApiWiringTest {
         assertFalse(transport.requests[0].body.contains("private", ignoreCase = true))
         assertFalse(transport.requests[0].body.contains("secret", ignoreCase = true))
 
-        val created = repository.createAccount(AndroidMerchantAccountProfileType.BUSINESS, businessLabel = "Commerce demo")
+        val created = repository.createAccount(
+            "google_id_token_secret",
+            AndroidMerchantAccountProfileType.BUSINESS,
+            businessLabel = "Commerce demo"
+        )
         assertEquals(AndroidMerchantAuthResultStatus.SUCCESS, created.status)
         val session = created.mobileSession
         requireNotNull(session)
@@ -118,6 +122,7 @@ class AndroidMerchantApiWiringTest {
         assertEquals("usr_mobile", session.userId)
         assertEquals("merchant-12345678", session.displayHandle)
         assertEquals("Bearer spm_created_secret", AuthenticatedMerchantSession.mobile(session).authorizationHeader())
+        assertTrue(transport.requests[1].body.contains("\"id_token\":\"google_id_token_secret\""))
         assertTrue(transport.requests[1].body.contains("\"profile_type\":\"business\""))
         assertTrue(transport.requests[1].body.contains("\"device_proof_type\":\"install_keypair_signed_challenge\""))
         assertTrue(transport.requests[1].body.contains("\"signature_algorithm\":\"ecdsa_p256_sha256_der_v1\""))
@@ -1452,7 +1457,7 @@ class AndroidMerchantApiWiringTest {
             )
         )
 
-        val result = repository.createAccount(AndroidMerchantAccountProfileType.PERSONAL)
+        val result = repository.createAccount("google_id_token_secret", AndroidMerchantAccountProfileType.PERSONAL)
 
         assertEquals(AndroidMerchantAuthResultStatus.SUCCESS, result.status)
         assertEquals("mch_existing", result.mobileSession?.merchantId)
