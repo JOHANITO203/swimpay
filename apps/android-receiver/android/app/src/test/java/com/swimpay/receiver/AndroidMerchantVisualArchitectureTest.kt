@@ -734,6 +734,61 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(dashboard.contains("shadowElevation = PremiumElevation.Card"))
     }
 
+    @Test
+    fun redesignedScreensDoNotRenderFabricatedPreviewDataWidgets() {
+        val dashboard = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumDashboardScreens.kt").readText()
+        val walletDetail = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumWalletDetailScreen.kt").readText()
+        val runtime = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantRuntime.kt").readText()
+
+        // Accueil: invented wallet balances, donut provenance rate and recent payer
+        // chips had no real UiState backing and were removed with their helpers.
+        listOf(
+            "walletPreview",
+            "WalletPreviewItem",
+            "ReceptionWalletCard",
+            "provenancePreview",
+            "ProvenanceVerifiedCard",
+            "ProvenanceDonut",
+            "payersPreview",
+            "PayerPreviewItem",
+            "RecentPayerChip"
+        ).forEach { removed ->
+            assertFalse("Accueil must not reference removed preview helper $removed", dashboard.contains(removed))
+        }
+        assertFalse("Accueil must not show an invented vs-hier delta", dashboard.contains("+12% vs hier"))
+
+        // Activité: the fabricated payment list, sparkline fallback and +18% delta
+        // had no backing in PremiumOrdersUiState and were removed.
+        listOf(
+            "activityPaymentPreview",
+            "cumulativeChartValues",
+            "parseAmountForChart",
+            "activityGroupRowsByDay",
+            "ActivityDayGroup",
+            "ActivityDateGroupLabel"
+        ).forEach { removed ->
+            assertFalse("Activité must not reference removed preview helper $removed", dashboard.contains(removed))
+        }
+        assertFalse("Activité must not show an invented +18% delta", dashboard.contains("\"+18%\""))
+        assertFalse("Activité must not fall back to an invented monthly amount", dashboard.contains("2 480 000 FCFA"))
+
+        // Détail portefeuille: the per-wallet received aggregate, verification rate
+        // and history list had no real runtime source and were removed.
+        listOf(
+            "WalletProvenanceCard",
+            "WalletActivityCard",
+            "WalletStatTile",
+            "WalletReceivedPaymentRow",
+            "totalReceivedLabel",
+            "verifiedRate",
+            "receivedPayments"
+        ).forEach { removed ->
+            assertFalse("Wallet detail must not reference removed preview widget $removed", walletDetail.contains(removed))
+        }
+        assertFalse("Wallet detail state must drop the preview aggregate fields", runtime.contains("PremiumWalletReceivedPaymentUiItem"))
+        assertFalse("Wallet detail preview must not invent a received total", runtime.contains("1 248 500 XOF"))
+    }
+
     private fun sourceFunction(source: String, signature: String): String {
         val normalizedSource = source.replace("\r\n", "\n")
         val start = normalizedSource.indexOf(signature)

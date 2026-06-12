@@ -1,25 +1,19 @@
 package com.swimpay.receiver.ui.premium
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.WarningAmber
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,14 +27,14 @@ import androidx.compose.ui.unit.sp
  * Wallet / receiving-method detail screen ("Détail portefeuille").
  *
  * Mirrors [PremiumPaymentDetailScreen] (same scaffold + PremiumScreenState
- * loading/empty handling). The method IDENTITY (official logo, name, masked
- * identifier, rail chip, active status, "INFOS DU RAIL") is REAL — resolved by
- * [PremiumMerchantRuntime.loadWalletDetail] from the loaded receiving methods.
+ * loading/empty handling). Everything rendered is REAL — resolved by
+ * [PremiumMerchantRuntime.loadWalletDetail] from the loaded receiving methods:
+ * the method IDENTITY (official logo, name, masked identifier, rail chip, active
+ * status) and the "INFOS DU RAIL" rows (account, type, status).
  *
- * The "Reçu sur ce portefeuille" aggregate, the provenance verification rate
- * and the received-payments list are PREVIEW (see
- * [PremiumWalletDetailUiState.preview]); they are illustrative until the runtime
- * exposes a real per-wallet received aggregate.
+ * The runtime exposes no per-wallet received aggregate, so there is no totals
+ * card, no provenance verification rate and no received-payments history here —
+ * those widgets were removed rather than fed preview values.
  */
 @Composable
 fun PremiumWalletDetailScreen(
@@ -75,8 +69,6 @@ private fun PremiumWalletDetailContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item { WalletIdentityCard(state, language) }
-            item { WalletProvenanceCard(state, language) }
-            item { WalletActivityCard(state, language) }
             item { WalletRailInfoCard(state, language) }
         }
     }
@@ -102,8 +94,7 @@ private fun WalletDetailTopBar(title: String, onBack: () -> Unit) {
     }
 }
 
-// REAL identity: official logo + name + masked identifier + rail chip + status,
-// plus the PREVIEW "Reçu sur ce portefeuille" aggregate (green) and stat tiles.
+// REAL identity: official logo + name + masked identifier + rail chip + status.
 @Composable
 private fun WalletIdentityCard(state: PremiumWalletDetailUiState, language: PremiumLanguageOption) {
     LiquidGlassCard(
@@ -140,195 +131,11 @@ private fun WalletIdentityCard(state: PremiumWalletDetailUiState, language: Prem
                     if (state.active) StatusTone.Success else StatusTone.Neutral
                 )
             }
-
-            // PREVIEW aggregate.
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = language.ui("Reçu sur ce portefeuille").uppercase(),
-                    color = PremiumColors.SoftText,
-                    fontSize = PremiumType.Micro,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = state.totalReceivedLabel,
-                    color = PremiumColors.Success,
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Black,
-                    lineHeight = 38.sp
-                )
-                Text(
-                    text = "${state.paymentCount} ${language.ui("paiements")} · ${language.ui("aperçu")}",
-                    color = PremiumColors.Muted,
-                    fontSize = PremiumType.Caption,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                state.statTiles.forEach { tile ->
-                    WalletStatTile(tile, language, Modifier.weight(1f))
-                }
-            }
         }
     }
 }
 
-@Composable
-private fun WalletStatTile(
-    tile: PremiumMetricUiState,
-    language: PremiumLanguageOption,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier
-            .background(PremiumColors.PanelTint, RoundedCornerShape(PremiumRadius.Card))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            text = language.ui(tile.label),
-            color = PremiumColors.SoftText,
-            fontSize = PremiumType.Micro,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.6.sp
-        )
-        Text(
-            text = tile.value,
-            color = PremiumColors.Success,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Black
-        )
-        if (tile.trend.isNotBlank()) {
-            Text(
-                text = tile.trend,
-                color = PremiumColors.Muted,
-                fontSize = PremiumType.Micro,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-// PREVIEW provenance verification rate.
-@Composable
-private fun WalletProvenanceCard(state: PremiumWalletDetailUiState, language: PremiumLanguageOption) {
-    LiquidGlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        radius = PremiumRadius.CardLarge,
-        color = PremiumColors.Surface
-    ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = language.ui("Vérification de provenance"),
-                    modifier = Modifier.weight(1f),
-                    color = PremiumColors.Ink,
-                    fontSize = PremiumType.Body,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = "${state.verifiedRate} % ${language.ui("vérifié")}",
-                    color = PremiumColors.Success,
-                    fontSize = PremiumType.Body,
-                    fontWeight = FontWeight.Black
-                )
-            }
-            WalletProgressBar(state.verifiedRate / 100f)
-            Text(
-                text = language.ui(state.verifiedCountLabel),
-                color = PremiumColors.Muted,
-                fontSize = PremiumType.Caption,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-    }
-}
-
-@Composable
-private fun WalletProgressBar(fraction: Float) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(8.dp)
-            .background(PremiumColors.NeutralChip, RoundedCornerShape(PremiumRadius.Pill))
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                .fillMaxHeight()
-                .background(PremiumColors.Success, RoundedCornerShape(PremiumRadius.Pill))
-        )
-    }
-}
-
-// PREVIEW received-payments list (provenance). Green amounts; emerald/amber chips.
-@Composable
-private fun WalletActivityCard(state: PremiumWalletDetailUiState, language: PremiumLanguageOption) {
-    LiquidGlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        radius = PremiumRadius.CardLarge,
-        color = PremiumColors.Surface
-    ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            SectionLabel(language.ui("Activité · provenance"))
-            state.receivedPayments.forEach { payment ->
-                WalletReceivedPaymentRow(payment, language)
-            }
-        }
-    }
-}
-
-@Composable
-private fun WalletReceivedPaymentRow(
-    payment: PremiumWalletReceivedPaymentUiItem,
-    language: PremiumLanguageOption
-) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(
-            Modifier
-                .background(PremiumColors.IconTile, RoundedCornerShape(12.dp))
-                .padding(8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (payment.provenanceVerified) Icons.Default.CheckCircle else Icons.Default.WarningAmber,
-                contentDescription = null,
-                tint = if (payment.provenanceVerified) PremiumColors.Success else PremiumColors.Warning,
-                modifier = Modifier.width(20.dp).height(20.dp)
-            )
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = payment.sender,
-                color = PremiumColors.Ink,
-                fontSize = PremiumType.Body,
-                fontWeight = FontWeight.Black,
-                lineHeight = 18.sp
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatusChip(
-                    language.ui(payment.provenanceStatus),
-                    if (payment.provenanceVerified) StatusTone.Success else StatusTone.Warning
-                )
-                Text(
-                    text = payment.timestamp,
-                    color = PremiumColors.SoftText,
-                    fontSize = PremiumType.Micro,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-        Text(
-            text = payment.amountLabel,
-            color = PremiumColors.Success,
-            fontSize = PremiumType.Body,
-            fontWeight = FontWeight.Black
-        )
-    }
-}
-
-// "INFOS DU RAIL": identity-bearing rows are real; preview-only rows are static.
+// "INFOS DU RAIL": real rows resolved from the receiving method (account, type, status).
 @Composable
 private fun WalletRailInfoCard(state: PremiumWalletDetailUiState, language: PremiumLanguageOption) {
     LiquidGlassCard(

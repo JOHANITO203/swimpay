@@ -8,7 +8,6 @@ import android.os.Build
 import android.os.PersistableBundle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -87,8 +86,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -139,19 +136,6 @@ private fun PremiumDashboardContent(
         item { DashboardTopBar(language) }
         item { ReceivedTodayFocal(state.monthlyAmount, language) }
         item {
-            DashboardSectionHeader(
-                title = language.ui("PORTEFEUILLES DE RÉCEPTION"),
-                actionLabel = language.ui("Ajouter +"),
-                onAction = onOpenBusiness
-            )
-        }
-        item {
-            val wallets = walletPreview()
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                items(wallets) { wallet -> ReceptionWalletCard(wallet, language) }
-            }
-        }
-        item {
             Text(language.ui("ACTIONS"), color = PremiumColors.PageMuted, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
         }
         item {
@@ -162,7 +146,6 @@ private fun PremiumDashboardContent(
                 DashboardActionTile(Icons.Default.CurrencyExchange, language.ui("Devises"), Modifier.weight(1f), onOpenBusiness)
             }
         }
-        item { ProvenanceVerifiedCard(provenancePreview(), language) }
         item {
             LiquidGlassCard(Modifier.fillMaxWidth().height(260.dp), radius = PremiumRadius.CardLarge) {
                 Column(Modifier.padding(24.dp)) {
@@ -179,15 +162,6 @@ private fun PremiumDashboardContent(
                         secondaryValues = state.chartPoints.map { it.confirmationRate.toFloat() }
                     )
                 }
-            }
-        }
-        item {
-            Text(language.ui("PAYEURS RÉCENTS"), color = PremiumColors.PageMuted, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
-        }
-        item {
-            val payers = payersPreview()
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                items(payers) { payer -> RecentPayerChip(payer) }
             }
         }
         item {
@@ -215,24 +189,17 @@ private fun PremiumDashboardContent(
     }
 }
 
+// Neutral header: the dashboard state carries no merchant identity, so no invented
+// name/initials are shown — only the screen title and the notifications action.
 @Composable
 private fun DashboardTopBar(language: PremiumLanguageOption) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Brush.linearGradient(PremiumBrandGradient.PaymentCard)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("AW", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black)
-        }
         Text(
-            language.ui("Bonjour, Awa"),
+            language.ui("Accueil"),
             color = PremiumColors.PageInk,
-            fontSize = 20.sp,
+            fontSize = PremiumType.ScreenTitle,
             fontWeight = FontWeight.Black,
-            modifier = Modifier.weight(1f).padding(start = 12.dp)
+            modifier = Modifier.weight(1f)
         )
         Box(
             Modifier
@@ -264,26 +231,6 @@ private fun ReceivedTodayFocal(amount: String, language: PremiumLanguageOption) 
             fontWeight = FontWeight.Black,
             modifier = Modifier.padding(top = 6.dp)
         )
-        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                Modifier
-                    .clip(RoundedCornerShape(PremiumRadius.Pill))
-                    .background(PremiumColors.SurfaceAlt)
-                    .border(1.dp, PremiumColors.Line, RoundedCornerShape(PremiumRadius.Pill))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("FCFA", color = PremiumColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Black)
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = PremiumColors.Muted, modifier = Modifier.size(14.dp).padding(start = 2.dp))
-            }
-            Text(
-                language.ui("+12% vs hier"),
-                color = PremiumColors.Success,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.padding(start = 10.dp)
-            )
-        }
     }
 }
 
@@ -298,38 +245,6 @@ private fun DashboardSectionHeader(title: String, actionLabel: String, onAction:
             fontSize = 13.sp,
             modifier = Modifier.premiumTap(onAction).padding(vertical = 6.dp)
         )
-    }
-}
-
-private data class WalletPreviewItem(
-    val bankProfileId: String,
-    val displayName: String,
-    val amount: String,
-    val enabled: Boolean
-)
-
-private fun walletPreview(): List<WalletPreviewItem> = listOf(
-    WalletPreviewItem("wave_ci", "Wave", "145 000 FCFA", true),
-    WalletPreviewItem("orange_money_ci", "Orange Money", "62 500 FCFA", true),
-    WalletPreviewItem("wise_int", "Wise", "320 EUR", true)
-)
-
-@Composable
-private fun ReceptionWalletCard(wallet: WalletPreviewItem, language: PremiumLanguageOption) {
-    CardVisual(
-        modifier = Modifier.width(220.dp).aspectRatio(1.72f),
-        theme = CardVisualDefaults.MerchantReceiving
-    ) {
-        Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                PremiumBankLogo(bankProfileId = wallet.bankProfileId, displayName = wallet.displayName, size = 40.dp)
-                StatusChip(language.ui(if (wallet.enabled) "Activé" else "Inactif"), if (wallet.enabled) StatusTone.Success else StatusTone.Neutral)
-            }
-            Column {
-                Text(language.ui("Solde reçu"), color = Color.White.copy(alpha = 0.68f), fontSize = 12.sp, fontWeight = FontWeight.Black)
-                Text(wallet.amount, color = Color.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 4.dp))
-            }
-        }
     }
 }
 
@@ -357,108 +272,6 @@ private fun DashboardActionTile(icon: ImageVector, label: String, modifier: Modi
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 8.dp)
-        )
-    }
-}
-
-private data class ProvenancePreview(val verifiedPercent: Int, val reviewPercent: Int)
-
-private fun provenancePreview(): ProvenancePreview = ProvenancePreview(verifiedPercent = 92, reviewPercent = 8)
-
-@Composable
-private fun ProvenanceVerifiedCard(data: ProvenancePreview, language: PremiumLanguageOption) {
-    LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
-        Column(Modifier.padding(22.dp)) {
-            Text(language.ui("PROVENANCE VÉRIFIÉE"), color = PremiumColors.Muted, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
-            Row(Modifier.fillMaxWidth().padding(top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-                ProvenanceDonut(
-                    verifiedFraction = data.verifiedPercent / 100f,
-                    centerLabel = "${data.verifiedPercent}%",
-                    modifier = Modifier.size(96.dp)
-                )
-                Column(Modifier.padding(start = 22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ProvenanceLegend(PremiumColors.Success, "${language.ui("Vérifié")} ${data.verifiedPercent}%")
-                    ProvenanceLegend(PremiumColors.Warning, "${language.ui("En revue")} ${data.reviewPercent}%")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProvenanceDonut(verifiedFraction: Float, centerLabel: String, modifier: Modifier = Modifier) {
-    val verified = PremiumColors.Success
-    val review = PremiumColors.Warning
-    Box(modifier, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val strokeWidth = size.minDimension * 0.16f
-            val stroke = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-            val inset = strokeWidth / 2f
-            val arcSize = androidx.compose.ui.geometry.Size(size.width - strokeWidth, size.height - strokeWidth)
-            val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
-            val verifiedSweep = 360f * verifiedFraction.coerceIn(0f, 1f)
-            drawArc(
-                color = review,
-                startAngle = -90f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = stroke
-            )
-            drawArc(
-                color = verified,
-                startAngle = -90f,
-                sweepAngle = verifiedSweep,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = stroke
-            )
-        }
-        Text(centerLabel, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
-    }
-}
-
-@Composable
-private fun ProvenanceLegend(dotColor: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(10.dp).clip(CircleShape).background(dotColor))
-        Text(label, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 8.dp))
-    }
-}
-
-private data class PayerPreviewItem(val name: String, val initials: String, val tint: Color)
-
-private fun payersPreview(): List<PayerPreviewItem> = listOf(
-    PayerPreviewItem("Boutique Dakar", "BD", PremiumColors.Blue),
-    PayerPreviewItem("Client Anonyme", "?", PremiumColors.SoftText),
-    PayerPreviewItem("Freelance LLC", "FL", PremiumColors.Success),
-    PayerPreviewItem("Marché Dior", "MD", PremiumColors.Warning)
-)
-
-@Composable
-private fun RecentPayerChip(payer: PayerPreviewItem) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(64.dp)) {
-        Box(
-            Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(payer.tint.copy(alpha = 0.16f))
-                .border(1.dp, payer.tint.copy(alpha = 0.32f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(payer.initials, color = payer.tint, fontSize = 16.sp, fontWeight = FontWeight.Black)
-        }
-        Text(
-            payer.name,
-            color = PremiumColors.Muted,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 6.dp)
         )
     }
 }
@@ -667,7 +480,6 @@ private fun PremiumOrdersContent(
         2 -> displayRows.filter { !it.verified }
         else -> displayRows
     }
-    val groups = activityGroupRowsByDay(visibleRows)
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(bottom = 34.dp),
@@ -679,11 +491,8 @@ private fun PremiumOrdersContent(
         if (toTreatCount > 0) {
             item { ActivityToTreatCard(toTreatCount, language, onOpenReviews) }
         }
-        groups.forEach { group ->
-            item { ActivityDateGroupLabel(language.ui(group.dayLabel)) }
-            items(group.rows, key = { it.id }) { row ->
-                ActivityPaymentRow(row, language)
-            }
+        items(visibleRows, key = { it.id }) { row ->
+            ActivityPaymentRow(row, language)
         }
         if (visibleRows.isEmpty()) {
             item {
@@ -748,52 +557,36 @@ private fun ActivitySummaryStrip(
     rows: List<ActivityDisplayRow>,
     language: PremiumLanguageOption
 ) {
-    val amount = state.confirmedAmount.takeIf { it.isNotBlank() && it != "—" } ?: "2 480 000 FCFA"
-    val paymentsCount = rows.size.takeIf { it > 0 } ?: 312
-    val verifiedPct = if (rows.isNotEmpty()) {
-        (rows.count { it.verified } * 100) / rows.size
-    } else 98
-    val sparkValues = cumulativeChartValues(
-        rows.mapNotNull { parseAmountForChart(it.amount).takeIf { v -> v > 0f } }
-            .ifEmpty { listOf(8f, 14f, 12f, 19f, 24f, 22f, 31f, 38f, 46f, 52f) }
-    )
+    // Real fields only: confirmed amount from the orders summary, payment count and
+    // verified ratio derived from the real rows. No amount is shown when the summary
+    // has no live value ("—"); no sparkline/delta exist in the runtime.
+    val amount = state.confirmedAmount.takeIf { it.isNotBlank() && it != "—" }
     LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        language.ui("Reçu ce mois"),
-                        color = PremiumColors.Muted,
-                        fontSize = PremiumType.Caption,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                        Text(
-                            amount,
-                            color = PremiumColors.PageInk,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            "+18%",
-                            color = PremiumColors.Success,
-                            fontSize = PremiumType.Caption,
-                            fontWeight = FontWeight.Black,
-                            modifier = Modifier.padding(start = 8.dp, top = 4.dp)
-                        )
-                    }
-                }
-                TrendLine(
-                    modifier = Modifier.width(96.dp).height(48.dp),
-                    primaryValues = sparkValues
+            Column {
+                Text(
+                    language.ui("Reçu ce mois"),
+                    color = PremiumColors.Muted,
+                    fontSize = PremiumType.Caption,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    amount ?: language.ui("—"),
+                    color = PremiumColors.PageInk,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(top = 6.dp)
                 )
             }
-            Text(
-                "$paymentsCount ${language.ui("paiements")} · $verifiedPct% ${language.ui("vérifiés")}",
-                color = PremiumColors.SoftText,
-                fontSize = PremiumType.Caption,
-                fontWeight = FontWeight.SemiBold
-            )
+            if (rows.isNotEmpty()) {
+                val verifiedPct = (rows.count { it.verified } * 100) / rows.size
+                Text(
+                    "${rows.size} ${language.ui("paiements")} · $verifiedPct% ${language.ui("vérifiés")}",
+                    color = PremiumColors.SoftText,
+                    fontSize = PremiumType.Caption,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
@@ -807,9 +600,7 @@ private fun ActivityFilterPills(
     val pills = listOf(
         language.ui("Tous"),
         language.ui("Vérifiés"),
-        language.ui("En revue"),
-        "Wave",
-        "Wise"
+        language.ui("En revue")
     )
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(pills.size) { index ->
@@ -824,7 +615,7 @@ private fun ActivityFilterPills(
                         if (active) Color.Transparent else PremiumColors.Line.copy(alpha = 0.72f),
                         shape
                     )
-                    .let { if (index <= 2) it.premiumTap { onSelect(index) } else it }
+                    .premiumTap { onSelect(index) }
                     .padding(horizontal = 16.dp, vertical = 9.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -891,18 +682,6 @@ private fun ActivityToTreatCard(
 }
 
 @Composable
-private fun ActivityDateGroupLabel(label: String) {
-    Text(
-        label.uppercase(),
-        color = PremiumColors.SoftText,
-        fontSize = PremiumType.Micro,
-        fontWeight = FontWeight.Black,
-        letterSpacing = 1.sp,
-        modifier = Modifier.padding(top = 4.dp)
-    )
-}
-
-@Composable
 private fun ActivityPaymentRow(row: ActivityDisplayRow, language: PremiumLanguageOption) {
     LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
         Row(
@@ -924,7 +703,7 @@ private fun ActivityPaymentRow(row: ActivityDisplayRow, language: PremiumLanguag
             }
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
                 Text(
-                    row.sender,
+                    row.reference,
                     color = PremiumColors.Ink,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black,
@@ -947,94 +726,46 @@ private fun ActivityPaymentRow(row: ActivityDisplayRow, language: PremiumLanguag
                     )
                 }
             }
-            Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 12.dp)) {
-                Text(
-                    "+ ${row.amount}",
-                    color = PremiumColors.Success,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1
-                )
-                Text(
-                    row.timestamp,
-                    color = PremiumColors.SoftText,
-                    fontSize = PremiumType.Caption,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-            }
+            Text(
+                "+ ${row.amount}",
+                color = PremiumColors.Success,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                modifier = Modifier.padding(start = 12.dp)
+            )
         }
     }
 }
 
+// Real fields only, mapped from PremiumOrderUiItem: orderId (reference), helper-derived
+// rail label + bank logo, amount, and the verified/provenance chip derived from the real
+// status. PremiumOrdersUiState carries no sender name, timestamp or per-day grouping, so
+// those are not rendered.
 private data class ActivityDisplayRow(
     val id: String,
-    val sender: String,
+    val reference: String,
     val railLabel: String,
     val bankProfileId: String?,
     val provenance: String,
     val amount: String,
-    val timestamp: String,
-    val verified: Boolean,
-    val today: Boolean
+    val verified: Boolean
 )
 
-private data class ActivityDayGroup(
-    val dayLabel: String,
-    val rows: List<ActivityDisplayRow>
-)
-
-private fun activityGroupRowsByDay(rows: List<ActivityDisplayRow>): List<ActivityDayGroup> {
-    return listOf(
-        ActivityDayGroup("Aujourd'hui", rows.filter { it.today }),
-        ActivityDayGroup("Hier", rows.filter { !it.today })
-    ).filter { it.rows.isNotEmpty() }
-}
-
-// Maps real confirmed orders/payments into display rows. Sender, provenance, timestamp
-// and the verified provenance chip are not carried by PremiumOrdersUiState, so they are
-// presented from the row's status/helper or static preview where the state lacks the field.
 private fun activityDisplayRows(state: PremiumOrdersUiState): List<ActivityDisplayRow> {
-    if (state.rows.isEmpty()) return activityPaymentPreview()
     return state.rows.mapIndexed { index, item ->
         val verified = item.status.equals("validé", ignoreCase = true) ||
             item.status.equals("success", ignoreCase = true) ||
             item.status.equals("confirmé", ignoreCase = true)
         ActivityDisplayRow(
             id = item.orderId.ifBlank { "row_$index" },
-            sender = item.orderId,
+            reference = item.orderId,
             railLabel = item.helper.substringBefore('·').trim().ifBlank { item.helper },
             bankProfileId = bankProfileIdFromDisplay(item.helper),
             provenance = if (verified) "vérifié" else "en revue",
             amount = item.amount,
-            timestamp = "",
-            verified = verified,
-            today = index < 2
+            verified = verified
         )
-    }
-}
-
-private fun activityPaymentPreview(): List<ActivityDisplayRow> = listOf(
-    ActivityDisplayRow("act_1", "Boutique Dakar", "Wave", "wave_ci", "vérifié", "12 500 FCFA", "14:32", true, today = true),
-    ActivityDisplayRow("act_2", "Freelance LLC", "Wise", "wise_int", "vérifié", "120,00 USD", "12:08", true, today = true),
-    ActivityDisplayRow("act_3", "M. Diallo", "MTN MoMo", "mtn_momo_ci", "en revue", "25 000 FCFA", "09:51", false, today = true),
-    ActivityDisplayRow("act_4", "Ivan P.", "Sberbank", "sber_ru", "vérifié", "18 400 RUB", "21:14", true, today = false),
-    ActivityDisplayRow("act_5", "Fatou K.", "Orange Money", "orange_money_ci", "vérifié", "5 000 FCFA", "18:03", true, today = false)
-)
-
-private fun parseAmountForChart(value: String): Float {
-    val normalized = value
-        .replace("\\s".toRegex(), "")
-        .replace(",", ".")
-        .filter { it.isDigit() || it == '.' || it == '-' }
-    return normalized.toFloatOrNull() ?: 0f
-}
-
-private fun cumulativeChartValues(values: List<Float>): List<Float> {
-    var total = 0f
-    return values.map { amount ->
-        total += amount
-        total
     }
 }
 

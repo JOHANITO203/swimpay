@@ -211,53 +211,29 @@ data class PremiumPaymentDetailUiState(
 }
 
 /**
- * One received-payment row for the wallet detail provenance list. PREVIEW data:
- * the runtime does not yet expose a per-wallet received-payments aggregate, so
- * these rows are illustrative (see [PremiumWalletDetailUiState.preview]).
- */
-data class PremiumWalletReceivedPaymentUiItem(
-    val sender: String,
-    val amountLabel: String,
-    val provenanceStatus: String,
-    val provenanceVerified: Boolean,
-    val timestamp: String
-)
-
-/**
  * Wallet / receiving-method detail UI state.
  *
- * Method IDENTITY (bankProfileId for the official logo, displayName, masked
- * identifier, rail label, active status) is REAL — resolved from the already
- * loaded receiving methods in [PremiumMerchantRuntime.loadWalletDetail].
+ * Everything here is REAL — resolved from the already loaded receiving methods
+ * in [PremiumMerchantRuntime.loadWalletDetail]: the method IDENTITY
+ * (bankProfileId for the official logo, displayName, masked identifier, rail
+ * label, active status) and the "INFOS DU RAIL" rows (account, type, status).
  *
- * The received-payments history and the summary aggregates
- * (totalReceivedLabel, paymentCount, verifiedRate, statTiles) are PREVIEW: the
- * runtime exposes no per-wallet received aggregate yet (user accepted preview
- * data). They come from [preview] and must not be read as real values.
+ * The runtime exposes no per-wallet received aggregate, so this state carries no
+ * totals/verification-rate/history — those widgets were removed rather than fed
+ * preview values.
  */
 data class PremiumWalletDetailUiState(
-    // --- REAL identity (resolved from the receiving method) ---
     val bankProfileId: String,
     val displayName: String,
     val maskedIdentifier: String,
     val railLabel: String,
     val statusLabel: String,
     val active: Boolean,
-    // --- PREVIEW aggregates ---
-    val totalReceivedLabel: String,
-    val paymentCount: String,
-    val verifiedRate: Int,
-    val verifiedCountLabel: String,
-    val statTiles: List<PremiumMetricUiState>,
-    // --- PREVIEW history rows ---
-    val receivedPayments: List<PremiumWalletReceivedPaymentUiItem>,
-    // INFOS DU RAIL preview rows (label -> value); identity values inside are real.
-    val railRows: List<Pair<String, String>>,
-    val isPreviewHistory: Boolean = true
+    // INFOS DU RAIL rows (label -> value), resolved from the real receiving method.
+    val railRows: List<Pair<String, String>>
 ) {
     companion object {
-        // PREVIEW dataset (history + aggregates). Identity fields below are
-        // placeholders only used when no real method is resolved.
+        // Placeholder identity used only when no real method is resolved.
         fun preview(): PremiumWalletDetailUiState {
             return PremiumWalletDetailUiState(
                 bankProfileId = "unknown",
@@ -266,26 +242,10 @@ data class PremiumWalletDetailUiState(
                 railLabel = "Mobile money",
                 statusLabel = "Actif",
                 active = true,
-                totalReceivedLabel = "1 248 500 XOF",
-                paymentCount = "32",
-                verifiedRate = 98,
-                verifiedCountLabel = "944 paiements vérifiés",
-                statTiles = listOf(
-                    PremiumMetricUiState("+12 500", "Aujourd'hui", "+8 %"),
-                    PremiumMetricUiState("+87 200", "7 jours", "+12 %"),
-                    PremiumMetricUiState("+312 900", "30 jours", "+9 %")
-                ),
-                receivedPayments = listOf(
-                    PremiumWalletReceivedPaymentUiItem("Boutique Dakar", "+12 500", "Notification SMS", true, "Il y a 2 min"),
-                    PremiumWalletReceivedPaymentUiItem("Client anonyme", "+5 000", "Notification app", true, "Il y a 1 h"),
-                    PremiumWalletReceivedPaymentUiItem("M. Diallo", "+25 000", "Référence à vérifier", false, "Hier")
-                ),
                 railRows = listOf(
                     "Compte" to "•••• ••••",
-                    "Devise" to "XOF",
                     "Type" to "Mobile money",
-                    "Lié depuis" to "14 mars 2026",
-                    "Confirmation automatique" to "Désactivée"
+                    "Statut" to "Actif"
                 )
             )
         }
@@ -691,15 +651,13 @@ class PremiumMerchantRuntime(
     /**
      * Wallet / receiving-method detail loader. Mirrors [loadPaymentDetail].
      *
-     * Method IDENTITY is REAL: it reuses [loadReceivingMethods] and selects the
+     * Everything is REAL: it reuses [loadReceivingMethods] and selects the
      * method whose routeId == [methodId] to fill the official logo
      * (bankProfileId resolved from the shared bank catalog), display name,
-     * masked identifier, rail label and active status.
+     * masked identifier, rail label, active status and the "INFOS DU RAIL" rows.
      *
-     * The received-payments history and aggregates stay PREVIEW (see
-     * [PremiumWalletDetailUiState.preview]) — the runtime has no per-wallet
-     * received aggregate yet. If the method is not found we return the preview
-     * content state rather than crashing.
+     * If the method is not found we return the placeholder content state rather
+     * than crashing.
      */
     fun loadWalletDetail(methodId: String): PremiumScreenState<PremiumWalletDetailUiState> {
         val preview = PremiumWalletDetailUiState.preview()
@@ -714,15 +672,12 @@ class PremiumMerchantRuntime(
             .ifBlank { preview.maskedIdentifier }
         val bankProfileId = walletBankProfileId(item.subtitle)
 
-        // Preview rail rows keep the real masked identifier + rail label so the
-        // "INFOS DU RAIL" card stays coherent with the resolved identity.
-        val railRows = preview.railRows.map { (label, value) ->
-            when (label) {
-                "Compte" -> label to maskedIdentifier
-                "Type" -> label to item.title
-                else -> label to value
-            }
-        }
+        // INFOS DU RAIL rows built only from real receiving-method fields.
+        val railRows = listOf(
+            "Compte" to maskedIdentifier,
+            "Type" to item.title,
+            "Statut" to item.status
+        )
 
         return PremiumScreenState.content(
             preview.copy(
