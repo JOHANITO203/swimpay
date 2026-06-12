@@ -6,7 +6,14 @@ import com.swimpay.receiver.ReceivingMethodType
 data class PremiumReceivingMethodBankOption(
     val bankProfileId: String,
     val displayName: String,
-    val configurable: Boolean = true
+    val configurable: Boolean = true,
+    /**
+     * The receiving [ReceivingMethodType] this option submits with. Carried from the
+     * unified [ReceivingCatalog] so the add/draft flow can adapt its input and
+     * submission per method (WA wallets → MOBILE_MONEY/phone, RU/INT cards → card,
+     * SBP → phone). Null means "follow the card/phone toggle" (legacy card-rail).
+     */
+    val methodType: ReceivingMethodType? = null
 )
 
 object PremiumReceivingMethodBankCatalog {

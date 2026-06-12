@@ -1006,7 +1006,22 @@ fun PremiumReceivingMethodsStateScreen(
     when (state) {
         is PremiumScreenState.Content -> {
             var draftType by remember { mutableStateOf<ReceivingMethodType?>(null) }
-            val bankOptions = PremiumReceivingMethodBankCatalog.availableBanks
+            // Unified catalog (single source of truth, all regions incl. WA mobile money)
+            // — same source onboarding uses (T2), so the main add flow can declare ANY
+            // region's method. Each option carries its methodType so the draft input and
+            // submission adapt (WA wallets → MOBILE_MONEY/phone, RU/INT → card-rail).
+            val catalog = ReceivingCatalog.allMethods
+            val bankOptions = catalog.map { entry ->
+                PremiumReceivingMethodBankOption(
+                    bankProfileId = entry.bankProfileId,
+                    displayName = entry.displayName,
+                    methodType = entry.methodType
+                )
+            }
+            fun methodTypeForBank(bankProfileId: String, toggleType: ReceivingMethodType): ReceivingMethodType =
+                catalog.firstOrNull { it.bankProfileId == bankProfileId }?.methodType
+                    ?.takeIf { it == ReceivingMethodType.MOBILE_MONEY }
+                    ?: toggleType
             var selectedBankId by remember { mutableStateOf(bankOptions.firstOrNull()?.bankProfileId.orEmpty()) }
             var identifierInput by remember { mutableStateOf("") }
             var editingMethod by remember { mutableStateOf<PremiumReceivingMethodUiItem?>(null) }
@@ -1047,8 +1062,12 @@ fun PremiumReceivingMethodsStateScreen(
                 }
                 if (draftType != null) {
                     item {
+                        val toggleType = draftType ?: ReceivingMethodType.CARD_TRANSFER
+                        // WA wallets are phone-addressed mobile money: their methodType
+                        // overrides the card/phone toggle so input + submission stay MOBILE_MONEY.
+                        val effectiveDraftType = methodTypeForBank(selectedBankId, toggleType)
                         ReceivingMethodDraftPanel(
-                            draftType = draftType ?: ReceivingMethodType.CARD_TRANSFER,
+                            draftType = effectiveDraftType,
                             selectedBankId = selectedBankId,
                             identifierInput = identifierInput,
                             bankOptions = bankOptions,
@@ -1062,7 +1081,7 @@ fun PremiumReceivingMethodsStateScreen(
                             onSave = {
                                 val submission = MerchantReceivingMethodDraft(
                                     bankProfileId = selectedBankId,
-                                    type = draftType ?: ReceivingMethodType.CARD_TRANSFER,
+                                    type = effectiveDraftType,
                                     rawIdentifierInput = identifierInput
                                 ).toSubmission()
                                 onSaveDraft(submission)
@@ -1158,9 +1177,12 @@ fun PremiumReceivingMethodsStateScreen(
                                         modifier = Modifier.weight(1f),
                                         enabled = editLabel.isNotBlank() && editIdentifierInput.isNotBlank()
                                     ) {
+                                        // If the merchant retargets the edit to a WA wallet,
+                                        // submit MOBILE_MONEY (phone-addressed), else keep the
+                                        // card/phone type inferred from the existing method.
                                         val submission = MerchantReceivingMethodDraft(
                                             bankProfileId = editBankId,
-                                            type = editType,
+                                            type = methodTypeForBank(editBankId, editType),
                                             rawIdentifierInput = editIdentifierInput
                                         ).toSubmission().copy(displayLabel = editLabel.trim())
                                         onReplaceMethod(method.routeId, submission)
@@ -1861,11 +1883,16 @@ private fun ReceivingMethodDraftPanel(
     onSave: () -> Unit
 ) {
     val isCardDraft = draftType == ReceivingMethodType.CARD_TRANSFER
-    val title = if (isCardDraft) "Ajouter une carte" else "Ajouter téléphone SBP"
-    val helper = if (isCardDraft) {
-        "Choisissez la banque, puis saisissez le numéro de carte marchand."
-    } else {
-        "Choisissez la banque, puis saisissez le numéro de téléphone marchand."
+    val isMobileMoney = draftType == ReceivingMethodType.MOBILE_MONEY
+    val title = when {
+        isCardDraft -> "Ajouter une carte"
+        isMobileMoney -> "Ajouter un wallet mobile money"
+        else -> "Ajouter téléphone SBP"
+    }
+    val helper = when {
+        isCardDraft -> "Choisissez la banque, puis saisissez le numéro de carte marchand."
+        isMobileMoney -> "Choisissez le wallet, puis saisissez le numéro mobile money marchand."
+        else -> "Choisissez la banque, puis saisissez le numéro de téléphone marchand."
     }
     val isValid = identifierInput.isNotBlank()
     val accent = if (isValid) PremiumColors.Success else PremiumColors.Teal
@@ -1881,6 +1908,8 @@ private fun ReceivingMethodDraftPanel(
                 ) {
                     if (isCardDraft) {
                         Icon(Icons.Default.CreditCard, null, tint = accent, modifier = Modifier.size(27.dp))
+                    } else if (isMobileMoney) {
+                        Icon(Icons.Default.PhoneAndroid, null, tint = accent, modifier = Modifier.size(27.dp))
                     } else {
                         Text("SBP", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
@@ -1929,7 +1958,15 @@ private fun ReceivingMethodDraftPanel(
                     value = identifierInput,
                     onValueChange = onIdentifierChange,
                     label = { Text(language.ui(if (isCardDraft) "Numéro de carte" else "Numéro de téléphone")) },
-                    placeholder = { Text(if (isCardDraft) "Ex. 4276 **** 5421" else "Ex. +7 *** *** ** 21") },
+                    placeholder = {
+                        Text(
+                            when {
+                                isCardDraft -> "Ex. 4276 **** 5421"
+                                isMobileMoney -> "Ex. +225 07 ** ** ** 00"
+                                else -> "Ex. +7 *** *** ** 21"
+                            }
+                        )
+                    },
                     leadingIcon = {
                         if (isCardDraft) {
                             Icon(Icons.Default.CreditCard, null, tint = accent)
@@ -2085,8 +2122,10 @@ private fun bankIconResource(bankProfileId: String): Int? {
 }
 
 private fun bankProfileIdFromDisplay(value: String): String? {
-    return PremiumReceivingMethodBankCatalog.availableBanks.firstOrNull { option ->
-        value.contains(option.displayName, ignoreCase = true)
+    // Unified catalog (all regions incl. WA) so editing any added method — including a
+    // West-Africa mobile money wallet — resolves back to its bankProfileId.
+    return ReceivingCatalog.allMethods.firstOrNull { entry ->
+        value.contains(entry.displayName, ignoreCase = true)
     }?.bankProfileId
 }
 

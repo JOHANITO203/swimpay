@@ -190,6 +190,8 @@ data class PremiumLocalizedCopy(
             LocalizedText("Les informations complètes ne sont jamais envoyées dans les webhooks.", "Full details are never sent in webhooks.", "Полные данные никогда не отправляются в вебхуки."),
             LocalizedText("Ajouter une carte", "Add a card", "Добавить карту"),
             LocalizedText("Ajouter téléphone SBP", "Add SBP phone", "Добавить телефон СБП"),
+            LocalizedText("Ajouter un wallet mobile money", "Add a mobile money wallet", "Добавить кошелёк mobile money"),
+            LocalizedText("Choisissez le wallet, puis saisissez le numéro mobile money marchand.", "Choose the wallet, then enter the merchant mobile money number.", "Выберите кошелёк, затем введите номер mobile money продавца."),
             LocalizedText("Choisissez comment vous recevez l'argent de vos clients.", "Choose how you receive money from your customers.", "Выберите, как вы получаете деньги от клиентов."),
             LocalizedText("Banques russes", "Russian banks", "Российские банки"),
             LocalizedText("Carte · SBP · RUB", "Card · SBP · RUB", "Карта · СБП · RUB"),

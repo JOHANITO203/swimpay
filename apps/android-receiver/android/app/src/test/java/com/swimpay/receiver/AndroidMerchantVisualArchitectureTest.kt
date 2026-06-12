@@ -393,9 +393,11 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(onboardingSource.contains("Icons.Default.CreditCard"))
         assertTrue(onboardingSource.contains("Icons.Default.PhoneAndroid"))
         assertFalse(onboardingSource.contains("bankOptions.forEach { bank ->"))
-        assertTrue(premiumDashboard.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
-        // Receiving-first onboarding consumes the unified catalog (all regions incl. WA),
-        // not the RU+INT-only availableBanks list.
+        // Coherence: the POST-onboarding add flow now draws from the unified catalog
+        // (all regions incl. WA mobile money), NOT the RU+INT-only availableBanks.
+        assertTrue(receivingSource.contains("ReceivingCatalog.allMethods"))
+        assertFalse(receivingSource.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
+        // Receiving-first onboarding consumes the same unified catalog (single source).
         assertTrue(premiumOnboarding.contains("ReceivingCatalog.allMethods"))
         assertTrue(bankCatalog.contains("BankTargetLock.supportedTargets"))
         assertTrue(bankCatalog.contains("bankProfileId"))
@@ -522,8 +524,9 @@ class AndroidMerchantVisualArchitectureTest {
         val premiumOnboarding = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumOnboardingScreens.kt").readText()
         val premiumReviews = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumReviewScreens.kt").readText()
 
-        assertTrue(premiumDashboard.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
-        // Onboarding shares the unified receiving catalog (single source of truth, all regions).
+        // Both the add flow (dashboard) and onboarding share the unified receiving
+        // catalog (single source of truth, all regions incl. WA mobile money).
+        assertTrue(premiumDashboard.contains("ReceivingCatalog.allMethods"))
         assertTrue(premiumOnboarding.contains("ReceivingCatalog.allMethods"))
         assertFalse(premiumDashboard.contains("private val ReceivingMethodBankOptions"))
         assertFalse(premiumOnboarding.contains("private val OnboardingReceivingMethodBankOptions"))
