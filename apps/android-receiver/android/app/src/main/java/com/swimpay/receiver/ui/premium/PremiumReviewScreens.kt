@@ -22,12 +22,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Icon
@@ -63,9 +61,28 @@ fun PremiumReviewsScreen(
     onOpenReview: (String) -> Unit = {},
     language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
-    when (state) {
-        is PremiumScreenState.Content -> PremiumReviewsContent(state.value, onOpenReview, language)
-        else -> PremiumReviewsState(state, language)
+    // Contexte « à traiter » : accent ambre (attention/décision). Chaque carte garde
+    // ensuite la couleur de son provider réel. Halos d'accent comme le prototype .device.
+    CompositionLocalProvider(LocalNoirAccent provides NoirColors.warn) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(NoirColors.bg)
+                .drawBehind {
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(NoirColors.warn.copy(alpha = 0.09f), Color.Transparent),
+                            center = Offset(size.width * 0.5f, -size.height * 0.06f),
+                            radius = size.maxDimension * 0.5f
+                        )
+                    )
+                }
+        ) {
+            when (state) {
+                is PremiumScreenState.Content -> PremiumReviewsContent(state.value, onOpenReview, language)
+                else -> PremiumReviewsState(state, language)
+            }
+        }
     }
 }
 
@@ -77,31 +94,42 @@ private fun PremiumReviewsContent(
 ) {
     var selectedFilter by remember { mutableStateOf(PremiumReviewFilter.TO_CONFIRM) }
     val filteredItems = selectedFilter.applyTo(state.items)
+    // Compteur réel d'éléments à confirmer (pas de total monétaire fabriqué : les
+    // montants sont des libellés déjà formatés, devises potentiellement mixtes —
+    // on n'invente pas de somme).
+    val toConfirmCount = PremiumReviewFilter.TO_CONFIRM.countFor(state.items)
     LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        Modifier.fillMaxSize().padding(horizontal = NoirSpacing.Screen),
         contentPadding = PaddingValues(top = 16.dp, bottom = PremiumSpacing.BottomNavHeight + 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(NoirSpacing.Item)
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = language.ui("Paiements à confirmer"),
-                    color = PremiumColors.PageInk,
-                    style = androidx.compose.ui.text.TextStyle(
-                        fontSize = PremiumType.ScreenTitle,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 30.sp
-                    )
+                    text = language.ui("À traiter"),
+                    modifier = Modifier.weight(1f),
+                    color = NoirColors.ink1,
+                    style = NoirTextStyle.H1.copy(fontSize = 24.sp)
                 )
-                Text(
-                    text = language.ui("Confirmez uniquement les paiements que vous reconnaissez."),
-                    color = PremiumColors.PageMuted,
-                    fontSize = PremiumType.Body,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                if (toConfirmCount > 0) {
+                    Box(
+                        Modifier
+                            .clip(CircleShape)
+                            .background(NoirColors.warn)
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = toConfirmCount.toString(),
+                            color = NoirColors.bg,
+                            style = NoirTextStyle.Micro.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = PremiumTabularNumbers)
+                        )
+                    }
+                }
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(14.dp))
+            ReviewIntroCard(toConfirmCount, language)
+            Spacer(Modifier.height(20.dp))
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -118,20 +146,78 @@ private fun PremiumReviewsContent(
                     }
                 }
             }
+            Spacer(Modifier.height(4.dp))
+            NoirSectionLabel(language.ui("En attente de validation"))
         }
-        items(filteredItems) { item -> ReviewPaymentCard(item, onOpenReview, language) }
+        if (filteredItems.isEmpty()) {
+            item { ReviewEmptyRow(selectedFilter, language) }
+        } else {
+            items(filteredItems) { item -> ReviewPaymentCard(item, onOpenReview, language) }
+        }
     }
+}
+
+// Bandeau d'intro ambre (prototype .intro) : compteur réel + cadrage honnête du modèle.
+@Composable
+private fun ReviewIntroCard(toConfirmCount: Int, language: PremiumLanguageOption) {
+    val shape = RoundedCornerShape(NoirRadius.Spark)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(NoirColors.warn.copy(alpha = 0.08f))
+            .border(1.dp, NoirColors.warn.copy(alpha = 0.20f), shape)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        val title = if (toConfirmCount > 0) {
+            "$toConfirmCount ${language.ui("paiement(s) à valider")}"
+        } else {
+            language.ui("Aucun paiement à valider")
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Icon(
+                imageVector = Icons.Default.WarningAmber,
+                contentDescription = null,
+                tint = NoirColors.warn,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = title,
+                color = NoirColors.ink1,
+                style = NoirTextStyle.Label.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            )
+        }
+        Text(
+            text = language.ui("Android capture le signal, le backend décide, le marchand confirme. Une dernière confirmation humaine est requise sur chacun."),
+            color = NoirColors.ink2,
+            style = NoirTextStyle.Micro.copy(fontSize = 12.5.sp, lineHeight = 18.sp)
+        )
+    }
+}
+
+// Ligne « rien à afficher » pour le filtre courant (état vide honnête, sans carte vide).
+@Composable
+private fun ReviewEmptyRow(filter: PremiumReviewFilter, language: PremiumLanguageOption) {
+    Text(
+        text = language.ui(filter.emptyLabel),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+        color = NoirColors.ink3,
+        style = NoirTextStyle.Micro.copy(fontSize = 12.5.sp),
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+    )
 }
 
 private enum class PremiumReviewFilter(
     val label: String,
     val icon: ImageVector,
-    val weight: Float
+    val weight: Float,
+    val emptyLabel: String
 ) {
-    ALL("Tout", Icons.Default.GridView, 1f),
-    TO_CONFIRM("À confirmer", Icons.Default.Sync, 1.35f),
-    CONFIRMED("Confirmés", Icons.Default.CheckCircle, 1f),
-    REJECTED("Rejetés", Icons.Default.WarningAmber, 1f);
+    ALL("Tout", Icons.Default.GridView, 1f, "Aucun paiement pour le moment."),
+    TO_CONFIRM("À confirmer", Icons.Default.Sync, 1.35f, "Aucun paiement à confirmer pour le moment."),
+    CONFIRMED("Confirmés", Icons.Default.CheckCircle, 1f, "Aucun paiement confirmé pour le moment."),
+    REJECTED("Rejetés", Icons.Default.WarningAmber, 1f, "Aucun paiement rejeté pour le moment.");
 
     fun applyTo(items: List<PremiumReviewUiItem>): List<PremiumReviewUiItem> {
         return when (this) {
@@ -148,178 +234,184 @@ private enum class PremiumReviewFilter(
 @Composable
 private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>, language: PremiumLanguageOption = PremiumLanguageOption.FR) {
     LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        Modifier.fillMaxSize().padding(horizontal = NoirSpacing.Screen),
         contentPadding = PaddingValues(top = 16.dp, bottom = PremiumSpacing.BottomNavHeight + 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(NoirSpacing.Item)
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = language.ui("Paiements à confirmer"),
-                    color = PremiumColors.PageInk,
-                    style = androidx.compose.ui.text.TextStyle(
-                        fontSize = PremiumType.ScreenTitle,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 30.sp
-                    )
-                )
-                Text(
-                    text = language.ui("Confirmez uniquement les paiements que vous reconnaissez."),
-                    color = PremiumColors.PageMuted,
-                    fontSize = PremiumType.Body,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+            Text(
+                text = language.ui("À traiter"),
+                color = NoirColors.ink1,
+                style = NoirTextStyle.H1.copy(fontSize = 24.sp)
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = language.ui("Confirmez uniquement les paiements que vous reconnaissez."),
+                color = NoirColors.ink2,
+                style = NoirTextStyle.Micro.copy(fontSize = 12.5.sp, lineHeight = 18.sp)
+            )
         }
         item { PremiumStatePanel(state.localized(language)) }
     }
 }
 
+// Carte de décision « noir vivant » (prototype .rcard). Données 100% réelles :
+// cercle provider coloré (couleur du provider réel), banque + statut + horodatage
+// helper réels, montant réel (ink1, tabulaire), verdict HONNÊTE (aucune note /100
+// fabriquée — le score n'existe qu'au niveau du détail), motif réel (la raison du
+// review), et l'action réelle : ouvrir le détail pour décider (le modèle queue n'a
+// pas d'action inline ; la décision se prend sur l'écran détail).
 @Composable
 private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) -> Unit, language: PremiumLanguageOption) {
-    LiquidGlassCard(
-        modifier = Modifier
+    val verdict = reviewQueueVerdict(item.reviewStatus, item.valid)
+    val providerColor = reviewProviderAccent(item.bank)
+    val shape = RoundedCornerShape(NoirRadius.Card)
+    val reason = item.reasons.firstOrNull()?.let(language::ui).orEmpty()
+    Column(
+        Modifier
             .fillMaxWidth()
-            .premiumTap { onOpenReview(item.reviewId) },
-        radius = PremiumRadius.CardLarge
+            .clip(shape)
+            .background(NoirColors.surface)
+            .border(1.dp, NoirColors.hair, shape)
+            .premiumTap { onOpenReview(item.reviewId) }
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp)
     ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Box(
-                    Modifier
-                        .size(52.dp)
-                        .background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
-                        contentDescription = null,
-                        tint = PremiumColors.Blue,
-                        modifier = Modifier.size(PremiumIconSize.Default)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Cercle provider : couleur du provider réel + initiale réelle de la banque.
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(providerColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = item.bank.trim().take(1).uppercase().ifBlank { "?" },
+                    color = Color.White,
+                    style = NoirTextStyle.Label.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = item.bank.ifBlank { language.ui("Provider inconnu") },
+                    color = NoirColors.ink1,
+                    style = NoirTextStyle.Label.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                    maxLines = 1
+                )
+                if (item.helper.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = item.helper,
+                        color = NoirColors.ink3,
+                        style = NoirTextStyle.Micro.copy(fontSize = 11.5.sp),
+                        maxLines = 1
                     )
                 }
-                Spacer(Modifier.weight(1f))
-                StatusChip(language.ui(item.status), reviewTone(item.reviewStatus, item.valid))
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = language.ui("Signal de paiement"),
-                    color = PremiumColors.Ink,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 22.sp
+                    text = item.amount,
+                    color = NoirColors.ink1,
+                    style = NoirTextStyle.TxAmount.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 )
-                Text(
-                    text = item.helper,
-                    color = PremiumColors.SoftText,
-                    fontSize = PremiumType.Caption,
-                    fontWeight = FontWeight.SemiBold,
-                    lineHeight = 17.sp
-                )
+                Spacer(Modifier.height(3.dp))
+                // Verdict honnête (pas de score fabriqué) : libellé + pastille de tonalité.
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Icon(
+                        imageVector = verdict.icon,
+                        contentDescription = null,
+                        tint = verdict.color,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = language.ui(verdict.label),
+                        color = verdict.color,
+                        style = NoirTextStyle.Micro.copy(fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                    )
+                }
             }
-            Column(
+        }
+        // Motif réel : la raison spécifique pour laquelle ce paiement est en review.
+        if (reason.isNotBlank()) {
+            Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(PremiumColors.PanelTint, RoundedCornerShape(PremiumRadius.Card))
+                    .clip(RoundedCornerShape(NoirRadius.ButtonTight))
+                    .background(NoirColors.warn.copy(alpha = 0.09f))
+                    .border(1.dp, NoirColors.warn.copy(alpha = 0.18f), RoundedCornerShape(NoirRadius.ButtonTight))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    PremiumBankLogo(
-                        bankProfileId = reviewBankProfileId(item.bank),
-                        displayName = item.bank,
-                        size = 42.dp
-                    )
-                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                        Text(
-                            text = language.ui("Montant detecte"),
-                            color = PremiumColors.SoftText,
-                            fontSize = PremiumType.Micro,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.8.sp
-                        )
-                        Text(
-                            text = item.amount,
-                            color = PremiumColors.Ink,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Text(
-                        text = item.bank,
-                        color = PremiumColors.Muted,
-                        fontSize = PremiumType.Caption,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line))
-            ReviewCardLine(
-                label = language.ui("Review"),
-                value = item.reviewId,
-                icon = Icons.Default.Security
-            )
-            ReviewCardLine(
-                label = language.ui("Raison"),
-                value = item.reasons.firstOrNull()?.let(language::ui) ?: language.ui("Signal reconnu"),
-                icon = Icons.Default.Sync
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = language.ui("Ouvrir la review"),
-                    modifier = Modifier.weight(1f),
-                    color = PremiumColors.Blue,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                Icon(
+                    imageVector = Icons.Default.WarningAmber,
+                    contentDescription = null,
+                    tint = NoirColors.warn,
+                    modifier = Modifier.size(16.dp)
                 )
-                Chevron()
+                Text(
+                    text = reason,
+                    color = NoirColors.ink1,
+                    style = NoirTextStyle.Micro.copy(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, lineHeight = 16.sp)
+                )
             }
         }
-    }
-}
-
-@Composable
-private fun ReviewCardLine(label: String, value: String, icon: ImageVector) {
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(
+        // Action réelle : ouvrir le détail pour décider (Confirmer/Rejeter y sont branchés).
+        Row(
             Modifier
-                .size(30.dp)
-                .background(PremiumColors.IconTile, RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(NoirRadius.Button))
+                .border(1.dp, NoirColors.hair2, RoundedCornerShape(NoirRadius.Button))
+                .premiumTap { onOpenReview(item.reviewId) }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = PremiumColors.Blue, modifier = Modifier.size(16.dp))
+            Text(
+                text = language.ui("Examiner"),
+                modifier = Modifier.weight(1f),
+                color = NoirColors.ink1,
+                style = NoirTextStyle.Label.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = NoirColors.ink2,
+                modifier = Modifier.size(16.dp)
+            )
         }
-        Text(
-            text = label.uppercase(),
-            modifier = Modifier.width(76.dp),
-            color = PremiumColors.SoftText,
-            fontSize = PremiumType.Micro,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.8.sp
-        )
-        Text(
-            text = value,
-            modifier = Modifier.weight(1f),
-            color = PremiumColors.Ink,
-            fontSize = PremiumType.Caption,
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 
-private fun reviewTone(status: ReviewUiStatus, valid: Boolean): PremiumTone {
+private data class ReviewQueueVerdict(val label: String, val color: Color, val icon: ImageVector)
+
+// Verdict honnête dérivé du statut réel + drapeau `valid` réel. Aucun /100 inventé :
+// le score chiffré n'existe qu'au niveau du détail (paymentScoreLabel), pas en queue.
+private fun reviewQueueVerdict(status: ReviewUiStatus, valid: Boolean): ReviewQueueVerdict {
     return when (status) {
-        ReviewUiStatus.CONFIRMED -> StatusTone.Success
-        ReviewUiStatus.REJECTED -> StatusTone.Danger
-        ReviewUiStatus.TO_CONFIRM -> if (valid) StatusTone.Info else StatusTone.Warning
+        ReviewUiStatus.CONFIRMED -> ReviewQueueVerdict("Confirmé", NoirColors.success, Icons.Default.CheckCircle)
+        ReviewUiStatus.REJECTED -> ReviewQueueVerdict("Rejeté", NoirColors.danger, Icons.Default.WarningAmber)
+        ReviewUiStatus.TO_CONFIRM ->
+            if (valid) ReviewQueueVerdict("À confirmer", NoirColors.success, Icons.Default.CheckCircle)
+            else ReviewQueueVerdict("À vérifier", NoirColors.warn, Icons.Default.WarningAmber)
+    }
+}
+
+// Couleur provider par carte (Caméléon) : dérivée de la banque réelle via WalletSkins
+// quand un skin existe, sinon une teinte de marque connue, sinon accent neutre.
+private fun reviewProviderAccent(bank: String): Color {
+    val skinId = when (reviewBankProfileId(bank)) {
+        "sber_ru" -> "sber"
+        else -> null
+    }
+    skinId?.let { id -> WalletSkins.byId(id)?.let { return it.accent } }
+    return when {
+        bank.contains("wave", ignoreCase = true) -> NoirColors.wave
+        bank.contains("orange", ignoreCase = true) -> NoirColors.orange
+        bank.contains("usdt", ignoreCase = true) || bank.contains("tether", ignoreCase = true) -> NoirColors.usdt
+        bank.contains("free", ignoreCase = true) -> NoirColors.free
+        bank.contains("sber", ignoreCase = true) -> NoirColors.sber
+        else -> NoirColors.amber
     }
 }
 
@@ -1158,15 +1250,17 @@ private fun FilterLabel(icon: ImageVector, text: String, selected: Boolean, modi
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (selected) PremiumColors.Teal else PremiumColors.PageMuted,
+                    tint = if (selected) NoirColors.warn else NoirColors.ink2,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = text.uppercase(),
-                    color = if (selected) PremiumColors.Teal else PremiumColors.PageMuted,
-                    fontSize = PremiumType.Micro,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
+                    color = if (selected) NoirColors.ink1 else NoirColors.ink2,
+                    style = NoirTextStyle.Micro.copy(
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.08.em
+                    ),
                     maxLines = 1
                 )
             }
@@ -1176,21 +1270,18 @@ private fun FilterLabel(icon: ImageVector, text: String, selected: Boolean, modi
                     Modifier
                         .width(16.dp)
                         .height(2.dp)
-                        .background(PremiumColors.Teal, RoundedCornerShape(PremiumRadius.Pill))
+                        .background(NoirColors.warn, RoundedCornerShape(PremiumRadius.Pill))
                 )
             }
         }
     }
 }
 
-@Preview(name = "Review list checkout style", showBackground = true, backgroundColor = 0xFF000A1F, widthDp = 390, heightDp = 720)
+@Preview(name = "Review list noir vivant", showBackground = true, backgroundColor = 0xFF08080C, widthDp = 390, heightDp = 720)
 @Composable
 private fun PremiumReviewsCheckoutStylePreview() {
     PremiumColors.useDarkTheme(false)
-    Box(Modifier.fillMaxSize()) {
-        PremiumPaperBackground(Modifier.fillMaxSize())
-        PremiumReviewsScreen()
-    }
+    PremiumReviewsScreen()
 }
 
 @Preview(name = "Review detail noir vivant", showBackground = true, backgroundColor = 0xFF08080C, widthDp = 390, heightDp = 820)
