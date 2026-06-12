@@ -106,6 +106,8 @@ object PremiumColors {
     val NeutralChip: Color get() = palette.neutralChip
     // Papier inversé : texte/éléments posés sur une surface encre (boutons primaires, cartes sombres).
     val OnInk: Color get() = if (darkThemeEnabled) Color(0xFF17140F) else Color(0xFFF6F3EC)
+    // Papier fixe (indépendant du mode) : contenu posé sur les cartes encre qui restent sombres partout.
+    val Paper: Color = Color(0xFFF6F3EC)
 }
 
 // Échelle d'opacité unique — remplace les alphas ad hoc dispersés dans les écrans.

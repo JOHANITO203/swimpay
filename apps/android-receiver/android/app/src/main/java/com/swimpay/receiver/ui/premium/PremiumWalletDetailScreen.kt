@@ -89,7 +89,7 @@ private fun WalletDetailTopBar(title: String, onBack: () -> Unit) {
             modifier = Modifier.weight(1f),
             color = PremiumColors.PageInk,
             fontSize = PremiumType.ScreenTitle,
-            fontWeight = FontWeight.Black
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -115,7 +115,7 @@ private fun WalletIdentityCard(state: PremiumWalletDetailUiState, language: Prem
                         text = state.displayName,
                         color = PremiumColors.Ink,
                         fontSize = 20.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         lineHeight = 24.sp
                     )
                     Text(
@@ -158,7 +158,7 @@ private fun WalletRailInfoCard(state: PremiumWalletDetailUiState, language: Prem
                         text = language.ui(value),
                         color = PremiumColors.Ink,
                         fontSize = PremiumType.Caption,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

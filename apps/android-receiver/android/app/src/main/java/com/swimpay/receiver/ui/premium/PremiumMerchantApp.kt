@@ -453,7 +453,8 @@ fun PremiumMerchantApp(
     }
 
     Box(Modifier.fillMaxSize()) {
-        when (val currentRoute = route) {
+        PremiumRouteTransition(route) { animatedRoute ->
+        when (val currentRoute = animatedRoute) {
             PremiumRoute.SignOut,
             PremiumRoute.AccountEntry -> PremiumAccountEntryScreen(
             language = merchantSettings.language,
@@ -1101,6 +1102,7 @@ fun PremiumMerchantApp(
                 language = merchantSettings.language,
                 onBack = { route = PremiumNavigation.backFromWalletDetail() }
             )
+        }
         }
         AnimatedVisibility(
             visible = showStartupSplash,

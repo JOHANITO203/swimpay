@@ -5,6 +5,16 @@ import androidx.compose.ui.unit.dp
 import com.swimpay.receiver.R
 
 object CardVisualDefaults {
+    // Heros « papier calme » (T6) : encre chaude unie, hairline, sans artwork ni glow.
+    val HomeDashboardPaper: CardVisualTheme
+        get() = CardVisualTheme(
+            surface = CardSurfaceTheme(
+                background = PremiumBrandGradient.PrimaryDeep,
+                radius = PremiumRadius.CardLarge,
+                edgeColor = Color.White.copy(alpha = PremiumOpacity.Hairline)
+            )
+        )
+
     val HomeDashboard: CardVisualTheme
         get() = CardVisualTheme(
             surface = CardSurfaceTheme(

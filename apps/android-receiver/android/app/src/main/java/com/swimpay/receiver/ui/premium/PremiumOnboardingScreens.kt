@@ -74,7 +74,7 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
             Text(
                 "Terminal marchand".uppercase(),
                 color = PremiumColors.PageMuted,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 fontSize = PremiumType.Micro,
                 letterSpacing = 2.sp
             )
@@ -102,8 +102,8 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
                 ) {
                     SwimPayLauncherBadge(size = 78.dp)
                     Spacer(Modifier.height(26.dp))
-                    Text("Configuration initiale", color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
-                    Text("Commencer", color = PremiumColors.SoftText, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                    Text("Configuration initiale", color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Bold)
+                    Text("Commencer", color = PremiumColors.SoftText, fontSize = PremiumType.Micro, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                 }
             }
         }
@@ -193,9 +193,8 @@ private fun WelcomeStep(language: PremiumLanguageOption, onNext: () -> Unit) {
             Text(
                 language.ui("Recevez vos paiements plus facilement"),
                 color = PremiumColors.Ink,
-                fontSize = PremiumType.Hero,
-                lineHeight = 34.sp,
-                fontWeight = FontWeight.Black,
+                style = PremiumTextStyle.SerifTitle.copy(fontSize = PremiumType.Hero),
+                lineHeight = 36.sp,
                 textAlign = TextAlign.Center
             )
             Text(
@@ -245,7 +244,7 @@ private fun NotificationAccessStep(
             Icon(
                 if (notificationAccessEnabled) Icons.Default.CheckCircle else Icons.Default.VerifiedUser,
                 null,
-                tint = Color.White,
+                tint = if (notificationAccessEnabled) Color.White else PremiumColors.OnInk,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -253,9 +252,8 @@ private fun NotificationAccessStep(
         Text(
             language.ui("Connectez votre téléphone"),
             color = PremiumColors.Ink,
-            fontSize = PremiumType.Hero,
-            lineHeight = 34.sp,
-            fontWeight = FontWeight.Black
+            style = PremiumTextStyle.SerifTitle.copy(fontSize = PremiumType.Hero),
+            lineHeight = 36.sp
         )
         Spacer(Modifier.height(10.dp))
         Text(
@@ -296,7 +294,7 @@ private fun NotificationAccessStep(
                 language.ui("Accès nécessaire"),
                 color = PremiumColors.SoftText,
                 fontSize = PremiumType.Caption,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.4.sp,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
@@ -490,7 +488,7 @@ private fun ConnectedSiteStep(
                         if (skipped) language.ui("Configuration reportée") else language.ui("Prêt à ajouter"),
                         color = PremiumColors.Ink,
                         fontSize = PremiumType.ScreenTitle,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
                         if (skipped) {
@@ -554,9 +552,9 @@ private fun OnboardingShell(
                     title,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    color = PremiumColors.Cyan,
+                    color = PremiumColors.Teal,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Bold
                 )
                 SwimPayLauncherBadge(size = 42.dp)
             }
@@ -591,7 +589,7 @@ private fun ProgressLine(step: PremiumOnboardingStep) {
                 Modifier
                     .weight(1f)
                     .height(6.dp)
-                    .background(if (index <= activeIndex) PremiumColors.Cyan else PremiumColors.Line, CircleShape)
+                    .background(if (index <= activeIndex) PremiumColors.Teal else PremiumColors.Line, CircleShape)
             )
         }
     }
@@ -618,13 +616,13 @@ private fun BenefitRow(icon: ImageVector, title: String, body: String) {
                 Modifier
                     .size(PremiumComponentSize.TouchTarget)
                     .background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile))
-                    .border(1.dp, PremiumColors.Cyan.copy(alpha = 0.28f), RoundedCornerShape(PremiumRadius.Tile)),
+                    .border(1.dp, PremiumColors.Teal.copy(alpha = 0.28f), RoundedCornerShape(PremiumRadius.Tile)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(26.dp))
+                Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(26.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text(title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = PremiumType.Body)
+                Text(title, color = PremiumColors.Ink, fontWeight = FontWeight.Bold, fontSize = PremiumType.Body)
                 Text(body, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = PremiumType.Caption, lineHeight = 20.sp)
             }
         }
@@ -654,11 +652,11 @@ private fun ReceivingMethodOption(
                         modifier = Modifier.size(34.dp)
                     )
                 } else {
-                    Icon(icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(30.dp))
+                    Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(30.dp))
                 }
             }
             Column(Modifier.weight(1f)) {
-                Text(title, color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Black)
+                Text(title, color = PremiumColors.Ink, fontSize = PremiumType.ScreenTitle, fontWeight = FontWeight.Bold)
                 Text(subtitle, color = PremiumColors.Muted, fontSize = PremiumType.Body, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
             }
             Box(
@@ -683,7 +681,7 @@ private fun ChecklistCard(state: PremiumOnboardingSessionState, language: Premiu
                     Box(Modifier.size(32.dp).background(PremiumColors.Mint, CircleShape), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Teal, modifier = Modifier.size(20.dp))
                     }
-                    Text(language.ui(label), color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
+                    Text(language.ui(label), color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -703,7 +701,7 @@ private fun ResultCard(state: PremiumOnboardingSessionState, language: PremiumLa
                 if (ready) language.ui("Webhook prêt") else language.ui("Action nécessaire"),
                 color = if (ready) PremiumColors.Success else PremiumColors.Warning,
                 fontSize = PremiumType.Body,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
             Text(
                 if (ready) {
@@ -724,7 +722,7 @@ private fun ResultCard(state: PremiumOnboardingSessionState, language: PremiumLa
 private fun OnboardingInfoCard(title: String, body: String) {
     LiquidGlassCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), radius = PremiumRadius.Card) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
+            Text(title, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Bold)
             Text(body, color = PremiumColors.Muted, fontSize = PremiumType.Caption, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
         }
     }

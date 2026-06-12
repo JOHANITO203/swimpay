@@ -254,7 +254,7 @@ fun PremiumLanguageSwitch(
                     option.shortLabel,
                     color = if (option == language) PremiumColors.Blue else PremiumColors.Muted,
                     fontSize = PremiumType.Caption,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -285,7 +285,7 @@ private fun PremiumAccountChoiceRow(
         onClick = onClick,
         elevated = elevated
     ) {
-        Icon(icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(25.dp))
+        Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(25.dp))
     }
 }
 
@@ -334,13 +334,13 @@ private fun PremiumAccountChoiceRowContent(
             Modifier
                 .size(PremiumComponentSize.TouchTarget)
                 .background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile))
-                .border(1.dp, PremiumColors.Cyan.copy(alpha = 0.28f), RoundedCornerShape(PremiumRadius.Tile)),
+                .border(1.dp, PremiumColors.Teal.copy(alpha = 0.28f), RoundedCornerShape(PremiumRadius.Tile)),
             contentAlignment = Alignment.Center
         ) {
             iconContent()
         }
         Column(Modifier.weight(1f)) {
-            Text(title, color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            Text(title, color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Text(
                 description,
                 color = PremiumColors.Muted,

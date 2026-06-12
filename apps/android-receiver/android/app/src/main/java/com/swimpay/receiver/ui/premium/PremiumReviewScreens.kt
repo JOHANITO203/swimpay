@@ -78,7 +78,7 @@ private fun PremiumReviewsContent(
                     color = PremiumColors.PageInk,
                     style = androidx.compose.ui.text.TextStyle(
                         fontSize = PremiumType.ScreenTitle,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         lineHeight = 30.sp
                     )
                 )
@@ -148,7 +148,7 @@ private fun PremiumReviewsState(state: PremiumScreenState<PremiumReviewsUiState>
                     color = PremiumColors.PageInk,
                     style = androidx.compose.ui.text.TextStyle(
                         fontSize = PremiumType.ScreenTitle,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         lineHeight = 30.sp
                     )
                 )
@@ -196,7 +196,7 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
                     text = language.ui("Signal de paiement"),
                     color = PremiumColors.Ink,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     lineHeight = 22.sp
                 )
                 Text(
@@ -228,21 +228,21 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
                             text = language.ui("Montant detecte"),
                             color = PremiumColors.SoftText,
                             fontSize = PremiumType.Micro,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp
                         )
                         Text(
                             text = item.amount,
                             color = PremiumColors.Ink,
                             fontSize = 24.sp,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Bold
                         )
                     }
                     Text(
                         text = item.bank,
                         color = PremiumColors.Muted,
                         fontSize = PremiumType.Caption,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -263,7 +263,7 @@ private fun ReviewPaymentCard(item: PremiumReviewUiItem, onOpenReview: (String) 
                     modifier = Modifier.weight(1f),
                     color = PremiumColors.Blue,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Bold
                 )
                 Chevron()
             }
@@ -291,7 +291,7 @@ private fun ReviewCardLine(label: String, value: String, icon: ImageVector) {
             modifier = Modifier.width(76.dp),
             color = PremiumColors.SoftText,
             fontSize = PremiumType.Micro,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             letterSpacing = 0.8.sp
         )
         Text(
@@ -377,7 +377,7 @@ private fun PremiumPaymentDetailContent(
                 modifier = Modifier.weight(1f),
                 color = PremiumColors.PageInk,
                 fontSize = PremiumType.ScreenTitle,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
         }
         LazyColumn(
@@ -439,7 +439,7 @@ private fun PaymentReviewCheckoutCard(
                         text = language.ui(state.statusTitle),
                         color = PremiumColors.Ink,
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         lineHeight = 22.sp
                     )
                     if (payerLine.isNotBlank()) {
@@ -461,14 +461,14 @@ private fun PaymentReviewCheckoutCard(
                     text = language.ui("Montant à vérifier").uppercase(),
                     color = PremiumColors.SoftText,
                     fontSize = PremiumType.Micro,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
                 Text(
                     text = heroAmount,
                     color = PremiumColors.Success,
                     fontSize = 34.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     lineHeight = 38.sp
                 )
                 Text(
@@ -516,7 +516,7 @@ private fun PaymentReviewCheckoutCard(
                             text = displayBank,
                             color = PremiumColors.Ink,
                             fontSize = PremiumType.Body,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             lineHeight = 18.sp
                         )
                         Text(
@@ -532,7 +532,7 @@ private fun PaymentReviewCheckoutCard(
                             text = signalTime,
                             color = PremiumColors.SoftText,
                             fontSize = PremiumType.Caption,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -574,13 +574,13 @@ private fun PaymentReviewCheckoutCard(
                             modifier = Modifier.weight(1f),
                             color = PremiumColors.Ink,
                             fontSize = PremiumType.Body,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "${(fraction * 100).toInt()} %",
                             color = PremiumColors.Success,
                             fontSize = PremiumType.Body,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Bold
                         )
                     }
                     ConfidenceBar(fraction)
@@ -626,7 +626,7 @@ private fun PaymentReviewCheckoutCard(
                         Text(
                             text = language.ui("Annuler la commande"),
                             color = PremiumColors.Danger,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             letterSpacing = 0.5.sp
                         )
@@ -676,7 +676,7 @@ private fun ProvenanceCheckRow(label: String, value: String, verified: Boolean) 
                 text = label.uppercase(),
                 color = PremiumColors.SoftText,
                 fontSize = PremiumType.Micro,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.8.sp
             )
             if (value.isNotBlank()) {
@@ -722,7 +722,7 @@ private fun PaymentReviewTimelineItem(index: Int, label: String) {
                 text = index.toString(),
                 color = PremiumColors.Blue,
                 fontSize = PremiumType.Micro,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
         }
         Text(
@@ -792,7 +792,7 @@ private fun PremiumPaymentDetailState(
                 modifier = Modifier.weight(1f),
                 color = PremiumColors.PageInk,
                 fontSize = PremiumType.ScreenTitle,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
         }
         LazyColumn(
@@ -821,14 +821,14 @@ private fun FilterLabel(icon: ImageVector, text: String, selected: Boolean, modi
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (selected) PremiumColors.Cyan else PremiumColors.PageMuted,
+                    tint = if (selected) PremiumColors.Teal else PremiumColors.PageMuted,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = text.uppercase(),
-                    color = if (selected) PremiumColors.Cyan else PremiumColors.PageMuted,
+                    color = if (selected) PremiumColors.Teal else PremiumColors.PageMuted,
                     fontSize = PremiumType.Micro,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                     maxLines = 1
                 )
@@ -839,7 +839,7 @@ private fun FilterLabel(icon: ImageVector, text: String, selected: Boolean, modi
                     Modifier
                         .width(16.dp)
                         .height(2.dp)
-                        .background(PremiumColors.Cyan, RoundedCornerShape(PremiumRadius.Pill))
+                        .background(PremiumColors.Teal, RoundedCornerShape(PremiumRadius.Pill))
                 )
             }
         }

@@ -5,6 +5,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -178,7 +180,7 @@ fun PremiumTitle(
     centered: Boolean = false,
     color: Color = PremiumColors.PageInk,
     fontSize: androidx.compose.ui.unit.TextUnit = PremiumType.ScreenTitle,
-    fontWeight: FontWeight = FontWeight.Black
+    fontWeight: FontWeight = FontWeight.Bold
 ) {
     val displayTitle = text ?: title
     Column(modifier, horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start) {
@@ -301,7 +303,7 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
         text = text.uppercase(),
         modifier = modifier,
         color = PremiumColors.Muted,
-        fontWeight = FontWeight.Black,
+        fontWeight = FontWeight.Bold,
         fontSize = 12.sp,
         letterSpacing = 1.sp
     )
@@ -315,12 +317,29 @@ fun PremiumPrimaryButton(
     onClick: () -> Unit
 ) {
     val gradient = if (enabled) PremiumBrandGradient.Primary else PremiumBrandGradient.Disabled
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val reduceMotion = premiumReduceMotion()
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed && !reduceMotion) 0.98f else 1f,
+        animationSpec = tween(120),
+        label = "PremiumPrimaryButtonPress"
+    )
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .height(PremiumComponentSize.ButtonHeight)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
             .clip(RoundedCornerShape(PremiumRadius.Button))
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick
+            ),
         color = Color.Transparent
     ) {
         Box(
@@ -604,6 +623,55 @@ fun PremiumGoogleIcon(modifier: Modifier = Modifier.size(24.dp)) {
 }
 
 fun Modifier.navigationBarsPaddingIf(condition: Boolean) = if (condition) this.navigationBarsPadding() else this
+
+// Motion sobre (T6) : le systeme « reduire les animations » est respecte partout.
+// Lecture unique par composition : un changement du reglage systeme prend effet a la prochaine
+// recreation d'activite (compromis assume, pas d'observer pour rester simple).
+@Composable
+fun premiumReduceMotion(): Boolean {
+    val context = LocalContext.current
+    return remember(context) {
+        android.provider.Settings.Global.getFloat(
+            context.contentResolver,
+            android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f
+        ) == 0f
+    }
+}
+
+// Transition d'ecran douce : fondu + leger glissement vertical, fondu sortant rapide.
+@Composable
+fun PremiumRouteTransition(
+    route: PremiumRoute,
+    modifier: Modifier = Modifier,
+    content: @Composable (PremiumRoute) -> Unit
+) {
+    if (premiumReduceMotion()) {
+        Box(modifier) { content(route) }
+        return
+    }
+    AnimatedContent(
+        targetState = route,
+        modifier = modifier,
+        transitionSpec = {
+            (fadeIn(tween(220, easing = FastOutSlowInEasing)) +
+                slideInVertically(tween(260, easing = FastOutSlowInEasing)) { it / 24 })
+                .togetherWith(fadeOut(tween(140)))
+        },
+        // Les routes porteuses d'etat (recovery, lien Google) avancent par sous-etats :
+        // on ne rejoue pas la transition a chaque tick, seulement au changement d'ecran.
+        contentKey = { r ->
+            when (r) {
+                is PremiumRoute.AccountRecovery -> "account-recovery"
+                is PremiumRoute.GoogleAccountLink -> "google-account-link"
+                else -> r
+            }
+        },
+        label = "PremiumRouteTransition"
+    ) { animatedRoute ->
+        content(animatedRoute)
+    }
+}
 
 fun Modifier.premiumTap(onClick: () -> Unit) = this.clickable(
     interactionSource = null,

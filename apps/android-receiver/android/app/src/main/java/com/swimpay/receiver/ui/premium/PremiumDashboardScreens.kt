@@ -136,7 +136,7 @@ private fun PremiumDashboardContent(
         item { DashboardTopBar(language) }
         item { ReceivedTodayFocal(state.monthlyAmount, language) }
         item {
-            Text(language.ui("ACTIONS"), color = PremiumColors.PageMuted, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
+            Text(language.ui("ACTIONS"), color = PremiumColors.PageMuted, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -150,7 +150,7 @@ private fun PremiumDashboardContent(
             LiquidGlassCard(Modifier.fillMaxWidth().height(260.dp), radius = PremiumRadius.CardLarge) {
                 Column(Modifier.padding(24.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(language.ui("ÉVOLUTION DES PAIEMENTS"), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 13.sp, letterSpacing = 1.sp)
+                        Text(language.ui("ÉVOLUTION DES PAIEMENTS"), color = PremiumColors.Ink, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)
                     }
                     Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         ChartMetricPill(language.ui("Montant"), state.chartConfirmedAmountLabel, Modifier.weight(1f))
@@ -198,7 +198,7 @@ private fun DashboardTopBar(language: PremiumLanguageOption) {
             language.ui("Accueil"),
             color = PremiumColors.PageInk,
             fontSize = PremiumType.ScreenTitle,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f)
         )
         Box(
@@ -221,14 +221,13 @@ private fun ReceivedTodayFocal(amount: String, language: PremiumLanguageOption) 
             language.ui("REÇU AUJOURD'HUI"),
             color = PremiumColors.PageMuted,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp
         )
         Text(
             amount,
             color = PremiumColors.PageInk,
-            fontSize = 44.sp,
-            fontWeight = FontWeight.Black,
+            style = PremiumTextStyle.HeroAmount,
             modifier = Modifier.padding(top = 6.dp)
         )
     }
@@ -237,11 +236,11 @@ private fun ReceivedTodayFocal(amount: String, language: PremiumLanguageOption) 
 @Composable
 private fun DashboardSectionHeader(title: String, actionLabel: String, onAction: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(title, color = PremiumColors.PageMuted, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
+        Text(title, color = PremiumColors.PageMuted, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
         Text(
             actionLabel,
             color = PremiumColors.Blue,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             fontSize = 13.sp,
             modifier = Modifier.premiumTap(onAction).padding(vertical = 6.dp)
         )
@@ -267,7 +266,7 @@ private fun DashboardActionTile(icon: ImageVector, label: String, modifier: Modi
             label,
             color = PremiumColors.Muted,
             fontSize = 11.sp,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -284,8 +283,8 @@ private fun ChartMetricPill(label: String, value: String, modifier: Modifier = M
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(Modifier.padding(horizontal = 14.dp), verticalArrangement = Arrangement.Center) {
-            Text(label, color = PremiumColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Black)
-            Text(value, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Text(label, color = PremiumColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -299,8 +298,8 @@ private fun LocalSystemCard(state: PremiumLocalSystemUiState, modifier: Modifier
         shape = RoundedCornerShape(28.dp)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.Center) {
-            Text(state.title, color = PremiumColors.Muted, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Black)
-            Text(state.value, color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 4.dp))
+            Text(state.title, color = PremiumColors.Muted, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold)
+            Text(state.value, color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
             if (state.helper.isNotBlank()) {
                 Text(state.helper, color = PremiumColors.Muted, fontSize = 10.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold)
             }
@@ -324,14 +323,10 @@ private fun MonthlyActivityCard(
     label: String,
     amount: String,
     usesLiveApi: Boolean,
-    language: PremiumLanguageOption,
-    useDragonGoldHomeCard: Boolean = true
+    language: PremiumLanguageOption
 ) {
-    val cardTheme = when {
-        PremiumColors.IsDark -> CardVisualDefaults.HomeDashboardDark
-        useDragonGoldHomeCard -> CardVisualDefaults.HomeDashboardDragonGoldMaterial
-        else -> CardVisualDefaults.HomeDashboard
-    }
+    // T6 : hero calme dans les deux modes — les themes dragon/oni restent en preview QA.
+    val cardTheme = CardVisualDefaults.HomeDashboardPaper
 
     CardVisual(
         // TODO: migrate card container from fixed height to bank-card aspectRatio(1.586f) after visual parity validation.
@@ -366,14 +361,30 @@ internal fun MonthlyActivityCardDetails(
             Box(Modifier.size(46.dp).background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(25.dp))
             }
-            Text(language.ui("Aujourd'hui"), color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black, fontSize = PremiumType.Caption)
+            Text(language.ui("Aujourd'hui"), color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Bold, fontSize = PremiumType.Caption)
         }
         Spacer(Modifier.height(24.dp))
-        Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 15.sp, fontWeight = FontWeight.Black)
+        Text(label, color = PremiumColors.Paper.copy(alpha = 0.78f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(6.dp))
-        Text(amount, color = Color.White, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
+        Text(
+            amount,
+            color = PremiumColors.Paper,
+            style = PremiumTextStyle.AmountMedium.copy(fontSize = PremiumType.Hero)
+        )
         Spacer(Modifier.height(18.dp))
-        StatusChip(language.ui(if (usesLiveApi) "Live" else "En attente"), if (usesLiveApi) StatusTone.Success else StatusTone.Neutral)
+        // Chip on-dark : la carte hero reste encre dans les deux modes, les tons themes n'y suffisent pas.
+        Box(
+            Modifier.background(Color.White.copy(alpha = PremiumOpacity.Medium), RoundedCornerShape(PremiumRadius.Pill)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                language.ui(if (usesLiveApi) "Live" else "En attente"),
+                color = PremiumColors.Paper.copy(alpha = 0.92f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+            )
+        }
     }
 }
 
@@ -385,8 +396,7 @@ private fun MonthlyActivityCardLegacyBluePreview() {
         label = "Paiements reçus",
         amount = "12 450 RUB",
         usesLiveApi = true,
-        language = PremiumLanguageOption.FR,
-        useDragonGoldHomeCard = false
+        language = PremiumLanguageOption.FR
     )
 }
 
@@ -440,10 +450,10 @@ private fun RecentPaymentRow(amount: String, detail: String) {
                     .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), RoundedCornerShape(18.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Cyan, modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Teal, modifier = Modifier.size(24.dp))
             }
             Column(Modifier.weight(1f).padding(start = 18.dp)) {
-                Text(amount, color = PremiumColors.Success, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                Text(amount, color = PremiumColors.Success, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Text(detail, color = PremiumColors.Muted, fontSize = PremiumType.Caption, fontWeight = FontWeight.SemiBold)
             }
             Chevron()
@@ -507,7 +517,7 @@ private fun PremiumOrdersContent(
                     language.ui(state.secondaryActionLabel),
                     color = PremiumColors.Blue,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .padding(top = 10.dp, start = 8.dp)
                         .premiumTap(onOpenReviews)
@@ -527,7 +537,7 @@ private fun ActivityHeader(language: PremiumLanguageOption) {
             language.ui("Activité"),
             color = PremiumColors.PageInk,
             fontSize = PremiumType.ScreenTitle,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f)
         )
         ActivityHeaderAction(Icons.Default.Search)
@@ -574,7 +584,7 @@ private fun ActivitySummaryStrip(
                     amount ?: language.ui("—"),
                     color = PremiumColors.PageInk,
                     fontSize = 26.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 6.dp)
                 )
             }
@@ -623,7 +633,7 @@ private fun ActivityFilterPills(
                     pills[index],
                     color = if (active) PremiumColors.Surface else PremiumColors.Ink,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -651,14 +661,14 @@ private fun ActivityToTreatCard(
                 language.ui("À TRAITER"),
                 color = PremiumColors.Warning,
                 fontSize = PremiumType.Micro,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
             Text(
                 "$count ${language.ui("paiements en revue")}",
                 color = PremiumColors.Ink,
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -675,7 +685,7 @@ private fun ActivityToTreatCard(
                 language.ui("Examiner"),
                 color = PremiumColors.Ink,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -706,7 +716,7 @@ private fun ActivityPaymentRow(row: ActivityDisplayRow, language: PremiumLanguag
                     row.reference,
                     color = PremiumColors.Ink,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -730,7 +740,7 @@ private fun ActivityPaymentRow(row: ActivityDisplayRow, language: PremiumLanguag
                 "+ ${row.amount}",
                 color = PremiumColors.Success,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 modifier = Modifier.padding(start = 12.dp)
             )
@@ -790,7 +800,7 @@ fun PremiumSettingsScreen(
                 language.ui("Réglages"),
                 color = PremiumColors.PageInk,
                 fontSize = PremiumType.ScreenTitle,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
         }
         item {
@@ -868,7 +878,7 @@ fun PremiumSettingsScreen(
                     copy.signOut,
                     color = PremiumColors.Danger,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                     modifier = Modifier.padding(start = 10.dp)
                 )
@@ -923,10 +933,10 @@ private fun SettingsProfileCard(
                     .background(Brush.linearGradient(PremiumBrandGradient.Primary), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(merchantProfile.initials, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                Text(merchantProfile.initials, color = PremiumColors.OnInk, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(merchantProfile.displayName, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                Text(merchantProfile.displayName, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Text(
                     "${language.ui("Boutique")} $shopName · ${language.ui("Marchand")}",
                     color = PremiumColors.Muted,
@@ -953,8 +963,8 @@ fun PremiumConnectedSiteSummary(
     when (state) {
         is PremiumScreenState.Content -> PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
             Column(Modifier.padding(22.dp)) {
-                Text(language.ui("Intégration développeur"), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                Text(language.ui(state.value.statusTitle), color = if (state.value.usesLiveApi) PremiumColors.Success else PremiumColors.Muted, fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
+                Text(language.ui("Intégration développeur"), color = PremiumColors.Ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(language.ui(state.value.statusTitle), color = if (state.value.usesLiveApi) PremiumColors.Success else PremiumColors.Muted, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
                 state.value.rows.forEach { row ->
                     Text("${language.ui(row.first)} · ${language.ui(row.second)}", color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
                 }
@@ -969,8 +979,8 @@ fun PremiumConfigurationSummary(state: PremiumScreenState<PremiumConfigurationUi
     when (state) {
         is PremiumScreenState.Content -> PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp) {
             Column(Modifier.padding(22.dp)) {
-                Text("Configuration", color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                Text(state.value.outcomeTitle, color = if (state.value.usesLiveApi) PremiumColors.Success else PremiumColors.Muted, fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
+                Text("Configuration", color = PremiumColors.Ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(state.value.outcomeTitle, color = if (state.value.usesLiveApi) PremiumColors.Success else PremiumColors.Muted, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
                 Text(state.value.outcomeText, color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
             }
         }
@@ -1028,7 +1038,7 @@ fun PremiumReceivingMethodsStateScreen(
                     item { ReceivingMethodBreadcrumb(language.ui("Banques russes"), back) }
                 }
                 item {
-                    Text(language.ui("Moyens de réception"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text(language.ui("Moyens de réception"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Text(language.ui("Ajoutez les cartes ou numéros que vos clients utiliseront pour vous payer."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
                     Text(language.ui("Les informations complètes ne sont jamais envoyées dans les webhooks."), color = PremiumColors.PageMuted, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
                 }
@@ -1106,7 +1116,7 @@ fun PremiumReceivingMethodsStateScreen(
                                 } else {
                                     ReceivingMethodType.CARD_TRANSFER
                                 }
-                                Text(language.ui("Modifier la destination"), color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                                Text(language.ui("Modifier la destination"), color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                 Text(
                                     language.ui(if (editType == ReceivingMethodType.CARD_TRANSFER) "Entrez la nouvelle carte. L'ancienne sera remplacée après enregistrement." else "Entrez la nouvelle destination SBP. L'ancienne sera remplacée après enregistrement."),
                                     color = PremiumColors.Muted,
@@ -1277,7 +1287,7 @@ private fun PremiumReceivingMethodFamilyChooser(
                     color = PremiumColors.PageInk,
                     fontSize = 26.sp,
                     lineHeight = 30.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f).padding(end = 12.dp)
                 )
                 ReceivingAddPill(language) { onPick(ReceivingMethodFamily.WEST_AFRICA) }
@@ -1323,7 +1333,7 @@ private fun ReceivingAddPill(language: PremiumLanguageOption, onClick: () -> Uni
             language.ui("Ajouter"),
             color = PremiumColors.Surface,
             fontSize = 13.sp,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(start = 5.dp)
         )
     }
@@ -1366,7 +1376,7 @@ private fun ReceivingRegionSegmentedRow(
                     language.ui(label),
                     color = if (active) PremiumColors.Surface else PremiumColors.Muted,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -1404,7 +1414,7 @@ private fun ReceivingRegionGroupCard(
                         color = PremiumColors.Ink,
                         fontSize = 13.sp,
                         letterSpacing = 0.8.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(end = 8.dp)
                     )
                     Spacer(Modifier.weight(1f))
@@ -1412,7 +1422,7 @@ private fun ReceivingRegionGroupCard(
                         "${region.count}",
                         color = PremiumColors.SoftText,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1426,7 +1436,7 @@ private fun ReceivingRegionGroupCard(
                             language.ui(region.familyChip),
                             color = region.accent,
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             letterSpacing = 0.3.sp
                         )
                     }
@@ -1441,7 +1451,7 @@ private fun ReceivingRegionGroupCard(
                         "$label →",
                         color = region.accent,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier
                             .let { if (region.family != null) it.premiumTap(onClick) else it }
                             .padding(top = 2.dp)
@@ -1467,7 +1477,7 @@ private fun ReceivingRegionMethodRow(
             color = PremiumColors.Ink,
             fontSize = 15.sp,
             lineHeight = 18.sp,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)
@@ -1542,7 +1552,7 @@ private fun receivingRegionGroupsCatalog(): List<ReceivingRegionGroup> {
             kind = ReceivingRegionKind.WEST_AFRICA,
             region = ReceivingRegion.WEST_AFRICA,
             family = ReceivingMethodFamily.WEST_AFRICA,
-            accent = PremiumColors.Cyan,
+            accent = PremiumColors.Teal,
             title = "Afrique de l'Ouest",
             familyChip = "Mobile money"
         ),
@@ -1581,7 +1591,7 @@ fun WestAfricaWalletBadge(option: WestAfricaReceivingOption, size: Dp) {
             color = if (option.darkInk) PremiumColors.Ink else Color.White,
             fontSize = (size.value * 0.32f).sp,
             lineHeight = (size.value * 0.32f).sp,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             maxLines = 1
         )
     }
@@ -1609,7 +1619,7 @@ private fun WestAfricaWalletSelectCard(
     ) {
         WestAfricaWalletBadge(option, 44.dp)
         Column(Modifier.weight(1f)) {
-            Text(option.displayName, color = PremiumColors.Ink, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(option.displayName, color = PremiumColors.Ink, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(option.country, color = PremiumColors.Muted, fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(
@@ -1632,7 +1642,7 @@ private fun WestAfricaWalletGrid(
     onSelect: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(language.ui("Choisissez votre wallet"), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black)
+        Text(language.ui("Choisissez votre wallet"), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold)
         wallets.chunked(2).forEach { rowWallets ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 rowWallets.forEach { wallet ->
@@ -1658,8 +1668,8 @@ private fun ReceivingMethodBreadcrumb(label: String, onBack: () -> Unit) {
         Modifier.fillMaxWidth().premiumTap(onBack).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = PremiumColors.Cyan, modifier = Modifier.size(22.dp))
-        Text(label, color = PremiumColors.Cyan, fontSize = 13.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 2.dp))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = PremiumColors.Teal, modifier = Modifier.size(22.dp))
+        Text(label, color = PremiumColors.Teal, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 2.dp))
     }
 }
 
@@ -1695,7 +1705,7 @@ fun PremiumWestAfricaReceivingScreen(
                     item { ReceivingMethodBreadcrumb(language.ui("Mobile money"), back) }
                 }
                 item {
-                    Text(language.ui("Mobile money (Afrique de l'Ouest)"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text(language.ui("Mobile money (Afrique de l'Ouest)"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Text(
                         language.ui("Ajoutez le wallet sur lequel vos clients vous paient en franc CFA (XOF)."),
                         color = PremiumColors.PageMuted,
@@ -1712,13 +1722,13 @@ fun PremiumWestAfricaReceivingScreen(
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                                 Box(
                                     Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(20.dp))
-                                        .border(1.dp, PremiumColors.Cyan.copy(alpha = 0.18f), RoundedCornerShape(20.dp)),
+                                        .border(1.dp, PremiumColors.Teal.copy(alpha = 0.18f), RoundedCornerShape(20.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Cyan, modifier = Modifier.size(27.dp))
+                                    Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Teal, modifier = Modifier.size(27.dp))
                                 }
                                 Column(Modifier.weight(1f)) {
-                                    Text(language.ui("Ajouter un wallet"), color = PremiumColors.Ink, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Black)
+                                    Text(language.ui("Ajouter un wallet"), color = PremiumColors.Ink, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
                                     Text(
                                         language.ui("Choisissez votre wallet, puis saisissez le numéro qui reçoit l'argent."),
                                         color = PremiumColors.Muted,
@@ -1820,13 +1830,13 @@ private fun ReceivingMethodActionButton(
             contentAlignment = Alignment.Center
         ) {
             if (sbpIcon) {
-                Text("SBP", color = PremiumColors.Cyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                Text("SBP", color = PremiumColors.Teal, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             } else if (icon != null) {
-                Icon(icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(26.dp))
+                Icon(icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(26.dp))
             }
         }
         Column(Modifier.weight(1f).padding(start = 16.dp)) {
-            Text(label, color = PremiumColors.Ink, fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+            Text(label, color = PremiumColors.Ink, fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
             Text(helper, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 3.dp))
         }
         Icon(
@@ -1858,7 +1868,7 @@ private fun ReceivingMethodDraftPanel(
         "Choisissez la banque, puis saisissez le numéro de téléphone marchand."
     }
     val isValid = identifierInput.isNotBlank()
-    val accent = if (isValid) PremiumColors.Success else PremiumColors.Cyan
+    val accent = if (isValid) PremiumColors.Success else PremiumColors.Teal
     PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp, color = PremiumColors.Surface) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -1872,11 +1882,11 @@ private fun ReceivingMethodDraftPanel(
                     if (isCardDraft) {
                         Icon(Icons.Default.CreditCard, null, tint = accent, modifier = Modifier.size(27.dp))
                     } else {
-                        Text("SBP", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                        Text("SBP", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(language.ui(title), color = PremiumColors.Ink, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Black)
+                    Text(language.ui(title), color = PremiumColors.Ink, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
                     Text(language.ui(helper), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
                 }
             }
@@ -1905,13 +1915,13 @@ private fun ReceivingMethodDraftPanel(
                         color = PremiumColors.Muted,
                         fontSize = 11.sp,
                         lineHeight = 14.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         letterSpacing = 0.8.sp
                     )
                     if (isValid) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Success, modifier = Modifier.size(15.dp))
-                            Text(language.ui("Prêt"), color = PremiumColors.Success, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                            Text(language.ui("Prêt"), color = PremiumColors.Success, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -1982,7 +1992,7 @@ fun CompactReceivingBankSelector(
             color = PremiumColors.Muted,
             fontSize = 12.sp,
             lineHeight = 16.sp,
-            fontWeight = FontWeight.Black
+            fontWeight = FontWeight.Bold
         )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2011,7 +2021,7 @@ private fun CompactReceivingBankChip(
             .height(52.dp)
             .clip(shape)
             .background(if (selected) PremiumColors.IconTile else PremiumColors.SurfaceAlt.copy(alpha = 0.58f))
-            .border(1.dp, if (selected) PremiumColors.Cyan.copy(alpha = 0.62f) else PremiumColors.Line.copy(alpha = 0.72f), shape)
+            .border(1.dp, if (selected) PremiumColors.Teal.copy(alpha = 0.62f) else PremiumColors.Line.copy(alpha = 0.72f), shape)
             .premiumTap(onClick)
             .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2022,7 +2032,7 @@ private fun CompactReceivingBankChip(
             bank.displayName,
             color = PremiumColors.Ink,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.width(76.dp)
@@ -2030,8 +2040,8 @@ private fun CompactReceivingBankChip(
         Box(
             Modifier
                 .size(18.dp)
-                .background(if (selected) PremiumColors.Cyan else Color.Transparent, CircleShape)
-                .border(1.5.dp, if (selected) PremiumColors.Cyan else PremiumColors.Line, CircleShape),
+                .background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape)
+                .border(1.5.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             if (selected) Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(13.dp))
@@ -2051,7 +2061,7 @@ private fun ReceivingMethodFeedbackBanner(message: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Success, modifier = Modifier.size(20.dp))
-        Text(message, color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 10.dp))
+        Text(message, color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 10.dp))
     }
 }
 
@@ -2097,12 +2107,12 @@ private fun MerchantReceivingVerificationCard(
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                 Column {
-                    Text("SwimPay", color = Color.White, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
+                    Text("SwimPay", color = Color.White, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold)
                     Text(
                         language.ui(if (method != null) "Carte marchand" else "Carte à ajouter"),
                         color = Color.White.copy(alpha = 0.68f),
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 if (bankProfileId != null) {
@@ -2119,11 +2129,11 @@ private fun MerchantReceivingVerificationCard(
                     color = Color.White,
                     fontSize = 19.sp,
                     lineHeight = 23.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Bold
                 )
                 Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(language.ui(method?.status ?: "À configurer"), color = Color.White.copy(alpha = 0.68f), fontSize = 12.sp, fontWeight = FontWeight.Black)
-                    Text(language.ui(method?.title ?: "Ajouter une carte"), color = Color.White.copy(alpha = 0.88f), fontSize = 14.sp, fontWeight = FontWeight.Black)
+                    Text(language.ui(method?.status ?: "À configurer"), color = Color.White.copy(alpha = 0.68f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(language.ui(method?.title ?: "Ajouter une carte"), color = Color.White.copy(alpha = 0.88f), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -2150,8 +2160,8 @@ private fun MerchantSbpReceivingCard(
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                 Column {
-                    Text("SwimPay", color = Color.White, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black)
-                    Text("SBP", color = Color.White.copy(alpha = 0.72f), fontSize = 13.sp, fontWeight = FontWeight.Black)
+                    Text("SwimPay", color = Color.White, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold)
+                    Text("SBP", color = Color.White.copy(alpha = 0.72f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
                 Image(
                     painter = painterResource(R.drawable.ic_payment_sbp_mark),
@@ -2165,7 +2175,7 @@ private fun MerchantSbpReceivingCard(
                 )
             }
             Column {
-                Text(destination, color = Color.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Black)
+                Text(destination, color = Color.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold)
                 Text(helper, color = Color.White.copy(alpha = 0.62f), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
                 Row(
                     Modifier.fillMaxWidth().padding(top = 10.dp),
@@ -2180,9 +2190,9 @@ private fun MerchantSbpReceivingCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.PhoneAndroid, null, tint = Color.White, modifier = Modifier.size(15.dp))
-                        Text(status, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 6.dp))
+                        Text(status, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp))
                     }
-                    Text(bankName, color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp, fontWeight = FontWeight.Black)
+                    Text(bankName, color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -2214,7 +2224,7 @@ fun PremiumBankLogo(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            Text(displayName.take(1), color = PremiumColors.Blue, fontWeight = FontWeight.Black)
+            Text(displayName.take(1), color = PremiumColors.Blue, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -2240,7 +2250,7 @@ private fun PremiumReceivingMethodRow(
                 }
                 Column(Modifier.weight(1f).padding(start = if (bankProfileId != null) 14.dp else 0.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(method.title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp, lineHeight = 22.sp, modifier = Modifier.weight(1f))
+                        Text(method.title, color = PremiumColors.Ink, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 22.sp, modifier = Modifier.weight(1f))
                         StatusChip(language.ui(method.status), if (method.enabled) StatusTone.Success else StatusTone.Neutral)
                     }
                     Text(method.subtitle, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 6.dp))
@@ -2326,7 +2336,7 @@ private fun ReceivingMethodDeleteDialog(
                             color = PremiumColors.Ink,
                             fontSize = 18.sp,
                             lineHeight = 22.sp,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             language.ui("Action définitive"),
@@ -2388,7 +2398,7 @@ private fun ReceivingMethodConfirmPanel(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(title, color = PremiumColors.Ink, fontSize = 15.sp, lineHeight = 19.sp, fontWeight = FontWeight.Black)
+        Text(title, color = PremiumColors.Ink, fontSize = 15.sp, lineHeight = 19.sp, fontWeight = FontWeight.Bold)
         Text(body, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             ReceivingMethodMutationButton(cancelLabel, Icons.AutoMirrored.Filled.KeyboardArrowLeft, Modifier.weight(1f), onCancel)
@@ -2421,7 +2431,7 @@ private fun ReceivingMethodMutationButton(
         Text(
             label,
             color = foreground,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             fontSize = 12.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -2444,7 +2454,7 @@ fun PremiumBanksStateScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text(language.ui("Recherche des banques compatibles"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text(language.ui("Recherche des banques compatibles"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Text(language.ui("SwimPay vérifie uniquement les banques compatibles sur ce téléphone."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
             }
             items(state.value.items) { bank ->
@@ -2453,13 +2463,13 @@ fun PremiumBanksStateScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName)
                             Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                                Text(bank.displayName, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                                Text(bank.displayName, color = PremiumColors.Ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                 Text(language.ui(bank.helper), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
                             }
                             StatusChip(language.ui(bank.status), if (bank.enabled) StatusTone.Success else if (bank.canActivate) StatusTone.Info else StatusTone.Neutral)
                         }
                         if (bank.canActivate && !bank.enabled) {
-                            Text(language.ui("Activer cette banque"), color = PremiumColors.Blue, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                            Text(language.ui("Activer cette banque"), color = PremiumColors.Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -2482,7 +2492,7 @@ fun PremiumReceiverHealthStateScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text(language.ui("Téléphone Receiver"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text(language.ui("Téléphone Receiver"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Text(language.ui("Ce téléphone permet à SwimPay de détecter les paiements reçus."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
             }
             item {
@@ -2494,13 +2504,13 @@ fun PremiumReceiverHealthStateScreen(
                                 .background(PremiumColors.IconTile, RoundedCornerShape(18.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.PhoneAndroid, null, tint = PremiumColors.Cyan, modifier = Modifier.size(26.dp))
+                            Icon(Icons.Default.PhoneAndroid, null, tint = PremiumColors.Teal, modifier = Modifier.size(26.dp))
                         }
                         Column(Modifier.weight(1f)) {
-                            Text(language.ui(state.value.statusTitle), color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                            Text(language.ui(state.value.statusTitle), color = PremiumColors.Ink, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                             Text(language.ui(state.value.statusText), color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 6.dp))
                             if (state.value.rows.any { it.first == "Accès notifications" && it.second == "Action requise" }) {
-                                Text(language.ui("RÉACTIVER L'ACCÈS"), color = PremiumColors.Blue, fontWeight = FontWeight.Black, fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp).clickable { onOpenNotificationSettings() })
+                                Text(language.ui("RÉACTIVER L'ACCÈS"), color = PremiumColors.Blue, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp).clickable { onOpenNotificationSettings() })
                             }
                         }
                     }
@@ -2530,13 +2540,13 @@ fun PremiumConfirmationModeScreen(language: PremiumLanguageOption = PremiumLangu
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(language.ui("Mode de confirmation"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Mode de confirmation"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(language.ui("Choisissez le niveau d'aide pour vérifier vos paiements."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         item {
             PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumColors.PanelTint) {
                 Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(language.ui("Mode manuel V1"), color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text(language.ui("Mode manuel V1"), color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text(language.ui("Chaque paiement doit être confirmé par vous."), color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     StatusChip(language.ui("Confirmation manuelle"), StatusTone.Success)
                 }
@@ -2545,7 +2555,7 @@ fun PremiumConfirmationModeScreen(language: PremiumLanguageOption = PremiumLangu
         item {
             PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
                 Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(language.ui("Assistance de revue"), color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text(language.ui("Assistance de revue"), color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text(language.ui("SwimPay prépare les indices, vous décidez."), color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     StatusChip(language.ui("Lecture seule"), StatusTone.Neutral)
                 }
@@ -2590,7 +2600,7 @@ fun PremiumSecurityScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(language.ui("Sécurité"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Sécurité"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(language.ui("Liez Google pour retrouver le compte, puis protégez l'accès à l'app."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         item { GoogleAccountLinkRow(googleAccountLinked, language, onGoogleAccountLink) }
@@ -2601,7 +2611,7 @@ fun PremiumSecurityScreen(
                         Icon(Icons.Default.Security, null, tint = PremiumColors.Blue)
                     }
                     Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                        Text(language.ui("Verrouillage de l'app"), color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+                        Text(language.ui("Verrouillage de l'app"), color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
                         Text(language.ui("La sécurité du téléphone protège uniquement l'interface. Le Receiver continue en arrière-plan."), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
                     }
                     Switch(checked = appLock.enabled, onCheckedChange = onToggleAppLock)
@@ -2628,7 +2638,7 @@ private fun GoogleAccountLinkRow(linked: Boolean, language: PremiumLanguageOptio
                 PremiumGoogleIcon()
             }
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                Text(if (linked) language.ui("Compte Google lié") else language.ui("Lier le compte Google"), color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+                Text(if (linked) language.ui("Compte Google lié") else language.ui("Lier le compte Google"), color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
                 Text(language.ui("Sauvegarde ce profil marchand pour une future reconnexion avec Google."), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
             }
             StatusChip(if (linked) language.ui("Lié") else language.ui("Reconnexion"), if (linked) StatusTone.Success else StatusTone.Info)
@@ -2656,7 +2666,7 @@ fun PremiumHelpCenterScreen(language: PremiumLanguageOption = PremiumLanguageOpt
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(language.ui("Centre d'aide"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Centre d'aide"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(language.ui("Aide courte, sûre et compatible avec la vérité produit V1."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
             OutlinedTextField(
                 value = query,
@@ -2669,7 +2679,7 @@ fun PremiumHelpCenterScreen(language: PremiumLanguageOption = PremiumLanguageOpt
         items(filtered) { topic ->
             PremiumCard(Modifier.fillMaxWidth(), radius = 24.dp) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(topic.first, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                    Text(topic.first, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                     Text(topic.second, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -2697,7 +2707,7 @@ fun PremiumContactSupportScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(language.ui("Contacter le support"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(language.ui("Contacter le support"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(language.ui("Envoyez une demande sans notification brute, secret, numéro complet, PIN, CVV ou code SMS."), color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         item {
@@ -2738,7 +2748,7 @@ fun PremiumLanguageScreen(selected: PremiumLanguageOption, onSelect: (PremiumLan
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(copy.language, color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(copy.language, color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(copy.languageBody, color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         items(PremiumLanguageOption.entries) { language ->
@@ -2762,7 +2772,7 @@ fun PremiumAppearanceScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(copy.appearance, color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(copy.appearance, color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(copy.appearanceBody, color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 20.sp)
         }
         item {
@@ -2779,7 +2789,7 @@ private fun PremiumThemeSwitcher(
 ) {
     PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(copy.theme, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            Text(copy.theme, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 PremiumThemeMode.entries.forEach { mode ->
                     ThemeModeChoice(mode = mode, active = mode == selected, copy = copy) { onSelect(mode) }
@@ -2816,7 +2826,7 @@ private fun ThemeModeChoice(
         ) {
             Icon(themeModeIcon(mode), null, tint = if (active) Color.White else PremiumColors.Teal, modifier = Modifier.size(20.dp))
         }
-        Text(copy.themeModeLabel(mode), color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = 14.dp))
+        Text(copy.themeModeLabel(mode), color = PremiumColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 14.dp))
         StatusChip(if (active) copy.active else copy.choose, if (active) StatusTone.Success else StatusTone.Neutral)
     }
 }
@@ -2837,7 +2847,7 @@ fun PremiumUnlockRequiredScreen(
         PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp) {
             Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Icon(Icons.Default.Security, null, tint = PremiumColors.Blue, modifier = Modifier.size(36.dp))
-                Text(language.ui("SwimPay verrouille"), color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                Text(language.ui("SwimPay verrouille"), color = PremiumColors.Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Text(
                     when (language) {
                         PremiumLanguageOption.EN -> "Timeout: ${appLock.timeout.localizedLabel(language)}. The lock only protects the app interface."
@@ -2888,7 +2898,7 @@ private fun SettingsChoiceRow(
                 Icon(icon, null, tint = PremiumColors.Blue)
             }
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                Text(title, color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
+                Text(title, color = PremiumColors.Ink, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
                 Text(subtitle, color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
             }
             StatusChip(language.ui(if (selected) "Actif" else "Choisir"), if (selected) StatusTone.Success else StatusTone.Neutral)
@@ -2923,7 +2933,7 @@ fun PremiumConnectedSiteStateScreen(
 
                 PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(language.ui("Connexion"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Text(language.ui("Connexion"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = webhookUrl,
                             onValueChange = { webhookUrl = it },
@@ -2954,7 +2964,7 @@ fun PremiumConnectedSiteStateScreen(
 
                 PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(language.ui("Identifiants"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Text(language.ui("Identifiants"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         value.developerRows.forEach { row ->
                             DeveloperIntegrationValueRow(row.first, row.second, language = language)
                         }
@@ -2963,7 +2973,7 @@ fun PremiumConnectedSiteStateScreen(
 
                 PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(language.ui("Partage développeur"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Text(language.ui("Partage développeur"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         Text(
                             language.ui("Copie en un geste toutes les valeurs révélées (clé API, secret webhook, URL) à transmettre à votre développeur. Sécurité de l'appareil exigée."),
                             color = PremiumColors.Muted,
@@ -2986,7 +2996,7 @@ fun PremiumConnectedSiteStateScreen(
 
                 PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(language.ui("Maintenance"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Text(language.ui("Maintenance"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                             PremiumBlueButton(
                                 language.ui("Créer clé API"),
@@ -3013,7 +3023,7 @@ fun PremiumConnectedSiteStateScreen(
                 PremiumCard(Modifier.fillMaxWidth(), radius = 26.dp, color = PremiumColors.PanelTint) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(language.ui("Export staging"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                            Text(language.ui("Export staging"), color = PremiumColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                             Box(
                                 Modifier
                                     .size(38.dp)
@@ -3073,7 +3083,7 @@ private fun DeveloperIntegrationValueRow(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Text(language.ui(label), color = PremiumColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        Text(language.ui(label), color = PremiumColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         Text(language.ui(value.ifBlank { "À configurer" }), color = PremiumColors.Ink, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -3118,7 +3128,7 @@ private fun PremiumStandaloneStateScreen(
                         color = PremiumColors.PageInk,
                         fontSize = 23.sp,
                         lineHeight = 28.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f).padding(start = 12.dp)
                     )
                 }
@@ -3184,7 +3194,7 @@ private fun SettingsPill(text: String, tone: SettingsPillTone, icon: ImageVector
                 text,
                 color = foreground,
                 fontSize = PremiumType.Micro,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.4.sp
             )
         }
@@ -3218,7 +3228,7 @@ private fun SettingsGroup(
             displayLabel.uppercase(),
             color = PremiumColors.PageMuted,
             fontSize = PremiumType.Micro,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
             modifier = Modifier.padding(start = 8.dp, bottom = 10.dp)
         )
@@ -3244,13 +3254,13 @@ private fun SettingsGroup(
                             Modifier.size(44.dp).background(PremiumColors.IconTile, RoundedCornerShape(14.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(row.icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(22.dp))
+                            Icon(row.icon, null, tint = PremiumColors.Teal, modifier = Modifier.size(22.dp))
                         }
                         Text(
                             row.label,
                             modifier = Modifier.weight(1f).padding(start = 16.dp, end = 12.dp),
                             color = PremiumColors.Ink,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
