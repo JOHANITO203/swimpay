@@ -117,10 +117,7 @@ object ReceivingCatalog {
      * nothing.
      */
     fun packagesFor(selectedIds: Set<String>): Set<String> =
-        BankTargetLock.supportedTargets
-            .filter { it.bankProfileId in selectedIds }
-            .flatMap { listOf(it.packageName) + it.alternatePackageNames }
-            .toSet()
+        BankTargetLock.enabledPackages(selectedIds)
 
     /**
      * The notification-allowlist derivation T2 relies on: from a set of chosen

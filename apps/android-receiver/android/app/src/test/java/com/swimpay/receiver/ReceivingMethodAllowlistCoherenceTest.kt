@@ -81,8 +81,60 @@ class ReceivingMethodAllowlistCoherenceTest {
             enabledBankProfileIds = state.derivedEnabledBankProfileIds,
             merchantId = "m_test"
         )
-        // MTN's primary receiver package is allowed by the runtime capture path.
+        // MTN's primary AND alternate (real-device com.consumerug) receiver packages are
+        // both allowed by the runtime capture path — an alternate-package notification
+        // must NOT be silently dropped (= missed payment).
         assertTrue(config.enabledBankPackages.contains("mtnft.momo.consumer"))
+        assertTrue(config.enabledBankPackages.contains("com.consumerug"))
+    }
+
+    @Test
+    fun runtimeGateAcceptsAnAlternatePackageNotificationOnceTheBankIsEnabled() {
+        // The bug: an enabled bank's ALTERNATE package notification was rejected by the
+        // runtime gate because enabledBankPackages dropped alternates. With MTN MoMo CI
+        // enabled, a notification from com.consumerug must be ACCEPTED end-to-end.
+        val config = ReceiverRuntimeConfig(
+            enabledBankProfileIds = setOf("mtn_momo_ci"),
+            merchantId = "m_test"
+        )
+        assertTrue(
+            ReceiverBoundaries.isRuntimeNotificationAllowed(
+                packageName = "com.consumerug",
+                appPackageName = "com.swimpay.receiver",
+                debugEnabled = false,
+                enabledBankPackages = config.enabledBankPackages
+            )
+        )
+        // The primary remains accepted too.
+        assertTrue(
+            ReceiverBoundaries.isRuntimeNotificationAllowed(
+                packageName = "mtnft.momo.consumer",
+                appPackageName = "com.swimpay.receiver",
+                debugEnabled = false,
+                enabledBankPackages = config.enabledBankPackages
+            )
+        )
+    }
+
+    @Test
+    fun enabledBankPackagesIsTheSameProjectionAsTheCanonicalCatalogIncludingAlternates() {
+        // Parity guard: the runtime config's package projection must equal the canonical
+        // bank-profile-id → packages projection (ReceivingCatalog.packagesFor) for a set
+        // that includes a bank WITH alternates (MTN), so the two can never diverge again.
+        val ids = setOf("sber_ru", "mtn_momo_ci", "wise_int")
+        val config = ReceiverRuntimeConfig(
+            enabledBankProfileIds = ids,
+            merchantId = "m_test"
+        )
+        assertEquals(
+            com.swimpay.receiver.ui.premium.ReceivingCatalog.packagesFor(ids),
+            config.enabledBankPackages
+        )
+        // And it equals BankTargetLock's canonical profile-id projection.
+        assertEquals(
+            BankTargetLock.enabledPackages(ids),
+            config.enabledBankPackages
+        )
     }
 
     // ── 2. Package-less WA wallet → route created, EMPTY allowlist, NOT monitored ──

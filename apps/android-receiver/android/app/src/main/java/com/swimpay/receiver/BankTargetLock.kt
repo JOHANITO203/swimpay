@@ -135,11 +135,27 @@ object BankTargetLock {
     }
 
     fun enabledPackages(states: List<BankTargetState>): Set<String> {
-        // Include alternates so a notification from an alternate package (e.g. the
-        // real MTN MoMo CI com.consumerug) is allowed once the bank is enabled.
-        return states
-            .filter { BankTargetInternalState.TARGET_ENABLED in it.internalStates }
-            .flatMap { listOf(it.target.packageName) + it.target.alternatePackageNames }
+        return enabledPackages(
+            states
+                .filter { BankTargetInternalState.TARGET_ENABLED in it.internalStates }
+                .map { it.bankProfileId }
+                .toSet()
+        )
+    }
+
+    /**
+     * Canonical bank-profile-id → notification-package projection. The single source of
+     * truth for "which packages does the runtime listen for once these banks are
+     * enabled". Includes a target's primary AND alternate packages (e.g. MTN MoMo CI
+     * ships as com.consumerug on real devices) so an alternate-package notification is
+     * allowed once the bank is enabled — never silently dropped. Both
+     * [ReceiverRuntimeConfig.enabledBankPackages] and `ReceivingCatalog.packagesFor`
+     * delegate here so the projections can never diverge.
+     */
+    fun enabledPackages(enabledBankProfileIds: Set<String>): Set<String> {
+        return supportedTargets
+            .filter { it.bankProfileId in enabledBankProfileIds }
+            .flatMap { listOf(it.packageName) + it.alternatePackageNames }
             .toSet()
     }
 

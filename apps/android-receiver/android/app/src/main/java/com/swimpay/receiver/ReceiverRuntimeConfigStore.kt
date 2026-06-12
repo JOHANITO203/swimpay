@@ -10,10 +10,11 @@ data class ReceiverRuntimeConfig(
     val expectedPaymentProfilePresent: Boolean = false,
     val receivingRouteLocked: Boolean = false
 ) {
-    val enabledBankPackages: Set<String> = BankTargetLock.supportedTargets
-        .filter { it.bankProfileId in enabledBankProfileIds }
-        .map { it.packageName }
-        .toSet()
+    // Delegates to the canonical projection so the runtime allowlist matches
+    // BankTargetLock/ReceivingCatalog semantics — including a bank's ALTERNATE packages
+    // (e.g. MTN MoMo CI com.consumerug), so an alternate-package notification is not
+    // wrongly rejected (= missed payment).
+    val enabledBankPackages: Set<String> = BankTargetLock.enabledPackages(enabledBankProfileIds)
 
     val activeIntentWindow: ActiveIntentWindow = ActiveIntentWindow(
         paymentIntentActive = paymentIntentActive,
