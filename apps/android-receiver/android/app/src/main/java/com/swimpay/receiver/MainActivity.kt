@@ -32,7 +32,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var appUnlocker: AndroidSystemAppUnlocker
     private lateinit var secretRevealGate: SecretRevealBiometricGate
     private var notificationAccessEnabled by mutableStateOf(false)
-    private var themeMode by mutableStateOf(PremiumThemeMode.SYSTEM)
+    private var themeMode by mutableStateOf(PremiumThemeMode.DARK)
     private var uiLocked by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1,6 +1,5 @@
 ﻿package com.swimpay.receiver.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -49,7 +48,10 @@ private fun premiumDarkColorScheme() = darkColorScheme(
 
 @Composable
 fun SwimPayMerchantTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    // Noir vivant : sombre par défaut. Le mode réel est résolu par l'appelant
+    // (MainActivity) via PremiumThemeMode.resolve(); ce défaut ne sert qu'aux
+    // appelants qui n'imposent pas de mode (previews/tests).
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     PremiumColors.useDarkTheme(darkTheme)

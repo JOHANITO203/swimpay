@@ -53,26 +53,31 @@ object PremiumColors {
         iconTile = Color(0xF4FFFFFF),
         neutralChip = Color(0xEDEFEAE0)
     )
+    // Langage « noir vivant » (port prototype, Compose P6) : nuit profonde + ivoire chaud,
+    // un seul accent de marque violet (NoirColors.multi) pour les écrans secondaires
+    // (pas de Caméléon par-wallet ici). Les valeurs sont alignées sur NoirColors.
+    //   blue/navy/electricBlue/cyan/teal = accent violet de marque
+    //   mint = fond accent doux (violet très transparent)
     private val dark = PremiumColorPalette(
-        ink = Color(0xFFF2EDE2),
-        navy = Color(0xFFFBF8F2),
-        blue = Color(0xFFF2EDE2),
-        electricBlue = Color(0xFFBFB6A4),
-        cyan = Color(0xFFE3DAC6),
-        teal = Color(0xFF3DAE85),
-        mint = Color(0xFF12281F),
-        background = Color(0xFF14110C),
-        surface = Color(0xE61E1A13),
-        surfaceAlt = Color(0xD9272117),
-        line = Color(0x733A3326),
-        muted = Color(0xFFD8D0C0),
-        softText = Color(0xFFA39A87),
-        success = Color(0xFF58BD8F),
-        warning = Color(0xFFD9A84E),
-        danger = Color(0xFFFF6F4A),
-        panelTint = Color(0xD91B1711),
-        iconTile = Color(0xCC2A241B),
-        neutralChip = Color(0xB82E2719)
+        ink = Color(0xFFF5F0EB),            // NoirColors.ink1
+        navy = Color(0xFF8264D2),           // accent marque (NoirColors.multi)
+        blue = Color(0xFF8264D2),           // action primaire = accent marque
+        electricBlue = Color(0xFF8A857E),   // encre secondaire (NoirColors.ink2)
+        cyan = Color(0xFF8264D2),           // accent clair sur surface sombre = accent marque
+        teal = Color(0xFF8264D2),           // accent actif = accent marque
+        mint = Color(0x1F8264D2),           // fond accent doux (violet ~0.12 alpha)
+        background = Color(0xFF08080C),     // NoirColors.bg
+        surface = Color(0xFF141418),        // NoirColors.surface
+        surfaceAlt = Color(0xFF1E1E24),     // NoirColors.activeSurface
+        line = Color(0x0FF5F0EB),           // ink1 ~0.06 alpha (hairline)
+        muted = Color(0xFF8A857E),          // NoirColors.ink2
+        softText = Color(0xFF5A5650),       // NoirColors.ink3
+        success = Color(0xFF2ECC71),        // NoirColors.success
+        warning = Color(0xFFE67E22),        // NoirColors.warn
+        danger = Color(0xFFE74C3C),         // NoirColors.danger
+        panelTint = Color(0xFF141418),      // ≈ surface
+        iconTile = Color(0xFF1E1E24),       // ≈ activeSurface
+        neutralChip = Color(0xFF1E1E24)     // ≈ surfaceAlt
     )
 
     private var palette: PremiumColorPalette = light
@@ -106,7 +111,8 @@ object PremiumColors {
     val IconTile: Color get() = palette.iconTile
     val NeutralChip: Color get() = palette.neutralChip
     // Papier inversé : texte/éléments posés sur une surface encre (boutons primaires, cartes sombres).
-    val OnInk: Color get() = if (darkThemeEnabled) Color(0xFF17140F) else Color(0xFFF6F3EC)
+    // Noir vivant : texte quasi-noir sur les boutons violet/clairs du mode sombre.
+    val OnInk: Color get() = if (darkThemeEnabled) Color(0xFF0E0820) else Color(0xFFF6F3EC)
     // Papier fixe (indépendant du mode) : contenu posé sur les cartes encre qui restent sombres partout.
     val Paper: Color = Color(0xFFF6F3EC)
 }

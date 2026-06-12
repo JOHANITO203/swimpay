@@ -932,7 +932,7 @@ fun PremiumStartupSplashScreen(modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxSize()
-            .background(Color(0xFF14110C))
+            .background(NoirColors.bg)
             .statusBarsPadding()
             .navigationBarsPadding(),
         contentAlignment = Alignment.Center
@@ -941,7 +941,7 @@ fun PremiumStartupSplashScreen(modifier: Modifier = Modifier) {
             Modifier
                 .size(144.dp)
                 .clip(RoundedCornerShape(38.dp))
-                .background(Color(0xFF14110C)),
+                .background(NoirColors.bg),
             contentAlignment = Alignment.Center
         ) {
             Image(

@@ -74,7 +74,8 @@ data class PremiumAppLockSettings(
 
 data class PremiumMerchantSettings(
     val language: PremiumLanguageOption = PremiumLanguageOption.DEFAULT,
-    val themeMode: PremiumThemeMode = PremiumThemeMode.SYSTEM,
+    // Noir vivant : l'app démarre en sombre par défaut (les options Clair/Système restent disponibles).
+    val themeMode: PremiumThemeMode = PremiumThemeMode.DARK,
     val appLock: PremiumAppLockSettings = PremiumAppLockSettings(),
     val googleAccountLinked: Boolean = false
 )
@@ -138,7 +139,7 @@ class SharedPreferencesPremiumMerchantSettingsStore(
     override fun load(): PremiumMerchantSettings {
         return PremiumMerchantSettings(
             language = PremiumLanguageOption.fromTag(preferences.getString(KEY_LANGUAGE, PremiumLanguageOption.DEFAULT.tag)),
-            themeMode = PremiumThemeMode.fromWire(preferences.getString(KEY_THEME, PremiumThemeMode.SYSTEM.wireValue)),
+            themeMode = PremiumThemeMode.fromWire(preferences.getString(KEY_THEME, PremiumThemeMode.DARK.wireValue)),
             googleAccountLinked = preferences.getBoolean(KEY_GOOGLE_ACCOUNT_LINKED, false),
             appLock = PremiumAppLockSettings(
                 enabled = preferences.getBoolean(KEY_APP_LOCK_ENABLED, false),

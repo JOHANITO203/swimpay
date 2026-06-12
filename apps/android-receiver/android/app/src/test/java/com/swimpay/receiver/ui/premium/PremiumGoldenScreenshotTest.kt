@@ -105,7 +105,9 @@ class PremiumGoldenScreenshotTest {
     }
 
     private fun capture(name: String, content: @Composable () -> Unit) {
-        PremiumColors.useDarkTheme(false)
+        // Noir vivant (P6) : l'app est sombre par défaut ; les goldens capturent le
+        // shell + écrans secondaires reskinés dans la palette sombre de marque.
+        PremiumColors.useDarkTheme(true)
         composeRule.setContent {
             Box(
                 Modifier
