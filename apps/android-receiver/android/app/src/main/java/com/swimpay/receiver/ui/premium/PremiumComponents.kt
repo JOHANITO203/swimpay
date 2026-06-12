@@ -73,17 +73,17 @@ private fun premiumPolishedSurfaceBrush(color: Color): Brush {
         if (PremiumColors.IsDark) {
             Brush.linearGradient(
                 listOf(
-                    Color(0xFF111114),
-                    Color(0xFF060607),
-                    Color(0xFF181113)
+                    Color(0xFF252017),
+                    Color(0xFF1B1711),
+                    Color(0xFF211B12)
                 )
             )
         } else {
             Brush.linearGradient(
                 listOf(
                     Color(0xFFFFFFFF),
-                    Color(0xFFFBFCFD),
-                    Color(0xFFF0F2F4)
+                    Color(0xFFFDFCF9),
+                    Color(0xFFF8F5EE)
                 )
             )
         }
@@ -95,7 +95,7 @@ private fun premiumPolishedSurfaceBrush(color: Color): Brush {
 private fun premiumPolishedSurfaceBorder(color: Color): Color {
     val usesThemeSurface = color == PremiumColors.Surface || color == PremiumColors.SurfaceAlt || color == PremiumColors.PanelTint
     return if (usesThemeSurface) {
-        if (PremiumColors.IsDark) Color.White.copy(alpha = 0.10f) else Color(0xFFD5DADF)
+        if (PremiumColors.IsDark) Color.White.copy(alpha = PremiumOpacity.Hairline) else Color(0xFFE7E1D5)
     } else {
         PremiumColors.Line
     }
@@ -216,12 +216,11 @@ fun StatusChip(
         modifier = modifier
     ) {
         Text(
-            text = text.uppercase(),
+            text = text,
             color = tone.foreground,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            letterSpacing = 1.sp
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
         )
     }
 }
@@ -242,8 +241,8 @@ fun SwimPayLauncherBadge(
         modifier
             .size(size)
             .clip(launcherShape)
-            .background(Color(0xFF060708), launcherShape)
-            .border(1.dp, Color.White.copy(alpha = 0.10f), launcherShape),
+            .background(Color(0xFF1D1A14), launcherShape)
+            .border(1.dp, Color.White.copy(alpha = PremiumOpacity.Hairline), launcherShape),
         contentAlignment = Alignment.Center
     ) {
         Image(
@@ -330,10 +329,9 @@ fun PremiumPrimaryButton(
         ) {
             Text(
                 text = text,
-                color = Color.White,
-                fontWeight = FontWeight.Black,
-                fontSize = 16.sp,
-                letterSpacing = 0.5.sp
+                color = PremiumColors.OnInk,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
             )
         }
     }
@@ -729,7 +727,7 @@ fun PremiumPaperBackground(
 @Composable
 private fun BackgroundMaterialVeil(modifier: Modifier = Modifier) {
     Canvas(modifier) {
-        val shadow = if (PremiumColors.IsDark) Color(0xFF050406) else Color(0xFF454C54)
+        val shadow = if (PremiumColors.IsDark) Color(0xFF0B0906) else Color(0xFF4C463C)
 
         drawRect(
             brush = Brush.verticalGradient(
@@ -762,8 +760,8 @@ private fun BackgroundAmbientHalo(modifier: Modifier = Modifier) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color(0xFFFF735A).copy(alpha = 0.12f),
-                        Color(0xFFE04A3F).copy(alpha = 0.045f),
+                        Color(0xFFD9A84E).copy(alpha = 0.08f),
+                        Color(0xFF8A6A2E).copy(alpha = 0.035f),
                         Color.Transparent
                     ),
                     center = Offset(size.width * 0.82f, size.height * 0.26f),
@@ -775,7 +773,7 @@ private fun BackgroundAmbientHalo(modifier: Modifier = Modifier) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color(0xFF7A1518).copy(alpha = 0.13f),
+                        Color(0xFF0E7B57).copy(alpha = 0.09f),
                         Color.Transparent
                     ),
                     center = Offset(size.width * 0.16f, size.height * 0.78f),
@@ -788,8 +786,8 @@ private fun BackgroundAmbientHalo(modifier: Modifier = Modifier) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color(0xFFFFFFFF).copy(alpha = 0.18f),
-                        Color(0xFFDCE2E8).copy(alpha = 0.09f),
+                        Color(0xFFFFFFFF).copy(alpha = 0.20f),
+                        Color(0xFFF1EADC).copy(alpha = 0.10f),
                         Color.Transparent
                     ),
                     center = Offset(size.width * 0.84f, size.height * 0.30f),
@@ -801,7 +799,7 @@ private fun BackgroundAmbientHalo(modifier: Modifier = Modifier) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color(0xFF111315).copy(alpha = 0.14f),
+                        Color(0xFF1F1D1A).copy(alpha = 0.10f),
                         Color.Transparent
                     ),
                     center = Offset(size.width * 0.18f, size.height * 0.80f),
@@ -817,13 +815,13 @@ private fun BackgroundAmbientHalo(modifier: Modifier = Modifier) {
 @Composable
 private fun BackgroundNavigationComfort(modifier: Modifier = Modifier) {
     Canvas(modifier) {
-        val base = if (PremiumColors.IsDark) Color(0xFF050406) else Color(0xFF3F464D)
+        val base = if (PremiumColors.IsDark) Color(0xFF0B0906) else Color(0xFF454033)
         if (!PremiumColors.IsDark) {
             drawRect(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF050607).copy(alpha = 0.20f),
-                        Color(0xFF30363D).copy(alpha = 0.08f),
+                        Color(0xFF17140F).copy(alpha = 0.14f),
+                        Color(0xFF3A342A).copy(alpha = 0.06f),
                         Color.Transparent
                     ),
                     startY = 0f,
@@ -866,7 +864,7 @@ fun PremiumStartupSplashScreen(modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxSize()
-            .background(Color(0xFF060708))
+            .background(Color(0xFF14110C))
             .statusBarsPadding()
             .navigationBarsPadding(),
         contentAlignment = Alignment.Center
@@ -875,7 +873,7 @@ fun PremiumStartupSplashScreen(modifier: Modifier = Modifier) {
             Modifier
                 .size(144.dp)
                 .clip(RoundedCornerShape(38.dp))
-                .background(Color(0xFF060708)),
+                .background(Color(0xFF14110C)),
             contentAlignment = Alignment.Center
         ) {
             Image(
@@ -898,34 +896,46 @@ fun PremiumNavigationBar(
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .fillMaxWidth(),
         color = PremiumColors.Surface,
-        shape = RoundedCornerShape(PremiumRadius.Pill),
+        shape = RoundedCornerShape(23.dp),
         border = BorderStroke(1.dp, PremiumColors.Line),
         shadowElevation = PremiumElevation.Card
     ) {
         Row(
             Modifier
-                .padding(vertical = 12.dp),
+                .padding(vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             PremiumMainTab.entries.forEach { tab ->
                 val selected = tab == selectedTab
+                val label = PremiumLocalizedCopy.forLanguage(language).mainTabLabel(tab)
                 Column(
                     Modifier
                         .premiumTap { onTab(tab) }
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Icon(
                         imageVector = premiumTabIcon(tab),
-                        contentDescription = PremiumLocalizedCopy.forLanguage(language).mainTabLabel(tab),
-                        tint = if (selected) PremiumColors.Teal else PremiumColors.SoftText,
-                        modifier = Modifier.size(24.dp)
+                        contentDescription = label,
+                        tint = if (selected) PremiumColors.Ink else PremiumColors.SoftText,
+                        modifier = Modifier.size(22.dp)
                     )
-                    if (selected) {
-                        Box(Modifier.size(4.dp).background(PremiumColors.Teal, CircleShape))
-                    }
+                    Text(
+                        text = label,
+                        color = if (selected) PremiumColors.Ink else PremiumColors.SoftText,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Box(
+                        Modifier
+                            .size(4.dp)
+                            .background(
+                                if (selected) PremiumColors.Teal else Color.Transparent,
+                                CircleShape
+                            )
+                    )
                 }
             }
         }

@@ -7,10 +7,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.swimpay.receiver.ui.premium.PremiumColors
+import com.swimpay.receiver.ui.premium.PremiumMaterialTypography
 
 private fun premiumLightColorScheme() = lightColorScheme(
     primary = PremiumColors.Blue,
-    onPrimary = PremiumColors.Ink,
+    onPrimary = PremiumColors.OnInk,
     primaryContainer = PremiumColors.IconTile,
     onPrimaryContainer = PremiumColors.Cyan,
     secondary = PremiumColors.Teal,
@@ -29,7 +30,7 @@ private fun premiumLightColorScheme() = lightColorScheme(
 
 private fun premiumDarkColorScheme() = darkColorScheme(
     primary = PremiumColors.Blue,
-    onPrimary = Color.White,
+    onPrimary = PremiumColors.OnInk,
     primaryContainer = PremiumColors.IconTile,
     onPrimaryContainer = PremiumColors.Cyan,
     secondary = PremiumColors.Teal,
@@ -56,6 +57,7 @@ fun SwimPayMerchantTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = PremiumMaterialTypography,
         content = content
     )
 }

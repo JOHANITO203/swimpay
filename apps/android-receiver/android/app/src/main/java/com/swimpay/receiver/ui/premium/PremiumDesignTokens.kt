@@ -26,48 +26,52 @@ data class PremiumColorPalette(
     val neutralChip: Color
 )
 
+// Langage « papier calme » (spec T6) : papier chaud + encre, accents émeraude/or/corail.
+// Les noms de slots sont historiques ; leur rôle réel :
+//   blue = action primaire (encre) · teal = accent actif (émeraude) · mint = fond accent doux
+//   cyan = accent clair sur surface sombre · electricBlue = encre secondaire
 object PremiumColors {
     private val light = PremiumColorPalette(
-        ink = Color(0xFF050607),
-        navy = Color(0xFF111315),
-        blue = Color(0xFF242A30),
-        electricBlue = Color(0xFF6E747C),
-        cyan = Color(0xFFC9D0D7),
-        teal = Color(0xFF171A1D),
-        mint = Color(0xFFEEF2F5),
-        background = Color(0xFFF6F7F8),
+        ink = Color(0xFF17140F),
+        navy = Color(0xFF1F1D1A),
+        blue = Color(0xFF17140F),
+        electricBlue = Color(0xFF4B463D),
+        cyan = Color(0xFFCFC7B6),
+        teal = Color(0xFF0E7B57),
+        mint = Color(0xFFE4F1E9),
+        background = Color(0xFFF6F3EC),
         surface = Color(0xFCFFFFFF),
-        surfaceAlt = Color(0xF7F3F5F7),
-        line = Color(0xD8D4DAE0),
-        muted = Color(0xFF20252A),
-        softText = Color(0xFF5F6972),
-        success = Color(0xFF208760),
-        warning = Color(0xFFC0963D),
-        danger = Color(0xFFD24F5E),
-        panelTint = Color(0xF4F7F8FA),
+        surfaceAlt = Color(0xF7EFEAE0),
+        line = Color(0xD8E7E1D5),
+        muted = Color(0xFF4B463D),
+        softText = Color(0xFF938B7C),
+        success = Color(0xFF0E7B57),
+        warning = Color(0xFF9A6712),
+        danger = Color(0xFFF0532E),
+        panelTint = Color(0xF4FBF8F2),
         iconTile = Color(0xF4FFFFFF),
-        neutralChip = Color(0xEDE9EDF1)
+        neutralChip = Color(0xEDEFEAE0)
     )
     private val dark = PremiumColorPalette(
-        ink = Color(0xFFF8FAFC),
-        navy = Color(0xFFFFFFFF),
-        blue = Color(0xFFE04A3F),
-        electricBlue = Color(0xFFFF735A),
-        cyan = Color(0xFFFFB7A6),
-        teal = Color(0xFFE2362F),
-        mint = Color(0xFF261011),
-        background = Color(0xFF050406),
-        surface = Color(0xE60B0A0E),
-        surfaceAlt = Color(0xD9141015),
-        line = Color(0x73A2423D),
-        muted = Color(0xFFE4CBC5),
-        softText = Color(0xFFB8958F),
-        success = Color(0xFF7CCB8F),
-        warning = Color(0xFFE1A34A),
-        danger = Color(0xFFFF6958),
-        panelTint = Color(0xD9110B0F),
-        iconTile = Color(0xCC231015),
-        neutralChip = Color(0xB8251719)
+        ink = Color(0xFFF2EDE2),
+        navy = Color(0xFFFBF8F2),
+        blue = Color(0xFFF2EDE2),
+        electricBlue = Color(0xFFBFB6A4),
+        cyan = Color(0xFFE3DAC6),
+        teal = Color(0xFF3DAE85),
+        mint = Color(0xFF12281F),
+        background = Color(0xFF14110C),
+        surface = Color(0xE61E1A13),
+        surfaceAlt = Color(0xD9272117),
+        line = Color(0x733A3326),
+        muted = Color(0xFFD8D0C0),
+        softText = Color(0xFFA39A87),
+        success = Color(0xFF58BD8F),
+        warning = Color(0xFFD9A84E),
+        danger = Color(0xFFFF6F4A),
+        panelTint = Color(0xD91B1711),
+        iconTile = Color(0xCC2A241B),
+        neutralChip = Color(0xB82E2719)
     )
 
     private var palette: PremiumColorPalette = light
@@ -100,14 +104,26 @@ object PremiumColors {
     val PanelTint: Color get() = palette.panelTint
     val IconTile: Color get() = palette.iconTile
     val NeutralChip: Color get() = palette.neutralChip
+    // Papier inversé : texte/éléments posés sur une surface encre (boutons primaires, cartes sombres).
+    val OnInk: Color get() = if (darkThemeEnabled) Color(0xFF17140F) else Color(0xFFF6F3EC)
+}
+
+// Échelle d'opacité unique — remplace les alphas ad hoc dispersés dans les écrans.
+object PremiumOpacity {
+    const val Hairline = 0.10f
+    const val Soft = 0.12f
+    const val Medium = 0.18f
+    const val Strong = 0.28f
+    const val Veil = 0.62f
+    const val Emphasis = 0.78f
 }
 
 object PremiumRadius {
-    val Card = 24.dp
-    val CardLarge = 32.dp
-    val CardXL = 40.dp
-    val Button = 999.dp // Pills as in reference
-    val Tile = 20.dp
+    val Card = 22.dp
+    val CardLarge = 30.dp
+    val CardXL = 36.dp
+    val Button = 18.dp // rectangles arrondis calmes (prototype), plus de pilules CTA
+    val Tile = 16.dp
     val Pill = 999.dp
 }
 
@@ -165,41 +181,48 @@ data class PremiumTone(
 )
 
 object PremiumToneColors {
-    val Success: PremiumTone get() = PremiumTone(PremiumColors.Success, PremiumColors.Success.copy(alpha = 0.12f))
-    val Warning: PremiumTone get() = PremiumTone(PremiumColors.Warning, PremiumColors.Warning.copy(alpha = 0.12f))
-    val Danger: PremiumTone get() = PremiumTone(PremiumColors.Danger, PremiumColors.Danger.copy(alpha = 0.12f))
-    val Info: PremiumTone get() = PremiumTone(PremiumColors.Blue, PremiumColors.Blue.copy(alpha = 0.12f))
-    val Selected: PremiumTone get() = PremiumTone(PremiumColors.Teal, PremiumColors.Teal.copy(alpha = 0.12f))
+    val Success: PremiumTone get() = PremiumTone(PremiumColors.Success, PremiumColors.Success.copy(alpha = PremiumOpacity.Soft))
+    val Warning: PremiumTone get() = PremiumTone(PremiumColors.Warning, PremiumColors.Warning.copy(alpha = PremiumOpacity.Soft))
+    val Danger: PremiumTone get() = PremiumTone(PremiumColors.Danger, PremiumColors.Danger.copy(alpha = PremiumOpacity.Soft))
+    val Info: PremiumTone get() = PremiumTone(PremiumColors.Muted, PremiumColors.NeutralChip)
+    val Selected: PremiumTone get() = PremiumTone(PremiumColors.Teal, PremiumColors.Teal.copy(alpha = PremiumOpacity.Soft))
     val Disabled: PremiumTone get() = PremiumTone(PremiumColors.SoftText, PremiumColors.Line.copy(alpha = 0.5f))
 }
 
 object PremiumBrandGradient {
+    // Encre chaude — CTA et marque (prototype .mark : 145deg #1d1a14 → #3a342a).
     val Primary: List<Color> get() = if (PremiumColors.IsDark) {
-        listOf(Color(0xFF7A1518), Color(0xFFE04A3F), Color(0xFFFF735A))
+        listOf(Color(0xFFF2EDE2), Color(0xFFE3DAC6), Color(0xFFCFC7B6))
     } else {
-        listOf(Color(0xFF050607), Color(0xFF30363D), Color(0xFFDDE2E7))
+        listOf(Color(0xFF1D1A14), Color(0xFF2A261F), Color(0xFF3A342A))
     }
     val PrimaryDeep: List<Color> get() = if (PremiumColors.IsDark) {
-        listOf(Color(0xFF6E1116), Color(0xFF1B0A0D), Color(0xFF060406))
+        listOf(Color(0xFF221D14), Color(0xFF1A1610), Color(0xFF14110C))
     } else {
-        listOf(Color(0xFF050607), Color(0xFF12161A), Color(0xFF2E353C))
+        listOf(Color(0xFF17140F), Color(0xFF221E17), Color(0xFF322D25))
     }
+    // Émeraude profonde (prototype .w-wise : #163F2E → #0E7B57).
     val PaymentCard: List<Color> get() = if (PremiumColors.IsDark) {
-        listOf(Color(0xFF080507), Color(0xFF1A0D10), Color(0xFF3C1215))
+        listOf(Color(0xFF0E2A1F), Color(0xFF134632), Color(0xFF0E7B57))
     } else {
-        listOf(Color(0xFF000A1F), Color(0xFF0A1828), Color(0xFF123A59))
+        listOf(Color(0xFF163F2E), Color(0xFF11583F), Color(0xFF0E7B57))
     }
+    // Encre sobre (prototype .w-sber : #1F1D1A → #3b372f).
     val SbpCard: List<Color> get() = if (PremiumColors.IsDark) {
-        listOf(Color(0xFF080507), Color(0xFF211014), Color(0xFF6E1918))
+        listOf(Color(0xFF181510), Color(0xFF26221B), Color(0xFF38332A))
     } else {
-        listOf(Color(0xFF050607), Color(0xFF171A1D), Color(0xFF353A40))
+        listOf(Color(0xFF1F1D1A), Color(0xFF2C2922), Color(0xFF3B372F))
     }
     val ReceivingSurface: List<Color> get() = if (PremiumColors.IsDark) {
-        listOf(Color(0xFF070506), Color(0xFF150B0E), Color(0xFF261014))
+        listOf(Color(0xFF0C2218), Color(0xFF10301F), Color(0xFF163F2E))
     } else {
-        listOf(Color(0xFF071827), Color(0xFF0D253C), Color(0xFF061225))
+        listOf(Color(0xFF163F2E), Color(0xFF12503A), Color(0xFF0E6B4C))
     }
-    val ChartArea: List<Color> get() = listOf(PremiumColors.Blue.copy(alpha = 0.16f), PremiumColors.Cyan.copy(alpha = 0.10f), Color.Transparent)
+    val ChartArea: List<Color> get() = listOf(
+        PremiumColors.Success.copy(alpha = 0.16f),
+        PremiumColors.Success.copy(alpha = 0.08f),
+        Color.Transparent
+    )
     val Disabled: List<Color> get() = listOf(PremiumColors.Line, PremiumColors.NeutralChip)
 }
 
