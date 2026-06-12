@@ -373,7 +373,31 @@ data class PremiumLocalizedCopy(
             LocalizedText("Réussi", "Done", "Готово"),
             LocalizedText("Réessayer", "Retry", "Повторить"),
             LocalizedText("Chargement", "Loading", "Загрузка"),
-            LocalizedText("Connexion en attente", "Connection pending", "Ожидание подключения")
+            LocalizedText("Connexion en attente", "Connection pending", "Ожидание подключения"),
+            LocalizedText("Réception", "Receiving", "Приём"),
+            LocalizedText("Appareil", "Device", "Устройство"),
+            LocalizedText("Préférences", "Preferences", "Настройки"),
+            LocalizedText("Abonnement", "Subscription", "Подписка"),
+            LocalizedText("Marchand", "Merchant", "Продавец"),
+            LocalizedText("Boutique", "Shop", "Магазин"),
+            LocalizedText("Compte vérifié", "Verified account", "Аккаунт подтверждён"),
+            LocalizedText("Profil marchand", "Merchant profile", "Профиль продавца"),
+            LocalizedText("Entreprise & vérification (KYC)", "Business & verification (KYC)", "Бизнес и проверка (KYC)"),
+            LocalizedText("Devises & taux", "Currencies & rates", "Валюты и курсы"),
+            LocalizedText("Portefeuilles de réception", "Receiving wallets", "Кошельки для приёма"),
+            LocalizedText("Confirmation automatique", "Automatic confirmation", "Автоподтверждение"),
+            LocalizedText("Provenance & sécurité", "Provenance & security", "Происхождение и безопасность"),
+            LocalizedText("Accès aux notifications", "Notification access", "Доступ к уведомлениям"),
+            LocalizedText("Capture de signaux", "Signal capture", "Сбор сигналов"),
+            LocalizedText("Appareils liés", "Linked devices", "Связанные устройства"),
+            LocalizedText("Thème", "Theme", "Тема"),
+            LocalizedText("Clair", "Light", "Светлая"),
+            LocalizedText("Français", "French", "Французский"),
+            LocalizedText("Forfait", "Plan", "Тариф"),
+            LocalizedText("Premium", "Premium", "Premium"),
+            LocalizedText("Facturation", "Billing", "Оплата"),
+            LocalizedText("Confidentialité", "Privacy", "Конфиденциальность"),
+            LocalizedText("Conditions", "Terms", "Условия")
         ).associateBy { it.fr }
 
         private val fr = PremiumLocalizedCopy(

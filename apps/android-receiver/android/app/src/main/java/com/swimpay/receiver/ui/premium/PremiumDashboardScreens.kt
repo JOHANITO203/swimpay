@@ -71,6 +71,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -98,6 +99,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.swimpay.receiver.BuildConfig
 import com.swimpay.receiver.MerchantReceivingMethodDraft
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
 import com.swimpay.receiver.R
@@ -810,47 +812,75 @@ fun PremiumSettingsScreen(
     onNavigate: (PremiumRoute) -> Unit = {}
 ) {
     val copy = PremiumLocalizedCopy.forLanguage(language)
+    val shopName = settingsShopName(connectedSite, merchantProfile)
     LazyColumn(
         Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(bottom = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         item {
-            Spacer(Modifier.height(10.dp))
-            SettingsProfileCard(copy, merchantProfile)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                language.ui("Réglages"),
+                color = PremiumColors.PageInk,
+                fontSize = PremiumType.ScreenTitle,
+                fontWeight = FontWeight.Black
+            )
         }
         item {
-            SettingsGroup(language.ui("Compte"), listOf(
-                PremiumSettingsRow(Icons.Default.Security, copy.security) { onNavigate(PremiumNavigation.openSecurity()) },
-                PremiumSettingsRow(Icons.Default.Language, copy.language) { onNavigate(PremiumNavigation.openLanguage()) },
-                PremiumSettingsRow(Icons.Default.Palette, copy.appearance) { onNavigate(PremiumNavigation.openAppearance()) }
+            SettingsProfileCard(language, merchantProfile, shopName) { onNavigate(PremiumNavigation.openSecurity()) }
+        }
+        // COMPTE
+        item {
+            SettingsGroup(language.ui("Compte"), rows = listOf(
+                SettingsRowSpec.Nav(Icons.Default.AccountBalanceWallet, language.ui("Profil marchand")) { onNavigate(PremiumNavigation.openSecurity()) },
+                SettingsRowSpec.Nav(Icons.Default.AccountBalance, language.ui("Entreprise & vérification (KYC)")) { onNavigate(PremiumNavigation.openSecurity()) },
+                SettingsRowSpec.Nav(Icons.Default.CurrencyExchange, language.ui("Devises & taux")) { onNavigate(PremiumNavigation.openBanks()) }
             ))
         }
+        // RÉCEPTION (group title key kept as "Paiements" for routing/localization contracts)
         item {
-            SettingsGroup(language.ui("Paiements"), listOf(
-                PremiumSettingsRow(Icons.Default.CreditCard, copy.receivingMethods) { onNavigate(PremiumNavigation.openReceivingMethods()) },
-                PremiumSettingsRow(Icons.Default.AccountBalance, copy.banks) { onNavigate(PremiumNavigation.openBanks()) },
-                PremiumSettingsRow(Icons.Default.CheckCircle, copy.confirmationMode) { onNavigate(PremiumNavigation.openConfirmationMode()) }
+            SettingsGroup(language.ui("Paiements"), displayLabel = language.ui("Réception"), rows = listOf(
+                SettingsRowSpec.Value(Icons.Default.CreditCard, language.ui("Portefeuilles de réception"), "11") { onNavigate(PremiumNavigation.openReceivingMethods()) },
+                SettingsRowSpec.Toggle(Icons.Default.CheckCircle, language.ui("Confirmation automatique"), checked = false),
+                SettingsRowSpec.Value(Icons.Default.MyLocation, language.ui("Provenance & sécurité"), language.ui("Sites")) { onNavigate(PremiumNavigation.openConnectedSite()) }
             ))
         }
+        // APPAREIL
         item {
-            SettingsGroup(language.ui("Business"), listOf(
-                PremiumSettingsRow(Icons.Default.ShoppingCart, copy.sales) { onNavigate(PremiumRoute.Main(PremiumMainTab.Business)) },
-                PremiumSettingsRow(Icons.Default.Link, language.ui("Sites")) { onNavigate(PremiumNavigation.openConnectedSite()) },
-                PremiumSettingsRow(Icons.Default.PhoneAndroid, copy.notifications) { onNavigate(PremiumNavigation.openReceiverHealth()) }
+            SettingsGroup(language.ui("Appareil"), rows = listOf(
+                SettingsRowSpec.Pill(Icons.Default.Notifications, language.ui("Accès aux notifications"), language.ui("Actif"), SettingsPillTone.Success) { onNavigate(PremiumNavigation.openReceiverHealth()) },
+                SettingsRowSpec.Toggle(Icons.Default.PhoneAndroid, language.ui("Capture de signaux"), checked = true),
+                SettingsRowSpec.Value(Icons.Default.Link, language.ui("Appareils liés"), "2") { onNavigate(PremiumNavigation.openReceiverHealth()) }
             ))
         }
+        // PRÉFÉRENCES
         item {
-            SettingsGroup(language.ui("Aide"), listOf(
-                PremiumSettingsRow(Icons.AutoMirrored.Filled.Help, copy.helpCenter) { onNavigate(PremiumNavigation.openHelpCenter()) },
-                PremiumSettingsRow(Icons.Default.Description, copy.support) { onNavigate(PremiumNavigation.openSupportContact()) }
+            SettingsGroup(language.ui("Préférences"), rows = listOf(
+                SettingsRowSpec.Value(Icons.Default.Language, copy.language, language.ui("Français")) { onNavigate(PremiumNavigation.openLanguage()) },
+                SettingsRowSpec.Value(Icons.Default.Palette, language.ui("Thème"), language.ui("Clair")) { onNavigate(PremiumNavigation.openAppearance()) },
+                SettingsRowSpec.Nav(Icons.Default.Notifications, copy.notifications) { onNavigate(PremiumNavigation.openReceiverHealth()) }
+            ))
+        }
+        // ABONNEMENT
+        item {
+            SettingsGroup(language.ui("Abonnement"), rows = listOf(
+                SettingsRowSpec.Pill(Icons.Default.Star, language.ui("Forfait"), language.ui("Premium"), SettingsPillTone.Ink),
+                SettingsRowSpec.Nav(Icons.Default.Description, language.ui("Facturation"))
+            ))
+        }
+        // AIDE
+        item {
+            SettingsGroup(language.ui("Aide"), rows = listOf(
+                SettingsRowSpec.Nav(Icons.AutoMirrored.Filled.Help, copy.helpCenter) { onNavigate(PremiumNavigation.openHelpCenter()) },
+                SettingsRowSpec.Nav(Icons.Default.Security, language.ui("Confidentialité")) { onNavigate(PremiumNavigation.openSupportContact()) },
+                SettingsRowSpec.Nav(Icons.Default.Description, language.ui("Conditions")) { onNavigate(PremiumNavigation.openSupportContact()) }
             ))
         }
         item {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp)
                     .height(PremiumComponentSize.ButtonHeight)
                     .clip(RoundedCornerShape(PremiumRadius.Pill))
                     .border(
@@ -878,44 +908,73 @@ fun PremiumSettingsScreen(
                 )
             }
         }
+        item {
+            Text(
+                "SwimPay Receiver · v${BuildConfig.VERSION_NAME}",
+                color = PremiumColors.SoftText,
+                fontSize = PremiumType.Micro,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp)
+            )
+        }
     }
+}
+
+private fun settingsShopName(
+    connectedSite: PremiumScreenState<PremiumConnectedSiteUiState>,
+    merchantProfile: PremiumMerchantProfileUiState
+): String {
+    val fromSite = (connectedSite as? PremiumScreenState.Content)
+        ?.value
+        ?.rows
+        ?.firstOrNull { it.first.contains("site", ignoreCase = true) }
+        ?.second
+        ?.takeIf { it.isNotBlank() && !it.startsWith("http") }
+    return fromSite ?: merchantProfile.displayName.takeIf { it.isNotBlank() && it != "Marchand" } ?: "Dakar"
 }
 
 @Composable
 private fun SettingsProfileCard(
-    copy: PremiumLocalizedCopy,
-    merchantProfile: PremiumMerchantProfileUiState
+    language: PremiumLanguageOption,
+    merchantProfile: PremiumMerchantProfileUiState,
+    shopName: String,
+    onClick: () -> Unit
 ) {
     LiquidGlassCard(
-        Modifier.fillMaxWidth(),
+        Modifier.fillMaxWidth().premiumTap(onClick),
         radius = PremiumRadius.CardXL
     ) {
         Row(
-            Modifier.padding(20.dp),
+            Modifier.padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(
                 Modifier
-                    .size(60.dp)
+                    .size(58.dp)
                     .background(Brush.linearGradient(PremiumBrandGradient.Primary), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(merchantProfile.initials, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
             }
-            Column(Modifier.weight(1f)) {
-                Text(copy.terminalTitle, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                Text(merchantProfile.displayName, color = PremiumColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text(merchantProfile.statusLabel, color = PremiumColors.SoftText, fontSize = PremiumType.Micro, fontWeight = FontWeight.SemiBold)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(merchantProfile.displayName, color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                Text(
+                    "${language.ui("Boutique")} $shopName · ${language.ui("Marchand")}",
+                    color = PremiumColors.Muted,
+                    fontSize = PremiumType.Caption,
+                    fontWeight = FontWeight.SemiBold
+                )
+                SettingsPill(language.ui("Compte vérifié"), SettingsPillTone.Success, icon = Icons.Default.CheckCircle)
             }
-            Box(
-                Modifier
-                    .size(42.dp)
-                    .background(PremiumColors.IconTile, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Security, null, tint = PremiumColors.Teal, modifier = Modifier.size(22.dp))
-            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                null,
+                tint = PremiumColors.SoftText,
+                modifier = Modifier.size(22.dp)
+            )
         }
     }
 }
@@ -3095,17 +3154,94 @@ private fun PremiumStandaloneStateScreen(
     }
 }
 
-private data class PremiumSettingsRow(
-    val icon: ImageVector,
-    val label: String,
-    val onClick: (() -> Unit)? = null
-)
+private enum class SettingsPillTone { Success, Ink }
+
+private sealed interface SettingsRowSpec {
+    val icon: ImageVector
+    val label: String
+
+    data class Nav(
+        override val icon: ImageVector,
+        override val label: String,
+        val onClick: (() -> Unit)? = null
+    ) : SettingsRowSpec
+
+    data class Value(
+        override val icon: ImageVector,
+        override val label: String,
+        val value: String,
+        val onClick: (() -> Unit)? = null
+    ) : SettingsRowSpec
+
+    data class Toggle(
+        override val icon: ImageVector,
+        override val label: String,
+        val checked: Boolean
+    ) : SettingsRowSpec
+
+    data class Pill(
+        override val icon: ImageVector,
+        override val label: String,
+        val pill: String,
+        val tone: SettingsPillTone,
+        val onClick: (() -> Unit)? = null
+    ) : SettingsRowSpec
+}
 
 @Composable
-private fun SettingsGroup(title: String, rows: List<PremiumSettingsRow>) {
+private fun SettingsPill(text: String, tone: SettingsPillTone, icon: ImageVector? = null) {
+    val foreground = when (tone) {
+        SettingsPillTone.Success -> PremiumColors.Success
+        SettingsPillTone.Ink -> PremiumColors.Ink
+    }
+    Surface(
+        color = foreground.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(PremiumRadius.Pill)
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            if (icon != null) {
+                Icon(icon, null, tint = foreground, modifier = Modifier.size(13.dp))
+            }
+            Text(
+                text,
+                color = foreground,
+                fontSize = PremiumType.Micro,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.4.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsToggle(checked: Boolean) {
+    Switch(
+        checked = checked,
+        onCheckedChange = null,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = Color.White,
+            checkedTrackColor = PremiumColors.Success,
+            checkedBorderColor = PremiumColors.Success,
+            uncheckedThumbColor = Color.White,
+            uncheckedTrackColor = PremiumColors.NeutralChip,
+            uncheckedBorderColor = PremiumColors.Line
+        )
+    )
+}
+
+@Composable
+private fun SettingsGroup(
+    title: String,
+    rows: List<SettingsRowSpec>,
+    displayLabel: String = title
+) {
     Column(Modifier.fillMaxWidth()) {
         Text(
-            title.uppercase(),
+            displayLabel.uppercase(),
             color = PremiumColors.PageMuted,
             fontSize = PremiumType.Micro,
             fontWeight = FontWeight.Black,
@@ -3118,25 +3254,52 @@ private fun SettingsGroup(title: String, rows: List<PremiumSettingsRow>) {
         ) {
             Column {
                 rows.forEachIndexed { index, row ->
-                    val onClick = row.onClick
-                    val rowModifier = if (onClick != null) {
-                        Modifier.fillMaxWidth().height(PremiumComponentSize.RowHeight).clickable { onClick() }.padding(horizontal = 18.dp)
-                    } else {
-                        Modifier.fillMaxWidth().height(PremiumComponentSize.RowHeight).padding(horizontal = 18.dp)
+                    val onClick: (() -> Unit)? = when (row) {
+                        is SettingsRowSpec.Nav -> row.onClick
+                        is SettingsRowSpec.Value -> row.onClick
+                        is SettingsRowSpec.Pill -> row.onClick
+                        is SettingsRowSpec.Toggle -> null
                     }
+                    val rowModifier = Modifier
+                        .fillMaxWidth()
+                        .height(PremiumComponentSize.RowHeight)
+                        .let { if (onClick != null) it.clickable { onClick() } else it }
+                        .padding(horizontal = 18.dp)
                     Row(rowModifier, verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(44.dp).background(PremiumColors.IconTile, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                        Box(
+                            Modifier.size(44.dp).background(PremiumColors.IconTile, RoundedCornerShape(14.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(row.icon, null, tint = PremiumColors.Cyan, modifier = Modifier.size(22.dp))
                         }
                         Text(
                             row.label,
-                            modifier = Modifier.weight(1f).padding(start = 16.dp),
+                            modifier = Modifier.weight(1f).padding(start = 16.dp, end = 12.dp),
                             color = PremiumColors.Ink,
                             fontWeight = FontWeight.Black,
-                            fontSize = 15.sp
+                            fontSize = 15.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        if (row.onClick != null) {
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumColors.SoftText, modifier = Modifier.size(20.dp))
+                        when (row) {
+                            is SettingsRowSpec.Nav -> {
+                                if (row.onClick != null) {
+                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumColors.SoftText, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            is SettingsRowSpec.Value -> {
+                                Text(row.value, color = PremiumColors.Muted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumColors.SoftText, modifier = Modifier.size(20.dp))
+                            }
+                            is SettingsRowSpec.Toggle -> SettingsToggle(row.checked)
+                            is SettingsRowSpec.Pill -> {
+                                SettingsPill(row.pill, row.tone)
+                                if (row.onClick != null) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = PremiumColors.SoftText, modifier = Modifier.size(20.dp))
+                                }
+                            }
                         }
                     }
                     if (index < rows.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line.copy(alpha = 0.5f)))
