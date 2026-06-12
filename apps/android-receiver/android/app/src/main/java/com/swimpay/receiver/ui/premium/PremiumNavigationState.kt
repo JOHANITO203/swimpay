@@ -16,6 +16,7 @@ sealed interface PremiumRoute {
     data object Onboarding : PremiumRoute
     data class Main(val tab: PremiumMainTab = PremiumMainTab.Home) : PremiumRoute
     data class PaymentDetail(val reviewId: String) : PremiumRoute
+    data class WalletDetail(val methodId: String) : PremiumRoute
     data object ReceivingMethods : PremiumRoute
     data object Banks : PremiumRoute
     data object ConnectedSite : PremiumRoute
@@ -81,6 +82,10 @@ object PremiumNavigation {
     fun openReview(reviewId: String): PremiumRoute = PremiumRoute.PaymentDetail(reviewId)
 
     fun backFromPaymentDetail(): PremiumRoute = PremiumRoute.Main(PremiumMainTab.Reviews)
+
+    fun openWalletDetail(methodId: String): PremiumRoute = PremiumRoute.WalletDetail(methodId)
+
+    fun backFromWalletDetail(): PremiumRoute = PremiumRoute.ReceivingMethods
 
     fun openReceivingMethods(): PremiumRoute = PremiumRoute.ReceivingMethods
 

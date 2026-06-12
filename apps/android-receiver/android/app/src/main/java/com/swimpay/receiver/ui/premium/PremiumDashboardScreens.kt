@@ -1252,6 +1252,7 @@ fun PremiumReceivingMethodsStateScreen(
     state: PremiumScreenState<PremiumReceivingMethodsUiState>,
     clearDraftSignal: Int = 0,
     actionMessage: String? = null,
+    onOpenWalletDetail: (String) -> Unit = {},
     onSaveDraft: (MerchantReceivingMethodSubmission) -> Unit = {},
     onEditMethod: (String, String) -> Unit = { _, _ -> },
     onReplaceMethod: (String, MerchantReceivingMethodSubmission) -> Unit = { _, _ -> },
@@ -1436,6 +1437,7 @@ fun PremiumReceivingMethodsStateScreen(
                 items(state.value.items) { method ->
                     PremiumReceivingMethodRow(
                         method = method,
+                        onOpen = { onOpenWalletDetail(method.routeId) },
                         onEdit = {
                             editingMethod = method
                             editLabel = method.helper?.takeUnless { it.contains("SBP", ignoreCase = true) } ?: method.title
@@ -1466,6 +1468,7 @@ fun PremiumReceivingMethodsHub(
     state: PremiumScreenState<PremiumReceivingMethodsUiState>,
     clearDraftSignal: Int = 0,
     actionMessage: String? = null,
+    onOpenWalletDetail: (String) -> Unit = {},
     onSaveDraft: (MerchantReceivingMethodSubmission) -> Unit = {},
     onEditMethod: (String, String) -> Unit = { _, _ -> },
     onReplaceMethod: (String, MerchantReceivingMethodSubmission) -> Unit = { _, _ -> },
@@ -1481,6 +1484,7 @@ fun PremiumReceivingMethodsHub(
             state = state,
             clearDraftSignal = clearDraftSignal,
             actionMessage = actionMessage,
+            onOpenWalletDetail = onOpenWalletDetail,
             onSaveDraft = onSaveDraft,
             onEditMethod = onEditMethod,
             onReplaceMethod = onReplaceMethod,
@@ -2533,13 +2537,15 @@ private fun PremiumReceivingMethodRow(
     onDisable: () -> Unit,
     onSetDefault: () -> Unit,
     onDelete: () -> Unit,
+    onOpen: () -> Unit = {},
     language: PremiumLanguageOption = PremiumLanguageOption.FR
 ) {
     var pendingConfirmation by remember(method.routeId) { mutableStateOf<String?>(null) }
     PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumColors.Surface) {
         Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val bankProfileId = bankProfileIdFromDisplay(method.subtitle)
-            Row(verticalAlignment = Alignment.Top) {
+            // Tapping the identity header opens the wallet/receiving-method detail.
+            Row(Modifier.fillMaxWidth().premiumTap(onOpen), verticalAlignment = Alignment.Top) {
                 if (bankProfileId != null) {
                     PremiumBankLogo(bankProfileId = bankProfileId, displayName = method.subtitle, size = 48.dp)
                 }

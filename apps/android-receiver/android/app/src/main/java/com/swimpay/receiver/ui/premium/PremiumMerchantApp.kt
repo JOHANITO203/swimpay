@@ -100,6 +100,7 @@ fun PremiumMerchantApp(
     var dashboardState by remember { mutableStateOf<PremiumScreenState<PremiumDashboardUiState>>(PremiumScreenState.loading()) }
     var reviewsState by remember { mutableStateOf<PremiumScreenState<PremiumReviewsUiState>>(PremiumScreenState.loading()) }
     var paymentDetailState by remember { mutableStateOf<PremiumScreenState<PremiumPaymentDetailUiState>>(PremiumScreenState.loading()) }
+    var walletDetailState by remember { mutableStateOf<PremiumScreenState<PremiumWalletDetailUiState>>(PremiumScreenState.loading()) }
     var connectedSiteState by remember { mutableStateOf<PremiumScreenState<PremiumConnectedSiteUiState>>(PremiumScreenState.loading()) }
     var configurationState by remember { mutableStateOf<PremiumScreenState<PremiumConfigurationUiState>>(PremiumScreenState.loading()) }
     var receivingMethodsState by remember { mutableStateOf<PremiumScreenState<PremiumReceivingMethodsUiState>>(PremiumScreenState.loading()) }
@@ -327,6 +328,9 @@ fun PremiumMerchantApp(
             }
             is PremiumRoute.PaymentDetail -> {
                 paymentDetailState = withContext(Dispatchers.IO) { activeRuntime.loadPaymentDetail(currentRoute.reviewId) }
+            }
+            is PremiumRoute.WalletDetail -> {
+                walletDetailState = withContext(Dispatchers.IO) { activeRuntime.loadWalletDetail(currentRoute.methodId) }
             }
             PremiumRoute.ReceivingMethods -> {
                 receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
@@ -611,6 +615,7 @@ fun PremiumMerchantApp(
                         clearDraftSignal = receivingMethodClearDraftSignal,
                         actionMessage = receivingMethodActionMessage,
                         language = merchantSettings.language,
+                        onOpenWalletDetail = { route = PremiumNavigation.openWalletDetail(it) },
                         onSaveDraft = { submission ->
                             receivingMethodActionMessage = null
                             receivingMethodsState = PremiumScreenState.loading()
@@ -699,6 +704,7 @@ fun PremiumMerchantApp(
                     clearDraftSignal = receivingMethodClearDraftSignal,
                     actionMessage = receivingMethodActionMessage,
                     language = merchantSettings.language,
+                    onOpenWalletDetail = { route = PremiumNavigation.openWalletDetail(it) },
                     onSaveDraft = { submission ->
                         receivingMethodActionMessage = null
                         receivingMethodsState = PremiumScreenState.loading()
@@ -1035,6 +1041,11 @@ fun PremiumMerchantApp(
                     )
                 )
             }
+            )
+            is PremiumRoute.WalletDetail -> PremiumWalletDetailScreen(
+                state = walletDetailState,
+                language = merchantSettings.language,
+                onBack = { route = PremiumNavigation.backFromWalletDetail() }
             )
         }
         AnimatedVisibility(

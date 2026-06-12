@@ -430,7 +430,26 @@ data class PremiumLocalizedCopy(
             LocalizedText("Premium", "Premium", "Premium"),
             LocalizedText("Facturation", "Billing", "Оплата"),
             LocalizedText("Confidentialité", "Privacy", "Конфиденциальность"),
-            LocalizedText("Conditions", "Terms", "Условия")
+            LocalizedText("Conditions", "Terms", "Условия"),
+            // Wallet / receiving-method detail screen.
+            LocalizedText("Détail portefeuille", "Wallet detail", "Детали кошелька"),
+            LocalizedText("Reçu sur ce portefeuille", "Received on this wallet", "Получено на этот кошелёк"),
+            LocalizedText("aperçu", "preview", "предпросмотр"),
+            LocalizedText("Vérification de provenance", "Provenance check", "Проверка происхождения"),
+            LocalizedText("944 paiements vérifiés", "944 verified payments", "944 проверенных платежа"),
+            LocalizedText("Activité · provenance", "Activity · provenance", "Активность · происхождение"),
+            LocalizedText("Infos du rail", "Rail info", "Информация о канале"),
+            LocalizedText("Devise", "Currency", "Валюта"),
+            LocalizedText("Type", "Type", "Тип"),
+            LocalizedText("Lié depuis", "Linked since", "Привязан с"),
+            LocalizedText("Désactivée", "Disabled", "Отключено"),
+            LocalizedText("7 jours", "7 days", "7 дней"),
+            LocalizedText("30 jours", "30 days", "30 дней"),
+            LocalizedText("Notification SMS", "SMS notification", "SMS-уведомление"),
+            LocalizedText("Notification app", "App notification", "Уведомление приложения"),
+            LocalizedText("Référence à vérifier", "Reference to check", "Ссылка на проверку"),
+            LocalizedText("Il y a 2 min", "2 min ago", "2 мин назад"),
+            LocalizedText("Il y a 1 h", "1 h ago", "1 ч назад")
         ).associateBy { it.fr }
 
         private val fr = PremiumLocalizedCopy(
