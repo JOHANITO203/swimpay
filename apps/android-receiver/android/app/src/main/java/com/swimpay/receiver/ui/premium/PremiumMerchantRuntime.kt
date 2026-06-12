@@ -254,6 +254,10 @@ data class PremiumWalletDetailUiState(
 
 data class PremiumReceivingMethodUiItem(
     val routeId: String,
+    // The method's real bank-profile id (from the API list response). Used to re-derive
+    // the notification allowlist whenever the set of active methods changes — never the
+    // subtitle heuristic. Empty only for placeholder rows that have no real route.
+    val bankProfileId: String = "",
     val title: String,
     val subtitle: String,
     val helper: String?,
@@ -1510,6 +1514,7 @@ private fun MerchantReceivingMethodDisplay.toPremiumItem(): PremiumReceivingMeth
     val recommended = !actions.contains("Définir par défaut")
     return PremiumReceivingMethodUiItem(
         routeId = routeId,
+        bankProfileId = bankProfileId,
         title = title,
         subtitle = subtitle,
         helper = helper,

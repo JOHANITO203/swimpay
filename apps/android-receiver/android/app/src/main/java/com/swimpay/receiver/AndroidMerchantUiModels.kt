@@ -99,6 +99,10 @@ enum class ReceivingMethodType(
 
 data class MerchantReceivingMethodDisplay(
     val routeId: String = "",
+    // The route's real bank-profile id, carried straight from the API list response
+    // (bank_id / bank_profile_id). Drives the derived notification allowlist when the
+    // active receiving methods change. Empty only for placeholder/preview rows.
+    val bankProfileId: String = "",
     val title: String,
     val subtitle: String,
     val helper: String? = null,

@@ -279,8 +279,9 @@ class ReceivingMethodAllowlistCoherenceTest {
         // finishOnboarding lives inside the @Composable app, so it is pinned by a
         // source-text contract: from the single completed onboarding state it must
         // (a) create the receiving-method ROUTE from the chosen submission, and
-        // (b) persist the notification ALLOWLIST derived from that same choice — and
-        // skip the persist (rather than fabricate a bank) when the allowlist is empty.
+        // (b) persist + register the notification ALLOWLIST derived from that same choice
+        // through the SHARED sync code path — the package-less/empty case is handled by the
+        // shared object (clear/skip), never by fabricating a monitored bank.
         val app = File(
             "src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt"
         ).readText().replace("\r\n", "\n")
@@ -290,27 +291,53 @@ class ReceivingMethodAllowlistCoherenceTest {
             "finishOnboarding must create the route from the chosen submission",
             app.contains("activeRuntime.createReceivingMethod(receivingMethodSubmission)")
         )
-        // (b) Allowlist DERIVED from the same choice (not a parallel manual list).
+        // (b) Allowlist DERIVED + persisted + registered through the ONE shared sync path,
+        // from the chosen submission's bank id (not a parallel manual list, not a fork).
         assertTrue(
-            "allowlist must be derived from the chosen method",
+            "onboarding must drive the allowlist through the shared sync object",
+            app.contains("ReceivingMethodAllowlistSync.syncFromActiveMethods(")
+        )
+        assertTrue(
+            "the shared sync must derive from the chosen method's bank id",
+            app.contains("setOfNotNull(completedState.receivingMethodSubmission?.bankProfileId)")
+        )
+        // The old forked persist/register block must be gone (single code path now).
+        assertFalse(
+            "onboarding must not fork its own ReceiverRuntimeConfig persist block",
             app.contains("completedState.derivedEnabledBankProfileIds")
         )
-        // The derived allowlist is what gets persisted into the runtime config.
-        assertTrue(
-            "derived allowlist must be persisted into ReceiverRuntimeConfig",
-            app.contains("ReceiverRuntimeConfig(") &&
-                app.contains("enabledBankProfileIds = enabledBankProfileIds")
-        )
-        // Empty (package-less WA) → skip the save, never fabricate a monitored bank.
-        assertTrue(
-            "empty allowlist must skip the persist, not fabricate a bank",
+        assertFalse(
+            "onboarding must not fork its own empty-allowlist guard",
             app.contains("if (enabledBankProfileIds.isNotEmpty())")
         )
-        // The derived ids are also what gets registered with the backend (one choice →
-        // backend route registration uses the same derived set).
+    }
+
+    @Test
+    fun receivingMethodMutationsDriveTheAllowlistThroughTheSameSharedSyncPath() {
+        // Gap #1 contract: every post-onboarding mutation (add/delete/disable/replace) must
+        // re-derive + persist + re-register the allowlist via the SAME shared sync object
+        // onboarding uses — the allowlist is a continuous consequence of active methods.
+        val app = File(
+            "src/main/java/com/swimpay/receiver/ui/premium/PremiumMerchantApp.kt"
+        ).readText().replace("\r\n", "\n")
+
+        // The mutation path reloads the methods and syncs the allowlist in one helper that
+        // delegates to the shared sync object.
         assertTrue(
-            "backend registration must use the derived allowlist",
-            app.contains("enabledBankProfileIds = enabledBankProfileIds,")
+            "a shared post-mutation reload+sync helper must exist",
+            app.contains("fun reloadReceivingMethodsAndSyncAllowlist(")
+        )
+        assertTrue(
+            "the mutation helper must delegate to the shared sync object",
+            app.contains("ReceivingMethodAllowlistSync.syncFromActiveMethods(")
+        )
+        // Add, delete, disable and replace all route their post-mutation reload through it,
+        // so they can never go back to a bare loadReceivingMethods() that leaves the
+        // allowlist stale.
+        val syncCallCount = Regex("reloadReceivingMethodsAndSyncAllowlist\\(\\)").findAll(app).count()
+        assertTrue(
+            "every mutating handler (both hubs) must reload+sync, got $syncCallCount",
+            syncCallCount >= 6
         )
     }
 

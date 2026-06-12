@@ -2194,6 +2194,7 @@ private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
     }
     return MerchantReceivingMethodDisplay(
         routeId = routeId,
+        bankProfileId = bankProfileId,
         title = type.merchantLabel,
         subtitle = "${bankDisplayNameFor(bankProfileId)} · $masked",
         status = if (enabled) "Active" else "Désactivée",

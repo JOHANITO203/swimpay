@@ -29,8 +29,8 @@ import com.swimpay.receiver.AuthenticatedMerchantSession
 import com.swimpay.receiver.MerchantConfigurationChecklist
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
 import com.swimpay.receiver.PersistentDeviceStateStore
-import com.swimpay.receiver.ReceiverRuntimeConfig
 import com.swimpay.receiver.ReceiverRuntimeConfigStore
+import com.swimpay.receiver.ReceivingMethodAllowlistSync
 import com.swimpay.receiver.ReceiverRuntimeRegistrationCoordinator
 import com.swimpay.receiver.security.AndroidKeystorePayloadSigner
 import kotlinx.coroutines.Dispatchers
@@ -130,6 +130,48 @@ fun PremiumMerchantApp(
             else -> state.message
         }
     }
+    // Gap #1 — after a receiving-method mutation, re-derive the notification allowlist
+    // from the now-active methods and persist + re-register it, through the SAME shared
+    // sync the onboarding completion uses. Reloads the methods first so the derivation is
+    // a continuous consequence of the real, current set (add/delete/replace). No-op when
+    // the receiver dependencies are not wired (e.g. local/dev shells).
+    suspend fun reloadReceivingMethodsAndSyncAllowlist(): PremiumScreenState<PremiumReceivingMethodsUiState> {
+        val loaded = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+        val session = mobileMerchantSessionStore.currentSession()
+        if (
+            session != null &&
+            receiverDeviceRepository != null &&
+            receiverDeviceStateStore != null &&
+            receiverRuntimeConfigStore != null &&
+            loaded is PremiumScreenState.Content
+        ) {
+            val activeBankProfileIds = loaded.value.items
+                .filter { it.enabled && it.bankProfileId.isNotBlank() }
+                .map { it.bankProfileId }
+                .toSet()
+            val receiverKeyInfo = withContext(Dispatchers.IO) { receiverPayloadSigner.getOrCreateKeyPair() }
+            val sync = withContext(Dispatchers.IO) {
+                ReceivingMethodAllowlistSync.syncFromActiveMethods(
+                    session = AuthenticatedMerchantSession.mobile(session),
+                    activeBankProfileIds = activeBankProfileIds,
+                    configWriter = receiverRuntimeConfigStore,
+                    clearConfig = receiverRuntimeConfigStore::clear,
+                    deviceStateStore = receiverDeviceStateStore,
+                    registrationClient = receiverDeviceRepository,
+                    publicKeyPem = receiverKeyInfo.publicKeyPem,
+                    receiverKeyId = receiverKeyInfo.keyId,
+                    notificationAccessEnabled = notificationAccessEnabled,
+                    appVersion = receiverAppVersion,
+                    androidVersion = receiverAndroidVersion
+                )
+            }
+            Log.i(
+                "SwimPayReceiverAllowlist",
+                "allowlist_sync registered=${sync.registered} cleared=${sync.cleared} ids=${sync.enabledBankProfileIds}"
+            )
+        }
+        return loaded
+    }
     fun replaceReceivingMethod(routeId: String, submission: MerchantReceivingMethodSubmission) {
         receivingMethodActionMessage = null
         receivingMethodsState = PremiumScreenState.loading()
@@ -150,7 +192,7 @@ fun PremiumMerchantApp(
             } else {
                 receivingMethodActionMessage = receivingMutationMessage(created)
             }
-            receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+            receivingMethodsState = reloadReceivingMethodsAndSyncAllowlist()
         }
     }
     fun currentMerchantProfileUiState(): PremiumMerchantProfileUiState {
@@ -269,43 +311,37 @@ fun PremiumMerchantApp(
                 return@launch
             }
             // Receiving-first: the notification allowlist is DERIVED from the chosen
-            // receiving method, never a separate manual screen. Package-less WA wallets
-            // (Wave, Orange Money CI) derive to an empty set — they configure a route but
-            // contribute no allowlist entry, so we never claim to monitor them.
-            val enabledBankProfileIds = completedState.derivedEnabledBankProfileIds
+            // receiving method through the SAME shared sync code path the post-onboarding
+            // mutation handlers use (no fork). Package-less WA wallets (Wave, Orange Money
+            // CI) derive to an empty set — they configure a route but contribute no
+            // allowlist entry, so the sync clears/skips rather than fabricate a monitored
+            // bank, and onboarding still completes (the route exists).
             val receiverKeyInfo = withContext(Dispatchers.IO) {
                 receiverPayloadSigner.getOrCreateKeyPair()
             }
-            val result = withContext(Dispatchers.IO) {
-                receiverDeviceRepository.registerAndHeartbeat(
+            val syncResult = withContext(Dispatchers.IO) {
+                ReceivingMethodAllowlistSync.syncFromActiveMethods(
                     session = AuthenticatedMerchantSession.mobile(session),
-                    enabledBankProfileIds = enabledBankProfileIds,
+                    activeBankProfileIds = setOfNotNull(completedState.receivingMethodSubmission?.bankProfileId),
+                    configWriter = receiverRuntimeConfigStore,
+                    clearConfig = receiverRuntimeConfigStore::clear,
+                    deviceStateStore = receiverDeviceStateStore,
+                    registrationClient = receiverDeviceRepository,
                     publicKeyPem = receiverKeyInfo.publicKeyPem,
+                    receiverKeyId = receiverKeyInfo.keyId,
                     notificationAccessEnabled = notificationAccessEnabled,
                     appVersion = receiverAppVersion,
                     androidVersion = receiverAndroidVersion
                 )
             }
 
-            if (result.status == AndroidMerchantAuthResultStatus.SUCCESS && result.deviceState != null) {
-                // The runtime config persists the derived allowlist. With a package-less
-                // wallet there is no allowlist to persist (the store rejects an empty set),
-                // so we skip the save rather than fabricate a monitored bank.
-                if (enabledBankProfileIds.isNotEmpty()) {
-                    receiverRuntimeConfigStore.save(
-                        ReceiverRuntimeConfig(
-                            enabledBankProfileIds = enabledBankProfileIds,
-                            merchantId = session.merchantId
-                        )
-                    )
-                }
-                receiverDeviceStateStore.save(result.deviceState.copy(receiverKeyId = receiverKeyInfo.keyId))
+            if (syncResult.settled) {
                 onboardingCompletionStore.markCompleted()
                 route = PremiumNavigation.afterOnboarding()
             } else {
                 route = PremiumNavigation.openAccountRecovery(
                     PremiumAccountRecoveryUiState.receiverError(
-                        result.safeMessage.ifBlank { "Receiver staging indisponible. Vérifiez la connexion et réessayez." }
+                        syncResult.safeMessage.ifBlank { "Receiver staging indisponible. Vérifiez la connexion et réessayez." }
                     ),
                     returnRoute = PremiumRoute.Onboarding
                 )
@@ -645,7 +681,7 @@ fun PremiumMerchantApp(
                                 if (mutation is PremiumScreenState.Content) {
                                     receivingMethodClearDraftSignal += 1
                                 }
-                                receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                                receivingMethodsState = reloadReceivingMethodsAndSyncAllowlist()
                             }
                         },
                         onEditMethod = { routeId, label ->
@@ -670,7 +706,7 @@ fun PremiumMerchantApp(
                                     activeRuntime.disableReceivingMethod(routeId)
                                 }
                                 receivingMethodActionMessage = receivingMutationMessage(mutation)
-                                receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                                receivingMethodsState = reloadReceivingMethodsAndSyncAllowlist()
                             }
                         },
                         onSetDefaultMethod = { routeId ->
@@ -692,7 +728,7 @@ fun PremiumMerchantApp(
                                     activeRuntime.deleteReceivingMethod(routeId)
                                 }
                                 receivingMethodActionMessage = receivingMutationMessage(mutation)
-                                receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                                receivingMethodsState = reloadReceivingMethodsAndSyncAllowlist()
                             }
                         }
                     )
@@ -734,7 +770,7 @@ fun PremiumMerchantApp(
                             if (mutation is PremiumScreenState.Content) {
                                 receivingMethodClearDraftSignal += 1
                             }
-                            receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                            receivingMethodsState = reloadReceivingMethodsAndSyncAllowlist()
                         }
                     },
                     onEditMethod = { routeId, label ->
@@ -759,7 +795,7 @@ fun PremiumMerchantApp(
                                 activeRuntime.disableReceivingMethod(routeId)
                             }
                             receivingMethodActionMessage = receivingMutationMessage(mutation)
-                            receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                            receivingMethodsState = reloadReceivingMethodsAndSyncAllowlist()
                         }
                     },
                     onSetDefaultMethod = { routeId ->
@@ -781,7 +817,7 @@ fun PremiumMerchantApp(
                                 activeRuntime.deleteReceivingMethod(routeId)
                             }
                             receivingMethodActionMessage = receivingMutationMessage(mutation)
-                            receivingMethodsState = withContext(Dispatchers.IO) { activeRuntime.loadReceivingMethods() }
+                            receivingMethodsState = reloadReceivingMethodsAndSyncAllowlist()
                         }
                     }
                 )
