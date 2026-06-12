@@ -787,6 +787,30 @@ class AndroidMerchantVisualArchitectureTest {
         }
         assertFalse("Wallet detail state must drop the preview aggregate fields", runtime.contains("PremiumWalletReceivedPaymentUiItem"))
         assertFalse("Wallet detail preview must not invent a received total", runtime.contains("1 248 500 XOF"))
+
+        // Receiving-methods region overview (chooser): the fabricated masked accounts,
+        // received amounts and per-row "detection tones" had no real UiState backing and
+        // were removed. The chooser now lists what is addable from the unified catalog.
+        listOf(
+            "receivingRegionGroupsPreview",
+            "ReceivingMethodRowPreview",
+            "ReceivingRowTone",
+            "RUSSIAN_PREVIEW_BANK_IDS",
+            "westAfricaCount",
+            "russianCount"
+        ).forEach { removed ->
+            assertFalse("Receiving overview must not reference removed preview helper $removed", dashboard.contains(removed))
+        }
+        listOf(
+            "•• 7782",
+            "145 000",
+            "+680 USD",
+            "18 400 RUB"
+        ).forEach { fabricated ->
+            assertFalse("Receiving overview must not render fabricated literal $fabricated", dashboard.contains(fabricated))
+        }
+        // The overview must source its regions/counts from the real unified catalog.
+        assertTrue("Receiving overview must build region groups from the real catalog", dashboard.contains("ReceivingCatalog.byRegion("))
     }
 
     private fun sourceFunction(source: String, signature: String): String {

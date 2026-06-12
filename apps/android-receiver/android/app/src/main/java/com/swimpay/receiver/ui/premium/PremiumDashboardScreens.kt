@@ -1239,21 +1239,17 @@ fun PremiumReceivingMethodsHub(
     }
 }
 
-private fun PremiumReceivingMethodsUiState.westAfricaCount(): Int =
-    items.count { it.title.contains("mobile money", ignoreCase = true) }
-
-private fun PremiumReceivingMethodsUiState.russianCount(): Int =
-    items.size - westAfricaCount()
-
-private val RUSSIAN_PREVIEW_BANK_IDS = listOf("sber_ru", "tbank_ru", "vtb_ru", "alfa_ru", "gazprombank_ru", "ozon_bank")
-
 /**
- * Receiving methods v2 overview ("Portefeuilles de réception"). Single scroll that
- * presents the three receiving regions as distinct accented grouped cards. Region
- * COUNTS come from real state (westAfricaCount/russianCount); the per-row masked
- * accounts, received amounts and currency labels are preview data — the
- * PremiumReceivingMethodsUiState item model exposes no amount/currency/region field,
- * so these are illustrative and intentionally not derived from runtime state.
+ * Receiving methods overview ("Portefeuilles de réception"). Single scroll that
+ * presents the three receiving regions (West Africa / International / Russia) as
+ * distinct accented grouped cards. This surface is a CHOOSER: tapping a region
+ * navigates into that region's management sub-screen to add / configure methods.
+ *
+ * Everything rendered is real: region rows and per-region COUNTS come from the
+ * unified [ReceivingCatalog] (the methods a merchant CAN add, with their official
+ * logos); the "configurées" count is the merchant's real configured-method count
+ * from runtime state. No masked account numbers, received amounts or detection
+ * "tones" are shown — a chooser lists what is addable, not fabricated balances.
  */
 @Composable
 private fun PremiumReceivingMethodFamilyChooser(
@@ -1261,12 +1257,9 @@ private fun PremiumReceivingMethodFamilyChooser(
     language: PremiumLanguageOption,
     onPick: (ReceivingMethodFamily) -> Unit
 ) {
-    val value = (state as? PremiumScreenState.Content)?.value
-    val waCount = value?.westAfricaCount() ?: 0
-    val ruCount = value?.russianCount() ?: 0
-    val regions = receivingRegionGroupsPreview(waReal = waCount, ruReal = ruCount)
+    val configuredCount = (state as? PremiumScreenState.Content)?.value?.items?.size ?: 0
+    val regions = receivingRegionGroupsCatalog()
     val totalMethods = regions.sumOf { it.count }
-    val activeMethods = regions.sumOf { region -> region.rows.count { it.tone == ReceivingRowTone.ACTIVE } }
     var selectedRegion by remember { mutableStateOf<ReceivingRegionKind?>(null) }
     val visibleRegions = regions.filter { selectedRegion == null || it.kind == selectedRegion }
 
@@ -1292,7 +1285,7 @@ private fun PremiumReceivingMethodFamilyChooser(
         }
         item {
             Text(
-                "$totalMethods ${language.ui("méthodes")} · $activeMethods ${language.ui("actives")}",
+                "$totalMethods ${language.ui("disponibles")} · $configuredCount ${language.ui("configurées")}",
                 color = PremiumColors.SoftText,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold
@@ -1416,13 +1409,6 @@ private fun ReceivingRegionGroupCard(
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
-                        region.currency,
-                        color = PremiumColors.SoftText,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Text(
                         "${region.count}",
                         color = PremiumColors.SoftText,
                         fontSize = 12.sp,
@@ -1468,7 +1454,7 @@ private fun ReceivingRegionGroupCard(
 
 @Composable
 private fun ReceivingRegionMethodRow(
-    row: ReceivingMethodRowPreview,
+    row: ReceivingRegionMethodEntry,
     language: PremiumLanguageOption
 ) {
     Row(
@@ -1476,44 +1462,16 @@ private fun ReceivingRegionMethodRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         PremiumBankLogo(bankProfileId = row.bankProfileId, displayName = row.name, size = 40.dp)
-        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-            Text(
-                row.name,
-                color = PremiumColors.Ink,
-                fontSize = 15.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            row.maskedAccount?.let { masked ->
-                Text(
-                    masked,
-                    color = PremiumColors.SoftText,
-                    fontSize = 12.sp,
-                    lineHeight = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1
-                )
-            }
-        }
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(end = 8.dp)) {
-            val (label, tone) = when (row.tone) {
-                ReceivingRowTone.ACTIVE -> language.ui("Activé") to StatusTone.Success
-                ReceivingRowTone.DETECTED -> language.ui("Détecté") to StatusTone.Info
-                ReceivingRowTone.UNSET -> language.ui("À configurer") to StatusTone.Neutral
-            }
-            StatusChip(label, tone)
-            row.amount?.takeIf { row.tone == ReceivingRowTone.ACTIVE }?.let { amount ->
-                Text(
-                    amount,
-                    color = PremiumColors.Success,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-        }
+        Text(
+            row.name,
+            color = PremiumColors.Ink,
+            fontSize = 15.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)
+        )
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
             null,
@@ -1525,14 +1483,10 @@ private fun ReceivingRegionMethodRow(
 
 private enum class ReceivingRegionKind { WEST_AFRICA, INTERNATIONAL, RUSSIA }
 
-private enum class ReceivingRowTone { ACTIVE, DETECTED, UNSET }
-
-private data class ReceivingMethodRowPreview(
+/** One addable method in a region card: official logo (via id) + display name. */
+private data class ReceivingRegionMethodEntry(
     val bankProfileId: String,
-    val name: String,
-    val maskedAccount: String?,
-    val tone: ReceivingRowTone,
-    val amount: String?
+    val name: String
 )
 
 private data class ReceivingRegionGroup(
@@ -1541,68 +1495,72 @@ private data class ReceivingRegionGroup(
     val accent: Color,
     val title: String,
     val familyChip: String,
-    val currency: String,
     val count: Int,
-    val rows: List<ReceivingMethodRowPreview>,
+    val rows: List<ReceivingRegionMethodEntry>,
     val overflowLabel: String?
 )
 
+/** Max method rows shown inside a region card before collapsing into "Voir les N". */
+private const val RECEIVING_REGION_PREVIEW_ROWS = 3
+
 /**
- * Builds the three region groups for the overview. Region counts are real (passed in
- * from state); the rows (logos / masked accounts / amounts / detection state) are
- * illustrative preview data because the UiState item model carries no amount, currency
- * or region field. International has no dedicated receiving sub-screen, so its group is
- * non-navigating (family = null).
+ * Builds the three region groups for the overview from the unified [ReceivingCatalog]
+ * (single source of truth). Region rows = the real methods a merchant can add in that
+ * region (official logo via bankProfileId + display name); region [count] = the real
+ * catalog size for the region. No masked accounts, amounts or detection state are
+ * derived or invented — this is a chooser of what is addable. The INTERNATIONAL group
+ * has no dedicated receiving sub-screen yet, so it is non-navigating (family = null).
  */
-private fun receivingRegionGroupsPreview(waReal: Int, ruReal: Int): List<ReceivingRegionGroup> {
-    val waRows = listOf(
-        ReceivingMethodRowPreview("wave_ci", "Wave", "•• 7782", ReceivingRowTone.ACTIVE, "+145 000 FCFA"),
-        ReceivingMethodRowPreview("orange_money_ci", "Orange Money", "•• 4521", ReceivingRowTone.ACTIVE, "+62 500 FCFA"),
-        ReceivingMethodRowPreview("mtn_momo_ci", "MTN MoMo", null, ReceivingRowTone.UNSET, null)
-    )
-    val intRows = listOf(
-        ReceivingMethodRowPreview("wise_int", "Wise", "•• 6480", ReceivingRowTone.ACTIVE, "+680 USD"),
-        ReceivingMethodRowPreview("revolut_int", "Revolut", "•• 3357", ReceivingRowTone.DETECTED, null),
-        ReceivingMethodRowPreview("payoneer_int", "Payoneer", null, ReceivingRowTone.UNSET, null)
-    )
-    val ruRows = listOf(
-        ReceivingMethodRowPreview("sber_ru", "Sberbank", "•• 4821", ReceivingRowTone.ACTIVE, "+18 400 RUB"),
-        ReceivingMethodRowPreview("tbank_ru", "T-Bank", "•• 0042", ReceivingRowTone.DETECTED, null)
-    )
-    val ruTotal = if (ruReal > 0) ruReal else RUSSIAN_PREVIEW_BANK_IDS.size
+private fun receivingRegionGroupsCatalog(): List<ReceivingRegionGroup> {
+    fun entries(region: ReceivingRegion): List<ReceivingRegionMethodEntry> =
+        ReceivingCatalog.byRegion(region).map { ReceivingRegionMethodEntry(it.bankProfileId, it.displayName) }
+
+    fun group(
+        kind: ReceivingRegionKind,
+        region: ReceivingRegion,
+        family: ReceivingMethodFamily?,
+        accent: Color,
+        title: String,
+        familyChip: String
+    ): ReceivingRegionGroup {
+        val all = entries(region)
+        val shown = all.take(RECEIVING_REGION_PREVIEW_ROWS)
+        return ReceivingRegionGroup(
+            kind = kind,
+            family = family,
+            accent = accent,
+            title = title,
+            familyChip = familyChip,
+            count = all.size,
+            rows = shown,
+            overflowLabel = if (all.size > shown.size) "Voir les ${all.size} méthodes" else null
+        )
+    }
+
     return listOf(
-        ReceivingRegionGroup(
+        group(
             kind = ReceivingRegionKind.WEST_AFRICA,
+            region = ReceivingRegion.WEST_AFRICA,
             family = ReceivingMethodFamily.WEST_AFRICA,
             accent = PremiumColors.Cyan,
             title = "Afrique de l'Ouest",
-            familyChip = "Mobile money",
-            currency = "XOF",
-            count = if (waReal > 0) waReal else waRows.size,
-            rows = waRows,
-            overflowLabel = null
+            familyChip = "Mobile money"
         ),
-        ReceivingRegionGroup(
+        group(
             kind = ReceivingRegionKind.INTERNATIONAL,
+            region = ReceivingRegion.INTERNATIONAL,
             family = null,
             accent = PremiumColors.Success,
             title = "International",
-            familyChip = "Néobanques",
-            currency = "USD",
-            count = intRows.size,
-            rows = intRows,
-            overflowLabel = null
+            familyChip = "Néobanques"
         ),
-        ReceivingRegionGroup(
+        group(
             kind = ReceivingRegionKind.RUSSIA,
+            region = ReceivingRegion.RU,
             family = ReceivingMethodFamily.RUSSIAN,
             accent = PremiumColors.Danger,
             title = "Russie",
-            familyChip = "Banques",
-            currency = "RUB",
-            count = ruTotal,
-            rows = ruRows,
-            overflowLabel = if (ruTotal > ruRows.size) "Voir les $ruTotal méthodes" else null
+            familyChip = "Banques"
         )
     )
 }

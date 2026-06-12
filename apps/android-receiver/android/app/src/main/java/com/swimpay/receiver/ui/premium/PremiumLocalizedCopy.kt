@@ -418,6 +418,8 @@ data class PremiumLocalizedCopy(
             LocalizedText("Entreprise & vérification (KYC)", "Business & verification (KYC)", "Бизнес и проверка (KYC)"),
             LocalizedText("Devises & taux", "Currencies & rates", "Валюты и курсы"),
             LocalizedText("Portefeuilles de réception", "Receiving wallets", "Кошельки для приёма"),
+            LocalizedText("disponibles", "available", "доступно"),
+            LocalizedText("configurées", "configured", "настроено"),
             LocalizedText("Confirmation automatique", "Automatic confirmation", "Автоподтверждение"),
             LocalizedText("Provenance & sécurité", "Provenance & security", "Происхождение и безопасность"),
             LocalizedText("Accès aux notifications", "Notification access", "Доступ к уведомлениям"),
