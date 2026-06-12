@@ -266,12 +266,17 @@ export interface CreateAndroidMerchantAccountInput {
   businessLabel: string | null;
   displayHandle: string;
   deviceProofHash: string;
+  /** Verified Google subject — account creation is anchored on Google (never NULL). */
+  googleSub: string;
+  /** Verified Google email when the id_token provides one; otherwise a synthetic email is used. */
+  googleEmail?: string | null;
   expiresAt: string;
   now: string;
 }
 
 export type CreateAndroidMerchantAccountResult =
   | { kind: 'created'; account: AndroidMerchantAccountRecord }
+  | { kind: 'recovered'; account: AndroidMerchantAccountRecord }
   | { kind: 'device_already_registered'; device: AndroidMerchantDeviceRecord };
 
 export type LinkAndroidMerchantGoogleSubResult = { kind: 'linked' } | { kind: 'google_sub_conflict' };
@@ -638,15 +643,77 @@ export class InMemoryAuthBffRepository implements AuthBffRepository {
   }
 
   async createAndroidMerchantAccount(input: CreateAndroidMerchantAccountInput): Promise<CreateAndroidMerchantAccountResult> {
-    const existingDevice = this.androidMerchantDevices.get(input.deviceProofHash);
-    if (existingDevice && existingDevice.status !== AndroidMerchantDeviceStatuses.REVOKED) {
-      return { kind: 'device_already_registered', device: existingDevice };
+    // Recover-or-create anchored on Google: a user owning this google_sub never gets a second merchant.
+    const existingUser = [...this.users.values()].find(
+      (candidate) => candidate.googleSub === input.googleSub && candidate.status === 'active'
+    );
+    if (existingUser) {
+      const eligibleMembership = [...this.memberships.values()].find(
+        (membership) =>
+          membership.userId === existingUser.id &&
+          membership.status === 'active' &&
+          (membership.role === MerchantRoles.OWNER || membership.role === MerchantRoles.ADMIN)
+      );
+      if (eligibleMembership) {
+        // RECOVER: re-attach/reuse the device for the existing merchant and mint a session.
+        const recovered = this.attachAndroidMerchantDeviceAndSession({
+          user: existingUser,
+          merchantId: eligibleMembership.merchantId,
+          deviceProofHash: input.deviceProofHash,
+          deviceId: input.deviceId,
+          mobileSessionId: input.mobileSessionId,
+          mobileSessionHash: input.mobileSessionHash,
+          expiresAt: input.expiresAt,
+          now: input.now
+        });
+        if (recovered.kind === 'device_already_registered') {
+          return recovered;
+        }
+        return { kind: 'recovered', account: recovered.account };
+      }
+      // Edge case: the google_sub exists but owns no eligible merchant. Do NOT insert a second
+      // user (google_sub is UNIQUE) — create a merchant + owner membership for the EXISTING user.
+      const guard = this.guardAndroidMerchantDeviceForCreate(input.deviceProofHash);
+      if (guard) {
+        return guard;
+      }
+      const membership: MerchantMembership = {
+        id: `mem_${existingUser.id}_${input.merchantId}`,
+        merchantId: input.merchantId,
+        userId: existingUser.id,
+        role: MerchantRoles.OWNER,
+        status: 'active'
+      };
+      this.memberships.set(membership.id, membership);
+      this.users.set(existingUser.id, { ...existingUser, lastLoginAt: input.now });
+      const created = this.attachAndroidMerchantDeviceAndSession({
+        user: existingUser,
+        merchantId: input.merchantId,
+        deviceProofHash: input.deviceProofHash,
+        deviceId: input.deviceId,
+        mobileSessionId: input.mobileSessionId,
+        mobileSessionHash: input.mobileSessionHash,
+        expiresAt: input.expiresAt,
+        now: input.now,
+        profileType: input.profileType,
+        displayHandle: input.displayHandle
+      });
+      if (created.kind === 'device_already_registered') {
+        return created;
+      }
+      return { kind: 'created', account: created.account };
     }
 
+    const guard = this.guardAndroidMerchantDeviceForCreate(input.deviceProofHash);
+    if (guard) {
+      return guard;
+    }
+
+    // CREATE: a brand-new user, already linked to Google (google_sub is never NULL anymore).
     const user: BffUser = {
       id: input.userId,
-      googleSub: null,
-      email: `mobile-${input.userId}@swimpay.local`,
+      googleSub: input.googleSub,
+      email: input.googleEmail ?? `mobile-${input.userId}@swimpay.local`,
       name: input.displayHandle,
       avatarUrl: null,
       status: 'active',
@@ -663,39 +730,105 @@ export class InMemoryAuthBffRepository implements AuthBffRepository {
     };
     this.memberships.set(membership.id, membership);
 
-    const device: AndroidMerchantDeviceRecord = {
-      id: input.deviceId,
-      userId: input.userId,
+    const created = this.attachAndroidMerchantDeviceAndSession({
+      user,
       merchantId: input.merchantId,
       deviceProofHash: input.deviceProofHash,
-      status: AndroidMerchantDeviceStatuses.ACTIVE,
-      createdAt: input.now,
-      updatedAt: input.now,
-      lastSeenAt: input.now
-    };
-    this.androidMerchantDevices.set(input.deviceProofHash, device);
+      deviceId: input.deviceId,
+      mobileSessionId: input.mobileSessionId,
+      mobileSessionHash: input.mobileSessionHash,
+      expiresAt: input.expiresAt,
+      now: input.now,
+      profileType: input.profileType,
+      displayHandle: input.displayHandle
+    });
+    if (created.kind === 'device_already_registered') {
+      return created;
+    }
+    return { kind: 'created', account: created.account };
+  }
+
+  private guardAndroidMerchantDeviceForCreate(
+    deviceProofHash: string
+  ): { kind: 'device_already_registered'; device: AndroidMerchantDeviceRecord } | null {
+    const existingDevice = this.androidMerchantDevices.get(deviceProofHash);
+    if (existingDevice && existingDevice.status !== AndroidMerchantDeviceStatuses.REVOKED) {
+      return { kind: 'device_already_registered', device: existingDevice };
+    }
+    return null;
+  }
+
+  /**
+   * Shared device re-attach/reuse + session mint + account record build used by both
+   * create (recover branch) and recoverAndroidMerchantAccountWithGoogle. The device guard
+   * mirrors the recover semantics: a non-revoked device that belongs to a different
+   * user/merchant (or is not active) is rejected as device_already_registered.
+   */
+  private attachAndroidMerchantDeviceAndSession(params: {
+    user: BffUser;
+    merchantId: string;
+    deviceProofHash: string;
+    deviceId: string;
+    mobileSessionId: string;
+    mobileSessionHash: string;
+    expiresAt: string;
+    now: string;
+    profileType?: AndroidMerchantProfileType;
+    displayHandle?: string;
+  }):
+    | { kind: 'attached'; account: AndroidMerchantAccountRecord }
+    | { kind: 'device_already_registered'; device: AndroidMerchantDeviceRecord } {
+    const existingDevice = this.androidMerchantDevices.get(params.deviceProofHash);
+    let device: AndroidMerchantDeviceRecord;
+    if (existingDevice && existingDevice.status !== AndroidMerchantDeviceStatuses.REVOKED) {
+      if (
+        existingDevice.status !== AndroidMerchantDeviceStatuses.ACTIVE ||
+        existingDevice.userId !== params.user.id ||
+        existingDevice.merchantId !== params.merchantId
+      ) {
+        return { kind: 'device_already_registered', device: existingDevice };
+      }
+      device = { ...existingDevice, updatedAt: params.now, lastSeenAt: params.now };
+    } else {
+      device = {
+        id: params.deviceId,
+        userId: params.user.id,
+        merchantId: params.merchantId,
+        deviceProofHash: params.deviceProofHash,
+        status: AndroidMerchantDeviceStatuses.ACTIVE,
+        createdAt: params.now,
+        updatedAt: params.now,
+        lastSeenAt: params.now
+      };
+    }
+    this.androidMerchantDevices.set(params.deviceProofHash, device);
 
     const mobileSession: AndroidMerchantMobileSessionRecord = {
-      id: input.mobileSessionId,
-      userId: input.userId,
-      merchantId: input.merchantId,
-      deviceId: input.deviceId,
-      expiresAt: input.expiresAt,
+      id: params.mobileSessionId,
+      userId: params.user.id,
+      merchantId: params.merchantId,
+      deviceId: device.id,
+      expiresAt: params.expiresAt,
       revokedAt: null
     };
-    this.androidMerchantSessions.set(input.mobileSessionHash, mobileSession);
+    this.androidMerchantSessions.set(params.mobileSessionHash, mobileSession);
 
+    const storedAccount = this.androidMerchantAccounts.get(params.user.id);
     const account: AndroidMerchantAccountRecord = {
-      userId: input.userId,
-      merchantId: input.merchantId,
-      deviceId: input.deviceId,
-      profileType: input.profileType,
-      displayHandle: input.displayHandle,
+      userId: params.user.id,
+      merchantId: params.merchantId,
+      deviceId: device.id,
+      profileType: params.profileType ?? storedAccount?.profileType ?? AndroidMerchantProfileTypes.PERSONAL,
+      displayHandle:
+        params.displayHandle ??
+        storedAccount?.displayHandle ??
+        params.user.name ??
+        `merchant-${params.user.id.replaceAll('-', '').slice(0, 8)}`,
       permissions: androidMerchantMobilePermissions(),
       mobileSession
     };
-    this.androidMerchantAccounts.set(input.userId, account);
-    return { kind: 'created', account };
+    this.androidMerchantAccounts.set(params.user.id, account);
+    return { kind: 'attached', account };
   }
 
   async linkAndroidMerchantGoogleSub(input: {
@@ -736,58 +869,21 @@ export class InMemoryAuthBffRepository implements AuthBffRepository {
       return { kind: 'google_sub_not_linked' };
     }
 
-    const existingDevice = this.androidMerchantDevices.get(input.deviceProofHash);
-    let device: AndroidMerchantDeviceRecord;
-    if (existingDevice && existingDevice.status !== AndroidMerchantDeviceStatuses.REVOKED) {
-      if (
-        existingDevice.status !== AndroidMerchantDeviceStatuses.ACTIVE ||
-        existingDevice.userId !== user.id ||
-        existingDevice.merchantId !== membership.merchantId
-      ) {
-        return { kind: 'device_already_registered', device: existingDevice };
-      }
-      device = {
-        ...existingDevice,
-        updatedAt: input.now,
-        lastSeenAt: input.now
-      };
-    } else {
-      device = {
-        id: input.deviceId,
-        userId: user.id,
-        merchantId: membership.merchantId,
-        deviceProofHash: input.deviceProofHash,
-        status: AndroidMerchantDeviceStatuses.ACTIVE,
-        createdAt: input.now,
-        updatedAt: input.now,
-        lastSeenAt: input.now
-      };
-    }
-    this.androidMerchantDevices.set(input.deviceProofHash, device);
-
-    const mobileSession: AndroidMerchantMobileSessionRecord = {
-      id: input.mobileSessionId,
-      userId: user.id,
+    const attached = this.attachAndroidMerchantDeviceAndSession({
+      user,
       merchantId: membership.merchantId,
-      deviceId: device.id,
+      deviceProofHash: input.deviceProofHash,
+      deviceId: input.deviceId,
+      mobileSessionId: input.mobileSessionId,
+      mobileSessionHash: input.mobileSessionHash,
       expiresAt: input.expiresAt,
-      revokedAt: null
-    };
-    this.androidMerchantSessions.set(input.mobileSessionHash, mobileSession);
-
-    const storedAccount = this.androidMerchantAccounts.get(user.id);
-    const account: AndroidMerchantAccountRecord = {
-      userId: user.id,
-      merchantId: membership.merchantId,
-      deviceId: device.id,
-      profileType: storedAccount?.profileType ?? AndroidMerchantProfileTypes.PERSONAL,
-      displayHandle: storedAccount?.displayHandle ?? user.name ?? `merchant-${user.id.replaceAll('-', '').slice(0, 8)}`,
-      permissions: androidMerchantMobilePermissions(),
-      mobileSession
-    };
-    this.androidMerchantAccounts.set(user.id, account);
+      now: input.now
+    });
+    if (attached.kind === 'device_already_registered') {
+      return attached;
+    }
     this.users.set(user.id, { ...user, lastLoginAt: input.now });
-    return { kind: 'recovered', account };
+    return { kind: 'recovered', account: attached.account };
   }
 
   async recoverAndroidMerchantKnownDevice(
@@ -1067,33 +1163,218 @@ export class PgAuthBffRepository implements AuthBffRepository {
     };
   }
 
+  /**
+   * Shared device re-attach/reuse + session mint inside an open transaction. Locks the device
+   * proof row FOR UPDATE and mirrors the recover guard: a non-revoked device that is not active,
+   * or belongs to a different user/merchant, is rejected as device_already_registered.
+   * Returns the (re)attached device + minted session row, or a rejection (caller rolls back).
+   */
+  private async attachAndroidMerchantDeviceAndSessionTx(
+    client: pg.PoolClient,
+    params: {
+      userId: string;
+      merchantId: string;
+      deviceProofHash: string;
+      deviceId: string;
+      mobileSessionId: string;
+      mobileSessionHash: string;
+      expiresAt: string;
+      now: string;
+    }
+  ): Promise<
+    | { kind: 'attached'; device: AndroidMerchantDeviceRecord; mobileSession: AndroidMerchantMobileSessionRecord }
+    | { kind: 'device_already_registered'; device: AndroidMerchantDeviceRecord }
+  > {
+    const existingDeviceResult = await client.query(
+      `SELECT id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at
+       FROM android_merchant_devices
+       WHERE device_proof_hash = $1 AND status <> 'revoked'
+       FOR UPDATE`,
+      [params.deviceProofHash]
+    );
+    const existingDevice = existingDeviceResult.rows[0] ? mapAndroidMerchantDeviceRow(existingDeviceResult.rows[0]) : null;
+    let device: AndroidMerchantDeviceRecord;
+    if (existingDevice) {
+      if (
+        existingDevice.status !== AndroidMerchantDeviceStatuses.ACTIVE ||
+        existingDevice.userId !== params.userId ||
+        existingDevice.merchantId !== params.merchantId
+      ) {
+        return { kind: 'device_already_registered', device: existingDevice };
+      }
+      const updatedDevice = await client.query(
+        `UPDATE android_merchant_devices
+         SET last_seen_at = $2, updated_at = $2
+         WHERE id = $1
+         RETURNING id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at`,
+        [existingDevice.id, params.now]
+      );
+      device = mapAndroidMerchantDeviceRow(updatedDevice.rows[0]);
+    } else {
+      const insertedDevice = await client.query(
+        `INSERT INTO android_merchant_devices (
+           id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at
+         )
+         VALUES ($1, $2, $3, $4, 'active', $5, $5, $5)
+         RETURNING id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at`,
+        [params.deviceId, params.userId, params.merchantId, params.deviceProofHash, params.now]
+      );
+      device = mapAndroidMerchantDeviceRow(insertedDevice.rows[0]);
+    }
+
+    const sessionResult = await client.query(
+      `INSERT INTO android_merchant_sessions (
+         id, session_hash, user_id, merchant_id, device_id, expires_at, created_at, updated_at
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+       RETURNING id, user_id, merchant_id, device_id, expires_at, revoked_at`,
+      [
+        params.mobileSessionId,
+        params.mobileSessionHash,
+        params.userId,
+        params.merchantId,
+        device.id,
+        params.expiresAt,
+        params.now
+      ]
+    );
+    return { kind: 'attached', device, mobileSession: mapAndroidMerchantMobileSessionRow(sessionResult.rows[0]) };
+  }
+
   async createAndroidMerchantAccount(input: CreateAndroidMerchantAccountInput): Promise<CreateAndroidMerchantAccountResult> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const existingDevice = await client.query(
-        `SELECT id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at
-         FROM android_merchant_devices
-         WHERE device_proof_hash = $1 AND status <> 'revoked'
+
+      // Recover-or-create anchored on Google. Lock the Google user row first.
+      const existingUserResult = await client.query(
+        `SELECT id, name, display_handle
+         FROM users
+         WHERE google_sub = $1 AND status = 'active'
          FOR UPDATE`,
-        [input.deviceProofHash]
+        [input.googleSub]
       );
-      if (existingDevice.rows[0]) {
-        await client.query('ROLLBACK');
+      const existingUser = existingUserResult.rows[0];
+
+      if (existingUser) {
+        const membershipResult = await client.query(
+          `SELECT mm.merchant_id, mm.role, m.android_profile_type
+           FROM merchant_memberships mm
+           JOIN merchants m ON m.id = mm.merchant_id
+           WHERE mm.user_id = $1
+            AND mm.status = 'active'
+            AND mm.role IN ('owner', 'admin')
+            AND m.status = 'active'
+           ORDER BY CASE WHEN mm.role = 'owner' THEN 0 ELSE 1 END, mm.created_at ASC
+           LIMIT 1`,
+          [existingUser.id]
+        );
+        const membership = membershipResult.rows[0];
+
+        if (membership) {
+          // RECOVER: re-attach/reuse the device for the existing merchant; no new merchant.
+          const attached = await this.attachAndroidMerchantDeviceAndSessionTx(client, {
+            userId: String(existingUser.id),
+            merchantId: String(membership.merchant_id),
+            deviceProofHash: input.deviceProofHash,
+            deviceId: input.deviceId,
+            mobileSessionId: input.mobileSessionId,
+            mobileSessionHash: input.mobileSessionHash,
+            expiresAt: input.expiresAt,
+            now: input.now
+          });
+          if (attached.kind === 'device_already_registered') {
+            await client.query('ROLLBACK');
+            return attached;
+          }
+          await client.query(`UPDATE users SET last_login_at = $2, updated_at = $2 WHERE id = $1`, [
+            existingUser.id,
+            input.now
+          ]);
+          await client.query('COMMIT');
+          return {
+            kind: 'recovered',
+            account: {
+              userId: String(existingUser.id),
+              merchantId: String(membership.merchant_id),
+              deviceId: attached.device.id,
+              profileType: parseAndroidMerchantProfileType(String(membership.android_profile_type)),
+              displayHandle:
+                (existingUser.display_handle ? String(existingUser.display_handle) : null) ??
+                (existingUser.name ? String(existingUser.name) : null) ??
+                `merchant-${String(existingUser.id).replaceAll('-', '').slice(0, 8)}`,
+              permissions: androidMerchantMobilePermissions(),
+              mobileSession: attached.mobileSession
+            }
+          };
+        }
+
+        // Edge case: google_sub exists but owns no eligible merchant. Create a merchant +
+        // owner membership for the EXISTING user (never insert a second user — google_sub UNIQUE).
+        const merchantNameForExisting =
+          input.profileType === AndroidMerchantProfileTypes.BUSINESS && input.businessLabel
+            ? input.businessLabel
+            : input.displayHandle;
+        await client.query(
+          `INSERT INTO merchants (
+             id, name, business_name, status, owner_user_id, android_profile_type, android_business_label, created_at, updated_at
+           )
+           VALUES ($1, $2, $2, 'active', $3, $4, $5, $6, $6)`,
+          [input.merchantId, merchantNameForExisting, existingUser.id, input.profileType, input.businessLabel, input.now]
+        );
+        await client.query(
+          `INSERT INTO merchant_memberships (merchant_id, user_id, role, status, created_at, updated_at)
+           VALUES ($1, $2, 'owner', 'active', $3, $3)`,
+          [input.merchantId, existingUser.id, input.now]
+        );
+        const attachedForExisting = await this.attachAndroidMerchantDeviceAndSessionTx(client, {
+          userId: String(existingUser.id),
+          merchantId: input.merchantId,
+          deviceProofHash: input.deviceProofHash,
+          deviceId: input.deviceId,
+          mobileSessionId: input.mobileSessionId,
+          mobileSessionHash: input.mobileSessionHash,
+          expiresAt: input.expiresAt,
+          now: input.now
+        });
+        if (attachedForExisting.kind === 'device_already_registered') {
+          await client.query('ROLLBACK');
+          return attachedForExisting;
+        }
+        await client.query(`UPDATE users SET last_login_at = $2, updated_at = $2 WHERE id = $1`, [
+          existingUser.id,
+          input.now
+        ]);
+        await client.query('COMMIT');
         return {
-          kind: 'device_already_registered',
-          device: mapAndroidMerchantDeviceRow(existingDevice.rows[0])
+          kind: 'created',
+          account: {
+            userId: String(existingUser.id),
+            merchantId: input.merchantId,
+            deviceId: attachedForExisting.device.id,
+            profileType: input.profileType,
+            displayHandle: input.displayHandle,
+            permissions: androidMerchantMobilePermissions(),
+            mobileSession: attachedForExisting.mobileSession
+          }
         };
       }
 
+      // CREATE: brand-new user already linked to Google (google_sub never NULL).
       const merchantName =
         input.profileType === AndroidMerchantProfileTypes.BUSINESS && input.businessLabel
           ? input.businessLabel
           : input.displayHandle;
       await client.query(
         `INSERT INTO users (id, google_sub, email, name, display_handle, account_origin, status, last_login_at, created_at, updated_at)
-         VALUES ($1, NULL, $2, $3, $3, 'android_mobile', 'active', $4, $4, $4)`,
-        [input.userId, `mobile-${input.userId}@swimpay.local`, input.displayHandle, input.now]
+         VALUES ($1, $2, $3, $4, $4, 'android_mobile', 'active', $5, $5, $5)`,
+        [
+          input.userId,
+          input.googleSub,
+          input.googleEmail ?? `mobile-${input.userId}@swimpay.local`,
+          input.displayHandle,
+          input.now
+        ]
       );
       await client.query(
         `INSERT INTO merchants (
@@ -1107,41 +1388,31 @@ export class PgAuthBffRepository implements AuthBffRepository {
          VALUES ($1, $2, 'owner', 'active', $3, $3)`,
         [input.merchantId, input.userId, input.now]
       );
-      const deviceResult = await client.query(
-        `INSERT INTO android_merchant_devices (
-           id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at
-         )
-         VALUES ($1, $2, $3, $4, 'active', $5, $5, $5)
-         RETURNING id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at`,
-        [input.deviceId, input.userId, input.merchantId, input.deviceProofHash, input.now]
-      );
-      const sessionResult = await client.query(
-        `INSERT INTO android_merchant_sessions (
-           id, session_hash, user_id, merchant_id, device_id, expires_at, created_at, updated_at
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
-         RETURNING id, user_id, merchant_id, device_id, expires_at, revoked_at`,
-        [
-          input.mobileSessionId,
-          input.mobileSessionHash,
-          input.userId,
-          input.merchantId,
-          input.deviceId,
-          input.expiresAt,
-          input.now
-        ]
-      );
+      const attached = await this.attachAndroidMerchantDeviceAndSessionTx(client, {
+        userId: input.userId,
+        merchantId: input.merchantId,
+        deviceProofHash: input.deviceProofHash,
+        deviceId: input.deviceId,
+        mobileSessionId: input.mobileSessionId,
+        mobileSessionHash: input.mobileSessionHash,
+        expiresAt: input.expiresAt,
+        now: input.now
+      });
+      if (attached.kind === 'device_already_registered') {
+        await client.query('ROLLBACK');
+        return attached;
+      }
       await client.query('COMMIT');
       return {
         kind: 'created',
         account: {
           userId: input.userId,
           merchantId: input.merchantId,
-          deviceId: mapAndroidMerchantDeviceRow(deviceResult.rows[0]).id,
+          deviceId: attached.device.id,
           profileType: input.profileType,
           displayHandle: input.displayHandle,
           permissions: androidMerchantMobilePermissions(),
-          mobileSession: mapAndroidMerchantMobileSessionRow(sessionResult.rows[0])
+          mobileSession: attached.mobileSession
         }
       };
     } catch (error) {
@@ -1228,60 +1499,20 @@ export class PgAuthBffRepository implements AuthBffRepository {
         return { kind: 'google_sub_not_linked' };
       }
 
-      const existingDeviceResult = await client.query(
-        `SELECT id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at
-         FROM android_merchant_devices
-         WHERE device_proof_hash = $1 AND status <> 'revoked'
-         FOR UPDATE`,
-        [input.deviceProofHash]
-      );
-      const existingDevice = existingDeviceResult.rows[0] ? mapAndroidMerchantDeviceRow(existingDeviceResult.rows[0]) : null;
-      let device: AndroidMerchantDeviceRecord;
-      if (existingDevice) {
-        if (
-          existingDevice.status !== AndroidMerchantDeviceStatuses.ACTIVE ||
-          existingDevice.userId !== String(user.id) ||
-          existingDevice.merchantId !== String(membership.merchant_id)
-        ) {
-          await client.query('ROLLBACK');
-          return { kind: 'device_already_registered', device: existingDevice };
-        }
-        const updatedDevice = await client.query(
-          `UPDATE android_merchant_devices
-           SET last_seen_at = $2, updated_at = $2
-           WHERE id = $1
-           RETURNING id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at`,
-          [existingDevice.id, input.now]
-        );
-        device = mapAndroidMerchantDeviceRow(updatedDevice.rows[0]);
-      } else {
-        const insertedDevice = await client.query(
-          `INSERT INTO android_merchant_devices (
-             id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at
-           )
-           VALUES ($1, $2, $3, $4, 'active', $5, $5, $5)
-           RETURNING id, user_id, merchant_id, device_proof_hash, status, created_at, updated_at, last_seen_at`,
-          [input.deviceId, user.id, membership.merchant_id, input.deviceProofHash, input.now]
-        );
-        device = mapAndroidMerchantDeviceRow(insertedDevice.rows[0]);
+      const attached = await this.attachAndroidMerchantDeviceAndSessionTx(client, {
+        userId: String(user.id),
+        merchantId: String(membership.merchant_id),
+        deviceProofHash: input.deviceProofHash,
+        deviceId: input.deviceId,
+        mobileSessionId: input.mobileSessionId,
+        mobileSessionHash: input.mobileSessionHash,
+        expiresAt: input.expiresAt,
+        now: input.now
+      });
+      if (attached.kind === 'device_already_registered') {
+        await client.query('ROLLBACK');
+        return attached;
       }
-
-      const sessionResult = await client.query(
-        `INSERT INTO android_merchant_sessions (
-           id, session_hash, user_id, merchant_id, device_id, expires_at, created_at, updated_at
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
-         RETURNING id, user_id, merchant_id, device_id, expires_at, revoked_at`,
-        [
-          input.mobileSessionId,
-          input.mobileSessionHash,
-          user.id,
-          membership.merchant_id,
-          device.id,
-          input.expiresAt,
-          input.now
-        ]
-      );
       await client.query(`UPDATE users SET last_login_at = $2, updated_at = $2 WHERE id = $1`, [user.id, input.now]);
       await client.query('COMMIT');
       return {
@@ -1289,14 +1520,14 @@ export class PgAuthBffRepository implements AuthBffRepository {
         account: {
           userId: String(user.id),
           merchantId: String(membership.merchant_id),
-          deviceId: device.id,
+          deviceId: attached.device.id,
           profileType: parseAndroidMerchantProfileType(String(membership.android_profile_type)),
           displayHandle:
             (user.display_handle ? String(user.display_handle) : null) ??
             (user.name ? String(user.name) : null) ??
             `merchant-${String(user.id).replaceAll('-', '').slice(0, 8)}`,
           permissions: androidMerchantMobilePermissions(),
-          mobileSession: mapAndroidMerchantMobileSessionRow(sessionResult.rows[0])
+          mobileSession: attached.mobileSession
         }
       };
     } catch (error) {

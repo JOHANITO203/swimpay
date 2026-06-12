@@ -433,6 +433,10 @@ describe('receiver device api', () => {
         referenceCode: () => 'SWP-UNUSED'
       },
       receiverDeviceIdGenerator: () => 'mobile_receiver_01',
+      googleIdTokenVerifier: {
+        verifyIdToken: async (idToken: string) =>
+          idToken.trim() ? { googleSub: `google-sub-for:${idToken.trim()}` } : null
+      },
       clock: () => new Date('2026-05-02T11:00:00.000Z'),
       healthChecks: {
         database: async () => 'skipped',
@@ -446,6 +450,7 @@ describe('receiver device api', () => {
       url: '/v1/android-merchant/auth/create-account',
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-mobile-receiver',
         device_proof: {
           install_public_key: 'install_mobile_receiver',
           challenge_id: 'challenge_mobile_receiver',

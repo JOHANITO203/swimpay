@@ -75,11 +75,12 @@ describe('android merchant account auth contracts', () => {
     });
   });
 
-  it('validates account creation without personal names or raw device identifiers', () => {
+  it('validates account creation with a Google id_token and without personal names or raw device identifiers', () => {
     expect(
       validateAndroidMerchantCreateAccountRequest({
         profile_type: AndroidMerchantProfileTypes.BUSINESS,
         business_label: 'Demo shop',
+        id_token: 'google-create-id-token',
         device_proof: safeDeviceProof('business_device')
       })
     ).toEqual({
@@ -87,6 +88,7 @@ describe('android merchant account auth contracts', () => {
       value: {
         profile_type: AndroidMerchantProfileTypes.BUSINESS,
         business_label: 'Demo shop',
+        id_token: 'google-create-id-token',
         device_proof: safeDeviceProof('business_device')
       }
     });
@@ -94,6 +96,7 @@ describe('android merchant account auth contracts', () => {
     expect(
       validateAndroidMerchantCreateAccountRequest({
         profile_type: AndroidMerchantProfileTypes.PERSONAL,
+        id_token: 'google-create-id-token',
         first_name: 'Ada',
         device_proof: safeDeviceProof('named_device')
       })
@@ -101,6 +104,19 @@ describe('android merchant account auth contracts', () => {
       valid: false,
       code: AndroidMerchantAccountErrorCodes.MERCHANT_IDENTITY_NAME_REJECTED,
       field: 'first_name'
+    });
+  });
+
+  it('rejects account creation missing the Google id_token', () => {
+    expect(
+      validateAndroidMerchantCreateAccountRequest({
+        profile_type: AndroidMerchantProfileTypes.PERSONAL,
+        device_proof: safeDeviceProof('no_token_device')
+      })
+    ).toEqual({
+      valid: false,
+      code: AndroidMerchantAccountErrorCodes.PAYLOAD_INVALID,
+      field: 'id_token'
     });
   });
 

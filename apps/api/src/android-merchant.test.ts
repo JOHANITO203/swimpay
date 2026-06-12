@@ -101,6 +101,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: AndroidMerchantProfileTypes.PERSONAL,
+        id_token: 'google-create-token-primary-device',
         device_proof: safeDeviceProof('primary-device')
       }
     });
@@ -141,14 +142,15 @@ describe('android merchant mobile backend endpoints', () => {
     });
   });
 
-  it('creates personal and business accounts with generated handles and equal mobile permissions', async () => {
-    const { server } = buildAndroidMerchantServer();
+  it('creates Google-anchored personal and business accounts with generated handles and equal mobile permissions', async () => {
+    const { server, authBffRepository } = buildAndroidMerchantServer();
 
     const rejectedNames = await server.inject({
       method: 'POST',
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-named-device',
         first_name: 'Ada',
         last_name: 'Lovelace',
         device_proof: safeDeviceProof('named-device')
@@ -162,6 +164,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'admin',
+        id_token: 'google-create-token-invalid-profile-device',
         device_proof: safeDeviceProof('invalid-profile-device')
       }
     });
@@ -174,19 +177,12 @@ describe('android merchant mobile backend endpoints', () => {
     const personal = await server.inject({
       method: 'POST',
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
-      payload: {
-        profile_type: 'personal',
-        device_proof: safeDeviceProof('personal-device')
-      }
+      payload: createAccountPayload('personal-device')
     });
     const business = await server.inject({
       method: 'POST',
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
-      payload: {
-        profile_type: 'business',
-        business_label: 'Commerce demo',
-        device_proof: safeDeviceProof('business-device')
-      }
+      payload: createAccountPayload('business-device', { profile_type: 'business', business_label: 'Commerce demo' })
     });
 
     expect(personal.statusCode).toBe(201);
@@ -211,13 +207,19 @@ describe('android merchant mobile backend endpoints', () => {
     expect(personal.body).not.toMatch(/first_name|last_name|admin/iu);
     expect(business.body).not.toMatch(/first_name|last_name|admin/iu);
 
+    // The created users are anchored on Google: google_sub is never NULL anymore.
+    expect(authBffRepository.users.get(String(personal.json().account.user_id))?.googleSub).toBe(
+      'google-sub-for:google-create-token-personal-device'
+    );
+    expect(authBffRepository.users.get(String(business.json().account.user_id))?.googleSub).toBe(
+      'google-sub-for:google-create-token-business-device'
+    );
+
     const duplicateDevice = await server.inject({
       method: 'POST',
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
-      payload: {
-        profile_type: 'personal',
-        device_proof: safeDeviceProof('personal-device')
-      }
+      // A different Google identity reusing an already-registered device proof must be blocked.
+      payload: createAccountPayload('personal-device', { id_token: 'google-create-token-other-identity' })
     });
     expect(duplicateDevice.statusCode).toBe(409);
     expect(duplicateDevice.json().error).toMatchObject({
@@ -225,6 +227,71 @@ describe('android merchant mobile backend endpoints', () => {
         device_status: AndroidMerchantDeviceLookupStatuses.KNOWN_DEVICE
       }
     });
+  });
+
+  it('rejects account creation without a Google id_token (new contract)', async () => {
+    const { server } = buildAndroidMerchantServer();
+
+    const missingToken = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: {
+        profile_type: 'personal',
+        device_proof: safeDeviceProof('missing-token-device')
+      }
+    });
+    expect(missingToken.statusCode).toBe(400);
+    expect(missingToken.json().error).toMatchObject({
+      code: 'payload_invalid',
+      details: { field: 'id_token' }
+    });
+  });
+
+  it('rejects account creation when the Google id_token does not verify', async () => {
+    // A verifier that knows no tokens → every id_token is unverifiable.
+    const { server } = buildAndroidMerchantServer({ googleVerifier: new FakeGoogleIdTokenVerifier({}) });
+
+    const invalidToken = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: createAccountPayload('invalid-token-device', { id_token: 'unknown-unverifiable-token' })
+    });
+    expect(invalidToken.statusCode).toBe(401);
+    expect(invalidToken.body).not.toContain('unknown-unverifiable-token');
+  });
+
+  it('recovers the existing Google-owned merchant on create instead of creating a duplicate', async () => {
+    const { server, authBffRepository } = buildAndroidMerchantServer();
+
+    const created = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: createAccountPayload('recover-or-create-device', { id_token: 'google-create-token-returning-user' })
+    });
+    expect(created.statusCode).toBe(201);
+    const createdBody = created.json();
+    const membershipCountAfterCreate = authBffRepository.memberships.size;
+
+    // Same Google identity (reinstall → new device proof) hits the create gate again.
+    const reCreated = await server.inject({
+      method: 'POST',
+      url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
+      payload: createAccountPayload('recover-or-create-new-device', { id_token: 'google-create-token-returning-user' })
+    });
+
+    // RECOVER: 200 (not 201), same merchant, no new merchant/membership.
+    expect(reCreated.statusCode).toBe(200);
+    expect(reCreated.json().account.user_id).toBe(createdBody.account.user_id);
+    expect(reCreated.json().account.merchant_id).toBe(createdBody.account.merchant_id);
+    expect(authBffRepository.memberships.size).toBe(membershipCountAfterCreate);
+    expect(String(reCreated.json().mobile_session.token)).toMatch(/^spm_/u);
+    expect(reCreated.json().mobile_session.token).not.toBe(createdBody.mobile_session.token);
+
+    // The new device proof is now attached to the SAME existing merchant (both devices).
+    const attachedToMerchant = [...authBffRepository.androidMerchantDevices.values()].filter(
+      (device) => device.merchantId === String(createdBody.account.merchant_id)
+    );
+    expect(attachedToMerchant.length).toBe(2);
   });
 
   it('extends an Android merchant mobile session with sliding renewal and rejects invalid tokens', async () => {
@@ -236,6 +303,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-refresh-device',
         device_proof: safeDeviceProof('refresh-device')
       }
     });
@@ -271,6 +339,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-known-local-device',
         device_proof: safeDeviceProof('known-local-device')
       }
     });
@@ -318,6 +387,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-mobile-session-auth-device',
         device_proof: safeDeviceProof('mobile-session-auth-device')
       }
     });
@@ -397,6 +467,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-mobile-confirm-block-device',
         device_proof: safeDeviceProof('mobile-confirm-block-device')
       }
     });
@@ -453,6 +524,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-mobile-review-with-dashboard-cookie',
         device_proof: safeDeviceProof('mobile-review-with-dashboard-cookie')
       }
     });
@@ -641,6 +713,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-mobile-on-bff-only-route',
         device_proof: safeDeviceProof('mobile-on-bff-only-route')
       }
     });
@@ -680,6 +753,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-mobile-tenant-a',
         device_proof: safeDeviceProof('mobile-tenant-a')
       }
     });
@@ -688,6 +762,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'business',
+        id_token: 'google-create-token-mobile-tenant-b',
         device_proof: safeDeviceProof('mobile-tenant-b')
       }
     });
@@ -727,6 +802,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-mobile-manual-bank-check-device',
         device_proof: safeDeviceProof('mobile-manual-bank-check-device')
       }
     });
@@ -785,6 +861,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-mobile-reject-actions-device',
         device_proof: safeDeviceProof('mobile-reject-actions-device')
       }
     });
@@ -852,11 +929,12 @@ describe('android merchant mobile backend endpoints', () => {
     expect(JSON.stringify(eventPublisher.events)).not.toContain('payment.confirmed');
   });
 
-  it('keeps Google recovery and linking optional and fails closed when unconfigured', async () => {
+  it('keeps Google recovery, creation and linking optional and fails closed when unconfigured', async () => {
     vi.stubEnv('GOOGLE_OAUTH_CLIENT_ID', '');
     vi.stubEnv('GOOGLE_OAUTH_CLIENT_SECRET', '');
     vi.stubEnv('GOOGLE_OAUTH_REDIRECT_URI', '');
-    const { server } = buildAndroidMerchantServer();
+    // Explicitly leave Google unconfigured: no id-token verifier is wired.
+    const { server } = buildAndroidMerchantServer({ googleVerifier: null });
 
     const recovery = await server.inject({
       method: 'POST',
@@ -870,28 +948,30 @@ describe('android merchant mobile backend endpoints', () => {
     });
     expect(recovery.body).not.toContain('google-id-token-sample');
 
+    // Creation is now anchored on Google; when Google is unconfigured it also fails closed.
     const created = await server.inject({
       method: 'POST',
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'google-create-token-google-link-device',
         device_proof: safeDeviceProof('google-link-device')
       }
     });
-    expect(created.statusCode).toBe(201);
-    const mobileHeaders = { authorization: `Bearer ${String(created.json().mobile_session.token)}` };
+    expect(created.statusCode).toBe(503);
+    expect(created.json().error).toMatchObject({
+      code: 'google_recovery_unconfigured'
+    });
+    expect(created.body).not.toContain('google-create-token-google-link-device');
 
     const link = await server.inject({
       method: 'POST',
       url: AndroidMerchantAccountAuthPaths.GOOGLE_LINK,
-      headers: mobileHeaders,
+      headers: { authorization: 'Bearer spm_unconfigured_placeholder' },
       payload: { id_token: 'google-link-token-sample' }
     });
-    expect(link.statusCode).toBe(503);
-    expect(link.json().error).toMatchObject({
-      code: 'google_recovery_unconfigured',
-      details: { purpose: 'account_recovery_linking' }
-    });
+    // No session exists (create failed closed) → link requires an Android mobile session first.
+    expect(link.statusCode).toBe(401);
     expect(link.body).not.toContain('google-link-token-sample');
   });
 
@@ -1033,6 +1113,7 @@ describe('android merchant mobile backend endpoints', () => {
     vi.stubEnv('GOOGLE_OAUTH_CLIENT_SECRET', 'configured-secret');
     vi.stubEnv('GOOGLE_OAUTH_REDIRECT_URI', 'https://staging.swimpay.pro/auth/google/callback');
     const googleVerifier = new FakeGoogleIdTokenVerifier({
+      'create-token': 'google-sub-android-01',
       'link-token': 'google-sub-android-01',
       'recover-token': 'google-sub-android-01'
     });
@@ -1043,6 +1124,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'create-token',
         device_proof: safeDeviceProof('google-real-device')
       }
     });
@@ -1050,6 +1132,7 @@ describe('android merchant mobile backend endpoints', () => {
     const createdBody = created.json();
     const mobileHeaders = { authorization: `Bearer ${String(createdBody.mobile_session.token)}` };
 
+    // create already anchored the account on Google; an explicit link of the SAME sub is idempotent.
     const link = await server.inject({
       method: 'POST',
       url: AndroidMerchantAccountAuthPaths.GOOGLE_LINK,
@@ -1094,6 +1177,7 @@ describe('android merchant mobile backend endpoints', () => {
     vi.stubEnv('GOOGLE_OAUTH_CLIENT_SECRET', 'configured-secret');
     vi.stubEnv('GOOGLE_OAUTH_REDIRECT_URI', 'https://staging.swimpay.pro/auth/google/callback');
     const googleVerifier = new FakeGoogleIdTokenVerifier({
+      'create-token': 'google-sub-low-privilege',
       'link-token': 'google-sub-low-privilege',
       'recover-token': 'google-sub-low-privilege'
     });
@@ -1104,6 +1188,7 @@ describe('android merchant mobile backend endpoints', () => {
       url: AndroidMerchantAccountAuthPaths.CREATE_ACCOUNT,
       payload: {
         profile_type: 'personal',
+        id_token: 'create-token',
         device_proof: safeDeviceProof('google-low')
       }
     });
@@ -1407,6 +1492,7 @@ describe('android merchant mobile backend endpoints', () => {
       payload: {
         profile_type: AndroidMerchantProfileTypes.BUSINESS,
         business_label: 'Staging merchant',
+        id_token: 'google-create-token-developer-integration-device',
         device_proof: safeDeviceProof('developer-integration-device')
       }
     });
@@ -1617,7 +1703,8 @@ describe('android merchant mobile backend endpoints', () => {
 function buildAndroidMerchantServer(params: {
   eventPublisher?: FakeEventPublisher;
   connectedSite?: { url: string; status: 'active' | 'problem' };
-  googleVerifier?: GoogleIdTokenVerifier;
+  // undefined → wire a deterministic default verifier; null → leave Google unconfigured (fails closed).
+  googleVerifier?: GoogleIdTokenVerifier | null;
   merchantMetricsRepository?: MerchantMetricsRepository;
   clock?: () => Date;
 } = {}) {
@@ -1653,7 +1740,11 @@ function buildAndroidMerchantServer(params: {
     },
     androidMerchantDeliveryIdGenerator: () => 'delivery_test_01',
     clock: params.clock ?? (() => new Date('2026-05-03T10:05:00.000Z')),
-    ...(params.googleVerifier ? { googleIdTokenVerifier: params.googleVerifier } : {}),
+    // Account creation is now anchored on Google; supply a deterministic default
+    // verifier so setup-creates work, unless the test wires its own verifier
+    // (or explicitly passes null to exercise the unconfigured / fails-closed path).
+    googleIdTokenVerifier:
+      params.googleVerifier === undefined ? new DeterministicGoogleIdTokenVerifier() : params.googleVerifier,
     ...(params.connectedSite ? { androidMerchantConnectedSite: params.connectedSite } : {}),
     ...(params.merchantMetricsRepository ? { merchantMetricsRepository: params.merchantMetricsRepository } : {})
   };
@@ -1669,6 +1760,29 @@ class FakeGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
     const googleSub = this.subjectsByToken[idToken];
     return googleSub ? { googleSub } : null;
   }
+}
+
+// Maps any non-empty id_token to a deterministic, distinct google_sub so that each
+// distinct token yields a distinct Google identity (one merchant per identity).
+class DeterministicGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
+  public async verifyIdToken(idToken: string): Promise<{ googleSub: string } | null> {
+    const token = idToken.trim();
+    return token ? { googleSub: `google-sub-for:${token}` } : null;
+  }
+}
+
+// Default helper for setup-creates: derives a unique id_token from a suffix so
+// each create call gets its own Google identity (matching pre-change one-merchant-per-create).
+function createAccountPayload(
+  suffix: string,
+  overrides: { profile_type?: string; business_label?: string; id_token?: string } = {}
+): Record<string, unknown> {
+  return {
+    profile_type: overrides.profile_type ?? 'personal',
+    id_token: overrides.id_token ?? `google-create-token-${suffix}`,
+    ...(overrides.business_label ? { business_label: overrides.business_label } : {}),
+    device_proof: safeDeviceProof(suffix)
+  };
 }
 
 function fakeGoogleIdToken(audience: string): string {

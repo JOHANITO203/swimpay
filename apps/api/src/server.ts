@@ -254,6 +254,8 @@ export interface HealthChecks {
 
 export interface GoogleIdTokenVerificationResult {
   googleSub: string;
+  /** Verified Google email when the token carries a verified email; otherwise undefined. */
+  email?: string;
 }
 
 export interface GoogleIdTokenVerifier {
@@ -431,8 +433,13 @@ class GoogleAuthLibraryIdTokenVerifier implements GoogleIdTokenVerifier {
         idToken,
         audience: [...this.audiences]
       });
-      const googleSub = ticket.getPayload()?.sub?.trim();
-      return googleSub ? { googleSub } : null;
+      const payload = ticket.getPayload();
+      const googleSub = payload?.sub?.trim();
+      if (!googleSub) {
+        return null;
+      }
+      const email = payload?.email_verified === true ? payload.email?.trim() : undefined;
+      return email ? { googleSub, email } : { googleSub };
     } catch {
       return verifyGoogleIdTokenWithTokenInfo(idToken, this.audiences, this.tokenInfoFetch);
     }
@@ -492,7 +499,9 @@ export async function verifyGoogleIdTokenWithTokenInfo(
     ) {
       return null;
     }
-    return { googleSub };
+    const emailVerified = claims.email_verified === true || claims.email_verified === 'true';
+    const email = emailVerified && typeof claims.email === 'string' ? claims.email.trim() : '';
+    return email ? { googleSub, email } : { googleSub };
   } catch {
     return null;
   } finally {
@@ -2966,9 +2975,27 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     if (!authBffRepository) {
       return reply.status(503).send(authBffRepositoryUnavailableError());
     }
+    // Account creation is now anchored on Google (recover-or-create). It uses the same
+    // id-token verifier seam as google-exchange and fails closed when Google is unconfigured.
+    if (!googleIdTokenVerifier) {
+      return reply.status(503).send(googleRecoveryUnconfiguredError('account_recovery'));
+    }
     const parsed = validateAndroidMerchantCreateAccountRequest(request.body);
     if (!parsed.valid) {
       return reply.status(400).send(androidMerchantAccountContractError(parsed.code, parsed.field));
+    }
+    const verified = await googleIdTokenVerifier.verifyIdToken(parsed.value.id_token);
+    if (!verified) {
+      const diagnostics = googleIdTokenRejectedDiagnostics(parsed.value.id_token, googleIdTokenAudiences);
+      server.log.warn(
+        {
+          provider: 'google',
+          purpose: 'account_recovery',
+          ...diagnostics
+        },
+        'google_id_token_rejected'
+      );
+      return reply.status(401).send(googleIdTokenRejectedError('account_recovery', diagnostics));
     }
 
     const now = clock();
@@ -2988,6 +3015,8 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       businessLabel: truncateAndroidMerchantBusinessLabel(parsed.value.business_label ?? null),
       displayHandle: buildAndroidMerchantDisplayHandle(userId),
       deviceProofHash: hashAndroidMerchantDeviceProof(parsed.value.device_proof.install_public_key),
+      googleSub: verified.googleSub,
+      googleEmail: verified.email ?? null,
       expiresAt,
       now: now.toISOString()
     });
@@ -3000,7 +3029,9 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       );
     }
 
-    return reply.status(201).send(toAndroidMerchantAccountCreateResponse(result.account, mobileSessionToken));
+    // recovered → 200 (no new merchant); created → 201. Both return a mobile session.
+    const statusCode = result.kind === 'recovered' ? 200 : 201;
+    return reply.status(statusCode).send(toAndroidMerchantAccountCreateResponse(result.account, mobileSessionToken));
   });
 
   server.post(AndroidMerchantAccountAuthPaths.DEVICE_RECOVER, async (request, reply) => {

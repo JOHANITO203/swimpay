@@ -2003,6 +2003,7 @@ export interface AndroidMerchantDeviceRecoverRequest {
 export interface AndroidMerchantCreateAccountRequest {
   profile_type: AndroidMerchantProfileType;
   business_label?: string;
+  id_token: string;
   device_proof: AndroidMerchantDeviceProof;
 }
 
@@ -2137,6 +2138,11 @@ export function validateAndroidMerchantCreateAccountRequest(
     return invalidAndroidMerchantAccountPayload('profile_type');
   }
 
+  const idToken = optionalString(body.id_token);
+  if (!idToken) {
+    return invalidAndroidMerchantAccountPayload('id_token');
+  }
+
   const deviceProof = parseAndroidMerchantDeviceProofContract(body.device_proof);
   if (!deviceProof) {
     return invalidAndroidMerchantAccountPayload('device_proof');
@@ -2144,6 +2150,7 @@ export function validateAndroidMerchantCreateAccountRequest(
 
   const value: AndroidMerchantCreateAccountRequest = {
     profile_type: profileType,
+    id_token: idToken,
     device_proof: deviceProof
   };
   assignIfDefined(value, 'business_label', optionalString(body.business_label));
