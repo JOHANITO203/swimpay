@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
@@ -114,7 +113,6 @@ fun PremiumLandingScreen(onStart: () -> Unit) {
 @Composable
 fun PremiumOnboardingFlow(
     notificationAccessEnabled: Boolean,
-    bankTargetsState: PremiumScreenState<PremiumBanksUiState> = PremiumScreenState.loading(),
     language: PremiumLanguageOption = PremiumLanguageOption.FR,
     openNotificationSettings: () -> Unit,
     onDone: (PremiumOnboardingSessionState) -> Unit
@@ -126,16 +124,6 @@ fun PremiumOnboardingFlow(
     LaunchedEffect(notificationAccessEnabled) {
         state = state.withNotificationAccess(notificationAccessEnabled)
     }
-    LaunchedEffect(bankTargetsState) {
-        val detectedIds = when (bankTargetsState) {
-            is PremiumScreenState.Content -> bankTargetsState.value.items
-                .filter { it.canActivate || it.enabled }
-                .map { it.bankProfileId }
-                .toSet()
-            else -> emptySet()
-        }
-        state = state.withDetectedBanks(detectedIds).withDefaultDetectedBanksSelected()
-    }
     LaunchedEffect(state.onboardingCompleted, state.skippedConnectedSite) {
         if (state.onboardingCompleted && state.skippedConnectedSite) {
             delay(650)
@@ -144,12 +132,7 @@ fun PremiumOnboardingFlow(
     }
 
     fun moveNext(nextState: PremiumOnboardingSessionState = state) {
-        val moved = when (nextState.currentStep) {
-            PremiumOnboardingStep.COMPATIBLE_BANK_SELECTION -> nextState
-                .withDefaultDetectedBanksSelected()
-                .completeAndMoveNext()
-            else -> nextState.completeAndMoveNext()
-        }
+        val moved = nextState.completeAndMoveNext()
         state = moved
         if (moved.onboardingCompleted && !moved.skippedConnectedSite) {
             onDone(moved)
@@ -165,18 +148,9 @@ fun PremiumOnboardingFlow(
             onBack = { state = state.goBack() },
             onNext = { if (state.canContinueFrom()) moveNext() }
         )
-        PremiumOnboardingStep.COMPATIBLE_BANK_SELECTION -> CompatibleBankSelectionStep(
-            bankTargetsState = bankTargetsState,
-            selectedBankIds = state.selectedBankIds,
-            language = language,
-            onToggleBank = { state = state.toggleBank(it) },
-            onBack = { state = state.goBack() },
-            onNext = { if (state.canContinueFrom()) moveNext() }
-        )
         PremiumOnboardingStep.RECEIVING_METHOD -> ReceivingMethodDetailsStep(
-            selectedBankDisplayName = state.selectedBankDisplayName(bankTargetsState),
-            selectedBankIds = state.selectedBankIds,
             selectedMethod = state.receivingMethodDraft,
+            initialBankProfileId = state.receivingMethodSubmission?.bankProfileId,
             language = language,
             onSelectChoice = { state = state.withReceivingMethod(it) },
             onSave = {
@@ -407,53 +381,35 @@ private fun MonitoredAppsRow() {
 }
 
 @Composable
-private fun CompatibleBankSelectionStep(
-    bankTargetsState: PremiumScreenState<PremiumBanksUiState>,
-    selectedBankIds: Set<String>,
-    language: PremiumLanguageOption,
-    onToggleBank: (String) -> Unit,
-    onBack: () -> Unit,
-    onNext: () -> Unit
-) {
-    OnboardingShell(language.ui("Banques"), PremiumOnboardingStep.COMPATIBLE_BANK_SELECTION, onBack) {
-        PremiumTitle(
-            language.ui("Choisissez vos banques"),
-            language.ui("SwimPay recherche uniquement les banques compatibles.")
-        )
-        BankSearchStatusCard(
-            bankTargetsState = bankTargetsState,
-            selectedCount = selectedBankIds.size,
-            language = language
-        )
-        Spacer(Modifier.height(16.dp))
-        BankRows(
-            bankTargetsState = bankTargetsState,
-            selectable = true,
-            selectedBankIds = selectedBankIds,
-            language = language,
-            onToggleBank = onToggleBank
-        )
-        Spacer(Modifier.height(18.dp))
-        PremiumPrimaryButton(language.ui("Activer ces banques"), onClick = onNext, enabled = selectedBankIds.isNotEmpty())
-    }
-}
-
-@Composable
 private fun ReceivingMethodDetailsStep(
-    selectedBankDisplayName: String,
-    selectedBankIds: Set<String>,
     selectedMethod: PremiumReceivingMethodDraft?,
+    initialBankProfileId: String?,
     language: PremiumLanguageOption,
     onSelectChoice: (PremiumReceivingMethodDraft) -> Unit,
     onSave: (MerchantReceivingMethodSubmission) -> Unit,
     onBack: () -> Unit
 ) {
-    val bankOptions = PremiumReceivingMethodBankCatalog.availableBanks
-    val availableBankIds = bankOptions.map { it.bankProfileId }.toSet()
-    val initialBankId = selectedBankIds.firstOrNull { it in availableBankIds }
+    // Receiving-first, unified catalog: every region (RU + INT + WA mobile money)
+    // is selectable here, so a merchant declares what they receive on in one place.
+    val catalog = ReceivingCatalog.allMethods
+    val bankOptions = catalog.map { entry ->
+        PremiumReceivingMethodBankOption(
+            bankProfileId = entry.bankProfileId,
+            displayName = entry.displayName
+        )
+    }
+    val firstBankId = initialBankProfileId?.takeIf { id -> catalog.any { it.bankProfileId == id } }
         ?: bankOptions.firstOrNull()?.bankProfileId.orEmpty()
-    var selectedBankId by remember(initialBankId) { mutableStateOf(initialBankId) }
-    var methodType by remember(selectedMethod) {
+    var selectedBankId by remember(firstBankId) { mutableStateOf(firstBankId) }
+
+    val selectedEntry = catalog.firstOrNull { it.bankProfileId == selectedBankId }
+    // WA wallets are phone-addressed mobile money; lock their input/type accordingly.
+    val isMobileMoney = selectedEntry?.methodType == ReceivingMethodType.MOBILE_MONEY
+    val selectedBankDisplayName = selectedEntry?.displayName ?: "la banque choisie"
+
+    // The card / phone toggle only applies to card-rail (RU/INT) banks. Mobile money
+    // ignores it and submits MOBILE_MONEY with a phone-style identifier.
+    var cardRailMethod by remember(selectedMethod) {
         mutableStateOf(
             when (selectedMethod) {
                 PremiumReceivingMethodDraft.PHONE_TRANSFER -> ReceivingMethodType.PHONE_TRANSFER
@@ -461,6 +417,8 @@ private fun ReceivingMethodDetailsStep(
             }
         )
     }
+    val effectiveMethodType = if (isMobileMoney) ReceivingMethodType.MOBILE_MONEY else cardRailMethod
+    val usesCardInput = effectiveMethodType == ReceivingMethodType.CARD_TRANSFER
     var identifierInput by remember { mutableStateOf("") }
 
     OnboardingShell(language.ui("Moyen de réception"), PremiumOnboardingStep.RECEIVING_METHOD, onBack) {
@@ -468,26 +426,28 @@ private fun ReceivingMethodDetailsStep(
             language.ui("Ajoutez votre moyen de réception"),
             language.ui("Vos clients utiliseront ces informations pour vous payer sur {bank}.").replace("{bank}", selectedBankDisplayName)
         )
-        ReceivingMethodOption(
-            icon = Icons.Default.ShoppingCart,
-            title = language.ui("Carte bancaire"),
-            subtitle = language.ui("Recevez les paiements sur votre carte."),
-            selected = methodType == ReceivingMethodType.CARD_TRANSFER,
-            onClick = {
-                methodType = ReceivingMethodType.CARD_TRANSFER
-                onSelectChoice(PremiumReceivingMethodDraft.CARD_TRANSFER)
-            }
-        )
-        ReceivingMethodOption(
-            icon = Icons.Default.PhoneAndroid,
-            title = language.ui("Numéro de téléphone"),
-            subtitle = language.ui("Pratique pour les virements via SBP."),
-            selected = methodType == ReceivingMethodType.PHONE_TRANSFER,
-            onClick = {
-                methodType = ReceivingMethodType.PHONE_TRANSFER
-                onSelectChoice(PremiumReceivingMethodDraft.PHONE_TRANSFER)
-            }
-        )
+        if (!isMobileMoney) {
+            ReceivingMethodOption(
+                icon = Icons.Default.ShoppingCart,
+                title = language.ui("Carte bancaire"),
+                subtitle = language.ui("Recevez les paiements sur votre carte."),
+                selected = cardRailMethod == ReceivingMethodType.CARD_TRANSFER,
+                onClick = {
+                    cardRailMethod = ReceivingMethodType.CARD_TRANSFER
+                    onSelectChoice(PremiumReceivingMethodDraft.CARD_TRANSFER)
+                }
+            )
+            ReceivingMethodOption(
+                icon = Icons.Default.PhoneAndroid,
+                title = language.ui("Numéro de téléphone"),
+                subtitle = language.ui("Pratique pour les virements via SBP."),
+                selected = cardRailMethod == ReceivingMethodType.PHONE_TRANSFER,
+                onClick = {
+                    cardRailMethod = ReceivingMethodType.PHONE_TRANSFER
+                    onSelectChoice(PremiumReceivingMethodDraft.PHONE_TRANSFER)
+                }
+            )
+        }
         Spacer(Modifier.height(6.dp))
         CompactReceivingBankSelector(
             selectedBankId = selectedBankId,
@@ -500,9 +460,9 @@ private fun ReceivingMethodDetailsStep(
             value = identifierInput,
             onValueChange = { identifierInput = it },
             label = { Text(language.ui("Identifiant utilisé seulement pour l'enregistrement")) },
-            placeholder = { Text(if (methodType == ReceivingMethodType.CARD_TRANSFER) language.ui("Numéro de carte") else language.ui("Numéro de téléphone")) },
+            placeholder = { Text(if (usesCardInput) language.ui("Numéro de carte") else language.ui("Numéro de téléphone")) },
             leadingIcon = {
-                if (methodType == ReceivingMethodType.CARD_TRANSFER) {
+                if (usesCardInput) {
                     Icon(Icons.Default.CreditCard, null, tint = PremiumColors.Blue)
                 } else {
                     Icon(Icons.Default.PhoneAndroid, null, tint = PremiumColors.Blue)
@@ -520,25 +480,13 @@ private fun ReceivingMethodDetailsStep(
                 onSave(
                     MerchantReceivingRouteDraft(
                         bankProfileId = selectedBankId,
-                        type = methodType,
+                        type = effectiveMethodType,
                         rawIdentifierInput = identifierInput
                     ).toSubmission()
                 )
             }
         )
     }
-}
-
-private fun PremiumOnboardingSessionState.selectedBankDisplayName(
-    bankTargetsState: PremiumScreenState<PremiumBanksUiState>
-): String {
-    val selectedBankId = selectedBankIds.firstOrNull()
-    val detectedName = (bankTargetsState as? PremiumScreenState.Content)
-        ?.value
-        ?.items
-        ?.firstOrNull { it.bankProfileId == selectedBankId }
-        ?.displayName
-    return detectedName ?: "la banque choisie"
 }
 
 @Composable
@@ -704,150 +652,6 @@ private fun BenefitRow(icon: ImageVector, title: String, body: String) {
             Column(Modifier.weight(1f)) {
                 Text(title, color = PremiumColors.Ink, fontWeight = FontWeight.Black, fontSize = PremiumType.Body)
                 Text(body, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = PremiumType.Caption, lineHeight = 20.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun BankSearchStatusCard(
-    bankTargetsState: PremiumScreenState<PremiumBanksUiState>,
-    selectedCount: Int,
-    language: PremiumLanguageOption
-) {
-    val (title, body, icon, toneColor) = when (bankTargetsState) {
-        is PremiumScreenState.Loading -> Quadruple(
-            language.ui("Recherche en cours"),
-            language.ui("Les banques compatibles apparaissent ici sans parcourir toutes les applications."),
-            Icons.Default.Bolt,
-            PremiumColors.Cyan
-        )
-        is PremiumScreenState.Content -> {
-            val detected = bankTargetsState.value.items.count { it.canActivate || it.enabled }
-            Quadruple(
-                if (detected > 0) language.ui("Recherche terminée") else language.ui("Aucune banque détectée"),
-                if (selectedCount > 0) {
-                    language.ui("{count} banque(s) activée(s).").replace("{count}", selectedCount.toString())
-                } else if (detected > 0) {
-                    language.ui("Sélectionnez les banques détectées que vous utilisez.")
-                } else {
-                    language.ui("Vous pourrez configurer une banque compatible plus tard.")
-                },
-                Icons.Default.AccountBalance,
-                if (detected > 0) PremiumColors.Teal else PremiumColors.SoftText
-            )
-        }
-        is PremiumScreenState.Empty -> Quadruple(
-            language.ui("Aucune banque détectée"),
-            language.ui("Vous pourrez configurer une banque compatible plus tard."),
-            Icons.Default.AccountBalance,
-            PremiumColors.SoftText
-        )
-        is PremiumScreenState.ActionRequired -> Quadruple(
-            bankTargetsState.title,
-            bankTargetsState.message,
-            Icons.Default.AccountBalance,
-            PremiumColors.Warning
-        )
-        is PremiumScreenState.Error,
-        is PremiumScreenState.Offline -> Quadruple(
-            language.ui("Recherche à relancer"),
-            language.ui("Réessayez dans quelques instants."),
-            Icons.Default.AccountBalance,
-            PremiumColors.Warning
-        )
-    }
-
-    LiquidGlassCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), radius = PremiumRadius.CardLarge, color = PremiumColors.Surface) {
-        Row(
-            Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Box(Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = toneColor, modifier = Modifier.size(28.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(title, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
-                Text(body, color = PremiumColors.Muted, fontSize = PremiumType.Caption, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
-            }
-        }
-    }
-}
-
-private data class Quadruple<A, B, C, D>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D
-)
-
-@Composable
-private fun BankRows(
-    bankTargetsState: PremiumScreenState<PremiumBanksUiState>,
-    selectable: Boolean,
-    selectedBankIds: Set<String>,
-    language: PremiumLanguageOption,
-    onToggleBank: (String) -> Unit
-) {
-    when (bankTargetsState) {
-        is PremiumScreenState.Content -> {
-            bankTargetsState.value.items.forEach { bank ->
-                BankRow(
-                    bank = bank,
-                    selectable = selectable,
-                    selected = bank.bankProfileId in selectedBankIds,
-                    language = language,
-                    onToggleBank = onToggleBank
-                )
-            }
-        }
-        is PremiumScreenState.Loading -> OnboardingInfoCard(language.ui("Recherche en cours"), language.ui("Les banques compatibles apparaîtront ici."))
-        is PremiumScreenState.Empty -> OnboardingInfoCard(language.ui("Aucune banque détectée"), language.ui("Vous pourrez continuer et configurer une banque plus tard."))
-        is PremiumScreenState.ActionRequired -> OnboardingInfoCard(bankTargetsState.title, bankTargetsState.message)
-        is PremiumScreenState.Error,
-        is PremiumScreenState.Offline -> OnboardingInfoCard(language.ui("Recherche à relancer"), language.ui("Réessayez dans quelques instants."))
-    }
-}
-
-@Composable
-private fun BankRow(
-    bank: PremiumBankUiItem,
-    selectable: Boolean,
-    selected: Boolean,
-    language: PremiumLanguageOption,
-    onToggleBank: (String) -> Unit
-) {
-    val detected = bank.canActivate || bank.enabled
-    val label = when {
-        selectable && selected -> language.ui("Activée")
-        detected -> language.ui("Détectée")
-        else -> language.ui("Non détectée")
-    }
-    LiquidGlassCard(
-        Modifier
-            .fillMaxWidth()
-            .padding(bottom = 14.dp)
-            .premiumTap {
-                if (selectable && detected) onToggleBank(bank.bankProfileId)
-            },
-        radius = PremiumRadius.Card,
-        color = if (selected) PremiumToneColors.Selected.background else PremiumColors.Surface
-    ) {
-        Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    PremiumBankLogo(bankProfileId = bank.bankProfileId, displayName = bank.displayName, size = 52.dp)
-            Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                Text(bank.displayName, color = PremiumColors.Ink, fontSize = PremiumType.Body, fontWeight = FontWeight.Black)
-                Text(label, color = if (detected) PremiumColors.Cyan else PremiumColors.SoftText, fontSize = PremiumType.Caption, fontWeight = FontWeight.Black)
-            }
-            Box(
-                Modifier
-                    .size(30.dp)
-                    .background(if (selected) PremiumToneColors.Selected.foreground else Color.Transparent, RoundedCornerShape(11.dp))
-                    .border(2.dp, if (selected) PremiumToneColors.Selected.foreground else PremiumColors.Line, RoundedCornerShape(11.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (selected) Icon(Icons.Default.VerifiedUser, null, tint = PremiumColors.Surface, modifier = Modifier.size(18.dp))
             }
         }
     }

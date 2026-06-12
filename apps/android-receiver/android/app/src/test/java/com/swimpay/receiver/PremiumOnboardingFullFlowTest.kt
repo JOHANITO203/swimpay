@@ -3,6 +3,7 @@ package com.swimpay.receiver
 import com.swimpay.receiver.ui.premium.PremiumOnboardingSessionState
 import com.swimpay.receiver.ui.premium.PremiumOnboardingStep
 import com.swimpay.receiver.ui.premium.PremiumReceivingMethodDraft
+import com.swimpay.receiver.ui.premium.ReceivingCatalog
 import com.swimpay.receiver.MerchantReceivingMethodDraft as MerchantReceivingRouteDraft
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -11,18 +12,33 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PremiumOnboardingFullFlowTest {
+    private fun cardSubmission(bankProfileId: String) = MerchantReceivingRouteDraft(
+        bankProfileId = bankProfileId,
+        type = ReceivingMethodType.CARD_TRANSFER,
+        rawIdentifierInput = "2200123412344821"
+    ).toSubmission()
+
+    private fun mobileMoneySubmission(bankProfileId: String) = MerchantReceivingRouteDraft(
+        bankProfileId = bankProfileId,
+        type = ReceivingMethodType.MOBILE_MONEY,
+        rawIdentifierInput = "+2250700000000"
+    ).toSubmission()
+
     @Test
-    fun approvedOnboardingStepsAreTypedMergedAndOrdered() {
+    fun approvedOnboardingStepsAreReceivingFirstAndDropManualBankAllowlistStep() {
         assertEquals(
             listOf(
                 PremiumOnboardingStep.WELCOME,
                 PremiumOnboardingStep.NOTIFICATION_ACCESS,
-                PremiumOnboardingStep.COMPATIBLE_BANK_SELECTION,
                 PremiumOnboardingStep.RECEIVING_METHOD,
                 PremiumOnboardingStep.CONNECTED_SITE,
                 PremiumOnboardingStep.CONFIGURATION_TEST
             ),
             PremiumOnboardingStep.requiredSequence
+        )
+        assertFalse(
+            "manual bank-allowlist step must be gone",
+            PremiumOnboardingStep.entries.any { it.name == "COMPATIBLE_BANK_SELECTION" }
         )
     }
 
@@ -42,8 +58,8 @@ class PremiumOnboardingFullFlowTest {
         val skipped = PremiumOnboardingSessionState(
             currentStep = PremiumOnboardingStep.CONNECTED_SITE,
             notificationAccessEnabled = true,
-            selectedBankIds = setOf("sber_ru"),
-            receivingMethodConfigured = true
+            receivingMethodConfigured = true,
+            receivingMethodSubmission = cardSubmission("sber_ru")
         ).skipConnectedSite()
 
         assertTrue(skipped.canContinueFrom())
@@ -62,8 +78,8 @@ class PremiumOnboardingFullFlowTest {
         val readyForSite = PremiumOnboardingSessionState(
             currentStep = PremiumOnboardingStep.CONNECTED_SITE,
             notificationAccessEnabled = true,
-            selectedBankIds = setOf("sber_ru"),
-            receivingMethodConfigured = true
+            receivingMethodConfigured = true,
+            receivingMethodSubmission = cardSubmission("sber_ru")
         )
         val next = readyForSite.connectSite().completeAndMoveNext()
 
@@ -76,7 +92,6 @@ class PremiumOnboardingFullFlowTest {
         assertEquals(
             listOf(
                 "Accès notifications activé",
-                "Banque choisie",
                 "Moyen de réception ajouté",
                 "Webhook configuré"
             ),
@@ -89,8 +104,8 @@ class PremiumOnboardingFullFlowTest {
         val missingWebhook = PremiumOnboardingSessionState(
             currentStep = PremiumOnboardingStep.CONFIGURATION_TEST,
             notificationAccessEnabled = true,
-            selectedBankIds = setOf("sber_ru"),
             receivingMethodConfigured = true,
+            receivingMethodSubmission = cardSubmission("sber_ru"),
             connectedSiteConfigured = false
         )
 
@@ -100,30 +115,53 @@ class PremiumOnboardingFullFlowTest {
     }
 
     @Test
-    fun bankSelectionUsesSupportedDetectedBanksAndIgnoresUnsupportedIds() {
-        val state = PremiumOnboardingSessionState()
-            .withDetectedBanks(setOf("sber_ru", "tbank_ru", "ozon_bank", "evil_bank"))
-            .withDefaultDetectedBanksSelected()
+    fun receivingMethodWithNotificationPackageDerivesAllowlistFromTheChosenMethod() {
+        // One choice, double consequence: the route bank AND the derived notification
+        // allowlist follow the chosen receiving method (no separate manual screen).
+        val configured = PremiumOnboardingSessionState(
+            currentStep = PremiumOnboardingStep.RECEIVING_METHOD,
+            notificationAccessEnabled = true
+        ).withReceivingMethod(cardSubmission("sber_ru"))
 
-        assertEquals(setOf("sber_ru", "tbank_ru", "ozon_bank"), state.detectedCompatibleBankIds)
-        assertEquals(setOf("sber_ru", "tbank_ru", "ozon_bank"), state.selectedBankIds)
-        assertEquals(state, state.toggleBank("evil_bank"))
-        assertFalse(state.toggleBank("ozon_bank").selectedBankIds.contains("ozon_bank"))
+        assertEquals(setOf("sber_ru"), configured.derivedEnabledBankProfileIds)
+        assertEquals(
+            ReceivingCatalog.packagesFor(setOf("sber_ru")),
+            configured.derivedNotificationPackages
+        )
+        assertTrue(configured.derivedNotificationPackages.contains("ru.sberbankmobile"))
     }
 
     @Test
-    fun receivingMethodAndWebhookTestDoNotRepresentPaymentConfirmation() {
-        val submission = MerchantReceivingRouteDraft(
-            bankProfileId = "sber_ru",
-            type = ReceivingMethodType.CARD_TRANSFER,
-            rawIdentifierInput = "2200123412344821"
-        ).toSubmission()
+    fun westAfricaPackagelessWalletConfiguresRouteWithoutFakingAnAllowlist() {
+        // Wave CI has no receiver notification package (manual model): choosing it must
+        // still configure the receiving method but contribute nothing to the allowlist
+        // — the UI must not imply Wave is monitored.
+        val wave = PremiumOnboardingSessionState(
+            currentStep = PremiumOnboardingStep.RECEIVING_METHOD,
+            notificationAccessEnabled = true
+        ).withReceivingMethod(mobileMoneySubmission("wave_ci"))
+
+        assertTrue(wave.receivingMethodConfigured)
+        assertTrue(wave.canContinueFrom())
+        assertTrue(wave.derivedEnabledBankProfileIds.isEmpty())
+        assertTrue(wave.derivedNotificationPackages.isEmpty())
+
+        // MTN MoMo CI, by contrast, does carry a real package and is derivable.
+        val mtn = PremiumOnboardingSessionState(
+            currentStep = PremiumOnboardingStep.RECEIVING_METHOD,
+            notificationAccessEnabled = true
+        ).withReceivingMethod(mobileMoneySubmission("mtn_momo_ci"))
+        assertEquals(setOf("mtn_momo_ci"), mtn.derivedEnabledBankProfileIds)
+        assertTrue(mtn.derivedNotificationPackages.isNotEmpty())
+    }
+
+    @Test
+    fun configurationReadinessFollowsTheDerivedReceivingMethodNotAManualBankList() {
         val ready = PremiumOnboardingSessionState(
             currentStep = PremiumOnboardingStep.CONFIGURATION_TEST,
             notificationAccessEnabled = true,
-            selectedBankIds = setOf("sber_ru"),
             connectedSiteConfigured = true
-        ).withReceivingMethod(submission)
+        ).withReceivingMethod(cardSubmission("sber_ru"))
 
         assertTrue(ready.configurationTestReady)
         assertTrue(ready.canContinueFrom())
@@ -135,12 +173,12 @@ class PremiumOnboardingFullFlowTest {
     fun receivingMethodStepRequiresPersistentSubmissionNotJustChoice() {
         val choiceOnly = PremiumOnboardingSessionState(
             currentStep = PremiumOnboardingStep.RECEIVING_METHOD,
-            notificationAccessEnabled = true,
-            selectedBankIds = setOf("sber_ru")
+            notificationAccessEnabled = true
         ).withReceivingMethod(PremiumReceivingMethodDraft.CARD_TRANSFER)
 
         assertFalse(choiceOnly.receivingMethodConfigured)
         assertFalse(choiceOnly.canContinueFrom())
+        assertTrue(choiceOnly.derivedEnabledBankProfileIds.isEmpty())
 
         val submission = MerchantReceivingRouteDraft(
             bankProfileId = "sber_ru",
@@ -153,10 +191,11 @@ class PremiumOnboardingFullFlowTest {
         assertTrue(configured.canContinueFrom())
         assertEquals(submission, configured.receivingMethodSubmission)
         assertEquals(PremiumReceivingMethodDraft.PHONE_TRANSFER, configured.receivingMethodDraft)
+        assertEquals(setOf("sber_ru"), configured.derivedEnabledBankProfileIds)
     }
 
     @Test
-    fun activeOnboardingSourceContainsApprovedMergedScreenCopy() {
+    fun activeOnboardingSourceContainsApprovedReceivingFirstScreenCopy() {
         val source = onboardingSource()
         val approvedCopy = listOf(
             "Recevez vos paiements plus facilement",
@@ -164,9 +203,6 @@ class PremiumOnboardingFullFlowTest {
             "Connectez votre téléphone",
             "Accès nécessaire",
             "Activer l'accès",
-            "SwimPay recherche uniquement les banques compatibles.",
-            "Choisissez vos banques",
-            "Activer ces banques",
             "Ajoutez votre moyen de réception",
             "Connectez votre site ou application",
             "Configurer plus tard",
@@ -179,12 +215,17 @@ class PremiumOnboardingFullFlowTest {
         approvedCopy.forEach { copy ->
             assertTrue("missing approved onboarding copy: $copy", source.contains(copy))
         }
-        assertTrue(source.contains("CompatibleBankSelectionStep"))
+        // The manual bank-allowlist step is removed in the receiving-first flow.
+        assertFalse(source.contains("CompatibleBankSelectionStep"))
         assertFalse(source.contains("CompatibleBankDetectionStep"))
         assertFalse(source.contains("private fun BankSelectionStep("))
+        assertFalse(source.contains("Choisissez vos banques"))
+        assertFalse(source.contains("Activer ces banques"))
         assertFalse(source.contains("Tester sans site connecté"))
         assertFalse(source.contains("Lancer un test complet"))
         assertFalse(source.contains("paiement est confirmé", ignoreCase = true))
+        // The receiving-method step consumes the unified catalog (all regions incl. WA).
+        assertTrue(source.contains("ReceivingCatalog.allMethods"))
     }
 
     @Test

@@ -121,4 +121,18 @@ object ReceivingCatalog {
             .filter { it.bankProfileId in selectedIds }
             .flatMap { listOf(it.packageName) + it.alternatePackageNames }
             .toSet()
+
+    /**
+     * The notification-allowlist derivation T2 relies on: from a set of chosen
+     * receiving-method ids, the subset that actually carries a receiver notification
+     * package (i.e. is detectable). Package-less WA wallets (Wave, Orange Money CI) and
+     * unknown ids are excluded, so they never produce a false "monitored" allowlist
+     * entry. This is the bank-profile-id projection of [packagesFor] and feeds
+     * `ReceiverRuntimeConfig.enabledBankProfileIds` straight from the receiving method.
+     */
+    fun notificationProfileIdsFor(selectedIds: Set<String>): Set<String> =
+        BankTargetLock.supportedTargets
+            .map { it.bankProfileId }
+            .filter { it in selectedIds }
+            .toSet()
 }

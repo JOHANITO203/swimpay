@@ -268,14 +268,18 @@ fun PremiumMerchantApp(
                 )
                 return@launch
             }
-            val selectedBankIds = completedState.selectedBankIds
+            // Receiving-first: the notification allowlist is DERIVED from the chosen
+            // receiving method, never a separate manual screen. Package-less WA wallets
+            // (Wave, Orange Money CI) derive to an empty set — they configure a route but
+            // contribute no allowlist entry, so we never claim to monitor them.
+            val enabledBankProfileIds = completedState.derivedEnabledBankProfileIds
             val receiverKeyInfo = withContext(Dispatchers.IO) {
                 receiverPayloadSigner.getOrCreateKeyPair()
             }
             val result = withContext(Dispatchers.IO) {
                 receiverDeviceRepository.registerAndHeartbeat(
                     session = AuthenticatedMerchantSession.mobile(session),
-                    enabledBankProfileIds = selectedBankIds,
+                    enabledBankProfileIds = enabledBankProfileIds,
                     publicKeyPem = receiverKeyInfo.publicKeyPem,
                     notificationAccessEnabled = notificationAccessEnabled,
                     appVersion = receiverAppVersion,
@@ -284,12 +288,17 @@ fun PremiumMerchantApp(
             }
 
             if (result.status == AndroidMerchantAuthResultStatus.SUCCESS && result.deviceState != null) {
-                receiverRuntimeConfigStore.save(
-                    ReceiverRuntimeConfig(
-                        enabledBankProfileIds = selectedBankIds,
-                        merchantId = session.merchantId
+                // The runtime config persists the derived allowlist. With a package-less
+                // wallet there is no allowlist to persist (the store rejects an empty set),
+                // so we skip the save rather than fabricate a monitored bank.
+                if (enabledBankProfileIds.isNotEmpty()) {
+                    receiverRuntimeConfigStore.save(
+                        ReceiverRuntimeConfig(
+                            enabledBankProfileIds = enabledBankProfileIds,
+                            merchantId = session.merchantId
+                        )
                     )
-                )
+                }
                 receiverDeviceStateStore.save(result.deviceState.copy(receiverKeyId = receiverKeyInfo.keyId))
                 onboardingCompletionStore.markCompleted()
                 route = PremiumNavigation.afterOnboarding()
@@ -564,7 +573,6 @@ fun PremiumMerchantApp(
         PremiumRoute.Landing -> PremiumLandingScreen { route = PremiumRoute.Onboarding }
         PremiumRoute.Onboarding -> PremiumOnboardingFlow(
             notificationAccessEnabled = notificationAccessEnabled,
-            bankTargetsState = banksState,
             language = merchantSettings.language,
             openNotificationSettings = onOpenNotificationSettings,
             onDone = { completedState -> finishOnboarding(completedState) }

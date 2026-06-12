@@ -7,7 +7,6 @@ import com.swimpay.receiver.ReceivingMethodType
 enum class PremiumOnboardingStep {
     WELCOME,
     NOTIFICATION_ACCESS,
-    COMPATIBLE_BANK_SELECTION,
     RECEIVING_METHOD,
     CONNECTED_SITE,
     CONFIGURATION_TEST;
@@ -16,7 +15,6 @@ enum class PremiumOnboardingStep {
         val requiredSequence: List<PremiumOnboardingStep> = listOf(
             WELCOME,
             NOTIFICATION_ACCESS,
-            COMPATIBLE_BANK_SELECTION,
             RECEIVING_METHOD,
             CONNECTED_SITE,
             CONFIGURATION_TEST
@@ -34,8 +32,6 @@ data class PremiumOnboardingSessionState(
     val completedSteps: Set<PremiumOnboardingStep> = emptySet(),
     val skippedConnectedSite: Boolean = false,
     val notificationAccessEnabled: Boolean = false,
-    val detectedCompatibleBankIds: Set<String> = emptySet(),
-    val selectedBankIds: Set<String> = emptySet(),
     val receivingMethodConfigured: Boolean = false,
     val receivingMethodDraft: PremiumReceivingMethodDraft? = null,
     val receivingMethodSubmission: MerchantReceivingMethodSubmission? = null,
@@ -43,37 +39,30 @@ data class PremiumOnboardingSessionState(
     val configurationTestRan: Boolean = false,
     val onboardingCompleted: Boolean = false
 ) {
+    /**
+     * Receiving-first derivation: the bank-profile ids that make up the notification
+     * allowlist are a CONSEQUENCE of the chosen receiving method(s), never a separate
+     * manual screen. Only methods that actually carry a receiver notification package
+     * contribute; package-less WA wallets (Wave, Orange Money CI) derive to nothing, so
+     * the runtime never claims to monitor an app it cannot read.
+     */
+    val derivedEnabledBankProfileIds: Set<String>
+        get() = ReceivingCatalog.notificationProfileIdsFor(chosenReceivingMethodIds)
+
+    /** Notification packages derived from the chosen receiving method(s). */
+    val derivedNotificationPackages: Set<String>
+        get() = ReceivingCatalog.packagesFor(chosenReceivingMethodIds)
+
+    private val chosenReceivingMethodIds: Set<String>
+        get() = setOfNotNull(receivingMethodSubmission?.bankProfileId)
+
     val configurationTestReady: Boolean
         get() = notificationAccessEnabled &&
-            selectedBankIds.isNotEmpty() &&
             receivingMethodConfigured &&
             connectedSiteConfigured
 
     fun withNotificationAccess(enabled: Boolean): PremiumOnboardingSessionState {
         return copy(notificationAccessEnabled = enabled)
-    }
-
-    fun withDetectedBanks(bankIds: Set<String>): PremiumOnboardingSessionState {
-        val supportedIds = bankIds.intersect(SUPPORTED_BANK_PROFILE_IDS)
-        return copy(detectedCompatibleBankIds = supportedIds)
-    }
-
-    fun withDefaultDetectedBanksSelected(): PremiumOnboardingSessionState {
-        return if (selectedBankIds.isEmpty()) {
-            copy(selectedBankIds = detectedCompatibleBankIds)
-        } else {
-            this
-        }
-    }
-
-    fun toggleBank(bankProfileId: String): PremiumOnboardingSessionState {
-        if (bankProfileId !in SUPPORTED_BANK_PROFILE_IDS) return this
-        val nextSelected = if (bankProfileId in selectedBankIds) {
-            selectedBankIds - bankProfileId
-        } else {
-            selectedBankIds + bankProfileId
-        }
-        return copy(selectedBankIds = nextSelected)
     }
 
     fun withReceivingMethod(method: PremiumReceivingMethodDraft): PremiumOnboardingSessionState {
@@ -119,7 +108,6 @@ data class PremiumOnboardingSessionState(
         return when (step) {
             PremiumOnboardingStep.WELCOME -> true
             PremiumOnboardingStep.NOTIFICATION_ACCESS -> notificationAccessEnabled
-            PremiumOnboardingStep.COMPATIBLE_BANK_SELECTION -> selectedBankIds.isNotEmpty()
             PremiumOnboardingStep.RECEIVING_METHOD -> receivingMethodConfigured && receivingMethodSubmission != null
             PremiumOnboardingStep.CONNECTED_SITE -> connectedSiteConfigured || skippedConnectedSite
             PremiumOnboardingStep.CONFIGURATION_TEST -> configurationTestReady
@@ -166,7 +154,6 @@ data class PremiumOnboardingSessionState(
     fun configurationChecklistLabels(): List<String> {
         return listOf(
             "Accès notifications activé",
-            "Banque choisie",
             "Moyen de réception ajouté",
             if (connectedSiteConfigured) {
                 "Webhook configuré"
@@ -179,22 +166,10 @@ data class PremiumOnboardingSessionState(
     fun configurationResultLabels(): List<String> {
         return buildList {
             if (notificationAccessEnabled) add("Réussi") else add("Téléphone non connecté")
-            if (selectedBankIds.isNotEmpty()) add("Réussi") else add("Banque à choisir")
             if (receivingMethodConfigured) add("Réussi") else add("Moyen de réception à ajouter")
             if (connectedSiteConfigured) add("Réussi") else add("Webhook à configurer")
             if (!configurationTestReady) add("Action nécessaire")
         }
-    }
-
-    companion object {
-        val SUPPORTED_BANK_PROFILE_IDS = setOf(
-            "sber_ru",
-            "tbank_ru",
-            "vtb_ru",
-            "alfa_ru",
-            "gazprombank_ru",
-            "ozon_bank"
-        )
     }
 }
 

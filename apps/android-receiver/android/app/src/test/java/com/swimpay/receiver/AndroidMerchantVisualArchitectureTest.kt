@@ -117,8 +117,11 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(premiumOnboarding.contains("Recevez vos paiements plus facilement"))
         assertTrue(premiumOnboarding.contains("Connectez votre téléphone"))
         assertTrue(premiumOnboarding.contains("Activer l'accès"))
-        assertTrue(premiumOnboarding.contains("SwimPay recherche uniquement les banques compatibles."))
-        assertTrue(premiumOnboarding.contains("Activer ces banques"))
+        // Receiving-first flow: the manual bank-allowlist step is removed; the
+        // receiving-method step is the single place the user declares what they receive on.
+        assertFalse(premiumOnboarding.contains("SwimPay recherche uniquement les banques compatibles."))
+        assertFalse(premiumOnboarding.contains("Activer ces banques"))
+        assertTrue(premiumOnboarding.contains("Ajoutez votre moyen de réception"))
         assertTrue(premiumOnboarding.contains("Connectez votre site ou application"))
         assertTrue(premiumOnboarding.contains("Lancer le test webhook"))
         assertFalse(premiumOnboarding.contains("Tester sans site connecté"))
@@ -340,8 +343,10 @@ class AndroidMerchantVisualArchitectureTest {
         val mainActivity = File("src/main/java/com/swimpay/receiver/MainActivity.kt").readText()
 
         assertTrue(premiumApp.contains("activeRuntime.loadBanks(enabledBankProfileIds = receiverRuntimeConfigStore?.load()?.enabledBankProfileIds ?: emptySet())"))
-        assertTrue(premiumApp.contains("bankTargetsState = banksState"))
-        assertTrue(premiumOnboarding.contains("bankTargetsState: PremiumScreenState<PremiumBanksUiState>"))
+        // Receiving-first: onboarding no longer consumes a separate bank-detection state;
+        // the Banks management screen still derives its rows from the runtime target lock.
+        assertTrue(premiumApp.contains("PremiumBanksStateScreen(banksState"))
+        assertFalse(premiumOnboarding.contains("bankTargetsState: PremiumScreenState<PremiumBanksUiState>"))
         assertFalse(premiumOnboarding.contains("\"Sberbank\" to \"Détectée\""))
         assertFalse(premiumOnboarding.contains("\"VTB\" to \"Non détectée\""))
         assertTrue(mainActivity.contains("PackageManagerExactPackageProbe(this)"))
@@ -391,7 +396,9 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(onboardingSource.contains("Icons.Default.PhoneAndroid"))
         assertFalse(onboardingSource.contains("bankOptions.forEach { bank ->"))
         assertTrue(premiumDashboard.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
-        assertTrue(premiumOnboarding.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
+        // Receiving-first onboarding consumes the unified catalog (all regions incl. WA),
+        // not the RU+INT-only availableBanks list.
+        assertTrue(premiumOnboarding.contains("ReceivingCatalog.allMethods"))
         assertTrue(bankCatalog.contains("BankTargetLock.supportedTargets"))
         assertTrue(bankCatalog.contains("bankProfileId"))
         assertTrue(bankCatalog.contains("displayName"))
@@ -518,7 +525,8 @@ class AndroidMerchantVisualArchitectureTest {
         val premiumReviews = File("src/main/java/com/swimpay/receiver/ui/premium/PremiumReviewScreens.kt").readText()
 
         assertTrue(premiumDashboard.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
-        assertTrue(premiumOnboarding.contains("PremiumReceivingMethodBankCatalog.availableBanks"))
+        // Onboarding shares the unified receiving catalog (single source of truth, all regions).
+        assertTrue(premiumOnboarding.contains("ReceivingCatalog.allMethods"))
         assertFalse(premiumDashboard.contains("private val ReceivingMethodBankOptions"))
         assertFalse(premiumOnboarding.contains("private val OnboardingReceivingMethodBankOptions"))
         assertTrue(premiumReviews.contains("selectedFilter"))
