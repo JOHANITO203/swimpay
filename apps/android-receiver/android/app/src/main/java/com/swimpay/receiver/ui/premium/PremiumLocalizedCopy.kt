@@ -332,7 +332,7 @@ data class PremiumLocalizedCopy(
             LocalizedText("Uniquement les apps que vous activez", "Only the apps you enable", "Только приложения, которые вы включаете"),
             LocalizedText("Aucun accès aux SMS ni aux autres apps", "No access to SMS or other apps", "Нет доступа к SMS и другим приложениям"),
             LocalizedText("Chiffré — jamais le texte brut conservé", "Encrypted — raw text is never stored", "Шифрование — необработанный текст не хранится"),
-            LocalizedText("Apps surveillées", "Monitored apps", "Отслеживаемые приложения"),
+            LocalizedText("Vous choisirez ensuite vos moyens de réception ; SwimPay lit uniquement la notification de paiement de ces apps. Jamais vos SMS ni vos autres apps. Le texte brut n'est jamais conservé.", "You will then choose your receiving methods; SwimPay only reads the payment notification of those apps. Never your SMS or other apps. The raw text is never stored.", "Затем вы выберете способы получения; SwimPay читает только уведомление об оплате этих приложений. Никогда ваши SMS и другие приложения. Необработанный текст не хранится."),
             LocalizedText("Plus tard", "Later", "Позже"),
             LocalizedText("Continuer", "Continue", "Продолжить"),
             LocalizedText("Activer l'accès", "Enable access", "Включить доступ"),

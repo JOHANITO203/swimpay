@@ -229,6 +229,30 @@ class PremiumOnboardingFullFlowTest {
     }
 
     @Test
+    fun onboardingDoesNotClaimToMonitorOrRecognizeInstalledApps() {
+        // Honesty guard (T3): the app never enumerates installed apps and has no
+        // source-app host-identity module. No onboarding copy or widget may imply it
+        // surveils apps, scans the device, or "recognizes" the source app/channel.
+        val source = onboardingSource()
+        val dishonestPhrases = listOf(
+            "Apps surveillées",
+            "Monitored apps",
+            "MonitoredAppsRow",
+            "canal reconnu",
+            "channel recognized",
+            "surveille les apps",
+            "détecte les apps"
+        )
+        dishonestPhrases.forEach { phrase ->
+            assertFalse("dishonest detection/monitoring copy still present: $phrase", source.contains(phrase, ignoreCase = true))
+        }
+        // The honest permission framing must be present instead.
+        assertTrue(
+            source.contains("SwimPay lit uniquement la notification de paiement de ces apps. Jamais vos SMS ni vos autres apps. Le texte brut n'est jamais conservé.")
+        )
+    }
+
+    @Test
     fun activeOnboardingSourceRemovesLegacyBusinessAndPolicySteps() {
         val source = onboardingSource()
         val forbiddenLegacyCopy = listOf(

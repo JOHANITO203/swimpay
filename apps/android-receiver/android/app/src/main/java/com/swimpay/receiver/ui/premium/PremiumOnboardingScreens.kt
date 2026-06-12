@@ -279,10 +279,16 @@ private fun NotificationAccessStep(
                 ReassuranceRow(language.ui("Chiffré — jamais le texte brut conservé"))
             }
         }
-        Spacer(Modifier.height(22.dp))
-        SectionLabel(language.ui("Apps surveillées"))
-        Spacer(Modifier.height(12.dp))
-        MonitoredAppsRow()
+        Spacer(Modifier.height(16.dp))
+        // Honest framing: SwimPay does not enumerate or monitor installed apps. It reads
+        // only the payment notification of the receiving methods the user chooses next.
+        Text(
+            language.ui("Vous choisirez ensuite vos moyens de réception ; SwimPay lit uniquement la notification de paiement de ces apps. Jamais vos SMS ni vos autres apps. Le texte brut n'est jamais conservé."),
+            color = PremiumColors.Muted,
+            fontSize = PremiumType.Body,
+            lineHeight = 22.sp,
+            fontWeight = FontWeight.SemiBold
+        )
         Spacer(Modifier.height(24.dp))
         // status string retained for the source-copy contract / disabled affordance
         if (!notificationAccessEnabled) {
@@ -346,38 +352,6 @@ private fun ReassuranceDivider() {
             .height(1.dp)
             .background(PremiumColors.Line)
     )
-}
-
-@Composable
-private fun MonitoredAppsRow() {
-    val monitoredBanks = listOf(
-        "wave_ci" to "Wave",
-        "orange_money_ci" to "Orange Money",
-        "mtn_momo_ci" to "MTN MoMo",
-        "wise_int" to "Wise",
-        "sber_ru" to "Sberbank"
-    )
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        monitoredBanks.forEach { (bankProfileId, displayName) ->
-            PremiumBankLogo(bankProfileId = bankProfileId, displayName = displayName, size = 38.dp)
-        }
-        Box(
-            Modifier
-                .size(38.dp)
-                .background(PremiumColors.NeutralChip, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "+6",
-                color = PremiumColors.SoftText,
-                fontSize = PremiumType.Caption,
-                fontWeight = FontWeight.Black
-            )
-        }
-    }
 }
 
 @Composable
