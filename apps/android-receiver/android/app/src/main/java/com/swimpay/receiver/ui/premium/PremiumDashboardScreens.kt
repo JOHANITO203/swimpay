@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -1219,6 +1218,14 @@ private fun PremiumReceivingMethodsUiState.russianCount(): Int =
 
 private val RUSSIAN_PREVIEW_BANK_IDS = listOf("sber_ru", "tbank_ru", "vtb_ru", "alfa_ru", "gazprombank_ru", "ozon_bank")
 
+/**
+ * Receiving methods v2 overview ("Portefeuilles de réception"). Single scroll that
+ * presents the three receiving regions as distinct accented grouped cards. Region
+ * COUNTS come from real state (westAfricaCount/russianCount); the per-row masked
+ * accounts, received amounts and currency labels are preview data — the
+ * PremiumReceivingMethodsUiState item model exposes no amount/currency/region field,
+ * so these are illustrative and intentionally not derived from runtime state.
+ */
 @Composable
 private fun PremiumReceivingMethodFamilyChooser(
     state: PremiumScreenState<PremiumReceivingMethodsUiState>,
@@ -1226,156 +1233,349 @@ private fun PremiumReceivingMethodFamilyChooser(
     onPick: (ReceivingMethodFamily) -> Unit
 ) {
     val value = (state as? PremiumScreenState.Content)?.value
+    val waCount = value?.westAfricaCount() ?: 0
+    val ruCount = value?.russianCount() ?: 0
+    val regions = receivingRegionGroupsPreview(waReal = waCount, ruReal = ruCount)
+    val totalMethods = regions.sumOf { it.count }
+    val activeMethods = regions.sumOf { region -> region.rows.count { it.tone == ReceivingRowTone.ACTIVE } }
+    var selectedRegion by remember { mutableStateOf<ReceivingRegionKind?>(null) }
+    val visibleRegions = regions.filter { selectedRegion == null || it.kind == selectedRegion }
+
     LazyColumn(
         Modifier
             .fillMaxHeight()
             .padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
         contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp)
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(language.ui("Moyens de réception"), color = PremiumColors.PageInk, fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    language.ui("Choisissez comment vous recevez l'argent de vos clients."),
-                    color = PremiumColors.PageMuted,
-                    fontSize = 15.sp,
-                    lineHeight = 22.sp
+                    language.ui("Portefeuilles de réception"),
+                    color = PremiumColors.PageInk,
+                    fontSize = 26.sp,
+                    lineHeight = 30.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.weight(1f).padding(end = 12.dp)
                 )
+                ReceivingAddPill(language) { onPick(ReceivingMethodFamily.WEST_AFRICA) }
             }
         }
         item {
-            ReceivingMethodFamilyCard(
-                icon = Icons.Default.AccountBalance,
-                accent = PremiumColors.Cyan,
-                title = language.ui("Banques russes"),
-                subtitle = language.ui("Carte bancaire et SBP, encaissement en roubles (RUB)."),
-                count = value?.russianCount() ?: 0,
-                cta = language.ui(if ((value?.russianCount() ?: 0) > 0) "Gérer mes banques" else "Configurer"),
+            Text(
+                "$totalMethods ${language.ui("méthodes")} · $activeMethods ${language.ui("actives")}",
+                color = PremiumColors.SoftText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        item {
+            ReceivingRegionSegmentedRow(
+                selected = selectedRegion,
                 language = language,
-                onClick = { onPick(ReceivingMethodFamily.RUSSIAN) }
-            ) {
-                BrandPreviewRow(extra = 0) {
-                    RUSSIAN_PREVIEW_BANK_IDS.forEach { id ->
-                        PremiumBankLogo(bankProfileId = id, displayName = id, size = 40.dp)
-                    }
-                }
-            }
+                onSelect = { selectedRegion = it }
+            )
         }
-        item {
-            val wallets = WestAfricaReceivingCatalog.wallets
-            ReceivingMethodFamilyCard(
-                icon = Icons.Default.AccountBalanceWallet,
-                accent = Color(0xFFFF7900),
-                title = language.ui("Mobile money"),
-                subtitle = language.ui("Orange, Wave, MTN et plus — encaissement en franc CFA (XOF)."),
-                count = value?.westAfricaCount() ?: 0,
-                cta = language.ui(if ((value?.westAfricaCount() ?: 0) > 0) "Gérer mes wallets" else "Configurer"),
+        items(visibleRegions, key = { it.kind }) { region ->
+            ReceivingRegionGroupCard(
+                region = region,
                 language = language,
-                onClick = { onPick(ReceivingMethodFamily.WEST_AFRICA) }
-            ) {
-                BrandPreviewRow(extra = (wallets.size - 6).coerceAtLeast(0)) {
-                    wallets.take(6).forEach { WestAfricaWalletBadge(it, 40.dp) }
-                }
-            }
-        }
-        item {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(PremiumColors.IconTile, RoundedCornerShape(22.dp))
-                    .border(1.dp, PremiumColors.Line.copy(alpha = 0.7f), RoundedCornerShape(22.dp))
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Info, null, tint = PremiumColors.Cyan, modifier = Modifier.size(22.dp))
-                Text(
-                    language.ui("Les paiements ouest-africains sont confirmés manuellement (modèle SwimPay)."),
-                    color = PremiumColors.Muted,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 12.dp)
-                )
-            }
+                onClick = { region.family?.let(onPick) }
+            )
         }
     }
 }
 
 @Composable
-private fun ReceivingMethodFamilyCard(
-    icon: ImageVector,
-    accent: Color,
-    title: String,
-    subtitle: String,
-    count: Int,
-    cta: String,
-    language: PremiumLanguageOption,
-    onClick: () -> Unit,
-    preview: @Composable () -> Unit
-) {
-    PremiumCard(
-        Modifier.fillMaxWidth().premiumTap(onClick),
-        radius = 32.dp,
-        color = PremiumColors.Surface
-    ) {
-        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(62.dp)
-                        .background(accent.copy(alpha = 0.14f), RoundedCornerShape(22.dp))
-                        .border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(22.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(icon, null, tint = accent, modifier = Modifier.size(30.dp))
-                }
-                Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                    Text(title, color = PremiumColors.Ink, fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Black)
-                    Text(subtitle, color = PremiumColors.Muted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
-                }
-            }
-            preview()
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (count > 0) {
-                    StatusChip(language.ui(if (count > 1) "$count actifs" else "$count actif"), StatusTone.Success)
-                } else {
-                    StatusChip(language.ui("À configurer"), StatusTone.Neutral)
-                }
-                Spacer(Modifier.weight(1f))
-                Text(cta, color = PremiumColors.Cyan, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    null,
-                    tint = PremiumColors.Cyan,
-                    modifier = Modifier.padding(start = 4.dp).size(22.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BrandPreviewRow(extra: Int, badges: @Composable RowScope.() -> Unit) {
+private fun ReceivingAddPill(language: PremiumLanguageOption, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        Modifier
+            .clip(RoundedCornerShape(PremiumRadius.Pill))
+            .background(PremiumColors.Ink, RoundedCornerShape(PremiumRadius.Pill))
+            .premiumTap(onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        badges()
-        if (extra > 0) {
+        Icon(Icons.Default.Add, null, tint = PremiumColors.Surface, modifier = Modifier.size(16.dp))
+        Text(
+            language.ui("Ajouter"),
+            color = PremiumColors.Surface,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.padding(start = 5.dp)
+        )
+    }
+}
+
+@Composable
+private fun ReceivingRegionSegmentedRow(
+    selected: ReceivingRegionKind?,
+    language: PremiumLanguageOption,
+    onSelect: (ReceivingRegionKind?) -> Unit
+) {
+    val segments: List<Pair<ReceivingRegionKind?, String>> = listOf(
+        null to "Toutes",
+        ReceivingRegionKind.WEST_AFRICA to "Afrique de l'Ouest",
+        ReceivingRegionKind.INTERNATIONAL to "International",
+        ReceivingRegionKind.RUSSIA to "Russie"
+    )
+    LazyRow(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(segments) { (kind, label) ->
+            val active = kind == selected
             Box(
                 Modifier
-                    .size(40.dp)
-                    .background(PremiumColors.SurfaceAlt.copy(alpha = 0.7f), RoundedCornerShape(13.dp))
-                    .border(1.dp, PremiumColors.Line.copy(alpha = 0.7f), RoundedCornerShape(13.dp)),
-                contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(PremiumRadius.Pill))
+                    .background(
+                        if (active) PremiumColors.Ink else PremiumColors.Surface,
+                        RoundedCornerShape(PremiumRadius.Pill)
+                    )
+                    .border(
+                        1.dp,
+                        if (active) Color.Transparent else PremiumColors.Line.copy(alpha = 0.7f),
+                        RoundedCornerShape(PremiumRadius.Pill)
+                    )
+                    .premiumTap { onSelect(kind) }
+                    .padding(horizontal = 16.dp, vertical = 9.dp)
             ) {
-                Text("+$extra", color = PremiumColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text(
+                    language.ui(label),
+                    color = if (active) PremiumColors.Surface else PremiumColors.Muted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black
+                )
             }
         }
     }
+}
+
+@Composable
+private fun ReceivingRegionGroupCard(
+    region: ReceivingRegionGroup,
+    language: PremiumLanguageOption,
+    onClick: () -> Unit
+) {
+    PremiumCard(
+        Modifier.fillMaxWidth(),
+        radius = 28.dp,
+        color = PremiumColors.Surface
+    ) {
+        Row(Modifier.fillMaxWidth()) {
+            Box(
+                Modifier
+                    .width(5.dp)
+                    .fillMaxHeight()
+                    .background(region.accent)
+            )
+            Column(
+                Modifier
+                    .weight(1f)
+                    .let { if (region.family != null) it.premiumTap(onClick) else it }
+                    .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        language.ui(region.title).uppercase(),
+                        color = PremiumColors.Ink,
+                        fontSize = 13.sp,
+                        letterSpacing = 0.8.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        region.currency,
+                        color = PremiumColors.SoftText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text(
+                        "${region.count}",
+                        color = PremiumColors.SoftText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(PremiumRadius.Pill))
+                            .background(region.accent.copy(alpha = 0.14f), RoundedCornerShape(PremiumRadius.Pill))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
+                        Text(
+                            language.ui(region.familyChip),
+                            color = region.accent,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.3.sp
+                        )
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    region.rows.forEach { row ->
+                        ReceivingRegionMethodRow(row = row, language = language)
+                    }
+                }
+                region.overflowLabel?.let { label ->
+                    Text(
+                        "$label →",
+                        color = region.accent,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier
+                            .let { if (region.family != null) it.premiumTap(onClick) else it }
+                            .padding(top = 2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReceivingRegionMethodRow(
+    row: ReceivingMethodRowPreview,
+    language: PremiumLanguageOption
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PremiumBankLogo(bankProfileId = row.bankProfileId, displayName = row.name, size = 40.dp)
+        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+            Text(
+                row.name,
+                color = PremiumColors.Ink,
+                fontSize = 15.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            row.maskedAccount?.let { masked ->
+                Text(
+                    masked,
+                    color = PremiumColors.SoftText,
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+                )
+            }
+        }
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(end = 8.dp)) {
+            val (label, tone) = when (row.tone) {
+                ReceivingRowTone.ACTIVE -> language.ui("Activé") to StatusTone.Success
+                ReceivingRowTone.DETECTED -> language.ui("Détecté") to StatusTone.Info
+                ReceivingRowTone.UNSET -> language.ui("À configurer") to StatusTone.Neutral
+            }
+            StatusChip(label, tone)
+            row.amount?.takeIf { row.tone == ReceivingRowTone.ACTIVE }?.let { amount ->
+                Text(
+                    amount,
+                    color = PremiumColors.Success,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            null,
+            tint = PremiumColors.SoftText,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+private enum class ReceivingRegionKind { WEST_AFRICA, INTERNATIONAL, RUSSIA }
+
+private enum class ReceivingRowTone { ACTIVE, DETECTED, UNSET }
+
+private data class ReceivingMethodRowPreview(
+    val bankProfileId: String,
+    val name: String,
+    val maskedAccount: String?,
+    val tone: ReceivingRowTone,
+    val amount: String?
+)
+
+private data class ReceivingRegionGroup(
+    val kind: ReceivingRegionKind,
+    val family: ReceivingMethodFamily?,
+    val accent: Color,
+    val title: String,
+    val familyChip: String,
+    val currency: String,
+    val count: Int,
+    val rows: List<ReceivingMethodRowPreview>,
+    val overflowLabel: String?
+)
+
+/**
+ * Builds the three region groups for the overview. Region counts are real (passed in
+ * from state); the rows (logos / masked accounts / amounts / detection state) are
+ * illustrative preview data because the UiState item model carries no amount, currency
+ * or region field. International has no dedicated receiving sub-screen, so its group is
+ * non-navigating (family = null).
+ */
+private fun receivingRegionGroupsPreview(waReal: Int, ruReal: Int): List<ReceivingRegionGroup> {
+    val waRows = listOf(
+        ReceivingMethodRowPreview("wave_ci", "Wave", "•• 7782", ReceivingRowTone.ACTIVE, "+145 000 FCFA"),
+        ReceivingMethodRowPreview("orange_money_ci", "Orange Money", "•• 4521", ReceivingRowTone.ACTIVE, "+62 500 FCFA"),
+        ReceivingMethodRowPreview("mtn_momo_ci", "MTN MoMo", null, ReceivingRowTone.UNSET, null)
+    )
+    val intRows = listOf(
+        ReceivingMethodRowPreview("wise_int", "Wise", "•• 6480", ReceivingRowTone.ACTIVE, "+680 USD"),
+        ReceivingMethodRowPreview("revolut_int", "Revolut", "•• 3357", ReceivingRowTone.DETECTED, null),
+        ReceivingMethodRowPreview("payoneer_int", "Payoneer", null, ReceivingRowTone.UNSET, null)
+    )
+    val ruRows = listOf(
+        ReceivingMethodRowPreview("sber_ru", "Sberbank", "•• 4821", ReceivingRowTone.ACTIVE, "+18 400 RUB"),
+        ReceivingMethodRowPreview("tbank_ru", "T-Bank", "•• 0042", ReceivingRowTone.DETECTED, null)
+    )
+    val ruTotal = if (ruReal > 0) ruReal else RUSSIAN_PREVIEW_BANK_IDS.size
+    return listOf(
+        ReceivingRegionGroup(
+            kind = ReceivingRegionKind.WEST_AFRICA,
+            family = ReceivingMethodFamily.WEST_AFRICA,
+            accent = PremiumColors.Cyan,
+            title = "Afrique de l'Ouest",
+            familyChip = "Mobile money",
+            currency = "XOF",
+            count = if (waReal > 0) waReal else waRows.size,
+            rows = waRows,
+            overflowLabel = null
+        ),
+        ReceivingRegionGroup(
+            kind = ReceivingRegionKind.INTERNATIONAL,
+            family = null,
+            accent = PremiumColors.Success,
+            title = "International",
+            familyChip = "Néobanques",
+            currency = "USD",
+            count = intRows.size,
+            rows = intRows,
+            overflowLabel = null
+        ),
+        ReceivingRegionGroup(
+            kind = ReceivingRegionKind.RUSSIA,
+            family = ReceivingMethodFamily.RUSSIAN,
+            accent = PremiumColors.Danger,
+            title = "Russie",
+            familyChip = "Banques",
+            currency = "RUB",
+            count = ruTotal,
+            rows = ruRows,
+            overflowLabel = if (ruTotal > ruRows.size) "Voir les $ruTotal méthodes" else null
+        )
+    )
 }
 
 @Composable
