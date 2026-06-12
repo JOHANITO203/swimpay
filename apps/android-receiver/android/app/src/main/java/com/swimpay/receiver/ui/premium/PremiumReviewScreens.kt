@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
-import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.GridView
@@ -413,6 +412,14 @@ private fun PaymentReviewCheckoutCard(
     val reference = state.summaryValue("Référence", "Reference")
     val signalTime = state.summaryValue("Signal reçu", "Signal recu")
     val risk = state.summaryValue("Risque")
+    val score = state.summaryValue("Score")
+
+    val verdict = paymentReviewVerdict(state, expectedAmount, detectedAmount)
+    val heroAmount = detectedAmount.ifBlank { expectedAmount.ifBlank { "—" } }
+    val displayBank = bank.ifBlank { language.ui("Décision manuelle marchand") }
+    val payerLine = listOf(displayBank, signalTime)
+        .filter { it.isNotBlank() }
+        .joinToString(separator = " · ")
 
     LiquidGlassCard(
         modifier = Modifier.fillMaxWidth(),
@@ -420,30 +427,49 @@ private fun PaymentReviewCheckoutCard(
         color = PremiumColors.Surface
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            // Verdict banner: rail/bank logo + verdict headline + decision chip.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Box(
-                    Modifier
-                        .size(56.dp)
-                        .background(PremiumColors.Warning.copy(alpha = 0.14f), RoundedCornerShape(PremiumRadius.Tile)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.WarningAmber,
-                        contentDescription = null,
-                        tint = PremiumColors.Warning,
-                        modifier = Modifier.size(28.dp)
+                PremiumBankLogo(
+                    bankProfileId = reviewBankProfileId(bank),
+                    displayName = bank.ifBlank { "Bank" },
+                    size = 52.dp
+                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = language.ui(state.statusTitle),
+                        color = PremiumColors.Ink,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        lineHeight = 22.sp
                     )
+                    if (payerLine.isNotBlank()) {
+                        Text(
+                            text = payerLine,
+                            color = PremiumColors.SoftText,
+                            fontSize = PremiumType.Caption,
+                            fontWeight = FontWeight.SemiBold,
+                            lineHeight = 16.sp
+                        )
+                    }
                 }
-                Spacer(Modifier.weight(1f))
-                StatusChip(language.ui("Review"), StatusTone.Warning)
+                StatusChip(language.ui(verdict.chipLabel), verdict.tone)
             }
+
+            // Hero: received amount in success green + verdict explanation.
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = language.ui(state.statusTitle),
-                    color = PremiumColors.Ink,
-                    fontSize = 24.sp,
+                    text = language.ui("Montant à vérifier").uppercase(),
+                    color = PremiumColors.SoftText,
+                    fontSize = PremiumType.Micro,
                     fontWeight = FontWeight.Black,
-                    lineHeight = 28.sp
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = heroAmount,
+                    color = PremiumColors.Success,
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.Black,
+                    lineHeight = 38.sp
                 )
                 Text(
                     text = language.ui(state.statusText),
@@ -452,62 +478,120 @@ private fun PaymentReviewCheckoutCard(
                     lineHeight = 20.sp,
                     fontWeight = FontWeight.SemiBold
                 )
-            }
-
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .background(PremiumColors.PanelTint, RoundedCornerShape(PremiumRadius.CardLarge))
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Text(
-                    text = language.ui("Montant a verifier"),
-                    color = PremiumColors.SoftText,
-                    fontSize = PremiumType.Micro,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = detectedAmount.ifBlank { expectedAmount.ifBlank { "—" } },
-                    color = PremiumColors.Ink,
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Black,
-                    lineHeight = 38.sp
-                )
                 if (expectedAmount.isNotBlank() && expectedAmount != detectedAmount) {
                     Text(
-                        text = "${language.ui("Attendu")} $expectedAmount",
+                        text = "${language.ui("Montant exact")} · $expectedAmount",
                         color = PremiumColors.Muted,
-                        fontSize = PremiumType.Body,
+                        fontSize = PremiumType.Caption,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            PaymentReviewRow(
-                icon = Icons.Default.AccountBalanceWallet,
-                label = language.ui("Reception"),
-                primary = bank.ifBlank { language.ui("Banque non renseignee") },
-                secondary = receivingMethod
-            )
-            PaymentReviewRow(
-                icon = Icons.AutoMirrored.Filled.ReceiptLong,
-                label = language.ui("Signal"),
-                primary = signalTime.ifBlank { language.ui("Signal operationnel") },
-                secondary = reference.ifBlank { state.reviewId }
-            )
-            PaymentReviewRow(
-                icon = Icons.Default.Security,
-                label = language.ui("Controle"),
-                primary = risk.ifBlank { language.ui("Decision manuelle marchand") },
-                secondary = state.reasons.joinToString(separator = " · ") { language.ui(it) }
-            )
+            // Captured notification panel.
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(PremiumColors.PanelTint, RoundedCornerShape(PremiumRadius.CardLarge))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SectionLabel(language.ui("NOTIFICATION CAPTÉE"))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .background(PremiumColors.IconTile, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
+                            contentDescription = null,
+                            tint = PremiumColors.Blue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = displayBank,
+                            color = PremiumColors.Ink,
+                            fontSize = PremiumType.Body,
+                            fontWeight = FontWeight.Black,
+                            lineHeight = 18.sp
+                        )
+                        Text(
+                            text = receivingMethod.ifBlank { reference.ifBlank { state.reviewId } },
+                            color = PremiumColors.Muted,
+                            fontSize = PremiumType.Caption,
+                            fontWeight = FontWeight.SemiBold,
+                            lineHeight = 16.sp
+                        )
+                    }
+                    if (signalTime.isNotBlank()) {
+                        Text(
+                            text = signalTime,
+                            color = PremiumColors.SoftText,
+                            fontSize = PremiumType.Caption,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+            }
 
+            // Provenance verification signals.
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionLabel(language.ui("SIGNAUX DE PROVENANCE"))
+                ProvenanceCheckRow(language.ui("Application source"), displayBank, verified = bank.isNotBlank())
+                ProvenanceCheckRow(
+                    language.ui("Canal de notification"),
+                    risk.ifBlank { language.ui("Reconnu") },
+                    verified = true
+                )
+                ProvenanceCheckRow(
+                    language.ui("Montant exact"),
+                    expectedAmount.ifBlank { detectedAmount },
+                    verified = expectedAmount.isBlank() || expectedAmount == detectedAmount
+                )
+                if (reference.isNotBlank()) {
+                    ProvenanceCheckRow(language.ui("Référence"), reference, verified = true)
+                }
+                // Confidence reasons (gate verdict rationale) preserved verbatim.
+                state.reasons.forEach { reason ->
+                    ProvenanceCheckRow(
+                        language.ui("Rapprochement commande"),
+                        language.ui(reason),
+                        verified = verdict.tone == StatusTone.Success
+                    )
+                }
+            }
+
+            // Confidence bar derived from the backend score when present.
+            paymentReviewConfidence(score)?.let { fraction ->
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = language.ui("Confiance"),
+                            modifier = Modifier.weight(1f),
+                            color = PremiumColors.Ink,
+                            fontSize = PremiumType.Body,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = "${(fraction * 100).toInt()} %",
+                            color = PremiumColors.Success,
+                            fontSize = PremiumType.Body,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    ConfidenceBar(fraction)
+                }
+            }
+
+            // Payment timeline (parcours).
             if (state.timeline.isNotEmpty()) {
                 Box(Modifier.fillMaxWidth().height(1.dp).background(PremiumColors.Line))
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SectionLabel(language.ui("Parcours"))
+                    SectionLabel(language.ui("PARCOURS DU PAIEMENT"))
                     state.timeline.forEachIndexed { index, label ->
                         PaymentReviewTimelineItem(index + 1, language.ui(label))
                     }
@@ -553,23 +637,41 @@ private fun PaymentReviewCheckoutCard(
     }
 }
 
+private data class PaymentReviewVerdict(val chipLabel: String, val tone: PremiumTone)
+
+private fun paymentReviewVerdict(
+    state: PremiumPaymentDetailUiState,
+    expectedAmount: String,
+    detectedAmount: String
+): PaymentReviewVerdict {
+    val signal = (state.statusTitle + " " + state.actionMessage).lowercase()
+    return when {
+        signal.contains("rejet") || signal.contains("annul") || signal.contains("refus") ->
+            PaymentReviewVerdict("Rejeter le signal", StatusTone.Danger)
+        signal.contains("confirm") || signal.contains("validé") || signal.contains("traité") ->
+            PaymentReviewVerdict("Confirmer reçu", StatusTone.Success)
+        else -> PaymentReviewVerdict("En cours", StatusTone.Warning)
+    }
+}
+
+private fun paymentReviewConfidence(scoreValue: String): Float? {
+    val digits = scoreValue.filter { it.isDigit() }
+    if (digits.isBlank()) return null
+    val percent = digits.toIntOrNull() ?: return null
+    return (percent.coerceIn(0, 100)) / 100f
+}
+
 @Composable
-private fun PaymentReviewRow(
-    icon: ImageVector,
-    label: String,
-    primary: String,
-    secondary: String
-) {
+private fun ProvenanceCheckRow(label: String, value: String, verified: Boolean) {
+    val tint = if (verified) PremiumColors.Success else PremiumColors.Warning
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(
-            Modifier
-                .size(40.dp)
-                .background(PremiumColors.IconTile, RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = PremiumColors.Blue, modifier = Modifier.size(20.dp))
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Icon(
+            imageVector = if (verified) Icons.Default.CheckCircle else Icons.Default.WarningAmber,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(20.dp)
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
                 text = label.uppercase(),
                 color = PremiumColors.SoftText,
@@ -577,22 +679,33 @@ private fun PaymentReviewRow(
                 fontWeight = FontWeight.Black,
                 letterSpacing = 0.8.sp
             )
-            Text(
-                text = primary,
-                color = PremiumColors.Ink,
-                fontSize = PremiumType.Body,
-                fontWeight = FontWeight.Black
-            )
-            if (secondary.isNotBlank()) {
+            if (value.isNotBlank()) {
                 Text(
-                    text = secondary,
-                    color = PremiumColors.Muted,
+                    text = value,
+                    color = PremiumColors.Ink,
                     fontSize = PremiumType.Caption,
-                    fontWeight = FontWeight.SemiBold,
-                    lineHeight = 17.sp
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 16.sp
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ConfidenceBar(fraction: Float) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(8.dp)
+            .background(PremiumColors.NeutralChip, RoundedCornerShape(PremiumRadius.Pill))
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                .fillMaxHeight()
+                .background(PremiumColors.Success, RoundedCornerShape(PremiumRadius.Pill))
+        )
     }
 }
 
