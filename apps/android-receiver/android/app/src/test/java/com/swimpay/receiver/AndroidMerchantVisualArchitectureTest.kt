@@ -238,7 +238,7 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(mainCard.contains("useDragonGoldHomeCard -> CardVisualDefaults.HomeDashboardDragonGoldMaterial"))
         assertTrue(mainCard.contains("CardVisualDefaults.HomeDashboardDragonGoldMaterial"))
         assertTrue(mainCard.contains("CardVisualDefaults.HomeDashboard"))
-        assertTrue(premiumDashboard.contains("homeMetrics.chunked(2)"))
+        assertTrue(premiumDashboard.contains("ChartMetricPill(language.ui(\"Montant\"), state.chartConfirmedAmountLabel"))
         assertTrue(premiumDashboard.contains("state.chartConfirmedAmountLabel"))
         assertTrue(premiumDashboard.contains("state.chartConfirmationRateLabel"))
         assertFalse(mainCard.contains("Paiement suivi"))

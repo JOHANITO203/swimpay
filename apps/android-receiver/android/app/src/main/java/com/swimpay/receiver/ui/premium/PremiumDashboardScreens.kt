@@ -8,9 +8,11 @@ import android.os.Build
 import android.os.PersistableBundle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,7 +43,13 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CurrencyExchange
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
@@ -77,11 +85,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -122,36 +133,33 @@ private fun PremiumDashboardContent(
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        item { DashboardTopBar(language) }
+        item { ReceivedTodayFocal(state.monthlyAmount, language) }
         item {
-            Text(language.ui("Bonjour, Merchant"), color = PremiumColors.PageInk, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
-            Text(language.ui("Welcome back"), color = PremiumColors.PageMuted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+            DashboardSectionHeader(
+                title = language.ui("PORTEFEUILLES DE RÉCEPTION"),
+                actionLabel = language.ui("Ajouter +"),
+                onAction = onOpenBusiness
+            )
         }
-        item { MonthlyActivityCard(language.ui("Paiements reçus"), state.monthlyAmount, state.usesLiveApi, language) }
         item {
-            Text(language.ui("Actions rapides"), color = PremiumColors.PageInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
-        }
-        item {
-            val homeMetrics = homeActionMetrics(state.metrics)
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                homeMetrics.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        row.forEach { metric ->
-                            BentoMetricCard(
-                                metric.value,
-                                language.ui(metric.label),
-                                metric.trend,
-                                metricIcon(metric.label),
-                                Modifier.weight(1f),
-                                onClick = {
-                                    if (metric.label == "À confirmer") onOpenReviews() else onOpenBusiness()
-                                }
-                            )
-                        }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
+            val wallets = walletPreview()
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                items(wallets) { wallet -> ReceptionWalletCard(wallet, language) }
             }
         }
+        item {
+            Text(language.ui("ACTIONS"), color = PremiumColors.PageMuted, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                DashboardActionTile(Icons.Default.MyLocation, language.ui("Provenance"), Modifier.weight(1f), onOpenReviews)
+                DashboardActionTile(Icons.Default.Sync, language.ui("Réconcilier"), Modifier.weight(1f), onOpenBusiness)
+                DashboardActionTile(Icons.Default.FileDownload, language.ui("Exporter"), Modifier.weight(1f), onOpenBusiness)
+                DashboardActionTile(Icons.Default.CurrencyExchange, language.ui("Devises"), Modifier.weight(1f), onOpenBusiness)
+            }
+        }
+        item { ProvenanceVerifiedCard(provenancePreview(), language) }
         item {
             LiquidGlassCard(Modifier.fillMaxWidth().height(260.dp), radius = PremiumRadius.CardLarge) {
                 Column(Modifier.padding(24.dp)) {
@@ -171,16 +179,20 @@ private fun PremiumDashboardContent(
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(language.ui("HISTORIQUE DES PAIEMENTS"), color = PremiumColors.PageInk, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 0.5.sp)
-                Text(
-                    language.ui("Voir tout"),
-                    color = PremiumColors.Blue,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 13.sp,
-                    modifier = Modifier.premiumTap(onOpenBusiness).padding(vertical = 8.dp)
-                )
+            Text(language.ui("PAYEURS RÉCENTS"), color = PremiumColors.PageMuted, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
+        }
+        item {
+            val payers = payersPreview()
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                items(payers) { payer -> RecentPayerChip(payer) }
             }
+        }
+        item {
+            DashboardSectionHeader(
+                title = language.ui("PAIEMENTS REÇUS"),
+                actionLabel = language.ui("Voir tout"),
+                onAction = onOpenBusiness
+            )
         }
         if (state.recentPayments.isEmpty()) {
             item {
@@ -197,6 +209,254 @@ private fun PremiumDashboardContent(
                 RecentPaymentRow(it.amount, it.detail)
             }
         }
+    }
+}
+
+@Composable
+private fun DashboardTopBar(language: PremiumLanguageOption) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(PremiumBrandGradient.PaymentCard)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("AW", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black)
+        }
+        Text(
+            language.ui("Bonjour, Awa"),
+            color = PremiumColors.PageInk,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.weight(1f).padding(start = 12.dp)
+        )
+        Box(
+            Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(PremiumColors.IconTile)
+                .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Notifications, contentDescription = language.ui("Notifications"), tint = PremiumColors.Ink, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun ReceivedTodayFocal(amount: String, language: PremiumLanguageOption) {
+    Column {
+        Text(
+            language.ui("REÇU AUJOURD'HUI"),
+            color = PremiumColors.PageMuted,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp
+        )
+        Text(
+            amount,
+            color = PremiumColors.PageInk,
+            fontSize = 44.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.padding(top = 6.dp)
+        )
+        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(PremiumRadius.Pill))
+                    .background(PremiumColors.SurfaceAlt)
+                    .border(1.dp, PremiumColors.Line, RoundedCornerShape(PremiumRadius.Pill))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("FCFA", color = PremiumColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = PremiumColors.Muted, modifier = Modifier.size(14.dp).padding(start = 2.dp))
+            }
+            Text(
+                language.ui("+12% vs hier"),
+                color = PremiumColors.Success,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(start = 10.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardSectionHeader(title: String, actionLabel: String, onAction: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(title, color = PremiumColors.PageMuted, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
+        Text(
+            actionLabel,
+            color = PremiumColors.Blue,
+            fontWeight = FontWeight.Black,
+            fontSize = 13.sp,
+            modifier = Modifier.premiumTap(onAction).padding(vertical = 6.dp)
+        )
+    }
+}
+
+private data class WalletPreviewItem(
+    val bankProfileId: String,
+    val displayName: String,
+    val amount: String,
+    val enabled: Boolean
+)
+
+private fun walletPreview(): List<WalletPreviewItem> = listOf(
+    WalletPreviewItem("wave_ci", "Wave", "145 000 FCFA", true),
+    WalletPreviewItem("orange_money_ci", "Orange Money", "62 500 FCFA", true),
+    WalletPreviewItem("wise_int", "Wise", "320 EUR", true)
+)
+
+@Composable
+private fun ReceptionWalletCard(wallet: WalletPreviewItem, language: PremiumLanguageOption) {
+    CardVisual(
+        modifier = Modifier.width(220.dp).aspectRatio(1.72f),
+        theme = CardVisualDefaults.MerchantReceiving
+    ) {
+        Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                PremiumBankLogo(bankProfileId = wallet.bankProfileId, displayName = wallet.displayName, size = 40.dp)
+                StatusChip(language.ui(if (wallet.enabled) "Activé" else "Inactif"), if (wallet.enabled) StatusTone.Success else StatusTone.Neutral)
+            }
+            Column {
+                Text(language.ui("Solde reçu"), color = Color.White.copy(alpha = 0.68f), fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text(wallet.amount, color = Color.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardActionTile(icon: ImageVector, label: String, modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(PremiumRadius.Tile)
+    Column(modifier.premiumTap(onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(shape)
+                .background(PremiumColors.IconTile)
+                .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), shape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = PremiumColors.Ink, modifier = Modifier.size(22.dp))
+        }
+        Text(
+            label,
+            color = PremiumColors.Muted,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    }
+}
+
+private data class ProvenancePreview(val verifiedPercent: Int, val reviewPercent: Int)
+
+private fun provenancePreview(): ProvenancePreview = ProvenancePreview(verifiedPercent = 92, reviewPercent = 8)
+
+@Composable
+private fun ProvenanceVerifiedCard(data: ProvenancePreview, language: PremiumLanguageOption) {
+    LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
+        Column(Modifier.padding(22.dp)) {
+            Text(language.ui("PROVENANCE VÉRIFIÉE"), color = PremiumColors.Muted, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
+            Row(Modifier.fillMaxWidth().padding(top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+                ProvenanceDonut(
+                    verifiedFraction = data.verifiedPercent / 100f,
+                    centerLabel = "${data.verifiedPercent}%",
+                    modifier = Modifier.size(96.dp)
+                )
+                Column(Modifier.padding(start = 22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ProvenanceLegend(PremiumColors.Success, "${language.ui("Vérifié")} ${data.verifiedPercent}%")
+                    ProvenanceLegend(PremiumColors.Warning, "${language.ui("En revue")} ${data.reviewPercent}%")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProvenanceDonut(verifiedFraction: Float, centerLabel: String, modifier: Modifier = Modifier) {
+    val verified = PremiumColors.Success
+    val review = PremiumColors.Warning
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val strokeWidth = size.minDimension * 0.16f
+            val stroke = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            val inset = strokeWidth / 2f
+            val arcSize = androidx.compose.ui.geometry.Size(size.width - strokeWidth, size.height - strokeWidth)
+            val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
+            val verifiedSweep = 360f * verifiedFraction.coerceIn(0f, 1f)
+            drawArc(
+                color = review,
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = stroke
+            )
+            drawArc(
+                color = verified,
+                startAngle = -90f,
+                sweepAngle = verifiedSweep,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = stroke
+            )
+        }
+        Text(centerLabel, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+    }
+}
+
+@Composable
+private fun ProvenanceLegend(dotColor: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(10.dp).clip(CircleShape).background(dotColor))
+        Text(label, color = PremiumColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+private data class PayerPreviewItem(val name: String, val initials: String, val tint: Color)
+
+private fun payersPreview(): List<PayerPreviewItem> = listOf(
+    PayerPreviewItem("Boutique Dakar", "BD", PremiumColors.Blue),
+    PayerPreviewItem("Client Anonyme", "?", PremiumColors.SoftText),
+    PayerPreviewItem("Freelance LLC", "FL", PremiumColors.Success),
+    PayerPreviewItem("Marché Dior", "MD", PremiumColors.Warning)
+)
+
+@Composable
+private fun RecentPayerChip(payer: PayerPreviewItem) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(64.dp)) {
+        Box(
+            Modifier
+                .size(52.dp)
+                .clip(CircleShape)
+                .background(payer.tint.copy(alpha = 0.16f))
+                .border(1.dp, payer.tint.copy(alpha = 0.32f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(payer.initials, color = payer.tint, fontSize = 16.sp, fontWeight = FontWeight.Black)
+        }
+        Text(
+            payer.name,
+            color = PremiumColors.Muted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 6.dp)
+        )
     }
 }
 
@@ -350,121 +610,6 @@ private fun MonthlyActivityCardDragonGoldDefaultPreview() {
     )
 }
 
-private fun metricIcon(label: String): ImageVector {
-    return when (label.lowercase()) {
-        "à confirmer" -> Icons.Default.Visibility
-        "confirmés" -> Icons.Default.CheckCircle
-        "rejetés" -> Icons.Default.Security
-        "expirés" -> Icons.Default.AccountBalance
-        "échecs" -> Icons.Default.Link
-        "taux" -> Icons.Default.Description
-        else -> Icons.Default.Visibility
-    }
-}
-
-private fun homeActionMetrics(metrics: List<PremiumMetricUiState>): List<PremiumMetricUiState> {
-    val desiredOrder = listOf("À confirmer", "Confirmés", "Expirés", "Rejetés")
-    return desiredOrder.map { label ->
-        metrics.firstOrNull { it.label == label } ?: PremiumMetricUiState("0", label)
-    }
-}
-
-@Composable
-private fun BentoMetricCard(
-    value: String,
-    label: String,
-    trend: String,
-    icon: ImageVector,
-    modifier: Modifier,
-    onClick: () -> Unit
-) {
-    val shape = RoundedCornerShape(PremiumRadius.Card)
-    val textColor = bentoMetricTextColor()
-    val mutedColor = bentoMetricMutedColor()
-    Box(
-        modifier
-            .height(142.dp)
-            .clip(shape)
-            .background(bentoMetricSurfaceBrush())
-            .border(1.dp, bentoMetricBorderColor(), shape)
-            .premiumTap(onClick)
-    ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.Center) {
-            Box(
-                Modifier
-                    .size(38.dp)
-                    .background(bentoMetricIconTileColor(), RoundedCornerShape(14.dp))
-                    .border(1.dp, bentoMetricIconBorderColor(), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, null, tint = bentoMetricIconColor(), modifier = Modifier.size(21.dp))
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(value, color = textColor, fontSize = PremiumType.Hero, fontWeight = FontWeight.Black)
-            Row {
-                Text(label, color = mutedColor, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black)
-                if (trend.isNotBlank()) {
-                    Text(" $trend", color = PremiumColors.Success, fontSize = PremiumType.Micro, fontWeight = FontWeight.Black)
-                }
-            }
-        }
-    }
-}
-
-private fun bentoMetricSurfaceBrush(): Brush = if (PremiumColors.IsDark) {
-    Brush.linearGradient(
-        listOf(
-            Color(0xFF111113),
-            Color(0xFF050506),
-            Color(0xFF171214)
-        )
-    )
-} else {
-    Brush.linearGradient(
-        listOf(
-            Color(0xFFFFFFFF),
-            Color(0xFFFAFBFC),
-            Color(0xFFF0F2F4)
-        )
-    )
-}
-
-private fun bentoMetricTextColor(): Color = if (PremiumColors.IsDark) {
-    Color.White
-} else {
-    Color(0xFF06111A)
-}
-
-private fun bentoMetricMutedColor(): Color = if (PremiumColors.IsDark) {
-    Color.White.copy(alpha = 0.72f)
-} else {
-    Color(0xFF1B2B38).copy(alpha = 0.78f)
-}
-
-private fun bentoMetricBorderColor(): Color = if (PremiumColors.IsDark) {
-    Color.White.copy(alpha = 0.10f)
-} else {
-    Color(0xFFD3D8DE).copy(alpha = 0.92f)
-}
-
-private fun bentoMetricIconTileColor(): Color = if (PremiumColors.IsDark) {
-    Color.White.copy(alpha = 0.08f)
-} else {
-    Color(0xFFFFFFFF)
-}
-
-private fun bentoMetricIconBorderColor(): Color = if (PremiumColors.IsDark) {
-    Color.White.copy(alpha = 0.08f)
-} else {
-    Color(0xFFD4DAE0).copy(alpha = 0.86f)
-}
-
-private fun bentoMetricIconColor(): Color = if (PremiumColors.IsDark) {
-    Color.White
-} else {
-    Color(0xFF111315)
-}
-
 @Composable
 private fun RecentPaymentRow(amount: String, detail: String) {
     LiquidGlassCard(
@@ -482,7 +627,7 @@ private fun RecentPaymentRow(amount: String, detail: String) {
                 Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Cyan, modifier = Modifier.size(24.dp))
             }
             Column(Modifier.weight(1f).padding(start = 18.dp)) {
-                Text(amount, color = PremiumColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                Text(amount, color = PremiumColors.Success, fontSize = 20.sp, fontWeight = FontWeight.Black)
                 Text(detail, color = PremiumColors.Muted, fontSize = PremiumType.Caption, fontWeight = FontWeight.SemiBold)
             }
             Chevron()
