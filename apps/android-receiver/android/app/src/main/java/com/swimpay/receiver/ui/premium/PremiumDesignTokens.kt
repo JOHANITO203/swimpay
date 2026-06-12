@@ -1,5 +1,6 @@
 package com.swimpay.receiver.ui.premium
 
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -236,3 +237,108 @@ object ExternalBrandTokens {
         val Green = Color(0xFF34A853)
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Langage « noir vivant » (port prototype, Compose P0) — FONDATION ADDITIVE.
+// Aucune valeur ci-dessus n'est modifiée ; ces objets ne sont consommés que par
+// les écrans portés (P1+). Tant qu'aucun écran n'est migré, l'app reste identique.
+// ─────────────────────────────────────────────────────────────────────────────
+object NoirColors {
+    // Fonds : nuit profonde, surfaces posées, surface active (sélection/press).
+    val bg = Color(0xFF08080C)
+    val surface = Color(0xFF141418)
+    val activeSurface = Color(0xFF1E1E24)
+
+    // Encres : ivoire chaud → gris froids dégressifs.
+    val ink1 = Color(0xFFF5F0EB)
+    val ink2 = Color(0xFF8A857E)
+    val ink3 = Color(0xFF5A5650)
+
+    // États sémantiques.
+    val success = Color(0xFF2ECC71)
+    val warn = Color(0xFFE67E22)
+    val danger = Color(0xFFE74C3C)
+
+    // Filets (hairlines) : ivoire très transparent.
+    val hair = Color(0xFFF5F0EB).copy(alpha = 0.05f)
+    val hair2 = Color(0xFFF5F0EB).copy(alpha = 0.08f)
+
+    // Accents fournisseurs / wallets (marques).
+    val wave = Color(0xFF1DC3E6)
+    val orange = Color(0xFFFF6600)
+    val free = Color(0xFF00A859)
+    val sber = Color(0xFF1A9F4B)
+    val usdt = Color(0xFF26A17B)
+    val multi = Color(0xFF8264D2)
+    val amber = Color(0xFFD4A054)
+}
+
+// Skin d'un wallet : accent de marque + dégradé profond pour la carte.
+data class WalletSkin(
+    val id: String,
+    val label: String,
+    val accent: Color,
+    val gradientTop: Color,
+    val gradientBottom: Color
+)
+
+object WalletSkins {
+    val all: List<WalletSkin> = listOf(
+        WalletSkin(
+            id = "wave",
+            label = "Wave",
+            accent = NoirColors.wave,
+            gradientTop = Color(0xFF0D2D3A),
+            gradientBottom = Color(0xFF1A4A5C)
+        ),
+        WalletSkin(
+            id = "orange",
+            label = "Orange Money",
+            accent = NoirColors.orange,
+            gradientTop = Color(0xFF3A1A00),
+            gradientBottom = Color(0xFF5C2E0D)
+        ),
+        WalletSkin(
+            id = "sber",
+            label = "Sberbank",
+            accent = NoirColors.sber,
+            gradientTop = Color(0xFF2A1F0F),
+            gradientBottom = Color(0xFF3D2E18)
+        ),
+        WalletSkin(
+            id = "usdt",
+            label = "USDT",
+            accent = NoirColors.usdt,
+            gradientTop = Color(0xFF0A2E22),
+            gradientBottom = Color(0xFF153D2F)
+        ),
+        WalletSkin(
+            id = "multi",
+            label = "Multi",
+            accent = NoirColors.multi,
+            gradientTop = Color(0xFF1A1330),
+            gradientBottom = Color(0xFF2D1F4A)
+        )
+    )
+
+    fun byId(id: String): WalletSkin? = all.firstOrNull { it.id == id }
+}
+
+object NoirRadius {
+    val Card = 20.dp
+    val Spark = 16.dp
+    val Tile = 12.dp
+    val Button = 14.dp
+    val ButtonTight = 10.dp
+}
+
+object NoirSpacing {
+    val Base = 8.dp
+    val Screen = 20.dp
+    val Section = 24.dp
+    val Item = 16.dp
+}
+
+// Caméléon : un écran fournit l'accent du wallet actif via LocalNoirAccent,
+// les enfants le lisent (l'animation éventuelle est portée plus tard, P2 Home).
+val LocalNoirAccent = compositionLocalOf { NoirColors.wave }

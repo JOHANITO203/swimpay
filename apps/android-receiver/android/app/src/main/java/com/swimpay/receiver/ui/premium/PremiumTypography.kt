@@ -31,6 +31,15 @@ private fun fraunces(weight: Int, opticalSize: Float) = Font(
     )
 )
 
+// Typographie « noir vivant » (port prototype, Compose P0) :
+//  - DM Sans (variable) = TOUTE l'UI ET les montants (pas de serif dans ce langage)
+//  - Caractère mono-famille, chiffres tabulaires (tnum) sur les montants
+private fun dmSans(weight: Int) = Font(
+    resId = R.font.dm_sans_variable,
+    weight = FontWeight(weight),
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight))
+)
+
 object PremiumFontFamily {
     val Ui: FontFamily = FontFamily(
         hanken(400), hanken(500), hanken(600), hanken(700), hanken(800), hanken(900)
@@ -77,6 +86,62 @@ object PremiumTextStyle {
         fontWeight = FontWeight.Bold,
         fontSize = 11.5.sp,
         letterSpacing = 0.1.em
+    )
+}
+
+// ── Noir vivant (port prototype, Compose P0) — additif, ne remplace pas PremiumFontFamily ──
+object NoirFontFamily {
+    val Sans: FontFamily = FontFamily(
+        dmSans(400), dmSans(500), dmSans(600), dmSans(700), dmSans(800)
+    )
+}
+
+// Styles « noir vivant » : DM Sans partout, montants tabulaires, tracking serré sur les héros.
+object NoirTextStyle {
+    // Montant héro (prototype .amount : DM Sans 700, 40px, -0.025em, tnum)
+    val Amount = TextStyle(
+        fontFamily = NoirFontFamily.Sans,
+        fontWeight = FontWeight.Bold,
+        fontSize = 40.sp,
+        letterSpacing = (-0.025).em,
+        fontFeatureSettings = PremiumTabularNumbers
+    )
+    val AmountMedium = TextStyle(
+        fontFamily = NoirFontFamily.Sans,
+        fontWeight = FontWeight.Bold,
+        fontSize = 30.sp,
+        fontFeatureSettings = PremiumTabularNumbers
+    )
+    // Montant de ligne (transactions) : DM Sans 600, 17px, tnum
+    val TxAmount = TextStyle(
+        fontFamily = NoirFontFamily.Sans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 17.sp,
+        fontFeatureSettings = PremiumTabularNumbers
+    )
+    val Label = TextStyle(
+        fontFamily = NoirFontFamily.Sans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 13.sp
+    )
+    val Micro = TextStyle(
+        fontFamily = NoirFontFamily.Sans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp
+    )
+    // Légende de section (prototype : 11.5px, 700, +0.12em, uppercase)
+    val SectionLabel = TextStyle(
+        fontFamily = NoirFontFamily.Sans,
+        fontWeight = FontWeight.Bold,
+        fontSize = 11.5.sp,
+        letterSpacing = 0.12.em
+    )
+    // Titre d'écran (prototype h1 : DM Sans 700, 30px, -0.03em)
+    val H1 = TextStyle(
+        fontFamily = NoirFontFamily.Sans,
+        fontWeight = FontWeight.Bold,
+        fontSize = 30.sp,
+        letterSpacing = (-0.03).em
     )
 }
 
