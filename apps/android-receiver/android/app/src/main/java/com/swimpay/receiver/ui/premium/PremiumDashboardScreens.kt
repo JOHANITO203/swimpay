@@ -879,6 +879,15 @@ fun PremiumOrdersScreen(
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Activité « noir vivant » (port prototype, Compose P4) — écran agrégat (tous
+// providers), accent violet Multi (#8264D2). HONNÊTETÉ STRICTE : chaque valeur
+// rendue vient du UiState réel. Le prototype montre une sparkline, un delta « 18% »
+// et un regroupement par jour (Aujourd'hui/Hier + totaux) — PremiumOrdersUiState ne
+// porte NI série temporelle NI date par ligne, donc on les OMET (jamais inventés).
+// Montants en ink1, vert/ambre réservés aux pastilles de statut, profondeur par
+// luminosité + filets, pas d'ombre portée.
+// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun PremiumOrdersContent(
     state: PremiumOrdersUiState,
@@ -893,150 +902,200 @@ private fun PremiumOrdersContent(
         2 -> displayRows.filter { !it.verified }
         else -> displayRows
     }
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
-        contentPadding = PaddingValues(bottom = 34.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item { ActivityHeader(language) }
-        item { ActivitySummaryStrip(state, displayRows, language) }
-        item { ActivityFilterPills(selectedFilter, language) { selectedFilter = it } }
-        if (toTreatCount > 0) {
-            item { ActivityToTreatCard(toTreatCount, language, onOpenReviews) }
-        }
-        items(visibleRows, key = { it.id }) { row ->
-            ActivityPaymentRow(row, language)
-        }
-        if (visibleRows.isEmpty()) {
-            item {
-                PremiumStatePanel(
-                    PremiumScreenState.empty<Unit>(
-                        title = language.ui(state.emptyTitle),
-                        message = language.ui(state.emptyMessage),
-                        actionLabel = null
+    // Activité agrège tous les moyens de réception → accent violet « Multi ».
+    CompositionLocalProvider(LocalNoirAccent provides NoirColors.multi) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(NoirColors.bg)
+                .drawBehind {
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(NoirColors.multi.copy(alpha = 0.07f), Color.Transparent),
+                            center = Offset(size.width * 0.85f, size.height * 1.02f),
+                            radius = size.maxDimension * 0.55f
+                        )
                     )
-                )
-                Text(
-                    language.ui(state.secondaryActionLabel),
-                    color = PremiumColors.Blue,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .padding(top = 10.dp, start = 8.dp)
-                        .premiumTap(onOpenReviews)
-                )
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(NoirColors.multi.copy(alpha = 0.05f), Color.Transparent),
+                            center = Offset(size.width * 0.08f, -size.height * 0.05f),
+                            radius = size.maxDimension * 0.5f
+                        )
+                    )
+                }
+        ) {
+            LazyColumn(
+                Modifier.fillMaxSize().padding(horizontal = NoirSpacing.Screen),
+                contentPadding = PaddingValues(top = 6.dp, bottom = 34.dp),
+                verticalArrangement = Arrangement.spacedBy(NoirSpacing.Item)
+            ) {
+                item { ActivityNoirHeader(language) }
+                item { ActivityNoirSummary(state, displayRows, language) }
+                item {
+                    ActivityNoirFilterPills(selectedFilter, displayRows, language) { selectedFilter = it }
+                }
+                if (toTreatCount > 0) {
+                    item { ActivityNoirToTreatBanner(toTreatCount, language, onOpenReviews) }
+                }
+                if (visibleRows.isEmpty()) {
+                    item {
+                        ActivityNoirEmpty(
+                            title = language.ui(state.emptyTitle),
+                            message = language.ui(state.emptyMessage),
+                            actionLabel = language.ui(state.secondaryActionLabel),
+                            onAction = onOpenReviews
+                        )
+                    }
+                } else {
+                    // Liste plate : aucune date par ligne dans le runtime → pas de
+                    // regroupement par jour ni d'en-têtes « Aujourd'hui/Hier » inventés.
+                    itemsIndexed(visibleRows, key = { _, row -> row.id }) { index, row ->
+                        ActivityNoirRow(
+                            row = row,
+                            showDivider = index < visibleRows.lastIndex,
+                            // Toucher une ligne ouvre la file de revue (où le marchand agit).
+                            onClick = onOpenReviews,
+                            language = language
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+// En-tête : titre d'écran + cloche neutre (pas de compteur de notifications inventé).
 @Composable
-private fun ActivityHeader(language: PremiumLanguageOption) {
+private fun ActivityNoirHeader(language: PremiumLanguageOption) {
     Row(
         Modifier.fillMaxWidth().padding(top = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             language.ui("Activité"),
-            color = PremiumColors.PageInk,
-            fontSize = PremiumType.ScreenTitle,
-            fontWeight = FontWeight.Bold,
+            color = NoirColors.ink1,
+            style = NoirTextStyle.H1.copy(fontSize = 22.sp),
             modifier = Modifier.weight(1f)
         )
-        ActivityHeaderAction(Icons.Default.Search)
-        Spacer(Modifier.width(10.dp))
-        ActivityHeaderAction(Icons.Default.FilterList)
+        ActivityNoirHeaderAction(Icons.Default.Search, language.ui("Rechercher"))
+        Spacer(Modifier.width(9.dp))
+        ActivityNoirHeaderAction(Icons.Default.FilterList, language.ui("Filtrer"))
     }
 }
 
 @Composable
-private fun ActivityHeaderAction(icon: ImageVector) {
-    val shape = RoundedCornerShape(14.dp)
+private fun ActivityNoirHeaderAction(icon: ImageVector, contentDescription: String) {
     Box(
         Modifier
-            .size(42.dp)
-            .clip(shape)
-            .background(PremiumColors.IconTile)
-            .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), shape),
+            .size(40.dp)
+            .clip(CircleShape)
+            .border(1.dp, NoirColors.hair2, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = PremiumColors.Ink, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription, tint = NoirColors.ink1, modifier = Modifier.size(18.dp))
     }
 }
 
 @Composable
-private fun ActivitySummaryStrip(
+private fun ActivityNoirSummary(
     state: PremiumOrdersUiState,
     rows: List<ActivityDisplayRow>,
     language: PremiumLanguageOption
 ) {
-    // Real fields only: confirmed amount from the orders summary, payment count and
-    // verified ratio derived from the real rows. No amount is shown when the summary
-    // has no live value ("—"); no sparkline/delta exist in the runtime.
+    // Champs réels uniquement : « Reçu ce mois » ← confirmedAmount ; compteur et taux
+    // vérifié dérivés des lignes réelles. Pas de sparkline ni de delta (le runtime n'a
+    // ni série temporelle ni comparatif).
+    val accent = LocalNoirAccent.current
     val amount = state.confirmedAmount.takeIf { it.isNotBlank() && it != "—" }
-    LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
-        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column {
-                Text(
-                    language.ui("Reçu ce mois"),
-                    color = PremiumColors.Muted,
-                    fontSize = PremiumType.Caption,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    amount ?: language.ui("—"),
-                    color = PremiumColors.PageInk,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-            }
-            if (rows.isNotEmpty()) {
-                val verifiedPct = (rows.count { it.verified } * 100) / rows.size
-                Text(
-                    "${rows.size} ${language.ui("paiements")} · $verifiedPct% ${language.ui("vérifiés")}",
-                    color = PremiumColors.SoftText,
-                    fontSize = PremiumType.Caption,
-                    fontWeight = FontWeight.SemiBold
+    val shape = RoundedCornerShape(NoirRadius.Card)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(NoirColors.surface)
+            .border(1.dp, NoirColors.hair, shape)
+            .drawBehind {
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(accent.copy(alpha = 0.12f), Color.Transparent),
+                        center = Offset(size.width, size.height * 0.5f),
+                        radius = size.width * 0.6f
+                    )
                 )
             }
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Text(
+            language.ui("Reçu ce mois"),
+            color = NoirColors.ink2,
+            style = NoirTextStyle.Micro.copy(fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        )
+        Text(
+            amount ?: language.ui("—"),
+            color = NoirColors.ink1,
+            style = NoirTextStyle.Amount.copy(fontSize = 30.sp),
+            maxLines = 1
+        )
+        if (rows.isNotEmpty()) {
+            val verifiedPct = (rows.count { it.verified } * 100) / rows.size
+            Text(
+                "${rows.size} ${language.ui("paiements")} · $verifiedPct% ${language.ui("vérifiés")}",
+                color = NoirColors.ink2,
+                style = NoirTextStyle.Micro.copy(fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
+            )
         }
     }
 }
 
 @Composable
-private fun ActivityFilterPills(
+private fun ActivityNoirFilterPills(
     selected: Int,
+    rows: List<ActivityDisplayRow>,
     language: PremiumLanguageOption,
     onSelect: (Int) -> Unit
 ) {
+    // Pills dérivées du statut réel (Tous/Vérifiés/En revue), avec compteurs réels.
+    // Les pills par-fournisseur du prototype (Wave/Orange/Devises) sont omises : le
+    // filtrage est ici purement statut-dérivé, pas de filtre marque inventé.
+    val accent = LocalNoirAccent.current
+    val total = rows.size
+    val verified = rows.count { it.verified }
+    val inReview = total - verified
     val pills = listOf(
-        language.ui("Tous"),
-        language.ui("Vérifiés"),
-        language.ui("En revue")
+        language.ui("Tous") to total,
+        language.ui("Vérifiés") to verified,
+        language.ui("En revue") to inReview
     )
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(pills.size) { index ->
+            val (label, count) = pills[index]
             val active = index == selected
-            val shape = RoundedCornerShape(PremiumRadius.Pill)
-            Box(
+            val shape = RoundedCornerShape(50)
+            Row(
                 Modifier
                     .clip(shape)
-                    .background(if (active) PremiumColors.Ink else PremiumColors.IconTile)
+                    .background(if (active) accent else NoirColors.surface)
                     .border(
                         1.dp,
-                        if (active) Color.Transparent else PremiumColors.Line.copy(alpha = 0.72f),
+                        if (active) Color.Transparent else NoirColors.hair,
                         shape
                     )
                     .premiumTap { onSelect(index) }
-                    .padding(horizontal = 16.dp, vertical = 9.dp),
-                contentAlignment = Alignment.Center
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    pills[index],
-                    color = if (active) PremiumColors.Surface else PremiumColors.Ink,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
+                    label,
+                    color = if (active) NoirColors.bg else NoirColors.ink2,
+                    style = NoirTextStyle.Label.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                )
+                Text(
+                    count.toString(),
+                    color = if (active) NoirColors.bg.copy(alpha = 0.7f) else NoirColors.ink3,
+                    style = NoirTextStyle.Micro.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 )
             }
         }
@@ -1044,111 +1103,191 @@ private fun ActivityFilterPills(
 }
 
 @Composable
-private fun ActivityToTreatCard(
+private fun ActivityNoirToTreatBanner(
     count: Int,
     language: PremiumLanguageOption,
     onOpenReviews: () -> Unit
 ) {
-    val shape = RoundedCornerShape(PremiumRadius.CardLarge)
+    // Bannière ambre réelle : nombre de paiements en revue (lignes non vérifiées) +
+    // onOpenReviews. Pas de motif inventé, seul le compte réel est affiché.
+    val shape = RoundedCornerShape(NoirRadius.Button)
     Row(
         Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(PremiumColors.Warning.copy(alpha = 0.10f))
-            .border(1.dp, PremiumColors.Warning.copy(alpha = 0.32f), shape)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .background(NoirColors.warn.copy(alpha = 0.09f))
+            .border(1.dp, NoirColors.warn.copy(alpha = 0.22f), shape)
+            .premiumTap(onOpenReviews)
+            .padding(horizontal = 15.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                language.ui("À TRAITER"),
-                color = PremiumColors.Warning,
-                fontSize = PremiumType.Micro,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
-            Text(
-                "$count ${language.ui("paiements en revue")}",
-                color = PremiumColors.Ink,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
         Box(
             Modifier
-                .clip(RoundedCornerShape(PremiumRadius.Pill))
-                .background(PremiumColors.Surface)
-                .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), RoundedCornerShape(PremiumRadius.Pill))
-                .premiumTap(onOpenReviews)
-                .padding(horizontal = 18.dp, vertical = 9.dp),
+                .size(38.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(NoirColors.warn.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center
         ) {
+            Icon(Icons.Default.Info, null, tint = NoirColors.warn, modifier = Modifier.size(19.dp))
+        }
+        Column(Modifier.weight(1f)) {
             Text(
-                language.ui("Examiner"),
-                color = PremiumColors.Ink,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
+                "$count ${language.ui("paiements en revue")}",
+                color = NoirColors.ink1,
+                style = NoirTextStyle.Label.copy(fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                language.ui("Référence partielle à confirmer"),
+                color = NoirColors.ink2,
+                style = NoirTextStyle.Micro.copy(fontSize = 11.5.sp),
+                modifier = Modifier.padding(top = 1.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
+        Text(
+            language.ui("Examiner"),
+            color = NoirColors.warn,
+            style = NoirTextStyle.Label.copy(fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+        )
     }
 }
 
 @Composable
-private fun ActivityPaymentRow(row: ActivityDisplayRow, language: PremiumLanguageOption) {
-    LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
+private fun ActivityNoirRow(
+    row: ActivityDisplayRow,
+    showDivider: Boolean,
+    onClick: () -> Unit,
+    language: PremiumLanguageOption
+) {
+    Column(Modifier.fillMaxWidth().premiumTap(onClick)) {
         Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
+            Modifier.fillMaxWidth().padding(vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp)
         ) {
-            if (row.bankProfileId != null) {
-                PremiumBankLogo(bankProfileId = row.bankProfileId, displayName = row.railLabel, size = 46.dp)
-            } else {
+            // Cercle fournisseur : couleur de skin réelle dérivée du moyen (helper).
+            // Pastille de statut superposée (vert confirmé / ambre en revue).
+            Box(contentAlignment = Alignment.BottomEnd) {
+                val skin = row.bankProfileId?.let { walletSkinForBankProfile(it) }
+                if (row.bankProfileId != null) {
+                    PremiumBankLogo(bankProfileId = row.bankProfileId, displayName = row.railLabel, size = 42.dp)
+                } else {
+                    Box(
+                        Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(skin?.accent ?: NoirColors.multi),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            (skin?.label ?: row.railLabel).take(1).uppercase(),
+                            color = Color.White,
+                            style = NoirTextStyle.Label.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
                 Box(
                     Modifier
-                        .size(46.dp)
-                        .background(PremiumColors.IconTile, RoundedCornerShape(16.dp))
-                        .border(1.dp, PremiumColors.Line.copy(alpha = 0.72f), RoundedCornerShape(16.dp)),
+                        .size(15.dp)
+                        .clip(CircleShape)
+                        .background(NoirColors.bg)
+                        .padding(2.dp)
+                        .clip(CircleShape)
+                        .background(if (row.verified) NoirColors.success else NoirColors.warn),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Blue, modifier = Modifier.size(22.dp))
+                    Icon(
+                        if (row.verified) Icons.Default.CheckCircle else Icons.Default.Info,
+                        null,
+                        tint = NoirColors.bg,
+                        modifier = Modifier.size(8.dp)
+                    )
                 }
             }
-            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+            Column(Modifier.weight(1f)) {
+                // Référence réelle (orderId). Pas d'expéditeur dans le runtime → non rendu.
                 Text(
                     row.reference,
-                    color = PremiumColors.Ink,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
+                    color = NoirColors.ink1,
+                    style = NoirTextStyle.Label.copy(fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     "${row.railLabel} · ${language.ui(row.provenance)}",
-                    color = PremiumColors.Muted,
-                    fontSize = PremiumType.Caption,
-                    fontWeight = FontWeight.SemiBold,
+                    color = NoirColors.ink3,
+                    style = NoirTextStyle.Micro.copy(fontSize = 11.5.sp),
                     modifier = Modifier.padding(top = 2.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Box(modifier = Modifier.padding(top = 6.dp)) {
-                    StatusChip(
-                        if (row.verified) language.ui("✓ vérifié") else language.ui("⏳ en revue"),
-                        if (row.verified) StatusTone.Success else StatusTone.Warning
-                    )
-                }
             }
-            Text(
-                "+ ${row.amount}",
-                color = PremiumColors.Success,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                modifier = Modifier.padding(start = 12.dp)
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                // Montant en ink1 (règle verrouillée) — le vert reste sur la pastille.
+                Text(
+                    row.amount,
+                    color = NoirColors.ink1,
+                    style = NoirTextStyle.TxAmount.copy(fontSize = 16.sp),
+                    maxLines = 1
+                )
+                Text(
+                    if (row.verified) language.ui("Confirmé") else language.ui("En revue"),
+                    color = if (row.verified) NoirColors.success else NoirColors.warn,
+                    style = NoirTextStyle.Micro.copy(fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.padding(top = 2.dp),
+                    maxLines = 1
+                )
+            }
+        }
+        if (showDivider) {
+            Box(Modifier.fillMaxWidth().height(1.dp).background(NoirColors.hair))
         }
     }
+}
+
+@Composable
+private fun ActivityNoirEmpty(
+    title: String,
+    message: String,
+    actionLabel: String,
+    onAction: () -> Unit
+) {
+    val accent = LocalNoirAccent.current
+    val shape = RoundedCornerShape(NoirRadius.Card)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(NoirColors.surface)
+            .border(1.dp, NoirColors.hair, shape)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(title, color = NoirColors.ink1, style = NoirTextStyle.Label.copy(fontWeight = FontWeight.SemiBold))
+        Text(message, color = NoirColors.ink2, style = NoirTextStyle.Micro)
+        Text(
+            actionLabel,
+            color = accent,
+            style = NoirTextStyle.Label.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+            modifier = Modifier.padding(top = 4.dp).premiumTap(onAction).padding(vertical = 4.dp)
+        )
+    }
+}
+
+// bankProfileId réel → skin de marque pour la pastille fournisseur (couleur/initiale
+// de repli quand l'app n'a pas de logo embarqué). Aucune marque inventée.
+private fun walletSkinForBankProfile(bankProfileId: String): WalletSkin? {
+    val skinId = when (bankProfileId) {
+        "wave_ci" -> "wave"
+        "orange_money_ci" -> "orange"
+        "sber_ru" -> "sber"
+        else -> "multi"
+    }
+    return WalletSkins.byId(skinId)
 }
 
 // Real fields only, mapped from PremiumOrderUiItem: orderId (reference), helper-derived
