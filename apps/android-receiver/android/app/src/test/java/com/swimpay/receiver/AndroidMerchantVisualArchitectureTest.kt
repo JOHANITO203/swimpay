@@ -239,7 +239,10 @@ class AndroidMerchantVisualArchitectureTest {
         assertTrue(mainCard.contains("val cardTheme = CardVisualDefaults.HomeDashboardPaper"))
         assertFalse(mainCard.contains("HomeDashboardDragonGoldMaterial"))
         assertFalse(mainCard.contains("HomeDashboardDark"))
-        assertTrue(premiumDashboard.contains("ChartMetricPill(language.ui(\"Montant\"), state.chartConfirmedAmountLabel"))
+        // P1 noir-vivant : la carte Cash Flow garde les libellés réels (montant confirmé / taux)
+        // sur des pastilles NoirMetricPill, sans inventer de donnée.
+        assertTrue(premiumDashboard.contains("NoirMetricPill(language.ui(\"Montant\"), state.chartConfirmedAmountLabel)"))
+        assertTrue(premiumDashboard.contains("NoirMetricPill(language.ui(\"Taux\"), state.chartConfirmationRateLabel)"))
         assertTrue(premiumDashboard.contains("state.chartConfirmedAmountLabel"))
         assertTrue(premiumDashboard.contains("state.chartConfirmationRateLabel"))
         assertFalse(mainCard.contains("Paiement suivi"))

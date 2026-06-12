@@ -26,6 +26,7 @@ import com.swimpay.receiver.MerchantOrdersSummary
 import com.swimpay.receiver.MerchantReceivingMethodsApiRepository
 import com.swimpay.receiver.MerchantReceivingMethodDisplay
 import com.swimpay.receiver.MerchantReceivingMethodMutationResult
+import com.swimpay.receiver.MerchantReceivingMethodsResult
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
 import com.swimpay.receiver.MerchantRepositoryState
 import com.swimpay.receiver.MerchantReviewActionApiResult
@@ -63,6 +64,20 @@ data class PremiumRecentPaymentUiState(
     val status: String = "À vérifier"
 )
 
+// Noir-vivant Home (Caméléon switcher) — one real receiving method projected as a
+// wallet card. Every field is REAL (derived from the merchant's receiving methods):
+// the official logo (bankProfileId), the merchant-facing label, the already-masked
+// identifier, the brand skin id (drives the Caméléon accent) and the active flag.
+// No amount/payment-count is carried because the dashboard data does not provide a
+// per-method aggregate — the card shows identity only, never a fabricated figure.
+data class PremiumDashboardWalletUiState(
+    val bankProfileId: String,
+    val label: String,
+    val maskedIdentifier: String,
+    val skinId: String,
+    val active: Boolean
+)
+
 data class PremiumDashboardUiState(
     val readyTitle: String,
     val readyText: String,
@@ -74,6 +89,9 @@ data class PremiumDashboardUiState(
     val chartConfirmationRateLabel: String = "—",
     val recentPayments: List<PremiumRecentPaymentUiState>,
     val usesLiveApi: Boolean,
+    // Noir-vivant Caméléon switcher source (real receiving methods). Default empty so
+    // the state shape, preview() and existing callers stay unchanged until populated.
+    val receivingWallets: List<PremiumDashboardWalletUiState> = emptyList(),
     val localSystemCards: List<PremiumLocalSystemUiState> = emptyList(),
     val backendNoticeTitle: String = "",
     val backendNoticeText: String = "",
@@ -95,7 +113,8 @@ data class PremiumDashboardUiState(
         ) + metrics.flatMap { listOf(it.value, it.label, it.trend) } +
             chartPoints.flatMap { listOf(it.date, it.confirmedAmountMinor.toString(), it.confirmationRate.toString()) } +
             localSystemCards.flatMap { listOf(it.title, it.value, it.helper) } +
-            recentPayments.flatMap { listOf(it.amount, it.detail, it.status) }
+            recentPayments.flatMap { listOf(it.amount, it.detail, it.status) } +
+            receivingWallets.flatMap { listOf(it.label, it.maskedIdentifier) }
     }
 
     companion object {
@@ -457,7 +476,11 @@ class PremiumMerchantRuntime(
         val detectedBankCount = detectedSupportedBankCount()
         val result = dashboardRepository.load(session)
         result.receiverRuntimeConfig?.let { receiverRuntimeConfigWriter?.save(it) }
-        val receivingMethodsValue = receivingMethodsDashboardValue()
+        // Single receiving-methods fetch reused for both the aggregate value and the
+        // Caméléon wallet projection — no extra network round-trip.
+        val receivingMethodsResult = receivingMethodsRepository.list(session)
+        val receivingMethodsValue = receivingMethodsDashboardValue(receivingMethodsResult)
+        val receivingWallets = receivingWalletsFrom(receivingMethodsResult)
         if (result.state != MerchantRepositoryState.SUCCESS) {
             return PremiumScreenState.content(
                 livelyDashboardFallback(
@@ -518,6 +541,7 @@ class PremiumMerchantRuntime(
                 chartConfirmedAmountLabel = if (chartPoints.isEmpty()) "—" else formatDashboardChartAmount(chartConfirmedAmountMinor, summary?.currency ?: "RUB"),
                 chartConfirmationRateLabel = chartConfirmationRate?.let { "$it %" } ?: "—",
                 recentPayments = recentPayments,
+                receivingWallets = receivingWallets,
                 usesLiveApi = !result.usesMockRepository,
                 localSystemCards = defaultLocalSystemCards(
                     notificationAccessEnabled = notificationAccessEnabled,
@@ -1183,8 +1207,7 @@ class PremiumMerchantRuntime(
         )
     }
 
-    private fun receivingMethodsDashboardValue(): String {
-        val result = receivingMethodsRepository.list(session)
+    private fun receivingMethodsDashboardValue(result: MerchantReceivingMethodsResult): String {
         return when (result.state) {
             MerchantRepositoryState.SUCCESS -> {
                 val activeCount = result.items.count { it.status.equals("Active", ignoreCase = true) }
@@ -1198,6 +1221,27 @@ class PremiumMerchantRuntime(
             MerchantRepositoryState.ERROR,
             MerchantRepositoryState.ACTION_REQUIRED,
             MerchantRepositoryState.LOADING -> "Connexion en attente"
+        }
+    }
+
+    // Projects the merchant's REAL receiving methods into Caméléon wallet cards.
+    // Identity only — the official logo (bankProfileId), the bank label and the
+    // already-masked identifier (split from the API subtitle "Label · ••••1234"),
+    // the brand skin id (accent) and the active flag. No amount is invented.
+    private fun receivingWalletsFrom(
+        result: MerchantReceivingMethodsResult
+    ): List<PremiumDashboardWalletUiState> {
+        if (result.state != MerchantRepositoryState.SUCCESS) return emptyList()
+        return result.items.map { item ->
+            val label = item.subtitle.substringBefore(" · ").trim().ifBlank { item.title }
+            val maskedIdentifier = item.subtitle.substringAfter(" · ", "").trim()
+            PremiumDashboardWalletUiState(
+                bankProfileId = item.bankProfileId,
+                label = label,
+                maskedIdentifier = maskedIdentifier,
+                skinId = dashboardWalletSkinId(item.bankProfileId),
+                active = item.status.equals("Active", ignoreCase = true)
+            )
         }
     }
 
@@ -1507,6 +1551,17 @@ private fun walletBankProfileId(subtitle: String): String {
     return PremiumReceivingMethodBankCatalog.availableBanks.firstOrNull { option ->
         subtitle.contains(option.displayName, ignoreCase = true)
     }?.bankProfileId ?: "unknown"
+}
+
+// Maps a real receiving-method bankProfileId to the Caméléon WalletSkin id (brand
+// accent). Only brands with an explicit skin recolor the screen with their own hue;
+// every other real method falls back to the neutral "multi" skin (no invented brand
+// color). This is presentational only — it never alters the method's real identity.
+private fun dashboardWalletSkinId(bankProfileId: String): String = when (bankProfileId) {
+    "wave_ci" -> "wave"
+    "orange_money_ci" -> "orange"
+    "sber_ru" -> "sber"
+    else -> "multi"
 }
 
 private fun MerchantReceivingMethodDisplay.toPremiumItem(): PremiumReceivingMethodUiItem {

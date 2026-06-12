@@ -142,8 +142,26 @@ class PremiumGoldenScreenshotTest {
             chartConfirmedAmountLabel = "8 600 RUB",
             chartConfirmationRateLabel = "86 %",
             recentPayments = listOf(
-                PremiumRecentPaymentUiState("299.00 RUB", "Commande SWP-97DBEF3C", "A verifier"),
-                PremiumRecentPaymentUiState("149.00 RUB", "Confirmation manuelle", "Confirme")
+                PremiumRecentPaymentUiState("299.00 RUB", "Sberbank · recemment", "Confirme"),
+                PremiumRecentPaymentUiState("149.00 RUB", "T-Bank · recemment", "A verifier")
+            ),
+            // Caméléon switcher source: real receiving methods projected as wallet cards
+            // (identity only, no fabricated per-method amount).
+            receivingWallets = listOf(
+                PremiumDashboardWalletUiState(
+                    bankProfileId = "sber_ru",
+                    label = "Sberbank",
+                    maskedIdentifier = "•••• 4821",
+                    skinId = "sber",
+                    active = true
+                ),
+                PremiumDashboardWalletUiState(
+                    bankProfileId = "tbank_ru",
+                    label = "T-Bank",
+                    maskedIdentifier = "•••• 42",
+                    skinId = "multi",
+                    active = true
+                )
             ),
             usesLiveApi = true,
             localSystemCards = listOf(
