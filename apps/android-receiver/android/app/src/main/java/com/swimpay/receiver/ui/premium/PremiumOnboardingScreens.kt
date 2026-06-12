@@ -27,10 +27,8 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Icon
@@ -261,50 +259,150 @@ private fun NotificationAccessStep(
     onNext: () -> Unit
 ) {
     OnboardingShell(language.ui("Accès notifications"), PremiumOnboardingStep.NOTIFICATION_ACCESS, onBack) {
-        PremiumTitle(
+        Box(
+            Modifier
+                .size(52.dp)
+                .background(
+                    if (notificationAccessEnabled) PremiumColors.Success else PremiumColors.Ink,
+                    RoundedCornerShape(PremiumRadius.Tile)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                if (notificationAccessEnabled) Icons.Default.CheckCircle else Icons.Default.VerifiedUser,
+                null,
+                tint = Color.White,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(
             language.ui("Connectez votre téléphone"),
-            language.ui("SwimPay a besoin d'accéder aux notifications de cet appareil pour fonctionner.")
+            color = PremiumColors.Ink,
+            fontSize = PremiumType.Hero,
+            lineHeight = 34.sp,
+            fontWeight = FontWeight.Black
         )
-        LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge) {
-            Row(
-                Modifier.padding(24.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                Box(
-                    Modifier.size(64.dp).background(PremiumColors.IconTile, RoundedCornerShape(PremiumRadius.Tile)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Fingerprint, null, tint = PremiumColors.Warning, modifier = Modifier.size(32.dp))
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        if (notificationAccessEnabled) language.ui("Activé") else language.ui("Accès nécessaire"),
-                        color = if (notificationAccessEnabled) PremiumColors.Success else PremiumColors.Ink,
-                        fontSize = PremiumType.ScreenTitle,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        if (notificationAccessEnabled) {
-                            language.ui("L'accès notifications est activé.")
-                        } else {
-                            language.ui("Activez l'accès aux notifications pour détecter les paiements reçus.")
-                        },
-                        color = PremiumColors.Muted,
-                        fontSize = PremiumType.Body,
-                        lineHeight = 21.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            if (notificationAccessEnabled) {
+                language.ui("L'accès notifications est activé.")
+            } else {
+                language.ui("SwimPay a besoin d'accéder aux notifications de cet appareil pour fonctionner.")
+            },
+            color = PremiumColors.Muted,
+            fontSize = PremiumType.Body,
+            lineHeight = 22.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(24.dp))
+        LiquidGlassCard(Modifier.fillMaxWidth(), radius = PremiumRadius.CardLarge, color = PremiumColors.Surface) {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                ReassuranceRow(language.ui("Uniquement les apps que vous activez"))
+                ReassuranceDivider()
+                ReassuranceRow(language.ui("Aucun accès aux SMS ni aux autres apps"))
+                ReassuranceDivider()
+                ReassuranceRow(language.ui("Chiffré — jamais le texte brut conservé"))
             }
         }
         Spacer(Modifier.height(22.dp))
-        NoticeRow(Icons.Default.Security, language.ui("SwimPay ne lit pas vos SMS et ne contrôle pas votre banque."))
-        Spacer(Modifier.height(22.dp))
+        SectionLabel(language.ui("Apps surveillées"))
+        Spacer(Modifier.height(12.dp))
+        MonitoredAppsRow()
+        Spacer(Modifier.height(24.dp))
+        // status string retained for the source-copy contract / disabled affordance
+        if (!notificationAccessEnabled) {
+            Text(
+                language.ui("Accès nécessaire"),
+                color = PremiumColors.SoftText,
+                fontSize = PremiumType.Caption,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.4.sp,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+        }
         PremiumPrimaryButton(
             if (notificationAccessEnabled) language.ui("Continuer") else language.ui("Activer l'accès"),
             onClick = if (notificationAccessEnabled) onNext else openNotificationSettings
         )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            language.ui("Plus tard"),
+            color = PremiumColors.SoftText,
+            fontSize = PremiumType.Body,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .premiumTap(onNext)
+                .padding(vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun ReassuranceRow(text: String) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Icon(
+            Icons.Default.CheckCircle,
+            null,
+            tint = PremiumColors.Success,
+            modifier = Modifier.size(22.dp)
+        )
+        Text(
+            text,
+            color = PremiumColors.Ink,
+            fontSize = PremiumType.Body,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ReassuranceDivider() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(PremiumColors.Line)
+    )
+}
+
+@Composable
+private fun MonitoredAppsRow() {
+    val monitoredBanks = listOf(
+        "wave_ci" to "Wave",
+        "orange_money_ci" to "Orange Money",
+        "mtn_momo_ci" to "MTN MoMo",
+        "wise_int" to "Wise",
+        "sber_ru" to "Sberbank"
+    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        monitoredBanks.forEach { (bankProfileId, displayName) ->
+            PremiumBankLogo(bankProfileId = bankProfileId, displayName = displayName, size = 38.dp)
+        }
+        Box(
+            Modifier
+                .size(38.dp)
+                .background(PremiumColors.NeutralChip, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "+6",
+                color = PremiumColors.SoftText,
+                fontSize = PremiumType.Caption,
+                fontWeight = FontWeight.Black
+            )
+        }
     }
 }
 
@@ -608,14 +706,6 @@ private fun BenefitRow(icon: ImageVector, title: String, body: String) {
                 Text(body, color = PremiumColors.Muted, fontWeight = FontWeight.SemiBold, fontSize = PremiumType.Caption, lineHeight = 20.sp)
             }
         }
-    }
-}
-
-@Composable
-private fun NoticeRow(icon: ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Icon(icon, null, tint = PremiumColors.PageMuted, modifier = Modifier.size(28.dp))
-        Text(text, color = PremiumColors.PageMuted, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
