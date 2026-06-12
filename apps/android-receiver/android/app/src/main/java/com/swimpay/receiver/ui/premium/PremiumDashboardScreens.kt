@@ -70,6 +70,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -2163,20 +2164,22 @@ private fun ReceivingMethodDraftPanel(
     } else {
         "Choisissez la banque, puis saisissez le numéro de téléphone marchand."
     }
+    val isValid = identifierInput.isNotBlank()
+    val accent = if (isValid) PremiumColors.Success else PremiumColors.Cyan
     PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp, color = PremiumColors.Surface) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Box(
                     Modifier
-                        .size(54.dp)
-                        .background(PremiumColors.IconTile, RoundedCornerShape(20.dp))
-                        .border(1.dp, PremiumColors.Cyan.copy(alpha = 0.18f), RoundedCornerShape(20.dp)),
+                        .size(56.dp)
+                        .background(PremiumColors.IconTile, RoundedCornerShape(22.dp))
+                        .border(1.dp, accent.copy(alpha = 0.24f), RoundedCornerShape(22.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isCardDraft) {
-                        Icon(Icons.Default.CreditCard, null, tint = PremiumColors.Cyan, modifier = Modifier.size(27.dp))
+                        Icon(Icons.Default.CreditCard, null, tint = accent, modifier = Modifier.size(27.dp))
                     } else {
-                        Text("SBP", color = PremiumColors.Cyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                        Text("SBP", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black)
                     }
                 }
                 Column(Modifier.weight(1f)) {
@@ -2190,8 +2193,35 @@ private fun ReceivingMethodDraftPanel(
                 language = language,
                 onBankSelected = onBankSelected
             )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(language.ui("Destination de réception"), color = PremiumColors.Muted, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black)
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(PremiumColors.SurfaceAlt.copy(alpha = 0.55f))
+                    .border(1.dp, PremiumColors.Line.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        language.ui("Destination de réception").uppercase(),
+                        color = PremiumColors.Muted,
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.8.sp
+                    )
+                    if (isValid) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Success, modifier = Modifier.size(15.dp))
+                            Text(language.ui("Prêt"), color = PremiumColors.Success, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = identifierInput,
                     onValueChange = onIdentifierChange,
@@ -2199,10 +2229,15 @@ private fun ReceivingMethodDraftPanel(
                     placeholder = { Text(if (isCardDraft) "Ex. 4276 **** 5421" else "Ex. +7 *** *** ** 21") },
                     leadingIcon = {
                         if (isCardDraft) {
-                            Icon(Icons.Default.CreditCard, null, tint = PremiumColors.Blue)
+                            Icon(Icons.Default.CreditCard, null, tint = accent)
                         } else {
-                            Icon(Icons.Default.PhoneAndroid, null, tint = PremiumColors.Blue)
+                            Icon(Icons.Default.PhoneAndroid, null, tint = accent)
                         }
+                    },
+                    trailingIcon = if (isValid) {
+                        { Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Success) }
+                    } else {
+                        null
                     },
                     supportingText = {
                         Text(
@@ -2212,9 +2247,19 @@ private fun ReceivingMethodDraftPanel(
                             lineHeight = 14.sp
                         )
                     },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = PremiumColors.Line,
+                        focusedLabelColor = accent,
+                        cursorColor = accent,
+                        focusedContainerColor = PremiumColors.Surface.copy(alpha = 0.6f),
+                        unfocusedContainerColor = PremiumColors.Surface.copy(alpha = 0.4f),
+                        focusedTextColor = PremiumColors.Ink,
+                        unfocusedTextColor = PremiumColors.Ink
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(18.dp)
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -2222,7 +2267,7 @@ private fun ReceivingMethodDraftPanel(
                 PremiumPrimaryButton(
                     language.ui(if (isCardDraft) "Enregistrer la carte" else "Enregistrer"),
                     modifier = Modifier.weight(1f),
-                    enabled = identifierInput.isNotBlank(),
+                    enabled = isValid,
                     onClick = onSave
                 )
             }

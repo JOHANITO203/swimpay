@@ -225,6 +225,7 @@ data class PremiumLocalizedCopy(
             LocalizedText("Choisir la banque", "Choose bank", "Выберите банк"),
             LocalizedText("Numéro de carte", "Card number", "Номер карты"),
             LocalizedText("Numéro de téléphone", "Phone number", "Номер телефона"),
+            LocalizedText("Prêt", "Ready", "Готово"),
             LocalizedText("Annuler", "Cancel", "Отмена"),
             LocalizedText("Enregistrer la carte", "Save card", "Сохранить карту"),
             LocalizedText("Enregistrer", "Save", "Сохранить"),
