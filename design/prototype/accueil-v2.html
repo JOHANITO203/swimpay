@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SwimPay · Accueil v2 — mature</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/hanken-grotesk@5.1.0/index.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/fraunces@5.1.0/index.min.css" />
+<style>
+  :root{
+    --paper:#F4F0E8; --paper-hi:#FBF8F2; --paper-lo:#EAE3D6;
+    --card:#FFFEFB; --hair:#E4DCCC; --hair-2:#D8CEBA;
+    --ink:#191510; --ink-2:#534C40; --muted:#9A9080;
+    --emerald:#0C6B4C; --emerald-2:#0E7B57; --emerald-soft:#E3EFE7;
+    --coral:#E0491F; --coral-soft:#FBE6DC;
+    --seal:#B5421E;
+    --r-lg:28px; --r-md:20px; --r-sm:14px;
+    --sh-1:0 1px 2px rgba(25,21,16,.05);
+    --sh-2:0 2px 4px rgba(25,21,16,.04), 0 10px 26px -14px rgba(25,21,16,.22);
+    --sh-card:0 1px 0 rgba(255,255,255,.7) inset, 0 1px 3px rgba(25,21,16,.06), 0 14px 30px -18px rgba(25,21,16,.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"Hanken Grotesk Variable",system-ui,sans-serif;color:var(--ink);
+    background:radial-gradient(130% 90% at 85% -15%, #FCFAF4 0%, transparent 55%),
+               radial-gradient(80% 55% at -10% 108%, #E8DFCC 0%, transparent 50%), var(--paper);
+    -webkit-font-smoothing:antialiased;display:flex;justify-content:center;align-items:flex-start;
+    min-height:100vh;padding:34px 16px;gap:26px;flex-wrap:wrap;
+  }
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  .ser{font-family:"Fraunces Variable",Georgia,serif}
+
+  .phone{width:390px;height:844px;border-radius:48px;background:var(--paper);position:relative;overflow:hidden;
+    box-shadow:0 2px 8px rgba(25,21,16,.1),0 50px 90px -34px rgba(25,21,16,.5),0 0 0 9px #14110C,0 0 0 10px #2b261f}
+  .screen{position:absolute;inset:0;border-radius:40px;overflow-y:auto;overflow-x:hidden;padding:0 20px 110px}
+  .screen::-webkit-scrollbar{width:0}
+  .status{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 6px;font-size:13px;font-weight:650;color:var(--ink)}
+  .status .r{display:flex;gap:6px;align-items:center;opacity:.85}
+  .status svg{width:16px;height:16px}
+
+  .reveal{opacity:0;transform:translateY(16px);animation:rise .8s cubic-bezier(.2,.75,.2,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+
+  /* masthead — editorial, not a generic app bar */
+  .masthead{padding:6px 2px 16px;border-bottom:1.5px solid var(--ink);margin-bottom:4px;position:relative}
+  .masthead .row{display:flex;align-items:center;justify-content:space-between}
+  .wordmark{display:flex;align-items:center;gap:10px}
+  .wordmark .mk{width:34px;height:34px;border-radius:10px;background:var(--ink);display:grid;place-items:center}
+  .wordmark .mk svg{width:20px;height:20px}
+  .wordmark .nm{font-weight:800;font-size:18px;letter-spacing:-.02em}
+  .wordmark .nm i{font-style:normal;color:var(--emerald-2)}
+  .acts{display:flex;gap:9px}
+  .iconbtn{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--ink);display:grid;place-items:center;position:relative;background:transparent}
+  .iconbtn svg{width:18px;height:18px;color:var(--ink)}
+  .iconbtn .dt{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--coral);border:2px solid var(--paper)}
+  .mastfoot{display:flex;align-items:center;justify-content:space-between;margin-top:11px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .mastfoot .biz{color:var(--ink-2)}
+
+  /* hero — editorial statement */
+  .hero{padding:22px 2px 8px}
+  .hero .k{font-size:12px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+  .hero .k .live{width:7px;height:7px;border-radius:50%;background:var(--emerald-2);box-shadow:0 0 0 0 rgba(12,107,76,.5);animation:pulse 2.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(12,107,76,.5)}70%{box-shadow:0 0 0 10px rgba(12,107,76,0)}100%{box-shadow:0 0 0 0 rgba(12,107,76,0)}}
+  .hero .amt{font-weight:560;font-size:50px;line-height:1;letter-spacing:-.025em;margin:14px 0 0;white-space:nowrap;display:flex;align-items:baseline;gap:10px}
+  .hero .amt .cur{font-size:19px;font-weight:600;color:var(--muted);font-family:"Hanken Grotesk Variable";letter-spacing:.02em}
+  .hero .meta{display:flex;align-items:center;gap:9px;margin-top:13px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;padding:4px 10px 4px 8px;border-radius:50px}
+  .pill.up{color:var(--emerald);background:var(--emerald-soft)}
+  .pill.up svg{width:13px;height:13px}
+  .meta .txt{font-size:13px;color:var(--ink-2);font-weight:550}
+  .meta .sep{width:3px;height:3px;border-radius:50%;background:var(--muted);opacity:.6}
+
+  /* origin strip — cross-border identity, the signature concept */
+  .origins{display:flex;gap:7px;margin-top:18px}
+  .origin{flex:1;background:var(--card);border:1px solid var(--hair);border-radius:var(--r-sm);padding:10px 11px;box-shadow:var(--sh-1);position:relative;overflow:hidden}
+  .origin .flag{font-size:15px;line-height:1}
+  .origin .lab{font-size:10.5px;font-weight:750;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;margin-top:6px}
+  .origin .val{font-size:14px;font-weight:750;letter-spacing:-.01em;margin-top:1px}
+  .origin .val small{font-size:10.5px;color:var(--muted);font-weight:650;margin-left:2px}
+  .origin .bar{position:absolute;left:0;bottom:0;height:3px;border-radius:3px}
+
+  .sechead{display:flex;align-items:center;justify-content:space-between;margin:24px 2px 12px}
+  .sechead h2{font-size:11.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-2)}
+  .sechead .ln{flex:1;height:1px;background:var(--hair-2);margin:0 12px}
+  .sechead a{font-size:12px;font-weight:700;color:var(--ink);text-decoration:none;white-space:nowrap;display:inline-flex;gap:3px;align-items:center}
+  .sechead a svg{width:13px;height:13px}
+
+  /* wallet rail — depth + origin identity + verified micro-seal */
+  .rail{display:flex;gap:13px;overflow-x:auto;margin:0 -20px;padding:3px 20px 8px;scroll-snap-type:x mandatory}
+  .rail::-webkit-scrollbar{height:0}
+  .wallet{scroll-snap-align:start;flex:0 0 196px;height:150px;border-radius:var(--r-md);padding:16px;color:#FAF7F0;position:relative;overflow:hidden;box-shadow:var(--sh-card);display:flex;flex-direction:column;justify-content:space-between}
+  .wallet .grain{position:absolute;inset:0;opacity:.5;background:radial-gradient(70% 55% at 88% 4%,rgba(255,255,255,.25),transparent 55%),radial-gradient(60% 60% at 0% 100%,rgba(0,0,0,.22),transparent 55%);pointer-events:none}
+  .wallet.wave{background:linear-gradient(155deg,#1FAAEE,#0C6FB4)}
+  .wallet.sber{background:linear-gradient(155deg,#23211C,#3d382f)}
+  .wallet.wise{background:linear-gradient(155deg,#16432F,#0C6B4C)}
+  .wtop{display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:1}
+  .wlogo{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.17);border:1px solid rgba(255,255,255,.25);display:grid;place-items:center;font-weight:800;font-size:16px;backdrop-filter:blur(3px)}
+  .wflag{font-size:13px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);border-radius:50px;padding:3px 9px;font-weight:700;letter-spacing:.02em;display:inline-flex;align-items:center;gap:5px}
+  .wbody{position:relative;z-index:1}
+  .wname{font-size:15px;font-weight:750;letter-spacing:-.01em;display:flex;align-items:center;gap:6px}
+  .wname .seal{width:15px;height:15px}
+  .wid{font-size:11.5px;font-weight:600;opacity:.74;margin-top:2px;letter-spacing:.05em}
+  .wamt{font-size:20px;font-weight:800;margin-top:10px;letter-spacing:-.02em}
+  .wamt small{font-size:11.5px;font-weight:650;opacity:.72;margin-left:3px}
+  .wallet.add{background:transparent;color:var(--ink-2);border:1.5px dashed var(--hair-2);box-shadow:none;flex-basis:118px;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+  .wallet.add .pl{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--hair-2);display:grid;place-items:center}
+  .wallet.add .pl svg{width:20px;height:20px;color:var(--ink)}
+  .wallet.add span{font-size:12.5px;font-weight:750}
+
+  /* provenance seal — THE signature (customs/postal stamp) */
+  .stamp{display:inline-grid;place-items:center;position:relative}
+  .stamp svg{display:block}
+  .stamp .core{position:absolute;font-size:8px;font-weight:800;letter-spacing:.02em;color:var(--seal);text-align:center;line-height:1.05}
+
+  /* à traiter — editorial alert */
+  .alert{display:flex;align-items:center;gap:13px;background:linear-gradient(180deg,#FFF6F1,#FBE9E0);border:1px solid #F3D2C3;border-radius:var(--r-md);padding:15px 16px;box-shadow:var(--sh-2);position:relative;overflow:hidden}
+  .alert .ic{width:46px;height:46px;border-radius:14px;background:#fff;display:grid;place-items:center;box-shadow:var(--sh-1);flex:0 0 auto}
+  .alert .ic svg{width:22px;height:22px;color:var(--coral)}
+  .alert .bd{flex:1}
+  .alert .bd b{font-size:14.5px;font-weight:750;letter-spacing:-.01em}
+  .alert .bd p{font-size:12.5px;color:var(--ink-2);margin-top:2px;font-weight:550}
+  .alert .go{font-size:12.5px;font-weight:750;color:#fff;background:var(--ink);padding:9px 15px;border-radius:50px;white-space:nowrap;box-shadow:var(--sh-1)}
+
+  /* payments — editorial ledger rows */
+  .day{font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:18px 2px 2px}
+  .pay{display:flex;align-items:center;gap:13px;padding:14px 2px;border-bottom:1px solid var(--hair)}
+  .pay:last-child{border-bottom:0}
+  .pl{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:16px;color:#fff;flex:0 0 auto;box-shadow:var(--sh-1);position:relative}
+  .pl.w{background:linear-gradient(150deg,#1FAAEE,#0C6FB4)} .pl.o{background:linear-gradient(150deg,#FF8A1E,#F15A00)} .pl.s{background:#23211C}
+  .pl .mini{position:absolute;right:-4px;bottom:-4px}
+  .pmid{flex:1;min-width:0}
+  .pmid b{font-size:14.5px;font-weight:650;letter-spacing:-.01em;display:block}
+  .pmid .sub{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:11.5px;color:var(--muted);font-weight:550}
+  .tag{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:750;padding:2px 7px;border-radius:50px}
+  .tag.ok{color:var(--emerald);background:var(--emerald-soft)} .tag.rev{color:#8A5A12;background:#F6EBD2}
+  .tag svg{width:10px;height:10px}
+  .pright{text-align:right;flex:0 0 auto}
+  .pright b{font-size:16px;font-weight:750;color:var(--emerald);letter-spacing:-.01em}
+  .pright small{display:block;color:var(--muted);font-size:11px;font-weight:550;margin-top:2px}
+
+  /* bottom nav */
+  .nav{position:absolute;left:14px;right:14px;bottom:14px;height:64px;background:rgba(252,250,245,.85);backdrop-filter:blur(18px) saturate(1.4);border:1px solid var(--hair);border-radius:22px;display:flex;align-items:center;justify-content:space-around;box-shadow:0 12px 32px -14px rgba(25,21,16,.34)}
+  .nav a{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:10px;font-weight:650;text-decoration:none}
+  .nav a svg{width:22px;height:22px}
+  .nav a.on{color:var(--ink)}
+  .nav a.on .ni{position:relative}
+  .nav a.on .ni::after{content:"";position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--emerald-2)}
+  .wallet,.iconbtn,.alert .go{transition:transform .25s cubic-bezier(.2,.7,.2,1)}
+  .wallet:active{transform:scale(.985)}
+</style>
+</head>
+<body>
+  <!-- phone -->
+  <div class="phone">
+    <div class="screen">
+      <div class="status"><span>9:41</span><span class="r"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h3v-8H2v8Zm5 0h3V9H7v13Zm5 0h3V2h-3v20Zm5 0h3v-5h-3v5Z"/></svg><svg viewBox="0 0 24 24" fill="none"><path d="M5 13a11 11 0 0 1 14 0M8.5 16.5a6 6 0 0 1 7 0M12 20h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="2" y="7" width="19" height="10" rx="2.5" stroke="currentColor" stroke-width="1.6"/><rect x="4" y="9" width="13" height="6" rx="1" fill="currentColor"/><path d="M23 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></div>
+
+      <!-- masthead -->
+      <div class="masthead reveal" style="animation-delay:.02s">
+        <div class="row">
+          <div class="wordmark">
+            <div class="mk"><svg viewBox="0 0 24 24" fill="none"><path d="M3 14.5c2.3 0 2.3 2 4.5 2s2.2-2 4.5-2 2.3 2 4.5 2 2.2-2 2.8-2" stroke="#F4F0E8" stroke-width="2" stroke-linecap="round"/><path d="M3 9.5c2.3 0 2.3 2 4.5 2s2.2-2 4.5-2 2.3 2 4.5 2 2.2-2 2.8-2" stroke="#F4F0E8" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg></div>
+            <div class="nm">Swim<i>Pay</i></div>
+          </div>
+          <div class="acts">
+            <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+            <button class="iconbtn"><span class="dt"></span><svg viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+          </div>
+        </div>
+        <div class="mastfoot"><span class="biz">Boutique Awa · Marchand vérifié</span><span>Juin 2026</span></div>
+      </div>
+
+      <!-- hero -->
+      <div class="hero reveal" style="animation-delay:.10s">
+        <div class="k"><span class="live"></span> Reçu ce mois</div>
+        <div class="amt ser num">2 480 000 <span class="cur">FCFA</span></div>
+        <div class="meta">
+          <span class="pill up"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14l5-5 5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>+18%</span>
+          <span class="txt num">312 paiements</span><span class="sep"></span><span class="txt">98% vérifiés</span>
+        </div>
+        <!-- origin strip: cross-border identity -->
+        <div class="origins">
+          <div class="origin"><div class="flag">🇨🇮</div><div class="lab">Afrique Ouest</div><div class="val num">1,9M <small>FCFA</small></div><div class="bar" style="background:#1FAAEE;width:62%"></div></div>
+          <div class="origin"><div class="flag">🇷🇺</div><div class="lab">Russie</div><div class="val num">842K <small>RUB</small></div><div class="bar" style="background:#23211C;width:28%"></div></div>
+          <div class="origin"><div class="flag">🌍</div><div class="lab">International</div><div class="val num">3,9K <small>USD</small></div><div class="bar" style="background:#0C6B4C;width:14%"></div></div>
+        </div>
+      </div>
+
+      <!-- wallets -->
+      <div class="sechead reveal" style="animation-delay:.18s"><h2>Portefeuilles</h2><span class="ln"></span><a href="#">Gérer <svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
+      <div class="rail reveal" style="animation-delay:.22s">
+        <div class="wallet wave"><div class="grain"></div>
+          <div class="wtop"><div class="wlogo">W</div><span class="wflag">🇨🇮 XOF</span></div>
+          <div class="wbody"><div class="wname">Wave <span class="stamp seal" data-mini></span></div><div class="wid num">•• 7782</div><div class="wamt num">1 248 500 <small>FCFA</small></div></div>
+        </div>
+        <div class="wallet sber"><div class="grain"></div>
+          <div class="wtop"><div class="wlogo">С</div><span class="wflag">🇷🇺 RUB</span></div>
+          <div class="wbody"><div class="wname">Sberbank</div><div class="wid num">•• 4521 · Carte</div><div class="wamt num">842 000 <small>RUB</small></div></div>
+        </div>
+        <div class="wallet wise"><div class="grain"></div>
+          <div class="wtop"><div class="wlogo">w</div><span class="wflag">🌍 USD</span></div>
+          <div class="wbody"><div class="wname">Wise</div><div class="wid num">•• 6480</div><div class="wamt num">3 920 <small>USD</small></div></div>
+        </div>
+        <div class="wallet add"><div class="pl"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></div><span>Ajouter</span></div>
+      </div>
+
+      <!-- à traiter -->
+      <div class="sechead reveal" style="animation-delay:.28s"><h2>À traiter</h2><span class="ln"></span></div>
+      <div class="alert reveal" style="animation-delay:.32s">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/></svg></div>
+        <div class="bd"><b class="num">3 paiements en revue</b><p>Référence partielle — provenance à confirmer</p></div>
+        <div class="go">Examiner</div>
+      </div>
+
+      <!-- payments -->
+      <div class="sechead reveal" style="animation-delay:.38s"><h2>Paiements reçus</h2><span class="ln"></span><a href="#">Activité <svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
+      <div class="day reveal" style="animation-delay:.42s">Aujourd'hui</div>
+      <div class="reveal" style="animation-delay:.44s">
+        <div class="pay">
+          <div class="pl w">W<span class="mini stamp" data-mini2></span></div>
+          <div class="pmid"><b>Aminata Diallo</b><div class="sub"><span class="tag ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Vérifié</span>🇨🇮 Wave · réf. exacte</div></div>
+          <div class="pright"><b class="num">+45 000</b><small>FCFA · 09:42</small></div>
+        </div>
+        <div class="pay">
+          <div class="pl o">O<span class="mini stamp" data-mini2></span></div>
+          <div class="pmid"><b>Koffi Brou</b><div class="sub"><span class="tag ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Vérifié</span>🇨🇮 Orange Money</div></div>
+          <div class="pright"><b class="num">+62 500</b><small>FCFA · 08:15</small></div>
+        </div>
+        <div class="pay">
+          <div class="pl s">w</div>
+          <div class="pmid"><b>James Porter</b><div class="sub"><span class="tag rev"><svg viewBox="0 0 24 24" fill="none"><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/></svg>En revue</span>🌍 Wise · USD</div></div>
+          <div class="pright"><b class="num">+680</b><small>USD · 07:58</small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <a class="on" href="#"><span class="ni"><svg viewBox="0 0 24 24" fill="none"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Accueil</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Activité</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/></svg>Moyens</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Profil</a>
+    </div>
+  </div>
+
+  <!-- the provenance seal, drawn once and cloned -->
+  <svg width="0" height="0" style="position:absolute"><defs>
+    <g id="sealMark">
+      <circle cx="22" cy="22" r="20" fill="none" stroke="#B5421E" stroke-width="1.4"/>
+      <circle cx="22" cy="22" r="16.5" fill="none" stroke="#B5421E" stroke-width=".8" stroke-dasharray="1.5 2.2"/>
+      <path id="sp" d="M22 6.5a15.5 15.5 0 1 1 0 31 15.5 15.5 0 1 1 0-31" fill="none"/>
+      <text font-family="Hanken Grotesk Variable" font-size="5.4" font-weight="800" letter-spacing="1.2" fill="#B5421E"><textPath href="#sp" startOffset="2%">· PROVENANCE · VÉRIFIÉE · SWIMPAY ·</textPath></text>
+      <path d="M15 22.5l5 5 9-10" stroke="#B5421E" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </defs></svg>
+
+  <script>
+    // place the signature seal: large floating stamp + minis on verified items
+    function seal(size){const s=document.createElementNS('http://www.w3.org/2000/svg','svg');s.setAttribute('viewBox','0 0 44 44');s.setAttribute('width',size);s.setAttribute('height',size);const u=document.createElementNS('http://www.w3.org/2000/svg','use');u.setAttribute('href','#sealMark');s.appendChild(u);s.style.transform='rotate(-11deg)';s.style.opacity='.92';return s;}
+    document.querySelectorAll('[data-mini]').forEach(function(e){e.appendChild(seal(15));e.style.transform='translateY(1px)';});
+    document.querySelectorAll('[data-mini2]').forEach(function(e){const s=seal(22);e.appendChild(s);});
+    if (new URLSearchParams(location.search).has('static')) {
+      document.querySelectorAll('.reveal').forEach(function(e){e.style.animation='none';e.style.opacity='1';e.style.transform='none';});
+    }
+  </script>
+</body>
+</html>

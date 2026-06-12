@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SwimPay · Home v2 — Caméléon</title>
+<!--
+  ████  SWIMPAY · TOKENS VERROUILLÉS (master Home v2) ████
+  Direction : Noir vivant — écrin noir chaud qui respire la couleur du wallet actif (Caméléon).
+  Signatures : Caméléon (la couleur du wallet contamine l'écran au swipe) · Cash Flow (réel + projection).
+  BASE      bg #08080C · surface #141418 · active #1E1E24 · hair rgba(245,240,235,.04)
+            ink1 #F5F0EB · ink2 #8A857E · ink3 #5A5650 · success #2ECC71 · warn #E67E22 · danger #E74C3C
+  WALLETS   Wave #1DC3E6 · Orange #FF6600 · Sberbank/amber #D4A054 · USDT #26A17B · Multi #8264D2
+  TYPO      DM Sans · chiffres tabulaires · solde 40/Bold · montant 17/SemiBold · label 13 · devise/sous 11
+  ESPACE    base 8 · marge 20 · section 24 · item 16   FORME carte 20 · spark 16 · pill/item 12 · avatar 50%
+  PROFONDEUR  pas d'ombre portée — luminosité de surface + filets blancs 4–6%
+  MOTION    entrée étagée · Caméléon (interpolation 400ms des custom props) · sparkline draw 800ms · pulse
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/dm-sans/index.css" />
+<style>
+  /* animatable Caméléon custom properties */
+  @property --accent{syntax:'<color>';inherits:true;initial-value:#1DC3E6}
+  @property --accent-deep{syntax:'<color>';inherits:true;initial-value:#0D2D3A}
+
+  :root{
+    --bg:#08080C; --surface:#141418; --active:#1E1E24;
+    --ink1:#F5F0EB; --ink2:#8A857E; --ink3:#5A5650;
+    --success:#2ECC71; --warn:#E67E22; --danger:#E74C3C;
+    --hair:rgba(245,240,235,.05); --hair-2:rgba(245,240,235,.08);
+    --accent:#1DC3E6; --accent-deep:#0D2D3A;
+    transition:--accent .45s ease, --accent-deep .45s ease;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"DM Sans Variable","DM Sans",system-ui,sans-serif;background:#cfcfd6;
+    display:flex;justify-content:center;align-items:center;min-height:100vh;padding:40px 16px;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  .cur{font-weight:500;opacity:.85}
+
+  .device{width:390px;height:844px;border-radius:46px;position:relative;overflow:hidden;
+    background:
+      radial-gradient(95% 45% at 85% 102%, color-mix(in srgb, var(--accent) 7%, transparent) 0%, transparent 60%),
+      radial-gradient(70% 40% at 8% -5%, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 55%),
+      var(--bg);
+    transition:--accent .45s ease;
+    box-shadow:0 50px 90px -30px rgba(0,0,0,.55),0 0 0 10px #050507,0 0 0 11px #1a1a20}
+  .screen{position:absolute;inset:0;border-radius:46px;overflow-y:auto;overflow-x:hidden;color:var(--ink1)}
+  .screen::-webkit-scrollbar{width:0}
+  .pad{padding:0 20px}
+
+  .statusbar{height:47px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:14px;font-weight:600}
+  .statusbar .ic{display:flex;gap:7px;align-items:center}.statusbar svg{width:17px;height:17px}
+
+  .reveal{opacity:0;transform:translateY(14px);animation:rise .32s cubic-bezier(.22,.61,.36,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+
+  /* header */
+  .header{display:flex;align-items:center;justify-content:space-between;padding:8px 0 18px}
+  .brand{font-size:20px;font-weight:700;letter-spacing:-.02em}.brand b{color:var(--accent);transition:color .45s ease}
+  .hicons{display:flex;align-items:center;gap:12px}
+  .bell{width:40px;height:40px;border-radius:50%;border:1px solid var(--hair-2);display:grid;place-items:center;position:relative}
+  .bell svg{width:19px;height:19px;color:var(--ink1)}
+  .bell .b{position:absolute;top:8px;right:9px;min-width:15px;height:15px;border-radius:50px;background:var(--accent);color:#08080C;font-size:9px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg);transition:background .45s ease}
+  .avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,#3a2c18,#241a0f);border:1px solid var(--hair-2);display:grid;place-items:center;font-size:14px;font-weight:700;color:var(--accent);transition:color .45s ease}
+
+  /* card switcher */
+  .carousel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 20px 10px;margin:0 -20px;}
+  .carousel::-webkit-scrollbar{height:0}
+  .wcard{scroll-snap-align:center;flex:0 0 calc(100% - 64px);height:202px;border-radius:20px;position:relative;overflow:hidden;
+    padding:18px 20px;display:flex;flex-direction:column;justify-content:space-between;color:#F7F2EC;
+    border:1px solid var(--cardbd, rgba(255,255,255,.08));transition:transform .35s cubic-bezier(.2,.7,.2,1),opacity .35s}
+  .wcard .tex{position:absolute;inset:0;opacity:.5;pointer-events:none}
+  .wcard .gl{position:absolute;inset:0;background:radial-gradient(75% 55% at 88% 6%,rgba(255,255,255,.16),transparent 55%);pointer-events:none}
+  .wtop{display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:2}
+  .wlabel{font-size:14px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:7px}
+  .wlogo{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);display:grid;place-items:center;font-weight:800;font-size:17px;backdrop-filter:blur(3px)}
+  .wmid{position:relative;z-index:2}
+  .wamount{font-size:40px;font-weight:700;letter-spacing:-.03em;line-height:1;white-space:nowrap}
+  .wamount .cur{font-size:21px;margin-left:6px}
+  .wsub{font-size:12.5px;font-weight:500;opacity:.8;margin-top:8px;position:relative;z-index:2}
+  /* per-wallet skins */
+  .wcard.wave{background:linear-gradient(158deg,#0D2D3A,#1A4A5C)}
+  .wcard.om{background:linear-gradient(158deg,#3A1A00,#5C2E0D)}
+  .wcard.sber{background:linear-gradient(158deg,#2A1F0F,#3D2E18)}
+  .wcard.usdt{background:linear-gradient(158deg,#0A2E22,#153D2F)}
+  .wcard.multi{background:linear-gradient(158deg,#1A1330,#2D1F4A)}
+
+  .dots{display:flex;gap:6px;justify-content:center;margin-top:2px}
+  .dots i{width:6px;height:6px;border-radius:50%;background:var(--hair-2);transition:all .35s}
+  .dots i.on{width:18px;border-radius:50px;background:var(--accent)}
+
+  /* cash flow */
+  .cash{margin-top:22px;background:var(--surface);border:1px solid var(--hair);border-radius:16px;padding:16px}
+  .cashtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .cashtop b{font-size:14px;font-weight:600}
+  .periods{display:flex;gap:4px;background:#0E0E12;border:1px solid var(--hair);border-radius:10px;padding:3px}
+  .periods span{font-size:11px;font-weight:600;color:var(--ink2);padding:4px 9px;border-radius:7px}
+  .periods span.on{background:var(--active);color:var(--ink1)}
+  .spark{position:relative;height:66px;margin:6px 0 4px}
+  .spark svg{width:100%;height:100%;overflow:visible}
+  .tip{position:absolute;top:-2px;left:58%;transform:translateX(-50%);background:var(--ink1);color:#08080C;font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;white-space:nowrap}
+  .tip::after{content:"";position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);border:4px solid transparent;border-top-color:var(--ink1)}
+  .insight{font-size:11.5px;color:var(--ink2);font-weight:500;display:flex;align-items:center;gap:6px;margin-top:2px}
+  .insight b{color:var(--success);font-weight:700;display:inline-flex;align-items:center;gap:2px}
+  .insight .pj{color:var(--accent);transition:color .45s ease}
+
+  /* transactions */
+  .txhead{display:flex;align-items:baseline;justify-content:space-between;margin:24px 0 2px}
+  .txhead h2{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .txhead a{font-size:13px;font-weight:500;color:var(--ink2);text-decoration:none}
+  .tx{display:flex;align-items:center;gap:13px;padding:15px 0;border-bottom:1px solid var(--hair)}
+  .tx:last-child{border-bottom:0}
+  .pv{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff;flex:0 0 auto;position:relative}
+  .pv.wave{background:#1DC3E6}.pv.om{background:#FF6600}.pv.sber{background:#1A9F4B}.pv.sepa{background:#2E6BD6}.pv.usdt{background:#26A17B}
+  .pv .st{position:absolute;right:-2px;bottom:-2px;width:15px;height:15px;border-radius:50%;border:2.5px solid var(--bg);display:grid;place-items:center}
+  .pv .st.ok{background:var(--success)}.pv .st.pend{background:var(--warn)}
+  .pv .st svg{width:8px;height:8px;color:#08080C}
+  .mid{flex:1;min-width:0}.mid b{font-size:14.5px;font-weight:600;letter-spacing:-.01em;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mid small{display:block;font-size:11.5px;color:var(--ink3);font-weight:500;margin-top:2px}
+  .right{text-align:right;flex:0 0 auto}.right b{font-size:16px;font-weight:700;letter-spacing:-.01em}
+  .right small{display:block;font-size:10.5px;font-weight:600;margin-top:2px}
+  .right small.ok{color:var(--success)}.right small.pend{color:var(--warn)}
+  .tail{height:34px}
+</style>
+</head>
+<body>
+  <div class="device" id="device">
+    <div class="screen">
+      <div class="statusbar"><span>9:41</span><span class="ic">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h3v-7H2v7Zm5 0h3V10H7v12Zm5 0h3V4h-3v18Zm5 0h3v-9h-3v9Z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 13a11 11 0 0 1 14 0M8.5 16.5a6 6 0 0 1 7 0M12 20h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 26 24" fill="none"><rect x="2" y="7.5" width="19" height="9" rx="2.4" stroke="currentColor" stroke-width="1.6"/><rect x="3.6" y="9.2" width="13" height="5.6" rx="1" fill="currentColor"/><path d="M23 10.5v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </span></div>
+
+      <div class="pad">
+        <div class="header reveal" style="animation-delay:0s">
+          <div class="brand">Swim<b>Pay</b></div>
+          <div class="hicons">
+            <div class="bell"><span class="b">3</span><svg viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+            <div class="avatar">AW</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- card switcher -->
+      <div class="carousel reveal" id="carousel" style="animation-delay:.05s">
+        <div class="wcard wave" data-accent="#1DC3E6" data-deep="#0D2D3A" style="--cardbd:rgba(29,195,230,.25)">
+          <div class="gl"></div>
+          <svg class="tex" viewBox="0 0 320 200" preserveAspectRatio="none"><g fill="none" stroke="rgba(255,255,255,.10)" stroke-width="1.4"><path d="M-20 150c40 0 40-22 80-22s40 22 80 22 40-22 80-22 40 22 80 22 40-22 80-22"/><path d="M-20 168c40 0 40-22 80-22s40 22 80 22 40-22 80-22 40 22 80 22 40-22 80-22"/><path d="M-20 186c40 0 40-22 80-22s40 22 80 22 40-22 80-22 40 22 80 22 40-22 80-22"/></g></svg>
+          <div class="wtop"><div class="wlabel">Wave</div><div class="wlogo">W</div></div>
+          <div class="wmid"><div class="wamount num">147 500<span class="cur"> F CFA</span></div></div>
+          <div class="wsub num">18 paiements · Aujourd'hui</div>
+        </div>
+        <div class="wcard om" data-accent="#FF6600" data-deep="#3A1A00" style="--cardbd:rgba(255,102,0,.22)">
+          <div class="gl"></div>
+          <svg class="tex" viewBox="0 0 320 200"><defs><radialGradient id="og"><stop offset="0" stop-color="rgba(255,255,255,.14)"/><stop offset="1" stop-color="transparent"/></radialGradient></defs><g fill="rgba(255,255,255,.07)"><circle cx="40" cy="40" r="2"/><circle cx="90" cy="70" r="2"/><circle cx="150" cy="30" r="2"/><circle cx="220" cy="60" r="2"/><circle cx="280" cy="35" r="2"/><circle cx="60" cy="120" r="2"/><circle cx="130" cy="150" r="2"/><circle cx="200" cy="130" r="2"/><circle cx="270" cy="160" r="2"/></g></svg>
+          <div class="wtop"><div class="wlabel">Orange Money</div><div class="wlogo">O</div></div>
+          <div class="wmid"><div class="wamount num">83 200<span class="cur"> F CFA</span></div></div>
+          <div class="wsub num">9 paiements · Aujourd'hui</div>
+        </div>
+        <div class="wcard sber" data-accent="#D4A054" data-deep="#2A1F0F" style="--cardbd:rgba(212,160,84,.25)">
+          <div class="gl"></div>
+          <svg class="tex" viewBox="0 0 320 200"><g stroke="rgba(255,255,255,.08)" stroke-width="1"><path d="M0 60h320M0 100h320M0 140h320"/></g></svg>
+          <div class="wtop"><div class="wlabel">Sberbank</div><div class="wlogo">С</div></div>
+          <div class="wmid"><div class="wamount num">42 870<span class="cur"> ₽</span></div></div>
+          <div class="wsub num">5 paiements · Aujourd'hui</div>
+        </div>
+        <div class="wcard usdt" data-accent="#26A17B" data-deep="#0A2E22" style="--cardbd:rgba(38,161,123,.25)">
+          <div class="gl"></div>
+          <svg class="tex" viewBox="0 0 320 200"><g stroke="rgba(255,255,255,.06)" stroke-width="1"><path d="M40 0v200M100 0v200M160 0v200M220 0v200M280 0v200M0 50h320M0 100h320M0 150h320"/></g></svg>
+          <div class="wtop"><div class="wlabel">Crypto · USDT</div><div class="wlogo">₮</div></div>
+          <div class="wmid"><div class="wamount num"><span class="cur">$ </span>1 280<span class="cur">.50</span></div></div>
+          <div class="wsub num">3 paiements · Aujourd'hui</div>
+        </div>
+        <div class="wcard multi" data-accent="#8264D2" data-deep="#1A1330" style="--cardbd:rgba(130,100,210,.25)">
+          <div class="gl"></div>
+          <svg class="tex" viewBox="0 0 320 200" preserveAspectRatio="none"><g fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.4"><path d="M-20 70c50 0 50 30 100 30s50-30 100-30 50 30 100 30 50-30 80-30"/><path d="M-20 110c50 0 50 30 100 30s50-30 100-30 50 30 100 30 50-30 80-30"/></g></svg>
+          <div class="wtop"><div class="wlabel">Multi-devises</div><div class="wlogo">✦</div></div>
+          <div class="wmid"><div class="wamount num">312 400<span class="cur"> F CFA</span></div></div>
+          <div class="wsub num">35 paiements · tous providers</div>
+        </div>
+      </div>
+      <div class="dots pad" id="dots"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+
+      <div class="pad">
+        <!-- cash flow -->
+        <div class="cash reveal" style="animation-delay:.12s">
+          <div class="cashtop"><b>Cash Flow</b><div class="periods"><span>7j</span><span class="on">30j</span><span>90j</span></div></div>
+          <div class="spark">
+            <div class="tip num">+38 200 F</div>
+            <svg viewBox="0 0 300 66" preserveAspectRatio="none">
+              <defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".18"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+              <path class="area" d="M0 50 L40 44 L80 47 L120 33 L160 36 L200 22 L240 18 L240 66 L0 66 Z" fill="url(#fill)"/>
+              <path class="real" d="M0 50 L40 44 L80 47 L120 33 L160 36 L200 22 L240 18" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="proj" d="M240 18 L270 14 L300 7" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="3 4" opacity=".5"/>
+              <circle cx="240" cy="18" r="3.5" fill="var(--accent)" stroke="#08080C" stroke-width="2"/>
+            </svg>
+          </div>
+          <div class="insight"><b><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M7 14l5-5 5 5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>12%</b> vs semaine dernière <span style="opacity:.4">·</span> <span class="pj">Projection ~185 000 F</span></div>
+        </div>
+
+        <!-- transactions -->
+        <div class="txhead reveal" style="animation-delay:.18s"><h2>Transactions</h2><a href="#">Voir tout →</a></div>
+        <div class="reveal" style="animation-delay:.22s">
+          <div class="tx"><div class="pv wave">W<span class="st ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><div class="mid"><b>Mamadou D.</b><small>Wave · 14:32</small></div><div class="right"><b class="num">+15 000 <span class="cur">F</span></b><small class="ok">Confirmé</small></div></div>
+          <div class="tx"><div class="pv sber">С<span class="st ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><div class="mid"><b>Alexei K.</b><small>Sberbank · 14:18</small></div><div class="right"><b class="num">+3 500 <span class="cur">₽</span></b><small class="ok">Confirmé</small></div></div>
+          <div class="tx"><div class="pv sepa">€<span class="st pend"><svg viewBox="0 0 24 24" fill="none"><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><div class="mid"><b>Sophie M.</b><small>Virement SEPA · 13:55</small></div><div class="right"><b class="num">+<span class="cur">€ </span>45.00</b><small class="pend">En attente</small></div></div>
+          <div class="tx"><div class="pv usdt">₮<span class="st ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><div class="mid"><b>0x7a3…f2d1</b><small>USDT · TRC-20 · 13:41</small></div><div class="right"><b class="num">+<span class="cur">$ </span>120.00</b><small class="ok">Confirmé</small></div></div>
+          <div class="tx"><div class="pv om">O<span class="st ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><div class="mid"><b>Fatou S.</b><small>Orange Money · 13:28</small></div><div class="right"><b class="num">+7 500 <span class="cur">F</span></b><small class="ok">Confirmé</small></div></div>
+        </div>
+        <div class="tail"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Caméléon : la carte centrée contamine l'écran
+    var car=document.getElementById('carousel'), dots=document.getElementById('dots').children, root=document.documentElement, dev=document.getElementById('device');
+    var cards=[].slice.call(car.querySelectorAll('.wcard'));
+    function apply(i){var c=cards[i];if(!c)return;root.style.setProperty('--accent',c.dataset.accent);root.style.setProperty('--accent-deep',c.dataset.deep);for(var k=0;k<dots.length;k++)dots[k].className=k===i?'on':'';}
+    function nearest(){var mid=car.scrollLeft+car.clientWidth/2,best=0,bd=1e9;cards.forEach(function(c,i){var cc=c.offsetLeft+c.clientWidth/2,d=Math.abs(cc-mid);if(d<bd){bd=d;best=i}});return best;}
+    var raf;car.addEventListener('scroll',function(){cancelAnimationFrame(raf);raf=requestAnimationFrame(function(){apply(nearest())})});
+    apply(0);
+    var sp=new URLSearchParams(location.search);
+    if (sp.has('static')) {
+      document.querySelectorAll('.reveal').forEach(function(e){e.style.animation='none';e.style.opacity='1';e.style.transform='none';});
+      var ns=document.createElement('style');ns.textContent='*{transition:none!important}';document.head.appendChild(ns);
+      var ci=parseInt(sp.get('card')||'0',10);
+      var c=cards[ci];
+      if(c){car.scrollLeft=c.offsetLeft-(car.clientWidth-c.clientWidth)/2;apply(ci);}
+    }
+  </script>
+</body>
+</html>

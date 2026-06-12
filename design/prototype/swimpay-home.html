@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SwimPay · Home (master)</title>
+<!--
+  ████  SWIMPAY · TOKENS VERROUILLÉS (master Home) ████
+  Direction : Noir chaud utilitaire — le noir est l'écrin, les chiffres sont la lumière.
+  Signature : « Le Pulse » — un battement ambre quand l'argent arrive.
+  COULEUR   bg #08080C · surface #141418 · active #1E1E24
+            ink1 #F5F0EB · ink2 #8A857E · ink3 #5A5650
+            amber(dominante) #D4A054 · success #2ECC71 · warn #E67E22 · danger #E74C3C
+            providers: Wave #1DC3E6 · Orange Money #FF6600 · Free Money #00A859
+  TYPO      DM Sans (display+corps), chiffres tabulaires. 40/Bold solde · 17/SemiBold montant · 13/Medium label · 11/Reg sous-label
+  ESPACE    base 8 · marge 20 · section 24 · item 16
+  FORME     carte 20 · pill/item 12 · bouton 10 · avatar 50%
+  PROFONDEUR  pas d'ombre portée — luminosité de surface + filets blancs 4–6%
+  MOTION    entrée étagée 40ms ease-out 300ms · Pulse (halo ambre, 1 battement 600+400ms)
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/dm-sans/index.css" />
+<style>
+  :root{
+    --bg:#08080C; --surface:#141418; --active:#1E1E24;
+    --ink1:#F5F0EB; --ink2:#8A857E; --ink3:#5A5650;
+    --amber:#D4A054; --success:#2ECC71; --warn:#E67E22; --danger:#E74C3C;
+    --wave:#1DC3E6; --om:#FF6600; --free:#00A859;
+    --hair:rgba(245,240,235,.05); --hair-2:rgba(245,240,235,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"DM Sans Variable","DM Sans",system-ui,sans-serif;
+    background:#cfcfd6;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:40px 16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+  .device{width:390px;height:844px;border-radius:46px;background:var(--bg);position:relative;overflow:hidden;
+    box-shadow:0 50px 90px -30px rgba(0,0,0,.55), 0 0 0 10px #050507, 0 0 0 11px #1a1a20}
+  .screen{position:absolute;inset:0;border-radius:46px;overflow-y:auto;overflow-x:hidden;
+    padding:0 20px;color:var(--ink1)}
+  .screen::-webkit-scrollbar{width:0}
+
+  /* status bar */
+  .statusbar{height:47px;display:flex;align-items:center;justify-content:space-between;padding:0 6px;font-size:14px;font-weight:600;letter-spacing:.02em}
+  .statusbar .ic{display:flex;gap:7px;align-items:center}
+  .statusbar svg{width:17px;height:17px;color:var(--ink1)}
+
+  .reveal{opacity:0;transform:translateY(14px);animation:rise .3s cubic-bezier(.22,.61,.36,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+
+  /* header */
+  .header{display:flex;align-items:center;justify-content:space-between;padding:8px 2px 24px}
+  .header .brand{font-size:21px;font-weight:700;letter-spacing:-.02em;color:var(--ink1)}
+  .header .brand b{color:var(--amber);font-weight:700}
+  .avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,#3a2c18,#241a0f);
+    border:1px solid var(--hair-2);display:grid;place-items:center;font-size:14px;font-weight:700;color:var(--amber)}
+
+  /* balance card — amber-smoked glassmorphism, depth by luminosity */
+  .balance{position:relative;border-radius:20px;padding:22px 22px 20px;overflow:hidden;
+    background:
+      radial-gradient(120% 90% at 85% -10%, rgba(212,160,84,.20), transparent 55%),
+      linear-gradient(158deg, #2A2016 0%, #1A130C 60%, #120D08 100%);
+    border:1px solid var(--hair-2)}
+  .balance::after{content:"";position:absolute;inset:0;border-radius:20px;border-top:1px solid rgba(245,240,235,.07);pointer-events:none}
+  .balance .toprow{display:flex;align-items:center;justify-content:space-between}
+  .balance .lab{font-size:13px;font-weight:500;color:var(--ink2)}
+  .balance .lab b{color:var(--ink1);font-weight:600}
+  .balance .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--amber);
+    background:rgba(212,160,84,.12);border:1px solid rgba(212,160,84,.22);padding:4px 9px;border-radius:50px}
+  .balance .live .d{width:6px;height:6px;border-radius:50%;background:var(--amber)}
+  .amountwrap{position:relative;margin:16px 0 0;width:max-content}
+  .amount{position:relative;z-index:2;font-size:40px;font-weight:700;letter-spacing:-.025em;line-height:1;color:var(--ink1);white-space:nowrap}
+  .amount .f{font-size:24px;font-weight:600;color:var(--amber);margin-left:6px}
+  .pulse{position:absolute;left:-14px;right:-14px;top:-12px;bottom:-12px;border-radius:24px;z-index:1;
+    background:radial-gradient(closest-side, rgba(212,160,84,.45), transparent 72%);
+    opacity:0;animation:pulse 2.6s ease-out .5s 1}
+  @keyframes pulse{0%{opacity:0;transform:scale(.6)}35%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.18)}}
+  .balance .sub{margin-top:12px;font-size:13px;color:var(--ink2);font-weight:500;display:flex;align-items:center;gap:7px}
+  .balance .sub .up{display:inline-flex;align-items:center;gap:3px;color:var(--success);font-weight:600}
+  .balance .sub .up svg{width:13px;height:13px}
+
+  /* quick stats — provider pills */
+  .stats{display:flex;gap:9px;overflow-x:auto;margin:24px -20px 0;padding:0 20px 2px}
+  .stats::-webkit-scrollbar{height:0}
+  .stat{flex:0 0 auto;display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--hair);
+    border-radius:12px;padding:10px 13px 10px 10px}
+  .stat .dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;flex:0 0 auto}
+  .stat .dot.wave{background:var(--wave)} .stat .dot.om{background:var(--om)} .stat .dot.free{background:var(--free)}
+  .stat .t{line-height:1.15}
+  .stat .t b{font-size:13px;font-weight:600;color:var(--ink1)}
+  .stat .t small{display:block;font-size:11px;color:var(--ink2);font-weight:500;margin-top:1px}
+  .stat .n{font-size:17px;font-weight:700;color:var(--ink1);margin-left:2px}
+
+  /* transactions */
+  .txhead{display:flex;align-items:baseline;justify-content:space-between;margin:24px 2px 4px}
+  .txhead h2{font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--ink1)}
+  .txhead a{font-size:13px;font-weight:500;color:var(--amber);text-decoration:none}
+  .tx{display:flex;align-items:center;gap:13px;padding:16px 4px;border-bottom:1px solid var(--hair)}
+  .tx:last-child{border-bottom:0}
+  .tx:active{background:var(--active);opacity:.85;border-radius:12px;transform:scale(.98)}
+  .pv{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:16px;font-weight:700;color:#fff;flex:0 0 auto;position:relative}
+  .pv.wave{background:var(--wave)} .pv.om{background:var(--om)} .pv.free{background:var(--free)}
+  .pv .ok{position:absolute;right:-1px;bottom:-1px;width:15px;height:15px;border-radius:50%;background:var(--success);border:2.5px solid var(--bg);display:grid;place-items:center}
+  .pv .ok svg{width:8px;height:8px;color:#08080C}
+  .tx .mid{flex:1;min-width:0}
+  .tx .mid b{font-size:15px;font-weight:600;color:var(--ink1);letter-spacing:-.01em}
+  .tx .mid small{display:block;font-size:12px;color:var(--ink2);font-weight:500;margin-top:3px}
+  .tx .amt{font-size:17px;font-weight:700;color:var(--ink1);letter-spacing:-.01em;flex:0 0 auto}
+
+  .tailspace{height:40px}
+  .avatar,.stat,.live{transition:transform .15s ease}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+
+      <!-- status bar -->
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="ic">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h3v-7H2v7Zm5 0h3V10H7v12Zm5 0h3V4h-3v18Zm5 0h3v-9h-3v9Z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 13a11 11 0 0 1 14 0M8.5 16.5a6 6 0 0 1 7 0M12 20h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 26 24" fill="none"><rect x="2" y="7.5" width="19" height="9" rx="2.4" stroke="currentColor" stroke-width="1.6"/><rect x="3.6" y="9.2" width="13" height="5.6" rx="1" fill="currentColor"/><path d="M23 10.5v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </span>
+      </div>
+
+      <!-- header -->
+      <div class="header reveal" style="animation-delay:0s">
+        <div class="brand">Swim<b>Pay</b></div>
+        <div class="avatar">AW</div>
+      </div>
+
+      <!-- balance card -->
+      <div class="balance reveal" style="animation-delay:.04s">
+        <div class="toprow">
+          <div class="lab"><b>Aujourd'hui</b> · 12 juin 2026</div>
+          <div class="live"><span class="d"></span>En direct</div>
+        </div>
+        <div class="amountwrap">
+          <div class="pulse"></div>
+          <div class="amount num">284 750<span class="f">F</span></div>
+        </div>
+        <div class="sub">
+          <span class="num">23 paiements reçus</span>
+          <span class="up"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14l5-5 5 5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>+12%</span>
+        </div>
+      </div>
+
+      <!-- quick stats -->
+      <div class="stats reveal" style="animation-delay:.08s">
+        <div class="stat"><div class="dot wave">W</div><div class="t"><b>Wave</b><small>aujourd'hui</small></div><div class="n num">18</div></div>
+        <div class="stat"><div class="dot om">O</div><div class="t"><b>Orange</b><small>aujourd'hui</small></div><div class="n num">4</div></div>
+        <div class="stat"><div class="dot free">F</div><div class="t"><b>Free</b><small>aujourd'hui</small></div><div class="n num">1</div></div>
+      </div>
+
+      <!-- transactions -->
+      <div class="txhead reveal" style="animation-delay:.12s">
+        <h2>Transactions</h2>
+        <a href="#">Voir tout</a>
+      </div>
+
+      <div class="reveal" style="animation-delay:.16s">
+        <div class="tx">
+          <div class="pv wave">W<span class="ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="mid"><b>Mamadou D.</b><small>Wave · 14:32</small></div>
+          <div class="amt num">+2 500 F</div>
+        </div>
+      </div>
+      <div class="reveal" style="animation-delay:.20s">
+        <div class="tx">
+          <div class="pv om">O<span class="ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="mid"><b>Fatou S.</b><small>Orange Money · 14:18</small></div>
+          <div class="amt num">+15 000 F</div>
+        </div>
+      </div>
+      <div class="reveal" style="animation-delay:.24s">
+        <div class="tx">
+          <div class="pv free">F<span class="ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="mid"><b>Ibrahima N.</b><small>Free Money · 13:55</small></div>
+          <div class="amt num">+1 000 F</div>
+        </div>
+      </div>
+      <div class="reveal" style="animation-delay:.28s">
+        <div class="tx">
+          <div class="pv wave">W<span class="ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="mid"><b>Aïssatou B.</b><small>Wave · 13:41</small></div>
+          <div class="amt num">+7 500 F</div>
+        </div>
+      </div>
+      <div class="reveal" style="animation-delay:.32s">
+        <div class="tx">
+          <div class="pv wave">W<span class="ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="mid"><b>Ousmane F.</b><small>Wave · 13:20</small></div>
+          <div class="amt num">+500 F</div>
+        </div>
+      </div>
+
+      <div class="tailspace"></div>
+    </div>
+  </div>
+
+  <script>
+    if (new URLSearchParams(location.search).has('static')) {
+      document.querySelectorAll('.reveal').forEach(function(e){e.style.animation='none';e.style.opacity='1';e.style.transform='none';});
+      // keep the pulse at its peak so the signature reads in a still
+      var p=document.querySelector('.pulse'); if(p){p.style.animation='none';p.style.opacity='.9';p.style.transform='scale(1)';}
+    }
+  </script>
+</body>
+</html>

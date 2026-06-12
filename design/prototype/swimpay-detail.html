@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SwimPay · Détail transaction</title>
+<!--
+  Hérite des TOKENS VERROUILLÉS (voir swimpay-home-v2.html). Caméléon = couleur du provider (ici Wave #1DC3E6).
+  Écran : Détail transaction / provenance — le moment de confiance.
+  Signature locale : la jauge Score de confiance (arc Caméléon) + la carte Provenance (preuve).
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/dm-sans/index.css" />
+<style>
+  :root{
+    --bg:#08080C; --surface:#141418; --active:#1E1E24;
+    --ink1:#F5F0EB; --ink2:#8A857E; --ink3:#5A5650;
+    --success:#2ECC71; --warn:#E67E22; --danger:#E74C3C;
+    --hair:rgba(245,240,235,.05); --hair-2:rgba(245,240,235,.08);
+    --accent:#1DC3E6; --accent-deep:#0D2D3A;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"DM Sans Variable","DM Sans",system-ui,sans-serif;background:#cfcfd6;
+    display:flex;justify-content:center;align-items:center;min-height:100vh;padding:40px 16px;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}.cur{font-weight:500;opacity:.85}
+
+  .device{width:390px;height:844px;border-radius:46px;position:relative;overflow:hidden;
+    background:radial-gradient(90% 42% at 50% -6%, color-mix(in srgb,var(--accent) 9%,transparent),transparent 60%),
+               radial-gradient(80% 40% at 80% 104%, color-mix(in srgb,var(--accent) 5%,transparent),transparent 55%), var(--bg);
+    box-shadow:0 50px 90px -30px rgba(0,0,0,.55),0 0 0 10px #050507,0 0 0 11px #1a1a20}
+  .screen{position:absolute;inset:0;border-radius:46px;overflow-y:auto;overflow-x:hidden;color:var(--ink1);padding:0 20px 120px}
+  .screen::-webkit-scrollbar{width:0}
+  .statusbar{height:47px;display:flex;align-items:center;justify-content:space-between;padding:0 6px;font-size:14px;font-weight:600}
+  .statusbar .ic{display:flex;gap:7px}.statusbar svg{width:17px;height:17px}
+  .reveal{opacity:0;transform:translateY(14px);animation:rise .32s cubic-bezier(.22,.61,.36,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 0 10px}
+  .cbtn{width:40px;height:40px;border-radius:50%;border:1px solid var(--hair-2);display:grid;place-items:center;background:transparent}
+  .cbtn svg{width:19px;height:19px;color:var(--ink1)}
+  .topbar .t{font-size:15px;font-weight:600;color:var(--ink1)}
+
+  /* identity + focal */
+  .idblock{display:flex;flex-direction:column;align-items:center;text-align:center;padding:14px 0 4px}
+  .pv{width:64px;height:64px;border-radius:20px;display:grid;place-items:center;font-size:26px;font-weight:800;color:#fff;
+    background:var(--accent);position:relative}
+  .pv .ring{position:absolute;inset:-5px;border-radius:24px;border:1.5px solid color-mix(in srgb,var(--accent) 45%,transparent)}
+  .idblock .who{font-size:17px;font-weight:650;margin-top:14px;letter-spacing:-.01em}
+  .idblock .from{font-size:12.5px;color:var(--ink2);font-weight:500;margin-top:3px}
+  .focal{font-size:44px;font-weight:700;letter-spacing:-.03em;margin:16px 0 0;white-space:nowrap}
+  .focal .cur{font-size:22px;color:var(--accent)}
+  .recv{display:inline-flex;align-items:center;gap:8px;margin-top:12px}
+  .chip{font-size:12px;font-weight:700;padding:5px 11px;border-radius:50px;display:inline-flex;align-items:center;gap:5px}
+  .chip.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+  .chip svg{width:13px;height:13px}
+  .recv .when{font-size:12.5px;color:var(--ink2);font-weight:500}
+
+  /* confidence gauge */
+  .confidence{margin-top:24px;background:var(--surface);border:1px solid var(--hair);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:18px}
+  .gauge{position:relative;width:84px;height:84px;flex:0 0 auto}
+  .gauge svg{transform:rotate(-90deg)}
+  .gauge .v{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .gauge .v b{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .gauge .v small{font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--ink2);text-transform:uppercase;margin-top:1px}
+  .confidence .ct b{font-size:15px;font-weight:650;display:block}
+  .confidence .ct p{font-size:12.5px;color:var(--ink2);font-weight:500;margin-top:4px;line-height:1.45}
+  .confidence .ct .lvl{color:var(--accent);font-weight:700}
+
+  /* provenance */
+  .sec{font-size:11.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink2);margin:24px 2px 12px}
+  .prov{background:var(--surface);border:1px solid var(--hair);border-radius:16px;overflow:hidden}
+  .prow{display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid var(--hair)}
+  .prow:last-child{border-bottom:0}
+  .pdot{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto}
+  .pdot.ok{background:color-mix(in srgb,var(--success) 16%,transparent)} .pdot.warn{background:color-mix(in srgb,var(--warn) 16%,transparent)}
+  .pdot svg{width:15px;height:15px}.pdot.ok svg{color:var(--success)}.pdot.warn svg{color:var(--warn)}
+  .prow .pt{flex:1}.prow .pt b{font-size:14px;font-weight:600}.prow .pt small{display:block;font-size:11.5px;color:var(--ink3);font-weight:500;margin-top:2px}
+  .prow .pv2{font-size:11.5px;font-weight:700;color:var(--ink2)}
+
+  /* journey */
+  .journey{display:flex;align-items:flex-start;justify-content:space-between;background:var(--surface);border:1px solid var(--hair);border-radius:16px;padding:16px 14px;position:relative}
+  .jstep{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;z-index:2}
+  .jstep .jd{width:14px;height:14px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent)}
+  .jstep.pending .jd{background:var(--surface);border:2px solid var(--ink3);box-shadow:none}
+  .jstep b{font-size:11px;font-weight:650;margin-top:8px}.jstep small{font-size:10px;color:var(--ink3);font-weight:500;margin-top:2px}
+  .jline{position:absolute;top:23px;left:42px;right:42px;height:2px;background:linear-gradient(90deg,var(--accent) 65%,var(--ink3) 65%);z-index:1;opacity:.5}
+
+  /* meta */
+  .meta{background:var(--surface);border:1px solid var(--hair);border-radius:16px;overflow:hidden}
+  .mrow{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--hair)}
+  .mrow:last-child{border-bottom:0}.mrow .k{font-size:13px;color:var(--ink2);font-weight:500}.mrow .v{font-size:13px;font-weight:600}
+
+  /* actions */
+  .actions{position:absolute;left:0;right:0;bottom:0;padding:14px 20px 26px;background:linear-gradient(180deg,transparent,var(--bg) 26%);display:flex;flex-direction:column;gap:9px}
+  .btn{height:52px;border-radius:14px;font-size:15px;font-weight:700;display:grid;place-items:center;border:0}
+  .btn.primary{background:var(--accent);color:#06181D}
+  .btn.ghost{background:transparent;border:1px solid var(--hair-2);color:var(--ink2);height:46px;font-size:14px}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="statusbar"><span>9:41</span><span class="ic">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h3v-7H2v7Zm5 0h3V10H7v12Zm5 0h3V4h-3v18Zm5 0h3v-9h-3v9Z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 13a11 11 0 0 1 14 0M8.5 16.5a6 6 0 0 1 7 0M12 20h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 26 24" fill="none"><rect x="2" y="7.5" width="19" height="9" rx="2.4" stroke="currentColor" stroke-width="1.6"/><rect x="3.6" y="9.2" width="13" height="5.6" rx="1" fill="currentColor"/><path d="M23 10.5v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </span></div>
+
+      <div class="topbar reveal" style="animation-delay:0s">
+        <button class="cbtn"><svg viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <span class="t">Transaction</span>
+        <button class="cbtn"><svg viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg></button>
+      </div>
+
+      <!-- identity + focal -->
+      <div class="idblock reveal" style="animation-delay:.05s">
+        <div class="pv">W<div class="ring"></div></div>
+        <div class="who">Mamadou Diallo</div>
+        <div class="from">Wave · Côte d'Ivoire · +225 ••• •• 47</div>
+        <div class="focal num">+15 000<span class="cur"> F CFA</span></div>
+        <div class="recv">
+          <span class="chip warn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>À vérifier</span>
+          <span class="when num">Reçu aujourd'hui · 14:32</span>
+        </div>
+      </div>
+
+      <!-- confidence -->
+      <div class="confidence reveal" style="animation-delay:.10s">
+        <div class="gauge">
+          <svg width="84" height="84" viewBox="0 0 84 84">
+            <circle cx="42" cy="42" r="36" fill="none" stroke="rgba(245,240,235,.07)" stroke-width="7"/>
+            <circle cx="42" cy="42" r="36" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="226" stroke-dashoffset="18"/>
+          </svg>
+          <div class="v"><b class="num">92</b><small>/ 100</small></div>
+        </div>
+        <div class="ct">
+          <b>Score de confiance</b>
+          <p><span class="lvl">Confiance élevée.</span> Montant, fenêtre et source vérifiés. Une référence à confirmer avant validation.</p>
+        </div>
+      </div>
+
+      <!-- provenance -->
+      <div class="sec reveal" style="animation-delay:.16s">Provenance</div>
+      <div class="prov reveal" style="animation-delay:.18s">
+        <div class="prow"><div class="pdot ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="pt"><b>Montant exact</b><small>15 000 F attendu = 15 000 F reçu</small></div><div class="pv2">Exact</div></div>
+        <div class="prow"><div class="pdot ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="pt"><b>Fenêtre temporelle</b><small>Reçu 2 min après la commande</small></div><div class="pv2">Dans la fenêtre</div></div>
+        <div class="prow"><div class="pdot ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="pt"><b>Source de confiance</b><small>Notification Wave · app vérifiée</small></div><div class="pv2">Wave ✓</div></div>
+        <div class="prow"><div class="pdot ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="pt"><b>Aucune collision</b><small>Aucun autre paiement du même montant</small></div><div class="pv2">Unique</div></div>
+        <div class="prow"><div class="pdot warn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></div><div class="pt"><b>Référence</b><small>« CMD482 » partiel — attendu « CMD-4821 »</small></div><div class="pv2" style="color:var(--warn)">Partielle</div></div>
+      </div>
+
+      <!-- journey -->
+      <div class="sec reveal" style="animation-delay:.22s">Parcours</div>
+      <div class="journey reveal" style="animation-delay:.24s">
+        <div class="jline"></div>
+        <div class="jstep"><div class="jd"></div><b>Captée</b><small>14:32:04</small></div>
+        <div class="jstep"><div class="jd"></div><b>Rapprochée</b><small>14:32:05</small></div>
+        <div class="jstep pending"><div class="jd"></div><b>Validation</b><small>en attente</small></div>
+      </div>
+
+      <!-- meta -->
+      <div class="sec reveal" style="animation-delay:.28s">Détails</div>
+      <div class="meta reveal" style="animation-delay:.30s">
+        <div class="mrow"><span class="k">Référence commande</span><span class="v num">CMD-4821</span></div>
+        <div class="mrow"><span class="k">Canal reçu</span><span class="v">Wave (app)</span></div>
+        <div class="mrow"><span class="k">Identifiant</span><span class="v num">wv_9f3a…71c4</span></div>
+        <div class="mrow"><span class="k">Portefeuille</span><span class="v">Wave · •• 7782</span></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary">Confirmer le paiement</button>
+      <button class="btn ghost">Rejeter</button>
+    </div>
+  </div>
+
+  <script>
+    if (new URLSearchParams(location.search).has('static')) {
+      document.querySelectorAll('.reveal').forEach(function(e){e.style.animation='none';e.style.opacity='1';e.style.transform='none';});
+    }
+  </script>
+</body>
+</html>
