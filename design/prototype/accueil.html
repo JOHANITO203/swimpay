@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SwimPay · Accueil — prototype</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/hanken-grotesk@5.1.0/index.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/fraunces@5.1.0/index.min.css" />
+<style>
+  :root{
+    /* warm paper neobank palette — dominant ink, emerald (reçu), coral (à traiter) */
+    --paper:#F6F3EC;        --paper-2:#EFEAE0;
+    --card:#FFFFFF;         --hair:#E7E1D5;
+    --ink:#17140F;          --ink-2:#4B463D;     --muted:#938B7C;
+    --emerald:#0E7B57;      --emerald-soft:#E4F1E9;
+    --coral:#F0532E;        --coral-soft:#FCE8E1;
+    --gold:#B8862F;
+    --r-lg:30px; --r-md:22px; --r-sm:15px;
+    --shadow:0 1px 2px rgba(23,20,15,.04), 0 8px 24px -12px rgba(23,20,15,.16);
+    --shadow-soft:0 1px 2px rgba(23,20,15,.03), 0 4px 14px -10px rgba(23,20,15,.12);
+    font-synthesis:none;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Hanken Grotesk Variable",system-ui,sans-serif;
+    background:
+      radial-gradient(120% 80% at 80% -10%, #FBF8F2 0%, transparent 60%),
+      radial-gradient(90% 60% at 0% 110%, #EFE7D8 0%, transparent 55%),
+      var(--paper);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;padding:40px 16px;
+    font-feature-settings:"ss01","cv01";
+  }
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum","ss01"}
+
+  /* phone frame */
+  .phone{
+    width:390px;min-height:844px;border-radius:46px;background:var(--paper);
+    box-shadow:0 2px 6px rgba(23,20,15,.08), 0 40px 80px -30px rgba(23,20,15,.45),
+               0 0 0 9px #14110C, 0 0 0 10px #2A2620;
+    position:relative;overflow:hidden;
+  }
+  .screen{position:absolute;inset:0;border-radius:38px;overflow-y:auto;overflow-x:hidden;padding:0 20px 120px}
+  .screen::-webkit-scrollbar{width:0}
+  .notch{height:54px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px}
+  .notch .pill{width:120px;height:30px;background:#14110C;border-radius:20px}
+
+  .reveal{opacity:0;transform:translateY(14px);animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+
+  /* top bar */
+  .top{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 18px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .mark{width:40px;height:40px;border-radius:13px;background:linear-gradient(145deg,#1d1a14,#3a342a);
+    display:grid;place-items:center;color:#F6F3EC;box-shadow:var(--shadow-soft);position:relative}
+  .mark svg{width:21px;height:21px}
+  .brand b{font-size:16px;letter-spacing:-.01em;font-weight:700}
+  .brand small{display:block;color:var(--muted);font-size:11.5px;font-weight:600;letter-spacing:.02em;margin-top:1px}
+  .bell{width:42px;height:42px;border-radius:14px;background:var(--card);border:1px solid var(--hair);
+    display:grid;place-items:center;box-shadow:var(--shadow-soft);position:relative}
+  .bell svg{width:19px;height:19px;color:var(--ink-2)}
+  .bell .dot{position:absolute;top:11px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--coral);border:2px solid var(--card)}
+
+  /* hero — reçu ce mois */
+  .hero{padding:6px 4px 22px}
+  .hero .label{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:13px;font-weight:600;letter-spacing:.01em}
+  .hero .label .live{width:7px;height:7px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 0 rgba(14,123,87,.5);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(14,123,87,.45)}70%{box-shadow:0 0 0 9px rgba(14,123,87,0)}100%{box-shadow:0 0 0 0 rgba(14,123,87,0)}}
+  .amount{font-family:"Fraunces Variable",serif;font-weight:540;font-size:46px;line-height:1.0;letter-spacing:-.02em;margin:13px 0 2px;display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+  .amount .cur{font-size:20px;font-weight:500;color:var(--muted);font-family:"Hanken Grotesk Variable";letter-spacing:.01em}
+  .hero .sub{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-size:13.5px;font-weight:500;margin-top:8px}
+  .delta{display:inline-flex;align-items:center;gap:4px;color:var(--emerald);background:var(--emerald-soft);
+    font-weight:700;font-size:12.5px;padding:3px 9px 3px 7px;border-radius:50px}
+  .delta svg{width:13px;height:13px}
+  .dotsep{width:3px;height:3px;border-radius:50%;background:var(--muted);opacity:.6}
+
+  .sectionhead{display:flex;align-items:baseline;justify-content:space-between;margin:26px 4px 13px}
+  .sectionhead h2{font-size:12px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;color:var(--muted)}
+  .sectionhead a{font-size:12.5px;font-weight:600;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:3px}
+  .sectionhead a svg{width:13px;height:13px}
+
+  /* wallet rail */
+  .rail{display:flex;gap:13px;overflow-x:auto;padding:2px 4px 8px;margin:0 -20px;padding-left:20px;padding-right:20px;scroll-snap-type:x mandatory}
+  .rail::-webkit-scrollbar{height:0}
+  .wallet{scroll-snap-align:start;flex:0 0 188px;border-radius:var(--r-md);padding:17px 17px 16px;color:#F6F3EC;position:relative;overflow:hidden;box-shadow:var(--shadow);min-height:138px;display:flex;flex-direction:column;justify-content:space-between}
+  .wallet.wave{background:linear-gradient(160deg,#1AA0E6 0%,#0E6FB0 100%)}
+  .wallet.sber{background:linear-gradient(160deg,#1F1D1A 0%,#3b372f 100%)}
+  .wallet.wise{background:linear-gradient(160deg,#163F2E 0%,#0E7B57 100%)}
+  .wallet .sheen{position:absolute;inset:0;background:radial-gradient(80% 60% at 85% 0%,rgba(255,255,255,.22),transparent 60%);pointer-events:none}
+  .wallet .wtop{display:flex;align-items:center;justify-content:space-between;position:relative}
+  .wlogo{width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.16);backdrop-filter:blur(4px);display:grid;place-items:center;font-weight:800;font-size:15px;border:1px solid rgba(255,255,255,.22)}
+  .wallet .chip{font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:3px 8px;border-radius:50px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2)}
+  .wallet .wname{position:relative;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+  .wallet .wid{position:relative;font-size:12px;font-weight:500;opacity:.78;margin-top:2px;letter-spacing:.04em}
+  .wallet .wamt{position:relative;font-size:19px;font-weight:800;margin-top:11px;letter-spacing:-.02em}
+  .wallet .wamt small{font-size:12px;font-weight:600;opacity:.7;margin-left:3px}
+  .wallet.add{background:var(--card);color:var(--ink);border:1.5px dashed var(--hair);box-shadow:none;align-items:center;justify-content:center;flex-direction:column;gap:9px;flex-basis:122px}
+  .wallet.add .plus{width:42px;height:42px;border-radius:14px;background:var(--paper-2);display:grid;place-items:center}
+  .wallet.add .plus svg{width:20px;height:20px;color:var(--ink)}
+  .wallet.add span{font-size:12.5px;font-weight:700;color:var(--ink-2)}
+
+  /* à traiter */
+  .totreat{margin-top:6px;border-radius:var(--r-md);background:linear-gradient(180deg,#FFF7F3,#FCEDE6);border:1px solid #F6D8CB;padding:15px 16px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow-soft)}
+  .totreat .ico{width:44px;height:44px;border-radius:14px;background:#fff;display:grid;place-items:center;box-shadow:var(--shadow-soft);flex:0 0 auto}
+  .totreat .ico svg{width:21px;height:21px;color:var(--coral)}
+  .totreat .tt{flex:1}
+  .totreat .tt b{font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+  .totreat .tt p{font-size:12.5px;color:var(--ink-2);margin-top:2px;font-weight:500}
+  .totreat .go{font-size:12.5px;font-weight:700;color:#fff;background:var(--coral);padding:9px 14px;border-radius:50px;box-shadow:0 6px 14px -6px rgba(240,83,46,.6);white-space:nowrap}
+
+  /* payments list */
+  .pay{display:flex;align-items:center;gap:13px;padding:13px 4px;border-bottom:1px solid var(--hair)}
+  .pay:last-child{border-bottom:0}
+  .plogo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:15px;color:#fff;flex:0 0 auto;box-shadow:var(--shadow-soft)}
+  .plogo.w{background:linear-gradient(150deg,#1AA0E6,#0E6FB0)} .plogo.o{background:linear-gradient(150deg,#FF7A00,#F25C00)} .plogo.s{background:linear-gradient(150deg,#2a2620,#46403400)} .plogo.s{background:#1F1D1A}
+  .pay .pmid{flex:1;min-width:0}
+  .pay .pmid b{font-size:14.5px;font-weight:650;letter-spacing:-.01em;display:block}
+  .pay .pmid .meta{display:flex;align-items:center;gap:7px;margin-top:3px}
+  .pv{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 7px 2px 6px;border-radius:50px}
+  .pv.ok{color:var(--emerald);background:var(--emerald-soft)} .pv.rev{color:#9A6712;background:#F7EDD6}
+  .pv svg{width:11px;height:11px}
+  .pay .meta small{color:var(--muted);font-size:11.5px;font-weight:500}
+  .pay .pright{text-align:right;flex:0 0 auto}
+  .pay .pright b{font-size:15.5px;font-weight:750;color:var(--emerald);letter-spacing:-.01em}
+  .pay .pright small{display:block;color:var(--muted);font-size:11px;font-weight:500;margin-top:2px}
+
+  .group{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 4px 4px}
+
+  /* bottom nav */
+  .nav{position:absolute;left:14px;right:14px;bottom:14px;height:66px;background:rgba(255,255,255,.82);backdrop-filter:blur(16px) saturate(1.3);border:1px solid var(--hair);border-radius:24px;display:flex;align-items:center;justify-content:space-around;box-shadow:0 10px 30px -12px rgba(23,20,15,.3)}
+  .nav a{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:10.5px;font-weight:600;text-decoration:none}
+  .nav a svg{width:22px;height:22px}
+  .nav a.on{color:var(--ink)}
+  .nav a.on .ni{position:relative}
+  .nav a.on .ni::after{content:"";position:absolute;left:50%;transform:translateX(-50%);bottom:-9px;width:5px;height:5px;border-radius:50%;background:var(--emerald)}
+
+  .wallet,.bell,.totreat .go,.wallet.add{transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s}
+  .wallet:active{transform:scale(.98)}
+  .caption{position:fixed;bottom:14px;left:0;right:0;text-align:center;color:#9b9race;color:#a59c8c;font-size:12px;font-weight:500}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="screen">
+      <div class="notch"><div class="pill"></div></div>
+
+      <!-- top bar -->
+      <div class="top reveal" style="animation-delay:.02s">
+        <div class="brand">
+          <div class="mark">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 14c2.2 0 2.2 2 4.4 2s2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 2.8-2" stroke="#F6F3EC" stroke-width="2" stroke-linecap="round"/><path d="M4 9c2.2 0 2.2 2 4.4 2s2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 2.8-2" stroke="#F6F3EC" stroke-width="2" stroke-linecap="round" opacity=".55"/></svg>
+          </div>
+          <div><b>SwimPay</b><small>Boutique Awa · Marchand</small></div>
+        </div>
+        <div class="bell"><div class="dot"></div><svg viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+      </div>
+
+      <!-- hero -->
+      <div class="hero reveal" style="animation-delay:.10s">
+        <div class="label"><span class="live"></span> Reçu ce mois</div>
+        <div class="amount num">2 480 000 <span class="cur">FCFA</span></div>
+        <div class="sub">
+          <span class="delta"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14l5-5 5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>+18%</span>
+          <span class="num">312 paiements</span><span class="dotsep"></span><span>98% vérifiés</span>
+        </div>
+      </div>
+
+      <!-- wallets -->
+      <div class="sectionhead reveal" style="animation-delay:.16s">
+        <h2>Portefeuilles de réception</h2>
+        <a href="#">Tout voir <svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      </div>
+      <div class="rail reveal" style="animation-delay:.20s">
+        <div class="wallet wave">
+          <div class="sheen"></div>
+          <div class="wtop"><div class="wlogo">W</div><span class="chip">Détection active</span></div>
+          <div>
+            <div class="wname">Wave</div><div class="wid num">•• 7782 · Côte d'Ivoire</div>
+            <div class="wamt num">1 248 500 <small>FCFA</small></div>
+          </div>
+        </div>
+        <div class="wallet sber">
+          <div class="sheen"></div>
+          <div class="wtop"><div class="wlogo">С</div><span class="chip">Détection active</span></div>
+          <div>
+            <div class="wname">Sberbank</div><div class="wid num">•• 4521 · Carte</div>
+            <div class="wamt num">842 000 <small>RUB</small></div>
+          </div>
+        </div>
+        <div class="wallet wise">
+          <div class="sheen"></div>
+          <div class="wtop"><div class="wlogo">w</div><span class="chip">Détection active</span></div>
+          <div>
+            <div class="wname">Wise</div><div class="wid num">•• 6480 · USD</div>
+            <div class="wamt num">3 920 <small>USD</small></div>
+          </div>
+        </div>
+        <div class="wallet add">
+          <div class="plus"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+          <span>Ajouter</span>
+        </div>
+      </div>
+
+      <!-- à traiter -->
+      <div class="sectionhead reveal" style="animation-delay:.26s"><h2>À traiter</h2></div>
+      <div class="totreat reveal" style="animation-delay:.30s">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/></svg></div>
+        <div class="tt"><b class="num">3 paiements en revue</b><p>Référence partielle — vérifie la provenance</p></div>
+        <div class="go">Examiner</div>
+      </div>
+
+      <!-- payments -->
+      <div class="sectionhead reveal" style="animation-delay:.36s">
+        <h2>Paiements reçus</h2>
+        <a href="#">Activité <svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      </div>
+      <div class="group reveal" style="animation-delay:.40s">Aujourd'hui</div>
+      <div class="reveal" style="animation-delay:.42s">
+        <div class="pay">
+          <div class="plogo w">W</div>
+          <div class="pmid"><b>Aminata D.</b><div class="meta"><span class="pv ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Vérifié</span><small>Wave · réf. exacte</small></div></div>
+          <div class="pright"><b class="num">+45 000 FCFA</b><small>09:42</small></div>
+        </div>
+        <div class="pay">
+          <div class="plogo o">O</div>
+          <div class="pmid"><b>Koffi B.</b><div class="meta"><span class="pv ok"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Vérifié</span><small>Orange Money</small></div></div>
+          <div class="pright"><b class="num">+62 500 FCFA</b><small>08:15</small></div>
+        </div>
+        <div class="pay">
+          <div class="plogo s">w</div>
+          <div class="pmid"><b>James P.</b><div class="meta"><span class="pv rev"><svg viewBox="0 0 24 24" fill="none"><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/></svg>En revue</span><small>Wise · USD</small></div></div>
+          <div class="pright"><b class="num">+680 USD</b><small>07:58</small></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- bottom nav -->
+    <div class="nav">
+      <a class="on" href="#"><span class="ni"><svg viewBox="0 0 24 24" fill="none"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Accueil</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Activité</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/></svg>Moyens</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Profil</a>
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('static')) {
+      document.querySelectorAll('.reveal').forEach(function(e){
+        e.style.animation='none'; e.style.opacity='1'; e.style.transform='none';
+      });
+    }
+  </script>
+</body>
+</html>
