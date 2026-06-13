@@ -656,7 +656,9 @@ fun PremiumMerchantApp(
                         dashboardState,
                         onOpenReviews = { route = PremiumRoute.Main(PremiumMainTab.Reviews) },
                         onOpenBusiness = { route = PremiumRoute.Main(PremiumMainTab.Business) },
-                        language = merchantSettings.language
+                        language = merchantSettings.language,
+                        notificationAccessEnabled = notificationAccessEnabled,
+                        onOpenNotificationSettings = onOpenNotificationSettings
                     )
                     PremiumMainTab.Reviews -> PremiumReviewsScreen(
                         state = reviewsState,
@@ -743,6 +745,7 @@ fun PremiumMerchantApp(
                         configuration = configurationState,
                         merchantProfile = currentMerchantProfileUiState(),
                         language = merchantSettings.language,
+                        notificationAccessEnabled = notificationAccessEnabled,
                         onNavigate = navigateFromMenu
                     )
                 }

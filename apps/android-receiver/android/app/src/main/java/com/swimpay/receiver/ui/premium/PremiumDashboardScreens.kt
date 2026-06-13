@@ -121,16 +121,83 @@ fun PremiumDashboardScreen(
     state: PremiumScreenState<PremiumDashboardUiState> = PremiumScreenState.content(PremiumDashboardUiState.preview()),
     onOpenReviews: () -> Unit = {},
     onOpenBusiness: () -> Unit = {},
-    language: PremiumLanguageOption = PremiumLanguageOption.FR
+    language: PremiumLanguageOption = PremiumLanguageOption.FR,
+    notificationAccessEnabled: Boolean = true,
+    onOpenNotificationSettings: () -> Unit = {}
 ) {
     when (state) {
         is PremiumScreenState.Content -> PremiumDashboardContent(
             state.value,
             onOpenReviews = onOpenReviews,
             onOpenBusiness = onOpenBusiness,
-            language = language
+            language = language,
+            notificationAccessEnabled = notificationAccessEnabled,
+            onOpenNotificationSettings = onOpenNotificationSettings
         )
         else -> PremiumStateList(state, language)
+    }
+}
+
+// Robustesse : si l'OS a coupé l'accès aux notifications, le listener ne reçoit plus
+// rien → SwimPay ne détecte aucun paiement. On le SIGNALE en haut de l'Accueil avec
+// un bouton qui ouvre directement le réglage système d'accès aux notifications.
+@Composable
+private fun NoirNotificationAccessBanner(
+    language: PremiumLanguageOption,
+    onReactivate: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(NoirColors.danger.copy(alpha = 0.12f))
+            .border(1.dp, NoirColors.danger.copy(alpha = 0.40f), RoundedCornerShape(20.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(NoirColors.danger.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Notifications, null, tint = NoirColors.danger, modifier = Modifier.size(22.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    language.ui("Détection en pause"),
+                    color = NoirColors.ink1,
+                    style = NoirTextStyle.Label.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                )
+                Text(
+                    language.ui("L'accès aux notifications est désactivé — SwimPay ne peut plus repérer les paiements entrants."),
+                    color = NoirColors.ink2,
+                    style = NoirTextStyle.Micro.copy(fontSize = 12.sp, lineHeight = 16.sp),
+                    modifier = Modifier.padding(top = 3.dp)
+                )
+            }
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(NoirColors.danger)
+                .premiumTap(onReactivate)
+                .padding(vertical = 13.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Notifications, null, tint = NoirColors.bg, modifier = Modifier.size(17.dp))
+            Text(
+                language.ui("Réactiver l'accès"),
+                color = NoirColors.bg,
+                style = NoirTextStyle.Label.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(start = 7.dp)
+            )
+        }
     }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,7 +222,9 @@ private fun PremiumDashboardContent(
     state: PremiumDashboardUiState,
     onOpenReviews: () -> Unit,
     onOpenBusiness: () -> Unit,
-    language: PremiumLanguageOption
+    language: PremiumLanguageOption,
+    notificationAccessEnabled: Boolean = true,
+    onOpenNotificationSettings: () -> Unit = {}
 ) {
     // Page 0 = agrégat réel « Reçu ce mois » (monthlyAmount). Les pages suivantes
     // sont les moyens de réception réels (identité seule, sans montant inventé).
@@ -217,6 +286,15 @@ private fun PremiumDashboardContent(
                 contentPadding = PaddingValues(bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(NoirSpacing.Item)
             ) {
+                if (!notificationAccessEnabled) {
+                    item {
+                        NoirNotificationAccessBanner(
+                            language = language,
+                            onReactivate = onOpenNotificationSettings,
+                            modifier = Modifier.padding(horizontal = NoirSpacing.Screen).padding(top = 8.dp)
+                        )
+                    }
+                }
                 item {
                     NoirHomeHeader(
                         language = language,
@@ -1327,6 +1405,7 @@ fun PremiumSettingsScreen(
     configuration: PremiumScreenState<PremiumConfigurationUiState> = PremiumScreenState.content(PremiumConfigurationUiState.preview()),
     merchantProfile: PremiumMerchantProfileUiState = PremiumMerchantProfileUiState(),
     language: PremiumLanguageOption = PremiumLanguageOption.FR,
+    notificationAccessEnabled: Boolean = true,
     onNavigate: (PremiumRoute) -> Unit = {}
 ) {
     val copy = PremiumLocalizedCopy.forLanguage(language)
@@ -1367,7 +1446,12 @@ fun PremiumSettingsScreen(
         // APPAREIL
         item {
             SettingsGroup(language.ui("Appareil"), rows = listOf(
-                SettingsRowSpec.Pill(Icons.Default.Notifications, language.ui("Accès aux notifications"), language.ui("Actif"), SettingsPillTone.Success) { onNavigate(PremiumNavigation.openReceiverHealth()) },
+                SettingsRowSpec.Pill(
+                    Icons.Default.Notifications,
+                    language.ui("Accès aux notifications"),
+                    if (notificationAccessEnabled) language.ui("Actif") else language.ui("Action requise"),
+                    if (notificationAccessEnabled) SettingsPillTone.Success else SettingsPillTone.Warn
+                ) { onNavigate(PremiumNavigation.openReceiverHealth()) },
                 SettingsRowSpec.Toggle(Icons.Default.PhoneAndroid, language.ui("Capture de signaux"), checked = true),
                 SettingsRowSpec.Value(Icons.Default.Link, language.ui("Appareils liés"), "2") { onNavigate(PremiumNavigation.openReceiverHealth()) }
             ))
@@ -3917,7 +4001,7 @@ private fun PremiumStandaloneStateScreen(
     }
 }
 
-private enum class SettingsPillTone { Success, Ink }
+private enum class SettingsPillTone { Success, Ink, Warn }
 
 private sealed interface SettingsRowSpec {
     val icon: ImageVector
@@ -3956,6 +4040,7 @@ private fun SettingsPill(text: String, tone: SettingsPillTone, icon: ImageVector
     val foreground = when (tone) {
         SettingsPillTone.Success -> PremiumColors.Success
         SettingsPillTone.Ink -> PremiumColors.Ink
+        SettingsPillTone.Warn -> PremiumColors.Warning
     }
     Surface(
         color = foreground.copy(alpha = 0.12f),
