@@ -180,6 +180,56 @@ class ReceivingMethodAddFlowCatalogTest {
         assertNotNull(ReceivingCatalog.allMethods.first { it.bankProfileId == "mtn_momo_ci" }.notificationPackage)
     }
 
+    @Test
+    fun addPillRoutesToTheUnifiedFlowNotWestAfricaOnly() {
+        // ROOT-CAUSE GUARD: the prominent "+ Ajouter" pill must open the UNIFIED add
+        // flow (all regions), not be hardwired to West-Africa mobile money — the bug
+        // where tapping Add only ever offered mobile wallets.
+        val chooser = sourceBetween(
+            dashboardSource,
+            "fun PremiumReceivingMethodFamilyChooser",
+            "private fun ReceivingAddPill"
+        )
+        assertTrue(
+            "The + Ajouter pill must route to the unified add flow (ALL)",
+            chooser.contains("ReceivingAddPill(language) { onPick(ReceivingMethodFamily.ALL) }")
+        )
+        assertFalse(
+            "The + Ajouter pill must no longer be hardwired to West-Africa only",
+            chooser.contains("onPick(ReceivingMethodFamily.WEST_AFRICA)")
+        )
+    }
+
+    @Test
+    fun hubRoutesTheUnifiedFamilyToTheUnifiedAddScreen() {
+        val hub = sourceBetween(
+            dashboardSource,
+            "when (family) {",
+            "fun PremiumUnifiedAddMethodScreen"
+        )
+        assertTrue(
+            "The hub must route the ALL family to PremiumUnifiedAddMethodScreen",
+            hub.contains("ReceivingMethodFamily.ALL -> PremiumUnifiedAddMethodScreen")
+        )
+    }
+
+    @Test
+    fun unifiedAddScreenGroupsEveryRegionFromTheUnifiedCatalog() {
+        // The unified screen must source the single catalog and group it by EVERY
+        // region, and submit with the provider's own catalog method type so the input
+        // adapts (phone for mobile money, card for the card-rail banks).
+        val screen = sourceBetween(
+            dashboardSource,
+            "fun PremiumUnifiedAddMethodScreen",
+            "private fun UnifiedAddProviderRow"
+        )
+        assertTrue("unified screen must source the unified catalog", screen.contains("ReceivingCatalog.allMethods"))
+        assertTrue("unified screen must list the West-Africa region", screen.contains("ReceivingRegion.WEST_AFRICA"))
+        assertTrue("unified screen must list the International region", screen.contains("ReceivingRegion.INTERNATIONAL"))
+        assertTrue("unified screen must list the Russian region", screen.contains("ReceivingRegion.RU"))
+        assertTrue("unified screen must submit with the provider's own method type", screen.contains("type = entry.methodType"))
+    }
+
     private fun sourceBetween(source: String, startMarker: String, endMarker: String): String {
         val start = source.indexOf(startMarker)
         assertTrue("start marker not found: $startMarker", start >= 0)

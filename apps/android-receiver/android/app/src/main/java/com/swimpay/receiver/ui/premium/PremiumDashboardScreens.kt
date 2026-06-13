@@ -1761,7 +1761,7 @@ fun PremiumReceivingMethodsStateScreen(
     }
 }
 
-private enum class ReceivingMethodFamily { RUSSIAN, WEST_AFRICA, INTERNATIONAL }
+private enum class ReceivingMethodFamily { RUSSIAN, WEST_AFRICA, INTERNATIONAL, ALL }
 
 /**
  * Receiving-methods hub: a family chooser (Russian banking / West Africa mobile
@@ -1804,6 +1804,15 @@ fun PremiumReceivingMethodsHub(
             onBack = { family = null },
             language = language
         )
+        // The prominent "+ Ajouter" pill lands here: ONE add flow listing every
+        // provider (WA mobile money + INT neobanks + RU banks) grouped by region.
+        ReceivingMethodFamily.ALL -> PremiumUnifiedAddMethodScreen(
+            clearDraftSignal = clearDraftSignal,
+            actionMessage = actionMessage,
+            onSaveDraft = onSaveDraft,
+            onBack = { family = null },
+            language = language
+        )
         ReceivingMethodFamily.WEST_AFRICA -> PremiumWestAfricaReceivingScreen(
             state = state,
             clearDraftSignal = clearDraftSignal,
@@ -1815,6 +1824,189 @@ fun PremiumReceivingMethodsHub(
             onBack = { family = null },
             language = language
         )
+    }
+}
+
+/**
+ * Unified "add a receiving method" flow — the destination of the prominent
+ * "+ Ajouter" pill. Lists EVERY provider from the single-source
+ * [ReceivingCatalog.allMethods], grouped by region (West-Africa mobile money,
+ * International neobanks, Russian banks), so a merchant adds ANY method from one
+ * place instead of being forced into a single region. Picking a provider reveals an
+ * input that adapts to that provider's [ReceivingMethodType] (phone for mobile
+ * money, card for the card-rail banks) and submits with that exact type. No data is
+ * invented: rows are the real addable catalog, with official logos via bankProfileId.
+ */
+@Composable
+fun PremiumUnifiedAddMethodScreen(
+    clearDraftSignal: Int = 0,
+    actionMessage: String? = null,
+    onSaveDraft: (MerchantReceivingMethodSubmission) -> Unit = {},
+    onBack: (() -> Unit)? = null,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
+) {
+    val catalog = ReceivingCatalog.allMethods
+    val sections: List<Pair<ReceivingRegion, String>> = listOf(
+        ReceivingRegion.WEST_AFRICA to "Mobile Money (Afrique de l'Ouest)",
+        ReceivingRegion.INTERNATIONAL to "International",
+        ReceivingRegion.RU to "Russie"
+    )
+    var selectedId by remember { mutableStateOf("") }
+    var identifierInput by remember { mutableStateOf("") }
+    LaunchedEffect(clearDraftSignal) {
+        if (clearDraftSignal > 0) {
+            selectedId = ""
+            identifierInput = ""
+        }
+    }
+    val selected = catalog.firstOrNull { it.bankProfileId == selectedId }
+    val isMobileMoney = selected?.methodType == ReceivingMethodType.MOBILE_MONEY
+    val isValid = selected != null && identifierInput.isNotBlank()
+    val accent = if (isValid) PremiumColors.Success else PremiumColors.Teal
+
+    LazyColumn(
+        Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+        contentPadding = PaddingValues(bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        onBack?.let { back ->
+            item { ReceivingMethodBreadcrumb(language.ui("Portefeuilles de réception"), back) }
+        }
+        item {
+            Text(language.ui("Ajouter un moyen de réception"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text(
+                language.ui("Choisissez le fournisseur sur lequel vos clients vous paient — mobile money, néobanque ou banque — puis saisissez la destination."),
+                color = PremiumColors.PageMuted,
+                fontSize = 14.sp,
+                lineHeight = 20.sp
+            )
+        }
+        actionMessage?.takeIf { it.isNotBlank() }?.let { message ->
+            item { ReceivingMethodFeedbackBanner(message) }
+        }
+        sections.forEach { (region, label) ->
+            val entries = catalog.filter { it.region == region }
+            if (entries.isNotEmpty()) {
+                item(key = "section_$region") {
+                    Text(
+                        language.ui(label).uppercase(),
+                        color = PremiumColors.SoftText,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+                items(entries, key = { it.bankProfileId }) { entry ->
+                    UnifiedAddProviderRow(
+                        entry = entry,
+                        selected = entry.bankProfileId == selectedId,
+                        onClick = {
+                            selectedId = entry.bankProfileId
+                            identifierInput = ""
+                        }
+                    )
+                }
+            }
+        }
+        selected?.let { entry ->
+            item(key = "draft_${entry.bankProfileId}") {
+                PremiumCard(Modifier.fillMaxWidth(), radius = 28.dp, color = PremiumColors.Surface) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            PremiumBankLogo(bankProfileId = entry.bankProfileId, displayName = entry.displayName, size = 40.dp)
+                            Column(Modifier.weight(1f)) {
+                                Text(entry.displayName, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    language.ui(if (isMobileMoney) "Numéro mobile money marchand" else "Carte ou compte marchand"),
+                                    color = PremiumColors.Muted,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                        OutlinedTextField(
+                            value = identifierInput,
+                            onValueChange = { identifierInput = it },
+                            label = { Text(language.ui(if (isMobileMoney) "Numéro de téléphone" else "Numéro de carte")) },
+                            placeholder = { Text(if (isMobileMoney) "Ex. +225 07 ** ** ** 00" else "Ex. 4276 **** 5421") },
+                            leadingIcon = {
+                                Icon(if (isMobileMoney) Icons.Default.PhoneAndroid else Icons.Default.CreditCard, null, tint = accent)
+                            },
+                            supportingText = {
+                                Text(
+                                    language.ui("Seule la version masquée sera affichée dans l'app."),
+                                    color = PremiumColors.Muted,
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp
+                                )
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = accent,
+                                unfocusedBorderColor = PremiumColors.Line,
+                                focusedLabelColor = accent,
+                                cursorColor = accent
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                        PremiumPrimaryButton(
+                            language.ui("Enregistrer le moyen de réception"),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = isValid
+                        ) {
+                            val submission = MerchantReceivingMethodDraft(
+                                bankProfileId = entry.bankProfileId,
+                                type = entry.methodType,
+                                rawIdentifierInput = identifierInput
+                            ).toSubmission()
+                            onSaveDraft(submission)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UnifiedAddProviderRow(
+    entry: ReceivingMethodCatalogEntry,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(if (selected) PremiumColors.IconTile else PremiumColors.Surface, shape)
+            .border(1.dp, if (selected) PremiumColors.Teal.copy(alpha = 0.62f) else PremiumColors.Line.copy(alpha = 0.72f), shape)
+            .premiumTap(onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        PremiumBankLogo(bankProfileId = entry.bankProfileId, displayName = entry.displayName, size = 40.dp)
+        Text(
+            entry.displayName,
+            color = PremiumColors.Ink,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            Modifier
+                .size(20.dp)
+                .background(if (selected) PremiumColors.Teal else Color.Transparent, CircleShape)
+                .border(1.5.dp, if (selected) PremiumColors.Teal else PremiumColors.Line, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (selected) Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(14.dp))
+        }
     }
 }
 
@@ -1859,7 +2051,7 @@ private fun PremiumReceivingMethodFamilyChooser(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f).padding(end = 12.dp)
                 )
-                ReceivingAddPill(language) { onPick(ReceivingMethodFamily.WEST_AFRICA) }
+                ReceivingAddPill(language) { onPick(ReceivingMethodFamily.ALL) }
             }
         }
         item {
