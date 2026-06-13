@@ -14,6 +14,7 @@ import com.swimpay.receiver.MerchantConfigurationTestOutcome
 import com.swimpay.receiver.MerchantConnectedSiteApiRepository
 import com.swimpay.receiver.MerchantDashboardApiRepository
 import com.swimpay.receiver.MerchantDashboardMetricsSummary
+import com.swimpay.receiver.MerchantFxRatesApiRepository
 import com.swimpay.receiver.MerchantDeveloperIntegrationApiRepository
 import com.swimpay.receiver.MerchantDeveloperIntegrationResult
 import com.swimpay.receiver.MerchantDeveloperIntegrationSnapshot
@@ -338,6 +339,39 @@ data class PremiumReceiverHealthUiState(
     }
 }
 
+/** One live reference-rate row for the currency-comparison screen. */
+data class PremiumFxRateRowUiState(
+    val currency: String,
+    val symbol: String,
+    val rateValue: Double,
+    val rateLabel: String,
+    val sourceLabel: String,
+    val freshnessLabel: String,
+    val available: Boolean
+)
+
+data class PremiumFxRatesUiState(
+    val base: String,
+    val baseSymbol: String,
+    val rows: List<PremiumFxRateRowUiState>,
+    val availableBases: List<String> = listOf("USD", "RUB", "XOF", "EUR")
+) {
+    fun visibleTexts(): List<String> =
+        listOf(base) + rows.flatMap { listOf(it.currency, it.rateLabel, it.sourceLabel, it.freshnessLabel) }
+
+    companion object {
+        fun preview(): PremiumFxRatesUiState = PremiumFxRatesUiState(
+            base = "USD",
+            baseSymbol = "$",
+            rows = listOf(
+                PremiumFxRateRowUiState("RUB", "₽", 88.4, "88,40", "Banque de Russie", "à jour il y a 2 h", true),
+                PremiumFxRateRowUiState("XOF", "CFA", 604.9, "604,9", "BCE + parité UEMOA", "à jour il y a 2 h", true),
+                PremiumFxRateRowUiState("EUR", "€", 0.922, "0,9220", "BCE", "à jour il y a 2 h", true)
+            )
+        )
+    }
+}
+
 data class PremiumOrderUiItem(
     val orderId: String,
     val amount: String,
@@ -458,6 +492,7 @@ class PremiumMerchantRuntime(
     private val receivingMethodsRepository: MerchantReceivingMethodsApiRepository,
     private val connectedSiteRepository: MerchantConnectedSiteApiRepository,
     private val configurationTestRepository: MerchantConfigurationTestApiRepository,
+    private val fxRatesRepository: MerchantFxRatesApiRepository = MerchantFxRatesApiRepository(NoopMerchantApiTransport),
     private val bankPackageProbe: ExactPackageProbe = defaultBankPackageProbe(),
     private val developerIntegrationRepository: MerchantDeveloperIntegrationApiRepository? = null,
     private val supportTicketRepository: MerchantSupportTicketApiRepository? = null,
@@ -769,6 +804,33 @@ class PremiumMerchantRuntime(
                         canActivate = state.canActivate
                     )
                 }
+            )
+        )
+    }
+
+    fun loadFxRates(base: String): PremiumScreenState<PremiumFxRatesUiState> {
+        val result = fxRatesRepository.load(base)
+        if (result.state != MerchantRepositoryState.SUCCESS) {
+            return PremiumScreenState.error()
+        }
+        val now = nowEpochMs()
+        val rows = result.rows.map { row ->
+            val value = row.rate.toDoubleOrNull() ?: 0.0
+            PremiumFxRateRowUiState(
+                currency = row.currency,
+                symbol = fxCurrencySymbol(row.currency),
+                rateValue = value,
+                rateLabel = if (row.available) formatFxRate(value) else "—",
+                sourceLabel = fxSourceLabel(row.source),
+                freshnessLabel = if (row.available) fxFreshnessLabel(row.rateTimestamp, now) else "indisponible",
+                available = row.available
+            )
+        }
+        return PremiumScreenState.content(
+            PremiumFxRatesUiState(
+                base = result.base,
+                baseSymbol = fxCurrencySymbol(result.base),
+                rows = rows
             )
         )
     }
@@ -1269,6 +1331,7 @@ class PremiumMerchantRuntime(
                 receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
+                fxRatesRepository = MerchantFxRatesApiRepository(transport),
                 bankPackageProbe = bankPackageProbe,
                 developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport),
                 supportTicketRepository = MerchantSupportTicketApiRepository(transport)
@@ -1304,6 +1367,7 @@ class PremiumMerchantRuntime(
                 receivingMethodsRepository = MerchantReceivingMethodsApiRepository(transport),
                 connectedSiteRepository = MerchantConnectedSiteApiRepository(transport),
                 configurationTestRepository = MerchantConfigurationTestApiRepository(transport),
+                fxRatesRepository = MerchantFxRatesApiRepository(transport),
                 bankPackageProbe = bankPackageProbe,
                 developerIntegrationRepository = MerchantDeveloperIntegrationApiRepository(transport),
                 supportTicketRepository = MerchantSupportTicketApiRepository(transport),
@@ -1326,6 +1390,48 @@ class PremiumMerchantRuntime(
                 bankPackageProbe = StaticExactPackageProbe(emptySet())
             )
         }
+    }
+}
+
+private fun fxCurrencySymbol(currency: String): String = when (currency.uppercase()) {
+    "USD" -> "$"
+    "RUB" -> "₽"
+    "XOF" -> "CFA"
+    "EUR" -> "€"
+    else -> currency.uppercase()
+}
+
+private fun formatFxRate(value: Double): String {
+    val digits = when {
+        value >= 100.0 -> 1
+        value >= 1.0 -> 2
+        else -> 4
+    }
+    return String.format(java.util.Locale.FRANCE, "%,.${digits}f", value)
+}
+
+/** Maps an FxRateService source path (e.g. "ecb+uemoa_peg") to a merchant-facing label. */
+private fun fxSourceLabel(source: String): String {
+    if (source.isBlank()) return ""
+    return source.split('+').joinToString(" + ") { token ->
+        when (token.trim().lowercase()) {
+            "cbr" -> "Banque de Russie"
+            "ecb" -> "BCE"
+            "uemoa_peg" -> "parité UEMOA"
+            "identity" -> "directe"
+            else -> token.trim()
+        }
+    }
+}
+
+private fun fxFreshnessLabel(isoTimestamp: String, nowEpochMs: Long): String {
+    val instant = runCatching { java.time.Instant.parse(isoTimestamp) }.getOrNull()
+        ?: return "à jour récemment"
+    val minutes = ((nowEpochMs - instant.toEpochMilli()).coerceAtLeast(0L)) / 60_000L
+    return when {
+        minutes < 1L -> "à jour à l'instant"
+        minutes < 60L -> "à jour il y a $minutes min"
+        else -> "à jour il y a ${minutes / 60L} h"
     }
 }
 

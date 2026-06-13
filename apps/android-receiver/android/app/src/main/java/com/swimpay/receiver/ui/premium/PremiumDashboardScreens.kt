@@ -1432,7 +1432,7 @@ fun PremiumSettingsScreen(
             SettingsGroup(language.ui("Compte"), rows = listOf(
                 SettingsRowSpec.Nav(Icons.Default.AccountBalanceWallet, language.ui("Profil marchand")) { onNavigate(PremiumNavigation.openSecurity()) },
                 SettingsRowSpec.Nav(Icons.Default.AccountBalance, language.ui("Entreprise & vérification (KYC)")) { onNavigate(PremiumNavigation.openSecurity()) },
-                SettingsRowSpec.Nav(Icons.Default.CurrencyExchange, language.ui("Devises & taux")) { onNavigate(PremiumNavigation.openBanks()) }
+                SettingsRowSpec.Nav(Icons.Default.CurrencyExchange, language.ui("Devises & taux")) { onNavigate(PremiumNavigation.openCurrencyRates()) }
             ))
         }
         // RÉCEPTION (group title key kept as "Paiements" for routing/localization contracts)
@@ -3999,6 +3999,188 @@ private fun PremiumStandaloneStateScreen(
             item { content() }
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Comparaison des devises (noir vivant) — taux de référence LIVE depuis le backend
+// (/v1/fx/rates → FxRateService ECB/CBR/peg). Aucune donnée inventée : chaque ligne
+// porte sa source + sa fraîcheur, et les paires indisponibles sont marquées comme
+// telles. Convertisseur local à partir des taux réels chargés.
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+fun PremiumCurrencyComparisonScreen(
+    state: PremiumScreenState<PremiumFxRatesUiState>,
+    selectedBase: String = "USD",
+    onChangeBase: (String) -> Unit = {},
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
+) {
+    when (state) {
+        is PremiumScreenState.Content -> PremiumCurrencyComparisonContent(state.value, selectedBase, onChangeBase, language)
+        else -> PremiumStateList(state, language)
+    }
+}
+
+@Composable
+private fun PremiumCurrencyComparisonContent(
+    value: PremiumFxRatesUiState,
+    selectedBase: String,
+    onChangeBase: (String) -> Unit,
+    language: PremiumLanguageOption
+) {
+    var amountInput by remember { mutableStateOf("100") }
+    val amount = amountInput.replace(',', '.').toDoubleOrNull()
+    val hairline = NoirColors.ink3.copy(alpha = 0.22f)
+    Box(Modifier.fillMaxSize().background(NoirColors.bg)) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(horizontal = NoirSpacing.Screen),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(NoirSpacing.Item)
+        ) {
+            item {
+                Text(
+                    language.ui("Comparaison des devises"),
+                    color = NoirColors.ink1,
+                    style = NoirTextStyle.H1,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            item {
+                Text(language.ui("Devise de référence").uppercase(), color = NoirColors.ink3, style = NoirTextStyle.SectionLabel)
+            }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(value.availableBases, key = { it }) { code ->
+                        FxBaseChip(code = code, selected = code == selectedBase, onClick = { onChangeBase(code) })
+                    }
+                }
+            }
+            items(value.rows, key = { it.currency }) { row ->
+                FxRateRow(base = value.base, row = row, hairline = hairline)
+            }
+            item {
+                FxConverterCard(
+                    value = value,
+                    amountInput = amountInput,
+                    amount = amount,
+                    onAmountChange = { amountInput = it },
+                    hairline = hairline,
+                    language = language
+                )
+            }
+            item {
+                Text(
+                    language.ui("Sources : Banque de Russie · BCE · parité UEMOA. Taux de référence, jamais inventés."),
+                    color = NoirColors.ink3,
+                    style = NoirTextStyle.Micro,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FxBaseChip(code: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) NoirColors.ink1 else NoirColors.surface)
+            .border(1.dp, if (selected) Color.Transparent else NoirColors.ink3.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+            .premiumTap(onClick)
+            .padding(horizontal = 16.dp, vertical = 9.dp)
+    ) {
+        Text(code, color = if (selected) NoirColors.bg else NoirColors.ink2, style = NoirTextStyle.Label.copy(fontWeight = FontWeight.Bold))
+    }
+}
+
+@Composable
+private fun FxRateRow(base: String, row: PremiumFxRateRowUiState, hairline: Color) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(NoirColors.surface)
+            .border(1.dp, hairline, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("${row.currency} · ${row.symbol}", color = NoirColors.ink1, style = NoirTextStyle.TxAmount)
+            Text(
+                if (row.available && row.sourceLabel.isNotBlank()) "${row.sourceLabel} · ${row.freshnessLabel}" else row.freshnessLabel,
+                color = NoirColors.ink3,
+                style = NoirTextStyle.Micro,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                if (row.available) "${row.rateLabel} ${row.symbol}" else "—",
+                color = if (row.available) NoirColors.ink1 else NoirColors.ink3,
+                style = NoirTextStyle.TxAmount
+            )
+            if (row.available) {
+                Text("pour 1 $base", color = NoirColors.ink3, style = NoirTextStyle.Micro, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun FxConverterCard(
+    value: PremiumFxRatesUiState,
+    amountInput: String,
+    amount: Double?,
+    onAmountChange: (String) -> Unit,
+    hairline: Color,
+    language: PremiumLanguageOption
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(NoirColors.surface)
+            .border(1.dp, hairline, RoundedCornerShape(20.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(language.ui("Convertir").uppercase(), color = NoirColors.ink3, style = NoirTextStyle.SectionLabel)
+        OutlinedTextField(
+            value = amountInput,
+            onValueChange = onAmountChange,
+            label = { Text("${language.ui("Montant en")} ${value.base}") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = NoirColors.ink2,
+                unfocusedBorderColor = NoirColors.ink3.copy(alpha = 0.3f),
+                focusedLabelColor = NoirColors.ink2,
+                cursorColor = NoirColors.ink1,
+                focusedTextColor = NoirColors.ink1,
+                unfocusedTextColor = NoirColors.ink1
+            )
+        )
+        value.rows.filter { it.available }.forEach { row ->
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("${row.currency} · ${row.symbol}", color = NoirColors.ink2, style = NoirTextStyle.Label)
+                Text(
+                    if (amount != null) "${formatFxConverted(amount * row.rateValue)} ${row.symbol}" else "—",
+                    color = NoirColors.ink1,
+                    style = NoirTextStyle.TxAmount
+                )
+            }
+        }
+    }
+}
+
+private fun formatFxConverted(value: Double): String {
+    val digits = if (value >= 100.0) 0 else 2
+    return String.format(java.util.Locale.FRANCE, "%,.${digits}f", value)
 }
 
 private enum class SettingsPillTone { Success, Ink, Warn }

@@ -110,6 +110,8 @@ fun PremiumMerchantApp(
     val receiverPayloadSigner = remember { AndroidKeystorePayloadSigner() }
     var banksState by remember { mutableStateOf<PremiumScreenState<PremiumBanksUiState>>(PremiumScreenState.loading()) }
     var receiverHealthState by remember { mutableStateOf<PremiumScreenState<PremiumReceiverHealthUiState>>(PremiumScreenState.loading()) }
+    var fxRatesState by remember { mutableStateOf<PremiumScreenState<PremiumFxRatesUiState>>(PremiumScreenState.loading()) }
+    var fxRatesBase by remember { mutableStateOf("USD") }
     var merchantSettings by remember(merchantSettingsStore) { mutableStateOf(merchantSettingsStore.load()) }
     var supportResult by remember { mutableStateOf<PremiumSupportTicketResult?>(null) }
     var showStartupSplash by remember { mutableStateOf(true) }
@@ -349,7 +351,7 @@ fun PremiumMerchantApp(
         }
     }
 
-    LaunchedEffect(route, activeRuntime, uiLocked) {
+    LaunchedEffect(route, activeRuntime, uiLocked, fxRatesBase) {
         if (uiLocked) return@LaunchedEffect
         when (val currentRoute = route) {
             is PremiumRoute.Main -> {
@@ -384,6 +386,9 @@ fun PremiumMerchantApp(
                 banksState = withContext(Dispatchers.IO) {
                     activeRuntime.loadBanks(enabledBankProfileIds = receiverRuntimeConfigStore?.load()?.enabledBankProfileIds ?: emptySet())
                 }
+            }
+            PremiumRoute.CurrencyRates -> {
+                fxRatesState = withContext(Dispatchers.IO) { activeRuntime.loadFxRates(fxRatesBase) }
             }
             PremiumRoute.ReceiverHealth -> {
                 receiverHealthState = withContext(Dispatchers.IO) {
@@ -1072,6 +1077,20 @@ fun PremiumMerchantApp(
             profileInitials = currentMerchantProfileUiState().initials,
             language = merchantSettings.language,
             content = { PremiumBanksStateScreen(banksState, language = merchantSettings.language) }
+        )
+        PremiumRoute.CurrencyRates -> PremiumAppShell(
+            selectedTab = PremiumMainTab.Settings,
+            onTab = { route = PremiumRoute.Main(it) },
+            profileInitials = currentMerchantProfileUiState().initials,
+            language = merchantSettings.language,
+            content = {
+                PremiumCurrencyComparisonScreen(
+                    state = fxRatesState,
+                    selectedBase = fxRatesBase,
+                    onChangeBase = { fxRatesBase = it },
+                    language = merchantSettings.language
+                )
+            }
         )
         PremiumRoute.ReceiverHealth -> PremiumAppShell(
             selectedTab = PremiumMainTab.Settings,

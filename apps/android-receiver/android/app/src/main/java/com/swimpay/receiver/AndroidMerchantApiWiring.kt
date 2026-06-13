@@ -1391,6 +1391,65 @@ class MerchantDashboardApiRepository(
     }
 }
 
+/** One live reference-rate row (base → [currency]) from GET /v1/fx/rates. */
+data class MerchantFxRateRow(
+    val currency: String,
+    val rate: String,
+    val source: String,
+    val rateTimestamp: String,
+    val available: Boolean
+)
+
+data class MerchantFxRatesResult(
+    val state: MerchantRepositoryState,
+    val base: String,
+    val rows: List<MerchantFxRateRow> = emptyList(),
+    val safeMessage: String = ""
+)
+
+/**
+ * Reads the public merchant FX reference rates (ECB / CBR / UEMOA peg, computed
+ * server-side by FxRateService — a rate is never invented). Unavailable pairs are
+ * returned with available=false so the screen shows an honest "indisponible" row.
+ */
+class MerchantFxRatesApiRepository(
+    private val transport: MerchantApiTransport
+) {
+    fun load(base: String): MerchantFxRatesResult {
+        val safeBase = base.trim().uppercase().ifBlank { "USD" }
+        val response = execute(
+            MerchantApiRequest(
+                method = "GET",
+                path = "/v1/fx/rates?base=$safeBase",
+                headers = emptyMap()
+            )
+        )
+        if (response.statusCode !in 200..299) {
+            return MerchantFxRatesResult(MerchantRepositoryState.ERROR, safeBase, safeMessage = "Taux indisponibles")
+        }
+        val resolvedBase = extractString(response.body, "base") ?: safeBase
+        val rows = extractTopLevelObjectsFromArray(response.body, "rates").mapNotNull { obj ->
+            val currency = extractString(obj, "currency") ?: return@mapNotNull null
+            MerchantFxRateRow(
+                currency = currency,
+                rate = extractString(obj, "rate") ?: "",
+                source = extractString(obj, "source") ?: "",
+                rateTimestamp = extractString(obj, "rate_timestamp") ?: "",
+                available = extractBoolean(obj, "available") ?: false
+            )
+        }
+        return MerchantFxRatesResult(MerchantRepositoryState.SUCCESS, resolvedBase, rows)
+    }
+
+    private fun execute(request: MerchantApiRequest): MerchantApiResponse {
+        return try {
+            transport.execute(request)
+        } catch (_: Exception) {
+            MerchantApiResponse(503, """{"error":{"code":"backend_unreachable"}}""")
+        }
+    }
+}
+
 class MerchantPaymentDetailApiRepository(
     private val transport: MerchantApiTransport
 ) {

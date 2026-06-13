@@ -3278,3 +3278,85 @@ describe('payable-currencies endpoint', () => {
     expect(afterCurrency.json().checkout_state).toBe('receiver_bank_selection');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Merchant FX rates endpoint — live reference rates for the comparison screen
+// ---------------------------------------------------------------------------
+
+describe('fx rates endpoint', () => {
+  /** FX stub: fixed rate for any pair, but XOF target unavailable (to prove honesty). */
+  function makeFxStub(): NonNullable<Parameters<typeof buildApiServer>[0]['fxRateService']> {
+    return {
+      quoteToUsd: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const }),
+      quote: async (_src: unknown, tgt: unknown, amountMinor: unknown) => {
+        if ((tgt as string).toUpperCase() === 'XOF') {
+          return { kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const };
+        }
+        const rate = 88.4;
+        return {
+          kind: 'ok' as const,
+          quote: {
+            rate: String(rate),
+            rateTimestamp: '2026-06-13T08:00:00.000Z',
+            amountMinorTarget: Math.round((amountMinor as number) * rate),
+            source: 'cbr' as const
+          }
+        };
+      }
+    };
+  }
+
+  test('GET /v1/fx/rates returns per-currency rates, excludes the base, never invents an unavailable pair', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-06-13T10:00:00.000Z', undefined, makeFxStub());
+
+    const response = await server.inject({ method: 'GET', url: '/v1/fx/rates?base=USD' });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.base).toBe('USD');
+    expect(body.rates).toBeInstanceOf(Array);
+
+    // The base must NOT appear as one of the comparison rows.
+    expect(body.rates.find((r: { currency: string }) => r.currency === 'USD')).toBeUndefined();
+
+    // RUB available with a real rate + source + timestamp.
+    const rub = body.rates.find((r: { currency: string }) => r.currency === 'RUB');
+    expect(rub).toBeDefined();
+    expect(rub.available).toBe(true);
+    expect(rub.rate).toBe('88.4');
+    expect(rub.source).toBe('cbr');
+    expect(rub.rate_timestamp).toBe('2026-06-13T08:00:00.000Z');
+
+    // XOF unavailable → reported honestly (available:false, null rate), never omitted.
+    const xof = body.rates.find((r: { currency: string }) => r.currency === 'XOF');
+    expect(xof).toBeDefined();
+    expect(xof.available).toBe(false);
+    expect(xof.rate).toBeNull();
+  });
+
+  test('GET /v1/fx/rates accepts a base override and falls back to USD on an unknown base', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-06-13T10:00:00.000Z', undefined, makeFxStub());
+
+    const eur = await server.inject({ method: 'GET', url: '/v1/fx/rates?base=EUR' });
+    expect(eur.statusCode).toBe(200);
+    expect(eur.json().base).toBe('EUR');
+    // The chosen base is excluded from its own comparison rows.
+    expect(eur.json().rates.find((r: { currency: string }) => r.currency === 'EUR')).toBeUndefined();
+
+    const unknown = await server.inject({ method: 'GET', url: '/v1/fx/rates?base=ZZZ' });
+    expect(unknown.statusCode).toBe(200);
+    expect(unknown.json().base).toBe('USD');
+  });
+
+  test('GET /v1/fx/rates degrades gracefully (all unavailable) when no FX service is configured', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-06-13T10:00:00.000Z', undefined, null);
+
+    const response = await server.inject({ method: 'GET', url: '/v1/fx/rates?base=USD' });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.rates.length).toBeGreaterThan(0);
+    expect(body.rates.every((r: { available: boolean }) => r.available === false)).toBe(true);
+  });
+});

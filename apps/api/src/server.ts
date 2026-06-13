@@ -2355,6 +2355,70 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   // ---------------------------------------------------------------------------
+  // Merchant FX — live reference rates for the currency-comparison screen.
+  // Public reference data only (ECB / CBR / UEMOA peg via FxRateService); a rate is
+  // never invented. Unavailable pairs are reported as available:false (not omitted)
+  // so the merchant app shows an honest "indisponible" row instead of a silent gap.
+  // ---------------------------------------------------------------------------
+  server.get('/v1/fx/rates', async (request, reply) => {
+    const FX_COMPARISON_CURRENCIES = ['USD', 'RUB', 'XOF', 'EUR'];
+    const query = (request.query ?? {}) as { base?: unknown };
+    const requestedBase = typeof query.base === 'string' ? query.base.toUpperCase() : 'USD';
+    const base = FX_COMPARISON_CURRENCIES.includes(requestedBase) ? requestedBase : 'USD';
+    const baseDigits = currencyMinorDigits(base);
+    // Probe with 1,000,000 base units so even the smallest pair (e.g. XOF→EUR) yields a
+    // positive target minor amount — quote() rejects sub-unit results. The returned
+    // unit `rate` string is independent of the probe amount.
+    const probeMinor = 1_000_000 * 10 ** baseDigits;
+
+    const rates: Array<{
+      currency: string;
+      rate: string | null;
+      source: string | null;
+      rate_timestamp: string | null;
+      available: boolean;
+    }> = [];
+
+    for (const target of FX_COMPARISON_CURRENCIES) {
+      if (target === base) {
+        continue;
+      }
+      let entry: {
+        currency: string;
+        rate: string | null;
+        source: string | null;
+        rate_timestamp: string | null;
+        available: boolean;
+      } = { currency: target, rate: null, source: null, rate_timestamp: null, available: false };
+      if (fxRateService) {
+        try {
+          const result = await fxRateService.quote(
+            base,
+            target,
+            probeMinor,
+            baseDigits,
+            currencyMinorDigits(target)
+          );
+          if (result.kind === 'ok') {
+            entry = {
+              currency: target,
+              rate: result.quote.rate,
+              source: result.quote.source,
+              rate_timestamp: result.quote.rateTimestamp,
+              available: true
+            };
+          }
+        } catch {
+          // Leave unavailable — never 500 on FX downtime, never invent a rate.
+        }
+      }
+      rates.push(entry);
+    }
+
+    return reply.status(200).send({ base, rates });
+  });
+
+  // ---------------------------------------------------------------------------
   // Currency-first checkout — payable currencies listing + currency selection
   // ---------------------------------------------------------------------------
 

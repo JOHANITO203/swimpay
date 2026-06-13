@@ -19,6 +19,7 @@ sealed interface PremiumRoute {
     data class WalletDetail(val methodId: String) : PremiumRoute
     data object ReceivingMethods : PremiumRoute
     data object Banks : PremiumRoute
+    data object CurrencyRates : PremiumRoute
     data object ConnectedSite : PremiumRoute
     data object ReceiverHealth : PremiumRoute
     data object ConfigurationTest : PremiumRoute
@@ -90,6 +91,8 @@ object PremiumNavigation {
     fun openReceivingMethods(): PremiumRoute = PremiumRoute.ReceivingMethods
 
     fun openBanks(): PremiumRoute = PremiumRoute.Banks
+
+    fun openCurrencyRates(): PremiumRoute = PremiumRoute.CurrencyRates
 
     fun openReceiverHealth(): PremiumRoute = PremiumRoute.ReceiverHealth
 
