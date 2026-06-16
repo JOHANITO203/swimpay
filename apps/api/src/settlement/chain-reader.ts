@@ -97,8 +97,24 @@ function hexToSafeInt(hex: string): number | null {
   }
 }
 
+export interface JsonRpcChainReaderOptions {
+  fetchImpl?: typeof fetch;
+  /** Abort an RPC call after this many ms (a hung RPC must never block confirmation). */
+  timeoutMs?: number;
+  /** Cap how far back getLogs scans from the tip (bounds an ever-growing window + dodges RPC log limits). */
+  maxLookbackBlocks?: number;
+}
+
 export class JsonRpcChainReader implements ChainReader {
-  public constructor(private readonly rpcUrl: string, private readonly fetchImpl: typeof fetch = fetch) {}
+  private readonly fetchImpl: typeof fetch;
+  private readonly timeoutMs: number;
+  private readonly maxLookbackBlocks: number;
+
+  public constructor(private readonly rpcUrl: string, options: JsonRpcChainReaderOptions = {}) {
+    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.timeoutMs = options.timeoutMs ?? 8_000;
+    this.maxLookbackBlocks = options.maxLookbackBlocks ?? 50_000;
+  }
 
   private async rpc<T>(method: string, params: unknown[]): Promise<T | null> {
     try {
@@ -106,6 +122,7 @@ export class JsonRpcChainReader implements ChainReader {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
       if (!res.ok) return null;
       const body = (await res.json()) as { result?: T; error?: unknown };
@@ -122,9 +139,15 @@ export class JsonRpcChainReader implements ChainReader {
   }
 
   public async findIncomingTransfer(params: FindTransferParams): Promise<TransferProof | null> {
+    // Bound the scan window: never scan further back than maxLookbackBlocks from the tip.
+    let fromBlock = params.fromBlock;
+    if (this.maxLookbackBlocks > 0) {
+      const current = await this.currentBlock();
+      if (current > 0) fromBlock = Math.max(fromBlock, current - this.maxLookbackBlocks);
+    }
     const logs = await this.rpc<Array<{ data: string; blockNumber: string; transactionHash: string }>>('eth_getLogs', [
       {
-        fromBlock: '0x' + params.fromBlock.toString(16),
+        fromBlock: '0x' + fromBlock.toString(16),
         toBlock: 'latest',
         address: params.token,
         topics: [TRANSFER_TOPIC, null, toAddressTopic(params.to)],
@@ -136,7 +159,7 @@ export class JsonRpcChainReader implements ChainReader {
       const amount = hexToSafeInt(log.data);
       const blockNumber = hexToSafeInt(log.blockNumber);
       if (amount === null || blockNumber === null) continue;
-      if (amount >= params.minAmountMinor && blockNumber >= params.fromBlock) {
+      if (amount >= params.minAmountMinor && blockNumber >= fromBlock) {
         return { txHash: log.transactionHash, amountMinor: amount, blockNumber };
       }
     }
