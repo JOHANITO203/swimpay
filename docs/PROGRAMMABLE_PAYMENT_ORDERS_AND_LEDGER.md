@@ -352,6 +352,24 @@ zéro custody, corridors actifs **USD→XOF / EUR→XOF** (RUB volontairement ab
 
 **Reste TIER 1** : stores Postgres pour ordres + réconciliation, reprise HELD, reprise après crash, câblage Postgres dans `server.ts`, tests d'intégration DB.
 
+### Pilote non-custodial crypto-only (payeurs A = agent IA / B = humain crypto)
+
+Le modèle bootstrap **sans société, sans rampe, sans custody** : le payeur paie le
+marchand **directement en stablecoin** ; SwimPay **lit la chaîne** pour confirmer.
+Prix en n'importe quelle fiat (devis FX) ; règlement en stablecoin.
+
+- `chain-reader.ts` — `ChainReader` **lecture seule** (zéro clé) : `InMemoryChainReader`
+  (tests) + `JsonRpcChainReader` (réel, sans dépendance, lit les logs ERC-20 Transfer ;
+  non testé contre un RPC ici).
+- `payment-intent.ts` — flux intention : créer (devis prix→USD→USDC, instruction
+  « envoie X USDC à l'adresse du marchand »), confirmer via lecture de chaîne (N
+  confirmations), expiration TTL. **Ne détient jamais de fonds** (`custodial = false`).
+- 11 tests verts. Fit naturel du payeur A : l'agent IA paie nativement en stablecoin (402).
+
+**Condition légale du modèle sans société : strictement non-custodial** (payeur→marchand
+direct, SwimPay ne tient jamais les fonds). **Reste à faire** : endpoints `/v1/intents` +
+surface 402 (besoin : URL RPC + adresse vérifiée du token testnet).
+
 **Bug corrigé à la racine** pendant le build : la preuve d'un payout doit référencer
 *sa* jambe (`legRef`), sinon des shards fongibles se confirment de façon découplée du
 ledger → une jambe pouvait passer RECONCILED sans mouvement d'argent. Corrigé + testé.
