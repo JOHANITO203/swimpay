@@ -183,6 +183,8 @@ import {
   toSettlementResponse
 } from './settlement/settlement-api.js';
 import { OrderError } from './settlement/payment-order.js';
+import { JsonRpcChainReader, type ChainReader } from './settlement/chain-reader.js';
+import { IntentError, PaymentIntentService, type TokenConfig } from './settlement/payment-intent.js';
 import {
   buildAdminTemplateStatusInput,
   parseAdminLimit,
@@ -320,6 +322,8 @@ export interface ApiServerOptions {
   supportTicketRepository?: AndroidMerchantSupportTicketRepository | null;
   authBffRepository?: AuthBffRepository | null;
   merchantApiKeyVerifier?: MerchantApiKeyVerifier | null;
+  cryptoPilotChainReader?: ChainReader | null;
+  cryptoPilotToken?: TokenConfig | null;
   googleIdTokenVerifier?: GoogleIdTokenVerifier | null;
   eventPublisher?: InternalEventPublisher;
   phoneHmacSecret?: string;
@@ -657,6 +661,35 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   // The new programmable-settlement SDK surface is gated OFF by default so the demo
   // exposes only the historical (receive-only) SDK. Flip on with SETTLEMENT_SDK_ENABLED=true.
   const settlementSdkEnabled = options.environment === 'test' || process.env.SETTLEMENT_SDK_ENABLED === 'true';
+
+  // Non-custodial crypto-only pilot (payers A=AI agent / B=crypto human). SwimPay holds
+  // NOTHING: read-only chain access confirms a direct payer→merchant stablecoin transfer.
+  // Gated off by default; configure via env (BASE_RPC_URL + CRYPTO_PILOT_TOKEN_*).
+  const cryptoPilotEnabled = options.environment === 'test' || process.env.CRYPTO_PILOT_ENABLED === 'true';
+  const cryptoPilotChainReader: ChainReader | null =
+    options.cryptoPilotChainReader ?? (process.env.BASE_RPC_URL ? new JsonRpcChainReader(process.env.BASE_RPC_URL) : null);
+  const cryptoPilotToken: TokenConfig | null =
+    options.cryptoPilotToken ??
+    (process.env.CRYPTO_PILOT_TOKEN_ADDRESS && process.env.CRYPTO_PILOT_CHAIN
+      ? {
+          symbol: process.env.CRYPTO_PILOT_TOKEN_SYMBOL ?? 'USDC',
+          address: process.env.CRYPTO_PILOT_TOKEN_ADDRESS,
+          decimals: Number.parseInt(process.env.CRYPTO_PILOT_TOKEN_DECIMALS ?? '6', 10),
+          chain: process.env.CRYPTO_PILOT_CHAIN
+        }
+      : null);
+  const paymentIntentService =
+    cryptoPilotEnabled && cryptoPilotChainReader && cryptoPilotToken
+      ? new PaymentIntentService({
+          fxQuoter: fxRateService,
+          minorDigits: currencyMinorDigits,
+          now: () => clock().toISOString(),
+          generateId: (prefix) => `${prefix}_${randomUUID()}`,
+          chainReader: cryptoPilotChainReader,
+          token: cryptoPilotToken,
+          minConfirmations: Number.parseInt(process.env.CRYPTO_PILOT_MIN_CONFIRMATIONS ?? '2', 10)
+        })
+      : null;
 
   server.addHook('onRequest', async (request, reply) => {
     const incoming = Array.isArray(request.headers['x-correlation-id'])
@@ -2578,6 +2611,64 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
     return reply.status(200).send(toSettlementResponse(result!, await settlementService.transactionsForOrder(id)));
   });
   } // end settlementSdkEnabled gate
+
+  // ---------------------------------------------------------------------------
+  // Non-custodial crypto pilot — payer pays the merchant DIRECTLY in stablecoin;
+  // SwimPay only reads the chain to confirm. POST creates a payment request
+  // (merchant-auth); GET is the public x402 surface: 402 Payment Required while
+  // awaiting, 200 once confirmed, 410 when expired. Same surface for A (agent) & B.
+  // ---------------------------------------------------------------------------
+  if (cryptoPilotEnabled) {
+  server.post('/v1/intents', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A merchant bearer token is required to create a payment intent.', { authorization: 'Bearer test_<merchant_id>' }));
+    }
+    if (!paymentIntentService) {
+      return reply.status(503).send(invalidRequest('Crypto pilot is not configured (RPC + token required).', {}));
+    }
+    const b = (request.body ?? {}) as { price_currency?: unknown; price_amount_minor?: unknown; merchant_address?: unknown; payer_type?: unknown };
+    const priceCurrency = typeof b.price_currency === 'string' ? b.price_currency : '';
+    const merchantAddress = typeof b.merchant_address === 'string' ? b.merchant_address : '';
+    const priceAmountMinor = b.price_amount_minor;
+    const payerType = b.payer_type === 'human' || b.payer_type === 'agent_ai' ? b.payer_type : 'agent_ai';
+    if (!priceCurrency || typeof priceAmountMinor !== 'number' || !Number.isSafeInteger(priceAmountMinor) || priceAmountMinor <= 0) {
+      return reply.status(400).send(invalidRequest('price_currency and a positive integer price_amount_minor are required.', {}));
+    }
+    if (!/^0x[0-9a-fA-F]{40}$/.test(merchantAddress)) {
+      return reply.status(400).send(invalidRequest('merchant_address must be a 0x-prefixed 20-byte address.', {}));
+    }
+    try {
+      const intent = await paymentIntentService.createIntent({ merchantId, merchantAddress, payerType, priceCurrency, priceAmountMinor });
+      return reply.status(201).send(paymentIntentService.instructionFor(intent));
+    } catch (error) {
+      if (error instanceof IntentError) {
+        return reply.status(400).send(invalidRequest(error.message, {}));
+      }
+      throw error;
+    }
+  });
+
+  server.get('/v1/intents/:id', async (request, reply) => {
+    if (!paymentIntentService) {
+      return reply.status(503).send(invalidRequest('Crypto pilot is not configured.', {}));
+    }
+    const { id } = request.params as { id: string };
+    const intent = await paymentIntentService.refresh(id);
+    if (!intent) {
+      return reply.status(404).send(invalidRequest('Unknown payment intent.', {}));
+    }
+    const body = paymentIntentService.instructionFor(intent);
+    if (intent.state === 'CONFIRMED') {
+      return reply.status(200).send(body);
+    }
+    if (intent.state === 'EXPIRED') {
+      return reply.status(410).send(body);
+    }
+    // AWAITING_PAYMENT → HTTP 402 Payment Required (x402): here is how to pay.
+    return reply.status(402).send(body);
+  });
+  } // end cryptoPilotEnabled gate
 
   // ---------------------------------------------------------------------------
   // Currency-first checkout — payable currencies listing + currency selection

@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { getPayerBankLauncherOption, getReceiverBankOption } from '@swimpay/contracts';
 import { buildApiServer, type OrderRepository, type StoredOrderRecord, type StoredPaymentSessionRecord } from './server.js';
+import { InMemoryChainReader } from './settlement/chain-reader.js';
+import type { TokenConfig } from './settlement/payment-intent.js';
 import { InMemoryMerchantApiKeyVerifier } from './auth-bff.js';
 import { bankCertificationAllowsCheckoutRoute, decryptReceiverIdentifier, selectAmountLeaseCandidate, type RequotePaymentSessionCurrencyResult } from './orders.js';
 import { isPaymentSessionTransitionAllowed, resolvePaymentSessionStatusForRead, toPayerBankLaunchersResponse } from './payment-sessions.js';
@@ -670,7 +672,8 @@ function buildServer(
   repository: InMemoryPaymentSessionRepository,
   now = '2026-05-02T10:00:00.000Z',
   merchantApiKeyVerifier?: InMemoryMerchantApiKeyVerifier,
-  fxRateService?: Parameters<typeof buildApiServer>[0]['fxRateService']
+  fxRateService?: Parameters<typeof buildApiServer>[0]['fxRateService'],
+  extra?: Partial<Parameters<typeof buildApiServer>[0]>
 ) {
   const options: Parameters<typeof buildApiServer>[0] = {
     environment: 'test',
@@ -695,7 +698,7 @@ function buildServer(
     ...(merchantApiKeyVerifier ? { merchantApiKeyVerifier } : {}),
     ...(fxRateService !== undefined ? { fxRateService } : {})
   };
-  return buildApiServer({ ...options, ...opts });
+  return buildApiServer({ ...options, ...opts, ...(extra ?? {}) });
 }
 
 async function createOrder(server: ReturnType<typeof buildApiServer>) {
@@ -3520,5 +3523,65 @@ describe('settlement orders endpoint (SDK payment flow)', () => {
     expect(body.order.channel).toBe('bridge');
     expect(body.order.state).toBe('RECONCILED');
     expect(body.settlement.conservation_ok).toBe(true);
+  });
+});
+
+describe('crypto pilot intents endpoint (non-custodial, x402)', () => {
+  const TOKEN: TokenConfig = { symbol: 'USDC', address: '0x2222222222222222222222222222222222222222', decimals: 6, chain: 'base-sepolia' };
+  const MERCHANT_ADDR = '0x1111111111111111111111111111111111111111';
+  const auth = { authorization: 'Bearer test_mch_01' };
+  const usdBody = { price_currency: 'USD', price_amount_minor: 10_000, merchant_address: MERCHANT_ADDR, payer_type: 'agent_ai' };
+
+  function build(reader: InMemoryChainReader) {
+    return buildServer(new InMemoryPaymentSessionRepository(), '2026-06-16T10:00:00.000Z', undefined, null, {
+      cryptoPilotChainReader: reader,
+      cryptoPilotToken: TOKEN,
+    });
+  }
+
+  test('POST /v1/intents requires a merchant bearer token', async () => {
+    const server = build(new InMemoryChainReader({ block: 100 }));
+    expect((await server.inject({ method: 'POST', url: '/v1/intents', payload: usdBody })).statusCode).toBe(401);
+  });
+
+  test('POST creates a non-custodial intent (USD price → USDC base units)', async () => {
+    const server = build(new InMemoryChainReader({ block: 100 }));
+    const res = await server.inject({ method: 'POST', url: '/v1/intents', headers: auth, payload: usdBody });
+    expect(res.statusCode).toBe(201);
+    const b = res.json();
+    expect(b.custody).toBe('non_custodial');
+    expect(b.amount_base_units).toBe(100_000_000); // $100 → 100 USDC (6 decimals)
+    expect(b.to).toBe(MERCHANT_ADDR);
+    expect(b.state).toBe('AWAITING_PAYMENT');
+  });
+
+  test('GET is real x402: 402 while awaiting, 200 once the payer transfer confirms', async () => {
+    const reader = new InMemoryChainReader({ block: 100 });
+    const server = build(reader);
+    const id = (await server.inject({ method: 'POST', url: '/v1/intents', headers: auth, payload: usdBody })).json().intent_id;
+
+    const awaiting = await server.inject({ method: 'GET', url: `/v1/intents/${id}` });
+    expect(awaiting.statusCode).toBe(402); // Payment Required
+    expect(awaiting.json().state).toBe('AWAITING_PAYMENT');
+
+    // Payer pays the merchant DIRECTLY; block advances past the confirmation depth (2).
+    reader.seedTransfer({ token: TOKEN.address, to: MERCHANT_ADDR, amountMinor: 100_000_000, blockNumber: 101, txHash: '0xpaid' });
+    reader.setBlock(103);
+
+    const confirmed = await server.inject({ method: 'GET', url: `/v1/intents/${id}` });
+    expect(confirmed.statusCode).toBe(200);
+    expect(confirmed.json().state).toBe('CONFIRMED');
+    expect(confirmed.json().confirmation.txHash).toBe('0xpaid');
+  });
+
+  test('POST rejects a malformed merchant_address', async () => {
+    const server = build(new InMemoryChainReader({ block: 100 }));
+    const res = await server.inject({ method: 'POST', url: '/v1/intents', headers: auth, payload: { ...usdBody, merchant_address: 'not-an-address' } });
+    expect(res.statusCode).toBe(400);
+  });
+
+  test('GET an unknown intent is 404', async () => {
+    const server = build(new InMemoryChainReader({ block: 100 }));
+    expect((await server.inject({ method: 'GET', url: '/v1/intents/intent_nope' })).statusCode).toBe(404);
   });
 });
