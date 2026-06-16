@@ -171,6 +171,19 @@ import {
 } from './reviews.js';
 import { FxRateService } from './fx.js';
 import {
+  composeQuote as composeCostQuote,
+  findCorridor,
+  listActiveCorridors,
+  PublishedRampFeeSource,
+  StaticNetworkFeeSource
+} from './cost-oracle.js';
+import {
+  parseSettlementRequest,
+  SettlementService,
+  toSettlementResponse
+} from './settlement/settlement-api.js';
+import { OrderError } from './settlement/payment-order.js';
+import {
   buildAdminTemplateStatusInput,
   parseAdminLimit,
   PgAdminRepository,
@@ -632,6 +645,18 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
   const startedAt = options.startedAt ?? new Date();
   const copyDetailsLimiter = new Map<string, { windowStartedAtMs: number; count: number }>();
   const secretRevealLimiter = new Map<string, { windowStartedAtMs: number; count: number }>();
+
+  // Programmable-settlement SDK service. Deterministic core is real; physical edges
+  // are SIMULATED (responses carry simulation:true). State is in-memory per instance.
+  const settlementService = new SettlementService({
+    fxQuoter: fxRateService,
+    minorDigits: currencyMinorDigits,
+    now: () => clock().toISOString(),
+    generateId: (prefix) => `${prefix}_${randomUUID()}`
+  });
+  // The new programmable-settlement SDK surface is gated OFF by default so the demo
+  // exposes only the historical (receive-only) SDK. Flip on with SETTLEMENT_SDK_ENABLED=true.
+  const settlementSdkEnabled = options.environment === 'test' || process.env.SETTLEMENT_SDK_ENABLED === 'true';
 
   server.addHook('onRequest', async (request, reply) => {
     const incoming = Array.isArray(request.headers['x-correlation-id'])
@@ -2417,6 +2442,142 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
 
     return reply.status(200).send({ base, rates });
   });
+
+  // ---------------------------------------------------------------------------
+  // Cost Oracle — honest end-to-end transfer-cost quote (read-only, no custody).
+  // Composes FX (FxRateService) + network (gas estimate) + ramp (off-ramp fee).
+  // Each leg carries source + freshness + available; a cost is never invented;
+  // the total is available only when every leg is. Active corridors only
+  // (USD→XOF, EUR→XOF); unknown corridors return available:false, never 500.
+  // ---------------------------------------------------------------------------
+  server.get('/v1/cost/quote', async (request, reply) => {
+    const q = (request.query ?? {}) as { from?: unknown; to?: unknown; amount?: unknown; amount_minor?: unknown };
+    const from = typeof q.from === 'string' ? q.from.toUpperCase() : '';
+    const to = typeof q.to === 'string' ? q.to.toUpperCase() : '';
+
+    const corridor = findCorridor(from, to);
+    if (!corridor) {
+      return reply.status(200).send({
+        from,
+        to,
+        available: false,
+        reason: 'corridor_not_active',
+        active_corridors: listActiveCorridors().map((c) => ({ from: c.from, to: c.to })),
+      });
+    }
+
+    const fromDigits = currencyMinorDigits(from);
+    const toDigits = currencyMinorDigits(to);
+
+    let amountInMinor: number | null = null;
+    if (typeof q.amount_minor === 'string' && /^\d+$/.test(q.amount_minor)) {
+      amountInMinor = Number.parseInt(q.amount_minor, 10);
+    } else if (typeof q.amount === 'string' && q.amount.trim() !== '') {
+      const major = Number(q.amount);
+      if (Number.isFinite(major) && major > 0) {
+        amountInMinor = Math.round(major * 10 ** fromDigits);
+      }
+    }
+    if (amountInMinor === null || !Number.isSafeInteger(amountInMinor) || amountInMinor <= 0) {
+      return reply.status(400).send({ error: { code: 'invalid_amount', message: 'Provide a positive amount or amount_minor.' } });
+    }
+
+    // FxRateService may be absent → FX leg degrades to unavailable (partial quote), never 500.
+    const fxSource = fxRateService ?? {
+      async quote() {
+        return { kind: 'unavailable', reason: 'fx_rate_unavailable' as const };
+      },
+    };
+
+    const quote = await composeCostQuote(corridor, amountInMinor, fromDigits, toDigits, {
+      fx: fxSource,
+      network: new StaticNetworkFeeSource(),
+      ramp: new PublishedRampFeeSource(),
+    });
+
+    const fmt = (minor: number | null, currency: string): string | null =>
+      minor === null ? null : formatAmountMinor(minor, currency);
+
+    return reply.status(200).send({
+      from: quote.from,
+      to: quote.to,
+      available: quote.available,
+      amount_in_minor: quote.amountInMinor,
+      amount_in_formatted: fmt(quote.amountInMinor, quote.from),
+      reference_amount_minor: quote.referenceAmountMinor,
+      reference_amount_formatted: fmt(quote.referenceAmountMinor, quote.to),
+      total_cost_minor: quote.totalCostMinor,
+      total_cost_formatted: fmt(quote.totalCostMinor, quote.from),
+      amount_delivered_minor: quote.amountDeliveredMinor,
+      amount_delivered_formatted: fmt(quote.amountDeliveredMinor, quote.to),
+      legs: quote.legs.map((leg) => ({
+        kind: leg.kind,
+        available: leg.available,
+        fee_minor: leg.feeMinor,
+        fee_formatted: leg.kind === 'fx' ? null : fmt(leg.feeMinor, quote.from),
+        source: leg.source,
+        as_of: leg.asOf,
+        detail: leg.detail,
+      })),
+      caveats: quote.caveats,
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Programmable settlement — the new SDK payment-flow surface.
+  // Creates an order and drives it through the deterministic engine to its resting
+  // state. Physical edges are SIMULATED (response carries simulation:true,
+  // rail_mode:'simulated'); the ledger/rules/swarm/reconciliation core is real.
+  // GATED: only registered when settlementSdkEnabled (demo runs the old SDK only).
+  // ---------------------------------------------------------------------------
+  if (settlementSdkEnabled) {
+  server.post('/v1/settlement/orders', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A merchant bearer token is required to create a settlement order.', { authorization: 'Bearer test_<merchant_id>' }));
+    }
+    const parsed = parseSettlementRequest(request.body, merchantId);
+    if (!parsed.valid) {
+      return reply.status(400).send(invalidRequest(parsed.message, {}));
+    }
+    try {
+      const result = await settlementService.createAndSettle(parsed.value);
+      return reply.status(201).send(toSettlementResponse(result, await settlementService.transactionsForOrder(result.order.id)));
+    } catch (error) {
+      if (error instanceof OrderError) {
+        return reply.status(400).send(invalidRequest(error.message, {}));
+      }
+      throw error;
+    }
+  });
+
+  server.get('/v1/settlement/orders/:id', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A merchant bearer token is required.', { authorization: 'Bearer test_<merchant_id>' }));
+    }
+    const { id } = request.params as { id: string };
+    const result = settlementService.getResult(id);
+    if (!result || result.order.payer.id !== merchantId) {
+      return reply.status(404).send(invalidRequest('Unknown settlement order.', {}));
+    }
+    return reply.status(200).send(toSettlementResponse(result, await settlementService.transactionsForOrder(id)));
+  });
+
+  server.post('/v1/settlement/orders/:id/retry', async (request, reply) => {
+    const merchantId = parseMerchantId(request.headers.authorization, { allowTestBearer: options.environment !== 'production' });
+    if (!merchantId) {
+      return reply.status(401).send(invalidRequest('A merchant bearer token is required.', { authorization: 'Bearer test_<merchant_id>' }));
+    }
+    const { id } = request.params as { id: string };
+    const existing = settlementService.getResult(id);
+    if (!existing || existing.order.payer.id !== merchantId) {
+      return reply.status(404).send(invalidRequest('Unknown settlement order.', {}));
+    }
+    const result = await settlementService.retryPending(id);
+    return reply.status(200).send(toSettlementResponse(result!, await settlementService.transactionsForOrder(id)));
+  });
+  } // end settlementSdkEnabled gate
 
   // ---------------------------------------------------------------------------
   // Currency-first checkout — payable currencies listing + currency selection

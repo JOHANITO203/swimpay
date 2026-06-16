@@ -3360,3 +3360,165 @@ describe('fx rates endpoint', () => {
     expect(body.rates.every((r: { available: boolean }) => r.available === false)).toBe(true);
   });
 });
+
+describe('cost oracle endpoint', () => {
+  /** FX stub: USD/EUR → XOF at 600, with proper minor-digit scaling; other targets unavailable. */
+  function makeCostFxStub(): NonNullable<Parameters<typeof buildApiServer>[0]['fxRateService']> {
+    return {
+      quoteToUsd: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const }),
+      quote: async (_src: unknown, tgt: unknown, amountMinor: unknown, srcDigits: unknown, tgtDigits: unknown) => {
+        if ((tgt as string).toUpperCase() !== 'XOF') {
+          return { kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const };
+        }
+        const rate = 600;
+        const fd = (srcDigits as number) ?? 2;
+        const td = (tgtDigits as number) ?? 0;
+        const target = Math.round((amountMinor as number) * rate * (10 ** td / 10 ** fd));
+        if (target <= 0) return { kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const };
+        return {
+          kind: 'ok' as const,
+          quote: { rate: String(rate), rateTimestamp: '2026-06-16T08:00:00.000Z', amountMinorTarget: target, source: 'ecb+uemoa_peg' as const }
+        };
+      }
+    };
+  }
+
+  test('GET /v1/cost/quote composes an honest end-to-end quote for an active corridor', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-06-16T10:00:00.000Z', undefined, makeCostFxStub());
+
+    const response = await server.inject({ method: 'GET', url: '/v1/cost/quote?from=USD&to=XOF&amount=100' });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.available).toBe(true);
+    expect(body.reference_amount_minor).toBe(60_000); // 100 USD @ 600
+    expect(body.total_cost_minor).toBe(202);          // network 2 + 2% ramp (200)
+    expect(body.amount_delivered_minor).toBe(58_788); // (10000-202) @ 600 / 100
+    expect(body.legs.map((l: { kind: string }) => l.kind)).toEqual(['fx', 'network', 'ramp']);
+    expect(body.legs.find((l: { kind: string }) => l.kind === 'fx').source).toBe('ecb+uemoa_peg');
+    expect(Array.isArray(body.caveats)).toBe(true);
+  });
+
+  test('GET /v1/cost/quote rejects an inactive corridor honestly — RUB never resolves', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-06-16T10:00:00.000Z', undefined, makeCostFxStub());
+
+    const response = await server.inject({ method: 'GET', url: '/v1/cost/quote?from=RUB&to=XOF&amount=100' });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.available).toBe(false);
+    expect(body.reason).toBe('corridor_not_active');
+    expect(body.active_corridors.some((c: { from: string; to: string }) => c.from === 'RUB' || c.to === 'RUB')).toBe(false);
+  });
+
+  test('GET /v1/cost/quote rejects an invalid amount with 400', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-06-16T10:00:00.000Z', undefined, makeCostFxStub());
+
+    const response = await server.inject({ method: 'GET', url: '/v1/cost/quote?from=USD&to=XOF' });
+    expect(response.statusCode).toBe(400);
+  });
+
+  test('GET /v1/cost/quote degrades to partial (available:false) when no FX service is configured', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-06-16T10:00:00.000Z', undefined, null);
+
+    const response = await server.inject({ method: 'GET', url: '/v1/cost/quote?from=USD&to=XOF&amount=100' });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.available).toBe(false);
+    expect(body.legs.find((l: { kind: string }) => l.kind === 'fx').available).toBe(false);
+  });
+});
+
+describe('settlement orders endpoint (SDK payment flow)', () => {
+  function makeBridgeFxStub(): NonNullable<Parameters<typeof buildApiServer>[0]['fxRateService']> {
+    return {
+      quoteToUsd: async () => ({ kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const }),
+      quote: async (_src: unknown, tgt: unknown, amountMinor: unknown, srcDigits: unknown, tgtDigits: unknown) => {
+        if ((tgt as string).toUpperCase() !== 'XOF') return { kind: 'unavailable' as const, reason: 'fx_rate_unavailable' as const };
+        const rate = 600;
+        const target = Math.round((amountMinor as number) * rate * (10 ** ((tgtDigits as number) ?? 0) / 10 ** ((srcDigits as number) ?? 2)));
+        return { kind: 'ok' as const, quote: { rate: String(rate), rateTimestamp: '2026-06-16T08:00:00.000Z', amountMinorTarget: target, source: 'ecb+uemoa_peg' as const } };
+      }
+    };
+  }
+
+  const auth = (token = 'test_mch_01') => ({ authorization: `Bearer ${token}` });
+  const directBody = (extra: Record<string, unknown> = {}) => ({
+    amount_minor: 200,
+    currency_in: 'USDT',
+    currency_out: 'USDT',
+    beneficiaries: [{ id: 'b1', method: 'mobile_money', share_bps: 10_000 }],
+    ...extra
+  });
+
+  test('POST /v1/settlement/orders requires a merchant bearer token', async () => {
+    const server = buildServer(new InMemoryPaymentSessionRepository(), '2026-06-16T10:00:00.000Z', undefined, null);
+    const res = await server.inject({ method: 'POST', url: '/v1/settlement/orders', payload: directBody() });
+    expect(res.statusCode).toBe(401);
+  });
+
+  test('POST /v1/settlement/orders rejects an invalid body', async () => {
+    const server = buildServer(new InMemoryPaymentSessionRepository(), '2026-06-16T10:00:00.000Z', undefined, null);
+    const res = await server.inject({ method: 'POST', url: '/v1/settlement/orders', headers: auth(), payload: { currency_in: 'USDT' } });
+    expect(res.statusCode).toBe(400);
+  });
+
+  test('POST drives a direct order to RECONCILED, honestly labelled simulated', async () => {
+    const server = buildServer(new InMemoryPaymentSessionRepository(), '2026-06-16T10:00:00.000Z', undefined, null);
+    const res = await server.inject({ method: 'POST', url: '/v1/settlement/orders', headers: auth(), payload: directBody() });
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.simulation).toBe(true);
+    expect(body.rail_mode).toBe('simulated');
+    expect(body.order.state).toBe('RECONCILED');
+    expect(body.order.payer.id).toBe('mch_01');
+    expect(body.settlement.reconciled).toBe(true);
+    expect(body.settlement.conservation_ok).toBe(true);
+    expect(body.settlement.pending_leg_ids).toEqual([]);
+  });
+
+  test('POST shards via the swarm and still reconciles', async () => {
+    const server = buildServer(new InMemoryPaymentSessionRepository(), '2026-06-16T10:00:00.000Z', undefined, null);
+    const res = await server.inject({ method: 'POST', url: '/v1/settlement/orders', headers: auth(), payload: directBody({ technical_cap_minor: 50 }) });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().order.state).toBe('RECONCILED');
+    expect(res.json().settlement.conservation_ok).toBe(true);
+  });
+
+  test('POST returns the order in REJECTED when a rule denies it', async () => {
+    const server = buildServer(new InMemoryPaymentSessionRepository(), '2026-06-16T10:00:00.000Z', undefined, null);
+    const res = await server.inject({ method: 'POST', url: '/v1/settlement/orders', headers: auth(), payload: directBody({ rules: { max_amount_minor: 50 } }) });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().order.state).toBe('REJECTED');
+  });
+
+  test('GET returns the order to its owner and 404s for everyone else', async () => {
+    const server = buildServer(new InMemoryPaymentSessionRepository(), '2026-06-16T10:00:00.000Z', undefined, null);
+    const created = await server.inject({ method: 'POST', url: '/v1/settlement/orders', headers: auth(), payload: directBody() });
+    const id = created.json().order.id;
+
+    const owner = await server.inject({ method: 'GET', url: `/v1/settlement/orders/${id}`, headers: auth() });
+    expect(owner.statusCode).toBe(200);
+    expect(owner.json().order.id).toBe(id);
+
+    const stranger = await server.inject({ method: 'GET', url: `/v1/settlement/orders/${id}`, headers: auth('test_other') });
+    expect(stranger.statusCode).toBe(404);
+  });
+
+  test('POST bridges a cross-currency order via the FX converter (USD→XOF)', async () => {
+    const server = buildServer(new InMemoryPaymentSessionRepository(), '2026-06-16T10:00:00.000Z', undefined, makeBridgeFxStub());
+    const res = await server.inject({
+      method: 'POST',
+      url: '/v1/settlement/orders',
+      headers: auth(),
+      payload: { amount_minor: 10_000, currency_in: 'USD', currency_out: 'XOF', beneficiaries: [{ id: 'b1', method: 'mobile_money', share_bps: 10_000 }] }
+    });
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.order.channel).toBe('bridge');
+    expect(body.order.state).toBe('RECONCILED');
+    expect(body.settlement.conservation_ok).toBe(true);
+  });
+});
