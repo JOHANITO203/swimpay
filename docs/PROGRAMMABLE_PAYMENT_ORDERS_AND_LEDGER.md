@@ -367,8 +367,29 @@ Prix en n'importe quelle fiat (devis FX) ; règlement en stablecoin.
 - 11 tests verts. Fit naturel du payeur A : l'agent IA paie nativement en stablecoin (402).
 
 **Condition légale du modèle sans société : strictement non-custodial** (payeur→marchand
-direct, SwimPay ne tient jamais les fonds). **Reste à faire** : endpoints `/v1/intents` +
-surface 402 (besoin : URL RPC + adresse vérifiée du token testnet).
+direct, SwimPay ne tient jamais les fonds).
+
+**Endpoints livrés** (gated off par défaut, `CRYPTO_PILOT_ENABLED`) :
+- `POST /v1/intents` (auth marchand) — crée la demande de paiement.
+- `GET /v1/intents/:id` — **surface x402 réelle** : `402 Payment Required` (+ instruction) tant qu'en attente, `200` une fois confirmé on-chain, `410` si expiré. Sert A (agent) et B (humain).
+
+**Config pour lancer** (USDC vérifié, source Circle) :
+```
+CRYPTO_PILOT_ENABLED=true
+CRYPTO_PILOT_TOKEN_SYMBOL=USDC
+CRYPTO_PILOT_TOKEN_DECIMALS=6
+CRYPTO_PILOT_MIN_CONFIRMATIONS=2
+# Testnet (répétition gratuite) :
+BASE_RPC_URL=https://sepolia.base.org
+CRYPTO_PILOT_CHAIN=base-sepolia
+CRYPTO_PILOT_TOKEN_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+# Mainnet (vrais users) — mêmes vars, on bascule :
+# BASE_RPC_URL=https://mainnet.base.org
+# CRYPTO_PILOT_CHAIN=base
+# CRYPTO_PILOT_TOKEN_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+```
+RPC public OK pour démarrer ; passer à Alchemy/Infura si `eth_getLogs` est limité.
+`JsonRpcChainReader` est réel mais non testé live ici → le run testnet est la vérification.
 
 **Bug corrigé à la racine** pendant le build : la preuve d'un payout doit référencer
 *sa* jambe (`legRef`), sinon des shards fongibles se confirment de façon découplée du
