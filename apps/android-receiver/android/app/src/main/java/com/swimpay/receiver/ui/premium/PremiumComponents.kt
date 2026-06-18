@@ -20,6 +20,9 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -112,7 +115,7 @@ fun PremiumStatePanel(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 32.dp),
+            .padding(vertical = 24.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -121,24 +124,86 @@ fun PremiumStatePanel(
         ) {
             when (state) {
                 is PremiumScreenState.Loading -> {
-                    CircularProgressIndicator(color = PremiumColors.Blue)
+                    IntelligenceCube()
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        text = state.title ?: "Chargement...",
+                        color = PremiumColors.PageInk,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = state.message ?: "Veuillez patienter pendant la récupération des données",
+                        color = PremiumColors.PageMuted,
+                        textAlign = TextAlign.Center,
+                        fontSize = 13.sp
+                    )
                 }
                 is PremiumScreenState.Error, is PremiumScreenState.Offline -> {
-                    Icon(Icons.Default.Info, null, tint = PremiumColors.Danger, modifier = Modifier.size(48.dp))
-                    Spacer(Modifier.height(16.dp))
-                    Text(state.title, color = PremiumColors.PageInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text(state.message, color = PremiumColors.PageMuted, textAlign = TextAlign.Center)
-                    if (state.actionLabel != null) {
-                        Button(onClick = onAction, modifier = Modifier.padding(top = 16.dp)) {
-                            Text(state.actionLabel!!)
+                    val isOffline = state is PremiumScreenState.Offline
+                    val accentColor = if (isOffline) PremiumColors.Warning else PremiumColors.Danger
+                    val icon = if (isOffline) Icons.Default.Info else Icons.Default.WarningAmber
+                    
+                    Surface(
+                        color = PremiumColors.Surface,
+                        shape = RoundedCornerShape(PremiumRadius.CardLarge),
+                        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.25f)),
+                        shadowElevation = PremiumElevation.Card,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(vertical = 28.dp, horizontal = 20.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .background(accentColor.copy(alpha = 0.12f), RoundedCornerShape(18.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(icon, null, tint = accentColor, modifier = Modifier.size(28.dp))
+                            }
+                            Spacer(Modifier.height(18.dp))
+                            Text(state.title, color = PremiumColors.PageInk, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                            Spacer(Modifier.height(8.dp))
+                            Text(state.message, color = PremiumColors.PageMuted, textAlign = TextAlign.Center, fontSize = 13.sp, lineHeight = 18.sp)
+                            if (state.actionLabel != null) {
+                                Spacer(Modifier.height(18.dp))
+                                PremiumPrimaryButton(state.actionLabel!!, onClick = onAction)
+                            }
                         }
                     }
                 }
                 is PremiumScreenState.Empty -> {
-                    Text(state.title, color = PremiumColors.PageInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text(state.message, color = PremiumColors.PageMuted, textAlign = TextAlign.Center)
-                    if (state.actionLabel != null) {
-                        PremiumPrimaryButton(state.actionLabel!!, Modifier.padding(top = 16.dp), onClick = onAction)
+                    Surface(
+                        color = PremiumColors.Surface,
+                        shape = RoundedCornerShape(PremiumRadius.CardLarge),
+                        border = BorderStroke(1.dp, PremiumColors.Line),
+                        shadowElevation = PremiumElevation.None,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(vertical = 28.dp, horizontal = 20.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .background(PremiumColors.NeutralChip, RoundedCornerShape(18.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Inbox, null, tint = PremiumColors.PageMuted, modifier = Modifier.size(28.dp))
+                            }
+                            Spacer(Modifier.height(18.dp))
+                            Text(state.title, color = PremiumColors.PageInk, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                            Spacer(Modifier.height(8.dp))
+                            Text(state.message, color = PremiumColors.PageMuted, textAlign = TextAlign.Center, fontSize = 13.sp, lineHeight = 18.sp)
+                            if (state.actionLabel != null) {
+                                Spacer(Modifier.height(18.dp))
+                                PremiumPrimaryButton(state.actionLabel!!, onClick = onAction)
+                            }
+                        }
                     }
                 }
                 else -> {}
@@ -154,20 +219,31 @@ fun IntelligenceCube(modifier: Modifier = Modifier) {
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(10000, easing = LinearEasing),
+            animation = tween(4000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "Rotation"
     )
 
-    Canvas(modifier = modifier.size(80.dp)) {
-        val size = size.minDimension
-        drawRect(
-            brush = Brush.linearGradient(listOf(PremiumColors.Teal, PremiumColors.Blue)),
-            topLeft = Offset(size * 0.2f, size * 0.2f),
-            size = Size(size * 0.6f, size * 0.6f),
-            style = Stroke(width = 2.dp.toPx())
-        )
+    Box(modifier = modifier.size(80.dp), contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.size(72.dp).rotate(rotation)) {
+            val size = size.minDimension
+            drawRect(
+                brush = Brush.linearGradient(listOf(PremiumColors.Teal, PremiumColors.Blue)),
+                topLeft = Offset(size * 0.1f, size * 0.1f),
+                size = Size(size * 0.8f, size * 0.8f),
+                style = Stroke(width = 2.5.dp.toPx())
+            )
+        }
+        Canvas(modifier = Modifier.size(42.dp).rotate(-rotation * 1.5f)) {
+            val size = size.minDimension
+            drawRect(
+                brush = Brush.linearGradient(listOf(PremiumColors.Cyan, PremiumColors.Teal)),
+                topLeft = Offset(size * 0.1f, size * 0.1f),
+                size = Size(size * 0.8f, size * 0.8f),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-﻿import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -31,6 +31,10 @@ const ignoredExtensions = new Set([
   '.lock',
   '.pdf',
   '.png',
+  '.ttf',
+  '.otf',
+  '.woff',
+  '.woff2',
   '.webp',
   '.xapk',
   '.zip'

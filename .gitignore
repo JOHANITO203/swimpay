@@ -32,3 +32,14 @@ apps/android-receiver/android/build/
 apps/android-receiver/android/app/build/
 .external-skills/
 .apk-research/
+
+# Local Claude config (never commit)
+.claude/
+# Agent working artifacts — heavy binaries (screenshots, videos), kept on disk only.
+# NB: the .md reports under .swimpay-agent/ stay tracked; only screenshots are ignored.
+.swimpay-agent/screenshots/
+# Design references — heavy binaries (mockups, prototypes), kept on disk only
+design/
+# Obsidian scratch files
+*.canvas
+*.base
