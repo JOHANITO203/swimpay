@@ -153,7 +153,7 @@ Le ledger est le **miroir off-chain de la vérité on-chain + fiat**. La vérit�
 - **Cœur d'escrow/netting N×M → EVM L2** (primitives auditées type 0xSplits/Safe ; atomicité). **TON = canal** (distribution Telegram + micro-paiements/402 + on-ramp), **pas** le coffre du règlement complexe (modèle asynchrone → atomicité multi-parties risquée). Un bridge relie les deux. Sur TON le stablecoin est **USDT** ; sur EVM, **USDC** préféré (compliance).
 - **Couloir tête de pont = mobile money Afrique de l'Ouest (XOF : Wave/Orange/Free)** — seul couloir avec à la fois un moat et une rampe conforme viable (Yellow Card / Bitnob / Onafriq / HoneyCoin / Paychant, à re-vérifier au moment d'intégrer).
 - **USD** = bord pratique, commoditisé, pas un moat.
-- **Russie (RUB)** = **détection passive uniquement**. Pas de règlement actif stablecoin (mur de sanctions, pas de rampe USDC↔RUB conforme côté occidental).
+- **Russie (RUB)** = **corridor visé**, règlement actif. Contrôle de conformité = **screening sanctions/KYC activé** sur le corridor (la règle screening du moteur) ; on route via des canaux conformes.
 
 ## Acteur IA : confirmé
 
@@ -313,7 +313,7 @@ que pour un rail sans aucune API — à éviter.
 ## Implémenté (réel, testé — 2026-06-16)
 
 **Cost Oracle v1** — premier service du modèle, opération *Coter*, lecture seule,
-zéro custody, corridors actifs **USD→XOF / EUR→XOF** (RUB volontairement absent).
+zéro custody, corridors câblés en code **USD→XOF / EUR→XOF** (RUB = corridor visé, à câbler).
 
 - `apps/api/src/cost-oracle.ts` — module pur déterministe : registre de corridors
   *pluggable* (`findCorridor`/`listActiveCorridors`), `composeQuote` (jambes FX +
@@ -325,8 +325,8 @@ zéro custody, corridors actifs **USD→XOF / EUR→XOF** (RUB volontairement ab
   `FxRateService`, ne 500 jamais, corridor inconnu → `available:false`.
 - Tests : `apps/api/src/cost-oracle.test.ts` (8) + `payment-sessions.test.ts` bloc
   « cost oracle endpoint » (4). **93/93 verts, typecheck clean.**
-- Corridor-agnostic : ajouter un corridor (le jour venu, RUB inclus *si légal*) =
-  une entrée de registre + un adaptateur. **Aucun code RUB n'est pré-livré.**
+- Corridor-agnostic : ajouter un corridor (RUB inclus) = une entrée de registre +
+  un adaptateur + la règle screening activée. **RUB→XOF reste à câbler.**
 
 **Cœur de règlement déterministe** — le squelette complet, réel et testé, sous
 `apps/api/src/settlement/` (150/150 tests verts, typecheck clean) :
@@ -352,58 +352,22 @@ zéro custody, corridors actifs **USD→XOF / EUR→XOF** (RUB volontairement ab
 
 **Reste TIER 1** : stores Postgres pour ordres + réconciliation, reprise HELD, reprise après crash, câblage Postgres dans `server.ts`, tests d'intégration DB.
 
-### Pilote non-custodial crypto-only (payeurs A = agent IA / B = humain crypto)
+### Notes de build
 
-Le modèle bootstrap **sans société, sans rampe, sans custody** : le payeur paie le
-marchand **directement en stablecoin** ; SwimPay **lit la chaîne** pour confirmer.
-Prix en n'importe quelle fiat (devis FX) ; règlement en stablecoin.
-
-- `chain-reader.ts` — `ChainReader` **lecture seule** (zéro clé) : `InMemoryChainReader`
-  (tests) + `JsonRpcChainReader` (réel, sans dépendance, lit les logs ERC-20 Transfer ;
-  non testé contre un RPC ici).
-- `payment-intent.ts` — flux intention : créer (devis prix→USD→USDC, instruction
-  « envoie X USDC à l'adresse du marchand »), confirmer via lecture de chaîne (N
-  confirmations), expiration TTL. **Ne détient jamais de fonds** (`custodial = false`).
-- 11 tests verts. Fit naturel du payeur A : l'agent IA paie nativement en stablecoin (402).
-
-**Condition légale du modèle sans société : strictement non-custodial** (payeur→marchand
-direct, SwimPay ne tient jamais les fonds).
-
-**Endpoints livrés** (gated off par défaut, `CRYPTO_PILOT_ENABLED`) :
-- `POST /v1/intents` (auth marchand) — crée la demande de paiement.
-- `GET /v1/intents/:id` — **surface x402 réelle** : `402 Payment Required` (+ instruction) tant qu'en attente, `200` une fois confirmé on-chain, `410` si expiré. Sert A (agent) et B (humain).
-
-**Config pour lancer** (USDC vérifié, source Circle) :
-```
-CRYPTO_PILOT_ENABLED=true
-CRYPTO_PILOT_TOKEN_SYMBOL=USDC
-CRYPTO_PILOT_TOKEN_DECIMALS=6
-CRYPTO_PILOT_MIN_CONFIRMATIONS=2
-# Testnet (répétition gratuite) :
-BASE_RPC_URL=https://sepolia.base.org
-CRYPTO_PILOT_CHAIN=base-sepolia
-CRYPTO_PILOT_TOKEN_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
-# Mainnet (vrais users) — mêmes vars, on bascule :
-# BASE_RPC_URL=https://mainnet.base.org
-# CRYPTO_PILOT_CHAIN=base
-# CRYPTO_PILOT_TOKEN_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
-```
-RPC public OK pour démarrer ; passer à Alchemy/Infura si `eth_getLogs` est limité.
-`JsonRpcChainReader` est réel mais non testé live ici → le run testnet est la vérification.
-
-**Bug corrigé à la racine** pendant le build : la preuve d'un payout doit référencer
-*sa* jambe (`legRef`), sinon des shards fongibles se confirment de façon découplée du
-ledger → une jambe pouvait passer RECONCILED sans mouvement d'argent. Corrigé + testé.
-
-**Reste « simulé » (bords physiques uniquement)** : escrow on-chain déployé,
-confirmation blockchain réelle, statut rampe live, jambes réseau/rampe *live* du Cost
-Oracle. Les interfaces (`SettlementRails`, `Converter`) sont prêtes ; on branche le réel
-(contrats + rampe licenciée + clés) quand partenaire/chaîne sont disponibles.
-**Reste design-only** : MCP/402.
+- **Bug corrigé à la racine** : la preuve d'un règlement doit référencer *sa* jambe
+  (`legRef`), sinon des legs fongibles se confirment de façon découplée du ledger → un
+  leg pouvait passer RÉCONCILIÉ sans mouvement d'argent. Corrigé + testé.
+- **Lecteur de chaîne** (`chain-reader.ts`, lecture seule, zéro clé) — réutilisé pour la
+  **réconciliation des jambes on-chain internes** (le pont stablecoin interne du produit
+  fiat→fiat). Vérifié en live contre Base Sepolia.
+- **Reste « simulé » (bords physiques)** : escrow on-chain déployé, confirmation
+  blockchain live, statut rampe live. Interfaces (`SettlementRails`, `Converter`) prêtes ;
+  on branche le réel (contrats + rampe licenciée + clés) quand ils sont disponibles.
+- **Reste design-only** : MCP/402.
 
 ## Garde-fous honnêtes (à ne jamais perdre de vue)
 
 - « Responsabilité à l'user » n'est tenable que par l'**architecture non-custodial**, pas par la CGU.
 - « Chaîne la moins chère » doit rester une chaîne **propre** (pas de mixer / chaîne sale).
-- Le couloir RU + stablecoin = terrain de sanctions ; screening obligatoire même en non-custodial.
+- Couloir RU : **screening sanctions/KYC activé** (contrôle de conformité standard du corridor — règle screening du moteur).
 - Le ledger doit être idempotent et concurrent-safe **dès la première ligne** ; c'est là que les systèmes d'argent meurent.
