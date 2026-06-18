@@ -20,7 +20,7 @@
  * engine), not a quote-time concern — the Cost Oracle only computes cost.
  */
 
-import type { FxRouteResult } from './fx.js';
+import type { FxRouteResult } from '../fx.js';
 
 // ─── Public types ────────────────────────────────────────────────────────────
 

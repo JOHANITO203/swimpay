@@ -176,7 +176,7 @@ import {
   listActiveCorridors,
   PublishedRampFeeSource,
   StaticNetworkFeeSource
-} from './cost-oracle.js';
+} from './settlement/cost-oracle.js';
 import {
   parseSettlementRequest,
   SettlementService,
