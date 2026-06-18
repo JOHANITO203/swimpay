@@ -15,9 +15,9 @@
  *   - Deterministic: no clock/network here; sources are injected. Minor units are
  *     integers; the FX conversion does a single final rounding inside FxRateService.
  *
- * Corridor-agnostic: corridors are a pluggable registry. Adding a corridor later
- * is one registry entry — no corridor-specific code is pre-shipped. RUB is NOT a
- * configured corridor (excluded from active settlement).
+ * Corridor-agnostic: corridors are a pluggable registry. Adding a corridor is one
+ * registry entry. Sanctions/KYC screening is a SETTLEMENT-time control (the rules
+ * engine), not a quote-time concern — the Cost Oracle only computes cost.
  */
 
 import type { FxRouteResult } from './fx.js';
@@ -100,11 +100,14 @@ export interface RampFeeSource {
   fee(rampId: string, fromCurrency: string): RampFeeQuote;
 }
 
-// ─── Corridor registry (active corridors only; RUB intentionally absent) ──────
+// ─── Corridor registry ────────────────────────────────────────────────────────
+// `rampId` is the XOF-side OFF-ramp; the input currency is handled by the FX leg.
+// RUB→XOF: rouble priced via CBR (FxRateService); screening enforced at settlement.
 
 const ACTIVE_CORRIDORS: readonly Corridor[] = [
   { from: 'USD', to: 'XOF', rampId: 'yellow_card' },
   { from: 'EUR', to: 'XOF', rampId: 'yellow_card' },
+  { from: 'RUB', to: 'XOF', rampId: 'yellow_card' },
 ];
 
 export function findCorridor(from: string, to: string): Corridor | null {

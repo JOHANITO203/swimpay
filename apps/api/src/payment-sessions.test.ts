@@ -3402,16 +3402,17 @@ describe('cost oracle endpoint', () => {
     expect(Array.isArray(body.caveats)).toBe(true);
   });
 
-  test('GET /v1/cost/quote rejects an inactive corridor honestly — RUB never resolves', async () => {
+  test('GET /v1/cost/quote rejects an inactive corridor honestly (e.g. USD→EUR)', async () => {
     const repository = new InMemoryPaymentSessionRepository();
     const server = buildServer(repository, '2026-06-16T10:00:00.000Z', undefined, makeCostFxStub());
 
-    const response = await server.inject({ method: 'GET', url: '/v1/cost/quote?from=RUB&to=XOF&amount=100' });
+    const response = await server.inject({ method: 'GET', url: '/v1/cost/quote?from=USD&to=EUR&amount=100' });
     expect(response.statusCode).toBe(200);
     const body = response.json();
     expect(body.available).toBe(false);
     expect(body.reason).toBe('corridor_not_active');
-    expect(body.active_corridors.some((c: { from: string; to: string }) => c.from === 'RUB' || c.to === 'RUB')).toBe(false);
+    // RUB→XOF, by contrast, IS an active corridor now.
+    expect(body.active_corridors.some((c: { from: string; to: string }) => c.from === 'RUB' && c.to === 'XOF')).toBe(true);
   });
 
   test('GET /v1/cost/quote rejects an invalid amount with 400', async () => {

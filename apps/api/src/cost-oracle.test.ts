@@ -39,13 +39,12 @@ const rampDown: RampFeeSource = {
 };
 
 describe('cost-oracle: corridor registry', () => {
-  it('exposes only active corridors; RUB is excluded', () => {
+  it('exposes the active corridors (USD/EUR/RUB → XOF)', () => {
     expect(findCorridor('USD', 'XOF')).not.toBeNull();
     expect(findCorridor('EUR', 'XOF')).not.toBeNull();
-    // RUB is excluded from active settlement — must never resolve to a corridor.
-    expect(findCorridor('RUB', 'XOF')).toBeNull();
-    expect(findCorridor('USD', 'EUR')).toBeNull(); // not an active corridor
-    expect(listActiveCorridors().some((c) => c.from === 'RUB' || c.to === 'RUB')).toBe(false);
+    expect(findCorridor('RUB', 'XOF')).not.toBeNull(); // RUB is an intended corridor (screening at settlement)
+    expect(findCorridor('USD', 'EUR')).toBeNull(); // not a configured corridor
+    expect(listActiveCorridors().find((c) => c.from === 'RUB')?.rampId).toBe('yellow_card');
   });
 });
 
