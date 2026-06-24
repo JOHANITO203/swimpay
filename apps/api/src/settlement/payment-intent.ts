@@ -16,6 +16,7 @@
 
 import type { ChainReader } from './chain-reader.js';
 import { baseUnitsToAmount, buildTransakOnrampUrl, type TransakConfig } from './transak.js';
+import { buildCoinbaseSessionTokenRequest, type CoinbaseOnrampConfig } from './coinbase-onramp.js';
 
 export interface FxQuoter {
   quote(source: string, target: string, amountMinor: number, sourceMinorDigits: number, targetMinorDigits: number): Promise<
@@ -70,7 +71,9 @@ export interface PaymentIntentServiceDeps {
   token: TokenConfig;
   minConfirmations: number;
   ttlMs?: number;
-  /** When present, the instruction also carries a Transak on-ramp URL (fiat entry, Path D). */
+  /** Chosen fiat-entry on-ramp (Path D): 0% USDC + no KYB. Takes priority over Transak. */
+  coinbase?: CoinbaseOnrampConfig;
+  /** Fallback fiat-entry on-ramp (Path D): wider geo + KYC reuse. Used if no Coinbase config. */
   transak?: TransakConfig;
 }
 
@@ -167,23 +170,45 @@ export class PaymentIntentService {
 
   /** The payment instruction handed to the payer (402 for agents, checkout for humans). */
   public instructionFor(intent: PaymentIntent) {
-    // Fiat entry (Path D): a locked Transak widget that delivers exactly the USDC owed
-    // to the same destination. Confirmation stays our on-chain reader; Transak just funds.
-    const onramp = this.d.transak
-      ? {
-          provider: 'transak' as const,
-          url: buildTransakOnrampUrl(
-            {
-              fiatCurrency: intent.priceCurrency,
-              cryptoCurrencyCode: intent.token.symbol,
-              walletAddress: intent.merchantAddress,
-              cryptoAmount: baseUnitsToAmount(intent.settlementAmountMinor, intent.token.decimals),
-              partnerOrderId: intent.id,
-            },
-            this.d.transak,
-          ),
-        }
-      : null;
+    // Fiat entry (Path D): the buyer pays normal money, it's delivered as exactly the USDC
+    // owed to the same destination. Confirmation stays our on-chain reader; the on-ramp just
+    // funds. XOF is never an input here — it's the off-ramp output. Coinbase is preferred
+    // (0% USDC, no KYB); Transak is the fallback.
+    const cryptoAmount = baseUnitsToAmount(intent.settlementAmountMinor, intent.token.decimals);
+    let onramp:
+      | { provider: 'coinbase'; session_token_request: Record<string, unknown> }
+      | { provider: 'transak'; url: string }
+      | null = null;
+    if (this.d.coinbase) {
+      // Backend mints a single-use sessionToken from this body (CDP secret), then builds the
+      // hosted URL via buildCoinbaseOnrampUrl(token). The mint plugs in with the CDP account.
+      onramp = {
+        provider: 'coinbase',
+        session_token_request: buildCoinbaseSessionTokenRequest(
+          {
+            walletAddress: intent.merchantAddress,
+            cryptoAmount,
+            partnerOrderId: intent.id,
+            ...(intent.priceCurrency !== 'XOF' ? { fiatCurrency: intent.priceCurrency } : {}),
+          },
+          this.d.coinbase,
+        ),
+      };
+    } else if (this.d.transak) {
+      onramp = {
+        provider: 'transak',
+        url: buildTransakOnrampUrl(
+          {
+            fiatCurrency: intent.priceCurrency,
+            cryptoCurrencyCode: intent.token.symbol,
+            walletAddress: intent.merchantAddress,
+            cryptoAmount,
+            partnerOrderId: intent.id,
+          },
+          this.d.transak,
+        ),
+      };
+    }
     return {
       intent_id: intent.id,
       custody: 'non_custodial' as const,

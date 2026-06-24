@@ -688,6 +688,16 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
           chainReader: cryptoPilotChainReader,
           token: cryptoPilotToken,
           minConfirmations: Number.parseInt(process.env.CRYPTO_PILOT_MIN_CONFIRMATIONS ?? '2', 10),
+          ...(process.env.COINBASE_ONRAMP_APP_ID
+            ? {
+                coinbase: {
+                  appId: process.env.COINBASE_ONRAMP_APP_ID,
+                  network: process.env.COINBASE_ONRAMP_NETWORK ?? 'base',
+                  asset: process.env.COINBASE_ONRAMP_ASSET ?? 'USDC',
+                  defaultFiatCurrency: process.env.COINBASE_ONRAMP_FIAT ?? 'EUR'
+                }
+              }
+            : {}),
           ...(process.env.TRANSAK_API_KEY
             ? {
                 transak: {

@@ -104,7 +104,7 @@ describe('PaymentIntentService — non-custodial', () => {
     const intent = await service.createIntent({ ...baseInput, priceCurrency: 'USD', priceAmountMinor: 10_000 });
     const inst = service.instructionFor(intent);
     expect(inst.onramp?.provider).toBe('transak');
-    const u = new URL(inst.onramp!.url);
+    const u = new URL((inst.onramp as { url: string }).url);
     expect(u.searchParams.get('walletAddress')).toBe(MERCHANT);
     expect(u.searchParams.get('disableWalletAddressForm')).toBe('true');
     expect(u.searchParams.get('cryptoAmount')).toBe('100'); // 100 USDC = exactly what's owed
@@ -112,9 +112,32 @@ describe('PaymentIntentService — non-custodial', () => {
     expect(u.searchParams.get('partnerOrderId')).toBe(intent.id);
   });
 
-  it('omits the on-ramp when no Transak config is present', async () => {
+  it('omits the on-ramp when no on-ramp config is present', async () => {
     const { service } = makeService();
     const intent = await service.createIntent({ ...baseInput, priceCurrency: 'USD', priceAmountMinor: 10_000 });
     expect(service.instructionFor(intent).onramp).toBeNull();
+  });
+
+  it('emits a Coinbase session-token request and prefers it over Transak when both are set', async () => {
+    const { service } = makeService({
+      coinbase: { appId: 'app_1', network: 'base', asset: 'USDC', defaultFiatCurrency: 'EUR' },
+      transak: { apiKey: 'pk_x', environment: 'STAGING', network: 'base' },
+    });
+    const intent = await service.createIntent({ ...baseInput, priceCurrency: 'USD', priceAmountMinor: 10_000 });
+    const onramp = service.instructionFor(intent).onramp;
+    expect(onramp?.provider).toBe('coinbase'); // Coinbase wins
+    expect((onramp as { session_token_request: Record<string, unknown> }).session_token_request).toMatchObject({
+      addresses: [{ address: MERCHANT, blockchains: ['base'] }],
+      presetCryptoAmount: 100, // exactly the USDC owed
+      fiatCurrency: 'USD', // buyer pays the priced fiat
+      partnerUserId: intent.id,
+    });
+  });
+
+  it('falls back to the config default fiat (never XOF) for an XOF-priced intent', async () => {
+    const { service } = makeService({ coinbase: { appId: 'app_1', network: 'base', asset: 'USDC', defaultFiatCurrency: 'EUR' } });
+    const intent = await service.createIntent({ ...baseInput, priceCurrency: 'XOF', priceAmountMinor: 10_000 });
+    const onramp = service.instructionFor(intent).onramp as { session_token_request: Record<string, unknown> };
+    expect(onramp.session_token_request.fiatCurrency).toBe('EUR'); // not XOF
   });
 });
