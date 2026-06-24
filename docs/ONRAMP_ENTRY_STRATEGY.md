@@ -71,3 +71,16 @@ on-chain** (autoritaire) ; le webhook Transak n'est qu'une corroboration optionn
 
 Implémentation : module `transak.ts` (constructeur d'URL pur) + `onramp` ajouté à
 l'instruction de l'intention quand une config Transak est présente. Gated derrière le pilote.
+
+## 9. Rampes retenues + fallback (décision)
+**Entrée (fiat → USDC) — construit :**
+- **Primaire : Coinbase Onramp** — 0 % sur l'USDC + intégration sans KYB (compte dev). Encaisse une devise normale (USD/EUR…, **jamais le XOF**) → USDC. Flux en 2 temps (sessionToken minté côté serveur).
+- **Fallback : Transak** — couverture plus large (115+ pays) + KYC Reliance (réutilise notre KYC). Câblé, secondaire.
+
+**Sortie (USDC → fiat local) — à construire :**
+- **Primaire : HoneyCoin** — **NGN + XOF dans une seule API**, % par route transparent (sans frais fixe → bon pour petits tickets), sandbox immédiat, KYB léger.
+- **Fallback : Conduit / BVNK** — moins cher au **volume** (0,5–1 % / 25–50 bps) **mais** frais fixe (~35 $ Conduit) + KYB entreprise (~2 sem.) → **gros tickets uniquement**.
+- **Routage** : ticket standard/petit → **HoneyCoin** ; gros volume → **Conduit/BVNK**. Un seul `RampPayoutRails` agnostique + routeur ; ajouter un rail = un adaptateur, **pas de réécriture**.
+
+**À confirmer avant de signer HoneyCoin** : couverture **XOF Sénégal/CI** réelle + frais exacts du couloir.
+**Bloquant commun** : toute sortie exige un **KYB = société** (le prochain sujet). L'entrée Coinbase, elle, démarre **sans société** (compte dev).
