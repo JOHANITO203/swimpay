@@ -22,11 +22,11 @@ export type BeneficiaryChannel =
   | { kind: 'bank'; accountNumber: string; bankCode: string };
 
 export interface PayoutRequest {
-  /** Our order/intent id — idempotency key + reconciliation cross-reference. */
+  /** Our order/intent id (or leg id) — idempotency key + reconciliation cross-reference. */
   reference: string;
-  /** USDC base units to convert (e.g. 100_000_000 = 100 USDC). */
-  amountBaseUnits: number;
-  tokenSymbol: string; // 'USDC'
+  /** Payout amount in `destinationCurrency` minor units (the ramp debits the USDC equivalent). */
+  amountMinor: number;
+  tokenSymbol: string; // source stablecoin, e.g. 'USDC'
   destinationCurrency: string; // 'XOF' | 'NGN'
   beneficiary: BeneficiaryChannel;
 }
@@ -120,6 +120,20 @@ export class SimulatedRampPayoutRails implements RampPayoutRails {
     if (!r) throw new RampPayoutError(`unknown payout ${payoutId}`);
     r.status = 'FAILED';
   }
+
+  /** Deliver by reference — mirrors a ramp webhook keyed on our partnerOrderId/reference. */
+  public markDeliveredByReference(reference: string, amountLocalMinor: number): void {
+    const r = this.byRef.get(reference);
+    if (!r) throw new RampPayoutError(`unknown payout reference ${reference}`);
+    r.status = 'DELIVERED';
+    r.amountLocalMinor = amountLocalMinor;
+  }
+
+  public markFailedByReference(reference: string): void {
+    const r = this.byRef.get(reference);
+    if (!r) throw new RampPayoutError(`unknown payout reference ${reference}`);
+    r.status = 'FAILED';
+  }
 }
 
 export interface RampRoute {
@@ -162,5 +176,17 @@ export class RampPayoutRouter {
       }
     }
     throw lastError instanceof Error ? lastError : new RampPayoutError('all rails failed');
+  }
+
+  /** Poll a payout's status across the configured rails (the one that owns the id answers). */
+  public async getStatus(payoutId: string): Promise<PayoutResult> {
+    for (const route of this.routes) {
+      try {
+        return await route.rails.getStatus(payoutId);
+      } catch {
+        // not this rail — try the next
+      }
+    }
+    throw new RampPayoutError(`unknown payout ${payoutId}`);
   }
 }
