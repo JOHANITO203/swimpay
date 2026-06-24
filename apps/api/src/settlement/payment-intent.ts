@@ -15,6 +15,7 @@
  */
 
 import type { ChainReader } from './chain-reader.js';
+import { baseUnitsToAmount, buildTransakOnrampUrl, type TransakConfig } from './transak.js';
 
 export interface FxQuoter {
   quote(source: string, target: string, amountMinor: number, sourceMinorDigits: number, targetMinorDigits: number): Promise<
@@ -69,6 +70,8 @@ export interface PaymentIntentServiceDeps {
   token: TokenConfig;
   minConfirmations: number;
   ttlMs?: number;
+  /** When present, the instruction also carries a Transak on-ramp URL (fiat entry, Path D). */
+  transak?: TransakConfig;
 }
 
 export class PaymentIntentService {
@@ -164,6 +167,23 @@ export class PaymentIntentService {
 
   /** The payment instruction handed to the payer (402 for agents, checkout for humans). */
   public instructionFor(intent: PaymentIntent) {
+    // Fiat entry (Path D): a locked Transak widget that delivers exactly the USDC owed
+    // to the same destination. Confirmation stays our on-chain reader; Transak just funds.
+    const onramp = this.d.transak
+      ? {
+          provider: 'transak' as const,
+          url: buildTransakOnrampUrl(
+            {
+              fiatCurrency: intent.priceCurrency,
+              cryptoCurrencyCode: intent.token.symbol,
+              walletAddress: intent.merchantAddress,
+              cryptoAmount: baseUnitsToAmount(intent.settlementAmountMinor, intent.token.decimals),
+              partnerOrderId: intent.id,
+            },
+            this.d.transak,
+          ),
+        }
+      : null;
     return {
       intent_id: intent.id,
       custody: 'non_custodial' as const,
@@ -179,6 +199,7 @@ export class PaymentIntentService {
       state: intent.state,
       expires_at: intent.expiresAt,
       confirmation: intent.confirmation,
+      onramp,
     };
   }
 }

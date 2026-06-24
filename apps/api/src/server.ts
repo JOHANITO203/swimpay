@@ -687,7 +687,17 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
           generateId: (prefix) => `${prefix}_${randomUUID()}`,
           chainReader: cryptoPilotChainReader,
           token: cryptoPilotToken,
-          minConfirmations: Number.parseInt(process.env.CRYPTO_PILOT_MIN_CONFIRMATIONS ?? '2', 10)
+          minConfirmations: Number.parseInt(process.env.CRYPTO_PILOT_MIN_CONFIRMATIONS ?? '2', 10),
+          ...(process.env.TRANSAK_API_KEY
+            ? {
+                transak: {
+                  apiKey: process.env.TRANSAK_API_KEY,
+                  environment: (process.env.TRANSAK_ENV === 'PRODUCTION' ? 'PRODUCTION' : 'STAGING') as 'STAGING' | 'PRODUCTION',
+                  network: process.env.TRANSAK_NETWORK ?? 'base',
+                  defaultPaymentMethod: process.env.TRANSAK_PAYMENT_METHOD ?? 'sepa_bank_transfer'
+                }
+              }
+            : {})
         })
       : null;
 

@@ -96,4 +96,25 @@ describe('PaymentIntentService — non-custodial', () => {
     const { service } = makeService({ fxQuoter: null });
     await expect(service.createIntent({ ...baseInput, priceCurrency: 'XOF', priceAmountMinor: 10_000 })).rejects.toBeInstanceOf(IntentError);
   });
+
+  it('adds a Transak on-ramp URL to the instruction when configured (locked address + crypto amount)', async () => {
+    const { service } = makeService({
+      transak: { apiKey: 'pk_x', environment: 'STAGING', network: 'base', defaultPaymentMethod: 'sepa_bank_transfer' },
+    });
+    const intent = await service.createIntent({ ...baseInput, priceCurrency: 'USD', priceAmountMinor: 10_000 });
+    const inst = service.instructionFor(intent);
+    expect(inst.onramp?.provider).toBe('transak');
+    const u = new URL(inst.onramp!.url);
+    expect(u.searchParams.get('walletAddress')).toBe(MERCHANT);
+    expect(u.searchParams.get('disableWalletAddressForm')).toBe('true');
+    expect(u.searchParams.get('cryptoAmount')).toBe('100'); // 100 USDC = exactly what's owed
+    expect(u.searchParams.get('cryptoCurrencyCode')).toBe('USDC');
+    expect(u.searchParams.get('partnerOrderId')).toBe(intent.id);
+  });
+
+  it('omits the on-ramp when no Transak config is present', async () => {
+    const { service } = makeService();
+    const intent = await service.createIntent({ ...baseInput, priceCurrency: 'USD', priceAmountMinor: 10_000 });
+    expect(service.instructionFor(intent).onramp).toBeNull();
+  });
 });
