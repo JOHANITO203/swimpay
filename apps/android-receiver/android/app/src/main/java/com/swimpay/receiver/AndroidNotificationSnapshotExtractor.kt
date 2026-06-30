@@ -7,7 +7,11 @@ object AndroidNotificationSnapshotExtractor {
     fun fromStatusBarNotification(
         sbn: StatusBarNotification,
         appPackageName: String,
-        debugEnabled: Boolean
+        debugEnabled: Boolean,
+        // Resolves the real on-device signing cert for the signal. Defaults to the
+        // "TO_VERIFY" placeholder so non-runtime callers (tests, harness) are unchanged;
+        // the live service passes a PackageManager-backed resolver.
+        certSha256Resolver: (String) -> String = { "TO_VERIFY" }
     ): NotificationSnapshot {
         val notification = sbn.notification
         val extras = notification.extras
@@ -40,7 +44,7 @@ object AndroidNotificationSnapshotExtractor {
             } else {
                 BankTargetLock.bankProfileIdForPackage(sbn.packageName) ?: "unknown"
             },
-            packageCertSha256 = if (syntheticDebug) SyntheticNotificationConstants.CERT_SHA256 else "TO_VERIFY",
+            packageCertSha256 = if (syntheticDebug) SyntheticNotificationConstants.CERT_SHA256 else certSha256Resolver(sbn.packageName),
             verificationStatus = if (syntheticDebug) {
                 BankPackageVerificationStatus.VERIFIED
             } else {

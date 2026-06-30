@@ -11,6 +11,11 @@ import com.swimpay.receiver.security.AndroidKeystorePayloadSigner
 import com.swimpay.receiver.work.SignalUploadWorker
 
 class SwimPayNotificationListenerService : NotificationListenerService() {
+    // Reads the real signing cert of an enabled bank app once per package so the uploaded
+    // signal carries it (not the "TO_VERIFY" placeholder), letting the backend reach
+    // 'trusted_cert'. Lazy: the service Context is valid by the first notification.
+    private val certResolver by lazy { PackageSigningCertResolver.forContext(this) }
+
     override fun onListenerConnected() {
         ReceiverListenerLifecycleStore(SharedPreferencesReceiverListenerLifecycleStorage(this)).markConnected()
         val active = try {
@@ -59,7 +64,8 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
         val snapshot = AndroidNotificationSnapshotExtractor.fromStatusBarNotification(
             sbn = sbn,
             appPackageName = packageName,
-            debugEnabled = BuildConfig.DEBUG
+            debugEnabled = BuildConfig.DEBUG,
+            certSha256Resolver = certResolver::resolve
         )
         val fieldsDetected = AndroidNotificationSnapshotExtractor.detectedFieldCount(snapshot)
         val result = ReceiverNotificationPipeline(
@@ -114,7 +120,8 @@ class SwimPayNotificationListenerService : NotificationListenerService() {
             AndroidNotificationSnapshotExtractor.fromStatusBarNotification(
                 sbn = sbn,
                 appPackageName = packageName,
-                debugEnabled = BuildConfig.DEBUG
+                debugEnabled = BuildConfig.DEBUG,
+                certSha256Resolver = certResolver::resolve
             )
         }
         val result = ActiveIntentNotificationSweep(
