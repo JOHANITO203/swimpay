@@ -687,7 +687,9 @@ class AndroidMerchantApiWiringTest {
         assertEquals("Sberbank · •••• 4821", list.items.single().subtitle)
         assertFalse(list.visibleTexts().joinToString(" ").contains("2200123412344821"))
         assertEquals("GET", transport.requests[0].method)
-        assertEquals("/v1/merchant/receiving-methods", transport.requests[0].path)
+        // The list reads the canonical /receiving-routes (authoritative rail_type for all
+        // four rails); the lossy /receiving-methods projection collapses non-phone rails.
+        assertEquals("/v1/merchant/receiving-routes", transport.requests[0].path)
         assertEquals("Bearer test_mch_demo", transport.requests[0].headers["Authorization"])
 
         val draft = MerchantReceivingMethodSubmission(

@@ -116,11 +116,9 @@ class ReceivingMethodAddFlowCatalogTest {
     }
 
     @Test
-    fun internationalRegionTileIsNavigableAndRoutesToTheUnifiedAddFlow() {
+    fun internationalRegionTileIsDetachedToItsOwnWalletScreen() {
         // NAVIGABILITY GUARD: the INTERNATIONAL region group must carry a non-null
         // family so its tile navigates (onClick = { region.family?.let(onPick) }).
-        // Previously it was `family = null` (non-navigating), so a merchant could not
-        // reach an add flow for international banks from the International tile.
         val intGroup = sourceBetween(
             dashboardSource,
             "kind = ReceivingRegionKind.INTERNATIONAL",
@@ -135,37 +133,65 @@ class ReceivingMethodAddFlowCatalogTest {
             intGroup.contains("family = null")
         )
 
-        // ROUTING GUARD: the hub must route INTERNATIONAL to the unified add flow
-        // (PremiumReceivingMethodsStateScreen) — the same screen RUSSIAN lands on.
+        // DETACHMENT GUARD: the hub must route INTERNATIONAL to its OWN wallet screen
+        // (PremiumInternationalWalletReceivingScreen) — never the Russian card/SBP screen
+        // (PremiumReceivingMethodsStateScreen). This is the bug the user reported: tapping
+        // International used to land on the Russian bank screen.
         val hub = sourceBetween(
             dashboardSource,
             "when (family) {",
             "fun PremiumReceivingMethodFamilyChooser"
         )
         assertTrue(
-            "INTERNATIONAL must route to the unified add flow",
-            hub.contains("ReceivingMethodFamily.INTERNATIONAL -> PremiumReceivingMethodsStateScreen") ||
-                (hub.contains("ReceivingMethodFamily.INTERNATIONAL ->\n") &&
-                    hub.contains("PremiumReceivingMethodsStateScreen")) ||
-                // RUSSIAN + INTERNATIONAL may share one branch arm.
-                (hub.contains("ReceivingMethodFamily.INTERNATIONAL") &&
-                    hub.contains("PremiumReceivingMethodsStateScreen"))
+            "INTERNATIONAL must route to its detached wallet screen",
+            hub.contains("ReceivingMethodFamily.INTERNATIONAL -> PremiumInternationalWalletReceivingScreen")
+        )
+        assertFalse(
+            "INTERNATIONAL must NOT land on the Russian card/SBP screen",
+            hub.contains("ReceivingMethodFamily.INTERNATIONAL -> PremiumReceivingMethodsStateScreen")
+        )
+        assertFalse(
+            "RUSSIAN and INTERNATIONAL must no longer share one branch arm",
+            hub.contains("ReceivingMethodFamily.RUSSIAN,\n        ReceivingMethodFamily.INTERNATIONAL")
         )
     }
 
     @Test
-    fun internationalAddFlowOffersTheInternationalBanks() {
-        // BEHAVIOURAL PROOF: the add flow the International tile routes to offers the
-        // real international neobanks, so a merchant CAN add Wise / Revolut / Payoneer.
-        val ids = addFlowBankOptions().map { it.bankProfileId }
+    fun internationalAddFlowOffersTheInternationalNeobanksOnTheWalletRail() {
+        // BEHAVIOURAL PROOF: the international neobanks are addable and on the wallet rail
+        // (USD), not the card rail — so a merchant CAN add Wise / Revolut / Payoneer as a
+        // real wallet_transfer route.
+        val options = addFlowBankOptions()
         listOf("wise_int", "revolut_int", "payoneer_int").forEach { id ->
-            assertTrue("International add flow must offer $id", ids.contains(id))
+            val option = options.first { it.bankProfileId == id }
             assertEquals(
                 "International bank $id must belong to the INTERNATIONAL region",
                 ReceivingRegion.INTERNATIONAL,
                 ReceivingCatalog.allMethods.first { it.bankProfileId == id }.region
             )
+            assertEquals(
+                "International bank $id must submit on the wallet_transfer rail",
+                ReceivingMethodType.WALLET_TRANSFER,
+                option.methodType
+            )
         }
+    }
+
+    @Test
+    fun selectingAnInternationalProviderBuildsAValidWalletTransferSubmission() {
+        val wise = addFlowBankOptions().first { it.bankProfileId == "wise_int" }
+        assertEquals(ReceivingMethodType.WALLET_TRANSFER, wise.methodType)
+
+        val submission = MerchantReceivingMethodDraft(
+            bankProfileId = wise.bankProfileId,
+            type = wise.methodType ?: ReceivingMethodType.CARD_TRANSFER,
+            rawIdentifierInput = "merchant@wise.com"
+        ).toSubmission()
+
+        assertEquals("wise_int", submission.bankProfileId)
+        assertEquals(ReceivingMethodType.WALLET_TRANSFER, submission.type)
+        assertEquals("WISE_INT-WALLET", submission.routeCode)
+        assertEquals("merchant@wise.com", submission.rawIdentifier)
     }
 
     @Test

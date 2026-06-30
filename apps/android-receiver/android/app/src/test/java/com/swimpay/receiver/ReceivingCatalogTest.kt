@@ -56,11 +56,13 @@ class ReceivingCatalogTest {
         assertEquals(ReceivingRegion.RU, id("sber_ru").region)
         assertEquals(ReceivingMethodType.CARD_TRANSFER, id("sber_ru").methodType)
 
-        // Neobanks → INTERNATIONAL, card rail.
+        // Neobanks → INTERNATIONAL, wallet_transfer rail (USD; addressed by email/@tag/phone).
         assertEquals(ReceivingRegion.INTERNATIONAL, id("wise_int").region)
         assertEquals(ReceivingRegion.INTERNATIONAL, id("revolut_int").region)
         assertEquals(ReceivingRegion.INTERNATIONAL, id("payoneer_int").region)
-        assertEquals(ReceivingMethodType.CARD_TRANSFER, id("revolut_int").methodType)
+        assertEquals(ReceivingMethodType.WALLET_TRANSFER, id("wise_int").methodType)
+        assertEquals(ReceivingMethodType.WALLET_TRANSFER, id("revolut_int").methodType)
+        assertEquals(ReceivingMethodType.WALLET_TRANSFER, id("payoneer_int").methodType)
 
         // WA wallets → WEST_AFRICA, mobile money.
         assertEquals(ReceivingRegion.WEST_AFRICA, id("wave_ci").region)

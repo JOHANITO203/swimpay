@@ -78,9 +78,11 @@ data class PremiumOnboardingSessionState(
             receivingMethodConfigured = true,
             receivingMethodDraft = when (submission.type) {
                 ReceivingMethodType.CARD_TRANSFER -> PremiumReceivingMethodDraft.CARD_TRANSFER
-                // Mobile money is phone-addressed: reuse the phone draft field type.
+                // Mobile money and international wallets are single-identifier addressed
+                // (phone / e-mail / @tag): reuse the phone draft field type.
                 ReceivingMethodType.PHONE_TRANSFER,
-                ReceivingMethodType.MOBILE_MONEY -> PremiumReceivingMethodDraft.PHONE_TRANSFER
+                ReceivingMethodType.MOBILE_MONEY,
+                ReceivingMethodType.WALLET_TRANSFER -> PremiumReceivingMethodDraft.PHONE_TRANSFER
             },
             receivingMethodSubmission = submission
         )
