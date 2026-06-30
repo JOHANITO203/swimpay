@@ -64,7 +64,8 @@ class AndroidReceiverRealRuntimeTest {
         assertEquals("TO_VERIFY", payload["package_cert_sha256"])
         assertEquals(false, payload["raw_text_present"])
         assertEquals("<PHONE>", payload["sender_phone_masked"])
-        assertEquals("<REFERENCE>", payload["reference_code_masked"])
+        // Reference dropped as an upload field (phantom HMAC removed); body still scrubbed below.
+        assertEquals("", payload["reference_code_masked"])
         assertFalse(payload.toString().contains("+79991234567"))
         assertFalse(payload.toString().contains("SWP-ABC123"))
         assertFalse(payload.toString().contains("payment.confirmed"))
