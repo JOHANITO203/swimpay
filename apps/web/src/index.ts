@@ -35,6 +35,7 @@ import {
   mapPaymentSessionToCheckoutState,
   type AvailableReceivingMethod,
   type AvailableSenderBank,
+  type BuyerCheckoutPaymentMethod,
   type CheckoutFallbackAction,
   type CheckoutUnavailableReason,
   type BuyerSafeCheckoutStatus,
@@ -194,7 +195,9 @@ class CheckoutProviderError extends Error {
 export interface ExpectedPaymentProfileFormPayload {
   buyer_first_name: string;
   buyer_last_name: string;
-  payment_method: 'card' | 'sbp';
+  // The identity form submits any of the four buyer methods — card/sbp (RU), mobile_money (XOF),
+  // wallet (USD). Kept aligned with BuyerCheckoutPaymentMethod; the API-side contract validates it.
+  payment_method: BuyerCheckoutPaymentMethod;
   sender_bank_id: string;
   sender_card_number?: string | undefined;
   sender_phone?: string | undefined;
@@ -1361,7 +1364,7 @@ async function renderStructuredCheckoutFallbackFromError(params: {
   paymentSessionId: string;
   checkoutSessionProvider: CheckoutSessionProvider;
   recipient: CheckoutRecipient;
-  preferredPaymentMethod?: 'card' | 'sbp' | undefined;
+  preferredPaymentMethod?: BuyerCheckoutPaymentMethod | undefined;
   session?: CheckoutSession | undefined;
   options?: {
     nativeBankLauncherScheme?: string | undefined;

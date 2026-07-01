@@ -922,12 +922,14 @@ function renderBuyerIdentityStep(
     return renderNoReceivingMethodsFallback(session, hidden, copy, options);
   }
   const selectedMethod = getSelectedBuyerMethod(session, methodAvailability);
-  const availableMethods = (['card', 'sbp', 'mobile_money', 'wallet'] as const).filter((m) => methodAvailability[m]);
-  const multiMethod = availableMethods.length > 1;
-  // Single available method → submit it via a hidden field (the radios carry no name then).
-  const singleMethodInput = availableMethods.length === 1
-    ? `<input type="hidden" name="payment_method" value="${escapeHtml(selectedMethod)}">`
-    : '';
+  // The method toggle is only a genuine choice when BOTH card and SBP are available (the RU case).
+  // For single-method currencies (XOF mobile_money, USD wallet, or a card-only / sbp-only merchant)
+  // the method is implied by the currency/route — render no toggle, submit it via a hidden field,
+  // and show only that method's sender field (wallet has none).
+  const showMethodToggle = methodAvailability.card && methodAvailability.sbp;
+  const impliedMethodInput = showMethodToggle
+    ? ''
+    : `<input type="hidden" name="payment_method" value="${escapeHtml(selectedMethod)}">`;
   const isMethodActive = (method: BuyerCheckoutPaymentMethod): boolean => selectedMethod === method;
   const cardActive = isMethodActive('card');
   const sbpActive = isMethodActive('sbp');
@@ -939,20 +941,18 @@ function renderBuyerIdentityStep(
     </div>
     <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/expected-payment-profile" class="expected-profile-form">
       ${renderCheckoutHiddenInputs(options)}
-      ${singleMethodInput}
+      ${impliedMethodInput}
       <div class="checkout-input-grid">
         ${renderTextInput(copy.firstNameLabel, 'buyer_first_name', copy.firstNamePlaceholder, 'given-name')}
         ${renderTextInput(copy.lastNameLabel, 'buyer_last_name', copy.lastNamePlaceholder, 'family-name')}
       </div>
-      <div class="checkout-field-block">
+      ${showMethodToggle ? `<div class="checkout-field-block">
         <span class="checkout-field-label">${escapeHtml(copy.paymentMethodLabel)}</span>
         <div class="method-toggle" role="radiogroup" aria-label="${escapeHtml(copy.paymentMethodLabel)}">
-          ${methodAvailability.card ? renderPaymentMethodCard('card', copy.cardMethodLabel, 'card', cardActive, multiMethod, copy) : ''}
-          ${methodAvailability.sbp ? renderPaymentMethodCard('sbp', copy.phoneMethodLabel, 'phone', sbpActive, multiMethod, copy) : ''}
-          ${methodAvailability.mobile_money ? renderPaymentMethodCard('mobile_money', copy.mobileMoneyMethodLabel, 'mobile', mobileMoneyActive, multiMethod, copy) : ''}
-          ${methodAvailability.wallet ? renderPaymentMethodCard('wallet', copy.walletMethodLabel, 'wallet', isMethodActive('wallet'), multiMethod, copy) : ''}
+          ${renderPaymentMethodCard('card', copy.cardMethodLabel, 'card', cardActive, true, copy)}
+          ${renderPaymentMethodCard('sbp', copy.phoneMethodLabel, 'phone', sbpActive, true, copy)}
         </div>
-      </div>
+      </div>` : ''}
       ${renderSenderBankSelector(session, launchers, copy)}
       <div class="method-field-stack">
         ${methodAvailability.card ? `<label class="checkout-field" data-method-field="card" ${cardActive ? '' : 'hidden'}>${escapeHtml(copy.senderCardLabel)}
