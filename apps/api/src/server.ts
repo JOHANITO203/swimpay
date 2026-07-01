@@ -2480,7 +2480,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
       {
         currency: currentCurrency,
         amount_minor: loaded.paymentSession.expectedAmountMinor,
-        formatted: formatAmountMinor(loaded.paymentSession.expectedAmountMinor, currentCurrency),
+        formatted: `${formatAmountMinor(loaded.paymentSession.expectedAmountMinor, currentCurrency)} ${currentCurrency}`,
         is_current: true
       }
     ];
@@ -2510,7 +2510,7 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         currencies.push({
           currency: candidateUpper,
           amount_minor: result.quote.amountMinorTarget,
-          formatted: formatAmountMinor(result.quote.amountMinorTarget, candidateUpper),
+          formatted: `${formatAmountMinor(result.quote.amountMinorTarget, candidateUpper)} ${candidateUpper}`,
           is_current: false,
           quote: {
             rate: result.quote.rate,

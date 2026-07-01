@@ -1706,21 +1706,21 @@ describe('hosted checkout web foundation', () => {
       {
         currency: 'RUB',
         amount_minor: 99900,
-        formatted: '999 ₽',
+        formatted: '999 RUB',
         is_current: true,
         quote: undefined
       },
       {
         currency: 'USD',
         amount_minor: 1345,
-        formatted: '$13.45',
+        formatted: '13.45 USD',
         is_current: false,
         quote: { rate: '0.01345', source: 'cbr', base_currency: 'RUB', base_amount_minor: 99900 }
       },
       {
         currency: 'XOF',
         amount_minor: 6100,
-        formatted: '6100 FCFA',
+        formatted: '6100 XOF',
         is_current: false,
         quote: { rate: '6.1', source: 'ecb+uemoa_peg', base_currency: 'RUB', base_amount_minor: 99900 }
       }
@@ -1744,9 +1744,9 @@ describe('hosted checkout web foundation', () => {
       expect(response.body).toContain('Devise');
       expect(response.body).toContain('Le montant est converti au taux du jour.');
       // 3 currency cards
-      expect(response.body).toContain('Payer 999 ₽');
-      expect(response.body).toContain('Payer $13.45');
-      expect(response.body).toContain('Payer 6100 FCFA');
+      expect(response.body).toContain('Payer 999 RUB');
+      expect(response.body).toContain('Payer 13.45 USD');
+      expect(response.body).toContain('Payer 6100 XOF');
       // current badge on RUB
       expect(response.body).toContain('Actuelle');
       // hidden currency inputs
@@ -1773,8 +1773,8 @@ describe('hosted checkout web foundation', () => {
       expect(response.statusCode).toBe(200);
       expect(response.body).toContain('Choose your payment currency');
       expect(response.body).toContain('Currency');
-      expect(response.body).toContain('Pay 999 ₽');
-      expect(response.body).toContain('Pay $13.45');
+      expect(response.body).toContain('Pay 999 RUB');
+      expect(response.body).toContain('Pay 13.45 USD');
       expect(response.body).toContain('Current');
       expect(response.body).not.toContain('Actuelle');
       expect(response.body).not.toContain('Choisissez');
@@ -1796,8 +1796,8 @@ describe('hosted checkout web foundation', () => {
       expect(response.statusCode).toBe(200);
       expect(response.body).toContain('Выберите валюту платежа');
       expect(response.body).toContain('Валюта');
-      expect(response.body).toContain('Оплатить 999 ₽');
-      expect(response.body).toContain('Оплатить $13.45');
+      expect(response.body).toContain('Оплатить 999 RUB');
+      expect(response.body).toContain('Оплатить 13.45 USD');
       expect(response.body).toContain('Текущая');
       expect(response.body).not.toContain('Actuelle');
     });
@@ -1866,14 +1866,14 @@ describe('hosted checkout web foundation', () => {
       };
       // Only the RUB base-currency option — no quote, is_current
       provider.payableCurrencies = [
-        { currency: 'RUB', amount_minor: 99900, formatted: '999 ₽', is_current: true, quote: undefined }
+        { currency: 'RUB', amount_minor: 99900, formatted: '999 RUB', is_current: true, quote: undefined }
       ];
       const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
 
       const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
       expect(response.statusCode).toBe(200);
-      expect(response.body).toContain('Payer 999 ₽');
+      expect(response.body).toContain('Payer 999 RUB');
       // Base-currency card must NOT carry the approx line
       expect(response.body).not.toContain('≈ 999.00 RUB');
     });
