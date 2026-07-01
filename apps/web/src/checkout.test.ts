@@ -525,6 +525,8 @@ describe('hosted checkout web foundation', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('Carte du destinataire');
     expect(response.body).toContain('2202 **** **** 7890');
+    // The destination is revealed in full on load (payer must read + copy the merchant account).
+    expect(response.body).toContain('data-destination-reveal="ps_01"');
     expect(response.body).toContain('copy-icon-btn');
     expect(response.body).toContain('137.00 RUB');
     expect(response.body).toContain('TANGO ALFA');
