@@ -705,6 +705,9 @@ private val MERCHANT_RECEIVING_METHOD_BANK_LABELS: Map<String, String> = mapOf(
     "alfa_ru" to "Alfa-Bank",
     "gazprombank_ru" to "Gazprombank",
     "ozon_bank" to "Ozon Банк",
+    "wise_int" to "Wise",
+    "revolut_int" to "Revolut",
+    "payoneer_int" to "Payoneer",
     "orange_money_sn" to "Orange Money SN",
     "orange_money_ci" to "Orange Money CI",
     "wave_sn" to "Wave",
@@ -733,6 +736,7 @@ private fun routeCodeFor(bankProfileId: String, type: ReceivingMethodType): Stri
         ReceivingMethodType.CARD_TRANSFER -> "CARD"
         ReceivingMethodType.PHONE_TRANSFER -> "PHONE"
         ReceivingMethodType.MOBILE_MONEY -> "MM"
+        ReceivingMethodType.WALLET_TRANSFER -> "WALLET"
     }
     return "$bankCode-$methodCode"
 }
@@ -773,10 +777,15 @@ class MerchantReceivingMethodsApiRepository(
                 safeMessage = "Session marchand requise"
             )
         }
+        // Canonical list: /v1/merchant/receiving-routes carries the authoritative `rail_type`
+        // and `receiver_identifier_type` for ALL four rails. The legacy /receiving-methods
+        // projection collapses every non-phone rail to `type:'card'` and drops `rail_type`
+        // (server.ts toMerchantReceivingMethodResponse), which would hide wallet routes and
+        // mis-render mobile money as cards — so the app lists routes, not the lossy methods.
         val response = execute(
             MerchantApiRequest(
                 method = "GET",
-                path = "/v1/merchant/receiving-methods",
+                path = "/v1/merchant/receiving-routes",
                 headers = authHeaders(session)
             )
         )
@@ -815,6 +824,12 @@ class MerchantReceivingMethodsApiRepository(
                 safeMessage = validationMessage
             )
         }
+        // Wallets are not accepted by /receiving-methods (card|phone|mobile_money only):
+        // they POST to /receiving-routes with rail_type=wallet_transfer. The identifier
+        // type (email|tag|phone) is auto-derived server-side from the value.
+        if (submission.type == ReceivingMethodType.WALLET_TRANSFER) {
+            return createWalletRoute(session, submission)
+        }
         val body = jsonObject(
             "bank_id" to submission.bankProfileId,
             "type" to receivingMethodProductType(submission.type),
@@ -827,6 +842,36 @@ class MerchantReceivingMethodsApiRepository(
             MerchantApiRequest(
                 method = "POST",
                 path = "/v1/merchant/receiving-methods",
+                headers = authHeaders(session),
+                body = body
+            )
+        )
+        return mutationResultFrom(response, submission)
+    }
+
+    private fun createWalletRoute(
+        session: AuthenticatedMerchantSession,
+        submission: MerchantReceivingMethodSubmission
+    ): MerchantReceivingMethodMutationResult {
+        // /receiving-routes requires a merchant-unique route_code. Unlike /receiving-methods
+        // (which generates the code server-side), the wallet route carries it, so we append a
+        // time token to the stable per-provider prefix. This lets a merchant hold more than
+        // one wallet per provider AND lets edit-as-replace (create-then-delete) avoid a
+        // duplicate_route_code collision with the route it is about to replace.
+        val uniqueRouteCode = "${submission.routeCode}-${System.currentTimeMillis().toString(36).uppercase()}"
+        val body = jsonObject(
+            "bank_profile_id" to submission.bankProfileId,
+            "rail_type" to ReceivingMethodType.WALLET_TRANSFER.wireValue,
+            "receiver_identifier" to submission.rawIdentifier,
+            "route_code" to uniqueRouteCode,
+            "display_label" to submission.displayLabel,
+            "enabled" to submission.enabled,
+            "recommended" to submission.recommended
+        )
+        val response = execute(
+            MerchantApiRequest(
+                method = "POST",
+                path = "/v1/merchant/receiving-routes",
                 headers = authHeaders(session),
                 body = body
             )
@@ -2201,6 +2246,10 @@ private fun receivingMethodProductType(type: ReceivingMethodType): String {
         ReceivingMethodType.CARD_TRANSFER -> "card"
         ReceivingMethodType.PHONE_TRANSFER -> "phone"
         ReceivingMethodType.MOBILE_MONEY -> "mobile_money"
+        // Wallets never use the /receiving-methods product-type endpoint (they POST to
+        // /receiving-routes with rail_type=wallet_transfer); this branch only satisfies
+        // the exhaustive when and is never sent on the wire.
+        ReceivingMethodType.WALLET_TRANSFER -> "wallet_transfer"
     }
 }
 
@@ -2223,12 +2272,21 @@ private fun validateReceivingMethodSubmission(submission: MerchantReceivingMetho
             val digits = submission.rawIdentifier.filter { it.isDigit() }
             if (digits.length in 8..15) null else "Moyen de réception invalide"
         }
+        ReceivingMethodType.WALLET_TRANSFER -> {
+            // International wallet: e-mail / @tag / phone, mirroring the backend
+            // normalizeWalletIdentifier so the client rejects what the server would reject.
+            if (WalletReceiverIdentifier.isValid(submission.rawIdentifier)) null else "Identifiant portefeuille invalide (e-mail, @tag ou téléphone)"
+        }
     }
 }
 
 private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
     val routeId = extractString(this, "id") ?: extractString(this, "route_id").orEmpty()
     val productType = extractString(this, "type")
+    // The canonical rail_type (present on /receiving-routes) is authoritative across all
+    // four rails. The legacy /receiving-methods projection only emits a lossy `type`
+    // (phone|card) — kept as a fallback for older callers, but it cannot represent
+    // mobile_money or wallet_transfer, so the list now reads /receiving-routes.
     val railType = extractString(this, "rail_type") ?: when (productType) {
         "card" -> ReceivingMethodType.CARD_TRANSFER.wireValue
         "phone" -> ReceivingMethodType.PHONE_TRANSFER.wireValue
@@ -2238,25 +2296,33 @@ private fun String.toReceivingMethodDisplay(): MerchantReceivingMethodDisplay? {
     val label = extractString(this, "label") ?: extractString(this, "display_label")
     val masked = extractString(this, "masked_value") ?: extractString(this, "receiver_identifier_masked").orEmpty()
     val status = extractString(this, "status")
-    val enabled = if (status in setOf("inactive", "pending_disable", "revoked", "deleted")) false else extractBoolean(this, "enabled") ?: true
+    val lifecycle = extractString(this, "lifecycle_status")
+    // /receiving-methods carries a `status` string; /receiving-routes carries `enabled` +
+    // `lifecycle_status`. Active only when not terminal AND the route is the live one.
+    val active = when {
+        status != null -> status == "active"
+        else -> (extractBoolean(this, "enabled") ?: true) && (lifecycle == null || lifecycle == "active")
+    }
     val recommended = extractBoolean(this, "is_default") ?: extractBoolean(this, "recommended") ?: false
     val type = when (railType) {
         ReceivingMethodType.CARD_TRANSFER.wireValue -> ReceivingMethodType.CARD_TRANSFER
         ReceivingMethodType.PHONE_TRANSFER.wireValue -> ReceivingMethodType.PHONE_TRANSFER
         ReceivingMethodType.MOBILE_MONEY.wireValue -> ReceivingMethodType.MOBILE_MONEY
+        ReceivingMethodType.WALLET_TRANSFER.wireValue -> ReceivingMethodType.WALLET_TRANSFER
         else -> return null
     }
     val actions = buildList {
         add("Modifier")
-        if (enabled) add("Désactiver")
+        if (active) add("Désactiver")
         if (!recommended) add("Définir par défaut")
     }
     return MerchantReceivingMethodDisplay(
         routeId = routeId,
         bankProfileId = bankProfileId,
+        methodType = type,
         title = type.merchantLabel,
         subtitle = "${bankDisplayNameFor(bankProfileId)} · $masked",
-        status = if (enabled) "Active" else "Désactivée",
+        status = if (active) "Active" else "Désactivée",
         helper = label?.takeIf { it.isNotBlank() } ?: if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements via SBP" else null,
         actions = actions + "Supprimer"
     )
@@ -2288,7 +2354,10 @@ fun bankDisplayNameFor(bankProfileId: String): String {
         "alfa_ru" -> "Alfa-Bank"
         "gazprombank_ru" -> "Gazprombank"
         "ozon_bank" -> "Ozon Банк"
-        else -> "Banque choisie"
+        // International neobanks (Wise/Revolut/Payoneer) and West-Africa wallets resolve
+        // through the shared label map so a wallet/mobile-money route shows its real
+        // provider name instead of the generic "Banque choisie".
+        else -> MERCHANT_RECEIVING_METHOD_BANK_LABELS[bankProfileId] ?: "Banque choisie"
     }
 }
 

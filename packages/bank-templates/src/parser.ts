@@ -42,22 +42,18 @@ export const V1_BANK_PROFILES: BankProfile[] = [
 const NEGATIVE_KEYWORDS = {
   cashback: ['кэшбэк', 'кешбэк', 'cashback'],
   refund: ['возврат', 'refund'],
-  outgoingTransfer: ['перевод отправлен', 'вы перевели', 'transfer sent'],
-  outgoing: ['списание', 'покупка', 'оплата', 'purchase', 'payment'],
+  outgoingTransfer: ['перевод отправлен', 'вы перевели', 'transfer sent', 'отправлен'],
+  outgoing: ['списание', 'покупка', 'оплата', 'purchase', 'payment', 'списан'],
   promo: ['акция', 'предложение', 'скидка', 'promo', 'bonus'],
   failed: ['отклонено', 'отклонена', 'не выполнено', 'не выполнен', 'declined', 'failed'],
   balance: ['баланс', 'balance']
 } as const;
 
 const INCOMING_KEYWORDS = [
-  '???????????',
-  '??????????',
-  '??????? ???????',
-  '??????? ???????',
-  '??????????',
-  '??????? ??',
   'поступление',
+  'поступил',
   'зачисление',
+  'зачислен',
   'перевод получен',
   'получен перевод',
   'вам перевели',
@@ -574,7 +570,9 @@ function parseInternationalNotification(input: ParseBankNotificationInput): Pars
 const WA_INCOMING_KEYWORDS = [
   'recu', 'reçu', 'recue', 'reçue', 'recus', 'reçus', 'recues', 'reçues',
   'reception', 'réception', 'avez recu', 'avez reçu', 'paiement recu', 'paiement reçu',
-  'transfert recu', 'transfert reçu', 'argent recu', 'argent reçu'
+  'transfert recu', 'transfert reçu', 'argent recu', 'argent reçu',
+  // "credited" forms (Wave: "credited your account"; FR banks: "a crédité votre compte")
+  'credite', 'crédité', 'credited', 'a credite', 'a crédité', 'credited your account'
 ];
 const WA_OUTGOING_KEYWORDS = [
   'envoye', 'envoyé', 'envoi', 'avez envoye', 'avez envoyé', 'transfert envoye', 'transfert envoyé',

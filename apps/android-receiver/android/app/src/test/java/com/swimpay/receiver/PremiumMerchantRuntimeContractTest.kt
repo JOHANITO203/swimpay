@@ -191,7 +191,7 @@ class PremiumMerchantRuntimeContractTest {
         assertTrue(runtime.reviewActionsAreBackendOwned)
 
         assertEquals("/v1/android-merchant/dashboard-summary", transport.requests[0].path)
-        assertEquals("/v1/merchant/receiving-methods", transport.requests[1].path)
+        assertEquals("/v1/merchant/receiving-routes", transport.requests[1].path)
         assertEquals("/v1/reviews", transport.requests[2].path)
         assertEquals("/v1/android-merchant/payments/rev_01", transport.requests[3].path)
         assertEquals("/v1/android-merchant/connected-site", transport.requests[4].path)
@@ -307,7 +307,7 @@ class PremiumMerchantRuntimeContractTest {
         assertEquals("60 %", dashboard.value.chartConfirmationRateLabel)
         assertEquals(3, dashboard.value.recentPayments.size)
         assertEquals("/v1/android-merchant/dashboard-summary", dashboardTransport.requests.single().path)
-        assertEquals("/v1/merchant/receiving-methods", receivingMethodsTransport.requests.single().path)
+        assertEquals("/v1/merchant/receiving-routes", receivingMethodsTransport.requests.single().path)
         assertEquals("/v1/android-merchant/orders", ordersTransport.requests.single().path)
     }
 
@@ -883,7 +883,7 @@ class PremiumMerchantRuntimeContractTest {
         val deleted = runtime.deleteReceivingMethod("route_card") as PremiumScreenState.Content<PremiumReceivingMethodMutationUiState>
         assertEquals("Moyen supprimé", deleted.value.message)
 
-        assertEquals("/v1/merchant/receiving-methods", transport.requests[0].path)
+        assertEquals("/v1/merchant/receiving-routes", transport.requests[0].path)
         assertEquals("POST", transport.requests[1].method)
         assertEquals("/v1/merchant/receiving-methods", transport.requests[1].path)
         assertEquals("/v1/merchant/receiving-methods/route_card/disable", transport.requests[2].path)

@@ -1437,6 +1437,12 @@ export class PgSignalRuntimeRepository implements SignalRuntimeRepository {
 
 function parseSignal(signal: SignalRuntimeSignal): ParsedSignalRuntimeFields {
   const redactedText = [signal.titleRedacted, signal.bodyRedacted].filter(Boolean).join(' ').trim();
+  // The backend re-parse of the redacted text is a deliberate SAFETY NET, not duplication:
+  // direction keywords survive redaction, so the backend independently re-derives the
+  // direction and catches negative directions (cashback / refund / outgoing / failed) even
+  // if a device misclassified them — it must stay authoritative for direction. Amount and
+  // currency it cannot recover (they are <AMOUNT>/<CURRENCY> placeholders) and fall back to
+  // the device-provided values.
   const parsed = redactedText
     ? parseBankNotification({ bankProfileId: signal.bankProfileId ?? 'unknown', text: redactedText })
     : null;

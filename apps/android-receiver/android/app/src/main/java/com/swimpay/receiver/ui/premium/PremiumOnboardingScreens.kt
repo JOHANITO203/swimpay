@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneAndroid
@@ -374,12 +375,15 @@ private fun ReceivingMethodDetailsStep(
     var selectedBankId by remember(firstBankId) { mutableStateOf(firstBankId) }
 
     val selectedEntry = catalog.firstOrNull { it.bankProfileId == selectedBankId }
-    // WA wallets are phone-addressed mobile money; lock their input/type accordingly.
+    // Single-identifier rails (WA mobile money = phone; INT wallet = e-mail/@tag/phone)
+    // lock their input/type to the catalog entry and skip the card/phone toggle.
     val isMobileMoney = selectedEntry?.methodType == ReceivingMethodType.MOBILE_MONEY
+    val isWallet = selectedEntry?.methodType == ReceivingMethodType.WALLET_TRANSFER
+    val isSingleIdentifier = isMobileMoney || isWallet
     val selectedBankDisplayName = selectedEntry?.displayName ?: "la banque choisie"
 
-    // The card / phone toggle only applies to card-rail (RU/INT) banks. Mobile money
-    // ignores it and submits MOBILE_MONEY with a phone-style identifier.
+    // The card / phone toggle only applies to the RU card-rail banks. Mobile money and
+    // international wallets ignore it and submit their own rail with a single identifier.
     var cardRailMethod by remember(selectedMethod) {
         mutableStateOf(
             when (selectedMethod) {
@@ -388,7 +392,11 @@ private fun ReceivingMethodDetailsStep(
             }
         )
     }
-    val effectiveMethodType = if (isMobileMoney) ReceivingMethodType.MOBILE_MONEY else cardRailMethod
+    val effectiveMethodType = when {
+        isMobileMoney -> ReceivingMethodType.MOBILE_MONEY
+        isWallet -> ReceivingMethodType.WALLET_TRANSFER
+        else -> cardRailMethod
+    }
     val usesCardInput = effectiveMethodType == ReceivingMethodType.CARD_TRANSFER
     var identifierInput by remember { mutableStateOf("") }
 
@@ -398,7 +406,7 @@ private fun ReceivingMethodDetailsStep(
             language.ui("Vos clients utiliseront ces informations pour vous payer sur {bank}.").replace("{bank}", selectedBankDisplayName)
         )
         Spacer(Modifier.height(20.dp))
-        if (!isMobileMoney) {
+        if (!isSingleIdentifier) {
             ReceivingMethodOption(
                 icon = Icons.Default.ShoppingCart,
                 title = language.ui("Carte bancaire"),
@@ -432,13 +440,22 @@ private fun ReceivingMethodDetailsStep(
             value = identifierInput,
             onValueChange = { identifierInput = it },
             label = { Text(language.ui("Identifiant utilisé seulement pour l'enregistrement")) },
-            placeholder = { Text(if (usesCardInput) language.ui("Numéro de carte") else language.ui("Numéro de téléphone")) },
+            placeholder = {
+                Text(
+                    when {
+                        usesCardInput -> language.ui("Numéro de carte")
+                        isWallet -> language.ui("E-mail, @tag ou téléphone")
+                        else -> language.ui("Numéro de téléphone")
+                    }
+                )
+            },
             leadingIcon = {
-                if (usesCardInput) {
-                    Icon(Icons.Default.CreditCard, null, tint = NoirColors.multi)
-                } else {
-                    Icon(Icons.Default.PhoneAndroid, null, tint = NoirColors.multi)
+                val identifierIcon = when {
+                    usesCardInput -> Icons.Default.CreditCard
+                    isWallet -> Icons.Default.AccountBalanceWallet
+                    else -> Icons.Default.PhoneAndroid
                 }
+                Icon(identifierIcon, null, tint = NoirColors.multi)
             },
             colors = noirTextFieldColors(),
             modifier = Modifier.fillMaxWidth(),
