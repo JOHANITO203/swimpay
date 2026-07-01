@@ -12,6 +12,7 @@ import {
   deriveExpectedPaymentProfile,
   maskReceiverIdentifier,
   receivingRailForBuyerPaymentMethod,
+  buyerMethodTypeForRail,
   detectCurrencyFromDisplayPrice,
   type BuyerCheckoutPaymentMethod,
   type ExpectedPaymentProfile,
@@ -1170,6 +1171,8 @@ export class PgOrderRepository implements OrderRepository {
              AND brc.runtime_status IN ('certified', 'observed', 'experimental', 'review_only')
              AND CASE merchant_receiving_routes.rail_type
                WHEN 'phone_transfer' THEN 'sbp'
+               WHEN 'mobile_money' THEN 'mobile_money'
+               WHEN 'wallet_transfer' THEN 'wallet'
                ELSE 'card'
              END = ANY(brc.rail_supported)
          )
@@ -1212,6 +1215,8 @@ export class PgOrderRepository implements OrderRepository {
              AND brc.runtime_status IN ('certified', 'observed', 'experimental', 'review_only')
              AND CASE merchant_receiving_routes.rail_type
                WHEN 'phone_transfer' THEN 'sbp'
+               WHEN 'mobile_money' THEN 'mobile_money'
+               WHEN 'wallet_transfer' THEN 'wallet'
                ELSE 'card'
              END = ANY(brc.rail_supported)
          )
@@ -1978,7 +1983,7 @@ export class PgOrderRepository implements OrderRepository {
          ELSE 4
        END
        LIMIT 1`,
-      [route.bank_profile_id, amountLeaseRailForRoute(route.rail_type)]
+      [route.bank_profile_id, buyerMethodTypeForRail(route.rail_type)]
     );
     const row = result.rows[0] as { runtime_status?: BankRouteCertificationRuntimeStatus; rail_supported?: string[] } | undefined;
     return bankCertificationAllowsCheckoutRoute({

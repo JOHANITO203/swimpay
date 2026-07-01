@@ -77,6 +77,25 @@ export type BuyerCheckoutPaymentMethod = (typeof BuyerCheckoutPaymentMethods)[nu
 export const ReceivingRouteRailTypes = ['phone_transfer', 'card_transfer', 'mobile_money', 'wallet_transfer'] as const;
 export type ReceivingRouteRailType = (typeof ReceivingRouteRailTypes)[number];
 
+/**
+ * Canonical rail_type -> buyer-facing payment method. THE single source of truth — checkout
+ * availability, compatibility pairs, and the checkout certification gate must all agree, or a
+ * configured route silently disappears at checkout. Exhaustive (no default) so a new rail
+ * forces a compile error here instead of defaulting to 'card' and dropping the route.
+ */
+export function buyerMethodTypeForRail(railType: ReceivingRouteRailType): BuyerCheckoutPaymentMethod {
+  switch (railType) {
+    case 'phone_transfer':
+      return 'sbp';
+    case 'card_transfer':
+      return 'card';
+    case 'mobile_money':
+      return 'mobile_money';
+    case 'wallet_transfer':
+      return 'wallet';
+  }
+}
+
 export const ReceiverIdentifierTypes = ['phone', 'card', 'email', 'tag'] as const;
 export type ReceiverIdentifierType = (typeof ReceiverIdentifierTypes)[number];
 
