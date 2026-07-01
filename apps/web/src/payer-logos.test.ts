@@ -3,13 +3,14 @@ import { bankLogoAssetKey, WestAfricaPayerBankLauncherRegistry } from '@swimpay/
 import { checkoutBankLogoDataUri } from './screens/BankLogoAssets.js';
 
 describe('West Africa payer launcher logos', () => {
-  it('resolves a clean SVG logo data URI for every West Africa launcher', () => {
+  it('resolves an inline logo data URI (real app icon PNG or brand SVG) for every West Africa launcher', () => {
     for (const launcher of WestAfricaPayerBankLauncherRegistry) {
       const key = bankLogoAssetKey(launcher.bank_id);
       expect(key).not.toBe('ic_bank_unknown');
       const dataUri = checkoutBankLogoDataUri(key);
       expect(dataUri, `missing logo for ${launcher.bank_id} (${key})`).toBeDefined();
-      expect(dataUri).toMatch(/^data:image\/svg\+xml;base64,/u);
+      // WA app icons are now the real launcher PNGs (Wave/Orange/MTN); SVG brand marks remain valid too.
+      expect(dataUri).toMatch(/^data:image\/(png|svg\+xml);base64,/u);
     }
   });
 });
