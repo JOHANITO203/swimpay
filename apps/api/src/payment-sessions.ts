@@ -8,6 +8,7 @@ import {
   mapPaymentSessionToCheckoutState,
   toBuyerSafeReceivingRoute,
   bankLogoAssetKey,
+  buildReceiverConsumerLink,
   buyerMethodTypeForRail,
   receivingCurrencyForBankProfile,
   type AvailableReceivingMethod,
@@ -189,6 +190,9 @@ export interface ReceivingRouteCopyDetailsResponse {
   masked_identifier: string;
   receiver_identifier_copy_value: string;
   destination_value: string;
+  /** Personal-tier link that opens the payer's app pre-targeted on the merchant (e.g. a Revolut
+   *  revtag → revolut.me/<tag>). null when the rail/identifier has no shareable personal link. */
+  receiver_consumer_link: string | null;
   reveal_expires_at: string;
   copy_action: 'explicit_buyer_copy';
   does_not_confirm_payment: true;
@@ -597,6 +601,11 @@ export function toReceivingRouteCopyDetailsResponse(params: {
     masked_identifier: params.route.receiver_identifier_masked,
     receiver_identifier_copy_value: params.receiverIdentifier,
     destination_value: params.receiverIdentifier,
+    receiver_consumer_link: buildReceiverConsumerLink({
+      bankProfileId: params.route.bank_profile_id,
+      receiverIdentifierType: params.route.receiver_identifier_type,
+      receiverIdentifier: params.receiverIdentifier
+    }),
     reveal_expires_at: params.revealExpiresAt,
     copy_action: 'explicit_buyer_copy',
     does_not_confirm_payment: true,

@@ -91,6 +91,7 @@ interface CheckoutCopy {
   referenceLabel: string;
   activeSessionLabel: string;
   openBankButton: string;
+  openConsumerLinkButton: string;
   openBankSrLabel: string;
   copyDetailsButton: string;
   copyDetailsAria: string;
@@ -226,6 +227,7 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     referenceLabel: 'Reference',
     activeSessionLabel: 'Session active',
     openBankButton: 'Aller a ma banque',
+    openConsumerLinkButton: 'Ouvrir Revolut pre-rempli',
     openBankSrLabel: 'Ouvrir ma banque',
     copyDetailsButton: 'Copier tous les details',
     copyDetailsAria: 'Copier les details',
@@ -359,6 +361,7 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     referenceLabel: 'Reference',
     activeSessionLabel: 'Active session',
     openBankButton: 'Go to my bank',
+    openConsumerLinkButton: 'Open Revolut prefilled',
     openBankSrLabel: 'Open my bank',
     copyDetailsButton: 'Copy all details',
     copyDetailsAria: 'Copy details',
@@ -492,6 +495,7 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     referenceLabel: 'Назначение',
     activeSessionLabel: 'Активная сессия',
     openBankButton: 'Перейти в банк',
+    openConsumerLinkButton: 'Открыть Revolut с реквизитами',
     openBankSrLabel: 'Открыть банк',
     copyDetailsButton: 'Скопировать все данные',
     copyDetailsAria: 'Скопировать данные',
@@ -1256,6 +1260,11 @@ function renderInstructionsStep(
     ? bankLogoAssetKey(selectedLauncher.payer_bank_launcher_id)
     : session.sender_bank_logo_asset_key ?? (session.sender_bank_id ? bankLogoAssetKey(session.sender_bank_id) : 'ic_bank_unknown');
   const bankLaunchUrl = resolveBankLaunchUrl(selectedLauncher, options.nativeBankLauncherScheme);
+  // A personal-tier consumer link (e.g. a Revolut revtag) opens the payer's app already
+  // addressed to the merchant. Eligibility mirrors buildReceiverConsumerLink; the actual link
+  // is fetched from the reveal endpoint on click (the plaintext handle stays reveal-gated).
+  const consumerLinkEligible =
+    selectedRoute.bank_profile_id === 'revolut_int' && selectedRoute.receiver_identifier_type === 'tag';
   const checkoutReturnPath = checkoutPathWithOptions(session.payment_session_id, options);
   const summary = [
     `${copy.amountLabel}: ${amountDisplay}`,
@@ -1288,6 +1297,7 @@ function renderInstructionsStep(
         ${renderCheckoutHiddenInputs(options)}
         <button class="checkout-primary-action" type="submit">${escapeHtml(copy.openBankButton)} ${iconSvg('external')}<span class="sr-only">${escapeHtml(copy.openBankSrLabel)}</span></button>
       </form>
+      ${consumerLinkEligible ? `<button class="checkout-secondary-action" type="button" data-open-consumer-link="${escapeHtml(session.payment_session_id)}">${escapeHtml(copy.openConsumerLinkButton)} ${iconSvg('external')}</button>` : ''}
       <button class="checkout-secondary-action" type="button" data-copy-value="${escapeHtml(summary)}" aria-label="${escapeHtml(copy.copyDetailsAria)}">${escapeHtml(copy.copyDetailsButton)}</button>
       <form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/claimed-paid">
         ${renderCheckoutHiddenInputs(options)}
@@ -1773,7 +1783,7 @@ function buyerCheckoutScript(): string {
       };
 
       document.addEventListener('click', async (event) => {
-        const target = event.target instanceof Element ? event.target.closest('[data-show-panel], [data-copy-value], [data-copy-destination]') : null;
+        const target = event.target instanceof Element ? event.target.closest('[data-show-panel], [data-copy-value], [data-copy-destination], [data-open-consumer-link]') : null;
         if (!target) return;
 
         if (target.hasAttribute('data-show-panel')) {
@@ -1784,6 +1794,17 @@ function buyerCheckoutScript(): string {
 
         if (target.hasAttribute('data-copy-value')) {
           await copyText(target, target.getAttribute('data-copy-value') || '');
+          return;
+        }
+
+        if (target.hasAttribute('data-open-consumer-link')) {
+          const id = target.getAttribute('data-open-consumer-link') || '';
+          const response = await fetch('/checkout/' + encodeURIComponent(id) + '/receiving-route/copy-details', { cache: 'no-store' });
+          if (!response.ok) return;
+          const payload = await response.json();
+          if (payload.receiver_consumer_link) {
+            window.open(payload.receiver_consumer_link, '_blank', 'noopener');
+          }
           return;
         }
 

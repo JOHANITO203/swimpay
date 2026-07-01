@@ -168,6 +168,28 @@ export function normalizeWalletIdentifier(value: string): { type: ReceiverIdenti
   return phone ? { type: 'phone', normalized: phone } : null;
 }
 
+/** Personal-tier consumer payment link that pre-targets the RECEIVER: opening it launches the
+ *  payer's own app already addressed to the merchant, instead of a blank app. Buildable only
+ *  from a PUBLIC shareable handle (a revtag is a public username by design) — phone/card/email
+ *  stay copy-only, and Wise pay links are business-tier so they are never produced here.
+ *  Returns null when the rail/identifier has no personal shareable link. */
+export function buildReceiverConsumerLink(params: {
+  bankProfileId: string;
+  receiverIdentifierType: ReceiverIdentifierType;
+  receiverIdentifier: string;
+}): string | null {
+  const { bankProfileId, receiverIdentifierType, receiverIdentifier } = params;
+  // Revolut revtag → https://revolut.me/<tag> (universal link: opens the app if installed,
+  // web fallback otherwise). Confirmed personal-tier ("receive money without sharing details").
+  if (bankProfileId === 'revolut_int' && receiverIdentifierType === 'tag') {
+    const tag = receiverIdentifier.trim().replace(/^@/u, '').toLowerCase();
+    if (/^[a-z0-9_]{3,32}$/u.test(tag)) {
+      return `https://revolut.me/${tag}`;
+    }
+  }
+  return null;
+}
+
 export const ReceivingRouteRiskReasonCodes = [
   'phone_transfer_matching_hint_available',
   'buyer_sender_phone_missing',
@@ -489,9 +511,15 @@ export const PayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
  * Reduced to Côte d'Ivoire (CI) actors only: Wave CI, Orange Money CI, MTN MoMo CI.
  */
 export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
+  // Wave has NO buildable recipient-prefill link: qr.wave.com/i/<id> and /c/<code> are opaque
+  // in-app-generated codes, not derivable from a phone. The best verified deeplink lands the
+  // payer on the send-money screen (wave://mm/send_money_select — manifest App-Link path +
+  // wave:// scheme); the merchant's number is still copy-pasted. deeplink_then_package falls
+  // back to opening the package if the exact path is not routable, so this is strictly safe.
   payerLauncher('wave_ci', 'Wave', ['com.wave.personal'], {
     country: 'CI',
     deeplinkSchemes: ['wave'],
+    deeplinkUriTemplate: 'wave://mm/send_money_select',
     launchStrategy: 'deeplink_then_package',
     enabled: true
   }),
@@ -520,9 +548,27 @@ export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOpti
  * harvested (docs/APK_INTELLIGENCE.md); reception reinforces the WA rails.
  */
 export const InternationalPayerBankLauncherRegistry: readonly PayerBankLauncherOption[] = [
-  payerLauncher('wise_int', 'Wise', ['com.transferwise.android'], { country: 'INT', enabled: true }),
-  payerLauncher('revolut_int', 'Revolut', ['com.revolut.revolut'], { country: 'INT', enabled: true }),
-  payerLauncher('payoneer_int', 'Payoneer', ['com.payoneer.android'], { country: 'INT', enabled: true }),
+  // Deeplink schemes harvested from the app manifests (APK_INTELLIGENCE). Scheme = opens the
+  // app; a prefilled transfer URI (amount/recipient/reference) needs deeper RE and is not set
+  // yet. Not runtime-verified on device — deeplink_then_package falls back to the package.
+  payerLauncher('wise_int', 'Wise', ['com.transferwise.android'], {
+    country: 'INT',
+    deeplinkSchemes: ['wise', 'transferwise', 'tw'],
+    launchStrategy: 'deeplink_then_package',
+    enabled: true
+  }),
+  payerLauncher('revolut_int', 'Revolut', ['com.revolut.revolut'], {
+    country: 'INT',
+    deeplinkSchemes: ['revolut'],
+    launchStrategy: 'deeplink_then_package',
+    enabled: true
+  }),
+  payerLauncher('payoneer_int', 'Payoneer', ['com.payoneer.android'], {
+    country: 'INT',
+    deeplinkSchemes: ['payoneer'],
+    launchStrategy: 'deeplink_then_package',
+    enabled: true
+  }),
   payerLauncher('taptapsend', 'Tap Tap Send', ['com.taptapsend'], {
     country: 'INT',
     deeplinkSchemes: ['taptapsend', 'taptapsendmoney'],
@@ -616,11 +662,9 @@ export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): Che
     case 'created':
     case 'receiver_arming':
     case 'receiver_armed':
-      if (!input.paymentMethod && !input.selectedReceiverBankId) {
-        return 'buyer_identity';
-      }
-      // currency_selection: shown when >= 2 receivable currencies exist, no currency
-      // choice has been made yet, and no bank/route is already locked.
+      // Currency first: when the merchant offers >= 2 receivable currencies, the buyer picks the
+      // currency BEFORE entering identity. Otherwise the identity step (card/SBP) would lock them
+      // into RU before they ever see the mobile-money / wallet routes ("blocked on RU").
       // payableCurrencyCount undefined = legacy caller, skip this step for back-compat.
       if (
         input.payableCurrencyCount !== undefined &&
@@ -630,6 +674,9 @@ export function mapPaymentSessionToCheckoutState(input: CheckoutStateInput): Che
         !input.selectedReceivingRouteId
       ) {
         return 'currency_selection';
+      }
+      if (!input.paymentMethod && !input.selectedReceiverBankId) {
+        return 'buyer_identity';
       }
       if (!input.selectedReceiverBankId) {
         return 'receiver_bank_selection';

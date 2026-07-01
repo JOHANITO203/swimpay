@@ -13,6 +13,7 @@ import {
   ReceiverIdentifierTypes,
   V1ReceiverBankOptions,
   toAvailableSenderBanks,
+  buildReceiverConsumerLink,
   generateHumanReadablePaymentReference,
   getPayerBankLauncherOption,
   getReceiverBankOption,
@@ -665,5 +666,65 @@ describe('international USD rail', () => {
     expect(getPayerBankLauncherOption('wise_int')?.country).toBe('INT');
     expect(getPayerBankLauncherOption('orange_money_ci')).not.toBeNull();
     expect(getPayerBankLauncherOption('sber_ru')).not.toBeNull();
+  });
+});
+
+describe('currency-first checkout ordering', () => {
+  const base = { paymentSessionStatus: 'created' as const };
+
+  it('shows the currency picker BEFORE buyer identity when >= 2 currencies are payable', () => {
+    expect(
+      mapPaymentSessionToCheckoutState({ ...base, payableCurrencyCount: 2 })
+    ).toBe('currency_selection');
+  });
+
+  it('advances to buyer identity once the currency is chosen', () => {
+    expect(
+      mapPaymentSessionToCheckoutState({ ...base, payableCurrencyCount: 2, currencySelectedAt: '2026-07-01T00:00:00.000Z' })
+    ).toBe('buyer_identity');
+  });
+
+  it('keeps identity-first for single-currency and legacy (undefined count) merchants', () => {
+    expect(mapPaymentSessionToCheckoutState({ ...base, payableCurrencyCount: 1 })).toBe('buyer_identity');
+    expect(mapPaymentSessionToCheckoutState({ ...base })).toBe('buyer_identity');
+  });
+});
+
+describe('buildReceiverConsumerLink (personal-tier recipient link)', () => {
+  it('builds a revolut.me link from a Revolut revtag', () => {
+    expect(
+      buildReceiverConsumerLink({ bankProfileId: 'revolut_int', receiverIdentifierType: 'tag', receiverIdentifier: 'JohnDoe' })
+    ).toBe('https://revolut.me/johndoe');
+  });
+
+  it('strips a leading @ from the revtag', () => {
+    expect(
+      buildReceiverConsumerLink({ bankProfileId: 'revolut_int', receiverIdentifierType: 'tag', receiverIdentifier: '@john_doe' })
+    ).toBe('https://revolut.me/john_doe');
+  });
+
+  it('returns null for non-tag Revolut identifiers (phone/card/email stay copy-only)', () => {
+    for (const type of ['phone', 'card', 'email'] as const) {
+      expect(
+        buildReceiverConsumerLink({ bankProfileId: 'revolut_int', receiverIdentifierType: type, receiverIdentifier: 'x' })
+      ).toBeNull();
+    }
+  });
+
+  it('returns null for tags on other rails (no personal shareable link; Wise pay links are business-tier)', () => {
+    for (const bank of ['wise_int', 'payoneer_int', 'sber_ru', 'wave_ci']) {
+      expect(
+        buildReceiverConsumerLink({ bankProfileId: bank, receiverIdentifierType: 'tag', receiverIdentifier: 'john' })
+      ).toBeNull();
+    }
+  });
+
+  it('rejects a malformed revtag rather than emitting a broken link', () => {
+    expect(
+      buildReceiverConsumerLink({ bankProfileId: 'revolut_int', receiverIdentifierType: 'tag', receiverIdentifier: 'ab' })
+    ).toBeNull();
+    expect(
+      buildReceiverConsumerLink({ bankProfileId: 'revolut_int', receiverIdentifierType: 'tag', receiverIdentifier: 'bad/../path' })
+    ).toBeNull();
   });
 });

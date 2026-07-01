@@ -3186,21 +3186,19 @@ describe('payable-currencies endpoint', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    // With 2 receivable currencies (RUB + USD) and no selection, state should be currency_selection
-    // (after buyer_identity — since no payment method has been set)
-    // Actually without a payment method we stay at buyer_identity first. Let's verify the state.
+    // Currency-first flow: with 2 receivable currencies (RUB + USD) and nothing selected, the
+    // buyer picks the currency BEFORE entering identity — otherwise a card/SBP identity step
+    // would lock them into RU before they see the non-RU routes.
     const body = response.json();
     expect(body.checkout_state).toBeDefined();
-    // The state is buyer_identity (no payment method set yet), not currency_selection.
-    // currency_selection only triggers once past buyer_identity.
-    expect(body.checkout_state).toBe('buyer_identity');
+    expect(body.checkout_state).toBe('currency_selection');
   });
 
   // ---------------------------------------------------------------------------
   // Minor finding 10: GET /v1/payment-sessions/:id must surface currency_selection
   // ---------------------------------------------------------------------------
 
-  test('GET /v1/payment-sessions/:id returns currency_selection after buyer_identity (RUB sber_ru + XOF orange_money_ci)', async () => {
+  test('GET /v1/payment-sessions/:id returns currency_selection first, then buyer_identity (RUB sber_ru + XOF orange_money_ci)', async () => {
     // Build a merchant with two routes spanning two receivable currencies:
     //   sber_ru    → phone_transfer → RUB
     //   orange_money_ci → mobile_money → XOF
@@ -3249,23 +3247,13 @@ describe('payable-currencies endpoint', () => {
       }
     });
 
-    // At this point the session is at buyer_identity (no paymentMethod, no bank selected).
-    const beforeIdentity = await server.inject({ method: 'GET', url: '/v1/payment-sessions/ps_session_01' });
-    expect(beforeIdentity.statusCode).toBe(200);
-    expect(beforeIdentity.json().checkout_state).toBe('buyer_identity');
+    // Currency-first: two receivable currencies (RUB + XOF) and nothing selected → the currency
+    // picker is the very first step, before buyer identity.
+    const beforeCurrency = await server.inject({ method: 'GET', url: '/v1/payment-sessions/ps_session_01' });
+    expect(beforeCurrency.statusCode).toBe(200);
+    expect(beforeCurrency.json().checkout_state).toBe('currency_selection');
 
-    // Advance past buyer_identity: set paymentMethod without selecting a receiver bank.
-    // This mirrors what happens when a buyer chooses a payment method but the merchant
-    // serves multiple currencies — the currency picker must be shown next.
-    repository.paymentSessions.get('ps_session_01')!.paymentMethod = 'sbp';
-
-    // Primary assertion: GET /v1/payment-sessions/:id now returns currency_selection.
-    const afterIdentity = await server.inject({ method: 'GET', url: '/v1/payment-sessions/ps_session_01' });
-    expect(afterIdentity.statusCode).toBe(200);
-    expect(afterIdentity.json().checkout_state).toBe('currency_selection');
-
-    // After POST /v1/checkout/:id/currency (identity selection — keep RUB),
-    // currencySelectedAt is stamped and the state should advance to receiver_bank_selection.
+    // POST /v1/checkout/:id/currency (keep RUB) stamps currencySelectedAt; identity is next.
     const currencySelect = await server.inject({
       method: 'POST',
       url: '/v1/checkout/ps_session_01/currency',
@@ -3275,7 +3263,13 @@ describe('payable-currencies endpoint', () => {
 
     const afterCurrency = await server.inject({ method: 'GET', url: '/v1/payment-sessions/ps_session_01' });
     expect(afterCurrency.statusCode).toBe(200);
-    expect(afterCurrency.json().checkout_state).toBe('receiver_bank_selection');
+    expect(afterCurrency.json().checkout_state).toBe('buyer_identity');
+
+    // Once the buyer supplies a sender method, the flow advances to receiver bank selection.
+    repository.paymentSessions.get('ps_session_01')!.paymentMethod = 'sbp';
+    const afterIdentity = await server.inject({ method: 'GET', url: '/v1/payment-sessions/ps_session_01' });
+    expect(afterIdentity.statusCode).toBe(200);
+    expect(afterIdentity.json().checkout_state).toBe('receiver_bank_selection');
   });
 });
 
