@@ -341,6 +341,25 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('data-payment-method="card"');
   });
 
+  it('offers wallet (no card/phone field) when the API scopes the currency to USD', async () => {
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'wallet_transfer');
+    provider.session = {
+      ...provider.session,
+      amount: { value: '13.45', currency: 'USD' },
+      available_payment_methods: { card: false, sbp: false, mobile_money: false, wallet: true }
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('data-payment-method="wallet"');
+    expect(response.body).not.toContain('data-payment-method="sbp"');
+    expect(response.body).not.toContain('data-payment-method="card"');
+    expect(response.body).not.toContain('name="sender_card_number"');
+  });
+
   it('shows a merchant configuration fallback before collecting buyer info when no receiving methods exist', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.routes = [];
