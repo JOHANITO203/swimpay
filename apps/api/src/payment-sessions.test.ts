@@ -2925,6 +2925,24 @@ describe('payer bank launchers stay symmetric with the session currency', () => 
   });
 });
 
+describe('bankCertificationAllowsCheckoutRoute — rail_supported matches the buyer method type', () => {
+  // Regression: rail_supported stores buyer method types (card/sbp/mobile_money/wallet). The
+  // check must compare against buyerMethodTypeForRail — NOT amountLeaseRailForRoute, which
+  // collapses mobile_money/wallet to the 'sbp' lease bucket and made every certified non-RU
+  // route fail at expected-payment-profile save with a 404 "Payment session was not found".
+  test('accepts each rail when its method type is certified', () => {
+    expect(bankCertificationAllowsCheckoutRoute({ status: 'observed', railSupported: ['sbp', 'card'], routeRailType: 'card_transfer' })).toBe(true);
+    expect(bankCertificationAllowsCheckoutRoute({ status: 'observed', railSupported: ['sbp', 'card'], routeRailType: 'phone_transfer' })).toBe(true);
+    expect(bankCertificationAllowsCheckoutRoute({ status: 'observed', railSupported: ['mobile_money'], routeRailType: 'mobile_money' })).toBe(true);
+    expect(bankCertificationAllowsCheckoutRoute({ status: 'observed', railSupported: ['wallet'], routeRailType: 'wallet_transfer' })).toBe(true);
+  });
+
+  test('rejects when the method type is absent or the status is missing/unselectable', () => {
+    expect(bankCertificationAllowsCheckoutRoute({ status: 'observed', railSupported: ['sbp', 'card'], routeRailType: 'mobile_money' })).toBe(false);
+    expect(bankCertificationAllowsCheckoutRoute({ status: undefined, railSupported: ['mobile_money'], routeRailType: 'mobile_money' })).toBe(false);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Currency-first checkout — payable-currencies + currency-selection endpoints
 // ---------------------------------------------------------------------------
@@ -3301,6 +3319,12 @@ describe('payable-currencies endpoint', () => {
       await addRoute('sber_ru', 'phone_transfer', '+7 (999) 111-11-11', 'J-PHONE');
       await addRoute('wave_ci', 'mobile_money', '+225 07 00 00 00 00', 'J-WAVE');
       await addRoute('wise_int', 'wallet_transfer', 'john@example.com', 'J-WISE');
+      // Certify each bank exactly as production does (rail_supported = buyer method types), so the
+      // expected-payment-profile save actually runs the certification check — this is what caught
+      // the mobile_money/wallet 404 that an uncertified in-memory default hid.
+      repository.setBankCertification('sber_ru', 'observed', ['sbp', 'card']);
+      repository.setBankCertification('wave_ci', 'observed', ['mobile_money']);
+      repository.setBankCertification('wise_int', 'observed', ['wallet']);
       await server.inject({
         method: 'POST', url: '/v1/orders', headers: { authorization: 'Bearer test_mch_01' },
         payload: { external_id: `ord_${input.currency}_${input.method}`, amount: { value: '100.00', currency: 'RUB' }, expires_in_seconds: 900 }

@@ -538,11 +538,15 @@ describe('hosted checkout web foundation', () => {
       'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=ru.sberbankmobile;component=ru.sberbankmobile/ru.sberbank.mobile.feature.externalstarttransfer.impl.presentation.NativeContactShortcutActivity;end'
     );
     expect(launchUrl).not.toMatch(/amount|phone|card|reference|pan|cvv|137|TANGO|2202/iu);
-    expect(response.body).not.toContain('2202201234567890');
-    expect(response.body).not.toContain('+79991234567');
-    expect(response.body).not.toContain('CVV');
-    expect(response.body).not.toContain('SMS code');
-    expect(response.body).not.toContain('bank password');
+    // These assert the VISIBLE checkout never prompts for secrets. Strip the <style> block first
+    // (it inlines the base64 app-icon PNGs) — a random base64 blob can contain the 3-letter run
+    // "CVV" and would false-positive against the raw HTML.
+    const visibleBody = response.body.replace(/<style\b[\s\S]*?<\/style>/giu, '');
+    expect(visibleBody).not.toContain('2202201234567890');
+    expect(visibleBody).not.toContain('+79991234567');
+    expect(visibleBody).not.toContain('CVV');
+    expect(visibleBody).not.toContain('SMS code');
+    expect(visibleBody).not.toContain('bank password');
   });
 
   it('does not render any buyer edit button in runtime checkout', async () => {

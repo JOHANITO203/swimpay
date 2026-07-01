@@ -424,7 +424,11 @@ export function bankCertificationAllowsCheckoutRoute(input: {
     return false;
   }
 
-  return (input.railSupported ?? []).includes(amountLeaseRailForRoute(input.routeRailType));
+  // rail_supported stores the buyer METHOD type (card/sbp/mobile_money/wallet), which is exactly
+  // what the SQL query filters on (buyerMethodTypeForRail = ANY(rail_supported)). Compare against
+  // the same mapping — NOT amountLeaseRailForRoute, which collapses mobile_money/wallet to 'sbp'
+  // (a lease bucket) and made every non-RU route fail certification ("Payment session not found").
+  return (input.railSupported ?? []).includes(buyerMethodTypeForRail(input.routeRailType));
 }
 
 export interface IdGenerator {
