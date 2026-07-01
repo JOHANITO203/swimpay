@@ -389,8 +389,8 @@ describe('hosted checkout web foundation', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('data-logo-asset-key="ic_bank_wave"');
     expect(response.body).toContain('bank-logo-image');
-    // The actual paint rule — this is what was missing and made the letter show.
-    expect(response.body).toMatch(/\.bank-logo-ic_bank_wave \{ background-image: url\("data:image\/svg\+xml;base64,/u);
+    // The actual paint rule — the real Wave app icon (PNG extracted from the APK), base64-inlined.
+    expect(response.body).toMatch(/\.bank-logo-ic_bank_wave \{ background-image: url\("data:image\/png;base64,/u);
   });
 
   it('shows a merchant configuration fallback before collecting buyer info when no receiving methods exist', async () => {
