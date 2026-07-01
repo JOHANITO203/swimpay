@@ -549,7 +549,10 @@ export function toReceiverBanksResponse(
 ): ReceiverBanksResponse {
   return stripUndefined({
     payment_session_id: paymentSession.id,
-    receiver_banks: V1ReceiverBankOptions.map((bank) => withRouteSummary(bank, routes)),
+    receiver_banks: V1ReceiverBankOptions.map((bank) => withRouteSummary(bank, routes, {
+      currency: paymentSession.currency,
+      currencySelectedAt: paymentSession.currencySelectedAt
+    })),
     selected_receiver_bank_id: paymentSession.selectedReceiverBankId,
     official_bank_confirmation: false
   }) as unknown as ReceiverBanksResponse;
@@ -696,8 +699,20 @@ function checkoutStateForPaymentSession(
   });
 }
 
-function withRouteSummary(bank: ReceiverBankOption, routes: readonly MerchantReceivingRoute[]): ReceiverBankOption {
-  const bankRoutes = routes.filter((route) => route.bank_profile_id === bank.bank_profile_id && route.enabled && route.lifecycle_status === 'active');
+function withRouteSummary(
+  bank: ReceiverBankOption,
+  routes: readonly MerchantReceivingRoute[],
+  currencyScope?: { currency: string; currencySelectedAt?: string | null | undefined }
+): ReceiverBankOption {
+  // Once a currency is chosen, only count routes that settle in it — same rule as
+  // buildCheckoutAvailability — so an XOF/USD checkout never shows (or auto-skips onto) a
+  // RUB-only receiver bank whose route count would otherwise leak across currencies.
+  const bankRoutes = routes.filter((route) =>
+    route.bank_profile_id === bank.bank_profile_id &&
+    route.enabled &&
+    route.lifecycle_status === 'active' &&
+    (!currencyScope?.currencySelectedAt ||
+      receivingCurrencyForBankProfile(route.bank_profile_id) === currencyScope.currency));
   const railTypes = [...new Set(bankRoutes.map((route) => route.rail_type))] as ReceivingRouteRailType[];
   const recommended = bankRoutes.find((route) => route.recommended) ?? bankRoutes[0] ?? null;
   return stripUndefined({
