@@ -224,14 +224,17 @@ class ReceiverNotificationPipeline(
         return when {
             lower.contains("cashback") || lower.contains("кэшбек") || lower.contains("кешбек") -> "cashback"
             lower.contains("refund") || lower.contains("возврат") || lower.contains("reversed") -> "refund"
-            lower.contains("outgoing") || lower.contains("списан") || lower.contains("исход") ||
-                lower.contains("debited") || lower.contains("you paid") || lower.contains("sent to") ||
-                lower.contains("payment to") || lower.contains("withdraw") -> "outgoing"
+            lower.contains("outgoing") || lower.contains("списан") || lower.contains("отправл") ||
+                lower.contains("исход") || lower.contains("debited") || lower.contains("you paid") ||
+                lower.contains("sent to") || lower.contains("payment to") || lower.contains("withdraw") ||
+                lower.contains("envoy") || lower.contains("envoi") || lower.contains("retrait") ||
+                lower.contains("débit") -> "outgoing"
             lower.contains("promo") || lower.contains("бонус") || lower.contains("промо") -> "promo"
             lower.contains("failed") || lower.contains("не выполн") || lower.contains("отклон") ||
                 lower.contains("declined") || lower.contains("rejected") -> "failed"
-            lower.contains("поступ") || lower.contains("перевод") || lower.contains("incoming") ||
-                lower.contains("received") || lower.contains("credited") ||
+            lower.contains("поступ") || lower.contains("зачисл") || lower.contains("перевод") ||
+                lower.contains("incoming") || lower.contains("received") || lower.contains("credited") ||
+                lower.contains("crédité") || lower.contains("recu") || lower.contains("reçu") ||
                 lower.contains("payment from") -> "incoming_customer_transfer"
             else -> "unknown"
         }

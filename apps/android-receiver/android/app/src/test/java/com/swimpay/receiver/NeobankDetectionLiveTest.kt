@@ -91,4 +91,31 @@ class NeobankDetectionLiveTest {
         assertEquals("RUB", payload["currency"])
         assertEquals("incoming_customer_transfer", payload["direction_hint"])
     }
+
+    @Test
+    fun russianOutgoingTransferFormIsNotMistakenForIncoming() {
+        // "<amount> отправлен" (VTB/Т-Банк notif form) contains the "перевод" stem but is an
+        // OUTGOING transfer — the "отправл" outgoing stem must win over the "перевод" incoming
+        // stem, otherwise a sent transfer uploads as a high-quality incoming signal.
+        val payload = detect(
+            packageName = "ru.sberbankmobile",
+            title = "Перевод отправлен",
+            text = "5 000 ₽ отправлен Ивану И."
+        )
+        assertEquals("outgoing", payload["direction_hint"])
+    }
+
+    @Test
+    fun westAfricaFrenchIncomingIsDetectedEndToEnd() {
+        // MTN MoMo notifies in French ("Vous avez reçu … FCFA"); the shared polarity lexicon
+        // must recognise the French "reçu" credit form and XOF (zero-decimal, x1).
+        val payload = detect(
+            packageName = "mtnft.momo.consumer",
+            title = "Paiement reçu",
+            text = "Vous avez reçu 2 500 FCFA de +225 07 00 00 00 00"
+        )
+        assertEquals(2500L, payload["amount_minor"])
+        assertEquals("XOF", payload["currency"])
+        assertEquals("incoming_customer_transfer", payload["direction_hint"])
+    }
 }
