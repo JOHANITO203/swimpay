@@ -1151,6 +1151,48 @@ function renderCurrencySelectionStep(
   </section>`;
 }
 
+interface ChoiceCardOptions {
+  action: string;
+  hiddenInputs: readonly { name: string; value: string }[];
+  /** A bank/app logo mark (mutually exclusive with methodIcon). */
+  logoAssetKey?: string | undefined;
+  /** A method glyph, used when there is no bank logo (mutually exclusive with logoAssetKey). */
+  methodIcon?: 'card' | 'phone' | 'mobile' | 'wallet' | undefined;
+  title: string;
+  /** When true the title is already trusted markup (copy constants); otherwise it is escaped. */
+  titleIsSafe?: boolean | undefined;
+  subtitle: string;
+  trailingLabel: string;
+  disabled?: boolean | undefined;
+  extraCardClass?: string | undefined;
+  renderOptions: CheckoutRenderOptions;
+}
+
+/** Single selectable card shared by the receiver-bank, receiving-route and payer-launcher
+ * lists — one consistent markup (logo/icon + strong title + small subtitle + trailing action)
+ * so the three lists no longer drift. Each caller supplies its own form action, hidden inputs,
+ * disabled state and trailing label; the data attributes and classes are preserved verbatim so
+ * existing tests and client JS keep working. */
+function renderChoiceCard(opts: ChoiceCardOptions): string {
+  const mark = opts.logoAssetKey
+    ? renderBankLogoMark(opts.logoAssetKey, opts.title)
+    : `<span class="checkout-option-icon">${iconSvg(opts.methodIcon ?? 'card')}</span>`;
+  const cardClass = `checkout-option-card${opts.extraCardClass ? ` ${opts.extraCardClass}` : ''}`;
+  const titleHtml = opts.titleIsSafe ? opts.title : escapeHtml(opts.title);
+  return `<form method="post" action="${escapeHtml(opts.action)}" class="selection-form">
+    ${renderCheckoutHiddenInputs(opts.renderOptions)}
+    ${opts.hiddenInputs.map((input) => `<input type="hidden" name="${escapeHtml(input.name)}" value="${escapeHtml(input.value)}">`).join('')}
+    <button class="${cardClass}" type="submit" ${opts.disabled ? 'disabled' : ''}>
+      ${mark}
+      <span class="checkout-option-copy">
+        <strong>${titleHtml}</strong>
+        <small>${escapeHtml(opts.subtitle)}</small>
+      </span>
+      <span class="checkout-option-arrow">${escapeHtml(opts.trailingLabel)}</span>
+    </button>
+  </form>`;
+}
+
 function renderReceiverBankSelection(
   session: CheckoutSession,
   banks: readonly ReceiverBankOption[],
@@ -1164,18 +1206,16 @@ function renderReceiverBankSelection(
     </div>
     <div class="checkout-option-list">${banks.map((bank) => {
       const available = (bank.available_route_count ?? 0) > 0;
-      return `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/receiver-bank" class="selection-form">
-        ${renderCheckoutHiddenInputs(options)}
-        <input type="hidden" name="receiver_bank_id" value="${escapeHtml(bank.receiver_bank_id)}">
-        <button class="checkout-option-card" type="submit" ${available ? '' : 'disabled'}>
-          ${renderBankLogoMark(bank.logo_asset_key, bank.display_name)}
-          <span class="checkout-option-copy">
-            <strong>${escapeHtml(bank.display_name)}</strong>
-            <small>${escapeHtml(available ? copy.availableLabel : copy.unavailableLabel)}</small>
-          </span>
-          <span class="checkout-option-arrow">${escapeHtml(copy.nextArrowLabel)}</span>
-        </button>
-      </form>`;
+      return renderChoiceCard({
+        action: `/checkout/${session.payment_session_id}/receiver-bank`,
+        hiddenInputs: [{ name: 'receiver_bank_id', value: bank.receiver_bank_id }],
+        logoAssetKey: bank.logo_asset_key,
+        title: bank.display_name,
+        subtitle: available ? copy.availableLabel : copy.unavailableLabel,
+        trailingLabel: copy.nextArrowLabel,
+        disabled: !available,
+        renderOptions: options
+      });
     }).join('')}</div>
   </section>`;
 }
@@ -1204,19 +1244,16 @@ function renderReceivingRouteSelection(
     </div>
     <div class="checkout-option-list">${routes.map((route) => {
       const descriptor = railDescriptor(route, copy);
-      const title = descriptor.recipientLabel;
-      return `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/receiving-route" class="selection-form">
-        ${renderCheckoutHiddenInputs(options)}
-        <input type="hidden" name="receiving_route_id" value="${escapeHtml(route.route_id)}">
-        <button class="checkout-option-card route-option-card" type="submit">
-          ${renderBankLogoMark(bankLogoAssetKey(route.bank_profile_id), title)}
-          <span class="checkout-option-copy">
-            <strong>${title}</strong>
-            <small>${escapeHtml(route.receiver_identifier_masked)}</small>
-          </span>
-          <span class="checkout-option-arrow">${escapeHtml(copy.useActionLabel)}</span>
-        </button>
-      </form>`;
+      return renderChoiceCard({
+        action: `/checkout/${session.payment_session_id}/receiving-route`,
+        hiddenInputs: [{ name: 'receiving_route_id', value: route.route_id }],
+        logoAssetKey: bankLogoAssetKey(route.bank_profile_id),
+        title: descriptor.recipientLabel,
+        subtitle: route.receiver_identifier_masked,
+        trailingLabel: copy.useActionLabel,
+        extraCardClass: 'route-option-card',
+        renderOptions: options
+      });
     }).join('')}</div>
   </section>`;
 }
@@ -1245,18 +1282,15 @@ function renderPayerLauncherSelection(
       <p>${escapeHtml(copy.launcherText)}</p>
     </div>
     ${renderInstructionPreview(session, selectedRoute, copy)}
-    <div class="checkout-option-list">${orderedLaunchers.map((launcher) => `<form method="post" action="/checkout/${escapeHtml(session.payment_session_id)}/payer-bank-launcher" class="selection-form">
-      ${renderCheckoutHiddenInputs(options)}
-      <input type="hidden" name="payer_bank_launcher_id" value="${escapeHtml(launcher.payer_bank_launcher_id)}">
-      <button class="checkout-option-card" type="submit">
-        ${renderBankLogoMark(bankLogoAssetKey(launcher.payer_bank_launcher_id), launcher.display_name)}
-        <span class="checkout-option-copy">
-          <strong>${escapeHtml(launcher.display_name)}</strong>
-          <small>${escapeHtml(launcher.launch_url ? copy.launcherOpenAvailableLabel : copy.launcherManualInstructionsLabel)}</small>
-        </span>
-        <span class="checkout-option-arrow">${escapeHtml(copy.nextArrowLabel)}</span>
-      </button>
-    </form>`).join('')}</div>
+    <div class="checkout-option-list">${orderedLaunchers.map((launcher) => renderChoiceCard({
+      action: `/checkout/${session.payment_session_id}/payer-bank-launcher`,
+      hiddenInputs: [{ name: 'payer_bank_launcher_id', value: launcher.payer_bank_launcher_id }],
+      logoAssetKey: bankLogoAssetKey(launcher.payer_bank_launcher_id),
+      title: launcher.display_name,
+      subtitle: launcher.launch_url ? copy.launcherOpenAvailableLabel : copy.launcherManualInstructionsLabel,
+      trailingLabel: copy.nextArrowLabel,
+      renderOptions: options
+    })).join('')}</div>
   </section>`;
 }
 
@@ -2255,6 +2289,7 @@ function buyerCheckoutStyles(): string {
     .checkout-feature-icon,
     .payment-method-icon,
     .bank-logo-mark,
+    .checkout-option-icon,
     .checkout-info-icon {
       width: 46px;
       height: 46px;
@@ -2266,6 +2301,15 @@ function buyerCheckoutStyles(): string {
       border: 1px solid rgba(226, 234, 240, 0.82);
       box-shadow: 0 8px 16px rgba(6, 20, 38, 0.06);
       flex: 0 0 auto;
+    }
+    .checkout-option-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
     .checkout-feature-card svg,
     .payment-method-icon svg,

@@ -409,6 +409,57 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('Commencer l&rsquo;experience');
   });
 
+  it('renders every selection list (bank, route, launcher) through the unified choice card with a logo mark', async () => {
+    const bankProvider = new FakeCheckoutSessionProvider();
+    bankProvider.session = {
+      ...bankProvider.session,
+      payment_method: 'sbp',
+      sender_bank_id: 'tbank_ru',
+      checkout_state: 'receiver_bank_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    const bankServer = buildWebServer({ environment: 'test', checkoutSessionProvider: bankProvider });
+    const bankResponse = await bankServer.inject({ method: 'GET', url: '/checkout/ps_01' });
+    expect(bankResponse.statusCode).toBe(200);
+    expect(bankResponse.body).toContain('Banque du marchand');
+    expect(bankResponse.body).toContain('action="/checkout/ps_01/receiver-bank"');
+    expect(bankResponse.body).toContain('data-logo-asset-key="ic_bank_sberbank"');
+
+    const routeProvider = new FakeCheckoutSessionProvider();
+    routeProvider.session = {
+      ...routeProvider.session,
+      payment_method: 'sbp',
+      sender_bank_id: 'tbank_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      checkout_state: 'receiving_route_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    const routeServer = buildWebServer({ environment: 'test', checkoutSessionProvider: routeProvider });
+    const routeResponse = await routeServer.inject({ method: 'GET', url: '/checkout/ps_01' });
+    expect(routeResponse.statusCode).toBe(200);
+    expect(routeResponse.body).toContain('action="/checkout/ps_01/receiving-route"');
+    expect(routeResponse.body).toContain('route-option-card');
+    expect(routeResponse.body).toContain('data-logo-asset-key="ic_bank_sberbank"');
+
+    const launcherProvider = new FakeCheckoutSessionProvider();
+    launcherProvider.session = {
+      ...launcherProvider.session,
+      payment_method: 'sbp',
+      sender_bank_id: 'tbank_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_phone',
+      checkout_state: 'payer_bank_launcher_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    const launcherServer = buildWebServer({ environment: 'test', checkoutSessionProvider: launcherProvider });
+    const launcherResponse = await launcherServer.inject({ method: 'GET', url: '/checkout/ps_01' });
+    expect(launcherResponse.statusCode).toBe(200);
+    expect(launcherResponse.body).toContain('action="/checkout/ps_01/payer-bank-launcher"');
+    expect(launcherResponse.body).toContain('data-logo-asset-key="ic_bank_tbank"');
+  });
+
   it('offers a recovery action when a selected method has no compatible receiving route later in the flow', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.routes = provider.routes.filter((route) => route.rail_type === 'card_transfer');
