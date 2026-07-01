@@ -406,6 +406,8 @@ export function buildCheckoutAvailability(
     | 'displayAmountMinor'
     | 'payableAmountMinor'
     | 'reconciliationDeltaMinor'
+    | 'currency'
+    | 'currencySelectedAt'
   >,
   routes: readonly MerchantReceivingRoute[]
 ): {
@@ -418,6 +420,14 @@ export function buildCheckoutAvailability(
 } {
   const availableRoutes = routes
     .filter((route) => route.enabled && route.lifecycle_status === 'active')
+    // Currency-first: once the buyer has chosen a currency, only surface the routes (and hence
+    // methods) that settle in it — otherwise a card/SBP method leaks into an XOF/USD checkout and
+    // the buyer submits sbp+XOF, which the expected-payment-profile rejects ("XOF not supported
+    // for sbp"). Before any choice (single-currency / legacy), keep every route.
+    .filter((route) =>
+      !paymentSession.currencySelectedAt ||
+      receivingCurrencyForBankProfile(route.bank_profile_id) === paymentSession.currency
+    )
     .map((route) => ({
       route_id: route.route_id,
       method_type: buyerMethodTypeForRail(route.rail_type),

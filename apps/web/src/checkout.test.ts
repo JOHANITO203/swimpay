@@ -105,12 +105,12 @@ describe('hosted checkout web foundation', () => {
     expect(english.body).toContain('Pay with SwimPay');
     expect(english.body).toContain('Guided payment');
     expect(english.body).toContain('Payment method');
-    expect(english.body).toContain('Sending bank');
+    expect(english.body).toContain('Payment app');
     expect(russian.statusCode).toBe(200);
     expect(russian.body).toContain('Оплатить через SwimPay');
     expect(russian.body).toContain('Понятная оплата');
     expect(russian.body).toContain('Способ оплаты');
-    expect(russian.body).toContain('Банк отправителя');
+    expect(russian.body).toContain('Приложение оплаты');
     expect(french.body).toContain('Payer avec SwimPay');
     expect(`${english.body}\n${russian.body}\n${french.body}`).not.toMatch(/[\uFFFD\u00C3\u00C2]|(?:\u00D0|\u00D1)[\u0080-\u00ff]/u);
   });
@@ -315,6 +315,30 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('name="sender_card_number"');
     expect(response.body).not.toContain('Carte indisponible');
     expect(response.body).not.toContain('Methode indisponible');
+  });
+
+  it('offers mobile money (never SBP) when the API scopes the currency to XOF', async () => {
+    // Regression for the XOF checkout: after the buyer picks XOF the API returns
+    // available_payment_methods scoped to mobile money. The identity step must render a
+    // mobile_money method with a phone field and NOT fall back to SBP/card — else the buyer
+    // submits sbp+XOF and is rejected ("Currency XOF is not supported for sbp").
+    const provider = new FakeCheckoutSessionProvider();
+    provider.routes = provider.routes.filter((route) => route.rail_type === 'mobile_money');
+    provider.session = {
+      ...provider.session,
+      amount: { value: '6100', currency: 'XOF' },
+      available_payment_methods: { card: false, sbp: false, mobile_money: true, wallet: false }
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('data-payment-method="mobile_money"');
+    expect(response.body).toContain('data-method-field="mobile_money"');
+    expect(response.body).toContain('name="sender_phone"');
+    expect(response.body).not.toContain('data-payment-method="sbp"');
+    expect(response.body).not.toContain('data-payment-method="card"');
   });
 
   it('shows a merchant configuration fallback before collecting buyer info when no receiving methods exist', async () => {
