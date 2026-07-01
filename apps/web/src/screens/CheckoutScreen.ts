@@ -188,8 +188,8 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     lastNamePlaceholder: 'Dupont',
     paymentMethodLabel: 'Methode de paiement',
     cardMethodLabel: 'Carte',
-    phoneMethodLabel: 'SBP / telephone',
-    senderBankLabel: "Banque d'envoi",
+    phoneMethodLabel: 'Telephone',
+    senderBankLabel: 'Moyen de paiement',
     senderCardLabel: "Carte d'envoi",
     senderPhoneLabel: "Telephone d'envoi",
     securityLine: 'SwimPay ne collecte pas vos données sensibles',
@@ -322,8 +322,8 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     lastNamePlaceholder: 'Smith',
     paymentMethodLabel: 'Payment method',
     cardMethodLabel: 'Card',
-    phoneMethodLabel: 'SBP / phone',
-    senderBankLabel: 'Sending bank',
+    phoneMethodLabel: 'Phone',
+    senderBankLabel: 'Payment app',
     senderCardLabel: 'Sending card',
     senderPhoneLabel: 'Sending phone',
     securityLine: 'SwimPay does not collect sensitive payment data',
@@ -456,8 +456,8 @@ const checkoutTranslations: Record<CheckoutLocale, CheckoutCopy> = {
     lastNamePlaceholder: 'Иванов',
     paymentMethodLabel: 'Способ оплаты',
     cardMethodLabel: 'Карта',
-    phoneMethodLabel: 'СБП / телефон',
-    senderBankLabel: 'Банк отправителя',
+    phoneMethodLabel: 'Телефон',
+    senderBankLabel: 'Приложение оплаты',
     senderCardLabel: 'Карта отправителя',
     senderPhoneLabel: 'Телефон отправителя',
     securityLine: 'SwimPay не собирает чувствительные платежные данные',
@@ -791,7 +791,9 @@ function getSelectedBuyerMethod(
   if (session.payment_method && availability[session.payment_method]) {
     return session.payment_method;
   }
-  return availability.card ? 'card' : 'sbp';
+  // Default to the first available method — never hard-default to 'sbp', or an XOF/USD checkout
+  // (mobile_money/wallet only) would submit sbp and be rejected ("XOF not supported for sbp").
+  return (['card', 'sbp', 'mobile_money', 'wallet'] as const).find((method) => availability[method]) ?? 'sbp';
 }
 
 function isFinalBuyerState(session: CheckoutSession): boolean {
@@ -920,11 +922,16 @@ function renderBuyerIdentityStep(
     return renderNoReceivingMethodsFallback(session, hidden, copy, options);
   }
   const selectedMethod = getSelectedBuyerMethod(session, methodAvailability);
-  const singleMethodInput = methodAvailability.card !== methodAvailability.sbp
-    ? `<input type="hidden" name="payment_method" value="${selectedMethod}">`
+  const availableMethods = (['card', 'sbp', 'mobile_money', 'wallet'] as const).filter((m) => methodAvailability[m]);
+  const multiMethod = availableMethods.length > 1;
+  // Single available method → submit it via a hidden field (the radios carry no name then).
+  const singleMethodInput = availableMethods.length === 1
+    ? `<input type="hidden" name="payment_method" value="${escapeHtml(selectedMethod)}">`
     : '';
-  const cardActive = selectedMethod === 'card';
-  const sbpActive = selectedMethod === 'sbp';
+  const isMethodActive = (method: BuyerCheckoutPaymentMethod): boolean => selectedMethod === method;
+  const cardActive = isMethodActive('card');
+  const sbpActive = isMethodActive('sbp');
+  const mobileMoneyActive = isMethodActive('mobile_money');
   return `<section class="checkout-stage-card checkout-info-card" data-checkout-panel="buyer-identity" ${hidden ? 'hidden' : ''} data-visual-stage="info">
     <div class="checkout-stage-head">
       <h1>${escapeHtml(title)}</h1>
@@ -940,8 +947,10 @@ function renderBuyerIdentityStep(
       <div class="checkout-field-block">
         <span class="checkout-field-label">${escapeHtml(copy.paymentMethodLabel)}</span>
         <div class="method-toggle" role="radiogroup" aria-label="${escapeHtml(copy.paymentMethodLabel)}">
-          ${methodAvailability.card ? renderPaymentMethodCard('card', copy.cardMethodLabel, 'card', cardActive, !singleMethodInput, copy) : ''}
-          ${methodAvailability.sbp ? renderPaymentMethodCard('sbp', copy.phoneMethodLabel, 'phone', sbpActive, !singleMethodInput, copy) : ''}
+          ${methodAvailability.card ? renderPaymentMethodCard('card', copy.cardMethodLabel, 'card', cardActive, multiMethod, copy) : ''}
+          ${methodAvailability.sbp ? renderPaymentMethodCard('sbp', copy.phoneMethodLabel, 'phone', sbpActive, multiMethod, copy) : ''}
+          ${methodAvailability.mobile_money ? renderPaymentMethodCard('mobile_money', copy.mobileMoneyMethodLabel, 'mobile', mobileMoneyActive, multiMethod, copy) : ''}
+          ${methodAvailability.wallet ? renderPaymentMethodCard('wallet', copy.walletMethodLabel, 'wallet', isMethodActive('wallet'), multiMethod, copy) : ''}
         </div>
       </div>
       ${renderSenderBankSelector(session, launchers, copy)}
@@ -951,6 +960,9 @@ function renderBuyerIdentityStep(
         </label>` : ''}
         ${methodAvailability.sbp ? `<label class="checkout-field" data-method-field="sbp" ${sbpActive ? '' : 'hidden'}>${escapeHtml(copy.senderPhoneLabel)}
           <input name="sender_phone" type="tel" autocomplete="tel" placeholder="+7 ..." ${sbpActive ? '' : 'disabled'}>
+        </label>` : ''}
+        ${methodAvailability.mobile_money ? `<label class="checkout-field" data-method-field="mobile_money" ${mobileMoneyActive ? '' : 'hidden'}>${escapeHtml(copy.senderPhoneLabel)}
+          <input name="sender_phone" type="tel" autocomplete="tel" placeholder="+225 ..." ${mobileMoneyActive ? '' : 'disabled'}>
         </label>` : ''}
       </div>
       <p class="checkout-security-line"><span></span> ${escapeHtml(copy.securityLine)}</p>
@@ -1030,7 +1042,8 @@ function senderBankStatusLabel(bank: SenderBankChoice, copy: CheckoutCopy = chec
   if (bank.runtime_capture_status === 'runtime_verified') {
     return escapeHtml(copy.availableLabel);
   }
-  return escapeHtml(copy.manualOpenLabel);
+  // No "manual open" status line — it read as a limitation to buyers; every listed app is usable.
+  return '';
 }
 
 function renderTextInput(label: string, name: string, placeholder: string, autocomplete: string): string {
@@ -1042,7 +1055,7 @@ function renderTextInput(label: string, name: string, placeholder: string, autoc
 function renderPaymentMethodCard(
   value: BuyerCheckoutPaymentMethod,
   label: string,
-  icon: 'card' | 'phone',
+  icon: 'card' | 'phone' | 'mobile' | 'wallet',
   selected: boolean,
   submitsValue = true,
   copy: CheckoutCopy = checkoutTranslations.fr
@@ -1075,6 +1088,28 @@ function bankLogoAssetKey(bankId: string): string {
       return 'ic_bank_gazprombank';
     case 'ozon_bank':
       return 'ic_bank_ozon';
+    // West-Africa mobile money + international wallets — real app logos, not letter avatars.
+    case 'wave_ci':
+      return 'ic_bank_wave';
+    case 'orange_money_ci':
+    case 'orange_money_sn':
+      return 'ic_bank_orange_money';
+    case 'mtn_momo_ci':
+      return 'ic_bank_mtn_momo';
+    case 'moov_money_ci':
+      return 'ic_bank_moov';
+    case 'djamo_ci':
+      return 'ic_bank_djamo';
+    case 'ecobank_ci':
+      return 'ic_bank_ecobank';
+    case 'sg_connect_ci':
+      return 'ic_bank_sg';
+    case 'wise_int':
+      return 'ic_bank_wise';
+    case 'revolut_int':
+      return 'ic_bank_revolut';
+    case 'payoneer_int':
+      return 'ic_bank_payoneer';
     default:
       return 'ic_bank_unknown';
   }

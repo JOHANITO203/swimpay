@@ -523,7 +523,7 @@ export const WestAfricaPayerBankLauncherRegistry: readonly PayerBankLauncherOpti
     launchStrategy: 'deeplink_then_package',
     enabled: true
   }),
-  payerLauncher('orange_money_ci', 'Orange Money / Max it', ['com.orange.myorange.oci', 'com.orange.orangemoneyafrique'], {
+  payerLauncher('orange_money_ci', 'Orange Money', ['com.orange.myorange.oci', 'com.orange.orangemoneyafrique'], {
     country: 'CI',
     deeplinkSchemes: ['omk', 'orangemoneyafrique'],
     launchStrategy: 'deeplink_then_package',

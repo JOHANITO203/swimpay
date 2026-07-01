@@ -237,6 +237,29 @@ Before finalizing a task, run the relevant commands:
 
 If a command cannot be run, explain why in the final response.
 
+## Buyer-flow (checkout) validation — MANDATORY
+
+The minimum test list above is NOT enough for checkout / buyer-UX changes.
+Repeated production breakage came from tests that green-lit a feature while the
+real buyer journey failed at a step (e.g. picking XOF then being rejected with
+"Currency XOF is not supported for sbp" because the method step still offered SBP).
+So, for ANY change touching the checkout, currency/rail routing, payment methods,
+receiving methods, sender/receiver banks, or the buyer UX:
+
+- Add end-to-end step-validation tests that walk the WHOLE buyer journey for EVERY
+  supported case — one full pass per currency/rail (RUB card, RUB phone, XOF mobile
+  money, USD wallet). Every step (currency → identity/method → receiver bank → route
+  → launcher → instructions) must be asserted, INCLUDING that the submitted
+  method+currency combination is accepted (no 4xx such as "not supported for sbp").
+- Assert what the buyer actually SEES and SUBMITS at each step, not just that a helper
+  returns a value. A green unit/contract test is not sufficient sign-off on a flow.
+- When the API is the source of truth for a screen (e.g. `available_payment_methods`),
+  test the API scoping AND the render that consumes it — both sides, per case.
+- After implementation AND deployment, run a LIVE QA pass against the running service
+  (real HTTP on the deployed checkout) for at least the changed cases BEFORE telling
+  the user it works. Never claim "done / fixed / verified" from local tests alone.
+- If a live QA pass cannot be run, say so explicitly and do not claim the flow works.
+
 ## Coding rules
 
 - Use explicit types.
