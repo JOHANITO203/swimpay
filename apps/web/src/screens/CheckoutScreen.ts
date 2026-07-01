@@ -1209,7 +1209,7 @@ function renderReceivingRouteSelection(
         ${renderCheckoutHiddenInputs(options)}
         <input type="hidden" name="receiving_route_id" value="${escapeHtml(route.route_id)}">
         <button class="checkout-option-card route-option-card" type="submit">
-          <span class="payment-method-icon">${iconSvg(descriptor.icon)}</span>
+          ${renderBankLogoMark(bankLogoAssetKey(route.bank_profile_id), title)}
           <span class="checkout-option-copy">
             <strong>${title}</strong>
             <small>${escapeHtml(route.receiver_identifier_masked)}</small>
