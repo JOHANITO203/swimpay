@@ -10,6 +10,14 @@ import {
 } from '@swimpay/contracts';
 import { ApiCheckoutSessionProvider, buildWebServer, type CheckoutSession, type CheckoutSessionProvider, type PayableCurrencyOption, type PayableCurrenciesPayload } from './index.js';
 
+/** Clones a route (same rail) so a rail-selection screen keeps two options and therefore renders
+ * rather than being auto-skipped by the single-option auto-advance. */
+function duplicateRoute(provider: FakeCheckoutSessionProvider, sourceRouteId: string): void {
+  const source = provider.routes.find((route) => route.route_id === sourceRouteId);
+  if (!source) throw new Error(`duplicateRoute: unknown route ${sourceRouteId}`);
+  provider.routes = [...provider.routes, { ...source, route_id: `${source.route_id}_dup` }];
+}
+
 describe('hosted checkout web foundation', () => {
   it('renders the initial checkout as an intro-first guided flow', async () => {
     const server = buildWebServer({
@@ -186,6 +194,7 @@ describe('hosted checkout web foundation', () => {
 
   it('reveals only the compatible receiving route after buyer method selection', async () => {
     const provider = new FakeCheckoutSessionProvider();
+    duplicateRoute(provider, 'route_sber_card');
     provider.session = {
       ...provider.session,
       payment_method: 'card',
@@ -410,7 +419,14 @@ describe('hosted checkout web foundation', () => {
   });
 
   it('renders every selection list (bank, route, launcher) through the unified choice card with a logo mark', async () => {
+    // Multi-option merchant (2 selectable RU banks, 2 phone routes) so the selection screens
+    // genuinely render — a single-option merchant would auto-skip them (see auto-skip tests).
     const bankProvider = new FakeCheckoutSessionProvider();
+    const sberPhone = bankProvider.routes.find((route) => route.route_id === 'route_sber_phone')!;
+    bankProvider.routes = [
+      ...bankProvider.routes,
+      { ...sberPhone, route_id: 'route_tbank_phone', bank_profile_id: 'tbank_ru' }
+    ];
     bankProvider.session = {
       ...bankProvider.session,
       payment_method: 'sbp',
@@ -424,8 +440,14 @@ describe('hosted checkout web foundation', () => {
     expect(bankResponse.body).toContain('Banque du marchand');
     expect(bankResponse.body).toContain('action="/checkout/ps_01/receiver-bank"');
     expect(bankResponse.body).toContain('data-logo-asset-key="ic_bank_sberbank"');
+    expect(bankResponse.body).toContain('data-logo-asset-key="ic_bank_tbank"');
 
     const routeProvider = new FakeCheckoutSessionProvider();
+    const sberPhone2 = routeProvider.routes.find((route) => route.route_id === 'route_sber_phone')!;
+    routeProvider.routes = [
+      ...routeProvider.routes,
+      { ...sberPhone2, route_id: 'route_sber_phone_2', receiver_identifier_masked: '+7 *** *** **89' }
+    ];
     routeProvider.session = {
       ...routeProvider.session,
       payment_method: 'sbp',
@@ -442,6 +464,7 @@ describe('hosted checkout web foundation', () => {
     expect(routeResponse.body).toContain('route-option-card');
     expect(routeResponse.body).toContain('data-logo-asset-key="ic_bank_sberbank"');
 
+    // The payer launcher registry has several launchers, so the launcher screen renders as-is.
     const launcherProvider = new FakeCheckoutSessionProvider();
     launcherProvider.session = {
       ...launcherProvider.session,
@@ -1616,6 +1639,7 @@ describe('hosted checkout web foundation', () => {
   describe('rail-aware rendering', () => {
     it('renders mobile_money route card with FR mobile-money labels and masked identifier', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_momo');
       provider.session = {
         ...provider.session,
         payment_method: 'mobile_money',
@@ -1638,6 +1662,7 @@ describe('hosted checkout web foundation', () => {
 
     it('renders wallet route card with FR wallet labels and masked identifier', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_wallet');
       provider.session = {
         ...provider.session,
         payment_method: 'wallet',
@@ -1706,6 +1731,7 @@ describe('hosted checkout web foundation', () => {
 
     it('renders wallet route card in EN with correct recipient label', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_wallet');
       provider.session = {
         ...provider.session,
         payment_method: 'wallet',
@@ -1727,6 +1753,7 @@ describe('hosted checkout web foundation', () => {
 
     it('renders wallet route card in RU with correct recipient label', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_wallet');
       provider.session = {
         ...provider.session,
         payment_method: 'wallet',
@@ -1794,6 +1821,7 @@ describe('hosted checkout web foundation', () => {
 
     it('renders mobile_money route card in EN with mobile-money labels and masked identifier', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_momo');
       provider.session = {
         ...provider.session,
         payment_method: 'mobile_money',
@@ -1815,6 +1843,7 @@ describe('hosted checkout web foundation', () => {
 
     it('renders mobile_money route card in RU with mobile-money labels and masked identifier', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_momo');
       provider.session = {
         ...provider.session,
         payment_method: 'mobile_money',
@@ -2081,6 +2110,111 @@ describe('hosted checkout web foundation', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.body).not.toContain('≈');
+    });
+  });
+
+  describe('single-option auto-skip', () => {
+    it('skips the receiver-bank and receiving-route screens when each has exactly one option', async () => {
+      // One card route on one bank: bank -> route both auto-select, landing on the launcher screen
+      // (the registry still offers several launchers, so that step is a real choice and renders).
+      const provider = new FakeCheckoutSessionProvider();
+      provider.routes = provider.routes.filter((route) => route.route_id === 'route_sber_card');
+      provider.session = {
+        ...provider.session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        checkout_state: 'receiver_bank_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      // Landed on the launcher choice, never on the one-item bank or route screens.
+      expect(response.body).toContain('Ouvrir ma banque');
+      expect(response.body).toContain('action="/checkout/ps_01/payer-bank-launcher"');
+      expect(response.body).not.toContain('Banque du marchand');
+      expect(response.body).not.toContain('Selectionnez la destination compatible');
+      // The auto-selections were driven through the real provider mutations.
+      expect(provider.session.selected_receiver_bank_id).toBe('sber_ru');
+      expect(provider.session.selected_receiving_route_id).toBe('route_sber_card');
+      expect(provider.session.checkout_state).toBe('payer_bank_launcher_selection');
+    });
+
+    it('skips the payer-launcher screen when exactly one launcher is enabled', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      const onlyLauncher = PayerBankLauncherRegistry[0]!;
+      provider.getPayerBankLaunchers = async (paymentSessionId: string) => ({
+        payment_session_id: paymentSessionId,
+        payer_bank_launchers: [onlyLauncher]
+      });
+      provider.session = {
+        ...provider.session,
+        payment_method: 'sbp',
+        sender_bank_id: onlyLauncher.payer_bank_launcher_id,
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_sber_phone',
+        checkout_state: 'payer_bank_launcher_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      // Auto-selected the sole launcher and advanced to the instructions screen.
+      expect(provider.session.selected_payer_bank_launcher_id).toBe(onlyLauncher.payer_bank_launcher_id);
+      expect(provider.session.checkout_state).toBe('payment_instructions');
+      expect(response.body).toContain('Details du virement');
+      expect(response.body).not.toContain('action="/checkout/ps_01/payer-bank-launcher"');
+    });
+
+    it('still shows the receiver-bank selection when more than one bank is selectable', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      const sberPhone = provider.routes.find((route) => route.route_id === 'route_sber_phone')!;
+      // Two RU banks each with a phone route -> two selectable banks -> no auto-skip.
+      provider.routes = [
+        ...provider.routes,
+        { ...sberPhone, route_id: 'route_tbank_phone', bank_profile_id: 'tbank_ru' }
+      ];
+      provider.session = {
+        ...provider.session,
+        payment_method: 'sbp',
+        sender_bank_id: 'sber_ru',
+        checkout_state: 'receiver_bank_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Banque du marchand');
+      expect(response.body).toContain('action="/checkout/ps_01/receiver-bank"');
+      // No mutation happened: still on the bank-selection state.
+      expect(provider.session.checkout_state).toBe('receiver_bank_selection');
+      expect(provider.session.selected_receiver_bank_id).toBeUndefined();
+    });
+
+    it('does not auto-skip when a selection step has zero options (keeps the existing fallback)', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.routes = [];
+      provider.session = {
+        ...provider.session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        checkout_state: 'receiver_bank_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(provider.session.checkout_state).toBe('receiver_bank_selection');
+      expect(provider.session.selected_receiver_bank_id).toBeUndefined();
     });
   });
 });
