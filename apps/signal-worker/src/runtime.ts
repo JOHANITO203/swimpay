@@ -106,7 +106,7 @@ export interface SignalRuntimeResult {
   orderId?: string | undefined;
   paymentSessionId?: string | undefined;
   receiverRouteCode?: string | undefined;
-  railType?: 'phone_transfer' | 'card_transfer' | undefined;
+  railType?: 'phone_transfer' | 'card_transfer' | 'mobile_money' | 'wallet_transfer' | undefined;
   paymentReference?: string | undefined;
   receiverBankId?: string | undefined;
 }

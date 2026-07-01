@@ -43,7 +43,7 @@ export class OrdersClient {
       requestTimeoutMs: options.requestTimeoutMs
     });
 
-    return parseCheckoutResponse(response);
+    return parseCheckoutResponse(response, input.currency, input.amountMinor);
   }
 }
 
@@ -77,7 +77,7 @@ function buildOrderPayload(input: SwimPayOrderCreateInput): Record<string, unkno
   const payload: Record<string, unknown> = {
     external_id: input.externalOrderId,
     amount: {
-      value: formatMinorAmount(input.amountMinor),
+      value: formatMinorAmount(input.amountMinor, input.currency),
       currency: input.currency
     }
   };
@@ -105,7 +105,7 @@ function buildOrderPayload(input: SwimPayOrderCreateInput): Record<string, unkno
   return payload;
 }
 
-function parseCheckoutResponse(response: unknown): SwimPayCheckout {
+function parseCheckoutResponse(response: unknown, currency: string, amountMinor: number): SwimPayCheckout {
   if (!response || typeof response !== 'object') {
     throw new SwimPayValidationError('SwimPay order response was malformed.');
   }
@@ -125,6 +125,8 @@ function parseCheckoutResponse(response: unknown): SwimPayCheckout {
     paymentSessionId,
     checkoutUrl,
     status,
+    currency,
+    amountMinor,
     expiresAt
   }) as SwimPayCheckout;
 }
@@ -157,8 +159,15 @@ function findForbiddenField(value: unknown, path: string[] = []): string | undef
   return undefined;
 }
 
-function formatMinorAmount(amountMinor: number): string {
-  return (amountMinor / 100).toFixed(2);
+// Zero-decimal currencies carry no minor unit (XOF 5000 is "5000", not "50.00"). Everything
+// else SwimPay handles is 2-decimal. Keeps the SDK payload correct for multi-currency orders.
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  'XOF', 'XAF', 'JPY', 'KRW', 'VND', 'CLP', 'ISK', 'BIF', 'DJF', 'GNF', 'KMF', 'PYG', 'RWF', 'UGX', 'VUV', 'XPF'
+]);
+
+function formatMinorAmount(amountMinor: number, currency: string): string {
+  const digits = ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase()) ? 0 : 2;
+  return (amountMinor / 10 ** digits).toFixed(digits);
 }
 
 function normalizeFieldKey(key: string): string {

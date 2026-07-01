@@ -9,6 +9,7 @@ import {
   toBuyerSafeReceivingRoute,
   bankLogoAssetKey,
   buyerMethodTypeForRail,
+  receivingCurrencyForBankProfile,
   type AvailableReceivingMethod,
   type AvailableSenderBank,
   type BuyerSafeCheckoutStatus,
@@ -439,6 +440,7 @@ export function buildCheckoutAvailability(
       receiver_bank_id: route.receiver_bank_id,
       receiver_bank_name: receiverBank?.display_name ?? route.receiver_bank_id,
       receiver_bank_logo_asset_key: receiverBank?.logo_asset_key ?? bankLogoAssetKey(route.receiver_bank_id),
+      settlement_currency: receivingCurrencyForBankProfile(route.receiver_bank_id),
       status: 'active' as const
     };
   });

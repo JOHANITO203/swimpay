@@ -6,6 +6,8 @@ import {
   ReceivingRouteReviewPolicies,
   ReceiverIdentifierTypes,
   PayerBankLauncherRegistry,
+  WestAfricaPayerBankLauncherRegistry,
+  InternationalPayerBankLauncherRegistry,
   AllReceiverBankProfiles,
   InternationalReceiverBankProfiles,
   WestAfricaReceiverBankProfiles,
@@ -13,6 +15,8 @@ import {
   maskReceiverIdentifier,
   receivingRailForBuyerPaymentMethod,
   buyerMethodTypeForRail,
+  normalizeWestAfricaMobileNumber,
+  normalizeWalletIdentifier,
   detectCurrencyFromDisplayPrice,
   type BuyerCheckoutPaymentMethod,
   type ExpectedPaymentProfile,
@@ -2833,38 +2837,6 @@ function normalizeReceiverIdentifier(
   return digits;
 }
 
-/**
- * Normalizes a West Africa (UEMOA) mobile-money number to E.164 digits.
- * Permissive on purpose: the merchant enters their OWN receiving number.
- * Keeps a leading country code, strips formatting, requires 8..15 digits.
- */
-function normalizeWestAfricaMobileNumber(value: string): string | null {
-  const digits = value.replace(/\D/g, '');
-  if (digits.length < 8 || digits.length > 15) {
-    return null;
-  }
-  return `+${digits}`;
-}
-
-/**
- * Normalizes a wallet (neobank) receiving identifier. Wise/Payoneer use email,
- * Wise/Revolut also use a tag (@wisetag / @revtag), Revolut accepts a phone.
- * The merchant enters their OWN identifier, so validation stays permissive.
- */
-export function normalizeWalletIdentifier(value: string): { type: ReceiverIdentifierType; normalized: string } | null {
-  const trimmed = value.trim();
-  if (trimmed.includes('@') && !trimmed.startsWith('@')) {
-    const email = trimmed.toLowerCase();
-    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u.test(email) ? { type: 'email', normalized: email } : null;
-  }
-  if (trimmed.startsWith('@')) {
-    const tag = trimmed.slice(1).toLowerCase();
-    return /^[a-z0-9_]{3,32}$/u.test(tag) ? { type: 'tag', normalized: tag } : null;
-  }
-  const phone = normalizeWestAfricaMobileNumber(trimmed);
-  return phone ? { type: 'phone', normalized: phone } : null;
-}
-
 function encryptReceiverIdentifier(value: string, secret: string): string {
   const iv = randomBytes(12);
   const key = createHash('sha256').update(`swimpay_receiver_route:${secret}`, 'utf8').digest();
@@ -3269,8 +3241,11 @@ export function buildExpectedPaymentProfileMutation(params: {
       sender_bank_id: body.sender_bank_id,
       sender_card_number: body.sender_card_number,
       sender_phone: body.sender_phone,
-      display_amount_minor: params.loaded.order.amountMinor,
-      currency: params.loaded.order.currency,
+      // Use the SESSION's display amount + currency, not the order's: with the currency-first
+      // checkout the session is re-quoted to the selected route's settlement currency, so the
+      // expected profile (and its reconciliation amount) must be in that currency.
+      display_amount_minor: params.loaded.paymentSession.displayAmountMinor ?? params.loaded.order.amountMinor,
+      currency: params.loaded.paymentSession.currency,
       generated_reference: params.loaded.paymentSession.referenceCode,
       expires_at: params.loaded.paymentSession.validUntil,
       hmac: (scope, value) => hmacSha256(`${scope}:${value}`, params.phoneHmacSecret)
@@ -3325,10 +3300,15 @@ export function validateExpectedPaymentProfileBody(body: unknown): ExpectedPayme
   ) {
     return invalidRequest('Expected payment profile is missing required fields.', {});
   }
-  if (!['card', 'sbp'].includes(candidate.payment_method)) {
+  if (!['card', 'sbp', 'mobile_money', 'wallet'].includes(candidate.payment_method)) {
     return invalidRequest('payment_method is not supported.', { payment_method: candidate.payment_method });
   }
-  if (!PayerBankLauncherRegistry.some((bank) => bank.payer_bank_launcher_id === candidate.sender_bank_id && bank.enabled)) {
+  const allPayerLaunchers = [
+    ...PayerBankLauncherRegistry,
+    ...WestAfricaPayerBankLauncherRegistry,
+    ...InternationalPayerBankLauncherRegistry
+  ];
+  if (!allPayerLaunchers.some((bank) => bank.payer_bank_launcher_id === candidate.sender_bank_id && bank.enabled)) {
     return invalidRequest('sender_bank_id is not supported.', { sender_bank_id: candidate.sender_bank_id });
   }
   const senderCardNumber = typeof candidate.sender_card_number === 'string' ? candidate.sender_card_number.trim() : undefined;
@@ -3352,6 +3332,17 @@ export function validateExpectedPaymentProfileBody(body: unknown): ExpectedPayme
   if (candidate.payment_method === 'sbp' && senderCardNumber) {
     return invalidRequest('sender_card_number must not be submitted for phone payments.', { payment_method: candidate.payment_method });
   }
+  // Mobile money (WA): the sender phone is the matching key; no card.
+  if (candidate.payment_method === 'mobile_money' && !senderPhone) {
+    return invalidRequest('sender_phone is required for mobile money payments.', { payment_method: candidate.payment_method });
+  }
+  if (candidate.payment_method === 'mobile_money' && senderCardNumber) {
+    return invalidRequest('sender_card_number must not be submitted for mobile money payments.', { payment_method: candidate.payment_method });
+  }
+  // Wallet (international): reference + buyer-name based; neither card nor sender phone.
+  if (candidate.payment_method === 'wallet' && (senderCardNumber || senderPhone)) {
+    return invalidRequest('sender_card_number and sender_phone must not be submitted for wallet payments.', { payment_method: candidate.payment_method });
+  }
 
   return {
     buyer_first_name: candidate.buyer_first_name.trim(),
@@ -3359,7 +3350,8 @@ export function validateExpectedPaymentProfileBody(body: unknown): ExpectedPayme
     payment_method: candidate.payment_method as BuyerCheckoutPaymentMethod,
     sender_bank_id: candidate.sender_bank_id.trim(),
     sender_card_number: candidate.payment_method === 'card' ? senderCardNumber : undefined,
-    sender_phone: candidate.payment_method === 'sbp' ? senderPhone : undefined
+    sender_phone:
+      candidate.payment_method === 'sbp' || candidate.payment_method === 'mobile_money' ? senderPhone : undefined
   };
 }
 

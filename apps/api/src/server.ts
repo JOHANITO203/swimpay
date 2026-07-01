@@ -25,6 +25,7 @@ import {
   getPayerBankLauncherOption,
   getReceiverBankOption,
   receivingCurrencyForBankProfile,
+  normalizeWalletIdentifier,
   receivingRailForBuyerPaymentMethod,
   validateAndroidMerchantCreateAccountRequest,
   validateAndroidMerchantDeviceRecoverRequest,
@@ -105,7 +106,6 @@ import {
   currencyMinorDigits,
   formatAmountMinor,
   invalidRequest,
-  normalizeWalletIdentifier,
   parseMerchantId,
   PgOrderRepository,
   receiverIdentifierTypeForRail,
@@ -2160,12 +2160,48 @@ export function buildApiServer(options: ApiServerOptions): FastifyInstance {
         }
       });
     }
+
+    // The selected route drives the settlement currency: if it differs from the session
+    // currency, re-quote to the route's currency (from the frozen base) before locking, so
+    // the buyer pays in the route's currency and reconciliation expects that amount. FX-down
+    // or non-requotable → best-effort: proceed in the current currency (currency_mismatch
+    // handles it), never block route selection on FX availability.
+    let sessionForSelection = loaded.paymentSession;
+    const routeCurrency = receivingCurrencyForBankProfile(selectedRoute.bank_profile_id).toUpperCase();
+    if (routeCurrency !== sessionForSelection.currency.toUpperCase() && fxRateService) {
+      const baseCurrency = (sessionForSelection.baseCurrency ?? sessionForSelection.currency).toUpperCase();
+      const baseAmountMinor = sessionForSelection.baseAmountMinor ?? sessionForSelection.expectedAmountMinor;
+      const fx = await fxRateService.quote(
+        baseCurrency,
+        routeCurrency,
+        baseAmountMinor,
+        currencyMinorDigits(baseCurrency),
+        currencyMinorDigits(routeCurrency)
+      );
+      if (fx.kind === 'ok') {
+        const requoted = await repository!.requotePaymentSessionCurrency({
+          merchantId: sessionForSelection.merchantId,
+          paymentSessionId: params.id,
+          currency: routeCurrency,
+          amountMinor: fx.quote.amountMinorTarget,
+          fxRate: fx.quote.rate,
+          fxSource: fx.quote.source,
+          fxTimestamp: fx.quote.rateTimestamp,
+          auditEventId: idGenerator.auditEventId(),
+          now: clock().toISOString()
+        });
+        if (requoted.kind === 'requoted') {
+          sessionForSelection = requoted.paymentSession;
+        }
+      }
+    }
+
     const result = await repository!.selectReceivingRoute({
-      merchantId: loaded.paymentSession.merchantId,
+      merchantId: sessionForSelection.merchantId,
       paymentSessionId: params.id,
       receivingRouteId: selectedRoute.route_id,
       expectedPaymentFingerprintForPayableAmount: buildExpectedPaymentFingerprintForSession(
-        loaded.paymentSession,
+        sessionForSelection,
         phoneHmacSecret
       ),
       auditEventId: idGenerator.auditEventId(),
