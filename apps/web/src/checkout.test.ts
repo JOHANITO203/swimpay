@@ -10,6 +10,14 @@ import {
 } from '@swimpay/contracts';
 import { ApiCheckoutSessionProvider, buildWebServer, type CheckoutSession, type CheckoutSessionProvider, type PayableCurrencyOption, type PayableCurrenciesPayload } from './index.js';
 
+/** Clones a route (same rail) so a rail-selection screen keeps two options and therefore renders
+ * rather than being auto-skipped by the single-option auto-advance. */
+function duplicateRoute(provider: FakeCheckoutSessionProvider, sourceRouteId: string): void {
+  const source = provider.routes.find((route) => route.route_id === sourceRouteId);
+  if (!source) throw new Error(`duplicateRoute: unknown route ${sourceRouteId}`);
+  provider.routes = [...provider.routes, { ...source, route_id: `${source.route_id}_dup` }];
+}
+
 describe('hosted checkout web foundation', () => {
   it('renders the initial checkout as an intro-first guided flow', async () => {
     const server = buildWebServer({
@@ -186,6 +194,7 @@ describe('hosted checkout web foundation', () => {
 
   it('reveals only the compatible receiving route after buyer method selection', async () => {
     const provider = new FakeCheckoutSessionProvider();
+    duplicateRoute(provider, 'route_sber_card');
     provider.session = {
       ...provider.session,
       payment_method: 'card',
@@ -217,9 +226,11 @@ describe('hosted checkout web foundation', () => {
     const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('data-payment-method="card"');
-    expect(response.body).toContain('name="sender_card_number"');
+    // Card is the only method: no toggle, method implied via a hidden field, card sender field shown.
+    expect(response.body).toContain('type="hidden" name="payment_method" value="card"');
+    expect(response.body).not.toContain('data-payment-method="card"');
     expect(response.body).not.toContain('data-payment-method="sbp"');
+    expect(response.body).toContain('name="sender_card_number"');
     expect(response.body).not.toContain('name="sender_phone"');
     expect(response.body).not.toContain('Telephone SBP');
     expect(response.body).not.toContain('indisponible');
@@ -246,7 +257,9 @@ describe('hosted checkout web foundation', () => {
     const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('data-payment-method="card"');
+    // Card-only availability implies the method: hidden field, no toggle, card sender field.
+    expect(response.body).toContain('type="hidden" name="payment_method" value="card"');
+    expect(response.body).not.toContain('data-payment-method="card"');
     expect(response.body).toContain('name="sender_card_number"');
     expect(response.body).not.toContain('data-payment-method="sbp"');
     expect(response.body).not.toContain('name="sender_phone"');
@@ -308,9 +321,10 @@ describe('hosted checkout web foundation', () => {
     const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('data-payment-method="sbp"');
+    // SBP is the only method: no toggle, method implied via a hidden field, phone sender field shown.
+    expect(response.body).toContain('type="hidden" name="payment_method" value="sbp"');
+    expect(response.body).not.toContain('data-payment-method="sbp"');
     expect(response.body).toContain('name="sender_phone"');
-    expect(response.body).toContain('<rect x="7" y="3" width="10" height="18" rx="3"');
     expect(response.body).not.toContain('data-payment-method="card"');
     expect(response.body).not.toContain('name="sender_card_number"');
     expect(response.body).not.toContain('Carte indisponible');
@@ -334,7 +348,9 @@ describe('hosted checkout web foundation', () => {
     const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('data-payment-method="mobile_money"');
+    // Mobile money is implied (XOF): hidden method field, no card/sbp toggle, phone sender field.
+    expect(response.body).toContain('type="hidden" name="payment_method" value="mobile_money"');
+    expect(response.body).not.toContain('data-payment-method="mobile_money"');
     expect(response.body).toContain('data-method-field="mobile_money"');
     expect(response.body).toContain('name="sender_phone"');
     expect(response.body).not.toContain('data-payment-method="sbp"');
@@ -354,10 +370,13 @@ describe('hosted checkout web foundation', () => {
     const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('data-payment-method="wallet"');
+    // Wallet is implied (USD): hidden method field, no toggle, and no sender field at all.
+    expect(response.body).toContain('type="hidden" name="payment_method" value="wallet"');
+    expect(response.body).not.toContain('data-payment-method="wallet"');
     expect(response.body).not.toContain('data-payment-method="sbp"');
     expect(response.body).not.toContain('data-payment-method="card"');
     expect(response.body).not.toContain('name="sender_card_number"');
+    expect(response.body).not.toContain('name="sender_phone"');
   });
 
   it('paints the real app logo (Wave) on the payment-app list, not a letter avatar', async () => {
@@ -409,6 +428,71 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('Commencer l&rsquo;experience');
   });
 
+  it('renders every selection list (bank, route, launcher) through the unified choice card with a logo mark', async () => {
+    // Multi-option merchant (2 selectable RU banks, 2 phone routes) so the selection screens
+    // genuinely render — a single-option merchant would auto-skip them (see auto-skip tests).
+    const bankProvider = new FakeCheckoutSessionProvider();
+    const sberPhone = bankProvider.routes.find((route) => route.route_id === 'route_sber_phone')!;
+    bankProvider.routes = [
+      ...bankProvider.routes,
+      { ...sberPhone, route_id: 'route_tbank_phone', bank_profile_id: 'tbank_ru' }
+    ];
+    bankProvider.session = {
+      ...bankProvider.session,
+      payment_method: 'sbp',
+      sender_bank_id: 'tbank_ru',
+      checkout_state: 'receiver_bank_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    const bankServer = buildWebServer({ environment: 'test', checkoutSessionProvider: bankProvider });
+    const bankResponse = await bankServer.inject({ method: 'GET', url: '/checkout/ps_01' });
+    expect(bankResponse.statusCode).toBe(200);
+    expect(bankResponse.body).toContain('Banque du marchand');
+    expect(bankResponse.body).toContain('action="/checkout/ps_01/receiver-bank"');
+    expect(bankResponse.body).toContain('data-logo-asset-key="ic_bank_sberbank"');
+    expect(bankResponse.body).toContain('data-logo-asset-key="ic_bank_tbank"');
+
+    const routeProvider = new FakeCheckoutSessionProvider();
+    const sberPhone2 = routeProvider.routes.find((route) => route.route_id === 'route_sber_phone')!;
+    routeProvider.routes = [
+      ...routeProvider.routes,
+      { ...sberPhone2, route_id: 'route_sber_phone_2', receiver_identifier_masked: '+7 *** *** **89' }
+    ];
+    routeProvider.session = {
+      ...routeProvider.session,
+      payment_method: 'sbp',
+      sender_bank_id: 'tbank_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      checkout_state: 'receiving_route_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    const routeServer = buildWebServer({ environment: 'test', checkoutSessionProvider: routeProvider });
+    const routeResponse = await routeServer.inject({ method: 'GET', url: '/checkout/ps_01' });
+    expect(routeResponse.statusCode).toBe(200);
+    expect(routeResponse.body).toContain('action="/checkout/ps_01/receiving-route"');
+    expect(routeResponse.body).toContain('route-option-card');
+    expect(routeResponse.body).toContain('data-logo-asset-key="ic_bank_sberbank"');
+
+    // The payer launcher registry has several launchers, so the launcher screen renders as-is.
+    const launcherProvider = new FakeCheckoutSessionProvider();
+    launcherProvider.session = {
+      ...launcherProvider.session,
+      payment_method: 'sbp',
+      sender_bank_id: 'tbank_ru',
+      selected_receiver_bank_id: 'sber_ru',
+      selected_receiver_bank_profile_id: 'sber_ru',
+      selected_receiving_route_id: 'route_sber_phone',
+      checkout_state: 'payer_bank_launcher_selection',
+      buyer_safe_status: 'not_validated'
+    };
+    const launcherServer = buildWebServer({ environment: 'test', checkoutSessionProvider: launcherProvider });
+    const launcherResponse = await launcherServer.inject({ method: 'GET', url: '/checkout/ps_01' });
+    expect(launcherResponse.statusCode).toBe(200);
+    expect(launcherResponse.body).toContain('action="/checkout/ps_01/payer-bank-launcher"');
+    expect(launcherResponse.body).toContain('data-logo-asset-key="ic_bank_tbank"');
+  });
+
   it('offers a recovery action when a selected method has no compatible receiving route later in the flow', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.routes = provider.routes.filter((route) => route.rail_type === 'card_transfer');
@@ -432,7 +516,10 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).toContain('data-select-method="card"');
     expect(response.body).toContain('Actualiser les methodes');
     expect(response.body).toContain('Changer de methode');
-    expect(response.body).toContain('Carte disponible');
+    // Card is the only method now: no card/sbp toggle, method implied, card sender field present.
+    expect(response.body).toContain('type="hidden" name="payment_method" value="card"');
+    expect(response.body).not.toContain('class="method-toggle"');
+    expect(response.body).toContain('name="sender_card_number"');
     expect(response.body).toContain('Retour au marchand');
     expect(response.body).not.toContain('Ouvrir ma banque');
   });
@@ -1565,6 +1652,7 @@ describe('hosted checkout web foundation', () => {
   describe('rail-aware rendering', () => {
     it('renders mobile_money route card with FR mobile-money labels and masked identifier', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_momo');
       provider.session = {
         ...provider.session,
         payment_method: 'mobile_money',
@@ -1587,6 +1675,7 @@ describe('hosted checkout web foundation', () => {
 
     it('renders wallet route card with FR wallet labels and masked identifier', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_wallet');
       provider.session = {
         ...provider.session,
         payment_method: 'wallet',
@@ -1655,6 +1744,7 @@ describe('hosted checkout web foundation', () => {
 
     it('renders wallet route card in EN with correct recipient label', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_wallet');
       provider.session = {
         ...provider.session,
         payment_method: 'wallet',
@@ -1676,6 +1766,7 @@ describe('hosted checkout web foundation', () => {
 
     it('renders wallet route card in RU with correct recipient label', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_wallet');
       provider.session = {
         ...provider.session,
         payment_method: 'wallet',
@@ -1743,6 +1834,7 @@ describe('hosted checkout web foundation', () => {
 
     it('renders mobile_money route card in EN with mobile-money labels and masked identifier', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_momo');
       provider.session = {
         ...provider.session,
         payment_method: 'mobile_money',
@@ -1764,6 +1856,7 @@ describe('hosted checkout web foundation', () => {
 
     it('renders mobile_money route card in RU with mobile-money labels and masked identifier', async () => {
       const provider = new FakeCheckoutSessionProvider();
+      duplicateRoute(provider, 'route_momo');
       provider.session = {
         ...provider.session,
         payment_method: 'mobile_money',
@@ -2032,6 +2125,230 @@ describe('hosted checkout web foundation', () => {
       expect(response.body).not.toContain('≈');
     });
   });
+
+  describe('progress bar', () => {
+    const activeStep = (body: string): string | undefined =>
+      body.match(/data-progress-bar[^>]*data-active-step="(\d+)"/u)?.[1];
+
+    it('advances the active progress step from the currency/method screen to the instructions screen', async () => {
+      const currencyProvider = new FakeCheckoutSessionProvider();
+      currencyProvider.session = {
+        ...currencyProvider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      currencyProvider.payableCurrencies = [
+        { currency: 'RUB', amount_minor: 13700, formatted: '137 RUB', is_current: true, quote: undefined },
+        { currency: 'USD', amount_minor: 1345, formatted: '13.45 USD', is_current: false, quote: undefined }
+      ];
+      const currencyServer = buildWebServer({ environment: 'test', checkoutSessionProvider: currencyProvider });
+      const currencyResponse = await currencyServer.inject({ method: 'GET', url: '/checkout/ps_01' });
+      expect(currencyResponse.statusCode).toBe(200);
+
+      const instructionsProvider = new FakeCheckoutSessionProvider();
+      instructionsProvider.session = {
+        ...instructionsProvider.session,
+        payment_method: 'sbp',
+        sender_bank_id: 'tbank_ru',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_sber_phone',
+        selected_payer_bank_launcher_id: 'tbank_ru',
+        checkout_state: 'payment_instructions',
+        buyer_safe_status: 'awaiting_payment'
+      };
+      const instructionsServer = buildWebServer({ environment: 'test', checkoutSessionProvider: instructionsProvider });
+      const instructionsResponse = await instructionsServer.inject({ method: 'GET', url: '/checkout/ps_01' });
+      expect(instructionsResponse.statusCode).toBe(200);
+
+      const currencyStep = activeStep(currencyResponse.body);
+      const instructionsStep = activeStep(instructionsResponse.body);
+      expect(currencyStep).toBe('2');
+      expect(instructionsStep).toBe('3');
+      expect(instructionsStep).not.toBe(currencyStep);
+    });
+  });
+
+  describe('single-option auto-skip', () => {
+    it('skips the receiver-bank and receiving-route screens when each has exactly one option', async () => {
+      // One card route on one bank: bank -> route both auto-select, landing on the launcher screen
+      // (the registry still offers several launchers, so that step is a real choice and renders).
+      const provider = new FakeCheckoutSessionProvider();
+      provider.routes = provider.routes.filter((route) => route.route_id === 'route_sber_card');
+      provider.session = {
+        ...provider.session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        checkout_state: 'receiver_bank_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      // Landed on the launcher choice, never on the one-item bank or route screens.
+      expect(response.body).toContain('Ouvrir ma banque');
+      expect(response.body).toContain('action="/checkout/ps_01/payer-bank-launcher"');
+      expect(response.body).not.toContain('Banque du marchand');
+      expect(response.body).not.toContain('Selectionnez la destination compatible');
+      // The auto-selections were driven through the real provider mutations.
+      expect(provider.session.selected_receiver_bank_id).toBe('sber_ru');
+      expect(provider.session.selected_receiving_route_id).toBe('route_sber_card');
+      expect(provider.session.checkout_state).toBe('payer_bank_launcher_selection');
+    });
+
+    it('skips the payer-launcher screen when exactly one launcher is enabled', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      const onlyLauncher = PayerBankLauncherRegistry[0]!;
+      provider.getPayerBankLaunchers = async (paymentSessionId: string) => ({
+        payment_session_id: paymentSessionId,
+        payer_bank_launchers: [onlyLauncher]
+      });
+      provider.session = {
+        ...provider.session,
+        payment_method: 'sbp',
+        sender_bank_id: onlyLauncher.payer_bank_launcher_id,
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_sber_phone',
+        checkout_state: 'payer_bank_launcher_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      // Auto-selected the sole launcher and advanced to the instructions screen.
+      expect(provider.session.selected_payer_bank_launcher_id).toBe(onlyLauncher.payer_bank_launcher_id);
+      expect(provider.session.checkout_state).toBe('payment_instructions');
+      expect(response.body).toContain('Details du virement');
+      expect(response.body).not.toContain('action="/checkout/ps_01/payer-bank-launcher"');
+    });
+
+    it('still shows the receiver-bank selection when more than one bank is selectable', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      const sberPhone = provider.routes.find((route) => route.route_id === 'route_sber_phone')!;
+      // Two RU banks each with a phone route -> two selectable banks -> no auto-skip.
+      provider.routes = [
+        ...provider.routes,
+        { ...sberPhone, route_id: 'route_tbank_phone', bank_profile_id: 'tbank_ru' }
+      ];
+      provider.session = {
+        ...provider.session,
+        payment_method: 'sbp',
+        sender_bank_id: 'sber_ru',
+        checkout_state: 'receiver_bank_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Banque du marchand');
+      expect(response.body).toContain('action="/checkout/ps_01/receiver-bank"');
+      // No mutation happened: still on the bank-selection state.
+      expect(provider.session.checkout_state).toBe('receiver_bank_selection');
+      expect(provider.session.selected_receiver_bank_id).toBeUndefined();
+    });
+
+    it('does not auto-skip when a selection step has zero options (keeps the existing fallback)', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.routes = [];
+      provider.session = {
+        ...provider.session,
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        checkout_state: 'receiver_bank_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+      expect(response.statusCode).toBe(200);
+      expect(provider.session.checkout_state).toBe('receiver_bank_selection');
+      expect(provider.session.selected_receiver_bank_id).toBeUndefined();
+    });
+  });
+
+  describe('implied payment method (single-method currencies)', () => {
+    it('XOF identity step shows no card/sbp toggle and submits mobile_money successfully', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.routes = provider.routes.filter((route) => route.rail_type === 'mobile_money');
+      provider.session = {
+        ...provider.session,
+        amount: { value: '6100', currency: 'XOF' },
+        available_payment_methods: { card: false, sbp: false, mobile_money: true, wallet: false }
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const identity = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+      expect(identity.statusCode).toBe(200);
+      // No card/sbp method toggle — mobile money is implied by the XOF currency.
+      expect(identity.body).not.toContain('data-payment-method="card"');
+      expect(identity.body).not.toContain('data-payment-method="sbp"');
+      expect(identity.body).not.toContain('class="method-toggle"');
+      expect(identity.body).toContain('type="hidden" name="payment_method" value="mobile_money"');
+      expect(identity.body).toContain('data-method-field="mobile_money"');
+
+      const submit = await server.inject({
+        method: 'POST',
+        url: '/checkout/ps_01/expected-payment-profile',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        payload: 'buyer_first_name=Ama&buyer_last_name=Kone&payment_method=mobile_money&sender_bank_id=orange_money_ci&sender_phone=%2B225%200700000000'
+      });
+      expect(submit.statusCode).toBe(303);
+      expect(provider.lastSubmittedProfile?.payment_method).toBe('mobile_money');
+      expect(provider.lastSubmittedProfile?.sender_phone).toBe('+225 0700000000');
+      expect(provider.lastSubmittedProfile?.sender_card_number).toBeUndefined();
+    });
+
+    it('USD identity step shows wallet implied with no sender field and submits wallet successfully', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      provider.routes = provider.routes.filter((route) => route.rail_type === 'wallet_transfer');
+      provider.session = {
+        ...provider.session,
+        amount: { value: '13.45', currency: 'USD' },
+        available_payment_methods: { card: false, sbp: false, mobile_money: false, wallet: true }
+      };
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const identity = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+      expect(identity.statusCode).toBe(200);
+      expect(identity.body).not.toContain('class="method-toggle"');
+      expect(identity.body).toContain('type="hidden" name="payment_method" value="wallet"');
+      // Wallet carries no sender field.
+      expect(identity.body).not.toContain('name="sender_card_number"');
+      expect(identity.body).not.toContain('name="sender_phone"');
+
+      const submit = await server.inject({
+        method: 'POST',
+        url: '/checkout/ps_01/expected-payment-profile',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        payload: 'buyer_first_name=John&buyer_last_name=Doe&payment_method=wallet&sender_bank_id=wise_int'
+      });
+      expect(submit.statusCode).toBe(303);
+      expect(provider.lastSubmittedProfile?.payment_method).toBe('wallet');
+      expect(provider.lastSubmittedProfile?.sender_card_number).toBeUndefined();
+      expect(provider.lastSubmittedProfile?.sender_phone).toBeUndefined();
+    });
+
+    it('RUB identity step still shows the card/sbp toggle when both methods are available', async () => {
+      const provider = new FakeCheckoutSessionProvider();
+      const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+      const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('class="method-toggle"');
+      expect(response.body).toContain('data-payment-method="card"');
+      expect(response.body).toContain('data-payment-method="sbp"');
+      // With a genuine choice the method is submitted by the radios, not a hidden field.
+      expect(response.body).not.toContain('type="hidden" name="payment_method"');
+    });
+  });
 });
 
 type StructuredCheckoutErrorCode =
@@ -2200,16 +2517,25 @@ class FakeCheckoutSessionProvider implements CheckoutSessionProvider {
     };
   }
 
+  public lastSubmittedProfile: Parameters<CheckoutSessionProvider['submitExpectedPaymentProfile']>[1] | undefined = undefined;
+
   public async submitExpectedPaymentProfile(_paymentSessionId: string, body: Parameters<CheckoutSessionProvider['submitExpectedPaymentProfile']>[1]) {
-    const compatibleRoute = this.routes.find((route) =>
-      body.payment_method === 'card' ? route.rail_type === 'card_transfer' : route.rail_type === 'phone_transfer'
-    );
+    this.lastSubmittedProfile = body;
+    const railForMethod =
+      body.payment_method === 'card'
+        ? 'card_transfer'
+        : body.payment_method === 'mobile_money'
+          ? 'mobile_money'
+          : body.payment_method === 'wallet'
+            ? 'wallet_transfer'
+            : 'phone_transfer';
+    const compatibleRoute = this.routes.find((route) => route.rail_type === railForMethod);
     this.session = {
       ...this.session,
       payment_method: body.payment_method,
       sender_bank_id: body.sender_bank_id,
       sender_card_masked: body.payment_method === 'card' ? '2202 **** **** 4821' : undefined,
-      sender_phone_masked: body.payment_method === 'sbp' ? '+7 *** *** **67' : undefined,
+      sender_phone_masked: body.payment_method === 'sbp' || body.payment_method === 'mobile_money' ? '+7 *** *** **67' : undefined,
       selected_receiver_bank_id: compatibleRoute?.bank_profile_id,
       selected_receiver_bank_profile_id: compatibleRoute?.bank_profile_id,
       selected_payer_bank_launcher_id: body.sender_bank_id,

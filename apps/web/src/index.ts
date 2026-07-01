@@ -35,6 +35,7 @@ import {
   mapPaymentSessionToCheckoutState,
   type AvailableReceivingMethod,
   type AvailableSenderBank,
+  type BuyerCheckoutPaymentMethod,
   type CheckoutFallbackAction,
   type CheckoutUnavailableReason,
   type BuyerSafeCheckoutStatus,
@@ -194,7 +195,9 @@ class CheckoutProviderError extends Error {
 export interface ExpectedPaymentProfileFormPayload {
   buyer_first_name: string;
   buyer_last_name: string;
-  payment_method: 'card' | 'sbp';
+  // The identity form submits any of the four buyer methods — card/sbp (RU), mobile_money (XOF),
+  // wallet (USD). Kept aligned with BuyerCheckoutPaymentMethod; the API-side contract validates it.
+  payment_method: BuyerCheckoutPaymentMethod;
   sender_bank_id: string;
   sender_card_number?: string | undefined;
   sender_phone?: string | undefined;
@@ -529,6 +532,61 @@ const defaultRecipient: CheckoutRecipient = {
   bank: 'Banque du marchand',
   accountMasked: '**** 0000'
 };
+
+/** Routes visible to the buyer for a given method — mirrors filterRoutesForSession in
+ * CheckoutScreen.ts so "exactly one route" is measured on what the buyer would actually see. */
+function autoSkipVisibleRoutes(
+  routes: readonly BuyerSafeReceivingRoute[],
+  paymentMethod: CheckoutSession['payment_method']
+): readonly BuyerSafeReceivingRoute[] {
+  if (paymentMethod === 'card') return routes.filter((route) => route.rail_type === 'card_transfer');
+  if (paymentMethod === 'sbp') return routes.filter((route) => route.rail_type === 'phone_transfer');
+  if (paymentMethod === 'mobile_money') return routes.filter((route) => route.rail_type === 'mobile_money');
+  if (paymentMethod === 'wallet') return routes.filter((route) => route.rail_type === 'wallet_transfer');
+  return routes;
+}
+
+/**
+ * Auto-selects any selection step (receiver bank, receiving route, payer launcher) that has
+ * exactly ONE option for the currency-scoped availability, so the buyer never faces a one-item
+ * list. It drives the SAME provider mutations a buyer click would (getX + selectX) — so every
+ * server-side validation, currency scoping and audit still applies; it only removes the click.
+ * With 0 options it does nothing (the render keeps its existing fallback). The loop cascades
+ * (bank -> route -> launcher) and is bounded to avoid any pathological re-entry.
+ */
+async function autoAdvanceSingleOptionCheckoutSteps(
+  provider: CheckoutSessionProvider,
+  paymentSessionId: string,
+  session: CheckoutSession
+): Promise<CheckoutSession> {
+  let current = session;
+  for (let hop = 0; hop < 4; hop += 1) {
+    if (current.checkout_state === 'receiver_bank_selection') {
+      const { receiver_banks } = await provider.getReceiverBanks(paymentSessionId);
+      const selectable = receiver_banks.filter((bank) => (bank.available_route_count ?? 0) > 0);
+      if (selectable.length !== 1) break;
+      current = await provider.selectReceiverBank(paymentSessionId, selectable[0]!.receiver_bank_id);
+      continue;
+    }
+    if (current.checkout_state === 'receiving_route_selection') {
+      if (!current.selected_receiver_bank_id) break;
+      const { routes } = await provider.getReceivingRoutes(paymentSessionId, current.selected_receiver_bank_id);
+      const visible = autoSkipVisibleRoutes(routes, current.payment_method);
+      if (visible.length !== 1) break;
+      current = await provider.selectReceivingRoute(paymentSessionId, visible[0]!.route_id);
+      continue;
+    }
+    if (current.checkout_state === 'payer_bank_launcher_selection') {
+      const { payer_bank_launchers } = await provider.getPayerBankLaunchers(paymentSessionId);
+      const enabled = payer_bank_launchers.filter((launcher) => launcher.enabled);
+      if (enabled.length !== 1) break;
+      current = await provider.selectPayerBankLauncher(paymentSessionId, enabled[0]!.payer_bank_launcher_id);
+      continue;
+    }
+    break;
+  }
+  return current;
+}
 
 export function buildWebServer(options: WebServerOptions): FastifyInstance {
   const server = Fastify({ logger: true });
@@ -900,6 +958,28 @@ export function buildWebServer(options: WebServerOptions): FastifyInstance {
         }
         throw error;
       }
+    }
+    // Auto-select any single-option selection step so the buyer never sees a one-item list.
+    // Runs the same provider mutations a click would, keeping every server-side check intact.
+    try {
+      const advanced = await autoAdvanceSingleOptionCheckoutSteps(checkoutSessionProvider, paymentSessionId, session);
+      if (advanced !== session) {
+        session = withNativeReturnUrl(advanced, request.query);
+      }
+    } catch (error) {
+      const renderedFallback = await renderStructuredCheckoutFallbackFromError({
+        error,
+        paymentSessionId,
+        checkoutSessionProvider,
+        recipient: options.recipient ?? defaultRecipient,
+        session,
+        options: checkoutRenderOptionsFromRequest(request)
+      });
+      if (renderedFallback) {
+        reply.type('text/html; charset=utf-8');
+        return renderedFallback;
+      }
+      throw error;
     }
     const [receiverBanks, payerBankLaunchers] = await Promise.all([
       checkoutSessionProvider.getReceiverBanks(paymentSessionId),
@@ -1284,7 +1364,7 @@ async function renderStructuredCheckoutFallbackFromError(params: {
   paymentSessionId: string;
   checkoutSessionProvider: CheckoutSessionProvider;
   recipient: CheckoutRecipient;
-  preferredPaymentMethod?: 'card' | 'sbp' | undefined;
+  preferredPaymentMethod?: BuyerCheckoutPaymentMethod | undefined;
   session?: CheckoutSession | undefined;
   options?: {
     nativeBankLauncherScheme?: string | undefined;

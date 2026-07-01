@@ -3294,6 +3294,34 @@ describe('payable-currencies endpoint', () => {
     expect(afterIdentity.json().checkout_state).toBe('receiver_bank_selection');
   });
 
+  // Regression: the receiver-banks list route count must be scoped to the chosen currency, or an
+  // XOF checkout shows a RUB bank as "available" (and the auto-skip could pick it) → dead route step.
+  test('receiver-banks route count is scoped to the chosen currency (XOF hides RU banks)', async () => {
+    const repository = new InMemoryPaymentSessionRepository();
+    const server = buildServer(repository, '2026-06-06T10:00:00.000Z', undefined, makeFxStub());
+    await server.inject({
+      method: 'POST', url: '/v1/merchant/receiving-routes', headers: { authorization: 'Bearer test_mch_01' },
+      payload: { bank_profile_id: 'sber_ru', rail_type: 'phone_transfer', receiver_identifier: '+7 (999) 111-11-11', route_code: 'RB-SBER', display_label: 'Sberbank', recommended: true }
+    });
+    await server.inject({
+      method: 'POST', url: '/v1/merchant/receiving-routes', headers: { authorization: 'Bearer test_mch_01' },
+      payload: { bank_profile_id: 'wave_ci', rail_type: 'mobile_money', receiver_identifier: '+225 07 00 00 00 00', route_code: 'RB-WAVE', display_label: 'Wave', recommended: false }
+    });
+    await server.inject({
+      method: 'POST', url: '/v1/orders', headers: { authorization: 'Bearer test_mch_01' },
+      payload: { external_id: 'order_recv_scope', amount: { value: '100.00', currency: 'RUB' }, expires_in_seconds: 900 }
+    });
+
+    // Before any choice: sber_ru counts its RUB route.
+    const rub = (await server.inject({ method: 'GET', url: '/v1/checkout/ps_session_01/receiver-banks' })).json();
+    expect(rub.receiver_banks.find((b: { receiver_bank_id: string }) => b.receiver_bank_id === 'sber_ru').available_route_count).toBe(1);
+
+    // After choosing XOF: sber_ru (RUB-only) is scoped out to 0 routes.
+    expect((await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/currency', payload: { currency: 'XOF' } })).statusCode).toBe(200);
+    const xof = (await server.inject({ method: 'GET', url: '/v1/checkout/ps_session_01/receiver-banks' })).json();
+    expect(xof.receiver_banks.find((b: { receiver_bank_id: string }) => b.receiver_bank_id === 'sber_ru').available_route_count).toBe(0);
+  });
+
   // Regression: the WHOLE buyer journey, one full pass per currency/rail. Choosing a currency
   // must scope the offered methods to it, and the identity step must accept that currency's
   // method(s) — no "Currency X is not supported for <method>". This is what a single-currency
