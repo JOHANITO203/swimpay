@@ -456,6 +456,7 @@ interface ReceivingRouteCopyDetailsPayload {
   receiver_identifier_masked: string;
   receiver_identifier_copy_value: string;
   destination_value: string;
+  receiver_consumer_link?: string | null;
 }
 interface CheckoutClaimedPaidResponse {
   payment_session_id: string;

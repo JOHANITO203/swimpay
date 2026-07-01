@@ -46,6 +46,8 @@ describe('West Africa payer launchers', () => {
     const wave = WestAfricaPayerBankLauncherRegistry.find((l) => l.payer_bank_launcher_id === 'wave_ci');
     expect(wave?.deeplink_schemes).toContain('wave');
     expect(wave?.launch_strategy).toBe('deeplink_then_package');
+    // Lands the payer on the Wave send-money screen (no recipient prefill — copy-paste stays).
+    expect(wave?.deeplink_uri_template).toBe('wave://mm/send_money_select');
 
     const mtn = WestAfricaPayerBankLauncherRegistry.find((l) => l.payer_bank_launcher_id === 'mtn_momo_ci');
     expect(mtn?.ussd_transfer_template).toBe('*133#');
