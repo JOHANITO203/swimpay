@@ -3024,7 +3024,11 @@ describe('payable-currencies endpoint', () => {
       base_currency: 'RUB',
       base_amount_minor: expect.any(Number)
     });
-    expect(usdEntry.formatted).toMatch(/^\d/u); // has digits
+    // formatted is a complete money string: amount AND explicit currency (so the currency
+    // picker never shows a bare number). Both the current and quoted entries carry it.
+    expect(usdEntry.formatted).toMatch(/^\d/u); // starts with the amount
+    expect(usdEntry.formatted).toContain('USD');
+    expect(rubEntry.formatted).toContain('RUB');
   });
 
   test('GET /payable-currencies omits unavailable FX candidates silently', async () => {
