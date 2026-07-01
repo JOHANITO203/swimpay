@@ -78,7 +78,11 @@ object ReceivingCatalog {
 
     private fun methodTypeFor(region: ReceivingRegion): ReceivingMethodType = when (region) {
         ReceivingRegion.WEST_AFRICA -> ReceivingMethodType.MOBILE_MONEY
-        ReceivingRegion.RU, ReceivingRegion.INTERNATIONAL -> ReceivingMethodType.CARD_TRANSFER
+        // International neobanks (wise_int / revolut_int / payoneer_int) settle in USD on the
+        // backend `wallet_transfer` rail — never the card rail. They are addressed by an
+        // email / @tag / phone identifier, not a card number.
+        ReceivingRegion.INTERNATIONAL -> ReceivingMethodType.WALLET_TRANSFER
+        ReceivingRegion.RU -> ReceivingMethodType.CARD_TRANSFER
     }
 
     val allMethods: List<ReceivingMethodCatalogEntry> = buildList {

@@ -90,11 +90,14 @@ class MerchantNotificationAccessGate {
 
 enum class ReceivingMethodType(
     val wireValue: String,
-    val merchantLabel: String
+    val merchantLabel: String,
+    /** Settlement currency the rail receives in — mirrors backend receivingCurrencyForBankProfile. */
+    val settlementCurrency: String
 ) {
-    CARD_TRANSFER("card_transfer", "Carte bancaire"),
-    PHONE_TRANSFER("phone_transfer", "Numéro de téléphone"),
-    MOBILE_MONEY("mobile_money", "Mobile money")
+    CARD_TRANSFER("card_transfer", "Carte bancaire", "RUB"),
+    PHONE_TRANSFER("phone_transfer", "Numéro de téléphone", "RUB"),
+    MOBILE_MONEY("mobile_money", "Mobile money", "XOF"),
+    WALLET_TRANSFER("wallet_transfer", "Portefeuille international", "USD")
 }
 
 data class MerchantReceivingMethodDisplay(
@@ -103,6 +106,10 @@ data class MerchantReceivingMethodDisplay(
     // (bank_id / bank_profile_id). Drives the derived notification allowlist when the
     // active receiving methods change. Empty only for placeholder/preview rows.
     val bankProfileId: String = "",
+    // The route's real rail type, resolved from the list response `rail_type`. Drives the
+    // rail/currency chip and the correct edit form (wallet vs card/phone). Null for legacy
+    // preview rows that carry no rail.
+    val methodType: ReceivingMethodType? = null,
     val title: String,
     val subtitle: String,
     val helper: String? = null,
@@ -146,6 +153,7 @@ data class MerchantReceivingMethodDisplay(
                 ReceivingMethodType.CARD_TRANSFER -> maskCard(rawIdentifier)
                 ReceivingMethodType.PHONE_TRANSFER -> maskPhone(rawIdentifier)
                 ReceivingMethodType.MOBILE_MONEY -> maskPhone(rawIdentifier)
+                ReceivingMethodType.WALLET_TRANSFER -> WalletReceiverIdentifier.mask(rawIdentifier)
             }
             val actions = buildList {
                 add("Modifier")
@@ -153,6 +161,7 @@ data class MerchantReceivingMethodDisplay(
                 if (!recommended) add("Définir par défaut")
             }
             return MerchantReceivingMethodDisplay(
+                methodType = type,
                 title = type.merchantLabel,
                 subtitle = "$bankDisplayName · $maskedIdentifier",
                 helper = if (type == ReceivingMethodType.PHONE_TRANSFER) "Pratique pour les virements via SBP" else null,

@@ -158,7 +158,7 @@ class ReceiverNotificationPipeline(
             "snapshot_count" to coalesced.snapshotCount,
             "coalesced" to true,
             "amount_minor" to (redacted.localParserHints.amountMinor ?: 0L),
-            "currency" to (redacted.localParserHints.currency ?: "RUB"),
+            "currency" to (redacted.localParserHints.currency ?: ""),
             "sender_phone_hmac" to (redacted.localParserHints.senderPhoneMasked?.let { sha256Hex("phone:$it") } ?: ""),
             "sender_phone_masked" to (redacted.localParserHints.senderPhoneMasked ?: ""),
             "reference_hmac" to (redacted.localParserHints.referenceMasked?.let { sha256Hex("reference:$it") } ?: ""),
@@ -195,7 +195,7 @@ class ReceiverNotificationPipeline(
             .plus(snapshot.textLines)
             .joinToString(" ")
         val direction = classifyDirection(combined)
-        val amountMinor = extractAmountMinor(combined)
+        val money = MoneyGrammar.detect(combined)
         val redactedTitle = snapshot.title?.let(NotificationPrivacyCanonicalizer::redactText)
         val redactedBody = NotificationPrivacyCanonicalizer.redactText(combined)
         return PrivacyFirewallResult(
@@ -203,50 +203,45 @@ class ReceiverNotificationPipeline(
             redactedBody = redactedBody,
             rawTextPresent = false,
             localParserHints = LocalParserHints(
-                amountMinor = amountMinor,
-                currency = if (amountMinor != null) "RUB" else null,
+                amountMinor = money?.amountMinor,
+                currency = money?.currency,
                 senderPhoneMasked = if (NotificationPrivacyCanonicalizer.containsPhone(combined)) "<PHONE>" else null,
-                referenceMasked = if (NotificationPrivacyCanonicalizer.containsReference(combined)) "<REFERENCE>" else null,
+                // Orders are matched on amount + currency + receiver bank + time window, not
+                // on a reference. The legacy reference HMAC hashed a constant placeholder
+                // (same value for every notification), so it is dropped; the body is still
+                // scrubbed of any reference-like token for privacy.
+                referenceMasked = null,
                 directionHint = direction
             )
         )
     }
 
+    // Small shared multilingual polarity lexicon (RU + EN). Negative directions are checked
+    // before "incoming" so an outgoing/cashback/failed notification is never mistaken for a
+    // received payment. Extend with more language stems here — never per-bank templates.
     private fun classifyDirection(value: String): String {
         val lower = value.lowercase()
         return when {
             lower.contains("cashback") || lower.contains("кэшбек") || lower.contains("кешбек") -> "cashback"
-            lower.contains("refund") || lower.contains("возврат") -> "refund"
-            lower.contains("outgoing") || lower.contains("списан") || lower.contains("исход") -> "outgoing"
+            lower.contains("refund") || lower.contains("возврат") || lower.contains("reversed") -> "refund"
+            lower.contains("outgoing") || lower.contains("списан") || lower.contains("отправл") ||
+                lower.contains("исход") || lower.contains("debited") || lower.contains("you paid") ||
+                lower.contains("sent to") || lower.contains("payment to") || lower.contains("withdraw") ||
+                lower.contains("envoy") || lower.contains("envoi") || lower.contains("retrait") ||
+                lower.contains("débit") -> "outgoing"
             lower.contains("promo") || lower.contains("бонус") || lower.contains("промо") -> "promo"
-            lower.contains("failed") || lower.contains("не выполн") || lower.contains("отклон") -> "failed"
-            lower.contains("поступ") || lower.contains("перевод") || lower.contains("incoming") -> "incoming_customer_transfer"
+            lower.contains("failed") || lower.contains("не выполн") || lower.contains("отклон") ||
+                lower.contains("declined") || lower.contains("rejected") -> "failed"
+            lower.contains("поступ") || lower.contains("зачисл") || lower.contains("перевод") ||
+                lower.contains("incoming") || lower.contains("received") || lower.contains("credited") ||
+                lower.contains("crédité") || lower.contains("recu") || lower.contains("reçu") ||
+                lower.contains("payment from") -> "incoming_customer_transfer"
             else -> "unknown"
         }
     }
 
-    private fun extractAmountMinor(value: String): Long? {
-        val match = Regex("""(\d+)(?:[,.](\d{1,2}))?\s*(₽|rub|руб)""", RegexOption.IGNORE_CASE).find(value)
-            ?: return null
-        val major = match.groupValues[1].toLong()
-        val minor = match.groupValues[2].padEnd(2, '0').take(2).ifBlank { "00" }.toLong()
-        return major * 100 + minor
-    }
-
-    private fun redactText(value: String): String {
-        return value
-            .replace(PHONE_REGEX, "<PHONE>")
-            .replace(REFERENCE_REGEX, "<REFERENCE>")
-            .replace(Regex("""\d+(?:[,.]\d{1,2})?\s*(₽|rub|руб)""", RegexOption.IGNORE_CASE), "<AMOUNT> <CURRENCY>")
-    }
-
     private fun isoFromMillis(value: Long): String {
         return java.time.Instant.ofEpochMilli(value).toString()
-    }
-
-    companion object {
-        private val PHONE_REGEX = Regex("""\+?\d[\d\s()\-]{7,}\d""")
-        private val REFERENCE_REGEX = Regex("""\bSWP-[A-Z0-9-]+\b""", RegexOption.IGNORE_CASE)
     }
 }
 
@@ -263,7 +258,6 @@ private object NotificationPrivacyCanonicalizer {
         """\b(from|sender)\s+[A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,2}""",
         RegexOption.IGNORE_CASE
     )
-    private val AMOUNT_REGEX = Regex("""\d+(?:[,.]\d{1,2})?\s*(₽|rub|руб\.?)""", RegexOption.IGNORE_CASE)
     private val SPACES_REGEX = Regex("""\s+""")
 
     fun containsPhone(value: String): Boolean = PHONE_REGEX.containsMatchIn(value)
@@ -279,7 +273,7 @@ private object NotificationPrivacyCanonicalizer {
                 val prefix = match.groupValues[1]
                 "$prefix <PERSON>"
             }
-            .replace(AMOUNT_REGEX, "<AMOUNT> <CURRENCY>")
+            .replace(MoneyGrammar.redactionRegex, "<AMOUNT> <CURRENCY>")
             .replace(SPACES_REGEX, " ")
             .trim()
     }

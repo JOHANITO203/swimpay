@@ -26,6 +26,7 @@ import com.swimpay.receiver.MerchantOrdersResult
 import com.swimpay.receiver.MerchantOrdersSummary
 import com.swimpay.receiver.MerchantReceivingMethodsApiRepository
 import com.swimpay.receiver.MerchantReceivingMethodDisplay
+import com.swimpay.receiver.ReceivingMethodType
 import com.swimpay.receiver.MerchantReceivingMethodMutationResult
 import com.swimpay.receiver.MerchantReceivingMethodsResult
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
@@ -278,6 +279,9 @@ data class PremiumReceivingMethodUiItem(
     // the notification allowlist whenever the set of active methods changes — never the
     // subtitle heuristic. Empty only for placeholder rows that have no real route.
     val bankProfileId: String = "",
+    // The method's real rail type (from the list `rail_type`). Drives the rail/currency
+    // chip and the correct edit form; null only for legacy placeholder rows.
+    val methodType: ReceivingMethodType? = null,
     val title: String,
     val subtitle: String,
     val helper: String?,
@@ -1676,6 +1680,7 @@ private fun MerchantReceivingMethodDisplay.toPremiumItem(): PremiumReceivingMeth
     return PremiumReceivingMethodUiItem(
         routeId = routeId,
         bankProfileId = bankProfileId,
+        methodType = methodType,
         title = title,
         subtitle = subtitle,
         helper = helper,

@@ -112,6 +112,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.swimpay.receiver.BuildConfig
 import com.swimpay.receiver.MerchantReceivingMethodDraft
+import com.swimpay.receiver.WalletReceiverIdentifier
 import com.swimpay.receiver.MerchantReceivingMethodSubmission
 import com.swimpay.receiver.R
 import com.swimpay.receiver.ReceivingMethodType
@@ -1637,6 +1638,14 @@ fun PremiumReceivingMethodsStateScreen(
             // region's method. Each option carries its methodType so the draft input and
             // submission adapt (WA wallets → MOBILE_MONEY/phone, RU/INT → card-rail).
             val catalog = ReceivingCatalog.allMethods
+            // This screen manages the RUSSIAN card / SBP rail only; wallet and mobile-money
+            // methods are managed on their own detached sub-screens, so the active list here
+            // is filtered to the card/phone rails (all methods still appear in the overview).
+            val ruItems = state.value.items.filter {
+                it.methodType == null ||
+                    it.methodType == ReceivingMethodType.CARD_TRANSFER ||
+                    it.methodType == ReceivingMethodType.PHONE_TRANSFER
+            }
             val bankOptions = catalog.map { entry ->
                 PremiumReceivingMethodBankOption(
                     bankProfileId = entry.bankProfileId,
@@ -1644,9 +1653,12 @@ fun PremiumReceivingMethodsStateScreen(
                     methodType = entry.methodType
                 )
             }
+            // Single-identifier rails (mobile money, international wallet) override the
+            // card/SBP toggle so input + submission stay on the correct rail even if the
+            // merchant retargets the bank selector to one of them from this screen.
             fun methodTypeForBank(bankProfileId: String, toggleType: ReceivingMethodType): ReceivingMethodType =
                 catalog.firstOrNull { it.bankProfileId == bankProfileId }?.methodType
-                    ?.takeIf { it == ReceivingMethodType.MOBILE_MONEY }
+                    ?.takeIf { it == ReceivingMethodType.MOBILE_MONEY || it == ReceivingMethodType.WALLET_TRANSFER }
                     ?: toggleType
             var selectedBankId by remember { mutableStateOf(bankOptions.firstOrNull()?.bankProfileId.orEmpty()) }
             var identifierInput by remember { mutableStateOf("") }
@@ -1818,12 +1830,12 @@ fun PremiumReceivingMethodsStateScreen(
                         }
                     }
                 }
-                if (state.value.items.isEmpty()) {
+                if (ruItems.isEmpty()) {
                     item {
                         PremiumStatePanel(PremiumScreenState.empty<Unit>(language.ui("Aucun moyen de réception"), language.ui("Ajoutez une carte ou un téléphone SBP pour commencer.")))
                     }
                 }
-                items(state.value.items) { method ->
+                items(ruItems) { method ->
                     PremiumReceivingMethodRow(
                         method = method,
                         onOpen = { onOpenWalletDetail(method.routeId) },
@@ -1868,13 +1880,18 @@ fun PremiumReceivingMethodsHub(
 ) {
     var family by remember { mutableStateOf<ReceivingMethodFamily?>(null) }
     when (family) {
-        null -> PremiumReceivingMethodFamilyChooser(state, language) { family = it }
-        // RUSSIAN and INTERNATIONAL both land on the same unified add flow
-        // (PremiumReceivingMethodsStateScreen) — its draft panel offers the FULL
-        // ReceivingCatalog.allMethods (RU banks + INT neobanks + WA wallets), so a
-        // merchant can pick Wise / Revolut / Payoneer from the International tile.
-        ReceivingMethodFamily.RUSSIAN,
-        ReceivingMethodFamily.INTERNATIONAL -> PremiumReceivingMethodsStateScreen(
+        null -> PremiumReceivingMethodFamilyChooser(
+            state = state,
+            language = language,
+            onOpenWalletDetail = onOpenWalletDetail,
+            onDisableMethod = onDisableMethod,
+            onSetDefaultMethod = onSetDefaultMethod,
+            onDeleteMethod = onDeleteMethod,
+            onEditMethodFamily = { family = it },
+            onPick = { family = it }
+        )
+        // RUSSIAN keeps the card / SBP add flow (Russian banks).
+        ReceivingMethodFamily.RUSSIAN -> PremiumReceivingMethodsStateScreen(
             state = state,
             clearDraftSignal = clearDraftSignal,
             actionMessage = actionMessage,
@@ -1882,6 +1899,22 @@ fun PremiumReceivingMethodsHub(
             onSaveDraft = onSaveDraft,
             onEditMethod = onEditMethod,
             onReplaceMethod = onReplaceMethod,
+            onDisableMethod = onDisableMethod,
+            onSetDefaultMethod = onSetDefaultMethod,
+            onDeleteMethod = onDeleteMethod,
+            onBack = { family = null },
+            language = language
+        )
+        // INTERNATIONAL is DETACHED onto its own wallet screen (Wise / Revolut /
+        // Payoneer → USD wallet_transfer), so it never lands on the Russian card/SBP
+        // screen and a real international wallet can finally be added.
+        ReceivingMethodFamily.INTERNATIONAL -> PremiumInternationalWalletReceivingScreen(
+            state = state,
+            clearDraftSignal = clearDraftSignal,
+            actionMessage = actionMessage,
+            onSaveDraft = onSaveDraft,
+            onReplaceMethod = onReplaceMethod,
+            onOpenWalletDetail = onOpenWalletDetail,
             onDisableMethod = onDisableMethod,
             onSetDefaultMethod = onSetDefaultMethod,
             onDeleteMethod = onDeleteMethod,
@@ -1902,6 +1935,7 @@ fun PremiumReceivingMethodsHub(
             clearDraftSignal = clearDraftSignal,
             actionMessage = actionMessage,
             onSaveDraft = onSaveDraft,
+            onReplaceMethod = onReplaceMethod,
             onDisableMethod = onDisableMethod,
             onSetDefaultMethod = onSetDefaultMethod,
             onDeleteMethod = onDeleteMethod,
@@ -1945,7 +1979,9 @@ fun PremiumUnifiedAddMethodScreen(
     }
     val selected = catalog.firstOrNull { it.bankProfileId == selectedId }
     val isMobileMoney = selected?.methodType == ReceivingMethodType.MOBILE_MONEY
-    val isValid = selected != null && identifierInput.isNotBlank()
+    val isWallet = selected?.methodType == ReceivingMethodType.WALLET_TRANSFER
+    val isValid = selected != null && identifierInput.isNotBlank() &&
+        (!isWallet || WalletReceiverIdentifier.isValid(identifierInput))
     val accent = if (isValid) PremiumColors.Success else PremiumColors.Teal
 
     LazyColumn(
@@ -2002,7 +2038,13 @@ fun PremiumUnifiedAddMethodScreen(
                             Column(Modifier.weight(1f)) {
                                 Text(entry.displayName, color = PremiumColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                                 Text(
-                                    language.ui(if (isMobileMoney) "Numéro mobile money marchand" else "Carte ou compte marchand"),
+                                    language.ui(
+                                        when {
+                                            isMobileMoney -> "Numéro mobile money marchand"
+                                            isWallet -> "Identifiant du portefeuille marchand"
+                                            else -> "Carte ou compte marchand"
+                                        }
+                                    ),
                                     color = PremiumColors.Muted,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold
@@ -2012,10 +2054,33 @@ fun PremiumUnifiedAddMethodScreen(
                         OutlinedTextField(
                             value = identifierInput,
                             onValueChange = { identifierInput = it },
-                            label = { Text(language.ui(if (isMobileMoney) "Numéro de téléphone" else "Numéro de carte")) },
-                            placeholder = { Text(if (isMobileMoney) "Ex. +225 07 ** ** ** 00" else "Ex. 4276 **** 5421") },
+                            label = {
+                                Text(
+                                    language.ui(
+                                        when {
+                                            isMobileMoney -> "Numéro de téléphone"
+                                            isWallet -> "E-mail, @tag ou téléphone"
+                                            else -> "Numéro de carte"
+                                        }
+                                    )
+                                )
+                            },
+                            placeholder = {
+                                Text(
+                                    when {
+                                        isMobileMoney -> "Ex. +225 07 ** ** ** 00"
+                                        isWallet -> "Ex. nom@wise.com, @revtag, +221…"
+                                        else -> "Ex. 4276 **** 5421"
+                                    }
+                                )
+                            },
                             leadingIcon = {
-                                Icon(if (isMobileMoney) Icons.Default.PhoneAndroid else Icons.Default.CreditCard, null, tint = accent)
+                                val unifiedIcon = when {
+                                    isMobileMoney -> Icons.Default.PhoneAndroid
+                                    isWallet -> Icons.Default.AccountBalanceWallet
+                                    else -> Icons.Default.CreditCard
+                                }
+                                Icon(unifiedIcon, null, tint = accent)
                             },
                             supportingText = {
                                 Text(
@@ -2110,9 +2175,15 @@ private fun UnifiedAddProviderRow(
 private fun PremiumReceivingMethodFamilyChooser(
     state: PremiumScreenState<PremiumReceivingMethodsUiState>,
     language: PremiumLanguageOption,
+    onOpenWalletDetail: (String) -> Unit = {},
+    onDisableMethod: (String) -> Unit = {},
+    onSetDefaultMethod: (String) -> Unit = {},
+    onDeleteMethod: (String) -> Unit = {},
+    onEditMethodFamily: (ReceivingMethodFamily) -> Unit = {},
     onPick: (ReceivingMethodFamily) -> Unit
 ) {
-    val configuredCount = (state as? PremiumScreenState.Content)?.value?.items?.size ?: 0
+    val configuredMethods = (state as? PremiumScreenState.Content)?.value?.items ?: emptyList()
+    val configuredCount = configuredMethods.size
     val regions = receivingRegionGroupsCatalog()
     val totalMethods = regions.sumOf { it.count }
     var selectedRegion by remember { mutableStateOf<ReceivingRegionKind?>(null) }
@@ -2146,6 +2217,41 @@ private fun PremiumReceivingMethodFamilyChooser(
                 fontWeight = FontWeight.SemiBold
             )
         }
+        // ── Mes moyens actifs ── the merchant's CONFIGURED methods, with full per-method
+        // control (open / edit / disable / set-default / delete). Editing routes into the
+        // owning region sub-screen (which hosts the edit form). This is the active list the
+        // overview previously hid inside the Russian sub-screen.
+        if (configuredMethods.isNotEmpty()) {
+            item {
+                Text(
+                    language.ui("Mes moyens actifs").uppercase(),
+                    color = PremiumColors.SoftText,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.8.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(configuredMethods, key = { "active_${it.routeId}" }) { method ->
+                PremiumReceivingMethodRow(
+                    method = method,
+                    onOpen = { onOpenWalletDetail(method.routeId) },
+                    onEdit = { onEditMethodFamily(familyForMethod(method)) },
+                    onDisable = { onDisableMethod(method.routeId) },
+                    onSetDefault = { onSetDefaultMethod(method.routeId) },
+                    onDelete = { onDeleteMethod(method.routeId) },
+                    language = language
+                )
+            }
+        }
+        item {
+            Text(
+                language.ui("Ajouter un moyen").uppercase(),
+                color = PremiumColors.SoftText,
+                fontSize = 11.sp,
+                letterSpacing = 0.8.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
         item {
             ReceivingRegionSegmentedRow(
                 selected = selectedRegion,
@@ -2161,6 +2267,13 @@ private fun PremiumReceivingMethodFamilyChooser(
             )
         }
     }
+}
+
+/** The region sub-screen that owns a configured method, derived from its real rail type. */
+private fun familyForMethod(method: PremiumReceivingMethodUiItem): ReceivingMethodFamily = when (method.methodType) {
+    ReceivingMethodType.WALLET_TRANSFER -> ReceivingMethodFamily.INTERNATIONAL
+    ReceivingMethodType.MOBILE_MONEY -> ReceivingMethodFamily.WEST_AFRICA
+    else -> ReceivingMethodFamily.RUSSIAN
 }
 
 @Composable
@@ -2525,6 +2638,7 @@ fun PremiumWestAfricaReceivingScreen(
     clearDraftSignal: Int = 0,
     actionMessage: String? = null,
     onSaveDraft: (MerchantReceivingMethodSubmission) -> Unit = {},
+    onReplaceMethod: (String, MerchantReceivingMethodSubmission) -> Unit = { _, _ -> },
     onDisableMethod: (String) -> Unit = {},
     onSetDefaultMethod: (String) -> Unit = {},
     onDeleteMethod: (String) -> Unit = {},
@@ -2536,9 +2650,11 @@ fun PremiumWestAfricaReceivingScreen(
             val wallets = WestAfricaReceivingCatalog.wallets
             var selectedWalletId by remember { mutableStateOf(wallets.firstOrNull()?.bankProfileId.orEmpty()) }
             var phoneInput by remember { mutableStateOf("") }
+            var editingMethod by remember { mutableStateOf<PremiumReceivingMethodUiItem?>(null) }
             LaunchedEffect(clearDraftSignal) {
                 if (clearDraftSignal > 0) {
                     phoneInput = ""
+                    editingMethod = null
                 }
             }
             val waItems = state.value.items.filter { it.title.contains("mobile money", ignoreCase = true) }
@@ -2624,6 +2740,29 @@ fun PremiumWestAfricaReceivingScreen(
                         }
                     }
                 }
+                editingMethod?.let { method ->
+                    item {
+                        ReceivingMethodReplacePanel(
+                            method = method,
+                            identifierLabel = "Numéro mobile money",
+                            identifierPlaceholder = "Ex. +225 07 ** ** ** 00",
+                            identifierIcon = Icons.Default.PhoneAndroid,
+                            validate = { it.filter { c -> c.isDigit() }.length in 8..15 },
+                            accent = PremiumColors.Teal,
+                            language = language,
+                            onCancel = { editingMethod = null },
+                            onReplace = { label, identifier ->
+                                val submission = MerchantReceivingMethodDraft(
+                                    bankProfileId = method.bankProfileId,
+                                    type = ReceivingMethodType.MOBILE_MONEY,
+                                    rawIdentifierInput = identifier
+                                ).toSubmission().copy(displayLabel = label)
+                                onReplaceMethod(method.routeId, submission)
+                                editingMethod = null
+                            }
+                        )
+                    }
+                }
                 if (waItems.isEmpty()) {
                     item {
                         PremiumStatePanel(
@@ -2637,7 +2776,7 @@ fun PremiumWestAfricaReceivingScreen(
                 items(waItems) { method ->
                     PremiumReceivingMethodRow(
                         method = method,
-                        onEdit = {},
+                        onEdit = { editingMethod = method },
                         onDisable = { onDisableMethod(method.routeId) },
                         onSetDefault = { onSetDefaultMethod(method.routeId) },
                         onDelete = { onDeleteMethod(method.routeId) },
@@ -2647,6 +2786,255 @@ fun PremiumWestAfricaReceivingScreen(
             }
         }
         else -> PremiumStateList(state, language)
+    }
+}
+
+/**
+ * International wallet receiving sub-screen (Wise / Revolut / Payoneer → USD). The
+ * detached counterpart of the West-Africa screen: International methods no longer fall
+ * back onto the Russian card/SBP screen. A provider is picked from the real
+ * [ReceivingCatalog] INTERNATIONAL region (official logos), then a single identifier
+ * (e-mail / @tag / phone, validated by [WalletReceiverIdentifier] exactly as the backend)
+ * submits a `wallet_transfer` route. The active wallet list is filtered to the wallet rail
+ * and carries the same per-method control (edit / disable / default / delete).
+ */
+@Composable
+fun PremiumInternationalWalletReceivingScreen(
+    state: PremiumScreenState<PremiumReceivingMethodsUiState>,
+    clearDraftSignal: Int = 0,
+    actionMessage: String? = null,
+    onSaveDraft: (MerchantReceivingMethodSubmission) -> Unit = {},
+    onReplaceMethod: (String, MerchantReceivingMethodSubmission) -> Unit = { _, _ -> },
+    onOpenWalletDetail: (String) -> Unit = {},
+    onDisableMethod: (String) -> Unit = {},
+    onSetDefaultMethod: (String) -> Unit = {},
+    onDeleteMethod: (String) -> Unit = {},
+    onBack: (() -> Unit)? = null,
+    language: PremiumLanguageOption = PremiumLanguageOption.FR
+) {
+    when (state) {
+        is PremiumScreenState.Content -> {
+            val providers = ReceivingCatalog.byRegion(ReceivingRegion.INTERNATIONAL)
+            var selectedId by remember { mutableStateOf(providers.firstOrNull()?.bankProfileId.orEmpty()) }
+            var identifierInput by remember { mutableStateOf("") }
+            var editingMethod by remember { mutableStateOf<PremiumReceivingMethodUiItem?>(null) }
+            LaunchedEffect(clearDraftSignal) {
+                if (clearDraftSignal > 0) {
+                    identifierInput = ""
+                    editingMethod = null
+                }
+            }
+            val walletItems = state.value.items.filter { it.methodType == ReceivingMethodType.WALLET_TRANSFER }
+            val identifierValid = WalletReceiverIdentifier.isValid(identifierInput)
+            LazyColumn(
+                Modifier.fillMaxHeight().padding(horizontal = PremiumSpacing.ScreenHorizontalWide),
+                contentPadding = PaddingValues(bottom = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                onBack?.let { back ->
+                    item { ReceivingMethodBreadcrumb(language.ui("International"), back) }
+                }
+                item {
+                    Text(language.ui("Portefeuilles internationaux"), color = PremiumColors.PageInk, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        language.ui("Ajoutez le portefeuille (Wise, Revolut, Payoneer) sur lequel vos clients vous paient en dollars (USD)."),
+                        color = PremiumColors.PageMuted,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                }
+                actionMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                    item { ReceivingMethodFeedbackBanner(message) }
+                }
+                item {
+                    PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp, color = PremiumColors.Surface) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Box(
+                                    Modifier.size(54.dp).background(PremiumColors.IconTile, RoundedCornerShape(20.dp))
+                                        .border(1.dp, PremiumColors.Success.copy(alpha = 0.18f), RoundedCornerShape(20.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Success, modifier = Modifier.size(27.dp))
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text(language.ui("Ajouter un portefeuille"), color = PremiumColors.Ink, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        language.ui("Choisissez le service, puis saisissez l'e-mail, le @tag ou le téléphone qui reçoit l'argent."),
+                                        color = PremiumColors.Muted,
+                                        fontSize = 12.sp,
+                                        lineHeight = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                providers.forEach { entry ->
+                                    UnifiedAddProviderRow(
+                                        entry = entry,
+                                        selected = entry.bankProfileId == selectedId,
+                                        onClick = {
+                                            selectedId = entry.bankProfileId
+                                            identifierInput = ""
+                                        }
+                                    )
+                                }
+                            }
+                            OutlinedTextField(
+                                value = identifierInput,
+                                onValueChange = { identifierInput = it },
+                                label = { Text(language.ui("E-mail, @tag ou téléphone")) },
+                                placeholder = { Text("Ex. nom@wise.com, @revtag, +221…") },
+                                leadingIcon = { Icon(Icons.Default.AccountBalanceWallet, null, tint = PremiumColors.Success) },
+                                isError = identifierInput.isNotBlank() && !identifierValid,
+                                supportingText = {
+                                    Text(
+                                        language.ui(
+                                            if (identifierInput.isNotBlank() && !identifierValid) {
+                                                "Saisissez un e-mail, un @tag ou un numéro de téléphone valide."
+                                            } else {
+                                                "Seule la version masquée sera affichée. Le service règle en USD."
+                                            }
+                                        ),
+                                        color = PremiumColors.Muted,
+                                        fontSize = 11.sp,
+                                        lineHeight = 14.sp
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            PremiumPrimaryButton(
+                                language.ui("Enregistrer le portefeuille"),
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = selectedId.isNotBlank() && identifierValid
+                            ) {
+                                val submission = MerchantReceivingMethodDraft(
+                                    bankProfileId = selectedId,
+                                    type = ReceivingMethodType.WALLET_TRANSFER,
+                                    rawIdentifierInput = identifierInput
+                                ).toSubmission()
+                                onSaveDraft(submission)
+                            }
+                        }
+                    }
+                }
+                editingMethod?.let { method ->
+                    item {
+                        ReceivingMethodReplacePanel(
+                            method = method,
+                            identifierLabel = "E-mail, @tag ou téléphone",
+                            identifierPlaceholder = "Ex. nom@wise.com, @revtag, +221…",
+                            identifierIcon = Icons.Default.AccountBalanceWallet,
+                            validate = { WalletReceiverIdentifier.isValid(it) },
+                            accent = PremiumColors.Success,
+                            language = language,
+                            onCancel = { editingMethod = null },
+                            onReplace = { label, identifier ->
+                                val submission = MerchantReceivingMethodDraft(
+                                    bankProfileId = method.bankProfileId,
+                                    type = ReceivingMethodType.WALLET_TRANSFER,
+                                    rawIdentifierInput = identifier
+                                ).toSubmission().copy(displayLabel = label)
+                                onReplaceMethod(method.routeId, submission)
+                                editingMethod = null
+                            }
+                        )
+                    }
+                }
+                if (walletItems.isEmpty()) {
+                    item {
+                        PremiumStatePanel(
+                            PremiumScreenState.empty<Unit>(
+                                language.ui("Aucun portefeuille international"),
+                                language.ui("Ajoutez un portefeuille Wise, Revolut ou Payoneer pour encaisser en USD.")
+                            )
+                        )
+                    }
+                }
+                items(walletItems) { method ->
+                    PremiumReceivingMethodRow(
+                        method = method,
+                        onOpen = { onOpenWalletDetail(method.routeId) },
+                        onEdit = { editingMethod = method },
+                        onDisable = { onDisableMethod(method.routeId) },
+                        onSetDefault = { onSetDefaultMethod(method.routeId) },
+                        onDelete = { onDeleteMethod(method.routeId) },
+                        language = language
+                    )
+                }
+            }
+        }
+        else -> PremiumStateList(state, language)
+    }
+}
+
+/**
+ * Reusable "replace this receiving method" editor used by the detached wallet (INT) and
+ * mobile-money (WA) screens — so editing is no longer Russian-only. The merchant types a
+ * NEW destination (and optional label); the row is replaced via create-then-delete (the
+ * same mechanism the Russian screen uses). The identifier is validated with the caller's
+ * own rule so the client rejects what the backend would reject.
+ */
+@Composable
+private fun ReceivingMethodReplacePanel(
+    method: PremiumReceivingMethodUiItem,
+    identifierLabel: String,
+    identifierPlaceholder: String,
+    identifierIcon: ImageVector,
+    validate: (String) -> Boolean,
+    accent: Color,
+    language: PremiumLanguageOption,
+    onCancel: () -> Unit,
+    onReplace: (label: String, identifier: String) -> Unit
+) {
+    var labelInput by remember(method.routeId) {
+        mutableStateOf(method.helper?.takeIf { it.isNotBlank() } ?: method.title)
+    }
+    var identifierInput by remember(method.routeId) { mutableStateOf("") }
+    val identifierOk = validate(identifierInput)
+    PremiumCard(Modifier.fillMaxWidth(), radius = 30.dp, color = PremiumColors.Surface) {
+        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(language.ui("Modifier la destination"), color = PremiumColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                language.ui("Saisissez la nouvelle destination. L'ancienne sera remplacée après enregistrement."),
+                color = PremiumColors.Muted,
+                fontSize = 12.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            OutlinedTextField(
+                value = labelInput,
+                onValueChange = { labelInput = it },
+                label = { Text(language.ui("Libellé affiché")) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(18.dp)
+            )
+            OutlinedTextField(
+                value = identifierInput,
+                onValueChange = { identifierInput = it },
+                label = { Text(language.ui(identifierLabel)) },
+                placeholder = { Text(identifierPlaceholder) },
+                leadingIcon = { Icon(identifierIcon, null, tint = accent) },
+                isError = identifierInput.isNotBlank() && !identifierOk,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(18.dp)
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                PremiumOutlineButton(language.ui("Annuler"), modifier = Modifier.weight(1f)) { onCancel() }
+                PremiumPrimaryButton(
+                    language.ui("Enregistrer"),
+                    modifier = Modifier.weight(1f),
+                    enabled = labelInput.isNotBlank() && identifierOk
+                ) {
+                    onReplace(labelInput.trim(), identifierInput.trim())
+                }
+            }
+        }
     }
 }
 
@@ -2708,17 +3096,21 @@ private fun ReceivingMethodDraftPanel(
 ) {
     val isCardDraft = draftType == ReceivingMethodType.CARD_TRANSFER
     val isMobileMoney = draftType == ReceivingMethodType.MOBILE_MONEY
+    val isWallet = draftType == ReceivingMethodType.WALLET_TRANSFER
     val title = when {
         isCardDraft -> "Ajouter une carte"
         isMobileMoney -> "Ajouter un wallet mobile money"
+        isWallet -> "Ajouter un portefeuille international"
         else -> "Ajouter téléphone SBP"
     }
     val helper = when {
         isCardDraft -> "Choisissez la banque, puis saisissez le numéro de carte marchand."
         isMobileMoney -> "Choisissez le wallet, puis saisissez le numéro mobile money marchand."
+        isWallet -> "Choisissez le service, puis saisissez l'e-mail, le @tag ou le téléphone marchand."
         else -> "Choisissez la banque, puis saisissez le numéro de téléphone marchand."
     }
-    val isValid = identifierInput.isNotBlank()
+    val isValid = identifierInput.isNotBlank() &&
+        (!isWallet || WalletReceiverIdentifier.isValid(identifierInput))
     val accent = if (isValid) PremiumColors.Success else PremiumColors.Teal
     PremiumCard(Modifier.fillMaxWidth(), radius = 32.dp, color = PremiumColors.Surface) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -2734,6 +3126,8 @@ private fun ReceivingMethodDraftPanel(
                         Icon(Icons.Default.CreditCard, null, tint = accent, modifier = Modifier.size(27.dp))
                     } else if (isMobileMoney) {
                         Icon(Icons.Default.PhoneAndroid, null, tint = accent, modifier = Modifier.size(27.dp))
+                    } else if (isWallet) {
+                        Icon(Icons.Default.AccountBalanceWallet, null, tint = accent, modifier = Modifier.size(27.dp))
                     } else {
                         Text("SBP", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
@@ -2781,22 +3175,34 @@ private fun ReceivingMethodDraftPanel(
                 OutlinedTextField(
                     value = identifierInput,
                     onValueChange = onIdentifierChange,
-                    label = { Text(language.ui(if (isCardDraft) "Numéro de carte" else "Numéro de téléphone")) },
+                    label = {
+                        Text(
+                            language.ui(
+                                when {
+                                    isCardDraft -> "Numéro de carte"
+                                    isWallet -> "E-mail, @tag ou téléphone"
+                                    else -> "Numéro de téléphone"
+                                }
+                            )
+                        )
+                    },
                     placeholder = {
                         Text(
                             when {
                                 isCardDraft -> "Ex. 4276 **** 5421"
                                 isMobileMoney -> "Ex. +225 07 ** ** ** 00"
+                                isWallet -> "Ex. nom@wise.com, @revtag, +221…"
                                 else -> "Ex. +7 *** *** ** 21"
                             }
                         )
                     },
                     leadingIcon = {
-                        if (isCardDraft) {
-                            Icon(Icons.Default.CreditCard, null, tint = accent)
-                        } else {
-                            Icon(Icons.Default.PhoneAndroid, null, tint = accent)
+                        val draftIcon = when {
+                            isCardDraft -> Icons.Default.CreditCard
+                            isWallet -> Icons.Default.AccountBalanceWallet
+                            else -> Icons.Default.PhoneAndroid
                         }
+                        Icon(draftIcon, null, tint = accent)
                     },
                     trailingIcon = if (isValid) {
                         { Icon(Icons.Default.CheckCircle, null, tint = PremiumColors.Success) }

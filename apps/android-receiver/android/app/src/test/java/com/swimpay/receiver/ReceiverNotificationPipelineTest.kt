@@ -76,7 +76,9 @@ class ReceiverNotificationPipelineTest {
         assertEquals(13700L, payload["amount_minor"])
         assertEquals("RUB", payload["currency"])
         assertEquals("<PHONE>", payload["sender_phone_masked"])
-        assertEquals("<REFERENCE>", payload["reference_code_masked"])
+        // Reference is no longer an upload field (dropped phantom HMAC); the body is still
+        // scrubbed of the reference token below.
+        assertEquals("", payload["reference_code_masked"])
         assertTrue(payload["redacted_body"].toString().contains("<PHONE>"))
         assertTrue(payload["redacted_body"].toString().contains("<REFERENCE>"))
         assertFalse(payload.toString().contains("+79991234567"))
@@ -107,7 +109,7 @@ class ReceiverNotificationPipelineTest {
         assertTrue(firstText.contains("<PERSON>"))
         assertTrue(firstText.contains("<CARD_MASK>"))
         assertTrue(firstText.contains("<REFERENCE>"))
-        assertEquals("<REFERENCE>", firstPayload["reference_code_masked"])
+        assertEquals("", firstPayload["reference_code_masked"])
         assertFalse(firstText.contains("Ivan", ignoreCase = true))
         assertFalse(firstText.contains("Petrov", ignoreCase = true))
         assertFalse(firstText.contains("ORDER-778899", ignoreCase = true))

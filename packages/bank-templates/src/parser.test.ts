@@ -96,6 +96,10 @@ describe('bank notification parser', () => {
     ['Возврат 100 руб. по операции', 'incoming_refund'],
     ['Оплата покупки 137 RUB', 'outgoing_payment'],
     ['Перевод отправлен 137 ₽. Вы перевели деньги', 'outgoing_transfer'],
+    // Bare "<amount> отправлен" (VTB/Т-Банк notif form, no "перевод" prefix)
+    ['5 000 ₽ отправлен Ивану И.', 'outgoing_transfer'],
+    // "<amount> будет списан" (Т-Банк debt-collection debit, no "списание" noun)
+    ['3 000 ₽ будет списан в пользу взыскания', 'outgoing_payment'],
     ['Акция: получите бонус за перевод', 'promo'],
     ['Перевод отклонено 137 ₽', 'failed_transfer']
   ])('does not classify %s as customer transfer', (text, expectedDirection) => {
@@ -302,6 +306,18 @@ describe('West-Africa mobile money parsing (XOF)', () => {
     expect(parsed.directionLabel).toBe('incoming_customer_transfer');
     expect(parsed.amountMinor).toBe(5000);
     expect(parsed.currency).toBe('XOF');
+  });
+
+  it('parses a Wave "credited your account" notification as incoming (English credit form)', () => {
+    const parsed = parseBankNotification({
+      bankProfileId: 'wave_ci',
+      text: 'Congratulations! We have credited your account 2 500 FCFA. Ref SWP-A8K2'
+    });
+    expect(parsed.rail).toBe('mobile_money');
+    expect(parsed.directionLabel).toBe('incoming_customer_transfer');
+    expect(parsed.amountMinor).toBe(2500);
+    expect(parsed.currency).toBe('XOF');
+    expect(parsed.referenceCode).toBe('SWP-A8K2');
   });
 
   it('does not classify an outgoing WA transfer as incoming', () => {
