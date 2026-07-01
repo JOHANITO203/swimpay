@@ -1110,14 +1110,19 @@ export function deriveExpectedPaymentProfile(input: ExpectedPaymentProfileInput)
   if (!BuyerCheckoutPaymentMethods.includes(input.payment_method)) {
     throw new Error('Unsupported buyer payment method.');
   }
-  if (!PayerBankLauncherRegistry.some((bank) => bank.payer_bank_launcher_id === input.sender_bank_id && bank.enabled)) {
+  // Currency must match the rail: RU card/sbp settle in RUB, WA mobile money in XOF/XAF,
+  // international wallets in USD. With the currency-first checkout the session is already
+  // aligned to the route's settlement currency, so a mismatch here is a real error.
+  if (!expectedCurrenciesForMethod(input.payment_method).includes(input.currency)) {
+    throw new Error(`Currency ${input.currency} is not supported for ${input.payment_method}.`);
+  }
+  // Sender bank must be an enabled launcher for the currency's region (RU / West Africa /
+  // international), not only the Russian registry.
+  if (!payerLaunchersForCurrency(input.currency).some((bank) => bank.payer_bank_launcher_id === input.sender_bank_id && bank.enabled)) {
     throw new Error('Unsupported sender bank.');
   }
   if (!Number.isInteger(input.display_amount_minor) || input.display_amount_minor <= 0) {
     throw new Error('Display amount must be a positive minor-unit integer.');
-  }
-  if (input.currency !== 'RUB') {
-    throw new Error('Expected payment profile currency must be RUB.');
   }
 
   const identity = normalizeBuyerIdentity({
@@ -1148,17 +1153,7 @@ export function deriveExpectedPaymentProfile(input: ExpectedPaymentProfileInput)
     expires_at: new Date(input.expires_at).toISOString()
   };
 
-  if (input.payment_method === 'card' && normalizeDigits(input.sender_phone ?? '').length > 0) {
-    throw new Error('Sender phone must not be submitted for card payments.');
-  }
-  if (input.payment_method === 'sbp' && normalizeDigits(input.sender_card_number ?? '').length > 0) {
-    throw new Error('Sender card number must not be submitted for phone payments.');
-  }
-
-  const methodFields =
-    input.payment_method === 'card'
-      ? deriveExpectedCardFields(input.sender_card_number, input.hmac)
-      : deriveExpectedPhoneFields(input.sender_phone, input.hmac);
+  const methodFields = deriveExpectedMethodFields(input);
   const fingerprintPayload = [
     input.merchant_id,
     input.payment_session_id,
@@ -1350,16 +1345,63 @@ function passesLuhn(value: string): boolean {
 
 function deriveExpectedPhoneFields(
   value: string | undefined,
-  hmac: (scope: string, normalizedValue: string) => string
+  hmac: (scope: string, normalizedValue: string) => string,
+  region: 'russian' | 'west_africa' = 'russian'
 ): Pick<ExpectedPaymentProfile, 'sender_phone_masked' | 'sender_phone_hmac'> {
-  const normalizedPhone = normalizeRussianPhoneForCheckout(value ?? '');
+  const normalizedPhone =
+    region === 'russian' ? normalizeRussianPhoneForCheckout(value ?? '') : normalizeWestAfricaMobileNumber(value ?? '');
   if (!normalizedPhone) {
-    throw new Error('Sender phone number must be a valid Russian phone number.');
+    throw new Error(
+      `Sender phone number must be a valid ${region === 'russian' ? 'Russian' : 'West African'} phone number.`
+    );
   }
   return {
     sender_phone_masked: maskBuyerPhone(normalizedPhone),
     sender_phone_hmac: hmac('sender_phone', normalizedPhone)
   };
+}
+
+// Currency domain per rail. RU card/sbp -> RUB, WA mobile money -> XOF/XAF, wallet -> USD.
+function expectedCurrenciesForMethod(method: BuyerCheckoutPaymentMethod): readonly string[] {
+  switch (method) {
+    case 'card':
+    case 'sbp':
+      return ['RUB'];
+    case 'mobile_money':
+      return ['XOF', 'XAF'];
+    case 'wallet':
+      return ['USD'];
+  }
+}
+
+// Per-rail sender identity for the expected profile. RU keeps card/phone; WA mobile money uses
+// the (WA-normalized) sender phone as its strong key; wallet is reference + buyer-name based
+// today (neobanks notify the sender name, not email/@tag — the sender wallet identity key
+// arrives with the receiver enhancement), so it contributes no sender card/phone field.
+function deriveExpectedMethodFields(
+  input: ExpectedPaymentProfileInput
+): Partial<
+  Pick<
+    ExpectedPaymentProfile,
+    'sender_card_last4' | 'sender_card_masked' | 'sender_card_hmac' | 'sender_phone_masked' | 'sender_phone_hmac'
+  >
+> {
+  switch (input.payment_method) {
+    case 'card':
+      if (normalizeDigits(input.sender_phone ?? '').length > 0) {
+        throw new Error('Sender phone must not be submitted for card payments.');
+      }
+      return deriveExpectedCardFields(input.sender_card_number, input.hmac);
+    case 'sbp':
+      if (normalizeDigits(input.sender_card_number ?? '').length > 0) {
+        throw new Error('Sender card number must not be submitted for phone payments.');
+      }
+      return deriveExpectedPhoneFields(input.sender_phone, input.hmac, 'russian');
+    case 'mobile_money':
+      return deriveExpectedPhoneFields(input.sender_phone, input.hmac, 'west_africa');
+    case 'wallet':
+      return {};
+  }
 }
 
 function normalizeNameToken(value: string): string {

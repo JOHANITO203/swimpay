@@ -150,6 +150,69 @@ describe('payment-intent-bound checkout contracts', () => {
     expect(receivingRailForBuyerPaymentMethod(profile.payment_method)).toBe('phone_transfer');
   });
 
+  it('derives a mobile-money (XOF) expected payment profile with a West-African sender phone', () => {
+    const profile = deriveExpectedPaymentProfile({
+      payment_session_id: 'ps_wa',
+      merchant_id: 'mch_01',
+      buyer_first_name_raw: 'Awa',
+      buyer_last_name_raw: 'Diop',
+      payment_method: 'mobile_money',
+      sender_bank_id: 'mtn_momo_ci',
+      sender_phone: '+225 07 12 34 56 78',
+      display_amount_minor: 5000,
+      currency: 'XOF',
+      generated_reference: 'WAVE ZULU',
+      expires_at: '2026-05-06T10:15:00.000Z',
+      hmac
+    });
+
+    expect(profile.currency).toBe('XOF');
+    expect(profile.sender_phone_hmac).toMatch(/^hmac:sender_phone:/);
+    expect(profile.sender_card_hmac).toBeUndefined();
+    expect(profile.expected_payment_fingerprint).toMatch(/^hmac:expected_payment_fingerprint:/);
+  });
+
+  it('derives a wallet (USD) expected payment profile that is reference + name based (no card/phone key)', () => {
+    const profile = deriveExpectedPaymentProfile({
+      payment_session_id: 'ps_usd',
+      merchant_id: 'mch_01',
+      buyer_first_name_raw: 'John',
+      buyer_last_name_raw: 'Smith',
+      payment_method: 'wallet',
+      sender_bank_id: 'revolut_int',
+      display_amount_minor: 1250,
+      currency: 'USD',
+      generated_reference: 'DELTA ECHO',
+      expires_at: '2026-05-06T10:15:00.000Z',
+      hmac
+    });
+
+    expect(profile.currency).toBe('USD');
+    expect(profile.sender_card_hmac).toBeUndefined();
+    expect(profile.sender_phone_hmac).toBeUndefined();
+    expect(profile.buyer_name_fingerprint).toMatch(/^hmac:buyer_name:/);
+    expect(profile.expected_payment_fingerprint).toMatch(/^hmac:expected_payment_fingerprint:/);
+  });
+
+  it('rejects a currency that does not match the rail', () => {
+    expect(() =>
+      deriveExpectedPaymentProfile({
+        payment_session_id: 'ps_bad',
+        merchant_id: 'mch_01',
+        buyer_first_name_raw: 'A',
+        buyer_last_name_raw: 'B',
+        payment_method: 'card',
+        sender_bank_id: 'sber_ru',
+        sender_card_number: '4111111111111111',
+        display_amount_minor: 1000,
+        currency: 'USD',
+        generated_reference: 'X Y',
+        expires_at: '2026-05-06T10:15:00.000Z',
+        hmac
+      })
+    ).toThrow(/not supported for card/);
+  });
+
   it('builds a bounded reconciliation amount that is visible and used for matching', () => {
     const intent = buildPaymentIntent({
       order_id: 'ord_01',

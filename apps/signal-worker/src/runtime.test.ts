@@ -740,6 +740,76 @@ describe('signal runtime processor', () => {
     expect(JSON.stringify(repository.publishedEvents)).not.toContain('+7 999');
   });
 
+  it('auto: a West-Africa mobile-money match (XOF) auto-confirms via the sender-phone key', async () => {
+    const { processor, repository } = createProcessor({
+      trustContext: autoTrustContext,
+      signal: buildSignal({
+        bankProfileId: 'mtn_momo_ci',
+        amountMinor: 5000,
+        currency: 'XOF',
+        rail: 'mobile_money',
+        senderPhoneHmac: 'wa_phone_hmac',
+        referenceHmac: 'wa_ref_hmac',
+        directionLabel: 'incoming_customer_transfer',
+        titleRedacted: 'Paiement recu du client',
+        bodyRedacted: 'Recu du client +225 07 12 34 56 78'
+      }),
+      sessions: [
+        buildSession({
+          currency: 'XOF',
+          expectedAmountMinor: 5000,
+          buyerPhoneHmac: 'wa_phone_hmac',
+          referenceHmac: 'wa_ref_hmac',
+          railType: 'mobile_money',
+          selectedReceiverBankId: 'mtn_momo_ci',
+          selectedReceiverBankProfileId: 'mtn_momo_ci',
+          selectedReceivingRouteId: 'route_mtn_momo'
+        })
+      ]
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('auto_confirm');
+    expect(result.reasonCodes).toContain('auto_confirm_floor_met');
+    expect(repository.orders.get('ord_01')?.status).toBe('manual_confirmed');
+    expect(repository.confirmMatchCallCount).toBe(1);
+  });
+
+  it('auto: an international wallet match (USD) auto-confirms via the reference key', async () => {
+    const { processor, repository } = createProcessor({
+      trustContext: autoTrustContext,
+      signal: buildSignal({
+        bankProfileId: 'revolut_int',
+        amountMinor: 1250,
+        currency: 'USD',
+        rail: 'wallet',
+        senderPhoneHmac: undefined,
+        referenceHmac: 'wallet_ref_hmac',
+        titleRedacted: 'You received 12.50 USD',
+        bodyRedacted: 'Payment from John — Ref SWP-WALLET'
+      }),
+      sessions: [
+        buildSession({
+          currency: 'USD',
+          expectedAmountMinor: 1250,
+          buyerPhoneHmac: undefined,
+          referenceHmac: 'wallet_ref_hmac',
+          railType: 'wallet_transfer',
+          selectedReceiverBankId: 'revolut_int',
+          selectedReceiverBankProfileId: 'revolut_int',
+          selectedReceivingRouteId: 'route_revolut'
+        })
+      ]
+    });
+
+    const result = await processor.processSignalReceived({ signalId: 'sig_01' });
+
+    expect(result.decision).toBe('auto_confirm');
+    expect(result.reasonCodes).toContain('auto_confirm_floor_met');
+    expect(repository.confirmMatchCallCount).toBe(1);
+  });
+
   it('manual (default mode): the same floor-clearing match still routes to needs_review', async () => {
     const metrics = new InMemoryMetricsRegistry();
     const { processor, repository } = createProcessor({ metrics });
