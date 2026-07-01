@@ -42,6 +42,10 @@ const BANK_LOGO_FILES: Readonly<Record<string, { path: string; mime: string }>> 
 
 const bankLogoDataUriCache = new Map<string, string>();
 
+/** Every logo asset key that has a bundled image — used to emit the per-logo background-image
+ *  CSS. Must cover WA/international apps (wave, orange, mtn, wise, revolut…), not just RU banks. */
+export const checkoutBankLogoAssetKeys: readonly string[] = Object.keys(BANK_LOGO_FILES);
+
 export function checkoutBankLogoDataUri(logoAssetKey: string): string | undefined {
   const cached = bankLogoDataUriCache.get(logoAssetKey);
   if (cached) return cached;

@@ -360,6 +360,39 @@ describe('hosted checkout web foundation', () => {
     expect(response.body).not.toContain('name="sender_card_number"');
   });
 
+  it('paints the real app logo (Wave) on the payment-app list, not a letter avatar', async () => {
+    // Regression: the class + asset key were set but bankLogoImageStyles() only emitted CSS for
+    // the 5 RU banks, so Wave/Orange/etc. fell back to a letter. Assert the CSS background-image
+    // rule is actually present for the WA logo — the end-to-end render, not just the mapping.
+    const provider = new FakeCheckoutSessionProvider();
+    provider.session = {
+      ...provider.session,
+      available_payment_methods: { card: false, sbp: false, mobile_money: true, wallet: false },
+      available_sender_banks: [
+        {
+          bank_id: 'wave_ci',
+          payer_bank_launcher_id: 'wave_ci',
+          display_name: 'Wave',
+          logo_asset_key: 'ic_bank_wave',
+          selectable: true,
+          runtime_capture_status: 'observed',
+          runtime_verified: false,
+          auto_confirm_enabled: false,
+          official_bank_confirmation: false
+        }
+      ]
+    };
+    const server = buildWebServer({ environment: 'test', checkoutSessionProvider: provider });
+
+    const response = await server.inject({ method: 'GET', url: '/checkout/ps_01' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('data-logo-asset-key="ic_bank_wave"');
+    expect(response.body).toContain('bank-logo-image');
+    // The actual paint rule — this is what was missing and made the letter show.
+    expect(response.body).toMatch(/\.bank-logo-ic_bank_wave \{ background-image: url\("data:image\/svg\+xml;base64,/u);
+  });
+
   it('shows a merchant configuration fallback before collecting buyer info when no receiving methods exist', async () => {
     const provider = new FakeCheckoutSessionProvider();
     provider.routes = [];

@@ -1,5 +1,5 @@
 import { AppShell, Button, escapeHtml } from '../ui/Components.js';
-import { checkoutBankLogoDataUri } from './BankLogoAssets.js';
+import { checkoutBankLogoDataUri, checkoutBankLogoAssetKeys } from './BankLogoAssets.js';
 import type {
   AvailableSenderBank,
   BuyerCheckoutPaymentMethod,
@@ -1689,13 +1689,9 @@ function renderCheckoutTrustFooter(): string {
 }
 
 function bankLogoImageStyles(): string {
-  return [
-    'ic_bank_sberbank',
-    'ic_bank_tbank',
-    'ic_bank_vtb',
-    'ic_bank_alfa',
-    'ic_bank_gazprombank'
-  ].map((logoAssetKey) => {
+  // Emit the background-image rule for EVERY bundled logo (RU banks + WA mobile money + wallets),
+  // not a hardcoded RU-only list — otherwise Wave/Orange/MTN/Wise render as letter avatars.
+  return checkoutBankLogoAssetKeys.map((logoAssetKey) => {
     const dataUri = checkoutBankLogoDataUri(logoAssetKey);
     if (!dataUri) return '';
     return `.bank-logo-${logoAssetKey} { background-image: url("${dataUri.replaceAll('QR', 'Q\\52 ')}"); }`;
