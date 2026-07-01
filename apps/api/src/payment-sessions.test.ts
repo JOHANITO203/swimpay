@@ -3276,46 +3276,78 @@ describe('payable-currencies endpoint', () => {
     expect(afterIdentity.json().checkout_state).toBe('receiver_bank_selection');
   });
 
-  // Regression: the whole buyer UX per currency. Choosing XOF must scope the offered methods to
-  // mobile money — otherwise the identity step keeps offering SBP and the buyer submits sbp+XOF,
-  // which deriveExpectedPaymentProfile rejects with "Currency XOF is not supported for sbp".
-  test('currency-first scopes methods to the chosen currency (XOF surfaces mobile_money, never sbp)', async () => {
-    const repository = new InMemoryPaymentSessionRepository();
-    const server = buildServer(repository, '2026-06-06T10:00:00.000Z', undefined, makeFxStub());
+  // Regression: the WHOLE buyer journey, one full pass per currency/rail. Choosing a currency
+  // must scope the offered methods to it, and the identity step must accept that currency's
+  // method(s) — no "Currency X is not supported for <method>". This is what a single-currency
+  // test missed: the bug only surfaced for XOF/USD while RUB looked fine.
+  describe('currency-first buyer journey — every currency/rail', () => {
+    // Merchant that receives across all three currencies: RUB (card + phone), XOF (mobile money),
+    // USD (wallet). Every case walks currency → scoped methods → identity, on a fresh session.
+    async function walkToProfile(input: {
+      currency: string;
+      method: string;
+      senderBankId: string;
+      senderCardNumber?: string;
+      senderPhone?: string;
+    }) {
+      const repository = new InMemoryPaymentSessionRepository();
+      const server = buildServer(repository, '2026-06-06T10:00:00.000Z', undefined, makeFxStub());
+      const addRoute = (bank: string, rail: string, id: string, code: string) =>
+        server.inject({
+          method: 'POST', url: '/v1/merchant/receiving-routes', headers: { authorization: 'Bearer test_mch_01' },
+          payload: { bank_profile_id: bank, rail_type: rail, receiver_identifier: id, route_code: code, display_label: bank, recommended: false }
+        });
+      await addRoute('sber_ru', 'card_transfer', '2202 2020 0000 0004', 'J-CARD');
+      await addRoute('sber_ru', 'phone_transfer', '+7 (999) 111-11-11', 'J-PHONE');
+      await addRoute('wave_ci', 'mobile_money', '+225 07 00 00 00 00', 'J-WAVE');
+      await addRoute('wise_int', 'wallet_transfer', 'john@example.com', 'J-WISE');
+      await server.inject({
+        method: 'POST', url: '/v1/orders', headers: { authorization: 'Bearer test_mch_01' },
+        payload: { external_id: `ord_${input.currency}_${input.method}`, amount: { value: '100.00', currency: 'RUB' }, expires_in_seconds: 900 }
+      });
+      const selected = await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/currency', payload: { currency: input.currency } });
+      expect(selected.statusCode).toBe(200);
+      const status = (await server.inject({ method: 'GET', url: '/v1/checkout/ps_session_01/status' })).json();
+      const profile = await server.inject({
+        method: 'POST', url: '/v1/checkout/ps_session_01/expected-payment-profile', headers: { authorization: 'Bearer test_mch_01' },
+        payload: {
+          buyer_first_name: 'Test', buyer_last_name: 'Buyer', payment_method: input.method, sender_bank_id: input.senderBankId,
+          ...(input.senderCardNumber ? { sender_card_number: input.senderCardNumber } : {}),
+          ...(input.senderPhone ? { sender_phone: input.senderPhone } : {})
+        }
+      });
+      return { status, profile };
+    }
 
-    // RU phone route (RUB) + Wave mobile-money route (XOF) → two payable currencies.
-    await server.inject({
-      method: 'POST', url: '/v1/merchant/receiving-routes', headers: { authorization: 'Bearer test_mch_01' },
-      payload: { bank_profile_id: 'sber_ru', rail_type: 'phone_transfer', receiver_identifier: '+7 (999) 111-11-11', route_code: 'SBER-PHONE-X', display_label: 'Sberbank', recommended: true }
+    test('RUB offers card + phone and both complete', async () => {
+      const card = await walkToProfile({ currency: 'RUB', method: 'card', senderBankId: 'sber_ru', senderCardNumber: '4242 4242 4242 4242' });
+      expect(card.status.available_payment_methods).toMatchObject({ card: true, sbp: true, mobile_money: false, wallet: false });
+      expect(card.profile.statusCode).toBe(200);
+      const phone = await walkToProfile({ currency: 'RUB', method: 'sbp', senderBankId: 'sber_ru', senderPhone: '+7 (999) 222-33-44' });
+      expect(phone.profile.statusCode).toBe(200);
+      expect(phone.profile.body).not.toContain('not supported for');
     });
-    await server.inject({
-      method: 'POST', url: '/v1/merchant/receiving-routes', headers: { authorization: 'Bearer test_mch_01' },
-      payload: { bank_profile_id: 'wave_ci', rail_type: 'mobile_money', receiver_identifier: '+225 07 00 00 00 00', route_code: 'WAVE-CI-X', display_label: 'Wave', recommended: false }
+
+    test('XOF offers mobile money only and completes', async () => {
+      const r = await walkToProfile({ currency: 'XOF', method: 'mobile_money', senderBankId: 'wave_ci', senderPhone: '+225 07 11 22 33 44' });
+      expect(r.status.available_payment_methods).toMatchObject({ card: false, sbp: false, mobile_money: true, wallet: false });
+      expect(r.status.available_receiving_methods.every((m: { method: string }) => m.method === 'mobile_money')).toBe(true);
+      expect(r.profile.statusCode).toBe(200);
+      expect(r.profile.body).not.toContain('not supported for');
     });
-    await server.inject({
-      method: 'POST', url: '/v1/orders', headers: { authorization: 'Bearer test_mch_01' },
-      payload: { external_id: 'order_xof_scope', amount: { value: '100.00', currency: 'RUB' }, expires_in_seconds: 900 }
+
+    test('USD offers wallet only and completes', async () => {
+      const r = await walkToProfile({ currency: 'USD', method: 'wallet', senderBankId: 'wise_int' });
+      expect(r.status.available_payment_methods).toMatchObject({ card: false, sbp: false, mobile_money: false, wallet: true });
+      expect(r.profile.statusCode).toBe(200);
+      expect(r.profile.body).not.toContain('not supported for');
     });
 
-    // Multi-currency → currency picker is first.
-    expect((await server.inject({ method: 'GET', url: '/v1/checkout/ps_session_01/status' })).json().checkout_state).toBe('currency_selection');
-
-    // Choose XOF.
-    const selected = await server.inject({ method: 'POST', url: '/v1/checkout/ps_session_01/currency', payload: { currency: 'XOF' } });
-    expect(selected.statusCode).toBe(200);
-
-    // The offered methods are now scoped to XOF: mobile_money only, SBP/card gone.
-    const status = (await server.inject({ method: 'GET', url: '/v1/checkout/ps_session_01/status' })).json();
-    expect(status.available_payment_methods).toMatchObject({ mobile_money: true, sbp: false, card: false, wallet: false });
-    expect(status.available_receiving_methods.every((m: { method: string }) => m.method === 'mobile_money')).toBe(true);
-
-    // And the buyer can complete identity with mobile_money — no "not supported for sbp".
-    const profile = await server.inject({
-      method: 'POST', url: '/v1/checkout/ps_session_01/expected-payment-profile', headers: { authorization: 'Bearer test_mch_01' },
-      payload: { buyer_first_name: 'Amara', buyer_last_name: 'Kone', payment_method: 'mobile_money', sender_bank_id: 'wave_ci', sender_phone: '+225 07 11 22 33 44' }
+    test('rejects a method that does not settle in the chosen currency (XOF + sbp)', async () => {
+      // The frontend no longer offers this, but the backend must still refuse it (defence in depth).
+      const r = await walkToProfile({ currency: 'XOF', method: 'sbp', senderBankId: 'sber_ru', senderPhone: '+7 (999) 222-33-44' });
+      expect(r.profile.statusCode).toBe(400);
     });
-    expect(profile.statusCode).toBe(200);
-    expect(profile.body).not.toContain('not supported for');
   });
 });
 
