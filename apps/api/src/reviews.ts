@@ -331,7 +331,11 @@ export class PgReviewRepository implements ReviewRepository {
           THEN ABS(ns.amount_minor - COALESCE(ps.payable_amount_minor, ps.expected_amount_minor, o.amount_minor))
           ELSE NULL
         END AS amount_delta_minor,
-        COALESCE(ns.currency, o.currency, ps.currency) AS currency,
+        -- Currency must follow the same source as the amount above: the buyer-selected session
+        -- currency (XOF/USD after a currency-first choice), NOT the order's original pricing
+        -- currency. Otherwise the converted session amount (e.g. 5159 XOF) is shown with the RUB
+        -- label → "51.59 RUB", a decimal-RUB nonsense for a mobile-money/wallet order.
+        COALESCE(ns.currency, ps.currency, o.currency) AS currency,
         ns.bank_profile_id,
         ns.direction_label,
         ns.signal_quality,
