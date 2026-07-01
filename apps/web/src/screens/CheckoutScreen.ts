@@ -676,9 +676,14 @@ function canonicalStepFromCheckoutState(session: CheckoutSession): BuyerCheckout
 }
 
 function visualStageForStep(step: BuyerCheckoutStep): VisualStage {
+  // Four real phases the buyer traverses: intro (1) -> info/pay + details (2) -> instructions (3)
+  // -> status (4). The selection screens (currency/bank/route/launcher) are all "gathering the
+  // payment details" and share phase 2 — most are auto-skipped anyway (single-option) — so the
+  // active segment advances to 3 exactly when the buyer reaches the transfer instructions, rather
+  // than sitting on one segment across several screens.
   if (step === 'intro') return 'intro';
-  if (step === 'currency' || step === 'bank') return 'info';
-  if (step === 'route' || step === 'launcher' || step === 'instructions') return 'instructions';
+  if (step === 'currency' || step === 'bank' || step === 'route' || step === 'launcher') return 'info';
+  if (step === 'instructions') return 'instructions';
   return 'status';
 }
 

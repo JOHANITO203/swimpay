@@ -2126,6 +2126,49 @@ describe('hosted checkout web foundation', () => {
     });
   });
 
+  describe('progress bar', () => {
+    const activeStep = (body: string): string | undefined =>
+      body.match(/data-progress-bar[^>]*data-active-step="(\d+)"/u)?.[1];
+
+    it('advances the active progress step from the currency/method screen to the instructions screen', async () => {
+      const currencyProvider = new FakeCheckoutSessionProvider();
+      currencyProvider.session = {
+        ...currencyProvider.session,
+        checkout_state: 'currency_selection',
+        buyer_safe_status: 'not_validated'
+      };
+      currencyProvider.payableCurrencies = [
+        { currency: 'RUB', amount_minor: 13700, formatted: '137 RUB', is_current: true, quote: undefined },
+        { currency: 'USD', amount_minor: 1345, formatted: '13.45 USD', is_current: false, quote: undefined }
+      ];
+      const currencyServer = buildWebServer({ environment: 'test', checkoutSessionProvider: currencyProvider });
+      const currencyResponse = await currencyServer.inject({ method: 'GET', url: '/checkout/ps_01' });
+      expect(currencyResponse.statusCode).toBe(200);
+
+      const instructionsProvider = new FakeCheckoutSessionProvider();
+      instructionsProvider.session = {
+        ...instructionsProvider.session,
+        payment_method: 'sbp',
+        sender_bank_id: 'tbank_ru',
+        selected_receiver_bank_id: 'sber_ru',
+        selected_receiver_bank_profile_id: 'sber_ru',
+        selected_receiving_route_id: 'route_sber_phone',
+        selected_payer_bank_launcher_id: 'tbank_ru',
+        checkout_state: 'payment_instructions',
+        buyer_safe_status: 'awaiting_payment'
+      };
+      const instructionsServer = buildWebServer({ environment: 'test', checkoutSessionProvider: instructionsProvider });
+      const instructionsResponse = await instructionsServer.inject({ method: 'GET', url: '/checkout/ps_01' });
+      expect(instructionsResponse.statusCode).toBe(200);
+
+      const currencyStep = activeStep(currencyResponse.body);
+      const instructionsStep = activeStep(instructionsResponse.body);
+      expect(currencyStep).toBe('2');
+      expect(instructionsStep).toBe('3');
+      expect(instructionsStep).not.toBe(currencyStep);
+    });
+  });
+
   describe('single-option auto-skip', () => {
     it('skips the receiver-bank and receiving-route screens when each has exactly one option', async () => {
       // One card route on one bank: bank -> route both auto-select, landing on the launcher screen
