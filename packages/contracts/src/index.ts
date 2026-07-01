@@ -143,6 +143,31 @@ export function receivingCurrencyForBankProfile(bankProfileId: string): string {
   return WestAfricaReceiverBankProfiles.some((bank) => bank.bank_profile_id === bankProfileId) ? 'XOF' : 'RUB';
 }
 
+/** Normalize a West-Africa mobile-money number to a bare +digits form (8-15 digits), or null. */
+export function normalizeWestAfricaMobileNumber(value: string): string | null {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length < 8 || digits.length > 15) {
+    return null;
+  }
+  return `+${digits}`;
+}
+
+/** Resolve a wallet/mobile-money receiver identifier to its type + normalized form, or null.
+ *  email (user@domain), @tag (revolut/wise handle), or a West-Africa phone. */
+export function normalizeWalletIdentifier(value: string): { type: ReceiverIdentifierType; normalized: string } | null {
+  const trimmed = value.trim();
+  if (trimmed.includes('@') && !trimmed.startsWith('@')) {
+    const email = trimmed.toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u.test(email) ? { type: 'email', normalized: email } : null;
+  }
+  if (trimmed.startsWith('@')) {
+    const tag = trimmed.slice(1).toLowerCase();
+    return /^[a-z0-9_]{3,32}$/u.test(tag) ? { type: 'tag', normalized: tag } : null;
+  }
+  const phone = normalizeWestAfricaMobileNumber(trimmed);
+  return phone ? { type: 'phone', normalized: phone } : null;
+}
+
 export const ReceivingRouteRiskReasonCodes = [
   'phone_transfer_matching_hint_available',
   'buyer_sender_phone_missing',

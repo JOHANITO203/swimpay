@@ -13,6 +13,8 @@ import {
   maskReceiverIdentifier,
   receivingRailForBuyerPaymentMethod,
   buyerMethodTypeForRail,
+  normalizeWestAfricaMobileNumber,
+  normalizeWalletIdentifier,
   detectCurrencyFromDisplayPrice,
   type BuyerCheckoutPaymentMethod,
   type ExpectedPaymentProfile,
@@ -2831,38 +2833,6 @@ function normalizeReceiverIdentifier(
     return null;
   }
   return digits;
-}
-
-/**
- * Normalizes a West Africa (UEMOA) mobile-money number to E.164 digits.
- * Permissive on purpose: the merchant enters their OWN receiving number.
- * Keeps a leading country code, strips formatting, requires 8..15 digits.
- */
-function normalizeWestAfricaMobileNumber(value: string): string | null {
-  const digits = value.replace(/\D/g, '');
-  if (digits.length < 8 || digits.length > 15) {
-    return null;
-  }
-  return `+${digits}`;
-}
-
-/**
- * Normalizes a wallet (neobank) receiving identifier. Wise/Payoneer use email,
- * Wise/Revolut also use a tag (@wisetag / @revtag), Revolut accepts a phone.
- * The merchant enters their OWN identifier, so validation stays permissive.
- */
-export function normalizeWalletIdentifier(value: string): { type: ReceiverIdentifierType; normalized: string } | null {
-  const trimmed = value.trim();
-  if (trimmed.includes('@') && !trimmed.startsWith('@')) {
-    const email = trimmed.toLowerCase();
-    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u.test(email) ? { type: 'email', normalized: email } : null;
-  }
-  if (trimmed.startsWith('@')) {
-    const tag = trimmed.slice(1).toLowerCase();
-    return /^[a-z0-9_]{3,32}$/u.test(tag) ? { type: 'tag', normalized: tag } : null;
-  }
-  const phone = normalizeWestAfricaMobileNumber(trimmed);
-  return phone ? { type: 'phone', normalized: phone } : null;
 }
 
 function encryptReceiverIdentifier(value: string, secret: string): string {
