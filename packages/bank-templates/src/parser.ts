@@ -582,10 +582,11 @@ const WA_OUTGOING_KEYWORDS = [
 ];
 const WA_FAILED_KEYWORDS = ['echoue', 'échoué', 'echec', 'échec', 'annule', 'annulé', 'rejete', 'rejeté'];
 
-/** XOF/FCFA amount (locale-neutral, space-grouped). "2 500 FCFA" → 250000 minor.
- * XOF has no minor subunit in practice; minor = major * 100 to match the system's
- * minor-unit convention. The currency token must be adjacent so phone-number digit
- * groups are never mistaken for an amount. */
+/** XOF/FCFA amount (locale-neutral, space-grouped). "2 500 FCFA" → 2500 minor.
+ * XOF/XAF are zero-decimal: the minor amount IS the integer amount (x1), consistent with
+ * currencyMinorDigits(XOF)=0, the receiver's MoneyGrammar, and the SDK — NOT x100 (a x100
+ * scale would miss the same-currency session at reconciliation). The currency token must be
+ * adjacent so phone-number digit groups are never mistaken for an amount. */
 export function extractXofAmountMinor(text: string): number | null {
   const t = text.normalize('NFKC');
   const match = t.match(/(\d[\d  ]*\d|\d)\s*(?:FCFA|F\sCFA|XOF|CFA)(?=$|[\s.,;:])/iu);
@@ -593,11 +594,10 @@ export function extractXofAmountMinor(text: string): number | null {
     return null;
   }
   const digits = match[1].replace(/[\s ]/gu, '');
-  const major = Number.parseInt(digits, 10);
-  if (!Number.isFinite(major)) {
+  const amount = Number.parseInt(digits, 10);
+  if (!Number.isFinite(amount)) {
     return null;
   }
-  const amount = major * 100;
   return amount > 0 ? amount : null;
 }
 

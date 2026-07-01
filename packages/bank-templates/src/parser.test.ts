@@ -285,7 +285,7 @@ describe('West-Africa mobile money parsing (XOF)', () => {
       text: 'Vous avez recu 2 500 FCFA de +225 07 00 00 00 00. Ref SWP-A8K2'
     });
     expect(parsed.rail).toBe('mobile_money');
-    expect(parsed.amountMinor).toBe(250000);
+    expect(parsed.amountMinor).toBe(2500);
     expect(parsed.currency).toBe('XOF');
     expect(parsed.referenceCode).toBe('SWP-A8K2');
     expect(parsed.directionLabel).toBe('incoming_customer_transfer');
@@ -300,7 +300,7 @@ describe('West-Africa mobile money parsing (XOF)', () => {
     });
     expect(parsed.rail).toBe('mobile_money');
     expect(parsed.directionLabel).toBe('incoming_customer_transfer');
-    expect(parsed.amountMinor).toBe(500000);
+    expect(parsed.amountMinor).toBe(5000);
     expect(parsed.currency).toBe('XOF');
   });
 

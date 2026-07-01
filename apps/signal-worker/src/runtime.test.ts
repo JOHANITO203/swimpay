@@ -751,7 +751,7 @@ describe('signal runtime processor', () => {
         senderPhoneHmac: 'wa_phone_hmac',
         referenceHmac: 'wa_ref_hmac',
         directionLabel: 'incoming_customer_transfer',
-        titleRedacted: 'Paiement recu du client',
+        titleRedacted: 'Paiement recu 5000 XOF',
         bodyRedacted: 'Recu du client +225 07 12 34 56 78'
       }),
       sessions: [

@@ -59,8 +59,8 @@ export interface MatchingCandidateSession {
   selectedReceiverBankProfileId?: string | undefined;
   selectedReceivingRouteId?: string | undefined;
   receiverRouteCode?: string | undefined;
-  railType?: 'phone_transfer' | 'card_transfer' | undefined;
-  paymentMethod?: 'card' | 'sbp' | undefined;
+  railType?: 'phone_transfer' | 'card_transfer' | 'mobile_money' | 'wallet_transfer' | undefined;
+  paymentMethod?: 'card' | 'sbp' | 'mobile_money' | 'wallet' | undefined;
   senderBankId?: string | undefined;
   senderCardHmac?: string | undefined;
   senderCardMasked?: string | undefined;
@@ -170,7 +170,7 @@ export interface PaymentIntentGateIntent {
   referenceHmac?: string | undefined;
   selectedReceiverBankProfileId: string;
   selectedReceivingRouteId?: string | undefined;
-  selectedReceivingMethod: 'phone_transfer' | 'card_transfer';
+  selectedReceivingMethod: 'phone_transfer' | 'card_transfer' | 'mobile_money' | 'wallet_transfer';
   buyerFirstName: string;
   buyerLastName: string;
   buyerNameStrongMatchHashes?: readonly string[] | undefined;
