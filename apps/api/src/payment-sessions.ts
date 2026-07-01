@@ -8,6 +8,7 @@ import {
   mapPaymentSessionToCheckoutState,
   toBuyerSafeReceivingRoute,
   bankLogoAssetKey,
+  buyerMethodTypeForRail,
   type AvailableReceivingMethod,
   type AvailableSenderBank,
   type BuyerSafeCheckoutStatus,
@@ -414,14 +415,7 @@ export function buildCheckoutAvailability(
     .filter((route) => route.enabled && route.lifecycle_status === 'active')
     .map((route) => ({
       route_id: route.route_id,
-      method_type:
-        route.rail_type === 'phone_transfer'
-          ? ('sbp' as const)
-          : route.rail_type === 'mobile_money'
-            ? ('mobile_money' as const)
-            : route.rail_type === 'wallet_transfer'
-              ? ('wallet' as const)
-              : ('card' as const),
+      method_type: buyerMethodTypeForRail(route.rail_type),
       receiver_bank_id: route.bank_profile_id,
       bank_id: route.bank_profile_id,
       masked_value: route.receiver_identifier_masked,
@@ -495,7 +489,7 @@ function buildPaymentCompatibilityPairs(
   return routes
     .filter((route) => route.enabled && route.lifecycle_status === 'active')
     .map((route) => {
-      const method = route.rail_type === 'phone_transfer' ? 'sbp' as const : 'card' as const;
+      const method = buyerMethodTypeForRail(route.rail_type);
       const selected = route.route_id === paymentSession.selectedReceivingRouteId;
       return stripUndefined({
         pair_id: `${paymentSession.id}:${route.route_id}:${method}`,
