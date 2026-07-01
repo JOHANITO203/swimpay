@@ -25,6 +25,9 @@ COPY --from=build /app/packages/events/dist ./packages/events/dist
 COPY --from=build /app/packages/observability/dist ./packages/observability/dist
 COPY docs/SDK_DEVELOPER_INTEGRATION_GUIDE.pdf ./docs/SDK_DEVELOPER_INTEGRATION_GUIDE.pdf
 COPY apps/android-receiver/android/app/src/main/res/drawable-nodpi ./apps/android-receiver/android/app/src/main/res/drawable-nodpi
+# WA / international app logos read at runtime by checkoutBankLogoDataUri — without this the
+# checkout falls back to letter avatars for Wave/Orange/MTN/Wise/Revolut.
+COPY apps/web/assets/payer-logos ./apps/web/assets/payer-logos
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
