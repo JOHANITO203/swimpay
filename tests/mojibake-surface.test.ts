@@ -31,6 +31,10 @@ const ignoredExtensions = new Set([
   '.lock',
   '.pdf',
   '.png',
+  '.ttf',
+  '.otf',
+  '.woff',
+  '.woff2',
   '.webp',
   '.xapk',
   '.zip'
