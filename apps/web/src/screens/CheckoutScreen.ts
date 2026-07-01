@@ -1545,9 +1545,13 @@ function renderCopyablePaymentRow(
   const attr = destination
     ? `data-copy-destination="${escapeHtml(paymentSessionId)}"`
     : `data-copy-value="${escapeHtml(copyValue)}"`;
+  // The destination is the merchant account the payer must send to — it is meant to be shared,
+  // not a secret. Show it in full: data-destination-reveal lets the client replace the masked
+  // value with the real one on load, so the number is readable and copyable, never struck out.
+  const strongAttr = destination && paymentSessionId ? ` data-destination-reveal="${escapeHtml(paymentSessionId)}"` : '';
   return `<div class="payment-row">
     <span>${escapeHtml(label)}</span>
-    <strong>${escapeHtml(displayValue)}</strong>
+    <strong${strongAttr}>${escapeHtml(displayValue)}</strong>
     <button class="copy-icon-btn" type="button" ${attr} aria-label="${escapeHtml(`${copy.copyActionLabel} ${ariaLabel}`)}">${iconSvg('copy')}</button>
   </div>`;
 }
@@ -1922,6 +1926,20 @@ function buyerCheckoutScript(): string {
         });
         syncMethodFields();
         syncSenderBankChoices();
+      }
+
+      // Reveal the destination account in full on load — it is the account the payer pays to, so
+      // it must be readable and copyable, never shown struck-out/masked.
+      for (const target of document.querySelectorAll('[data-destination-reveal]')) {
+        const id = target.getAttribute('data-destination-reveal') || '';
+        if (!id) continue;
+        fetch('/checkout/' + encodeURIComponent(id) + '/receiving-route/copy-details', { cache: 'no-store' })
+          .then((response) => (response.ok ? response.json() : null))
+          .then((payload) => {
+            const full = payload && (payload.destination_value || payload.receiver_identifier_copy_value);
+            if (full) target.textContent = full;
+          })
+          .catch(() => {});
       }
 
       for (const timer of document.querySelectorAll('[data-countdown-target]')) {
