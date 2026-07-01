@@ -58,6 +58,8 @@ describe('@swimpay/node orders.create', () => {
       paymentSessionId: 'ps_01',
       checkoutUrl: 'https://pay.swimpay.test/checkout/ps_01',
       status: 'payment_session_created',
+      currency: 'RUB',
+      amountMinor: 139000,
       expiresAt: '2026-05-06T10:15:00.000Z'
     });
 

@@ -341,6 +341,10 @@ export interface AvailableReceivingMethod {
   receiver_bank_id: string;
   receiver_bank_name: string;
   receiver_bank_logo_asset_key: string;
+  /** Currency this route settles in (RUB / XOF / USD), derived from the receiver bank profile.
+   *  Lets the checkout show each route with its currency + the converted amount from
+   *  /payable-currencies (e.g. "Revolut · $12.50", "Sberbank · 1 000 ₽"). */
+  settlement_currency: string;
   status: 'active';
 }
 

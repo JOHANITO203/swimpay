@@ -31,6 +31,10 @@ export interface SwimPayCheckout {
   paymentSessionId: string;
   checkoutUrl: string;
   status: string;
+  /** Order currency (echoed from the create input) so the integrator can render the amount. */
+  currency: string;
+  /** Order amount in minor units (echoed from the create input). */
+  amountMinor: number;
   expiresAt?: string | undefined;
 }
 
