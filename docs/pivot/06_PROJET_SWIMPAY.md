@@ -86,7 +86,7 @@ la valeur avec le temps.
 | API / Partenaire | À quoi elle sert pour SwimPay | Statut |
 |---|---|---|
 | **PayDunya** (licencié BCEAO CI, EP.CI.008) | Encaisser et verser sur les 4 wallets (Orange, Wave, MTN, Moov) + Djamo + banque. **Rail principal.** | API et sandbox **vérifiées et fonctionnelles** — on peut coder aujourd'hui |
-| **Portail FNE de la DGI** (fne.dgi.gouv.ci) | Émettre les factures normalisées obligatoires | Obligatoire — automatisation à construire (module 2) |
+| **DGI — API FNE** (fne.dgi.gouv.ci) | Émettre les factures normalisées obligatoires — notre Moteur de factures s'y branche directement | **API officielle vérifiée — testable dès maintenant** |
 | **WhatsApp Business API** | Reçus aux clients + résumé quotidien au marchand (1 message/jour, pas par transaction — maîtrise du coût) | Standard |
 | **CinetPay** (licencié BCEAO CI, EP.CI.007) | Rail de secours + paiements en masse (Mass Payout) | En négociation — jamais de dépendance à un seul rail |
 | **Julaya** (licencié BCEAO CI, EP.CI.004) | La paie B2B à grande échelle (leur spécialité) | Partenariat relationnel à cultiver |
@@ -94,7 +94,36 @@ la valeur avec le temps.
 | **MTN MoMo Developer** | Sandbox libre et gratuit pour apprendre la mécanique des opérateurs | Disponible immédiatement |
 | **PI-SPI** (rail BCEAO, via le partenaire licencié) | Transferts instantanés gratuits inter-réseaux et vers les banques | 2026 — on s'y branche via le partenaire |
 
-## 7. Les chiffres — ce que SwimPay facture
+## 7. L'atout décisif — la porte officielle des impôts (vérifié)
+
+> Information capitale, vérifiée à la source : le mode d'emploi officiel de la
+> DGI (26 pages, mai 2025) — copie conservée dans `docs/pivot/assets/`.
+
+1. **Les impôts ont une porte d'entrée officielle pour les logiciels.** Quand un
+   commerçant fait une vente dans SwimPay, notre logiciel envoie la facture aux
+   impôts tout seul et reçoit en une seconde le numéro officiel + le QR code à
+   mettre sur la facture. Le commerçant ne fait rien.
+2. **On peut s'entraîner dès aujourd'hui, gratuitement.** La DGI a un site
+   d'essai ouvert à tous : on y branche notre code dès la première semaine.
+3. **Le permis se passe une fois.** Pour passer en réel, la DGI vérifie des
+   exemples de factures puis donne la clé d'accès. Mieux : le statut
+   « éditeur agréé » permet à SwimPay d'être validé UNE seule fois pour couvrir
+   TOUS ses clients (formulaire officiel ; un acteur du marché opère déjà
+   ainsi).
+4. **Un timbre de 20 francs par facture.** Chaque facture officielle coûte 20 F
+   au commerçant — et c'est gratuit pour les ventes de moins de 5 000 F. Être
+   en règle ne coûte presque rien. SwimPay affiche le stock de timbres restant
+   et prévient avant la panne.
+5. **La place est libre.** Dans tout le pays, seulement 4 entreprises sont
+   agréées pour connecter des logiciels aux impôts — et aucune ne fait le lien
+   avec les paiements (encaisser → vérifier → facturer). Nous serions le 5ᵉ, et
+   le seul qui fait tout d'un coup.
+
+**En une phrase : la porte existe, on peut s'entraîner dessus dès aujourd'hui,
+le permis se passe une fois pour tous nos clients, ça coûte 20 F par facture au
+commerçant — et presque personne n'occupe le terrain.**
+
+## 8. Les chiffres — ce que SwimPay facture
 
 | Service | Prix | Note |
 |---|---|---|
@@ -111,7 +140,7 @@ la valeur avec le temps.
 nette par client par mois**. Un client rapporte 7 à 11 fois ce qu'il coûte à
 acquérir.
 
-## 8. Quand l'entreprise devient rentable
+## 9. Quand l'entreprise devient rentable
 
 - **Le point mort : ~140 clients payants** à 5 000 F/mois (≈ 690 000 F/mois),
   qui couvrent l'infrastructure, la part des apporteurs et le fondateur.
@@ -121,7 +150,7 @@ acquérir.
 - Au-delà de 140, **chaque nouveau client est de la marge** — et le coût de
   servir un client de plus est quasi nul (c'est du logiciel).
 
-## 9. Le partenariat — participer à la croissance
+## 10. Le partenariat — participer à la croissance
 
 **Ce qu'on cherche chez un partenaire** : un portefeuille de clients réel
 (des rendez-vous tenus, pas une liste), de la distribution, une crédibilité
@@ -143,7 +172,7 @@ sectorielle — ou du capital au bon moment.
 an 2 = licence propre + produits crédit — **le partenaire du début a
 l'antériorité** sur tout ce qui s'ouvre.
 
-## 10. L'avenir de SwimPay — les terrains suivants
+## 11. L'avenir de SwimPay — les terrains suivants
 
 **Objectif an 1 : notre propre licence.** Après 12 mois d'activité, déposer
 notre agrément d'Établissement de Paiement auprès de la BCEAO (ou signer un
@@ -172,7 +201,7 @@ accord de distribution avec un émetteur licencié). Ce que ça débloque :
 6. **La traçabilité pour l'État** — la vision long terme : être la couche que
    le gouvernement consulte, pas celle qu'il subit.
 
-## 11. Résumé en 3 phrases
+## 12. Résumé en 3 phrases
 
 Le transfert d'argent devient gratuit — tant mieux : ce n'est pas ce qu'on
 vend. On vend la **mémoire et l'ordre** de l'argent : factures, caisse,
