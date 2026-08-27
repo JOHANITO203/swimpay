@@ -1,258 +1,233 @@
-# Prompts Nano Banana Pro — UI SwimPay (profils & services)
-# Version : identité vierge (aucune couleur ni typo imposée) · neutre géographiquement
+# Prompts UI SwimPay — format squelette (piloté par image de référence)
 
-Mode d'emploi :
-1. Coller **STYLE MASTER + un prompt d'écran** par génération (1 écran = 1
-   image → texte net). Format 4:5 ou 9:16.
-2. **Générer l'ÉCRAN 1 en premier, plusieurs fois**, jusqu'à obtenir une
-   identité visuelle qui te plaît. C'est le modèle qui propose la direction.
-3. **Joindre ce rendu choisi comme image de référence** à chaque génération
-   suivante, en ajoutant en tête : « Same visual identity, same palette, same
-   typography, same phone frame as the reference image. » C'est ce qui tient
-   la cohérence sans figer les couleurs dans le prompt.
-4. Régénérer tout écran dont le texte français sort flou ou mal orthographié.
+Méthode (celle de LO) : le prompt ne décrit **que la structure** (zones +
+composants, télégraphique). **Le style vient des images de référence** jointes
+à la génération — jamais du texte. Aucune couleur, aucune typo, aucune ambiance
+dans les prompts.
 
----
+Règles d'output :
+- **Écran edge-to-edge : l'image EST l'écran** — pas de mockup de téléphone,
+  pas de cadre, pas de fond de studio. Ratio 9:16.
+- Texte d'interface en français, tel que cité.
+- 1 écran = 1 génération. Joindre la/les images de référence à chaque fois.
 
-## STYLE MASTER (à coller en tête de chaque génération)
+## Amorce (une ligne, à coller avant chaque squelette)
 
 ```
-Premium mobile fintech app UI concept, "SwimPay". One clean phone mockup
-centered on the canvas, thin neutral device frame, soft shadow, even generous
-margins on all sides, calm studio backdrop — the screen content is the hero,
-not the device.
-
-VISUAL IDENTITY: this is a brand-new product with no existing brand. YOU
-choose the entire visual identity — color palette, typography, light or dark
-mood, surface treatment, texture — make it distinctive, premium, trustworthy
-and non-generic, then keep it PERFECTLY IDENTICAL across every screen of the
-set. Avoid template-like fintech styling and common AI-design clichés. Use one
-clear accent, applied sparingly to primary actions and selected states. Clean
-hierarchy, rounded cards, custom-feeling thin-stroke icons (never generic
-icon-library style). Connected payment networks are shown ONLY as four small
-distinct colored dots of your choosing — never named, no brand logos.
-
-ALL interface text in FRENCH, rendered exactly as quoted, correctly spelled,
-comfortably large and readable. Amounts formatted like "25 500 F" with thin
-spaces. No English words in the UI, no lorem ipsum, no country or region
-references, no random charts, no clutter of pills and badges. Calm,
-trustworthy, art-directed. Status bar 9:41, battery, signal.
+mobile app screen · edge-to-edge · full-bleed · no phone mockup, no device
+frame, no bezel, no background canvas — the image is the screen itself · 9:16 ·
+status bar and home indicator included · visual style entirely from the
+reference image(s) · UI text in French · layout below
 ```
 
 ---
 
-## ÉCRAN 1 — Choix du profil
-
 ```
-SCREEN — profile choice, first launch. Top: small SwimPay logo mark of your
-design + wordmark "SwimPay". Title, large and bold: "Vous êtes…" with short
-subtitle "Choisissez votre profil pour commencer".
-Two large stacked selection cards filling the middle, equal height:
-Card 1 "Personnel" — subtitle "Envoyer, recevoir, transférer entre réseaux" —
-thin person icon.
-Card 2 "Business" — subtitle "Encaisser, facturer, payer votre équipe" — thin
-storefront icon. Card 2 is in selected state, clearly marked with the accent
-(hairline border + small check dot top-right).
-Bottom, safe-area aware: full-width primary button "Continuer".
-Airy spacing, one clear focal point, nothing else on screen.
-```
+ÉCRAN 1 — Choix du profil
 
-## ÉCRAN 2 — Choix du profil Business
+mobile header
+logo + wordmark "SwimPay"
 
-```
-SCREEN — business profile choice. Top: back chevron, small title "Business".
-Large bold title: "Votre profil business" subtitle "Chaque profil a ses
-outils". 2×2 grid of four equal selection cards, generous gaps:
-"Commerçant" — "Encaissez et facturez au comptoir" — thin QR-code icon.
-"PME" — "Caisses, salaires et comptabilité" — thin building icon.
-"Comptable" — "Tous vos dossiers sur un écran" — thin ledger-book icon.
-"E-commerce" — "Encaissez sur votre site" — thin shopping-bag icon.
-"PME" card in selected state, marked with the accent (hairline border + check
-dot). Bottom safe-area: full-width primary button "Continuer".
-Clean, calm, no other UI.
+hero
+title "Vous êtes…"
+subtitle "Choisissez votre profil pour commencer"
+
+mobile body
+profile card "Personnel" · person icon · "Envoyer, recevoir, transférer entre réseaux"
+profile card "Business" · storefront icon · "Encaisser, facturer, payer votre équipe" (selected)
+
+footer
+primary button "Continuer"
 ```
 
-## ÉCRAN 3 — Accueil PERSONNEL (services + boutons d'action)
-
 ```
-SCREEN — personal home. Top row: circular avatar with initials "CL", greeting
-"Bonsoir, Camille" small and secondary, right-side thin bell icon.
-Action grid, the hero of the screen — 6 rounded action buttons in a 2×3 grid,
-each a card with a thin-stroke icon, a label, and a tiny price caption in
-secondary text:
-"Envoyer" (caption "Gratuit"), "Transférer entre réseaux" (caption "1 %" plus
-a tiny accent badge "bientôt gratuit"), "Vers la banque" (caption "1 %"),
-"Recevoir" (caption "Mon QR"), "Payer un contact" (caption "Annuaire
-vérifié"), "Mes reçus" (caption "Historique").
-Below: section header "Dernières opérations" with two list rows, each with a
-small network dot: "Envoyé à Julien" amount "− 10 000 F"; "Reçu de Sarah"
-amount "+ 6 500 F" styled as a positive amount.
-Bottom tab bar, 4 tabs: "Accueil" (active), "Envoyer", "Recevoir", "Profil".
-Home indicator visible.
-```
+ÉCRAN 2 — Choix du profil Business
 
-## ÉCRAN 4 — Accueil COMMERÇANT
+mobile header
+back chevron · title "Business"
 
-```
-SCREEN — merchant home "Ma journée". Top: small shop avatar, "Boutique
-Centrale" bold, date "Mercredi 27 août" secondary.
-Hero block: huge tabular number "25 500 F" with label above "Encaissé
-aujourd'hui" and a row of four small anonymous network dots with caption
-"Tous réseaux + espèces".
-Row of two primary action buttons side by side: filled accent "Encaisser"
-(QR icon) and outlined "Facturer" (invoice icon).
-Below, two compact list cards:
-"À vérifier" with an accent count chip "2" and caption "paiements à relier";
-"Factures du jour" with caption "14 émises" and a small positive check
-"Certifiées".
-Small secondary footer line: "Résumé du soir envoyé à 20h".
-Bottom tab bar: "Accueil" (active), "Encaisser", "Factures", "Réglages".
+hero
+title "Votre profil business"
+subtitle "Chaque profil a ses outils"
+
+mobile body
+2×2 grid of profile cards:
+"Commerçant" · QR icon · "Encaissez et facturez au comptoir"
+"PME" · building icon · "Caisses, salaires et comptabilité" (selected)
+"Comptable" · ledger icon · "Tous vos dossiers sur un écran"
+"E-commerce" · bag icon · "Encaissez sur votre site"
+
+footer
+primary button "Continuer"
 ```
 
-## ÉCRAN 5 — Accueil PME
-
 ```
-SCREEN — SME dashboard. Top: company "Delta Distribution" bold with segmented
-control just below, three segments: "Caisse 1" "Caisse 2" "Toutes" ("Toutes"
-active). Hero metric card: label "Chiffre du mois", big number "4 820 000 F",
-small positive delta "+ 14 %" and caption "TVA prête · 867 600 F".
-Vertical stack of four service rows, each an icon + label + chevron:
-"Payer salaires & fournisseurs" caption "0,5 % · min 500 F",
-"Importer clients & produits" caption "Fichier Excel",
-"Virements banque" caption "Vers un compte bancaire",
-"Exports comptables" caption "Pour votre comptable".
-One primary button bottom: "Payer mon équipe".
-Bottom tab bar: "Accueil" (active), "Ventes", "Payer", "Réglages".
-```
+ÉCRAN 3 — Accueil PERSONNEL
 
-## ÉCRAN 6 — Console COMPTABLE
+mobile header
+user picture · search · notifications
 
-```
-SCREEN — accountant console "Mes dossiers". Top: "Cabinet Morel" bold,
-caption "28 dossiers · 3 en retard" with a small alert dot.
-Search field "Rechercher un dossier…", thin and quiet.
-List of three company rows, each a card: company name bold, beneath it a
-secondary line with monthly figure and invoice count, and at right a status
-chip with two clearly distinct states:
-"Boutique Centrale — 480 000 F · 62 factures" chip "À jour";
-"Delta Distribution — 4,8 M F · 210 factures" chip "À jour";
-"Atelier Verne — 0 F · 0 facture" chip "En retard" (warning state).
-Below the list, one wide outlined button "Exporter vers mon logiciel" and a
-secondary caption "Gratuit pour les dossiers abonnés · 1 500 F par dossier
-géré".
-Bottom tab bar: "Dossiers" (active), "Alertes", "Exports", "Profil".
+hero
+amount in XOF
+send button "Envoyer" · receive button "Recevoir" · transfer button "Transférer" · history button "Historique"
+
+mobile body
+swap button "Transférer entre réseaux" · caption "1 % · bientôt gratuit"
+to bank button "Vers la banque" · caption "1 %"
+pay contact button "Payer un contact" · caption "annuaire vérifié"
+receipts button "Mes reçus"
+section "Dernières opérations" · 3 rows: contact name · network dot · amount
+
+bottom navigation
+4 tabs: "Accueil" (active) · "Envoyer" · "Recevoir" · "Profil"
 ```
 
-## ÉCRAN 7 — E-COMMERCE
-
 ```
-SCREEN — e-commerce dashboard "Mes ventes en ligne". Top: store name "Studio
-Lumen" bold, caption "pay.swimpay.app/lumen".
-Hero metric: "Cette semaine", big "312 000 F", caption "43 commandes payées ·
-1,8 % par transaction".
-Primary button: "Créer un lien de paiement" with link icon.
-Below, list of three order rows, each with a small network dot:
-"Commande #1042 — 15 000 F" chip "Payée"; "Commande #1041 — 8 500 F" chip
-"Payée"; "Commande #1040 — 22 000 F" quiet chip "En attente".
-Small info card at bottom: thin webhook icon, "Notifications temps réel
-activées" and second line "Facture certifiée émise sur chaque vente" with a
-positive check.
-Bottom tab bar: "Ventes" (active), "Liens", "Factures", "Réglages".
-```
+ÉCRAN 4 — Accueil COMMERÇANT
 
----
+mobile header
+shop avatar · name "Boutique Centrale" · date "Mercredi 27 août"
 
-# DÉCLINAISONS DESKTOP (mobile-first → desktop)
+hero
+amount in XOF · label "Encaissé aujourd'hui"
+4 network dots · caption "Tous réseaux + espèces"
+primary button "Encaisser" (QR icon) · secondary button "Facturer" (invoice icon)
 
-Principe : le mobile fait loi. On génère et valide d'abord les 7 écrans
-mobiles ; ensuite seulement, on décline en desktop les espaces qui vivent au
-bureau — **Comptable, PME, E-commerce**. Personnel et Commerçant restent
-mobiles. Toujours joindre **l'image de référence mobile** à chaque génération
-desktop.
+mobile body
+card "À vérifier" · count 2 · caption "paiements à relier"
+card "Factures du jour" · caption "14 émises · Certifiées"
+footer line "Résumé du soir envoyé à 20h"
 
-## ADDENDUM DESKTOP (à coller après le STYLE MASTER pour tout écran desktop)
-
-```
-DESKTOP DECLINATION: same product and same visual identity as the reference
-image — same palette, same typography, same iconography, same component
-family, same card language. Present the interface inside one clean modern
-browser window mockup, generous even margins, calm studio backdrop, landscape
-16:10. The mobile bottom tab bar becomes a slim left sidebar with the SwimPay
-mark on top and the same items. Layouts may use two or three columns and
-clean data tables, but keep the same spacing logic and hierarchy as mobile —
-this must read as the SAME app grown wider, not a different product. Text
-comfortably readable, no dashboard clutter, no random charts.
+bottom navigation
+4 tabs: "Accueil" (active) · "Encaisser" · "Factures" · "Réglages"
 ```
 
-## ÉCRAN D1 — Console COMPTABLE (desktop)
-
 ```
-DESKTOP SCREEN — accountant console. Slim left sidebar: SwimPay mark, then
-"Dossiers" (active), "Alertes", "Exports", "Profil".
-Header row: title "Cabinet Morel" bold with caption "28 dossiers · 3 en
-retard" and, at right, a primary button "Exporter vers mon logiciel" and a
-search field "Rechercher un dossier…".
-Main area: one clean data table with columns "Dossier", "Chiffre du mois",
-"Factures", "TVA", "Statut" — six readable rows, including:
-"Boutique Centrale · 480 000 F · 62 · 86 400 F · À jour",
-"Delta Distribution · 4 820 000 F · 210 · 867 600 F · À jour",
-"Atelier Verne · 0 F · 0 · 0 F · En retard" (warning state chip).
-Row hover state visible on one row. Under the table, a quiet caption:
-"Gratuit pour les dossiers abonnés · 1 500 F par dossier géré".
-Right side, a narrow panel "Alertes" listing two short items: "Atelier Verne —
-aucune facture ce mois", "2 dossiers sans export".
-```
+ÉCRAN 5 — Accueil PME
 
-## ÉCRAN D2 — PME (desktop)
+mobile header
+company name "Delta Distribution"
+segmented control "Caisse 1 · Caisse 2 · Toutes" (Toutes active)
 
-```
-DESKTOP SCREEN — SME workspace. Slim left sidebar: SwimPay mark, "Accueil"
-(active), "Ventes", "Payer", "Réglages".
-Header: company "Delta Distribution" bold, segmented control "Caisse 1 /
-Caisse 2 / Toutes" ("Toutes" active), and at right a primary button "Payer
-mon équipe".
-Top row of three metric cards: "Chiffre du mois — 4 820 000 F" with positive
-delta "+ 14 %"; "TVA prête — 867 600 F"; "À vérifier — 2 paiements".
-Main area: table "Dernières ventes" with columns "Heure", "Description",
-"Réseau" (small anonymous colored dot), "Montant", "Facture" — five rows,
-each with a small positive check "Certifiée" in the last column.
-Right panel, quick actions as vertical rows with icons: "Importer clients &
-produits (Fichier Excel)", "Virements banque", "Exports comptables".
+hero
+amount in XOF · label "Chiffre du mois" · delta "+ 14 %"
+caption "TVA prête · 867 600 F"
+
+mobile body
+service row "Payer salaires & fournisseurs" · caption "0,5 % · min 500 F"
+service row "Importer clients & produits" · caption "Fichier Excel"
+service row "Virements banque" · caption "vers un compte bancaire"
+service row "Exports comptables" · caption "pour votre comptable"
+primary button "Payer mon équipe"
+
+bottom navigation
+4 tabs: "Accueil" (active) · "Ventes" · "Payer" · "Réglages"
 ```
 
-## ÉCRAN D3 — E-COMMERCE (desktop)
+```
+ÉCRAN 6 — Console COMPTABLE
+
+mobile header
+cabinet name "Cabinet Morel" · caption "28 dossiers · 3 en retard" · alert dot
+
+hero
+search field "Rechercher un dossier…"
+
+mobile body
+dossier card "Boutique Centrale" · "480 000 F · 62 factures" · status chip "À jour"
+dossier card "Delta Distribution" · "4,8 M F · 210 factures" · status chip "À jour"
+dossier card "Atelier Verne" · "0 F · 0 facture" · status chip "En retard"
+secondary button "Exporter vers mon logiciel"
+caption "Gratuit pour les dossiers abonnés · 1 500 F par dossier géré"
+
+bottom navigation
+4 tabs: "Dossiers" (active) · "Alertes" · "Exports" · "Profil"
+```
 
 ```
-DESKTOP SCREEN — online sales workspace. Slim left sidebar: SwimPay mark,
-"Ventes" (active), "Liens", "Factures", "Réglages".
-Header: store "Studio Lumen" bold, caption "pay.swimpay.app/lumen", and at
-right a primary button "Créer un lien de paiement".
-Stats strip: "Cette semaine — 312 000 F", "43 commandes payées",
-"1,8 % par transaction".
-Main area: orders table with columns "Commande", "Date", "Montant", "Réseau"
-(small anonymous dot), "Statut", "Facture" — six rows mixing chips "Payée"
-and one quiet "En attente", each paid row with a small positive check in the
-"Facture" column.
-Bottom left, a small info card: thin webhook icon, "Notifications temps réel
-activées" and "Facture certifiée émise sur chaque vente".
+ÉCRAN 7 — E-COMMERCE
+
+mobile header
+store name "Studio Lumen" · caption "pay.swimpay.app/lumen"
+
+hero
+amount in XOF · label "Cette semaine"
+caption "43 commandes payées · 1,8 % par transaction"
+primary button "Créer un lien de paiement" (link icon)
+
+mobile body
+order row "Commande #1042 · 15 000 F" · network dot · chip "Payée"
+order row "Commande #1041 · 8 500 F" · network dot · chip "Payée"
+order row "Commande #1040 · 22 000 F" · chip "En attente"
+info card · "Notifications temps réel activées" · "Facture certifiée émise sur chaque vente"
+
+bottom navigation
+4 tabs: "Ventes" (active) · "Liens" · "Factures" · "Réglages"
 ```
 
 ---
 
-### Variante planche (optionnelle, pour une slide de présentation)
+# DÉCLINAISONS DESKTOP (après validation du mobile)
+
+Amorce desktop :
 
 ```
-Wide 16:9 presentation board, calm backdrop, title top-left "SwimPay — deux
-profils, six espaces". Seven identical phone mockups arranged in two neat rows
-(3 top, 4 bottom), equal scale, equal gutters, soft shadows, each phone
-showing one of the seven screens described above, all in the same visual
-identity as the reference image. Below each phone a small secondary caption:
-"Choix du profil", "Business", "Personnel", "Commerçant", "PME", "Comptable",
-"E-commerce". Screen text may be simplified but titles must stay readable.
+desktop app screen · edge-to-edge viewport · no browser mockup, no window
+frame, no background canvas — the image is the screen itself · 16:10 · visual
+style entirely from the reference image(s) · UI text in French · layout below
 ```
 
-**Astuces** : générer plusieurs variantes de l'écran 1 pour choisir la
-direction (claire ? sombre ? chaude ?) — c'est ta séance d'exploration
-d'identité ; ensuite l'image de référence fait loi. Régénérer un écran si un
-mot français sort mal écrit (fréquent sur les accents). Pour retoucher un
-élément, re-décrire l'écran entier plutôt que demander une retouche partielle.
+```
+ÉCRAN D1 — Console COMPTABLE (desktop)
+
+sidebar
+logo SwimPay · "Dossiers" (active) · "Alertes" · "Exports" · "Profil"
+
+header
+title "Cabinet Morel" · caption "28 dossiers · 3 en retard"
+search field "Rechercher un dossier…" · primary button "Exporter vers mon logiciel"
+
+main
+data table · columns "Dossier · Chiffre du mois · Factures · TVA · Statut" · 6 rows
+row "Boutique Centrale · 480 000 F · 62 · 86 400 F" · chip "À jour"
+row "Delta Distribution · 4 820 000 F · 210 · 867 600 F" · chip "À jour"
+row "Atelier Verne · 0 F · 0 · 0 F" · chip "En retard"
+caption "Gratuit pour les dossiers abonnés · 1 500 F par dossier géré"
+
+side panel
+"Alertes" · 2 items: "Atelier Verne — aucune facture ce mois" · "2 dossiers sans export"
+```
+
+```
+ÉCRAN D2 — PME (desktop)
+
+sidebar
+logo SwimPay · "Accueil" (active) · "Ventes" · "Payer" · "Réglages"
+
+header
+company "Delta Distribution" · segmented control "Caisse 1 · Caisse 2 · Toutes"
+primary button "Payer mon équipe"
+
+main
+3 metric cards: "Chiffre du mois · 4 820 000 F · + 14 %" · "TVA prête · 867 600 F" · "À vérifier · 2 paiements"
+table "Dernières ventes" · columns "Heure · Description · Réseau · Montant · Facture" · 5 rows · check "Certifiée"
+
+side panel
+quick actions: "Importer clients & produits" · "Virements banque" · "Exports comptables"
+```
+
+```
+ÉCRAN D3 — E-COMMERCE (desktop)
+
+sidebar
+logo SwimPay · "Ventes" (active) · "Liens" · "Factures" · "Réglages"
+
+header
+store "Studio Lumen" · caption "pay.swimpay.app/lumen"
+primary button "Créer un lien de paiement"
+
+main
+stats strip: "Cette semaine · 312 000 F" · "43 commandes payées" · "1,8 % par transaction"
+orders table · columns "Commande · Date · Montant · Réseau · Statut · Facture" · 6 rows · chips "Payée" / "En attente"
+info card · "Notifications temps réel activées" · "Facture certifiée émise sur chaque vente"
+```
