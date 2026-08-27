@@ -271,8 +271,11 @@ conformité, pilotes prépayés — cf. `05_BUILD_STRATEGY.md` §3.
 ## 9. Décisions ouvertes à trancher (avant/pendant S1)
 
 1. ~~Interface DGI exacte~~ — **résolu** : API REST officielle, `DgiAdapter`
-   (cf. `08_DGI_FNE_API.md`). Reste à clarifier en S1 : le statut
-   **éditeur/intégrateur** (validation unique de SwimPay vs une par marchand).
+   (cf. `08_DGI_FNE_API.md`). Le programme **éditeur/intégrateur agréé est
+   confirmé** (formulaire officiel, comité d'agrément, 4 agréés API dans tout
+   le pays) → action S1 : préparer le dossier d'agrément (lié à la SAS :
+   RCCM, NCC, ARF, CNPS) ; les pilotes passent en « par marchand » en
+   attendant.
 2. **Format de numérotation** des factures (série par marchand).
 3. **Hébergement** : VPS existant (mutualisé avec l'ancien produit) vs projet
    Dokploy séparé — recommandation : projet séparé, base dédiée.

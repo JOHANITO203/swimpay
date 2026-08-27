@@ -15,13 +15,31 @@
   sans TLS — c'est l'officiel tel quel). Inscription test :
   `http://54.247.95.108`. **URL de production : transmise par la DGI après
   validation** de l'intégration.
-- La loi de finances 2025 prévoit explicitement, **sur option**, que les
-  entreprises disposant de leur propre système de facturation le fassent
-  certifier **par API** — notre cas d'usage est prévu par le texte.
-- Le portail liste aussi un programme **« Intégrateurs et éditeurs »**
-  (partenaires agréés) — la voie pour valider SwimPay UNE fois comme éditeur
-  plutôt que marchand par marchand. À clarifier avec le support
-  (`support.fne@dgi.gouv.ci`, `infos.fne@dgi.gouv.ci`, tél. 25 21 01 86 60).
+- **Base légale [V]** : Arrêté **n°0337/MFB/DGI du 9 mai 2025** (modalités FNE ;
+  loi de finances 2025, art. 384-385 CGI) —
+  `fne.dgi.gouv.ci/documents/arrete_0337_modalites_fne_2025.pdf`. Art. 3 :
+  (a) droit commun = plateforme web (`services.fne.dgi.gouv.ci`) + appli
+  mobile ; (b) **sur option et après accord préalable du Directeur général des
+  Impôts** = interfaçage **API** du système de facturation de l'entreprise ;
+  (c) terminaux TERNE pour les reçus. Notre cas est prévu par le texte.
+- **Programme « éditeurs / intégrateurs agréés » — CONFIRMÉ [V]** : formulaire
+  officiel `documents/Formulaire_agrement_editeurs_integrateurs_solutions.pdf`.
+  Dossier : RCCM, NCC, **Attestation de Régularité Fiscale < 3 mois**,
+  attestation CNPS, engagement au cahier des charges ; dépôt au **Centre des
+  Téléservices Fiscaux (Marcory zone 4)** ou `agrement.fne@dgi.gouv.ci` ;
+  décision par un **Comité d'agrément**. La FAQ officielle confirme qu'une
+  entreprise peut s'interfacer elle-même **ou passer par un éditeur agréé** —
+  et Kompto (agréé) sert ses clients **sans accréditation propre de chaque
+  client** : la voie « SwimPay agréé une fois pour tous ses marchands » est
+  réelle.
+- **Le terrain est quasi vide [V]** : la liste officielle des agréés
+  (28/11/2025, `documents/entreprises_agrees_FNE.pdf`) compte **4 intégrateurs
+  API** dans tout le pays — AB Soft Work (SAGE/Excel), Minlessika, Novasoft
+  (SAGE), Progici (KOMPTO) — plus 1 fournisseur TERNE. Aucun ne couple la
+  facturation aux **paiements + réconciliation**. Être le 5ᵉ agréé, et le seul
+  adossé à l'encaissement, est une position forte.
+- Contacts : `support.fne@dgi.gouv.ci`, `infos.fne@dgi.gouv.ci`,
+  `agrement.fne@dgi.gouv.ci`, tél. 25 21 01 86 60.
 
 ## 2. Le chemin d'accès (officiel, 8 étapes)
 
@@ -88,10 +106,13 @@ certificat (en pratique : clé API en Bearer), connexion stable.
 
 ## 6. Découvertes opérationnelles (à intégrer au produit)
 
-1. **L'économie du sticker** : chaque facture consomme un sticker et la
-   réponse donne le solde restant → **fonctionnalité gratuite et différenciante** :
-   suivi du stock de stickers + alerte avant rupture (le marchand découvre
-   sinon la panne au moment de facturer).
+1. **L'économie du sticker — tarifée [V]** : chaque certification consomme un
+   sticker **prépayé** : **20 FCFA TTC par facture (FNE), 15 FCFA par reçu
+   (RNE), gratuit pour les factures ≤ 5 000 FCFA** (excellent pour les
+   micro-marchands). La réponse API donne le solde restant → fonctionnalité
+   différenciante : suivi du stock + alerte avant rupture (sinon le marchand
+   découvre la panne au moment de facturer). Coût à intégrer au discours
+   pricing : ~20 F/facture à la charge du marchand, en sus de l'abonnement.
 2. **La clé API est PAR entreprise (par NCC)** : notre `DgiAdapter` stocke une
    clé par marchand (chiffrée). La **validation DGI fait partie de
    l'onboarding marchand** — sauf si le statut « éditeur/intégrateur » permet
@@ -111,7 +132,12 @@ certificat (en pratique : clé API en Bearer), connexion stable.
 
 - Module 2 : **`DgiAdapter` API officielle** (le plan RPA est abandonné ; il ne
   reste qu'un mode dégradé manuel en cas d'indisponibilité).
-- Dès S1 : inscription d'une entreprise de test sur l'env. de test + email au
-  support pour clarifier le statut **éditeur/intégrateur** (une validation pour
-  tous nos marchands vs une par marchand — ça change l'onboarding).
+- Dès S1 : inscription d'une entreprise de test sur l'env. de test +
+  **préparation du dossier d'agrément éditeur/intégrateur** (formulaire
+  officiel + RCCM, NCC, Attestation de Régularité Fiscale, CNPS — dépend de la
+  finalisation de la SAS ; dépôt à Marcory zone 4 ou `agrement.fne@dgi.gouv.ci`).
+  En attendant l'agrément, la voie « par marchand » reste utilisable pour les
+  pilotes.
+- SDK communautaire existant (référence d'implémentation, non officiel) :
+  `github.com/PRODESTIC/fne-sdk-php`.
 - Nouveau champ produit : stock de stickers par marchand (affichage + alerte).
