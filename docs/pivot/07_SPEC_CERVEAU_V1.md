@@ -149,14 +149,24 @@ avec correction guidée (jamais d'échec silencieux du fichier entier).
   champs FNE requis portés par `business_profile` (NCC vendeur) et
   `client_snapshot` (NCC acheteur si assujetti).
 
-**Transmission DGI** — *le point ouvert n°1* : l'interface exacte du portail
-`fne.dgi.gouv.ci` (API ou portail web) doit être investiguée en semaine 1.
-La spec absorbe les deux cas :
-- v0 : file « à soumettre » + **automatisation du portail (RPA)** ; chaque
-  soumission stocke `fne_ref` + preuve (PDF/QR) dans `fne_proof_ref` ;
-- si une API/intégrateur existe : adapter `DgiAdapter` au même contrat.
-- Mode dégradé assumé : soumission manuelle assistée (l'opérateur suit la file),
-  le produit reste vendable pendant qu'on automatise.
+**Transmission DGI** — *résolu (2026-08-28, source primaire — voir
+`08_DGI_FNE_API.md`)* : la DGI expose une **API REST/JSON officielle**
+(`POST $url/external/invoices/sign`, avoir via `/{id}/refund`, Bearer token par
+entreprise, env. de test public `http://54.247.95.108/ws`). Le plan RPA est
+**abandonné** — on code un **`DgiAdapter`** propre :
+- clé API **par marchand** (chiffrée) ; la validation DGI (spécimens →
+  URL prod → clé) fait partie de l'onboarding marchand, sauf si le statut
+  « éditeur/intégrateur » permet une validation unique de SwimPay (à clarifier
+  avec `support.fne@dgi.gouv.ci` dès S1) ;
+- **jamais de retry aveugle** sur `/sign` (pas d'idempotence ni d'endpoint de
+  statut documentés ; chaque certification consomme un **sticker**) :
+  single-flight par facture, requête+réponse brutes en `external_event`,
+  doute → `exception_queue` + vérification manuelle dans l'espace FNE ;
+- la réponse porte `reference` (n° officiel), `token` (URL → QR code) et
+  `balance_sticker` → **suivi du stock de stickers + alerte** intégré au
+  produit ;
+- mode dégradé assumé : saisie manuelle assistée si la plateforme est
+  indisponible.
 
 **États** : `draft → queued → submitted → accepted | rejected(reason)` ;
 rejet → exception + la raison enrichit les **règles de validation
@@ -260,8 +270,9 @@ conformité, pilotes prépayés — cf. `05_BUILD_STRATEGY.md` §3.
 
 ## 9. Décisions ouvertes à trancher (avant/pendant S1)
 
-1. **Interface DGI exacte** (portail vs API vs intégrateur agréé) —
-   investigation dédiée semaine 1 ; la réponse choisit RPA ou adapter API.
+1. ~~Interface DGI exacte~~ — **résolu** : API REST officielle, `DgiAdapter`
+   (cf. `08_DGI_FNE_API.md`). Reste à clarifier en S1 : le statut
+   **éditeur/intégrateur** (validation unique de SwimPay vs une par marchand).
 2. **Format de numérotation** des factures (série par marchand).
 3. **Hébergement** : VPS existant (mutualisé avec l'ancien produit) vs projet
    Dokploy séparé — recommandation : projet séparé, base dédiée.
