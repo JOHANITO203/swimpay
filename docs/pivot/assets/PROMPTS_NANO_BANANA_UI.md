@@ -162,6 +162,83 @@ Bottom tab bar: "Ventes" (active), "Liens", "Factures", "Réglages".
 
 ---
 
+# DÉCLINAISONS DESKTOP (mobile-first → desktop)
+
+Principe : le mobile fait loi. On génère et valide d'abord les 7 écrans
+mobiles ; ensuite seulement, on décline en desktop les espaces qui vivent au
+bureau — **Comptable, PME, E-commerce**. Personnel et Commerçant restent
+mobiles. Toujours joindre **l'image de référence mobile** à chaque génération
+desktop.
+
+## ADDENDUM DESKTOP (à coller après le STYLE MASTER pour tout écran desktop)
+
+```
+DESKTOP DECLINATION: same product and same visual identity as the reference
+image — same palette, same typography, same iconography, same component
+family, same card language. Present the interface inside one clean modern
+browser window mockup, generous even margins, calm studio backdrop, landscape
+16:10. The mobile bottom tab bar becomes a slim left sidebar with the SwimPay
+mark on top and the same items. Layouts may use two or three columns and
+clean data tables, but keep the same spacing logic and hierarchy as mobile —
+this must read as the SAME app grown wider, not a different product. Text
+comfortably readable, no dashboard clutter, no random charts.
+```
+
+## ÉCRAN D1 — Console COMPTABLE (desktop)
+
+```
+DESKTOP SCREEN — accountant console. Slim left sidebar: SwimPay mark, then
+"Dossiers" (active), "Alertes", "Exports", "Profil".
+Header row: title "Cabinet Morel" bold with caption "28 dossiers · 3 en
+retard" and, at right, a primary button "Exporter vers mon logiciel" and a
+search field "Rechercher un dossier…".
+Main area: one clean data table with columns "Dossier", "Chiffre du mois",
+"Factures", "TVA", "Statut" — six readable rows, including:
+"Boutique Centrale · 480 000 F · 62 · 86 400 F · À jour",
+"Delta Distribution · 4 820 000 F · 210 · 867 600 F · À jour",
+"Atelier Verne · 0 F · 0 · 0 F · En retard" (warning state chip).
+Row hover state visible on one row. Under the table, a quiet caption:
+"Gratuit pour les dossiers abonnés · 1 500 F par dossier géré".
+Right side, a narrow panel "Alertes" listing two short items: "Atelier Verne —
+aucune facture ce mois", "2 dossiers sans export".
+```
+
+## ÉCRAN D2 — PME (desktop)
+
+```
+DESKTOP SCREEN — SME workspace. Slim left sidebar: SwimPay mark, "Accueil"
+(active), "Ventes", "Payer", "Réglages".
+Header: company "Delta Distribution" bold, segmented control "Caisse 1 /
+Caisse 2 / Toutes" ("Toutes" active), and at right a primary button "Payer
+mon équipe".
+Top row of three metric cards: "Chiffre du mois — 4 820 000 F" with positive
+delta "+ 14 %"; "TVA prête — 867 600 F"; "À vérifier — 2 paiements".
+Main area: table "Dernières ventes" with columns "Heure", "Description",
+"Réseau" (small anonymous colored dot), "Montant", "Facture" — five rows,
+each with a small positive check "Certifiée" in the last column.
+Right panel, quick actions as vertical rows with icons: "Importer clients &
+produits (Fichier Excel)", "Virements banque", "Exports comptables".
+```
+
+## ÉCRAN D3 — E-COMMERCE (desktop)
+
+```
+DESKTOP SCREEN — online sales workspace. Slim left sidebar: SwimPay mark,
+"Ventes" (active), "Liens", "Factures", "Réglages".
+Header: store "Studio Lumen" bold, caption "pay.swimpay.app/lumen", and at
+right a primary button "Créer un lien de paiement".
+Stats strip: "Cette semaine — 312 000 F", "43 commandes payées",
+"1,8 % par transaction".
+Main area: orders table with columns "Commande", "Date", "Montant", "Réseau"
+(small anonymous dot), "Statut", "Facture" — six rows mixing chips "Payée"
+and one quiet "En attente", each paid row with a small positive check in the
+"Facture" column.
+Bottom left, a small info card: thin webhook icon, "Notifications temps réel
+activées" and "Facture certifiée émise sur chaque vente".
+```
+
+---
+
 ### Variante planche (optionnelle, pour une slide de présentation)
 
 ```

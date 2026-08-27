@@ -233,6 +233,13 @@ zéro double payout · bascule sim→sim2 sans toucher au code des modules.
 
 ## 6. Surfaces V1 (ce qui consomme les modules)
 
+**Principe d'interface (décision LO)** : **mobile-first**. Tout écran est conçu
+au format téléphone d'abord ; les espaces qui vivent au bureau (Comptable, PME,
+E-commerce) sont des **déclinaisons desktop du même système** — la tab bar
+devient une barre latérale, les listes deviennent des tableaux, mêmes
+composants, même hiérarchie. Jamais un second design. Personnel et Commerçant
+restent des surfaces téléphone.
+
 **App PME/marchand** (server-rendered + PWA, mobile-first, `apps/web`) :
 1. **Accueil** — le jour en un écran : encaissé, nb ventes, « à rapprocher (n) »,
    factures émises. 2. **Nouvelle vente / facture** — le bouton facture 30 s.
