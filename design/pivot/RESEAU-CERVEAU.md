@@ -152,6 +152,72 @@ simulable ; frais différenciés par rail (externes 1 %, SwimPay gratuit,
 banque 200) jusque dans le reçu ; résolution du numéro en identité
 vérifiée sur le widget ; la vente espèces atteint la console comptable.
 
+## 4 ter. Le cerveau confronté aux écrans (audit, mesuré)
+
+**Couverture des nœuds : complète.** Les 41 nœuds décrits en §2 existent
+tous à l'écran. Le cerveau n'a pas de trou de STRUCTURE.
+
+**Le trou est ailleurs, et il se mesure.** Densité d'information relevée
+à 1440 px (cartes · rangées · actions · chiffres · graphes) :
+
+| écran | cartes | rangées | actions | chiffres | graphes | hauteur |
+|---|---|---|---|---|---|---|
+| accueil perso | 2 | 7 | 26 | 1 | 0 | 880 |
+| activité perso | 3 | 10 | 15 | 3 | 3 | 831 |
+| **b-commercant** | **1** | **3** | 10 | 4 | **0** | **489** |
+| **b-pme** | **1** | **3** | 9 | 4 | **0** | **508** |
+| **b-ecommerce** | **1** | **3** | 8 | 3 | **0** | **437** |
+| b-comptable | 3 | 8 | 11 | 2 | 0 | 589 |
+
+Un hub business porte **la moitié** de l'accueil personnel et **aucune
+visualisation**. Le cerveau décrit ce que chaque monde SAIT ; les écrans
+n'en montrent presque rien.
+
+**Ce que le cerveau ne dit pas du tout** : les plans payants. Absents du
+document comme de l'app.
+
+## 4 quater. Ce que chaque module PERMET et qu'on n'a pas encore fait
+
+Raisonnement : un module qui sait X doit pouvoir proposer tout ce qui
+découle de X. Deux questions à chaque fois — **qu'est-ce qui prend trop
+de gestes aujourd'hui**, et **qu'est-ce que l'app pourrait décider à la
+place de l'utilisateur**.
+
+### Annuaire d'identité — il sait qui, et sur quels comptes
+| ce qu'il permet | aujourd'hui | ce qu'on en fait |
+|---|---|---|
+| une opération déjà faite se refait | 5 gestes (Envoyer → Changer → chercher → choisir → montant) | **Refaire** depuis toute rangée du grand livre : 1 geste, destinataire ET rail repris |
+| un client de comptoir est une identité | le scan résout, puis oublie | **widget Clients fidèles** : qui revient, combien de fois |
+| un fournisseur revient | bénéficiaire enregistré, sans mémoire | **paiement récurrent** proposé au 3e paiement identique |
+| un employé a un compte vérifié ou non | la liste ne le dit pas | **drapeau** sur l'employé non vérifié : son virement sera plus lent |
+| une personne a N comptes | on choisit à chaque fois | **compte préféré** mémorisé par destinataire |
+
+### Routeur — il sait les rails, les délais et les frais
+| ce qu'il permet | aujourd'hui | ce qu'on en fait |
+|---|---|---|
+| comparer les rails | il les liste à plat | **conseil** : le moins cher et le plus rapide sont marqués |
+| cumuler les frais | invisible | **widget Frais du mois** + ce qu'un autre rail aurait coûté |
+| connaître les heures bancaires | « sous 3 heures », vague | **heure d'arrivée réelle** annoncée |
+| connaître les plafonds par rail | seulement les plafonds BCEAO globaux | **découpe proposée** quand le montant dépasse le rail |
+| le plan change le tarif | pas de plan | **les frais annoncés dépendent du plan** — le lien entre offre et produit |
+
+### Rapprocheur — il sait que chaque mouvement est une écriture
+| ce qu'il permet | aujourd'hui | ce qu'on en fait |
+|---|---|---|
+| comparer espèces et électronique | la clôture ne compte que le SwimPay | **écart de caisse** : on saisit les espèces, l'écart s'affiche |
+| lire un rythme | rien | **courbe du jour** (commerçant, e-commerce) |
+| projeter | rien | **couverture des salaires** : la trésorerie tient-elle jusqu'au 30 |
+| apparier commande et encaissement | rien côté e-commerce | **rapprochement des commandes** : payées sans encaissement |
+| mesurer sa propre charge | 92 % annoncé sans détail | **ce qui reste, et pourquoi** |
+
+### Moteur de factures — il sait qui doit quoi, et depuis quand
+| ce qu'il permet | aujourd'hui | ce qu'on en fait |
+|---|---|---|
+| relancer | un bouton « Relancer » sans flow | **relance pré-écrite**, envoyée en un geste |
+| voir venir | statuts à plat | **encours client** + **échéances à 30 jours** |
+| répéter | rien | **facture récurrente** |
+| encaisser en deux fois | rien | **paiement partiel** (dit, non construit) |
+
 ## 5. Trous connus et assumés (dits, pas cachés)
 
 Aide/support, recherche globale, multi-boutiques par gérant, détail des

@@ -35,9 +35,7 @@ html, body { height: 100%; }
 body {
   margin: 0;
   color: var(--encre);
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 8px),
-    var(--fond);
+  background: var(--fond);
   font-family: "Outfit", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   font-size: 15px; line-height: 1.5;
   font-variant-numeric: tabular-nums;
@@ -214,9 +212,7 @@ button { font: inherit; color: inherit; }
    flux, en revenir — et jamais le latéral, où changer d'onglet bascule
    sec. L'écran sortant glisse d'un sixième (parallaxe) sous l'entrant. */
 .ecran.transit-e, .ecran.transit-s {
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 8px),
-    var(--fond);
+  background: var(--fond);
 }
 .ecran.transit-e { position: relative; z-index: 20; }
 .ecran.transit-s { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
@@ -244,10 +240,11 @@ button { font: inherit; color: inherit; }
 .champ-rech input {
   flex: 1; min-width: 0; border: 0; outline: 0; background: none;
   font: inherit; color: var(--encre);
+  align-self: stretch; /* le champ prend toute la hauteur : plus de zone morte */
 }
 .champ-rech input::placeholder { color: var(--sourd); }
 .champ-rech .rech-act {
-  width: 38px; height: 38px; flex: none; display: grid; place-items: center;
+  width: 44px; height: 44px; flex: none; display: grid; place-items: center;
   border: 0; border-radius: 11px; background: var(--surface-2);
   color: var(--encre); cursor: pointer;
 }
@@ -431,7 +428,7 @@ button { font: inherit; color: inherit; }
 .mini-carte .carte-bancaire { padding: 12px; border-radius: 11px; }
 .mini-carte .marque { font-size: 12px; }
 .mini-carte .puce { width: 24px; height: 18px; margin-top: 6px; border-radius: 4px; }
-.mini-carte .bas small { font-size: 9px; }
+.mini-carte .bas small { font-size: 11px; } /* plancher de lisibilité */
 .mini-carte .reseau i { width: 14px; height: 14px; }
 .mini-carte .reseau i + i { margin-left: -5px; }
 
@@ -642,6 +639,142 @@ button { font: inherit; color: inherit; }
     }
   }
 }
+
+/* ---------------- Zone tactile (règle Apple : 44x44 minimum) ----------------
+   On étend la zone SANS grossir le dessin : un pseudo-élément centré porte
+   la cible. Le visuel validé ne bouge pas, le doigt trouve la commande. */
+.rond, .icon-btn, .oeil, .chip, .valide-btn, .link, .bascule,
+.rail button, .btn, .chip-capsule, .poignee {
+  position: relative;
+}
+.rond::after, .icon-btn::after, .oeil::after, .chip::after,
+.valide-btn::after, .link::after, .bascule::after,
+.btn::after, .chip-capsule::after, .poignee::after {
+  content: ""; position: absolute; top: 50%; left: 50%;
+  width: max(100%, 44px); height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+/* une rangée entière est déjà une grande cible : ses enfants n'ont pas à
+   étendre la leur, sinon les zones se recouvrent */
+.row .rond::after, .row .oeil::after, .mini .rond::after { content: none; }
+
+/* ---------------- L'intelligence à l'écran ---------------- */
+/* le Routeur ne liste plus : il conseille */
+.badge-conseil {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 8px;
+  border-radius: 999px; font-size: 10.5px; font-weight: 600; letter-spacing: .02em;
+  background: var(--acide); color: #141414; margin-left: 8px; flex: none;
+}
+.badge-conseil.lent { background: var(--surface-2); color: var(--sourd); }
+.source .row .txt span { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* refaire une opération : l'action apparaît dans la feuille de détail */
+.sheet-actions .btn-refaire { background: var(--grad-acide); border-color: var(--acide); color: #141414; font-weight: 600; }
+
+/* ---------------- Les plans ---------------- */
+.plans { display: grid; gap: 12px; margin-top: 14px; }
+.plan {
+  background: var(--surface); border: 1px solid var(--trait); border-radius: 18px;
+  padding: 18px 20px; text-align: left; width: 100%; cursor: pointer; display: block;
+}
+.plan:hover { border-color: var(--sourd); }
+.plan.actuel { border-color: var(--acide); }
+.plan-tete { display: flex; align-items: baseline; gap: 10px; }
+.plan-tete b { font-size: 17px; font-weight: 600; }
+.plan-tete .prix { margin-left: auto; font-size: 17px; font-weight: 600; }
+.plan-tete .prix small { font-size: 11.5px; color: var(--sourd); font-weight: 400; }
+.plan > p { margin: 6px 0 0; font-size: 13px; color: var(--sourd); }
+.plan ul { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+.plan li { font-size: 13px; display: flex; gap: 9px; align-items: flex-start; }
+.plan li svg { flex: none; margin-top: 2px; color: var(--acide); }
+.plan li.absent { color: var(--sourd); }
+.plan li.absent svg { color: var(--trait-fort); }
+.plan-actuel-marque {
+  display: inline-flex; height: 20px; align-items: center; padding: 0 9px; border-radius: 999px;
+  background: var(--acide); color: #141414; font-size: 11px; font-weight: 600;
+}
+/* ce qu'un plan supérieur débloquerait, dit là où ça manque */
+.verrou {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px; margin-top: 10px;
+  background: var(--surface); border: 1px dashed var(--trait-fort); border-radius: 14px;
+  font-size: 12.5px; color: var(--sourd); width: 100%; text-align: left; cursor: pointer;
+}
+.verrou:hover { border-color: var(--sourd); }
+.verrou b { color: var(--encre); font-weight: 500; }
+
+/* ================= WIDGETS DE TABLEAU DE BORD =================
+   Un hub business doit DIRE l'état du monde, pas seulement offrir des
+   boutons. Chaque widget est calculé sur l'état réel — rien d'inventé :
+   si la donnée n'existe pas, le widget le dit. */
+.widgets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.widget {
+  background: var(--surface); border: 1px solid var(--trait);
+  border-radius: 16px; padding: 14px 16px; min-width: 0;
+}
+.widget.pleine { grid-column: 1 / -1; }
+.widget > small { display: block; font-size: 12px; color: var(--sourd); }
+.widget > b { display: block; font-size: 21px; font-weight: 600; letter-spacing: -.01em; margin-top: 3px; }
+.widget > b.credit { color: var(--acide); }
+.widget > em { display: block; font-style: normal; font-size: 11.5px; color: var(--sourd); margin-top: 3px; }
+.widget-tete { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.widget-tete small { font-size: 12px; color: var(--sourd); }
+
+/* barres horaires — un rythme se lit d'un coup d'œil */
+.barres { display: flex; align-items: flex-end; gap: 5px; height: 54px; margin-top: 12px; }
+.barres i { flex: 1; background: var(--acide); border-radius: 4px 4px 2px 2px; min-height: 3px; display: block; }
+.barres i.creux { background: var(--trait-fort); }
+.barres-pieds { display: flex; gap: 5px; margin-top: 5px; }
+.barres-pieds span { flex: 1; text-align: center; font-size: 11px; color: var(--sourd); }
+
+/* jauge de couverture — une part qui se remplit */
+.jauge-w { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 10px; }
+.jauge-w i { display: block; height: 100%; border-radius: 999px; background: var(--grad-acide); }
+.jauge-w i.tendu { background: linear-gradient(135deg, #E5484D, #A5252A); }
+
+/* calendrier compact — 7 lignes, une COLONNE PAR SEMAINE : la grille CSS
+   fait tout le placement, il ne reste qu'une boucle de jours (technique
+   relevée sur les heatmaps de contributions). */
+.calendrier {
+  display: grid; grid-template-rows: repeat(7, 15px); grid-auto-flow: column;
+  grid-auto-columns: 15px; gap: 4px; margin-top: 12px; justify-content: start;
+}
+.calendrier i { border-radius: 3px; background: var(--surface-2); display: block; }
+.calendrier i.du { background: var(--acide); }
+.calendrier i.retard { background: #E5484D; }
+.calendrier i.aujourdhui { outline: 1.5px solid var(--encre); outline-offset: 1px; }
+.calendrier-legende { display: flex; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--sourd); }
+.calendrier-legende span { display: inline-flex; align-items: center; gap: 6px; }
+.calendrier-legende b { width: 9px; height: 9px; border-radius: 3px; background: var(--acide); }
+.calendrier-legende b.retard { background: #E5484D; }
+
+/* anneau compact : conic-gradient percé au centre par un masque —
+   moins de code qu'un SVG et il se règle par une seule variable */
+.anneau-c {
+  width: 62px; height: 62px; border-radius: 50%; flex: none;
+  background: conic-gradient(var(--acide) calc(var(--part) * 1%), var(--surface-2) 0);
+  -webkit-mask: radial-gradient(circle, transparent 58%, #000 59%);
+  mask: radial-gradient(circle, transparent 58%, #000 59%);
+}
+.anneau-w { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.anneau-w .txt-w b { display: block; font-size: 21px; font-weight: 600; }
+.anneau-w .txt-w small { display: block; font-size: 11.5px; color: var(--sourd); }
+
+/* rangée fine dans un widget : un nom, un chiffre */
+.mini { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; }
+.mini + .mini { border-top: 1px solid rgba(255, 255, 255, .05); }
+.mini .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini .v { color: var(--sourd); font-size: 12.5px; }
+.mini .pastille-n {
+  width: 24px; height: 24px; border-radius: 999px; flex: none;
+  background: var(--surface-2); display: grid; place-items: center;
+  font-size: 11px; font-weight: 600;
+}
+.widget-vide { font-size: 12.5px; color: var(--sourd); margin: 10px 0 2px; }
+
+/* la zone de saisie d'un widget (compter la caisse) */
+.widget .champ { height: 44px; font-size: 15px; margin-top: 10px; }
+
+@media (max-width: 880px) { .widgets { gap: 10px; } }
 
 /* ================= COMPOSITION DE BUREAU =================
    Les écrans de flux sont écrits en colonne pour le téléphone. Au-delà de
@@ -1079,6 +1212,25 @@ button { font: inherit; color: inherit; }
       </div>
       <button class="btn" id="dn-utilise">Utiliser cette destination</button>
     </div>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     PLANS — l'offre payante. Le plan choisi CHANGE les frais que le
+     Routeur annonce et débloque des fonctions : ce n'est pas une page
+     de vente, c'est un état du produit.
+     ================================================================ -->
+<div class="ecran" id="plans" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" id="pl-retour" data-mene="profil b-commercant b-pme b-ecommerce b-comptable" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>
+      <h2>Plans</h2>
+      <span class="vide"></span>
+    </div>
+    <p class="badge-jour" id="pl-contexte">Le plan s'applique au profil ouvert.</p>
+    <div class="plans" id="pl-liste"></div>
+    <p class="badge-jour" style="margin-top: 14px">Changement immédiat, sans engagement. Les frais annoncés par le Routeur suivent le plan.</p>
   </div>
 </div>
 
@@ -1751,6 +1903,15 @@ button { font: inherit; color: inherit; }
       </div>
     </div>
 
+    <h2 class="sec" style="margin-top: 22px">Plan</h2>
+    <div class="carte">
+      <button class="row" data-mene="plans" data-plans="perso">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.3 5.6.7-4.2 3.9 1.1 5.6L12 15.8 7.1 18.5l1.1-5.6L4 9l5.6-.7z"/></svg></span>
+        <span class="txt"><b>Plan et facturation</b><span data-plan-nom="perso">Plan actuel</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+
     <h2 class="sec" style="margin-top: 22px">Identité</h2>
     <div class="carte">
       <div class="row" style="cursor: default">
@@ -1950,6 +2111,8 @@ button { font: inherit; color: inherit; }
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h3v3h-3zM20 14v.5M20 19.5v.5M17.5 20h-.5"/></svg></span>
         Code</button>
     </div>
+
+    <div class="widgets" id="bc-widgets"></div>
 
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 20px 2px 10px">
       <h2 class="sec" style="margin: 0">Dernières ventes</h2>
@@ -2197,6 +2360,8 @@ button { font: inherit; color: inherit; }
       <button class="tuile tuile-btn" data-va="pme-factures"><small>Factures en attente</small><b data-pme="attente-total">476 000</b></button>
       <button class="tuile tuile-btn" data-va="pme-salaires"><small>Masse salariale</small><b data-pme="total">1 160 000</b></button>
     </div>
+
+    <div class="widgets" id="pme-widgets"></div>
 
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 20px 2px 10px">
       <h2 class="sec" style="margin: 0">Activité récente</h2>
@@ -2472,7 +2637,9 @@ button { font: inherit; color: inherit; }
 
     <div class="grid-act" style="margin-top: 14px">
       <section>
-        <h2 class="sec">Clients</h2>
+        <div class="widgets" id="cpt-widgets"></div>
+
+    <h2 class="sec">Clients</h2>
         <div class="carte">
           <button class="row" data-va="cpt-client">
             <span class="avatar">BP</span>
@@ -2566,6 +2733,8 @@ button { font: inherit; color: inherit; }
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M13 4l-2 16"/></svg></span>
         Intégration</button>
     </div>
+
+    <div class="widgets" id="ec-widgets"></div>
 
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 20px 2px 10px">
       <h2 class="sec" style="margin: 0">Dernières commandes</h2>
@@ -2759,6 +2928,15 @@ button { font: inherit; color: inherit; }
       <span class="vide"></span>
     </div>
 
+    <h2 class="sec" style="margin-top: 22px">Plan</h2>
+    <div class="carte">
+      <button class="row" data-mene="plans" data-plans="bc">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.3 5.6.7-4.2 3.9 1.1 5.6L12 15.8 7.1 18.5l1.1-5.6L4 9l5.6-.7z"/></svg></span>
+        <span class="txt"><b>Plan et facturation</b><span data-plan-nom="bc">Plan actuel</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+
     <h2 class="sec" style="margin-top: 14px">Identité</h2>
     <div class="carte">
       <div class="row" style="cursor: default">
@@ -2830,6 +3008,15 @@ button { font: inherit; color: inherit; }
       <span class="vide"></span>
     </div>
 
+    <h2 class="sec" style="margin-top: 22px">Plan</h2>
+    <div class="carte">
+      <button class="row" data-mene="plans" data-plans="pme">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.3 5.6.7-4.2 3.9 1.1 5.6L12 15.8 7.1 18.5l1.1-5.6L4 9l5.6-.7z"/></svg></span>
+        <span class="txt"><b>Plan et facturation</b><span data-plan-nom="pme">Plan actuel</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+
     <h2 class="sec" style="margin-top: 14px">Identité</h2>
     <div class="carte" style="padding: 14px 18px; display: flex; flex-direction: column; gap: 10px">
       <label class="onb-etape" for="pp-nom">Nom de l'entreprise</label>
@@ -2871,7 +3058,7 @@ button { font: inherit; color: inherit; }
       </div>
       <div class="row" style="cursor: default">
         <span class="txt"><b>Double validation</b><span>Approbation d'un cosignataire · PIN ou biométrie</span></span>
-        <input class="champ" id="pp-seuil" inputmode="numeric" value="500 000" style="width: 110px; padding: 8px 10px; font-size: 14px; text-align: right" aria-label="Seuil">
+        <input class="champ" id="pp-seuil" inputmode="numeric" value="500 000" style="width: 110px; height: 44px; padding: 8px 10px; font-size: 14px; text-align: right" aria-label="Seuil">
         <button class="bascule" id="pp-double" aria-pressed="true" aria-label="Double validation"><i></i></button>
       </div>
     </div>
@@ -2898,6 +3085,15 @@ button { font: inherit; color: inherit; }
       </button>
       <h2>Cabinet</h2>
       <span class="vide"></span>
+    </div>
+
+    <h2 class="sec" style="margin-top: 22px">Plan</h2>
+    <div class="carte">
+      <button class="row" data-mene="plans" data-plans="cpt">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.3 5.6.7-4.2 3.9 1.1 5.6L12 15.8 7.1 18.5l1.1-5.6L4 9l5.6-.7z"/></svg></span>
+        <span class="txt"><b>Plan et facturation</b><span data-plan-nom="cpt">Plan actuel</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
     </div>
 
     <h2 class="sec" style="margin-top: 14px">Membres du cabinet</h2>
@@ -2971,6 +3167,15 @@ button { font: inherit; color: inherit; }
       </button>
       <h2>Boutique en ligne</h2>
       <span class="vide"></span>
+    </div>
+
+    <h2 class="sec" style="margin-top: 22px">Plan</h2>
+    <div class="carte">
+      <button class="row" data-mene="plans" data-plans="ec">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.3 5.6.7-4.2 3.9 1.1 5.6L12 15.8 7.1 18.5l1.1-5.6L4 9l5.6-.7z"/></svg></span>
+        <span class="txt"><b>Plan et facturation</b><span data-plan-nom="ec">Plan actuel</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
     </div>
 
     <h2 class="sec" style="margin-top: 14px">Identité</h2>
@@ -3179,7 +3384,9 @@ button { font: inherit; color: inherit; }
   <div class="shell flux">
     <p class="badge-jour" style="margin-top: 14px">Vue du cosignataire — l'appareil de N. Kader (démo)</p>
     <div class="fluxbar" style="padding-top: 0">
-      <span class="vide"></span>
+      <button class="rond" data-va="pme-envoyer" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
       <h2>Approbation requise</h2>
       <span class="vide"></span>
     </div>
@@ -3269,6 +3476,7 @@ button { font: inherit; color: inherit; }
   <div class="sheet-actions">
     <button class="btn" data-ferme>Fermer</button>
     <button class="btn">Partager le reçu</button>
+    <button class="btn btn-refaire" id="sh-refaire" hidden>Refaire</button>
     <button class="btn btn-danger" id="sh-rembourse" hidden>Rembourser</button>
   </div>
 </div>
@@ -3297,6 +3505,21 @@ button { font: inherit; color: inherit; }
     <button class="btn" data-ferme>Annuler</button>
     <button class="btn" id="sd-demande" style="background: var(--acide); border-color: var(--acide); color: #141414; font-weight: 600">Demander l'approbation de N. Kader</button>
     <button class="btn" id="sd-voir" data-va="approbation" hidden>Voir côté N. Kader — démo</button>
+  </div>
+</div>
+
+<!-- sheet de relance — le Moteur de factures écrit, l'utilisateur envoie -->
+<div class="sheet" id="sheet-relance" role="dialog" aria-modal="true" aria-label="Relancer la facture" hidden>
+  <button class="poignee" data-ferme aria-label="Fermer"></button>
+  <div class="sheet-tete">
+    <div class="qui" id="sr-client">Client</div>
+    <div class="quoi" id="sr-detail">Facture</div>
+  </div>
+  <label class="onb-etape" for="sr-texte" style="margin-top: 4px">Message de relance</label>
+  <textarea class="champ" id="sr-texte" rows="4" style="height: auto; padding: 12px 14px; resize: vertical; margin-top: 6px; font: inherit"></textarea>
+  <div class="sheet-actions" style="margin-top: 12px">
+    <button class="btn" data-ferme>Annuler</button>
+    <button class="btn" id="sr-envoyer" style="background: var(--grad-acide); border-color: var(--acide); color: #141414; font-weight: 600">Envoyer la relance</button>
   </div>
 </div>
 
@@ -4199,10 +4422,12 @@ document.getElementById("eq-ajoute").addEventListener("click", function () {
   retourBtn(this, "Ajouté — salaires mis à jour");
 });
 /* factures */
+/* `jour` = l'échéance, en jours à partir d'aujourd'hui (0 = à traiter ce jour).
+   Une facture en retard occupe le jour 0 : elle attend maintenant. */
 const factures = [
-  { num: "2026-040", client: "Boulangerie du Pont", objet: "Uniformes ×12", m: 380000, etat: "attente" },
-  { num: "2026-039", client: "Kiosque 12", objet: "Tabliers ×6", m: 96000, etat: "retard" },
-  { num: "2026-038", client: "Maison Kéma", objet: "Retouches série", m: 210000, etat: "payee" },
+  { num: "2026-040", client: "Boulangerie du Pont", objet: "Uniformes ×12", m: 380000, etat: "attente", jour: 11 },
+  { num: "2026-039", client: "Kiosque 12", objet: "Tabliers ×6", m: 96000, etat: "retard", jour: 0 },
+  { num: "2026-038", client: "Maison Kéma", objet: "Retouches série", m: 210000, etat: "payee", jour: 4 },
 ];
 let facNum = 41;
 const STATUTS = {
@@ -4222,10 +4447,7 @@ const renderFactures = () => {
   const attente = factures.filter((f) => f.etat === "attente" || f.etat === "retard").reduce((s, f) => s + f.m, 0);
   document.querySelectorAll("[data-pme='attente-total']").forEach((el) => { el.textContent = fmt(String(attente)); });
 };
-document.addEventListener("click", (e) => {
-  const r = e.target.closest("[data-relance]");
-  if (r) retourBtn(r, "Relance envoyée");
-});
+/* la relance a maintenant son propre flow (feuille sheet-relance) */
 document.getElementById("fac-simule").addEventListener("click", function () {
   const f = factures.find((x) => x.etat === "attente" || x.etat === "retard");
   if (!f) { retourBtn(this, "Tout est payé"); return; }
@@ -4267,6 +4489,7 @@ document.getElementById("ap-cta").addEventListener("click", function () {
       objet: document.getElementById("ap-objet").textContent,
       m: parseInt(document.getElementById("ap-montant").textContent.replace(/\D/g, ""), 10),
       etat: fType === "cash" ? "cash" : "attente",
+      jour: 29, /* échéance à 30 jours, le défaut du panneau de facturation */
     };
     factures.unshift(fac);
     if (fac.etat === "cash") {
@@ -4538,11 +4761,30 @@ document.getElementById("ap2-refuse").addEventListener("click", function () {
 fluxM.depot = "500000";
 FLUX_CFG.depot = { aff: "dp-aff", cta: "dp-cta", libelle: (m) => "Approvisionner " + m };
 /* sélection d'un moyen/source (le Routeur montre son choix : délai, frais) */
+/* Le tarif des plans est défini bien plus bas ; on le publie ici dans un
+   porteur mutable. Un `typeof` sur un const en zone morte LÈVE une erreur,
+   contrairement à une variable non déclarée — ce piège a coûté un chargement. */
+let tarifDuPlan = null;
+/* à quel monde appartient cette rangée — c'est lui qui porte le plan */
+const profilDuFlux = (el) => {
+  const id = (el.closest(".ecran") || {}).id || "";
+  if (id.startsWith("bc-") || id === "b-commercant" || id === "b-qr") return "bc";
+  if (id.startsWith("pme-") || id === "b-pme") return "pme";
+  if (id.startsWith("ec-") || id === "b-ecommerce") return "ec";
+  if (id.startsWith("cpt-") || id === "b-comptable") return "cpt";
+  return "perso";
+};
 const fraisDe = (row) => {
   const cont = row.closest("[data-sens]");
   if (cont && cont.dataset.sens === "entree") return "aucun";
-  return row.dataset.frais || "aucun";
+  const brutF = row.dataset.frais || "aucun";
+  /* LE point où l'offre touche le produit : un tarif en pourcentage suit
+     le plan du profil. Le forfait bancaire et le gratuit ne bougent pas. */
+  if (brutF.includes("%") && tarifDuPlan) return tarifDuPlan(profilDuFlux(row));
+  return brutF;
 };
+/* ce que d'autres modules veulent faire après chaque routage (le conseil) */
+const apresRoutage = [];
 const majRoutages = () => {
   document.querySelectorAll("[data-recap-de]").forEach((el) => {
     const actif = document.querySelector("#" + el.dataset.recapDe + " .row[aria-pressed='true']");
@@ -4553,6 +4795,7 @@ const majRoutages = () => {
         " · " + actif.dataset.delai + " · Frais — " + fraisDe(actif);
     }
   });
+  apresRoutage.forEach((f) => f());
 };
 document.addEventListener("click", (e) => {
   const r = e.target.closest(".source .row");
@@ -4992,7 +5235,7 @@ const sheet = document.getElementById("sheet");
 const fermeSheet = () => {
   voile.hidden = true;
   sheet.hidden = true;
-  ["sheet-mont", "sheet-pin", "sheet-double"].forEach((id) => {
+  ["sheet-mont", "sheet-pin", "sheet-double", "sheet-relance"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.hidden = true;
   });
@@ -5127,6 +5370,401 @@ addEventListener("keydown", (e) => {
   if (ou && (ou.tagName === "INPUT" || ou.tagName === "TEXTAREA" || ou.isContentEditable)) return;
   if (!document.getElementById("voile").hidden) return; /* une feuille est ouverte */
   if (clavierMontant(e.key)) e.preventDefault();
+});
+
+/* ═══════════════════ WIDGETS DES MONDES BUSINESS ═══════════════════
+   Règle : un widget ne montre que ce que l'app SAIT déjà. Pas de donnée
+   inventée — quand il n'y a rien à dire, le widget le dit. */
+
+const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
+/* Intl connaît déjà le franc CFA (zéro décimale) — on ne garde que la
+   notation compacte, sans symbole : la règle maison reste « pas de devise ». */
+const compact = new Intl.NumberFormat("fr-CI", { notation: "compact", maximumFractionDigits: 1 });
+const fmtC = (n) => (Math.abs(n) >= 100000 ? compact.format(n) : fmt(String(Math.round(n))));
+const anneauSvg = (part) =>
+  `<span class="anneau-c" style="--part: ${part}" role="img" aria-label="${part} pour cent"></span>`;
+/* des barres par heure, lues sur une liste d'opérations horodatées */
+const barresParHeure = (liste, champH = "h", champM = "m") => {
+  if (!liste.length) return { html: "", vide: true };
+  const heures = liste.map((v) => parseInt(String(v[champH]).slice(0, 2), 10));
+  const min = Math.min(...heures), max = Math.max(...heures);
+  const seaux = [];
+  for (let h = min; h <= max; h++) {
+    seaux.push({ h, total: liste.filter((v) => parseInt(String(v[champH]).slice(0, 2), 10) === h)
+      .reduce((n, v) => n + v[champM], 0) });
+  }
+  const haut = Math.max(...seaux.map((x) => x.total), 1);
+  return {
+    vide: false,
+    html: `<div class="barres">${seaux.map((x) =>
+      `<i class="${x.total ? "" : "creux"}" style="height: ${Math.max(4, Math.round((x.total / haut) * 54))}px"
+          title="${x.h}h · ${fmt(String(x.total))}"></i>`).join("")}</div>
+      <div class="barres-pieds">${seaux.map((x) => `<span>${x.h}h</span>`).join("")}</div>`,
+  };
+};
+
+/* ─── COMMERÇANT ─── */
+let especesComptees = null;
+const rendWidgetsBc = () => {
+  const zone = document.getElementById("bc-widgets");
+  if (!zone) return;
+  const ticket = caisseN ? Math.round(caisseJour / caisseN) : 0;
+  const evite = Math.round(caisseJour * 0.01); /* le même encaissement au tarif mobile money */
+  const rythme = barresParHeure(ventes);
+  const ecart = especesComptees === null ? null : especesComptees - caisseJour;
+  zone.innerHTML = `
+    <div class="widget pleine">
+      <div class="widget-tete"><small>Rythme des encaissements</small><small>${ventes.length} dernières ventes</small></div>
+      ${rythme.vide ? '<p class="widget-vide">Aucune vente enregistrée aujourd\'hui</p>' : rythme.html}
+    </div>
+    <div class="widget">
+      <small>Ticket moyen</small><b>${fmt(String(ticket))}</b>
+      <em>${caisseN} paiements · dernier à ${dernierH}</em>
+    </div>
+    <div class="widget">
+      <small>Frais évités</small><b class="credit">${fmt(String(evite))}</b>
+      <em>encaissement SwimPay gratuit, 1 % en mobile money</em>
+    </div>
+    <div class="widget pleine">
+      <div class="widget-tete"><small>Écart de caisse</small>
+        <small>${rembN ? rembN + " remboursement" + (rembN > 1 ? "s" : "") : "aucun remboursement"}</small></div>
+      ${ecart === null
+        ? `<em style="display:block;margin-top:4px">Compte les espèces du tiroir : l'écart avec l'encaissé SwimPay s'affiche.</em>
+           <input class="champ" id="bc-especes" inputmode="numeric" placeholder="Espèces comptées">`
+        : `<b class="${ecart === 0 ? "credit" : ""}">${ecart === 0 ? "Caisse juste" : (ecart > 0 ? "+" : "−") + fmt(String(Math.abs(ecart)))}</b>
+           <em>${fmt(String(especesComptees))} comptés · ${fmt(String(caisseJour))} encaissés</em>
+           <button class="btn" id="bc-recompter" style="margin-top:10px;height:38px">Recompter</button>`}
+    </div>`;
+};
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || e.target.id !== "bc-especes") return;
+  const v = parseInt((e.target.value || "").replace(/[^0-9]/g, ""), 10);
+  if (!isNaN(v)) { especesComptees = v; rendWidgetsBc(); }
+});
+document.addEventListener("blur", (e) => {
+  if (e.target && e.target.id === "bc-especes") {
+    const v = parseInt((e.target.value || "").replace(/[^0-9]/g, ""), 10);
+    if (!isNaN(v)) { especesComptees = v; rendWidgetsBc(); }
+  }
+}, true);
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#bc-recompter")) { especesComptees = null; rendWidgetsBc(); }
+});
+
+/* ─── PME ─── */
+const rendWidgetsPme = () => {
+  const zone = document.getElementById("pme-widgets");
+  if (!zone) return;
+  const masse = employes.reduce((n, e) => n + e.sal, 0);
+  const mois = masse ? Math.floor(tresoPME / masse) : 0;
+  const part = Math.min(100, pct(tresoPME, masse * 6)); /* six mois = la jauge pleine */
+  const impayees = factures.filter((f) => f.etat === "attente" || f.etat === "retard");
+  const encours = impayees.reduce((n, f) => n + f.m, 0);
+  const retard = factures.filter((f) => f.etat === "retard");
+  const retardM = retard.reduce((n, f) => n + f.m, 0);
+  /* les trente prochains jours : une case par jour, marquée si une facture y tombe */
+  const cases = Array.from({ length: 35 }, (_, i) => {
+    if (i >= 30) return `<i style="opacity:.25"></i>`;
+    const f = factures.find((x) => x.jour === i && x.etat !== "payee");
+    const jour = i === 0 ? " aujourdhui" : "";
+    if (!f) return `<i class="${jour.trim()}"></i>`;
+    return `<i class="${f.etat === "retard" ? "retard" : "du"}${jour}" title="${ech(f.client)} · ${fmt(String(f.m))}"></i>`;
+  }).join("");
+  zone.innerHTML = `
+    <div class="widget">
+      <small>Couverture des salaires</small><b>${mois} mois</b>
+      <em>${fmt(String(masse))} par mois · ${employes.length} personnes</em>
+      <div class="jauge-w"><i class="${mois < 2 ? "tendu" : ""}" style="width: ${part}%"></i></div>
+    </div>
+    <div class="widget">
+      <small>Encours clients</small><b>${fmtC(encours)}</b>
+      <em>${impayees.length} facture${impayees.length > 1 ? "s" : ""} ouverte${impayees.length > 1 ? "s" : ""}${
+        retard.length ? ` · dont ${fmt(String(retardM))} en retard` : ""}</em>
+      ${retard.length ? `<button class="btn" id="pme-relancer-tout" style="margin-top:10px;height:38px">Relancer${retard.length > 1 ? " les " + retard.length : ""}</button>` : ""}
+    </div>
+    <div class="widget pleine">
+      <div class="widget-tete"><small>Échéances des 30 prochains jours</small>
+        <button class="link" data-va="pme-factures">Voir les factures</button></div>
+      <div class="calendrier">${cases}</div>
+      <div class="calendrier-legende">
+        <span><b></b>à échoir</span><span><b class="retard"></b>en retard</span>
+      </div>
+    </div>`;
+};
+
+/* ─── E-COMMERCE ─── */
+const rendWidgetsEc = () => {
+  const zone = document.getElementById("ec-widgets");
+  if (!zone) return;
+  const panier = ecN ? Math.round(ecJour / ecN) : 0;
+  const payees = commandes.filter((c) => c.etat === "payee");
+  const prep = commandes.filter((c) => c.etat === "prep");
+  const rembo = commandes.filter((c) => c.etat === "rembourse");
+  const rythme = barresParHeure(commandes);
+  zone.innerHTML = `
+    <div class="widget pleine">
+      <div class="widget-tete"><small>Rythme des commandes</small><small>${commandes.length} dernières</small></div>
+      ${rythme.vide ? '<p class="widget-vide">Aucune commande aujourd\'hui</p>' : rythme.html}
+    </div>
+    <div class="widget">
+      <small>Panier moyen</small><b>${fmt(String(panier))}</b>
+      <em>${ecN} commande${ecN > 1 ? "s" : ""} aujourd'hui</em>
+    </div>
+    <div class="widget">
+      <small>À reverser</small><b class="credit">${fmtC(ecJour)}</b>
+      <em>versement quotidien · vers le compte de reversement</em>
+    </div>
+    <div class="widget pleine">
+      <div class="widget-tete"><small>État des commandes</small>
+        <button class="link" data-va="ec-commandes">Tout voir</button></div>
+      <div class="mini"><span class="pastille-n">${payees.length}</span>
+        <span class="n">Payées</span><span class="v">${fmt(String(payees.reduce((n, c) => n + c.m, 0)))}</span></div>
+      <div class="mini"><span class="pastille-n">${prep.length}</span>
+        <span class="n">En préparation</span><span class="v">${fmt(String(prep.reduce((n, c) => n + c.m, 0)))}</span></div>
+      ${rembo.length ? `<div class="mini"><span class="pastille-n">${rembo.length}</span>
+        <span class="n">Remboursées</span><span class="v">${fmt(String(rembo.reduce((n, c) => n + c.m, 0)))}</span></div>` : ""}
+    </div>`;
+};
+
+/* ─── COMPTABLE ─── */
+const rendWidgetsCpt = () => {
+  const zone = document.getElementById("cpt-widgets");
+  if (!zone) return;
+  const aValider = rapprochements.length;
+  const auto = aValider ? Math.max(0, Math.round((1 - aValider / 52) * 100)) : 100;
+  zone.innerHTML = `
+    <div class="widget">
+      <small>Rapproché automatiquement</small>
+      <div class="anneau-w">${anneauSvg(auto)}
+        <span class="txt-w"><b>${auto} %</b><small>${aValider} pièce${aValider > 1 ? "s" : ""} à décider</small></span></div>
+    </div>
+    <div class="widget">
+      <small>Charge du mois</small><b>${aValider}</b>
+      <em>sur 52 mouvements reçus</em>
+      <div class="jauge-w"><i style="width: ${pct(aValider, 52)}%"></i></div>
+    </div>
+    <div class="widget pleine">
+      <div class="widget-tete"><small>Par client</small>
+        <button class="link" data-va="cpt-client">Ouvrir un dossier</button></div>
+      <div class="mini"><span class="pastille-n">MT</span><span class="n">Mon entreprise</span>
+        <span class="v">${aValider} à décider</span></div>
+      <div class="mini"><span class="pastille-n">K12</span><span class="n">Kiosque 12</span>
+        <span class="v">à jour</span></div>
+      <div class="mini"><span class="pastille-n">MK</span><span class="n">Maison Kéma</span>
+        <span class="v">à jour</span></div>
+    </div>`;
+};
+
+const rendWidgets = () => { rendWidgetsBc(); rendWidgetsPme(); rendWidgetsEc(); rendWidgetsCpt(); };
+vaHooks.push((cible) => {
+  if (["b-commercant", "b-pme", "b-ecommerce", "b-comptable"].includes(cible)) rendWidgets();
+});
+rendWidgets();
+
+/* ═══════════════════ LES PLANS ═══════════════════
+   Un plan n'est pas une page de vente : c'est un ÉTAT qui change ce que
+   le Routeur annonce et ce que les écrans autorisent. */
+const COCHE_PLAN = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>';
+const CROIX_PLAN = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg>';
+const PLANS = {
+  perso: [
+    { cle: "libre", nom: "Libre", prix: 0, sous: "Le compte personnel, sans abonnement.",
+      fraisMM: 1, inclus: ["Envois et réceptions illimités", "Reçu signé sur chaque opération", "Plafonds BCEAO standards"],
+      absents: ["Frais réduits sur les rails externes"] },
+    { cle: "plus", nom: "Plus", prix: 1000, sous: "Pour qui envoie souvent sur les mobile money.",
+      fraisMM: 0.5, inclus: ["Tout du plan Libre", "Frais mobile money à 0,5 % au lieu de 1 %", "Historique exportable", "Support prioritaire"], absents: [] },
+  ],
+  bc: [
+    { cle: "comptoir", nom: "Comptoir", prix: 0, sous: "Encaisser, c'est gratuit.",
+      fraisMM: 1, inclus: ["Encaissement QR illimité", "Caisse du jour et clôture", "Un compte de retrait"],
+      absents: ["Personnel autorisé", "Retrait vers plusieurs comptes"] },
+    { cle: "boutique", nom: "Boutique", prix: 5000, sous: "Pour un comptoir qui tourne à plusieurs.",
+      fraisMM: 0.5, inclus: ["Tout du plan Comptoir", "Personnel autorisé à encaisser", "Retraits vers plusieurs comptes", "Frais de retrait à 0,5 %", "Écart de caisse et export"], absents: [] },
+  ],
+  pme: [
+    { cle: "atelier", nom: "Atelier", prix: 0, sous: "Payer et facturer, l'essentiel.",
+      fraisMM: 1, inclus: ["Salaires jusqu'à 5 personnes", "Facturation et relances", "Un compte lié"],
+      absents: ["Double validation", "Comptable connecté", "Équipes illimitées"] },
+    { cle: "entreprise", nom: "Entreprise", prix: 15000, sous: "Quand plusieurs mains touchent l'argent.",
+      fraisMM: 0.5, inclus: ["Équipes illimitées", "Double validation par approbation externe", "Comptable connecté", "Import CSV et exports", "Frais à 0,5 %"], absents: [] },
+  ],
+  ec: [
+    { cle: "lien", nom: "Lien", prix: 0, sous: "Vendre avec un lien, sans site.",
+      fraisMM: 1, inclus: ["Liens de paiement illimités", "Suivi des commandes", "Reversement quotidien"],
+      absents: ["SDK et webhooks", "Domaine autorisé", "Reversement à la demande"] },
+    { cle: "boutique-en-ligne", nom: "Boutique en ligne", prix: 12000, sous: "Le paiement dans ton site.",
+      fraisMM: 0.5, inclus: ["SDK, clés et webhooks", "Domaine autorisé", "Reversement à la demande", "Frais à 0,5 %"], absents: [] },
+  ],
+  cpt: [
+    { cle: "cabinet", nom: "Cabinet", prix: 0, sous: "Jusqu'à trois dossiers clients.",
+      fraisMM: 1, inclus: ["3 clients connectés", "Rapprochement automatique", "Exports mensuels"],
+      absents: ["Clients illimités", "Membres du cabinet"] },
+    { cle: "cabinet-plus", nom: "Cabinet +", prix: 20000, sous: "Le cabinet au complet.",
+      fraisMM: 1, inclus: ["Clients illimités", "Membres du cabinet et rôles", "Exports programmés", "Demande de pièce automatisée"], absents: [] },
+  ],
+};
+/* le plan en cours pour chaque profil — le gratuit au départ */
+const planActuel = { perso: "libre", bc: "comptoir", pme: "atelier", ec: "lien", cpt: "cabinet" };
+const PROFIL_DE_ECRAN = {
+  profil: "perso", "b-commercant": "bc", "b-pme": "pme", "b-ecommerce": "ec", "b-comptable": "cpt",
+};
+let ctxPlan = { cle: "perso", retour: "profil" };
+/* LE point d'accroche : le tarif mobile money dépend du plan du profil */
+const tauxMM = (cle) => {
+  const liste = PLANS[cle] || PLANS.perso;
+  const p = liste.find((x) => x.cle === planActuel[cle]) || liste[0];
+  return p.fraisMM;
+};
+const libelleFraisMM = (cle) => {
+  const t = tauxMM(cle);
+  return t === 1 ? "1 %" : String(t).replace(".", ",") + " %";
+};
+/* chaque panneau affiche le nom du plan en cours */
+const majEtiquettesPlan = () => {
+  document.querySelectorAll("[data-plan-nom]").forEach((el) => {
+    const cle = el.dataset.planNom;
+    const p = (PLANS[cle] || []).find((x) => x.cle === planActuel[cle]);
+    el.textContent = p ? (p.prix ? p.nom + " · " + fmt(String(p.prix)) + " par mois" : p.nom + " · gratuit") : "Plan";
+  });
+};
+tarifDuPlan = libelleFraisMM; /* le porteur est servi */
+const rendPlans = () => {
+  const cle = ctxPlan.cle;
+  const liste = PLANS[cle];
+  document.getElementById("pl-contexte").textContent =
+    { perso: "Compte personnel", bc: "Kiosque 12 · commerçant", pme: "Mon entreprise · PME",
+      ec: "Maison Kéma · e-commerce", cpt: "Cabinet · comptable" }[cle];
+  document.getElementById("pl-liste").innerHTML = liste.map((p) => `
+    <button class="plan ${planActuel[cle] === p.cle ? "actuel" : ""}" data-plan="${p.cle}">
+      <span class="plan-tete">
+        <b>${ech(p.nom)}</b>
+        ${planActuel[cle] === p.cle ? '<span class="plan-actuel-marque">Plan actuel</span>' : ""}
+        <span class="prix">${p.prix ? fmt(String(p.prix)) : "Gratuit"}${p.prix ? "<small> / mois</small>" : ""}</span>
+      </span>
+      <p>${ech(p.sous)}</p>
+      <ul>
+        ${p.inclus.map((i) => `<li>${COCHE_PLAN}${ech(i)}</li>`).join("")}
+        ${p.absents.map((i) => `<li class="absent">${CROIX_PLAN}${ech(i)}</li>`).join("")}
+      </ul>
+    </button>`).join("");
+};
+document.addEventListener("click", (e) => {
+  const ouvre = e.target.closest("[data-plans]");
+  if (ouvre) {
+    ctxPlan = { cle: ouvre.dataset.plans, retour: ouvre.closest(".ecran").id };
+    va("plans");
+    return;
+  }
+  const b = e.target.closest("#pl-liste .plan");
+  if (!b) return;
+  planActuel[ctxPlan.cle] = b.dataset.plan;
+  rendPlans();
+  majEtiquettesPlan();
+  majRoutages();
+  rendWidgets();
+  retourBtn(b, "Plan actif");
+});
+document.getElementById("pl-retour").addEventListener("click", () => va(ctxPlan.retour));
+vaHooks.push((cible) => { if (cible === "plans") rendPlans(); });
+majEtiquettesPlan();
+
+/* ═══════════════════ LE ROUTEUR CONSEILLE ═══════════════════
+   Lister des rails ne suffit pas : l'app sait lequel coûte le moins et
+   lequel arrive le plus vite. Elle le dit. */
+const coutDe = (row) => {
+  const f = fraisDe(row);
+  if (f === "aucun") return 0;
+  if (f.includes("%")) return parseFloat(f.replace(",", ".")) * 1000; /* pour 100 000 envoyés */
+  return parseInt(f, 10) || 0;
+};
+const conseilleRails = () => {
+  document.querySelectorAll(".carte.source").forEach((src) => {
+    const lignes = [...src.querySelectorAll(".row")];
+    if (lignes.length < 2) return;
+    lignes.forEach((r) => r.querySelectorAll(".badge-conseil").forEach((x) => x.remove()));
+    /* un rail déjà lent le dit dans sa sous-ligne : inutile de le répéter */
+    const cont = src.closest("[data-sens]");
+    if (cont && cont.dataset.sens === "entree") return; /* une entrée n'a pas de frais à comparer */
+    const couts = lignes.map(coutDe);
+    const minCout = Math.min(...couts);
+    const moinsCher = lignes[couts.indexOf(minCout)];
+    /* le badge va dans la SOUS-LIGNE, jamais dans le nom du compte */
+    const pose = (r, texte, classe) => {
+      const sub = r.querySelector(".txt span");
+      if (!sub || sub.querySelector(".badge-conseil")) return;
+      sub.insertAdjacentHTML("beforeend", `<span class="badge-conseil ${classe}">${texte}</span>`);
+    };
+    if (moinsCher && couts.filter((c) => c === minCout).length < lignes.length) {
+      pose(moinsCher, "le moins cher", "");
+    }
+    /* le délai est déjà écrit sur chaque rangée : on ne le répète pas.
+       Le seul conseil qui apporte du neuf, c'est le moins cher. */
+  });
+};
+/* majRoutages est un const : on ne le réassigne pas, on l'accroche par un
+   hook déclaré à sa définition (voir `apresRoutage`). */
+apresRoutage.push(conseilleRails);
+majRoutages();
+
+/* ═══════════════════ REFAIRE UNE OPÉRATION ═══════════════════
+   L'Annuaire et le Routeur ont déjà tout retenu : une opération passée se
+   refait en un geste, au lieu de cinq. */
+let opCourante = null;
+document.addEventListener("click", (e) => {
+  const r = e.target.closest(".ops .row");
+  if (r) {
+    const nom = r.querySelector(".txt b");
+    const sortie = r.querySelector(".fin b:not(.credit)");
+    opCourante = nom && sortie
+      ? { nom: nom.textContent, montant: parseInt(sortie.textContent.replace(/[^0-9]/g, ""), 10) }
+      : null;
+    const btn = document.getElementById("sh-refaire");
+    if (btn) btn.hidden = !opCourante;
+  }
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#sh-refaire") || !opCourante) return;
+  const cible = CONTACTS.find((c) => opCourante.nom.includes(c.nom));
+  fermeSheet();
+  if (cible) { destPerso = cible; majDestinataire(); }
+  brut = String(opCourante.montant || 0);
+  maj();
+  va("envoyer");
+});
+
+/* ═══════════════════ RELANCER UNE FACTURE ═══════════════════
+   Le bouton « Relancer » existait sans rien derrière. Le Moteur de
+   factures sait tout ce qu'il faut : il écrit la relance, l'utilisateur
+   la lit, la corrige s'il veut, l'envoie. */
+const ETIQ_STATUT = { payee: "payée", cash: "payée en espèces", attente: "en attente", retard: "en retard" };
+const relanceFacture = (f) => {
+  document.getElementById("sr-client").textContent = f.client;
+  document.getElementById("sr-detail").textContent =
+    "Facture n° " + f.num + " · " + fmt(String(f.m)) + " · " + ETIQ_STATUT[f.etat];
+  document.getElementById("sr-texte").value =
+    `Bonjour, la facture n° ${f.num} de ${fmt(String(f.m))} est arrivée à échéance. `
+    + `Elle se règle depuis le lien SwimPay, sur le réseau de votre choix — `
+    + `Orange Money, MTN MoMo, Moov Money, Wave ou virement. Merci.`;
+  document.getElementById("sr-envoyer").dataset.num = f.num;
+  voile.hidden = false;
+  document.getElementById("sheet-relance").hidden = false;
+};
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-relance]");
+  if (b) { const f = factures[parseInt(b.dataset.relance, 10)]; if (f) relanceFacture(f); return; }
+  if (e.target.closest("#pme-relancer-tout")) {
+    const f = factures.find((x) => x.etat === "retard");
+    if (f) relanceFacture(f);
+  }
+});
+document.getElementById("sr-envoyer").addEventListener("click", function () {
+  const f = factures.find((x) => x.num === this.dataset.num);
+  occupe(this, "Envoi…", () => {
+    if (f) f.relancee = true;
+    fermeSheet();
+    renderFactures();
+    rendWidgets();
+  });
 });
 
 /* notifications — tout lire éteint les pastilles et les badges des cloches */

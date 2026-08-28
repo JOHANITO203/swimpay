@@ -801,7 +801,75 @@ enfant son rang d'origine en `order`, et **sonde-ordre.mjs** mesure
 désormais l'ordre affiché aux positions verticales réelles sur les
 15 écrans à volets.
 
-## État : 61 écrans · 239/239 (27+22+26+17+16+16+9+13+14+31+22+26) · 0 défaut
+## Boucles 20-22 — l'intelligence des mondes business, les plans, Apple
+
+Demande : comparer le cerveau aux écrans, prédire les flows par module,
+raccourcir ce qui prend du temps, remplir les hubs business, retirer les
+traits du fond, chercher des composants, intégrer les plans payants,
+appliquer les règles Apple.
+
+**L'audit d'abord** (voir RESEAU-CERVEAU §4 ter/quater). Les 41 nœuds du
+cerveau existent tous : aucun trou de structure. Le trou est de DENSITÉ,
+mesuré : un hub business portait 1 carte, 3 rangées, 437-508 px et zéro
+graphe, contre 2 cartes, 7 rangées, 880 px pour l'accueil perso.
+Et les plans payants n'étaient nulle part — ni dans l'app, ni au cerveau.
+
+**Les widgets** (hubs à 762-909 px désormais). Règle tenue : chacun est
+calculé sur l'état réel, rien d'inventé.
+- Commerçant : rythme horaire des encaissements · ticket moyen
+  (caisse ÷ paiements) · frais évités (1 % de l'encaissé) · **écart de
+  caisse** — on saisit les espèces du tiroir, l'écart s'affiche.
+- PME : **couverture des salaires** (trésorerie ÷ masse) · encours clients
+  avec la part en retard · **calendrier d'échéances** en semaines.
+- E-commerce : rythme des commandes · panier moyen · à reverser · état.
+- Comptable : anneau d'auto-rapprochement · charge du mois · par client.
+
+**Les raccourcis.**
+- **Refaire** : depuis toute rangée du grand livre, l'envoi rouvre déjà
+  rempli — destinataire et montant repris. Cinq gestes deviennent un.
+- **Le Routeur conseille** : le rail le moins cher porte un badge. Un seul
+  conseil : le délai est déjà écrit, le répéter serait du bruit.
+- **La relance de facture** avait un bouton sans rien derrière. Elle a
+  maintenant son flow : le Moteur écrit le message, on le corrige, on
+  l'envoie, la facture est marquée.
+
+**Les plans payants** — cinq offres (perso, commerçant, PME, e-commerce,
+cabinet), deux paliers chacune. Ce n'est pas une page de vente : le plan
+est un ÉTAT, et **le tarif que le Routeur annonce en dépend** (1 % → 0,5 %
+sur les rails mobile money), profil par profil. C'est le point où l'offre
+touche le produit.
+
+**La veille open source** (agent séparé). Conclusion honnête : presque
+tout est inutile pour nous. Retenu, sans une seule dépendance :
+`Intl.NumberFormat('fr-CI', {notation:'compact'})` pour les grands
+chiffres (natif, connaît déjà le franc CFA) ; le `conic-gradient` masqué
+au centre pour les anneaux (plus court qu'un SVG) ; la grille en semaines
+(`grid-auto-flow: column`, 7 lignes) pour le calendrier. Écartés et
+pourquoi : ApexCharts (500 Ko), cal-heatmap (dépend de D3), Pikaday et
+odometer (archivés), uPlot (51 Ko illisibles). `tofsjonas/sortable`
+(1,7 Ko, domaine public) est bon mais exige des `<table>` — nos listes
+sont des rangées, le coût de restructuration dépasse le gain.
+
+**Règles Apple, mesurées puis corrigées.** Avant : 12 familles de
+commandes sous 44×44 (dont 58 boutons ronds à 40 px), un texte à 9 px,
+un écran sans retour. La cible s'étend par pseudo-élément — **le dessin
+validé ne bouge pas**, seule la zone du doigt grandit. Après : 0, 0, 0.
+
+**Les traits verticaux du fond** ont disparu.
+
+### Trois pièges payés
+1. `typeof` sur un `const` en zone morte **lève** une erreur (contrairement
+   à une variable non déclarée) : le garde `typeof x === "function"` a tué
+   le chargement. Passage par un porteur mutable déclaré en amont.
+2. Le badge de conseil posé dans le `<b>` du rail polluait le NOM du
+   compte — six sondes en échec, et surtout un nom faux pour un lecteur
+   d'écran. Déplacé dans la sous-ligne.
+3. `-replace` PowerShell a **corrompu les accents** d'une sonde (mojibake).
+   Le piège était consigné dans mes instructions ; je l'ai fait quand même.
+   Réparé par table en Python. Règle re-notée : réécrire le fichier, ne
+   jamais patcher du texte accentué en PowerShell.
+
+## État : 62 écrans · 265/265 (27+22+26+17+16+16+9+13+14+31+22+26+26) · 0 défaut
 
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
