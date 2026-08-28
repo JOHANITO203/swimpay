@@ -2626,7 +2626,7 @@ button { font: inherit; color: inherit; }
         <button class="btn btn-danger" data-retour-visuel="Accès révoqué" style="height: 34px; padding-inline: 12px; font-size: 12.5px">Révoquer</button>
       </div>
       <div class="row" style="cursor: default">
-        <span class="txt"><b>Double validation</b><span>Deux signatures au-delà du seuil</span></span>
+        <span class="txt"><b>Double validation</b><span>Approbation d'un cosignataire · PIN ou biométrie</span></span>
         <input class="champ" id="pp-seuil" inputmode="numeric" value="500 000" style="width: 110px; padding: 8px 10px; font-size: 14px; text-align: right" aria-label="Seuil">
         <button class="bascule" id="pp-double" aria-pressed="true" aria-label="Double validation"><i></i></button>
       </div>
@@ -2931,6 +2931,39 @@ button { font: inherit; color: inherit; }
   </div>
 </div>
 
+<div class="ecran" id="approbation" hidden>
+  <div class="shell flux">
+    <p class="badge-jour" style="margin-top: 14px">Vue du cosignataire — l'appareil de N. Kader (démo)</p>
+    <div class="fluxbar" style="padding-top: 0">
+      <span class="vide"></span>
+      <h2>Approbation requise</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="carte">
+      <div class="row" style="cursor: default">
+        <span class="avatar">CL</span>
+        <span class="txt"><b>Camille Laurent · <span data-pme="nom">Mon entreprise</span></b><span>Demande ta signature pour un envoi</span></span>
+      </div>
+    </div>
+
+    <div class="saisie">
+      <div class="montant" id="ap2-montant">600 000</div>
+      <small id="ap2-dest">Fournisseur Tissus &amp; Fils · Orange Money</small><br>
+      <small class="recap" id="ap2-motif">« Facture F-889 · commande d'août »</small>
+    </div>
+
+    <div style="margin-top: auto"></div>
+    <button class="cta" id="ap2-bio" data-mene="envoye">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" style="display: inline-block; vertical-align: -4px; margin-right: 8px"><path d="M12 11a2 2 0 0 1 2 2c0 2.5-.5 4.5-1.2 6.3M8.5 12.5A3.5 3.5 0 0 1 15.5 13c0 1.8-.2 3.5-.7 5M5.5 10.5A6.5 6.5 0 0 1 18.5 13c0 1.2-.1 2.4-.3 3.5M12 4.5a8.5 8.5 0 0 1 8.5 8.5M3.8 13.5c-.2-.5-.3-1-.3-1.5a8.5 8.5 0 0 1 3-6.5"/></svg>
+      Approuver par biométrie</button>
+    <div class="sheet-actions" style="margin-top: 10px">
+      <button class="btn" id="ap2-code" data-mene="envoye">Approuver par code</button>
+      <button class="btn btn-danger" id="ap2-refuse" data-mene="envoye">Refuser</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================================================================
      ÉCRAN 5 — NOTIFICATIONS
      ================================================================ -->
@@ -3018,7 +3051,8 @@ button { font: inherit; color: inherit; }
   </div>
   <div class="sheet-actions">
     <button class="btn" data-ferme>Annuler</button>
-    <button class="btn" id="sd-demande" style="background: var(--acide); border-color: var(--acide); color: #0B0C0E; font-weight: 600">Demander la signature de N. Kader</button>
+    <button class="btn" id="sd-demande" style="background: var(--acide); border-color: var(--acide); color: #0B0C0E; font-weight: 600">Demander l'approbation de N. Kader</button>
+    <button class="btn" id="sd-voir" data-va="approbation" hidden>Voir côté N. Kader — démo</button>
   </div>
 </div>
 
@@ -4083,27 +4117,63 @@ document.getElementById("pe-cta").addEventListener("click", function () {
   const seuil = parseInt((document.getElementById("pp-seuil").value || "").replace(/[^0-9]/g, ""), 10) || 500000;
   const dv = document.getElementById("pp-double").getAttribute("aria-pressed") === "true";
   if (dv && m > seuil) {
-    doubleSuite = () => conclut(true);
+    demandeDouble = { m, dest, motif, moyen, num };
     document.getElementById("sd-texte").textContent =
-      "Cet envoi de " + fmt(String(m)) + " dépasse le seuil de " + fmt(String(seuil)) + " — deux signatures requises.";
+      "Cet envoi de " + fmt(String(m)) + " dépasse le seuil de " + fmt(String(seuil)) +
+      " — l'approbation d'un cosignataire est requise.";
     const sd = document.getElementById("sd-demande");
-    sd.textContent = "Demander la signature de N. Kader";
+    sd.hidden = false;
+    sd.textContent = "Demander l'approbation de N. Kader";
+    document.getElementById("sd-voir").hidden = true;
     voile.hidden = false;
     document.getElementById("sheet-double").hidden = false;
   } else {
     conclut(false);
   }
 });
-let doubleSuite = null;
+/* la 2e signature est une approbation EXTERNE : N. Kader, sur SON compte,
+   approuve par PIN ou biométrie */
+let demandeDouble = null;
 document.getElementById("sd-demande").addEventListener("click", function () {
   occupe(this, "Demande envoyée…", () => {
-    this.textContent = "N. Kader a signé ✓";
-    setTimeout(() => {
-      const suite = doubleSuite;
-      doubleSuite = null;
-      fermeSheet();
-      if (suite) suite();
-    }, 650);
+    document.getElementById("sd-texte").textContent =
+      "Demande envoyée · en attente de l'approbation de N. Kader sur son appareil.";
+    this.hidden = true;
+    document.getElementById("sd-voir").hidden = false;
+  });
+});
+document.getElementById("sd-voir").addEventListener("click", () => {
+  fermeSheet();
+  const d = demandeDouble || { m: 600000, dest: "Fournisseur", motif: "Sans motif", moyen: { nom: "Orange Money", frais: "1 %" }, num: "····" };
+  document.getElementById("ap2-montant").textContent = fmt(String(d.m));
+  document.getElementById("ap2-dest").textContent = d.dest + " · " + d.moyen.nom + " " + d.num;
+  document.getElementById("ap2-motif").textContent = "« " + d.motif + " »";
+});
+const approuve = (mode) => {
+  const d = demandeDouble;
+  if (!d) { va("b-pme"); return; }
+  demandeDouble = null;
+  cloture({ titre: "Envoi effectué",
+    sous: d.dest + " · " + d.moyen.nom + " " + d.num + " · « " + d.motif + " » · approuvé par N. Kader (" + mode + ")",
+    montant: d.m, nom: d.dest, categorie: d.motif,
+    livre: "pme-debit", retour: "b-pme", frais: d.moyen.frais });
+};
+document.getElementById("ap2-bio").addEventListener("click", function () {
+  occupe(this, "Lecture de l'empreinte…", () => {
+    this.innerHTML = this.innerHTML;
+    approuve("biométrie");
+  });
+});
+document.getElementById("ap2-code").addEventListener("click", () => {
+  ouvrePin(() => approuve("code"));
+});
+document.getElementById("ap2-refuse").addEventListener("click", function () {
+  const d = demandeDouble || { m: 600000, dest: "Fournisseur" };
+  demandeDouble = null;
+  occupe(this, "Refus envoyé…", () => {
+    this.textContent = "Refuser";
+    cloture({ titre: "Envoi non signé", sous: "N. Kader a refusé · aucun débit — " + d.dest + " n'est pas payé",
+      montant: d.m, livre: "rien", retour: "b-pme" });
   });
 });
 /* PME — approvisionner la trésorerie */

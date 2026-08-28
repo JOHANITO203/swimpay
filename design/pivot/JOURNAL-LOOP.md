@@ -572,6 +572,34 @@ avant construction.
 ## État : 58 écrans · 158/158 (14 + régressions 27+22+26+17+16+16+9+11)
 · 0 cassée · 0 orphelin · 0 débord
 
+---
+
+# BOUCLE 13 — la 2e signature est une approbation externe (2026-08-28)
+
+## Le retour
+
+> les signatures pour les PME seront des approbations d'un compte externe
+> avec PIN ou biométrie
+
+## Livré (sonde 9 refondue 13/13 + régressions 27+22+26+17+16+16+9+14 = 160/160)
+
+- Le flow devient trois temps réels : (1) côté PME, la sheet dit
+  « approbation d'un cosignataire requise » → **demande envoyée à
+  N. Kader · en attente sur son appareil** ; (2) l'écran `approbation` —
+  **la vue du cosignataire** (cadre démo assumé) : qui demande (Camille
+  Laurent · l'entreprise), le montant, le destinataire + rail, le motif ;
+  (3) il approuve **par biométrie** (lecture d'empreinte simulée) ou
+  **par code** (la sheet PIN), ou **refuse** (« Envoi non signé · aucun
+  débit — le fournisseur n'est pas payé »).
+- Le reçu porte « approuvé par N. Kader (biométrie/code) » ; le débit
+  n'a lieu qu'après l'approbation. Le panneau Entreprise dit le vrai
+  mécanisme : « Approbation d'un cosignataire · PIN ou biométrie ».
+- Sonde-app améliorée : les arêtes des sheets globales (chrome commun)
+  comptent dans le graphe d'atteignabilité — `approbation` n'est pas
+  orphelin, il est atteint via la sheet de l'écran actif.
+
+## État : 59 écrans · 160/160 · 0 cassée · 0 orphelin · 0 débord
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;

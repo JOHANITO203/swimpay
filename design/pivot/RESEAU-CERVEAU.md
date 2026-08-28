@@ -118,7 +118,9 @@ par profil ; les écrans de flux se rendent depuis ce registre.
 KYC à l'onboarding (étape 4/5, pièce lue → « identité vérifiée » gagnée) ;
 plafonds BCEAO APPLIQUÉS (solde 2M à la recharge, 10M mensuel aux débits,
 jauges vivantes, refus expliqué avec la marge) ; PIN exigé au-delà de
-100 000 ; double validation PME réelle au-delà du seuil configuré ;
+100 000 ; double validation PME réelle au-delà du seuil configuré — la 2e
+signature est une APPROBATION depuis le compte externe du cosignataire,
+par PIN ou biométrie (écran « vue du cosignataire ») ;
 demande de paiement entrante (payer / refuser sans débit) ; réception
 simulable ; frais différenciés par rail (externes 1 %, SwimPay gratuit,
 banque 200) jusque dans le reçu ; résolution du numéro en identité
