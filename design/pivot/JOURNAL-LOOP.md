@@ -976,9 +976,102 @@ conception — l'assertion visait le mauvais élément, pas un défaut.
 Sonde parcours 16 : 16/16 (structure du hero, encre, bord-à-bord,
 raccord, contraste 7:1 au pire du dégradé, nav intacte aux deux formats).
 
-## État : 65 écrans · 306/306 (27+22+26+17+16+16+9+13+14+31+22+26+26+25+16) · 0 défaut
+## Boucles 29-30 — les assets du commanditaire deviennent le matériau
+
+Le verre écrit à la main a été refusé : « tous les composants en verre que
+tu crées ont la même gueule et ne ressemblent pas à la ref ». Des rendus 3D
+ont été déposés dans `design/pivot/assets/` — huit cartes, quatre fonds,
+deux surfaces vertes. Le CSS ne fabrique plus de verre : il monte des
+images.
+
+**Le montage, en trois pièces et deux jeux.**
+- `--fond-corps` : le fond texturé, sur le corps de l'app. C'est lui qui
+  remplace les traits verticaux, sur demande explicite.
+- `--fond-hero` : la surface verte, **découpée par un masque SVG** et posée
+  sur l'en-tête et le solde — la « densité » demandée pour cette zone.
+- `--carte-verre` : la carte, **détourée** (PNG à alpha), donc posable sur
+  n'importe quel fond. Ratio fixe : l'étirer détruit son éclairage interne
+  (mesuré : en cadre 9 zones elle devenait une barre métallique).
+
+Un jeu par thème, et une bascule clair/sombre qui retient le choix et
+respecte celui du système au premier chargement. Un thème ne change pas
+que des couleurs : il **change de jeu d'assets**.
+
+**Le défaut le plus grave n'était pas visible à l'œil.**
+La carte givrée choisie pour le thème sombre ne portait pas son texte :
+**1,94:1 au pire pixel** sous le montant. La capture semblait bonne parce
+que l'ombre portée fabriquait un halo — un halo n'est pas du contraste. Les
+huit cartes ont donc été mesurées, chacune sur sa zone de texte, au pire
+pixel et non en moyenne :
+
+| famille | verdict |
+|---|---|
+| 7 cartes givrées / néon | **aucun texte ne tient** — ni blanc ni noir |
+| 4 cartes en verre sombre | le blanc passe, de 4,75:1 à 8,79:1 |
+
+Le verre givré est un beau matériau qui ne peut rien porter. On a pris
+`Dark_glass_bank_card_render_…2116` (liseré acide, 5,35:1 au pire pixel) :
+corps sombre dans les deux thèmes, liseré qui la détache de la nappe —
+c'est exactement le geste de la référence.
+
+**L'accent a trois rôles, pas un.** Sur blanc, le néon écrit à 1,25:1.
+Séparés et mesurés avant d'être posés :
+
+| jeton | rôle | sombre | clair |
+|---|---|---|---|
+| `--acide` | remplissage : disques, boutons, FAB (encre #141414 à 14:1) | #A2FF01 | #A2FF01 |
+| `--acide-encre` | l'accent **écrit** | #A2FF01 | #4D7A00 — 5,10:1 sur blanc, 4,63:1 sur le sol |
+| `--acide-trace` | l'accent qui porte une **donnée** (seuil 3:1) | #A2FF01 | #66A300 — 3,08:1 sur blanc |
+
+**Deux défauts antérieurs tombés au passage.** La règle qui estompe les
+centimes (`.montant span`) frappait aussi les montants entiers, parce
+qu'ils sont enveloppés dans un span de liaison de données ; l'exception ne
+connaissait que `data-caisse`. La caisse du jour de e-commerce s'affichait
+donc à 38 % d'opacité **dans les deux thèmes, depuis toujours**. Logique
+inversée : on n'estompe que le span **sans** attribut de liaison, pour
+qu'un futur profil n'ait pas à s'inscrire dans une liste d'exceptions.
+
+## État : 65 écrans · 314/314 · 0 défaut · deux thèmes mesurés
+
+Contraste : aucune combinaison sous le seuil, en clair comme en sombre.
+Cibles tactiles, tailles de texte, retours de flux, libellés de boutons,
+ordre d'affichage mobile : conformes.
 
 ## Leçons payées (reportées à la skill si récurrentes)
+
+**La sonde ment aussi — trois fois sur cette boucle.**
+
+1. *Une valeur composée lue dans la mauvaise échelle.* `color-mix()` rend
+   `color(srgb 0.95 0.95 0.94 / 0.78)` : composantes en **0-1**, lues comme
+   des 0-255, donc un blanc cassé rendu presque **noir**. Le symptôme qui a
+   trahi le bug : **assombrir l'encre faisait BAISSER le contraste
+   annoncé**, ce qui est impossible sur un fond clair. Une mesure qui varie
+   dans le mauvais sens est un bug de sonde, jamais un résultat.
+2. *Un fond en IMAGE n'a pas de couleur.* La sonde remontait les ancêtres
+   jusqu'au sol du thème et comparait le texte blanc de la carte au blanc
+   de la page — « blanc sur blanc », alors que la carte est sombre. Une
+   image de fond **déclare** désormais `--fond-mesure`, relevé sur l'asset
+   à son pire pixel. La sonde signale toute image qui ne le déclare pas.
+3. *Un sélecteur trop large est un faux PASS.* « une `.plaque-verre` existe
+   dans cet écran » passait alors qu'aucune carte n'était montée dans le
+   hero de PME — il y en avait une plus bas dans la page. Resserré en
+   `.solde-carte > .plaque-verre`.
+
+**L'étalonnage n'est pas facultatif.** Trois paires dont la réponse est
+posée à la main **avant** de lancer la sonde, passant par le même code que
+la mesure réelle ; si l'une dévie, la sonde refuse de rendre ses mesures.
+Au premier essai c'est **mon arithmétique** qui était fausse, pas la sonde
+(18,73 au lieu de 18,42) — c'est exactement le doute que l'étalonnage sert
+à trancher.
+
+**Une couleur de repli ne se peint pas sous une image à alpha** : elle
+déborde de la silhouette et dessine un rectangle autour. Si on la veut
+pour la mesure, on la **déclare** sans la peindre.
+
+**Une attente figée dans une sonde ment sur la cause.** Le ratio de la
+carte était écrit `470 / 319` ; changer d'asset faisait échouer la sonde
+en accusant un étirement. Elle lit maintenant le jeton.
+
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;
   seule l'émulation CDP le montre.
