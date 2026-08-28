@@ -467,6 +467,36 @@ après.
 
 ## État : 56 écrans · 122/122 · 0 cassée · 0 orphelin · 0 débord
 
+---
+
+# BOUCLE 8 — les comptes liés de chaque profil (2026-08-28)
+
+## Le retour
+
+Ajouter à tous les profils les bindings / liaisons de comptes bancaires
+et mobile money, pour faciliter la circulation.
+
+## Livré (9/9 + régressions 25+22+26+17+16+16 = 131/131)
+
+- **Section « Comptes liés » dans chaque panneau** (Personnel, Boutique,
+  Entreprise, Cabinet, Boutique en ligne) : liste typée (pastilles de
+  marques, mobile money · immédiat / banque · sous 3 heures) + formulaire
+  « Lier un compte » (type en chips OM/MTN/Moov/Wave/Banque, 4 chiffres,
+  nom exigé pour une banque).
+- **La liaison alimente les flux** — registre unique `liaisons` par
+  profil, rendu partagé : un MTN lié au Personnel apparaît dans les
+  sources de Recharge ; un Moov lié à la Boutique devient une destination
+  de Retrait (3→4) ; un Wave lié à l'Entreprise devient une source
+  d'Approvisionnement (2→3). Vérifié par clics réels.
+- rt-dest / dp-sources / er-dest / rc-sources désormais RENDUS depuis le
+  registre (plus de listes en dur) — ordres et libellés préservés
+  (régressions 5 et 6 vertes sans retouche).
+- Défaut d'œil attrapé : les 5 chips de type ne wrappaient pas, « Banque »
+  clippée hors carte (le clic de sonde passait, pas le doigt) — wrap +
+  chips compactes.
+
+## État : 56 écrans · 131/131 · 0 cassée · 0 orphelin · 0 débord
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;

@@ -86,6 +86,14 @@ Le cycle de l'argent du client : recharge (rail → SwimPay) → circulation
 (SwimPay → tout rail, via le widget Transférer) → réception (tout rail →
 SwimPay).
 
+## 2 ter. Les comptes liés (bindings, décision commanditaire)
+
+Chaque profil porte ses **Comptes liés** — mobile money et banques —
+gérés dans son panneau (liste + « Lier un compte »). Un compte lié
+ALIMENTE aussitôt les flux du profil : recharge (perso), retraits
+(commerçant, e-commerce), dépôts (PME). Un seul registre `liaisons`
+par profil ; les écrans de flux se rendent depuis ce registre.
+
 ## 3. Le pont entre profils (l'Annuaire au sens fort)
 
 - Chaque panneau business nomme son **gérant** : la même personne physique
