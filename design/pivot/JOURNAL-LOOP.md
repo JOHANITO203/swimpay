@@ -219,6 +219,41 @@ Flow transversal : « Se déconnecter » → splash ; remboursement unifié par
   parcours 2 **22/22** (titre « Retrait effectué » mis à jour).
   `sonde-app` : **50 écrans**, 0 cible cassée, 0 orphelin, 0 débord.
 
+---
+
+# BOUCLE 3-bis — la chaîne de l'algorithme (retour commanditaire)
+
+## La critique
+
+1. « Motif — il suit l'argent, jusqu'au reçu » : expression jamais demandée.
+   Diagnostic élargi : des slogans posés dans des zones fonctionnelles.
+2. Sur Envoyer : il manque les moyens d'envoi (mobile money / banque) AVANT
+   d'arriver à l'envoi — les itérations ne suivaient pas le schéma de
+   l'algorithme (le Cerveau V1), la chaîne logique n'était pas déroulée.
+
+## Règle ajoutée à la DoD (permanente)
+
+> **Chaque flow met en scène son module du Cerveau, dans l'ordre du schéma :**
+> l'**Annuaire** résout le destinataire (identité vérifiée, ses comptes) ;
+> le **Routeur** propose le moyen (mobile money / banque) avec délai et
+> frais AVANT le montant ; le **Rapprocheur** nourrit activité et console ;
+> le **Moteur de factures** porte la facturation. Un écran qui saute une
+> étape de la chaîne est un échec de boucle, pas un détail.
+> **Et : zones fonctionnelles = libellés sobres ; le ton n'est admis que
+> sur l'onboarding.**
+
+## Corrections livrées (20/20 + régressions 25/25 et 22/22 = 67/67)
+
+- `pme-envoyer` refondu : Destinataire → **Moyen de réception** (Mobile
+  money A/B immédiat, Banque sous 3 h, sélection à coche) → Motif (label
+  sobre) → montant → **récap de routage vivant** (« Par … · délai ·
+  Frais — aucun ») ; la clôture porte le moyen choisi.
+- `envoyer` (Personnel) : même chaîne — Awa K. « Identité vérifiée · un
+  seul compte » (Annuaire), carte « Elle reçoit sur » (mobile money /
+  banque), récap de routage sous le solde, clôture avec le moyen.
+- Passe anti-slogan : 11 libellés ramenés au sobre (dépôt, scan, import,
+  intégration, comptable, checkout) ; le pitch ne survit que sur Bienvenue.
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;
