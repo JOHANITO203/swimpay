@@ -718,7 +718,46 @@ Outils : `capture-transit.mjs` fige l'animation à un instant donné
 virtuel de CDP, lui, ne fige PAS les animations CSS (première tentative
 ratée). `erreur.mjs` remonte les exceptions de la page.
 
-## État : 61 écrans · 213/213 (27+22+26+17+16+16+9+13+14+31+22) · 0 défaut
+## Boucle 18 — le bureau cesse d'être un téléphone agrandi
+
+Consigne : garder le rendu téléphone tel quel, convertir les écrans de
+bureau qui présentent une UI mobile. Mesure d'entrée : à 1440 px,
+**41 écrans sur 61 occupaient 430 px**, une colonne au milieu du vide.
+
+**Le mécanisme.** `composeBureau()` lit ce que chaque écran de flux
+contient et lui attribue un mode, puis range ses enfants dans des volets.
+Ces volets sont en `display: contents` en dessous de 881 px : ils
+n'existent pas pour la mise en page mobile. **Tout le CSS de bureau est
+enfermé dans `@media (min-width: 881px)`.**
+
+**Les quatre modes** (39 écrans de flux) :
+- `duo` (12) — flux d'argent : les choix à gauche, un **panneau d'action
+  collant de 400 px** à droite (montant, récap, CTA). Le pavé numérique
+  disparaît : sur bureau **on tape au clavier**, avec l'invite qui le dit.
+  Le classement se fait par TYPE et non par position — Envoyer écrit son
+  montant en tête, Retirer en bas, les deux se composent pareil.
+- `hub` (3) — mondes business : caisse et actions à gauche (380 px), le
+  journal des opérations à droite.
+- `listes` (2) — Destinataire, Destination : les sections deviennent des
+  blocs qui **coulent en deux colonnes CSS**. Première tentative en
+  grille : deux blocs d'une même ligne se règlent sur le plus haut et
+  laissent un trou — vu au rendu, corrigé en `columns: 2`.
+- `focus` (22) — tâche unique : un **panneau encadré centré** (≈555 px)
+  au milieu de l'écran, et non une colonne nue collée en haut.
+
+**Preuve que le téléphone n'a pas bougé** : captures 390 px d'avant et
+d'après comparées **pixel à pixel** — accueil, destinataire, activité :
+`IDENTIQUE`, 0 pixel d'écart. Plus les 213 assertions à 390 px.
+
+### Le piège de cascade, encore
+`.ecran[data-bureau="focus"] { display: flex }` a la MÊME spécificité que
+`.ecran[hidden] { display: none }` et arrive plus loin dans la feuille :
+tous les écrans focalisés s'affichaient en même temps. La capture l'a
+montré (trois écrans différents rendaient la même image), pas la sonde.
+Corrigé par `:not([hidden])`. Rappel : une règle qui rallume un
+`display` doit toujours s'exclure de l'état caché.
+
+## État : 61 écrans · 235/235 (27+22+26+17+16+16+9+13+14+31+22+22) · 0 défaut
 
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à

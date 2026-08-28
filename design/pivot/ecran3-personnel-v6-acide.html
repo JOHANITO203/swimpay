@@ -633,6 +633,79 @@ button { font: inherit; color: inherit; }
   }
 }
 
+/* ================= COMPOSITION DE BUREAU =================
+   Les écrans de flux sont écrits en colonne pour le téléphone. Au-delà de
+   880 px, une colonne de 430 px au milieu d'un écran de 1440 est une
+   interface mobile posée sur un bureau : on recompose.
+
+   Les volets et les blocs n'existent QUE sur bureau — en dessous ils sont
+   transparents à la mise en page (display: contents), donc le rendu
+   téléphone est celui d'avant, à l'octet près. */
+.pane-a, .pane-b, .bloc { display: contents; }
+.pave-clavier { display: none; }
+
+@media (min-width: 881px) {
+  .flux[data-bureau] { min-height: 0; padding-bottom: 44px; }
+  .flux[data-bureau] .pane-a,
+  .flux[data-bureau] .pane-b { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .flux[data-bureau] > .fluxbar { grid-column: 1 / -1; }
+  .flux[data-bureau] .cta { width: 100%; }
+  /* les cales de fin de colonne n'ont plus de sens hors du flux vertical */
+  .flux[data-bureau] div[style*="margin-top: auto"] { display: none; }
+
+  /* — A. flux d'argent : les choix à gauche, l'action dans un panneau collant — */
+  .flux[data-bureau="duo"] {
+    display: grid; grid-template-columns: minmax(0, 1fr) 400px;
+    column-gap: 30px; align-items: start; max-width: 1060px;
+  }
+  .flux[data-bureau="duo"] .pane-b {
+    position: sticky; top: 24px;
+    background: var(--surface); border: 1px solid var(--trait);
+    border-radius: 22px; padding: 4px 24px 24px; gap: 10px;
+  }
+  .flux[data-bureau="duo"] .pane-b .saisie { padding: 24px 0 4px; }
+  .flux[data-bureau="duo"] .pane-b .saisie .montant { font-size: 44px; }
+  .flux[data-bureau="duo"] .pane-b .numpad { display: none; }
+  .flux[data-bureau="duo"] .pave-clavier {
+    display: block; margin: 2px 0 6px; text-align: center;
+    font-size: 12.5px; color: var(--sourd);
+  }
+
+  /* — B. hubs business : identité et actions à gauche, le journal à droite — */
+  .flux[data-bureau="hub"] {
+    display: grid; grid-template-columns: 380px minmax(0, 1fr);
+    column-gap: 30px; align-items: start; max-width: 1060px;
+  }
+  .flux[data-bureau="hub"] .actions { flex-wrap: wrap; margin-top: 4px; }
+  .flux[data-bureau="hub"] .actions .btn { flex: 1 1 44%; }
+
+  /* — C. écrans de listes : les sections coulent en deux colonnes.
+        Colonnes CSS et non grille : en grille, deux blocs de la même ligne
+        se règlent sur le plus haut et laissent un trou sous le plus court. */
+  .flux[data-bureau="listes"] { display: block; max-width: 1000px; columns: 2; column-gap: 26px; }
+  .flux[data-bureau="listes"] > .fluxbar,
+  .flux[data-bureau="listes"] > .bloc.pleine { column-span: all; }
+  .flux[data-bureau="listes"] > .bloc {
+    break-inside: avoid; display: flow-root; margin-bottom: 20px;
+  }
+  .flux[data-bureau="listes"] > .bloc > * + * { margin-top: 10px; }
+
+  /* — D. tâches focalisées : un vrai panneau posé sur le fond, pas une colonne — */
+  /* :not([hidden]) est indispensable — sans lui cette règle bat, à égalité
+     de spécificité et par l'ordre, le .ecran[hidden] { display: none } */
+  .ecran[data-bureau="focus"]:not([hidden]) {
+    min-height: 100dvh; padding-block: 26px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .flux[data-bureau="focus"] {
+    max-width: 560px; padding: 6px 30px 30px;
+    background: rgba(255, 255, 255, .015);
+    border: 1px solid var(--trait); border-radius: 26px;
+  }
+  .flux[data-bureau="focus"].papier-large { max-width: 660px; }
+  .flux[data-bureau="focus"] .fluxbar { padding-top: 10px; }
+}
+
 /* ---------------- notifications ---------------- */
 .nonlu { width: 8px; height: 8px; border-radius: 999px; background: var(--acide); flex: 0 0 auto; }
 
@@ -4938,6 +5011,108 @@ document.addEventListener("click", (e) => {
 });
 voile.addEventListener("click", fermeSheet);
 addEventListener("keydown", (e) => { if (e.key === "Escape") fermeSheet(); });
+
+/* ═══ COMPOSITION DE BUREAU ═══
+   Chaque écran de flux déclare ce qu'il est, d'après ce qu'il contient :
+     duo    — un flux d'argent : des choix, puis un montant à valider
+     hub    — un monde business : une identité, des actions, un journal
+     listes — des sections de listes qui se rangent en deux colonnes
+     focus  — une tâche unique, qui mérite un panneau et pas une colonne
+   Les volets créés ici sont neutres en dessous de 881 px. */
+const composeBureau = () => {
+  document.querySelectorAll(".shell.flux").forEach((f) => {
+    if (f.dataset.bureau) return;
+    const enfants = [...f.children].filter((c) => !c.classList.contains("fluxbar"));
+    const iSaisie = enfants.findIndex((c) => c.classList.contains("saisie"));
+    /* le montant et sa validation forment le volet d'action, où qu'ils soient
+       écrits — l'écran Envoyer met le montant en tête, Retirer le met en bas */
+    const versAction = (c, i) =>
+      c.matches(".saisie, .numpad, .cta, .sheet-actions")
+      || (i > iSaisie && c.matches(".btn, .link, div:not([class])"));
+    const aHub = enfants.some((c) => c.classList.contains("actions"));
+    const cartes = enfants.filter((c) => c.classList.contains("carte")).length;
+    let mode;
+    if (iSaisie !== -1) {
+      /* un flux d'argent ne se dédouble que s'il a vraiment des choix à gauche */
+      const restant = enfants.filter((c, i) => !versAction(c, i));
+      mode = restant.some((c) => c.matches(".carte, .champ")) ? "duo" : "focus";
+    } else if (aHub) mode = "hub";
+    else if (cartes >= 2) mode = "listes";
+    else mode = "focus";
+    f.dataset.bureau = mode;
+    const ecran = f.closest(".ecran");
+    if (ecran) ecran.dataset.bureau = mode;
+    if (f.querySelector(":scope > .papier")) f.classList.add("papier-large");
+    if (mode === "focus") return;
+
+    if (mode === "listes") {
+      /* un bloc = un titre de section et ce qui le suit */
+      const blocs = [];
+      enfants.forEach((c) => {
+        const ouvre = c.matches("h2.sec") || !!c.querySelector(":scope > h2.sec");
+        if (ouvre || !blocs.length) blocs.push([]);
+        blocs[blocs.length - 1].push(c);
+      });
+      blocs.forEach((contenu) => {
+        const hote = document.createElement("section");
+        hote.className = "bloc";
+        const sansTitre = !contenu[0].matches("h2.sec") && !contenu[0].querySelector(":scope > h2.sec");
+        if (sansTitre) hote.classList.add("pleine");
+        contenu.forEach((c) => hote.append(c));
+        f.append(hote);
+      });
+      return;
+    }
+
+    const a = document.createElement("div"); a.className = "pane-a";
+    const b = document.createElement("div"); b.className = "pane-b";
+    if (mode === "duo") {
+      enfants.forEach((c, i) => (versAction(c, i) ? b : a).append(c));
+      const aide = document.createElement("p");
+      aide.className = "pave-clavier";
+      aide.textContent = "Tape le montant au clavier";
+      const pad = b.querySelector(".numpad");
+      if (pad) pad.after(aide);
+    } else {
+      enfants.forEach((c) => {
+        const gauche = c.classList.contains("halo") || c.classList.contains("actions")
+          || c.classList.contains("tuiles") || c.classList.contains("cta");
+        (gauche ? a : b).append(c);
+      });
+    }
+    f.append(a, b);
+  });
+};
+composeBureau();
+
+/* ═══ SAISIE AU CLAVIER ═══
+   Sur bureau le pavé disparaît : on tape. Le pavé reste sur les écrans qui
+   n'ont que lui pour entrer un chiffre (onboarding, code). */
+const clavierMontant = (touche) => {
+  const ecran = document.querySelector(".ecran:not([hidden])");
+  if (!ecran) return false;
+  const chiffre = /^[0-9]$/.test(touche);
+  if (!chiffre && touche !== "Backspace") return false;
+  if (ecran.querySelector("#m-pad")) {
+    brut = chiffre ? (brut + touche).slice(0, 9) : brut.slice(0, -1);
+    maj();
+    return true;
+  }
+  const pad = ecran.querySelector("[data-pad]");
+  if (!pad || !pad.dataset.pad.startsWith("m:")) return false;
+  const cle = pad.dataset.pad.slice(2);
+  const actuel = fluxM[cle] || "";
+  fluxM[cle] = chiffre ? (actuel + touche).slice(0, 9) : actuel.slice(0, -1);
+  majFlux(cle);
+  return true;
+};
+addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const ou = e.target;
+  if (ou && (ou.tagName === "INPUT" || ou.tagName === "TEXTAREA" || ou.isContentEditable)) return;
+  if (!document.getElementById("voile").hidden) return; /* une feuille est ouverte */
+  if (clavierMontant(e.key)) e.preventDefault();
+});
 
 /* notifications — tout lire éteint les pastilles et les badges des cloches */
 document.getElementById("n-toutlire").addEventListener("click", () => {
