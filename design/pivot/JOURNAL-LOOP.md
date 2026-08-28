@@ -402,6 +402,38 @@ Retour commanditaire : le mobile→banque du Personnel vise SA banque
 
 ## État : 55 écrans · 106/106 · 0 cassée · 0 orphelin · 0 débord
 
+---
+
+# BOUCLE 6 — retirer élargi, envoi PME complet, le cash clarifié (2026-08-28)
+
+## Les trois retours
+
+1. Retirer (commerçant) : élargir — pas seulement vers la banque, aussi
+   vers les mobile money (confirmé en cours de boucle par le commanditaire).
+2. Envoyer (PME) : limité à deux mobile money — compléter.
+3. Facturer (PME) : pas assez clair — ce qu'on ne facture PAS
+   automatiquement, ce sont les ventes en espèces, saisies pour la compta.
+
+## Livré (11/11 + régressions 25+22+26+17+16 = 117/117)
+
+- **Retirer** : trois destinations à coche — Banque ····2201 (sous 3 h),
+  Orange Money du gérant ····07 88 (immédiat), Wave du gérant ····12 44
+  (immédiat) ; récap Routeur suit la destination ; clôture la porte.
+- **Envoyer PME** : grille des 6 rails (Orange Money · MTN MoMo · Moov
+  Money · Wave · Compte SwimPay · Banque, pastilles de marques) + champ
+  numéro du destinataire ; la clôture porte rail + numéro + motif.
+- **Facturer clarifié** : bandeau « Les paiements SwimPay se facturent
+  tout seuls. Ici : une facture à encaisser, ou une vente en espèces à
+  enregistrer. » ; choix **À encaisser / Payée en espèces** ; l'aperçu
+  et le CTA s'adaptent (« Enregistrer la vente », mentions espèces) ;
+  la facture espèces entre en statut « Payée · espèces », SANS toucher
+  la trésorerie SwimPay ni le total en attente (l'argent est en caisse
+  physique — c'est une écriture comptable), pas de relance en lecture.
+- 1 sonde périmée détectée en régression (libellé PME sans numéro) —
+  alignée après vérification que l'app était juste.
+
+## État : 55 écrans · 117/117 · 0 cassée · 0 orphelin · 0 débord
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;

@@ -11,7 +11,7 @@ mais présent dans l'app (ou l'inverse) est un défaut de boucle.
 | **Annuaire d'identité** | 1 personne → N numéros → N comptes (mobile money, **plusieurs banques**), tous sur la même identité vérifiée ; identité vérifiée ; les profils business appartiennent à une personne physique | « Identité vérifiée · un seul compte » sur tout destinataire ; « Il/Elle reçoit sur » ; le gérant nommé dans chaque panneau business ; « Mes profils » dans le Profil personnel |
 | **Routeur** | pour chaque mouvement : origine → rails possibles → délai · frais → choix | le sélecteur de moyen + le récap « Par X · délai · Frais — aucun » sur CHAQUE flux d'argent |
 | **Rapprocheur** | chaque mouvement devient une écriture rapprochée | activité (perso, PME, caisse, commandes) mise à jour en tête ; console comptable (auto 92 %, à décider) |
-| **Moteur de factures** | factures, reçus, statuts, relances | facturation PME (créer → aperçu → envoyer → statuts → lire/imprimer/partager) ; reçus signés partout |
+| **Moteur de factures** | factures, reçus, statuts, relances ; les paiements SwimPay se facturent SEULS — la saisie manuelle sert aux ventes en espèces (compta complète) | facturation PME (créer → aperçu → envoyer → statuts → lire/imprimer/partager) ; reçus signés partout |
 
 ## 1. La chaîne canonique d'un mouvement d'argent
 
@@ -41,7 +41,8 @@ retrait commerçant, encaisser QR, scan client, lien e-commerce, checkout.
 
 ### Commerçant (9 nœuds)
 - **Nœuds** : hub (caisse vivante) · encaisser · QR/reçu · scan client ·
-  client vérifié · ventes (remboursement) · code du comptoir · retirer ·
+  client vérifié · ventes (remboursement) · code du comptoir · retirer
+  (vers la banque OU vers un mobile money du gérant) ·
   fin de journée · **paramètres boutique**.
 - **États** : caisse du jour, nb paiements, ventes[], remboursements.
 - **Panneau `bc-params`** : identité boutique (nom, gérant = personne
