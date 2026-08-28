@@ -291,6 +291,50 @@ la chaîne → grand livre.
   périmètre supérieur à celui qui a été sondé.** L'audit exhaustif
   précède la déclaration, pas l'inverse.
 
+---
+
+# BOUCLE 4 — le réseau écrit d'abord, puis complété (2026-08-28)
+
+## La consigne
+
+> série de boucles : écrire le RÉSEAU NEURONAL COMPLET du cerveau, puis
+> tout ce qui est nécessaire pour l'UI, construire, vérifier toute la
+> chaîne de logique et de flow, toutes les pièces manquantes, et ne
+> présenter qu'une fois sûr de n'avoir rien oublié.
+> Chaque profil business a besoin d'un panneau compte/paramètres.
+
+## Méthode appliquée (nouvelle, permanente)
+
+1. **`RESEAU-CERVEAU.md` écrit AVANT de construire** : modules → écrans,
+   chaîne canonique, nœuds/arêtes/états/panneau par profil, pont Annuaire,
+   checklist de complétude, trous assumés.
+2. Diff réseau ↔ app = backlog. 3. Construction. 4. Sondes. 5. Présentation.
+
+## Construit dans cette boucle (17/17 + régressions 25+22+26 = 90/90)
+
+- **4 panneaux paramètres** atteignables par engrenage depuis chaque hub :
+  - `bc-params` Boutique : identité (gérante vérifiée, compte de retrait),
+    PERSONNEL AUTORISÉ à encaisser (liste + ajout réel), préférences.
+  - `pme-params` Entreprise : NOM ÉDITABLE qui se propage partout (hub,
+    badge, papier de facture, « Mes profils » du perso), n° RC, compte lié,
+    RÔLES & ACCÈS (gérante, comptable révocable, double validation à seuil),
+    facturation (préfixe, échéance).
+  - `cpt-params` Cabinet : membres (ajout réel), clients connectés
+    (révoquer), exports par défaut.
+  - `ec-params` Boutique en ligne : domaine autorisé, lien Clés & SDK,
+    reversement (compte + fréquence), notifications.
+- **Factures lisibles** (pièce demandée en boucle 3 et oubliée — nommé) :
+  toucher une facture l'ouvre dans l'aperçu papier avec son numéro,
+  Imprimer / Télécharger / Partager, Relancer si non payée ; le mode
+  création est restauré ensuite.
+- **Pont Annuaire** : le Profil personnel liste « Mes profils » (Kiosque 12,
+  l'entreprise renommée en direct, Maison Kéma) ; chaque panneau nomme sa
+  gérante vérifiée.
+- Une infraction anti-slogan attrapée à l'œil sur le nouveau panneau
+  (« — il se propage partout ») : retirée.
+
+## État : 54 écrans · 90/90 assertions · 0 cible cassée · 0 orphelin · 0 débord
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;
