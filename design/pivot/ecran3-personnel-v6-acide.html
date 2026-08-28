@@ -128,7 +128,7 @@ button { font: inherit; color: inherit; }
 .search input::placeholder { color: var(--sourd); }
 .search:focus-within { border-color: var(--sourd); }
 .icon-btn, .avatar {
-  width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer;
+  width: 44px; height: 44px;   /* plancher Apple */ display: grid; place-items: center; cursor: pointer;
   background: transparent; border: 1px solid var(--trait);
   border-radius: 999px; color: var(--encre); position: relative;
 }
@@ -245,7 +245,7 @@ button { font: inherit; color: inherit; }
 .solde-carte .delta b { color: var(--hero-encre); }
 .solde-carte .oeil { color: var(--hero-sourd); }
 .solde-carte .oeil:hover { color: var(--hero-encre); background: rgba(20, 20, 20, .08); }
-.solde-carte .chip-capsule {
+.solde-carte .chip-capsule { min-height: 44px;
   background: rgba(20, 20, 20, .10); border-color: rgba(20, 20, 20, .22);
   color: var(--hero-encre);
 }
@@ -256,7 +256,9 @@ button { font: inherit; color: inherit; }
   background: linear-gradient(105deg, transparent 32%, rgba(255, 255, 255, .05) 47%, rgba(255, 255, 255, .04) 58%, transparent 72%);
 }
 .ligne1 { display: flex; align-items: center; gap: 8px; color: var(--sourd); font-size: 12.5px; }
-.oeil { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: none; color: var(--sourd); cursor: pointer; border-radius: 999px; }
+/* 44 px de boîte, l'icône reste à 16 : une cible tactile se mesure sur la
+   BOÎTE, et un pseudo-élément ne l'agrandit pas */
+.oeil { margin-left: auto; width: 44px; height: 44px; margin-right: -10px; display: grid; place-items: center; border: 0; background: none; color: var(--sourd); cursor: pointer; border-radius: 999px; }
 .oeil:hover { color: var(--encre); background: var(--surface-2); }
 .montant { font-size: clamp(2.1rem, 4.5vw, 2.6rem); font-weight: 600; letter-spacing: -.01em; line-height: 1.15; margin-top: 2px; }
 /* seuls les CENTIMES s'estompent — un span porteur de données est un
@@ -301,7 +303,7 @@ button { font: inherit; color: inherit; }
   display: flex; align-items: center; justify-content: space-between;
 }
 .carte-head b { font-size: 14.5px; font-weight: 500; }
-.link { font-size: 13px; color: var(--sourd); text-decoration: none; padding: 4px 8px; border-radius: 999px; background: none; border: 0; cursor: pointer; }
+.link { min-height: 44px; display: inline-flex; align-items: center; font-size: 13px; color: var(--sourd); text-decoration: none; padding: 4px 8px; border-radius: 999px; background: none; border: 0; cursor: pointer; }
 .link:hover { color: var(--encre); background: var(--surface-2); }
 
 /* rangées — services et opérations */
@@ -313,7 +315,7 @@ button { font: inherit; color: inherit; }
 .row + .row, .jour + .row { border-top: 1px solid rgba(255, 255, 255, .05); }
 .row:hover { background: var(--surface-2); }
 .rond {
-  width: 42px; height: 42px; border-radius: 50%; flex: 0 0 auto;
+  width: 44px; height: 44px; border-radius: 50%; flex: 0 0 auto;   /* plancher Apple */
   border: 1px solid var(--trait); background: rgba(255, 255, 255, .02);
   display: grid; place-items: center; color: var(--encre);
 }
@@ -473,7 +475,16 @@ button { font: inherit; color: inherit; }
   padding-bottom: 4px; margin-inline: -20px; padding-inline: 20px;
 }
 .carte-rail::-webkit-scrollbar { display: none; }
-.carte-rail > .carte-bancaire { scroll-snap-align: center; flex: 0 0 min(100%, 400px); margin-inline: 0; }
+.carte-rail > * { scroll-snap-align: center; flex: 0 0 min(100%, 400px); margin-inline: 0; }
+/* le rail du hero : les cartes y sont les plaques elles-mêmes */
+#hero-rail { margin-inline: 0; padding-inline: 0; gap: 14px; }
+#hero-rail > .plaque-verre { margin-bottom: 0; }
+.points.hero-points { justify-content: flex-start; margin-top: 2px; }
+/* background-color, PAS background : le raccourci reinitialise
+   background-clip et la pastille redevient un disque plein de 44 px */
+.points.hero-points i { background-color: color-mix(in srgb, var(--hero-encre) 26%, transparent); }
+.points.hero-points i.actif { background-color: var(--hero-encre); }
+.hero-capsules { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .carte-bancaire .tete { display: flex; align-items: flex-start; }
 .carte-bancaire .sans-contact, .carte-bancaire .marque-coffre {
   margin-left: auto; color: rgba(255, 255, 255, .58); display: grid; place-items: center;
@@ -537,7 +548,8 @@ button { font: inherit; color: inherit; }
   background: var(--surface-2); background-clip: content-box;
   cursor: pointer;
 }
-.points i.actif { background: var(--acide); }
+/* background-color : le raccourci reinitialiserait background-clip */
+.points i.actif { background-color: var(--acide); }
 .segments { display: flex; gap: 10px; }
 .segment {
   flex: 1; height: 44px; border-radius: 999px; cursor: pointer;
@@ -1262,19 +1274,10 @@ button { font: inherit; color: inherit; }
 
   <main class="shell page">
     <section class="halo">
-      <div class="solde-carte">
-        <div class="ligne1">
-          N° de compte ····9654
-          <button class="oeil" id="oeil-solde" aria-label="Masquer le solde" aria-pressed="false">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </div>
-        <div class="montant" id="a-solde">1 254 500<span>,00</span></div>
-        <div class="delta"><b>+45 300 (3,7 %)</b> ce mois</div>
-        <span style="display: flex; gap: 8px; flex-wrap: wrap">
-          <button class="chip-capsule" data-va="recharger"><i></i>Recharger</button>
-          <button class="chip-capsule" data-va="carte-ecran"><i></i>··9654 · compte principal</button>
-        </span>
+      <div class="solde-carte" data-hero-cartes>
+        <div class="carte-rail" id="hero-rail" role="group" aria-label="Mes comptes"></div>
+        <div class="points hero-points" id="hero-points"></div>
+        <span class="hero-capsules" id="hero-capsules"></span>
       </div>
 
     </section>
@@ -4101,7 +4104,12 @@ const refAlea = () => "SWP-" + Math.floor(1000 + Math.random() * 9000) + "-" + M
 const ROND_SORTIE = `<span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span>`;
 const majSoldePartout = () => {
   const joli = fmt(String(solde));
-  document.getElementById("a-solde").firstChild.textContent = joli;
+  const a = document.getElementById("a-solde");
+  if (a && a.firstChild) a.firstChild.textContent = joli;
+  /* le solde vit maintenant dans le modèle : on le met à jour là, et les deux
+     vues suivent — sinon l'accueil et « Ma carte » divergent */
+  CARTES[0].solde = Number(String(joli).replace(/[^0-9]/g, "")) || CARTES[0].solde;
+  if (typeof rendHeroCartes === "function") rendHeroCartes();
   document.getElementById("e-solde").textContent = "Solde disponible · " + joli;
   document.getElementById("sw-solde").textContent = joli;
   document.getElementById("rc-solde").textContent = joli;
@@ -6768,6 +6776,112 @@ vaHooks.accueil = ((precedent) => function () {
   caleEntete();
 })(vaHooks.accueil);
 
+/* ═══════════ LES TROIS CARTES : UN SEUL ÉTAT ═══════════
+   L'accueil et l'écran « Ma carte » sont deux VUES du même modèle. Deux
+   sources séparées divergeraient au premier changement — et le premier
+   changement arrive vite : régénérer la carte virtuelle, verrouiller le
+   coffre.
+
+   Le point de modèle qui compte : le compte principal n'a PAS de numéro
+   bancaire. Le porteur est identifié par son NUMÉRO DE TÉLÉPHONE. C'est la
+   définition du produit ; afficher un « N° de compte » serait faux. */
+const CARTES = [
+  {
+    id: "principale", nom: "Compte principal", type: "tel",
+    tel: "+225 07 07 12 34 56",
+    solde: 1254500, cents: "00", delta: "+45 300 (3,7 %)", periode: "ce mois",
+  },
+  {
+    id: "virtuelle", nom: "Carte virtuelle", type: "pan",
+    pan: "5412 7534 9081 4471", exp: "08/28", cvv: "417",
+    plafond: 200000, depense: 63500, statut: "active",
+  },
+  {
+    id: "coffre", nom: "Coffre", type: "coffre",
+    montant: 0, verrouJusquau: null,
+  },
+];
+const carteParId = (id) => CARTES.find((c) => c.id === id) || CARTES[0];
+const pan4 = (c) => (c.pan || "").slice(-4);
+const telCourt = (c) => (c.tel || "").replace(/^\+\d\d\d /, "");
+
+/* ce que chaque carte dit d'elle-même, en haut de sa plaque */
+const identiteCarte = (c) => {
+  if (c.type === "tel") return "Compte · " + c.tel;
+  if (c.type === "pan") return c.statut === "detruite"
+    ? "Carte détruite" : "Carte virtuelle · ····" + pan4(c);
+  return c.verrouJusquau ? "Coffre · verrouillé jusqu'au " + c.verrouJusquau : "Coffre · ouvert";
+};
+/* et ce qu'elle porte comme montant : un solde, un disponible, une réserve */
+const montantCarte = (c) => {
+  if (c.type === "tel") return { valeur: c.solde, cents: c.cents,
+    sous: "<b>" + c.delta + "</b> " + c.periode };
+  if (c.type === "pan") return c.statut === "detruite"
+    ? { valeur: null, sous: "Ce numéro n'est plus accepté" }
+    : { valeur: c.plafond - c.depense,
+        sous: "disponible sur " + fmt(String(c.plafond)) + " ce mois" };
+  return { valeur: c.montant,
+    sous: c.verrouJusquau ? "verrouillé jusqu'au " + c.verrouJusquau
+                          : (c.montant ? "libre à tout moment" : "vide · rien n'y est encore rangé") };
+};
+/* les deux gestes proposés sous la carte affichée */
+const capsulesCarte = (c) => {
+  if (c.type === "tel") return [["recharger", "Recharger"], ["carte-ecran", "Mes cartes"]];
+  if (c.type === "pan") return c.statut === "detruite"
+    ? [["carte-ecran", "Obtenir une nouvelle carte"]]
+    : [["carte-ecran", "Voir les informations"], ["carte-ecran", "Plafond du mois"]];
+  return [["carte-ecran", "Alimenter le coffre"], ["carte-ecran", "Verrouiller"]];
+};
+
+const OEIL_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+  + ' stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+  + '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/>'
+  + '<circle cx="12" cy="12" r="3"/></svg>';
+
+const rendHeroCartes = () => {
+  const rail = document.getElementById("hero-rail");
+  if (!rail) return;
+  rail.innerHTML = CARTES.map((c) => {
+    const m = montantCarte(c);
+    const chiffre = m.valeur === null ? "—"
+      : fmt(String(m.valeur)) + (m.cents ? '<span>,' + m.cents + "</span>" : "");
+    return `<div class="plaque-verre" data-carte="${c.id}" data-nom="${c.nom}">
+      <div class="ligne1">${identiteCarte(c)}
+        <button class="oeil" aria-label="Masquer les montants" aria-pressed="false">${OEIL_SVG}</button>
+      </div>
+      <div class="montant">${chiffre}</div>
+      <div class="delta">${m.sous}</div>
+    </div>`;
+  }).join("");
+  const pts = document.getElementById("hero-points");
+  if (pts) pts.innerHTML = CARTES.map((c, i) =>
+    `<i class="${i === 0 ? "actif" : ""}" role="button" tabindex="0" aria-label="Voir ${c.nom}"></i>`).join("");
+  rendHeroCapsules(CARTES[0]);
+  if (typeof appliqueMasque === "function") appliqueMasque();
+};
+const rendHeroCapsules = (c) => {
+  const h = document.getElementById("hero-capsules");
+  if (!h) return;
+  h.innerHTML = capsulesCarte(c).map(([cible, libelle]) =>
+    `<button class="chip-capsule" data-va="${cible}"><i></i>${libelle}</button>`).join("");
+};
+
+/* le rail de l'accueil : la pastille, les capsules et le nom suivent le centre */
+const suitHero = () => {
+  const rail = document.getElementById("hero-rail");
+  if (!rail) return;
+  const cartes = [...rail.children];
+  if (!cartes.length) return;
+  const centre = rail.scrollLeft + rail.clientWidth / 2;
+  let i = 0, mieux = Infinity;
+  cartes.forEach((c, k) => {
+    const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - centre);
+    if (d < mieux) { mieux = d; i = k; }
+  });
+  document.querySelectorAll("#hero-points i").forEach((pt, k) => pt.classList.toggle("actif", k === i));
+  rendHeroCapsules(CARTES[i]);
+};
+
 /* ═══ MASQUER LES MONTANTS ═══
    L'œil ne masque pas « le solde de cet écran » : il masque TOUS les montants
    de compte, partout. Masquer une vue en laissant le chiffre lisible sur la
@@ -6813,6 +6927,25 @@ document.addEventListener("click", (ev) => {
   setTimeout(appliqueMasque, 0);
 });
 appliqueMasque();
+
+rendHeroCartes();
+(() => {
+  const rail = document.getElementById("hero-rail");
+  if (!rail) return;
+  rail.addEventListener("scroll", suitHero, { passive: true });
+  document.addEventListener("click", (e) => {
+    const pt = e.target.closest("#hero-points i");
+    if (!pt) return;
+    const k = [...pt.parentElement.children].indexOf(pt);
+    const c = rail.children[k];
+    if (c) rail.scrollTo({ left: c.offsetLeft - rail.offsetLeft, behavior: "smooth" });
+  });
+  vaHooks.accueil = ((precedent) => function () {
+    if (precedent) precedent.apply(this, arguments);
+    suitHero();
+  })(vaHooks.accueil);
+  suitHero();
+})();
 
 /* Le rail des cartes : la pastille et le nom suivent ce qui est au centre.
    On lit la position réelle du défilement, pas un index qu'on croit à jour. */
