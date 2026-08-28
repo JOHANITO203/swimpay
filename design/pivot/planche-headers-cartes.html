@@ -1,4 +1,4 @@
-<title>En-têtes & surfaces</title>
+<title>En-têtes & heros relevés</title>
 <style>
   /* ------------------------------------------------------------------
      DEUX JEUX DE JETONS, et c'est le point le plus important de la
@@ -309,261 +309,279 @@ const svg = (parent, vb, contenu) => {
 };
 
 const PLANCHE = {
-  titre: "En-têtes & surfaces",
+  titre: "En-têtes & heros relevés",
   largeurSpecimen: "480px",
-  intro: "Deux questions, un spécimen constant : quelle DÉCOUPE pour l'en-tête "
-       + "(desktop et mobile), et quelle SURFACE pour les cartes. Le contenu, "
-       + "les couleurs et les dimensions ne changent jamais — seul le caractère change.",
+  intro: "Refonte sur RELEVÉ : chaque variante vient d'une app fintech en "
+       + "production (Monzo, Revolut, Riseo, FluxPay — réf. composants-fintech-reels). "
+       + "Le header réel est plat ; le caractère vit dans le HERO. Contenu constant, "
+       + "seul le pattern change.",
   invariants: [
     ["Cadre spécimen", "460 × 240 px"],
-    ["En-tête", "hauteur 64 px"],
-    ["Carte", "300 × 150 px"],
-    ["Encre", "#111 sur blanc"],
-    ["Niche (ogive)", "largeur 200 px"],
+    ["Contenu", "Camille · 1 254 500 · mêmes services"],
+    ["Encre", "relevée par spécimen (clair ou sombre)"],
   ],
   noteSpecimen: "Chaque spécimen est une PORTION d'écran ; le fond court bord à bord.",
-  note: "Aucune de ces variantes n'est appliquée aux écrans v1-v3 — planche d'exploration. "
-      + "Encres : Radix Colors (vendorisé) · icônes : Tabler (vendorisé).",
+  note: "Issue du relevé d'apps réelles — remplace la planche « découpes décoratives » "
+      + "(faute documentée §1 de la référence). Rien n'est appliqué aux écrans v1-v3.",
 
   variantes: [
 
-    /* ================= FAMILLE 1 — EN-TÊTES DÉCOUPÉS ================= */
+    /* ============ FAMILLE 1 — EN-TÊTES RELEVÉS (plats) ============ */
     {
-      cle: "scoop", famille: "En-têtes découpés", nom: "Encoche concave centrale",
-      resume: "Le bas de la barre se creuse ; la recherche s'y loge",
-      fiche: [["Flanc", "aucun — arc"], ["Construction", "masque radial 1 couche + drop-shadow"],
-              ["Coût", "CSS pur, fluide"]],
-      mot: "La barre respire par le bas et fait une place. Doux, accueillant — "
-         + "le creux dit « pose quelque chose ici ».",
+      cle: "plat-clair", famille: "En-têtes relevés", nom: "Plat clair — identité",
+      tag: "Riseo · Monzo",
+      resume: "Avatar + salutation + cloche. Le header réel.",
+      fiche: [["Fonctions", "identité · alerte"], ["Relevé", "Riseo (home clair), Monzo"],
+              ["Coût", "un flex, trivial"]],
+      mot: "Le header s'efface : il dit qui tu es et s'il s'est passé quelque "
+         + "chose. Tout le caractère est laissé au hero.",
       reglages: [
-        { cle: "prof", etiquette: "Profondeur du creux", min: 10, max: 34, pas: 1, defaut: 22, unite: (v) => `${v} px` },
-        { cle: "larg", etiquette: "Largeur du creux", min: 140, max: 300, pas: 2, defaut: 220, unite: (v) => `${v} px` },
-        { cle: "coins", etiquette: "Coins bas de la barre", min: 0, max: 28, pas: 1, defaut: 16, unite: (v) => `${v} px` },
+        { cle: "h", etiquette: "Hauteur", min: 52, max: 76, pas: 2, defaut: 64, unite: (v) => `${v} px` },
+        { cle: "av", etiquette: "Avatar", min: 28, max: 44, pas: 1, defaut: 36, unite: (v) => `${v} px` },
       ],
-      vignette: () => "M4 4 H48 V26 H36 A10 8 0 0 1 16 26 H4 Z",
+      vignette: () => "M8 22 A6 6 0 1 1 8 21.9 M20 18 H36 M20 26 H32 M46 18 A4 4 0 1 1 46 17.9",
       specimen: (hote, g) => {
-        const h = 64, ex = g.prof + 6;
-        const m = `linear-gradient(#000 0 0)`;
-        const cut = `radial-gradient(ellipse ${g.larg/2}px ${g.prof}px at 50% 100%, transparent ${g.prof - .5}px, #000 ${g.prof}px)`;
         hote.innerHTML =
-          `<div style="background:#F3F4F2;padding:0 0 26px">
-             <div style="position:relative;height:${h + ex}px">
-               <div style="position:absolute;inset:0;background:#fff;
-                 border-radius:0 0 ${g.coins}px ${g.coins}px;
-                 -webkit-mask:${m},${cut};-webkit-mask-composite:source-out;
-                 mask:${m},${cut};mask-composite:subtract;
-                 filter:drop-shadow(0 1px 2px rgb(0 0 0/.08))"></div>
-               <div style="position:absolute;left:20px;top:0;height:${h}px;display:flex;align-items:center;gap:10px;font-weight:600;color:#111">
-                 <span style="width:18px;height:18px;background:#111;border-radius:5px"></span>SwimPay</div>
-               <div style="position:absolute;right:20px;top:${(h-32)/2}px;display:flex;gap:8px">
-                 <span style="width:32px;height:32px;border:1px solid #E4E6E4;border-radius:99px;background:#fff"></span>
-                 <span style="width:32px;height:32px;border-radius:99px;background:#ECEEEC"></span></div>
-               <div style="position:absolute;left:50%;transform:translateX(-50%);top:${h - g.prof + 8}px;
-                 width:${g.larg - 48}px;height:34px;background:#fff;border:1px solid #E4E6E4;border-radius:99px;
-                 box-shadow:0 1px 3px rgb(0 0 0/.07);display:flex;align-items:center;padding:0 14px;
-                 color:#8a8f8a;font-size:12.5px">Rechercher</div>
-             </div>
-           </div>`;
-      },
-      technique: (g) => `/* encoche concave centrale — 2 couches, soustraction */
-.header{
-  height:${64 + g.prof + 6}px;
-  border-radius:0 0 ${g.coins}px ${g.coins}px;
-  -webkit-mask:
-    linear-gradient(#000 0 0),
-    radial-gradient(ellipse ${g.larg/2}px ${g.prof}px at 50% 100%,
-      transparent ${g.prof - .5}px, #000 ${g.prof}px);
-  -webkit-mask-composite:source-out;
-  mask: /* idem */; mask-composite:subtract;
-  filter:drop-shadow(0 1px 2px rgb(0 0 0/.08)); /* l'ombre APRÈS le masque */
-}`,
-    },
-
-    {
-      cle: "onglet", famille: "En-têtes découpés", nom: "Onglet à congés inversés",
-      resume: "La navigation pend sous la barre, raccordée par deux congés",
-      fiche: [["Flanc", "aucun — quarts de cercle"], ["Construction", "masque 4 couches (barre + onglet + 2 congés)"],
-              ["Coût", "CSS pur, positions en calc(50% ± K)"]],
-      mot: "Le raccord concave fait UNE seule matière de la barre et de l'onglet. "
-         + "Très « produit dessiné » — c'est le congé inversé demandé.",
-      reglages: [
-        { cle: "r", etiquette: "Rayon des congés", min: 6, max: 30, pas: 1, defaut: 16, unite: (v) => `${v} px` },
-        { cle: "prof", etiquette: "Hauteur de l'onglet", min: 28, max: 56, pas: 1, defaut: 40, unite: (v) => `${v} px` },
-        { cle: "coins", etiquette: "Coins bas de l'onglet", min: 4, max: 24, pas: 1, defaut: 14, unite: (v) => `${v} px` },
-      ],
-      vignette: () => "M4 4 H48 V18 H40 A6 6 0 0 0 34 24 V30 A8 8 0 0 1 26 36 H26 A8 8 0 0 1 18 30 V24 A6 6 0 0 0 12 18 H4 Z",
-      specimen: (hote, g) => {
-        const barre = 52, W = 240, r = g.r, P = g.prof, rb = g.coins;
-        const K = W / 2 + r / 2;
-        const couches =
-          `linear-gradient(#000 0 0) 0 0/100% ${barre}px,` +
-          `linear-gradient(#000 0 0) 50% ${barre}px/${W}px ${P}px,` +
-          `radial-gradient(circle ${r}px at 0 100%, transparent ${r - .5}px, #000 ${r}px) calc(50% + ${K}px) ${barre}px/${r}px ${r}px,` +
-          `radial-gradient(circle ${r}px at 100% 100%, transparent ${r - .5}px, #000 ${r}px) calc(50% - ${K}px) ${barre}px/${r}px ${r}px`;
-        hote.innerHTML =
-          `<div style="background:#F3F4F2;padding:0 0 24px">
-             <div style="position:relative;height:${barre + P}px">
-               <div style="position:absolute;inset:0;background:#fff;
-                 -webkit-mask:${couches};-webkit-mask-repeat:no-repeat;
-                 mask:${couches};mask-repeat:no-repeat;
-                 filter:drop-shadow(0 1px 2px rgb(0 0 0/.08))"></div>
-               <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:${W}px;height:${P}px;
-                 border-radius:0 0 ${rb}px ${rb}px;display:flex;align-items:center;justify-content:center;gap:14px;
-                 font-size:12.5px;font-weight:500;color:#8a8f8a">
-                 <span style="color:#111">Accueil</span><span>Envoyer</span><span>Recevoir</span></div>
-               <div style="position:absolute;left:20px;top:0;height:${barre}px;display:flex;align-items:center;gap:10px;font-weight:600;color:#111">
-                 <span style="width:18px;height:18px;background:#111;border-radius:5px"></span>SwimPay</div>
-               <div style="position:absolute;right:20px;top:${(barre-30)/2}px;width:30px;height:30px;border-radius:99px;background:#ECEEEC"></div>
-             </div>
-           </div>`;
-      },
-      technique: (g) => `/* onglet suspendu — 4 couches additives, congés en tuiles r×r
-   piège évité : positions exprimées au CENTRE, calc(50% ± K) */
---r:${g.r}px; --P:${g.prof}px; --W:200px; --K:calc(var(--W)/2 + var(--r)/2);
--webkit-mask:
-  linear-gradient(#000 0 0) 0 0/100% 52px,
-  linear-gradient(#000 0 0) 50% 52px/var(--W) var(--P),
-  radial-gradient(circle var(--r) at 0 100%,transparent calc(var(--r) - .5px),#000 var(--r))
-    calc(50% + var(--K)) 52px/var(--r) var(--r),
-  radial-gradient(circle var(--r) at 100% 100%,transparent calc(var(--r) - .5px),#000 var(--r))
-    calc(50% - var(--K)) 52px/var(--r) var(--r);
-mask-repeat:no-repeat;`,
-    },
-
-    {
-      cle: "ogive", famille: "En-têtes découpés", nom: "Niche à flancs en S",
-      resume: "L'onglet descend par deux ogives — l'angle se règle en degrés",
-      fiche: [["Flanc", "smoothstep = Bézier C/3 exacte"], ["Construction", "tuiles SVG en bouts, 4 couches"],
-              ["Coût", "data-URI, fluide, angle dérivé de tan(θ)"]],
-      mot: "Le trait est tiré d'un seul geste : pas d'arête, la courbure se "
-         + "concentre. Plus l'angle monte, plus le S s'étale et devient calligraphique.",
-      reglages: [
-        { cle: "angle", etiquette: "Angle du flanc", min: 20, max: 65, pas: 1, defaut: 40, unite: (v) => `${v}°` },
-        { cle: "prof", etiquette: "Profondeur", min: 18, max: 44, pas: 1, defaut: 30, unite: (v) => `${v} px` },
-        { cle: "coins", etiquette: "Coins du plancher", min: 0, max: 16, pas: 1, defaut: 10, unite: (v) => `${v} px` },
-      ],
-      vignette: () => "M4 4 H48 V16 H40 C34 16 36 32 30 32 H22 C16 32 18 16 12 16 H4 Z",
-      specimen: (hote, g) => {
-        const barre = 52, W = 200;
-        const P = g.prof, C = Math.max(6, Math.round(P * Math.tan(g.angle * Math.PI / 180))), rb = g.coins;
-        const tuile = (miroir) => {
-          const d = miroir
-            ? `M${C} 0 C ${C - C/3} 0 ${C/3} ${P} 0 ${P} L0 0 Z`
-            : `M0 0 C ${C/3} 0 ${C - C/3} ${P} ${C} ${P} L${C} 0 Z`;
-          return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${C}' height='${P}' viewBox='0 0 ${C} ${P}' preserveAspectRatio='none'%3E%3Cpath d='${d}' fill='%23000'/%3E%3C/svg%3E")`;
-        };
-        const plat = W - 2 * 0; // plancher pleine niche, coins par tuile dédiée
-        const plancher = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${P}' viewBox='0 0 ${W} ${P}' preserveAspectRatio='none'%3E%3Cpath d='M0 0 H${W} V${P - rb} A${rb} ${rb} 0 0 1 ${W - rb} ${P} H${rb} A${rb} ${rb} 0 0 1 0 ${P - rb} Z' fill='%23000'/%3E%3C/svg%3E")`;
-        const Kt = W / 2 + C / 2;
-        const couches =
-          `linear-gradient(#000 0 0) 0 0/100% ${barre}px,` +
-          `${plancher} 50% ${barre}px/${W}px ${P}px,` +
-          `${tuile(true)} calc(50% - ${Kt}px) ${barre}px/${C}px ${P}px,` +
-          `${tuile(false)} calc(50% + ${Kt}px) ${barre}px/${C}px ${P}px`;
-        hote.innerHTML =
-          `<div style="background:#F3F4F2;padding:0 0 24px">
-             <div style="position:relative;height:${barre + P}px">
-               <div style="position:absolute;inset:0;background:#fff;
-                 -webkit-mask:${couches};-webkit-mask-repeat:no-repeat;
-                 mask:${couches};mask-repeat:no-repeat;
-                 filter:drop-shadow(0 1px 2px rgb(0 0 0/.08))"></div>
-               <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:${(P-26)/2 - 2}px;
-                 font-size:12.5px;color:#8a8f8a">Rechercher…</div>
-               <div style="position:absolute;left:20px;top:0;height:${barre}px;display:flex;align-items:center;gap:10px;font-weight:600;color:#111">
-                 <span style="width:18px;height:18px;background:#111;border-radius:5px"></span>SwimPay</div>
-               <div style="position:absolute;right:20px;top:${(barre-30)/2}px;width:30px;height:30px;border-radius:99px;background:#ECEEEC"></div>
-             </div>
-           </div>`;
-      },
-      technique: (g) => {
-        const P = g.prof, C = Math.max(6, Math.round(P * Math.tan(g.angle * Math.PI / 180)));
-        return `/* flancs en S — smoothstep = Bézier exacte (contrôles C/3, 2C/3)
-   angle réglé en degrés, la course EN DÉCOULE : C = P·tan(θ) = ${C}px */
---tuile-g: url("data:image/svg+xml,<svg ... viewBox='0 0 ${C} ${P}'
-  preserveAspectRatio='none'><path d='M0 0 C ${(C/3).toFixed(1)} 0 ${(C - C/3).toFixed(1)} ${P} ${C} ${P} L${C} 0 Z'/></svg>");
-mask:
-  linear-gradient(#000 0 0) 0 0/100% 52px,
-  var(--plancher) 50% 52px/200px ${P}px,
-  var(--tuile-d) calc(50% - ${100 + C/2}px) 52px/${C}px ${P}px,
-  var(--tuile-g) calc(50% + ${100 + C/2}px) 52px/${C}px ${P}px;
-mask-repeat:no-repeat;`;
-      },
-    },
-
-    {
-      cle: "capsule", famille: "En-têtes découpés", nom: "Capsule flottante",
-      resume: "La barre se détache du bord et devient une pilule",
-      fiche: [["Flanc", "aucun"], ["Construction", "border-radius + ombre"], ["Coût", "trivial"]],
-      mot: "La barre quitte le cadre et flotte. Léger, app-like — mais elle ne "
-         + "dialogue plus avec le contenu : elle est posée dessus.",
-      reglages: [
-        { cle: "marge", etiquette: "Marge au bord", min: 6, max: 24, pas: 1, defaut: 12, unite: (v) => `${v} px` },
-        { cle: "coins", etiquette: "Rayon de la capsule", min: 10, max: 32, pas: 1, defaut: 32, unite: (v) => `${v} px` },
-        { cle: "elev", etiquette: "Élévation", min: 1, max: 4, pas: 1, defaut: 2, unite: (v) => `niv. ${v}` },
-      ],
-      vignette: () => "M8 10 H44 A8 8 0 0 1 44 26 H8 A8 8 0 0 1 8 10 Z",
-      specimen: (hote, g) => {
-        const ombres = ["0 1px 2px rgb(0 0 0/.06)","0 2px 8px rgb(0 0 0/.10)","0 6px 18px rgb(0 0 0/.14)","0 12px 30px rgb(0 0 0/.18)"];
-        hote.innerHTML =
-          `<div style="background:#F3F4F2;padding:${g.marge}px ${g.marge}px 26px">
-             <div style="height:56px;background:#fff;border-radius:${g.coins}px;box-shadow:${ombres[g.elev-1]};
-               display:flex;align-items:center;gap:10px;padding:0 18px;font-weight:600;color:#111">
-               <span style="width:18px;height:18px;background:#111;border-radius:5px"></span>SwimPay
+          `<div style="background:#F3F4F2;padding-bottom:26px">
+             <div style="display:flex;align-items:center;gap:12px;height:${g.h}px;padding:0 20px;background:#fff;border-bottom:1px solid #E7E9E7">
+               <span style="width:${g.av}px;height:${g.av}px;border-radius:50%;background:#DDE2DD;display:grid;place-items:center;font-weight:600;font-size:${Math.round(g.av*.36)}px;color:#111">CL</span>
+               <b style="font-size:15px;color:#111;font-weight:600">Bonsoir, Camille</b>
                <span style="flex:1"></span>
-               <span style="width:30px;height:30px;border-radius:99px;border:1px solid #E4E6E4"></span>
-               <span style="width:30px;height:30px;border-radius:99px;background:#ECEEEC"></span>
+               ${cloche(38,"#111","#E7E9E7","#fff")}
              </div>
+             <div style="padding:18px 20px 0;color:#8a8f8a;font-size:12.5px">Solde</div>
+             <div style="padding:2px 20px 0;color:#111;font-weight:650;font-size:34px;font-variant-numeric:tabular-nums">1 254 500<span style="opacity:.4">,00</span></div>
            </div>`;
       },
-      technique: (g) => `.header{position:sticky;top:${g.marge}px;margin:${g.marge}px;
-  border-radius:${g.coins}px; box-shadow:var(--elev-${g.elev});}`,
+      technique: (g) => `.header{display:flex;align-items:center;gap:12px;height:${g.h}px;
+  padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);}
+.avatar{width:${g.av}px;height:${g.av}px;border-radius:50%;}
+/* le caractère est dans le hero, pas ici */`,
     },
-
     {
-      cle: "dock", famille: "En-têtes découpés", nom: "Dock mobile à encoche",
-      resume: "La barre basse se creuse autour du bouton central",
-      fiche: [["Flanc", "aucun — cercle"], ["Construction", "masque radial + bouton absolu"],
-              ["Coût", "CSS pur ; air constant autour du bouton"]],
-      mot: "Le bouton vit DANS la barre sans la toucher : l'air constant fait "
-         + "tout le geste. La version mobile du congé inversé.",
+      cle: "sombre-pill", famille: "En-têtes relevés", nom: "Sombre à recherche",
+      tag: "Revolut",
+      resume: "Avatar + pill de recherche + 2 actions rondes",
+      fiche: [["Fonctions", "identité · recherche · 2 raccourcis"], ["Relevé", "Revolut (home sombre)"],
+              ["Coût", "un flex, trivial"]],
+      mot: "La recherche prend le centre : l'app assume d'être un OUTIL qu'on "
+         + "interroge. Dense mais plat — aucune sculpture.",
       reglages: [
-        { cle: "R", etiquette: "Rayon du bouton", min: 20, max: 32, pas: 1, defaut: 26, unite: (v) => `${v} px` },
-        { cle: "air", etiquette: "Air autour", min: 4, max: 14, pas: 1, defaut: 8, unite: (v) => `${v} px` },
-        { cle: "coins", etiquette: "Coins de la barre", min: 0, max: 24, pas: 1, defaut: 18, unite: (v) => `${v} px` },
+        { cle: "h", etiquette: "Hauteur", min: 52, max: 76, pas: 2, defaut: 60, unite: (v) => `${v} px` },
+        { cle: "rp", etiquette: "Rayon de la pill", min: 10, max: 22, pas: 1, defaut: 22, unite: (v) => `${v} px` },
       ],
-      vignette: () => "M4 36 V24 A6 6 0 0 1 10 18 H16 A10 10 0 0 0 36 18 H42 A6 6 0 0 1 48 24 V36 Z M26 6 A7 7 0 1 1 25.9 6 Z",
+      vignette: () => "M8 22 A6 6 0 1 1 8 21.9 M16 17 H36 A5 5 0 0 1 36 27 H16 A5 5 0 0 1 16 17 M44 18 A4 4 0 1 1 44 17.9",
       specimen: (hote, g) => {
-        const Rt = g.R + g.air, h = 58;
-        const cut = `radial-gradient(circle ${Rt}px at 50% 0, transparent ${Rt - .5}px, #000 ${Rt}px)`;
         hote.innerHTML =
-          `<div style="background:#F3F4F2;padding:34px 14px 14px">
-             <div style="position:relative;height:${h + g.R}px;max-width:320px;margin:0 auto">
-               <div style="position:absolute;left:0;right:0;bottom:0;height:${h}px;background:#fff;
-                 border-radius:${g.coins}px;
-                 -webkit-mask:linear-gradient(#000 0 0),${cut};-webkit-mask-composite:source-in;
-                 mask:linear-gradient(#000 0 0),${cut};mask-composite:intersect;
-                 filter:drop-shadow(0 -1px 3px rgb(0 0 0/.07))"></div>
-               <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:${h - g.R}px;
-                 width:${2*g.R}px;height:${2*g.R}px;border-radius:50%;background:#111;color:#fff;
-                 display:grid;place-items:center;font-size:${g.R*.8}px;line-height:1">+</div>
-               <div style="position:absolute;left:0;right:0;bottom:0;height:${h}px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:11px;color:#8a8f8a">
-                 <span style="color:#111">Accueil</span><span style="width:${2*Rt + 10}px"></span><span>Profil</span></div>
+          `<div style="background:#101216;padding-bottom:26px">
+             <div style="display:flex;align-items:center;gap:10px;height:${g.h}px;padding:0 16px">
+               <span style="width:34px;height:34px;border-radius:50%;background:#2A2E36;display:grid;place-items:center;font-weight:600;font-size:12px;color:#EDEFF2">CL</span>
+               <span style="flex:1;height:38px;border-radius:${g.rp}px;background:#1C1F25;display:flex;align-items:center;gap:8px;padding:0 14px;color:#7C828C;font-size:13px">${loupe(14,"#7C828C")} Rechercher</span>
+               ${rondIc(34,"#1C1F25", stat(15,"#EDEFF2"))}
+               ${rondIc(34,"#1C1F25", carte(15,"#EDEFF2"))}
+             </div>
+             <div style="padding:16px 18px 0;color:#7C828C;font-size:12px">Personnel · Solde</div>
+             <div style="padding:2px 18px 0;color:#F2F4F6;font-weight:650;font-size:32px;font-variant-numeric:tabular-nums">1 254 500</div>
+           </div>`;
+      },
+      technique: (g) => `.header{display:flex;align-items:center;gap:10px;height:${g.h}px;padding:0 16px}
+.search-pill{flex:1;height:38px;border-radius:${g.rp}px;background:var(--surface-2)}
+.icon-round{width:34px;height:34px;border-radius:50%;background:var(--surface-2)}`,
+    },
+    {
+      cle: "deux-lignes", famille: "En-têtes relevés", nom: "Salutation deux lignes",
+      tag: "FluxPay",
+      resume: "« Bonsoir » discret, le NOM en grand, cloche en cercle",
+      fiche: [["Fonctions", "identité (accentuée) · alerte"], ["Relevé", "FluxPay (dark)"],
+              ["Coût", "deux lignes de texte"]],
+      mot: "Le nom devient le titre de la page : l'app parle À quelqu'un. "
+         + "Chaleureux sans un seul ornement.",
+      reglages: [
+        { cle: "tn", etiquette: "Taille du nom", min: 18, max: 30, pas: 1, defaut: 24, unite: (v) => `${v} px` },
+        { cle: "cc", etiquette: "Cercle de la cloche", min: 34, max: 48, pas: 1, defaut: 42, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 14 H22 M8 24 H34 M46 18 A5 5 0 1 1 46 17.9",
+      specimen: (hote, g) => {
+        hote.innerHTML =
+          `<div style="background:#0E0F12;padding:0 0 26px">
+             <div style="display:flex;align-items:center;padding:18px 20px 0">
+               <div>
+                 <div style="color:#8B909B;font-size:13px">Bonsoir</div>
+                 <div style="color:#F4F5F7;font-weight:650;font-size:${g.tn}px;letter-spacing:-.01em">Camille Laurent</div>
+               </div>
+               <span style="flex:1"></span>
+               ${cloche(g.cc,"#F4F5F7","#2A2E36","transparent")}
+             </div>
+             <div style="margin:18px 20px 0;padding:16px 18px;border-radius:18px;background:#16181D;border:1px solid #23262D">
+               <div style="color:#8B909B;font-size:12px">N° de compte ····9654</div>
+               <div style="color:#F4F5F7;font-weight:650;font-size:30px;font-variant-numeric:tabular-nums">1 254 500<span style="opacity:.4">,00</span></div>
              </div>
            </div>`;
       },
-      technique: (g) => `/* le masque et le border-radius se COMPOSENT */
-.dock{
-  border-radius:${g.coins}px;
-  -webkit-mask:linear-gradient(#000 0 0),
-    radial-gradient(circle ${g.R + g.air}px at 50% 0,
-      transparent ${g.R + g.air - .5}px,#000 ${g.R + g.air}px);
-  -webkit-mask-composite:source-in; mask-composite:intersect;
-  filter:drop-shadow(0 -1px 3px rgb(0 0 0/.07));
-}
-.bouton{width:${2*g.R}px;height:${2*g.R}px;/* centre à ${g.R}px au-dessus du bord */}`,
+      technique: (g) => `.greeting small{color:var(--muted);font-size:13px}
+.greeting b{font-size:${g.tn}px;font-weight:650}
+.bell{width:${g.cc}px;height:${g.cc}px;border-radius:50%;border:1px solid var(--border);background:transparent}`,
     },
 
-    /* ================= FAMILLE 2 — SURFACES DE CARTE ================= */
+    /* ============ FAMILLE 2 — HEROS DE SOLDE (le caractère) ============ */
+    {
+      cle: "balance-simple", famille: "Heros de solde", nom: "Balance nue",
+      tag: "Riseo",
+      resume: "Label discret + montant énorme, décimales atténuées",
+      fiche: [["Relevé", "Riseo « Total Balance $12,458.67 »"], ["Coût", "typographie seule"]],
+      mot: "Le chiffre EST l'écran. Les décimales s'effacent pour que l'œil "
+         + "lise le rond en un saut.",
+      reglages: [
+        { cle: "t", etiquette: "Taille du montant", min: 30, max: 56, pas: 1, defaut: 42, unite: (v) => `${v} px` },
+        { cle: "od", etiquette: "Opacité des décimales", min: 25, max: 70, pas: 5, defaut: 40, unite: (v) => `${v} %` },
+      ],
+      vignette: () => "M8 30 H14 M18 22 H30 V34 M34 30 H44",
+      specimen: (hote, g) => {
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:26px 0">
+             <div style="background:#fff;padding:22px 20px;border-top:1px solid #E7E9E7;border-bottom:1px solid #E7E9E7">
+               <div style="color:#8a8f8a;font-size:12.5px;display:flex;align-items:center;gap:6px">Solde ${oeil(13,"#8a8f8a")}</div>
+               <div style="color:#111;font-weight:650;font-size:${g.t}px;letter-spacing:-.02em;font-variant-numeric:tabular-nums">1 254 500<span style="opacity:${g.od/100}">,00</span></div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `.hero .label{font-size:12.5px;color:var(--muted)}
+.hero .amount{font-size:${g.t}px;font-weight:650;font-variant-numeric:tabular-nums}
+.hero .decimals{opacity:${(g.od/100).toFixed(2)}}`,
+    },
+    {
+      cle: "carte-solde", famille: "Heros de solde", nom: "Carte de solde",
+      tag: "FluxPay",
+      resume: "N° de compte + montant + delta vert + œil",
+      fiche: [["Relevé", "FluxPay « $22,675.06 · +$4567 (12.4%) »"], ["Coût", "une carte"]],
+      mot: "Le solde devient un OBJET qu'on possède. Le delta raconte la "
+         + "semaine ; l'œil rend la pudeur possible en un geste.",
+      reglages: [
+        { cle: "r", etiquette: "Rayon de la carte", min: 12, max: 30, pas: 1, defaut: 20, unite: (v) => `${v} px` },
+        { cle: "t", etiquette: "Taille du montant", min: 26, max: 44, pas: 1, defaut: 34, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 12 H48 A4 4 0 0 1 52 16 V38 A4 4 0 0 1 48 42 H8 Z M14 22 H30 M14 30 H40",
+      specimen: (hote, g) => {
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:26px 20px;display:grid">
+             <div style="background:#fff;border:1px solid #E7E9E7;border-radius:${g.r}px;padding:18px 20px;box-shadow:0 1px 3px rgb(0 0 0/.05)">
+               <div style="display:flex;align-items:center;color:#8a8f8a;font-size:12px">N° de compte ····9654 <span style="flex:1"></span>${oeil(15,"#8a8f8a")}</div>
+               <div style="color:#111;font-weight:650;font-size:${g.t}px;font-variant-numeric:tabular-nums;margin-top:4px">1 254 500<span style="opacity:.4">,00</span></div>
+               <div style="color:#178A5B;font-size:13px;font-weight:600;margin-top:4px">+4 567 · 12,4 % cette semaine</div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `.solde-card{border-radius:${g.r}px;border:1px solid var(--border);padding:18px 20px}
+.solde-card .amount{font-size:${g.t}px}
+.solde-card .delta{color:var(--positive);font-size:13px;font-weight:600}`,
+    },
+    {
+      cle: "actions-circulaires", famille: "Heros de solde", nom: "Balance + actions rondes",
+      tag: "Revolut · Monzo",
+      resume: "Le montant, puis 4 cercles icône+label",
+      fiche: [["Relevé", "Revolut « Add money · Move · Details · More »"], ["Coût", "flex de cercles"]],
+      mot: "Les verbes vivent SOUS le chiffre, en rond, à égalité. C'est la "
+         + "grammaire fintech la plus universelle du relevé.",
+      reglages: [
+        { cle: "d", etiquette: "Diamètre des cercles", min: 44, max: 64, pas: 2, defaut: 54, unite: (v) => `${v} px` },
+        { cle: "gap", etiquette: "Espacement", min: 12, max: 32, pas: 2, defaut: 22, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M10 14 H36 M10 32 A5 5 0 1 1 10 31.9 M24 32 A5 5 0 1 1 24 31.9 M38 32 A5 5 0 1 1 38 31.9",
+      specimen: (hote, g) => {
+        const act = (svg, lbl) =>
+          `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+             <span style="width:${g.d}px;height:${g.d}px;border-radius:50%;background:#fff;border:1px solid #E4E6E4;display:grid;place-items:center;box-shadow:0 1px 2px rgb(0 0 0/.05)">${svg}</span>
+             <span style="font-size:11.5px;color:#5c625c">${lbl}</span>
+           </div>`;
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:24px 20px 26px">
+             <div style="color:#8a8f8a;font-size:12.5px">Solde</div>
+             <div style="color:#111;font-weight:650;font-size:34px;font-variant-numeric:tabular-nums">1 254 500<span style="opacity:.4">,00</span></div>
+             <div style="display:flex;gap:${g.gap}px;margin-top:16px">
+               ${act(fleche(18,"#111",45), "Envoyer")}${act(fleche(18,"#111",225), "Recevoir")}${act(swapIc(18,"#111"), "Transférer")}${act(horloge(18,"#111"), "Historique")}
+             </div>
+           </div>`;
+      },
+      technique: (g) => `.actions{display:flex;gap:${g.gap}px}
+.action{width:${g.d}px;height:${g.d}px;border-radius:50%;background:var(--surface);
+  border:1px solid var(--border);display:grid;place-items:center}
+.action + label{font-size:11.5px;color:var(--muted)}`,
+    },
+    {
+      cle: "anneau", famille: "Heros de solde", nom: "Anneau de budget",
+      tag: "Monzo",
+      resume: "« Reste à dépenser » en progression circulaire",
+      fiche: [["Relevé", "Monzo « £87.32 Left to spend »"], ["Coût", "SVG stroke-dasharray"]],
+      mot: "Le hero ne dit plus « combien j'ai » mais « où j'en suis ». "
+         + "Le meilleur pattern quand le produit veut coacher.",
+      reglages: [
+        { cle: "ep", etiquette: "Épaisseur du trait", min: 5, max: 14, pas: 1, defaut: 9, unite: (v) => `${v} px` },
+        { cle: "pc", etiquette: "Progression", min: 15, max: 90, pas: 5, defaut: 60, unite: (v) => `${v} %` },
+      ],
+      vignette: () => "M26 8 A18 18 0 1 1 25.9 8 M26 20 V28",
+      specimen: (hote, g) => {
+        const R = 54, C = 2 * Math.PI * R, off = C * (1 - g.pc / 100);
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:24px 20px;display:grid;place-items:center">
+             <div style="position:relative;width:150px;height:150px">
+               <svg width="150" height="150" viewBox="0 0 150 150">
+                 <circle cx="75" cy="75" r="${R}" fill="none" stroke="#E4E6E4" stroke-width="${g.ep}"/>
+                 <circle cx="75" cy="75" r="${R}" fill="none" stroke="#178A5B" stroke-width="${g.ep}" stroke-linecap="round"
+                   stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 75 75)"/>
+               </svg>
+               <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center">
+                 <div><div style="font-weight:650;font-size:22px;color:#111;font-variant-numeric:tabular-nums">87 320</div>
+                 <div style="font-size:11px;color:#8a8f8a">reste ce mois</div></div>
+               </div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `circle.progress{stroke-width:${g.ep};stroke-linecap:round;
+  stroke-dasharray:C; stroke-dashoffset:C*(1-${g.pc}/100); transform:rotate(-90deg)}`,
+    },
+
+    /* ============ FAMILLE 3 — NAVIGATION BASSE ============ */
+    {
+      cle: "dock-fab", famille: "Navigation basse", nom: "Barre + FAB central",
+      tag: "Riseo",
+      resume: "3 items + bouton rond — posé (relevé) ou niché (option)",
+      fiche: [["Relevé", "Riseo : FAB noir POSÉ sur la barre"], ["Découpe", "seulement si elle LOGE le bouton"],
+              ["Coût", "posé : trivial · niché : masque radial"]],
+      mot: "Le seul endroit du relevé où une découpe a un SENS : elle loge le "
+         + "bouton. À 0 la barre est plate comme dans Riseo ; creuser est un choix.",
+      reglages: [
+        { cle: "R", etiquette: "Rayon du bouton", min: 22, max: 32, pas: 1, defaut: 26, unite: (v) => `${v} px` },
+        { cle: "prof", etiquette: "Encoche (0 = posé)", min: 0, max: 14, pas: 1, defaut: 0, unite: (v) => v === 0 ? "posé" : `${v} px` },
+      ],
+      vignette: () => "M4 34 H48 V44 H4 Z M26 22 A8 8 0 1 1 25.9 22",
+      specimen: (hote, g) => {
+        const h = 56, Rt = g.R + 6;
+        const cut = g.prof > 0
+          ? `-webkit-mask:linear-gradient(#000 0 0),radial-gradient(circle ${Rt}px at 50% 0,transparent ${Rt-.5}px,#000 ${Rt}px);-webkit-mask-composite:source-in;mask:linear-gradient(#000 0 0),radial-gradient(circle ${Rt}px at 50% 0,transparent ${Rt-.5}px,#000 ${Rt}px);mask-composite:intersect;`
+          : "";
+        const lift = g.prof > 0 ? g.R : Math.round(g.R * .66);
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:40px 16px 16px">
+             <div style="position:relative;max-width:330px;margin:0 auto;height:${h + lift}px">
+               <div style="position:absolute;left:0;right:0;bottom:0;height:${h}px;background:#fff;border:1px solid #E7E9E7;border-radius:18px;${cut}filter:drop-shadow(0 -1px 3px rgb(0 0 0/.06))"></div>
+               <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:${h - lift}px;width:${2*g.R}px;height:${2*g.R}px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center;font-size:${g.R*.85}px;box-shadow:0 4px 10px rgb(0 0 0/.25)">+</div>
+               <div style="position:absolute;left:0;right:0;bottom:0;height:${h}px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:11px;color:#8a8f8a">
+                 <span style="color:#111;font-weight:600">Accueil</span><span style="width:${2*Rt+8}px"></span><span>Profil</span>
+               </div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => g.prof === 0
+        ? `/* relevé Riseo : FAB simplement POSÉ, aucune découpe */
+.dock{height:56px;border-radius:18px}
+.fab{width:${2*g.R}px;height:${2*g.R}px;border-radius:50%;transform:translateY(-${Math.round(g.R*.66)}px)}`
+        : `/* option nichée : la découpe LOGE le bouton (air ${6}px) */
+.dock{border-radius:18px;
+  mask:linear-gradient(#000 0 0),radial-gradient(circle ${g.R+6}px at 50% 0,transparent ${g.R+5.5}px,#000 ${g.R+6}px);
+  mask-composite:intersect;filter:drop-shadow(0 -1px 3px rgb(0 0 0/.06))}`,
+    },
+
+    /* ============ FAMILLE 4 — SURFACES DE CARTE (conservée) ============ */
     {
       cle: "hairline", famille: "Surfaces de carte", nom: "Bordure fine", tag: "v1",
       resume: "Le trait de la v1 shadcn",
@@ -599,32 +617,31 @@ mask-repeat:no-repeat;`;
     {
       cle: "verre", famille: "Surfaces de carte", nom: "Verre dépoli",
       resume: "La surface laisse passer le fond",
-      fiche: [["Matière", "blur + alpha + trait clair"], ["Coût", "backdrop-filter (coûteux en couches)"]],
+      fiche: [["Matière", "blur + alpha + trait clair"], ["Coût", "backdrop-filter"]],
       mot: "La carte devient une vitre : elle appartient au fond autant qu'au "
          + "premier plan. À réserver aux surfaces qui survolent.",
       reglages: [
         { cle: "flou", etiquette: "Flou", min: 4, max: 24, pas: 1, defaut: 12, unite: (v) => `${v} px` },
-        { cle: "op", etiquette: "Opacité du voile", min: 35, max: 85, pas: 5, defaut: 60, unite: (v) => `${v} %` },
         { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 32, pas: 1, defaut: 24, unite: (v) => `${v} px` },
       ],
       vignette: () => "M8 8 H50 V46 H8 Z M14 14 L28 28 M22 12 L40 30",
       specimen: (hote, g) => carteSpec(hote,
-        `background:rgb(255 255 255/${g.op/100});backdrop-filter:blur(${g.flou}px);-webkit-backdrop-filter:blur(${g.flou}px);
+        `background:rgb(255 255 255/.6);backdrop-filter:blur(${g.flou}px);-webkit-backdrop-filter:blur(${g.flou}px);
          border:1px solid rgb(255 255 255/.7);border-radius:${g.coins}px;box-shadow:0 4px 14px rgb(0 0 0/.08)`,
         `background:
            radial-gradient(220px 140px at 20% 20%, #BFE3D2 0%, transparent 60%),
            radial-gradient(240px 160px at 85% 75%, #C7D2F5 0%, transparent 60%),
            #F3F4F2`),
-      technique: (g) => `.carte{background:rgb(255 255 255/${(g.op/100).toFixed(2)});
+      technique: (g) => `.carte{background:rgb(255 255 255/.6);
   backdrop-filter:blur(${g.flou}px);border:1px solid rgb(255 255 255/.7);
   border-radius:${g.coins}px;}`,
     },
     {
       cle: "encre", famille: "Surfaces de carte", nom: "Encre teintée",
-      resume: "Le fond prend une encre Radix, le texte son cran 11",
-      fiche: [["Matière", "Radix Colors — cran 3 en fond, 11 en encre"], ["Coût", "trivial, contrastes garantis"]],
-      mot: "La couleur devient une SURFACE, pas un trait. Les crans Radix "
-         + "garantissent le contraste — on choisit une humeur, pas un hex.",
+      resume: "Fond Radix cran 3, texte cran 11",
+      fiche: [["Matière", "Radix Colors — contrastes garantis"], ["Coût", "trivial"]],
+      mot: "La couleur devient une SURFACE, pas un trait. On choisit une "
+         + "humeur, pas un hex.",
       reglages: [
         { cle: "encre", etiquette: "Encre", min: 1, max: 5, pas: 1, defaut: 1,
           unite: (v) => ["jade","indigo","amber","cyan","gray"][v-1] },
@@ -632,26 +649,19 @@ mask-repeat:no-repeat;`;
       ],
       vignette: () => "M8 8 H50 V46 H8 Z M14 36 H30",
       specimen: (hote, g) => {
-        const enc = [
-          ["#E9F6EF","#1A7A54","#D7EFE2"], // jade 3/11/4
-          ["#EEF1FD","#3A4BC8","#E0E6FB"], // indigo
-          ["#FFF1D6","#8F5E00","#FFE3AE"], // amber
-          ["#E3F6F9","#0C6E7E","#CDEFF5"], // cyan
-          ["#F0F0F0","#3D3D3D","#E6E6E6"], // gray
-        ][g.encre - 1];
+        const enc = [["#E9F6EF","#1A7A54","#D7EFE2"],["#EEF1FD","#3A4BC8","#E0E6FB"],["#FFF1D6","#8F5E00","#FFE3AE"],["#E3F6F9","#0C6E7E","#CDEFF5"],["#F0F0F0","#3D3D3D","#E6E6E6"]][g.encre-1];
         carteSpec(hote, `background:${enc[0]};border:1px solid ${enc[2]};border-radius:${g.coins}px`, null, enc[1]);
       },
       technique: (g) => {
         const n = ["jade","indigo","amber","cyan","gray"][g.encre-1];
-        return `/* Radix Colors (vendor/radix-colors.css) */
-.carte{background:var(--${n}-3);border:1px solid var(--${n}-4);
+        return `.carte{background:var(--${n}-3);border:1px solid var(--${n}-4);
   border-radius:${g.coins}px;color:var(--${n}-11);}`;
       },
     },
     {
       cle: "creuse", famille: "Surfaces de carte", nom: "Surface concave",
       resume: "La carte s'enfonce au lieu de flotter",
-      fiche: [["Matière", "ombres internes croisées (inset)"], ["Coût", "trivial ; rare, donc signifiant"]],
+      fiche: [["Matière", "ombres internes croisées"], ["Coût", "trivial ; rare donc signifiant"]],
       mot: "L'inverse de l'élévation : la surface est CREUSÉE dans le sol. "
          + "Parfait pour un réceptacle — un solde, une zone de dépôt.",
       reglages: [
@@ -661,10 +671,8 @@ mask-repeat:no-repeat;`;
       vignette: () => "M8 8 H50 V46 H8 Z M12 12 H46 V42 H12 Z",
       specimen: (hote, g) => {
         const p = g.prof;
-        carteSpec(hote,
-          `background:#EFF1EF;border-radius:${g.coins}px;
-           box-shadow:inset 0 ${p}px ${2*p+2}px rgb(0 0 0/.${String(6+2*p).padStart(2,"0")}),
-                      inset 0 -1px 2px rgb(255 255 255/.9)`);
+        carteSpec(hote, `background:#EFF1EF;border-radius:${g.coins}px;
+           box-shadow:inset 0 ${p}px ${2*p+2}px rgb(0 0 0/.${String(6+2*p).padStart(2,"0")}), inset 0 -1px 2px rgb(255 255 255/.9)`);
       },
       technique: (g) => `.carte{background:var(--sol-2);border-radius:${g.coins}px;
   box-shadow:inset 0 ${g.prof}px ${2*g.prof+2}px rgb(0 0 0/.${6+2*g.prof}),
@@ -673,13 +681,30 @@ mask-repeat:no-repeat;`;
   ],
 };
 
+/* ---------- petits pictos inline (stroke 1.75) ---------- */
+function svgW(w, inner){ return `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`; }
+function cloche(taille, encre, bord, fond){
+  return `<span style="width:${taille}px;height:${taille}px;border-radius:50%;border:1px solid ${bord};background:${fond};display:grid;place-items:center">
+    ${svgW(Math.round(taille*.45), `<g stroke="${encre}"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9"/><path d="M10.2 20a2 2 0 0 0 3.6 0"/></g>`)}</span>`;
+}
+function rondIc(taille, fond, inner){
+  return `<span style="width:${taille}px;height:${taille}px;border-radius:50%;background:${fond};display:grid;place-items:center">${inner}</span>`;
+}
+function loupe(t, c){ return svgW(t, `<g stroke="${c}"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></g>`); }
+function stat(t, c){ return svgW(t, `<g stroke="${c}"><path d="M4 19V10M10 19V5M16 19v-6M20 19H4"/></g>`); }
+function carte(t, c){ return svgW(t, `<g stroke="${c}"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/></g>`); }
+function fleche(t, c, deg){ return `<span style="display:grid;transform:rotate(${deg}deg)">${svgW(t, `<g stroke="${c}"><path d="M12 5v14M6 11l6-6 6 6"/></g>`)}</span>`; }
+function swapIc(t, c){ return svgW(t, `<g stroke="${c}"><path d="m17 4 4 4-4 4"/><path d="M21 8H7"/><path d="m7 12-4 4 4 4"/><path d="M3 16h14"/></g>`); }
+function horloge(t, c){ return svgW(t, `<g stroke="${c}"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g>`); }
+function oeil(t, c){ return svgW(t, `<g stroke="${c}"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></g>`); }
+
 /* spécimen de carte commun — contenu constant, seule la surface change */
 function carteSpec(hote, surface, fond, encreTexte) {
   hote.innerHTML =
     `<div style="${fond || "background:#F3F4F2"};padding:26px;display:grid;place-items:center">
        <div style="width:300px;height:150px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;${surface}">
          <span style="width:36px;height:36px;border-radius:10px;background:${encreTexte ? "rgb(255 255 255/.55)" : "#EFF1EF"};display:grid;place-items:center">
-           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="${encreTexte || "#111"}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg>
+           ${svgW(17, `<g stroke="${encreTexte || "#111"}"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></g>`)}
          </span>
          <div>
            <div style="font-weight:600;color:${encreTexte || "#111"};font-size:14.5px">Envoyer</div>
