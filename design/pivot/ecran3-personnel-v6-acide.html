@@ -1269,7 +1269,7 @@ button { font: inherit; color: inherit; }
 
     <div class="saisie">
       <div class="montant" id="p2-aff">12 500<i class="caret"></i></div>
-      <small>Solde disponible affiché sur l'accueil</small>
+      <small class="recap">Depuis mon compte ····9654 · immédiat · Frais — aucun</small>
     </div>
     <div class="numpad pad-slot" data-pad="m:payer" data-mene="envoye" style="margin-top: auto"></div>
     <button class="cta" id="p2-cta">Payer 12 500</button>
@@ -1650,7 +1650,7 @@ button { font: inherit; color: inherit; }
 
     <div class="saisie">
       <div class="montant" id="rt-aff">148 500<i class="caret"></i></div>
-      <small class="recap">Toute la caisse est proposée — ajuste si besoin</small>
+      <small class="recap">Vers Banque ····2201 · sous 3 heures · Frais — aucun</small>
     </div>
     <div class="numpad pad-slot" data-pad="m:retrait" data-mene="envoye" style="margin-top: auto"></div>
     <button class="cta" id="rt-cta">Retirer 148 500</button>
@@ -1739,7 +1739,7 @@ button { font: inherit; color: inherit; }
 
     <div class="saisie">
       <div class="montant" id="sc-aff">3 500<i class="caret"></i></div>
-      <small>Le client valide sur son téléphone</small>
+      <small class="recap">Depuis son compte SwimPay ····3417 · immédiat · Frais — aucun</small>
     </div>
     <div class="numpad pad-slot" data-pad="m:scanenc" data-mene="b-qr" style="margin-top: auto"></div>
     <button class="cta" id="sc-cta">Encaisser 3 500</button>
@@ -1751,6 +1751,7 @@ button { font: inherit; color: inherit; }
     <div id="bq-attente">
       <div class="qr-carte" style="margin-top: 6px"><svg id="bq-qr" viewBox="0 0 29 29" role="img" aria-label="Code de paiement"></svg></div>
       <div class="s-montant" id="bq-montant" style="margin-top: 16px">3 500</div>
+      <small class="recap" style="display: block; text-align: center">Tous les réseaux acceptés · crédit immédiat en caisse</small>
       <div class="attente"><span class="pouls"></span>En attente du paiement…</div>
       <div style="height: 26px"></div>
       <button class="cta" id="bq-simule">Paiement reçu — simuler</button>
@@ -1768,7 +1769,7 @@ button { font: inherit; color: inherit; }
       </div>
       <h2 class="s-titre">Paiement reçu</h2>
       <div class="s-montant credit" id="bq-recu-montant" style="color: var(--acide)">+3 500</div>
-      <p class="s-dest">Ajouté à la caisse du jour · reçu signé</p>
+      <p class="s-dest" id="bq-source">Payé par mobile money · immédiat · ajouté à la caisse</p>
       <button class="cta cta-encre" data-va="bc-encaisser">Nouvel encaissement</button>
       <button class="link s-lien" data-va="b-commercant">Retour à la boutique</button>
     </div>
@@ -1854,6 +1855,7 @@ button { font: inherit; color: inherit; }
     </div>
 
     <div style="max-width: 430px; margin: 18px auto 0; display: flex; flex-direction: column">
+      <small class="recap" style="margin-bottom: 10px">Chacun sur son compte de réception · immédiat · Frais — aucun</small>
       <button class="cta" id="pme-cta" data-mene="pme-salaires">Payer 5 salaires en 1 clic</button>
       <button class="link s-lien" id="pme-reset" hidden>Refaire la démonstration</button>
     </div>
@@ -2004,12 +2006,12 @@ button { font: inherit; color: inherit; }
     </div>
 
     <div class="carte source" id="dp-sources" style="margin-top: 14px">
-      <button class="row" aria-pressed="true">
+      <button class="row" aria-pressed="true" data-delai="sous 3 heures">
         <span class="rond"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg></span>
         <span class="txt"><b>Compte bancaire ····8812</b><span>Virement entrant · sous 3 heures</span></span>
         <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
       </button>
-      <button class="row" aria-pressed="false">
+      <button class="row" aria-pressed="false" data-delai="immédiat">
         <span class="rond"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
         <span class="txt"><b>Mobile du gérant ····07 88</b><span>Immédiat</span></span>
         <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
@@ -2018,7 +2020,7 @@ button { font: inherit; color: inherit; }
 
     <div class="saisie">
       <div class="montant" id="dp-aff">500 000<i class="caret"></i></div>
-      <small class="recap">Crédité sur la trésorerie de l'entreprise</small>
+      <small class="recap" data-recap-de="dp-sources">Par Compte bancaire ····8812 · sous 3 heures · Frais — aucun</small>
     </div>
     <div class="numpad pad-slot" data-pad="m:depot" data-mene="envoye" style="margin-top: auto"></div>
     <button class="cta" id="dp-cta">Approvisionner 500 000</button>
@@ -2301,7 +2303,8 @@ button { font: inherit; color: inherit; }
           <p style="margin: 0 0 6px; font-size: 14.5px; font-weight: 500">Ton numéro</p>
           <input class="champ" id="ec-num" inputmode="numeric" placeholder="07 88 12 34 56" value="07 88 12 34 56">
           <p style="margin: 12px 0 0; color: var(--sourd); font-size: 12.5px">
-            Confirmation dans ton app SwimPay. Reçu envoyé par message.
+            La demande arrive dans ton app SwimPay — tu choisis le compte au moment de payer.
+            Immédiat · Frais — aucun · reçu envoyé par message.
           </p>
           <button class="cta" id="ec-cta" style="margin-top: 16px; width: 100%">Payer 32 000</button>
         </div>
@@ -2722,7 +2725,7 @@ document.getElementById("p2-cta").addEventListener("click", function () {
   const m = parseInt(fluxM.payer || "0", 10); if (m <= 0) return;
   occupe(this, "Paiement en cours…", () => {
     majFlux("payer");
-    cloture({ titre: "Paiement effectué", sous: "Marché central · marchand vérifié",
+    cloture({ titre: "Paiement effectué", sous: "Marché central · immédiat · Frais — aucun",
       montant: m, nom: "Marché central", categorie: "Paiement marchand" });
   });
 });
@@ -2846,11 +2849,12 @@ document.getElementById("c-cta").addEventListener("click", () => {
 });
 document.getElementById("c-cta").setAttribute("data-mene", "b-qr");
 /* encaissement conclu — partagé entre le QR affiché et le scan direct */
-const encaisse = (m, libelle) => {
+const encaisse = (m, libelle, source) => {
   caisseJour += m; caisseN += 1; dernierH = heureCourte();
   ventes.unshift({ qui: libelle, h: dernierH, m });
   renderVentes();
   document.getElementById("bq-recu-montant").textContent = "+" + fmt(String(m));
+  document.getElementById("bq-source").textContent = source;
   document.getElementById("bq-attente").hidden = true;
   document.getElementById("bq-recu").hidden = false;
   const ecran = document.getElementById("b-qr");
@@ -2859,7 +2863,8 @@ const encaisse = (m, libelle) => {
 document.getElementById("bq-simule").addEventListener("click", function () {
   occupe(this, "Paiement en cours…", () => {
     this.textContent = "Paiement reçu — simuler";
-    encaisse(parseInt(fluxM.caisse || "0", 10), "Vente au comptoir");
+    encaisse(parseInt(fluxM.caisse || "0", 10), "Vente au comptoir",
+      "Payé par mobile money · immédiat · ajouté à la caisse");
   });
 });
 /* scan du client — on encaisse SON compte, identité vérifiée */
@@ -2869,7 +2874,8 @@ document.getElementById("sc-cta").addEventListener("click", function () {
   const m = parseInt(fluxM.scanenc || "0", 10); if (m <= 0) return;
   occupe(this, "Encaissement en cours…", () => {
     majFlux("scanenc");
-    encaisse(m, "Encaissement direct · Awa K.");
+    encaisse(m, "Encaissement direct · Awa K.",
+      "Depuis son compte SwimPay ····3417 · immédiat · ajouté à la caisse");
     va("b-qr");
   });
 });
@@ -2929,12 +2935,13 @@ document.getElementById("cc-partager").addEventListener("click", function () { r
 /* PME — équipe et factures vivantes, salaires en cascade, édition au pad */
 const COCHE_MINI = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>`;
 const employes = [
-  { nom: "Aminata D.", role: "Couturière", sal: 280000, eq: "Production" },
-  { nom: "Karim B.", role: "Coupeur", sal: 260000, eq: "Production" },
-  { nom: "Fatou S.", role: "Vendeuse", sal: 240000, eq: "Vente" },
-  { nom: "Moussa O.", role: "Livreur", sal: 220000, eq: "Livraison" },
-  { nom: "Rokia L.", role: "Apprentie", sal: 160000, eq: "Production" },
+  { nom: "Aminata D.", role: "Couturière", sal: 280000, eq: "Production", moyen: "Mobile money ····43 07" },
+  { nom: "Karim B.", role: "Coupeur", sal: 260000, eq: "Production", moyen: "Mobile money ····81 15" },
+  { nom: "Fatou S.", role: "Vendeuse", sal: 240000, eq: "Vente", moyen: "Banque ····5520" },
+  { nom: "Moussa O.", role: "Livreur", sal: 220000, eq: "Livraison", moyen: "Mobile money ····62 90" },
+  { nom: "Rokia L.", role: "Apprentie", sal: 160000, eq: "Production", moyen: "Mobile money ····17 33" },
 ];
+const moyenAuto = () => "Mobile money ····" + String(10 + ((employes.length * 7) % 80)) + " " + String(20 + ((employes.length * 13) % 70));
 const initiales = (nom) => nom.trim().split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 const ech = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let filtreEq = "Toutes";
@@ -2957,7 +2964,7 @@ const renderEquipe = () => {
     `<div class="row" style="cursor: default">
       <span class="avatar">${ech(initiales(e.nom))}</span>
       <span class="txt"><b>${ech(e.nom)}</b><span>${ech(e.role)} · ${ech(e.eq)}</span></span>
-      <span class="fin"><b>${fmt(String(e.sal))}</b></span>
+      <span class="fin"><b>${fmt(String(e.sal))}</b><span>${ech(e.moyen)}</span></span>
       <button class="valide-btn" data-edite="${i}" aria-label="Ajuster le salaire">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.5-1L20 7.5a2 2 0 0 0-3-3L5.5 16Z"/></svg>
       </button>
@@ -3043,7 +3050,7 @@ document.getElementById("eq-ajoute").addEventListener("click", function () {
   const sal = parseInt((document.getElementById("eq-sal").value || "").replace(/\D/g, ""), 10);
   if (!nom || !sal) { retourBtn(this, "Nom et salaire requis"); return; }
   const eq = document.getElementById("eq-equipe").value.trim() || "Général";
-  employes.push({ nom, role, sal, eq });
+  employes.push({ nom, role, sal, eq, moyen: moyenAuto() });
   renderEquipe();
   document.getElementById("eq-nom").value = "";
   document.getElementById("eq-role").value = "";
@@ -3363,7 +3370,9 @@ document.getElementById("im-fichier").addEventListener("change", function () {
 document.getElementById("im-exemple").addEventListener("click", () => parseCsv(CSV_EXEMPLE, "exemple.csv"));
 document.getElementById("im-cta").addEventListener("click", () => {
   const dejaLa = new Set(employes.map((e) => e.nom.toLowerCase()));
-  importe.forEach((e) => { if (!dejaLa.has(e.nom.toLowerCase())) employes.push(e); });
+  importe.forEach((e) => {
+    if (!dejaLa.has(e.nom.toLowerCase())) employes.push({ ...e, moyen: moyenAuto() });
+  });
   renderEquipe();
   document.getElementById("im-apercu").hidden = true;
   document.getElementById("im-fichier").value = "";

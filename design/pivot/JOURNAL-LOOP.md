@@ -254,6 +254,43 @@ Flow transversal : « Se déconnecter » → splash ; remboursement unifié par
 - Passe anti-slogan : 11 libellés ramenés au sobre (dépôt, scan, import,
   intégration, comptable, checkout) ; le pitch ne survit que sur Bienvenue.
 
+---
+
+# BOUCLE 3-ter — audit complet des chaînes (2026-08-28)
+
+Le commanditaire a raison : la boucle 3-bis a déclaré « chaîne complète »
+après avoir corrigé DEUX flux. Faute de méthode : une correction ponctuelle
+vendue comme un état global. Cette boucle audite TOUS les mouvements
+d'argent contre la chaîne canonique — origine → Annuaire (destinataire
+résolu) → Routeur (moyen · délai · frais) → montant → reçu portant toute
+la chaîne → grand livre.
+
+## L'audit, flux par flux
+
+| flux | état avant | correction |
+|---|---|---|
+| Envoyer perso | corrigé en 3-bis | — (récap + moyen au reçu) ✔ |
+| Payer marchand | ✗ aucun Routeur | récap « Depuis mon compte ····9654 · immédiat · Frais — aucun » + reçu ✔ |
+| Swap entre réseaux | ✔ déjà conforme (de/vers + récap délai/frais) | — |
+| Vers la banque | ✔ déjà conforme (compte + délai) | — |
+| Envoyer PME | corrigé en 3-bis | — ✔ |
+| Dépôt PME | ✗ récap statique | récap dynamique lié à la source (banque = 3 h, mobile = immédiat) ✔ |
+| Salaires PME | ✗ moyen de réception absent | chaque employé porte son moyen (mobile money / banque) dans la liste ; import et embauche en génèrent un ; récap au CTA ✔ |
+| Retrait commerçant | ✗ récap flou | « Vers Banque ····2201 · sous 3 heures · Frais — aucun » ✔ |
+| Encaisser (QR affiché) | ✗ rail d'entrée invisible | attente : « Tous les réseaux acceptés · crédit immédiat » ; reçu : source paramétrée (« Payé par mobile money · immédiat ») ✔ |
+| Scan client | ✗ compte prélevé non montré | récap « Depuis son compte SwimPay ····3417 · immédiat » + reçu avec la source ✔ |
+| Checkout e-commerce | ✗ chaîne du push muette | « La demande arrive dans ton app — tu choisis le compte au moment de payer » + récap ✔ |
+| Recevoir / Demander / Reçus | n/a (pas un envoi) | — |
+
+## Verdict
+
+- 8 assertions de chaîne ajoutées à la sonde 3 : **26/26** ; régressions
+  **25/25** et **22/22** — **73/73** ; 50 écrans, 0 cible cassée,
+  0 orphelin, 0 débord.
+- Leçon de méthode ajoutée : **une correction ne se déclare jamais au
+  périmètre supérieur à celui qui a été sondé.** L'audit exhaustif
+  précède la déclaration, pas l'inverse.
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;
