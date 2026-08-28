@@ -1,0 +1,327 @@
+<title>Accueil Personnel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600&display=swap">
+<style>
+  /* ============================================================
+     SwimPay — Écran 3 · Accueil Personnel (desktop + mobile)
+     Grammaire vendorisée depuis les systèmes de composants récents :
+     - tokens neutres & radius : shadcn/ui v4 (apps/v4/app/globals.css)
+     - anatomie contrôles (h-9/h-10, shadow-xs, ring 3px/50%) : shadcn + Origin UI
+     - pattern metric (label → valeur → meta) : Tremor
+     Thème unique clair, délibéré. Aucune dépendance.
+     ============================================================ */
+  :root{
+    /* shadcn v4 — vendorisé */
+    --radius: .625rem;
+    --radius-sm: calc(var(--radius) * .6);
+    --radius-md: calc(var(--radius) * .8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --background: oklch(1 0 0);
+    --surface: oklch(.98 0 0);
+    --foreground: oklch(.145 0 0);
+    --muted: oklch(.97 0 0);
+    --muted-foreground: oklch(.556 0 0);
+    --border: oklch(.922 0 0);
+    --input: oklch(.922 0 0);
+    --ring: oklch(.708 0 0);
+    --primary: oklch(.145 0 0);
+    --primary-foreground: oklch(.985 0 0);
+    /* sémantique */
+    --positive: oklch(.6 .15 155);
+    /* points réseaux (anonymes) */
+    --dot-1:#22b8cf; --dot-2:#f08c1a; --dot-3:#e8b512; --dot-4:#4263eb;
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / .05);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / .07), 0 1px 2px -1px rgb(0 0 0 / .07);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--surface); color:var(--foreground);
+    font-family:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:15px; line-height:1.5; letter-spacing:-.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:"Geist Mono",ui-monospace,monospace}
+  svg{display:block; flex:none}
+  .app{min-height:100vh; display:flex; flex-direction:column}
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    background:var(--background); border-bottom:1px solid var(--border);
+    position:sticky; top:0; z-index:20;
+  }
+  .topbar-in{
+    max-width:1120px; margin:0 auto; padding:0 24px; height:60px;
+    display:flex; align-items:center; gap:20px;
+  }
+  .brand{display:flex; align-items:center; gap:9px; font-weight:600; font-size:15.5px}
+  .brand-mark{width:24px;height:24px;border-radius:7px;background:var(--primary);position:relative}
+  .brand-mark::after{content:"";position:absolute;left:5px;right:5px;top:10px;height:4px;border-radius:99px;background:var(--primary-foreground);opacity:.9;transform:rotate(-8deg)}
+  .nav{display:flex; align-items:center; gap:4px; margin-left:12px}
+  .nav a{
+    text-decoration:none; color:var(--muted-foreground); font-weight:500; font-size:14px;
+    padding:7px 12px; border-radius:var(--radius-md);
+  }
+  .nav a:hover{color:var(--foreground); background:var(--muted)}
+  .nav a.active{color:var(--foreground); background:var(--muted)}
+  .top-actions{margin-left:auto; display:flex; align-items:center; gap:10px}
+  .search{
+    display:flex; align-items:center; gap:8px; width:240px; height:36px;
+    padding:0 12px; background:var(--background); border:1px solid var(--input);
+    border-radius:var(--radius-md); box-shadow:var(--shadow-xs);
+    color:var(--muted-foreground); font-size:14px;
+  }
+  .search:focus-within{border-color:var(--ring); outline:3px solid color-mix(in oklab, var(--ring) 35%, transparent)}
+  .search input{border:0; outline:0; background:transparent; width:100%; font:inherit; color:var(--foreground)}
+  .icon-btn{
+    width:36px;height:36px; display:grid; place-items:center;
+    background:var(--background); border:1px solid var(--input);
+    border-radius:var(--radius-md); box-shadow:var(--shadow-xs);
+    color:var(--foreground); cursor:pointer;
+  }
+  .icon-btn:hover{background:var(--muted)}
+  .avatar{
+    width:36px;height:36px;border-radius:50%; background:var(--muted);
+    border:1px solid var(--border);
+    display:grid; place-items:center; font-weight:600; font-size:13px; cursor:pointer;
+  }
+
+  /* ---------- Page ---------- */
+  .page{max-width:1120px; margin:0 auto; padding:40px 24px 96px; width:100%}
+
+  /* ---------- Hero (pattern metric Tremor) ---------- */
+  .hero{padding:16px 4px 36px}
+  .hero .label{font-size:13.5px; font-weight:500; color:var(--muted-foreground)}
+  .amount{
+    margin-top:6px; font-family:"Geist Mono",ui-monospace,monospace;
+    font-size:clamp(2.4rem,5vw,3.4rem); font-weight:600; letter-spacing:-.03em;
+    font-variant-numeric:tabular-nums; line-height:1.05;
+  }
+  .hero-actions{display:flex; gap:10px; margin-top:24px; flex-wrap:wrap}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    height:40px; padding:0 18px; border-radius:var(--radius-md);
+    font:inherit; font-weight:500; font-size:14px; cursor:pointer;
+    border:1px solid transparent; box-shadow:var(--shadow-xs);
+    transition:background .12s ease;
+  }
+  .btn:focus-visible{outline:3px solid color-mix(in oklab, var(--ring) 45%, transparent); outline-offset:1px}
+  .btn-primary{background:var(--primary); color:var(--primary-foreground)}
+  .btn-primary:hover{background:oklch(.25 0 0)}
+  .btn-outline{background:var(--background); border-color:var(--input); color:var(--foreground)}
+  .btn-outline:hover{background:var(--muted)}
+
+  /* ---------- Corps ---------- */
+  .grid{display:grid; grid-template-columns:7fr 5fr; gap:16px; align-items:start}
+  .section-title{font-size:13.5px; font-weight:500; color:var(--muted-foreground); margin:0 0 10px 2px}
+  .tiles{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .tile{
+    background:var(--background); border:1px solid var(--border);
+    border-radius:var(--radius-lg); box-shadow:var(--shadow-xs);
+    padding:18px 16px; display:flex; flex-direction:column; gap:26px;
+    cursor:pointer; text-align:left; font:inherit; color:inherit;
+    transition:box-shadow .12s ease, border-color .12s ease;
+  }
+  .tile:hover{border-color:var(--ring); box-shadow:var(--shadow-sm)}
+  .tile:focus-visible{outline:3px solid color-mix(in oklab, var(--ring) 45%, transparent); outline-offset:1px}
+  .tile .ic{
+    width:36px;height:36px; border-radius:var(--radius-md);
+    background:var(--muted); display:grid; place-items:center;
+  }
+  .tile b{font-weight:500; font-size:14.5px; letter-spacing:-.005em}
+
+  .card{
+    background:var(--background); border:1px solid var(--border);
+    border-radius:var(--radius-lg); box-shadow:var(--shadow-xs);
+  }
+  .card-head{
+    padding:14px 16px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .card-head b{font-size:14.5px; font-weight:500}
+  .link{font-size:13px; color:var(--muted-foreground); text-decoration:none; padding:4px 8px; border-radius:var(--radius-sm)}
+  .link:hover{color:var(--foreground); background:var(--muted)}
+  .op{
+    display:flex; align-items:center; gap:12px; padding:13px 16px;
+    border-bottom:1px solid var(--border);
+  }
+  .op:last-child{border-bottom:0}
+  .op .who{display:flex; align-items:center; gap:10px; min-width:0}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .op .name{font-weight:500; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .op .amt{
+    margin-left:auto; font-family:"Geist Mono",ui-monospace,monospace;
+    font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  .amt.pos{color:var(--positive)}
+
+  /* ---------- Nav mobile ---------- */
+  .tabbar{display:none}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:860px){
+    .nav,.search{display:none}
+    .topbar-in{height:56px; padding:0 16px}
+    .page{padding:24px 16px 110px}
+    .hero{padding:8px 2px 28px}
+    .hero-actions{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+    .hero-actions .btn{height:auto; padding:12px 4px; flex-direction:column; gap:7px; font-size:12.5px}
+    .grid{grid-template-columns:1fr; gap:24px}
+    .tabbar{
+      display:grid; grid-template-columns:repeat(4,1fr);
+      position:fixed; left:0; right:0; bottom:0; z-index:30;
+      background:var(--background); border-top:1px solid var(--border);
+      padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+    }
+    .tab{
+      display:flex; flex-direction:column; align-items:center; gap:3px;
+      font-size:11px; font-weight:500; color:var(--muted-foreground);
+      text-decoration:none; padding:6px 0; border-radius:var(--radius-md);
+    }
+    .tab.active{color:var(--foreground)}
+    .tab.active .tab-ic{background:var(--muted)}
+    .tab-ic{width:34px;height:24px;border-radius:99px;display:grid;place-items:center}
+  }
+  @media (max-width:380px){
+    .tiles{grid-template-columns:1fr}
+  }
+</style>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="topbar-in">
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>SwimPay</span>
+      <nav class="nav" aria-label="Navigation principale">
+        <a class="active" href="#" aria-current="page">Accueil</a>
+        <a href="#">Envoyer</a>
+        <a href="#">Recevoir</a>
+        <a href="#">Profil</a>
+      </nav>
+      <div class="top-actions">
+        <label class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+          <input type="search" placeholder="Rechercher">
+        </label>
+        <button class="icon-btn" aria-label="Notifications">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9"/><path d="M10.2 20a2 2 0 0 0 3.6 0"/></svg>
+        </button>
+        <span class="avatar" role="img" aria-label="Profil de Camille">CL</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <section class="hero" aria-label="Solde">
+      <div class="label">Solde</div>
+      <div class="amount">1 254 500</div>
+      <div class="hero-actions">
+        <button class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg>
+          Envoyer
+        </button>
+        <button class="btn btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M15 17H7V9"/></svg>
+          Recevoir
+        </button>
+        <button class="btn btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m17 4 4 4-4 4"/><path d="M21 8H7"/><path d="m7 12-4 4 4 4"/><path d="M3 16h14"/></svg>
+          Transférer
+        </button>
+        <button class="btn btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Historique
+        </button>
+      </div>
+    </section>
+
+    <div class="grid">
+
+      <section aria-label="Services">
+        <h2 class="section-title">Services</h2>
+        <div class="tiles">
+          <button class="tile">
+            <span class="ic">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m17 4 4 4-4 4"/><path d="M21 8H7"/><path d="m7 12-4 4 4 4"/><path d="M3 16h14"/></svg>
+            </span>
+            <b>Transférer entre réseaux</b>
+          </button>
+          <button class="tile">
+            <span class="ic">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16"/><path d="M5 10V19"/><path d="M19 10v9"/><path d="M9 10v9M14 10v9"/><path d="M3 21h18"/><path d="m12 3 9 7H3z"/></svg>
+            </span>
+            <b>Vers la banque</b>
+          </button>
+          <button class="tile">
+            <span class="ic">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="4"/><path d="M3 21c0-3.9 3.1-7 7-7 1.2 0 2.4.3 3.4.9"/><path d="m15.5 18.5 2 2 4-4.5"/></svg>
+            </span>
+            <b>Payer un contact</b>
+          </button>
+          <button class="tile">
+            <span class="ic">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z"/><path d="M9.5 8h5M9.5 12h5"/></svg>
+            </span>
+            <b>Mes reçus</b>
+          </button>
+        </div>
+      </section>
+
+      <section aria-label="Dernières opérations">
+        <h2 class="section-title">Dernières opérations</h2>
+        <div class="card">
+          <div class="card-head">
+            <b>Cette semaine</b>
+            <a class="link" href="#">Voir tout</a>
+          </div>
+          <div class="op">
+            <span class="who">
+              <span class="dot" style="background:var(--dot-1)" aria-hidden="true"></span>
+              <span class="name">Envoyé à Julien</span>
+            </span>
+            <span class="amt">−10 000</span>
+          </div>
+          <div class="op">
+            <span class="who">
+              <span class="dot" style="background:var(--dot-2)" aria-hidden="true"></span>
+              <span class="name">Reçu de Sarah</span>
+            </span>
+            <span class="amt pos">+6 500</span>
+          </div>
+          <div class="op">
+            <span class="who">
+              <span class="dot" style="background:var(--dot-4)" aria-hidden="true"></span>
+              <span class="name">Envoyé à Marc</span>
+            </span>
+            <span class="amt">−3 200</span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <nav class="tabbar" aria-label="Navigation mobile">
+    <a class="tab active" href="#" aria-current="page">
+      <span class="tab-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9"/></svg></span>
+      Accueil
+    </a>
+    <a class="tab" href="#">
+      <span class="tab-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg></span>
+      Envoyer
+    </a>
+    <a class="tab" href="#">
+      <span class="tab-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M15 17H7V9"/></svg></span>
+      Recevoir
+    </a>
+    <a class="tab" href="#">
+      <span class="tab-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></span>
+      Profil
+    </a>
+  </nav>
+
+</div>
