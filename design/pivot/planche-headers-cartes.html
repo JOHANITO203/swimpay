@@ -1,0 +1,925 @@
+<title>En-têtes & surfaces</title>
+<style>
+  /* ------------------------------------------------------------------
+     DEUX JEUX DE JETONS, et c'est le point le plus important de la
+     feuille de style :
+
+     - le CHROME DE LA PLANCHE suit le theme du lecteur ;
+     - le SPECIMEN ne le suit JAMAIS. C'est un echantillon : il garde ses
+       vraies couleurs comme un nuancier de peinture sous n'importe quel
+       eclairage. Les couleurs du specimen se declarent dans le bloc
+       « JETONS DU SPECIMEN » et nulle part ailleurs.
+     ------------------------------------------------------------------ */
+  :root {
+    color-scheme: light dark;
+
+    --fond: #101216;
+    --carte: #191C22;
+    --carte-haut: #20242C;
+    --texte: #E8E6E1;
+    --sourd: #9B988F;
+    --trait: rgba(232, 230, 225, .13);
+    --trait-fort: rgba(232, 230, 225, .26);
+    --accent: #CEAA62;
+    --accent-sourd: rgba(206, 170, 98, .14);
+
+    /* ---- JETONS DU SPECIMEN — a remplacer par ceux du projet ------- */
+    --spec-fond: #14161B;
+    --spec-surface: #F6F5F1;
+    --spec-encre: #33373F;
+
+    --ec-1: 4px;  --ec-2: 8px;  --ec-3: 14px;
+    --ec-4: 22px; --ec-5: 34px; --ec-6: 52px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --fond: #EFECE5; --carte: #FBFAF7; --carte-haut: #FFFFFF;
+      --texte: #23262C; --sourd: #6C6960;
+      --trait: rgba(35, 38, 44, .13); --trait-fort: rgba(35, 38, 44, .24);
+      --accent: #7A5C22; --accent-sourd: rgba(122, 92, 34, .10);
+    }
+  }
+  :root[data-theme="light"] {
+    --fond: #EFECE5; --carte: #FBFAF7; --carte-haut: #FFFFFF;
+    --texte: #23262C; --sourd: #6C6960;
+    --trait: rgba(35, 38, 44, .13); --trait-fort: rgba(35, 38, 44, .24);
+    --accent: #7A5C22; --accent-sourd: rgba(122, 92, 34, .10);
+  }
+  :root[data-theme="dark"] {
+    --fond: #101216; --carte: #191C22; --carte-haut: #20242C;
+    --texte: #E8E6E1; --sourd: #9B988F;
+    --trait: rgba(232, 230, 225, .13); --trait-fort: rgba(232, 230, 225, .26);
+    --accent: #CEAA62; --accent-sourd: rgba(206, 170, 98, .14);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--fond);
+    color: var(--texte);
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1180px; margin: 0 auto;
+    padding: var(--ec-6) var(--ec-4);
+    display: flex; flex-direction: column; gap: var(--ec-5);
+  }
+
+  .chapeau { display: flex; flex-direction: column; gap: var(--ec-3); max-width: 62ch; }
+  h1 {
+    margin: 0; font-size: clamp(30px, 4.6vw, 44px); font-weight: 800;
+    letter-spacing: -.03em; line-height: 1.02; text-wrap: balance;
+  }
+  .chapeau p { margin: 0; color: var(--sourd); font-size: 16px; }
+  .chapeau strong, .chapeau b { color: var(--texte); font-weight: 650; }
+
+  .invariants {
+    display: flex; flex-wrap: wrap; gap: var(--ec-1) var(--ec-4);
+    padding: var(--ec-3) var(--ec-4); margin: 0;
+    border: 1px solid var(--trait); border-left: 2px solid var(--accent);
+    border-radius: 4px; background: var(--accent-sourd);
+  }
+  .invariants > div { display: flex; gap: var(--ec-2); align-items: baseline; }
+  .invariants dt {
+    margin: 0; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .16em; font-weight: 700; color: var(--sourd);
+  }
+  .invariants dd {
+    margin: 0; font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 14px; font-variant-numeric: tabular-nums; font-weight: 600;
+  }
+
+  .atelier {
+    display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+    gap: var(--ec-5); align-items: start;
+  }
+  @media (max-width: 860px) { .atelier { grid-template-columns: minmax(0, 1fr); } }
+
+  .rail { display: flex; flex-direction: column; gap: var(--ec-4); }
+  .famille { display: flex; flex-direction: column; gap: var(--ec-1); }
+  .famille > h2 {
+    margin: 0 0 var(--ec-1); font-size: 11px; text-transform: uppercase;
+    letter-spacing: .16em; font-weight: 700; color: var(--sourd);
+  }
+  .choix {
+    appearance: none; -webkit-appearance: none;
+    display: flex; align-items: center; gap: var(--ec-3);
+    width: 100%; text-align: left; cursor: pointer;
+    padding: var(--ec-2) var(--ec-3);
+    border: 1px solid transparent; border-radius: 4px;
+    background: transparent; color: inherit; font: inherit;
+  }
+  .choix:hover { background: var(--carte); border-color: var(--trait); }
+  .choix:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .choix[aria-pressed="true"] { background: var(--carte-haut); border-color: var(--trait-fort); }
+  .choix .vignette { flex: 0 0 auto; display: block; }
+  .choix .nom { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .choix .nom b { font-weight: 620; font-size: 14.5px; letter-spacing: -.005em; }
+  .choix[aria-pressed="true"] .nom b { color: var(--accent); }
+  .choix .nom span { font-size: 12px; color: var(--sourd); line-height: 1.35; }
+
+  .colonne { display: flex; flex-direction: column; gap: var(--ec-4); min-width: 0; }
+  .carte { border: 1px solid var(--trait); border-radius: 6px; background: var(--carte); overflow: hidden; }
+  .carte > header {
+    display: flex; flex-wrap: wrap; gap: var(--ec-2) var(--ec-4);
+    align-items: baseline; justify-content: space-between;
+    padding: var(--ec-3) var(--ec-4); border-bottom: 1px solid var(--trait);
+  }
+  .carte > header h2 {
+    margin: 0; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .16em; font-weight: 700; color: var(--sourd);
+  }
+  .carte > header .note { font-size: 12.5px; color: var(--sourd); }
+  .corps { padding: var(--ec-4); }
+
+  /* LE SPECIMEN VIT SUR SON PROPRE FOND, pas sur celui de la carte */
+  /* LE SPECIMEN NE S'ETIRE PAS. Sans plafond, un SVG en width:100 %
+     grossit avec la carte et l'echelle 1:1 annoncee devient fausse.
+     PLANCHE.largeurSpecimen fixe le plafond ; au-dela, la scene reste
+     centree sur son fond. */
+  .scene { background: var(--spec-fond); padding: 0; }
+  .scene > * {
+    display: block; width: 100%; height: auto; margin: 0 auto;
+    max-width: var(--largeur-specimen, 760px);
+  }
+
+  .loupe { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 230px); gap: var(--ec-4); }
+  .loupe.sans-vue { grid-template-columns: minmax(0, 1fr); max-width: 420px; }
+  @media (max-width: 620px) { .loupe { grid-template-columns: minmax(0, 1fr); } }
+  .loupe .vue > * { display: block; width: 100%; height: auto; }
+
+  .fiche { display: flex; flex-direction: column; gap: var(--ec-3); }
+  .fiche dl { margin: 0; display: flex; flex-direction: column; gap: var(--ec-2); }
+  .fiche .ligne {
+    display: flex; flex-direction: column; gap: 1px;
+    padding-bottom: var(--ec-2); border-bottom: 1px solid var(--trait);
+  }
+  .fiche dt {
+    margin: 0; font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .16em; font-weight: 700; color: var(--sourd);
+  }
+  .fiche dd { margin: 0; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+
+  .reglages { display: flex; flex-direction: column; gap: var(--ec-2); padding-top: var(--ec-2); }
+  .reglages label {
+    display: flex; flex-direction: column; gap: 2px;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .16em;
+    font-weight: 700; color: var(--sourd);
+  }
+  .reglages .valeur {
+    font-family: ui-monospace, Consolas, monospace; font-size: 13.5px;
+    color: var(--texte); text-transform: none; letter-spacing: 0;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* LE PANNEAU DE TECHNIQUE. Une planche qui montre une forme sans son
+     code n'est utile qu'a moitie : on choisit, puis on redemande comment
+     faire. Le code suit le REGLAGE, donc ce qui est copie correspond a
+     ce qui est vu. */
+  .technique pre {
+    margin: 0; padding: var(--ec-4);
+    overflow-x: auto; max-height: 420px; overflow-y: auto;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 12.5px; line-height: 1.65; tab-size: 2;
+    color: var(--texte);
+  }
+  .technique pre code { white-space: pre; }
+  .choix-final { display: flex; flex-direction: column; gap: var(--ec-3); }
+  .choix-final label {
+    display: flex; flex-direction: column; gap: 5px;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .16em;
+    font-weight: 700; color: var(--sourd);
+  }
+  .choix-final input[type="text"] {
+    font: inherit; font-size: 14px; color: var(--texte);
+    padding: 8px 12px; border-radius: 4px;
+    border: 1px solid var(--trait-fort); background: var(--fond);
+  }
+  .choix-final input[type="text"]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px;
+  }
+  .choix-final pre {
+    margin: 0; padding: var(--ec-3) var(--ec-4);
+    border-radius: 4px; border: 1px solid var(--trait);
+    background: var(--fond);
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 12.5px; line-height: 1.7;
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  .copier {
+    appearance: none; -webkit-appearance: none;
+    font: inherit; font-size: 12px; font-weight: 650;
+    padding: 4px 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--trait-fort);
+    background: transparent; color: var(--texte);
+  }
+  .copier:hover { background: var(--carte-haut); border-color: var(--accent); }
+  .copier:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .copier[data-fait="oui"] { color: var(--accent); border-color: var(--accent); }
+
+  .mot { margin: 0; color: var(--sourd); font-size: 13.5px; max-width: 68ch; }
+  .mot b { color: var(--texte); font-weight: 620; }
+  footer { color: var(--sourd); font-size: 13px; max-width: 70ch; }
+</style>
+
+<div class="page">
+  <div class="chapeau">
+    <h1 id="titre"></h1>
+    <p id="intro"></p>
+    <dl class="invariants" id="invariants"></dl>
+  </div>
+
+  <div class="atelier">
+    <div class="rail" id="rail"></div>
+    <div class="colonne">
+      <section class="carte">
+        <header><h2 id="titre-specimen">En place</h2><span class="note" id="note-specimen"></span></header>
+        <div class="scene" id="scene"></div>
+      </section>
+      <section class="carte" id="carte-loupe" hidden>
+        <header><h2 id="titre-loupe">À la loupe</h2></header>
+        <div class="corps loupe" id="corps-loupe">
+          <div class="vue" id="vue"></div>
+          <div class="fiche">
+            <dl id="fiche"></dl>
+            <div class="reglages" id="bloc-reglage" hidden></div>
+          </div>
+        </div>
+      </section>
+      <section class="carte" id="carte-choix">
+        <header>
+          <h2>Votre choix</h2>
+          <button type="button" class="copier" id="copier-choix">Copier le prompt</button>
+        </header>
+        <div class="corps choix-final">
+          <label for="ou">
+            Où l'appliquer
+            <input type="text" id="ou" placeholder="ex. l'en-tête de la page vols"
+                   autocomplete="off" spellcheck="false">
+          </label>
+          <pre id="prompt"></pre>
+        </div>
+      </section>
+
+      <section class="carte technique" id="carte-technique" hidden>
+        <header>
+          <h2>La technique</h2>
+          <button type="button" class="copier" id="copier">Copier</button>
+        </header>
+        <pre><code id="code"></code></pre>
+      </section>
+
+      <p class="mot" id="mot"></p>
+    </div>
+  </div>
+
+  <footer id="pied"></footer>
+</div>
+
+<script>
+/* ====================================================================
+   LE GABARIT NE CONNAIT QUE CET OBJET.
+
+   Tout le reste — rail, familles, selection au clavier, reglage
+   contextuel, fiche, themes, mise en page — est deja cable en dessous.
+   Remplacer PLANCHE, et rien d'autre.
+
+   `specimen(hote, valeur)` et `loupe(hote, valeur)` recoivent un element
+   VIDE et y ecrivent ce qu'elles veulent : SVG, canvas, DOM.
+
+   L'exemple ci-dessous est un exemple : trois traitements de coin. Il
+   tourne tel quel pour qu'on voie la structure, il se remplace en bloc.
+   ==================================================================== */
+
+const SVGNS = "http://www.w3.org/2000/svg";
+const svg = (parent, vb, contenu) => {
+  const e = document.createElementNS(SVGNS, "svg");
+  e.setAttribute("viewBox", vb);
+  e.setAttribute("aria-hidden", "true");
+  e.innerHTML = contenu;
+  parent.append(e);
+  return e;
+};
+
+const PLANCHE = {
+  titre: "En-têtes & surfaces",
+  largeurSpecimen: "480px",
+  intro: "Deux questions, un spécimen constant : quelle DÉCOUPE pour l'en-tête "
+       + "(desktop et mobile), et quelle SURFACE pour les cartes. Le contenu, "
+       + "les couleurs et les dimensions ne changent jamais — seul le caractère change.",
+  invariants: [
+    ["Cadre spécimen", "460 × 240 px"],
+    ["En-tête", "hauteur 64 px"],
+    ["Carte", "300 × 150 px"],
+    ["Encre", "#111 sur blanc"],
+    ["Niche (ogive)", "largeur 200 px"],
+  ],
+  noteSpecimen: "Chaque spécimen est une PORTION d'écran ; le fond court bord à bord.",
+  note: "Aucune de ces variantes n'est appliquée aux écrans v1-v3 — planche d'exploration. "
+      + "Encres : Radix Colors (vendorisé) · icônes : Tabler (vendorisé).",
+
+  variantes: [
+
+    /* ================= FAMILLE 1 — EN-TÊTES DÉCOUPÉS ================= */
+    {
+      cle: "scoop", famille: "En-têtes découpés", nom: "Encoche concave centrale",
+      resume: "Le bas de la barre se creuse ; la recherche s'y loge",
+      fiche: [["Flanc", "aucun — arc"], ["Construction", "masque radial 1 couche + drop-shadow"],
+              ["Coût", "CSS pur, fluide"]],
+      mot: "La barre respire par le bas et fait une place. Doux, accueillant — "
+         + "le creux dit « pose quelque chose ici ».",
+      reglages: [
+        { cle: "prof", etiquette: "Profondeur du creux", min: 10, max: 34, pas: 1, defaut: 22, unite: (v) => `${v} px` },
+        { cle: "larg", etiquette: "Largeur du creux", min: 140, max: 300, pas: 2, defaut: 220, unite: (v) => `${v} px` },
+        { cle: "coins", etiquette: "Coins bas de la barre", min: 0, max: 28, pas: 1, defaut: 16, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M4 4 H48 V26 H36 A10 8 0 0 1 16 26 H4 Z",
+      specimen: (hote, g) => {
+        const h = 64, ex = g.prof + 6;
+        const m = `linear-gradient(#000 0 0)`;
+        const cut = `radial-gradient(ellipse ${g.larg/2}px ${g.prof}px at 50% 100%, transparent ${g.prof - .5}px, #000 ${g.prof}px)`;
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:0 0 26px">
+             <div style="position:relative;height:${h + ex}px">
+               <div style="position:absolute;inset:0;background:#fff;
+                 border-radius:0 0 ${g.coins}px ${g.coins}px;
+                 -webkit-mask:${m},${cut};-webkit-mask-composite:source-out;
+                 mask:${m},${cut};mask-composite:subtract;
+                 filter:drop-shadow(0 1px 2px rgb(0 0 0/.08))"></div>
+               <div style="position:absolute;left:20px;top:0;height:${h}px;display:flex;align-items:center;gap:10px;font-weight:600;color:#111">
+                 <span style="width:18px;height:18px;background:#111;border-radius:5px"></span>SwimPay</div>
+               <div style="position:absolute;right:20px;top:${(h-32)/2}px;display:flex;gap:8px">
+                 <span style="width:32px;height:32px;border:1px solid #E4E6E4;border-radius:99px;background:#fff"></span>
+                 <span style="width:32px;height:32px;border-radius:99px;background:#ECEEEC"></span></div>
+               <div style="position:absolute;left:50%;transform:translateX(-50%);top:${h - g.prof + 8}px;
+                 width:${g.larg - 48}px;height:34px;background:#fff;border:1px solid #E4E6E4;border-radius:99px;
+                 box-shadow:0 1px 3px rgb(0 0 0/.07);display:flex;align-items:center;padding:0 14px;
+                 color:#8a8f8a;font-size:12.5px">Rechercher</div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `/* encoche concave centrale — 2 couches, soustraction */
+.header{
+  height:${64 + g.prof + 6}px;
+  border-radius:0 0 ${g.coins}px ${g.coins}px;
+  -webkit-mask:
+    linear-gradient(#000 0 0),
+    radial-gradient(ellipse ${g.larg/2}px ${g.prof}px at 50% 100%,
+      transparent ${g.prof - .5}px, #000 ${g.prof}px);
+  -webkit-mask-composite:source-out;
+  mask: /* idem */; mask-composite:subtract;
+  filter:drop-shadow(0 1px 2px rgb(0 0 0/.08)); /* l'ombre APRÈS le masque */
+}`,
+    },
+
+    {
+      cle: "onglet", famille: "En-têtes découpés", nom: "Onglet à congés inversés",
+      resume: "La navigation pend sous la barre, raccordée par deux congés",
+      fiche: [["Flanc", "aucun — quarts de cercle"], ["Construction", "masque 4 couches (barre + onglet + 2 congés)"],
+              ["Coût", "CSS pur, positions en calc(50% ± K)"]],
+      mot: "Le raccord concave fait UNE seule matière de la barre et de l'onglet. "
+         + "Très « produit dessiné » — c'est le congé inversé demandé.",
+      reglages: [
+        { cle: "r", etiquette: "Rayon des congés", min: 6, max: 30, pas: 1, defaut: 16, unite: (v) => `${v} px` },
+        { cle: "prof", etiquette: "Hauteur de l'onglet", min: 28, max: 56, pas: 1, defaut: 40, unite: (v) => `${v} px` },
+        { cle: "coins", etiquette: "Coins bas de l'onglet", min: 4, max: 24, pas: 1, defaut: 14, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M4 4 H48 V18 H40 A6 6 0 0 0 34 24 V30 A8 8 0 0 1 26 36 H26 A8 8 0 0 1 18 30 V24 A6 6 0 0 0 12 18 H4 Z",
+      specimen: (hote, g) => {
+        const barre = 52, W = 240, r = g.r, P = g.prof, rb = g.coins;
+        const K = W / 2 + r / 2;
+        const couches =
+          `linear-gradient(#000 0 0) 0 0/100% ${barre}px,` +
+          `linear-gradient(#000 0 0) 50% ${barre}px/${W}px ${P}px,` +
+          `radial-gradient(circle ${r}px at 0 100%, transparent ${r - .5}px, #000 ${r}px) calc(50% + ${K}px) ${barre}px/${r}px ${r}px,` +
+          `radial-gradient(circle ${r}px at 100% 100%, transparent ${r - .5}px, #000 ${r}px) calc(50% - ${K}px) ${barre}px/${r}px ${r}px`;
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:0 0 24px">
+             <div style="position:relative;height:${barre + P}px">
+               <div style="position:absolute;inset:0;background:#fff;
+                 -webkit-mask:${couches};-webkit-mask-repeat:no-repeat;
+                 mask:${couches};mask-repeat:no-repeat;
+                 filter:drop-shadow(0 1px 2px rgb(0 0 0/.08))"></div>
+               <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:${W}px;height:${P}px;
+                 border-radius:0 0 ${rb}px ${rb}px;display:flex;align-items:center;justify-content:center;gap:14px;
+                 font-size:12.5px;font-weight:500;color:#8a8f8a">
+                 <span style="color:#111">Accueil</span><span>Envoyer</span><span>Recevoir</span></div>
+               <div style="position:absolute;left:20px;top:0;height:${barre}px;display:flex;align-items:center;gap:10px;font-weight:600;color:#111">
+                 <span style="width:18px;height:18px;background:#111;border-radius:5px"></span>SwimPay</div>
+               <div style="position:absolute;right:20px;top:${(barre-30)/2}px;width:30px;height:30px;border-radius:99px;background:#ECEEEC"></div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `/* onglet suspendu — 4 couches additives, congés en tuiles r×r
+   piège évité : positions exprimées au CENTRE, calc(50% ± K) */
+--r:${g.r}px; --P:${g.prof}px; --W:200px; --K:calc(var(--W)/2 + var(--r)/2);
+-webkit-mask:
+  linear-gradient(#000 0 0) 0 0/100% 52px,
+  linear-gradient(#000 0 0) 50% 52px/var(--W) var(--P),
+  radial-gradient(circle var(--r) at 0 100%,transparent calc(var(--r) - .5px),#000 var(--r))
+    calc(50% + var(--K)) 52px/var(--r) var(--r),
+  radial-gradient(circle var(--r) at 100% 100%,transparent calc(var(--r) - .5px),#000 var(--r))
+    calc(50% - var(--K)) 52px/var(--r) var(--r);
+mask-repeat:no-repeat;`,
+    },
+
+    {
+      cle: "ogive", famille: "En-têtes découpés", nom: "Niche à flancs en S",
+      resume: "L'onglet descend par deux ogives — l'angle se règle en degrés",
+      fiche: [["Flanc", "smoothstep = Bézier C/3 exacte"], ["Construction", "tuiles SVG en bouts, 4 couches"],
+              ["Coût", "data-URI, fluide, angle dérivé de tan(θ)"]],
+      mot: "Le trait est tiré d'un seul geste : pas d'arête, la courbure se "
+         + "concentre. Plus l'angle monte, plus le S s'étale et devient calligraphique.",
+      reglages: [
+        { cle: "angle", etiquette: "Angle du flanc", min: 20, max: 65, pas: 1, defaut: 40, unite: (v) => `${v}°` },
+        { cle: "prof", etiquette: "Profondeur", min: 18, max: 44, pas: 1, defaut: 30, unite: (v) => `${v} px` },
+        { cle: "coins", etiquette: "Coins du plancher", min: 0, max: 16, pas: 1, defaut: 10, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M4 4 H48 V16 H40 C34 16 36 32 30 32 H22 C16 32 18 16 12 16 H4 Z",
+      specimen: (hote, g) => {
+        const barre = 52, W = 200;
+        const P = g.prof, C = Math.max(6, Math.round(P * Math.tan(g.angle * Math.PI / 180))), rb = g.coins;
+        const tuile = (miroir) => {
+          const d = miroir
+            ? `M${C} 0 C ${C - C/3} 0 ${C/3} ${P} 0 ${P} L0 0 Z`
+            : `M0 0 C ${C/3} 0 ${C - C/3} ${P} ${C} ${P} L${C} 0 Z`;
+          return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${C}' height='${P}' viewBox='0 0 ${C} ${P}' preserveAspectRatio='none'%3E%3Cpath d='${d}' fill='%23000'/%3E%3C/svg%3E")`;
+        };
+        const plat = W - 2 * 0; // plancher pleine niche, coins par tuile dédiée
+        const plancher = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${P}' viewBox='0 0 ${W} ${P}' preserveAspectRatio='none'%3E%3Cpath d='M0 0 H${W} V${P - rb} A${rb} ${rb} 0 0 1 ${W - rb} ${P} H${rb} A${rb} ${rb} 0 0 1 0 ${P - rb} Z' fill='%23000'/%3E%3C/svg%3E")`;
+        const Kt = W / 2 + C / 2;
+        const couches =
+          `linear-gradient(#000 0 0) 0 0/100% ${barre}px,` +
+          `${plancher} 50% ${barre}px/${W}px ${P}px,` +
+          `${tuile(true)} calc(50% - ${Kt}px) ${barre}px/${C}px ${P}px,` +
+          `${tuile(false)} calc(50% + ${Kt}px) ${barre}px/${C}px ${P}px`;
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:0 0 24px">
+             <div style="position:relative;height:${barre + P}px">
+               <div style="position:absolute;inset:0;background:#fff;
+                 -webkit-mask:${couches};-webkit-mask-repeat:no-repeat;
+                 mask:${couches};mask-repeat:no-repeat;
+                 filter:drop-shadow(0 1px 2px rgb(0 0 0/.08))"></div>
+               <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:${(P-26)/2 - 2}px;
+                 font-size:12.5px;color:#8a8f8a">Rechercher…</div>
+               <div style="position:absolute;left:20px;top:0;height:${barre}px;display:flex;align-items:center;gap:10px;font-weight:600;color:#111">
+                 <span style="width:18px;height:18px;background:#111;border-radius:5px"></span>SwimPay</div>
+               <div style="position:absolute;right:20px;top:${(barre-30)/2}px;width:30px;height:30px;border-radius:99px;background:#ECEEEC"></div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => {
+        const P = g.prof, C = Math.max(6, Math.round(P * Math.tan(g.angle * Math.PI / 180)));
+        return `/* flancs en S — smoothstep = Bézier exacte (contrôles C/3, 2C/3)
+   angle réglé en degrés, la course EN DÉCOULE : C = P·tan(θ) = ${C}px */
+--tuile-g: url("data:image/svg+xml,<svg ... viewBox='0 0 ${C} ${P}'
+  preserveAspectRatio='none'><path d='M0 0 C ${(C/3).toFixed(1)} 0 ${(C - C/3).toFixed(1)} ${P} ${C} ${P} L${C} 0 Z'/></svg>");
+mask:
+  linear-gradient(#000 0 0) 0 0/100% 52px,
+  var(--plancher) 50% 52px/200px ${P}px,
+  var(--tuile-d) calc(50% - ${100 + C/2}px) 52px/${C}px ${P}px,
+  var(--tuile-g) calc(50% + ${100 + C/2}px) 52px/${C}px ${P}px;
+mask-repeat:no-repeat;`;
+      },
+    },
+
+    {
+      cle: "capsule", famille: "En-têtes découpés", nom: "Capsule flottante",
+      resume: "La barre se détache du bord et devient une pilule",
+      fiche: [["Flanc", "aucun"], ["Construction", "border-radius + ombre"], ["Coût", "trivial"]],
+      mot: "La barre quitte le cadre et flotte. Léger, app-like — mais elle ne "
+         + "dialogue plus avec le contenu : elle est posée dessus.",
+      reglages: [
+        { cle: "marge", etiquette: "Marge au bord", min: 6, max: 24, pas: 1, defaut: 12, unite: (v) => `${v} px` },
+        { cle: "coins", etiquette: "Rayon de la capsule", min: 10, max: 32, pas: 1, defaut: 32, unite: (v) => `${v} px` },
+        { cle: "elev", etiquette: "Élévation", min: 1, max: 4, pas: 1, defaut: 2, unite: (v) => `niv. ${v}` },
+      ],
+      vignette: () => "M8 10 H44 A8 8 0 0 1 44 26 H8 A8 8 0 0 1 8 10 Z",
+      specimen: (hote, g) => {
+        const ombres = ["0 1px 2px rgb(0 0 0/.06)","0 2px 8px rgb(0 0 0/.10)","0 6px 18px rgb(0 0 0/.14)","0 12px 30px rgb(0 0 0/.18)"];
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:${g.marge}px ${g.marge}px 26px">
+             <div style="height:56px;background:#fff;border-radius:${g.coins}px;box-shadow:${ombres[g.elev-1]};
+               display:flex;align-items:center;gap:10px;padding:0 18px;font-weight:600;color:#111">
+               <span style="width:18px;height:18px;background:#111;border-radius:5px"></span>SwimPay
+               <span style="flex:1"></span>
+               <span style="width:30px;height:30px;border-radius:99px;border:1px solid #E4E6E4"></span>
+               <span style="width:30px;height:30px;border-radius:99px;background:#ECEEEC"></span>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `.header{position:sticky;top:${g.marge}px;margin:${g.marge}px;
+  border-radius:${g.coins}px; box-shadow:var(--elev-${g.elev});}`,
+    },
+
+    {
+      cle: "dock", famille: "En-têtes découpés", nom: "Dock mobile à encoche",
+      resume: "La barre basse se creuse autour du bouton central",
+      fiche: [["Flanc", "aucun — cercle"], ["Construction", "masque radial + bouton absolu"],
+              ["Coût", "CSS pur ; air constant autour du bouton"]],
+      mot: "Le bouton vit DANS la barre sans la toucher : l'air constant fait "
+         + "tout le geste. La version mobile du congé inversé.",
+      reglages: [
+        { cle: "R", etiquette: "Rayon du bouton", min: 20, max: 32, pas: 1, defaut: 26, unite: (v) => `${v} px` },
+        { cle: "air", etiquette: "Air autour", min: 4, max: 14, pas: 1, defaut: 8, unite: (v) => `${v} px` },
+        { cle: "coins", etiquette: "Coins de la barre", min: 0, max: 24, pas: 1, defaut: 18, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M4 36 V24 A6 6 0 0 1 10 18 H16 A10 10 0 0 0 36 18 H42 A6 6 0 0 1 48 24 V36 Z M26 6 A7 7 0 1 1 25.9 6 Z",
+      specimen: (hote, g) => {
+        const Rt = g.R + g.air, h = 58;
+        const cut = `radial-gradient(circle ${Rt}px at 50% 0, transparent ${Rt - .5}px, #000 ${Rt}px)`;
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:34px 14px 14px">
+             <div style="position:relative;height:${h + g.R}px;max-width:320px;margin:0 auto">
+               <div style="position:absolute;left:0;right:0;bottom:0;height:${h}px;background:#fff;
+                 border-radius:${g.coins}px;
+                 -webkit-mask:linear-gradient(#000 0 0),${cut};-webkit-mask-composite:source-in;
+                 mask:linear-gradient(#000 0 0),${cut};mask-composite:intersect;
+                 filter:drop-shadow(0 -1px 3px rgb(0 0 0/.07))"></div>
+               <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:${h - g.R}px;
+                 width:${2*g.R}px;height:${2*g.R}px;border-radius:50%;background:#111;color:#fff;
+                 display:grid;place-items:center;font-size:${g.R*.8}px;line-height:1">+</div>
+               <div style="position:absolute;left:0;right:0;bottom:0;height:${h}px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:11px;color:#8a8f8a">
+                 <span style="color:#111">Accueil</span><span style="width:${2*Rt + 10}px"></span><span>Profil</span></div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `/* le masque et le border-radius se COMPOSENT */
+.dock{
+  border-radius:${g.coins}px;
+  -webkit-mask:linear-gradient(#000 0 0),
+    radial-gradient(circle ${g.R + g.air}px at 50% 0,
+      transparent ${g.R + g.air - .5}px,#000 ${g.R + g.air}px);
+  -webkit-mask-composite:source-in; mask-composite:intersect;
+  filter:drop-shadow(0 -1px 3px rgb(0 0 0/.07));
+}
+.bouton{width:${2*g.R}px;height:${2*g.R}px;/* centre à ${g.R}px au-dessus du bord */}`,
+    },
+
+    /* ================= FAMILLE 2 — SURFACES DE CARTE ================= */
+    {
+      cle: "hairline", famille: "Surfaces de carte", nom: "Bordure fine", tag: "v1",
+      resume: "Le trait de la v1 shadcn",
+      fiche: [["Matière", "trait 1px, ombre quasi nulle"], ["Coût", "trivial"]],
+      mot: "La carte est un contour, pas un volume. Précis, silencieux, très "
+         + "« outil » — c'est la retenue qui parle.",
+      reglages: [
+        { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 28, pas: 1, defaut: 20, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 8 H44 A6 6 0 0 1 50 14 V46 H8 Z",
+      specimen: (hote, g) => carteSpec(hote, `background:#fff;border:1px solid #E4E6E4;border-radius:${g.coins}px;box-shadow:0 1px 2px rgb(0 0 0/.04)`),
+      technique: (g) => `.carte{background:#fff;border:1px solid var(--border);
+  border-radius:${g.coins}px;box-shadow:0 1px 2px rgb(0 0 0/.04);}`,
+    },
+    {
+      cle: "elevation", famille: "Surfaces de carte", nom: "Élévation", tag: "v3",
+      resume: "La profondeur de la v3 Open Props",
+      fiche: [["Matière", "ombre portée, zéro bordure"], ["Coût", "trivial"]],
+      mot: "La carte flotte au-dessus du sol. Aérée, tactile — l'ombre fait "
+         + "le travail que le trait faisait.",
+      reglages: [
+        { cle: "elev", etiquette: "Profondeur", min: 1, max: 5, pas: 1, defaut: 3, unite: (v) => `niv. ${v}` },
+        { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 32, pas: 1, defaut: 24, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M10 6 H46 V42 H10 Z M14 46 H50 V48 H14 Z",
+      specimen: (hote, g) => {
+        const o = ["0 1px 2px rgb(0 0 0/.07)","0 2px 6px rgb(0 0 0/.09)","0 6px 16px rgb(0 0 0/.11)","0 10px 26px rgb(0 0 0/.13)","0 16px 40px rgb(0 0 0/.16)"];
+        carteSpec(hote, `background:#fff;border-radius:${g.coins}px;box-shadow:${o[g.elev-1]}`);
+      },
+      technique: (g) => `.carte{background:#fff;border:0;border-radius:${g.coins}px;
+  box-shadow:var(--shadow-${g.elev}); /* Open Props */}`,
+    },
+    {
+      cle: "verre", famille: "Surfaces de carte", nom: "Verre dépoli",
+      resume: "La surface laisse passer le fond",
+      fiche: [["Matière", "blur + alpha + trait clair"], ["Coût", "backdrop-filter (coûteux en couches)"]],
+      mot: "La carte devient une vitre : elle appartient au fond autant qu'au "
+         + "premier plan. À réserver aux surfaces qui survolent.",
+      reglages: [
+        { cle: "flou", etiquette: "Flou", min: 4, max: 24, pas: 1, defaut: 12, unite: (v) => `${v} px` },
+        { cle: "op", etiquette: "Opacité du voile", min: 35, max: 85, pas: 5, defaut: 60, unite: (v) => `${v} %` },
+        { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 32, pas: 1, defaut: 24, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 8 H50 V46 H8 Z M14 14 L28 28 M22 12 L40 30",
+      specimen: (hote, g) => carteSpec(hote,
+        `background:rgb(255 255 255/${g.op/100});backdrop-filter:blur(${g.flou}px);-webkit-backdrop-filter:blur(${g.flou}px);
+         border:1px solid rgb(255 255 255/.7);border-radius:${g.coins}px;box-shadow:0 4px 14px rgb(0 0 0/.08)`,
+        `background:
+           radial-gradient(220px 140px at 20% 20%, #BFE3D2 0%, transparent 60%),
+           radial-gradient(240px 160px at 85% 75%, #C7D2F5 0%, transparent 60%),
+           #F3F4F2`),
+      technique: (g) => `.carte{background:rgb(255 255 255/${(g.op/100).toFixed(2)});
+  backdrop-filter:blur(${g.flou}px);border:1px solid rgb(255 255 255/.7);
+  border-radius:${g.coins}px;}`,
+    },
+    {
+      cle: "encre", famille: "Surfaces de carte", nom: "Encre teintée",
+      resume: "Le fond prend une encre Radix, le texte son cran 11",
+      fiche: [["Matière", "Radix Colors — cran 3 en fond, 11 en encre"], ["Coût", "trivial, contrastes garantis"]],
+      mot: "La couleur devient une SURFACE, pas un trait. Les crans Radix "
+         + "garantissent le contraste — on choisit une humeur, pas un hex.",
+      reglages: [
+        { cle: "encre", etiquette: "Encre", min: 1, max: 5, pas: 1, defaut: 1,
+          unite: (v) => ["jade","indigo","amber","cyan","gray"][v-1] },
+        { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 32, pas: 1, defaut: 20, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 8 H50 V46 H8 Z M14 36 H30",
+      specimen: (hote, g) => {
+        const enc = [
+          ["#E9F6EF","#1A7A54","#D7EFE2"], // jade 3/11/4
+          ["#EEF1FD","#3A4BC8","#E0E6FB"], // indigo
+          ["#FFF1D6","#8F5E00","#FFE3AE"], // amber
+          ["#E3F6F9","#0C6E7E","#CDEFF5"], // cyan
+          ["#F0F0F0","#3D3D3D","#E6E6E6"], // gray
+        ][g.encre - 1];
+        carteSpec(hote, `background:${enc[0]};border:1px solid ${enc[2]};border-radius:${g.coins}px`, null, enc[1]);
+      },
+      technique: (g) => {
+        const n = ["jade","indigo","amber","cyan","gray"][g.encre-1];
+        return `/* Radix Colors (vendor/radix-colors.css) */
+.carte{background:var(--${n}-3);border:1px solid var(--${n}-4);
+  border-radius:${g.coins}px;color:var(--${n}-11);}`;
+      },
+    },
+    {
+      cle: "creuse", famille: "Surfaces de carte", nom: "Surface concave",
+      resume: "La carte s'enfonce au lieu de flotter",
+      fiche: [["Matière", "ombres internes croisées (inset)"], ["Coût", "trivial ; rare, donc signifiant"]],
+      mot: "L'inverse de l'élévation : la surface est CREUSÉE dans le sol. "
+         + "Parfait pour un réceptacle — un solde, une zone de dépôt.",
+      reglages: [
+        { cle: "prof", etiquette: "Profondeur", min: 1, max: 5, pas: 1, defaut: 3, unite: (v) => `niv. ${v}` },
+        { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 32, pas: 1, defaut: 22, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 8 H50 V46 H8 Z M12 12 H46 V42 H12 Z",
+      specimen: (hote, g) => {
+        const p = g.prof;
+        carteSpec(hote,
+          `background:#EFF1EF;border-radius:${g.coins}px;
+           box-shadow:inset 0 ${p}px ${2*p+2}px rgb(0 0 0/.${String(6+2*p).padStart(2,"0")}),
+                      inset 0 -1px 2px rgb(255 255 255/.9)`);
+      },
+      technique: (g) => `.carte{background:var(--sol-2);border-radius:${g.coins}px;
+  box-shadow:inset 0 ${g.prof}px ${2*g.prof+2}px rgb(0 0 0/.${6+2*g.prof}),
+             inset 0 -1px 2px rgb(255 255 255/.9);}`,
+    },
+  ],
+};
+
+/* spécimen de carte commun — contenu constant, seule la surface change */
+function carteSpec(hote, surface, fond, encreTexte) {
+  hote.innerHTML =
+    `<div style="${fond || "background:#F3F4F2"};padding:26px;display:grid;place-items:center">
+       <div style="width:300px;height:150px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;${surface}">
+         <span style="width:36px;height:36px;border-radius:10px;background:${encreTexte ? "rgb(255 255 255/.55)" : "#EFF1EF"};display:grid;place-items:center">
+           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="${encreTexte || "#111"}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg>
+         </span>
+         <div>
+           <div style="font-weight:600;color:${encreTexte || "#111"};font-size:14.5px">Envoyer</div>
+           <div style="font-size:12px;color:${encreTexte ? encreTexte + "CC" : "#8a8f8a"};margin-top:2px">1 254 500</div>
+         </div>
+       </div>
+     </div>`;
+}
+
+/* ==================  LE GABARIT — ne rien changer  ================== */
+const $ = (id) => document.getElementById(id);
+let courant = PLANCHE.variantes[0];
+
+/* LES REGLAGES, en deux regimes.
+   « reglage » (singulier) : un curseur, et les fonctions recoivent un
+   NOMBRE. C'est la forme courte, pour une planche a un parametre.
+   « reglages » (pluriel)  : plusieurs curseurs, et les fonctions
+   recoivent un OBJET indexe par la cle de chaque reglage. C'est la
+   forme qui permet de regler l'ANGLE d'un flanc separement de sa
+   profondeur — deux grandeurs independantes qu'un curseur unique
+   forcerait a confondre. */
+const listeReglages = (v) =>
+  v.reglages ? v.reglages : (v.reglage ? [{ ...v.reglage, cle: "__seul" }] : []);
+
+const valeurs = {};
+PLANCHE.variantes.forEach((v) => {
+  valeurs[v.cle] = {};
+  listeReglages(v).forEach((r) => { valeurs[v.cle][r.cle] = r.defaut; });
+});
+const valeurDe = (v) =>
+  v.reglages ? valeurs[v.cle] : (v.reglage ? valeurs[v.cle].__seul : undefined);
+
+if (PLANCHE.largeurSpecimen)
+  document.documentElement.style.setProperty("--largeur-specimen", PLANCHE.largeurSpecimen);
+$("titre").textContent = PLANCHE.titre;
+$("intro").innerHTML = PLANCHE.intro || "";
+$("note-specimen").textContent = PLANCHE.noteSpecimen || "";
+$("pied").innerHTML = PLANCHE.pied || PLANCHE.note || "";
+
+(PLANCHE.invariants || []).forEach(([nom, valeur]) => {
+  const d = document.createElement("div");
+  const dt = document.createElement("dt"); dt.textContent = nom;
+  const dd = document.createElement("dd"); dd.textContent = valeur;
+  d.append(dt, dd); $("invariants").append(d);
+});
+if (!(PLANCHE.invariants || []).length) $("invariants").hidden = true;
+
+/* le rail — groupe par famille, dans l'ordre d'apparition */
+(function rail() {
+  let famille = null, bloc = null;
+  PLANCHE.variantes.forEach((v) => {
+    if (v.famille !== famille) {
+      famille = v.famille;
+      bloc = document.createElement("div");
+      bloc.className = "famille";
+      if (famille) {
+        const h = document.createElement("h2");
+        h.textContent = famille;
+        bloc.append(h);
+      }
+      $("rail").append(bloc);
+    }
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "choix";
+    b.dataset.cle = v.cle;
+    b.setAttribute("aria-pressed", v === courant ? "true" : "false");
+
+    if (v.vignette) {
+      const s = document.createElementNS(SVGNS, "svg");
+      s.setAttribute("class", "vignette");
+      s.setAttribute("viewBox", "-2 -2 52 60");
+      s.setAttribute("width", "30"); s.setAttribute("height", "35");
+      s.setAttribute("aria-hidden", "true");
+      const p = document.createElementNS(SVGNS, "path");
+      p.setAttribute("d", v.vignette(valeurDe(v)));
+      p.setAttribute("fill", "none");
+      p.setAttribute("stroke", "currentColor");
+      p.setAttribute("stroke-width", "3.5");
+      p.setAttribute("stroke-linecap", "round");
+      s.append(p); b.append(s);
+    }
+    const nom = document.createElement("span");
+    nom.className = "nom";
+    const t = document.createElement("b");
+    t.textContent = v.tag ? `${v.nom} · ${v.tag}` : v.nom;
+    const r = document.createElement("span");
+    r.textContent = v.resume || "";
+    nom.append(t, r);
+    b.append(nom);
+    b.addEventListener("click", () => choisir(v));
+    bloc.append(b);
+  });
+})();
+
+function dessiner() {
+  const v = valeurDe(courant);
+
+  $("scene").replaceChildren();
+  courant.specimen($("scene"), v);
+
+  const aLoupe = typeof courant.loupe === "function";
+  $("carte-loupe").hidden = !aLoupe && !courant.fiche && !courant.reglage;
+  $("vue").replaceChildren();
+  if (aLoupe) courant.loupe($("vue"), v);
+  $("vue").hidden = !aLoupe;
+  /* le titre dit ce qui est REELLEMENT montre : annoncer « a la loupe »
+     sans loupe est un mensonge d'etiquette, et la colonne vide se ferme */
+  $("titre-loupe").textContent = aLoupe ? "À la loupe" : "Détail";
+  $("corps-loupe").classList.toggle("sans-vue", !aLoupe);
+
+  $("fiche").replaceChildren();
+  (courant.fiche || []).forEach(([k, val]) => {
+    const d = document.createElement("div"); d.className = "ligne";
+    const dt = document.createElement("dt"); dt.textContent = k;
+    const dd = document.createElement("dd"); dd.textContent = val;
+    d.append(dt, dd); $("fiche").append(d);
+  });
+
+  /* LE PROMPT. Il doit contenir TOUT ce qu'il faut pour agir sans
+     revenir poser de question : la variante et sa famille, la valeur de
+     CHAQUE reglage avec son unite, les invariants a tenir, et la voie de
+     mise en oeuvre. Un nom de variante seul ne suffit pas — sans les
+     chiffres, on repart sur les valeurs par defaut, qui ne sont pas
+     celles que le lecteur regardait. */
+  const dits = listeReglages(courant)
+    .map((r) => `${r.etiquette} : ${r.unite(valeurs[courant.cle][r.cle])}`);
+  const oeuvre = (courant.fiche || [])
+    .filter(([k]) => /mise en œuvre|mise en oeuvre|construction/i.test(k))
+    .map(([, val]) => val);
+  const ou = ($("ou").value || "").trim();
+
+  $("prompt").textContent = [
+    `Applique « ${courant.nom} »${courant.famille ? ` (${courant.famille.toLowerCase()})` : ""}`
+      + `${ou ? ` sur ${ou}` : ""}.`,
+    dits.length ? `Réglages : ${dits.join(" · ")}.` : null,
+    (PLANCHE.invariants || []).length
+      ? `Invariants à tenir : ${PLANCHE.invariants.map(([k, val]) => `${k.toLowerCase()} ${val}`).join(", ")}.`
+      : null,
+    oeuvre.length ? `Mise en œuvre : ${oeuvre.join(", ")}.` : null,
+    courant.technique ? `Le CSS de référence est celui du panneau « la technique » de la planche.` : null,
+    !ou ? `(indique où l'appliquer dans le champ ci-dessus)` : null,
+  ].filter(Boolean).join("\n");
+
+  const code = typeof courant.technique === "function" ? courant.technique(v) : null;
+  $("carte-technique").hidden = !code;
+  $("code").textContent = code || "";
+  $("copier").textContent = "Copier";
+  $("copier").dataset.fait = "non";
+
+  $("mot").innerHTML = courant.mot ? `<b>${courant.nom}.</b> ${courant.mot}` : "";
+}
+
+/* LA COPIE, EN TROIS VOIES — et il en faut trois.
+   Une planche se consulte souvent dans un cadre CLOISONNE (artifact,
+   apercu, bac a sable). L'API moderne y est refusee sans bruit :
+   « navigator.clipboard » existe, sa promesse est simplement rejetee —
+   parfois meme silencieusement. Ne se fier qu'a elle, c'est livrer un
+   bouton qui ne fait rien. On descend donc les voies dans l'ordre :
+
+     1. navigator.clipboard.writeText — quand le cadre l'autorise ;
+     2. une zone de saisie hors champ + execCommand — l'ancienne voie,
+        celle qui passe justement la ou la premiere est refusee ;
+     3. a defaut, on SELECTIONNE le bloc et on le DIT : le lecteur n'a
+        plus qu'un Ctrl+C a faire, et le bouton ne ment pas.
+
+   Le bouton n'annonce « Copié » que si une voie a REUSSI. */
+async function copier(bouton, source, motDefaut) {
+  const texte = source.textContent;
+  let fait = false;
+
+  try {
+    await navigator.clipboard.writeText(texte);
+    fait = true;
+  } catch (e) { /* refuse : on descend d'une voie */ }
+
+  if (!fait) {
+    const zone = document.createElement("textarea");
+    zone.value = texte;
+    zone.setAttribute("readonly", "");
+    /* hors champ mais VISIBLE au sens du moteur : « display:none » ou
+       « visibility:hidden » rendent la selection impossible. La taille
+       de 16px evite le zoom automatique des navigateurs mobiles. */
+    zone.style.cssText = "position:fixed;top:0;left:0;width:2px;height:2px;"
+      + "padding:0;border:0;opacity:0;font-size:16px;";
+    document.body.append(zone);
+    zone.focus(); zone.select();
+    zone.setSelectionRange(0, texte.length);   /* iOS ignore « select » seul */
+    try { fait = document.execCommand("copy"); } catch (e) { fait = false; }
+    zone.remove();
+  }
+
+  if (!fait) {
+    const r = document.createRange();
+    r.selectNodeContents(source);
+    const sel = getSelection();
+    sel.removeAllRanges(); sel.addRange(r);
+  }
+
+  bouton.textContent = fait ? "Copié" : "Sélectionné · Ctrl+C";
+  bouton.dataset.fait = "oui";
+  setTimeout(() => { bouton.textContent = motDefaut; bouton.dataset.fait = "non"; }, 2400);
+}
+$("copier-choix").addEventListener("click", () =>
+  copier($("copier-choix"), $("prompt"), "Copier le prompt"));
+$("copier").addEventListener("click", () =>
+  copier($("copier"), $("code"), "Copier"));
+
+function choisir(v) {
+  courant = v;
+  document.querySelectorAll(".choix").forEach((b) =>
+    b.setAttribute("aria-pressed", b.dataset.cle === v.cle ? "true" : "false"));
+  const bloc = $("bloc-reglage");
+  const rr = listeReglages(v);
+  bloc.replaceChildren();
+  bloc.hidden = rr.length === 0;
+  rr.forEach((r) => {
+    const lab = document.createElement("label");
+    lab.htmlFor = `rg-${r.cle}`;
+    const e = document.createElement("span"); e.textContent = r.etiquette;
+    const val = document.createElement("span");
+    val.className = "valeur"; val.id = `val-${r.cle}`;
+    val.textContent = r.unite(valeurs[v.cle][r.cle]);
+    lab.append(e, val);
+
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = `rg-${r.cle}`;
+    inp.min = r.min; inp.max = r.max; inp.step = r.pas;
+    inp.value = valeurs[v.cle][r.cle];
+    inp.addEventListener("input", (ev) => {
+      valeurs[v.cle][r.cle] = Number(ev.target.value);
+      val.textContent = r.unite(valeurs[v.cle][r.cle]);
+      dessiner();
+    });
+    bloc.append(lab, inp);
+  });
+  dessiner();
+}
+
+$("ou").addEventListener("input", dessiner);
+
+choisir(PLANCHE.variantes[0]);
+</script>
