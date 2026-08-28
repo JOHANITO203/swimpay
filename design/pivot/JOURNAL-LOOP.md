@@ -940,7 +940,43 @@ Correction : `flex: 1 1 auto` + `min-width: fit-content` sur les boutons,
 bureau garde ses trois boutons alignés, le téléphone en met deux puis un.
 Après : **zéro libellé cassé**. `sonde-boutons.mjs` garde la règle.
 
-## État : 65 écrans · 290/290 (27+22+26+17+16+16+9+13+14+31+22+26+26+25) · 0 défaut
+## Boucle 25 — le hero deux tons (référence image du commanditaire)
+
+Référence fournie : une zone héroïque acide vibrante en haut, le solde
+dans une plaque de verre, le corps noir. Consigne : ce style sur mobile,
+bureau et les autres écrans ; le header et le hero, pas la nav.
+
+**La transposition.**
+- **Jetons `--hero-*`** dérivés de l'acide de la palette :
+  #8FE500 → #A2FF01 → #D8FF5E → #E7FF94, plus une fumée sombre radiale
+  (le geste de la référence). Aucune couleur nouvelle hors dérivés.
+- **`.solde-carte` devient le hero** partout où un solde vit : accueil,
+  commerçant, PME, e-commerce — mobile ET bureau, d'un seul style.
+- **La plaque de verre** (blanc .36 + blur 12) est assemblée au
+  chargement par `poseHero()` : ligne d'identité + montant + delta y
+  montent ; les capsules restent sur l'acide.
+- **Tout texte du hero passe à l'encre #141414** — y compris deux
+  couleurs figées en dur dans le HTML des hubs (`style="color:
+  var(--encre)"`) qui auraient été blanches sur acide.
+- **Accueil mobile : bord à bord.** L'en-tête (Bonsoir + cloche) se pose
+  sur l'acide, le bloc va d'un bord à l'autre et s'arrondit en bas
+  (30 px) — raccord mesuré sans couture. Les quatre gestes s'écrivent à
+  l'encre, le principal s'inverse : disque d'encre, icône acide.
+- **La nav ne bouge pas** (demande explicite) : topbar bureau et pilule
+  basse restent sombres. Le deux-tons est un contraste, pas une
+  inondation.
+
+**Attrapé par la sonde de contraste** : le badge « le moins cher » était
+gris sur acide (2,56:1) — la sous-ligne `.row .txt span` battait
+`.badge-conseil` en spécificité et lui imposait son gris. Corrigé par un
+sélecteur plus fort. Et une sonde qui mentait : `querySelector(".btn
+.lib-m")` attrapait le bouton PRIMAIRE, dont l'icône est acide par
+conception — l'assertion visait le mauvais élément, pas un défaut.
+
+Sonde parcours 16 : 16/16 (structure du hero, encre, bord-à-bord,
+raccord, contraste 7:1 au pire du dégradé, nav intacte aux deux formats).
+
+## État : 65 écrans · 306/306 (27+22+26+17+16+16+9+13+14+31+22+26+26+25+16) · 0 défaut
 
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
