@@ -976,7 +976,24 @@ conception — l'assertion visait le mauvais élément, pas un défaut.
 Sonde parcours 16 : 16/16 (structure du hero, encre, bord-à-bord,
 raccord, contraste 7:1 au pire du dégradé, nav intacte aux deux formats).
 
-## Boucles 29-30 — les assets du commanditaire deviennent le matériau
+> **RÉVOQUÉ le 2026-08-28 à 22:40, sur décision de LO.** Le montage décrit
+> ci-dessous a été retiré : `git checkout ae4c6e3` a ramené l'app à son état
+> d'avant. Motif donné, et exact : **plusieurs fonds vivaient sur une même
+> page**, et le rendu bureau — que je n'avais jamais capturé — était
+> inutilisable. Ce qui reste en place aujourd'hui : **un seul fond**, la
+> texture sombre fournie, et le hero acide en CSS de la boucle 25.
+>
+> Ce qui a été gardé de ces boucles :
+> - le correctif d'opacité (un montant lié aux données ne s'estompe plus) —
+>   c'est une correction, pas une direction visuelle ;
+> - la sonde de contraste corrigée et **étalonnée** ;
+> - les mesures : les 7 cartes givrées ne portent aucun texte, l'accent
+>   comme texte sur blanc tient 1,25:1. Elles restent vraies et serviront.
+>
+> Ce qui vient à la place : un fond deux tons **en une seule image** et une
+> carte 3D translucide générée sous Rodin — prompts dans `PROMPTS-ASSETS.md`.
+
+## Boucles 29-30 (révoquées) — les assets du commanditaire comme matériau
 
 Le verre écrit à la main a été refusé : « tous les composants en verre que
 tu crées ont la même gueule et ne ressemblent pas à la ref ». Des rendus 3D
