@@ -161,6 +161,18 @@ Flow transversal : « Se déconnecter » → splash ; remboursement unifié par
   à jour, **25/25**. Total : **47/47**. `sonde-app` : 43 écrans, 0 cible
   cassée, 0 orphelin, 0 débord 390/1280.
 
+### Correctifs post-livraison (retour commanditaire, 2 screenshots)
+- Coche « Paiement reçu » décentrée : les états internes de `b-qr`/`bc-cloture`
+  sont des wrappers en flux bloc — la scène gagnait le bord gauche. Fix :
+  `.scene { margin-inline: auto }`. Mesuré : centres scène/titre identiques.
+- Avatar du Profil aux initiales en haut-gauche + nom en sourd : la règle
+  `.profil-tete span { display: block; color: sourd }` (0-1-1) écrasait le
+  `display: grid` de `.avatar` (0-1-0). Fix : wrapper classé `.pt-txt`,
+  règles scopées. Les autres `span` stylés du fichier vérifiés : tous scopés.
+- Bande verdâtre en haut du Profil (screenshot) : non reproduite en local à
+  1218 px — vient de la page publiée ou de l'hôte ; défense posée :
+  `html { background: #0B0C0E }` (plus aucune transparence au-dessus du body).
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;

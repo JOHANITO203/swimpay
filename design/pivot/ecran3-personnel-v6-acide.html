@@ -20,6 +20,7 @@
   --acide: #C6F432;
 }
 * { box-sizing: border-box; }
+html { background: #0B0C0E; }
 html, body { height: 100%; }
 body {
   margin: 0;
@@ -253,7 +254,7 @@ button { font: inherit; color: inherit; }
 
 /* ---------------- Transfert envoyé (clôture du flow) ---------------- */
 .succes { align-items: center; justify-content: center; text-align: center; }
-.scene { position: relative; width: 124px; height: 124px; display: grid; place-items: center; margin-bottom: 22px; }
+.scene { position: relative; width: 124px; height: 124px; display: grid; place-items: center; margin: 0 auto 22px; }
 .onde { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--acide); opacity: 0; pointer-events: none; }
 .coche { width: 96px; height: 96px; }
 .s-titre { margin: 0; font-size: 21px; font-weight: 600; }
@@ -418,8 +419,8 @@ button { font: inherit; color: inherit; }
 .danger { color: #E5484D; }
 .profil-tete { display: flex; align-items: center; gap: 14px; padding: 18px 20px; }
 .profil-tete .avatar { width: 56px; height: 56px; font-size: 17px; }
-.profil-tete b { display: block; font-size: 17px; font-weight: 600; }
-.profil-tete span { display: block; color: var(--sourd); font-size: 13px; }
+.pt-txt b { display: block; font-size: 17px; font-weight: 600; }
+.pt-txt span { display: block; color: var(--sourd); font-size: 13px; }
 
 /* ---------------- business ---------------- */
 .cartes-profils { display: grid; gap: 12px; margin-top: 16px; }
@@ -1358,7 +1359,7 @@ button { font: inherit; color: inherit; }
     <div class="carte" style="margin-top: 14px">
       <div class="profil-tete">
         <span class="avatar">CL</span>
-        <span><b>Camille Laurent</b><span>Numéro ····07 88 · compte ····9654</span></span>
+        <span class="pt-txt"><b>Camille Laurent</b><span>Numéro ····07 88 · compte ····9654</span></span>
       </div>
     </div>
 
