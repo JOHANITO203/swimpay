@@ -250,6 +250,48 @@ button { font: inherit; color: inherit; }
 .segment.actif { color: var(--encre); background: var(--surface-2); border-color: var(--surface-2); }
 .liste-actions { margin-top: 16px; }
 
+/* ---------------- Transfert envoyé (clôture du flow) ---------------- */
+.succes { align-items: center; justify-content: center; text-align: center; }
+.scene { position: relative; width: 124px; height: 124px; display: grid; place-items: center; margin-bottom: 22px; }
+.onde { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--acide); opacity: 0; pointer-events: none; }
+.coche { width: 96px; height: 96px; }
+.s-titre { margin: 0; font-size: 21px; font-weight: 600; }
+.s-montant { font-size: 46px; font-weight: 600; letter-spacing: -.01em; margin-top: 4px; }
+.s-dest { margin: 4px 0 0; color: var(--sourd); font-size: 14px; }
+.s-recu { width: 100%; margin-top: 26px; text-align: left; }
+.kv { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 13px 20px; font-size: 13.5px; }
+.kv + .kv { border-top: 1px solid rgba(255, 255, 255, .05); }
+.kv small { color: var(--sourd); font-size: 12.5px; }
+.cta-encre { background: var(--encre); color: var(--fond); margin-top: 26px; }
+.cta-encre:hover { background: #fff; }
+.s-lien { margin-top: 12px; font-size: 13.5px; }
+.cta[data-occupe] { pointer-events: none; opacity: .85; }
+.spin {
+  width: 15px; height: 15px; border-radius: 50%; display: inline-block;
+  border: 2px solid rgba(11, 12, 14, .3); border-top-color: #0B0C0E;
+  vertical-align: -2px; margin-right: 9px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .spin { animation: rot .7s linear infinite; }
+  @keyframes rot { to { transform: rotate(1turn); } }
+  .joue .onde { animation: onde .9s ease-out .1s; }
+  @keyframes onde { 0% { transform: scale(.55); opacity: .8; } 100% { transform: scale(1.4); opacity: 0; } }
+  .joue .cercle { stroke-dasharray: 252; stroke-dashoffset: 252; animation: trace .55s cubic-bezier(.55, 0, .3, 1) .05s forwards; }
+  .joue .trait { stroke-dasharray: 48; stroke-dashoffset: 48; animation: trace .3s ease-out .5s forwards; }
+  @keyframes trace { to { stroke-dashoffset: 0; } }
+  .joue .s-titre, .joue .s-montant, .joue .s-dest, .joue .s-recu, .joue .cta-encre, .joue .s-lien {
+    opacity: 0; transform: translateY(10px);
+    animation: monte .45s cubic-bezier(.2, .7, .2, 1) forwards;
+  }
+  .joue .s-titre { animation-delay: .5s; }
+  .joue .s-montant { animation-delay: .58s; }
+  .joue .s-dest { animation-delay: .66s; }
+  .joue .s-recu { animation-delay: .78s; }
+  .joue .cta-encre { animation-delay: .92s; }
+  .joue .s-lien { animation-delay: 1s; }
+  @keyframes monte { to { opacity: 1; transform: none; } }
+}
+
 /* nav basse mobile — pilule flottante + FAB acide */
 .navzone { display: none; }
 
@@ -302,6 +344,7 @@ button { font: inherit; color: inherit; }
 @media (min-width: 881px) {
   .flux { min-height: 0; padding-block: 10px 60px; }
   .fluxbar { padding-top: 26px; }
+  .succes { padding-top: 11vh; }
 }
 </style>
 
@@ -349,7 +392,7 @@ button { font: inherit; color: inherit; }
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
-        <div class="montant">1 254 500<span>,00</span></div>
+        <div class="montant" id="a-solde">1 254 500<span>,00</span></div>
         <div class="delta"><b>+45 300 (3,7 %)</b> ce mois</div>
         <button class="chip-capsule" data-va="carte"><i></i>··9654 · compte principal</button>
       </div>
@@ -373,7 +416,7 @@ button { font: inherit; color: inherit; }
     <div class="grid">
       <section>
         <h2 class="sec">Dernières opérations</h2>
-        <div class="carte">
+        <div class="carte" id="a-ops">
           <div class="carte-head"><b>Cette semaine</b><button class="link" data-va="activite">Tout voir</button></div>
           <div class="row">
             <span class="rond">
@@ -468,7 +511,7 @@ button { font: inherit; color: inherit; }
 
     <div class="saisie">
       <div class="montant" id="m-montant">25 000<i></i></div>
-      <small>Solde disponible · 1 254 500</small>
+      <small id="e-solde">Solde disponible · 1 254 500</small>
     </div>
 
     <div class="carte">
@@ -489,7 +532,37 @@ button { font: inherit; color: inherit; }
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5h11a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 19 19H8l-5.5-7Z"/><path d="m11 9.5 5 5M16 9.5l-5 5"/></svg>
       </button>
     </div>
-    <button class="cta" id="m-cta" data-va="activite">Envoyer 25 000</button>
+    <button class="cta" id="m-cta">Envoyer 25 000</button>
+  </div>
+</div>
+
+<!-- ================================================================
+     ÉCRAN 2 bis — TRANSFERT ENVOYÉ (clôture animée du flow)
+     ================================================================ -->
+<div class="ecran" id="envoye" hidden>
+  <div class="shell flux succes">
+    <div class="scene">
+      <span class="onde"></span>
+      <svg class="coche" viewBox="0 0 96 96" role="img" aria-label="Transfert envoyé">
+        <circle class="cercle" cx="48" cy="48" r="40" fill="rgba(198, 244, 50, .07)"
+                stroke="var(--acide)" stroke-width="2.5" transform="rotate(-90 48 48)"/>
+        <path class="trait" d="M32 50l11 11 21-23" fill="none"
+              stroke="var(--acide)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <h2 class="s-titre">Transfert envoyé</h2>
+    <div class="s-montant" id="s-montant">25 000</div>
+    <p class="s-dest">à Awa K. · numéro se terminant par 07 88</p>
+
+    <div class="carte s-recu">
+      <div class="kv"><small>Date</small><span id="s-date">Aujourd'hui</span></div>
+      <div class="kv"><small>Référence</small><span id="s-ref">SWP-0000-0000</span></div>
+      <div class="kv"><small>Frais</small><span>Aucun</span></div>
+    </div>
+
+    <button class="cta cta-encre" data-va="accueil">Terminé</button>
+    <button class="link s-lien" data-va="activite">Voir dans l'activité</button>
   </div>
 </div>
 
@@ -590,7 +663,7 @@ button { font: inherit; color: inherit; }
         </div>
         <div class="tuiles">
           <div class="tuile"><small>Entrées</small><b class="credit">+311 500</b></div>
-          <div class="tuile"><small>Sorties</small><b>−30 700</b></div>
+          <div class="tuile"><small>Sorties</small><b id="t-sorties">−30 700</b></div>
         </div>
       </aside>
     </div>
@@ -688,6 +761,12 @@ const va = (id) => {
   document.querySelectorAll(".ecran").forEach((e) => { e.hidden = e.id !== cible; });
   scrollTo(0, 0);
   history.replaceState(null, "", "#" + cible);
+  if (cible === "envoye") {
+    const ecran = document.getElementById("envoye");
+    ecran.classList.remove("joue");
+    void ecran.offsetWidth; /* forcer le reflow pour rejouer l'animation */
+    ecran.classList.add("joue");
+  }
 };
 document.querySelectorAll("[data-va]").forEach((b) => {
   b.addEventListener("click", (e) => { e.preventDefault(); va(b.dataset.va === "carte" ? "carte-ecran" : b.dataset.va); });
@@ -709,6 +788,65 @@ document.getElementById("m-pad").addEventListener("click", (e) => {
   else if (brut.length < 9) brut = (brut === "0" ? "" : brut) + b.textContent.trim();
   maj();
 });
+
+/* l'envoi — micro-état « Envoi en cours… », puis l'écran de clôture ;
+   le prototype ENCAISSE l'envoi : solde, activité et totaux bougent */
+let solde = 1254500;
+let sorties = 30700;
+const ROND_SORTIE = `<span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span>`;
+const rangeeEnvoi = (montant, quand) => {
+  const r = document.createElement("div");
+  r.className = "row";
+  r.dataset.t = "out";
+  r.innerHTML = `${ROND_SORTIE}<span class="txt"><b>Envoyé à Awa K.</b><span>Entre proches</span></span><span class="fin"><b>−${montant}</b><span>${quand}</span></span>`;
+  return r;
+};
+const enregistrer = () => {
+  const montant = parseInt(brut || "0", 10);
+  const joli = fmt(brut);
+  const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  solde = Math.max(0, solde - montant);
+  sorties += montant;
+  document.getElementById("a-solde").firstChild.textContent = fmt(String(solde));
+  document.getElementById("e-solde").textContent = "Solde disponible · " + fmt(String(solde));
+  document.getElementById("t-sorties").textContent = "−" + fmt(String(sorties));
+  /* reçu */
+  document.getElementById("s-montant").textContent = joli;
+  document.getElementById("s-date").textContent = "Aujourd'hui · " + heure;
+  document.getElementById("s-ref").textContent =
+    "SWP-" + Math.floor(1000 + Math.random() * 9000) + "-" + Math.floor(1000 + Math.random() * 9000);
+  /* activité : en tête d'« Aujourd'hui », en respectant le filtre courant */
+  const liste = document.getElementById("m-liste");
+  const ra = rangeeEnvoi(joli, heure);
+  const filtre = document.querySelector(".chip.actif");
+  if (filtre && filtre.dataset.f === "in") ra.style.display = "none";
+  liste.querySelector(".jour").after(ra);
+  /* accueil : « Cette semaine » garde ses trois rangées les plus fraîches */
+  const ops = document.getElementById("a-ops");
+  ops.querySelector(".carte-head").after(rangeeEnvoi(joli, "À l'instant"));
+  const rangees = ops.querySelectorAll(".row");
+  if (rangees.length > 3) rangees[rangees.length - 1].remove();
+};
+const cta = document.getElementById("m-cta");
+const conclure = () => {
+  cta.removeAttribute("data-occupe");
+  enregistrer();
+  maj(); /* restaure le libellé du CTA */
+  va("envoye");
+};
+cta.addEventListener("click", () => {
+  if (cta.hasAttribute("data-occupe") || parseInt(brut || "0", 10) <= 0) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { conclure(); return; }
+  cta.setAttribute("data-occupe", "");
+  cta.innerHTML = '<span class="spin"></span>Envoi en cours…';
+  setTimeout(conclure, 750);
+});
+/* un chargement direct sur #envoye doit montrer un reçu plausible */
+document.getElementById("s-date").textContent =
+  "Aujourd'hui · " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+document.getElementById("s-ref").textContent =
+  "SWP-" + Math.floor(1000 + Math.random() * 9000) + "-" + Math.floor(1000 + Math.random() * 9000);
+document.getElementById("s-montant").textContent = fmt(brut);
 
 /* chips de l'écran Activité — elles filtrent vraiment */
 document.querySelectorAll(".chip").forEach((c) => {
