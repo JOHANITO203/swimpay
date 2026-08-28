@@ -869,7 +869,60 @@ validé ne bouge pas**, seule la zone du doigt grandit. Après : 0, 0, 0.
    Réparé par table en Python. Règle re-notée : réécrire le fichier, ne
    jamais patcher du texte accentué en PowerShell.
 
-## État : 62 écrans · 265/265 (27+22+26+17+16+16+9+13+14+31+22+26+26) · 0 défaut
+## Boucle 23 — la paie : du tableur de l'entreprise à de nouveaux comptes
+
+Demande du commanditaire : le calendrier PME doit programmer les salaires
+depuis une liste d'employés, proposer de sécuriser la somme dans un
+**coffre** pour la date prévue, s'exécuter tout seul à l'heure dite ; le
+parseur doit avaler les formats réels d'entreprise et en tirer les
+**routes** ; et l'import doit lancer les invitations, avec une file qui
+se synchronise — les patrons recrutent nos utilisateurs.
+
+**Le parseur.** CSV, TSV et **XLSX réel** : un XLSX est un ZIP de XML, et
+`DecompressionStream("deflate-raw")` existe nativement dans le navigateur
+— vérifié avant d'écrire une ligne. Lecture par le répertoire central du
+ZIP (les tailles y sont toujours justes), puis `sharedStrings.xml` et la
+feuille. Le `.xls` binaire d'avant 2007 n'est pas lisible ainsi : l'app
+le dit et demande un .xlsx ou un .csv, au lieu d'échouer en silence.
+Huit colonnes reconnues dans n'importe quel ordre, guillemets gérés.
+
+**Les routes, et leur cohérence.** `moyenAuto()` INVENTAIT un moyen de
+paiement : supprimé. C'est l'Annuaire qui tranche — prêt (compte SwimPay,
+gratuit), route externe (au tarif du rail), **conflit d'identité** quand
+le numéro appartient à quelqu'un d'autre, ou à compléter. Une ligne en
+conflit ne part pas : on ne paie pas sur un doute.
+
+**La file d'installation.** Le coût des routes externes est chiffré à
+l'écran ; chaque installation en retire une part. Le chef d'entreprise
+envoie les liens, la file se synchronise.
+
+**Le coffre.** La somme quitte la trésorerie disponible sans quitter
+l'entreprise, réservée pour une date. Les fonds étant déjà chez nous,
+**les frais de rail sont offerts** — c'est là que la custody devient un
+argument concret. L'exécution à l'échéance vide le coffre et paie.
+
+**Sonde parcours 15 : 25/25.**
+
+### Quatre défauts trouvés en déroulant pour de vrai
+1. **« MTN MoMo » partait chez Orange** : la chaîne « MoMo » contient les
+   lettres « om ». Reconnaissance refaite par mots entiers, marques
+   d'abord. Un opérateur ne se devine pas sur un fragment.
+2. **Marquer quelqu'un « invité » écrasait sa route.** Conséquence : un
+   employé dont on ignore l'opérateur devenait facturable ET payable.
+   Corrigé en séparant les deux — l'invitation marque la personne, la
+   route reste la route.
+3. **Le coffre débitait deux fois** : à la main puis par le grand livre.
+   Une réservation déplace, elle ne dépense pas.
+4. **Le total incluait les lignes impayables.** Il ne compte plus que les
+   routes valides, et l'écran annonce combien restent à corriger.
+
+Et une leçon de méthode : les sondes 3 et 13 écrivaient des montants **en
+dur** (4 000 000, 4 380 000). Agrandir le fichier d'exemple les a cassées
+sans qu'aucune ne soit fausse. Réécrites pour **calculer** l'attendu à
+partir de l'état — une sonde doit vérifier une règle, pas mémoriser un
+chiffre.
+
+## État : 65 écrans · 290/290 (27+22+26+17+16+16+9+13+14+31+22+26+26+25) · 0 défaut
 
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à

@@ -640,6 +640,46 @@ button { font: inherit; color: inherit; }
   }
 }
 
+/* ---------------- Le coffre et la programmation ---------------- */
+.coffre-carte {
+  background: var(--grad-surface); border: 1px solid var(--trait-fort);
+  border-radius: 20px; padding: 20px 22px; position: relative; overflow: hidden;
+}
+.coffre-carte::after {
+  content: ""; position: absolute; inset: auto -30px -40px auto; width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(162, 255, 1, .10), transparent 70%); pointer-events: none;
+}
+.coffre-carte small { display: block; font-size: 12.5px; color: var(--sourd); }
+.coffre-carte .gros { font-size: 30px; font-weight: 600; letter-spacing: -.01em; margin-top: 2px; }
+.coffre-carte em { font-style: normal; font-size: 12.5px; color: var(--sourd); }
+.verrou-pastille {
+  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px;
+  border-radius: 999px; background: rgba(162, 255, 1, .12); color: var(--acide);
+  font-size: 11.5px; font-weight: 600; margin-top: 12px;
+}
+/* le choix d'exécution : deux voies, une seule cochée */
+.voies { display: grid; gap: 10px; margin-top: 8px; }
+.voie {
+  display: flex; gap: 12px; align-items: flex-start; text-align: left; width: 100%;
+  background: var(--surface); border: 1px solid var(--trait); border-radius: 16px;
+  padding: 14px 16px; cursor: pointer;
+}
+.voie[aria-pressed="true"] { border-color: var(--acide); }
+.voie .marque {
+  width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--trait-fort);
+  flex: none; margin-top: 2px; display: grid; place-items: center;
+}
+.voie[aria-pressed="true"] .marque { border-color: var(--acide); background: var(--acide); color: #141414; }
+.voie[aria-pressed="false"] .marque svg { display: none; }
+.voie b { display: block; font-size: 14.5px; font-weight: 500; }
+.voie span { display: block; font-size: 12.5px; color: var(--sourd); margin-top: 3px; }
+.voie .gain { color: var(--acide); }
+
+/* la file d'attente : un état par personne */
+.file-tete { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.file-tete .jauge-w { flex: 1; margin-top: 0; }
+.file-tete b { font-size: 15px; font-weight: 600; flex: none; }
+
 /* ---------------- Zone tactile (règle Apple : 44x44 minimum) ----------------
    On étend la zone SANS grossir le dessin : un pseudo-élément centré porte
    la cible. Le visuel validé ne bouge pas, le doigt trouve la commande. */
@@ -741,6 +781,11 @@ button { font: inherit; color: inherit; }
 .calendrier i { border-radius: 3px; background: var(--surface-2); display: block; }
 .calendrier i.du { background: var(--acide); }
 .calendrier i.retard { background: #E5484D; }
+.calendrier i.verse { background: var(--encre); }
+.calendrier i.verse.coffre { background: var(--acide); box-shadow: inset 0 0 0 2px #141414; }
+.calendrier-legende b.verse { background: var(--encre); }
+.calendrier i[data-jour] { cursor: pointer; }
+.calendrier i[data-jour]:hover { outline: 1.5px solid var(--sourd); outline-offset: 1px; }
 .calendrier i.aujourdhui { outline: 1.5px solid var(--encre); outline-offset: 1px; }
 .calendrier-legende { display: flex; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--sourd); }
 .calendrier-legende span { display: inline-flex; align-items: center; gap: 6px; }
@@ -1231,6 +1276,128 @@ button { font: inherit; color: inherit; }
     <p class="badge-jour" id="pl-contexte">Le plan s'applique au profil ouvert.</p>
     <div class="plans" id="pl-liste"></div>
     <p class="badge-jour" style="margin-top: 14px">Changement immédiat, sans engagement. Les frais annoncés par le Routeur suivent le plan.</p>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     FILE D'ATTENTE — après l'import, les employés qui n'ont pas encore
+     de compte reçoivent le lien d'installation. La file se synchronise :
+     chaque installation rend un virement gratuit et immédiat.
+     ================================================================ -->
+<div class="ecran" id="pme-attente" hidden>
+  <main class="shell" style="padding-bottom: 60px">
+    <div class="fluxbar">
+      <button class="rond" data-va="pme-equipe" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>
+      <h2>File d'installation</h2>
+      <span class="vide"></span>
+    </div>
+    <p class="badge-jour">Un employé avec un compte SwimPay est payé gratuitement et sur-le-champ. Les autres coûtent des frais de rail.</p>
+
+    <div class="carte" style="padding: 16px 20px; margin-top: 12px">
+      <div class="file-tete">
+        <b id="fa-compte">0 / 0</b>
+        <span class="jauge-w"><i id="fa-jauge" style="width: 0%"></i></span>
+      </div>
+      <p class="badge-jour" id="fa-gain" style="margin: 10px 0 0">—</p>
+    </div>
+
+    <div class="sheet-actions" style="margin-top: 12px">
+      <button class="btn" id="fa-inviter" style="background: var(--grad-acide); border-color: var(--acide); color: #141414; font-weight: 600">Envoyer les invitations</button>
+      <button class="btn" id="fa-simule">Simuler une installation</button>
+    </div>
+
+    <h2 class="sec" style="margin-top: 22px">L'équipe et ses routes</h2>
+    <div class="carte" id="fa-liste"></div>
+  </main>
+</div>
+
+<!-- ================================================================
+     COFFRE — de l'argent mis de côté pour une date. Il sort de la
+     trésorerie disponible sans quitter l'entreprise, et l'exécution
+     part toute seule à l'échéance.
+     ================================================================ -->
+<div class="ecran" id="pme-coffre" hidden>
+  <main class="shell" style="padding-bottom: 60px">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-pme" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>
+      <h2>Coffre</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="coffre-carte" style="margin-top: 12px">
+      <small>Sécurisé pour des échéances</small>
+      <div class="gros"><span id="co-total">0</span></div>
+      <em id="co-sous">Rien n'est réservé pour l'instant.</em>
+      <div class="verrou-pastille"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Hors trésorerie disponible</div>
+    </div>
+
+    <h2 class="sec" style="margin-top: 22px">Réservations</h2>
+    <div class="carte" id="co-liste"></div>
+    <p class="badge-jour" id="co-vide" hidden>Aucune réservation. Programme un versement pour en créer une.</p>
+
+    <button class="btn" data-va="pme-programme" data-mene="pme-programme" style="margin-top: 14px; width: 100%; justify-content: center">Programmer un versement</button>
+  </main>
+</div>
+
+<!-- ================================================================
+     PROGRAMMER LES SALAIRES — la date, l'heure, ce que ça coûte selon
+     les routes, et le choix : payer le jour dit depuis la trésorerie,
+     ou sécuriser maintenant dans le coffre.
+     ================================================================ -->
+<div class="ecran" id="pme-programme" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="pme-salaires" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>
+      <h2>Programmer les salaires</h2>
+      <span class="vide"></span>
+    </div>
+
+    <label class="onb-etape" style="margin-top: 14px">Date et heure d'exécution</label>
+    <div style="display: flex; gap: 10px; margin-top: 6px">
+      <input class="champ" id="pg-date" type="date" style="flex: 1.4">
+      <input class="champ" id="pg-heure" type="time" value="08:00" style="flex: 1">
+    </div>
+
+    <div class="carte" style="margin-top: 12px; padding: 16px 20px">
+      <div class="kv"><small>Employés concernés</small><span id="pg-n">0</span></div>
+      <div class="kv"><small>Total des salaires</small><span id="pg-total" style="font-weight: 600">0</span></div>
+      <div class="kv"><small>Frais de rail</small><span id="pg-frais">0</span></div>
+      <div class="kv"><small>Payés gratuitement</small><span id="pg-prets">0</span></div>
+    </div>
+
+    <label class="onb-etape" style="margin-top: 16px">Comment l'exécuter</label>
+    <div class="voies" id="pg-voies">
+      <button class="voie" aria-pressed="true" data-voie="treso">
+        <span class="marque"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+        <span style="flex: 1"><b>Payer le jour dit, depuis la trésorerie</b>
+          <span>L'argent reste disponible jusqu'à l'échéance. Frais de rail au tarif du plan.</span></span>
+      </button>
+      <button class="voie" aria-pressed="false" data-voie="coffre">
+        <span class="marque"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+        <span style="flex: 1"><b>Sécuriser maintenant dans le coffre</b>
+          <span>La somme sort de la trésorerie et attend l'échéance. <span class="gain">Frais de rail offerts</span> : l'argent est déjà chez nous.</span></span>
+      </button>
+    </div>
+
+    <label class="onb-etape" style="margin-top: 16px">Sécurité de l'exécution</label>
+    <div class="carte" style="margin-top: 6px">
+      <div class="row" style="cursor: default">
+        <span class="txt"><b>Code à la programmation</b><span>Toujours demandé</span></span>
+        <span class="statut statut-ok">Actif</span>
+      </div>
+      <div class="row" style="cursor: default">
+        <span class="txt"><b>Approbation d'un second compte</b><span>N. Kader · par code ou biométrie</span></span>
+        <button class="bascule" id="pg-double" aria-pressed="true" aria-label="Approbation d'un second compte"><i></i></button>
+      </div>
+      <div class="row" style="cursor: default">
+        <span class="txt"><b>Avis la veille</b><span>Un rappel 24 heures avant l'exécution</span></span>
+        <button class="bascule" id="pg-avis" aria-pressed="true" aria-label="Avis la veille"><i></i></button>
+      </div>
+    </div>
+
+    <div style="margin-top: auto"></div>
+    <button class="cta" id="pg-cta" style="margin-top: 18px">Programmer</button>
   </div>
 </div>
 
@@ -2362,6 +2529,13 @@ button { font: inherit; color: inherit; }
     </div>
 
     <div class="widgets" id="pme-widgets"></div>
+    <div class="carte" style="margin-top: 12px">
+      <button class="row" data-va="pme-coffre">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="1.7" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+        <span class="txt"><b>Coffre</b><span data-coffre-sous>Rien de réservé</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
 
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 20px 2px 10px">
       <h2 class="sec" style="margin: 0">Activité récente</h2>
@@ -2406,6 +2580,7 @@ button { font: inherit; color: inherit; }
     <div style="max-width: 430px; margin: 18px auto 0; display: flex; flex-direction: column">
       <small class="recap" style="margin-bottom: 10px">Chacun sur son compte de réception · immédiat · Frais — aucun</small>
       <button class="cta" id="pme-cta" data-mene="pme-salaires">Payer 5 salaires en 1 clic</button>
+      <button class="btn" data-va="pme-programme" style="margin-top: 10px; width: 100%; justify-content: center">Programmer pour une date</button>
       <button class="link s-lien" id="pme-reset" hidden>Refaire la démonstration</button>
     </div>
   </main>
@@ -2511,6 +2686,15 @@ button { font: inherit; color: inherit; }
       <input class="champ" id="eq-equipe" placeholder="Équipe (Production, Vente…)">
       <button class="btn" id="eq-ajoute" style="justify-content: center">Ajouter à l'équipe et aux salaires</button>
     </div>
+
+    <h2 class="sec" style="margin-top: 22px">Routes de paiement</h2>
+    <div class="carte">
+      <button class="row" data-va="pme-attente">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h10M10 8l4 4-4 4"/><rect x="16" y="4" width="4" height="16" rx="1.4"/></svg></span>
+        <span class="txt"><b>File d'installation</b><span data-file-sous>—</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
   </main>
 </div>
 
@@ -2601,18 +2785,19 @@ button { font: inherit; color: inherit; }
       <h2>Importer l'équipe</h2>
       <span class="vide"></span>
     </div>
-    <p class="badge-jour">Colonnes reconnues : nom · rôle · salaire · équipe.</p>
+    <p class="badge-jour">Colonnes lues : matricule · nom · poste · équipe · salaire · téléphone · opérateur · compte. L'ordre n'a pas d'importance.</p>
 
     <label class="depose">
-      <input type="file" id="im-fichier" accept=".csv,text/csv,text/plain">
+      <input type="file" id="im-fichier" accept=".csv,.tsv,.txt,.xlsx,.xlsm,.xls,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 20h16"/></svg>
-      <span><b>Choisir un fichier CSV</b><br>ou glisse-le ici</span>
+      <span><b>Choisir le fichier de paie</b><br>CSV, TSV ou Excel (.xlsx)</span>
     </label>
     <button class="link s-lien" id="im-exemple" style="align-self: center">Essayer avec un fichier d'exemple</button>
 
     <div id="im-apercu" hidden>
       <p class="badge-jour" id="im-detail">equipe.csv · 4 lignes reconnues</p>
-      <div class="carte" id="im-liste"></div>
+      <div class="widgets" id="im-bilan" style="margin-top: 10px"></div>
+      <div class="carte" id="im-liste" style="margin-top: 12px"></div>
       <button class="cta" id="im-cta" data-mene="pme-equipe" style="margin-top: 16px; width: 100%">Ajouter à l'équipe</button>
     </div>
     <div style="margin-top: auto"></div>
@@ -4734,6 +4919,8 @@ const approuve = (mode) => {
   const d = demandeDouble;
   if (!d) { va("b-pme"); return; }
   demandeDouble = null;
+  /* l'approbation sert à plusieurs flux : chacun peut fournir sa suite */
+  if (d.suite) { d.modeApprobation = mode; d.suite(mode); return; }
   cloture({ titre: "Envoi effectué",
     sous: d.dest + " · " + d.moyen.nom + " " + d.num + " · « " + d.motif + " » · approuvé par N. Kader (" + mode + ")",
     montant: d.m, nom: d.dest, categorie: d.motif,
@@ -4764,7 +4951,8 @@ FLUX_CFG.depot = { aff: "dp-aff", cta: "dp-cta", libelle: (m) => "Approvisionner
 /* Le tarif des plans est défini bien plus bas ; on le publie ici dans un
    porteur mutable. Un `typeof` sur un const en zone morte LÈVE une erreur,
    contrairement à une variable non déclarée — ce piège a coûté un chargement. */
-let tarifDuPlan = null;
+let tarifDuPlan = null;   /* le libellé, pour le Routeur */
+let tauxDuPlan = null;    /* le taux nu, pour les calculs de frais */
 /* à quel monde appartient cette rangée — c'est lui qui porte le plan */
 const profilDuFlux = (el) => {
   const id = (el.closest(".ecran") || {}).id || "";
@@ -5055,61 +5243,555 @@ document.getElementById("dp-cta").addEventListener("click", function () {
   });
 });
 /* PME — importer l'équipe depuis un CSV (le vrai fichier de l'utilisateur) */
-const CSV_EXEMPLE = "nom;role;salaire;equipe\nIbrahim T.;Magasinier;200000;Livraison\nAda P.;Brodeuse;230000;Production\nLéa N.;Caissière;210000;Vente\nOmar D.;Coursier;180000;Livraison";
-let importe = [];
-const parseCsv = (texte, nomFichier) => {
-  const lignes = String(texte).trim().split(/\r?\n/).filter((l) => l.trim());
-  if (!lignes.length) return;
-  const sep = (lignes[0].match(/;/g) || []).length >= (lignes[0].match(/,/g) || []).length ? ";" : ",";
-  let rows = lignes.map((l) => l.split(sep).map((c) => c.trim()));
-  let cols = { nom: 0, role: 1, sal: 2, eq: 3 };
-  const tete = rows[0].map((c) => c.toLowerCase());
-  const trouve = (...mots) => tete.findIndex((t) => mots.some((mot) => t.includes(mot)));
-  if (trouve("nom", "name") !== -1 || trouve("sal", "montant", "pay") !== -1) {
-    cols = {
-      nom: Math.max(0, trouve("nom", "name")),
-      role: trouve("role", "rôle", "poste", "fonction"),
-      sal: trouve("sal", "montant", "pay"),
-      eq: trouve("equipe", "équipe", "team", "groupe"),
-    };
-    rows = rows.slice(1);
+/* ═══════════════════ LIRE LE FICHIER DE L'ENTREPRISE ═══════════════════
+   Une entreprise n'exporte pas du CSV propre : elle exporte ce que son
+   logiciel de paie produit. On lit donc CSV, TSV et XLSX — le XLSX pour
+   de vrai (c'est un ZIP de XML, décompressé par DecompressionStream,
+   présent nativement dans le navigateur). Le .xls binaire d'avant 2007
+   n'est pas lisible ainsi : on le dit au lieu de faire semblant. */
+
+const CSV_EXEMPLE =
+  "matricule;nom;poste;equipe;salaire;telephone;operateur\n" +
+  "A-101;Ibrahim T.;Magasinier;Livraison;200000;07 45 33 21 08;Orange Money\n" +
+  "A-102;Ada P.;Brodeuse;Production;230000;05 12 77 40 63;MTN MoMo\n" +
+  "A-103;Léa N.;Caissière;Vente;210000;01 88 20 55 14;Wave\n" +
+  "A-104;Omar D.;Coursier;Livraison;180000;05 07 88 12 09;\n" +
+  "A-105;Nadia K.;Contrôleuse;Production;245000;;\n";
+
+/* — le ZIP, lu par le répertoire central (les tailles y sont toujours justes) — */
+const litZip = async (tampon) => {
+  const vue = new DataView(tampon);
+  const oct = new Uint8Array(tampon);
+  let eocd = -1;
+  for (let i = oct.length - 22; i >= Math.max(0, oct.length - 66000); i--) {
+    if (vue.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
   }
-  importe = rows.map((r) => ({
-    nom: r[cols.nom] || "",
-    role: cols.role !== -1 && r[cols.role] ? r[cols.role] : "Employé",
-    sal: parseInt(String(cols.sal !== -1 ? r[cols.sal] : "").replace(/\D/g, ""), 10) || 0,
-    eq: cols.eq !== -1 && r[cols.eq] ? r[cols.eq] : "Général",
-  })).filter((e) => e.nom && e.sal > 0);
-  document.getElementById("im-detail").textContent =
-    `${nomFichier} · ${importe.length} ligne${importe.length > 1 ? "s" : ""} reconnue${importe.length > 1 ? "s" : ""}`;
-  document.getElementById("im-liste").innerHTML = importe.map((e) =>
-    `<div class="row" style="cursor: default">
+  if (eocd === -1) throw new Error("archive illisible");
+  const nb = vue.getUint16(eocd + 10, true);
+  let pos = vue.getUint32(eocd + 16, true);
+  const entrees = {};
+  for (let k = 0; k < nb; k++) {
+    if (vue.getUint32(pos, true) !== 0x02014b50) break;
+    const methode = vue.getUint16(pos + 10, true);
+    const taille = vue.getUint32(pos + 20, true);
+    const lNom = vue.getUint16(pos + 28, true);
+    const lExtra = vue.getUint16(pos + 30, true);
+    const lComm = vue.getUint16(pos + 32, true);
+    const debutLocal = vue.getUint32(pos + 42, true);
+    const nom = new TextDecoder().decode(oct.subarray(pos + 46, pos + 46 + lNom));
+    entrees[nom] = { methode, taille, debutLocal };
+    pos += 46 + lNom + lExtra + lComm;
+  }
+  const extrait = async (nom) => {
+    const e = entrees[nom];
+    if (!e) return null;
+    const lNom = vue.getUint16(e.debutLocal + 26, true);
+    const lExtra = vue.getUint16(e.debutLocal + 28, true);
+    const debut = e.debutLocal + 30 + lNom + lExtra;
+    const brut = oct.subarray(debut, debut + e.taille);
+    if (e.methode === 0) return new TextDecoder().decode(brut);
+    const flux = new Blob([brut]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return await new Response(flux).text();
+  };
+  return { noms: Object.keys(entrees), extrait };
+};
+
+/* — la feuille XLSX en tableau de chaînes — */
+const litXlsx = async (tampon) => {
+  const zip = await litZip(tampon);
+  const dom = (t) => new DOMParser().parseFromString(t, "application/xml");
+  const partagees = [];
+  const sst = await zip.extrait("xl/sharedStrings.xml");
+  if (sst) {
+    dom(sst).querySelectorAll("si").forEach((si) => {
+      partagees.push([...si.querySelectorAll("t")].map((t) => t.textContent).join(""));
+    });
+  }
+  const nomFeuille = zip.noms.find((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n));
+  if (!nomFeuille) throw new Error("aucune feuille dans le classeur");
+  const feuille = dom(await zip.extrait(nomFeuille));
+  const colonne = (ref) => {
+    let n = 0;
+    for (const c of (ref || "A").replace(/[0-9]/g, "")) n = n * 26 + (c.charCodeAt(0) - 64);
+    return n - 1;
+  };
+  return [...feuille.querySelectorAll("row")].map((r) => {
+    const cases = [];
+    r.querySelectorAll("c").forEach((c) => {
+      const i = colonne(c.getAttribute("r"));
+      const t = c.getAttribute("t");
+      let v = "";
+      if (t === "s") v = partagees[parseInt(c.querySelector("v")?.textContent || "0", 10)] || "";
+      else if (t === "inlineStr") v = c.querySelector("is t")?.textContent || "";
+      else v = c.querySelector("v")?.textContent || "";
+      cases[i] = String(v).trim();
+    });
+    for (let i = 0; i < cases.length; i++) if (cases[i] === undefined) cases[i] = "";
+    return cases;
+  }).filter((r) => r.some((c) => c));
+};
+
+/* — le texte séparé, quel que soit le séparateur, guillemets compris — */
+const litTexte = (texte) => {
+  const lignes = String(texte).replace(/^\uFEFF/, "").trim().split(/\r?\n/).filter((l) => l.trim());
+  if (!lignes.length) return [];
+  const candidats = [";", ",", "\t", "|"];
+  const sep = candidats.reduce((meilleur, c) =>
+    (lignes[0].split(c).length > lignes[0].split(meilleur).length ? c : meilleur), ";");
+  const coupe = (ligne) => {
+    const out = []; let cur = ""; let dansGuillemets = false;
+    for (let i = 0; i < ligne.length; i++) {
+      const c = ligne[i];
+      if (c === '"') { if (dansGuillemets && ligne[i + 1] === '"') { cur += '"'; i++; } else dansGuillemets = !dansGuillemets; }
+      else if (c === sep && !dansGuillemets) { out.push(cur.trim()); cur = ""; }
+      else cur += c;
+    }
+    out.push(cur.trim());
+    return out;
+  };
+  return lignes.map(coupe);
+};
+
+/* ═══ DES LIGNES AUX ROUTES ═══
+   Ce qui nous intéresse n'est pas la ligne, c'est le CHEMIN de l'argent.
+   L'Annuaire tranche : un numéro qu'il connaît porte une identité et,
+   parfois, un compte SwimPay — donc gratuit et immédiat. */
+/* Les marques d'abord, les abréviations ensuite, et par MOTS ENTIERS :
+   « MTN MoMo » contient la suite de lettres « om », ce qui l'envoyait chez
+   Orange. Un opérateur ne se devine pas sur un fragment. */
+const RAILS_CONNUS = [
+  { t: "mtn", mots: ["mtn", "momo"] },
+  { t: "moov", mots: ["moov", "flooz"] },
+  { t: "wave", mots: ["wave"] },
+  { t: "om", mots: ["orange", "om"] },
+  { t: "swim", mots: ["swimpay", "swim"] },
+  { t: "banque", mots: ["banque", "bank", "iban", "rib", "virement"] },
+];
+const railDepuisTexte = (v) => {
+  const t = String(v || "").toLowerCase();
+  if (!t) return null;
+  const r = RAILS_CONNUS.find((x) =>
+    x.mots.some((m) => new RegExp("(^|[^a-z])" + m + "([^a-z]|$)").test(t)));
+  return r ? r.t : null;
+};
+const masque = (num) => {
+  const n = chiffres(num);
+  return n.length >= 4 ? "····" + n.slice(-4).replace(/(\d\d)(\d\d)/, "$1 $2") : "";
+};
+const resousRoute = (e) => {
+  const n = chiffres(e.tel);
+  const contact = n.length >= 10 ? cherche(e.tel) : null;
+  if (contact) {
+    /* le fichier dit un nom, l'Annuaire en dit un autre : on ne paie pas
+       sur un doute — la ligne se signale au lieu de partir. */
+    const memePersonne = !e.nom
+      || contact.nom.toLowerCase().startsWith(e.nom.toLowerCase().split(" ")[0].slice(0, 3))
+      || e.nom.toLowerCase().startsWith(contact.nom.toLowerCase().split(" ")[0].slice(0, 3));
+    if (!memePersonne) {
+      return { statut: "conflit", raison: "numéro rattaché à " + contact.nom,
+        num: masque(n), identite: contact.nom };
+    }
+    const swim = contact.comptes.find((c) => c.t === "swim");
+    if (swim) {
+      return { statut: "pret", rail: "swim", nom: "Compte SwimPay", num: swim.num,
+        delai: "immédiat", identite: contact.nom };
+    }
+    const premier = contact.comptes[0];
+    return { statut: "externe", rail: premier.t, nom: premier.nom, num: premier.num,
+      delai: TYPES_LIA[premier.t].delai, identite: contact.nom };
+  }
+  const rail = e.rail || railDepuisTexte(e.railTexte);
+  if (rail && n.length >= 8) {
+    return { statut: "externe", rail, nom: TYPES_LIA[rail].nom, num: masque(n),
+      delai: TYPES_LIA[rail].delai, identite: null };
+  }
+  if (n.length >= 8) return { statut: "incomplet", raison: "opérateur à préciser", num: masque(n) };
+  return { statut: "incomplet", raison: "numéro manquant", num: "" };
+};
+/* ce que coûte une ligne : le compte SwimPay est gratuit, c'est tout l'enjeu */
+const coutLigne = (e) => {
+  const r = e.route || resousRoute(e);
+  /* on ne chiffre que ce qu'on sait router. Une invitation ne crée pas de
+     frais : tant que le rail est inconnu, il n'y a rien à facturer. */
+  if (r.statut !== "externe") return 0;
+  if (r.rail === "banque") return 200;
+  return Math.round(e.sal * ((tauxDuPlan ? tauxDuPlan("pme") : 1) / 100));
+};
+
+let importe = [];
+let importInfo = { nom: "", lignes: 0, colonnes: [] };
+const NOM_COLONNE = {
+  nom: "nom", role: "poste", sal: "salaire", eq: "équipe",
+  tel: "téléphone", rail: "opérateur", compte: "compte", mat: "matricule",
+};
+const COLONNES = {
+  nom: ["nom", "name", "employe", "employé", "salarie", "salarié", "prenom", "prénom"],
+  role: ["role", "rôle", "poste", "fonction", "emploi", "titre"],
+  sal: ["salaire", "sal", "montant", "net", "brut", "pay", "remuneration", "rémunération"],
+  eq: ["equipe", "équipe", "team", "groupe", "service", "departement", "département", "site"],
+  tel: ["tel", "tél", "telephone", "téléphone", "phone", "mobile", "numero", "numéro", "msisdn", "gsm"],
+  rail: ["operateur", "opérateur", "reseau", "réseau", "rail", "moyen", "banque", "mode"],
+  compte: ["compte", "iban", "rib"],
+  mat: ["matricule", "id", "code", "reference", "référence"],
+};
+const analyseLignes = (rows, nomFichier) => {
+  if (!rows.length) { importe = []; majApercuImport(nomFichier, "fichier vide"); return; }
+  const tete = rows[0].map((c) => String(c).toLowerCase().trim());
+  const trouve = (mots) => tete.findIndex((t) => mots.some((m) => t.includes(m)));
+  const cols = {}; let aEntete = false;
+  Object.entries(COLONNES).forEach(([k, mots]) => {
+    cols[k] = trouve(mots);
+    if (cols[k] !== -1) aEntete = true;
+  });
+  let corps = rows;
+  if (aEntete) corps = rows.slice(1);
+  else { cols.nom = 0; cols.role = 1; cols.sal = 2; cols.eq = 3; cols.tel = 4; cols.rail = 5; }
+  const val = (r, k) => (cols[k] !== undefined && cols[k] !== -1 ? (r[cols[k]] || "") : "");
+  importe = corps.map((r) => {
+    const e = {
+      mat: val(r, "mat"),
+      nom: val(r, "nom"),
+      role: val(r, "role") || "Employé",
+      eq: val(r, "eq") || "Général",
+      sal: parseInt(String(val(r, "sal")).replace(/[^0-9]/g, ""), 10) || 0,
+      tel: val(r, "tel"),
+      railTexte: val(r, "rail"),
+      compte: val(r, "compte"),
+    };
+    e.rail = railDepuisTexte(e.railTexte);
+    e.route = resousRoute(e);
+    return e;
+  }).filter((e) => e.nom && e.sal > 0);
+  importInfo = {
+    nom: nomFichier,
+    lignes: importe.length,
+    colonnes: Object.keys(COLONNES).filter((k) => cols[k] !== undefined && cols[k] !== -1),
+  };
+  majApercuImport(nomFichier);
+};
+const ETIQ_ROUTE = {
+  pret: { t: "Compte SwimPay · gratuit", c: "statut-ok" },
+  externe: { t: "Rail externe", c: "statut-attente" },
+  incomplet: { t: "À compléter", c: "statut-retard" },
+  conflit: { t: "Identité à vérifier", c: "statut-retard" },
+};
+const majApercuImport = (nomFichier, erreur) => {
+  const detail = document.getElementById("im-detail");
+  if (erreur) {
+    detail.textContent = nomFichier + " · " + erreur;
+    document.getElementById("im-apercu").hidden = true;
+    return;
+  }
+  const prets = importe.filter((e) => e.route.statut === "pret").length;
+  const aInviter = importe.filter((e) => e.route.statut !== "pret").length;
+  const cout = importe.reduce((n, e) => n + coutLigne(e), 0);
+  detail.innerHTML =
+    `<b>${ech(importInfo.nom)}</b> · ${importe.length} ligne${importe.length > 1 ? "s" : ""} · `
+    + `colonnes lues : ${importInfo.colonnes.map((k) => NOM_COLONNE[k] || k).join(" · ") || "aucune"}`;
+  document.getElementById("im-bilan").innerHTML = `
+    <div class="widget"><small>Prêts à payer</small><b class="credit">${prets}</b>
+      <em>compte SwimPay · virement gratuit et immédiat</em></div>
+    <div class="widget"><small>À faire rejoindre</small><b>${aInviter}</b>
+      <em>${cout ? fmt(String(cout)) + " de frais sur ce versement" : "aucun frais"}</em></div>`;
+  document.getElementById("im-liste").innerHTML = importe.map((e, i) => `
+    <div class="row" style="cursor: default">
       <span class="avatar">${ech(initiales(e.nom))}</span>
-      <span class="txt"><b>${ech(e.nom)}</b><span>${ech(e.role)} · ${ech(e.eq)}</span></span>
-      <span class="fin"><b>${fmt(String(e.sal))}</b></span>
+      <span class="txt"><b>${ech(e.nom)}</b><span>${ech(e.role)} · ${ech(e.eq)}${
+        e.route.num ? " · " + ech(e.route.num) : ""}${
+        e.route.statut === "incomplet" ? " · " + e.route.raison : ""}</span></span>
+      <span class="fin" style="margin-right: 6px"><b>${fmt(String(e.sal))}</b></span>
+      <span class="statut ${ETIQ_ROUTE[e.route.statut].c}">${ETIQ_ROUTE[e.route.statut].t}</span>
     </div>`).join("");
   document.getElementById("im-cta").textContent =
     `Ajouter ${importe.length} employé${importe.length > 1 ? "s" : ""} à l'équipe`;
   document.getElementById("im-apercu").hidden = importe.length === 0;
 };
+const litFichier = async (f) => {
+  const nom = f.name || "fichier";
+  const bas = nom.toLowerCase();
+  try {
+    if (bas.endsWith(".xlsx") || bas.endsWith(".xlsm")) {
+      analyseLignes(await litXlsx(await f.arrayBuffer()), nom);
+      return;
+    }
+    if (bas.endsWith(".xls")) {
+      /* le .xls d'avant 2007 est un format binaire propriétaire : on ne
+         fait pas semblant de le lire, on dit quoi faire. */
+      majApercuImport(nom, "format .xls binaire — réenregistre en .xlsx ou .csv");
+      return;
+    }
+    analyseLignes(litTexte(await f.text()), nom);
+  } catch (err) {
+    majApercuImport(nom, "lecture impossible (" + (err.message || err) + ")");
+  }
+};
 document.getElementById("im-fichier").addEventListener("change", function () {
   const f = this.files && this.files[0];
-  if (!f) return;
-  const lecteur = new FileReader();
-  lecteur.onload = () => parseCsv(lecteur.result, f.name);
-  lecteur.readAsText(f);
+  if (f) litFichier(f);
 });
-document.getElementById("im-exemple").addEventListener("click", () => parseCsv(CSV_EXEMPLE, "exemple.csv"));
+document.getElementById("im-exemple").addEventListener("click",
+  () => analyseLignes(litTexte(CSV_EXEMPLE), "paie-aout.csv"));
+
+/* la date de référence de la démo, et les versements que le calendrier montre */
+const dateDuJour = new Date();
+const versements = [];
+
+/* ═══════════════════ L'ÉQUIPE, SES ROUTES, SA FILE ═══════════════════
+   Chaque employé porte une route. Celui qui n'a pas de compte SwimPay
+   coûte des frais de rail : le faire rejoindre est donc l'intérêt de
+   l'entreprise ET le nôtre. C'est le patron qui fait l'invitation. */
+
+/* les employés d'origine reçoivent une route déduite de leur moyen écrit */
+const railDepuisMoyen = (m) => railDepuisTexte(m) || "om";
+employes.forEach((e) => {
+  if (e.route) return;
+  e.tel = e.tel || "";
+  e.rail = railDepuisMoyen(e.moyen);
+  e.route = { statut: "externe", rail: e.rail, nom: TYPES_LIA[e.rail].nom,
+    num: (e.moyen.match(/····.*$/) || [""])[0], delai: TYPES_LIA[e.rail].delai, identite: null };
+});
+
+const majFileEtiquettes = () => {
+  const total = employes.length;
+  const prets = employes.filter((e) => e.route.statut === "pret").length;
+  const invites = employes.filter((e) => e.route.statut === "invite").length;
+  document.querySelectorAll("[data-file-sous]").forEach((el) => {
+    el.textContent = prets + " sur " + total + " prêts"
+      + (invites ? " · " + invites + " invité" + (invites > 1 ? "s" : "") : "");
+  });
+};
+const ETIQ_FILE = {
+  conflit: { t: "Identité à vérifier", c: "statut-retard" },
+  pret: { t: "Prêt · gratuit", c: "statut-ok" },
+  externe: { t: "Rail externe", c: "statut-attente" },
+  incomplet: { t: "À compléter", c: "statut-retard" },
+};
+/* l'état affiché combine la route ET l'invitation : « invité » ne remplace
+   pas le chemin de l'argent, il dit où en est la personne avec nous */
+const etatFile = (e) => {
+  const base = ETIQ_FILE[e.route.statut] || ETIQ_FILE.externe;
+  if (e.route.statut === "pret" || !e.invite) return base;
+  return { t: "Invité · " + base.t.toLowerCase(), c: base.c };
+};
+const fraisEquipe = () => employes.reduce((n, e) => n + coutLigne(e), 0);
+/* qui peut réellement être payé : ni les lignes incomplètes, ni les conflits */
+const payables = () => employes.filter((e) =>
+  e.route.statut === "pret" || e.route.statut === "externe");
+const rendFile = () => {
+  const liste = document.getElementById("fa-liste");
+  if (!liste) return;
+  const total = employes.length;
+  const prets = employes.filter((e) => e.route.statut === "pret").length;
+  document.getElementById("fa-compte").textContent = prets + " / " + total;
+  document.getElementById("fa-jauge").style.width = pct(prets, total) + "%";
+  const frais = fraisEquipe();
+  document.getElementById("fa-gain").textContent = frais
+    ? "Ce mois, les routes externes coûtent " + fmt(String(frais))
+      + " de frais. Chaque installation en retire une part."
+    : "Toute l'équipe est sur SwimPay : le versement ne coûte rien.";
+  liste.innerHTML = employes.map((e, i) => {
+    const r = e.route;
+    const et = etatFile(e);
+    const cout = coutLigne(e);
+    return `<div class="row" style="cursor: default">
+      <span class="avatar">${ech(initiales(e.nom))}</span>
+      <span class="txt"><b>${ech(e.nom)}</b><span>${ech(r.nom || "—")}${
+        r.num ? " " + ech(r.num) : ""}${r.identite ? " · " + ech(r.identite) : ""}${
+        r.statut === "incomplet" ? " · " + ech(r.raison) : ""}</span></span>
+      <span class="fin" style="margin-right: 6px"><b>${fmt(String(e.sal))}</b>${
+        cout ? `<span>frais ${fmt(String(cout))}</span>` : `<span class="credit">sans frais</span>`}</span>
+      <span class="statut ${et.c}">${et.t}</span>
+    </div>`;
+  }).join("");
+  majFileEtiquettes();
+  rendWidgets();
+};
+document.getElementById("fa-inviter").addEventListener("click", function () {
+  const aInviter = employes.filter((e) => e.route.statut === "externe" || e.route.statut === "incomplet");
+  if (!aInviter.length) { retourBtn(this, "Tout le monde est déjà invité"); return; }
+  occupe(this, "Envoi des liens…", () => {
+    aInviter.forEach((e) => { e.invite = true; });
+    rendFile();
+    retourBtn(this, aInviter.length + " lien" + (aInviter.length > 1 ? "s" : "") + " d'installation envoyé"
+      + (aInviter.length > 1 ? "s" : ""));
+  });
+});
+/* la file se synchronise : une installation change la route, donc le coût */
+document.getElementById("fa-simule").addEventListener("click", function () {
+  const e = employes.find((x) => x.route.statut === "invite") ||
+    employes.find((x) => x.route.statut !== "pret");
+  if (!e) { retourBtn(this, "Toute l'équipe est déjà prête"); return; }
+  occupe(this, "Synchronisation…", () => {
+    const avant = fraisEquipe();
+    e.route = { statut: "pret", rail: "swim", nom: "Compte SwimPay",
+      num: "····" + String(3000 + employes.indexOf(e) * 137).slice(-4), delai: "immédiat",
+      identite: e.nom };
+    rendFile();
+    const gagne = avant - fraisEquipe();
+    retourBtn(this, e.nom + " a rejoint" + (gagne ? " · " + fmt(String(gagne)) + " de frais en moins" : ""));
+  });
+});
+vaHooks.push((cible) => { if (cible === "pme-attente") rendFile(); });
+
+/* l'import verse dans l'équipe ET dans la file */
 document.getElementById("im-cta").addEventListener("click", () => {
   const dejaLa = new Set(employes.map((e) => e.nom.toLowerCase()));
   importe.forEach((e) => {
-    if (!dejaLa.has(e.nom.toLowerCase())) employes.push({ ...e, moyen: moyenAuto() });
+    if (dejaLa.has(e.nom.toLowerCase())) return;
+    employes.push({ ...e, moyen: (e.route.nom || "—") + (e.route.num ? " " + e.route.num : "") });
   });
   renderEquipe();
+  rendFile();
   document.getElementById("im-apercu").hidden = true;
   document.getElementById("im-fichier").value = "";
-  va("pme-equipe");
+  va("pme-attente"); /* la suite logique : faire rejoindre ceux qui manquent */
 });
+
+/* ═══════════════════ LE COFFRE ═══════════════════
+   De l'argent qui a quitté la trésorerie disponible sans quitter
+   l'entreprise. Il attend une date, et part tout seul. */
+const coffre = [];
+let coffreTotal = 0;
+const majCoffre = () => {
+  document.querySelectorAll("[data-coffre-sous]").forEach((el) => {
+    el.textContent = coffreTotal
+      ? fmt(String(coffreTotal)) + " réservés · " + coffre.length + " échéance" + (coffre.length > 1 ? "s" : "")
+      : "Rien de réservé";
+  });
+  const t = document.getElementById("co-total");
+  if (!t) return;
+  t.textContent = fmt(String(coffreTotal));
+  document.getElementById("co-sous").textContent = coffre.length
+    ? coffre.length + " réservation" + (coffre.length > 1 ? "s" : "") + " en attente d'échéance"
+    : "Rien n'est réservé pour l'instant.";
+  document.getElementById("co-vide").hidden = coffre.length > 0;
+  document.getElementById("co-liste").innerHTML = coffre.map((r, i) => `
+    <div class="row" style="cursor: default">
+      <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="1.7" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+      <span class="txt"><b>${ech(r.titre)}</b><span>${ech(r.quand)} · ${r.n} employé${r.n > 1 ? "s" : ""}</span></span>
+      <span class="fin" style="margin-right: 6px"><b>${fmt(String(r.montant))}</b><span class="credit">frais offerts</span></span>
+      <button class="btn" data-execute="${i}" style="height: 34px; padding-inline: 14px; font-size: 12.5px">Exécuter</button>
+    </div>`).join("");
+  rendWidgets();
+};
+
+/* ═══════════════════ PROGRAMMER LES SALAIRES ═══════════════════ */
+let voieChoisie = "treso";
+const dansNJours = (n) => new Date(dateDuJour.getTime() + n * 86400000).toISOString().slice(0, 10);
+const quand0 = (date, heure) =>
+  "le " + date.split("-").reverse().slice(0, 2).join("/") + " à " + heure;
+const majProgramme = () => {
+  const liste = payables();
+  const n = liste.length;
+  const bloques = employes.length - n;
+  const total = liste.reduce((x, e) => x + e.sal, 0);
+  const prets = liste.filter((e) => e.route.statut === "pret").length;
+  const frais = voieChoisie === "coffre" ? 0 : liste.reduce((x, e) => x + coutLigne(e), 0);
+  document.getElementById("pg-n").innerHTML = bloques
+    ? `${n} <small style="color: var(--sourd); font-size: 12px">· ${bloques} à corriger</small>`
+    : String(n);
+  document.getElementById("pg-total").textContent = fmt(String(total));
+  document.getElementById("pg-frais").innerHTML = voieChoisie === "coffre"
+    ? `<span class="credit">offerts</span>` : fmt(String(frais));
+  document.getElementById("pg-prets").textContent = prets + " sur " + n;
+  document.getElementById("pg-cta").disabled = n === 0;
+  document.getElementById("pg-cta").textContent = voieChoisie === "coffre"
+    ? "Sécuriser " + fmt(String(total)) + " et programmer"
+    : "Programmer " + fmt(String(total + frais));
+};
+document.addEventListener("click", (e) => {
+  const v = e.target.closest("#pg-voies .voie");
+  if (!v) return;
+  voieChoisie = v.dataset.voie;
+  document.querySelectorAll("#pg-voies .voie").forEach((x) => x.setAttribute("aria-pressed", x === v));
+  majProgramme();
+});
+vaHooks.push((cible) => {
+  if (cible === "pme-coffre") majCoffre();
+  if (cible === "pme-programme") {
+    const champ = document.getElementById("pg-date");
+    if (!champ.value) champ.value = dansNJours(5);
+    majProgramme();
+  }
+});
+document.getElementById("pg-cta").addEventListener("click", function () {
+  const liste = payables();
+  if (!liste.length) { erreurSous(this, "Aucune route valide : corrige les lignes signalées."); return; }
+  const total = liste.reduce((x, e) => x + e.sal, 0);
+  const frais = voieChoisie === "coffre" ? 0 : liste.reduce((x, e) => x + coutLigne(e), 0);
+  const date = document.getElementById("pg-date").value || dansNJours(5);
+  const heure = document.getElementById("pg-heure").value || "08:00";
+  const jours = Math.max(0, Math.round(
+    (new Date(date + "T00:00:00") - new Date(dateDuJour.toISOString().slice(0, 10) + "T00:00:00")) / 86400000));
+  if (voieChoisie === "coffre" && total > tresoPME) {
+    erreurSous(this, "La trésorerie ne couvre pas " + fmt(String(total)) + ".");
+    return;
+  }
+  const btn = this;
+  const poser = () => occupe(btn, "Programmation…", () => {
+    const quand = quand0(date, heure);
+    if (voieChoisie === "coffre") {
+      tresoPME -= total;
+      coffreTotal += total;
+      majTreso();
+    }
+    coffre.push({ titre: "Salaires · " + liste.length + " personnes", quand, jour: jours,
+      montant: total, frais, n: liste.length, securise: voieChoisie === "coffre" });
+    versements.push({ jour: jours, titre: "Salaires", montant: total, securise: voieChoisie === "coffre" });
+    majCoffre();
+    rendWidgets();
+    cloture({
+      titre: voieChoisie === "coffre" ? "Salaires sécurisés" : "Salaires programmés",
+      sous: liste.length + " employés · " + quand
+        + (voieChoisie === "coffre" ? " · frais offerts" : " · frais " + fmt(String(frais))),
+      montant: total, nom: "Salaires programmés", categorie: quand,
+      /* la trésorerie a déjà bougé plus haut : le grand livre ne rejoue pas
+         le débit, il enregistre seulement l'événement */
+      livre: "rien", retour: "pme-coffre",
+    });
+  });
+  const seuil = parseInt((document.getElementById("pp-seuil").value || "").replace(/[^0-9]/g, ""), 10) || 500000;
+  const double = document.getElementById("pg-double").getAttribute("aria-pressed") === "true";
+  avecPin(total, () => {
+    if (!double || total <= seuil) { poser(); return; }
+    /* au-dessus du seuil, la 2e signature est une approbation externe —
+       la même mécanique que l'envoi, avec sa suite propre */
+    demandeDouble = { m: total, dest: "Salaires · " + liste.length + " employés",
+      motif: "Versement programmé " + quand0(date, heure),
+      moyen: { nom: "Routes de l'équipe", frais: "aucun" }, num: "", suite: poser };
+    document.getElementById("sd-texte").textContent =
+      "Ce versement de " + fmt(String(total)) + " dépasse le seuil de " + fmt(String(seuil))
+      + " — l'approbation d'un cosignataire est requise avant la programmation.";
+    const sd = document.getElementById("sd-demande");
+    sd.hidden = false;
+    sd.textContent = "Demander l'approbation de N. Kader";
+    document.getElementById("sd-voir").hidden = true;
+    voile.hidden = false;
+    document.getElementById("sheet-double").hidden = false;
+  });
+});
+/* l'échéance : l'exécution part toute seule. Ici on la déclenche à la main
+   pour la démontrer — l'app ne prétend pas attendre trois jours. */
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-execute]");
+  if (!b) return;
+  const i = parseInt(b.dataset.execute, 10);
+  const r = coffre[i];
+  if (!r) return;
+  occupe(b, "Exécution…", () => {
+    if (r.securise) coffreTotal -= r.montant;
+    else { tresoPME -= r.montant + r.frais; majTreso(); }
+    coffre.splice(i, 1);
+    const iv = versements.findIndex((v) => v.jour === r.jour && v.montant === r.montant);
+    if (iv !== -1) versements.splice(iv, 1);
+    majCoffre();
+    rangeePme("Salaires versés", r.n + " employés · " + r.quand, "−", r.montant);
+    cloture({ titre: "Salaires versés", sous: r.n + " employés · " + r.quand
+      + (r.securise ? " · depuis le coffre, sans frais" : " · frais " + fmt(String(r.frais))),
+      montant: r.montant, nom: "Salaires", categorie: "Paie", livre: "rien", retour: "pme-coffre" });
+  });
+});
+
 /* comptable — demander la pièce, inviter un client */
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-piece]");
@@ -5466,9 +6148,17 @@ const rendWidgetsPme = () => {
   const cases = Array.from({ length: 35 }, (_, i) => {
     if (i >= 30) return `<i style="opacity:.25"></i>`;
     const f = factures.find((x) => x.jour === i && x.etat !== "payee");
+    const v = versements.find((x) => x.jour === i);
     const jour = i === 0 ? " aujourdhui" : "";
-    if (!f) return `<i class="${jour.trim()}"></i>`;
-    return `<i class="${f.etat === "retard" ? "retard" : "du"}${jour}" title="${ech(f.client)} · ${fmt(String(f.m))}"></i>`;
+    let classe = "", titre = "";
+    if (v) {
+      classe = v.securise ? "verse coffre" : "verse";
+      titre = v.titre + " · " + fmt(String(v.montant)) + (v.securise ? " · sécurisé" : "");
+    } else if (f) {
+      classe = f.etat === "retard" ? "retard" : "du";
+      titre = f.client + " · " + fmt(String(f.m));
+    }
+    return `<i class="${(classe + jour).trim()}" data-jour="${i}" title="${ech(titre)}"></i>`;
   }).join("");
   zone.innerHTML = `
     <div class="widget">
@@ -5482,12 +6172,23 @@ const rendWidgetsPme = () => {
         retard.length ? ` · dont ${fmt(String(retardM))} en retard` : ""}</em>
       ${retard.length ? `<button class="btn" id="pme-relancer-tout" style="margin-top:10px;height:38px">Relancer${retard.length > 1 ? " les " + retard.length : ""}</button>` : ""}
     </div>
+    <div class="widget">
+      <small>Coffre</small><b class="${coffreTotal ? "credit" : ""}">${fmtC(coffreTotal)}</b>
+      <em>${coffre.length ? coffre.length + " réservation" + (coffre.length > 1 ? "s" : "") + " · frais offerts"
+        : "sécurise une échéance pour ne plus y penser"}</em>
+    </div>
+    <div class="widget">
+      <small>Équipe prête à payer</small><b>${employes.filter((e) => e.route.statut === "pret").length} / ${employes.length}</b>
+      <em>${fraisEquipe() ? fmt(String(fraisEquipe())) + " de frais de rail ce mois" : "aucun frais : tout le monde est sur SwimPay"}</em>
+      <div class="jauge-w"><i style="width: ${pct(employes.filter((e) => e.route.statut === "pret").length, employes.length)}%"></i></div>
+    </div>
     <div class="widget pleine">
       <div class="widget-tete"><small>Échéances des 30 prochains jours</small>
         <button class="link" data-va="pme-factures">Voir les factures</button></div>
       <div class="calendrier">${cases}</div>
       <div class="calendrier-legende">
         <span><b></b>à échoir</span><span><b class="retard"></b>en retard</span>
+        <span><b class="verse"></b>versement</span>
       </div>
     </div>`;
 };
@@ -5627,7 +6328,8 @@ const majEtiquettesPlan = () => {
     el.textContent = p ? (p.prix ? p.nom + " · " + fmt(String(p.prix)) + " par mois" : p.nom + " · gratuit") : "Plan";
   });
 };
-tarifDuPlan = libelleFraisMM; /* le porteur est servi */
+tarifDuPlan = libelleFraisMM; /* les porteurs sont servis */
+tauxDuPlan = tauxMM;
 const rendPlans = () => {
   const cle = ctxPlan.cle;
   const liste = PLANS[cle];

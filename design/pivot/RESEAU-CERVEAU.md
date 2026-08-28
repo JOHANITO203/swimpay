@@ -218,6 +218,49 @@ place de l'utilisateur**.
 | répéter | rien | **facture récurrente** |
 | encaisser en deux fois | rien | **paiement partiel** (dit, non construit) |
 
+## 4 quinquies. La paie : du fichier de l'entreprise aux nouveaux comptes
+
+Le calendrier PME n'est pas un décor : c'est le point d'entrée d'une
+chaîne qui va du tableur de la comptable jusqu'à des utilisateurs SwimPay.
+
+**1. Le fichier devient des ROUTES.** Le parseur lit CSV, TSV et **XLSX
+réel** (un XLSX est un ZIP de XML : `DecompressionStream` le décompresse
+nativement, sans dépendance ; le `.xls` binaire d'avant 2007 n'est pas
+lisible ainsi et l'app le dit au lieu de faire semblant). Il ne cherche
+pas seulement des noms : il extrait matricule, poste, équipe, salaire,
+**téléphone**, **opérateur** et compte, dans n'importe quel ordre.
+Puis, pour chaque ligne, l'**Annuaire tranche** :
+- numéro connu avec compte SwimPay → **prêt** : gratuit et immédiat ;
+- numéro connu sans compte SwimPay → **route externe** au tarif du rail ;
+- numéro connu rattaché à **quelqu'un d'autre** → **conflit d'identité** :
+  la ligne est signalée et ne part pas. On ne paie pas sur un doute ;
+- opérateur absent → **à compléter**, pas de route, pas de frais inventés.
+
+**2. La file d'installation** (`pme-attente`). Les employés sans compte
+reçoivent le lien d'installation — c'est le chef d'entreprise qui recrute
+pour nous. La file dit ce que les routes externes coûtent ce mois, et
+chaque installation retire sa part. **Une invitation marque la personne,
+elle ne change pas la route** : tant que le compte n'existe pas, le rail
+externe reste le chemin, et son prix aussi.
+
+**3. Le coffre** (`pme-coffre`). De l'argent qui quitte la trésorerie
+disponible sans quitter l'entreprise, réservé pour une date. C'est le
+cœur de la thèse custody : les fonds sont déjà chez nous, donc
+**les frais de rail sont offerts** sur ce versement. Une réservation est
+un déplacement, pas une dépense — le grand livre l'enregistre sans
+rejouer le débit.
+
+**4. Programmer** (`pme-programme`). Date, heure, total, part gratuite,
+frais. Deux voies : payer le jour dit depuis la trésorerie, ou sécuriser
+maintenant dans le coffre. Sécurité : code toujours, approbation d'un
+second compte au-dessus du seuil (la même mécanique externe que l'envoi),
+avis la veille. Seules les lignes **payables** partent ; les conflits et
+les lignes incomplètes sont retirés du total.
+
+**5. Le calendrier** montre désormais les échéances de factures ET les
+versements programmés, ces derniers distingués selon qu'ils sont
+sécurisés au coffre ou non.
+
 ## 5. Trous connus et assumés (dits, pas cachés)
 
 Aide/support, recherche globale, multi-boutiques par gérant, détail des
