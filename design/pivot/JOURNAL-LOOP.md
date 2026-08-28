@@ -922,6 +922,24 @@ sans qu'aucune ne soit fausse. Réécrites pour **calculer** l'attendu à
 partir de l'état — une sonde doit vérifier une règle, pas mémoriser un
 chiffre.
 
+## Boucle 24 — les libellés de boutons cassés sur téléphone
+
+Le commanditaire signale « Inviter un client » découpé sur trois lignes
+dans la console comptable. Sonde écrite pour chercher le défaut PARTOUT
+plutôt que corriger le cas montré : **sept** boutons cassaient à 390 px
+(file d'installation, recevoir, code du comptoir, comptable, intégration,
+approbation).
+
+Cause unique : `.sheet-actions .btn { flex: 1 }` — soit `1 1 0%`, qui
+autorise à rétrécir un bouton **sous la largeur de son texte**. Le mot se
+coupait au lieu que la rangée passe à la ligne.
+
+Correction : `flex: 1 1 auto` + `min-width: fit-content` sur les boutons,
+`flex-wrap: wrap` sur la rangée. Les boutons se partagent la largeur à
+égalité tant que les libellés tiennent, et passent à la ligne sinon — le
+bureau garde ses trois boutons alignés, le téléphone en met deux puis un.
+Après : **zéro libellé cassé**. `sonde-boutons.mjs` garde la règle.
+
 ## État : 65 écrans · 290/290 (27+22+26+17+16+16+9+13+14+31+22+26+26+25) · 0 défaut
 
 ## Leçons payées (reportées à la skill si récurrentes)
