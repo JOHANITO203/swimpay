@@ -1048,7 +1048,70 @@ donc à 38 % d'opacité **dans les deux thèmes, depuis toujours**. Logique
 inversée : on n'estompe que le span **sans** attribut de liaison, pour
 qu'un futur profil n'ait pas à s'inscrire dans une liste d'exceptions.
 
-## État : 65 écrans · 314/314 · 0 défaut · deux thèmes mesurés
+
+## La carte : ce qui a été choisi, après tout ce qui ne l'a pas été
+
+LO a tranché en désignant une carte qui existait déjà dans le prototype :
+celle de l'écran « Ma carte » (`.carte-bancaire`). Elle est **entièrement en
+CSS** — le dégradé de la palette, un filet, un lustre diagonal, une puce
+dessinée. Aucune image. Elle est maintenant **déclinée** sur les cartes de
+solde : mêmes proportions (302/182), même rayon, même filet, même lustre. Un
+seul objet carte dans toute l'app.
+
+Le chemin pour y arriver, parce qu'il vaut d'être retenu :
+
+| essai | verdict |
+|---|---|
+| verre écrit à la main en CSS | refusé — « ils ont tous la même gueule » |
+| 8 rendus 3D fournis (givré, néon) | 7 sur 8 ne portent **aucun texte** (1,0 à 2,3:1 au pire pixel) |
+| export Rodin | l'archive ne contient pas de rendu, seulement l'atlas UV |
+| carte givrée translucide, extraite en voile | modèle juste, mais le résidu JPEG n'a que du bruit de chrominance |
+| métal brossé de la version Kotlin | **16,15:1**, 17 Ko — excellent, mais pas retenu |
+| `.carte-bancaire`, déjà là | **choisie** |
+
+**La leçon de fond** : ce qui a fait échouer tous les rendus, c'est la lumière
+de studio **cuite dans l'image**. Elle est irrécupérable, elle tue le contraste
+du texte, et elle empêche l'objet de s'adapter à ce qu'il y a derrière. Une
+carte, en 3D, c'est une boîte à coins arrondis de 60 à 768 triangles : la
+valeur n'a jamais été dans le maillage, elle est dans la matière et la lumière.
+Un dégradé de la palette + un lustre en CSS les contrôle exactement.
+
+Les huit assets Kotlin restent mesurés et disponibles :
+`card_texture_brushed_black_metal` (16,15:1, balayage 31, 17 Ko) et
+`card_surface_dark_black_brushed_workbench` (5,56:1) sont les deux seuls qui
+portent du texte. Les six autres sont sous 4:1.
+
+## Les mensonges de sonde, au complet
+
+Six, tous dans le même code, tous les miens. Ils tiennent en une phrase :
+**une sonde qui remonte une chaîne d'ancêtres se trompe dès qu'elle simplifie
+le modèle de peinture.**
+
+1. **Échelle** — `color-mix()` rend `color(srgb 0.95 …)` en **0-1**, lu comme
+   du 0-255 : un blanc cassé rendu presque noir. Symptôme révélateur :
+   assombrir l'encre faisait **baisser** le contraste annoncé.
+2. **Alpha ignoré** — un fond translucide était pris pour opaque au lieu d'être
+   composité sur ce qu'il y a dessous.
+3. **Pseudo-élément invisible** — un fond peint par `::before` échappe à
+   `getComputedStyle` sur la chaîne des éléments : 3,36:1 annoncé là où les
+   pixels donnent 16,64:1.
+4. **Couches de dégradé mélangées** — les arrêts de deux couches confondus, et
+   l'arrêt le plus sombre retenu **sans son alpha** : un voile
+   `rgba(20, 20, 20, .16)` sur de l'acide lu comme un sol noir.
+5. **« Absolu » ≠ « couvre »** — le test acceptait une **puce de 36 × 27 px**
+   comme fond d'une carte de 400.
+6. **Substitution au lieu d'empilement** — un pseudo-élément peint PAR-DESSUS
+   le fond de l'élément. En remplaçant l'un par l'autre, la sonde sautait le
+   fond propre de la carte et comparait son texte au vert du hero.
+
+Et deux règles de méthode payées le même jour :
+- **`2>$null` avale les assertions.** Un script d'application a échoué en
+  silence, je l'ai cru appliqué, et le fichier s'est retrouvé avec un jeton
+  utilisé mais jamais défini — donc une règle CSS entièrement invalide.
+- **Toute substitution s'assertionne.** Une substitution sans assertion qui ne
+  trouve pas sa cible ne fait rien, et passe pour un succès.
+
+## État : 65 écrans · 290/290 · 0 défaut · contraste sans échec
 
 Contraste : aucune combinaison sous le seuil, en clair comme en sombre.
 Cibles tactiles, tailles de texte, retours de flux, libellés de boutons,
