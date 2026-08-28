@@ -113,9 +113,22 @@ par profil ; les écrans de flux se rendent depuis ce registre.
    depuis la liste porte son numéro et ses actions.
 4. Régressions : parcours 1, 2, 3 entiers.
 
+## 4 bis. Conformité incarnée (boucles 9-12)
+
+KYC à l'onboarding (étape 4/5, pièce lue → « identité vérifiée » gagnée) ;
+plafonds BCEAO APPLIQUÉS (solde 2M à la recharge, 10M mensuel aux débits,
+jauges vivantes, refus expliqué avec la marge) ; PIN exigé au-delà de
+100 000 ; double validation PME réelle au-delà du seuil configuré ;
+demande de paiement entrante (payer / refuser sans débit) ; réception
+simulable ; frais différenciés par rail (externes 1 %, SwimPay gratuit,
+banque 200) jusque dans le reçu ; résolution du numéro en identité
+vérifiée sur le widget ; la vente espèces atteint la console comptable.
+
 ## 5. Trous connus et assumés (dits, pas cachés)
 
-Écrans d'erreur (réseau coupé, paiement refusé), aide/support, recherche
-globale, multi-boutiques par gérant, détail des 2 autres clients comptables,
-gestion fine des permissions (au-delà de la liste), export réel de fichiers
-(bloqué par la sandbox de l'artifact). À prioriser sur demande.
+Aide/support, recherche globale, multi-boutiques par gérant, détail des
+2 autres clients comptables, permissions fines, export réel de fichiers
+(sandbox artifact), notifications par monde business (le mécanisme est
+démontré côté Personnel), états vides (choix : la démo se joue sur un
+compte vécu ; un « mode compte neuf » serait un chantier à part).
+À prioriser sur demande.

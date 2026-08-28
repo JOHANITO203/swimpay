@@ -528,6 +528,50 @@ dans le code (jauges statiques, absence de checks) avant d'être écrit.
 Statut : EN ATTENTE d'arbitrage du commanditaire (ordre / retranchements)
 avant construction.
 
+---
+
+# BOUCLES 9-12 — l'audit déroulé (2026-08-28) : 158/158
+
+## Boucle 9 — conformité incarnée (11/11)
+- **KYC** : étape 4/5 de l'onboarding — cadre de capture, pièce lue
+  (« CNI ····8842 · Camille Laurent · les noms correspondent ») ; le
+  « identité vérifiée » du Profil est désormais GAGNÉ, pas décrété.
+- **Plafonds appliqués** : recharge refusée au-delà de 2M de solde,
+  débits refusés au-delà de 10M/mois — bandeau d'erreur qui NOMME la
+  marge restante ; jauges du Profil vivantes.
+- **PIN** : toute opération personnelle > 100 000 exige le code (sheet
+  4 points + pad) ; en deçà, fluide.
+- **Double validation PME réelle** : envoi > seuil configuré → sheet
+  « deux signatures requises » → demande à N. Kader → signé → le reçu
+  porte « 2 signatures ».
+
+## Boucle 10 — la demande de paiement entrante (le maillon fantôme)
+- Écran `demande-entrante` (marchand vérifié, montant, motif, récap) :
+  **Payer** (plafonds + PIN → débit réel) ou **Refuser** (clôture
+  « Demande refusée · aucun débit » — livre `rien`, premier écran de
+  refus). Ouvert depuis une notification actionnable.
+- **Recevoir se conclut** : « Simuler un paiement reçu » → crédit réel
+  (plafond de solde respecté), rangée d'entrée partout.
+
+## Boucle 11 — le Routeur signifiant
+- **Frais différenciés** : sorties mobile money externes 1 %, Compte
+  SwimPay gratuit (l'argument), banque 200 ; entrées (recharge, dépôt
+  PME) gratuites — visibles au récap ET dans le reçu (`s-frais2`).
+- **Résolution Annuaire du widget** : le numéro saisi devient un nom à
+  identité vérifiée (live à la frappe).
+
+## Boucle 12 — les boucles fermées
+- La **vente en espèces** PME pousse une écriture « à rapprocher » chez
+  le comptable connecté (compteur +1, validable — valide-btn passé en
+  délégation pour les rangées dynamiques).
+- Post-onboarding : « J'ouvre aussi un profil pour mon activité ».
+- Décisions documentées au réseau : états vides = compte de démo vécu
+  (un mode « compte neuf » serait un chantier à part) ; notifications
+  par monde business = mécanisme démontré côté Personnel.
+
+## État : 58 écrans · 158/158 (14 + régressions 27+22+26+17+16+16+9+11)
+· 0 cassée · 0 orphelin · 0 débord
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;
