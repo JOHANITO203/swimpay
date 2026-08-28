@@ -70,7 +70,8 @@ retrait commerçant, encaisser QR, scan client, lien e-commerce, checkout.
 
 ### E-commerce (6 nœuds)
 - **Nœuds** : hub (boutique vivante) · lien de paiement · commandes
-  (remboursement) · intégration (clés, SDK, webhook) · checkout ·
+  (remboursement) · **retirer** (l'encaissé part librement : banque OU
+  mobile money du gérant) · intégration (clés, SDK, webhook) · checkout ·
   **paramètres boutique en ligne**.
 - **États** : encaissé du jour, commandes[].
 - **Panneau `ec-params`** : boutique (nom, domaine autorisé), règlement

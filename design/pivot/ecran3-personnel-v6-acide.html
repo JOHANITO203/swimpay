@@ -2278,12 +2278,12 @@ button { font: inherit; color: inherit; }
       <button class="btn" data-va="ec-commandes">
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.6"/><circle cx="17" cy="20" r="1.6"/><path d="M3 4h2.5l2.3 11.5h10.7L21 8H6"/></svg></span>
         Commandes</button>
+      <button class="btn" data-va="ec-retrait">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M9 7h8v8"/></svg></span>
+        Retirer</button>
       <button class="btn" data-va="ec-integration">
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M13 4l-2 16"/></svg></span>
         Intégration</button>
-      <button class="btn" data-va="ec-checkout">
-        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 9h18M7 14h4"/></svg></span>
-        Checkout</button>
     </div>
 
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 20px 2px 10px">
@@ -2334,6 +2334,45 @@ button { font: inherit; color: inherit; }
     <p class="badge-jour"><b data-ec="jour">86 000</b> aujourd'hui · touche une commande payée pour la rembourser</p>
     <div class="carte ops" id="eco-liste" style="margin-top: 14px"></div>
   </main>
+</div>
+
+<div class="ecran" id="ec-retrait" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-ecommerce" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Retirer</h2>
+      <span class="vide"></span>
+    </div>
+    <p class="badge-jour">Maison Kéma · encaissé disponible : <b data-ec="jour">86 000</b></p>
+
+    <label class="onb-etape" style="margin-top: 10px">Vers</label>
+    <div class="carte source" id="er-dest" style="margin-top: 6px">
+      <button class="row" aria-pressed="true" data-delai="sous 3 heures">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg></span>
+        <span class="txt"><b>Banque ····8812</b><span>Compte de reversement · sous 3 heures</span></span>
+        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+      </button>
+      <button class="row" aria-pressed="false" data-delai="immédiat">
+        <span class="rond marque" style="background: #FF7900">OM</span>
+        <span class="txt"><b>Orange Money du gérant ····07 88</b><span>Immédiat</span></span>
+        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+      </button>
+      <button class="row" aria-pressed="false" data-delai="immédiat">
+        <span class="rond marque" style="background: #00B8F0">W</span>
+        <span class="txt"><b>Wave du gérant ····12 44</b><span>Immédiat</span></span>
+        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+      </button>
+    </div>
+
+    <div class="saisie">
+      <div class="montant" id="er-aff">86 000<i class="caret"></i></div>
+      <small class="recap" data-recap-de="er-dest">Par Banque ····8812 · sous 3 heures · Frais — aucun</small>
+    </div>
+    <div class="numpad pad-slot" data-pad="m:ecret" data-mene="envoye" style="margin-top: auto"></div>
+    <button class="cta" id="er-cta">Retirer 86 000</button>
+  </div>
 </div>
 
 <div class="ecran" id="ec-integration" hidden>
@@ -2956,6 +2995,9 @@ const cloture = ({ titre, sous, montant, nom, categorie, livre, retour, credit }
     rangeePme(nom, categorie, "+", montant);
   } else if (livre === "perso-credit") {
     crediteSolde(nom, categorie, montant);
+  } else if (livre === "ecom") {
+    ecJour = Math.max(0, ecJour - montant);
+    majEc();
   } else {
     debite(nom, categorie, montant);
   }
@@ -3676,6 +3718,23 @@ document.getElementById("el-paye").addEventListener("click", function () {
     va("ec-commandes");
   });
 });
+/* retirer — l'encaissé part librement (banque ou mobile money) */
+fluxM.ecret = "86000";
+FLUX_CFG.ecret = { aff: "er-aff", cta: "er-cta", libelle: (m) => "Retirer " + m };
+vaHooks.push((cible) => {
+  if (cible === "ec-retrait") { fluxM.ecret = String(ecJour || 0); majFlux("ecret"); }
+});
+document.getElementById("er-cta").addEventListener("click", function () {
+  const m = parseInt(fluxM.ecret || "0", 10);
+  if (m <= 0 || m > ecJour) return;
+  const dest = moyenActif("er-dest");
+  occupe(this, "Retrait en cours…", () => {
+    majFlux("ecret");
+    cloture({ titre: "Retrait effectué", sous: "Vers " + dest.nom + " · " + dest.delai,
+      montant: m, livre: "ecom", retour: "b-ecommerce" });
+  });
+});
+
 /* checkout côté client */
 document.getElementById("ec-cta").addEventListener("click", function () {
   occupe(this, "Confirmation dans l'app…", () => {

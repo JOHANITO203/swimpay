@@ -434,6 +434,39 @@ Retour commanditaire : le mobile→banque du Personnel vise SA banque
 
 ## État : 55 écrans · 117/117 · 0 cassée · 0 orphelin · 0 débord
 
+---
+
+# BOUCLE 7 — l'e-commerçant déplace son argent librement (2026-08-28)
+
+## Le retour
+
+L'e-commerçant doit pouvoir déplacer l'argent encaissé sur son compte
+SwimPay comme bon lui semble : il manquait le RETRAIT vers mobile money
+et banques.
+
+## Livré (sonde 6 étendue : 16/16 ; total régressions = 122/122)
+
+- **`ec-retrait`** (action « Retirer » sur le hub, à la place du raccourci
+  Checkout — le checkout reste accessible par la chip de la carte) :
+  montant prérempli à l'encaissé disponible, destinations à coche —
+  Banque ····8812 (reversement · sous 3 h), Orange Money du gérant
+  ····07 88 (immédiat), Wave du gérant ····12 44 (immédiat) — récap
+  Routeur, clôture « Retrait effectué » avec la destination, encaissé
+  débité (86 000 → 0 vérifié), retour boutique.
+- Clôture générique : nouveau livre `ecom`.
+
+## Leçon d'outillage (payée deux fois, close)
+
+Les patchs de sonde passés en heredoc dans le paramètre de commande
+perdent un niveau de backslash (l'échappement JSON) : la cible
+`join("\n")` devient un vrai saut de ligne et ne matche jamais —
+échec SILENCIEUX. Règle définitive : les patchs s'écrivent en fichier
+`.py` ET ciblent PAR LIGNES (`splitlines` + index), jamais par chaîne
+contenant des séquences d'échappement ; chaque patch s'assert avant et
+après.
+
+## État : 56 écrans · 122/122 · 0 cassée · 0 orphelin · 0 débord
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;
