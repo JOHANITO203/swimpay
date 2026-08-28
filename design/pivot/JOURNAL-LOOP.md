@@ -92,6 +92,75 @@ détail client comptable.
   listener `window` ; une vraie touche bubble). Sonde corrigée.
 - **Verdict final : 25/25 PASS.** Republication + commit.
 
+---
+
+# BOUCLE 2 — les mondes en profondeur (2026-08-28)
+
+## La consigne (verbatim)
+
+> recrée une nouvelle boucle dans laquelle tu vas développer les écrans du
+> profil commerçant et tous les flows d'action possibles par ce profil,
+> tu feras de même pour tous les autres sous-écrans des profils existants
+
+Même DoD, mêmes sondes. Les listes vivantes passent en **données rendues
+par JS** (équipe, ventes, factures, commandes) pour que les flows qui les
+modifient restent cohérents partout.
+
+## Backlog Boucle 2
+
+ÉTAT FINAL : 19/19 vérifiés — 43 écrans au total dans l'app.
+
+| # | écran (id) | flow vérifié par clics réels | sondé |
+|---|---|---|---|
+| 28 | Hub commerçant (`b-commercant`) | caisse vivante, dernières ventes rendues | ✔ |
+| 29 | Encaisser (`bc-encaisser`) | montant → QR (régression parcours 1 verte) | ✔ |
+| 30 | Ventes du jour (`bc-ventes`) | sheet → Rembourser : 148 500 → 144 000 | ✔ |
+| 31 | Code du comptoir (`bc-code`) | QR fixe, imprimer/partager | ✔ |
+| 32 | Vider la caisse (`bc-retrait`) | prérempli à la caisse, clôture livre caisse, retour boutique | ✔ |
+| 33 | Fin de journée (`bc-cloture`) | récap net, journée close animée, rouvrir | ✔ |
+| 34 | Hub PME (`b-pme`) | trésorerie, tuiles synchronisées | ✔ |
+| 35 | Salaires (`pme-salaires`) | cascade N dynamique + édition au pad (total 1 180 000) | ✔ |
+| 36 | Facturer (`pme-facturer`) | formulaire → aperçu n° 2026-041 | ✔ |
+| 37 | Aperçu facture (`pme-apercu`) | papier → envoyer → en attente | ✔ |
+| 38 | Factures (`pme-factures`) | statuts, relance, paiement client simulé | ✔ |
+| 39 | Équipe (`pme-equipe`) | embauche réelle → « Payer 6 salaires » | ✔ |
+| 40 | Client comptable (`cpt-client`) | Confirmer/Écarter, tout rapprocher en cascade, badge hub 4→0 | ✔ |
+| 41 | Exports (`cpt-exports`) | chips à groupes, « Mois · CSV » prêt | ✔ |
+| 42 | Hub e-commerce (`b-ecommerce`) | encaissé du jour vivant | ✔ |
+| 43 | Lien de paiement (`ec-lien`) | lien+QR → payé → commande créée | ✔ |
+| 44 | Commandes (`ec-commandes`) | sheet → remboursement (total redescendu) | ✔ |
+| 45 | Checkout (`ec-checkout`) | déplacé sous le hub, confirmé | ✔ |
+| 46 | Appareils (`appareils`) | déconnecter → compteur profil 2→1 | ✔ |
+
+Flow transversal : « Se déconnecter » → splash ; remboursement unifié par
+`data-remb` (caisse / e-commerce) dans la sheet.
+
+## Journal des boucles (2)
+
+### Lot F — commerçant (verdict : vert après 3 corrections d'œil)
+- Hub-terminal + 5 sous-écrans ; ventes rendues depuis les données ;
+  remboursement via la sheet générique (`data-remb`) ; clôture générique
+  étendue (`livre: "caisse"`, `retour`) ; hooks d'entrée d'écran (`vaHooks`).
+- Attrapé à l'œil : montant de caisse atténué par la règle des décimales
+  (`span` nu dans `.montant`), « 23 » volant l'accent acide, classe `.sect`
+  inexistante (titre brut souligné). Trois corrections, re-sonde verte.
+### Lot G — PME
+- Équipe/factures en données rendues ; édition de salaire par sheet au pad ;
+  embauche qui recalcule cascade et totaux ; facture → aperçu papier → envoi.
+- Désamorcé un bug latent : le handler des chips d'Activité ciblait toutes
+  les `.chip` du document — scopé, + handler générique à groupes.
+### Lots H+I — comptable, e-commerce, appareils
+- Rapprochements Confirmer/Écarter + cascade « tout rapprocher » synchronisée
+  au badge du hub ; exports par chips ; e-commerce restructuré en boutique
+  vivante (lien de paiement → commande, remboursement partagé `data-remb`) ;
+  appareils déconnectables.
+### Boucle finale (2)
+- `sonde-parcours2` : 22 assertions par clics réels → **22/22 PASS**.
+- Régression parcours 1 : 24/25 — la sonde comptait les coches dans
+  l'ancien conteneur `#pme-liste` (remplacé par `#sal-liste`) : sonde mise
+  à jour, **25/25**. Total : **47/47**. `sonde-app` : 43 écrans, 0 cible
+  cassée, 0 orphelin, 0 débord 390/1280.
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;

@@ -114,6 +114,7 @@ button { font: inherit; color: inherit; }
 .oeil:hover { color: var(--encre); background: var(--surface-2); }
 .montant { font-size: clamp(2.1rem, 4.5vw, 2.6rem); font-weight: 600; letter-spacing: -.01em; line-height: 1.15; margin-top: 2px; }
 .montant span { opacity: .38; }
+.montant span[data-caisse] { opacity: 1; }
 .delta { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--sourd); }
 .delta b { color: var(--acide); font-weight: 500; }
 .chip-capsule {
@@ -455,6 +456,23 @@ button { font: inherit; color: inherit; }
 }
 .valide-btn:hover { color: var(--acide); border-color: var(--acide); }
 
+/* ---------------- statuts, papier de facture, remboursement ---------------- */
+.statut { font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; flex: 0 0 auto; }
+.statut-ok { color: var(--acide); background: rgba(198, 244, 50, .12); border: 1px solid rgba(198, 244, 50, .35); }
+.statut-attente { color: var(--sourd); background: var(--surface-2); border: 1px solid var(--trait); }
+.statut-retard { color: #E5484D; background: rgba(229, 72, 77, .1); border: 1px solid rgba(229, 72, 77, .35); }
+.rembourse { opacity: .45; }
+.btn-danger { border-color: rgba(229, 72, 77, .45); color: #E5484D; }
+.btn-danger:hover { background: rgba(229, 72, 77, .1); }
+.papier { background: #F6F5F1; color: #23262C; border-radius: 16px; padding: 24px 22px; }
+.papier header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #23262C; padding-bottom: 10px; }
+.papier header b { font-size: 17px; font-weight: 700; }
+.papier header span { font-size: 12px; color: #6C6960; }
+.papier .ligne-f { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid rgba(35, 38, 44, .12); font-size: 14px; }
+.papier .ligne-f small { color: #6C6960; display: block; font-size: 12px; }
+.papier .total-f { display: flex; justify-content: space-between; padding-top: 12px; font-weight: 700; font-size: 16px; }
+.papier .mentions { margin-top: 14px; font-size: 11.5px; color: #6C6960; }
+
 /* ---------------- sheet de détail d'opération ---------------- */
 .voile {
   position: fixed; inset: 0; z-index: 40;
@@ -769,8 +787,8 @@ button { font: inherit; color: inherit; }
       <div class="kv"><small>Frais</small><span>Aucun</span></div>
     </div>
 
-    <button class="cta cta-encre" data-va="accueil">Terminé</button>
-    <button class="link s-lien" data-va="activite">Voir dans l'activité</button>
+    <button class="cta cta-encre" id="s-termine" data-va="accueil">Terminé</button>
+    <button class="link s-lien" id="s-voir" data-va="activite">Voir dans l'activité</button>
   </div>
 </div>
 
@@ -1370,11 +1388,11 @@ button { font: inherit; color: inherit; }
         <span class="txt"><b>Biométrie</b><span>Empreinte ou visage</span></span>
         <button class="bascule" aria-pressed="true" aria-label="Biométrie"><i></i></button>
       </div>
-      <div class="row" style="cursor: default">
+      <button class="row" data-va="appareils">
         <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="12" rx="2"/><rect x="14" y="9" width="7" height="12" rx="2"/></svg></span>
-        <span class="txt"><b>Appareils connectés</b><span>Ce téléphone + 1 autre</span></span>
-        <span class="fin"><b style="font-weight: 500">2</b></span>
-      </div>
+        <span class="txt"><b>Appareils connectés</b><span>Gérer les accès</span></span>
+        <span class="fin"><b style="font-weight: 500" data-app="n">2</b></span>
+      </button>
     </div>
 
     <h2 class="sec" style="margin-top: 22px">Plafonds</h2>
@@ -1407,7 +1425,7 @@ button { font: inherit; color: inherit; }
         <span class="txt"><b>Revoir l'onboarding</b><span>Depuis l'écran d'accueil de l'app</span></span>
         <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
       </button>
-      <button class="row">
+      <button class="row" data-va="splash">
         <span class="txt"><b class="danger">Se déconnecter</b><span>Sur cet appareil</span></span>
       </button>
     </div>
@@ -1472,13 +1490,57 @@ button { font: inherit; color: inherit; }
 <div class="ecran" id="b-commercant" hidden>
   <div class="shell flux">
     <div class="fluxbar">
-      <button class="rond" data-va="profils" aria-label="Retour">
+      <button class="rond" data-va="profils" aria-label="Changer de profil">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Kiosque 12</h2>
+      <button class="rond" data-va="bc-cloture" aria-label="Fin de journée">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4c4-2 8 2 14 0v9c-6 2-10-2-14 0"/></svg>
+      </button>
+    </div>
+
+    <div class="halo">
+      <div class="solde-carte">
+        <div class="ligne1">Caisse du jour</div>
+        <div class="montant" style="font-size: 34px"><span data-caisse="jour">148 500</span></div>
+        <div class="delta"><b style="color: var(--encre)" data-caisse="n">23</b> paiements · dernier à <span data-caisse="dernier">11:42</span></div>
+        <button class="chip-capsule" data-va="bc-code"><i></i>Code fixe au comptoir</button>
+      </div>
+    </div>
+
+    <div class="actions" style="justify-content: center; gap: 26px">
+      <button class="btn" data-va="bc-ventes">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 19V10M12 19V5M19 19v-6"/></svg></span>
+        Ventes</button>
+      <button class="btn" data-va="bc-retrait">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg></span>
+        Vider</button>
+      <button class="btn" data-va="bc-code">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h3v3h-3zM20 14v.5M20 19.5v.5M17.5 20h-.5"/></svg></span>
+        Code</button>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 20px 2px 10px">
+      <h2 class="sec" style="margin: 0">Dernières ventes</h2>
+      <button class="link" data-va="bc-ventes">Tout voir</button>
+    </div>
+    <div class="carte ops" id="bc-dernieres"></div>
+
+    <div style="margin-top: auto"></div>
+    <button class="cta" data-va="bc-encaisser">Encaisser</button>
+  </div>
+</div>
+
+<div class="ecran" id="bc-encaisser" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-commercant" aria-label="Retour">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
       </button>
       <h2>Encaisser</h2>
       <span class="vide"></span>
     </div>
-    <p class="badge-jour">Kiosque 12 · aujourd'hui : <b id="bc-jour">148 500</b> · <b id="bc-n">23</b> paiements</p>
+    <p class="badge-jour">Kiosque 12 · aujourd'hui : <b data-caisse="jour">148 500</b> · <b data-caisse="n">23</b> paiements</p>
 
     <div class="saisie">
       <div class="montant" id="c-aff">3 500<i class="caret"></i></div>
@@ -1486,6 +1548,106 @@ button { font: inherit; color: inherit; }
     </div>
     <div class="numpad pad-slot" data-pad="m:caisse" data-mene="b-qr" style="margin-top: auto"></div>
     <button class="cta" id="c-cta">Générer le code de 3 500</button>
+  </div>
+</div>
+
+<div class="ecran" id="bc-ventes" hidden>
+  <main class="shell" style="padding-bottom: 60px; max-width: 640px">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-commercant" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Ventes du jour</h2>
+      <span class="vide"></span>
+    </div>
+    <p class="badge-jour"><b data-caisse="jour">148 500</b> encaissés · <b data-caisse="n">23</b> paiements · touche une vente pour la rembourser</p>
+    <div class="carte ops" id="bcv-liste" style="margin-top: 14px"></div>
+  </main>
+</div>
+
+<div class="ecran" id="bc-code" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-commercant" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Code du comptoir</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="qr-carte" style="margin-top: 14px"><svg id="cc-qr" viewBox="0 0 29 29" role="img" aria-label="Code fixe de la boutique"></svg></div>
+    <p class="qr-sous"><b>Kiosque 12</b><small>Le client scanne et saisit le montant lui-même</small></p>
+
+    <div style="margin-top: auto"></div>
+    <button class="cta" id="cc-imprimer">Imprimer pour le comptoir</button>
+    <div class="sheet-actions" style="margin-top: 10px">
+      <button class="btn" id="cc-partager">Partager</button>
+      <button class="btn" data-va="bc-encaisser">Encaisser un montant</button>
+    </div>
+  </div>
+</div>
+
+<div class="ecran" id="bc-retrait" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-commercant" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Vider la caisse</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="carte">
+      <div class="row" style="cursor: default">
+        <span class="rond">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg>
+        </span>
+        <span class="txt"><b>Compte bancaire ····2201</b><span>Kiosque 12 · arrive sous 3 heures</span></span>
+      </div>
+    </div>
+
+    <div class="saisie">
+      <div class="montant" id="rt-aff">148 500<i class="caret"></i></div>
+      <small class="recap">Toute la caisse est proposée — ajuste si besoin</small>
+    </div>
+    <div class="numpad pad-slot" data-pad="m:retrait" data-mene="envoye" style="margin-top: auto"></div>
+    <button class="cta" id="rt-cta">Virer 148 500</button>
+  </div>
+</div>
+
+<div class="ecran" id="bc-cloture" hidden data-anime>
+  <div class="shell flux succes">
+    <div id="cl-ouvert" style="width: 100%">
+      <div class="fluxbar" style="width: 100%">
+        <button class="rond" data-va="b-commercant" aria-label="Retour">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+        </button>
+        <h2>Fin de journée</h2>
+        <span class="vide"></span>
+      </div>
+      <div class="carte s-recu" style="margin-top: 14px">
+        <div class="kv"><small>Encaissements</small><span><span data-cl="n">23</span> · <span data-cl="total">148 500</span></span></div>
+        <div class="kv"><small>Remboursements</small><span><span data-cl="rembN">0</span> · <span data-cl="rembTotal">0</span></span></div>
+        <div class="kv"><small>Net du jour</small><span style="font-weight: 600" data-cl="net">148 500</span></div>
+      </div>
+      <button class="cta" id="cl-cta" data-mene="bc-cloture" style="margin-top: 22px; width: 100%">Clôturer la journée</button>
+    </div>
+    <div id="cl-close" hidden>
+      <div class="scene">
+        <span class="onde"></span>
+        <svg class="coche" viewBox="0 0 96 96" role="img" aria-label="Journée close">
+          <circle class="cercle" cx="48" cy="48" r="40" fill="rgba(198, 244, 50, .07)"
+                  stroke="var(--acide)" stroke-width="2.5" transform="rotate(-90 48 48)"/>
+          <path class="trait" d="M32 50l11 11 21-23" fill="none"
+                stroke="var(--acide)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2 class="s-titre">Journée close</h2>
+      <div class="s-montant" data-cl="net2">148 500</div>
+      <p class="s-dest">Reçu de clôture signé · gardé dans Mes reçus</p>
+      <button class="cta cta-encre" data-va="b-commercant">Retour à la boutique</button>
+      <button class="link s-lien" id="cl-rouvrir">Rouvrir la journée — démo</button>
+    </div>
   </div>
 </div>
 
@@ -1512,59 +1674,181 @@ button { font: inherit; color: inherit; }
       <h2 class="s-titre">Paiement reçu</h2>
       <div class="s-montant credit" id="bq-recu-montant" style="color: var(--acide)">+3 500</div>
       <p class="s-dest">Ajouté à la caisse du jour · reçu signé</p>
-      <button class="cta cta-encre" data-va="b-commercant">Nouvel encaissement</button>
+      <button class="cta cta-encre" data-va="bc-encaisser">Nouvel encaissement</button>
+      <button class="link s-lien" data-va="b-commercant">Retour à la boutique</button>
     </div>
   </div>
 </div>
 
 <div class="ecran" id="b-pme" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="profils" aria-label="Changer de profil">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Atelier Mode</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="halo">
+      <div class="solde-carte">
+        <div class="ligne1">Trésorerie</div>
+        <div class="montant" style="font-size: 34px"><span data-caisse="zero">4 850 000</span></div>
+        <div class="delta"><b>+310 000</b> ce mois</div>
+        <button class="chip-capsule" data-va="pme-factures"><i></i>Compte ····8812 · factures</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" data-va="pme-salaires">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.4"/><path d="M3.5 19c.8-3 2.8-4.5 5.5-4.5s4.7 1.5 5.5 4.5M14.5 14.8c2.4.2 4.1 1.6 4.9 4.2"/></svg></span>
+        Salaires</button>
+      <button class="btn" data-va="pme-facturer">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg></span>
+        Facturer</button>
+      <button class="btn" data-va="pme-factures">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v17l-2.5-1.6L14 21l-2-1.4L10 21l-2.5-1.6L5 21z"/><path d="M9 9h6M9 13h4"/></svg></span>
+        Factures</button>
+      <button class="btn" data-va="pme-equipe">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.5 3.8-5 7-5s6 1.5 7 5"/></svg></span>
+        Équipe</button>
+    </div>
+
+    <div class="tuiles" style="margin-top: 20px">
+      <div class="tuile"><small>En attente d'encaissement</small><b data-pme="attente-total">476 000</b></div>
+      <div class="tuile"><small>Masse salariale</small><b data-pme="total">1 160 000</b></div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 20px 2px 10px">
+      <h2 class="sec" style="margin: 0">Activité récente</h2>
+    </div>
+    <div class="carte ops">
+      <div class="row">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"/></svg></span>
+        <span class="txt"><b>Facture 2026-038 payée</b><span>Maison Kéma</span></span>
+        <span class="fin"><b class="credit">+210 000</b><span>Hier</span></span>
+      </div>
+      <div class="row">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+        <span class="txt"><b>Salaires du mois</b><span>5 employés</span></span>
+        <span class="fin"><b>−1 160 000</b><span>Le 30</span></span>
+      </div>
+      <div class="row">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+        <span class="txt"><b>Fournisseur tissus</b><span>Paiement à 30 jours</span></span>
+        <span class="fin"><b>−420 000</b><span>Le 28</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ecran" id="pme-salaires" hidden>
   <main class="shell" style="padding-bottom: 60px; max-width: 760px">
     <div class="fluxbar">
-      <button class="rond" data-va="profils" aria-label="Retour">
+      <button class="rond" data-va="b-pme" aria-label="Retour">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
       </button>
       <h2>Salaires</h2>
       <span class="vide"></span>
     </div>
-    <p class="badge-jour">Atelier Mode · 5 employés · <b>période close</b></p>
+    <p class="badge-jour">Atelier Mode · <b data-pme="n">5</b> employés · touche le crayon pour ajuster</p>
 
-    <div class="carte" id="pme-liste" style="margin-top: 14px">
-      <div class="row" style="cursor: default">
-        <span class="avatar">AD</span>
-        <span class="txt"><b>Aminata D.</b><span>Couturière</span></span>
-        <span class="fin"><b>280 000</b></span>
-        <span class="paye-etat"></span>
-      </div>
-      <div class="row" style="cursor: default">
-        <span class="avatar">KB</span>
-        <span class="txt"><b>Karim B.</b><span>Coupeur</span></span>
-        <span class="fin"><b>260 000</b></span>
-        <span class="paye-etat"></span>
-      </div>
-      <div class="row" style="cursor: default">
-        <span class="avatar">FS</span>
-        <span class="txt"><b>Fatou S.</b><span>Vendeuse</span></span>
-        <span class="fin"><b>240 000</b></span>
-        <span class="paye-etat"></span>
-      </div>
-      <div class="row" style="cursor: default">
-        <span class="avatar">MO</span>
-        <span class="txt"><b>Moussa O.</b><span>Livreur</span></span>
-        <span class="fin"><b>220 000</b></span>
-        <span class="paye-etat"></span>
-      </div>
-      <div class="row" style="cursor: default">
-        <span class="avatar">RL</span>
-        <span class="txt"><b>Rokia L.</b><span>Apprentie</span></span>
-        <span class="fin"><b>160 000</b></span>
-        <span class="paye-etat"></span>
-      </div>
-      <div class="total-ligne"><span>Total</span><span>1 160 000</span></div>
+    <div class="carte" style="margin-top: 14px">
+      <div id="sal-liste"></div>
+      <div class="total-ligne"><span>Total</span><span data-pme="total">1 160 000</span></div>
     </div>
 
     <div style="max-width: 430px; margin: 18px auto 0; display: flex; flex-direction: column">
-      <button class="cta" id="pme-cta" data-mene="b-pme">Payer 5 salaires en 1 clic</button>
+      <button class="cta" id="pme-cta" data-mene="pme-salaires">Payer 5 salaires en 1 clic</button>
       <button class="link s-lien" id="pme-reset" hidden>Refaire la démonstration</button>
+    </div>
+  </main>
+</div>
+
+<div class="ecran" id="pme-facturer" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-pme" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Facturer</h2>
+      <span class="vide"></span>
+    </div>
+
+    <label class="onb-etape" for="f-client" style="margin-top: 18px">Client</label>
+    <input class="champ" id="f-client" value="Boulangerie du Pont" style="margin-top: 6px">
+    <label class="onb-etape" for="f-objet" style="margin-top: 16px">Objet</label>
+    <input class="champ" id="f-objet" value="Tabliers brodés ×10" style="margin-top: 6px">
+    <label class="onb-etape" for="f-montant" style="margin-top: 16px">Montant</label>
+    <input class="champ" id="f-montant" inputmode="numeric" value="120 000" style="margin-top: 6px">
+
+    <div style="margin-top: auto"></div>
+    <button class="cta" id="f-cta" data-mene="pme-apercu">Créer la facture</button>
+  </div>
+</div>
+
+<div class="ecran" id="pme-apercu" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="pme-facturer" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Aperçu</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="papier" style="margin-top: 14px">
+      <header><b>Atelier Mode</b><span id="ap-num">Facture n° 2026-041</span></header>
+      <div class="ligne-f"><span>Destinataire<small id="ap-client">Boulangerie du Pont</small></span><span></span></div>
+      <div class="ligne-f"><span id="ap-objet">Tabliers brodés ×10</span><span id="ap-montant">120 000</span></div>
+      <div class="total-f"><span>Total</span><span id="ap-total">120 000</span></div>
+      <p class="mentions">Échéance 30 jours · payable par l'app, quel que soit le réseau · reçu signé aux deux parties.</p>
+    </div>
+
+    <div style="margin-top: auto"></div>
+    <button class="cta" id="ap-cta" data-mene="pme-factures">Envoyer au client</button>
+  </div>
+</div>
+
+<div class="ecran" id="pme-factures" hidden>
+  <main class="shell" style="padding-bottom: 60px; max-width: 720px">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-pme" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Factures</h2>
+      <button class="link" data-va="pme-facturer">Nouvelle</button>
+    </div>
+    <p class="badge-jour">En attente d'encaissement : <b data-pme="attente-total">476 000</b></p>
+
+    <div class="carte" id="fac-liste" style="margin-top: 14px"></div>
+    <div style="max-width: 430px; margin: 16px auto 0; display: flex; flex-direction: column">
+      <button class="link s-lien" id="fac-simule">Simuler le paiement d'une facture par le client</button>
+    </div>
+  </main>
+</div>
+
+<div class="ecran" id="pme-equipe" hidden>
+  <main class="shell" style="padding-bottom: 60px; max-width: 720px">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-pme" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Équipe</h2>
+      <span class="vide"></span>
+    </div>
+    <p class="badge-jour"><b data-pme="n">5</b> employés · masse salariale <b data-pme="total">1 160 000</b></p>
+
+    <div class="carte" id="eq-liste" style="margin-top: 14px"></div>
+
+    <h2 class="sec" style="margin-top: 22px">Ajouter un employé</h2>
+    <div class="carte" style="padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+      <input class="champ" id="eq-nom" placeholder="Prénom Nom">
+      <div style="display: flex; gap: 10px">
+        <input class="champ" id="eq-role" placeholder="Rôle" style="flex: 1">
+        <input class="champ" id="eq-sal" inputmode="numeric" placeholder="Salaire" style="flex: 1">
+      </div>
+      <button class="btn" id="eq-ajoute" style="justify-content: center">Ajouter à l'équipe et aux salaires</button>
     </div>
   </main>
 </div>
@@ -1583,10 +1867,10 @@ button { font: inherit; color: inherit; }
       <section>
         <h2 class="sec">Clients</h2>
         <div class="carte">
-          <button class="row">
+          <button class="row" data-va="cpt-client">
             <span class="avatar">BP</span>
             <span class="txt"><b>Boulangerie du Pont</b><span>Écritures à jour ce matin</span></span>
-            <span class="badge-compte">4</span>
+            <span class="badge-compte" data-cpt="badge">4</span>
           </button>
           <button class="row">
             <span class="avatar">AM</span>
@@ -1601,10 +1885,10 @@ button { font: inherit; color: inherit; }
         </div>
         <h2 class="sec" style="margin-top: 22px">Journal</h2>
         <div class="carte">
-          <div class="row" style="cursor: default">
-            <span class="txt"><b>Export du mois généré</b><span>Toutes écritures · ce matin</span></span>
-            <span class="fin"><b style="font-weight: 500">CSV</b></span>
-          </div>
+          <button class="row" data-va="cpt-exports">
+            <span class="txt"><b>Exports</b><span>Mois, trimestre, année · CSV ou PDF</span></span>
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          </button>
           <div class="row" style="cursor: default">
             <span class="txt"><b>128 écritures passées seules</b><span>Rapprochement automatique</span></span>
             <span class="fin"><b style="font-weight: 500">Ce mois</b></span>
@@ -1644,15 +1928,96 @@ button { font: inherit; color: inherit; }
 </div>
 
 <div class="ecran" id="b-ecommerce" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="profils" aria-label="Changer de profil">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Maison Kéma</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="halo">
+      <div class="solde-carte">
+        <div class="ligne1">Encaissé en ligne aujourd'hui</div>
+        <div class="montant" style="font-size: 34px"><span data-ec="jour">86 000</span></div>
+        <div class="delta"><b style="color: var(--encre)" data-ec="n">7</b> commandes payées</div>
+        <button class="chip-capsule" data-va="ec-checkout"><i></i>Voir mon checkout</button>
+      </div>
+    </div>
+
+    <div class="actions" style="justify-content: center; gap: 26px">
+      <button class="btn" data-va="ec-lien">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a5 5 0 0 0 7 0l2.5-2.5a5 5 0 0 0-7-7L11 6"/><path d="M14 10a5 5 0 0 0-7 0L4.5 12.5a5 5 0 0 0 7 7L13 18"/></svg></span>
+        Lien</button>
+      <button class="btn" data-va="ec-commandes">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.6"/><circle cx="17" cy="20" r="1.6"/><path d="M3 4h2.5l2.3 11.5h10.7L21 8H6"/></svg></span>
+        Commandes</button>
+      <button class="btn" data-va="ec-checkout">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 9h18M7 14h4"/></svg></span>
+        Checkout</button>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 20px 2px 10px">
+      <h2 class="sec" style="margin: 0">Dernières commandes</h2>
+      <button class="link" data-va="ec-commandes">Tout voir</button>
+    </div>
+    <div class="carte ops" id="ec-dernieres"></div>
+  </div>
+</div>
+
+<div class="ecran" id="ec-lien" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-ecommerce" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Lien de paiement</h2>
+      <span class="vide"></span>
+    </div>
+
+    <label class="onb-etape" for="el-objet" style="margin-top: 18px">Objet</label>
+    <input class="champ" id="el-objet" value="Commande hors site" style="margin-top: 6px">
+    <label class="onb-etape" for="el-montant" style="margin-top: 16px">Montant</label>
+    <input class="champ" id="el-montant" inputmode="numeric" value="32 000" style="margin-top: 6px">
+    <button class="cta" id="el-cta" style="margin-top: 20px">Créer le lien</button>
+
+    <div id="el-resultat" hidden>
+      <div class="qr-carte" style="margin-top: 22px; width: min(200px, 60vw)"><svg id="el-qr" viewBox="0 0 29 29" role="img" aria-label="Code du lien de paiement"></svg></div>
+      <p class="qr-sous"><b id="el-lien">swim.me/kema/x7f3</b><small id="el-detail">Commande hors site · 32 000</small></p>
+      <div class="sheet-actions" style="margin-top: 14px">
+        <button class="btn" id="el-copier">Copier le lien</button>
+        <button class="btn" id="el-paye" data-mene="ec-commandes">Simuler le paiement</button>
+      </div>
+    </div>
+    <div style="margin-top: auto"></div>
+  </div>
+</div>
+
+<div class="ecran" id="ec-commandes" hidden>
+  <main class="shell" style="padding-bottom: 60px; max-width: 720px">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-ecommerce" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Commandes</h2>
+      <span class="vide"></span>
+    </div>
+    <p class="badge-jour"><b data-ec="jour">86 000</b> aujourd'hui · touche une commande payée pour la rembourser</p>
+    <div class="carte ops" id="eco-liste" style="margin-top: 14px"></div>
+  </main>
+</div>
+
+<div class="ecran" id="ec-checkout" hidden>
   <main class="shell" style="padding-bottom: 60px; max-width: 980px">
     <div class="fluxbar">
-      <button class="rond" data-va="profils" aria-label="Retour">
+      <button class="rond" data-va="b-ecommerce" aria-label="Retour">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
       </button>
       <h2>Checkout</h2>
       <span class="vide"></span>
     </div>
-    <p class="badge-jour">Ce que voit le client d'une boutique en ligne au moment de payer.</p>
+    <p class="badge-jour">Ce que voit le client de la boutique au moment de payer.</p>
 
     <div class="grid-act" style="margin-top: 14px">
       <section>
@@ -1695,6 +2060,94 @@ button { font: inherit; color: inherit; }
         </div>
       </aside>
     </div>
+  </main>
+</div>
+
+<!-- ================================================================
+     COMPTABLE — client + exports · PERSONNEL — appareils
+     ================================================================ -->
+<div class="ecran" id="cpt-client" hidden>
+  <main class="shell" style="padding-bottom: 60px; max-width: 720px">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-comptable" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Boulangerie du Pont</h2>
+      <button class="link" id="cpt-export-client">Exporter</button>
+    </div>
+
+    <div class="tuiles" style="margin-top: 14px">
+      <div class="tuile"><small>Solde du compte</small><b>1 264 000</b></div>
+      <div class="tuile"><small>À rapprocher</small><b data-cpt="n">4</b></div>
+    </div>
+
+    <h2 class="sec" style="margin-top: 22px">Rapprochements proposés</h2>
+    <div class="carte" id="rp-liste"></div>
+
+    <div style="max-width: 430px; margin: 18px auto 0; display: flex; flex-direction: column">
+      <button class="cta" id="rp-tout">Tout rapprocher</button>
+    </div>
+  </main>
+</div>
+
+<div class="ecran" id="cpt-exports" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-comptable" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Exports</h2>
+      <span class="vide"></span>
+    </div>
+
+    <p class="onb-etape" style="margin-top: 18px">Période</p>
+    <div class="chips" data-groupe="periode">
+      <button class="chip actif">Mois</button>
+      <button class="chip">Trimestre</button>
+      <button class="chip">Année</button>
+    </div>
+    <p class="onb-etape" style="margin-top: 18px">Format</p>
+    <div class="chips" data-groupe="format">
+      <button class="chip actif">CSV</button>
+      <button class="chip">PDF</button>
+    </div>
+
+    <button class="cta" id="ex-cta" style="margin-top: 26px">Générer l'export</button>
+    <div class="carte s-recu" id="ex-resultat" hidden style="margin-top: 20px">
+      <div class="kv"><small>Export</small><span id="ex-detail">Mois · CSV</span></div>
+      <div class="kv"><small>Contenu</small><span>128 écritures · 3 clients</span></div>
+      <div class="kv"><small>Signature</small><span>Chaque ligne porte sa référence</span></div>
+      <div class="sheet-actions" style="padding: 12px 16px 16px">
+        <button class="btn" id="ex-partager">Partager au cabinet</button>
+      </div>
+    </div>
+    <div style="margin-top: auto"></div>
+  </div>
+</div>
+
+<div class="ecran" id="appareils" hidden>
+  <main class="shell" style="padding-bottom: 60px; max-width: 640px">
+    <div class="fluxbar">
+      <button class="rond" data-va="profil" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Appareils connectés</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="carte" style="margin-top: 14px">
+      <div class="row" style="cursor: default">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
+        <span class="txt"><b>Ce téléphone</b><span>Actif maintenant</span></span>
+        <span class="statut statut-ok">Actif</span>
+      </div>
+      <div class="row" style="cursor: default" id="app-tablette">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M11 18h2"/></svg></span>
+        <span class="txt"><b>Tablette</b><span>Vu il y a 3 jours</span></span>
+        <button class="btn btn-danger" id="app-deconnecte" style="height: 36px; padding-inline: 14px; font-size: 13px">Déconnecter</button>
+      </div>
+    </div>
+    <p class="badge-jour" style="margin-top: 14px">Un appareil déconnecté doit refaire code et biométrie.</p>
   </main>
 </div>
 
@@ -1752,11 +2205,27 @@ button { font: inherit; color: inherit; }
   <div class="sheet-actions">
     <button class="btn" data-ferme>Fermer</button>
     <button class="btn">Partager le reçu</button>
+    <button class="btn btn-danger" id="sh-rembourse" hidden>Rembourser</button>
+  </div>
+</div>
+
+<!-- sheet d'édition d'un montant (salaire) -->
+<div class="sheet" id="sheet-mont" role="dialog" aria-modal="true" aria-label="Ajuster le montant" hidden>
+  <button class="poignee" data-ferme aria-label="Fermer"></button>
+  <div class="sheet-tete">
+    <div class="qui" id="sm-titre">Salaire</div>
+    <div class="gros" id="sm-aff">280 000</div>
+  </div>
+  <div class="numpad pad-slot" data-pad="m:salaire" style="padding: 0 0 8px"></div>
+  <div class="sheet-actions">
+    <button class="btn" data-ferme>Annuler</button>
+    <button class="btn" id="sm-ok" style="background: var(--acide); border-color: var(--acide); color: #0B0C0E; font-weight: 600">Enregistrer</button>
   </div>
 </div>
 
 <script>
 /* navigation entre écrans — le hash est l'état */
+const vaHooks = []; /* remplis plus bas : préparation d'un écran à l'entrée */
 const va = (id) => {
   const cible = document.getElementById(id) ? id : "accueil";
   document.querySelectorAll(".ecran").forEach((e) => { e.hidden = e.id !== cible; });
@@ -1768,6 +2237,7 @@ const va = (id) => {
     void ecran.offsetWidth; /* forcer le reflow pour rejouer l'animation */
     ecran.classList.add("joue");
   }
+  vaHooks.forEach((h) => h(cible));
   if (cible === "splash") {
     clearTimeout(va.splashT);
     va.splashT = setTimeout(() => {
@@ -1825,9 +2295,19 @@ const debite = (nom, categorie, montant) => {
   const rangees = ops.querySelectorAll(".row");
   if (rangees.length > 3) rangees[rangees.length - 1].remove();
 };
-/* clôture générique : remplit l'écran « envoyé » puis y va */
-const cloture = ({ titre, sous, montant, nom, categorie }) => {
-  debite(nom, categorie, montant);
+/* clôture générique : remplit l'écran « envoyé » puis y va.
+   livre "caisse" débite la caisse commerçante ; sinon le compte personnel.
+   retour : où mène « Terminé » (accueil par défaut). */
+const cloture = ({ titre, sous, montant, nom, categorie, livre, retour }) => {
+  if (livre === "caisse") {
+    caisseJour = Math.max(0, caisseJour - montant);
+    majCaisse();
+  } else {
+    debite(nom, categorie, montant);
+  }
+  const termine = document.getElementById("s-termine");
+  termine.dataset.va = retour || "accueil";
+  document.getElementById("s-voir").hidden = Boolean(retour && retour !== "accueil");
   document.getElementById("s-titre").textContent = titre;
   document.getElementById("s-montant").textContent = fmt(String(montant));
   document.getElementById("s-sous").textContent = sous;
@@ -2025,10 +2505,35 @@ document.querySelectorAll(".bascule").forEach((b) => {
   });
 });
 
-/* commerçant — caisse : montant → QR dynamique → paiement reçu */
+/* commerçant — caisse vivante : encaisser, ventes, rembourser, vider, clore */
 fluxM.caisse = "3500";
 FLUX_CFG.caisse = { aff: "c-aff", cta: "c-cta", libelle: (m) => "Générer le code de " + m };
-let caisseJour = 148500, caisseN = 23;
+fluxM.retrait = "148500";
+FLUX_CFG.retrait = { aff: "rt-aff", cta: "rt-cta", libelle: (m) => "Virer " + m };
+let caisseJour = 148500, caisseN = 23, rembN = 0, rembTotal = 0, dernierH = "11:42";
+const ventes = [
+  { qui: "Vente au comptoir", h: "11:42", m: 4500 },
+  { qui: "Vente au comptoir", h: "11:18", m: 12000 },
+  { qui: "Vente au comptoir", h: "10:55", m: 3000 },
+  { qui: "Vente au comptoir", h: "09:37", m: 7500 },
+];
+const ROND_ENTREE = `<span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"/></svg></span>`;
+const majCaisse = () => {
+  document.querySelectorAll("[data-caisse='jour']").forEach((e) => { e.textContent = fmt(String(caisseJour)); });
+  document.querySelectorAll("[data-caisse='n']").forEach((e) => { e.textContent = caisseN; });
+  document.querySelectorAll("[data-caisse='dernier']").forEach((e) => { e.textContent = dernierH; });
+};
+const rangeeVente = (v, i) =>
+  `<div class="row${v.remb ? " rembourse" : ""}" data-remb="caisse" data-idx="${i}">
+    ${ROND_ENTREE}<span class="txt"><b>${v.qui}</b><span>${v.remb ? "Remboursée" : "Paiement reçu"}</span></span>
+    <span class="fin"><b class="credit">+${fmt(String(v.m))}</b><span>${v.h}</span></span>
+  </div>`;
+const renderVentes = () => {
+  document.getElementById("bcv-liste").innerHTML = ventes.map(rangeeVente).join("");
+  document.getElementById("bc-dernieres").innerHTML = ventes.slice(0, 3).map(rangeeVente).join("");
+  majCaisse();
+};
+renderVentes();
 document.getElementById("c-cta").addEventListener("click", () => {
   const m = parseInt(fluxM.caisse || "0", 10); if (m <= 0) return;
   document.getElementById("bq-montant").textContent = fmt(fluxM.caisse);
@@ -2041,27 +2546,109 @@ document.getElementById("c-cta").setAttribute("data-mene", "b-qr");
 document.getElementById("bq-simule").addEventListener("click", function () {
   occupe(this, "Paiement en cours…", () => {
     const m = parseInt(fluxM.caisse || "0", 10);
-    caisseJour += m; caisseN += 1;
-    document.getElementById("bc-jour").textContent = fmt(String(caisseJour));
-    document.getElementById("bc-n").textContent = caisseN;
+    caisseJour += m; caisseN += 1; dernierH = heureCourte();
+    ventes.unshift({ qui: "Vente au comptoir", h: dernierH, m });
+    renderVentes();
     document.getElementById("bq-recu-montant").textContent = "+" + fmt(fluxM.caisse);
     this.textContent = "Paiement reçu — simuler";
     document.getElementById("bq-attente").hidden = true;
-    const recu = document.getElementById("bq-recu");
-    recu.hidden = false;
+    document.getElementById("bq-recu").hidden = false;
     const ecran = document.getElementById("b-qr");
     ecran.classList.remove("joue"); void ecran.offsetWidth; ecran.classList.add("joue");
   });
 });
+/* remboursement — depuis la sheet, sur toute rangée data-remb */
+document.getElementById("sh-rembourse").addEventListener("click", () => {
+  if (!shRow) return;
+  const idx = parseInt(shRow.dataset.idx, 10);
+  if (shRow.dataset.remb === "caisse") {
+    const v = ventes[idx];
+    if (v && !v.remb) { v.remb = true; caisseJour = Math.max(0, caisseJour - v.m); rembN++; rembTotal += v.m; renderVentes(); }
+  }
+  if (shRow.dataset.remb === "ecom" && typeof rembCommande === "function") rembCommande(idx);
+  fermeSheet();
+});
+/* vider la caisse — clôture sur le livre caisse, retour boutique */
+document.getElementById("rt-cta").addEventListener("click", function () {
+  const m = parseInt(fluxM.retrait || "0", 10);
+  if (m <= 0 || m > caisseJour) return;
+  occupe(this, "Virement en cours…", () => {
+    majFlux("retrait");
+    cloture({ titre: "Caisse virée", sous: "Vers le compte ····2201 · arrive sous 3 heures",
+      montant: m, livre: "caisse", retour: "b-commercant" });
+  });
+});
+/* fin de journée */
+const majCloture = () => {
+  const vals = {
+    n: caisseN, total: fmt(String(caisseJour + rembTotal)),
+    rembN, rembTotal: fmt(String(rembTotal)),
+    net: fmt(String(caisseJour)), net2: fmt(String(caisseJour)),
+  };
+  document.querySelectorAll("[data-cl]").forEach((e) => { e.textContent = vals[e.dataset.cl]; });
+};
+vaHooks.push((cible) => {
+  if (cible === "bc-retrait") { fluxM.retrait = String(caisseJour || 0); majFlux("retrait"); }
+  if (cible === "bc-cloture") { majCloture(); }
+});
+document.getElementById("cl-cta").addEventListener("click", function () {
+  occupe(this, "Clôture en cours…", () => {
+    this.textContent = "Clôturer la journée";
+    majCloture();
+    document.getElementById("cl-ouvert").hidden = true;
+    document.getElementById("cl-close").hidden = false;
+    const ecran = document.getElementById("bc-cloture");
+    ecran.classList.remove("joue"); void ecran.offsetWidth; ecran.classList.add("joue");
+  });
+});
+document.getElementById("cl-rouvrir").addEventListener("click", () => {
+  document.getElementById("cl-close").hidden = true;
+  document.getElementById("cl-ouvert").hidden = false;
+});
+/* code du comptoir */
+dessineQR("cc-qr");
+document.getElementById("cc-imprimer").addEventListener("click", function () { retourBtn(this, "Envoyé à l'impression"); });
+document.getElementById("cc-partager").addEventListener("click", function () { retourBtn(this, "Lien copié"); });
 
-/* PME — les salaires en un clic, versés en cascade */
+/* PME — équipe et factures vivantes, salaires en cascade, édition au pad */
 const COCHE_MINI = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>`;
+const employes = [
+  { nom: "Aminata D.", role: "Couturière", sal: 280000 },
+  { nom: "Karim B.", role: "Coupeur", sal: 260000 },
+  { nom: "Fatou S.", role: "Vendeuse", sal: 240000 },
+  { nom: "Moussa O.", role: "Livreur", sal: 220000 },
+  { nom: "Rokia L.", role: "Apprentie", sal: 160000 },
+];
+const initiales = (nom) => nom.trim().split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+const totalSalaires = () => employes.reduce((s, e) => s + e.sal, 0);
 const pmeCta = document.getElementById("pme-cta");
+const renderEquipe = () => {
+  document.getElementById("sal-liste").innerHTML = employes.map((e, i) =>
+    `<div class="row" style="cursor: default">
+      <span class="avatar">${initiales(e.nom)}</span>
+      <span class="txt"><b>${e.nom}</b><span>${e.role}</span></span>
+      <span class="fin"><b>${fmt(String(e.sal))}</b></span>
+      <button class="valide-btn" data-edite="${i}" aria-label="Ajuster le salaire">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.5-1L20 7.5a2 2 0 0 0-3-3L5.5 16Z"/></svg>
+      </button>
+      <span class="paye-etat"></span>
+    </div>`).join("");
+  document.getElementById("eq-liste").innerHTML = employes.map((e) =>
+    `<div class="row" style="cursor: default">
+      <span class="avatar">${initiales(e.nom)}</span>
+      <span class="txt"><b>${e.nom}</b><span>${e.role}</span></span>
+      <span class="fin"><b>${fmt(String(e.sal))}</b><span>par mois</span></span>
+    </div>`).join("");
+  document.querySelectorAll("[data-pme='total']").forEach((el) => { el.textContent = fmt(String(totalSalaires())); });
+  document.querySelectorAll("[data-pme='n']").forEach((el) => { el.textContent = employes.length; });
+  pmeCta.textContent = `Payer ${employes.length} salaires en 1 clic`;
+  document.getElementById("pme-reset").hidden = true;
+};
 pmeCta.addEventListener("click", () => {
   if (pmeCta.hasAttribute("data-occupe")) return;
   pmeCta.setAttribute("data-occupe", "");
   pmeCta.innerHTML = '<span class="spin"></span>Versement en cours…';
-  const etats = [...document.querySelectorAll("#pme-liste .paye-etat")];
+  const etats = [...document.querySelectorAll("#sal-liste .paye-etat")];
   const reduit = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const pas = reduit ? 0 : 380;
   etats.forEach((e, i) => {
@@ -2070,19 +2657,115 @@ pmeCta.addEventListener("click", () => {
   });
   setTimeout(() => {
     pmeCta.removeAttribute("data-occupe");
-    pmeCta.textContent = "5 salaires payés · 1 160 000";
-    pmeCta.classList.remove("cta"); pmeCta.classList.add("cta", "cta-encre");
+    pmeCta.textContent = `${etats.length} salaires payés · ${fmt(String(totalSalaires()))}`;
+    pmeCta.classList.add("cta-encre");
     document.getElementById("pme-reset").hidden = false;
   }, etats.length * pas + 500);
 });
 document.getElementById("pme-reset").addEventListener("click", function () {
-  document.querySelectorAll("#pme-liste .paye-etat").forEach((e) => { e.innerHTML = ""; });
+  document.querySelectorAll("#sal-liste .paye-etat").forEach((e) => { e.innerHTML = ""; });
   pmeCta.classList.remove("cta-encre");
-  pmeCta.textContent = "Payer 5 salaires en 1 clic";
+  pmeCta.textContent = `Payer ${employes.length} salaires en 1 clic`;
   this.hidden = true;
 });
+/* édition d'un salaire — sheet au pad */
+let smIdx = null;
+fluxM.salaire = "0";
+FLUX_CFG.salaire = { aff: "sm-aff", cta: "sm-ok", libelle: () => "Enregistrer" };
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-edite]");
+  if (!b) return;
+  smIdx = parseInt(b.dataset.edite, 10);
+  fluxM.salaire = String(employes[smIdx].sal);
+  document.getElementById("sm-titre").textContent = "Salaire de " + employes[smIdx].nom;
+  majFlux("salaire");
+  voile.hidden = false;
+  document.getElementById("sheet-mont").hidden = false;
+});
+document.getElementById("sm-ok").addEventListener("click", () => {
+  if (smIdx !== null) {
+    employes[smIdx].sal = parseInt(fluxM.salaire || "0", 10);
+    renderEquipe();
+  }
+  fermeSheet();
+});
+/* équipe — ajout réel */
+document.getElementById("eq-ajoute").addEventListener("click", function () {
+  const nom = document.getElementById("eq-nom").value.trim();
+  const role = document.getElementById("eq-role").value.trim() || "Employé";
+  const sal = parseInt((document.getElementById("eq-sal").value || "").replace(/\D/g, ""), 10);
+  if (!nom || !sal) { retourBtn(this, "Nom et salaire requis"); return; }
+  employes.push({ nom, role, sal });
+  renderEquipe();
+  document.getElementById("eq-nom").value = "";
+  document.getElementById("eq-role").value = "";
+  document.getElementById("eq-sal").value = "";
+  retourBtn(this, "Ajouté — salaires mis à jour");
+});
+/* factures */
+const factures = [
+  { num: "2026-040", client: "Boulangerie du Pont", objet: "Uniformes ×12", m: 380000, etat: "attente" },
+  { num: "2026-039", client: "Kiosque 12", objet: "Tabliers ×6", m: 96000, etat: "retard" },
+  { num: "2026-038", client: "Maison Kéma", objet: "Retouches série", m: 210000, etat: "payee" },
+];
+let facNum = 41;
+const STATUTS = {
+  payee: `<span class="statut statut-ok">Payée</span>`,
+  attente: `<span class="statut statut-attente">En attente</span>`,
+  retard: `<span class="statut statut-retard">En retard</span>`,
+};
+const renderFactures = () => {
+  document.getElementById("fac-liste").innerHTML = factures.map((f, i) =>
+    `<div class="row" style="cursor: default">
+      <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg></span>
+      <span class="txt"><b>${f.client}</b><span>n° ${f.num} · ${f.objet}</span></span>
+      <span class="fin" style="margin-right: 4px"><b>${fmt(String(f.m))}</b>${f.etat === "retard" ? `<button class="link" data-relance="${i}" style="padding: 0; font-size: 12px">Relancer</button>` : ""}</span>
+      ${STATUTS[f.etat]}
+    </div>`).join("");
+  const attente = factures.filter((f) => f.etat !== "payee").reduce((s, f) => s + f.m, 0);
+  document.querySelectorAll("[data-pme='attente-total']").forEach((el) => { el.textContent = fmt(String(attente)); });
+};
+document.addEventListener("click", (e) => {
+  const r = e.target.closest("[data-relance]");
+  if (r) retourBtn(r, "Relance envoyée");
+});
+document.getElementById("fac-simule").addEventListener("click", function () {
+  const f = factures.find((x) => x.etat !== "payee");
+  if (!f) { retourBtn(this, "Tout est payé"); return; }
+  f.etat = "payee";
+  renderFactures();
+  retourBtn(this, `Facture ${f.num} payée · +${fmt(String(f.m))}`);
+});
+/* facturer → aperçu → envoyer */
+document.getElementById("f-cta").addEventListener("click", () => {
+  const m = parseInt((document.getElementById("f-montant").value || "").replace(/\D/g, ""), 10) || 0;
+  if (m <= 0) return;
+  document.getElementById("ap-num").textContent = "Facture n° 2026-0" + facNum;
+  document.getElementById("ap-client").textContent = document.getElementById("f-client").value.trim() || "Client";
+  document.getElementById("ap-objet").textContent = document.getElementById("f-objet").value.trim() || "Prestation";
+  document.getElementById("ap-montant").textContent = fmt(String(m));
+  document.getElementById("ap-total").textContent = fmt(String(m));
+  va("pme-apercu");
+});
+document.getElementById("f-cta").setAttribute("data-mene", "pme-apercu");
+document.getElementById("ap-cta").addEventListener("click", function () {
+  occupe(this, "Envoi au client…", () => {
+    factures.unshift({
+      num: "2026-0" + facNum++,
+      client: document.getElementById("ap-client").textContent,
+      objet: document.getElementById("ap-objet").textContent,
+      m: parseInt(document.getElementById("ap-montant").textContent.replace(/\D/g, ""), 10),
+      etat: "attente",
+    });
+    this.textContent = "Envoyer au client";
+    renderFactures();
+    va("pme-factures");
+  });
+});
+renderEquipe();
+renderFactures();
 
-/* comptable — valider une écriture la sort de la pile */
+/* comptable — valider une écriture la sort de la pile du hub */
 document.querySelectorAll("#cpt-liste .valide-btn").forEach((b) => {
   b.addEventListener("click", () => {
     const compteur = document.getElementById("cpt-avalider");
@@ -2091,8 +2774,125 @@ document.querySelectorAll("#cpt-liste .valide-btn").forEach((b) => {
     compteur.textContent = Math.max(0, parseInt(compteur.textContent, 10) - 1);
   });
 });
+/* comptable — détail client : rapprochements Confirmer / Ignorer */
+const rapprochements = [
+  { mvt: "Mouvement −36 500 · le 26", prop: "Facture F-2026-032 · Fournier" },
+  { mvt: "Mouvement +112 000 · le 25", prop: "Vente comptoir groupée · 14 tickets" },
+  { mvt: "Mouvement −8 200 · le 25", prop: "Abonnement énergie" },
+  { mvt: "Mouvement +64 000 · le 24", prop: "Facture F-2026-031 · Marché central" },
+];
+const majBadgesCpt = () => {
+  const restants = rapprochements.filter((r) => !r.etat).length;
+  document.querySelectorAll("[data-cpt='n'], [data-cpt='badge']").forEach((e) => {
+    e.textContent = restants;
+    if (e.dataset.cpt === "badge") e.classList.toggle("badge-zero", restants === 0);
+  });
+};
+const renderRapprochements = () => {
+  document.getElementById("rp-liste").innerHTML = rapprochements.map((r, i) =>
+    `<div class="row" style="cursor: default${r.etat === "ignore" ? "; opacity: .4" : ""}">
+      <span class="txt"><b>${r.mvt}</b><span>${r.etat === "ignore" ? "À revoir avec le client" : "↔ " + r.prop}</span></span>
+      ${r.etat === "ok" ? COCHE_MINI
+        : r.etat === "ignore" ? `<span class="statut statut-attente">Écartée</span>`
+        : `<button class="valide-btn" data-rp-ok="${i}" aria-label="Confirmer">
+             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>
+           </button>
+           <button class="valide-btn" data-rp-non="${i}" aria-label="Écarter" style="margin-left: 6px">
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+           </button>`}
+    </div>`).join("");
+  majBadgesCpt();
+};
+document.addEventListener("click", (e) => {
+  const ok = e.target.closest("[data-rp-ok]");
+  const non = e.target.closest("[data-rp-non]");
+  if (ok) { rapprochements[parseInt(ok.dataset.rpOk, 10)].etat = "ok"; renderRapprochements(); }
+  if (non) { rapprochements[parseInt(non.dataset.rpNon, 10)].etat = "ignore"; renderRapprochements(); }
+});
+document.getElementById("rp-tout").addEventListener("click", function () {
+  const libres = rapprochements.map((r, i) => (!r.etat ? i : null)).filter((i) => i !== null);
+  if (!libres.length) { retourBtn(this, "Tout est rapproché"); return; }
+  const reduit = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  libres.forEach((idx, k) => {
+    setTimeout(() => { rapprochements[idx].etat = "ok"; renderRapprochements(); }, reduit ? 0 : k * 300);
+  });
+});
+document.getElementById("cpt-export-client").addEventListener("click", function () { retourBtn(this, "Export envoyé"); });
+renderRapprochements();
+/* comptable — exports */
+document.getElementById("ex-cta").addEventListener("click", function () {
+  occupe(this, "Génération…", () => {
+    this.textContent = "Générer l'export";
+    const periode = document.querySelector(".chips[data-groupe='periode'] .actif").textContent;
+    const format = document.querySelector(".chips[data-groupe='format'] .actif").textContent;
+    document.getElementById("ex-detail").textContent = periode + " · " + format;
+    document.getElementById("ex-resultat").hidden = false;
+  });
+});
+document.getElementById("ex-partager").addEventListener("click", function () { retourBtn(this, "Envoyé au cabinet"); });
 
-/* e-commerce — payer bascule le panneau */
+/* e-commerce — boutique vivante : commandes, lien de paiement, remboursement */
+let ecJour = 86000, ecN = 7, ecNum = 1043;
+const commandes = [
+  { qui: "Commande #1042", quoi: "3 articles", m: 32000, h: "14:20", etat: "payee" },
+  { qui: "Commande #1041", quoi: "1 article", m: 9500, h: "12:05", etat: "prep" },
+  { qui: "Commande #1040", quoi: "2 articles", m: 21500, h: "10:48", etat: "payee" },
+  { qui: "Commande #1039", quoi: "5 articles", m: 23000, h: "09:12", etat: "payee" },
+];
+const EC_STATUTS = {
+  payee: `<span class="statut statut-ok">Payée</span>`,
+  prep: `<span class="statut statut-attente">En préparation</span>`,
+  remb: `<span class="statut statut-attente">Remboursée</span>`,
+};
+const majEc = () => {
+  document.querySelectorAll("[data-ec='jour']").forEach((e) => { e.textContent = fmt(String(ecJour)); });
+  document.querySelectorAll("[data-ec='n']").forEach((e) => { e.textContent = ecN; });
+};
+const rangeeCommande = (c, i) =>
+  `<div class="row${c.etat === "remb" ? " rembourse" : ""}"${c.etat === "payee" ? ` data-remb="ecom" data-idx="${i}"` : ""} style="${c.etat === "payee" ? "" : "cursor: default"}">
+    ${ROND_ENTREE}<span class="txt"><b>${c.qui}</b><span>${c.quoi} · ${c.h}</span></span>
+    <span class="fin" style="margin-right: 4px"><b class="credit">+${fmt(String(c.m))}</b></span>
+    ${EC_STATUTS[c.etat]}
+  </div>`;
+const renderCommandes = () => {
+  document.getElementById("eco-liste").innerHTML = commandes.map(rangeeCommande).join("");
+  document.getElementById("ec-dernieres").innerHTML = commandes.slice(0, 3).map(rangeeCommande).join("");
+  majEc();
+};
+const rembCommande = (idx) => {
+  const c = commandes[idx];
+  if (!c || c.etat !== "payee") return;
+  c.etat = "remb";
+  ecJour = Math.max(0, ecJour - c.m);
+  renderCommandes();
+};
+renderCommandes();
+document.getElementById("el-cta").addEventListener("click", function () {
+  const m = parseInt((document.getElementById("el-montant").value || "").replace(/\D/g, ""), 10) || 0;
+  if (m <= 0) return;
+  document.getElementById("el-lien").textContent = "swim.me/kema/" + Math.random().toString(36).slice(2, 6);
+  document.getElementById("el-detail").textContent =
+    (document.getElementById("el-objet").value.trim() || "Paiement") + " · " + fmt(String(m));
+  dessineQR("el-qr");
+  document.getElementById("el-resultat").hidden = false;
+});
+document.getElementById("el-copier").addEventListener("click", function () { retourBtn(this, "Copié"); });
+document.getElementById("el-paye").addEventListener("click", function () {
+  occupe(this, "Paiement…", () => {
+    const m = parseInt((document.getElementById("el-montant").value || "").replace(/\D/g, ""), 10) || 0;
+    ecJour += m; ecN += 1;
+    commandes.unshift({
+      qui: "Commande #" + ecNum++,
+      quoi: document.getElementById("el-objet").value.trim() || "Lien de paiement",
+      m, h: heureCourte(), etat: "payee",
+    });
+    renderCommandes();
+    this.textContent = "Simuler le paiement";
+    document.getElementById("el-resultat").hidden = true;
+    va("ec-commandes");
+  });
+});
+/* checkout côté client */
 document.getElementById("ec-cta").addEventListener("click", function () {
   occupe(this, "Confirmation dans l'app…", () => {
     this.textContent = "Payer 32 000";
@@ -2104,6 +2904,12 @@ document.getElementById("ec-cta").addEventListener("click", function () {
 document.getElementById("ec-reset").addEventListener("click", () => {
   document.getElementById("ec-confirme").hidden = true;
   document.getElementById("ec-panneau").hidden = false;
+});
+
+/* personnel — appareils connectés */
+document.getElementById("app-deconnecte").addEventListener("click", () => {
+  document.getElementById("app-tablette").remove();
+  document.querySelectorAll("[data-app='n']").forEach((e) => { e.textContent = "1"; });
 });
 
 /* onglets Détails / Activité de Ma carte */
@@ -2118,8 +2924,17 @@ document.querySelectorAll("#carte-ecran .segment[data-seg]").forEach((s) => {
 /* sheet de détail — s'ouvre sur toute rangée d'un conteneur .ops */
 const voile = document.getElementById("voile");
 const sheet = document.getElementById("sheet");
-const fermeSheet = () => { voile.hidden = true; sheet.hidden = true; };
+const fermeSheet = () => {
+  voile.hidden = true;
+  sheet.hidden = true;
+  const sm = document.getElementById("sheet-mont");
+  if (sm) sm.hidden = true;
+};
+let shRow = null;
 const ouvreOp = (r) => {
+  shRow = r;
+  document.getElementById("sh-rembourse").hidden =
+    !(r.dataset.remb && !r.classList.contains("rembourse"));
   const montant = r.querySelector(".fin b");
   document.getElementById("sh-rond").innerHTML = r.querySelector(".rond").innerHTML;
   document.getElementById("sh-montant").textContent = montant.textContent;
@@ -2145,12 +2960,18 @@ document.getElementById("n-toutlire").addEventListener("click", () => {
 });
 
 /* chips de l'écran Activité — elles filtrent vraiment */
-document.querySelectorAll(".chip").forEach((c) => {
+document.querySelectorAll("#activite .chip").forEach((c) => {
   c.addEventListener("click", () => {
-    document.querySelectorAll(".chip").forEach((x) => x.classList.toggle("actif", x === c));
+    document.querySelectorAll("#activite .chip").forEach((x) => x.classList.toggle("actif", x === c));
     document.querySelectorAll("#m-liste .row").forEach((r) => {
       r.style.display = (c.dataset.f === "all" || r.dataset.t === c.dataset.f) ? "" : "none";
     });
   });
+});
+/* chips génériques à groupes (exports…) : l'actif se choisit dans son groupe */
+document.addEventListener("click", (e) => {
+  const c = e.target.closest(".chips[data-groupe] .chip");
+  if (!c) return;
+  c.closest(".chips").querySelectorAll(".chip").forEach((x) => x.classList.toggle("actif", x === c));
 });
 </script>
