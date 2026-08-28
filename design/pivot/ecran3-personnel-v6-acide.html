@@ -938,6 +938,30 @@ button { font: inherit; color: inherit; }
 .source .row .txt span { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 /* refaire une opération : l'action apparaît dans la feuille de détail */
+/* un bouton desactive doit AVOIR L AIR desactive : sinon on promet une
+   action qui ne se produira pas */
+.btn:disabled, .btn-primary:disabled {
+  opacity: .38; cursor: not-allowed; filter: grayscale(.7);
+}
+.btn:disabled:hover { background: inherit; }
+.fc-choix { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.fc-choix .chip.actif { background: var(--acide); border-color: var(--acide); color: #141414; }
+.note { color: var(--sourd); font-size: 13.5px; line-height: 1.55; margin: 2px 0 16px; }
+.note.refus { color: #E5484D; }
+.note b { color: var(--encre); }
+.infos-carte { display: grid; gap: 10px; margin: 2px 0 16px; }
+.infos-carte div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.infos-carte span { color: var(--sourd); font-size: 13px; }
+.infos-carte b { font-size: 16px; letter-spacing: .04em; }
+/* la confirmation d'un flux : elle dit ce qui a changé, puis s'efface */
+.fc-fait {
+  position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom));
+  transform: translateX(-50%); z-index: 60;
+  max-width: min(92vw, 420px); padding: 12px 18px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--trait-fort);
+  color: var(--encre); font-size: 14px; font-weight: 500; text-align: center;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .45);
+}
 .sheet-actions .btn-refaire { background: var(--grad-acide); border-color: var(--acide); color: #141414; font-weight: 600; }
 
 /* ---------------- Les plans ---------------- */
@@ -3983,6 +4007,19 @@ button { font: inherit; color: inherit; }
 </div>
 
 <!-- sheet d'édition d'un montant (salaire) -->
+<div class="sheet" id="sheet-carte" role="dialog" aria-modal="true" aria-label="Action sur la carte" hidden>
+  <button class="poignee" data-ferme aria-label="Fermer"></button>
+  <div class="sheet-tete">
+    <div class="qui" id="fc-titre"></div>
+    <div class="quoi" id="fc-sous"></div>
+  </div>
+  <div id="fc-corps"></div>
+  <div class="sheet-actions">
+    <button class="btn" data-ferme>Annuler</button>
+    <button class="btn btn-primary" id="fc-valide"></button>
+  </div>
+</div>
+
 <div class="sheet" id="sheet-mont" role="dialog" aria-modal="true" aria-label="Ajuster le montant" hidden>
   <button class="poignee" data-ferme aria-label="Fermer"></button>
   <div class="sheet-tete">
@@ -6209,7 +6246,7 @@ const sheet = document.getElementById("sheet");
 const fermeSheet = () => {
   voile.hidden = true;
   sheet.hidden = true;
-  ["sheet-mont", "sheet-pin", "sheet-double", "sheet-relance"].forEach((id) => {
+  ["sheet-mont", "sheet-pin", "sheet-double", "sheet-relance", "sheet-carte"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.hidden = true;
   });
@@ -6947,6 +6984,205 @@ rendHeroCartes();
   suitHero();
 })();
 
+/* ═══════════ LES FLUX DES CARTES ═══════════
+   Deux règles qui ne se négocient pas :
+   — tout mouvement d'argent passe par le GRAND LIVRE. Un coffre qui se
+     remplit sans que rien ne sorte du compte serait une animation posée sur
+     un mensonge ;
+   — un verrou qui se contourne n'est pas un verrou : tant que la date n'est
+     pas passée, « Libérer » refuse, et dit jusqu'à quand. */
+const virt = () => CARTES.find((c) => c.type === "pan");
+/* `coffre` est deja pris par le chantier de la paie PME */
+const laReserve = () => CARTES.find((c) => c.type === "coffre");
+const fcChiffres = (n) => Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join("");
+const nouveauPan = () => "5412 " + fcChiffres(4) + " " + fcChiffres(4) + " " + fcChiffres(4);
+const dansNMois = (n) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() + n);
+  return String(d.getMonth() + 1).padStart(2, "0") + "/" + String(d.getFullYear()).slice(2);
+};
+const fcDansNJours = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+};
+const dateDepassee = (txt) => {
+  if (!txt) return true;
+  const m = /(\d{2}) (\S+)\.? (\d{4})/.exec(txt);
+  if (!m) return false;
+  const mois = ["janv", "févr", "mars", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"]
+    .findIndex((x) => m[2].toLowerCase().startsWith(x));
+  if (mois < 0) return false;
+  return new Date(+m[3], mois, +m[1]) <= new Date();
+};
+
+const rendCartes = () => {
+  if (typeof rendHeroCartes === "function") rendHeroCartes();
+  if (typeof rendCartesPhysiques === "function") rendCartesPhysiques();
+  const rail = document.getElementById("carte-rail");
+  if (rail && typeof rendActionsCarte === "function") {
+    const centre = rail.scrollLeft + rail.clientWidth / 2;
+    let i = 0, mieux = Infinity;
+    [...rail.children].forEach((c, k) => {
+      const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - centre);
+      if (d < mieux) { mieux = d; i = k; }
+    });
+    rendActionsCarte(CARTES[i] ? CARTES[i].id : "principale");
+  }
+};
+
+const FLUX = {
+  "virt-regen": {
+    titre: "Régénérer le numéro",
+    sous: "L'ancien cesse aussitôt d'être accepté",
+    corps: () => `<p class="note">Les paiements déjà autorisés sur ····${pan4(virt())}
+      seront refusés. Les abonnements adossés à ce numéro devront être remis à jour.</p>`,
+    bouton: "Régénérer",
+    fait: () => {
+      const v = virt();
+      v.pan = nouveauPan(); v.exp = dansNMois(36); v.cvv = fcChiffres(3); v.statut = "active";
+      return "Nouveau numéro ····" + pan4(v) + " · exp. " + v.exp;
+    },
+  },
+  "virt-infos": {
+    titre: "Informations de la carte",
+    sous: "À ne saisir que sur un site de confiance",
+    corps: () => {
+      const v = virt();
+      return `<div class="infos-carte">
+        <div><span>Numéro</span><b>${v.pan}</b></div>
+        <div><span>Expiration</span><b>${v.exp}</b></div>
+        <div><span>Cryptogramme</span><b>${v.cvv}</b></div>
+      </div>`;
+    },
+    bouton: "Fermer",
+    fait: () => "",
+  },
+  "virt-detruire": {
+    titre: "Détruire la carte",
+    sous: "Définitif · le numéro ne revient pas",
+    corps: () => `<p class="note">····${pan4(virt())} cessera d'être accepté immédiatement.
+      Tu pourras en obtenir une nouvelle, avec un autre numéro.</p>`,
+    bouton: "Détruire",
+    fait: () => { virt().statut = "detruite"; return "Carte détruite"; },
+  },
+  "virt-nouvelle": {
+    titre: "Obtenir une nouvelle carte",
+    sous: "Un nouveau numéro, disponible tout de suite",
+    corps: () => `<p class="note">Elle reprend ton plafond actuel.
+      Tu pourras le changer à tout moment.</p>`,
+    bouton: "Créer la carte",
+    fait: () => {
+      const v = virt();
+      v.pan = nouveauPan(); v.exp = dansNMois(36); v.cvv = fcChiffres(3);
+      v.statut = "active"; v.depense = 0;
+      return "Carte créée · ····" + pan4(v);
+    },
+  },
+  "coffre-alimenter": {
+    titre: "Alimenter le coffre",
+    sous: "Depuis le compte principal",
+    corps: () => `<div class="fc-choix" data-champ="montant">
+        ${[10000, 25000, 50000, 100000].map((m) =>
+          `<button class="chip" data-val="${m}">${fmt(String(m))}</button>`).join("")}
+      </div>
+      <p class="note">Disponible sur le compte · ${fmt(String(solde))}</p>`,
+    bouton: "Ranger dans le coffre",
+    valide: (etat) => etat.montant > 0 && etat.montant <= solde,
+    fait: (etat) => {
+      debite("Coffre", "Mise en réserve", etat.montant);
+      laReserve().montant += etat.montant;
+      return fmt(String(etat.montant)) + " rangés dans le coffre";
+    },
+  },
+  "coffre-verrouiller": {
+    titre: "Verrouiller le coffre",
+    sous: "Rien n'en sort avant la date",
+    corps: () => `<div class="fc-choix" data-champ="jours">
+        <button class="chip" data-val="7">7 jours</button>
+        <button class="chip" data-val="30">30 jours</button>
+        <button class="chip" data-val="90">3 mois</button>
+        <button class="chip" data-val="180">6 mois</button>
+      </div>
+      <p class="note">Un verrou qui se contourne n'est pas un verrou :
+      d'ici là, « Libérer » refusera.</p>`,
+    bouton: "Verrouiller",
+    valide: (etat) => etat.jours > 0,
+    fait: (etat) => {
+      laReserve().verrouJusquau = fcDansNJours(etat.jours);
+      return "Verrouillé jusqu'au " + laReserve().verrouJusquau;
+    },
+  },
+  "coffre-liberer": {
+    titre: "Libérer les fonds",
+    sous: "Retour au compte principal",
+    corps: () => {
+      const c = laReserve();
+      if (c.verrouJusquau && !dateDepassee(c.verrouJusquau))
+        return `<p class="note refus">Le coffre est verrouillé jusqu'au
+          <b>${c.verrouJusquau}</b>. Rien n'en sort avant cette date — c'est ce
+          que tu as demandé en le verrouillant.</p>`;
+      if (!c.montant) return `<p class="note">Le coffre est vide.</p>`;
+      return `<p class="note">${fmt(String(c.montant))} reviendront sur le compte principal.</p>`;
+    },
+    bouton: "Libérer",
+    valide: () => {
+      const c = laReserve();
+      return !!c.montant && (!c.verrouJusquau || dateDepassee(c.verrouJusquau));
+    },
+    fait: () => {
+      const c = laReserve();
+      const m = c.montant;
+      crediteSolde("Coffre", "Sortie de réserve", m);
+      c.montant = 0; c.verrouJusquau = null;
+      return fmt(String(m)) + " revenus sur le compte";
+    },
+  },
+};
+
+let fcEtat = {}, fcClef = null;
+const ouvreFluxCarte = (clef) => {
+  const f = FLUX[clef];
+  if (!f) return;
+  fcClef = clef; fcEtat = {};
+  document.getElementById("fc-titre").textContent = f.titre;
+  document.getElementById("fc-sous").textContent = f.sous;
+  document.getElementById("fc-corps").innerHTML = f.corps();
+  const b = document.getElementById("fc-valide");
+  b.textContent = f.bouton;
+  b.disabled = typeof f.valide === "function" ? !f.valide(fcEtat) : false;
+  document.getElementById("voile").hidden = false;
+  document.getElementById("sheet-carte").hidden = false;
+};
+document.addEventListener("click", (e) => {
+  const chip = e.target.closest("#fc-corps .fc-choix .chip");
+  if (chip) {
+    const champ = chip.parentElement.dataset.champ;
+    chip.parentElement.querySelectorAll(".chip").forEach((x) => x.classList.toggle("actif", x === chip));
+    fcEtat[champ] = Number(chip.dataset.val);
+    const f = FLUX[fcClef];
+    document.getElementById("fc-valide").disabled =
+      typeof f.valide === "function" ? !f.valide(fcEtat) : false;
+    return;
+  }
+  const dec = e.target.closest("[data-flux]");
+  if (dec) { ouvreFluxCarte(dec.dataset.flux); return; }
+});
+document.getElementById("fc-valide").addEventListener("click", () => {
+  const f = FLUX[fcClef];
+  if (!f) return;
+  const message = f.fait(fcEtat) || "";
+  fermeSheet();
+  rendCartes();
+  if (message) {
+    const n = document.createElement("div");
+    n.className = "fc-fait";
+    n.textContent = message;
+    document.body.append(n);
+    setTimeout(() => n.remove(), 3200);
+  }
+});
+
 /* Le rail des cartes : la pastille et le nom suivent ce qui est au centre.
    On lit la position réelle du défilement, pas un index qu'on croit à jour. */
 /* Chaque carte a ses actions : un coffre ne se « remplace » pas, une carte
@@ -6971,24 +7207,32 @@ const ACTIONS_CARTE = {
     ["remplacer", "Remplacer la carte", "Perte, vol, usure"],
   ],
   virtuelle: [
-    ["jetable", "Régénérer le numéro", "L'ancien cesse d'être accepté"],
-    ["copier", "Copier les informations", "Numéro, date, cryptogramme"],
+    ["jetable", "Régénérer le numéro", "L'ancien cesse d'être accepté", "virt-regen"],
+    ["copier", "Voir les informations", "Numéro, date, cryptogramme", "virt-infos"],
     ["plafond", "Plafond de dépense", "Par achat et par mois"],
-    ["verrou", "Suspendre la carte", "Immédiat, réversible"],
+    ["remplacer", "Détruire la carte", "Définitif · le numéro ne revient pas", "virt-detruire"],
+  ],
+  virtuelleDetruite: [
+    ["jetable", "Obtenir une nouvelle carte", "Un autre numéro, tout de suite", "virt-nouvelle"],
+    ["registre", "Historique de la carte", "Ce qui est passé dessus", ""],
   ],
   coffre: [
-    ["alimenter", "Alimenter le coffre", "Depuis le compte principal"],
-    ["programmer", "Programmer une échéance", "Les fonds se libèrent à la date"],
-    ["liberer", "Libérer les fonds", "Retour au compte principal"],
-    ["registre", "Historique du coffre", "Chaque mouvement, tracé"],
+    ["alimenter", "Alimenter le coffre", "Depuis le compte principal", "coffre-alimenter"],
+    ["verrou", "Verrouiller pour une période", "Rien n'en sort avant la date", "coffre-verrouiller"],
+    ["liberer", "Libérer les fonds", "Retour au compte principal", "coffre-liberer"],
+    ["registre", "Historique du coffre", "Chaque mouvement, tracé", ""],
   ],
 };
 const rendActionsCarte = (quelle) => {
   const hote = document.getElementById("carte-vue-details");
   if (!hote) return;
+  /* une carte détruite ne propose plus de régénérer : elle propose d'en
+     obtenir une nouvelle. L'état commande la liste, pas l'inverse. */
+  const v = CARTES.find((c) => c.type === "pan");
+  if (quelle === "virtuelle" && v && v.statut === "detruite") quelle = "virtuelleDetruite";
   const jeu = ACTIONS_CARTE[quelle] || ACTIONS_CARTE.principale;
-  hote.innerHTML = jeu.map(([ic, titre, sous]) => `
-    <button class="row">
+  hote.innerHTML = jeu.map(([ic, titre, sous, flux]) => `
+    <button class="row"${flux ? ` data-flux="${flux}"` : ""}>
       <span class="rond"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${ICONES[ic]}"/></svg></span>
       <span class="txt"><b>${titre}</b><span>${sous}</span></span>

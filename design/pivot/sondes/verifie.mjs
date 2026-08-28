@@ -203,7 +203,73 @@ await ev('document.querySelector("#hero-rail .oeil").click()'); await dodo(250);
 test("l'œil les rend à l'identique",
   (await ev('document.querySelector("#hero-rail .montant").textContent.trim()')) === avant);
 
-/* ═══ 8. le contraste, avec étalonnage ═══ */
+/* ═══ 8. les flux des cartes ═══
+   Ils changent l'ÉTAT : c'est là que le prototype ment le plus facilement.
+   Un coffre qui se remplit sans que le compte se vide, un verrou qu'on
+   contourne — on les éprouve, on ne les regarde pas. */
+await ev('va("carte-ecran")'); await dodo(400);
+const flux = await ev(`(() => {
+  const v = CARTES.find((c) => c.type === "pan");
+  const r = CARTES.find((c) => c.type === "coffre");
+  const journal = [];
+  const clic = (id) => { ouvreFluxCarte(id); document.getElementById("fc-valide").click(); };
+  const choisis = (val) => {
+    const c = [...document.querySelectorAll("#fc-corps .fc-choix .chip")].find((x) => x.dataset.val == val);
+    if (c) c.click();
+  };
+
+  const panAvant = v.pan;
+  clic("virt-regen");
+  journal.push({ quoi: "régénérer", panChange: v.pan !== panAvant, actif: v.statut === "active" });
+
+  clic("virt-detruire");
+  journal.push({ quoi: "détruire", detruite: v.statut === "detruite" });
+  rendActionsCarte("virtuelle");
+  journal.push({ quoi: "actions après destruction",
+    proposeNouvelle: /nouvelle carte/i.test(document.getElementById("carte-vue-details").textContent),
+    neProposePlusRegenerer: !/Régénérer/i.test(document.getElementById("carte-vue-details").textContent) });
+
+  const panDetruit = v.pan;
+  clic("virt-nouvelle");
+  journal.push({ quoi: "nouvelle carte", active: v.statut === "active", autreNumero: v.pan !== panDetruit });
+
+  const soldeAvant = solde;
+  ouvreFluxCarte("coffre-alimenter"); choisis(25000);
+  document.getElementById("fc-valide").click();
+  journal.push({ quoi: "alimenter", coffre: r.montant, compteBaisse: soldeAvant - solde,
+    conserve: (soldeAvant - solde) === r.montant });
+
+  ouvreFluxCarte("coffre-verrouiller"); choisis(30);
+  document.getElementById("fc-valide").click();
+  journal.push({ quoi: "verrouiller", date: r.verrouJusquau });
+
+  ouvreFluxCarte("coffre-liberer");
+  const refus = document.getElementById("fc-corps").textContent;
+  const bloque = document.getElementById("fc-valide").disabled;
+  fermeSheet();
+  journal.push({ quoi: "libérer sous verrou", bloque, ditPourquoi: /verrouill/i.test(refus),
+    ditJusquaQuand: refus.includes(r.verrouJusquau || "@@") });
+
+  return journal;
+})()`);
+const etape = (nom) => (Array.isArray(flux) ? flux.find((x) => x.quoi === nom) || {} : {});
+test("régénérer donne un autre numéro", etape("régénérer").panChange === true, JSON.stringify(flux).slice(0, 120));
+test("détruire met la carte hors service", etape("détruire").detruite === true);
+test("une carte détruite propose d'en obtenir une nouvelle",
+  etape("actions après destruction").proposeNouvelle === true);
+test("… et ne propose plus de régénérer",
+  etape("actions après destruction").neProposePlusRegenerer === true);
+test("la nouvelle carte est active, avec un autre numéro",
+  etape("nouvelle carte").active === true && etape("nouvelle carte").autreNumero === true);
+test("alimenter le coffre DÉBITE le compte du même montant",
+  etape("alimenter").conserve === true,
+  `coffre ${etape("alimenter").coffre} / compte −${etape("alimenter").compteBaisse}`);
+test("verrouiller pose une date", !!etape("verrouiller").date, String(etape("verrouiller").date));
+test("sous verrou, libérer est refusé", etape("libérer sous verrou").bloque === true);
+test("… et le refus dit pourquoi et jusqu'à quand",
+  etape("libérer sous verrou").ditPourquoi === true && etape("libérer sous verrou").ditJusquaQuand === true);
+
+/* ═══ 9. le contraste, avec étalonnage ═══ */
 const contraste = await ev(`(() => {
   const lis = (c) => {
     if (!c) return null;
