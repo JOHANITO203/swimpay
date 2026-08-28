@@ -25,11 +25,14 @@ retrait commerçant, encaisser QR, scan client, lien e-commerce, checkout.
 
 ## 2. Le réseau par profil — nœuds · arêtes · états · panneau
 
-### Personnel (13 nœuds)
-- **Nœuds** : accueil · envoyer · clôture · activité · ma carte · recevoir ·
-  demander · scanner · payer · swap · banque · reçus · profil (+ notifs,
-  appareils, sheet détail).
-- **États vivants** : solde, activité, tuiles, plafonds.
+### Personnel (14 nœuds)
+- **Nœuds** : accueil · **recharger** (mobile money / banque → crédit du
+  compte SwimPay) · envoyer · clôture · activité · ma carte · recevoir ·
+  demander · scanner · payer · **transférer** (le widget : depuis le compte
+  SwimPay vers TOUS les réseaux, vers un compte SwimPay, vers une banque) ·
+  banque · reçus · profil (+ notifs, appareils, sheet détail).
+- **États vivants** : solde (crédité par la recharge, débité par les
+  envois), activité, tuiles, plafonds.
 - **Panneau** : `profil` — identité, sécurité (PIN → écran PIN, biométrie,
   appareils), plafonds, préférences, **Mes profils** (pont Annuaire vers
   les mondes business), changer de profil, revoir l'onboarding, déconnexion.
@@ -69,6 +72,15 @@ retrait commerçant, encaisser QR, scan client, lien e-commerce, checkout.
 - **États** : encaissé du jour, commandes[].
 - **Panneau `ec-params`** : boutique (nom, domaine autorisé), règlement
   (compte de reversement, fréquence), notifications de paiement.
+
+## 2 bis. Les rails nommés (décision commanditaire, 2026-08-28)
+
+Les réseaux portent leurs **vrais noms du paysage ivoirien** partout où un
+rail apparaît : **Orange Money · MTN MoMo · Moov Money · Wave** (+ Banque,
++ compte SwimPay). Pastilles aux couleurs des marques, sans logos.
+Le cycle de l'argent du client : recharge (rail → SwimPay) → circulation
+(SwimPay → tout rail, via le widget Transférer) → réception (tout rail →
+SwimPay).
 
 ## 3. Le pont entre profils (l'Annuaire au sens fort)
 

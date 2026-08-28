@@ -335,6 +335,46 @@ la chaîne → grand livre.
 
 ## État : 54 écrans · 90/90 assertions · 0 cible cassée · 0 orphelin · 0 débord
 
+---
+
+# BOUCLE 5 — le cycle de l'argent du client + les rails nommés (2026-08-28)
+
+## La critique
+
+1. Le Personnel n'a aucun moyen de réapprovisionner son compte SwimPay
+   (mobile money ou banque → compte SwimPay).
+2. Le widget Transférer doit envoyer depuis le compte SwimPay vers TOUS
+   les mobile money et vers SwimPay.
+3. Utiliser les VRAIS noms du paysage ivoirien.
+
+## Livré (11/11 + régressions 25+22+26+17 = 101/101)
+
+- **`recharger`** (chip acide sur la carte de solde) : Orange Money /
+  Wave / Banque → compte SwimPay ····9654 ; récap Routeur dynamique ;
+  clôture « Compte rechargé » créditée en acide ; le SOLDE MONTE
+  (+100 000 vérifié), rangée d'entrée en tête d'activité et d'accueil,
+  tuile Entrées recalculée, solde propagé partout (widget compris).
+- **`swap` refondu en widget Transférer** : depuis Mon compte SwimPay →
+  grille des rails **Orange Money · MTN MoMo · Moov Money · Wave ·
+  Compte SwimPay · Banque** (pastilles aux couleurs des marques),
+  numéro du destinataire, récap Routeur, clôture avec rail + numéro.
+  L'ancien swap A↔B disparaît (couvert par recharger + transférer).
+- **Noms réels partout** : envoyer perso (Wave/Banque), envoi PME
+  (Orange Money/Wave/Banque), dépôt (Orange Money du gérant), moyens de
+  réception des salaires (les 4 réseaux en rotation à l'embauche et à
+  l'import), source des encaissements commerçants (rotation des 4).
+- `RESEAU-CERVEAU.md` § 2 bis : la décision des rails nommés + le cycle
+  recharge → circulation → réception.
+
+## Échec instructif de la boucle
+
+3 FAIL en régression sonde 3 → diagnostic direct : l'app était correcte,
+les ASSERTIONS étaient périmées par les renommages (« Mobile du gérant »
+→ « Orange Money du gérant »…). Sondes alignées → 26/26. La distinction
+sonde-menteuse / code-cassé a été faite par MESURE, pas par confiance.
+
+## État : 55 écrans · 101/101 · 0 cassée · 0 orphelin · 0 débord
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;

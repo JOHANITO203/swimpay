@@ -474,6 +474,12 @@ button { font: inherit; color: inherit; }
 }
 .code .cm { color: var(--sourd); }
 .source { width: 100%; }
+.rond.marque { border: 0; color: #fff; font-weight: 700; font-size: 10.5px; letter-spacing: .02em; }
+#sw-solde, #rc-solde { display: inline; }
+.source.deux-cols { display: grid; grid-template-columns: 1fr 1fr; }
+.source.deux-cols .row { min-height: 54px; padding: 8px 12px; gap: 9px; }
+.source.deux-cols .row + .row { border-top: 0; }
+.source.deux-cols .row:nth-child(n+3) { border-top: 1px solid rgba(255, 255, 255, .05); }
 .source .row .coche-source { visibility: hidden; color: var(--acide); }
 .source .row[aria-pressed="true"] { background: var(--surface-2); }
 .source .row[aria-pressed="true"] .coche-source { visibility: visible; }
@@ -644,7 +650,10 @@ button { font: inherit; color: inherit; }
         </div>
         <div class="montant" id="a-solde">1 254 500<span>,00</span></div>
         <div class="delta"><b>+45 300 (3,7 %)</b> ce mois</div>
-        <button class="chip-capsule" data-va="carte-ecran"><i></i>··9654 · compte principal</button>
+        <span style="display: flex; gap: 8px; flex-wrap: wrap">
+          <button class="chip-capsule" data-va="recharger"><i style="background: var(--acide)"></i>Recharger</button>
+          <button class="chip-capsule" data-va="carte-ecran"><i></i>··9654 · compte principal</button>
+        </span>
       </div>
 
       <div class="actions">
@@ -699,7 +708,7 @@ button { font: inherit; color: inherit; }
             <span class="rond">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>
             </span>
-            <span class="txt"><b>Transférer entre réseaux</b><span>D'un mobile à l'autre</span></span>
+            <span class="txt"><b>Transférer</b><span>Vers tous les réseaux, SwimPay et les banques</span></span>
             <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
           </button>
           <button class="row" data-va="banque">
@@ -762,7 +771,7 @@ button { font: inherit; color: inherit; }
     <div class="saisie">
       <div class="montant" id="m-montant">25 000<i></i></div>
       <small id="e-solde">Solde disponible · 1 254 500</small><br>
-      <small class="recap" data-recap-de="env-moyens">Par Mobile money ····07 88 · immédiat · Frais — aucun</small>
+      <small class="recap" data-recap-de="env-moyens">Par Wave ····07 88 · immédiat · Frais — aucun</small>
     </div>
 
     <div class="carte">
@@ -778,7 +787,7 @@ button { font: inherit; color: inherit; }
       <div class="carte-head"><b>Elle reçoit sur</b></div>
       <button class="row" aria-pressed="true" data-delai="immédiat">
         <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
-        <span class="txt"><b>Mobile money ····07 88</b><span>Immédiat</span></span>
+        <span class="txt"><b>Wave ····07 88</b><span>Immédiat</span></span>
         <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
       </button>
       <button class="row" aria-pressed="false" data-delai="sous 3 heures">
@@ -927,7 +936,7 @@ button { font: inherit; color: inherit; }
           </div>
         </div>
         <div class="tuiles">
-          <div class="tuile"><small>Entrées</small><b class="credit">+311 500</b></div>
+          <div class="tuile"><small>Entrées</small><b class="credit" id="t-entrees">+311 500</b></div>
           <div class="tuile"><small>Sorties</small><b id="t-sorties">−30 700</b></div>
         </div>
       </aside>
@@ -1282,32 +1291,99 @@ button { font: inherit; color: inherit; }
       <button class="rond" data-va="accueil" aria-label="Retour">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
       </button>
-      <h2>Entre réseaux</h2>
+      <h2>Transférer</h2>
       <span class="vide"></span>
     </div>
 
     <div class="carte">
       <div class="row" style="cursor: default">
-        <span class="avatar">A</span>
-        <span class="txt" id="w-de"><b>Réseau A</b><span>Depuis · ····07 88</span></span>
-      </div>
-    </div>
-    <button class="inverse" id="w-inverse" aria-label="Inverser les réseaux">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v13m0 0-3-3m3 3 3-3M16 20V7m0 0-3 3m3-3 3 3"/></svg>
-    </button>
-    <div class="carte">
-      <div class="row" style="cursor: default">
-        <span class="avatar">B</span>
-        <span class="txt" id="w-vers"><b>Réseau B</b><span>Vers · ····12 44</span></span>
+        <span class="rond marque" style="background: var(--acide); color: #0B0C0E">S</span>
+        <span class="txt"><b>Mon compte SwimPay ····9654</b><span>Solde · <span id="sw-solde">1 254 500</span></span></span>
       </div>
     </div>
 
-    <div class="saisie" style="padding-top: 14px">
+    <label class="onb-etape" style="margin-top: 14px">Vers</label>
+    <div class="carte source deux-cols" id="sw-reseaux" style="margin-top: 6px">
+      <button class="row" aria-pressed="true" data-delai="immédiat">
+        <span class="rond marque" style="background: #FF7900">OM</span>
+        <span class="txt"><b>Orange Money</b><span>Immédiat</span></span>
+      </button>
+      <button class="row" aria-pressed="false" data-delai="immédiat">
+        <span class="rond marque" style="background: #FFCC00; color: #111">MTN</span>
+        <span class="txt"><b>MTN MoMo</b><span>Immédiat</span></span>
+      </button>
+      <button class="row" aria-pressed="false" data-delai="immédiat">
+        <span class="rond marque" style="background: #0066B3">MV</span>
+        <span class="txt"><b>Moov Money</b><span>Immédiat</span></span>
+      </button>
+      <button class="row" aria-pressed="false" data-delai="immédiat">
+        <span class="rond marque" style="background: #00B8F0">W</span>
+        <span class="txt"><b>Wave</b><span>Immédiat</span></span>
+      </button>
+      <button class="row" aria-pressed="false" data-delai="immédiat">
+        <span class="rond marque" style="background: var(--acide); color: #0B0C0E">S</span>
+        <span class="txt"><b>Compte SwimPay</b><span>Direct</span></span>
+      </button>
+      <button class="row" aria-pressed="false" data-delai="sous 3 heures">
+        <span class="rond"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg></span>
+        <span class="txt"><b>Banque</b><span>Sous 3 heures</span></span>
+      </button>
+    </div>
+
+    <label class="onb-etape" for="sw-num" style="margin-top: 14px">Numéro ou compte du destinataire</label>
+    <input class="champ" id="sw-num" inputmode="numeric" value="05 44 21 09 87" style="margin-top: 6px">
+
+    <div class="saisie" style="padding-top: 12px">
       <div class="montant" id="w-aff">50 000<i class="caret"></i></div>
-      <small class="recap">Frais — Aucun · Arrive en ~2 minutes</small>
+      <small class="recap" data-recap-de="sw-reseaux">Par Orange Money · immédiat · Frais — aucun</small>
     </div>
     <div class="numpad pad-slot" data-pad="m:swap" data-mene="envoye" style="margin-top: auto"></div>
     <button class="cta" id="w-cta">Transférer 50 000</button>
+  </div>
+</div>
+
+<div class="ecran" id="recharger" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="accueil" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Recharger</h2>
+      <span class="vide"></span>
+    </div>
+
+    <label class="onb-etape" style="margin-top: 14px">Depuis</label>
+    <div class="carte source" id="rc-sources" style="margin-top: 6px">
+      <button class="row" aria-pressed="true" data-delai="immédiat">
+        <span class="rond marque" style="background: #FF7900">OM</span>
+        <span class="txt"><b>Orange Money ····07 88</b><span>Immédiat</span></span>
+        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+      </button>
+      <button class="row" aria-pressed="false" data-delai="immédiat">
+        <span class="rond marque" style="background: #00B8F0">W</span>
+        <span class="txt"><b>Wave ····01 55</b><span>Immédiat</span></span>
+        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+      </button>
+      <button class="row" aria-pressed="false" data-delai="sous 3 heures">
+        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg></span>
+        <span class="txt"><b>Banque ····9102</b><span>Sous 3 heures</span></span>
+        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+      </button>
+    </div>
+
+    <div class="carte" style="margin-top: 10px">
+      <div class="row" style="cursor: default">
+        <span class="rond marque" style="background: var(--acide); color: #0B0C0E">S</span>
+        <span class="txt"><b>Vers mon compte SwimPay ····9654</b><span>Solde · <span id="rc-solde">1 254 500</span></span></span>
+      </div>
+    </div>
+
+    <div class="saisie">
+      <div class="montant" id="rc-aff">100 000<i class="caret"></i></div>
+      <small class="recap" data-recap-de="rc-sources">Par Orange Money ····07 88 · immédiat · Frais — aucun</small>
+    </div>
+    <div class="numpad pad-slot" data-pad="m:recharge" data-mene="envoye" style="margin-top: auto"></div>
+    <button class="cta" id="rc-cta">Recharger 100 000</button>
   </div>
 </div>
 
@@ -1791,7 +1867,7 @@ button { font: inherit; color: inherit; }
       </div>
       <h2 class="s-titre">Paiement reçu</h2>
       <div class="s-montant credit" id="bq-recu-montant" style="color: var(--acide)">+3 500</div>
-      <p class="s-dest" id="bq-source">Payé par mobile money · immédiat · ajouté à la caisse</p>
+      <p class="s-dest" id="bq-source">Payé par Wave · immédiat · ajouté à la caisse</p>
       <button class="cta cta-encre" data-va="bc-encaisser">Nouvel encaissement</button>
       <button class="link s-lien" data-va="b-commercant">Retour à la boutique</button>
     </div>
@@ -1998,12 +2074,12 @@ button { font: inherit; color: inherit; }
     <div class="carte source" id="pe-moyens" style="margin-top: 6px">
       <button class="row" aria-pressed="true" data-delai="immédiat">
         <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
-        <span class="txt"><b>Mobile money A ····07 88</b><span>Immédiat</span></span>
+        <span class="txt"><b>Orange Money ····07 88</b><span>Immédiat</span></span>
         <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
       </button>
       <button class="row" aria-pressed="false" data-delai="immédiat">
         <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
-        <span class="txt"><b>Mobile money B ····12 44</b><span>Immédiat</span></span>
+        <span class="txt"><b>Wave ····12 44</b><span>Immédiat</span></span>
         <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
       </button>
       <button class="row" aria-pressed="false" data-delai="sous 3 heures">
@@ -2018,7 +2094,7 @@ button { font: inherit; color: inherit; }
 
     <div class="saisie" style="padding-top: 16px">
       <div class="montant" id="pe-aff">420 000<i class="caret"></i></div>
-      <small class="recap" data-recap-de="pe-moyens">Par Mobile money A ····07 88 · immédiat · Frais — aucun</small>
+      <small class="recap" data-recap-de="pe-moyens">Par Orange Money ····07 88 · immédiat · Frais — aucun</small>
     </div>
     <div class="numpad pad-slot" data-pad="m:pmeenv" data-mene="envoye" style="margin-top: auto"></div>
     <button class="cta" id="pe-cta">Envoyer 420 000</button>
@@ -2043,7 +2119,7 @@ button { font: inherit; color: inherit; }
       </button>
       <button class="row" aria-pressed="false" data-delai="immédiat">
         <span class="rond"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
-        <span class="txt"><b>Mobile du gérant ····07 88</b><span>Immédiat</span></span>
+        <span class="txt"><b>Orange Money du gérant ····07 88</b><span>Immédiat</span></span>
         <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
       </button>
     </div>
@@ -2802,6 +2878,34 @@ let sorties = 30700;
 const heureCourte = () => new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 const refAlea = () => "SWP-" + Math.floor(1000 + Math.random() * 9000) + "-" + Math.floor(1000 + Math.random() * 9000);
 const ROND_SORTIE = `<span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span>`;
+const majSoldePartout = () => {
+  const joli = fmt(String(solde));
+  document.getElementById("a-solde").firstChild.textContent = joli;
+  document.getElementById("e-solde").textContent = "Solde disponible · " + joli;
+  document.getElementById("sw-solde").textContent = joli;
+  document.getElementById("rc-solde").textContent = joli;
+};
+let entrees = 311500;
+const crediteSolde = (nom, categorie, montant) => {
+  solde += montant;
+  entrees += montant;
+  majSoldePartout();
+  const te = document.getElementById("t-entrees");
+  if (te) te.textContent = "+" + fmt(String(entrees));
+  const joli = fmt(String(montant));
+  const ENTREE = `<span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"/></svg></span>`;
+  const ra = document.createElement("div");
+  ra.className = "row";
+  ra.dataset.t = "in";
+  ra.innerHTML = ENTREE + `<span class="txt"><b>${nom}</b><span>${categorie}</span></span><span class="fin"><b class="credit">+${joli}</b><span>${heureCourte()}</span></span>`;
+  const filtre = document.querySelector("#activite .chip.actif");
+  if (filtre && filtre.dataset.f === "out") ra.style.display = "none";
+  document.getElementById("m-liste").querySelector(".jour").after(ra);
+  const ops = document.getElementById("a-ops");
+  ops.querySelector(".carte-head").after(ra.cloneNode(true));
+  const rangees = ops.querySelectorAll(".row");
+  if (rangees.length > 3) rangees[rangees.length - 1].remove();
+};
 const rangeeSortie = (nom, categorie, montant, quand) => {
   const r = document.createElement("div");
   r.className = "row";
@@ -2813,8 +2917,7 @@ const debite = (nom, categorie, montant) => {
   const joli = fmt(String(montant));
   solde = Math.max(0, solde - montant);
   sorties += montant;
-  document.getElementById("a-solde").firstChild.textContent = fmt(String(solde));
-  document.getElementById("e-solde").textContent = "Solde disponible · " + fmt(String(solde));
+  majSoldePartout();
   document.getElementById("t-sorties").textContent = "−" + fmt(String(sorties));
   const ra = rangeeSortie(nom, categorie, joli, heureCourte());
   const filtre = document.querySelector(".chip.actif");
@@ -2838,6 +2941,8 @@ const cloture = ({ titre, sous, montant, nom, categorie, livre, retour, credit }
   } else if (livre === "pme-credit") {
     tresoPME += montant;
     rangeePme(nom, categorie, "+", montant);
+  } else if (livre === "perso-credit") {
+    crediteSolde(nom, categorie, montant);
   } else {
     debite(nom, categorie, montant);
   }
@@ -2983,12 +3088,25 @@ document.getElementById("p2-cta").addEventListener("click", function () {
 });
 document.getElementById("w-cta").addEventListener("click", function () {
   const m = parseInt(fluxM.swap || "0", 10); if (m <= 0) return;
-  const de = document.querySelector("#w-de b").textContent;
-  const vers = document.querySelector("#w-vers b").textContent;
+  const moyen = moyenActif("sw-reseaux");
+  const num = document.getElementById("sw-num").value.trim() || "····";
   occupe(this, "Transfert en cours…", () => {
     majFlux("swap");
-    cloture({ titre: "Transfert envoyé", sous: de + " → " + vers + " · arrive en ~2 minutes",
-      montant: m, nom: "Entre réseaux", categorie: de + " vers " + vers });
+    cloture({ titre: "Transfert envoyé", sous: "Vers " + moyen.nom + " " + num + " · " + moyen.delai,
+      montant: m, nom: "Transfert " + moyen.nom, categorie: "Vers " + num });
+  });
+});
+/* recharger — le rail crédite le compte SwimPay */
+fluxM.recharge = "100000";
+FLUX_CFG.recharge = { aff: "rc-aff", cta: "rc-cta", libelle: (m) => "Recharger " + m };
+document.getElementById("rc-cta").addEventListener("click", function () {
+  const m = parseInt(fluxM.recharge || "0", 10); if (m <= 0) return;
+  const source = moyenActif("rc-sources");
+  occupe(this, "Rechargement…", () => {
+    majFlux("recharge");
+    cloture({ titre: "Compte rechargé", sous: "Depuis " + source.nom + " · " + source.delai,
+      montant: m, nom: "Recharge", categorie: "Depuis " + source.nom,
+      livre: "perso-credit", credit: true });
   });
 });
 document.getElementById("b-cta").addEventListener("click", function () {
@@ -3039,20 +3157,6 @@ document.getElementById("r-copier").addEventListener("click", function () {
 });
 document.getElementById("r-partager").addEventListener("click", function () {
   retourBtn(this, "Lien de paiement copié");
-});
-
-/* swap : inversion des réseaux */
-document.getElementById("w-inverse").addEventListener("click", () => {
-  const de = document.getElementById("w-de");
-  const vers = document.getElementById("w-vers");
-  const nomDe = de.querySelector("b").textContent;
-  de.querySelector("b").textContent = vers.querySelector("b").textContent;
-  vers.querySelector("b").textContent = nomDe;
-  const sd = de.querySelector("span"), sv = vers.querySelector("span");
-  const numDe = sd.textContent.replace("Depuis · ", "");
-  const numVers = sv.textContent.replace("Vers · ", "");
-  sd.textContent = "Depuis · " + numVers;
-  sv.textContent = "Vers · " + numDe;
 });
 
 /* bascules du profil */
@@ -3116,7 +3220,7 @@ document.getElementById("bq-simule").addEventListener("click", function () {
   occupe(this, "Paiement en cours…", () => {
     this.textContent = "Paiement reçu — simuler";
     encaisse(parseInt(fluxM.caisse || "0", 10), "Vente au comptoir",
-      "Payé par mobile money · immédiat · ajouté à la caisse");
+      "Payé par " + RESEAUX_CI[caisseN % 4] + " · immédiat · ajouté à la caisse");
   });
 });
 /* scan du client — on encaisse SON compte, identité vérifiée */
@@ -3187,13 +3291,14 @@ document.getElementById("cc-partager").addEventListener("click", function () { r
 /* PME — équipe et factures vivantes, salaires en cascade, édition au pad */
 const COCHE_MINI = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>`;
 const employes = [
-  { nom: "Aminata D.", role: "Couturière", sal: 280000, eq: "Production", moyen: "Mobile money ····43 07" },
-  { nom: "Karim B.", role: "Coupeur", sal: 260000, eq: "Production", moyen: "Mobile money ····81 15" },
+  { nom: "Aminata D.", role: "Couturière", sal: 280000, eq: "Production", moyen: "Orange Money ····43 07" },
+  { nom: "Karim B.", role: "Coupeur", sal: 260000, eq: "Production", moyen: "Wave ····81 15" },
   { nom: "Fatou S.", role: "Vendeuse", sal: 240000, eq: "Vente", moyen: "Banque ····5520" },
-  { nom: "Moussa O.", role: "Livreur", sal: 220000, eq: "Livraison", moyen: "Mobile money ····62 90" },
-  { nom: "Rokia L.", role: "Apprentie", sal: 160000, eq: "Production", moyen: "Mobile money ····17 33" },
+  { nom: "Moussa O.", role: "Livreur", sal: 220000, eq: "Livraison", moyen: "MTN MoMo ····62 90" },
+  { nom: "Rokia L.", role: "Apprentie", sal: 160000, eq: "Production", moyen: "Moov Money ····17 33" },
 ];
-const moyenAuto = () => "Mobile money ····" + String(10 + ((employes.length * 7) % 80)) + " " + String(20 + ((employes.length * 13) % 70));
+const RESEAUX_CI = ["Orange Money", "Wave", "MTN MoMo", "Moov Money"];
+const moyenAuto = () => RESEAUX_CI[employes.length % 4] + " ····" + String(10 + ((employes.length * 7) % 80)) + " " + String(20 + ((employes.length * 13) % 70));
 const initiales = (nom) => nom.trim().split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 const ech = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let filtreEq = "Toutes";
