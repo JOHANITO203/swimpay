@@ -94,6 +94,32 @@ ALIMENTE aussitôt les flux du profil : recharge (perso), retraits
 (commerçant, e-commerce), dépôts (PME). Un seul registre `liaisons`
 par profil ; les écrans de flux se rendent depuis ce registre.
 
+## 2 quater. Qui reçoit — l'Annuaire décide de ce que le Routeur propose
+
+Deux écrans, une même règle : **on ne route que vers un compte qu'on a
+désigné**, et c'est l'Annuaire qui dit ce qu'on sait de lui.
+
+**Perso — `destinataire`** (depuis Envoyer › Changer)
+- *Mes contacts* : recherche par nom OU par numéro ; chaque contact affiche
+  combien de comptes lui sont rattachés (la thèse : 1 personne → N comptes).
+- Choisir un contact **repeuple la liste « reçoit sur »** avec SES comptes —
+  le Routeur n'invente rien, il propose ce que l'Annuaire connaît.
+- *Pas dans la liste* : un numéro se saisit. S'il est déjà à l'Annuaire, il
+  est reconnu (« déjà dans l'Annuaire »). Sinon : **hors Annuaire** — pas
+  d'identité garantie, et c'est l'utilisateur qui désigne le rail parmi les
+  quatre mobile money. Le numéro entre alors au carnet.
+- Le reçu et le grand livre portent le destinataire réel, pas un nom figé.
+
+**Business — `destination`** (depuis Retirer bc/ec et Envoyer PME)
+- Trois origines : *mes comptes liés* (registre `liaisons`), *bénéficiaires
+  enregistrés* (registre `beneficiaires`, propre au profil), *autre compte*
+  (type de rail, titulaire, numéro — l'Annuaire confirme le nom s'il connaît).
+- Un compte neuf peut être **enregistré comme bénéficiaire** au passage.
+- Retour dans le flux appelant : commerçant et e-commerce reçoivent une
+  rangée « hors comptes liés » **déjà sélectionnée** ; la PME voit son
+  destinataire, son numéro et son rail remplis. Frais et délai suivent le
+  type de rail (`fraisType` : SwimPay gratuit, banque 200, mobile money 1 %).
+
 ## 3. Le pont entre profils (l'Annuaire au sens fort)
 
 - Chaque panneau business nomme son **gérant** : la même personne physique

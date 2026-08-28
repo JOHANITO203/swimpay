@@ -786,26 +786,17 @@ button { font: inherit; color: inherit; }
     </div>
 
     <div class="carte">
-      <div class="carte-head"><b>Destinataire</b><button class="link">Changer</button></div>
-      <button class="row">
-        <span class="avatar">AK</span>
-        <span class="txt"><b>Awa K.</b><span>Identité vérifiée · un seul compte</span></span>
+      <div class="carte-head"><b>Destinataire</b><button class="link" data-va="destinataire">Changer</button></div>
+      <button class="row" data-va="destinataire">
+        <span class="avatar" id="env-ini">AK</span>
+        <span class="txt"><b id="env-nom">Awa K.</b><span id="env-sub">Identité vérifiée · 2 comptes</span></span>
         <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
       </button>
     </div>
 
     <div class="carte source" id="env-moyens" style="margin-top: 10px">
-      <div class="carte-head"><b>Elle reçoit sur</b></div>
-      <button class="row" aria-pressed="true" data-delai="immédiat" data-frais="1 %">
-        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
-        <span class="txt"><b>Wave ····07 88</b><span>Immédiat</span></span>
-        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
-      </button>
-      <button class="row" aria-pressed="false" data-delai="sous 3 heures" data-frais="200">
-        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg></span>
-        <span class="txt"><b>Banque ····9102</b><span>Sous 3 heures</span></span>
-        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
-      </button>
+      <div class="carte-head"><b id="env-tete">Awa K. reçoit sur</b></div>
+      <div id="env-rangees"></div>
     </div>
 
     <div class="numpad" id="m-pad">
@@ -848,6 +839,75 @@ button { font: inherit; color: inherit; }
 
     <button class="cta cta-encre" id="s-termine" data-va="accueil">Terminé</button>
     <button class="link s-lien" id="s-voir" data-va="activite">Voir dans l'activité</button>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     DESTINATAIRE — l'Annuaire d'identité côté personnel :
+     mes contacts, ou un numéro qui n'en fait pas partie
+     ================================================================ -->
+<div class="ecran" id="destinataire" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="envoyer" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>
+      <h2>Destinataire</h2>
+      <span class="vide"></span>
+    </div>
+
+    <label class="onb-etape" for="dst-rech" style="margin-top: 14px">Rechercher</label>
+    <input class="champ" id="dst-rech" placeholder="Nom ou numéro" style="margin-top: 6px">
+
+    <h2 class="sec" style="margin-top: 18px">Mes contacts</h2>
+    <div class="carte" id="dst-liste"></div>
+    <p class="badge-jour" id="dst-vide" hidden>Aucun contact ne correspond — saisis le numéro ci-dessous</p>
+
+    <h2 class="sec" style="margin-top: 20px">Pas dans la liste</h2>
+    <div class="carte" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+      <input class="champ" id="dst-num" inputmode="numeric" placeholder="07 00 00 00 00">
+      <div class="verifie" id="dst-resolu">L'Annuaire répond dès que le numéro est complet</div>
+      <button class="btn" id="dst-utilise" data-mene="envoyer">Utiliser ce numéro</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     DESTINATION — côté business : mes comptes liés, mes bénéficiaires,
+     ou un compte qui n'est ni l'un ni l'autre (mobile money / banque)
+     ================================================================ -->
+<div class="ecran" id="destination" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" id="dn-retour" data-mene="bc-retrait ec-retrait pme-envoyer" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>
+      <h2>Destination</h2>
+      <span class="vide"></span>
+    </div>
+
+    <h2 class="sec" style="margin-top: 16px">Mes comptes liés</h2>
+    <div class="carte" id="dn-miens"></div>
+
+    <h2 class="sec" style="margin-top: 20px">Bénéficiaires enregistrés</h2>
+    <div class="carte" id="dn-benef"></div>
+    <p class="badge-jour" id="dn-benef-vide" hidden>Aucun bénéficiaire — le premier compte saisi ci-dessous peut être enregistré</p>
+
+    <h2 class="sec" style="margin-top: 20px">Autre compte</h2>
+    <div class="carte" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+      <div class="chips" data-groupe="dn-type" style="padding: 0; flex-wrap: wrap">
+        <button class="chip actif" data-t="om">Orange Money</button>
+        <button class="chip" data-t="mtn">MTN</button>
+        <button class="chip" data-t="moov">Moov</button>
+        <button class="chip" data-t="wave">Wave</button>
+        <button class="chip" data-t="swim">SwimPay</button>
+        <button class="chip" data-t="banque">Banque</button>
+      </div>
+      <input class="champ" id="dn-nom" placeholder="Nom du titulaire">
+      <input class="champ" id="dn-num" inputmode="numeric" placeholder="Numéro ou compte">
+      <div class="verifie" id="dn-resolu">L'Annuaire répond dès que le numéro est complet</div>
+      <div class="chips" style="padding: 0">
+        <button class="chip" id="dn-garde">Enregistrer comme bénéficiaire</button>
+      </div>
+      <button class="btn" id="dn-utilise">Utiliser cette destination</button>
+    </div>
   </div>
 </div>
 
@@ -1793,6 +1853,7 @@ button { font: inherit; color: inherit; }
 
     <label class="onb-etape" style="margin-top: 14px">Vers</label>
     <div class="carte source" id="rt-dest" style="margin-top: 6px"></div>
+    <button class="btn dest-ouvre" data-dest="bc" data-retour="bc-retrait" data-mene="destination" style="margin-top: 10px">Retirer vers un autre compte</button>
 
     <div class="saisie">
       <div class="montant" id="rt-aff">148 500<i class="caret"></i></div>
@@ -2123,6 +2184,7 @@ button { font: inherit; color: inherit; }
 
     <label class="onb-etape" for="pe-dest" style="margin-top: 16px">Destinataire</label>
     <input class="champ" id="pe-dest" value="Fournisseur Tissus &amp; Fils" style="margin-top: 6px">
+    <button class="btn dest-ouvre" data-dest="pme" data-retour="pme-envoyer" data-mene="destination" style="margin-top: 8px">Choisir un bénéficiaire ou un autre compte</button>
 
     <label class="onb-etape" style="margin-top: 14px">Moyen de réception</label>
     <div class="carte source deux-cols" id="pe-moyens" style="margin-top: 6px">
@@ -2391,6 +2453,7 @@ button { font: inherit; color: inherit; }
 
     <label class="onb-etape" style="margin-top: 10px">Vers</label>
     <div class="carte source" id="er-dest" style="margin-top: 6px"></div>
+    <button class="btn dest-ouvre" data-dest="ec" data-retour="ec-retrait" data-mene="destination" style="margin-top: 10px">Retirer vers un autre compte</button>
 
     <div class="saisie">
       <div class="montant" id="er-aff">86 000<i class="caret"></i></div>
@@ -3098,6 +3161,9 @@ const poseLogosRails = () => {
   });
 };
 
+const initiales = (nom) => nom.trim().split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+const ech = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
 /* navigation entre écrans — le hash est l'état */
 const vaHooks = []; /* remplis plus bas : préparation d'un écran à l'entrée */
 const va = (id) => {
@@ -3308,8 +3374,8 @@ cta.addEventListener("click", () => {
     const moyen = moyenActif("env-moyens");
     cloture({
       titre: "Transfert envoyé",
-      sous: "à Awa K. · " + moyen.nom + " · " + moyen.delai,
-      montant, nom: "Envoyé à Awa K.", categorie: moyen.nom, frais: moyen.frais,
+      sous: "à " + destPerso.nom + " · " + moyen.nom + " · " + moyen.delai,
+      montant, nom: "Envoyé à " + destPerso.nom, categorie: moyen.nom, frais: moyen.frais,
     });
   }));
 });
@@ -3431,18 +3497,50 @@ document.getElementById("w-cta").addEventListener("click", function () {
       montant: m, nom: "Transfert " + moyen.nom, categorie: "Vers " + num, frais: moyen.frais });
   }));
 });
+/* ═══ L'ANNUAIRE D'IDENTITÉ ═══
+   un numéro → une personne → ses comptes. Hors Annuaire, l'identité n'est
+   pas garantie et c'est l'utilisateur qui désigne le rail de réception. */
+const chiffres = (v) => String(v || "").replace(/[^0-9]/g, "");
+const CONTACTS = [
+  { nom: "Awa K.", num: "07 88 12 34 56", verifie: true, comptes: [
+    { t: "wave", nom: "Wave", num: "····07 88" },
+    { t: "banque", nom: "Banque", num: "····9102" } ] },
+  { nom: "Issa D.", num: "05 44 21 09 87", verifie: true, comptes: [
+    { t: "om", nom: "Orange Money", num: "····09 87" },
+    { t: "swim", nom: "Compte SwimPay", num: "····3120" } ] },
+  { nom: "Julien M.", num: "07 12 40 55 21", verifie: true, comptes: [
+    { t: "swim", nom: "Compte SwimPay", num: "····4410" },
+    { t: "om", nom: "Orange Money", num: "····55 21" } ] },
+  { nom: "Sarah B.", num: "01 55 92 30 14", verifie: true, comptes: [
+    { t: "wave", nom: "Wave", num: "····30 14" } ] },
+  { nom: "Marc T.", num: "05 07 88 12 09", verifie: true, comptes: [
+    { t: "mtn", nom: "MTN MoMo", num: "····12 09" },
+    { t: "banque", nom: "Banque", num: "····7731" } ] },
+];
+const cherche = (num) => {
+  const n = chiffres(num);
+  return n.length >= 10 ? CONTACTS.find((c) => chiffres(c.num) === n) || null : null;
+};
+const COCHE_ANNU = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>';
+/* hors Annuaire : on ne connaît que le numéro, le rail se choisit à la main */
+const railsInconnus = (num) => ["om", "mtn", "moov", "wave"].map((t) => ({
+  t, nom: TYPES_LIA[t].nom, num: "····" + chiffres(num).slice(-4).replace(/(\d\d)(\d\d)/, "$1 $2"),
+}));
+
 /* l'Annuaire résout le numéro du widget en identité vérifiée */
 const resoudNumero = () => {
   const el = document.getElementById("sw-resolu");
-  const num = (document.getElementById("sw-num").value || "").replace(/[^0-9]/g, "");
-  if (num.length < 8) {
+  const num = document.getElementById("sw-num").value;
+  if (chiffres(num).length < 10) {
     el.innerHTML = "Numéro incomplet — l'identité s'affichera ici";
     el.style.color = "var(--sourd)";
     return;
   }
-  const nom = parseInt(num[num.length - 1], 10) % 2 === 0 ? "Awa K." : "Issa D.";
+  const c = cherche(num);
   el.style.color = "";
-  el.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg> ${nom} · identité vérifiée`;
+  el.innerHTML = c
+    ? `${COCHE_ANNU} ${ech(c.nom)} · identité vérifiée`
+    : "Hors Annuaire — le compte sera crédité sur le rail choisi";
 };
 document.getElementById("sw-num").addEventListener("input", resoudNumero);
 resoudNumero();
@@ -3475,8 +3573,11 @@ const TYPES_LIA = {
   mtn: { nom: "MTN MoMo", get pastille() { return pastilleRail("mtn"); }, delai: "immédiat" },
   moov: { nom: "Moov Money", get pastille() { return pastilleRail("moov"); }, delai: "immédiat" },
   wave: { nom: "Wave", get pastille() { return pastilleRail("wave"); }, delai: "immédiat" },
+  swim: { nom: "Compte SwimPay", get pastille() { return pastilleRail("swim"); }, delai: "immédiat" },
   banque: { nom: "Banque", pastille: '<span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg></span>', delai: "sous 3 heures" },
 };
+/* le Routeur tarife par type de rail : SwimPay interne gratuit, banque au forfait */
+const fraisType = (t) => (t === "banque" ? "200" : t === "swim" ? "aucun" : "1 %");
 const liaisons = {
   bc: [
     { t: "banque", nom: "Banque", num: "····2201", sub: "Kiosque 12 · sous 3 heures" },
@@ -3501,21 +3602,41 @@ const moneysPerso = [
   { t: "wave", nom: "Wave", num: "····01 55" },
 ];
 const FLUX_DE_LIAISON = { bc: "rt-dest", pme: "dp-sources", ec: "er-dest" };
+/* bénéficiaires connus du profil — des comptes qui ne sont pas les siens */
+const beneficiaires = {
+  bc: [
+    { t: "wave", nom: "Fournisseur Bassam", num: "····44 20", complet: "07 44 20 18 03" },
+    { t: "om", nom: "Loyer — M. Koné", num: "····12 07", complet: "05 12 07 66 41" },
+  ],
+  pme: [
+    { t: "om", nom: "Fournisseur Tissus & Fils", num: "····89 55", complet: "07 89 55 10 42" },
+    { t: "wave", nom: "Transporteur Yao", num: "····30 77", complet: "01 30 77 24 18" },
+    { t: "banque", nom: "CNPS — cotisations", num: "····6120", complet: "6120 4477" },
+  ],
+  ec: [
+    { t: "mtn", nom: "Logistique Abidjan", num: "····88 41", complet: "05 88 41 09 62" },
+  ],
+};
+/* destinations utilisées dans la session sans être des comptes liés */
+const destinationsAd = { bc: [], pme: [], ec: [] };
 const rangeeLiaison = (l, actif) => {
   const type = TYPES_LIA[l.t];
   const delai = type.delai;
   /* la même rangée sert entrées (gratuites) et sorties (frais typés) */
-  return `<button class="row" aria-pressed="${actif}" data-delai="${delai}" data-frais="${l.t === "banque" ? "200" : "1 %"}" data-frais="${l.t === "banque" ? "200" : "1 %"}">
+  return `<button class="row" aria-pressed="${actif}" data-delai="${delai}" data-frais="${fraisType(l.t)}">
     ${type.pastille}
     <span class="txt"><b>${ech(l.nom)} ${l.num}</b><span>${l.sub || (delai === "immédiat" ? "Immédiat" : "Sous 3 heures")}</span></span>
     ${COCHE_SRC}
   </button>`;
 };
-const renderLiaisons = (cle) => {
+const renderLiaisons = (cle, actifIdx = 0) => {
   const flux = FLUX_DE_LIAISON[cle];
   if (flux) {
+    /* une sortie accepte aussi les destinations hors comptes liés */
+    const sortie = flux === "rt-dest" || flux === "er-dest";
+    const tous = sortie ? [...liaisons[cle], ...destinationsAd[cle]] : liaisons[cle];
     document.getElementById(flux).innerHTML =
-      liaisons[cle].map((l, i) => rangeeLiaison(l, i === 0)).join("");
+      tous.map((l, i) => rangeeLiaison(l, i === actifIdx)).join("");
   }
   const liste = document.getElementById("lia-liste-" + cle);
   if (liste) {
@@ -3754,8 +3875,7 @@ const employes = [
 ];
 const RESEAUX_CI = ["Orange Money", "Wave", "MTN MoMo", "Moov Money"];
 const moyenAuto = () => RESEAUX_CI[employes.length % 4] + " ····" + String(10 + ((employes.length * 7) % 80)) + " " + String(20 + ((employes.length * 13) % 70));
-const initiales = (nom) => nom.trim().split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
-const ech = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+/* initiales() et ech() sont montés en tête du script — ils servent partout */
 let filtreEq = "Toutes";
 const visiblesEq = () => employes.filter((e) => filtreEq === "Toutes" || e.eq === filtreEq);
 const totalSalaires = () => visiblesEq().reduce((s, e) => s + e.sal, 0);
@@ -4240,7 +4360,7 @@ const moyenActif = (id) => {
 };
 poseLogosRails();
 renderBanques(); /* rend aussi les sources de recharge, puis rafraîchit les récaps */
-["bc", "pme", "ec", "cpt"].forEach(renderLiaisons);
+["bc", "pme", "ec", "cpt"].forEach((c) => renderLiaisons(c));
 /* lier un compte — le formulaire générique de chaque panneau */
 document.addEventListener("click", (e) => {
   const chip = e.target.closest(".lia-form .chip[data-t]");
@@ -4269,6 +4389,179 @@ document.addEventListener("click", (e) => {
   form.querySelector(".lia-nom").value = "";
   retourBtn(b, "Compte lié");
 });
+/* ═══ CHOISIR QUI REÇOIT ═══
+   Perso : l'Annuaire donne l'identité et SES comptes — c'est lui qui peuple
+   la liste « reçoit sur ». Hors Annuaire, l'utilisateur désigne le rail. */
+let destPerso = CONTACTS[0];
+const majDestinataire = () => {
+  const d = destPerso;
+  document.getElementById("env-ini").textContent = d.verifie ? initiales(d.nom) : "··";
+  document.getElementById("env-nom").textContent = d.nom;
+  document.getElementById("env-sub").textContent = d.verifie
+    ? "Identité vérifiée · " + d.comptes.length + (d.comptes.length > 1 ? " comptes" : " compte")
+    : "Hors Annuaire · " + d.num;
+  document.getElementById("env-tete").textContent = d.verifie
+    ? d.nom + " reçoit sur"
+    : "Rail de réception";
+  document.getElementById("env-rangees").innerHTML =
+    d.comptes.map((l, i) => rangeeLiaison(l, i === 0)).join("");
+  majRoutages();
+};
+const rendContacts = () => {
+  const q = (document.getElementById("dst-rech").value || "").trim().toLowerCase();
+  const qn = chiffres(q);
+  const vus = CONTACTS.filter((c) =>
+    !q || c.nom.toLowerCase().includes(q) || (qn && chiffres(c.num).includes(qn)));
+  document.getElementById("dst-liste").innerHTML = vus.map((c) => `
+    <button class="row" data-contact="${ech(c.num)}">
+      <span class="avatar">${ech(c.verifie ? initiales(c.nom) : "··")}</span>
+      <span class="txt"><b>${ech(c.nom)}</b><span>${ech(c.num)} · ${
+        c.verifie ? c.comptes.length + (c.comptes.length > 1 ? " comptes" : " compte") : "hors Annuaire"}</span></span>
+      <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+    </button>`).join("");
+  document.getElementById("dst-vide").hidden = vus.length > 0;
+};
+const resoudDst = () => {
+  const el = document.getElementById("dst-resolu");
+  const num = document.getElementById("dst-num").value;
+  if (chiffres(num).length < 10) {
+    el.innerHTML = "L'Annuaire répond dès que le numéro est complet";
+    return;
+  }
+  const c = cherche(num);
+  el.innerHTML = c
+    ? `${COCHE_ANNU} ${ech(c.nom)} · déjà dans l'Annuaire`
+    : "Hors Annuaire — tu choisiras le rail de réception à l'écran suivant";
+};
+const prendDestinataire = (d) => { destPerso = d; majDestinataire(); va("envoyer"); };
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-contact]");
+  if (!b) return;
+  const c = CONTACTS.find((x) => x.num === b.dataset.contact);
+  if (c) prendDestinataire(c);
+});
+document.getElementById("dst-rech").addEventListener("input", rendContacts);
+document.getElementById("dst-num").addEventListener("input", resoudDst);
+document.getElementById("dst-utilise").addEventListener("click", function () {
+  const brutNum = document.getElementById("dst-num").value;
+  if (chiffres(brutNum).length < 10) { retourBtn(this, "10 chiffres requis"); return; }
+  const connu = cherche(brutNum);
+  const d = connu || {
+    nom: parPaires(chiffres(brutNum)), num: parPaires(chiffres(brutNum)),
+    verifie: false, comptes: railsInconnus(brutNum),
+  };
+  if (!connu) CONTACTS.push(d); /* le carnet garde le numéro pour la prochaine fois */
+  document.getElementById("dst-num").value = "";
+  resoudDst();
+  prendDestinataire(d);
+});
+
+/* ═══ CHOISIR OÙ VA L'ARGENT (business) ═══
+   Trois origines : mes comptes liés, mes bénéficiaires, un compte nouveau.
+   Un compte nouveau passe par l'Annuaire avant d'entrer dans le Routeur. */
+let ctxDest = { cle: "bc", retour: "bc-retrait" };
+const rangeeDest = (d, ref) => `
+  <button class="row" data-dn="${ref}">
+    ${TYPES_LIA[d.t].pastille}
+    <span class="txt"><b>${ech(d.nom)} ${ech(d.num)}</b><span>${
+      TYPES_LIA[d.t].nom} · ${TYPES_LIA[d.t].delai} · Frais — ${fraisType(d.t)}</span></span>
+    <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+  </button>`;
+const rendDestination = () => {
+  const cle = ctxDest.cle;
+  document.getElementById("dn-miens").innerHTML =
+    liaisons[cle].map((l, i) => rangeeDest(l, "mien:" + i)).join("");
+  document.getElementById("dn-benef").innerHTML =
+    beneficiaires[cle].map((b, i) => rangeeDest(b, "benef:" + i)).join("");
+  document.getElementById("dn-benef-vide").hidden = beneficiaires[cle].length > 0;
+  document.getElementById("dn-resolu").innerHTML = "L'Annuaire répond dès que le numéro est complet";
+};
+document.addEventListener("click", (e) => {
+  const b = e.target.closest(".dest-ouvre");
+  if (!b) return;
+  ctxDest = { cle: b.dataset.dest, retour: b.dataset.retour };
+  va("destination");
+});
+document.getElementById("dn-retour").addEventListener("click", () => va(ctxDest.retour));
+document.getElementById("dn-garde").addEventListener("click", function () {
+  this.classList.toggle("actif");
+});
+document.getElementById("dn-num").addEventListener("input", function () {
+  const el = document.getElementById("dn-resolu");
+  if (chiffres(this.value).length < 10) {
+    el.innerHTML = "L'Annuaire répond dès que le numéro est complet";
+    return;
+  }
+  const c = cherche(this.value);
+  el.innerHTML = c
+    ? `${COCHE_ANNU} ${ech(c.nom)} · identité vérifiée`
+    : "Hors Annuaire — le nom saisi sera celui du reçu";
+  const champNom = document.getElementById("dn-nom");
+  if (c && !champNom.value.trim()) champNom.value = c.nom;
+});
+/* la destination choisie entre dans le flux qui a ouvert l'écran */
+const utiliseDestination = (d, idxMien) => {
+  const cle = ctxDest.cle;
+  if (cle === "pme") {
+    document.getElementById("pe-dest").value = d.nom;
+    document.getElementById("pe-num").value = d.complet || d.num.replace(/·/g, "").trim();
+    const rail = TYPES_LIA[d.t].nom;
+    document.querySelectorAll("#pe-moyens .row").forEach((r) => {
+      r.setAttribute("aria-pressed", r.querySelector(".txt b").textContent === rail);
+    });
+  } else if (idxMien !== undefined) {
+    renderLiaisons(cle, idxMien); /* déjà un compte lié : on le sélectionne */
+  } else {
+    const deja = destinationsAd[cle].findIndex((x) => x.nom === d.nom && x.num === d.num);
+    if (deja === -1) destinationsAd[cle].push(d);
+    renderLiaisons(cle, liaisons[cle].length +
+      (deja === -1 ? destinationsAd[cle].length - 1 : deja));
+  }
+  majRoutages();
+  va(ctxDest.retour);
+};
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-dn]");
+  if (!b) return;
+  const [ou, i] = b.dataset.dn.split(":");
+  const idx = parseInt(i, 10);
+  const src = ou === "mien" ? liaisons[ctxDest.cle] : beneficiaires[ctxDest.cle];
+  const d = src[idx];
+  if (!d) return;
+  if (ou === "mien") utiliseDestination(d, idx);
+  else utiliseDestination({ ...d, sub: "Hors comptes liés · " + TYPES_LIA[d.t].delai });
+});
+document.getElementById("dn-utilise").addEventListener("click", function () {
+  const t = document.querySelector(".chips[data-groupe='dn-type'] .chip.actif").dataset.t;
+  const nom = document.getElementById("dn-nom").value.trim();
+  const brutNum = document.getElementById("dn-num").value;
+  const n = chiffres(brutNum);
+  if (t === "banque" ? n.length < 4 : n.length < 10) {
+    retourBtn(this, t === "banque" ? "4 chiffres minimum" : "10 chiffres requis");
+    return;
+  }
+  const connu = cherche(brutNum);
+  const titulaire = nom || (connu ? connu.nom : parPaires(n));
+  const d = {
+    t, nom: titulaire, complet: brutNum.trim(),
+    num: "····" + (t === "banque" ? n.slice(-4) : n.slice(-4).replace(/(\d\d)(\d\d)/, "$1 $2")),
+    sub: "Hors comptes liés · " + TYPES_LIA[t].delai,
+  };
+  if (document.getElementById("dn-garde").classList.contains("actif")) {
+    beneficiaires[ctxDest.cle].push({ t, nom: titulaire, num: d.num, complet: d.complet });
+    document.getElementById("dn-garde").classList.remove("actif");
+  }
+  document.getElementById("dn-nom").value = "";
+  document.getElementById("dn-num").value = "";
+  utiliseDestination(d);
+});
+/* préparation à l'entrée des deux écrans */
+vaHooks.push((cible) => {
+  if (cible === "destinataire") { document.getElementById("dst-rech").value = ""; rendContacts(); resoudDst(); }
+  if (cible === "destination") rendDestination();
+});
+majDestinataire();
+
 document.getElementById("dp-cta").addEventListener("click", function () {
   const m = parseInt(fluxM.depot || "0", 10); if (m <= 0) return;
   const source = document.querySelector("#dp-sources .row[aria-pressed='true'] .txt b").textContent;

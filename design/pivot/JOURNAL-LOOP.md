@@ -644,7 +644,41 @@ Assets déposés par le commanditaire (Orange, MTN, Moov Africa, Wave 2K).
   et la vérification se fait sur LE FICHIER relu, jamais sur l'aperçu
   en mémoire.
 
-## État : 59 écrans · 160/160 (27+22+26+17+16+16+9+13+14) · 0 défaut
+## Boucle 16 — choisir qui reçoit (demande du commanditaire)
+
+Deux demandes : (a) sur Envoyer perso, le bouton « Changer » doit mener aux
+contacts ET permettre un numéro hors liste ; (b) les retraits business et
+l'envoi PME doivent viser aussi des comptes **qui ne sont pas les siens**.
+
+- **`destinataire`** (perso) : recherche nom/numéro, 5 contacts avec le
+  nombre de comptes rattachés, saisie libre. Le contact choisi **repeuple
+  la liste « reçoit sur »** avec ses propres comptes — l'Annuaire commande
+  le Routeur, il ne le décore pas. Hors Annuaire : identité non garantie,
+  4 rails mobile money à désigner, numéro gardé au carnet.
+- **`destination`** (business) : mes comptes liés · bénéficiaires
+  enregistrés · autre compte (rail, titulaire, numéro, Annuaire, option
+  « enregistrer comme bénéficiaire »). Un seul écran sert les trois flux
+  (bc-retrait, ec-retrait, pme-envoyer) via `ctxDest` ; le retour rend au
+  flux appelant avec la destination déjà sélectionnée.
+- Effets vrais : le reçu et le grand livre nomment le destinataire réel ;
+  les rangées de réception passent au rendu unifié, donc aux vrais logos.
+- Sonde : **parcours 11, 31/31**, régressions 160/160 inchangées,
+  structure 61 écrans / 0 cassée / 0 orphelin / 0 débord.
+
+### Trois pannes, trois causes distinctes
+1. `const initiales` existait déjà → j'ai monté `initiales` ET `ech` en
+   tête du script (ils servaient avant leur déclaration : `ech` aurait
+   levé une TDZ au premier appel de `resoudNumero`).
+2. `COCHE_MINI` existait déjà (coche acide des listes) → collision de
+   déclaration, script entier mort (`va is not defined`). Diagnostic par
+   `Runtime.exceptionThrown` (sonde `erreur.mjs`, à garder) : la sonde de
+   structure ne disait que le symptôme, jamais la cause.
+3. **La sonde mentait** : `/\s+/` écrit dans un template literal JS devient
+   `/s+/` — elle découpait les cibles sur la lettre « s » (« destinataire »
+   → « de » + « tinataire »). Règle : dans le code envoyé par CDP, pas
+   d'échappement regex ; ici `.split(" ")`.
+
+## État : 61 écrans · 191/191 (27+22+26+17+16+16+9+13+14+31) · 0 défaut
 
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
