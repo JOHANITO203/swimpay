@@ -678,7 +678,47 @@ l'envoi PME doivent viser aussi des comptes **qui ne sont pas les siens**.
    → « de » + « tinataire »). Règle : dans le code envoyé par CDP, pas
    d'échappement regex ; ici `.split(" ")`.
 
-## État : 61 écrans · 191/191 (27+22+26+17+16+16+9+13+14+31) · 0 défaut
+## Boucle 17 — ce qu'une démo native nous apprend (étude vidéo)
+
+Le commanditaire a fourni une démo Flutter fintech à étudier. Constat franc :
+**référence de design, pas d'animation** — changer d'onglet n'y anime rien
+(`IndexedStack`), une seule vraie transition dans 5 minutes, aucune entrée
+de contenu animée. Quatre points retenus, appliqués à tous les layouts.
+
+1. **La profondeur s'anime, le latéral non.** `va()` pousse l'écran entrant
+   depuis la droite (300 ms, `cubic-bezier(.22,.92,.26,1)`) pendant que le
+   sortant glisse de −17 % et s'assombrit — la parallaxe. Ne s'applique
+   qu'aux écrans de FLUX (`.shell.flux`) ; onglets et hubs basculent sec,
+   comme dans la référence. Mesuré au rendu, animation figée : entrant à
+   68 % du chemin à 60 ms, 92 % à 120 ms, 99 % à 220 ms ; sortant à −66 px.
+   La référence faisait 83 % à 100 ms — même famille de courbe.
+   Retour = pousse inverse. `prefers-reduced-motion` coupe tout.
+   Pile de navigation : **toute cible déjà traversée est un retour**, même
+   de plusieurs crans (sortir d'un reçu ramène à l'accueil en tirant).
+2. **Le rail d'avatars** (contacts fréquents) sur l'accueil — « Envoyer à »,
+   un visage ouvre l'envoi déjà adressé — et sur Destinataire, au-dessus de
+   la liste complète. Reconnaître va plus vite que lire.
+3. **La recherche porte son action** : loupe intégrée + bouton de scan QR
+   dans le même bloc, comme la référence. Le scan mène au scanner existant.
+4. **« Où part l'argent »** : la répartition des sorties, **calculée sur les
+   rangées réelles du grand livre** (13 200 + 12 500 + 5 000 = 30 700, la
+   tuile Sorties au-dessus). Barre pondérée + rangées motif · part · montant,
+   cliquables pour filtrer le livre, et combinables avec les chips.
+   Écart assumé avec la référence : elle utilise quatre teintes ; nous
+   gardons **un seul accent dégradé par rang** — la direction prime.
+
+Non retenu, et pourquoi : leurs montants sont en chiffres proportionnels
+(colonnes non alignées — nous restons en tabulaire) ; leurs pourcentages
+écrits sur les arcs à ~10 px sont illisibles ; leurs avatars arrivent en
+retard (ronds vides ~1 s). Le sélecteur à pilule pleine était déjà notre
+`.chip.actif` — rien à changer.
+
+Outils : `capture-transit.mjs` fige l'animation à un instant donné
+(`animation-play-state: paused` + `animation-delay` négatif) — le temps
+virtuel de CDP, lui, ne fige PAS les animations CSS (première tentative
+ratée). `erreur.mjs` remonte les exceptions de la page.
+
+## État : 61 écrans · 213/213 (27+22+26+17+16+16+9+13+14+31+22) · 0 défaut
 
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
