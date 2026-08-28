@@ -757,7 +757,51 @@ montré (trois écrans différents rendaient la même image), pas la sonde.
 Corrigé par `:not([hidden])`. Rappel : une règle qui rallume un
 `display` doit toujours s'exclure de l'état caché.
 
-## État : 61 écrans · 235/235 (27+22+26+17+16+16+9+13+14+31+22+22) · 0 défaut
+## Boucle 19 — la palette du commanditaire, en schéma et en dégradés
+
+Palette fournie : `#141414` `#434343` `#FFFFFF` `#A2FF01`. Trois neutres
+**purs** et un acide — nos gris étaient bleutés (`#15171C`, `#8B909B`).
+
+**L'échelle**, dérivée des quatre couleurs et non posée à côté :
+`--fond #141414` · `--surface #1C1C1C` · `--surface-2 #242424` ·
+`--trait #2E2E2E` · `--trait-fort #434343` · `--encre #FFFFFF` ·
+`--acide #A2FF01`.
+`--sourd` est le seul jeton **dérivé** : `#434343` en texte sur `#141414`
+donne 1,9:1 — illisible. Mesuré, remonté à `#909090` (4,86:1 au pire cas).
+
+**Les dégradés** se construisent depuis la palette :
+`--grad-acide` (A2FF01→7ACC00) sur l'action principale, le bouton primaire
+et le FAB ; `--grad-surface` sur la carte de solde ; `--grad-carte`
+(434343→141414) sur la carte bancaire ; `--grad-metal` (FFFFFF→434343)
+sur la puce et la pastille du compte — **l'or a disparu**, la puce est
+un métal neutre, la palette n'en avait pas.
+
+**Une exception, assumée et dite** : le rouge `#E5484D` reste. C'est une
+couleur SÉMANTIQUE (en retard, refuser, danger) : la supprimer rendrait
+un impayé indistinguable d'une ligne normale. Seule couleur hors palette.
+
+**Contraste mesuré, pas supposé** : 32 combinaisons texte/fond sur sept
+écrans, aucune sous le seuil. Le plus faible : 4,86:1.
+
+### Deux mensonges de sonde, deux vraies leçons
+1. La sonde de contraste annonçait un échec 1:1 sur le CTA. Faux : un
+   fond en **dégradé** n'a pas de `backgroundColor`, elle remontait au
+   parent. Corrigée pour lire les dégradés et prendre leur teinte la plus
+   sombre (le pire cas).
+2. Elle cherchait les couleurs résiduelles dans `styleSheets[0]` — qui
+   est la feuille des **polices**. Corrigée pour parcourir toutes les
+   feuilles avec try/catch.
+
+### Le défaut que la boucle 18 avait laissé passer
+Ranger les enfants dans des volets déplace le DOM — donc l'ordre AFFICHÉ
+sur téléphone, où les volets sont transparents. Sur `envoyer`, le montant
+était passé **sous** les cartes. Mon diff pixel de la boucle 18 ne
+couvrait aucun écran `duo` : angle mort. Corrigé en donnant à chaque
+enfant son rang d'origine en `order`, et **sonde-ordre.mjs** mesure
+désormais l'ordre affiché aux positions verticales réelles sur les
+15 écrans à volets.
+
+## État : 61 écrans · 239/239 (27+22+26+17+16+16+9+13+14+31+22+26) · 0 défaut
 
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à

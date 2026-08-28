@@ -11,16 +11,26 @@
    pagination. Deltas et crédits reprennent la même encre en signal.
    ------------------------------------------------------------------ */
 :root {
-  --fond: #0B0C0E;
-  --surface: #15171C;
-  --surface-2: #1B1E24;
-  --trait: #23262D;
-  --encre: #F4F5F7;
-  --sourd: #8B909B;
-  --acide: #C6F432;
+  /* la palette : quatre couleurs, trois neutres purs et un acide */
+  --fond: #141414;
+  --surface: #1C1C1C;
+  --surface-2: #242424;
+  --trait: #2E2E2E;
+  --trait-fort: #434343;
+  --encre: #FFFFFF;
+  --sourd: #909090;   /* dérivé : #434343 serait illisible sur #141414 (1,9:1) */
+  --acide: #A2FF01;
+  --acide-sombre: #7ACC00;
+  --acide-clair: #B8FF3D;
+  /* les dégradés se construisent depuis ces quatre couleurs, pas à côté */
+  --grad-acide: linear-gradient(135deg, #A2FF01, #7ACC00);
+  --grad-acide-clair: linear-gradient(135deg, #B8FF3D, #A2FF01);
+  --grad-surface: linear-gradient(180deg, #1C1C1C, #141414);
+  --grad-carte: linear-gradient(150deg, #434343, #141414 62%);
+  --grad-metal: linear-gradient(135deg, #FFFFFF, #434343);
 }
 * { box-sizing: border-box; }
-html { background: #0B0C0E; overflow-x: clip; }
+html { background: #141414; overflow-x: clip; }
 html, body { height: 100%; }
 body {
   margin: 0;
@@ -45,7 +55,7 @@ button { font: inherit; color: inherit; }
 /* ---------------- topbar (desktop) ---------------- */
 .topbar {
   position: sticky; top: 0; z-index: 20;
-  background: rgba(11, 12, 14, .78); backdrop-filter: blur(14px);
+  background: rgba(20, 20, 20, .78); backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--trait);
 }
 .topbar-in { height: 64px; display: flex; align-items: center; gap: 22px; }
@@ -99,11 +109,11 @@ button { font: inherit; color: inherit; }
 .halo::before {
   content: ""; position: absolute; inset: -40px -30px auto;
   height: 260px; pointer-events: none;
-  background: radial-gradient(55% 70% at 38% 40%, rgba(198, 244, 50, .10), transparent 70%);
+  background: radial-gradient(55% 70% at 38% 40%, rgba(162, 255, 1, .10), transparent 70%);
 }
 .solde-carte {
   position: relative; padding: 22px 24px;
-  border-radius: 20px; background: var(--surface);
+  border-radius: 20px; background: var(--grad-surface);
   border: 1px solid var(--trait); overflow: hidden;
 }
 .solde-carte::after {
@@ -126,7 +136,7 @@ button { font: inherit; color: inherit; }
   font-size: 12.5px; color: var(--sourd);
 }
 .chip-capsule:hover { color: var(--encre); border-color: var(--sourd); }
-.chip-capsule i { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #D8C289, #A8925B); }
+.chip-capsule i { width: 22px; height: 22px; border-radius: 50%; background: var(--grad-metal); }
 
 /* actions — capsules desktop / cercles mobile */
 .actions { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
@@ -139,8 +149,8 @@ button { font: inherit; color: inherit; }
   transition: background .15s ease;
 }
 .btn:hover { background: var(--surface-2); }
-.btn-primary { background: var(--acide); border-color: var(--acide); color: #0B0C0E; font-weight: 600; }
-.btn-primary:hover { background: #D3F95B; }
+.btn-primary { background: var(--grad-acide); border-color: var(--acide); color: #141414; font-weight: 600; }
+.btn-primary:hover { background: var(--grad-acide-clair); }
 .btn .lib-m { display: none; }
 
 /* grilles desktop */
@@ -194,10 +204,10 @@ button { font: inherit; color: inherit; }
 .numpad button:hover { background: var(--surface); }
 .cta {
   height: 54px; border-radius: 999px; border: 0; cursor: pointer;
-  background: var(--acide); color: #0B0C0E;
+  background: var(--grad-acide); color: #141414;
   font-size: 16px; font-weight: 600; width: 100%;
 }
-.cta:hover { background: #D3F95B; }
+.cta:hover { background: var(--grad-acide-clair); }
 
 /* ---------------- Transitions de navigation ----------------
    Relevé sur une démo native : on anime la PROFONDEUR — entrer dans un
@@ -299,8 +309,8 @@ button { font: inherit; color: inherit; }
 .carte-bancaire {
   position: relative; width: 100%; max-width: 400px; margin-inline: auto; aspect-ratio: 302 / 182;
   border-radius: 16px; padding: 18px; overflow: hidden;
-  background: linear-gradient(150deg, #23262B, #0E0F12 60%);
-  border: 1px solid #2A2E36;
+  background: var(--grad-carte);
+  border: 1px solid var(--trait-fort);
   display: flex; flex-direction: column;
   box-shadow: 0 16px 32px rgba(0, 0, 0, .5);
 }
@@ -309,8 +319,8 @@ button { font: inherit; color: inherit; }
   background: linear-gradient(100deg, transparent 32%, rgba(255, 255, 255, .05) 47%, rgba(255, 255, 255, .04) 57%, transparent 70%);
 }
 .carte-bancaire .marque { font-weight: 600; font-size: 16px; }
-.carte-bancaire .puce { width: 36px; height: 27px; border-radius: 6px; margin-top: 12px; background: linear-gradient(135deg, #D8C289, #A8925B); position: relative; }
-.carte-bancaire .puce::after { content: ""; position: absolute; inset: 5px 4px; border: 1px solid rgba(11, 12, 14, .35); border-radius: 3px; }
+.carte-bancaire .puce { width: 36px; height: 27px; border-radius: 6px; margin-top: 12px; background: var(--grad-metal); position: relative; }
+.carte-bancaire .puce::after { content: ""; position: absolute; inset: 5px 4px; border: 1px solid rgba(20, 20, 20, .35); border-radius: 3px; }
 .carte-bancaire .bas { margin-top: auto; display: flex; align-items: flex-end; }
 .carte-bancaire .bas small { color: var(--sourd); font-size: 12.5px; letter-spacing: .06em; }
 .reseau { margin-left: auto; display: flex; }
@@ -347,7 +357,7 @@ button { font: inherit; color: inherit; }
 .cta[data-occupe] { pointer-events: none; opacity: .85; }
 .spin {
   width: 15px; height: 15px; border-radius: 50%; display: inline-block;
-  border: 2px solid rgba(11, 12, 14, .3); border-top-color: #0B0C0E;
+  border: 2px solid rgba(20, 20, 20, .3); border-top-color: #141414;
   vertical-align: -2px; margin-right: 9px;
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -427,7 +437,7 @@ button { font: inherit; color: inherit; }
 
 /* ---------------- recevoir : QR + demande ---------------- */
 .qr-carte {
-  background: #F4F5F2; border-radius: 20px; padding: 18px;
+  background: #FFFFFF; border-radius: 20px; padding: 18px;
   width: min(260px, 70vw); margin: 18px auto 0;
 }
 .qr-carte svg { display: block; width: 100%; height: auto; }
@@ -436,7 +446,7 @@ button { font: inherit; color: inherit; }
 .badge-demande {
   display: none; margin: 16px auto 0; width: fit-content;
   height: 34px; padding: 0 16px; border-radius: 999px; align-items: center;
-  background: rgba(198, 244, 50, .12); border: 1px solid rgba(198, 244, 50, .4);
+  background: rgba(162, 255, 1, .12); border: 1px solid rgba(162, 255, 1, .4);
   color: var(--acide); font-size: 13.5px; font-weight: 500;
 }
 .badge-demande.la { display: flex; }
@@ -444,7 +454,7 @@ button { font: inherit; color: inherit; }
 /* ---------------- scanner : viseur ---------------- */
 .viseur {
   position: relative; aspect-ratio: 1; border-radius: 24px; overflow: hidden;
-  background: radial-gradient(80% 80% at 50% 42%, #1B1E24, #0B0C0E 90%);
+  background: radial-gradient(80% 80% at 50% 42%, #242424, #141414 90%);
   margin-top: 16px;
 }
 .coin { position: absolute; width: 30px; height: 30px; border: 3px solid var(--acide); }
@@ -490,7 +500,7 @@ button { font: inherit; color: inherit; }
   position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
   border-radius: 50%; background: var(--sourd); transition: transform .18s ease, background .18s ease;
 }
-.bascule[aria-pressed="true"] { background: rgba(198, 244, 50, .16); border-color: rgba(198, 244, 50, .5); }
+.bascule[aria-pressed="true"] { background: rgba(162, 255, 1, .16); border-color: rgba(162, 255, 1, .5); }
 .bascule[aria-pressed="true"] i { transform: translateX(18px); background: var(--acide); }
 @media (prefers-reduced-motion: reduce) { .bascule i { transition: none; } }
 .danger { color: #E5484D; }
@@ -519,11 +529,11 @@ button { font: inherit; color: inherit; }
   @keyframes pouls { 50% { opacity: .25; transform: scale(.75); } }
 }
 .paye-etat { width: 26px; height: 26px; display: grid; place-items: center; flex: 0 0 auto; }
-.paye-etat .spin { border-color: rgba(244, 245, 247, .25); border-top-color: var(--encre); margin: 0; vertical-align: 0; }
+.paye-etat .spin { border-color: rgba(255, 255, 255, .25); border-top-color: var(--encre); margin: 0; vertical-align: 0; }
 .badge-compte {
   min-width: 24px; height: 24px; padding: 0 7px; border-radius: 999px;
   display: grid; place-items: center; font-size: 12.5px; font-weight: 600;
-  background: rgba(198, 244, 50, .14); color: var(--acide); border: 1px solid rgba(198, 244, 50, .35);
+  background: rgba(162, 255, 1, .14); color: var(--acide); border: 1px solid rgba(162, 255, 1, .35);
 }
 .badge-zero { background: var(--surface-2); color: var(--sourd); border-color: var(--trait); }
 .total-ligne { display: flex; justify-content: space-between; padding: 14px 20px; font-weight: 600; border-top: 1px solid var(--trait); }
@@ -576,20 +586,20 @@ button { font: inherit; color: inherit; }
 
 /* ---------------- statuts, papier de facture, remboursement ---------------- */
 .statut { font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; flex: 0 0 auto; }
-.statut-ok { color: var(--acide); background: rgba(198, 244, 50, .12); border: 1px solid rgba(198, 244, 50, .35); }
+.statut-ok { color: var(--acide); background: rgba(162, 255, 1, .12); border: 1px solid rgba(162, 255, 1, .35); }
 .statut-attente { color: var(--sourd); background: var(--surface-2); border: 1px solid var(--trait); }
 .statut-retard { color: #E5484D; background: rgba(229, 72, 77, .1); border: 1px solid rgba(229, 72, 77, .35); }
 .rembourse { opacity: .45; }
 .btn-danger { border-color: rgba(229, 72, 77, .45); color: #E5484D; }
 .btn-danger:hover { background: rgba(229, 72, 77, .1); }
-.papier { background: #F6F5F1; color: #23262C; border-radius: 16px; padding: 24px 22px; }
-.papier header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #23262C; padding-bottom: 10px; }
+.papier { background: #FFFFFF; color: #141414; border-radius: 16px; padding: 24px 22px; }
+.papier header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #141414; padding-bottom: 10px; }
 .papier header b { font-size: 17px; font-weight: 700; }
-.papier header span { font-size: 12px; color: #6C6960; }
-.papier .ligne-f { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid rgba(35, 38, 44, .12); font-size: 14px; }
-.papier .ligne-f small { color: #6C6960; display: block; font-size: 12px; }
+.papier header span { font-size: 12px; color: #434343; }
+.papier .ligne-f { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid rgba(67, 67, 67, .12); font-size: 14px; }
+.papier .ligne-f small { color: #434343; display: block; font-size: 12px; }
 .papier .total-f { display: flex; justify-content: space-between; padding-top: 12px; font-weight: 700; font-size: 16px; }
-.papier .mentions { margin-top: 14px; font-size: 11.5px; color: #6C6960; }
+.papier .mentions { margin-top: 14px; font-size: 11.5px; color: #434343; }
 
 /* ---------------- sheet de détail d'opération ---------------- */
 .voile {
@@ -740,21 +750,21 @@ button { font: inherit; color: inherit; }
     display: flex; align-items: center; justify-content: space-between;
     position: fixed; inset-inline: 0; bottom: 0; z-index: 30;
     padding: 10px 22px calc(12px + env(safe-area-inset-bottom));
-    background: linear-gradient(transparent, rgba(11, 12, 14, .88) 40%);
+    background: linear-gradient(transparent, rgba(20, 20, 20, .88) 40%);
   }
   .navpill {
     display: flex; align-items: center; gap: 8px;
     height: 58px; padding: 0 12px; border-radius: 999px;
-    background: rgba(21, 23, 28, .92); backdrop-filter: blur(10px);
+    background: rgba(28, 28, 28, .92); backdrop-filter: blur(10px);
     border: 1px solid var(--trait);
   }
   .navpill a, .navpill button { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--sourd); background: none; border: 0; cursor: pointer; }
   .navpill .actif { color: var(--encre); background: var(--surface-2); }
   .fab {
     width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
-    background: var(--acide); color: #0B0C0E;
+    background: var(--acide); color: #141414;
     display: grid; place-items: center;
-    box-shadow: inset -2px -2px 4px rgba(0, 0, 0, .18), 0 8px 20px rgba(198, 244, 50, .18);
+    box-shadow: inset -2px -2px 4px rgba(0, 0, 0, .18), 0 8px 20px rgba(162, 255, 1, .18);
   }
 }
 @media (max-width: 380px) { .montant { font-size: 1.9rem; } }
@@ -975,7 +985,7 @@ button { font: inherit; color: inherit; }
     <div class="scene">
       <span class="onde"></span>
       <svg class="coche" viewBox="0 0 96 96" role="img" aria-label="Transfert envoyé">
-        <circle class="cercle" cx="48" cy="48" r="40" fill="rgba(198, 244, 50, .07)"
+        <circle class="cercle" cx="48" cy="48" r="40" fill="rgba(162, 255, 1, .07)"
                 stroke="var(--acide)" stroke-width="2.5" transform="rotate(-90 48 48)"/>
         <path class="trait" d="M32 50l11 11 21-23" fill="none"
               stroke="var(--acide)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1438,7 +1448,7 @@ button { font: inherit; color: inherit; }
     <div class="scene">
       <span class="onde"></span>
       <svg class="coche" viewBox="0 0 96 96" role="img" aria-label="Compte prêt">
-        <circle class="cercle" cx="48" cy="48" r="40" fill="rgba(198, 244, 50, .07)"
+        <circle class="cercle" cx="48" cy="48" r="40" fill="rgba(162, 255, 1, .07)"
                 stroke="var(--acide)" stroke-width="2.5" transform="rotate(-90 48 48)"/>
         <path class="trait" d="M32 50l11 11 21-23" fill="none"
               stroke="var(--acide)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2052,7 +2062,7 @@ button { font: inherit; color: inherit; }
       <div class="scene">
         <span class="onde"></span>
         <svg class="coche" viewBox="0 0 96 96" role="img" aria-label="Journée close">
-          <circle class="cercle" cx="48" cy="48" r="40" fill="rgba(198, 244, 50, .07)"
+          <circle class="cercle" cx="48" cy="48" r="40" fill="rgba(162, 255, 1, .07)"
                   stroke="var(--acide)" stroke-width="2.5" transform="rotate(-90 48 48)"/>
           <path class="trait" d="M32 50l11 11 21-23" fill="none"
                 stroke="var(--acide)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2135,7 +2145,7 @@ button { font: inherit; color: inherit; }
       <div class="scene">
         <span class="onde"></span>
         <svg class="coche" viewBox="0 0 96 96" role="img" aria-label="Paiement reçu">
-          <circle class="cercle" cx="48" cy="48" r="40" fill="rgba(198, 244, 50, .07)"
+          <circle class="cercle" cx="48" cy="48" r="40" fill="rgba(162, 255, 1, .07)"
                   stroke="var(--acide)" stroke-width="2.5" transform="rotate(-90 48 48)"/>
           <path class="trait" d="M32 50l11 11 21-23" fill="none"
                 stroke="var(--acide)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2724,7 +2734,7 @@ button { font: inherit; color: inherit; }
         </div>
         <div class="carte" id="ec-confirme" hidden style="padding: 26px 20px; text-align: center">
           <svg class="coche" viewBox="0 0 96 96" style="width: 64px; height: 64px; margin: 0 auto" role="img" aria-label="Commande payée">
-            <circle cx="48" cy="48" r="40" fill="rgba(198, 244, 50, .07)" stroke="var(--acide)" stroke-width="2.5"/>
+            <circle cx="48" cy="48" r="40" fill="rgba(162, 255, 1, .07)" stroke="var(--acide)" stroke-width="2.5"/>
             <path d="M32 50l11 11 21-23" fill="none" stroke="var(--acide)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <p style="margin: 12px 0 2px; font-weight: 600; font-size: 17px">Commande payée</p>
@@ -3285,7 +3295,7 @@ button { font: inherit; color: inherit; }
   </div>
   <div class="sheet-actions">
     <button class="btn" data-ferme>Annuler</button>
-    <button class="btn" id="sd-demande" style="background: var(--acide); border-color: var(--acide); color: #0B0C0E; font-weight: 600">Demander l'approbation de N. Kader</button>
+    <button class="btn" id="sd-demande" style="background: var(--acide); border-color: var(--acide); color: #141414; font-weight: 600">Demander l'approbation de N. Kader</button>
     <button class="btn" id="sd-voir" data-va="approbation" hidden>Voir côté N. Kader — démo</button>
   </div>
 </div>
@@ -3300,7 +3310,7 @@ button { font: inherit; color: inherit; }
   <div class="numpad pad-slot" data-pad="m:salaire" style="padding: 0 0 8px"></div>
   <div class="sheet-actions">
     <button class="btn" data-ferme>Annuler</button>
-    <button class="btn" id="sm-ok" style="background: var(--acide); border-color: var(--acide); color: #0B0C0E; font-weight: 600">Enregistrer</button>
+    <button class="btn" id="sm-ok" style="background: var(--acide); border-color: var(--acide); color: #141414; font-weight: 600">Enregistrer</button>
   </div>
 </div>
 
@@ -3905,14 +3915,14 @@ const dessineQR = (cible = "r-qr") => {
   let s = "";
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const dansOeil = (x < 8 && y < 8) || (x > N - 9 && y < 8) || (x < 8 && y > N - 9);
-    if (!dansOeil && alea() < .44) s += `<rect x="${x}" y="${y}" width="1" height="1" fill="#0B0C0E"/>`;
+    if (!dansOeil && alea() < .44) s += `<rect x="${x}" y="${y}" width="1" height="1" fill="#141414"/>`;
   }
   const oeil = (x, y) =>
-    `<rect x="${x}" y="${y}" width="7" height="7" fill="#0B0C0E"/>` +
-    `<rect x="${x + 1}" y="${y + 1}" width="5" height="5" fill="#F4F5F2"/>` +
-    `<rect x="${x + 2}" y="${y + 2}" width="3" height="3" fill="#0B0C0E"/>`;
+    `<rect x="${x}" y="${y}" width="7" height="7" fill="#141414"/>` +
+    `<rect x="${x + 1}" y="${y + 1}" width="5" height="5" fill="#FFFFFF"/>` +
+    `<rect x="${x + 2}" y="${y + 2}" width="3" height="3" fill="#141414"/>`;
   const centre =
-    `<rect x="11" y="11" width="7" height="7" rx="1.2" fill="#F4F5F2"/>` +
+    `<rect x="11" y="11" width="7" height="7" rx="1.2" fill="#FFFFFF"/>` +
     `<image href="${LOGOS.swim}" x="12" y="12" width="5" height="5"/>`;
   svg.innerHTML = s + oeil(0, 0) + oeil(N - 7, 0) + oeil(0, N - 7) + centre;
 };
@@ -5064,6 +5074,11 @@ const composeBureau = () => {
       return;
     }
 
+    /* ranger dans des volets change l'ordre du DOM — donc l'ordre affiché sur
+       téléphone, où les volets sont transparents. Chaque enfant garde son rang
+       d'origine en `order` : le téléphone retrouve sa suite exacte, et chaque
+       volet reste dans son ordre interne sur bureau. */
+    enfants.forEach((c, i) => { c.style.order = i; });
     const a = document.createElement("div"); a.className = "pane-a";
     const b = document.createElement("div"); b.className = "pane-b";
     if (mode === "duo") {
