@@ -7,18 +7,22 @@
   /* ============================================================
      SwimPay — Écran 3 · Accueil Personnel (desktop + mobile)
      Grammaire vendorisée depuis les systèmes de composants récents :
-     - tokens neutres & radius : shadcn/ui v4 (apps/v4/app/globals.css)
-     - anatomie contrôles (h-9/h-10, shadow-xs, ring 3px/50%) : shadcn + Origin UI
+     - tokens neutres : shadcn/ui v4 (apps/v4/app/globals.css)
+     - anatomie contrôles (shadow-xs, ring) : shadcn + Origin UI
      - pattern metric (label → valeur → meta) : Tremor
+     - Apple HIG : hit region ≥ 44×44 pt (Buttons), marges de contenu 20 pt,
+       rythme 8 pt, boutons capsule, cartes 20 pt à coins intérieurs
+       concentriques (inner = outer − inset)
      Thème unique clair, délibéré. Aucune dépendance.
      ============================================================ */
   :root{
-    /* shadcn v4 — vendorisé */
+    /* radius — échelle Apple-like sur base shadcn */
     --radius: .625rem;
     --radius-sm: calc(var(--radius) * .6);
     --radius-md: calc(var(--radius) * .8);
     --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-card: 20px;
+    --radius-capsule: 999px;
     --background: oklch(1 0 0);
     --surface: oklch(.98 0 0);
     --foreground: oklch(.145 0 0);
@@ -54,7 +58,7 @@
     position:sticky; top:0; z-index:20;
   }
   .topbar-in{
-    max-width:1120px; margin:0 auto; padding:0 24px; height:60px;
+    max-width:1120px; margin:0 auto; padding:0 20px; height:64px;
     display:flex; align-items:center; gap:20px;
   }
   .brand{display:flex; align-items:center; gap:9px; font-weight:600; font-size:15.5px}
@@ -69,28 +73,28 @@
   .nav a.active{color:var(--foreground); background:var(--muted)}
   .top-actions{margin-left:auto; display:flex; align-items:center; gap:10px}
   .search{
-    display:flex; align-items:center; gap:8px; width:240px; height:36px;
-    padding:0 12px; background:var(--background); border:1px solid var(--input);
-    border-radius:var(--radius-md); box-shadow:var(--shadow-xs);
+    display:flex; align-items:center; gap:8px; width:240px; height:40px;
+    padding:0 16px; background:var(--background); border:1px solid var(--input);
+    border-radius:var(--radius-capsule); box-shadow:var(--shadow-xs);
     color:var(--muted-foreground); font-size:14px;
   }
   .search:focus-within{border-color:var(--ring); outline:3px solid color-mix(in oklab, var(--ring) 35%, transparent)}
   .search input{border:0; outline:0; background:transparent; width:100%; font:inherit; color:var(--foreground)}
   .icon-btn{
-    width:36px;height:36px; display:grid; place-items:center;
+    width:40px;height:40px; display:grid; place-items:center;
     background:var(--background); border:1px solid var(--input);
-    border-radius:var(--radius-md); box-shadow:var(--shadow-xs);
+    border-radius:var(--radius-capsule); box-shadow:var(--shadow-xs);
     color:var(--foreground); cursor:pointer;
   }
   .icon-btn:hover{background:var(--muted)}
   .avatar{
-    width:36px;height:36px;border-radius:50%; background:var(--muted);
+    width:40px;height:40px;border-radius:50%; background:var(--muted);
     border:1px solid var(--border);
     display:grid; place-items:center; font-weight:600; font-size:13px; cursor:pointer;
   }
 
   /* ---------- Page ---------- */
-  .page{max-width:1120px; margin:0 auto; padding:40px 24px 96px; width:100%}
+  .page{max-width:1120px; margin:0 auto; padding:40px 20px 96px; width:100%}
 
   /* ---------- Hero (pattern metric Tremor) ---------- */
   .hero{padding:16px 4px 36px}
@@ -100,11 +104,11 @@
     font-size:clamp(2.4rem,5vw,3.4rem); font-weight:600; letter-spacing:-.03em;
     font-variant-numeric:tabular-nums; line-height:1.05;
   }
-  .hero-actions{display:flex; gap:10px; margin-top:24px; flex-wrap:wrap}
+  .hero-actions{display:flex; gap:12px; margin-top:28px; flex-wrap:wrap}
   .btn{
     display:inline-flex; align-items:center; justify-content:center; gap:8px;
-    height:40px; padding:0 18px; border-radius:var(--radius-md);
-    font:inherit; font-weight:500; font-size:14px; cursor:pointer;
+    height:44px; padding:0 20px; border-radius:var(--radius-capsule);
+    font:inherit; font-weight:500; font-size:14.5px; cursor:pointer;
     border:1px solid transparent; box-shadow:var(--shadow-xs);
     transition:background .12s ease;
   }
@@ -115,38 +119,40 @@
   .btn-outline:hover{background:var(--muted)}
 
   /* ---------- Corps ---------- */
-  .grid{display:grid; grid-template-columns:7fr 5fr; gap:16px; align-items:start}
-  .section-title{font-size:13.5px; font-weight:500; color:var(--muted-foreground); margin:0 0 10px 2px}
-  .tiles{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .grid{display:grid; grid-template-columns:7fr 5fr; gap:20px; align-items:start}
+  .section-title{font-size:13.5px; font-weight:500; color:var(--muted-foreground); margin:0 0 12px 2px}
+  .tiles{display:grid; grid-template-columns:1fr 1fr; gap:16px}
   .tile{
     background:var(--background); border:1px solid var(--border);
-    border-radius:var(--radius-lg); box-shadow:var(--shadow-xs);
-    padding:18px 16px; display:flex; flex-direction:column; gap:26px;
+    border-radius:var(--radius-card); box-shadow:var(--shadow-xs);
+    padding:20px; display:flex; flex-direction:column; gap:28px;
     cursor:pointer; text-align:left; font:inherit; color:inherit;
     transition:box-shadow .12s ease, border-color .12s ease;
   }
   .tile:hover{border-color:var(--ring); box-shadow:var(--shadow-sm)}
   .tile:focus-visible{outline:3px solid color-mix(in oklab, var(--ring) 45%, transparent); outline-offset:1px}
   .tile .ic{
-    width:36px;height:36px; border-radius:var(--radius-md);
+    /* coin concentrique : 20 (carte) − 20 (inset) ≈ 10 */
+    width:40px;height:40px; border-radius:10px;
     background:var(--muted); display:grid; place-items:center;
   }
   .tile b{font-weight:500; font-size:14.5px; letter-spacing:-.005em}
 
   .card{
     background:var(--background); border:1px solid var(--border);
-    border-radius:var(--radius-lg); box-shadow:var(--shadow-xs);
+    border-radius:var(--radius-card); box-shadow:var(--shadow-xs);
+    overflow:hidden;
   }
   .card-head{
-    padding:14px 16px; border-bottom:1px solid var(--border);
+    padding:16px 20px; border-bottom:1px solid var(--border);
     display:flex; align-items:center; justify-content:space-between;
   }
   .card-head b{font-size:14.5px; font-weight:500}
-  .link{font-size:13px; color:var(--muted-foreground); text-decoration:none; padding:4px 8px; border-radius:var(--radius-sm)}
+  .link{font-size:13px; color:var(--muted-foreground); text-decoration:none; padding:6px 10px; border-radius:var(--radius-capsule)}
   .link:hover{color:var(--foreground); background:var(--muted)}
   .op{
-    display:flex; align-items:center; gap:12px; padding:13px 16px;
-    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:12px; padding:14px 20px;
+    border-bottom:1px solid var(--border); min-height:44px;
   }
   .op:last-child{border-bottom:0}
   .op .who{display:flex; align-items:center; gap:10px; min-width:0}
@@ -168,7 +174,7 @@
     .page{padding:24px 16px 110px}
     .hero{padding:8px 2px 28px}
     .hero-actions{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
-    .hero-actions .btn{height:auto; padding:12px 4px; flex-direction:column; gap:7px; font-size:12.5px}
+    .hero-actions .btn{height:auto; min-height:64px; padding:12px 4px; flex-direction:column; gap:7px; font-size:12.5px; border-radius:16px}
     .grid{grid-template-columns:1fr; gap:24px}
     .tabbar{
       display:grid; grid-template-columns:repeat(4,1fr);
@@ -180,6 +186,7 @@
       display:flex; flex-direction:column; align-items:center; gap:3px;
       font-size:11px; font-weight:500; color:var(--muted-foreground);
       text-decoration:none; padding:6px 0; border-radius:var(--radius-md);
+      min-height:44px; justify-content:center;
     }
     .tab.active{color:var(--foreground)}
     .tab.active .tab-ic{background:var(--muted)}
