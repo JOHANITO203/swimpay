@@ -23,9 +23,12 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const args = process.argv.slice(2);
-const cible = args.find((a) => !a.startsWith("--")) || "design/pivot/ecran3-personnel-v6-acide.html";
 const iCap = args.indexOf("--capture");
 const dossierCap = iCap !== -1 ? args[iCap + 1] : null;
+// la VALEUR de --capture n'est pas la cible : sans cette exclusion, la sonde
+// chargeait le dossier de captures au lieu du prototype et échouait partout
+const libres = args.filter((a, i) => !a.startsWith("--") && i !== iCap + 1);
+const cible = libres[0] || "design/pivot/ecran3-personnel-v6-acide.html";
 const URL = /^https?:|^file:/.test(cible) ? cible : pathToFileURL(resolve(cible)).href;
 
 const CHROME = process.env.CHROME || (process.platform === "win32"
@@ -269,7 +272,75 @@ test("sous verrou, libérer est refusé", etape("libérer sous verrou").bloque =
 test("… et le refus dit pourquoi et jusqu'à quand",
   etape("libérer sous verrou").ditPourquoi === true && etape("libérer sous verrou").ditJusquaQuand === true);
 
-/* ═══ 9. le contraste, avec étalonnage ═══ */
+/* ═══ 9. le mouvement ═══
+   On mesure le RENDU, pas le code : l'état :active est FORCÉ par le protocole,
+   puis on lit la transformation calculée. Lire la feuille de style dirait ce
+   qu'on a voulu ; forcer l'état dit ce qui se passe. */
+await cmd("DOM.enable"); await cmd("CSS.enable");
+await ev('va("accueil")'); await dodo(400);
+const racine = (await cmd("DOM.getDocument", { depth: -1 })).result.root.nodeId;
+const transformeSousAppui = async (selecteur) => {
+  const n = (await cmd("DOM.querySelector", { nodeId: racine, selector: selecteur })).result.nodeId;
+  if (!n) return "absent";
+  await cmd("CSS.forcePseudoState", { nodeId: n, forcedPseudoClasses: ["active"] });
+  await dodo(60);
+  const t = await ev(`getComputedStyle(document.querySelector(${JSON.stringify(selecteur)})).transform`);
+  await cmd("CSS.forcePseudoState", { nodeId: n, forcedPseudoClasses: [] });
+  return t;
+};
+for (const [nom, sel] of [
+  ["un bouton", "#accueil .actions .btn"],
+  ["une capsule", "#accueil .chip-capsule"],
+  ["une rangée", "#accueil .row"],
+  ["la carte", "#hero-rail .plaque-verre"],
+]) {
+  const t = await transformeSousAppui(sel);
+  test(`${nom} répond à l'appui`, typeof t === "string" && t !== "none" && t.startsWith("matrix"), String(t));
+}
+
+const motion = await ev(`(() => {
+  const regles = [...document.styleSheets].flatMap((f) => { try { return [...f.cssRules]; } catch { return []; } });
+  const aplat = (rs) => rs.flatMap((r) => (r.cssRules ? [r, ...aplat([...r.cssRules])] : [r]));
+  const toutes = aplat(regles);
+  const style = toutes.filter((r) => r.style);
+  const survolNonProtege = [];
+  toutes.forEach((r) => {
+    if (!r.selectorText || !r.selectorText.includes(":hover")) return;
+    // une requête média à plusieurs termes n'expose pas conditionText dans
+    // tous les moteurs : on lit aussi media.mediaText
+    let p = r.parentRule, protege = false;
+    while (p) {
+      const cond = String(p.conditionText || (p.media && p.media.mediaText) || "");
+      if (cond.includes("hover") || cond.includes("pointer")) protege = true;
+      p = p.parentRule;
+    }
+    // une règle qui RETIRE le mouvement (transform: none) n'est pas un effet
+    // de survol : c'est une neutralisation, elle n'a pas à être protégée
+    const t = String(r.style.transform || "").trim();
+    const a = String(r.style.animationName || "").trim();
+    const bouge = (t && t !== "none") || (a && a !== "none");
+    if (!protege && bouge) survolNonProtege.push(r.selectorText.slice(0, 40));
+  });
+  return {
+    toutProprietes: style.filter((r) => /transition:\\s*all/.test(r.style.cssText || "")).length,
+    depuisZero: style.filter((r) => /scale\\(0\\)/.test(r.style.cssText || "")).length,
+    easeIn: style.filter((r) => /(transition|animation)[^;]*\\bease-in\\b(?!-out)/.test(r.style.cssText || "")).length,
+    lentes: style.flatMap((r) => (String(r.style.transitionDuration || "").split(", ")
+      .filter((d) => parseFloat(d) > 0.31).map((d) => (r.selectorText || "?").slice(0, 26) + " " + d))),
+    survolNonProtege,
+    mouvementReduit: toutes.some((r) => String(r.conditionText || "").includes("prefers-reduced-motion")),
+  };
+})()`);
+test("aucune transition sur « all »", motion.toutProprietes === 0, String(motion.toutProprietes));
+test("rien n'apparaît depuis scale(0)", motion.depuisZero === 0, String(motion.depuisZero));
+test("aucune courbe ease-in sur de l'interface", motion.easeIn === 0, String(motion.easeIn));
+test("aucune transition d'interface au-delà de 300 ms",
+  motion.lentes.length === 0, motion.lentes.join(" · "));
+test("les effets de survol sont protégés du tactile",
+  motion.survolNonProtege.length === 0, motion.survolNonProtege.join(" · "));
+test("le mouvement réduit est honoré", motion.mouvementReduit === true);
+
+/* ═══ 10. le contraste, avec étalonnage ═══ */
 const contraste = await ev(`(() => {
   const lis = (c) => {
     if (!c) return null;

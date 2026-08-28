@@ -1119,7 +1119,46 @@ Et deux règles de méthode payées le même jour :
 - **Toute substitution s'assertionne.** Une substitution sans assertion qui ne
   trouve pas sa cible ne fait rien, et passe pour un succès.
 
-## État : 65 écrans · 290/290 · 0 défaut · contraste sans échec
+
+## Le vocabulaire de mouvement
+
+La question posée en premier n'a pas été « qu'est-ce qui bouge » mais **« qu'est-ce
+qui ne doit PAS bouger »** :
+
+- **le pavé numérique** est frappé des centaines de fois par jour → aucune
+  animation au-delà du retour d'appui. Une animation sur un geste répété fait
+  paraître l'application lente ;
+- **la navigation** a déjà sa transition de poussée (300 ms) → on ne
+  l'alourdit pas d'une seconde couche.
+
+Ce qui bouge, et pour quelle raison :
+
+| geste | ce qui se passe | pourquoi |
+|---|---|---|
+| **appui** | descente à 0,97 · 140 ms | du RETOUR, pas de la décoration : ça dit « j'ai entendu » |
+| **survol** | derrière `(hover: hover) and (pointer: fine)` | au doigt, `:hover` se déclenche à l'appui **et reste collé** |
+| **entrée d'écran** | +10 px en cascade de 40 ms, 3 blocs | décoratif, jamais bloquant, coupé en mouvement réduit |
+| **feuille** | 280 ms à la courbe iOS, **sortie 180 ms** | lent quand l'utilisateur décide, rapide quand le système répond |
+
+**Le diagnostic de départ était sans appel** : zéro `:active` dans tout le
+fichier — l'interface ne répondait à aucun appui — et zéro protection tactile
+sur les survols. En revanche, ni `transition: all`, ni `scale(0)`, ni `ease-in`,
+et le mouvement réduit déjà honoré à quatorze endroits.
+
+**Les courbes natives de CSS sont trop molles** : elles n'ont pas le mordant
+qui rend une animation intentionnelle. Trois variantes fortes sont posées en
+jetons — `--sortie`, `--deux-sens`, `--tiroir`.
+
+**Le mouvement se mesure sur le rendu, pas dans la feuille de style.** L'état
+`:active` est FORCÉ par le protocole de débogage, puis la transformation
+calculée est lue. Lire le CSS dirait ce qu'on a voulu ; forcer l'état dit ce
+qui se passe. Quatre éléments éprouvés ainsi.
+
+Six règles de mouvement sont désormais gardées par la sonde : pas de
+`transition: all`, rien depuis `scale(0)`, aucun `ease-in` d'interface, rien
+au-delà de 300 ms, survols protégés, mouvement réduit honoré.
+
+## État : 65 écrans · 39/39 · 0 défaut · sonde dans le repo
 
 Contraste : aucune combinaison sous le seuil, en clair comme en sombre.
 Cibles tactiles, tailles de texte, retours de flux, libellés de boutons,

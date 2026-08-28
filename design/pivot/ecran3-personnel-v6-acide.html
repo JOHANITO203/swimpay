@@ -46,6 +46,16 @@
      radial creuse en bas à gauche et ouvre en haut à droite : c'est lui qui
      donne le volume. Mesuré avant d'être posé : l'encre #141414 tient 8,02:1
      sur l'arrêt le plus sombre, et 6,35:1 au creux du voile. */
+  /* ═══ MOUVEMENT ═══ les courbes natives de CSS sont trop molles : elles
+     n'ont pas le mordant qui rend une animation intentionnelle. */
+  --sortie: cubic-bezier(.23, 1, .32, 1);        /* entrées et sorties */
+  --deux-sens: cubic-bezier(.77, 0, .175, 1);    /* déplacements sur place */
+  --tiroir: cubic-bezier(.32, .72, 0, 1);        /* la courbe des feuilles iOS */
+  --t-appui: 140ms;
+  --t-survol: 180ms;
+  --t-feuille: 280ms;
+  --t-feuille-sortie: 180ms;   /* la sortie est plus rapide que l'entrée */
+
   --grad-hero: linear-gradient(158deg,
     #6FBF00 0%, #8FE500 16%, #A2FF01 42%, #BFFF2E 68%, #E2FF8C 92%, #F2FFC4 100%);
   --voile-hero:
@@ -1258,6 +1268,116 @@ button { font: inherit; color: inherit; }
   .flux { min-height: 0; padding-block: 10px 60px; }
   .fluxbar { padding-top: 26px; }
   .succes { padding-top: 11vh; }
+}
+
+/* ═══════════════ MOUVEMENT ═══════════════
+   Écrit après tout le reste : l'appui doit gagner sur le survol. */
+
+/* ─── L'APPUI ───
+   Tout ce qui se presse descend à 0,97. Ce n'est pas de la décoration : c'est
+   le retour qui dit « j'ai entendu ». Sans lui, l'interface semble morte au
+   doigt — et c'est ce qui manquait partout. */
+.btn, .chip, .chip-capsule, .rond, .icon-btn, .oeil, .row, .segment,
+.plaque-verre, .carte-bancaire, .points i, .valide-btn, .link, .navpill a,
+.navpill button, .fab, .poignee, .tuile, .voie, .plan {
+  transition: transform var(--t-appui) var(--sortie);
+}
+.btn:active, .chip:active, .chip-capsule:active, .rond:active, .icon-btn:active,
+.oeil:active, .row:active, .segment:active, .valide-btn:active, .link:active,
+.navpill a:active, .navpill button:active, .poignee:active, .tuile:active,
+.voie:active, .plan:active {
+  transform: scale(.97);
+}
+/* les cartes sont grandes : à 0,97 le geste paraîtrait mou, on resserre */
+.plaque-verre:active, .carte-bancaire:active { transform: scale(.985); }
+.fab:active { transform: scale(.93); }
+/* une pastille de 4 px ne peut pas « descendre » : elle s'élargit */
+.points i:active { transform: scaleX(1.35); }
+/* rien ne se presse quand rien ne se passe */
+.btn:disabled:active, .btn[aria-disabled="true"]:active { transform: none; }
+
+/* ─── LE SURVOL ───
+   Derrière (hover: hover) : sur un écran tactile, :hover se déclenche à
+   l'appui ET RESTE COLLÉ après. C'était le défaut le plus visible au doigt. */
+@media (hover: hover) and (pointer: fine) {
+  .row, .tuile, .plan, .carte-bancaire, .plaque-verre {
+    transition: transform var(--t-appui) var(--sortie),
+                border-color var(--t-survol) ease,
+                background-color var(--t-survol) ease;
+  }
+  .row:hover, .tuile:hover { transform: translateY(-1px); }
+  .btn:hover, .chip-capsule:hover { transform: translateY(-1px); }
+}
+@media (hover: none), (pointer: coarse) {
+  /* au doigt, aucun état de survol ne subsiste après le geste */
+  .row:hover, .tuile:hover, .btn:hover, .chip-capsule:hover { transform: none; }
+}
+
+/* ─── L'ENTRÉE D'UN ÉCRAN ───
+   Les blocs montent de 10 px en cascade courte. Décoratif : jamais bloquant,
+   coupé net en mouvement réduit, et limité aux premiers blocs — au-delà, la
+   cascade se voit et l'interface paraît lente. */
+@keyframes monte {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.ecran:not([hidden]) > .shell > *,
+.ecran:not([hidden]) > .shell > .page > * {
+  animation: monte 300ms var(--sortie) backwards;
+}
+.ecran:not([hidden]) > .shell > *:nth-child(1),
+.ecran:not([hidden]) > .shell > .page > *:nth-child(1) { animation-delay: 0ms; }
+.ecran:not([hidden]) > .shell > *:nth-child(2),
+.ecran:not([hidden]) > .shell > .page > *:nth-child(2) { animation-delay: 40ms; }
+.ecran:not([hidden]) > .shell > *:nth-child(3),
+.ecran:not([hidden]) > .shell > .page > *:nth-child(3) { animation-delay: 80ms; }
+.ecran:not([hidden]) > .shell > *:nth-child(n+4),
+.ecran:not([hidden]) > .shell > .page > *:nth-child(n+4) { animation-delay: 110ms; }
+/* le pavé numérique est frappé des centaines de fois : il n'entre jamais */
+.numpad, .numpad * { animation: none !important; }
+
+/* ─── LES FEUILLES ───
+   Entrée à la courbe iOS, SORTIE PLUS RAPIDE : lent quand l'utilisateur
+   décide, rapide quand le système répond. */
+.sheet {
+  transition: transform var(--t-feuille-sortie) var(--sortie),
+              opacity var(--t-feuille-sortie) var(--sortie);
+}
+.sheet:not([hidden]) {
+  animation: feuille-monte var(--t-feuille) var(--tiroir) backwards;
+}
+@keyframes feuille-monte {
+  from { transform: translateY(100%); }
+  to   { transform: none; }
+}
+#voile:not([hidden]) { animation: voile-parait 200ms ease backwards; }
+@keyframes voile-parait { from { opacity: 0; } to { opacity: 1; } }
+
+/* ─── LA CONFIRMATION D'UN FLUX ───
+   Elle monte du bas, comme la feuille dont elle est la réponse. */
+.fc-fait {
+  animation: fait-monte 260ms var(--sortie) backwards;
+}
+@keyframes fait-monte {
+  from { opacity: 0; transform: translate(-50%, 14px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ─── MOUVEMENT RÉDUIT ───
+   « Réduit » ne veut pas dire « aucun » : on garde ce qui aide à comprendre
+   (l'opacité), on retire ce qui déplace. */
+@media (prefers-reduced-motion: reduce) {
+  .ecran:not([hidden]) > .shell > *,
+  .ecran:not([hidden]) > .shell > .page > * {
+    animation: none;
+  }
+  .sheet:not([hidden]) { animation: none; }
+  .fc-fait { animation: fait-parait 200ms ease backwards; }
+  @keyframes fait-parait { from { opacity: 0; } to { opacity: 1; } }
+  .btn:active, .chip:active, .chip-capsule:active, .rond:active, .icon-btn:active,
+  .oeil:active, .row:active, .segment:active, .plaque-verre:active,
+  .carte-bancaire:active, .fab:active, .points i:active { transform: none; }
+  .row:hover, .tuile:hover, .btn:hover, .chip-capsule:hover { transform: none; }
 }
 </style>
 
