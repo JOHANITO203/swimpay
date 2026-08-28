@@ -1051,12 +1051,12 @@ qu'un futur profil n'ait pas à s'inscrire dans une liste d'exceptions.
 
 ## La carte : ce qui a été choisi, après tout ce qui ne l'a pas été
 
-LO a tranché en désignant une carte qui existait déjà dans le prototype :
-celle de l'écran « Ma carte » (`.carte-bancaire`). Elle est **entièrement en
-CSS** — le dégradé de la palette, un filet, un lustre diagonal, une puce
-dessinée. Aucune image. Elle est maintenant **déclinée** sur les cartes de
-solde : mêmes proportions (302/182), même rayon, même filet, même lustre. Un
-seul objet carte dans toute l'app.
+**La carte retenue est celle de la version Kotlin** — `card_texture_brushed_
+black_metal`, reprise de l'app Compose. Elle est **déclinée sur les deux vues**
+qui portent une carte : la carte de solde (accueil et les trois hubs) et la
+carte physique de l'écran « Ma carte ». Même matière, même liseré, même puce,
+mêmes proportions. Seule l'anatomie diffère : l'une porte un montant, l'autre
+un nom, un numéro et un réseau.
 
 Le chemin pour y arriver, parce qu'il vaut d'être retenu :
 
@@ -1066,20 +1066,28 @@ Le chemin pour y arriver, parce qu'il vaut d'être retenu :
 | 8 rendus 3D fournis (givré, néon) | 7 sur 8 ne portent **aucun texte** (1,0 à 2,3:1 au pire pixel) |
 | export Rodin | l'archive ne contient pas de rendu, seulement l'atlas UV |
 | carte givrée translucide, extraite en voile | modèle juste, mais le résidu JPEG n'a que du bruit de chrominance |
-| métal brossé de la version Kotlin | **16,15:1**, 17 Ko — excellent, mais pas retenu |
-| `.carte-bancaire`, déjà là | **choisie** |
+| modèles 3D téléchargeables (CC BY) | 60 à 768 triangles : une boîte à coins ronds, aucune valeur |
+| **métal brossé de la version Kotlin** | **16,15:1, balayage 31, 17 Ko — retenu** |
 
 **La leçon de fond** : ce qui a fait échouer tous les rendus, c'est la lumière
 de studio **cuite dans l'image**. Elle est irrécupérable, elle tue le contraste
-du texte, et elle empêche l'objet de s'adapter à ce qu'il y a derrière. Une
-carte, en 3D, c'est une boîte à coins arrondis de 60 à 768 triangles : la
-valeur n'a jamais été dans le maillage, elle est dans la matière et la lumière.
-Un dégradé de la palette + un lustre en CSS les contrôle exactement.
+du texte, et elle empêche l'objet de s'adapter à ce qu'il y a derrière. La
+carte Kotlin gagne parce qu'elle est une **matière** — un brossé uniforme —
+et non la photo d'un objet éclairé.
 
-Les huit assets Kotlin restent mesurés et disponibles :
-`card_texture_brushed_black_metal` (16,15:1, balayage 31, 17 Ko) et
-`card_surface_dark_black_brushed_workbench` (5,56:1) sont les deux seuls qui
-portent du texte. Les six autres sont sous 4:1.
+Et l'architecture de `CardVisualTheme.kt` a été transposée avec elle, pas
+seulement le fichier : un jeton par couche (`--carte-matiere`, `--carte-teinte`,
+`--carte-melange`, `--carte-bord`, `--carte-rayon`, `--carte-puce`,
+`--carte-reflet`). Changer `--carte-teinte` repeint les deux cartes à la fois.
+
+Les sept autres assets Kotlin restent mesurés :
+`card_surface_dark_black_brushed_workbench` tient le blanc à 5,56:1, les six
+autres sont sous 4:1 — aucun texte ne tient dessus.
+
+**Un aller-retour évité à l'avenir** : « il faut décliner à ce niveau », dit en
+montrant une vue, désignait la vue à MONTER au niveau de la carte, pas la carte
+à redescendre au niveau de la vue. En cas de doute sur le sens d'une
+déclinaison, demander laquelle des deux est la référence.
 
 ## Les mensonges de sonde, au complet
 
