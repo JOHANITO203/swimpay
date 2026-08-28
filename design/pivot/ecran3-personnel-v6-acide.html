@@ -1,0 +1,357 @@
+<title>SwimPay acide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   Écran 3 — Accueil PERSONNEL, v6 « acide ». Plein écran, mobile-first,
+   déclinaison desktop. Direction assumée MONO-THÈME sombre : le fond
+   et chaque encre sont posés explicitement, l'écran tient tel quel
+   sous un hôte clair comme sombre.
+   Grammaire : Outfit, rayures verticales 2 %, UN élément acide par
+   format (mobile : le FAB ; desktop : le bouton Envoyer) — les deltas
+   et crédits reprennent la même encre en signal sémantique.
+   ------------------------------------------------------------------ */
+:root {
+  --fond: #0B0C0E;
+  --surface: #15171C;
+  --surface-2: #1B1E24;
+  --trait: #23262D;
+  --encre: #F4F5F7;
+  --sourd: #8B909B;
+  --acide: #C6F432;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  color: var(--encre);
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 8px),
+    var(--fond);
+  font-family: "Outfit", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  font-size: 15px; line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip; /* le halo décoratif dépasse du cadre, il ne doit pas créer de défilement */
+}
+svg { display: block; flex: none; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--acide); outline-offset: 2px; border-radius: 4px; }
+
+.shell { max-width: 1120px; margin: 0 auto; padding-inline: 20px; }
+
+/* ---------------- topbar (desktop) ---------------- */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(11, 12, 14, .78); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--trait);
+}
+.topbar-in { height: 64px; display: flex; align-items: center; gap: 22px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15.5px; }
+.brand img { width: 20px; height: auto; }
+.nav { display: flex; gap: 4px; margin-left: 10px; }
+.nav a {
+  text-decoration: none; color: var(--sourd); font-weight: 400; font-size: 14px;
+  padding: 8px 12px; border-radius: 8px;
+}
+.nav a:hover, .nav a.active { color: var(--encre); background: var(--surface); }
+.grow { flex: 1; }
+.search {
+  display: flex; align-items: center; gap: 8px; width: 240px; height: 40px;
+  padding-inline: 14px; background: var(--surface); color: var(--sourd);
+  border: 1px solid var(--trait); border-radius: 999px; font-size: 14px;
+}
+.search input { border: 0; outline: 0; background: none; width: 100%; font: inherit; color: var(--encre); }
+.search input::placeholder { color: var(--sourd); }
+.search:focus-within { border-color: var(--sourd); }
+.icon-btn, .avatar {
+  width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer;
+  background: transparent; border: 1px solid var(--trait);
+  border-radius: 999px; color: var(--encre); position: relative;
+}
+.icon-btn:hover { background: var(--surface); }
+.icon-btn .point {
+  position: absolute; top: 8px; right: 9px; width: 7px; height: 7px;
+  border-radius: 999px; background: var(--acide); border: 1.5px solid var(--fond);
+}
+.avatar { background: var(--surface-2); font-weight: 500; font-size: 13px; cursor: default; }
+
+/* ---------------- header mobile (deux lignes) ---------------- */
+.m-header { display: none; }
+
+/* ---------------- page ---------------- */
+.page { padding-block: 28px 72px; }
+
+/* carte de solde — halo + glare */
+.halo { position: relative; }
+.halo::before {
+  content: ""; position: absolute; inset: -40px -30px auto;
+  height: 260px; pointer-events: none;
+  background: radial-gradient(55% 70% at 38% 40%, rgba(198, 244, 50, .10), transparent 70%);
+}
+.solde-carte {
+  position: relative; padding: 22px 24px;
+  border-radius: 20px; background: var(--surface);
+  border: 1px solid var(--trait); overflow: hidden;
+}
+.solde-carte::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 32%, rgba(255, 255, 255, .05) 47%, rgba(255, 255, 255, .04) 58%, transparent 72%);
+}
+.ligne1 { display: flex; align-items: center; gap: 8px; color: var(--sourd); font-size: 12.5px; }
+.oeil { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: none; color: var(--sourd); cursor: pointer; border-radius: 999px; }
+.oeil:hover { color: var(--encre); background: var(--surface-2); }
+.montant { font-size: clamp(2.1rem, 4.5vw, 2.6rem); font-weight: 600; letter-spacing: -.01em; line-height: 1.15; margin-top: 2px; }
+.montant span { opacity: .38; }
+.delta { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--sourd); }
+.delta b { color: var(--acide); font-weight: 500; }
+.chip-capsule {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 16px;
+  height: 32px; padding: 0 14px 0 6px; border-radius: 32px;
+  background: var(--surface-2); border: 1px solid var(--trait);
+  font-size: 12.5px; color: var(--sourd);
+}
+.chip-capsule i { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #D8C289, #A8925B); }
+
+/* actions — capsules desktop / cercles mobile */
+.actions { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 46px; padding-inline: 22px; cursor: pointer; font: inherit;
+  font-weight: 500; font-size: 14.5px;
+  border: 1px solid var(--trait); border-radius: 999px;
+  background: var(--surface); color: var(--encre);
+  transition: background .15s ease;
+}
+.btn:hover { background: var(--surface-2); }
+.btn-primary { background: var(--acide); border-color: var(--acide); color: #0B0C0E; font-weight: 600; }
+.btn-primary:hover { background: #D3F95B; }
+.btn .lib-m { display: none; }
+
+/* grille desktop */
+.grid { display: grid; grid-template-columns: 7fr 5fr; gap: 22px; align-items: start; margin-top: 30px; }
+.sec { font-size: 13px; font-weight: 500; color: var(--sourd); margin: 0 0 10px 2px; }
+
+.carte { background: var(--surface); border: 1px solid var(--trait); border-radius: 18px; overflow: hidden; }
+.carte-head {
+  padding: 14px 20px; border-bottom: 1px solid var(--trait);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.carte-head b { font-size: 14.5px; font-weight: 500; }
+.link { font-size: 13px; color: var(--sourd); text-decoration: none; padding: 4px 8px; border-radius: 999px; }
+.link:hover { color: var(--encre); background: var(--surface-2); }
+
+/* rangées — services et opérations */
+.row {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  min-height: 60px; padding: 8px 20px; text-align: left;
+  background: none; border: 0; font: inherit; color: inherit; cursor: pointer;
+}
+.row + .row { border-top: 1px solid rgba(255, 255, 255, .05); }
+.row:hover { background: var(--surface-2); }
+.rond {
+  width: 42px; height: 42px; border-radius: 50%; flex: 0 0 auto;
+  border: 1px solid var(--trait); background: rgba(255, 255, 255, .02);
+  display: grid; place-items: center; color: var(--encre);
+}
+.row .txt { flex: 1; min-width: 0; }
+.row .txt b { display: block; font-size: 14.5px; font-weight: 500; }
+.row .txt span { display: block; font-size: 12.5px; color: var(--sourd); }
+.row .fin { text-align: right; }
+.row .fin b { display: block; font-size: 14.5px; font-weight: 500; }
+.row .fin b.credit { color: var(--acide); }
+.row .fin span { display: block; font-size: 12px; color: var(--sourd); }
+.chev { color: var(--sourd); }
+
+/* nav basse mobile — pilule flottante + FAB acide */
+.navzone { display: none; }
+
+/* ---------------- mobile ---------------- */
+@media (max-width: 880px) {
+  .topbar { display: none; }
+  .m-header { display: flex; align-items: center; padding: 18px 20px 0; }
+  .m-header small { display: block; color: var(--sourd); font-size: 13px; }
+  .m-header .nom { font-weight: 600; font-size: 24px; letter-spacing: -.01em; line-height: 1.15; }
+  .page { padding-block: 16px 120px; }
+
+  .actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 20px; }
+  .btn {
+    height: auto; flex-direction: column; gap: 7px; padding: 0;
+    background: none; border: 0; font-size: 12px; font-weight: 400; color: var(--sourd);
+  }
+  .btn:hover { background: none; }
+  .btn-primary { background: none; border: 0; color: var(--sourd); font-weight: 400; }
+  .btn-primary:hover { background: none; }
+  .btn .lib-m {
+    display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+    border: 1px solid var(--trait); background: rgba(255, 255, 255, .02); color: var(--encre);
+  }
+
+  .grid { grid-template-columns: 1fr; gap: 24px; margin-top: 26px; }
+
+  .navzone {
+    display: flex; align-items: center; justify-content: space-between;
+    position: fixed; inset-inline: 0; bottom: 0; z-index: 30;
+    padding: 10px 22px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(11, 12, 14, .88) 40%);
+  }
+  .navpill {
+    display: flex; align-items: center; gap: 8px;
+    height: 58px; padding: 0 12px; border-radius: 999px;
+    background: rgba(21, 23, 28, .92); backdrop-filter: blur(10px);
+    border: 1px solid var(--trait);
+  }
+  .navpill a { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--sourd); }
+  .navpill a.actif { color: var(--encre); background: var(--surface-2); }
+  .fab {
+    width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
+    background: var(--acide); color: #0B0C0E;
+    display: grid; place-items: center;
+    box-shadow: inset -2px -2px 4px rgba(0, 0, 0, .18), 0 8px 20px rgba(198, 244, 50, .18);
+  }
+}
+@media (max-width: 380px) { .montant { font-size: 1.9rem; } }
+</style>
+
+<header class="topbar">
+  <div class="shell topbar-in">
+    <span class="brand"><img alt="" src="data:image/png;base64,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">SwimPay</span>
+    <nav class="nav">
+      <a class="active" href="#">Accueil</a><a href="#">Envoyer</a><a href="#">Recevoir</a><a href="#">Profil</a>
+    </nav>
+    <div class="grow"></div>
+    <label class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+      <input type="search" placeholder="Rechercher">
+    </label>
+    <button class="icon-btn" aria-label="Notifications">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 4 1.6 5.4 2 6H4c.4-.6 2-2 2-6"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
+      <span class="point"></span>
+    </button>
+    <span class="avatar">CL</span>
+  </div>
+</header>
+
+<div class="m-header">
+  <div>
+    <small>Bonsoir</small>
+    <div class="nom">Camille Laurent</div>
+  </div>
+  <div class="grow"></div>
+  <button class="icon-btn" aria-label="Notifications">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 4 1.6 5.4 2 6H4c.4-.6 2-2 2-6"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
+    <span class="point"></span>
+  </button>
+</div>
+
+<main class="shell page">
+
+  <section class="halo">
+    <div class="solde-carte">
+      <div class="ligne1">
+        N° de compte ····9654
+        <button class="oeil" aria-label="Masquer le solde">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="montant">1 254 500<span>,00</span></div>
+      <div class="delta"><b>+45 300 (3,7 %)</b> ce mois</div>
+      <span class="chip-capsule"><i></i>··9654 · compte principal</span>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+        Envoyer</button>
+      <button class="btn">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"/></svg></span>
+        Recevoir</button>
+      <button class="btn">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></span>
+        Transférer</button>
+      <button class="btn">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+        Historique</button>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section>
+      <h2 class="sec">Dernières opérations</h2>
+      <div class="carte">
+        <div class="carte-head"><b>Cette semaine</b><a class="link" href="#">Tout voir</a></div>
+        <div class="row">
+          <span class="rond">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+          </span>
+          <span class="txt"><b>Envoyé à Julien</b><span>Entre proches</span></span>
+          <span class="fin"><b>−10 000</b><span>Aujourd'hui</span></span>
+        </div>
+        <div class="row">
+          <span class="rond">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"/></svg>
+          </span>
+          <span class="txt"><b>Reçu de Sarah</b><span>Entre proches</span></span>
+          <span class="fin"><b class="credit">+6 500</b><span>Hier</span></span>
+        </div>
+        <div class="row">
+          <span class="rond">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+          </span>
+          <span class="txt"><b>Envoyé à Marc</b><span>Entre proches</span></span>
+          <span class="fin"><b>−3 200</b><span>Mardi</span></span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="sec">Services</h2>
+      <div class="carte">
+        <button class="row">
+          <span class="rond">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>
+          </span>
+          <span class="txt"><b>Transférer entre réseaux</b><span>D'un mobile à l'autre</span></span>
+          <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <button class="row">
+          <span class="rond">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg>
+          </span>
+          <span class="txt"><b>Vers la banque</b><span>Du mobile au compte bancaire</span></span>
+          <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <button class="row">
+          <span class="rond">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h3v3h-3zM20 14v.5M20 19.5v.5M17.5 20h-.5"/></svg>
+          </span>
+          <span class="txt"><b>Payer un contact</b><span>QR ou sans contact</span></span>
+          <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <button class="row">
+          <span class="rond">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg>
+          </span>
+          <span class="txt"><b>Mes reçus</b><span>Chaque opération, tracée</span></span>
+          <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<nav class="navzone">
+  <div class="navpill">
+    <a class="actif" href="#" aria-label="Accueil">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 11 8-7 8 7v9h-5v-6h-6v6H4z"/></svg>
+    </a>
+    <a href="#" aria-label="Activité">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 19V10M12 19V5M19 19v-6"/></svg>
+    </a>
+    <a href="#" aria-label="Profil">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.5 3.8-5 7-5s6 1.5 7 5"/></svg>
+    </a>
+  </div>
+  <button class="fab" aria-label="Nouvelle opération">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+</nav>
