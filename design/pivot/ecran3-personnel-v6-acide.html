@@ -457,6 +457,29 @@ button { font: inherit; color: inherit; }
 }
 .valide-btn:hover { color: var(--acide); border-color: var(--acide); }
 
+/* ---------------- import CSV, code dev, sources ---------------- */
+.depose {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 30px 20px; margin-top: 16px; cursor: pointer; text-align: center;
+  border: 1.5px dashed var(--trait); border-radius: 18px; color: var(--sourd);
+}
+.depose:hover { border-color: var(--sourd); color: var(--encre); }
+.depose input { display: none; }
+.depose b { color: var(--encre); font-weight: 500; }
+.code {
+  background: var(--fond); border: 1px solid var(--trait); border-radius: 12px;
+  padding: 14px 16px; overflow-x: auto;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12.5px; line-height: 1.6; white-space: pre; color: var(--encre);
+}
+.code .cm { color: var(--sourd); }
+.source { width: 100%; }
+.source .row .coche-source { visibility: hidden; color: var(--acide); }
+.source .row[aria-pressed="true"] { background: var(--surface-2); }
+.source .row[aria-pressed="true"] .coche-source { visibility: visible; }
+.tuile-btn { text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.tuile-btn:hover { background: var(--surface-2); }
+
 /* ---------------- statuts, papier de facture, remboursement ---------------- */
 .statut { font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; flex: 0 0 auto; }
 .statut-ok { color: var(--acide); background: rgba(198, 244, 50, .12); border: 1px solid rgba(198, 244, 50, .35); }
@@ -1509,13 +1532,16 @@ button { font: inherit; color: inherit; }
       </div>
     </div>
 
-    <div class="actions" style="justify-content: center; gap: 26px">
+    <div class="actions">
+      <button class="btn" data-va="bc-scan">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M4 12h16"/></svg></span>
+        Scanner</button>
       <button class="btn" data-va="bc-ventes">
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 19V10M12 19V5M19 19v-6"/></svg></span>
         Ventes</button>
       <button class="btn" data-va="bc-retrait">
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg></span>
-        Vider</button>
+        Retirer</button>
       <button class="btn" data-va="bc-code">
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h3v3h-3zM20 14v.5M20 19.5v.5M17.5 20h-.5"/></svg></span>
         Code</button>
@@ -1594,7 +1620,7 @@ button { font: inherit; color: inherit; }
       <button class="rond" data-va="b-commercant" aria-label="Retour">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
       </button>
-      <h2>Vider la caisse</h2>
+      <h2>Retirer</h2>
       <span class="vide"></span>
     </div>
 
@@ -1612,7 +1638,7 @@ button { font: inherit; color: inherit; }
       <small class="recap">Toute la caisse est proposée — ajuste si besoin</small>
     </div>
     <div class="numpad pad-slot" data-pad="m:retrait" data-mene="envoye" style="margin-top: auto"></div>
-    <button class="cta" id="rt-cta">Virer 148 500</button>
+    <button class="cta" id="rt-cta">Retirer 148 500</button>
   </div>
 </div>
 
@@ -1652,6 +1678,59 @@ button { font: inherit; color: inherit; }
   </div>
 </div>
 
+<div class="ecran" id="bc-scan" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-commercant" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Scanner un client</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="viseur">
+      <span class="coin"></span><span class="coin"></span><span class="coin"></span><span class="coin"></span>
+      <span class="balayage"></span>
+    </div>
+    <p class="viseur-note">Le client montre son code SwimPay — tu encaisses son compte directement.</p>
+
+    <div style="margin-top: auto"></div>
+    <button class="cta" data-va="bc-client">Simuler la détection</button>
+    <button class="link s-lien" data-va="bc-encaisser">Afficher mon code à la place</button>
+  </div>
+</div>
+
+<div class="ecran" id="bc-client" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="bc-scan" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Encaisser le client</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="carte">
+      <div class="row" style="cursor: default">
+        <span class="avatar">AK</span>
+        <span class="txt"><b>Awa K.</b>
+          <span class="verifie">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>
+            Compte ····3417 · identité vérifiée
+          </span>
+        </span>
+      </div>
+    </div>
+
+    <div class="saisie">
+      <div class="montant" id="sc-aff">3 500<i class="caret"></i></div>
+      <small>Le client valide sur son téléphone, l'argent arrive tracé</small>
+    </div>
+    <div class="numpad pad-slot" data-pad="m:scanenc" data-mene="b-qr" style="margin-top: auto"></div>
+    <button class="cta" id="sc-cta">Encaisser 3 500</button>
+  </div>
+</div>
+
 <div class="ecran" id="b-qr" hidden data-anime>
   <div class="shell flux succes">
     <div id="bq-attente">
@@ -1687,16 +1766,16 @@ button { font: inherit; color: inherit; }
       <button class="rond" data-va="profils" aria-label="Changer de profil">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
       </button>
-      <h2>Atelier Mode</h2>
+      <h2>Mon entreprise</h2>
       <span class="vide"></span>
     </div>
 
     <div class="halo">
       <div class="solde-carte">
         <div class="ligne1">Trésorerie</div>
-        <div class="montant" style="font-size: 34px"><span data-caisse="zero">4 850 000</span></div>
-        <div class="delta"><b>+310 000</b> ce mois</div>
-        <button class="chip-capsule" data-va="pme-factures"><i></i>Compte ····8812 · factures</button>
+        <div class="montant" style="font-size: 34px"><span data-caisse="zero" data-pme="treso">4 850 000</span></div>
+        <div class="delta">Chaque mouvement tracé, avec son motif</div>
+        <button class="chip-capsule" data-va="pme-depot"><i></i>Compte ····8812 · approvisionner</button>
       </div>
     </div>
 
@@ -1704,26 +1783,26 @@ button { font: inherit; color: inherit; }
       <button class="btn" data-va="pme-salaires">
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.4"/><path d="M3.5 19c.8-3 2.8-4.5 5.5-4.5s4.7 1.5 5.5 4.5M14.5 14.8c2.4.2 4.1 1.6 4.9 4.2"/></svg></span>
         Salaires</button>
+      <button class="btn" data-va="pme-envoyer">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+        Envoyer</button>
       <button class="btn" data-va="pme-facturer">
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg></span>
         Facturer</button>
-      <button class="btn" data-va="pme-factures">
-        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v17l-2.5-1.6L14 21l-2-1.4L10 21l-2.5-1.6L5 21z"/><path d="M9 9h6M9 13h4"/></svg></span>
-        Factures</button>
       <button class="btn" data-va="pme-equipe">
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.5 3.8-5 7-5s6 1.5 7 5"/></svg></span>
         Équipe</button>
     </div>
 
     <div class="tuiles" style="margin-top: 20px">
-      <div class="tuile"><small>En attente d'encaissement</small><b data-pme="attente-total">476 000</b></div>
-      <div class="tuile"><small>Masse salariale</small><b data-pme="total">1 160 000</b></div>
+      <button class="tuile tuile-btn" data-va="pme-factures"><small>Factures en attente</small><b data-pme="attente-total">476 000</b></button>
+      <button class="tuile tuile-btn" data-va="pme-salaires"><small>Masse salariale</small><b data-pme="total">1 160 000</b></button>
     </div>
 
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 20px 2px 10px">
       <h2 class="sec" style="margin: 0">Activité récente</h2>
     </div>
-    <div class="carte ops">
+    <div class="carte ops" id="pme-ops">
       <div class="row">
         <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"/></svg></span>
         <span class="txt"><b>Facture 2026-038 payée</b><span>Maison Kéma</span></span>
@@ -1752,11 +1831,12 @@ button { font: inherit; color: inherit; }
       <h2>Salaires</h2>
       <span class="vide"></span>
     </div>
-    <p class="badge-jour">Atelier Mode · <b data-pme="n">5</b> employés · touche le crayon pour ajuster</p>
+    <p class="badge-jour">Mon entreprise · <b data-pme="n">5</b> employés · touche le crayon pour ajuster</p>
+    <div class="chips" id="sal-chips" style="justify-content: center"></div>
 
     <div class="carte" style="margin-top: 14px">
       <div id="sal-liste"></div>
-      <div class="total-ligne"><span>Total</span><span data-pme="total">1 160 000</span></div>
+      <div class="total-ligne"><span>Total</span><span data-pme="total-filtre">1 160 000</span></div>
     </div>
 
     <div style="max-width: 430px; margin: 18px auto 0; display: flex; flex-direction: column">
@@ -1799,7 +1879,7 @@ button { font: inherit; color: inherit; }
     </div>
 
     <div class="papier" style="margin-top: 14px">
-      <header><b>Atelier Mode</b><span id="ap-num">Facture n° 2026-041</span></header>
+      <header><b>Mon entreprise</b><span id="ap-num">Facture n° 2026-041</span></header>
       <div class="ligne-f"><span>Destinataire<small id="ap-client">Boulangerie du Pont</small></span><span></span></div>
       <div class="ligne-f"><span id="ap-objet">Tabliers brodés ×10</span><span id="ap-montant">120 000</span></div>
       <div class="total-f"><span>Total</span><span id="ap-total">120 000</span></div>
@@ -1836,7 +1916,7 @@ button { font: inherit; color: inherit; }
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
       </button>
       <h2>Équipe</h2>
-      <span class="vide"></span>
+      <button class="link" data-va="pme-import">Importer</button>
     </div>
     <p class="badge-jour"><b data-pme="n">5</b> employés · masse salariale <b data-pme="total">1 160 000</b></p>
 
@@ -1849,9 +1929,93 @@ button { font: inherit; color: inherit; }
         <input class="champ" id="eq-role" placeholder="Rôle" style="flex: 1">
         <input class="champ" id="eq-sal" inputmode="numeric" placeholder="Salaire" style="flex: 1">
       </div>
+      <input class="champ" id="eq-equipe" placeholder="Équipe (Production, Vente…)">
       <button class="btn" id="eq-ajoute" style="justify-content: center">Ajouter à l'équipe et aux salaires</button>
     </div>
   </main>
+</div>
+
+<div class="ecran" id="pme-envoyer" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-pme" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Envoyer</h2>
+      <span class="vide"></span>
+    </div>
+
+    <label class="onb-etape" for="pe-dest" style="margin-top: 16px">Destinataire</label>
+    <input class="champ" id="pe-dest" value="Fournisseur Tissus &amp; Fils" style="margin-top: 6px">
+    <label class="onb-etape" for="pe-motif" style="margin-top: 14px">Motif — il suit l'argent, jusqu'au reçu</label>
+    <input class="champ" id="pe-motif" value="Facture F-889 · commande d'août" style="margin-top: 6px">
+
+    <div class="saisie" style="padding-top: 16px">
+      <div class="montant" id="pe-aff">420 000<i class="caret"></i></div>
+      <small class="recap">Depuis la trésorerie · reçu signé aux deux parties</small>
+    </div>
+    <div class="numpad pad-slot" data-pad="m:pmeenv" data-mene="envoye" style="margin-top: auto"></div>
+    <button class="cta" id="pe-cta">Envoyer 420 000</button>
+  </div>
+</div>
+
+<div class="ecran" id="pme-depot" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-pme" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Approvisionner</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="carte source" id="dp-sources" style="margin-top: 14px">
+      <button class="row" aria-pressed="true">
+        <span class="rond"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg></span>
+        <span class="txt"><b>Compte bancaire ····8812</b><span>Virement entrant · sous 3 heures</span></span>
+        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+      </button>
+      <button class="row" aria-pressed="false">
+        <span class="rond"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
+        <span class="txt"><b>Mobile du gérant ····07 88</b><span>Immédiat · tracé comme apport</span></span>
+        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+      </button>
+    </div>
+
+    <div class="saisie">
+      <div class="montant" id="dp-aff">500 000<i class="caret"></i></div>
+      <small class="recap">La trésorerie est créditée, l'apport garde sa source</small>
+    </div>
+    <div class="numpad pad-slot" data-pad="m:depot" data-mene="envoye" style="margin-top: auto"></div>
+    <button class="cta" id="dp-cta">Approvisionner 500 000</button>
+  </div>
+</div>
+
+<div class="ecran" id="pme-import" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="pme-equipe" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Importer l'équipe</h2>
+      <span class="vide"></span>
+    </div>
+    <p class="badge-jour">On se pose sur tes outils : le fichier que tu tiens déjà suffit.<br>Colonnes reconnues : nom · rôle · salaire · équipe.</p>
+
+    <label class="depose">
+      <input type="file" id="im-fichier" accept=".csv,text/csv,text/plain">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 20h16"/></svg>
+      <span><b>Choisir un fichier CSV</b><br>ou glisse-le ici</span>
+    </label>
+    <button class="link s-lien" id="im-exemple" style="align-self: center">Essayer avec un fichier d'exemple</button>
+
+    <div id="im-apercu" hidden>
+      <p class="badge-jour" id="im-detail">equipe.csv · 4 lignes reconnues</p>
+      <div class="carte" id="im-liste"></div>
+      <button class="cta" id="im-cta" data-mene="pme-equipe" style="margin-top: 16px; width: 100%">Ajouter à l'équipe</button>
+    </div>
+    <div style="margin-top: auto"></div>
+  </div>
 </div>
 
 <div class="ecran" id="b-comptable" hidden>
@@ -1862,6 +2026,12 @@ button { font: inherit; color: inherit; }
       </button>
       <h2>Console comptable</h2>
       <span class="vide"></span>
+    </div>
+
+    <div class="sheet-actions" style="max-width: 620px; margin: 14px auto 0">
+      <button class="btn" data-va="cpt-client">Rapprocher</button>
+      <button class="btn" data-va="cpt-exports">Exporter</button>
+      <button class="btn" data-va="cpt-inviter">Inviter un client</button>
     </div>
 
     <div class="grid-act" style="margin-top: 14px">
@@ -1875,7 +2045,7 @@ button { font: inherit; color: inherit; }
           </button>
           <button class="row">
             <span class="avatar">AM</span>
-            <span class="txt"><b>Atelier Mode</b><span>Salaires du mois passés</span></span>
+            <span class="txt"><b>Atelier Couture</b><span>Salaires du mois passés</span></span>
             <span class="badge-compte badge-zero">0</span>
           </button>
           <button class="row">
@@ -1884,15 +2054,14 @@ button { font: inherit; color: inherit; }
             <span class="badge-compte">2</span>
           </button>
         </div>
-        <h2 class="sec" style="margin-top: 22px">Journal</h2>
+        <h2 class="sec" style="margin-top: 22px">Ce que l'outil fait seul</h2>
         <div class="carte">
-          <button class="row" data-va="cpt-exports">
-            <span class="txt"><b>Exports</b><span>Mois, trimestre, année · CSV ou PDF</span></span>
-            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
-          </button>
           <div class="row" style="cursor: default">
-            <span class="txt"><b>128 écritures passées seules</b><span>Rapprochement automatique</span></span>
-            <span class="fin"><b style="font-weight: 500">Ce mois</b></span>
+            <span class="txt"><b>128 écritures passées seules</b><span>Rapprochées automatiquement ce mois</span></span>
+            <span class="fin"><b style="font-weight: 500">92 %</b></span>
+          </div>
+          <div class="row" style="cursor: default">
+            <span class="txt"><b>Toi, tu tranches le reste</b><span>Confirmer, écarter, demander la pièce</span></span>
           </div>
         </div>
       </section>
@@ -1954,6 +2123,9 @@ button { font: inherit; color: inherit; }
       <button class="btn" data-va="ec-commandes">
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.6"/><circle cx="17" cy="20" r="1.6"/><path d="M3 4h2.5l2.3 11.5h10.7L21 8H6"/></svg></span>
         Commandes</button>
+      <button class="btn" data-va="ec-integration">
+        <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M13 4l-2 16"/></svg></span>
+        Intégration</button>
       <button class="btn" data-va="ec-checkout">
         <span class="lib-m"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 9h18M7 14h4"/></svg></span>
         Checkout</button>
@@ -2006,6 +2178,55 @@ button { font: inherit; color: inherit; }
     </div>
     <p class="badge-jour"><b data-ec="jour">86 000</b> aujourd'hui · touche une commande payée pour la rembourser</p>
     <div class="carte ops" id="eco-liste" style="margin-top: 14px"></div>
+  </main>
+</div>
+
+<div class="ecran" id="ec-integration" hidden>
+  <main class="shell" style="padding-bottom: 60px; max-width: 720px">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-ecommerce" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Intégration</h2>
+      <span class="vide"></span>
+    </div>
+    <p class="badge-jour">Trois lignes sur ton site, et la boutique encaisse tous les réseaux.</p>
+
+    <h2 class="sec" style="margin-top: 18px">Clé publique</h2>
+    <div class="carte" style="padding: 14px 18px; display: flex; align-items: center; gap: 12px">
+      <code class="code" id="ic-cle" style="flex: 1; border: 0; padding: 4px 0; background: none">pk_live_kema_8f3k2n</code>
+      <button class="btn" id="ic-copie-cle" style="height: 38px; padding-inline: 14px; font-size: 13px">Copier</button>
+      <button class="btn" id="ic-regen" style="height: 38px; padding-inline: 14px; font-size: 13px">Régénérer</button>
+    </div>
+
+    <h2 class="sec" style="margin-top: 22px">Le SDK, sur la page de paiement</h2>
+    <div class="code"><span class="cm">&lt;!-- le bouton ouvre le checkout, tous réseaux --&gt;</span>
+&lt;script src="https://pay.swim.me/sdk.js"&gt;&lt;/script&gt;
+&lt;button data-swimpay="pk_live_kema_8f3k2n"
+        data-montant="32000"
+        data-reference="commande-1043"&gt;
+  Payer avec SwimPay
+&lt;/button&gt;</div>
+    <div class="sheet-actions" style="margin-top: 10px; max-width: 430px">
+      <button class="btn" id="ic-copie-snippet">Copier le code</button>
+      <button class="btn" id="ic-doc">Voir la documentation</button>
+    </div>
+
+    <h2 class="sec" style="margin-top: 22px">Webhook — la boutique est prévenue</h2>
+    <div class="carte" style="padding: 14px 18px; display: flex; flex-direction: column; gap: 10px">
+      <input class="champ" value="https://maison-kema.example/hooks/swimpay" readonly>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <button class="btn" id="ic-test" style="flex: 1">Envoyer un événement de test</button>
+        <span class="statut statut-ok" id="ic-etat" hidden>200 OK</span>
+      </div>
+    </div>
+
+    <div class="carte" style="margin-top: 22px; padding: 4px 18px">
+      <div class="row" style="cursor: default">
+        <span class="txt"><b>Mode test</b><span>Paiements simulés, aucune vraie monnaie</span></span>
+        <button class="bascule" aria-pressed="true" aria-label="Mode test"><i></i></button>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -2123,6 +2344,25 @@ button { font: inherit; color: inherit; }
       </div>
     </div>
     <div style="margin-top: auto"></div>
+  </div>
+</div>
+
+<div class="ecran" id="cpt-inviter" hidden>
+  <div class="shell flux">
+    <div class="fluxbar">
+      <button class="rond" data-va="b-comptable" aria-label="Retour">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <h2>Inviter un client</h2>
+      <span class="vide"></span>
+    </div>
+
+    <div class="qr-carte" style="margin-top: 14px; width: min(210px, 60vw)"><svg id="ci-qr" viewBox="0 0 29 29" role="img" aria-label="Invitation du cabinet"></svg></div>
+    <p class="qr-sous"><b>swim.me/cabinet/invite</b><small>Le client accepte depuis son app — ses écritures arrivent seules, déjà rapprochées à 92 %.</small></p>
+
+    <div style="margin-top: auto"></div>
+    <button class="cta" id="ci-copier">Copier le lien d'invitation</button>
+    <button class="link s-lien" id="ci-envoyer">Envoyer par message</button>
   </div>
 </div>
 
@@ -2299,10 +2539,16 @@ const debite = (nom, categorie, montant) => {
 /* clôture générique : remplit l'écran « envoyé » puis y va.
    livre "caisse" débite la caisse commerçante ; sinon le compte personnel.
    retour : où mène « Terminé » (accueil par défaut). */
-const cloture = ({ titre, sous, montant, nom, categorie, livre, retour }) => {
+const cloture = ({ titre, sous, montant, nom, categorie, livre, retour, credit }) => {
   if (livre === "caisse") {
     caisseJour = Math.max(0, caisseJour - montant);
     majCaisse();
+  } else if (livre === "pme-debit") {
+    tresoPME = Math.max(0, tresoPME - montant);
+    rangeePme(nom, categorie, "−", montant);
+  } else if (livre === "pme-credit") {
+    tresoPME += montant;
+    rangeePme(nom, categorie, "+", montant);
   } else {
     debite(nom, categorie, montant);
   }
@@ -2310,11 +2556,31 @@ const cloture = ({ titre, sous, montant, nom, categorie, livre, retour }) => {
   termine.dataset.va = retour || "accueil";
   document.getElementById("s-voir").hidden = Boolean(retour && retour !== "accueil");
   document.getElementById("s-titre").textContent = titre;
-  document.getElementById("s-montant").textContent = fmt(String(montant));
+  const sm = document.getElementById("s-montant");
+  sm.textContent = (credit ? "+" : "") + fmt(String(montant));
+  sm.classList.toggle("credit", Boolean(credit));
+  sm.style.color = credit ? "var(--acide)" : "";
   document.getElementById("s-sous").textContent = sous;
   document.getElementById("s-date").textContent = "Aujourd'hui · " + heureCourte();
   document.getElementById("s-ref").textContent = refAlea();
   va("envoye");
+};
+/* la trésorerie de l'entreprise — vivante elle aussi */
+let tresoPME = 4850000;
+const majTreso = () => {
+  document.querySelectorAll("[data-pme='treso']").forEach((e) => { e.textContent = fmt(String(tresoPME)); });
+};
+const rangeePme = (nom, sub, signe, montant) => {
+  majTreso();
+  const ops = document.getElementById("pme-ops");
+  const r = document.createElement("div");
+  r.className = "row";
+  r.innerHTML = (signe === "+" ? ROND_ENTREE : ROND_SORTIE) +
+    `<span class="txt"><b>${nom}</b><span>${sub}</span></span>` +
+    `<span class="fin"><b${signe === "+" ? ' class="credit"' : ""}>${signe}${fmt(String(montant))}</b><span>${heureCourte()}</span></span>`;
+  ops.prepend(r);
+  const rangees = ops.querySelectorAll(".row");
+  if (rangees.length > 4) rangees[rangees.length - 1].remove();
 };
 /* micro-état commun « en cours… » sur un CTA */
 const occupe = (btn, libelle, apres) => {
@@ -2510,7 +2776,7 @@ document.querySelectorAll(".bascule").forEach((b) => {
 fluxM.caisse = "3500";
 FLUX_CFG.caisse = { aff: "c-aff", cta: "c-cta", libelle: (m) => "Générer le code de " + m };
 fluxM.retrait = "148500";
-FLUX_CFG.retrait = { aff: "rt-aff", cta: "rt-cta", libelle: (m) => "Virer " + m };
+FLUX_CFG.retrait = { aff: "rt-aff", cta: "rt-cta", libelle: (m) => "Retirer " + m };
 let caisseJour = 148500, caisseN = 23, rembN = 0, rembTotal = 0, dernierH = "11:42";
 const ventes = [
   { qui: "Vente au comptoir", h: "11:42", m: 4500 },
@@ -2544,18 +2810,32 @@ document.getElementById("c-cta").addEventListener("click", () => {
   va("b-qr");
 });
 document.getElementById("c-cta").setAttribute("data-mene", "b-qr");
+/* encaissement conclu — partagé entre le QR affiché et le scan direct */
+const encaisse = (m, libelle) => {
+  caisseJour += m; caisseN += 1; dernierH = heureCourte();
+  ventes.unshift({ qui: libelle, h: dernierH, m });
+  renderVentes();
+  document.getElementById("bq-recu-montant").textContent = "+" + fmt(String(m));
+  document.getElementById("bq-attente").hidden = true;
+  document.getElementById("bq-recu").hidden = false;
+  const ecran = document.getElementById("b-qr");
+  ecran.classList.remove("joue"); void ecran.offsetWidth; ecran.classList.add("joue");
+};
 document.getElementById("bq-simule").addEventListener("click", function () {
   occupe(this, "Paiement en cours…", () => {
-    const m = parseInt(fluxM.caisse || "0", 10);
-    caisseJour += m; caisseN += 1; dernierH = heureCourte();
-    ventes.unshift({ qui: "Vente au comptoir", h: dernierH, m });
-    renderVentes();
-    document.getElementById("bq-recu-montant").textContent = "+" + fmt(fluxM.caisse);
     this.textContent = "Paiement reçu — simuler";
-    document.getElementById("bq-attente").hidden = true;
-    document.getElementById("bq-recu").hidden = false;
-    const ecran = document.getElementById("b-qr");
-    ecran.classList.remove("joue"); void ecran.offsetWidth; ecran.classList.add("joue");
+    encaisse(parseInt(fluxM.caisse || "0", 10), "Vente au comptoir");
+  });
+});
+/* scan du client — on encaisse SON compte, identité vérifiée */
+fluxM.scanenc = "3500";
+FLUX_CFG.scanenc = { aff: "sc-aff", cta: "sc-cta", libelle: (m) => "Encaisser " + m };
+document.getElementById("sc-cta").addEventListener("click", function () {
+  const m = parseInt(fluxM.scanenc || "0", 10); if (m <= 0) return;
+  occupe(this, "Encaissement en cours…", () => {
+    majFlux("scanenc");
+    encaisse(m, "Encaissement direct · Awa K.");
+    va("b-qr");
   });
 });
 /* remboursement — depuis la sheet, sur toute rangée data-remb */
@@ -2575,7 +2855,7 @@ document.getElementById("rt-cta").addEventListener("click", function () {
   if (m <= 0 || m > caisseJour) return;
   occupe(this, "Virement en cours…", () => {
     majFlux("retrait");
-    cloture({ titre: "Caisse virée", sous: "Vers le compte ····2201 · arrive sous 3 heures",
+    cloture({ titre: "Retrait effectué", sous: "Vers le compte ····2201 · arrive sous 3 heures",
       montant: m, livre: "caisse", retour: "b-commercant" });
   });
 });
@@ -2614,37 +2894,65 @@ document.getElementById("cc-partager").addEventListener("click", function () { r
 /* PME — équipe et factures vivantes, salaires en cascade, édition au pad */
 const COCHE_MINI = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>`;
 const employes = [
-  { nom: "Aminata D.", role: "Couturière", sal: 280000 },
-  { nom: "Karim B.", role: "Coupeur", sal: 260000 },
-  { nom: "Fatou S.", role: "Vendeuse", sal: 240000 },
-  { nom: "Moussa O.", role: "Livreur", sal: 220000 },
-  { nom: "Rokia L.", role: "Apprentie", sal: 160000 },
+  { nom: "Aminata D.", role: "Couturière", sal: 280000, eq: "Production" },
+  { nom: "Karim B.", role: "Coupeur", sal: 260000, eq: "Production" },
+  { nom: "Fatou S.", role: "Vendeuse", sal: 240000, eq: "Vente" },
+  { nom: "Moussa O.", role: "Livreur", sal: 220000, eq: "Livraison" },
+  { nom: "Rokia L.", role: "Apprentie", sal: 160000, eq: "Production" },
 ];
 const initiales = (nom) => nom.trim().split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
-const totalSalaires = () => employes.reduce((s, e) => s + e.sal, 0);
+const ech = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let filtreEq = "Toutes";
+const visiblesEq = () => employes.filter((e) => filtreEq === "Toutes" || e.eq === filtreEq);
+const totalSalaires = () => visiblesEq().reduce((s, e) => s + e.sal, 0);
 const pmeCta = document.getElementById("pme-cta");
+const libelleCtaSalaires = () => {
+  const n = visiblesEq().length;
+  return `Payer ${n} salaire${n > 1 ? "s" : ""}${filtreEq === "Toutes" ? "" : " (" + filtreEq + ")"} en 1 clic`;
+};
 const renderEquipe = () => {
+  const equipes = [...new Set(employes.map((e) => e.eq))];
+  if (filtreEq !== "Toutes" && !equipes.includes(filtreEq)) filtreEq = "Toutes";
+  /* chips de filtre par équipe, sur l'écran Salaires */
+  document.getElementById("sal-chips").innerHTML = ["Toutes", ...equipes].map((q) =>
+    `<button class="chip${q === filtreEq ? " actif" : ""}" data-eqf="${ech(q)}">${ech(q)}</button>`).join("");
+  /* liste des salaires — l'équipe filtrée seulement */
   document.getElementById("sal-liste").innerHTML = employes.map((e, i) =>
+    (filtreEq !== "Toutes" && e.eq !== filtreEq) ? "" :
     `<div class="row" style="cursor: default">
-      <span class="avatar">${initiales(e.nom)}</span>
-      <span class="txt"><b>${e.nom}</b><span>${e.role}</span></span>
+      <span class="avatar">${ech(initiales(e.nom))}</span>
+      <span class="txt"><b>${ech(e.nom)}</b><span>${ech(e.role)} · ${ech(e.eq)}</span></span>
       <span class="fin"><b>${fmt(String(e.sal))}</b></span>
       <button class="valide-btn" data-edite="${i}" aria-label="Ajuster le salaire">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.5-1L20 7.5a2 2 0 0 0-3-3L5.5 16Z"/></svg>
       </button>
       <span class="paye-etat"></span>
     </div>`).join("");
-  document.getElementById("eq-liste").innerHTML = employes.map((e) =>
-    `<div class="row" style="cursor: default">
-      <span class="avatar">${initiales(e.nom)}</span>
-      <span class="txt"><b>${e.nom}</b><span>${e.role}</span></span>
-      <span class="fin"><b>${fmt(String(e.sal))}</b><span>par mois</span></span>
-    </div>`).join("");
-  document.querySelectorAll("[data-pme='total']").forEach((el) => { el.textContent = fmt(String(totalSalaires())); });
+  /* l'équipe, groupée par équipe */
+  document.getElementById("eq-liste").innerHTML = equipes.map((q) =>
+    `<p class="jour">${ech(q)}</p>` + employes.filter((e) => e.eq === q).map((e) =>
+      `<div class="row" style="cursor: default">
+        <span class="avatar">${ech(initiales(e.nom))}</span>
+        <span class="txt"><b>${ech(e.nom)}</b><span>${ech(e.role)}</span></span>
+        <span class="fin"><b>${fmt(String(e.sal))}</b><span>par mois</span></span>
+      </div>`).join("")).join("");
+  document.querySelectorAll("[data-pme='total']").forEach((el) => {
+    el.textContent = fmt(String(employes.reduce((s, e) => s + e.sal, 0)));
+  });
+  document.querySelectorAll("[data-pme='total-filtre']").forEach((el) => {
+    el.textContent = fmt(String(totalSalaires()));
+  });
   document.querySelectorAll("[data-pme='n']").forEach((el) => { el.textContent = employes.length; });
-  pmeCta.textContent = `Payer ${employes.length} salaires en 1 clic`;
+  pmeCta.textContent = libelleCtaSalaires();
+  pmeCta.classList.remove("cta-encre");
   document.getElementById("pme-reset").hidden = true;
 };
+document.addEventListener("click", (e) => {
+  const c = e.target.closest("[data-eqf]");
+  if (!c) return;
+  filtreEq = c.dataset.eqf;
+  renderEquipe();
+});
 pmeCta.addEventListener("click", () => {
   if (pmeCta.hasAttribute("data-occupe")) return;
   pmeCta.setAttribute("data-occupe", "");
@@ -2658,9 +2966,12 @@ pmeCta.addEventListener("click", () => {
   });
   setTimeout(() => {
     pmeCta.removeAttribute("data-occupe");
-    pmeCta.textContent = `${etats.length} salaires payés · ${fmt(String(totalSalaires()))}`;
+    const total = totalSalaires();
+    pmeCta.textContent = `${etats.length} salaire${etats.length > 1 ? "s" : ""} payé${etats.length > 1 ? "s" : ""} · ${fmt(String(total))}`;
     pmeCta.classList.add("cta-encre");
     document.getElementById("pme-reset").hidden = false;
+    tresoPME = Math.max(0, tresoPME - total);
+    rangeePme("Salaires versés", `${etats.length} employé${etats.length > 1 ? "s" : ""}${filtreEq === "Toutes" ? "" : " · " + filtreEq}`, "−", total);
   }, etats.length * pas + 500);
 });
 document.getElementById("pme-reset").addEventListener("click", function () {
@@ -2696,11 +3007,13 @@ document.getElementById("eq-ajoute").addEventListener("click", function () {
   const role = document.getElementById("eq-role").value.trim() || "Employé";
   const sal = parseInt((document.getElementById("eq-sal").value || "").replace(/\D/g, ""), 10);
   if (!nom || !sal) { retourBtn(this, "Nom et salaire requis"); return; }
-  employes.push({ nom, role, sal });
+  const eq = document.getElementById("eq-equipe").value.trim() || "Général";
+  employes.push({ nom, role, sal, eq });
   renderEquipe();
   document.getElementById("eq-nom").value = "";
   document.getElementById("eq-role").value = "";
   document.getElementById("eq-sal").value = "";
+  document.getElementById("eq-equipe").value = "";
   retourBtn(this, "Ajouté — salaires mis à jour");
 });
 /* factures */
@@ -2734,6 +3047,8 @@ document.getElementById("fac-simule").addEventListener("click", function () {
   const f = factures.find((x) => x.etat !== "payee");
   if (!f) { retourBtn(this, "Tout est payé"); return; }
   f.etat = "payee";
+  tresoPME += f.m;
+  rangeePme(`Facture ${f.num} payée`, f.client, "+", f.m);
   renderFactures();
   retourBtn(this, `Facture ${f.num} payée · +${fmt(String(f.m))}`);
 });
@@ -2794,7 +3109,7 @@ const renderRapprochements = () => {
     `<div class="row" style="cursor: default${r.etat === "ignore" ? "; opacity: .4" : ""}">
       <span class="txt"><b>${r.mvt}</b><span>${r.etat === "ignore" ? "À revoir avec le client" : "↔ " + r.prop}</span></span>
       ${r.etat === "ok" ? COCHE_MINI
-        : r.etat === "ignore" ? `<span class="statut statut-attente">Écartée</span>`
+        : r.etat === "ignore" ? `<button class="link" data-piece style="padding: 0 4px; font-size: 12px">Demander la pièce</button><span class="statut statut-attente">Écartée</span>`
         : `<button class="valide-btn" data-rp-ok="${i}" aria-label="Confirmer">
              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>
            </button>
@@ -2911,6 +3226,120 @@ document.getElementById("ec-reset").addEventListener("click", () => {
 document.getElementById("app-deconnecte").addEventListener("click", () => {
   document.getElementById("app-tablette").remove();
   document.querySelectorAll("[data-app='n']").forEach((e) => { e.textContent = "1"; });
+});
+
+/* PME — envoi tracé depuis le compte de l'entreprise */
+fluxM.pmeenv = "420000";
+FLUX_CFG.pmeenv = { aff: "pe-aff", cta: "pe-cta", libelle: (m) => "Envoyer " + m };
+document.getElementById("pe-cta").addEventListener("click", function () {
+  const m = parseInt(fluxM.pmeenv || "0", 10);
+  if (m <= 0 || m > tresoPME) return;
+  const dest = document.getElementById("pe-dest").value.trim() || "Destinataire";
+  const motif = document.getElementById("pe-motif").value.trim() || "Sans motif";
+  occupe(this, "Envoi en cours…", () => {
+    majFlux("pmeenv");
+    cloture({ titre: "Envoi effectué", sous: dest + " · « " + motif + " »",
+      montant: m, nom: dest, categorie: motif, livre: "pme-debit", retour: "b-pme" });
+  });
+});
+/* PME — approvisionner la trésorerie */
+fluxM.depot = "500000";
+FLUX_CFG.depot = { aff: "dp-aff", cta: "dp-cta", libelle: (m) => "Approvisionner " + m };
+document.querySelectorAll("#dp-sources .row").forEach((b) => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#dp-sources .row").forEach((x) => {
+      x.setAttribute("aria-pressed", x === b);
+    });
+  });
+});
+document.getElementById("dp-cta").addEventListener("click", function () {
+  const m = parseInt(fluxM.depot || "0", 10); if (m <= 0) return;
+  const source = document.querySelector("#dp-sources .row[aria-pressed='true'] .txt b").textContent;
+  occupe(this, "Approvisionnement…", () => {
+    majFlux("depot");
+    cloture({ titre: "Dépôt reçu", sous: "Depuis " + source + " · la source reste tracée",
+      montant: m, nom: "Approvisionnement", categorie: source, livre: "pme-credit",
+      retour: "b-pme", credit: true });
+  });
+});
+/* PME — importer l'équipe depuis un CSV (le vrai fichier de l'utilisateur) */
+const CSV_EXEMPLE = "nom;role;salaire;equipe\nIbrahim T.;Magasinier;200000;Livraison\nAda P.;Brodeuse;230000;Production\nLéa N.;Caissière;210000;Vente\nOmar D.;Coursier;180000;Livraison";
+let importe = [];
+const parseCsv = (texte, nomFichier) => {
+  const lignes = String(texte).trim().split(/\r?\n/).filter((l) => l.trim());
+  if (!lignes.length) return;
+  const sep = (lignes[0].match(/;/g) || []).length >= (lignes[0].match(/,/g) || []).length ? ";" : ",";
+  let rows = lignes.map((l) => l.split(sep).map((c) => c.trim()));
+  let cols = { nom: 0, role: 1, sal: 2, eq: 3 };
+  const tete = rows[0].map((c) => c.toLowerCase());
+  const trouve = (...mots) => tete.findIndex((t) => mots.some((mot) => t.includes(mot)));
+  if (trouve("nom", "name") !== -1 || trouve("sal", "montant", "pay") !== -1) {
+    cols = {
+      nom: Math.max(0, trouve("nom", "name")),
+      role: trouve("role", "rôle", "poste", "fonction"),
+      sal: trouve("sal", "montant", "pay"),
+      eq: trouve("equipe", "équipe", "team", "groupe"),
+    };
+    rows = rows.slice(1);
+  }
+  importe = rows.map((r) => ({
+    nom: r[cols.nom] || "",
+    role: cols.role !== -1 && r[cols.role] ? r[cols.role] : "Employé",
+    sal: parseInt(String(cols.sal !== -1 ? r[cols.sal] : "").replace(/\D/g, ""), 10) || 0,
+    eq: cols.eq !== -1 && r[cols.eq] ? r[cols.eq] : "Général",
+  })).filter((e) => e.nom && e.sal > 0);
+  document.getElementById("im-detail").textContent =
+    `${nomFichier} · ${importe.length} ligne${importe.length > 1 ? "s" : ""} reconnue${importe.length > 1 ? "s" : ""}`;
+  document.getElementById("im-liste").innerHTML = importe.map((e) =>
+    `<div class="row" style="cursor: default">
+      <span class="avatar">${ech(initiales(e.nom))}</span>
+      <span class="txt"><b>${ech(e.nom)}</b><span>${ech(e.role)} · ${ech(e.eq)}</span></span>
+      <span class="fin"><b>${fmt(String(e.sal))}</b></span>
+    </div>`).join("");
+  document.getElementById("im-cta").textContent =
+    `Ajouter ${importe.length} employé${importe.length > 1 ? "s" : ""} à l'équipe`;
+  document.getElementById("im-apercu").hidden = importe.length === 0;
+};
+document.getElementById("im-fichier").addEventListener("change", function () {
+  const f = this.files && this.files[0];
+  if (!f) return;
+  const lecteur = new FileReader();
+  lecteur.onload = () => parseCsv(lecteur.result, f.name);
+  lecteur.readAsText(f);
+});
+document.getElementById("im-exemple").addEventListener("click", () => parseCsv(CSV_EXEMPLE, "exemple.csv"));
+document.getElementById("im-cta").addEventListener("click", () => {
+  const dejaLa = new Set(employes.map((e) => e.nom.toLowerCase()));
+  importe.forEach((e) => { if (!dejaLa.has(e.nom.toLowerCase())) employes.push(e); });
+  renderEquipe();
+  document.getElementById("im-apercu").hidden = true;
+  document.getElementById("im-fichier").value = "";
+  va("pme-equipe");
+});
+/* comptable — demander la pièce, inviter un client */
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-piece]");
+  if (b) retourBtn(b, "Demande envoyée");
+});
+dessineQR("ci-qr");
+document.getElementById("ci-copier").addEventListener("click", function () { retourBtn(this, "Lien copié"); });
+document.getElementById("ci-envoyer").addEventListener("click", function () { retourBtn(this, "Invitation envoyée"); });
+/* e-commerce — intégration développeur */
+document.getElementById("ic-copie-cle").addEventListener("click", function () {
+  try { navigator.clipboard && navigator.clipboard.writeText(document.getElementById("ic-cle").textContent); } catch {}
+  retourBtn(this, "Copiée");
+});
+document.getElementById("ic-regen").addEventListener("click", function () {
+  document.getElementById("ic-cle").textContent = "pk_live_kema_" + Math.random().toString(36).slice(2, 8);
+  retourBtn(this, "Nouvelle clé");
+});
+document.getElementById("ic-copie-snippet").addEventListener("click", function () { retourBtn(this, "Code copié"); });
+document.getElementById("ic-doc").addEventListener("click", function () { retourBtn(this, "docs.swim.me/sdk"); });
+document.getElementById("ic-test").addEventListener("click", function () {
+  occupe(this, "Envoi de l'événement…", () => {
+    this.textContent = "Envoyer un événement de test";
+    document.getElementById("ic-etat").hidden = false;
+  });
 });
 
 /* onglets Détails / Activité de Ma carte */

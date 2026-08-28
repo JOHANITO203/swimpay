@@ -173,6 +173,52 @@ Flow transversal : « Se déconnecter » → splash ; remboursement unifié par
   1218 px — vient de la page publiée ou de l'hôte ; défense posée :
   `html { background: #0B0C0E }` (plus aucune transparence au-dessus du body).
 
+---
+
+# BOUCLE 3 — l'intelligence des mondes (retour commanditaire, 2026-08-28)
+
+## La critique (résumée, point par point)
+
+1. Commerçant : « Vider » → « Retirer » ; + fonctionnalité SCAN : encaisser
+   directement un compte SwimPay en scannant le QR du client.
+2. PME : la constitution d'équipes n'existe pas — apporter un outil qui se
+   pose sur les habitudes (absorber un CSV) ; aucun flow d'alimentation du
+   solde ; il manque l'ENVOI tracé depuis le compte de l'entreprise ;
+   « Atelier Mode » incompréhensible → « Mon entreprise ».
+3. Comptable : aucune action concrète — que FAIT l'outil ?
+4. E-commerce : il manque l'intégration développeur (SDK, clés, webhook).
+
+## Backlog Boucle 3
+
+ÉTAT FINAL : 11/11 vérifiés — 50 écrans, 65/65 assertions (18 nouvelles + régressions 25 + 22).
+
+| # | livrable | vérifié par clics réels | sondé |
+|---|---|---|---|
+| 47 | `bc-scan` + `bc-client` | client vérifié → encaissé : caisse +3 500, vente « Encaissement direct » en tête | ✔ |
+| 48 | Renommage Retirer | action, écran, CTA, clôture « Retrait effectué » (sonde 2 mise à jour) | ✔ |
+| 49 | `pme-import` | VRAI parseur (FileReader ; séparateur auto ; entêtes nom/rôle/salaire/équipe ; échappement) → 4 lignes → fusion : 9 employés | ✔ |
+| 50 | Équipes nommées | équipe groupée ; chips de filtre ; « Payer 4 salaires (Production) » = 930 000 ; cascade filtrée | ✔ |
+| 51 | `pme-depot` | 2 sources à coche ; « +500 000 » crédité en acide ; trésorerie 4 930 000 | ✔ |
+| 52 | `pme-envoyer` | motif « Facture F-889 » jusque dans le reçu ; trésorerie 4 430 000 ; Terminé → entreprise | ✔ |
+| 53 | Trésorerie vivante | salaires −930 000 → 4 000 000 ; facture payée +380 000 → 4 380 000 ; activité en tête | ✔ |
+| 54 | « Mon entreprise » | hub, badge salaires, papier de facture ; client comptable renommé « Atelier Couture » | ✔ |
+| 55 | Comptable actionnable | barre Rapprocher/Exporter/Inviter ; « Demander la pièce » sur écartée → « Demande envoyée » ; carte « Ce que l'outil fait seul » | ✔ |
+| 56 | `cpt-inviter` | QR + lien cabinet, copier/envoyer | ✔ |
+| 57 | `ec-integration` | clé copiable/régénérable, snippet SDK, webhook test → 200 OK, mode test | ✔ |
+
+## Journal (3)
+
+- Construit en un lot (F′) ; `cloture()` étendue aux livres `pme-debit`/
+  `pme-credit` + `credit` (montant acide préfixé « + ») ; `encaisse()`
+  factorisé (QR affiché et scan direct partagent la conclusion) ;
+  champs issus du CSV échappés avant `innerHTML`.
+- Incident en cours d'édition : un Edit maladroit a laissé une IIFE
+  parasite non fermée dans `cloture()` — vu et retiré immédiatement,
+  la zone relue avant sonde.
+- `sonde-parcours3` : **18/18**. Régressions : parcours 1 **25/25**,
+  parcours 2 **22/22** (titre « Retrait effectué » mis à jour).
+  `sonde-app` : **50 écrans**, 0 cible cassée, 0 orphelin, 0 débord.
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;
