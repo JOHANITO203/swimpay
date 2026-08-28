@@ -600,6 +600,31 @@ avant construction.
 
 ## État : 59 écrans · 160/160 · 0 cassée · 0 orphelin · 0 débord
 
+---
+
+# BOUCLE 14 — les vrais logos sur les rails (2026-08-28)
+
+Assets déposés par le commanditaire (Orange, MTN, Moov Africa, Wave 2K).
+- Vignettes fabriquées par script (auto-crop du motif coloré, carré,
+  96 px, JPEG q80 → data URI ; ~16 Ko pour les 5). Orange recadré pour
+  garder le wordmark dans le rond, borné au carré de marque.
+- Un registre unique `LOGOS` + `pastilleRail()` : les pastilles
+  initiales (OM/MTN/MV/W/S) deviennent les vrais logos PARTOUT — rendus
+  JS (TYPES_LIA en getters) et statiques (data-rail rempli au
+  chargement). 26 pastilles-images, toutes chargées (naturalWidth
+  vérifié).
+- **Le symbole SwimPay** : sur l'origine du widget, sur le rail
+  « Compte SwimPay » (pastille acide + symbole noir), et **au centre de
+  chaque QR** (cartouche blanc + symbole — recevoir, code du comptoir,
+  encaissement, lien e-commerce, invitation cabinet : un seul point,
+  dessineQR).
+- Incident de patch : les remplacements globaux mangeaient d'abord les
+  pastilles DANS TYPES_LIA → l'assert a arrêté le script avant toute
+  écriture ; réordonné (TYPES_LIA d'abord) et rejoué. Rien n'a été
+  écrit à moitié.
+
+## État : 59 écrans · 160/160 (27+22+26+17+16+16+9+13+14) · 0 défaut
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;
