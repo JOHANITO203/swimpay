@@ -8,7 +8,7 @@ mais présent dans l'app (ou l'inverse) est un défaut de boucle.
 
 | module | ce qu'il fait | où on le VOIT |
 |---|---|---|
-| **Annuaire d'identité** | 1 personne → N numéros → comptes (mobile money, banque) ; identité vérifiée ; les profils business appartiennent à une personne physique | « Identité vérifiée · un seul compte » sur tout destinataire ; « Il/Elle reçoit sur » ; le gérant nommé dans chaque panneau business ; « Mes profils » dans le Profil personnel |
+| **Annuaire d'identité** | 1 personne → N numéros → N comptes (mobile money, **plusieurs banques**), tous sur la même identité vérifiée ; identité vérifiée ; les profils business appartiennent à une personne physique | « Identité vérifiée · un seul compte » sur tout destinataire ; « Il/Elle reçoit sur » ; le gérant nommé dans chaque panneau business ; « Mes profils » dans le Profil personnel |
 | **Routeur** | pour chaque mouvement : origine → rails possibles → délai · frais → choix | le sélecteur de moyen + le récap « Par X · délai · Frais — aucun » sur CHAQUE flux d'argent |
 | **Rapprocheur** | chaque mouvement devient une écriture rapprochée | activité (perso, PME, caisse, commandes) mise à jour en tête ; console comptable (auto 92 %, à décider) |
 | **Moteur de factures** | factures, reçus, statuts, relances | facturation PME (créer → aperçu → envoyer → statuts → lire/imprimer/partager) ; reçus signés partout |
@@ -30,7 +30,9 @@ retrait commerçant, encaisser QR, scan client, lien e-commerce, checkout.
   compte SwimPay) · envoyer · clôture · activité · ma carte · recevoir ·
   demander · scanner · payer · **transférer** (le widget : depuis le compte
   SwimPay vers TOUS les réseaux, vers un compte SwimPay, vers une banque) ·
-  banque · reçus · profil (+ notifs, appareils, sheet détail).
+  **vers MA banque** (mes banques listées, AJOUT d'une banque — une banque
+  ajoutée devient aussi une source de recharge) · reçus · profil
+  (+ notifs, appareils, sheet détail).
 - **États vivants** : solde (crédité par la recharge, débité par les
   envois), activité, tuiles, plafonds.
 - **Panneau** : `profil` — identité, sécurité (PIN → écran PIN, biométrie,

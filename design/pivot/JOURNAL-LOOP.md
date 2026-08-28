@@ -375,6 +375,33 @@ sonde-menteuse / code-cassé a été faite par MESURE, pas par confiance.
 
 ## État : 55 écrans · 101/101 · 0 cassée · 0 orphelin · 0 débord
 
+---
+
+# BOUCLE 5-bis — « Vers MA banque », plusieurs banques (2026-08-28)
+
+Retour commanditaire : le mobile→banque du Personnel vise SA banque
+(« Vers ma banque ») et un utilisateur peut avoir PLUSIEURS banques.
+
+## Livré (16/16 + régressions 25+22+26+17 = 106/106)
+
+- `banque` refondu en **« Vers ma banque »** : MES banques listées
+  (Ecobank ····9102, NSIA Banque ····2201 — identité Camille Laurent),
+  sélection à coche, récap Routeur qui suit la banque, clôture avec la
+  banque choisie.
+- **+ Ajouter une banque** (nom + 4 chiffres) : la banque s'ajoute,
+  se sélectionne, ET devient une **source de Recharge** — un seul état
+  `mesBanques` rendu aux deux écrans (l'Annuaire en acte).
+- Réseau maj : Annuaire = N banques par personne, même identité.
+- Deux défauts attrapés à l'œil : formulaire d'ajout visible malgré
+  `hidden` (le `display: flex` inline écrase l'attribut — corrigé par
+  `#mb-form:not([hidden])`), placeholders tronqués.
+- Leçon de sonde payée : un `replace` python silencieux a laissé la
+  sonde 5 SANS les assertions banques (11/11 trompeur) — vu au compteur,
+  repatché en fichier .py avec `assert`. Règle : tout patch de sonde
+  s'assert, et le compteur attendu se vérifie.
+
+## État : 55 écrans · 106/106 · 0 cassée · 0 orphelin · 0 débord
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;

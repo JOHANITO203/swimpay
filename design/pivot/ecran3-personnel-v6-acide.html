@@ -476,6 +476,7 @@ button { font: inherit; color: inherit; }
 .source { width: 100%; }
 .rond.marque { border: 0; color: #fff; font-weight: 700; font-size: 10.5px; letter-spacing: .02em; }
 #sw-solde, #rc-solde { display: inline; }
+#mb-form:not([hidden]) { display: flex; gap: 10px; }
 .source.deux-cols { display: grid; grid-template-columns: 1fr 1fr; }
 .source.deux-cols .row { min-height: 54px; padding: 8px 12px; gap: 9px; }
 .source.deux-cols .row + .row { border-top: 0; }
@@ -715,7 +716,7 @@ button { font: inherit; color: inherit; }
             <span class="rond">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg>
             </span>
-            <span class="txt"><b>Vers la banque</b><span>Du mobile au compte bancaire</span></span>
+            <span class="txt"><b>Vers ma banque</b><span>Sur l'un de mes comptes bancaires</span></span>
             <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
           </button>
           <button class="row" data-va="scanner">
@@ -1353,23 +1354,7 @@ button { font: inherit; color: inherit; }
     </div>
 
     <label class="onb-etape" style="margin-top: 14px">Depuis</label>
-    <div class="carte source" id="rc-sources" style="margin-top: 6px">
-      <button class="row" aria-pressed="true" data-delai="immédiat">
-        <span class="rond marque" style="background: #FF7900">OM</span>
-        <span class="txt"><b>Orange Money ····07 88</b><span>Immédiat</span></span>
-        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
-      </button>
-      <button class="row" aria-pressed="false" data-delai="immédiat">
-        <span class="rond marque" style="background: #00B8F0">W</span>
-        <span class="txt"><b>Wave ····01 55</b><span>Immédiat</span></span>
-        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
-      </button>
-      <button class="row" aria-pressed="false" data-delai="sous 3 heures">
-        <span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg></span>
-        <span class="txt"><b>Banque ····9102</b><span>Sous 3 heures</span></span>
-        <span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
-      </button>
-    </div>
+    <div class="carte source" id="rc-sources" style="margin-top: 6px"></div>
 
     <div class="carte" style="margin-top: 10px">
       <div class="row" style="cursor: default">
@@ -1393,22 +1378,22 @@ button { font: inherit; color: inherit; }
       <button class="rond" data-va="accueil" aria-label="Retour">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
       </button>
-      <h2>Vers la banque</h2>
+      <h2>Vers ma banque</h2>
       <span class="vide"></span>
     </div>
 
-    <div class="carte">
-      <div class="row" style="cursor: default">
-        <span class="rond">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8h18ZM5 8v8M12 8v8M19 8v8M3 19h18"/></svg>
-        </span>
-        <span class="txt"><b>Compte bancaire ····2201</b><span>Titulaire · Camille Laurent</span></span>
-      </div>
+    <label class="onb-etape" style="margin-top: 14px">Mes banques · Camille Laurent</label>
+    <div class="carte source" id="mb-liste" style="margin-top: 6px"></div>
+    <button class="link s-lien" id="mb-ouvre" style="align-self: flex-start; padding-left: 4px">+ Ajouter une banque</button>
+    <div class="carte" id="mb-form" hidden style="padding: 12px 16px">
+      <input class="champ" id="mb-nom" placeholder="Banque" style="flex: 1.4">
+      <input class="champ" id="mb-num" inputmode="numeric" placeholder="4 chiffres" maxlength="4" style="flex: 1">
+      <button class="btn" id="mb-ajoute">Ajouter</button>
     </div>
 
     <div class="saisie">
       <div class="montant" id="b-aff">100 000<i class="caret"></i></div>
-      <small class="recap">Frais — Aucun · Arrive sous 3 heures</small>
+      <small class="recap" data-recap-de="mb-liste">Par Ecobank ····9102 · sous 3 heures · Frais — aucun</small>
     </div>
     <div class="numpad pad-slot" data-pad="m:banque" data-mene="envoye" style="margin-top: auto"></div>
     <button class="cta" id="b-cta">Transférer 100 000</button>
@@ -3109,12 +3094,54 @@ document.getElementById("rc-cta").addEventListener("click", function () {
       livre: "perso-credit", credit: true });
   });
 });
+/* mes banques — un même état sert « Vers ma banque » ET les sources de recharge */
+const mesBanques = [
+  { nom: "Ecobank", num: "····9102" },
+  { nom: "NSIA Banque", num: "····2201" },
+];
+const COCHE_SRC = `<span class="coche-source"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>`;
+const rangeeBanque = (b, actif) =>
+  `<button class="row" aria-pressed="${actif}" data-delai="sous 3 heures">
+    <span class="rond" style="font-weight: 700; font-size: 12px">${ech(b.nom[0])}</span>
+    <span class="txt"><b>${ech(b.nom)} ${b.num}</b><span>Sous 3 heures</span></span>
+    ${COCHE_SRC}
+  </button>`;
+const renderBanques = (actifIdx = 0) => {
+  document.getElementById("mb-liste").innerHTML =
+    mesBanques.map((b, i) => rangeeBanque(b, i === actifIdx)).join("");
+  document.getElementById("rc-sources").innerHTML =
+    `<button class="row" aria-pressed="true" data-delai="immédiat">
+      <span class="rond marque" style="background: #FF7900">OM</span>
+      <span class="txt"><b>Orange Money ····07 88</b><span>Immédiat</span></span>
+      ${COCHE_SRC}
+    </button>
+    <button class="row" aria-pressed="false" data-delai="immédiat">
+      <span class="rond marque" style="background: #00B8F0">W</span>
+      <span class="txt"><b>Wave ····01 55</b><span>Immédiat</span></span>
+      ${COCHE_SRC}
+    </button>` + mesBanques.map((b) => rangeeBanque(b, false)).join("");
+  majRoutages();
+};
+document.getElementById("mb-ouvre").addEventListener("click", () => {
+  document.getElementById("mb-form").hidden = false;
+});
+document.getElementById("mb-ajoute").addEventListener("click", function () {
+  const nom = document.getElementById("mb-nom").value.trim();
+  const num = (document.getElementById("mb-num").value || "").replace(/\D/g, "");
+  if (!nom || num.length !== 4) { retourBtn(this, "Nom et 4 chiffres requis"); return; }
+  mesBanques.push({ nom, num: "····" + num });
+  renderBanques(mesBanques.length - 1);
+  document.getElementById("mb-nom").value = "";
+  document.getElementById("mb-num").value = "";
+  document.getElementById("mb-form").hidden = true;
+});
 document.getElementById("b-cta").addEventListener("click", function () {
   const m = parseInt(fluxM.banque || "0", 10); if (m <= 0) return;
+  const banque = moyenActif("mb-liste");
   occupe(this, "Transfert en cours…", () => {
     majFlux("banque");
-    cloture({ titre: "Transfert envoyé", sous: "Compte bancaire ····2201 · arrive sous 3 heures",
-      montant: m, nom: "Vers la banque", categorie: "Compte bancaire" });
+    cloture({ titre: "Transfert envoyé", sous: "Vers " + banque.nom + " · " + banque.delai,
+      montant: m, nom: "Vers ma banque", categorie: banque.nom });
   });
 });
 document.getElementById("d-cta").addEventListener("click", () => {
@@ -3667,11 +3694,11 @@ document.addEventListener("click", (e) => {
   });
   majRoutages();
 });
-majRoutages();
 const moyenActif = (id) => {
   const r = document.querySelector("#" + id + " .row[aria-pressed='true']");
   return r ? { nom: r.querySelector(".txt b").textContent, delai: r.dataset.delai } : null;
 };
+renderBanques(); /* rend aussi les sources de recharge, puis rafraîchit les récaps */
 document.getElementById("dp-cta").addEventListener("click", function () {
   const m = parseInt(fluxM.depot || "0", 10); if (m <= 0) return;
   const source = document.querySelector("#dp-sources .row[aria-pressed='true'] .txt b").textContent;
