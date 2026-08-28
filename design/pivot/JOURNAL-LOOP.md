@@ -497,6 +497,37 @@ et mobile money, pour faciliter la circulation.
 
 ## État : 56 écrans · 131/131 · 0 cassée · 0 orphelin · 0 débord
 
+---
+
+# AUDIT À FROID (2026-08-28) — « ce que j'ai oublié », sans complaisance
+
+Backlog issu d'une revue contre le réseau et les docs produit. Vérifié
+dans le code (jauges statiques, absence de checks) avant d'être écrit.
+
+## Bloquant (contredit la thèse)
+1. Onboarding sans KYC — le Profil dit « pièce vérifiée » jamais demandée.
+2. Plafonds affichés (2M / 10M) mais appliqués NULLE PART ; jauge
+   « Envois ce mois » statique.
+3. PIN jamais demandé sur une opération sensible.
+4. Double validation PME configurée mais jamais appliquée (feature morte).
+
+## Important (maillons manquants de chaînes existantes)
+5. Écran « demande de paiement entrante » côté Personnel absent — trois
+   flux y pointent (checkout, scan commerçant, et par nature Recevoir).
+6. Recevoir : seul flux d'argent sans conclusion simulable.
+7. Widget Transférer : pas de résolution Annuaire du numéro saisi.
+8. « Frais — aucun » sur tous les rails : faux et contraire au modèle
+   (sorties externes payantes ; SwimPay↔SwimPay gratuit = l'argument).
+9. La vente en espèces PME n'apparaît pas côté console comptable.
+
+## Secondaire (narratif de démo)
+10. Pas de choix de profil après l'onboarding.
+11. Aucun état vide (l'onboarding débouche sur un compte rempli).
+12. Notifications business inexistantes ; aucun écran d'erreur.
+
+Statut : EN ATTENTE d'arbitrage du commanditaire (ordre / retranchements)
+avant construction.
+
 ## Leçons payées (reportées à la skill si récurrentes)
 - Page autonome sans `<meta name="viewport">` → un vrai téléphone rend à
   980 px. Les captures headless (fenêtre clampée ~512) le masquent ;
