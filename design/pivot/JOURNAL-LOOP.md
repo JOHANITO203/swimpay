@@ -623,6 +623,27 @@ Assets déposés par le commanditaire (Orange, MTN, Moov Africa, Wave 2K).
   écriture ; réordonné (TYPES_LIA d'abord) et rejoué. Rien n'a été
   écrit à moitié.
 
+## Boucle 15 — le sens de l'argent + Orange centré (retour du commanditaire)
+- **« Vers », pas « Par »** : le récit produit = l'utilisateur envoie DEPUIS
+  son compte SwimPay VERS les mobile money et banques. `majRoutages` écrit
+  désormais « Vers X » (sorties) et « Depuis X » (conteneurs
+  `data-sens="entree"` : recharge perso, dépôt PME). Les 8 récaps par
+  défaut statiques audités un à un — corrigé au passage le défaut de
+  `rc-sources` (une entrée qui disait « Vers … Frais — 1 % » au lieu de
+  « Depuis … Frais — aucun »).
+- **Vignette Orange recentrée** : l'extraction du wordmark par bbox des
+  pixels blancs attrapait le bruit JPEG (bbox 74×76, quasi carrée) → le
+  mot restait collé en bas. Refaite par PROJECTION : seules les lignes
+  portant ≥ 12 pixels blancs comptent (le wordmark est dense, le bruit
+  épars) ; ratio contrôlé par assert (> 2,5, obtenu 4,56) ; mot recollé
+  centré à 72 % sur fond orange uni. Preuve d'octets de bout en bout
+  (le fichier relu == l'URI générée) + preuve visuelle (capture #swap).
+- Incident : DEUX régénérations précédentes semblaient réussies (aperçu
+  centré) mais le fichier portait toujours l'ancienne vignette — heredoc
+  → règle re-payée : les patchs Python vivent dans des fichiers `.py`,
+  et la vérification se fait sur LE FICHIER relu, jamais sur l'aperçu
+  en mémoire.
+
 ## État : 59 écrans · 160/160 (27+22+26+17+16+16+9+13+14) · 0 défaut
 
 ## Leçons payées (reportées à la skill si récurrentes)
