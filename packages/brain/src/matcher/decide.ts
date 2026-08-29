@@ -1,4 +1,4 @@
-import type { NormalizedRailEvent } from '@swimpay/rails';
+import type { RailOperation, RailStatus } from '@swimpay/rails';
 
 /**
  * Le Rapprocheur — la decision.
@@ -47,12 +47,33 @@ export type MatchDecision =
       reason: string;
     };
 
+/**
+ * Le paiement, reduit a ce dont la decision a besoin — STATUT ET SENS COMPRIS.
+ *
+ * Ces deux champs manquaient a la premiere version, et c'etait grave : un
+ * webhook « failed » rapprochait la vente, un versement sortant aussi. Le
+ * marchand aurait lu « paye » sur une vente ou rien n'est arrive.
+ */
+export interface IncomingPayment {
+  amountMinor: number;
+  reference?: string | undefined;
+  occurredAt: Date;
+  status: RailStatus;
+  operation: RailOperation;
+}
+
 export interface DecideOptions {
   /** Fenetre de recherche autour du paiement. Defaut : 48 h de part et d'autre. */
   windowMs?: number | undefined;
 }
 
 const FENETRE_PAR_DEFAUT_MS = 48 * 60 * 60 * 1000;
+
+/** Une reference se compare sans casse, sans espaces de bord ni doublons. */
+function normaliseRef(valeur: string | null | undefined): string | undefined {
+  const v = valeur?.trim().toUpperCase().replace(/\s+/g, ' ');
+  return v ? v : undefined;
+}
 
 /**
  * Decide du sort d'un paiement face aux ventes en attente du meme marchand.
@@ -62,10 +83,30 @@ const FENETRE_PAR_DEFAUT_MS = 48 * 60 * 60 * 1000;
  * le QR dynamique ou le lien et qu'elle ne ment pas.
  */
 export function decideMatch(
-  payment: Pick<NormalizedRailEvent, 'amountMinor' | 'reference' | 'occurredAt'>,
+  payment: IncomingPayment,
   candidates: readonly CandidateSale[],
   options: DecideOptions = {},
 ): MatchDecision {
+  // Seul un ENCAISSEMENT REUSSI rapproche. Un paiement en attente reviendra
+  // avec son statut final ; un echec, une expiration ou un versement sortant
+  // n'ont rien a rapprocher, et le dire tot evite de le decouvrir tard.
+  if (payment.operation !== 'payin') {
+    return {
+      kind: 'exception',
+      exception: 'unmatched_payment',
+      candidateIds: [],
+      reason: `operation ${payment.operation} : seul un encaissement rapproche une vente`,
+    };
+  }
+  if (payment.status !== 'succeeded') {
+    return {
+      kind: 'exception',
+      exception: 'unmatched_payment',
+      candidateIds: [],
+      reason: `paiement ${payment.status} : rien n a ete encaisse`,
+    };
+  }
+
   const fenetre = options.windowMs ?? FENETRE_PAR_DEFAUT_MS;
 
   // On ne considere que ce qui est dans la fenetre. Une vente d'il y a une
@@ -76,9 +117,11 @@ export function decideMatch(
 
   // Regle 1 — la reference. Un QR dynamique ou un lien porte sa reference ;
   // quand elle revient, il n'y a rien a deviner.
-  const ref = payment.reference?.trim();
+  // La reference se compare sans casse ni espaces : un payeur qui saisit
+  // « vte-42 » designe bien VTE-42.
+  const ref = normaliseRef(payment.reference);
   if (ref) {
-    const parRef = dansLaFenetre.filter((c) => c.reference?.trim() === ref);
+    const parRef = dansLaFenetre.filter((c) => normaliseRef(c.reference) === ref);
     if (parRef.length === 1) {
       const vente = parRef[0]!;
       // La reference designe la vente, mais un montant qui ne tombe pas juste

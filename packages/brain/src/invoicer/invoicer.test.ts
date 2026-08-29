@@ -70,6 +70,14 @@ describe('Les totaux — l argent se compte en entiers', () => {
     expect(t.totalTtcMinor).toBe(1_230);
   });
 
+  it('refuse un montant hors des bornes ou JavaScript compte encore juste', () => {
+    // Au-dela de 2^53 les entiers derivent en silence. Un total faux transmis
+    // a la DGI se corrige par un avoir, et un sticker de plus.
+    expect(() =>
+      computeTotals([ligne({ unitPriceMinor: Number.MAX_SAFE_INTEGER, quantity: 1000 })]),
+    ).toThrow(InvoiceInputError);
+  });
+
   it('refuse une facture vide, une quantite nulle ou un prix negatif', () => {
     expect(() => computeTotals([])).toThrow(InvoiceInputError);
     expect(() => computeTotals([ligne({ quantity: 0 })])).toThrow(InvoiceInputError);

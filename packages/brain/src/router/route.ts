@@ -45,6 +45,7 @@ export type RouteRefusal =
   | 'no_policy'
   | 'all_disabled'
   | 'missing_cost_grid'
+  | 'cost_exceeds_amount'
   | 'rail_unhealthy';
 
 export interface RailHealth {
@@ -131,6 +132,16 @@ export function route(
   const choisi = trie[0]!;
 
   const cout = estimateCost(choisi, request.amountMinor);
+  if (request.operation === 'payout' && cout !== undefined && cout >= request.amountMinor) {
+    /* Verifier que la grille EXISTE ne suffit pas : il faut la lire. Un
+       versement de 100 F qui en coute 150 appauvrit a chaque operation, et
+       personne ne le voit avant le bilan. */
+    return {
+      kind: 'refuse',
+      code: 'cost_exceeds_amount',
+      reason: `${cout} de frais pour ${request.amountMinor} verses sur ${choisi.rail}`,
+    };
+  }
   if (request.operation === 'payout' && cout === undefined) {
     // On refuse de verser a l'aveugle. C'est le garde-fou qui coute le moins
     // cher de toute la chaine.

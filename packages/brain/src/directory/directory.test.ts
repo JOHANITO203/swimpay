@@ -55,9 +55,14 @@ describe('Les numeros ivoiriens — les memes ou pas les memes', () => {
   });
 });
 
+/* Une vraie cle serveur, pas un mot : la fonction refuse tout ce qui fait
+   moins de 16 octets, et c'est ce qu'on veut. */
+const CLE = 'cle-serveur-de-32-octets-au-moins';
+const AUTRE_CLE = 'une-autre-cle-de-32-octets-aussi';
+
 describe('L empreinte de recherche', () => {
   it('rend la meme empreinte pour la meme valeur, et une autre sinon', () => {
-    const k = 'cle-serveur';
+    const k = CLE;
     const a = identifierHash(k, 'msisdn', '+2250707123456');
     const b = identifierHash(k, 'msisdn', '+2250707123456');
     const c = identifierHash(k, 'msisdn', '+2250707123457');
@@ -66,14 +71,28 @@ describe('L empreinte de recherche', () => {
   });
 
   it('ne collisionne pas entre deux natures d identifiant', () => {
-    const k = 'cle-serveur';
+    const k = CLE;
     expect(hashEquals(identifierHash(k, 'msisdn', '123'), identifierHash(k, 'rib', '123'))).toBe(false);
   });
 
   it('change entierement si la cle serveur change', () => {
-    const a = identifierHash('cle-a', 'msisdn', '+2250707123456');
-    const b = identifierHash('cle-b', 'msisdn', '+2250707123456');
+    const a = identifierHash(CLE, 'msisdn', '+2250707123456');
+    const b = identifierHash(AUTRE_CLE, 'msisdn', '+2250707123456');
     expect(hashEquals(a, b)).toBe(false);
+  });
+
+  it('refuse une cle vide ou trop courte : un index qu on croit aveugle', () => {
+    expect(() => identifierHash('', 'msisdn', '+2250707123456')).toThrow();
+    expect(() => identifierHash('trop-court', 'msisdn', '+2250707123456')).toThrow();
+  });
+});
+
+describe('Les anciens numeros a 8 chiffres', () => {
+  it('les refuse : ils n existent plus depuis 2021', () => {
+    // Le basculement s'est acheve le 28 fevrier 2021. Un 8 chiffres dans un
+    // carnet client est une donnee perimee, pas un numero a completer.
+    expect(() => normalizeCiMsisdn('07123456')).toThrow(MsisdnError);
+    expect(() => normalizeCiMsisdn('07123456')).toThrow(/10 chiffres depuis 2021/);
   });
 });
 

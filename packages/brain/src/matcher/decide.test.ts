@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { decideCash, decideMatch, type CandidateSale } from './decide.js';
+import {
+  decideCash,
+  decideMatch,
+  type CandidateSale,
+  type IncomingPayment,
+} from './decide.js';
 
 const T = (iso: string) => new Date(iso);
 const MIDI = T('2026-08-29T12:00:00.000Z');
@@ -15,10 +20,18 @@ const vente = (
   ...extra,
 });
 
-const paiement = (amountMinor: number, reference?: string, occurredAt = MIDI) => ({
+/* Un paiement d essai est un ENCAISSEMENT REUSSI : c est le seul cas qui
+   rapproche. Les autres sont couverts plus bas, explicitement. */
+const paiement = (
+  amountMinor: number,
+  reference?: string,
+  occurredAt = MIDI,
+): IncomingPayment => ({
   amountMinor,
   reference,
   occurredAt,
+  status: 'succeeded',
+  operation: 'payin',
 });
 
 describe('Le Rapprocheur — ce qu il tranche seul', () => {
@@ -95,6 +108,31 @@ describe('Le Rapprocheur — ce qu il refuse de trancher', () => {
       vente('a', 50_000, { reference: 'VTE-9' }),
     ]);
     expect(d).toMatchObject({ kind: 'match', saleId: 'a', method: 'auto_heur' });
+  });
+
+  it('ne rapproche RIEN sur un paiement echoue, expire ou en attente', () => {
+    for (const status of ['failed', 'expired', 'pending'] as const) {
+      const d = decideMatch(
+        { ...paiement(50_000, 'VTE-1'), status },
+        [vente('a', 50_000, { reference: 'VTE-1' })],
+      );
+      expect(d, status).toMatchObject({ kind: 'exception', exception: 'unmatched_payment' });
+    }
+  });
+
+  it('ne rapproche pas une vente avec un VERSEMENT sortant', () => {
+    const d = decideMatch(
+      { ...paiement(50_000, 'VTE-1'), operation: 'payout' },
+      [vente('a', 50_000, { reference: 'VTE-1' })],
+    );
+    expect(d).toMatchObject({ kind: 'exception', exception: 'unmatched_payment' });
+  });
+
+  it('reconnait une reference a la casse ou aux espaces pres', () => {
+    const d = decideMatch(paiement(50_000, '  vte-42 '), [
+      vente('a', 50_000, { reference: 'VTE-42' }),
+    ]);
+    expect(d).toMatchObject({ kind: 'match', saleId: 'a', method: 'auto_ref' });
   });
 
   it('ne prend pas un paiement partiel pour un rapprochement', () => {

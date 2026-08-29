@@ -102,6 +102,14 @@ describe('Le routeur — le choix', () => {
     expect(d).toMatchObject({ kind: 'refuse', code: 'rail_unhealthy' });
   });
 
+  it('refuse un versement dont les frais depassent le montant verse', () => {
+    // 150 F de frais pour 100 F verses : la grille existe, elle est absurde.
+    const d = route({ operation: 'payout', currency: 'XOF', amountMinor: 100 }, [
+      p({ costFixedMinor: 150, costPercentBp: 0, priority: 1 }),
+    ]);
+    expect(d).toMatchObject({ kind: 'refuse', code: 'cost_exceeds_amount' });
+  });
+
   it('rend le cout estime avec la decision', () => {
     const d = route({ operation: 'payout', currency: 'XOF', amountMinor: 100_000 }, [p()]);
     expect(d).toMatchObject({ kind: 'route', estimatedCostMinor: 1_600 });

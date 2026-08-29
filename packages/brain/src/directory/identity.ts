@@ -51,6 +51,13 @@ export function meetsRequirement(tier: VerifyTier, required: VerifyTier): boolea
  * doit pas collisionner.
  */
 export function identifierHash(key: Buffer | string, kind: string, valueNormalized: string): Buffer {
+  /* Une cle vide ou courte rend l'empreinte devinable : celui qui connait le
+     numero retrouve la ligne. Une config incomplete doit s'arreter ici, pas
+     produire un index qu'on croit aveugle et qui ne l'est pas. */
+  const taille = typeof key === 'string' ? Buffer.byteLength(key) : key.length;
+  if (taille < 16) {
+    throw new Error(`cle HMAC trop courte (${taille} octets, 16 minimum)`);
+  }
   if (!valueNormalized) throw new Error('valeur vide : rien a empreindre');
   return createHmac('sha256', key).update(`${kind}:${valueNormalized}`).digest();
 }

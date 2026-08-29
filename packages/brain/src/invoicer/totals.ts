@@ -60,9 +60,23 @@ export class InvoiceInputError extends Error {
   }
 }
 
+/**
+ * Au-dela de 2^53, JavaScript ne compte plus juste : 9007199254740993 s'ecrit
+ * 9007199254740992. La colonne est en bigint cote base, mais le calcul se fait
+ * ici — on borne donc a un montant qu'aucune facture reelle n'atteint, et on
+ * refuse plutot que de rendre un total faux.
+ */
+const PLAFOND_CALCUL = 1_000_000_000_000; // mille milliards de francs
+
 /** Arrondi au plus proche, la moitie vers le haut, sur des entiers. */
 function arrondi(valeur: number): number {
   return Math.round(valeur);
+}
+
+function verifiePlafond(valeur: number, ou: string): void {
+  if (!Number.isFinite(valeur) || Math.abs(valeur) > PLAFOND_CALCUL) {
+    throw new InvoiceInputError(`${ou} : montant hors des bornes calculables (${valeur})`);
+  }
 }
 
 export function tauxBp(code: TaxCode): number {
@@ -107,6 +121,7 @@ export function computeTotals(
     }
 
     const brut = ligne.unitPriceMinor * ligne.quantity;
+    verifiePlafond(brut, `ligne ${i + 1}`);
     // Les deux remises s'appliquent l'une apres l'autre, jamais additionnees.
     const apresLigne = brut * (1 - remiseLigne / 100);
     const baseHt = arrondi(apresLigne * (1 - remiseGlobale / 100));
@@ -131,6 +146,7 @@ export function computeTotals(
     });
   }
 
+  verifiePlafond(totalHt + totalTva + totalCustom, 'total de la facture');
   return {
     totalHtMinor: totalHt,
     totalTvaMinor: totalTva,

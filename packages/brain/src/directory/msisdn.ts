@@ -51,9 +51,15 @@ export function normalizeCiMsisdn(input: string): string {
     chiffres = chiffres.slice(3);
   }
 
+  /* Le basculement a 10 chiffres date du 31 janvier 2021 et la periode de
+     coexistence s'est fermee le 28 fevrier 2021. Un numero a 8 chiffres n'est
+     donc pas un numero a completer : c'est une donnee perimee, et la traiter
+     comme valide reviendrait a inventer un destinataire. */
   if (chiffres.length !== 10) {
     throw new MsisdnError(
-      `un numero ivoirien fait 10 chiffres, recu ${chiffres.length} : « ${input} »`,
+      chiffres.length === 8
+        ? `« ${input} » est un ancien numero a 8 chiffres : la numerotation est a 10 chiffres depuis 2021`
+        : `un numero ivoirien fait 10 chiffres, recu ${chiffres.length} : « ${input} »`,
     );
   }
   const prefixe = chiffres.slice(0, 2);
