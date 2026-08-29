@@ -292,11 +292,21 @@ for (const [nom, sel] of [
   ["un bouton", "#accueil .actions .btn"],
   ["une capsule", "#accueil .chip-capsule"],
   ["une rangée", "#accueil .row"],
-  ["la carte", "#hero-rail .plaque-verre"],
 ]) {
   const t = await transformeSousAppui(sel);
   test(`${nom} répond à l'appui`, typeof t === "string" && t !== "none" && t.startsWith("matrix"), String(t));
 }
+/* LA RÈGLE INVERSE, aussi importante : un retour d'appui sur un élément qui ne
+   répond à aucun appui promet une réaction qui n'existe pas. Les cartes n'ont
+   pas de cible de navigation — elles ne doivent donc pas s'enfoncer. */
+const carteInteractive = await ev(`(() => {
+  const c = document.querySelector("#hero-rail .plaque-verre");
+  return !!(c && (c.dataset.va || c.dataset.flux || c.onclick || c.closest("button, a")));
+})()`);
+const carteSousAppui = await transformeSousAppui("#hero-rail .plaque-verre");
+test("la carte ne promet pas un appui auquel elle ne répond pas",
+  carteInteractive === true ? carteSousAppui !== "none" : carteSousAppui === "none",
+  `interactive: ${carteInteractive} · sous appui: ${carteSousAppui}`);
 
 const motion = await ev(`(() => {
   const regles = [...document.styleSheets].flatMap((f) => { try { return [...f.cssRules]; } catch { return []; } });
@@ -325,8 +335,11 @@ const motion = await ev(`(() => {
     toutProprietes: style.filter((r) => /transition:\\s*all/.test(r.style.cssText || "")).length,
     depuisZero: style.filter((r) => /scale\\(0\\)/.test(r.style.cssText || "")).length,
     easeIn: style.filter((r) => /(transition|animation)[^;]*\\bease-in\\b(?!-out)/.test(r.style.cssText || "")).length,
+    // une duree peut etre rendue en s OU en ms : lire le nombre sans lire
+    // l unite faisait passer 110ms pour 110 secondes
     lentes: style.flatMap((r) => (String(r.style.transitionDuration || "").split(", ")
-      .filter((d) => parseFloat(d) > 0.31).map((d) => (r.selectorText || "?").slice(0, 26) + " " + d))),
+      .filter((d) => (d.endsWith("ms") ? parseFloat(d) : parseFloat(d) * 1000) > 310)
+      .map((d) => (r.selectorText || "?").slice(0, 26) + " " + d))),
     survolNonProtege,
     mouvementReduit: toutes.some((r) => String(r.conditionText || "").includes("prefers-reduced-motion")),
   };
@@ -339,6 +352,67 @@ test("aucune transition d'interface au-delà de 300 ms",
 test("les effets de survol sont protégés du tactile",
   motion.survolNonProtege.length === 0, motion.survolNonProtege.join(" · "));
 test("le mouvement réduit est honoré", motion.mouvementReduit === true);
+
+/* ═══ 9 bis. le mouvement qui porte de l'information ═══
+   Chacun de ces gestes dit quelque chose. On vérifie qu'ils le disent
+   vraiment, et que ce qui NE DOIT PAS bouger ne bouge pas. */
+await ev('va("accueil")'); await dodo(400);
+
+// la profondeur du rail est pilotée par le DÉFILEMENT, pas par une minuterie
+const profondeur = await ev(`(() => {
+  const s = getComputedStyle(document.querySelector("#hero-rail > *"));
+  return { nom: s.animationName, ligne: s.animationTimeline };
+})()`);
+test("la profondeur du rail suit le défilement",
+  profondeur.nom === "profondeur" && profondeur.ligne !== "auto",
+  `${profondeur.nom} · ${profondeur.ligne}`);
+
+// le solde se compte : il passe par des valeurs intermédiaires
+const compte = await evAttendu(`(async () => {
+  const el = () => document.querySelector('#hero-rail .plaque-verre[data-carte="principale"] .montant');
+  const lit = () => Number(el().textContent.replace(/[^0-9]/g, "").slice(0, -2) || 0);
+  const avant = lit();
+  debite("Épreuve", "Sonde", 40000);
+  const vus = [];
+  for (let i = 0; i < 6; i++) { await new Promise((r) => setTimeout(r, 60)); vus.push(lit()); }
+  await new Promise((r) => setTimeout(r, 400));
+  return { avant, vus, apres: lit(), intermediaires: vus.filter((v) => v !== avant && v !== lit()).length };
+})()`);
+test("le solde se compte au lieu de sauter",
+  compte.intermediaires >= 1 && compte.apres === compte.avant - 40000,
+  JSON.stringify(compte).slice(0, 130));
+
+// la ligne qui arrive se signale comme neuve
+test("une nouvelle ligne du grand livre s'annonce",
+  (await ev('!!document.querySelector("#a-ops .row.neuve")')) === true);
+
+// le pavé numérique ne bouge pas : il est frappé des centaines de fois par jour
+await ev('va("envoyer")'); await dodo(400);
+const pave = await ev(`(() => {
+  const t = document.querySelector("#envoyer .numpad button, #envoyer .numpad .touche");
+  if (!t) return "absent";
+  const s = getComputedStyle(t);
+  return s.animationName + " | " + getComputedStyle(document.querySelector("#envoyer .saisie .montant")).transitionDuration;
+})()`);
+test("le pavé numérique et son montant ne s'animent pas",
+  typeof pave === "string" && /^none/.test(pave) && pave.endsWith("0s"), String(pave));
+
+// la pastille du sélecteur glisse d'un segment à l'autre
+await ev('va("carte-ecran")'); await dodo(450);
+const glisse = await evAttendu(`(async () => {
+  const g = document.querySelector("#carte-ecran .segments");
+  const lit = () => parseFloat(getComputedStyle(g).getPropertyValue("--seg-x")) || 0;
+  const a = lit();
+  g.querySelectorAll(".segment")[1].click();
+  await new Promise((r) => setTimeout(r, 350));
+  const b = lit();
+  g.querySelectorAll(".segment")[0].click();
+  await new Promise((r) => setTimeout(r, 350));
+  return { a, b, retour: lit(), transition: getComputedStyle(g, "::before").transitionDuration };
+})()`);
+test("la pastille du sélecteur glisse au lieu de sauter",
+  glisse.b > glisse.a && glisse.retour === glisse.a && glisse.transition !== "0s",
+  JSON.stringify(glisse));
 
 /* ═══ 10. le mouvement suit l'UX de CHAQUE format ═══
    Les trois interfaces ne sont pas la même : le téléphone a un bas (pouce,

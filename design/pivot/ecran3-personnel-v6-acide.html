@@ -1278,7 +1278,7 @@ button { font: inherit; color: inherit; }
    le retour qui dit « j'ai entendu ». Sans lui, l'interface semble morte au
    doigt — et c'est ce qui manquait partout. */
 .btn, .chip, .chip-capsule, .rond, .icon-btn, .oeil, .row, .segment,
-.plaque-verre, .carte-bancaire, .points i, .valide-btn, .link, .navpill a,
+.points i, .valide-btn, .link, .navpill a,
 .navpill button, .fab, .poignee, .tuile, .voie, .plan {
   transition: transform var(--t-appui) var(--sortie);
 }
@@ -1288,8 +1288,9 @@ button { font: inherit; color: inherit; }
 .voie:active, .plan:active {
   transform: scale(.97);
 }
-/* les cartes sont grandes : à 0,97 le geste paraîtrait mou, on resserre */
-.plaque-verre:active, .carte-bancaire:active { transform: scale(.985); }
+/* Les cartes N'ONT PLUS de retour d'appui : elles ne répondent à aucun appui.
+   Promettre une réaction qui n'existe pas est pire que n'en promettre aucune.
+   Elles reçoivent à la place une profondeur pilotée par le défilement. */
 .fab:active { transform: scale(.93); }
 /* une pastille de 4 px ne peut pas « descendre » : elle s'élargit */
 .points i:active { transform: scaleX(1.35); }
@@ -1455,6 +1456,75 @@ button { font: inherit; color: inherit; }
   .flux[data-bureau] .pane-b > * { animation: none; }
   .sheet:not([hidden]) { animation: none; }
   .fc-fait { animation: fait-parait 200ms ease backwards; }
+}
+
+/* ═══════════════ LE MOUVEMENT QUI PORTE DE L'INFORMATION ═══════════════ */
+
+/* ─── LA PROFONDEUR DU RAIL ───
+   Piloté par le DÉFILEMENT, pas par une minuterie : la carte au centre est
+   nette, ses voisines reculent. Ça ne décore pas — ça dit laquelle est active.
+   Et ça tourne hors du fil principal, donc ça ne saccade pas au chargement. */
+@media (prefers-reduced-motion: no-preference) {
+  .carte-rail > * {
+    animation: profondeur linear both;
+    animation-timeline: view(inline);
+    animation-range: entry 10% exit 90%;
+  }
+  /* PAR L OPACITE SEULE. Une mise a l echelle donnerait plus de profondeur,
+     mais elle reduit les cibles tactiles qu elle contient : a scale(.90), un
+     oeil de 44 px mesure 40. Une cible ne retrecit pas pour faire joli. */
+  @keyframes profondeur {
+    0%       { opacity: .40; }
+    46%, 54% { opacity: 1; }
+    100%     { opacity: .40; }
+  }
+}
+
+/* ─── UNE NOUVELLE LIGNE AU GRAND LIVRE ───
+   Elle arrive après un mouvement d'argent : la voir se poser dit CE QUI VIENT
+   DE CHANGER. Sans cela, la liste se réécrit d'un coup et l'œil ne sait pas où
+   regarder. Entrée native, sans montage JavaScript. */
+@starting-style {
+  .row.neuve { opacity: 0; transform: translateY(-12px); }
+}
+/* :not(:active) — sans quoi cette regle, posee en dernier, ecrase le retour
+   d appui de la rangee */
+.row.neuve:not(:active) {
+  opacity: 1; transform: none;
+  transition: opacity 340ms var(--sortie), transform 340ms var(--sortie);
+}
+
+/* ─── LE SÉLECTEUR À DEUX SEGMENTS ───
+   La pastille GLISSE d'un segment à l'autre au lieu de sauter : le déplacement
+   dit d'où l'on vient. Déplacement sur place → courbe à deux sens. */
+.segments { position: relative; }
+.segments::before {
+  content: ""; position: absolute; inset-block: 0; left: 0;
+  width: var(--seg-l, 0px);
+  transform: translateX(var(--seg-x, 0px));
+  border-radius: 999px; background: var(--surface-2); pointer-events: none;
+  transition: transform 280ms var(--deux-sens), width 280ms var(--deux-sens);
+}
+.segment { position: relative; z-index: 1; }
+.segment.actif { background: none; border-color: transparent; }
+
+/* ─── LE PASSAGE MASQUÉ / VISIBLE ───
+   Un montant qui se remplace d'un coup fait un à-coup. Un fondu court fait le
+   pont — c'est le même geste que le flou qui masque un fondu imparfait. */
+.montant { transition: opacity 110ms ease; }
+.montant.bascule { opacity: 0; }
+
+/* ─── LE PAVÉ NUMÉRIQUE ───
+   Frappé des centaines de fois par jour : AUCUNE animation, ni sur les
+   touches, ni sur le montant qu'elles composent. Le curseur qui clignote dit
+   déjà où l'on en est. C'est une décision, pas un oubli. */
+.numpad, .numpad *, .saisie .montant { animation: none !important; }
+.saisie .montant { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .carte-rail > * { animation: none; opacity: 1; transform: none; }
+  .row.neuve { transition: opacity 200ms ease; }
+  .segments::before { transition: none; }
 }
 </style>
 
@@ -4344,6 +4414,7 @@ const majSoldePartout = () => {
      vues suivent — sinon l'accueil et « Ma carte » divergent */
   CARTES[0].solde = Number(String(joli).replace(/[^0-9]/g, "")) || CARTES[0].solde;
   if (typeof rendHeroCartes === "function") rendHeroCartes();
+  if (typeof animeSolde === "function") animeSolde();
   document.getElementById("e-solde").textContent = "Solde disponible · " + joli;
   document.getElementById("sw-solde").textContent = joli;
   document.getElementById("rc-solde").textContent = joli;
@@ -4359,7 +4430,7 @@ const crediteSolde = (nom, categorie, montant) => {
   const joli = fmt(String(montant));
   const ENTREE = `<span class="rond"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--acide)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"/></svg></span>`;
   const ra = document.createElement("div");
-  ra.className = "row";
+  ra.className = "row neuve";
   ra.dataset.t = "in";
   ra.innerHTML = ENTREE + `<span class="txt"><b>${nom}</b><span>${categorie}</span></span><span class="fin"><b class="credit">+${joli}</b><span>${heureCourte()}</span></span>`;
   const filtre = document.querySelector("#activite .chip.actif");
@@ -4372,7 +4443,7 @@ const crediteSolde = (nom, categorie, montant) => {
 };
 const rangeeSortie = (nom, categorie, montant, quand) => {
   const r = document.createElement("div");
-  r.className = "row";
+  r.className = "row neuve";
   r.dataset.t = "out";
   r.innerHTML = `${ROND_SORTIE}<span class="txt"><b>${nom}</b><span>${categorie}</span></span><span class="fin"><b>−${montant}</b><span>${quand}</span></span>`;
   return r;
@@ -6429,9 +6500,27 @@ document.getElementById("r-simule").addEventListener("click", function () {
 });
 
 /* onglets Détails / Activité de Ma carte */
+/* la pastille glisse : on lui donne la position et la largeur du segment actif */
+const caleSegments = (groupe) => {
+  const g = groupe || document.querySelector("#carte-ecran .segments");
+  if (!g) return;
+  const a = g.querySelector(".segment.actif");
+  if (!a) return;
+  /* offsetLeft est DEJA relatif au conteneur : .segments est en position
+     relative, donc son offsetParent. Retrancher son propre decalage
+     ramenait la pastille 20 px trop a gauche au retour. */
+  g.style.setProperty("--seg-x", a.offsetLeft + "px");
+  g.style.setProperty("--seg-l", a.offsetWidth + "px");
+};
+addEventListener("resize", () => caleSegments());
+vaHooks["carte-ecran"] = ((precedent) => function () {
+  if (precedent) precedent.apply(this, arguments);
+  requestAnimationFrame(() => caleSegments());
+})(vaHooks["carte-ecran"]);
 document.querySelectorAll("#carte-ecran .segment[data-seg]").forEach((s) => {
   s.addEventListener("click", () => {
     document.querySelectorAll("#carte-ecran .segment").forEach((x) => x.classList.toggle("actif", x === s));
+    caleSegments(s.parentElement);
     document.getElementById("carte-vue-details").hidden = s.dataset.seg !== "details";
     document.getElementById("carte-vue-activite").hidden = s.dataset.seg !== "activite";
   });
@@ -7131,7 +7220,17 @@ const montantsDeCompte = () => [
   ...document.querySelectorAll(".solde-carte .montant, #a-solde, [data-caisse], [data-pme], [data-ec]"),
 ].filter((e) => !e.closest("[data-masque-non]"));
 
-const appliqueMasque = () => {
+const appliqueMasque = (avecFondu) => {
+  /* un montant qui se remplace d'un coup fait un à-coup : on fond court */
+  if (avecFondu && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const cibles = montantsDeCompte();
+    cibles.forEach((e) => e.classList.add("bascule"));
+    setTimeout(() => {
+      appliqueMasque(false);
+      cibles.forEach((e) => e.classList.remove("bascule"));
+    }, 110);
+    return;
+  }
   montantsDeCompte().forEach((e) => {
     if (montantsMasques) {
       if (e.dataset.vrai === undefined) e.dataset.vrai = e.innerHTML;
@@ -7155,6 +7254,8 @@ document.addEventListener("click", (ev) => {
   if (b) {
     montantsMasques = !montantsMasques;
     try { localStorage.setItem(CLE_MASQUE, montantsMasques ? "1" : "0"); } catch (e) {}
+    appliqueMasque(true);
+    return;
   }
   /* les vues réécrivent leurs montants en entrant : on repasse APRÈS, sinon
      un écran fraîchement rendu réaffiche des chiffres qu'on venait de masquer */
@@ -7180,6 +7281,32 @@ rendHeroCartes();
   })(vaHooks.accueil);
   suitHero();
 })();
+
+/* ─── LE SOLDE QUI CHANGE ───
+   Après un mouvement d'argent, le nombre se remplaçait d'un coup. L'animer
+   MONTRE le mouvement : on voit d'où il part et où il arrive. Court (420 ms),
+   coupé si les montants sont masqués — il n'y aurait rien à montrer — et coupé
+   en mouvement réduit. */
+let dernierSoldeAffiche = null;
+const animeSolde = () => {
+  const el = document.querySelector('#hero-rail .plaque-verre[data-carte="principale"] .montant');
+  const vers = CARTES[0].solde;
+  const de = dernierSoldeAffiche;
+  dernierSoldeAffiche = vers;
+  if (!el || de === null || de === vers) return;
+  if (montantsMasques) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const cents = el.querySelector("span");
+  const suffixe = cents ? cents.outerHTML : "";
+  const t0 = performance.now(), duree = 420;
+  const pas = (t) => {
+    const k = Math.min(1, (t - t0) / duree);
+    const e = 1 - Math.pow(1 - k, 3);            /* sortie cubique */
+    el.innerHTML = fmt(String(Math.round(de + (vers - de) * e))) + suffixe;
+    if (k < 1) requestAnimationFrame(pas);
+  };
+  requestAnimationFrame(pas);
+};
 
 /* ═══════════ LES FLUX DES CARTES ═══════════
    Deux règles qui ne se négocient pas :

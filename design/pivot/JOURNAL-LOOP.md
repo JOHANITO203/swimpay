@@ -1197,7 +1197,45 @@ la translation de la règle de base**. Il se lit par `getAnimations()`, sur
 l'élément vivant — interroger l'élément après l'avoir fermé répondait
 « undefined » à toutes les questions, ce qui a coûté une troisième relance.
 
-## État : 65 écrans · 45/45 · 0 défaut · trois formats mesurés
+
+## Le mouvement qui porte de l'information
+
+Après le vocabulaire commun et la déclinaison par format, les gestes qui
+**disent quelque chose**. Chacun a une raison ; ceux qui n'en avaient pas ont
+été retirés.
+
+| geste | ce qu'il dit |
+|---|---|
+| **la profondeur du rail** | laquelle des trois cartes est active — piloté par le DÉFILEMENT (`animation-timeline: view()`), donc hors du fil principal |
+| **le solde qui se compte** | d'où part l'argent et où il arrive, au lieu d'un nombre qui se remplace |
+| **la ligne neuve** | ce qui vient de changer dans le grand livre — entrée native par `@starting-style`, sans montage JavaScript |
+| **la pastille du sélecteur** | d'où l'on vient, en glissant au lieu de sauter |
+| **le fondu du masquage** | il fait le pont sur un remplacement de texte qui, sec, fait un à-coup |
+
+**Ce qu'on n'anime pas, et pourquoi c'est écrit dans le code.** Le pavé
+numérique et le montant qu'il compose sont frappés des centaines de fois par
+jour. Animer le compteur à chaque touche ferait paraître la saisie molle. Le
+curseur qui clignote dit déjà où l'on en est. C'est une décision, pas un oubli
+— et la sonde la garde.
+
+**Un mensonge retiré.** Les cartes avaient un retour d'appui (`scale(.985)`)
+alors qu'elles ne répondent à aucun appui. Promettre une réaction qui n'existe
+pas est pire que n'en promettre aucune. La sonde garde désormais la règle dans
+les deux sens : ce qui répond doit s'enfoncer, ce qui ne répond pas ne doit
+pas le faire.
+
+**Une cible tactile ne rétrécit pas pour faire joli.** La profondeur du rail
+était d'abord une mise à l'échelle : à `scale(.90)`, l'œil de 44 px d'une carte
+voisine mesurait 40. La sonde l'a vu. La profondeur se fait donc par
+l'opacité seule — moins spectaculaire, mais elle ne coûte rien à personne.
+
+Et deux erreurs de mesure de mon fait, corrigées : une durée peut être rendue
+en `s` **ou** en `ms` — lire le nombre sans lire l'unité faisait passer 110 ms
+pour 110 secondes ; et `offsetLeft` est déjà relatif au conteneur quand
+celui-ci est positionné, retrancher son propre décalage ramenait la pastille
+20 px trop à gauche.
+
+## État : 65 écrans · 50/50 · 0 défaut · mouvement mesuré sur le rendu
 
 Contraste : aucune combinaison sous le seuil, en clair comme en sombre.
 Cibles tactiles, tailles de texte, retours de flux, libellés de boutons,
