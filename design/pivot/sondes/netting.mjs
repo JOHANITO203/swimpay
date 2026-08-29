@@ -105,7 +105,8 @@ function simule(cfg) {
   const consomme = {};
   for (const r of rails) consomme[r.nom] = 0;
 
-  let brut = 0, deplace = 0, frais = 0, echecs = 0, montantEchoue = 0;
+  let brut = 0, deplace = 0, frais = 0, echecs = 0, montantEchoue = 0, onUs = 0;
+  const densite = cfg.densite ?? 0;
   const entreParOp = {}, sortParOp = {};
   for (const op of OPERATEURS) { entreParOp[op] = 0; sortParOp[op] = 0; }
 
@@ -193,7 +194,14 @@ function simule(cfg) {
       if (rnd() < P_OUT) {
         const op = tirage(c.mixOut);
         const m = autour(c.mOut * (paie && c.partTransfert > 0.8 ? 3 : 1));
-        if (m > 0) { brut += m; sortParOp[op] += m; debite(op, m); }
+        if (m > 0) {
+          brut += m;
+          /* ON-US : si le beneficiaire est LUI AUSSI client, rien ne sort du
+             livre. Ce n est meme pas du netting, c est une ecriture. Cout
+             zero, instantane, aucun rail traverse. */
+          if (rnd() < densite) { onUs += m; }
+          else { sortParOp[op] += m; debite(op, m); }
+        }
       }
       if (rnd() < (vague ? 0.95 : P_RET)) {
         const op = tirage(c.mixOut);
@@ -212,7 +220,8 @@ function simule(cfg) {
   const structurel = brut > 0 ? ecart / 2 / brut : 0;
 
   return {
-    clients: clients.length, brut, deplace, frais,
+    clients: clients.length, brut, deplace, frais, onUs,
+    tauxOnUs: brut > 0 ? onUs / brut : 0,
     compensation: brut > 0 ? 1 - deplace / brut : 0,
     structurel,
     coutEffectif: brut > 0 ? frais / brut : 0,
@@ -291,7 +300,17 @@ console.log('\n— 5. Le cas defavorable : tout entre Wave, tout sort Orange');
   ligne('  flux unidirectionnels', simule({ clients: CLIENTS, budgetParBoite: BUDGET, profils: p }));
 }
 
-console.log('\n— 6. Le detail du scenario retenu');
+console.log('\n— 6. LA DENSITE DU RESEAU : et si le beneficiaire est aussi client ?');
+console.log('   part des versements dont le destinataire est deja chez nous');
+for (const d of [0, 0.15, 0.30, 0.50, 0.70, 0.85]) {
+  const r = simule({ clients: CLIENTS, budgetParBoite: BUDGET, densite: d });
+  console.log(`  densite ${String(Math.round(d * 100)).padStart(3)} %`
+    + ` | on-us ${F(r.onUs).padStart(13)} F (${P(r.tauxOnUs).padStart(7)})`
+    + ` | deplace ${F(r.deplace).padStart(12)} | compens ${P(r.compensation).padStart(8)}`
+    + ` | frais ${F(r.frais).padStart(9)} | ${P(r.coutEffectif).padStart(7)}`);
+}
+
+console.log('\n— 7. Le detail du scenario retenu');
 {
   const r = simule({ clients: CLIENTS, budgetParBoite: BUDGET });
   console.log(`  flux brut 30 jours       : ${F(r.brut)} F`);
