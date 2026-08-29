@@ -41,11 +41,26 @@ export interface InvoiceLine {
 }
 
 export interface InvoiceTotals {
+  /**
+   * Le HT AVANT toute remise — somme des prix unitaires par les quantites.
+   *
+   * Il existe parce que le recapitulatif officiel de la DGI affiche trois
+   * lignes distinctes : « Total HT », « Remise », puis « Total HT apres
+   * remise ». Sans le brut et la remise, notre facture ne se relit pas comme
+   * la leur, et un rapprochement de totaux comparerait deux grandeurs
+   * differentes en croyant les opposer.
+   */
+  grossHtMinor: number;
+  /** La remise totale, de ligne et globale confondues. */
+  discountMinor: number;
+  /** Le HT APRES remise — c'est lui qui porte la TVA. */
   totalHtMinor: number;
   totalTvaMinor: number;
   totalCustomMinor: number;
   totalTtcMinor: number;
   lines: Array<{
+    /** Le brut de la ligne, avant ses remises. */
+    grossHtMinor: number;
     baseHtMinor: number;
     tvaMinor: number;
     customMinor: number;
@@ -104,6 +119,7 @@ export function computeTotals(
   }
 
   const detail: InvoiceTotals['lines'] = [];
+  let brutHt = 0;
   let totalHt = 0;
   let totalTva = 0;
   let totalCustom = 0;
@@ -135,10 +151,12 @@ export function computeTotals(
       custom += t.amountMinor;
     }
 
+    brutHt += brut;
     totalHt += baseHt;
     totalTva += tva;
     totalCustom += custom;
     detail.push({
+      grossHtMinor: brut,
       baseHtMinor: baseHt,
       tvaMinor: tva,
       customMinor: custom,
@@ -147,7 +165,12 @@ export function computeTotals(
   }
 
   verifiePlafond(totalHt + totalTva + totalCustom, 'total de la facture');
+  // Par construction : brut - remise = net. On le pose comme une soustraction
+  // et non comme une somme de remises arrondies, sinon l'egalite se perd d'un
+  // franc des qu'une ligne s'arrondit.
   return {
+    grossHtMinor: brutHt,
+    discountMinor: brutHt - totalHt,
     totalHtMinor: totalHt,
     totalTvaMinor: totalTva,
     totalCustomMinor: totalCustom,

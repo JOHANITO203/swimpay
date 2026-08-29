@@ -174,3 +174,107 @@ describe('La reponse de certification', () => {
     expect(stickerAlert(undefined)).toBe('unknown');
   });
 });
+
+/* ── Le cas chiffre officiel ───────────────────────────────────────────────
+   Repris du recapitulatif de la plateforme FNE, guide d'utilisation p. 33, et
+   revu a l'ecran sur un compte reel le 29 aout 2026. Ce n'est pas un exemple
+   invente : c'est la reponse que la DGI affiche, et notre moteur doit tomber
+   dessus au franc pres.
+
+     Article : PU HT 1 450 000, quantite 1, remise 5 %
+     Total HT             1 450 000
+     Remise                  72 500
+     Total HT apres remise 1 377 500
+     Total TVA               247 950   (18 % du HT APRES remise)
+     Total TTC             1 625 450
+*/
+describe('le cas chiffre officiel de la DGI', () => {
+  const ligne: InvoiceLine = {
+    description: 'PC Core i7-12450H- RAM 32Go- 512Go SSD',
+    reference: '236589021',
+    unitPriceMinor: 1_450_000,
+    quantity: 1,
+    discountPercent: 5,
+    taxes: 'TVA',
+  };
+
+  it('reproduit les cinq lignes du recapitulatif, au franc pres', () => {
+    const t = computeTotals([ligne]);
+    expect(t.grossHtMinor).toBe(1_450_000);
+    expect(t.discountMinor).toBe(72_500);
+    expect(t.totalHtMinor).toBe(1_377_500);
+    expect(t.totalTvaMinor).toBe(247_950);
+    expect(t.totalTtcMinor).toBe(1_625_450);
+  });
+
+  it('la TVA porte sur le HT APRES remise, jamais sur le brut', () => {
+    const t = computeTotals([ligne]);
+    // Preuve negative : sur le brut, la TVA vaudrait 261 000. Si ce test
+    // tombe sur 261 000, l'ordre de calcul a ete inverse quelque part.
+    expect(t.totalTvaMinor).not.toBe(261_000);
+    expect(t.totalTvaMinor).toBe(Math.round((t.totalHtMinor * 1800) / 10_000));
+  });
+
+  it('brut moins remise egale net, toujours', () => {
+    const cas: InvoiceLine[][] = [
+      [ligne],
+      [{ ...ligne, quantity: 3, discountPercent: 7 }],
+      [ligne, { ...ligne, unitPriceMinor: 999, discountPercent: 33 }],
+    ];
+    for (const lignes of cas) {
+      const t = computeTotals(lignes, { discountPercent: 11 });
+      expect(t.grossHtMinor - t.discountMinor).toBe(t.totalHtMinor);
+    }
+  });
+});
+
+/* ── Le chemin du non-assujetti ────────────────────────────────────────────
+   C'est la cible de la V1 : regime de l'entreprenant et microentreprises, qui
+   n'ont PAS le droit de facturer la TVA. Le code retenu est TVAD, nomme par la
+   plateforme « TVA exo.leg - Pas de TVA sur HT 00,00 % - D (TEE, TCE,
+   Microentreprise) ». Voir docs/pivot/12_ASSUJETTISSEMENT_TVA_ET_FNE.md.
+*/
+describe('le chemin du non-assujetti — TVAD', () => {
+  const ligne: InvoiceLine = {
+    description: 'Prestation de service',
+    unitPriceMinor: 75_000,
+    quantity: 2,
+    taxes: 'TVAD',
+  };
+
+  it('ne pose aucune TVA, et le TTC egale le HT', () => {
+    const t = computeTotals([ligne]);
+    expect(t.totalHtMinor).toBe(150_000);
+    expect(t.totalTvaMinor).toBe(0);
+    expect(t.totalTtcMinor).toBe(150_000);
+  });
+
+  it('la remise fonctionne quand meme, sans faire apparaitre de TVA', () => {
+    const t = computeTotals([{ ...ligne, discountPercent: 10 }]);
+    expect(t.grossHtMinor).toBe(150_000);
+    expect(t.discountMinor).toBe(15_000);
+    expect(t.totalHtMinor).toBe(135_000);
+    expect(t.totalTvaMinor).toBe(0);
+  });
+
+  it('les deux exonerations sont a zero, les deux taux ne le sont pas', () => {
+    const zero = (code: InvoiceLine['taxes']) =>
+      computeTotals([{ ...ligne, taxes: code }]).totalTvaMinor === 0;
+    expect(zero('TVAD')).toBe(true); // exoneration legale
+    expect(zero('TVAC')).toBe(true); // exoneration conventionnelle
+    expect(zero('TVA')).toBe(false); // 18 %
+    expect(zero('TVAB')).toBe(false); // 9 %
+  });
+
+  it('une facture mixte separe bien les bases par taux', () => {
+    const t = computeTotals([
+      ligne,
+      { description: 'Materiel', unitPriceMinor: 100_000, quantity: 1, taxes: 'TVA' },
+    ]);
+    expect(t.totalHtMinor).toBe(250_000);
+    // Seule la seconde ligne porte de la TVA.
+    expect(t.lines[0]!.tvaMinor).toBe(0);
+    expect(t.lines[1]!.tvaMinor).toBe(18_000);
+    expect(t.totalTvaMinor).toBe(18_000);
+  });
+});
