@@ -9,10 +9,16 @@ import {
 import {
   advanceStage,
   invitationSaving,
+  quoteFor,
   resolveReachability,
   summarizeQueue,
+  type FeeSchedule,
   type Recipient,
 } from '../directory/recipient.js';
+
+/* La grille : ce que le rail prend, et ce que SwimPay facture. Les deux sont
+   distincts — une installation supprime le premier, jamais le second. */
+const GRILLE: FeeSchedule = { railFeeMinor: 1_900, serviceFeeMinor: 500 };
 
 const dest = (over: Partial<Recipient> = {}): Recipient => ({
   id: 'r1',
@@ -183,16 +189,32 @@ describe('Le determinisme — ce que le workflow n a plus a demander', () => {
 });
 
 describe('La file d installation — ce que l invitation change', () => {
-  it('rend un destinataire actif gratuit et immediat', () => {
+  it('rend un destinataire actif joignable en direct et immediat', () => {
     const v = resolveReachability(dest({ stage: 'active' }));
-    expect(v).toMatchObject({ reachability: 'swimpay_direct', free: true, immediate: true });
+    expect(v).toMatchObject({ reachability: 'swimpay_direct', railFree: true, immediate: true });
+  });
+
+  it('SANS FRAIS DE RAIL ne veut pas dire gratuit : le service reste du', () => {
+    const q = quoteFor(dest({ stage: 'active' }), GRILLE);
+    expect(q.railFeeMinor).toBe(0);
+    expect(q.serviceFeeMinor).toBe(500);
+    expect(q.totalFeeMinor).toBe(500);
+    expect(q.immediate).toBe(true);
+  });
+
+  it('un envoi par rail porte les deux frais', () => {
+    const q = quoteFor(
+      dest({ stage: 'saved', destinationValue: '+225', preferredRail: 'orange-money-ci' }),
+      GRILLE,
+    );
+    expect(q).toMatchObject({ railFeeMinor: 1_900, serviceFeeMinor: 500, totalFeeMinor: 2_400 });
   });
 
   it('laisse un invite non installe sur le rail, avec ses frais', () => {
     const v = resolveReachability(
       dest({ stage: 'invited', destinationValue: '+2250707123456', preferredRail: 'orange-money-ci' }),
     );
-    expect(v).toMatchObject({ reachability: 'rail', free: false, immediate: false });
+    expect(v).toMatchObject({ reachability: 'rail', railFree: false, immediate: false });
   });
 
   it('dit ce qui manque quand la destination n a pas ete declaree', () => {
@@ -201,12 +223,18 @@ describe('La file d installation — ce que l invitation change', () => {
     expect(v.missing).toEqual(['destination_value', 'destination_rail']);
   });
 
-  it('chiffre ce que l installation ferait economiser', () => {
+  it('chiffre ce que l installation economise, et ce qui reste du', () => {
     const surRail = dest({ stage: 'invited', destinationValue: '+225', preferredRail: 'orange-money-ci' });
-    expect(invitationSaving(surRail, 120_000, 1_900)).toEqual({ saves: 1_900, alreadyFree: false });
-    expect(invitationSaving(dest({ stage: 'active' }), 120_000, 1_900)).toEqual({
-      saves: 0,
-      alreadyFree: true,
+    expect(invitationSaving(surRail, GRILLE)).toEqual({
+      savesRailFee: 1_900,
+      serviceStillDue: 500,
+      alreadyDirect: false,
+    });
+    // Deja installe : plus rien a economiser cote rail, le service demeure.
+    expect(invitationSaving(dest({ stage: 'active' }), GRILLE)).toEqual({
+      savesRailFee: 0,
+      serviceStillDue: 500,
+      alreadyDirect: true,
     });
   });
 
@@ -218,14 +246,19 @@ describe('La file d installation — ce que l invitation change', () => {
       dest({ id: '4', stage: 'saved', destinationValue: '+225', preferredRail: 'mtn-ci' }),
       dest({ id: '5', stage: 'saved', destinationValue: '+225', preferredRail: 'wave-ci' }),
     ];
-    const s = summarizeQueue(equipe, () => 1_900);
+    const s = summarizeQueue(equipe, () => GRILLE);
     expect(s).toMatchObject({
       total: 5,
       active: 2,
       invited: 1,
       pending: 2,
-      railCostMinor: 5_700,
-      fullyInstalledCostMinor: 0,
+      // Trois lignes encore sur rail : 3 x 1 900.
+      railFeeMinor: 5_700,
+      // Le service est du pour les CINQ, installes ou non : 5 x 500.
+      serviceFeeMinor: 2_500,
+      totalFeeMinor: 8_200,
+      // Toute la file installee : le rail tombe, le service demeure.
+      fullyInstalledFeeMinor: 2_500,
     });
   });
 
