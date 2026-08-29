@@ -11,7 +11,9 @@ export default defineConfig({
       '@swimpay/bank-templates': packageAlias('./packages/bank-templates/src/index.ts'),
       '@swimpay/matching-core': packageAlias('./packages/matching-core/src/index.ts'),
       '@swimpay/security': packageAlias('./packages/security/src/index.ts'),
-      '@swimpay/observability': packageAlias('./packages/observability/src/index.ts')
+      '@swimpay/observability': packageAlias('./packages/observability/src/index.ts'),
+      '@swimpay/rails': packageAlias('./packages/rails/src/index.ts'),
+      '@swimpay/brain': packageAlias('./packages/brain/src/index.ts')
     }
   },
   test: {
