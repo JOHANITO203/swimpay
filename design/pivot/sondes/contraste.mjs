@@ -26,17 +26,21 @@ const [, , URL, LARGE = "390", HAUTE = "844", DPR = "2", SELS] = process.argv;
 const CIBLES = (SELS || ".nav a.onglet, .nav .bouton.creux, .heros h1, .heros .dit")
   .split(",").map((s) => s.trim()).filter(Boolean);
 const W = Number(LARGE), H = Number(HAUTE), R = Number(DPR);
+/* Un port fixe fait que deux mesures lancees coup sur coup se disputent la
+   meme prise : la seconde attend indefiniment un Chrome qui n'a pas demarre.
+   Le port suit le processus. */
+const PORT = 9400 + (process.pid % 500);
 
 const profil = mkdtempSync(join(tmpdir(), "swimpay-c-"));
 const ch = spawn(CHROME, ["--headless=new", "--disable-gpu", "--disable-dev-shm-usage",
-  "--remote-debugging-port=9439", `--user-data-dir=${profil}`, "about:blank"], { stdio: "ignore" });
+  `--remote-debugging-port=${PORT}`, `--user-data-dir=${profil}`, "about:blank"], { stdio: "ignore" });
 process.on("exit", () => { try { ch.kill(); } catch {} try { rmSync(profil, { recursive: true, force: true }); } catch {} });
 const dodo = (m) => new Promise((r) => setTimeout(r, m));
 let ws;
 for (let i = 0; i < 40 && !ws; i++) {
   await dodo(250);
   try {
-    const pg = (await (await fetch("http://127.0.0.1:9439/json")).json()).find((x) => x.type === "page");
+    const pg = (await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()).find((x) => x.type === "page");
     if (pg) ws = new WebSocket(pg.webSocketDebuggerUrl);
   } catch {}
 }
@@ -55,7 +59,23 @@ const ev = async (x, attendre = false) => {
 await cmd("Page.enable"); await cmd("Runtime.enable");
 const charge = new Promise((r) => evs.set("Page.loadEventFired", r));
 await cmd("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: R, mobile: W < 881 });
-await cmd("Page.navigate", { url: URL }); await charge; await dodo(1600);
+await cmd("Page.navigate", { url: URL }); await charge;
+/* Attendre les POLICES, pas une durée. Sans cela, les boîtes sont lues avec la
+   police de secours et la capture faite avec la vraie : les boîtes ne sont plus
+   sous le texte, et la même page rend 4,68 puis 2,93 d'une fois sur l'autre.
+   On attend aussi la fin des animations d'entrée, qui déplacent le texte. */
+await ev(`document.fonts.ready.then(() => true)`, true);
+await dodo(1200);
+/* Une animation pilotee par le defilement n'a PAS de fin : attendre son
+   « finished » bloque pour toujours. On ne patiente que pour celles qui ont
+   une duree, et jamais plus de 900 ms. */
+await ev(`Promise.race([
+  Promise.all(document.getAnimations()
+    .filter((a) => !(a.timeline && a.timeline.constructor.name.includes("Scroll")))
+    .map((a) => a.finished.catch(() => 0))),
+  new Promise((r) => setTimeout(r, 900)),
+]).then(() => true)`, true).catch(() => {});
+await dodo(200);
 
 /* La boite du TEXTE, pas celle du bouton : un Range sur le contenu donne
    l'encre exacte, sans le rembourrage ou personne n'ecrit. */
@@ -110,9 +130,18 @@ const res = await ev(`(async () => {
     if (x1 <= x0 || y1 <= y0) continue;
     const d = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data;
     const tous = []; let sr = 0, sg = 0, sb = 0;
+    /* L'ENCRE A UNE OPACITÉ. rgba(20,20,20,.78) ne se pose pas comme #141414 :
+       elle se MÉLANGE au fond, et sa couleur rendue dépend donc du pixel qui
+       est dessous. Ignorer cet alpha surestime le contraste — c'est une faute
+       que j'ai déjà payée ailleurs. On compose, pixel par pixel. */
+    const al = n.length > 3 ? n[3] : 1;
     for (let i = 0; i < d.length; i += 4) {
-      tous.push(rap(lt, lum(d[i], d[i + 1], d[i + 2])));
-      sr += d[i]; sg += d[i + 1]; sb += d[i + 2];
+      const fr = d[i], fg = d[i + 1], fb = d[i + 2];
+      const er = al * n[0] + (1 - al) * fr;
+      const eg = al * n[1] + (1 - al) * fg;
+      const eb = al * n[2] + (1 - al) * fb;
+      tous.push(rap(lum(er, eg, eb), lum(fr, fg, fb)));
+      sr += fr; sg += fg; sb += fb;
     }
     const c = d.length / 4;
     tous.sort((a, b) => a - b);

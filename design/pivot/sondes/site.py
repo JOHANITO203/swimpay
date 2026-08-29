@@ -43,6 +43,9 @@ photo_tel = b64("hero-personne-tel.jpg", "image/jpeg")
 sujet = b64("hero-sujet.webp", "image/webp")
 sujet_tel = b64("hero-sujet-tel.webp", "image/webp")
 fond_flou = b64("hero-fond.webp", "image/webp")
+carte_visa = brut("carte-visa.webp", "image/webp")
+ecran_pme = brut("ecran-pme.webp", "image/webp")
+ecran_accueil = brut("ecran-accueil.webp", "image/webp")
 video = brut("hero-anim.mp4", "video/mp4")
 affiche = brut("hero-anim-poster.jpg", "image/jpeg")
 
@@ -67,42 +70,41 @@ def cartes(items, classe="grille"):
     return f'<div class="{classe}">\n' + "\n".join(out) + "\n    </div>"
 
 PERSONNEL = [
-    ("Envoyer et recevoir",
-     "Vers un numéro Mobile Money ou un compte bancaire, au Sénégal comme à "
-     "Abidjan. L'application compare les routes et vous dit laquelle coûte le "
-     "moins cher avant que vous ne validiez.",
+    ("Envoyez sans payer trop",
+     "SwimPay interroge Orange Money, Wave, MTN, Moov et le virement bancaire, "
+     "puis affiche ce que chacun vous prendra. Vous choisissez en sachant.",
      "Orange Money · MTN MoMo · Moov · Wave · virement bancaire"),
-    ("Payer sans contact",
-     "Votre carte vit dans votre téléphone. Au comptoir, vous approchez et "
-     "vous payez, sans code à saisir ni appoint à faire.",
+    ("Laissez les espèces à la maison",
+     "Votre carte vit dans votre téléphone. Au comptoir vous approchez, vous "
+     "payez, et la monnaie n'est plus votre problème.",
      "puce EMV et sans contact sur la carte principale"),
-    ("Cartes virtuelles",
-     "Un numéro à usage unique pour un abonnement ou un achat en ligne. Vous le "
-     "régénérez quand vous voulez, l'ancien cesse aussitôt d'être accepté.",
+    ("Achetez en ligne l'esprit tranquille",
+     "Une carte virtuelle porte son propre numéro. Un site vous inquiète ? Vous "
+     "la détruisez et vous en créez une autre en un geste.",
      "plafond mensuel réglable · destruction définitive"),
-    ("Épargner sans se bloquer",
-     "Le coffre met votre argent de côté sur un sous-compte. Verrouillez-le "
-     "jusqu'à une date, personne ne peut l'ouvrir avant, pas même vous.",
+    ("Mettez de côté et tenez bon",
+     "Le coffre range votre argent sur un sous-compte. Verrouillez-le jusqu'à "
+     "une date : personne ne l'ouvre avant, vous non plus.",
      "verrou daté · frais de commission coupés à l'entrée"),
 ]
 
 BUSINESS = [
-    ("Commerçant de quartier",
-     "Encaisser au comptoir avec un code fixe ou un QR, et clôturer sa caisse "
-     "le soir. L'écart entre le compté et l'encaissé se voit tout de suite.",
+    ("Clôturez votre caisse en cinq minutes",
+     "Vous encaissez au comptoir avec un code fixe ou un QR. Le soir, l'écart "
+     "entre ce que vous avez compté et ce qui est entré s'affiche seul.",
      "boutique · kiosque · restaurant"),
-    ("PME qui paie des salaires",
-     "Importez votre fichier de paie au format CSV ou Excel. L'application "
-     "trouve la route de chaque employé et affiche ce que coûte chaque "
-     "virement avant que vous ne signiez.",
+    ("Payez tous les salaires en une fois",
+     "Importez votre fichier de paie tel qu'il sort de votre logiciel. SwimPay "
+     "trouve la route de chaque employé et chiffre chaque virement avant que "
+     "vous ne signiez.",
      "double signature · coffre daté pour l'échéance"),
-    ("Commerce en ligne",
-     "Un lien de paiement à envoyer, ou un checkout intégré au site. Le "
-     "reversement tombe sur le compte de l'entreprise, chaque jour.",
+    ("Vendez en ligne sans développeur",
+     "Un lien de paiement suffit pour encaisser dès aujourd'hui. Le reversement "
+     "tombe sur le compte de l'entreprise chaque jour.",
      "lien · checkout · SDK"),
-    ("Cabinet comptable",
-     "Plusieurs dossiers clients depuis une seule console, avec le "
-     "rapprochement fait d'avance et les exports au format attendu.",
+    ("Ne ressaisissez plus rien",
+     "Tous vos dossiers clients dans une seule console, le rapprochement déjà "
+     "fait, et les exports au format que votre logiciel attend.",
      "rapprochement automatique · export comptable"),
 ]
 
@@ -140,6 +142,9 @@ HTML = f"""<meta charset="utf-8">
   --trait: #E4E4E0;
   --trait-fort: #C9C9C3;
   --acide: #A2FF01;
+  /* L'acide pur en TEXTE sur blanc donne 1,25:1 : illisible. Cette
+     version assombrie est celle qu'on pose sur du texte. */
+  --acide-encre: #4A7300;
   --noir: #141414;
   --grain: {grain};
   --logo: {logo};
@@ -220,7 +225,7 @@ a {{ color: inherit; text-decoration: none; }}
    Bord a bord, et l image commence AU PREMIER PIXEL : elle passe SOUS la barre
    de navigation, qui devient transparente tant qu on est dessus. */
 .heros {{
-  position: relative; overflow-x: clip; overflow-y: visible; z-index: 2;
+  position: relative; overflow: clip; z-index: 2;
   background: var(--acide);
   margin-top: calc(-1 * var(--h-nav));
   padding-top: var(--h-nav);
@@ -229,24 +234,30 @@ a {{ color: inherit; text-decoration: none; }}
    Un voile tres court renforce ce cote sans ternir la photo : sans lui, un
    texte pose sur une image est une loterie de contraste. */
 .heros::before {{
-  content: ""; position: absolute; inset: 0; pointer-events: none;
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  /* Le voile ne doit couvrir QUE le bloc de texte. Trois essais mesures :
+     en bande verticale il effacait la main gauche ; en rond il verdissait le
+     visage, qui est au centre du cadre. Il est donc horizontal — il s'arrete
+     a 46 %, avant le chignon — et un masque l'eteint sous le texte, ce qui
+     rend les deux mains au bas du cadre. */
   background: linear-gradient(96deg,
-    hsl(82 100% 50% / .96) 0%, hsl(82 100% 50% / .82) 28%,
-    hsl(82 100% 50% / .18) 52%, transparent 68%);
+    hsl(82 100% 50% / .98) 0%, hsl(82 100% 50% / .96) 26%,
+    hsl(82 100% 50% / .88) 38%, transparent 46%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 74%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 74%);
 }}
 .heros-in {{
-  position: relative; z-index: 1;
+  position: relative; z-index: 3;
   display: grid; grid-template-columns: minmax(0, 1fr);
-  align-items: center; min-height: min(86vh, 780px); padding: 72px 0 80px;
+  align-items: start; min-height: min(94vh, 900px); padding: 40px 0 80px;
 }}
-.heros-in {{ position: relative; z-index: 3; }}
-.heros-in > div {{ max-width: min(46ch, 52%); }}
+.heros-in > div {{ max-width: min(42ch, 46%); }}
 /* ─── LES TROIS COUCHES DU HÉROS ───
    Le fond flou pose la profondeur, le sujet net la traverse. On les DÉCALE
    nettement (échelle et position) : superposés au même endroit, les deux
    silhouettes se doubleraient et l'effet tomberait à plat. */
 .heros-fond {{
-  position: absolute; inset: -22% -18% -22% auto; width: 88%;
+  position: absolute; inset: -22% -18% -22% auto; width: 88%; z-index: 0;
   background: var(--fond-flou) center / cover no-repeat;
   opacity: .82; pointer-events: none;
   -webkit-mask-image: radial-gradient(74% 66% at 72% 48%, #000 0%, transparent 68%);
@@ -255,12 +266,13 @@ a {{ color: inherit; text-decoration: none; }}
 /* Le sujet déborde le bas du héros et empiète sur la section suivante :
    c'est ce débord qui le fait sortir de l'image. */
 .heros-sujet {{
-  position: absolute; right: -3%; bottom: -9%; width: 68%; aspect-ratio: 1.79;
+  position: absolute; left: 50%; right: auto; bottom: 0; z-index: 1;
+  width: 96%; margin-left: -48%; aspect-ratio: 1.79;
   background: var(--sujet) center bottom / contain no-repeat;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to bottom, #000 76%, transparent 99%);
-          mask-image: linear-gradient(to bottom, #000 76%, transparent 99%);
-  filter: drop-shadow(0 30px 60px rgba(20, 20, 20, .28));
+  /* Pas de fondu en bas : la coupure franche EST l'effet. Les mains butent
+     contre le bord comme sur une vitre. */
+  filter: drop-shadow(0 -14px 44px rgba(20, 20, 20, .16));
 }}
 @media (prefers-reduced-motion: no-preference) {{
   /* Le défilement écarte les deux couches. En CSS seul : pas de gestionnaire
@@ -287,6 +299,12 @@ a {{ color: inherit; text-decoration: none; }}
   line-height: 1.34; color: rgba(20, 20, 20, .78);
 }}
 .heros .gestes {{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }}
+/* Sur une photo, un bouton a bord seul n'a pas de sol : mesure 2,19:1 sur la
+   manche. Il en prend un, opaque. */
+.heros .bouton.creux {{
+  background: #FFFFFF; border-color: transparent;
+  box-shadow: 0 2px 14px rgba(20, 20, 20, .10);
+}}
 .heros .sous {{ margin: 18px 0 0; font-size: 14px; color: rgba(20, 20, 20, .6); }}
 /* Sur telephone, couvrir une image de ratio 1,79 dans un cadre etroit
    couperait le sujet en deux : elle devient une bande haute, et le texte
@@ -301,7 +319,7 @@ a {{ color: inherit; text-decoration: none; }}
        On coupe donc les COTES seulement : « overflow: visible » tout court
        ecrasait le clip lateral, et le sujet decoupe poussait la page a 441 px
        de large sur un ecran de 390. */
-    overflow-x: clip; overflow-y: visible;
+    overflow: clip;
   }}
   .heros::before {{ content: none; }}
   .heros-fond {{ display: none; }}
@@ -317,10 +335,10 @@ a {{ color: inherit; text-decoration: none; }}
      l'acide — c'est la, au telephone, qu'il sort de l'image. */
   .heros-sujet {{
     position: absolute; left: 50%; right: auto; top: var(--h-nav); bottom: auto;
-    width: 152%; height: 340px; aspect-ratio: auto; margin-left: -76%;
+    width: 150%; margin-left: -75%; aspect-ratio: 1.79;
     background-image: var(--sujet-tel);
     background-size: contain; background-position: center top;
-    filter: drop-shadow(0 16px 30px rgba(20, 20, 20, .20));
+    filter: drop-shadow(0 14px 28px rgba(20, 20, 20, .18));
   }}
   /* Mesure : le titre pose sur le tailleur et l'ombre du bras tombait a
      1,00:1 — du noir sur du noir. Il commence donc la ou le fondu a deja
@@ -329,6 +347,92 @@ a {{ color: inherit; text-decoration: none; }}
   .heros-in > div {{ max-width: none; }}
 }}
 @media (min-width: 881px) {{ .heros-bande {{ display: none; }} }}
+
+/* ─── LA FAQ ───
+   En <details> natif : elle s'ouvre sans une ligne de script, et reste
+   utilisable au clavier comme au lecteur d'écran. */
+.faq {{ margin-top: 40px; border-top: 1px solid var(--trait); }}
+.faq details {{ border-bottom: 1px solid var(--trait); }}
+.faq summary {{
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 22px 0; cursor: pointer; list-style: none;
+  font-size: 20px; font-weight: 500; letter-spacing: -.01em;
+  transition: color 180ms ease;
+}}
+.faq summary::-webkit-details-marker {{ display: none; }}
+.faq summary::after {{
+  content: ""; flex: none; width: 13px; height: 13px;
+  border-right: 2px solid var(--sourd); border-bottom: 2px solid var(--sourd);
+  transform: rotate(45deg) translate(-3px, -3px);
+  transition: transform 200ms var(--sortie);
+}}
+.faq details[open] summary::after {{ transform: rotate(-135deg) translate(-3px, -3px); }}
+.faq p {{ margin: 0 0 24px; max-width: 62ch; font-size: 17px; line-height: 1.5; color: var(--sourd); }}
+@media (hover: hover) and (pointer: fine) {{ .faq summary:hover {{ color: var(--acide-encre); }} }}
+
+/* ─── UNE PAGE INTERNE ───
+   Relevé : le titre d'une page interne fait 54 px, pas les 85 de l'accueil.
+   Le grand format est réservé à la promesse d'entrée. */
+.tete h1 {{
+  margin: 0; font-size: clamp(34px, 4.6vw, 54px); line-height: 1;
+  font-weight: 500; letter-spacing: -.022em; max-width: 16ch; text-wrap: balance;
+}}
+.tete .dit {{
+  margin: 20px 0 0; max-width: 46ch; font-size: 18px; line-height: 1.34;
+  color: var(--sourd);
+}}
+.tete .gestes {{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }}
+/* le bandeau d'étiquettes : 11 px, approche négative, il annonce les sujets */
+.jalons {{
+  display: flex; flex-wrap: wrap; gap: 10px; margin-top: 40px;
+  padding-top: 28px; border-top: 1px solid var(--trait);
+}}
+.jalons span {{
+  font-size: 11.5px; font-weight: 500; letter-spacing: -.02em;
+  padding: 8px 13px; border-radius: 999px;
+  background: var(--fond-2); color: var(--encre);
+}}
+/* les blocs à puces : la mécanique principale de la page */
+.bloc {{ display: grid; grid-template-columns: 1fr 1fr; gap: clamp(30px, 5vw, 70px); align-items: start; }}
+.bloc + .bloc {{ margin-top: clamp(56px, 7vw, 96px); }}
+.puces {{ margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }}
+.puces li {{
+  position: relative; padding-left: 30px; font-size: 17.5px; line-height: 1.38;
+  color: var(--sourd);
+}}
+.puces li::before {{
+  content: ""; position: absolute; left: 0; top: .46em;
+  width: 16px; height: 10px;
+  /* currentColor, pas un jeton emprunte a l'app : --acide-trace n'existe
+     pas ici, et UNE variable inconnue invalide toute la declaration —
+     la coche etait simplement absente. */
+  background: currentColor;
+  -webkit-mask: linear-gradient(#000 0 0) left .5px bottom 3px / 11px 2px no-repeat,
+                linear-gradient(#000 0 0) left 4px bottom 1.5px / 2px 7px no-repeat;
+          mask: linear-gradient(#000 0 0) left .5px bottom 3px / 11px 2px no-repeat,
+                linear-gradient(#000 0 0) left 4px bottom 1.5px / 2px 7px no-repeat;
+  transform: rotate(-45deg);
+}}
+.sect.sombre .puces li {{ color: rgba(255, 255, 255, .70); }}
+@media (max-width: 880px) {{ .bloc {{ grid-template-columns: 1fr; gap: 26px; }} }}
+
+/* ─── UN ÉCRAN DE L'APPLICATION ───
+   Ce qu'on montre vient du prototype lui-même, pas d'une maquette dessinée. */
+.tel {{
+  justify-self: center; width: min(300px, 78%); padding: 10px;
+  border-radius: 42px; background: #141414;
+  box-shadow: 0 34px 80px rgba(20, 20, 20, .30), 0 0 0 1px rgba(255, 255, 255, .06) inset;
+}}
+.tel img {{ display: block; width: 100%; height: auto; border-radius: 32px; }}
+
+/* ─── UNE IMAGE À CÔTÉ D'UN TEXTE ─── */
+.duo {{
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: clamp(30px, 5vw, 70px); align-items: center;
+}}
+.duo-img {{ border-radius: 28px; overflow: hidden; box-shadow: 0 30px 70px rgba(20, 20, 20, .16); }}
+.duo-img img {{ display: block; width: 100%; height: auto; }}
+@media (max-width: 880px) {{ .duo {{ grid-template-columns: 1fr; }} }}
 
 /* ─── SECTIONS ─── */
 .sect {{ padding: clamp(72px, 9vw, 128px) 0; }}
@@ -377,7 +481,7 @@ h2 {{
 .cam-quoi b {{ color: var(--cam); font-weight: 600; }}
 
 /* ─── FICHES ─── */
-.grille {{ display: grid; gap: 16px; margin-top: 44px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }}
+.grille {{ display: grid; gap: 16px; margin-top: 44px; grid-template-columns: repeat(auto-fit, minmax(248px, 1fr)); }}
 .fiche {{
   padding: 30px; border-radius: 24px; background: var(--fond);
   border: 1px solid var(--trait);
@@ -626,30 +730,178 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 <div class="page" id="personnel">
   <section class="sect">
     <div class="dedans">
-      <h2>Tout votre argent au même endroit</h2>
-      <p class="para">Votre compte s'ouvre avec votre <b>numéro de téléphone</b>.
-        Vous envoyez, vous recevez et vous épargnez sans changer d'application.</p>
+      <h2>Reprenez la main sur votre argent</h2>
+      <p class="para">Ouvrez un compte avec votre <b>numéro de téléphone</b>, puis
+        envoyez, recevez, payez et épargnez au même endroit. Vous voyez ce que
+        chaque opération coûte avant de la valider.</p>
       {cartes(PERSONNEL)}
-      <div class="gestes" style="margin-top: 44px; display: flex; gap: 12px; flex-wrap: wrap">
-        <a class="bouton acide grand" href="#inscription">Ouvrir un compte</a>
-        <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir ces écrans</a>
+    </div>
+  </section>
+
+  <section class="sect gris">
+    <div class="dedans duo">
+      <div>
+        <h2>Payez partout avec votre carte</h2>
+        <p class="para">Votre carte SwimPay passe au comptoir comme en ligne, chez
+          vous et à l'étranger. Elle vit dans votre téléphone, et vous la bloquez
+          d'un geste si elle vous échappe.</p>
+        <p class="para" style="margin-top: 18px">Choisissez la vôtre. Elles font
+          toutes la même chose, elles ne se ressemblent pas.</p>
+        <div class="gestes" style="margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
+          <a class="bouton acide grand" href="#inscription">Ouvrir un compte</a>
+          <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir ces écrans</a>
+        </div>
+      </div>
+      <div class="duo-img">
+        <img src="{carte_visa}" width="1000" height="1308" loading="lazy"
+             alt="La carte SwimPay acide, entourée de ses variantes claires">
       </div>
     </div>
   </section>
+
+  <section class="sect sombre">
+    <div class="dedans duo">
+      <div>
+        <h2>Votre argent tient sur un écran</h2>
+        <p class="para">Le solde, les dernières opérations et le coffre sont là
+          dès l'ouverture. Envoyer, recevoir ou mettre de côté prend deux gestes,
+          et chaque opération laisse un reçu complet.</p>
+      </div>
+      <div class="tel">
+        <img src="{ecran_accueil}" width="460" height="995" loading="lazy"
+             alt="L'écran d'accueil de SwimPay">
+      </div>
+    </div>
+  </section>
+
 </div>
 
 <!-- ══════════ BUSINESS ══════════ -->
 <div class="page" id="business">
   <section class="sect">
+    <div class="dedans tete">
+      <h1>Le compte pro de votre entreprise</h1>
+      <p class="dit">Encaissez, payez vos salaires et facturez la DGI depuis un
+        seul compte, quel que soit le réseau de vos clients.</p>
+      <div class="gestes">
+        <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
+        <a class="bouton creux grand" href="{LIEN_APP}#b-pme" target="_blank" rel="noopener">Voir la console</a>
+      </div>
+      <div class="jalons">
+        <span>Encaisser au comptoir</span>
+        <span>Payer les salaires</span>
+        <span>Facturer la DGI</span>
+        <span>Vendre en ligne</span>
+        <span>Suivre la trésorerie</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect gris">
     <div class="dedans">
-      <h2>Un compte pour quatre métiers</h2>
-      <p class="para">Un commerçant, une PME, une boutique en ligne et un cabinet
-        comptable ne font pas le même travail. Chacun retrouve ses écrans, sur la
-        même chaîne de paiement.</p>
+      <div class="bloc">
+        <div>
+          <h2>Encaissez comme vous vendez</h2>
+          <p class="para">Vos clients paient avec le réseau qu'ils ont déjà. Vous
+            recevez tout sur le même compte.</p>
+        </div>
+        <ul class="puces">
+          <li>Un code fixe ou un QR au comptoir, sans terminal à louer</li>
+          <li>Un lien de paiement à envoyer par WhatsApp ou par SMS</li>
+          <li>Orange Money, Wave, MTN, Moov et le virement bancaire</li>
+          <li>Le soir, l'écart entre ce que vous avez compté et ce qui est entré</li>
+        </ul>
+      </div>
+
+      <div class="bloc">
+        <div>
+          <h2>Payez vos équipes en une fois</h2>
+          <p class="para">La paie devient un fichier à déposer, plus une soirée de
+            virements un par un.</p>
+        </div>
+        <ul class="puces">
+          <li>Importez le fichier tel qu'il sort de votre logiciel, en CSV ou Excel</li>
+          <li>SwimPay trouve la route de chaque employé et chiffre chaque virement</li>
+          <li>Exigez deux signatures avant qu'un lot ne parte</li>
+          <li>Bloquez la somme dans un coffre daté jusqu'à l'échéance</li>
+        </ul>
+      </div>
+
+      <div class="bloc">
+        <div>
+          <h2>Facturez sans rien ressaisir</h2>
+          <p class="para">La facture part complète, et repart telle quelle vers
+            votre comptable.</p>
+        </div>
+        <ul class="puces">
+          <li>Des factures FNE approuvées par la DGI, en une minute</li>
+          <li>Le numéro, le QR de contrôle et l'archive légale partent avec</li>
+          <li>Relancez un client en retard depuis l'encours</li>
+          <li>Exportez au format que votre logiciel comptable attend</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect sombre">
+    <div class="dedans duo">
+      <div class="tel">
+        <img src="{ecran_pme}" width="460" height="995" loading="lazy"
+             alt="La console d'entreprise SwimPay">
+      </div>
+      <div>
+        <h2>Sachez toujours où vous en êtes</h2>
+        <p class="para">Le premier écran répond aux questions que vous vous posez
+          le matin, sans ouvrir un tableur.</p>
+        <ul class="puces" style="margin-top: 24px">
+          <li>Combien de mois de salaires votre caisse couvre</li>
+          <li>Ce que vos clients vous doivent, et ce qui est en retard</li>
+          <li>Chaque mouvement inscrit avec sa date, sa référence et ses frais</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <div class="dedans">
+      <h2>Quatre métiers, un seul compte</h2>
+      <p class="para">Chacun retrouve les écrans faits pour sa journée.</p>
       {cartes(BUSINESS)}
       <div class="gestes" style="margin-top: 44px; display: flex; gap: 12px; flex-wrap: wrap">
         <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
-        <a class="bouton creux grand" href="{LIEN_APP}#b-pme" target="_blank" rel="noopener">Voir la console PME</a>
+        <a class="bouton creux grand" href="#integration">Intégrer à mon site</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect gris">
+    <div class="dedans">
+      <h2>Vos questions</h2>
+      <div class="faq">
+        <details>
+          <summary>Comment ouvre-t-on un compte professionnel ?</summary>
+          <p>Avec le numéro de téléphone du dirigeant et une pièce d'identité. Le registre de commerce vient ensuite, avant les premiers encaissements.</p>
+        </details>
+        <details>
+          <summary>Mes clients doivent-ils avoir SwimPay ?</summary>
+          <p>Non. Ils paient avec le réseau qu'ils utilisent déjà, Orange Money, Wave, MTN, Moov ou un virement bancaire. Vous recevez tout sur le même compte.</p>
+        </details>
+        <details>
+          <summary>Où est l'argent de mon entreprise ?</summary>
+          <p>Sur un compte de dépôt réel. Chaque mouvement y est inscrit avec sa date, sa référence, ses frais et la route empruntée.</p>
+        </details>
+        <details>
+          <summary>Combien de personnes peuvent accéder au compte ?</summary>
+          <p>Autant que votre équipe en compte, chacune avec ses droits. Un virement de salaires peut exiger deux signatures avant de partir.</p>
+        </details>
+        <details>
+          <summary>La facture FNE est-elle vraiment acceptée ?</summary>
+          <p>La facture porte son numéro, son QR de contrôle et son archive légale, au format attendu par la DGI. Elle part complète, sans ressaisie.</p>
+        </details>
+        <details>
+          <summary>Puis-je récupérer mes écritures dans mon logiciel ?</summary>
+          <p>Oui. L'export sort au format que votre logiciel comptable attend, avec le rapprochement déjà fait.</p>
+        </details>
       </div>
     </div>
   </section>

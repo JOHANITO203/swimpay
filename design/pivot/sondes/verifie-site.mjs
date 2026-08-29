@@ -128,6 +128,21 @@ const derive = await ev(`(async () => {
 test("les deux couches du héros dérivent au défilement",
   derive.bouge === true && derive.ecarte === true, JSON.stringify(derive));
 
+/* UNE VARIABLE INCONNUE INVALIDE TOUTE LA DÉCLARATION, en silence. C'est ainsi
+   qu'un fond de grain n'a jamais été peint, et qu'une coche de liste est restée
+   invisible parce que son jeton venait de l'app et n'existait pas ici. On lit
+   donc TOUS les var(--x) du CSS et on exige que chacun soit défini. */
+const jetons = await ev(`(() => {
+  const css = [...document.querySelectorAll("style")].map((s) => s.textContent).join(String.fromCharCode(10));
+  const noms = [...new Set((css.match(/var\\(\\s*--[a-zA-Z0-9-]+/g) || [])
+    .map((v) => v.replace(/var\\(\\s*/, "")))];
+  const definis = new Set((css.match(/--[a-zA-Z0-9-]+\\s*:/g) || [])
+    .map((d) => d.replace(/\\s*:$/, "")));
+  return { combien: noms.length, orphelins: noms.filter((x) => !definis.has(x)) };
+})()`);
+test("aucune variable CSS n'est utilisée sans être définie",
+  jetons.orphelins.length === 0, jetons.orphelins.join(" · "));
+
 test("la section du gain de temps parle de la DGI",
   (await ev(`document.getElementById("temps").textContent.includes("DGI")`)) === true);
 
