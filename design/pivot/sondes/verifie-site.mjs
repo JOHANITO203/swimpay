@@ -106,42 +106,18 @@ test("l image du heros part du premier pixel",
 test("la barre s efface sur le heros",
   (await ev(`document.querySelector(".nav").getAttribute("data-pose")`)) === "non");
 
-/* LE PARALLAXE. Une animation de défilement qui ne bouge pas se voit très mal
-   à l'œil et pas du tout dans le code : on lit les deux transforms AVANT et
-   APRÈS avoir défilé, et on exige qu'ils diffèrent l'un de l'autre. */
-const derive = await ev(`(async () => {
-  const lis = () => ({
-    fond: getComputedStyle(document.querySelector(".heros-fond")).transform,
-    sujet: getComputedStyle(document.querySelector(".heros-sujet")).transform,
-  });
-  scrollTo(0, 0);
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  const avant = lis();
-  scrollTo(0, 420);
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  const apres = lis();
-  scrollTo(0, 0);
-  return { avant, apres,
-    bouge: apres.fond !== avant.fond && apres.sujet !== avant.sujet,
-    ecarte: apres.fond !== apres.sujet };
-})()`, true);
-test("les deux couches du héros dérivent au défilement",
-  derive.bouge === true && derive.ecarte === true, JSON.stringify(derive));
-
-/* UNE VARIABLE INCONNUE INVALIDE TOUTE LA DÉCLARATION, en silence. C'est ainsi
-   qu'un fond de grain n'a jamais été peint, et qu'une coche de liste est restée
-   invisible parce que son jeton venait de l'app et n'existait pas ici. On lit
-   donc TOUS les var(--x) du CSS et on exige que chacun soit défini. */
-const jetons = await ev(`(() => {
-  const css = [...document.querySelectorAll("style")].map((s) => s.textContent).join(String.fromCharCode(10));
-  const noms = [...new Set((css.match(/var\\(\\s*--[a-zA-Z0-9-]+/g) || [])
-    .map((v) => v.replace(/var\\(\\s*/, "")))];
-  const definis = new Set((css.match(/--[a-zA-Z0-9-]+\\s*:/g) || [])
-    .map((d) => d.replace(/\\s*:$/, "")));
-  return { combien: noms.length, orphelins: noms.filter((x) => !definis.has(x)) };
+/* LA PHOTO DU HÉROS. Le parallaxe a disparu avec la couche découpée : en
+   « cover », l'image n'a aucune marge verticale, donc rien ne peut dériver sans
+   la rezoomer — et chaque zoom déplaçait le sujet sous le texte, jusqu'à faire
+   tomber le paragraphe de 7,36 à 3,66:1. Ce qu'on garde, c'est le cadrage. */
+const photo = await ev(`(() => {
+  const s = getComputedStyle(document.querySelector(".heros"));
+  return { image: s.backgroundImage.slice(0, 20), taille: s.backgroundSize,
+           position: s.backgroundPosition };
 })()`);
-test("aucune variable CSS n'est utilisée sans être définie",
-  jetons.orphelins.length === 0, jetons.orphelins.join(" · "));
+test("la photo du héros couvre tout le cadre, calée à droite",
+  photo.image.includes("url(") && photo.taille === "cover" && photo.position === "100% 50%",
+  JSON.stringify(photo));
 
 test("la section du gain de temps parle de la DGI",
   (await ev(`document.getElementById("temps").textContent.includes("DGI")`)) === true);

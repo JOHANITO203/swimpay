@@ -40,9 +40,6 @@ grain = jeton("grain")
 logo = jeton("carte-logo")
 photo = b64("hero-personne.jpg", "image/jpeg")
 photo_tel = b64("hero-personne-tel.jpg", "image/jpeg")
-sujet = b64("hero-sujet.webp", "image/webp")
-sujet_tel = b64("hero-sujet-tel.webp", "image/webp")
-fond_flou = b64("hero-fond.webp", "image/webp")
 carte_visa = brut("carte-visa.webp", "image/webp")
 ecran_pme = brut("ecran-pme.webp", "image/webp")
 ecran_accueil = brut("ecran-accueil.webp", "image/webp")
@@ -71,26 +68,24 @@ def cartes(items, classe="grille"):
 
 PERSONNEL = [
     ("Envoyez sans payer trop",
-     "SwimPay vous permet d'envoyer et de recevoir de l'argent vers tous les "
-     "comptes Mobile Money, Orange Money, MTN Money, Wave CI et les autres, et "
-     "même vers votre banque. Avec les taux les plus bas selon l'opération.",
+     "Envoyez et recevez de l'argent vers tous les comptes Mobile Money, "
+     "Orange Money, MTN Money, Wave CI et les autres, et même vers votre "
+     "banque. Avec les taux les plus bas selon l'opération.",
      "Orange Money · MTN MoMo · Moov · Wave · virement bancaire"),
     ("Laissez les espèces à la maison",
-     "Payez n'importe quel commerce avec votre application SwimPay. Scannez le "
-     "QR du marchand et payez en un clic, ou choisissez le sans contact NFC si "
-     "vous êtes plus à l'aise avec ce système. C'est vous qui choisissez, nous "
-     "suivons le mouvement.",
+     "Payez n'importe quel commerce avec SwimPay. Scannez le QR du marchand "
+     "et payez en un clic, ou passez en sans contact NFC si vous préférez. "
+     "C'est vous qui choisissez, nous suivons le mouvement.",
      "QR marchand · sans contact NFC"),
     ("Achetez en ligne",
-     "Dès la création de votre compte, vous disposez d'une carte virtuelle Visa "
-     "gratuite, utilisable dès le premier jour. Réapprovisionnez votre abonnement "
-     "Netflix, ou liez-la à votre application de taxi préférée, Yango, inDrive "
-     "et les autres.",
+     "Dès la création de votre compte, vous avez une carte virtuelle Visa "
+     "gratuite, utilisable le jour même. Payez Netflix, liez-la à Yango ou à "
+     "inDrive, et dépensez comme bon vous semble.",
      "carte virtuelle Visa · gratuite dès le premier jour"),
     ("Mettez de côté et tenez bon",
-     "Épargnez votre argent dans un coffre-fort sécurisé depuis votre espace "
-     "utilisateur. Verrouillez-le pour l'utiliser plus tard en programmant une "
-     "date, et nous vous reverserons des intérêts.",
+     "Épargnez dans un coffre-fort sécurisé depuis votre espace. Verrouillez-le "
+     "jusqu'à une date que vous choisissez, et touchez des intérêts sur ce que "
+     "vous laissez dormir.",
      "offre soumise à conditions"),
 ]
 
@@ -137,9 +132,6 @@ HTML = f"""<meta charset="utf-8">
   --logo: {logo};
   --photo: {photo};
   --photo-tel: {photo_tel};
-  --sujet: {sujet};
-  --sujet-tel: {sujet_tel};
-  --fond-flou: {fond_flou};
   --sortie: cubic-bezier(.23, 1, .32, 1);
   --deux-sens: cubic-bezier(.77, 0, .175, 1);
   /* le Caméléon : une seule teinte pilote toute la section, et elle change */
@@ -213,7 +205,7 @@ a {{ color: inherit; text-decoration: none; }}
    de navigation, qui devient transparente tant qu on est dessus. */
 .heros {{
   position: relative; overflow: clip; z-index: 2;
-  background: var(--acide);
+  background: var(--acide) var(--photo) center right / cover no-repeat;
   margin-top: calc(-1 * var(--h-nav));
   padding-top: var(--h-nav);
 }}
@@ -227,9 +219,12 @@ a {{ color: inherit; text-decoration: none; }}
      visage, qui est au centre du cadre. Il est donc horizontal — il s'arrete
      a 46 %, avant le chignon — et un masque l'eteint sous le texte, ce qui
      rend les deux mains au bas du cadre. */
+  /* Il s'eteint a 46 % : au-dela il verdissait le visage, qui commence vers
+     39 % de la largeur. Le texte s'arrete a 37 %, le voile le couvre en plein
+     et lache juste apres. */
   background: linear-gradient(96deg,
-    hsl(82 100% 50% / .98) 0%, hsl(82 100% 50% / .96) 26%,
-    hsl(82 100% 50% / .88) 38%, transparent 46%);
+    hsl(82 100% 50% / .98) 0%, hsl(82 100% 50% / .97) 26%,
+    hsl(82 100% 50% / .93) 36%, hsl(82 100% 50% / .38) 41%, transparent 46%);
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 74%);
           mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 74%);
 }}
@@ -238,44 +233,7 @@ a {{ color: inherit; text-decoration: none; }}
   display: grid; grid-template-columns: minmax(0, 1fr);
   align-items: start; min-height: min(94vh, 900px); padding: 40px 0 80px;
 }}
-.heros-in > div {{ max-width: min(42ch, 46%); }}
-/* ─── LES TROIS COUCHES DU HÉROS ───
-   Le fond flou pose la profondeur, le sujet net la traverse. On les DÉCALE
-   nettement (échelle et position) : superposés au même endroit, les deux
-   silhouettes se doubleraient et l'effet tomberait à plat. */
-.heros-fond {{
-  position: absolute; inset: -22% -18% -22% auto; width: 88%; z-index: 0;
-  background: var(--fond-flou) center / cover no-repeat;
-  opacity: .82; pointer-events: none;
-  -webkit-mask-image: radial-gradient(74% 66% at 72% 48%, #000 0%, transparent 68%);
-          mask-image: radial-gradient(74% 66% at 72% 48%, #000 0%, transparent 68%);
-}}
-/* Le sujet déborde le bas du héros et empiète sur la section suivante :
-   c'est ce débord qui le fait sortir de l'image. */
-.heros-sujet {{
-  position: absolute; left: 50%; right: auto; bottom: 0; z-index: 1;
-  width: 96%; margin-left: -48%; aspect-ratio: 1.79;
-  background: var(--sujet) center bottom / contain no-repeat;
-  pointer-events: none;
-  /* Pas de fondu en bas : la coupure franche EST l'effet. Les mains butent
-     contre le bord comme sur une vitre. */
-  filter: drop-shadow(0 -14px 44px rgba(20, 20, 20, .16));
-}}
-@media (prefers-reduced-motion: no-preference) {{
-  /* Le défilement écarte les deux couches. En CSS seul : pas de gestionnaire
-     de scroll, donc rien à désynchroniser. Sans prise en charge, tout reste
-     simplement en place — la page ne perd rien. */
-  @supports (animation-timeline: scroll()) {{
-    .heros-fond, .heros-sujet {{
-      animation: linear both; animation-timeline: scroll(root);
-      animation-range: 0 620px;
-    }}
-    .heros-fond {{ animation-name: derive-fond; }}
-    .heros-sujet {{ animation-name: derive-sujet; }}
-  }}
-}}
-@keyframes derive-fond {{ to {{ transform: translateY(74px) scale(1.07); }} }}
-@keyframes derive-sujet {{ to {{ transform: translateY(-26px); }} }}
+.heros-in > div {{ max-width: min(38ch, 39%); }}
 .heros h1 {{
   margin: 0; font-size: clamp(40px, 6.4vw, 85px); line-height: 1;
   font-weight: 500; letter-spacing: -.024em; color: var(--noir); text-wrap: balance;
@@ -285,7 +243,12 @@ a {{ color: inherit; text-decoration: none; }}
   margin: 26px 0 0; max-width: 44ch; font-size: clamp(16.5px, 1.4vw, 18px);
   line-height: 1.34; color: rgba(20, 20, 20, .78);
 }}
-.heros .gestes {{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }}
+.heros .gestes {{
+  display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px;
+  /* Les boutons portent leur propre sol : ils n'ont pas besoin de la colonne
+     etroite qui protege le texte, et tiennent sur une seule ligne. */
+  width: max-content; max-width: min(52ch, 46%);
+}}
 /* Sur une photo, un bouton a bord seul n'a pas de sol : mesure 2,19:1 sur la
    manche. Il en prend un, opaque. */
 .heros .bouton.creux {{
@@ -309,28 +272,21 @@ a {{ color: inherit; text-decoration: none; }}
     overflow: clip;
   }}
   .heros::before {{ content: none; }}
-  .heros-fond {{ display: none; }}
+
   /* Au telephone il n'y a pas de place pour deux colonnes : le sujet decoupe
      tient TOUTE la bande, sur l'acide, et deborde sur le texte en dessous. */
   .heros-bande {{
-    height: 300px;
+    /* 218 px pour l'image entiere a 390 de large (ratio 1,79), plus les
+       122 px que la bande remonte sous la barre : le seul vide tombe
+       exactement derriere elle, et le raccord ne se voit plus. */
+    height: calc(390px / 1.79 + var(--h-nav));
     margin-top: calc(-1 * var(--h-nav));
-    background: none;
+    background: #A3D940 var(--photo-tel) center bottom / contain no-repeat;
   }}
-  /* La barre garde son sol acide sur les 122 premiers pixels : un sujet pose
-     a top 0 y perd sa tete. Il commence donc SOUS elle, et deborde en bas sur
-     l'acide — c'est la, au telephone, qu'il sort de l'image. */
-  .heros-sujet {{
-    position: absolute; left: 50%; right: auto; top: var(--h-nav); bottom: auto;
-    width: 150%; margin-left: -75%; aspect-ratio: 1.79;
-    background-image: var(--sujet-tel);
-    background-size: contain; background-position: center top;
-    filter: drop-shadow(0 14px 28px rgba(20, 20, 20, .18));
-  }}
-  /* Mesure : le titre pose sur le tailleur et l'ombre du bras tombait a
-     1,00:1 — du noir sur du noir. Il commence donc la ou le fondu a deja
-     eteint le sujet. Le chevauchement reste, la lisibilite aussi. */
-  .heros-in {{ min-height: 0; padding: 196px 0 56px; }}
+  .heros-in {{ min-height: 0; padding: 44px 20px 56px; }}
+  /* max-content elargissait la colonne au-dela de l'ecran : le paragraphe
+     debordait et se faisait couper. */
+  .heros .gestes {{ width: auto; max-width: none; }}
   .heros-in > div {{ max-width: none; }}
 }}
 @media (min-width: 881px) {{ .heros-bande {{ display: none; }} }}
@@ -659,7 +615,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           </div>
           <p class="cam-quoi">SwimPay envoie ou reçoit de l'argent depuis
             <b>n'importe quel Mobile Money</b> et n'importe quelle banque.
-            C'est à vous de choisir.</p>
+            C'est à vous de choisir, et votre correspondant garde le sien.</p>
         </div>
         <div class="cam-video">
           <video src="{video}" poster="{affiche}" muted loop playsinline
@@ -689,11 +645,12 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     <div class="dedans">
       <h2>Votre argent est en sécurité</h2>
       <p class="para">Chaque transaction repose sur un <b>système de sécurité
-        complexe</b>, développé pour garantir la sécurité des utilisateurs.</p>
+        complexe</b>, développé pour garantir la sécurité des utilisateurs. Trois
+        couches y travaillent en même temps.</p>
       {cartes([
-        ("Traçabilité", "Chaque mouvement est inscrit avec sa date, sa référence et son montant. Vous retrouvez n'importe quelle opération, quand vous voulez.", ""),
-        ("Chiffrement", "Vos données et vos opérations circulent chiffrées, de votre téléphone jusqu'à nos serveurs.", ""),
-        ("Biométrie", "Votre empreinte ou votre visage confirme les gestes sensibles, avant qu'un montant ne parte.", ""),
+        ("Traçabilité", "Chaque mouvement est inscrit avec sa date, sa référence et son montant. Vous retrouvez n'importe quelle opération des mois plus tard, avec son reçu complet.", ""),
+        ("Chiffrement", "Vos données et vos opérations circulent chiffrées, de votre téléphone jusqu'à nos serveurs. Personne ne les lit en chemin.", ""),
+        ("Biométrie", "Votre empreinte ou votre visage confirme les gestes sensibles. Aucun montant ne part sans que vous l'ayez validé.", ""),
       ])}
     </div>
   </section>
@@ -721,7 +678,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     <div class="dedans">
       <h2>Reprenez la main sur votre argent</h2>
       <p class="para">Envoyez, recevez et épargnez au même endroit,
-        <b>jusqu'à 1 % de frais</b>.</p>
+        <b>jusqu'à 1 % de frais</b>. Votre compte s'ouvre avec votre numéro de
+        téléphone, en quelques minutes.</p>
       {cartes(PERSONNEL)}
     </div>
   </section>
@@ -731,7 +689,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
       <div>
         <h2>Payez partout avec votre carte</h2>
         <p class="para">Faites-vous livrer une carte physique dès aujourd'hui, et
-          payez partout où vous irez avec elle, <b>même à l'étranger</b>.</p>
+          payez partout où vous irez avec elle, <b>même à l'étranger</b>. Au
+          comptoir, en ligne, ou au distributeur.</p>
         <p class="para" style="margin-top: 18px">Choisissez la vôtre. Elles font
           toutes la même chose, elles ne se ressemblent pas.</p>
         <div class="gestes" style="margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
@@ -769,7 +728,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     <div class="dedans tete">
       <h1>Le compte pro de votre entreprise</h1>
       <p class="dit">Encaissez, payez des salaires et émettez vos FNE dans votre
-        application, au besoin de vos clients.</p>
+        application, au besoin de vos clients. Un seul compte pour toute votre
+        activité.</p>
       <div class="gestes">
         <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
         <a class="bouton creux grand" href="{LIEN_APP}#b-pme" target="_blank" rel="noopener">Voir la console</a>
@@ -789,9 +749,10 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
       <div class="bloc">
         <div><h2>Encaissez vos clients</h2></div>
         <div>
-          <p class="para">Via code QR, ou via des liens de paiement transférables
-            sur vos applications de messagerie habituelles, WhatsApp ou même
-            par SMS.</p>
+          <p class="para">Via code QR au comptoir, ou par des liens de paiement que
+            vous envoyez sur vos applications de messagerie habituelles, WhatsApp
+            ou même par SMS. Vos clients paient depuis le réseau qu'ils utilisent
+            déjà.</p>
         </div>
       </div>
 
@@ -800,7 +761,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
         <div>
           <p class="para">Importez la liste des membres de votre équipe avec leurs
             coordonnées Mobile Money ou bancaires, suivez le workflow, et SwimPay
-            s'occupe du reste.</p>
+            s'occupe du reste. Vous signez une fois, tout le monde est payé.</p>
         </div>
       </div>
 
@@ -809,8 +770,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
         <div>
           <p class="para">Conformément à la loi en vigueur en Côte d'Ivoire sur les
             factures normalisées électroniques, émettez automatiquement la FNE
-            grâce à SwimPay, pour toutes les opérations de votre activité, en
-            ligne comme hors ligne.</p>
+            pour toutes les opérations de votre activité, en ligne comme hors
+            ligne. Le numéro et le QR de contrôle partent avec.</p>
         </div>
       </div>
     </div>
