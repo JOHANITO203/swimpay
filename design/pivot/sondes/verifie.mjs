@@ -340,7 +340,81 @@ test("les effets de survol sont protégés du tactile",
   motion.survolNonProtege.length === 0, motion.survolNonProtege.join(" · "));
 test("le mouvement réduit est honoré", motion.mouvementReduit === true);
 
-/* ═══ 10. le contraste, avec étalonnage ═══ */
+/* ═══ 10. le mouvement suit l'UX de CHAQUE format ═══
+   Les trois interfaces ne sont pas la même : le téléphone a un bas (pouce,
+   pilule de navigation, feuille qui monte), le bureau n'en a pas (barre en
+   haut, volets côte à côte, feuille CENTRÉE). Faire monter les choses d'un
+   bord qui n'existe pas est un contresens — on le vérifie. */
+for (const [format, largeur, hauteur, tactile] of [
+  ["téléphone", 390, 844, true], ["tablette", 768, 1024, true], ["bureau", 1280, 900, false],
+]) {
+  await cmd("Emulation.setDeviceMetricsOverride",
+    { width: largeur, height: hauteur, deviceScaleFactor: 1, mobile: tactile });
+  await ev('va("accueil")'); await dodo(500);
+  const m = await ev(`(() => {
+    const e = document.querySelector(".ecran:not([hidden]) > .shell > *");
+    const s = getComputedStyle(e);
+    return { nom: s.animationName, duree: s.animationDuration };
+  })()`);
+  const attendu = largeur >= 881 ? "parait" : "monte";
+  test(`${format} : l'entrée d'écran est « ${attendu} »`, m.nom === attendu, `${m.nom} ${m.duree}`);
+}
+
+/* la feuille, et le piège du centrage : sur bureau elle est centrée par
+   translateY(-50%). Une animation de `transform` qui ne reprend pas cette
+   translation l'écrase, et la feuille saute en fin de course. On mesure sa
+   position PENDANT l'animation, pas seulement à la fin. */
+for (const [format, largeur, centree] of [["téléphone", 390, false], ["bureau", 1280, true]]) {
+  await cmd("Emulation.setDeviceMetricsOverride",
+    { width: largeur, height: 844, deviceScaleFactor: 1, mobile: largeur < 881 });
+  await ev('va("carte-ecran"); fermeSheet();'); await dodo(300);
+  const haut = () => ev('Math.round(document.getElementById("sheet-carte").getBoundingClientRect().top)');
+  await ev('ouvreFluxCarte("coffre-alimenter")');
+  await dodo(25);
+  const debut = await haut();
+  // l'animation doit être INTERROGÉE PENDANT QU'ELLE TOURNE : la fermer avant
+  // rend l'élément invisible, sans animation ni transformation calculée —
+  // c'est ce qui faisait répondre « undefined » à toutes les questions
+  const verdictCentrage = centree ? await ev(`(() => {
+    const e = document.getElementById("sheet-carte");
+    const a = e.getAnimations()[0];
+    const k = a ? a.effect.getKeyframes() : null;
+    const dernier = k ? String(k[k.length - 1].transform || "none") : "aucune animation";
+    e.style.animation = "none"; void e.offsetHeight;
+    const repos = getComputedStyle(e).transform;      // la règle de base seule
+    e.style.animation = "";
+    const m = /matrix\\(([^)]+)\\)/.exec(repos);
+    const ty = m ? Math.round(parseFloat(m[1].split(",")[5])) : 0;
+    return { ty, dernier, reprend: ty === 0 || /translateY\\(\\s*-?50%/.test(dernier) };
+  })()`) : null;
+  await dodo(700);
+  const pose = await haut();
+  await ev("fermeSheet()");
+  if (centree) {
+    /* LE CRITÈRE DÉTERMINISTE : la DERNIÈRE image-clé de l'animation doit
+       reprendre la translation que porte la règle de base. Si elle ne la
+       reprend pas, elle l'écrase : la feuille se pose au mauvais endroit puis
+       SAUTE quand l'animation rend la main — 123 px mesurés sur le défaut réel.
+       Échantillonner une position ne suffit pas : le saut se produit entre
+       deux images, et selon la durée de l'animation on tombe avant ou après.
+       C'est ce qui rendait ce test inutile deux fois de suite. */
+    test(`${format} : la dernière image-clé reprend le centrage`,
+      !!verdictCentrage && verdictCentrage.reprend === true,
+      verdictCentrage
+        ? `repos translateY ${verdictCentrage.ty}px · dernière image-clé « ${verdictCentrage.dernier} »`
+        : "pas de relevé");
+    test(`${format} : la feuille centrée ne sort jamais de l'écran`,
+      debut >= -8 && debut <= 844, `première frame à ${debut}`);
+  } else {
+    // ancrée en bas : elle DOIT venir d'en dessous, sinon elle apparaît sur place
+    test(`${format} : la feuille monte bien depuis le bas`,
+      debut > pose + 20, `début ${debut} · posée ${pose}`);
+  }
+}
+await cmd("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+await dodo(200);
+
+/* ═══ 11. le contraste, avec étalonnage ═══ */
 const contraste = await ev(`(() => {
   const lis = (c) => {
     if (!c) return null;
@@ -473,9 +547,11 @@ if (etalonFaux.length === 0) {
 
 /* ═══ captures optionnelles ═══ */
 if (dossierCap && existsSync(dossierCap)) {
-  for (const [id, largeur] of [["accueil", 390], ["carte-ecran", 390], ["accueil", 1440]]) {
+  // les trois formats, parce que les trois interfaces diffèrent
+  for (const [id, largeur] of [["accueil", 390], ["accueil", 768], ["accueil", 1280],
+                               ["carte-ecran", 390], ["carte-ecran", 1280]]) {
     await cmd("Emulation.setDeviceMetricsOverride",
-      { width: largeur, height: largeur > 900 ? 900 : 844, deviceScaleFactor: largeur > 900 ? 1 : 2, mobile: largeur < 900 });
+      { width: largeur, height: largeur > 900 ? 900 : 1024, deviceScaleFactor: largeur > 900 ? 1 : 2, mobile: largeur < 881 });
     await ev(`va(${JSON.stringify(id)})`); await dodo(600);
     const c = await cmd("Page.captureScreenshot", { format: "png" });
     writeFileSync(join(dossierCap, `${id}-${largeur}.png`), Buffer.from(c.result.data, "base64"));

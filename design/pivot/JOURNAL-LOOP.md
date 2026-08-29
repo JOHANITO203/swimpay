@@ -1158,7 +1158,46 @@ Six règles de mouvement sont désormais gardées par la sonde : pas de
 `transition: all`, rien depuis `scale(0)`, aucun `ease-in` d'interface, rien
 au-delà de 300 ms, survols protégés, mouvement réduit honoré.
 
-## État : 65 écrans · 39/39 · 0 défaut · sonde dans le repo
+
+## Le mouvement par format
+
+Les trois interfaces ne sont pas la même, donc pas la même grammaire :
+
+| format | ce qu'est l'interface | ce qui bouge |
+|---|---|---|
+| **téléphone** | pouce en bas, pilule de navigation basse, écrans poussés, feuille qui monte | axe **vertical, venu d'en bas** : +10 px, cascade 40 ms |
+| **tablette** | toujours au doigt, deux fois plus de surface | même axe, **amplitude plus courte** (+7 px, 55 ms) — sur un grand écran, 10 px paraît nerveux |
+| **bureau** | barre en **haut**, volets côte à côte, feuille **centrée** | on ne monte plus, on **paraît** (+4 px) ; les volets entrent dans l'**ordre de lecture**, gauche puis droite |
+
+Faire monter les choses d'un bord qui n'existe pas est un contresens : sur
+bureau il n'y a pas de bas.
+
+**Un défaut introduit puis corrigé, instructif.** Sur bureau la feuille est
+centrée par `translateY(-50%)`. Mon animation d'entrée animait `transform` de
+`translateY(100%)` vers `none` — elle **écrasait le centrage**. Mesuré : la
+feuille descendait 70 px sous le bord bas, se posait au mauvais endroit, puis
+**sautait de 123 px** quand l'animation rendait la main.
+
+> **Règle** : une animation de `transform` doit reprendre TOUTES les
+> transformations que la règle de base porte, sinon elle les écrase.
+
+**Et la leçon sur la sonde, qui vaut plus que le défaut.** Deux versions de ce
+test ont PASSÉ alors que le correctif était retiré :
+
+1. la première regardait une position à 70 ms — entre le départ et le saut ;
+2. la seconde comparait deux positions dont l'une tombait déjà après la fin de
+   l'animation, selon sa durée.
+
+C'est **l'épreuve négative** qui l'a montré : retirer volontairement le
+correctif, relancer, et exiger que la sonde ÉCHOUE. Sans elle, on garde deux
+tests verts qui ne gardent rien.
+
+Le critère qui marche est déterministe : **la dernière image-clé doit reprendre
+la translation de la règle de base**. Il se lit par `getAnimations()`, sur
+l'élément vivant — interroger l'élément après l'avoir fermé répondait
+« undefined » à toutes les questions, ce qui a coûté une troisième relance.
+
+## État : 65 écrans · 45/45 · 0 défaut · trois formats mesurés
 
 Contraste : aucune combinaison sous le seuil, en clair comme en sombre.
 Cibles tactiles, tailles de texte, retours de flux, libellés de boutons,

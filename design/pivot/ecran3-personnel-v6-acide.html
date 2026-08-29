@@ -1379,6 +1379,83 @@ button { font: inherit; color: inherit; }
   .carte-bancaire:active, .fab:active, .points i:active { transform: none; }
   .row:hover, .tuile:hover, .btn:hover, .chip-capsule:hover { transform: none; }
 }
+
+/* ═══════════════ LE MOUVEMENT PAR FORMAT ═══════════════
+   Trois interfaces, trois grammaires. Écrit après le vocabulaire commun. */
+
+/* ─── TABLETTE (601–880) ───
+   Toujours au doigt, deux fois plus de surface. Même axe que le téléphone,
+   amplitude plus courte : sur un grand écran un déplacement de 10 px paraît
+   nerveux, et une cascade trop lente se voit. */
+@media (min-width: 601px) and (max-width: 880px) {
+  @keyframes monte {
+    from { opacity: 0; transform: translateY(7px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .ecran:not([hidden]) > .shell > *,
+  .ecran:not([hidden]) > .shell > .page > * { animation-duration: 260ms; }
+  .ecran:not([hidden]) > .shell > *:nth-child(2),
+  .ecran:not([hidden]) > .shell > .page > *:nth-child(2) { animation-delay: 55ms; }
+  .ecran:not([hidden]) > .shell > *:nth-child(3),
+  .ecran:not([hidden]) > .shell > .page > *:nth-child(3) { animation-delay: 110ms; }
+  .ecran:not([hidden]) > .shell > *:nth-child(n+4),
+  .ecran:not([hidden]) > .shell > .page > *:nth-child(n+4) { animation-delay: 140ms; }
+}
+
+/* ─── BUREAU (881+) ───
+   Il n'y a pas de bas : la barre est en haut, les volets sont côte à côte, la
+   feuille est centrée. On ne fait plus monter — on fait PARAÎTRE. */
+@media (min-width: 881px) {
+  @keyframes parait {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .ecran:not([hidden]) > .shell > *,
+  .ecran:not([hidden]) > .shell > .page > * {
+    animation: parait 240ms var(--sortie) backwards;
+  }
+  /* Les volets entrent dans l'ORDRE DE LECTURE, gauche puis droite. Sur
+     téléphone il n'y a qu'une colonne : la cascade y est verticale ; ici elle
+     est horizontale, parce que c'est ainsi qu'on lit la page. */
+  .flux[data-bureau] .pane-a > *,
+  .flux[data-bureau] .pane-b > * {
+    animation: parait 240ms var(--sortie) backwards;
+  }
+  .flux[data-bureau] .pane-a > * { animation-delay: 30ms; }
+  .flux[data-bureau] .pane-b > * { animation-delay: 90ms; }
+
+  /* LA FEUILLE EST CENTRÉE ICI. Son entrée doit REPRENDRE le translateY(-50%)
+     du centrage : l'animer sans lui écrasait la transformation et la feuille
+     sautait en fin de course. Elle ne monte pas non plus — elle s'ouvre. */
+  .sheet:not([hidden]) {
+    animation: feuille-centre 240ms var(--sortie) backwards;
+  }
+  @keyframes feuille-centre {
+    from { opacity: 0; transform: translateY(-50%) scale(.965); }
+    to   { opacity: 1; transform: translateY(-50%) scale(1); }
+  }
+  .sheet {
+    transition: opacity var(--t-feuille-sortie) var(--sortie);
+  }
+
+  /* la confirmation d'un flux n'a plus à venir du bas non plus */
+  .fc-fait {
+    bottom: auto; top: 84px;
+    animation: fait-parait-haut 220ms var(--sortie) backwards;
+  }
+  @keyframes fait-parait-haut {
+    from { opacity: 0; transform: translate(-50%, -8px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+  }
+}
+
+/* ─── MOUVEMENT RÉDUIT, sur les trois formats ─── */
+@media (prefers-reduced-motion: reduce) {
+  .flux[data-bureau] .pane-a > *,
+  .flux[data-bureau] .pane-b > * { animation: none; }
+  .sheet:not([hidden]) { animation: none; }
+  .fc-fait { animation: fait-parait 200ms ease backwards; }
+}
 </style>
 
 <!-- ================================================================
