@@ -107,3 +107,59 @@ paie B2B ». La grille vérifiée confirme et amplifie ce jugement.
 6. Un sous-agrégateur comme SwimPay peut-il ouvrir des sous-comptes par client
    (le repo mentionne des « sous-wallets multi-entreprises ») et sous quel
    statut réglementaire ?
+
+## 7. Qui est derrière Julaya
+
+**Fondateurs** : Mathias Léopoldie et Charles Talbot, mars 2018. Tous deux
+anciens de **LemonWay** (fintech de paiement française), au Mali et au Burkina
+Faso. Implantation : R&D et technique à **Paris**, opérations à **Abidjan** et
+**Dakar**.
+
+**Statut** : agrément Établissement de Paiement BCEAO **n° EP.CI.004/2025**
+(mai 2025). Présent en Côte d'Ivoire, Bénin, Sénégal, Togo.
+
+**Au capital** :
+
+| Tour | Montant | Qui |
+|---|---|---|
+| Amorçage 2018 | 250 k$ | business angels |
+| 2019-2020 | 550 k$ | business angels |
+| Pré-série A | 2 M$ | — |
+| Extension pré-série A | 5 M$ | **Speedinvest** (chef de file), EQ2 Ventures, Kibo Ventures, Unpopular Ventures, Jedar Capital |
+| Historiques | — | **Orange Ventures**, Saviu, 50 Partners, Mohamed Diabi, Édouard Mendy |
+| 17 octobre 2025 | **800 M FCFA** (1,41 M$) | **CDC-CI Capital**, fonds public de la Caisse des Dépôts de Côte d'Ivoire, en **obligations convertibles en actions** |
+
+### Ce que cet actionnariat implique pour nous
+
+**1. Orange Ventures est au capital.** Le fonds d'Orange, premier opérateur
+Mobile Money de Côte d'Ivoire, est investisseur historique. C'est très
+probablement ce qui explique des tarifs deux à trois fois inférieurs à ceux de
+PayDunya : un accès privilégié au rail dominant. Mais cela crée une dépendance
+en chaîne — dépendre de Julaya, c'est dépendre indirectement d'Orange.
+
+**2. L'État ivoirien est entré au capital** via CDC-CI Capital, en obligations
+convertibles. Ancrage local fort et signal de solidité, doublé d'une proximité
+institutionnelle.
+
+**3. Et le point qu'il ne faut pas manquer : Julaya est notre CONCURRENT
+DIRECT sur le Business.** Sa grille dit exactement ce que SwimPay veut vendre
+aux PME : transferts groupés pour la paie, paiement de factures fournisseurs,
+compte pro, gestion de trésorerie. Envisager Julaya comme rail, c'est envisager
+de payer un concurrent pour qu'il nous transporte, et de lui montrer nos volumes,
+nos marchands et nos usages.
+
+Le même raisonnement vaut pour **Djamo**, concurrent sur le Personnel, qui
+apparaît comme moyen de paiement dans les deux grilles.
+
+### Comparaison des adossements
+
+| | Julaya | PayDunya |
+|---|---|---|
+| Propriété | indépendante, capital dispersé | **rachetée par Peach Payments** (Afrique du Sud), avril 2025 |
+| Adossement opérateur | **Orange Ventures au capital** | aucun connu |
+| Adossement public | **CDC-CI Capital** (État ivoirien) | aucun |
+| Fondateurs | Léopoldie, Talbot (ex-LemonWay) | Aziz Yérima (2015, Dakar) |
+| Rapport à SwimPay | **concurrent direct sur le B2B** | passerelle, pas de produit PME concurrent identifié |
+
+C'est un arbitrage qui ne se réduit pas au prix : le moins cher est aussi celui
+qui nous voit venir.
