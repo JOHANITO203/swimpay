@@ -164,15 +164,58 @@ Le guide (p. 5) :
 > électroniques** délivrés via des **Terminaux d'Émission de Reçus Électroniques
 > (TERNE)**. »
 
-**Mais le RNE n'exige pas un terminal physique** : le formulaire de facturation
-de la plateforme porte une **case à cocher `RNE`** (visible p. 31), et le schéma
-de l'API porte `isRne` (bool) + `rne` (n° du reçu lié). **Notre logiciel peut donc
-émettre les deux.** Un seul fournisseur de TERNE est agréé dans le pays
-(GREEN PAY) — ne pas dépendre de lui est une bonne nouvelle.
+> ### CORRECTION du 29 août 2026 au soir — ce paragraphe disait le contraire
+>
+> J'avais écrit que « notre logiciel peut émettre les deux », en m'appuyant sur
+> la case `RNE` du formulaire et sur le champ `isRne` de l'API. **C'était faux,
+> et la source était dans le repo depuis le début.**
 
-**Conséquence de périmètre** : la V1 vise les non-assujettis (`12` §5). Le chemin
-naturel de ce segment est le **RNE**, pas la FNE. À arbitrer explicitement, et à
-tester des deux façons en bac à sable.
+**Ce que dit la présentation officielle de la DGI**, §1.5, p. 7
+(`assets/fne-presentation-p7-fne-vs-rne.png`) `[V]` :
+
+| | Outils de génération |
+|---|---|
+| **FNE** | **Logiciel de facturation interfacé (API)** · Plateforme FNE (directe ou import de fichier) · Application mobile FNE |
+| **RNE** | **Terminal de paiement électronique (TPE)** · Application mobile RNE |
+
+> **Le RNE n'a aucun chemin logiciel.** Ses deux seuls outils sont un terminal
+> physique et une application mobile. « Logiciel interfacé » figure dans la
+> liste de la FNE, pas dans celle du RNE.
+
+**Et `isRne` ne veut pas dire ce que je croyais.** Le tableau des champs de la
+procédure API l'écrit noir sur blanc :
+
+> `isRne` (boolean) : « **Est-ce que la facture est reliée à un reçu** (true or
+> false) » — `rne` (string) : « **Numéro du reçu pour lequel la facture est
+> émise** ».
+
+C'est un **lien d'une FNE vers un RNE déjà émis**, pas un mode d'émission. Une
+caisse produit le reçu ; la facture qui suit le référence.
+
+**Champ d'application, par type de transaction** `[V]` :
+
+- **FNE** : B to B (national et international), B to G, B to C, B to F.
+- **RNE** : B to B **entre régime forfaitaire et régime réel, dans les deux
+  sens** ; et B to C.
+
+### Décision de périmètre, tranchée
+
+> **La V1 émet des FNE, exclusivement. C'est la seule des deux pièces qu'un
+> logiciel peut produire.**
+
+Bonne nouvelle par ailleurs : aucune dépendance à un TPE, ni au seul fournisseur
+de TERNE agréé du pays (GREEN PAY). Et la FNE couvre les quatre types de
+transaction, donc tous nos cas.
+
+**Ce que la phrase du guide (§2.2) voulait dire** : elle décrit le **canal
+habituel** du forfaitaire et du commerce de détail, pas une interdiction d'émettre
+une FNE. Confirmé par le praticien `[T]` : *« une microentreprise émet une FNE ou
+un RNE selon leur capital social ; en général les RNE concernent les supermarchés
+et autres organismes du genre. »*
+
+`[?]` **Le critère du capital social n'apparaît dans aucun des six documents du
+portail.** La présentation donne un critère par **type de transaction**. À
+préciser — mais sans effet sur nous : notre voie est la FNE dans tous les cas.
 
 ### 8.2 Le RNE est beaucoup plus léger que la FNE
 
@@ -410,8 +453,9 @@ Réponses d'une experte-comptable en exercice, 29 août 2026 `[V]` (praticien) :
 > (§8.1) porte sur le régime du **vendeur**. La réponse « FNE » vaut donc pour un
 > vendeur au réel — ce qu'est ce cabinet, au RSI — facturant un client au forfait.
 >
-> **La question qui décide de notre V1 reste entière** : *un vendeur lui-même au
-> régime des microentreprises émet-il une FNE ou un RNE ?* À reposer telle quelle.
+> **Question depuis tranchee** (voir §8.1, correction) : un logiciel ne peut
+> emettre qu'une **FNE**, le RNE n'ayant ni API ni chemin logiciel. La question
+> ne se pose plus.
 
 ### 9.9 L'économie du sticker, corrigée par la pratique
 
@@ -422,11 +466,15 @@ Deux points à réconcilier avec §6, qui tient de la documentation :
 
 1. Le **portefeuille prépayé** est confirmé — c'est bien le `balance_sticker` de
    la réponse API.
-2. La documentation annonce **la gratuité en dessous de 5 000 FCFA**. Le
-   praticien dit « chaque facture ». Soit il ne facture jamais sous ce seuil,
-   soit la franchise n'existe plus. **`[?]` À vérifier en bac à sable** : émettre
-   une facture à 3 000 F et lire `balance_sticker` avant et après. C'est un test,
-   pas une question.
+2. **La franchise sous 5 000 FCFA existe toujours** — confirme par le praticien
+   le 29 aout 2026 `[T]`. Sa formule « chaque facture consomme un sticker »
+   decrivait son propre cas : un cabinet de conseil ne facture jamais sous ce
+   seuil. Les deux enonces ne se contredisent pas.
+
+   **Ce que ca vaut pour nous** : sur la cible V1 — micro-marchands, tickets
+   souvent inferieurs a 5 000 F — **une large part des certifications sera
+   gratuite**. Le cout du sticker n'est pas un obstacle a l'entree de gamme, il
+   ne mord qu'au-dessus du seuil.
 
 Conséquence produit inchangée et renforcée : le **suivi du solde et l'alerte
 avant rupture** sont une fonctionnalité, pas un détail. Un marchand qui découvre

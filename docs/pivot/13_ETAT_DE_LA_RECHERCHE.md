@@ -140,7 +140,9 @@ commercial en même temps que les tarifs.
 | Un non-assujetti **ne facture jamais la TVA** | `[V]` | `12` §1 |
 | Code FNE du non-assujetti = **`TVAD`**, nommé « D (TEE, TCE, Microentreprise) » par la plateforme | `[V]` | `12` §3 |
 | La FNE est obligatoire **quel que soit le régime**, depuis le 1ᵉʳ déc. 2025 | `[V]` | `12` §3 |
-| Régime forfaitaire et commerce → **RNE** (reçu), pas FNE ; mais émettable par logiciel (`isRne`) | `[V]` | `08` §8.1 |
+| **Un logiciel ne peut émettre qu'une FNE** — le RNE n'a ni API ni chemin logiciel (TPE ou appli mobile seulement) | `[V]` | `08` §8.1 |
+| `isRne` = « la facture est reliée à un reçu **déjà émis** », pas un mode d'émission | `[V]` | `08` §8.1 |
+| Franchise de sticker **sous 5 000 F : toujours en vigueur** | `[T]` | `08` §9.9 |
 | La FNE porte le régime **des deux parties**, résolu depuis le NCC | `[V]` | `08` §8.3 |
 | La plateforme **avertit** si le client est en cessation d'activité | `[V]` | `08` §8.4 |
 | La remise s'applique **avant** la TVA | `[V]` | `08` §8.6 |
@@ -200,8 +202,10 @@ commercial en même temps que les tarifs.
 
 3. Partenaire de lancement : PayDunya (cher, neutre) ou Julaya (2,8× moins cher,
    concurrent direct). Non tranché.
-4. FNE ou RNE pour la V1 : notre cible relève du RNE selon le schéma DGI, mais les
-   deux sont émettables par logiciel.
+4. ~~FNE ou RNE pour la V1 ?~~ **Tranché le 29 août au soir** : **FNE
+   exclusivement**. Le RNE n'a aucun chemin logiciel — ses deux seuls outils sont
+   un TPE et une application mobile (`08` §8.1). Aucune dépendance matérielle
+   pour nous.
 5. Le « direct » entre deux comptes SwimPay : V1 ou phase 2 ? Le site le promet
    déjà.
 
