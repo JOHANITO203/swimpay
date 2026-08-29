@@ -312,6 +312,20 @@ Centre d'impôts / Poste comptable : 836 Impôts de Treichville II
 entreprise créée en 2025 a un IDU au format `CI-AAAA-NNNNNNN L` **et** un NCC.
 C'est le **NCC** qui sert d'identifiant de connexion et de champ de facture.
 
+> ### Et le « numéro de télédéclarant », c'est l'IDU
+>
+> Capture du formulaire d'identification fournie par LO le 29 août 2026 `[V]` :
+>
+> ```
+> NCC *                      : 2500736C
+> Numéro de télédéclarant *  : CI-2025-0027163 N
+> ```
+>
+> **Le NTD demandé à l'inscription est exactement l'IDU affiché au tableau de
+> bord.** Ce ne sont pas deux identifiants de plus à obtenir : ce sont les deux
+> valeurs déjà visibles dans l'espace de l'entreprise. Le §8.7 laissait entendre
+> qu'il fallait chercher un troisième numéro — c'est faux.
+
 Le tableau de bord affiche aussi le **régime** (ici RSI) — donc notre marchand
 n'a pas à le déclarer : il est lisible dans son propre espace.
 
@@ -378,9 +392,138 @@ l'entreprise émet et ce qu'elle reçoit. Donc :
   chez un cabinet comptable en exercice. C'est un manque d'usage, donc une place
   à prendre.
 
-### 9.7 Ce que la vidéo ne montre pas
+### 9.8 Ce que le praticien confirme, et ce qu'il laisse ouvert
+
+Réponses d'une experte-comptable en exercice, 29 août 2026 `[V]` (praticien) :
+
+| Question posée | Réponse | Effet |
+|---|---|---|
+| NCC ? | `2500736C` | on l'a |
+| NCC ou IDU ? | **« les 2 ; pour la FNE on écrit le NCC »** | confirme §9.3 |
+| Une SARL peut-elle être au forfait ? | **« MICROENTREPRISE »** | confirme `12` §8.5 et `13` §1.4 : SwimPay SARL sera au RME, donc **sans droit de facturer la TVA** |
+| Client au forfait : FNE ou RNE ? | **« FNE »** | voir la réserve ci-dessous |
+| Non-assujetti : on choisit bien l'exonération ? | **« oui, tu factures TVA exonération »** | confirme `TVAD` par la pratique, après le guide |
+| Les stickers | **« toujours de nouveaux stickers sur chaque facture, elles sont effectivement facturées, il y a un portefeuille à recharger »** | voir §9.9 |
+
+> **Réserve, et la faute est la mienne.** Ma question 4 était ambiguë : j'ai
+> demandé « pour un **client** au forfait », alors que la règle FNE/RNE du guide
+> (§8.1) porte sur le régime du **vendeur**. La réponse « FNE » vaut donc pour un
+> vendeur au réel — ce qu'est ce cabinet, au RSI — facturant un client au forfait.
+>
+> **La question qui décide de notre V1 reste entière** : *un vendeur lui-même au
+> régime des microentreprises émet-il une FNE ou un RNE ?* À reposer telle quelle.
+
+### 9.9 L'économie du sticker, corrigée par la pratique
+
+Le praticien dit **« toujours de nouveaux stickers sur chaque facture »** et
+**« il y a un portefeuille à recharger »**.
+
+Deux points à réconcilier avec §6, qui tient de la documentation :
+
+1. Le **portefeuille prépayé** est confirmé — c'est bien le `balance_sticker` de
+   la réponse API.
+2. La documentation annonce **la gratuité en dessous de 5 000 FCFA**. Le
+   praticien dit « chaque facture ». Soit il ne facture jamais sous ce seuil,
+   soit la franchise n'existe plus. **`[?]` À vérifier en bac à sable** : émettre
+   une facture à 3 000 F et lire `balance_sticker` avant et après. C'est un test,
+   pas une question.
+
+Conséquence produit inchangée et renforcée : le **suivi du solde et l'alerte
+avant rupture** sont une fonctionnalité, pas un détail. Un marchand qui découvre
+le portefeuille vide au moment de facturer est un marchand bloqué en caisse.
+
+### 9.11 Ce que la vidéo ne montre pas
 
 À ne pas déduire : l'écran **Gestion des stickers** n'a pas été ouvert, et la
 liste déroulante **Taux d'imposition** n'a pas été déroulée dans cet
 enregistrement (le formulaire est resté vide). Le code `TVAD` reste établi par le
 guide officiel (§`12` §3), pas par cette vidéo.
+
+---
+
+## 10. L'environnement de test, mesuré le 29 août 2026
+
+> **Le serveur de test fonctionne.** Il ne tombe pas, il ne refuse pas la
+> connexion. Ce qui bloque n'est pas le réseau, c'est une autorisation qu'on n'a
+> pas encore. Ce paragraphe existe pour qu'on ne perde plus de temps à le tester.
+
+### 10.1 Ce qui répond, et comment
+
+Toutes les mesures en `POST`, depuis cette machine, `[V]` :
+
+| Appel | Statut | Corps |
+|---|---|---|
+| `/ws/auth/preregister` avec NCC + NTD réels | **404** | `{"message":"Company not found","error":"company_not_found",…}` |
+| `/ws/auth/preregister` avec un NCC bidon | **404** | **identique** — `company_not_found` |
+| `/ws/auth/nexiste-pas` (route inventée) | **404** | `{"message":"Cannot POST /ws/auth/nexiste-pas","error":"not_found",…}` |
+| `/ws/external/invoices/sign` sans clé | **401** | `{"message":"API Key is required","error":"unauthorized",…}` |
+| `/ws/external/invoices/sign` avec Bearer invalide | **401** | `{"message":"Invalid API Key","error":"unauthorized",…}` |
+| `/ws/external/invoices/{id}/refund` sans clé | **401** | `API Key is required` |
+
+**La comparaison est la preuve** : une route inventée répond `not_found` avec le
+chemin dans le message ; nos identifiants répondent `company_not_found`. **La
+route existe, elle s'exécute, et elle nous dit que l'entreprise n'est pas dans le
+registre de test.** Ce n'est pas une panne.
+
+### 10.2 L'enveloppe d'erreur, et pourquoi elle change l'adaptateur
+
+Toutes les erreurs partagent la même forme :
+
+```json
+{ "message": "...", "error": "<slug>", "statusCode": 000, "errors": {}, "extraParams": {} }
+```
+
+> **Le discriminant est le slug `error`, pas le code HTTP.**
+
+Deux `404` veulent dire des choses opposées :
+
+| Slug | Sens | Ce que l'adaptateur doit faire |
+|---|---|---|
+| `company_not_found` | **la donnée du marchand est fausse** | file d'exception, corrigeable par un humain, ne pas rejouer tel quel |
+| `not_found` | **notre URL est fausse** — bug chez nous | alerte technique, jamais de rejeu, ne pas polluer la file métier |
+| `unauthorized` + « API Key is required » | on n'a pas envoyé de clé | bug de configuration |
+| `unauthorized` + « Invalid API Key » | la clé est refusée | geler la file du marchand (déjà prévu) |
+
+`dgi-adapter.ts` classe aujourd'hui par **code HTTP** ; il doit classer par
+**slug**. Sans ça, un bug d'URL de notre côté irait grossir la file d'exception
+des marchands au lieu de réveiller un développeur.
+
+### 10.3 Ce qui manque, exactement
+
+**Une entreprise inscrite dans le registre de l'environnement de test.** Les
+identifiants de production n'y sont pas — vérifié : le NCC réel et un NCC
+inventé reçoivent la **même** réponse.
+
+Conséquences, dans l'ordre :
+
+1. Pas d'entreprise de test → pas de compte → **pas de clé API**.
+2. Pas de clé → aucun appel métier possible : tout `sign` répond 401.
+3. **Il n'existe aucun contournement technique.** Ce n'est pas un mur à
+   franchir, c'est une autorisation à demander.
+
+### 10.4 Ce qu'on ne fera pas
+
+> **On n'utilisera pas la clé de production du cabinet comptable.**
+
+Une facture signée en production porte un **numéro officiel définitif**, entre
+dans une série annuelle ininterrompue, **consomme un sticker prépayé réel**, et
+s'inscrit au dossier fiscal d'une entreprise tierce. Aucun de ces effets ne
+s'annule ; une facture ne se supprime pas, elle se corrige par un avoir, qui est
+lui-même une pièce officielle.
+
+Faire des essais d'algorithme là-dedans reviendrait à écrire dans la comptabilité
+de quelqu'un d'autre. La demande d'un accès de test est la seule voie, et elle
+est courte.
+
+### 10.5 Ce qu'on a quand même rapporté
+
+Sans clé, et utilisable tout de suite :
+
+- **le chemin de base réel** : `http://54.247.95.108/ws/...`, et la confirmation
+  que `external/invoices/sign` et `external/invoices/{id}/refund` existent ;
+- **l'enveloppe d'erreur complète** et ses quatre slugs (§10.2) ;
+- **la règle de classement par slug** — une correction concrète à porter dans
+  `dgi-adapter.ts`, indépendante de toute clé ;
+- **le parcours d'inscription** : `/fr/onboarding`, champs `ncc` et
+  `declarantNumber`, **sans reCAPTCHA** sur l'environnement de test (contrairement
+  à `e-impots.gouv.ci`), API `POST /ws/auth/preregister`.
