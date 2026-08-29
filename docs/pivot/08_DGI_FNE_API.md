@@ -261,3 +261,126 @@ HTTP 200) et son interface porte les mêmes libellés (`Inscrivez-vous`,
 > immatriculé.** Sans le NCC et le NTD de SwimPay — ou d'une entité prêtée pour
 > les tests — l'inscription ne peut pas aboutir, même sur l'environnement de test.
 > C'est la seule chose qui manque pour commencer à éprouver l'algorithme.
+
+---
+
+## 9. La plateforme en production, observée (29 août 2026)
+
+> Source : enregistrement d'écran de 5 min 35 sur un poste de cabinet comptable
+> en exercice, fourni par LO. Captures dans `assets/fne-video-*.jpg`. `[V]`
+> **Réserve de méthode** : la bande son n'a pas pu être transcrite (clé Whisper
+> refusée), et la personne filmée **répond oralement**. Tout ce qui suit vient
+> des images seules ; ses réponses parlées restent à récupérer.
+
+### 9.1 Deux domaines à ne pas confondre
+
+| Domaine | Rôle |
+|---|---|
+| `fne.dgi.gouv.ci` | portail d'information, documents, inscription |
+| **`services.fne.dgi.gouv.ci/fr/…`** | **la plateforme de service** : tableau de bord, facturation, stickers |
+| `e-impots.gouv.ci` | portail fiscal général, dont la consultation NCC |
+
+`e-impots.gouv.ci` est **segmenté par public** : *Immat. entreprises non
+résidentes · Entreprises · **Experts-comptables** · CGA · Particuliers · FNE*.
+L'existence d'un espace **Experts-comptables** dédié conforte la stratégie du
+comptable comme canal (`11` §4.5) — à explorer, on ne sait pas ce qu'il ouvre.
+
+### 9.2 Le nom d'utilisateur est le NCC
+
+Connexion sur `services.fne.dgi.gouv.ci/fr/login` :
+**`Nom d'utilisateur` = `2500736C`**, soit le NCC lui-même
+(`assets/fne-video-0116-login-ncc.jpg`).
+
+L'accès e-impôts, lui, demande **adresse email + numéro de télédéclarant +
+mot de passe saisi sur un pavé numérique** à l'écran.
+
+### 9.3 Une entreprise porte un IDU **et** un NCC
+
+Tableau de bord (`assets/fne-video-0131-tableau-de-bord-idu.jpg`) :
+
+```
+CABINET TOPO BENHIBA
+Régime d'imposition : RSI
+Secteur d'activité   : AUTRE
+IDU                  : CI-2025-0027163 N
+NCC                  : 2500736C
+Direction de rattachement       : DRAS I
+Centre d'impôts / Poste comptable : 836 Impôts de Treichville II
+```
+
+**Réponse à l'inconnu `[?]` du gel** (`13` §6) : les deux coexistent. Une
+entreprise créée en 2025 a un IDU au format `CI-AAAA-NNNNNNN L` **et** un NCC.
+C'est le **NCC** qui sert d'identifiant de connexion et de champ de facture.
+
+Le tableau de bord affiche aussi le **régime** (ici RSI) — donc notre marchand
+n'a pas à le déclarer : il est lisible dans son propre espace.
+
+**Menu de la plateforme** : Tableau de bord · Gestion des stickers · Gestion des
+reçus et factures (émis / réceptionnés) · Paramétrage · Gestion des utilisateurs ·
+Nomenclature. Version relevée : **v1.0.2 (04/01/2025)**.
+
+### 9.4 Le formulaire réel — quatre champs obligatoires
+
+| Champ | Obligatoire | Valeurs |
+|---|---|---|
+| Type de facture | **oui** | — |
+| Mode de paiement | **oui** | — |
+| **Type de facturation** | **oui** | **B2B (Entreprise) · B2C (Consommateur final) · B2F (Client International) · B2G (État et collectivités)** |
+| `☐ RNE` | non | case à cocher, même écran |
+| Nom de la société / du client | **oui** | — |
+| Téléphone, Email du client | non | — |
+| Autres Mentions | non | **préremplie** avec les coordonnées bancaires du vendeur |
+| Pied de page | non | — |
+
+Article : Quantité · Référence · Désignation · Unité de mesure · PU HT ·
+Remise (%) · Total (Hors TVA) · **Taux d'imposition** · Autres taxes.
+Puis un bloc **Remise** globale (% et montant sur le total HT).
+
+### 9.5 Le résumé confirme l'ordre de calcul
+
+`assets/fne-video-0356-resume-ht-apres-remise.jpg` — la plateforme affiche une
+ligne que le PDF du guide n'avait pas :
+
+```
+Total HT
+Remise
+Total HT après remise     ← explicite
+Total TVA
+Total TTC
+Autres taxes
+Net à payer
+```
+
+**La TVA porte sur le « Total HT après remise ».** Confirmé deux fois : par le
+cas chiffré du guide (§8.6) et par le libellé de l'écran.
+
+### 9.6 La plateforme tient les factures REÇUES — et personne ne les lit
+
+Deux découvertes que ni la documentation ni le guide ne mettaient en avant :
+
+1. **`Reçus et factures réceptionnés`** — la plateforme agrège les factures que
+   l'entreprise **reçoit** de ses fournisseurs, avec les mêmes totaux
+   (`assets/fne-video-0419-factures-receptionnees.jpg`). Exemple observé sur
+   14 jours : 400 000 CFA hors TVA, **Total TVA = 0** — une facture reçue d'un
+   fournisseur non assujetti, le cas `TVAD` en conditions réelles.
+2. **Un flux de notifications** « Vous avez reçu une nouvelle facture », avec
+   *Voir la facture* et *Marquer comme lu*
+   (`assets/fne-video-0442-notifications-factures-recues.jpg`). Les entrées
+   observées vont de 35 à **219 jours** d'ancienneté, **toutes non lues**.
+
+**Ce que ça vaut pour nous.** La DGI tient déjà un graphe à deux côtés : ce que
+l'entreprise émet et ce qu'elle reçoit. Donc :
+
+- **Le rapprochement des achats a une source officielle**, en plus des
+  encaissements. Notre Rapprocheur peut apparier un décaissement à une facture
+  fournisseur certifiée, pas seulement une vente à un encaissement.
+- **Le flux existe et n'est pas exploité** — sept mois de notifications non lues
+  chez un cabinet comptable en exercice. C'est un manque d'usage, donc une place
+  à prendre.
+
+### 9.7 Ce que la vidéo ne montre pas
+
+À ne pas déduire : l'écran **Gestion des stickers** n'a pas été ouvert, et la
+liste déroulante **Taux d'imposition** n'a pas été déroulée dans cet
+enregistrement (le formulaire est resté vide). Le code `TVAD` reste établi par le
+guide officiel (§`12` §3), pas par cette vidéo.

@@ -149,6 +149,10 @@ commercial en même temps que les tarifs.
 | Douze catégories dispensées de FNE, parfois partiellement | `[V]` | `12` §2 |
 | **4 intégrateurs agréés** dans le pays, tous revendeurs de comptabilité, liste figée depuis 9 mois | `[V]` | `11` §1.4 |
 | Consultation NCC officielle : existe, **protégée par reCAPTCHA** | `[V]` | `12` §4 |
+| Elle renvoie **le statut d'assujettissement à la TVA**, l'activité, l'état et la dernière déclaration | `[V]` | `12` §4.1 bis |
+| La plateforme tient aussi les **factures reçues** et notifie à chaque réception | `[V]` | `08` §9.6 |
+| Identifiant de connexion à la plateforme = **le NCC** | `[V]` | `08` §9.2 |
+| Une entreprise porte **un IDU et un NCC** | `[V]` | `08` §9.3 |
 | Environnement de test DGI : **en ligne** (HTTP 200) | `[V]` | `08` §8.7 |
 | Inscription (test comme prod) : exige **NCC + NTD** | `[V]` | `08` §8.7 |
 
@@ -205,8 +209,10 @@ commercial en même temps que les tarifs.
 
 6. `[?]` Le champ `warning` de la réponse API est-il l'avertissement de cessation
    d'activité, et arrive-t-il **avant** consommation du sticker ?
-7. `[?]` Une SARL créée en 2026 reçoit-elle un **NCC**, ou seulement l'**IDU** que
-   délivre le CEPICI ? Le formulaire FNE demande un NCC.
+7. ~~`[?]` NCC ou IDU ?~~ **Résolu le 29 août au soir** : une entreprise porte
+   **les deux**. Observé sur un compte réel — IDU `CI-2025-0027163 N` et NCC
+   `2500736C`. C'est le **NCC** qui sert d'identifiant de connexion et de champ
+   de facture (`08` §9.3).
 8. `[?]` Le tarif de `direct-pay/credit-account` chez PayDunya, et le coût de
    l'alimentation par virement bancaire.
 9. `[?]` Les seuils de volume qui font passer Julaya de 1,5 % à 0,5 %.
@@ -221,8 +227,9 @@ Courtes, et chacune débloque quelque chose :
 
 1. **Peux-tu nous fournir un NCC et un NTD** pour ouvrir un compte sur
    l'environnement de **test** de la FNE ? (Données fictives uniquement ensuite.)
-2. Une SARL nouvellement créée reçoit-elle un **NCC**, ou seulement l'**IDU** du
-   CEPICI ? Lequel saisit-on dans le formulaire FNE ?
+2. ~~NCC ou IDU ?~~ **Répondu par la vidéo** : les deux existent, le NCC est
+   l'identifiant utilisé. Reste à confirmer qu'une société **créée en 2026**
+   reçoit encore un NCC et pas seulement un IDU.
 3. Une **SARL** peut-elle relever du régime des microentreprises et de la taxe
    d'État de l'entreprenant, ou les sociétés sont-elles d'office au réel ?
 4. Pour un client au forfait, tu émets une **FNE** ou un **RNE** ?

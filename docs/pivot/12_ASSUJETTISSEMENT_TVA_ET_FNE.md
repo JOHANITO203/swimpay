@@ -187,6 +187,39 @@ soumission emporte un **`g-recaptcha-response`**.
 
 > **Ce service est protégé par reCAPTCHA. Ce n'est pas une API.**
 
+### 4.1 bis — Ce que la consultation renvoie réellement
+
+Observé sur un poste réel le 29 août 2026, capture
+`assets/fne-video-0046-consultation-ncc.jpg` `[V]`. Pour le NCC `2500736C` :
+
+| Champ rendu | Valeur observée |
+|---|---|
+| NCC | `2500736C` |
+| Raison sociale | CABINET TOPO BENHIBA |
+| Date début d'activité | 2025/02/27 |
+| **Statut** | **En activité** |
+| Activité | Architecture, ingénierie et autres activités techniques |
+| **Statut d'assujettissement à la TVA** | **Assujetti** |
+| Période dernière déclaration TVA | Juin 2026 |
+
+> **Le service publie le statut d'assujettissement à la TVA.** C'est exactement
+> la donnée dont le moteur de factures a besoin, et je l'avais classée
+> indisponible.
+
+Ce que ça change :
+
+1. **Le statut TVA d'un client n'est pas une déclaration à recueillir**, c'est une
+   donnée publique consultable. Le §1 disait « le statut TVA doit être une donnée
+   du dossier client, saisie et datée » — c'est encore vrai pour **notre
+   marchand**, mais pour **ses clients** la source de vérité existe côté DGI.
+2. Le champ **Statut : En activité** est le pendant de l'avertissement de
+   cessation d'activité vu dans le formulaire de facturation (`08` §8.4). Les deux
+   viennent du même registre.
+3. **La demande d'accès machine devient beaucoup plus intéressante** : ce n'est
+   plus « valider un NCC », c'est « connaître le régime et l'état de n'importe
+   quelle entreprise ivoirienne ». À demander explicitement dans le dossier
+   d'agrément éditeur, en nommant les champs.
+
 La sonde a soumis un NCC dont je connaissais déjà la réponse — `2500583F` =
 PROGICI SARL, lu sur la liste officielle des agréés FNE du 28 novembre 2025 — et
 la page est revenue **sans le nom attendu**. C'est le contrôle de calibrage qui
