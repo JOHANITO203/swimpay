@@ -353,6 +353,49 @@ test("les effets de survol sont protégés du tactile",
   motion.survolNonProtege.length === 0, motion.survolNonProtege.join(" · "));
 test("le mouvement réduit est honoré", motion.mouvementReduit === true);
 
+/* ═══ 9 ter. les chorégraphies propres aux écrans ═══
+   Deux gardes contre une panne déjà survenue : l'écran d'envoi et celui de
+   réception se vidaient après 300 ms.
+   La cause était double, et instructive :
+   — DEUX @keyframes DU MÊME NOM. Le dernier déclaré gagne PARTOUT, et rien ne
+     lève. Même famille de piège qu'un `const` redéclaré, en plus silencieux ;
+   — une règle générique PLUS SPÉCIFIQUE que la chorégraphie de l'écran la
+     remplaçait, sans son `forwards` : les éléments retombaient à opacity 0.
+     Corrigé par :where(), qui met la générique à spécificité zéro. */
+const doublons = await ev(`(() => {
+  const noms = [];
+  const aplat = (rs) => rs.flatMap((r) => (r.cssRules ? [r, ...aplat([...r.cssRules])] : [r]));
+  [...document.styleSheets].forEach((f) => {
+    try { aplat([...f.cssRules]).forEach((r) => { if (r.type === 7 || r.name) noms.push(r.name); }); } catch {}
+  });
+  const vus = {}, doubles = [];
+  noms.filter(Boolean).forEach((n) => { vus[n] = (vus[n] || 0) + 1; });
+  Object.entries(vus).forEach(([n, k]) => { if (k > 1) doubles.push(n + " ×" + k); });
+  return doubles;
+})()`);
+test("aucune image-clés déclarée deux fois",
+  Array.isArray(doublons) && doublons.length === 0, String(doublons));
+
+/* et la garde de fond : un écran qui a sa propre chorégraphie la JOUE.
+   `jouées: 0` était le symptôme exact de la panne. */
+for (const [nom, ecran, sel] of [
+  ["l'envoi", "envoye", "#envoye .s-titre"],
+  ["la réception", "recevoir", "#recevoir .s-titre, #recevoir .qr-cadre, #recevoir .scene"],
+]) {
+  const joue = await evAttendu(`(async () => {
+    va(${JSON.stringify(ecran)});
+    await new Promise((r) => setTimeout(r, 120));
+    const e = document.querySelector(${JSON.stringify(sel)});
+    if (!e) return { absent: true };
+    const s = getComputedStyle(e);
+    return { nom: s.animationName, jouees: e.getAnimations().length, opacite: s.opacity };
+  })()`);
+  test(`${nom} : sa chorégraphie est bien JOUÉE`,
+    joue.absent === true || (joue.jouees > 0 && joue.nom !== "none"),
+    JSON.stringify(joue));
+}
+await ev('va("accueil")'); await dodo(300);
+
 /* ═══ 9 bis. le mouvement qui porte de l'information ═══
    Chacun de ces gestes dit quelque chose. On vérifie qu'ils le disent
    vraiment, et que ce qui NE DOIT PAS bouger ne bouge pas. */
@@ -430,7 +473,7 @@ for (const [format, largeur, hauteur, tactile] of [
     const s = getComputedStyle(e);
     return { nom: s.animationName, duree: s.animationDuration };
   })()`);
-  const attendu = largeur >= 881 ? "parait" : "monte";
+  const attendu = largeur >= 881 ? "parait" : (largeur >= 601 ? "entre-bas-large" : "entre-bas");
   test(`${format} : l'entrée d'écran est « ${attendu} »`, m.nom === attendu, `${m.nom} ${m.duree}`);
 }
 

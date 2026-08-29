@@ -1318,22 +1318,22 @@ button { font: inherit; color: inherit; }
    Les blocs montent de 10 px en cascade courte. Décoratif : jamais bloquant,
    coupé net en mouvement réduit, et limité aux premiers blocs — au-delà, la
    cascade se voit et l'interface paraît lente. */
-@keyframes monte {
+@keyframes entre-bas {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: none; }
 }
-.ecran:not([hidden]) > .shell > *,
-.ecran:not([hidden]) > .shell > .page > * {
-  animation: monte 300ms var(--sortie) backwards;
+:where(.ecran:not([hidden]) > .shell > *),
+:where(.ecran:not([hidden]) > .shell > .page > *) {
+  animation: entre-bas 300ms var(--sortie) backwards;
 }
-.ecran:not([hidden]) > .shell > *:nth-child(1),
-.ecran:not([hidden]) > .shell > .page > *:nth-child(1) { animation-delay: 0ms; }
-.ecran:not([hidden]) > .shell > *:nth-child(2),
-.ecran:not([hidden]) > .shell > .page > *:nth-child(2) { animation-delay: 40ms; }
-.ecran:not([hidden]) > .shell > *:nth-child(3),
-.ecran:not([hidden]) > .shell > .page > *:nth-child(3) { animation-delay: 80ms; }
-.ecran:not([hidden]) > .shell > *:nth-child(n+4),
-.ecran:not([hidden]) > .shell > .page > *:nth-child(n+4) { animation-delay: 110ms; }
+:where(.ecran:not([hidden]) > .shell > *:nth-child(1)),
+:where(.ecran:not([hidden]) > .shell > .page > *:nth-child(1)) { animation-delay: 0ms; }
+:where(.ecran:not([hidden]) > .shell > *:nth-child(2)),
+:where(.ecran:not([hidden]) > .shell > .page > *:nth-child(2)) { animation-delay: 40ms; }
+:where(.ecran:not([hidden]) > .shell > *:nth-child(3)),
+:where(.ecran:not([hidden]) > .shell > .page > *:nth-child(3)) { animation-delay: 80ms; }
+:where(.ecran:not([hidden]) > .shell > *:nth-child(n+4)),
+:where(.ecran:not([hidden]) > .shell > .page > *:nth-child(n+4)) { animation-delay: 110ms; }
 /* le pavé numérique est frappé des centaines de fois : il n'entre jamais */
 .numpad, .numpad * { animation: none !important; }
 
@@ -1368,8 +1368,8 @@ button { font: inherit; color: inherit; }
    « Réduit » ne veut pas dire « aucun » : on garde ce qui aide à comprendre
    (l'opacité), on retire ce qui déplace. */
 @media (prefers-reduced-motion: reduce) {
-  .ecran:not([hidden]) > .shell > *,
-  .ecran:not([hidden]) > .shell > .page > * {
+  :where(.ecran:not([hidden]) > .shell > *),
+  :where(.ecran:not([hidden]) > .shell > .page > *) {
     animation: none;
   }
   .sheet:not([hidden]) { animation: none; }
@@ -1389,18 +1389,23 @@ button { font: inherit; color: inherit; }
    amplitude plus courte : sur un grand écran un déplacement de 10 px paraît
    nerveux, et une cascade trop lente se voit. */
 @media (min-width: 601px) and (max-width: 880px) {
-  @keyframes monte {
+  /* son PROPRE nom : deux @keyframes homonymes ne se distinguent que par la
+     portee de leur requete media — legal, mais fragile a relire, et une sonde
+     ne peut plus distinguer l override voulu du doublon accidentel */
+  @keyframes entre-bas-large {
     from { opacity: 0; transform: translateY(7px); }
     to   { opacity: 1; transform: none; }
   }
-  .ecran:not([hidden]) > .shell > *,
-  .ecran:not([hidden]) > .shell > .page > * { animation-duration: 260ms; }
-  .ecran:not([hidden]) > .shell > *:nth-child(2),
-  .ecran:not([hidden]) > .shell > .page > *:nth-child(2) { animation-delay: 55ms; }
-  .ecran:not([hidden]) > .shell > *:nth-child(3),
-  .ecran:not([hidden]) > .shell > .page > *:nth-child(3) { animation-delay: 110ms; }
-  .ecran:not([hidden]) > .shell > *:nth-child(n+4),
-  .ecran:not([hidden]) > .shell > .page > *:nth-child(n+4) { animation-delay: 140ms; }
+  :where(.ecran:not([hidden]) > .shell > *),
+  :where(.ecran:not([hidden]) > .shell > .page > *) {
+    animation-name: entre-bas-large; animation-duration: 260ms;
+  }
+  :where(.ecran:not([hidden]) > .shell > *:nth-child(2)),
+  :where(.ecran:not([hidden]) > .shell > .page > *:nth-child(2)) { animation-delay: 55ms; }
+  :where(.ecran:not([hidden]) > .shell > *:nth-child(3)),
+  :where(.ecran:not([hidden]) > .shell > .page > *:nth-child(3)) { animation-delay: 110ms; }
+  :where(.ecran:not([hidden]) > .shell > *:nth-child(n+4)),
+  :where(.ecran:not([hidden]) > .shell > .page > *:nth-child(n+4)) { animation-delay: 140ms; }
 }
 
 /* ─── BUREAU (881+) ───
@@ -1411,8 +1416,8 @@ button { font: inherit; color: inherit; }
     from { opacity: 0; transform: translateY(4px); }
     to   { opacity: 1; transform: none; }
   }
-  .ecran:not([hidden]) > .shell > *,
-  .ecran:not([hidden]) > .shell > .page > * {
+  :where(.ecran:not([hidden]) > .shell > *),
+  :where(.ecran:not([hidden]) > .shell > .page > *) {
     animation: parait 240ms var(--sortie) backwards;
   }
   /* Les volets entrent dans l'ORDRE DE LECTURE, gauche puis droite. Sur

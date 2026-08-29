@@ -1235,7 +1235,50 @@ pour 110 secondes ; et `offsetLeft` est déjà relatif au conteneur quand
 celui-ci est positionné, retrancher son propre décalage ramenait la pastille
 20 px trop à gauche.
 
-## État : 65 écrans · 50/50 · 0 défaut · mouvement mesuré sur le rendu
+
+## La panne des écrans d'envoi et de réception
+
+Signalée par LO, reproduite avant d'être touchée. Le relevé était sans
+ambiguïté : sur l'écran de succès, `.s-titre`, `.s-montant`, `.s-dest` et les
+autres portaient `animation: monte` avec **`jouées: 0`** — l'animation était
+déclarée mais ne tournait pas, et les éléments restaient à `opacity: 0`.
+
+**Deux fautes, toutes deux de moi, et la première est la plus vicieuse.**
+
+1. **Deux `@keyframes` du même nom.** L'écran de succès déclarait déjà
+   `@keyframes monte`. J'en ai déclaré un second, homonyme, dans le vocabulaire
+   de mouvement. **Le dernier déclaré gagne partout**, et rien ne lève — c'est
+   la même famille de piège qu'un `const` redéclaré, en plus silencieux encore.
+
+2. **Une règle générique plus spécifique que la chorégraphie qu'elle écrasait.**
+   `.ecran:not([hidden]) > .shell > *` pèse (0,3,0) ; `.joue .s-titre` pèse
+   (0,2,0). La générique gagnait, remplaçait l'animation **et ses délais en
+   cascade**, et comme elle est en `backwards` et non `forwards`, les éléments
+   **retombaient à leur `opacity: 0` de base** après 300 ms. L'écran se vidait.
+
+**La correction de fond** : la générique passe en `:where()`, ce qui met sa
+spécificité à **zéro**. Toute chorégraphie propre la bat désormais, quelle
+qu'elle soit — sans avoir à énumérer les écrans concernés. C'est la bonne façon
+d'écrire un défaut : il cède devant tout ce qui est explicite.
+
+**Deux gardes posées, pour que ça ne revienne pas :**
+- aucune image-clés déclarée deux fois ;
+- un écran qui a sa propre chorégraphie la **joue** (`jouées > 0`) — c'était
+  le symptôme exact de la panne.
+
+**Et trois erreurs de mon outillage, corrigées en route :**
+- `"@keyframes montee"` **contient** `"@keyframes monte"` : mon assertion de
+  comptage échouait sur un faux positif de sous-chaîne, et m'a fait croire
+  trois fois que le renommage n'avait pas eu lieu ;
+- mon script de `:where()` supposait qu'une ligne finissait par `{` ou `,` ;
+  sur les lignes portant sélecteur **et** déclaration, il a produit
+  `:where(.sel { … })` — du CSS invalide qui a fait sauter tout le bloc
+  tablette ;
+- l'override tablette réutilisait le nom `entre-bas`, distinct seulement par la
+  portée de sa requête média. Légal, mais illisible, et impossible à distinguer
+  d'un doublon accidentel : il s'appelle maintenant `entre-bas-large`.
+
+## État : 65 écrans · 53/53 · 0 défaut · chorégraphies gardées
 
 Contraste : aucune combinaison sous le seuil, en clair comme en sombre.
 Cibles tactiles, tailles de texte, retours de flux, libellés de boutons,
