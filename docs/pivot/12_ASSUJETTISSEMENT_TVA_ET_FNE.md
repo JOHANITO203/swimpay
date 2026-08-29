@@ -277,7 +277,126 @@ c'est elle qu'on met dans le code.
 
 ---
 
-## 8. Sources
+## 8. Le montage : couche de facturation, jamais vendeur
+
+Une idée revient naturellement : *« et si SwimPay devenait simplement la couche
+qui facture tel article à telle entreprise, pour toutes nos PME ? »* Elle est
+juste dans son intention et dangereuse dans une de ses deux lectures. En
+français les deux se disent pareil ; en fiscalité elles diffèrent d'un facteur
+cent.
+
+### 8.1 Lecture A — SwimPay émet la facture **au nom** de la PME
+
+Le vendeur reste la PME. La facture porte **son** NCC. SwimPay est l'auteur
+technique, sous mandat.
+
+C'est exactement ce que fait un **éditeur/intégrateur agréé**, et c'est déjà le
+modèle du repo. Le bénéfice est celui qu'on cherche : **un seul dossier DGI pour
+tous nos clients**, au lieu d'une validation par marchand. La FAQ officielle
+confirme qu'une entreprise peut s'interfacer elle-même **ou** passer par un
+éditeur agréé, et qu'un agréé sert ses clients sans accréditation propre de
+chacun (`08_DGI_FNE_API.md` §1).
+
+Côté argent, le modèle pass-through dit déjà la même chose : les sommes
+encaissées pour le compte d'un tiers ne sont **pas** le chiffre d'affaires de
+SwimPay.
+
+**C'est la bonne lecture. Elle donne la simplification sans rien coûter.**
+
+### 8.2 Lecture B — SwimPay achète et revend
+
+SwimPay devient le vendeur. La facture porte **le NCC de SwimPay**. C'est le
+régime de l'intermédiaire opaque : celui qui s'entremet en son nom propre est
+réputé avoir personnellement acquis et livré le bien, et la base d'imposition
+est **le montant total de la transaction**, pas la commission.
+
+L'arithmétique, sur l'hypothèse de la V2 (900 clients, 60 M FCFA de CA moyen) :
+
+| | Montant |
+|---|---|
+| Flux facturé qui deviendrait notre CA | **54 000 000 000 F** |
+| Régime imposé | RNI (> 500 M), assujetti **obligatoire** |
+| TVA collectée à 18 % | **9 720 000 000 F** |
+| TVA déductible en amont | **≈ 0** — nos PME sont au RME et « ne sont pas autorisées à transmettre un droit à déduction » (§1) |
+| TVA nette à reverser | **≈ 9,72 milliards par an** |
+| Revenu réel de SwimPay | 86 400 000 F par an |
+
+> **La note de TVA vaudrait 112 fois la totalité de notre revenu.**
+
+Le rééquilibrage par le prix du service ne s'applique pas ici : il faudrait
+facturer 18 % du flux, soit **900 000 F par mois et par client** au lieu de
+8 000. Ce n'est pas un ajustement de tarif, c'est un autre métier.
+
+Et la casse ne s'arrête pas à la fiscalité :
+
+- **On détruit l'actif du projet.** Si SwimPay est le vendeur, la PME n'a **aucun
+  chiffre d'affaires certifié**. Le dossier bancable de `11_JULAYA_ET_LA_V2.md`
+  §4.6 disparaît, et avec lui le levier crédit.
+- **Le graphe d'identité s'effondre sur un seul nœud** : nous. Toute la couche de
+  traçabilité (`11` §5) repose sur des arêtes NCC-vendeur → NCC-acheteur. En
+  devenant le vendeur unique, on efface les arêtes.
+- **On devient juridiquement le marchand** : propriété des biens, garantie,
+  conformité produit, et les autorisations sectorielles de chaque activité qu'on
+  « vendrait ».
+
+### 8.3 Le point juste de l'intuition : le NCC construit le graphe
+
+`clientNcc` est **obligatoire en B2B**. Chaque facture émise crée donc une arête
+vérifiée entre deux entreprises identifiées, datée et montant compris. Fait à
+l'échelle, c'est **la carte de qui commerce avec qui** — et elle se construit
+gratuitement, comme sous-produit de la facturation.
+
+C'est précisément l'actif décrit en `11` §5.2, et il n'existe que si **chaque
+vendeur garde son propre NCC**. La lecture B le détruirait ; la lecture A le
+produit.
+
+### 8.4 Le risque de qualification, et sa frontière exacte
+
+L'article 7 de l'annexe fiscale 2022 (loi n° 2021-899) pose que l'opérateur d'une
+plateforme numérique est **redevable légal de la TVA due sur les transactions
+réalisées sur sa plateforme**, en plus de celle sur ses commissions `[V]`.
+
+**La frontière** : la note explicative de la DGI
+(`assets/DGI-note-plateformes-numeriques.pdf`) vise « les plateformes numériques
+**qui ne disposent pas d'installations professionnelles sur le territoire** ».
+SwimPay, société ivoirienne établie en Côte d'Ivoire, est **hors de ce régime**.
+
+Mais la direction du droit ivoirien est claire, et elle décide du vocabulaire du
+produit :
+
+> On dit **« SwimPay émet vos factures en votre nom »**.
+> On ne dit **jamais** « SwimPay facture vos clients ».
+
+La deuxième formule invite la qualification d'intermédiaire. Ce n'est pas une
+nuance de communication : c'est la phrase qu'un contrôleur lira.
+
+### 8.5 Le vrai montage intelligent : l'option pour le réel simplifié
+
+Il existe un arbitrage réel, et il ne va pas dans un seul sens.
+
+Tant que SwimPay reste au RME, il ne facture pas la TVA — donc il ne **récupère
+pas** la TVA sur ses propres achats (serveurs, outils, sous-traitance).
+
+| | SwimPay non assujetti (RME) | SwimPay assujetti (option RSI) |
+|---|---|---|
+| Client **au RSI/RNI** | paie 8 000 F, ne déduit rien | paie 9 440 F, déduit 1 440 F → **coût net identique** |
+| Client **au RME / entreprenant** | paie 8 000 F | paie 9 440 F, **ne déduit rien → +18 % réel** |
+| TVA sur nos propres achats | **perdue** | **récupérée** |
+
+L'option n'est donc gagnante que si le revenu se concentre sur des clients
+assujettis. Or toute la thèse du projet est d'aller chercher **le bas du marché**
+(`11` §4.4), c'est-à-dire des non-assujettis. **Conclusion : rester au RME tant
+que la clientèle est majoritairement micro**, et absorber la TVA d'amont perdue
+comme un coût. Au-delà de 200 M de CA, la question ne se pose plus : l'assujettissement
+devient obligatoire.
+
+Rappel de calendrier : l'option se lève **avant le 1ᵉʳ février**, prend effet au
+**1ᵉʳ janvier** de l'année en cours, et **n'est révocable qu'après trois ans**.
+C'est une décision annuelle à date fixe, pas un réglage.
+
+---
+
+## 9. Sources
 
 Primaires, relevées le 29 août 2026, copies dans `assets/` :
 
@@ -290,6 +409,7 @@ Primaires, relevées le 29 août 2026, copies dans `assets/` :
 - **DGI — FNE, « Liste des opérations dispensées »**, `fne.dgi.gouv.ci/entreprises.php`
 - **DGI — procédure d'interfaçage par API**, mai 2025 (`FNE-procedureapi-mai-2025.pdf`)
 - **DGI — guide utilisateur FNE**, 45 p. (`FNE-guide-utilisateur.pdf`)
+- **DGI — note explicative sur les plateformes numériques**, art. 7 annexe fiscale 2022 (`DGI-note-plateformes-numeriques.pdf`)
 - **e-impôts 3.7.2** — formulaire de consultation NCC, sondé par CDP
   (`design/pivot/sondes/` pour l'outillage)
 
