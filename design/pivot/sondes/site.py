@@ -71,42 +71,29 @@ def cartes(items, classe="grille"):
 
 PERSONNEL = [
     ("Envoyez sans payer trop",
-     "SwimPay interroge Orange Money, Wave, MTN, Moov et le virement bancaire, "
-     "puis affiche ce que chacun vous prendra. Vous choisissez en sachant.",
+     "SwimPay vous permet d'envoyer et de recevoir de l'argent vers tous les "
+     "comptes Mobile Money, Orange Money, MTN Money, Wave CI et les autres, et "
+     "même vers votre banque. Avec les taux les plus bas selon l'opération.",
      "Orange Money · MTN MoMo · Moov · Wave · virement bancaire"),
     ("Laissez les espèces à la maison",
-     "Votre carte vit dans votre téléphone. Au comptoir vous approchez, vous "
-     "payez, et la monnaie n'est plus votre problème.",
-     "puce EMV et sans contact sur la carte principale"),
-    ("Achetez en ligne l'esprit tranquille",
-     "Une carte virtuelle porte son propre numéro. Un site vous inquiète ? Vous "
-     "la détruisez et vous en créez une autre en un geste.",
-     "plafond mensuel réglable · destruction définitive"),
+     "Payez n'importe quel commerce avec votre application SwimPay. Scannez le "
+     "QR du marchand et payez en un clic, ou choisissez le sans contact NFC si "
+     "vous êtes plus à l'aise avec ce système. C'est vous qui choisissez, nous "
+     "suivons le mouvement.",
+     "QR marchand · sans contact NFC"),
+    ("Achetez en ligne",
+     "Dès la création de votre compte, vous disposez d'une carte virtuelle Visa "
+     "gratuite, utilisable dès le premier jour. Réapprovisionnez votre abonnement "
+     "Netflix, ou liez-la à votre application de taxi préférée, Yango, inDrive "
+     "et les autres.",
+     "carte virtuelle Visa · gratuite dès le premier jour"),
     ("Mettez de côté et tenez bon",
-     "Le coffre range votre argent sur un sous-compte. Verrouillez-le jusqu'à "
-     "une date : personne ne l'ouvre avant, vous non plus.",
-     "verrou daté · frais de commission coupés à l'entrée"),
+     "Épargnez votre argent dans un coffre-fort sécurisé depuis votre espace "
+     "utilisateur. Verrouillez-le pour l'utiliser plus tard en programmant une "
+     "date, et nous vous reverserons des intérêts.",
+     "offre soumise à conditions"),
 ]
 
-BUSINESS = [
-    ("Clôturez votre caisse en cinq minutes",
-     "Vous encaissez au comptoir avec un code fixe ou un QR. Le soir, l'écart "
-     "entre ce que vous avez compté et ce qui est entré s'affiche seul.",
-     "boutique · kiosque · restaurant"),
-    ("Payez tous les salaires en une fois",
-     "Importez votre fichier de paie tel qu'il sort de votre logiciel. SwimPay "
-     "trouve la route de chaque employé et chiffre chaque virement avant que "
-     "vous ne signiez.",
-     "double signature · coffre daté pour l'échéance"),
-    ("Vendez en ligne sans développeur",
-     "Un lien de paiement suffit pour encaisser dès aujourd'hui. Le reversement "
-     "tombe sur le compte de l'entreprise chaque jour.",
-     "lien · checkout · SDK"),
-    ("Ne ressaisissez plus rien",
-     "Tous vos dossiers clients dans une seule console, le rapprochement déjà "
-     "fait, et les exports au format que votre logiciel attend.",
-     "rapprochement automatique · export comptable"),
-]
 
 CODE_SDK = """&lt;script src="https://sdk.swimpay.pro/v1/checkout.js"&gt;&lt;/script&gt;
 &lt;script&gt;
@@ -393,7 +380,8 @@ a {{ color: inherit; text-decoration: none; }}
   background: var(--fond-2); color: var(--encre);
 }}
 /* les blocs à puces : la mécanique principale de la page */
-.bloc {{ display: grid; grid-template-columns: 1fr 1fr; gap: clamp(30px, 5vw, 70px); align-items: start; }}
+.bloc {{ display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(30px, 5vw, 70px); align-items: start; }}
+.bloc > div > .para {{ font-size: 18.5px; line-height: 1.45; }}
 .bloc + .bloc {{ margin-top: clamp(56px, 7vw, 96px); }}
 .puces {{ margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }}
 .puces li {{
@@ -669,8 +657,9 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           <div class="rails" role="group" aria-label="Réseaux pris en charge">
             {"".join(f'<button class="rail" data-h="{h}" data-encre="{e}"{" aria-pressed=~true~" if i == 0 else ""}>{n}</button>' for i, (n, h, e) in enumerate(RAILS)).replace("~", chr(34))}
           </div>
-          <p class="cam-quoi">L'application prend la couleur du réseau que vous
-            utilisez. <b>Un seul compte</b> pour Orange Money, Wave, MTN et Moov.</p>
+          <p class="cam-quoi">SwimPay envoie ou reçoit de l'argent depuis
+            <b>n'importe quel Mobile Money</b> et n'importe quelle banque.
+            C'est à vous de choisir.</p>
         </div>
         <div class="cam-video">
           <video src="{video}" poster="{affiche}" muted loop playsinline
@@ -699,12 +688,12 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <section class="sect gris">
     <div class="dedans">
       <h2>Votre argent est en sécurité</h2>
-      <p class="para">Chaque compte repose sur un <b>compte de dépôt réel</b>. Chaque
-        mouvement y est inscrit avec sa date, sa référence et ses frais.</p>
+      <p class="para">Chaque transaction repose sur un <b>système de sécurité
+        complexe</b>, développé pour garantir la sécurité des utilisateurs.</p>
       {cartes([
-        ("Une identité vérifiée", "Votre compte suit votre identité. Changer de puce ne vous fait pas perdre votre compte.", "un citoyen · plusieurs téléphones · un compte"),
-        ("Chaque geste se confirme", "Code, empreinte ou visage avant qu'un montant ne parte. Une entreprise peut exiger deux signatures.", "PIN · biométrie · double validation"),
-        ("Tout est tracé", "Date, référence, frais, route empruntée. Un reçu complet pour chaque opération.", "grand livre · exports comptables"),
+        ("Traçabilité", "Chaque mouvement est inscrit avec sa date, sa référence et son montant. Vous retrouvez n'importe quelle opération, quand vous voulez.", ""),
+        ("Chiffrement", "Vos données et vos opérations circulent chiffrées, de votre téléphone jusqu'à nos serveurs.", ""),
+        ("Biométrie", "Votre empreinte ou votre visage confirme les gestes sensibles, avant qu'un montant ne parte.", ""),
       ])}
     </div>
   </section>
@@ -731,9 +720,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <section class="sect">
     <div class="dedans">
       <h2>Reprenez la main sur votre argent</h2>
-      <p class="para">Ouvrez un compte avec votre <b>numéro de téléphone</b>, puis
-        envoyez, recevez, payez et épargnez au même endroit. Vous voyez ce que
-        chaque opération coûte avant de la valider.</p>
+      <p class="para">Envoyez, recevez et épargnez au même endroit,
+        <b>jusqu'à 1 % de frais</b>.</p>
       {cartes(PERSONNEL)}
     </div>
   </section>
@@ -742,9 +730,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     <div class="dedans duo">
       <div>
         <h2>Payez partout avec votre carte</h2>
-        <p class="para">Votre carte SwimPay passe au comptoir comme en ligne, chez
-          vous et à l'étranger. Elle vit dans votre téléphone, et vous la bloquez
-          d'un geste si elle vous échappe.</p>
+        <p class="para">Faites-vous livrer une carte physique dès aujourd'hui, et
+          payez partout où vous irez avec elle, <b>même à l'étranger</b>.</p>
         <p class="para" style="margin-top: 18px">Choisissez la vôtre. Elles font
           toutes la même chose, elles ne se ressemblent pas.</p>
         <div class="gestes" style="margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
@@ -781,17 +768,17 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <section class="sect">
     <div class="dedans tete">
       <h1>Le compte pro de votre entreprise</h1>
-      <p class="dit">Encaissez, payez vos salaires et facturez la DGI depuis un
-        seul compte, quel que soit le réseau de vos clients.</p>
+      <p class="dit">Encaissez, payez des salaires et émettez vos FNE dans votre
+        application, au besoin de vos clients.</p>
       <div class="gestes">
         <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
         <a class="bouton creux grand" href="{LIEN_APP}#b-pme" target="_blank" rel="noopener">Voir la console</a>
       </div>
       <div class="jalons">
-        <span>Encaisser au comptoir</span>
+        <span>Encaisser vos clients</span>
         <span>Payer les salaires</span>
-        <span>Facturer la DGI</span>
-        <span>Vendre en ligne</span>
+        <span>Émettre vos FNE</span>
+        <span>Encaisser depuis votre site</span>
         <span>Suivre la trésorerie</span>
       </div>
     </div>
@@ -800,45 +787,31 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <section class="sect gris">
     <div class="dedans">
       <div class="bloc">
+        <div><h2>Encaissez vos clients</h2></div>
         <div>
-          <h2>Encaissez comme vous vendez</h2>
-          <p class="para">Vos clients paient avec le réseau qu'ils ont déjà. Vous
-            recevez tout sur le même compte.</p>
+          <p class="para">Via code QR, ou via des liens de paiement transférables
+            sur vos applications de messagerie habituelles, WhatsApp ou même
+            par SMS.</p>
         </div>
-        <ul class="puces">
-          <li>Un code fixe ou un QR au comptoir, sans terminal à louer</li>
-          <li>Un lien de paiement à envoyer par WhatsApp ou par SMS</li>
-          <li>Orange Money, Wave, MTN, Moov et le virement bancaire</li>
-          <li>Le soir, l'écart entre ce que vous avez compté et ce qui est entré</li>
-        </ul>
       </div>
 
       <div class="bloc">
+        <div><h2>Payez vos équipes de salariés</h2></div>
         <div>
-          <h2>Payez vos équipes en une fois</h2>
-          <p class="para">La paie devient un fichier à déposer, plus une soirée de
-            virements un par un.</p>
+          <p class="para">Importez la liste des membres de votre équipe avec leurs
+            coordonnées Mobile Money ou bancaires, suivez le workflow, et SwimPay
+            s'occupe du reste.</p>
         </div>
-        <ul class="puces">
-          <li>Importez le fichier tel qu'il sort de votre logiciel, en CSV ou Excel</li>
-          <li>SwimPay trouve la route de chaque employé et chiffre chaque virement</li>
-          <li>Exigez deux signatures avant qu'un lot ne parte</li>
-          <li>Bloquez la somme dans un coffre daté jusqu'à l'échéance</li>
-        </ul>
       </div>
 
       <div class="bloc">
+        <div><h2>Facturez en un instant</h2></div>
         <div>
-          <h2>Facturez sans rien ressaisir</h2>
-          <p class="para">La facture part complète, et repart telle quelle vers
-            votre comptable.</p>
+          <p class="para">Conformément à la loi en vigueur en Côte d'Ivoire sur les
+            factures normalisées électroniques, émettez automatiquement la FNE
+            grâce à SwimPay, pour toutes les opérations de votre activité, en
+            ligne comme hors ligne.</p>
         </div>
-        <ul class="puces">
-          <li>Des factures FNE approuvées par la DGI, en une minute</li>
-          <li>Le numéro, le QR de contrôle et l'archive légale partent avec</li>
-          <li>Relancez un client en retard depuis l'encours</li>
-          <li>Exportez au format que votre logiciel comptable attend</li>
-        </ul>
       </div>
     </div>
   </section>
@@ -863,14 +836,18 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   </section>
 
   <section class="sect">
-    <div class="dedans">
-      <h2>Quatre métiers, un seul compte</h2>
-      <p class="para">Chacun retrouve les écrans faits pour sa journée.</p>
-      {cartes(BUSINESS)}
-      <div class="gestes" style="margin-top: 44px; display: flex; gap: 12px; flex-wrap: wrap">
-        <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
-        <a class="bouton creux grand" href="#integration">Intégrer à mon site</a>
+    <div class="dedans duo">
+      <div>
+        <h2>Encaissez depuis votre site</h2>
+        <p class="para">Le SDK SwimPay s'installe en quelques lignes de code.
+          Votre développeur les pose une fois, appelle le checkout, et vous
+          encaissez sur votre site comme au comptoir.</p>
+        <div class="gestes" style="margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap">
+          <a class="bouton acide grand" href="#integration">Voir l'intégration</a>
+          <a class="bouton creux grand" href="#inscription">Ouvrir un compte professionnel</a>
+        </div>
       </div>
+      <div class="code"><pre style="margin:0">{CODE_SDK}</pre></div>
     </div>
   </section>
 
@@ -884,23 +861,23 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
         </details>
         <details>
           <summary>Mes clients doivent-ils avoir SwimPay ?</summary>
-          <p>Non. Ils paient avec le réseau qu'ils utilisent déjà, Orange Money, Wave, MTN, Moov ou un virement bancaire. Vous recevez tout sur le même compte.</p>
+          <p>Non. Ils paient depuis n'importe quel Mobile Money ou depuis leur banque. C'est à eux de choisir, vous recevez tout sur le même compte.</p>
         </details>
         <details>
-          <summary>Où est l'argent de mon entreprise ?</summary>
-          <p>Sur un compte de dépôt réel. Chaque mouvement y est inscrit avec sa date, sa référence, ses frais et la route empruntée.</p>
+          <summary>La FNE est-elle conforme à la loi ivoirienne ?</summary>
+          <p>Oui. SwimPay émet la facture normalisée électronique conformément à la loi en vigueur en Côte d'Ivoire, pour vos opérations en ligne comme hors ligne.</p>
         </details>
         <details>
           <summary>Combien de personnes peuvent accéder au compte ?</summary>
           <p>Autant que votre équipe en compte, chacune avec ses droits. Un virement de salaires peut exiger deux signatures avant de partir.</p>
         </details>
         <details>
-          <summary>La facture FNE est-elle vraiment acceptée ?</summary>
-          <p>La facture porte son numéro, son QR de contrôle et son archive légale, au format attendu par la DGI. Elle part complète, sans ressaisie.</p>
+          <summary>Faut-il un développeur pour encaisser depuis mon site ?</summary>
+          <p>Oui. Quelques lignes de code sont à poser sur votre site, et la page Intégration montre exactement lesquelles. C'est court, mais cela reste du code.</p>
         </details>
         <details>
-          <summary>Puis-je récupérer mes écritures dans mon logiciel ?</summary>
-          <p>Oui. L'export sort au format que votre logiciel comptable attend, avec le rapprochement déjà fait.</p>
+          <summary>Comment l'argent de mon entreprise est-il protégé ?</summary>
+          <p>Par la traçabilité de chaque mouvement, le chiffrement des données en transit, et la biométrie sur les gestes sensibles.</p>
         </details>
       </div>
     </div>
