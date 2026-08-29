@@ -10,4 +10,6 @@ export * from './invoicer/totals.js';
 export * from './invoicer/dgi-payload.js';
 export * from './directory/msisdn.js';
 export * from './directory/identity.js';
+export * from './directory/recipient.js';
+export * from './instruction/instruction.js';
 export * from './router/route.js';
