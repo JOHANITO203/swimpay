@@ -231,3 +231,126 @@ Ce que j'y ajoute et qui n'était pas dans l'idée initiale :
 - **le plafond comme argument de distribution** (§3.2) plutôt que comme mur ;
 - et la limite qu'il ne faut pas franchir (§3.3), parce qu'un raccourci
   réglementaire ici ne coûte pas une amende, il coûte l'entreprise.
+
+---
+
+## 7. La simulation — résultats, et ce qu'elle casse
+
+> Outil : `design/pivot/sondes/netting.mjs`, sans dépendance, déterministe.
+> **Les profils de clients sont des hypothèses, aucun n'est mesuré.** La
+> simulation ne prédit rien : elle montre où le modèle bascule.
+
+### 7.1 La première version était fausse, et elle annonçait un triomphe
+
+Elle donnait **99,88 % de compensation et zéro échec partout**. C'était un bug :
+chaque client encaissait deux fois plus qu'il ne sortait, donc les réserves ne
+faisaient que gonfler. **Un système où l'argent entre et ne ressort jamais n'a
+évidemment aucun problème de trésorerie.**
+
+Corrigé par la **conservation** — sur le mois, ce qui sort égale ce qui entre,
+moins le solde laissé — et par un **étalonnage** sur deux cas dont la réponse
+est connue d'avance :
+
+| Cas d'étalonnage | Attendu | Obtenu |
+|---|---|---|
+| Chacun sort sur les mêmes opérateurs qu'il encaisse | ~0 % de déséquilibre | **1,63 %** |
+| Tout entre sur Wave, tout sort sur Orange | ~50 % | **50,00 %** |
+
+Sans ces deux lignes, tout le reste serait à jeter.
+
+### 7.2 Le résultat central
+
+Sur 400 clients, 30 jours, 3 M F par boîte :
+
+| | |
+|---|---|
+| Flux brut | **2 205 746 947 F** |
+| Réellement déplacé | **226 803 896 F** |
+| **Taux de compensation** | **89,7 %** |
+| Plancher structurel | 8,2 % — ce qui doit traverser quoi qu'on fasse |
+| Frais réels | **2 268 039 F**, soit **0,10 % du brut** |
+| Frais si chaque franc traversait à 2 % | 44 114 939 F |
+| **Économie** | **≈ 41,8 M F par mois** |
+| Float immobilisé | 15 M F |
+
+> **0,10 % contre 2 % : vingt fois moins cher.**
+
+### 7.3 La surprise : l'échelle ne compte pas
+
+| Clients | Compensation |
+|---|---|
+| 10 | 87,2 % |
+| 50 | 86,7 % |
+| 100 | 90,4 % |
+| 400 | 89,7 % |
+| 800 | 89,9 % |
+
+**J'avais annoncé une courbe en J — « les premiers clients coûtent cher, ça
+s'améliore en montant ». C'est faux.** La compensation vient de la **structure
+des flux**, pas du nombre de clients. Un client encaisse et redépense sur des
+opérateurs qui se recouvrent largement : ça s'annule tout seul, même à dix.
+
+**Bonne nouvelle, et elle change le plan** : le modèle est bon **dès le premier
+jour**, sans attendre la masse.
+
+*Réserve honnête* : la simulation donne la **moyenne**. À dix clients, un seul
+gros mouvement peut vider une boîte, ce qui n'arrive plus à quatre cents. La
+moyenne est la même, **la variance ne l'est pas.**
+
+### 7.4 Ce qui casse — la vague de retraits
+
+Au jour 15, tout le monde retire en même temps :
+
+| Float par boîte | Échecs | Montant non servi |
+|---|---|---|
+| 1 M | **191** | 181,9 M F |
+| 3 M | 186 | 172,9 M F |
+| 6 M | 171 | 160,6 M F |
+| 12 M | 154 | 133,9 M F |
+| **25 M** (125 M immobilisés) | **88** | 71,8 M F |
+
+> **Multiplier le float par 25 ne supprime pas les échecs.**
+
+**C'est le vrai point faible, et il n'est pas de nature financière au sens où je
+le croyais.** Pendant une vague, toutes les boîtes se vident **en même temps** :
+le netting croisé n'a plus rien à prendre nulle part. Ajouter de l'argent dans
+les boîtes ne fait que retarder le mur.
+
+**Les seules réponses réelles**, et ce sont des décisions produit, pas des
+réglages :
+
+1. **Une source de liquidité extérieure** — ligne de crédit bancaire, ou tirage
+   immédiat sur le partenaire licencié. C'est ce qui manque au modèle.
+2. **Ralentir les retraits sous stress** — les mettre en file quelques heures,
+   annoncé et contractuel. Instantané en temps normal, différé en vague.
+3. **Détecter la vague avant** — et là, la facture aide encore (§2.1).
+
+Un modèle qui promet le retrait instantané sans ligne de crédit **ment un jour
+sur trente**. Il faut choisir lequel des trois on assume, et l'écrire dans les
+conditions.
+
+### 7.5 Le cas défavorable reste vivable
+
+Tous les flux dans le même sens — tout entre Wave, tout sort Orange :
+
+| | |
+|---|---|
+| Compensation | **53,8 %** au lieu de 89,7 |
+| Coût | **0,46 %** au lieu de 0,10 |
+
+**Toujours quatre fois moins cher que 2 %.** Le pire cas ne tue pas le modèle,
+il le ramène à « bon » au lieu de « excellent ».
+
+### 7.6 Le PI-SPI confirme
+
+Même volume déplacé, **frais à zéro**. Le seul coût résiduel du modèle disparaît
+en 2026.
+
+### 7.7 Ce que la simulation ne dit pas
+
+- Les profils sont **inventés**. Le taux de compensation réel se mesurera sur
+  les flux des 400 PME, pas ici.
+- Les plafonds des comptes marchands sont des **hypothèses tierces**.
+- Elle ignore les **délais de règlement** : un rééquilibrage qui met trois jours
+  n'est pas le même outil qu'un instantané. À modéliser ensuite — et c'est
+  probablement ce qui aggrave la vague.
