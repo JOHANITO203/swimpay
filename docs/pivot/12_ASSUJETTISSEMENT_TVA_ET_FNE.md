@@ -134,23 +134,37 @@ KOMPTO, l'un des quatre intégrateurs agréés, l'écrit noir sur blanc `[T]` :
 mention légale **« TVA non applicable »**. Sur la plateforme web de la DGI, cela
 revient à ne pas cocher la TVA. C'est ce que font les praticiens aujourd'hui.
 
-**Ce qui reste à établir est un détail de correspondance, pas un obstacle** : quelle
-valeur exacte porte `items[].taxes` dans ce cas côté API — l'un des quatre codes
-existants à taux nul, ou une valeur non documentée.
+### Le code exact, et la DGI l'avait nommé
 
-**Et on n'a pas besoin d'attendre une réponse pour le savoir.** La DGI met à
-disposition un **environnement de test public et gratuit**
-(`54.247.95.108/ws`, inscription sur `54.247.95.108`, cf. `08_DGI_FNE_API.md`).
-La question se tranche en un après-midi de bac à sable, avec un jeu de données
-fictif : on émet une facture de microentreprise, on essaie les codes, on garde
-celui qui passe. **C'est une expérience, pas une demande.**
+La liste déroulante « Taux d'imposition » de la plateforme, reproduite dans le
+guide utilisateur officiel (p. 31, `assets/fne-guide-p31-taux-imposition.png`),
+donne les cinq choix **avec leur lettre** :
+
+| Libellé exact dans la plateforme | Lettre | Code API |
+|---|---|---|
+| TVA normal — TVA sur HT 18,00 % | **A** | `TVA` |
+| TVA réduite — TVA sur HT 09,00 % | **B** | `TVAB` |
+| TVA exo.conv — TVA sur HT 00,00 % | **C** | `TVAC` |
+| **TVA exo.lég — Pas de TVA sur HT 00,00 % — (TEE, TCE, Microentreprise)** | **D** | **`TVAD`** |
+| TVA exo export — TVA sur HT | — | (export) |
+
+La ligne D porte, **écrit par la DGI elle-même**, la liste des régimes concernés :
+
+> `TVA exo.lég - Pas de TVA sur HT 00,00% - D (TEE, TCE, Microentreprise)`
+
+**TEE** = taxe d'État de l'entreprenant · **TCE** = taxe communale de
+l'entreprenant · **Microentreprise** = RME. Ce sont exactement les trois régimes
+non assujettis du §1.
+
+**La question est close. Le code est `TVAD`, et il n'y a rien à demander.**
 
 > **Note d'honnêteté.** La première version de ce document qualifiait ce point de
-> « bloquant » et en faisait la question numéro un à poser à la DGI. C'était une
-> surestimation : j'avais déduit un trou depuis le schéma de l'API sans vérifier
-> la pratique. La correction vient du terrain — un comptable qui émet des FNE pour
-> tous types de clients. La règle de fond du §1 reste entière : **un non-assujetti
-> ne facture jamais la TVA.** Seule la gravité du point d'API était fausse.
+> « bloquant » et en faisait la question numéro un à poser à la DGI. C'était faux
+> deux fois : j'avais déduit un trou depuis le schéma de l'API sans vérifier la
+> pratique, **et la réponse était depuis le début dans un guide de 45 pages déjà
+> téléchargé dans le repo, que je n'avais pas ouvert.** Lire ce qu'on a avant de
+> conclure ce qu'on n'a pas. La règle de fond du §1 reste entière : un non-assujetti
+> ne facture jamais la TVA.
 
 ---
 

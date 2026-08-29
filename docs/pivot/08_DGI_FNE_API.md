@@ -141,3 +141,123 @@ certificat (en pratique : clé API en Bearer), connexion stable.
 - SDK communautaire existant (référence d'implémentation, non officiel) :
   `github.com/PRODESTIC/fne-sdk-php`.
 - Nouveau champ produit : stock de stickers par marchand (affichage + alerte).
+
+---
+
+## 8. Ce que le guide utilisateur ajoute (relevé 29 août 2026)
+
+> Source : **guide d'utilisation de la plateforme FNE**, 45 p., DGI —
+> `assets/FNE-guide-utilisateur.pdf`. Pages rendues en images dans `assets/`.
+> Ce guide décrit la **plateforme web** ; il éclaire l'API par correspondance.
+
+### 8.1 Deux chemins selon le régime, et ce n'est pas anodin
+
+| Régime du vendeur | Pièce émise | Support prévu | Sticker |
+|---|---|---|---|
+| **Réel** (RSI, RNI) | **FNE** — facture normalisée | plateforme · API · appli mobile | 20 F |
+| **Forfaitaire** (TEE, TCE, RME) et **secteur du commerce** | **RNE** — reçu normalisé | **TERNE** (terminal) · appli mobile | 15 F |
+
+Le guide (p. 5) :
+
+> « Pour les entreprises au régime forfaitaire ou travaillant dans le secteur du
+> commerce, les transactions seront sécurisées par des **reçus normalisés
+> électroniques** délivrés via des **Terminaux d'Émission de Reçus Électroniques
+> (TERNE)**. »
+
+**Mais le RNE n'exige pas un terminal physique** : le formulaire de facturation
+de la plateforme porte une **case à cocher `RNE`** (visible p. 31), et le schéma
+de l'API porte `isRne` (bool) + `rne` (n° du reçu lié). **Notre logiciel peut donc
+émettre les deux.** Un seul fournisseur de TERNE est agréé dans le pays
+(GREEN PAY) — ne pas dépendre de lui est une bonne nouvelle.
+
+**Conséquence de périmètre** : la V1 vise les non-assujettis (`12` §5). Le chemin
+naturel de ce segment est le **RNE**, pas la FNE. À arbitrer explicitement, et à
+tester des deux façons en bac à sable.
+
+### 8.2 Le RNE est beaucoup plus léger que la FNE
+
+Composition d'un RNE (p. 42) : les trois éléments de sécurisation (visuel FNE,
+numéro séquentiel, QR de certification), les informations du vendeur, celles du
+client, **le montant**, le mode de paiement.
+
+**Pas de lignes d'articles, pas de TVA, pas de détail.** Le reçu montre
+`MONTANT : 100 999 CFA` et rien de plus. Le vendeur y porte un `TERMINAL : n°`.
+Le client payeur n'a que NCC et RCCM, tous deux facultatifs.
+
+### 8.3 La FNE porte le régime fiscal des DEUX parties
+
+L'exemple officiel (p. 42) montre, en en-tête vendeur : `NCC : 9500015F`,
+**`Régime d'imposition : RNI`**, `Centre des impôts : 8046`. Et côté client :
+`NCC : 1824723R`, **`Régime d'imposition : TEE`**.
+
+> **La plateforme résout le régime à partir du NCC.** Nous n'avons pas à connaître
+> le régime fiscal du client de notre marchand : il suffit de fournir le NCC.
+
+C'est une simplification importante pour l'annuaire : le régime du **client** est
+une donnée dérivée, pas une donnée saisie. Seul le régime de **notre marchand**
+doit être tenu, parce qu'il décide du code de taxe (`12` §3).
+
+### 8.4 La plateforme signale un client en cessation d'activité
+
+Guide p. 31, encadré :
+
+> « au cours du remplissage du formulaire de facturation B2B, **si le client est
+> en cessation d'activité, vous serez informé par un message** indiquant la
+> cessation d'activité de ce client. Vous pouvez cliquer sur « Continuer » ou
+> interrompre la transaction. »
+
+**Hypothèse forte, à confirmer en bac à sable** : c'est très probablement ce que
+porte le champ **`warning`** de la réponse API (`"warning": false`). Si c'est
+exact, on obtient **la validation du NCC client gratuitement, dans la réponse** —
+ce qui rend inutile la consultation NCC bloquée par reCAPTCHA (`12` §4).
+
+À vérifier : le `warning` remonte-t-il **avant** ou **après** consommation du
+sticker ? La réponse décide de la conception du garde-fou.
+
+### 8.5 Deux états, et un seul est certifié
+
+Le formulaire propose deux boutons (p. 33) :
+
+- **Sauvegarder la facture** — conservée en vue d'une validation ultérieure.
+  **Non signée : ni QR code, ni numéro de série.**
+- **Générer la facture** — produite avec tous les éléments de sécurité.
+
+C'est exactement le modèle brouillon / certifiée. Notre schéma doit refléter les
+deux, et **seule la seconde est append-only** : une facture générée ne se modifie
+plus, elle se corrige par un avoir.
+
+### 8.6 L'ordre de calcul : la TVA porte sur le montant remisé
+
+Le résumé officiel (p. 33) donne un cas chiffré à vérifier dans nos tests :
+
+```
+Total HT      1 450 000
+Remise           72 500
+                          -> base = 1 377 500
+Total TVA       247 950   = 18 % de 1 377 500
+Total TTC     1 625 450
+Autres taxes          0
+Net à payer   1 625 450
+```
+
+**La remise s'applique avant la TVA.** Ce cas doit devenir un test de
+`packages/brain/src/invoicer/totals.ts`, avec ces nombres exacts.
+
+Le formulaire porte aussi des **« taxes sur total TTC »** (nom + taux + montant),
+distinctes des `customTaxes[]` par article. Deux niveaux de taxes annexes, donc.
+
+### 8.7 L'inscription exige NCC + NTD
+
+Guide p. 6, étape 3 : le formulaire d'identification demande le **Numéro de Compte
+Contribuable (NCC)** et le **Numéro de Télédéclarant (NTD)**, puis un parcours en
+quatre étapes.
+
+Vérifié le 29 août 2026 : l'environnement de test **répond** (`http://54.247.95.108/`,
+HTTP 200) et son interface porte les mêmes libellés (`Inscrivez-vous`,
+`Vérification du NCC`, `NTD`, et les erreurs `NCC inexistant` /
+`company_not_registered`).
+
+> **Ce sont deux identifiants réels délivrés par la DGI à un contribuable
+> immatriculé.** Sans le NCC et le NTD de SwimPay — ou d'une entité prêtée pour
+> les tests — l'inscription ne peut pas aboutir, même sur l'environnement de test.
+> C'est la seule chose qui manque pour commencer à éprouver l'algorithme.
