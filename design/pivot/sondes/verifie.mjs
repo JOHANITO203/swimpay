@@ -504,6 +504,77 @@ test("la part de l'anneau se dessine au lieu de sauter",
   JSON.stringify(anneau));
 await ev('va("accueil")'); await dodo(300);
 
+/* ═══ 9 quinquies. les trois manques comblés ═══ */
+
+/* LE PLAFOND : l'action existait et n'ouvrait rien. Elle ouvre, et elle tient
+   une contrainte honnête — un plafond ne descend pas sous ce qui est déjà
+   parti, et le refus le dit. */
+const plafond = await evAttendu(`(async () => {
+  va("carte-ecran"); fermeSheet();
+  await new Promise((r) => setTimeout(r, 200));
+  const v = CARTES.find((c) => c.type === "pan");
+  v.plafond = 200000; v.depense = 63500;
+  ouvreFluxCarte("virt-plafond");
+  const corps = document.getElementById("fc-corps");
+  if (!corps.querySelector(".fc-choix")) return { pasDeFlux: true };
+  const dit = corps.textContent;
+  const chip = (val) => [...corps.querySelectorAll(".chip")].find((c) => c.dataset.val == val);
+  chip(50000).click();                       // sous ce qui est déjà dépensé
+  const refuse = document.getElementById("fc-valide").disabled;
+  chip(500000).click();
+  const accepte = !document.getElementById("fc-valide").disabled;
+  document.getElementById("fc-valide").click();
+  await new Promise((r) => setTimeout(r, 120));
+  return { refuse, accepte, pose: v.plafond, ditLeDepense: dit.includes("63 500") };
+})()`);
+test("le plafond de la carte virtuelle a un flux",
+  plafond && plafond.pasDeFlux !== true, JSON.stringify(plafond));
+test("un plafond sous ce qui est déjà dépensé est refusé",
+  plafond.refuse === true && plafond.ditLeDepense === true, JSON.stringify(plafond));
+test("un plafond au-dessus est accepté et posé",
+  plafond.accepte === true && plafond.pose === 500000, JSON.stringify(plafond));
+
+/* LA FILE D'INSTALLATION : la ligne de celui qui vient d'installer s'annonce.
+   Un compteur qui change seul ne dit pas QUI. */
+const file = await evAttendu(`(async () => {
+  va("pme-attente");
+  await new Promise((r) => setTimeout(r, 250));
+  const b = document.getElementById("fa-simule");
+  if (!b) return { absent: true };
+  const avant = document.getElementById("fa-compte").textContent;
+  b.click();
+  await new Promise((r) => setTimeout(r, 900));
+  const l = document.querySelector("#fa-liste .row.rejoint");
+  return {
+    avant, apres: document.getElementById("fa-compte").textContent,
+    annonce: !!l, jouees: l ? l.getAnimations().length : 0,
+  };
+})()`);
+test("une installation fait avancer le compte",
+  file.absent === true || file.avant !== file.apres, JSON.stringify(file));
+test("et la ligne de celui qui rejoint s'annonce",
+  file.absent === true || (file.annonce === true && file.jouees > 0), JSON.stringify(file));
+
+/* LE CALENDRIER : révélé dans l'ordre des jours, il se lit comme une ligne de
+   temps. Sans rang, les trente-cinq cases arrivent d'un bloc — une mosaïque. */
+const calendrier = await evAttendu(`(async () => {
+  va("pme-salaires");
+  await new Promise((r) => setTimeout(r, 180));
+  const cases = [...document.querySelectorAll("#pme-salaires .calendrier i")];
+  if (!cases.length) return { absent: true };
+  const delais = cases.map((c) => parseFloat(getComputedStyle(c).animationDelay) || 0);
+  return {
+    nombre: cases.length,
+    croissants: delais[10] > delais[2] && delais[25] > delais[10],
+    premier: delais[0], dernier: delais[cases.length - 1],
+    nom: getComputedStyle(cases[5]).animationName,
+  };
+})()`);
+test("le calendrier se révèle dans l'ordre des jours",
+  calendrier.absent === true || (calendrier.croissants === true && calendrier.nom === "case-parait"),
+  JSON.stringify(calendrier));
+await ev('va("accueil")'); await dodo(300);
+
 /* ═══ 10. le mouvement suit l'UX de CHAQUE format ═══
    Les trois interfaces ne sont pas la même : le téléphone a un bas (pouce,
    pilule de navigation, feuille qui monte), le bureau n'en a pas (barre en

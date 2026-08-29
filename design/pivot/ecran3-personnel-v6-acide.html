@@ -1594,6 +1594,35 @@ button { font: inherit; color: inherit; }
   :where(.ecran:not([hidden]) .jauge-w i),
   :where(.ecran:not([hidden]) .anneau-c) { animation: none; }
 }
+
+/* ─── LA FILE D'INSTALLATION ───
+   La ligne de celui qui vient d'installer s'annonce : c'est l'événement que
+   tout cet écran attend. Un compteur qui change seul ne dit pas QUI. */
+@media (prefers-reduced-motion: no-preference) {
+  .row.rejoint { animation: ligne-rejoint 1200ms var(--sortie) backwards; }
+  @keyframes ligne-rejoint {
+    0%   { background-color: color-mix(in srgb, var(--acide) 26%, transparent); transform: translateX(-6px); }
+    22%  { background-color: color-mix(in srgb, var(--acide) 22%, transparent); transform: none; }
+    100% { background-color: transparent; transform: none; }
+  }
+
+  /* ─── LE CALENDRIER DE PAIE ───
+     Révélé dans l'ordre des jours : il se lit alors comme une ligne de temps,
+     pas comme une mosaïque. Le pas est court (11 ms) — sur trente-cinq cases,
+     une cascade lente se voit et fait attendre. */
+  :where(.ecran:not([hidden]) .calendrier i) {
+    animation: case-parait 260ms var(--sortie) backwards;
+    animation-delay: calc(var(--i, 0) * 11ms);
+  }
+  @keyframes case-parait {
+    from { opacity: 0; transform: scale(.6); }
+    to   { opacity: 1; transform: none; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .row.rejoint,
+  :where(.ecran:not([hidden]) .calendrier i) { animation: none; }
+}
 </style>
 
 <!-- ================================================================
@@ -6256,9 +6285,14 @@ const rendFile = () => {
     : "Toute l'équipe est sur SwimPay : le versement ne coûte rien.";
   liste.innerHTML = employes.map((e, i) => {
     const r = e.route;
+    /* celui qui vient d'installer : sa ligne s'annonce. C'est l'événement que
+       tout cet écran attend — la voir passer vaut mieux qu'un compteur qui
+       change tout seul. */
+    const rejoint = e.vientDeRejoindre ? " rejoint" : "";
+    if (e.vientDeRejoindre) setTimeout(() => { delete e.vientDeRejoindre; }, 1400);
     const et = etatFile(e);
     const cout = coutLigne(e);
-    return `<div class="row" style="cursor: default">
+    return `<div class="row${rejoint}" style="cursor: default">
       <span class="avatar">${ech(initiales(e.nom))}</span>
       <span class="txt"><b>${ech(e.nom)}</b><span>${ech(r.nom || "—")}${
         r.num ? " " + ech(r.num) : ""}${r.identite ? " · " + ech(r.identite) : ""}${
@@ -6288,6 +6322,7 @@ document.getElementById("fa-simule").addEventListener("click", function () {
   if (!e) { retourBtn(this, "Toute l'équipe est déjà prête"); return; }
   occupe(this, "Synchronisation…", () => {
     const avant = fraisEquipe();
+    e.vientDeRejoindre = true;
     e.route = { statut: "pret", rail: "swim", nom: "Compte SwimPay",
       num: "····" + String(3000 + employes.indexOf(e) * 137).slice(-4), delai: "immédiat",
       identite: e.nom };
@@ -6829,7 +6864,10 @@ const rendWidgetsPme = () => {
   const retardM = retard.reduce((n, f) => n + f.m, 0);
   /* les trente prochains jours : une case par jour, marquée si une facture y tombe */
   const cases = Array.from({ length: 35 }, (_, i) => {
-    if (i >= 30) return `<i style="opacity:.25"></i>`;
+    /* --i porte le rang du jour : le calendrier se révèle dans l'ordre du
+       temps, pas d'un bloc. Trente-cinq cases posées ensemble se lisent comme
+       une mosaïque ; révélées en ordre, comme une ligne de temps. */
+    if (i >= 30) return `<i style="opacity:.25; --i: ${i}"></i>`;
     const f = factures.find((x) => x.jour === i && x.etat !== "payee");
     const v = versements.find((x) => x.jour === i);
     const jour = i === 0 ? " aujourdhui" : "";
@@ -6841,7 +6879,7 @@ const rendWidgetsPme = () => {
       classe = f.etat === "retard" ? "retard" : "du";
       titre = f.client + " · " + fmt(String(f.m));
     }
-    return `<i class="${(classe + jour).trim()}" data-jour="${i}" title="${ech(titre)}"></i>`;
+    return `<i class="${(classe + jour).trim()}" style="--i: ${i}" data-jour="${i}" title="${ech(titre)}"></i>`;
   }).join("");
   zone.innerHTML = `
     <div class="widget">
@@ -7471,6 +7509,30 @@ const FLUX = {
       return "Carte créée · ····" + pan4(v);
     },
   },
+  "virt-plafond": {
+    titre: "Plafond de dépense",
+    sous: "Par mois, sur cette carte",
+    corps: () => {
+      const v = virt();
+      return `<div class="fc-choix" data-champ="plafond">
+          ${[50000, 100000, 200000, 500000].map((m) =>
+            `<button class="chip${m === v.plafond ? " actif" : ""}" data-val="${m}">${fmt(String(m))}</button>`).join("")}
+        </div>
+        <p class="note">Déjà dépensé ce mois · <b>${fmt(String(v.depense))}</b>.
+        Un plafond ne peut pas descendre sous ce qui est déjà parti.</p>`;
+    },
+    bouton: "Fixer le plafond",
+    valide: (etat) => {
+      const v = virt();
+      const m = etat.plafond || v.plafond;
+      return m >= v.depense && m !== v.plafond;
+    },
+    fait: (etat) => {
+      const v = virt();
+      v.plafond = etat.plafond || v.plafond;
+      return "Plafond fixé à " + fmt(String(v.plafond)) + " par mois";
+    },
+  },
   "coffre-alimenter": {
     titre: "Alimenter le coffre",
     sous: "Depuis le compte principal",
@@ -7549,6 +7611,7 @@ const ouvreFluxCarte = (clef) => {
 document.addEventListener("click", (e) => {
   const chip = e.target.closest("#fc-corps .fc-choix .chip");
   if (chip) {
+    if (chip.disabled) return;
     const champ = chip.parentElement.dataset.champ;
     chip.parentElement.querySelectorAll(".chip").forEach((x) => x.classList.toggle("actif", x === chip));
     fcEtat[champ] = Number(chip.dataset.val);
@@ -7601,7 +7664,7 @@ const ACTIONS_CARTE = {
   virtuelle: [
     ["jetable", "Régénérer le numéro", "L'ancien cesse d'être accepté", "virt-regen"],
     ["copier", "Voir les informations", "Numéro, date, cryptogramme", "virt-infos"],
-    ["plafond", "Plafond de dépense", "Par achat et par mois"],
+    ["plafond", "Plafond de dépense", "Par mois, sur cette carte", "virt-plafond"],
     ["remplacer", "Détruire la carte", "Définitif · le numéro ne revient pas", "virt-detruire"],
   ],
   virtuelleDetruite: [
