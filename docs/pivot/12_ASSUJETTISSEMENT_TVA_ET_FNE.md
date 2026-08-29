@@ -120,16 +120,37 @@ nature), **346** (imposables par disposition expresse : importations, transports
 spécialisés, lotisseurs, marchands de biens), **348**, et **355 à 357**
 (exonérations).
 
-### Le trou dans le schéma, et il est réel
+### Le cas du non-assujetti : la DGI l'a prévu
 
-Les quatre codes couvrent **assujetti à 18 %**, **assujetti à 9 %**, et **assujetti
-mais exonéré** (deux variantes). Aucun ne dit **« non assujetti »**.
+**La FNE ne dépend pas de la TVA.** Depuis le 1ᵉʳ décembre 2025, l'émission est
+obligatoire pour **toutes** les entreprises, **sans exception de régime fiscal**.
+KOMPTO, l'un des quatre intégrateurs agréés, l'écrit noir sur blanc `[T]` :
 
-Or un entreprenant ou une microentreprise n'est pas *exonéré* : il est **hors du
-champ**. Ce n'est pas la même chose en droit, et le schéma de la FNE ne semble pas
-faire la différence. **On ne sait pas quel code poser pour la facture d'une
-microentreprise.** C'est la question la plus importante à poser à la DGI avant
-d'écrire une ligne du moteur (§6).
+> « Toutes les entreprises opérant en Côte d'Ivoire doivent donc aujourd'hui
+> émettre leurs factures en format FNE conforme, **sans exception liée à
+> l'assujettissement à la TVA**. »
+
+**Le mécanisme est simple** : le non-assujetti facture **hors taxes** et porte la
+mention légale **« TVA non applicable »**. Sur la plateforme web de la DGI, cela
+revient à ne pas cocher la TVA. C'est ce que font les praticiens aujourd'hui.
+
+**Ce qui reste à établir est un détail de correspondance, pas un obstacle** : quelle
+valeur exacte porte `items[].taxes` dans ce cas côté API — l'un des quatre codes
+existants à taux nul, ou une valeur non documentée.
+
+**Et on n'a pas besoin d'attendre une réponse pour le savoir.** La DGI met à
+disposition un **environnement de test public et gratuit**
+(`54.247.95.108/ws`, inscription sur `54.247.95.108`, cf. `08_DGI_FNE_API.md`).
+La question se tranche en un après-midi de bac à sable, avec un jeu de données
+fictif : on émet une facture de microentreprise, on essaie les codes, on garde
+celui qui passe. **C'est une expérience, pas une demande.**
+
+> **Note d'honnêteté.** La première version de ce document qualifiait ce point de
+> « bloquant » et en faisait la question numéro un à poser à la DGI. C'était une
+> surestimation : j'avais déduit un trou depuis le schéma de l'API sans vérifier
+> la pratique. La correction vient du terrain — un comptable qui émet des FNE pour
+> tous types de clients. La règle de fond du §1 reste entière : **un non-assujetti
+> ne facture jamais la TVA.** Seule la gravité du point d'API était fausse.
 
 ---
 
@@ -204,6 +225,23 @@ Sept règles, dont trois sont des interdictions.
    append-only. C'est ce qui permettra, trois ans plus tard, de prouver pourquoi
    telle facture portait tel taux.
 
+### Décision de périmètre V1 : un seul chemin de TVA
+
+**La V1 ne démarche que des clients sous 200 M de chiffre d'affaires** (décision
+LO, 29 août 2026). Conséquence directe sur le moteur, et elle est excellente :
+
+- **un seul chemin de TVA à écrire** — celui du non-assujetti, hors taxes avec la
+  mention « TVA non applicable » ;
+- les règles 1, 5 et 6 ci-dessus (statut en dossier, machine à états, calendrier
+  des options) restent **écrites mais dormantes** : on enregistre le régime dès le
+  premier jour, on ne l'exerce pas encore ;
+- la règle 2 devient une **garde en dur** : au-delà du seuil, le moteur refuse et
+  passe la main, plutôt que d'improviser un chemin non testé.
+
+C'est le bon découpage. Le segment visé est aussi celui que Julaya ne peut pas
+servir (`11_JULAYA_ET_LA_V2.md` §4.4) : le périmètre technique le plus simple est
+aussi le terrain commercial le plus défendable.
+
 ### Le produit que personne d'autre ne peut vendre
 
 SwimPay **voit le chiffre d'affaires en train de se faire**, puisqu'il encaisse.
@@ -236,9 +274,9 @@ pas après.
 À adresser à `support.fne@dgi.gouv.ci` et `agrement.fne@dgi.gouv.ci`, en même
 temps que le dossier d'agrément :
 
-1. **Quel code `taxes` pour une facture émise par une entreprise non assujettie
-   à la TVA** (régime de l'entreprenant ou microentreprises) ? `TVAD`, ou un code
-   non documenté ? *C'est bloquant.*
+1. **Confirmation** du code `taxes` retenu pour une entreprise non assujettie —
+   à poser **après** le test en bac à sable (§3), pour faire valider notre choix,
+   pas pour le découvrir.
 2. Existe-t-il un **accès machine** à la consultation du NCC, réservé aux éditeurs
    agréés ? Le formulaire public est protégé par reCAPTCHA.
 3. La réponse à cette consultation donne-t-elle le **régime fiscal** et le
@@ -269,7 +307,8 @@ Ce qui existe à la place, et qui vaut mieux qu'une liste :
 1. **Une règle**, celle du §1, qui donne la réponse pour n'importe quelle
    entreprise à partir de son chiffre d'affaires et de son éventuelle option.
 2. **Une liste de dispenses**, celle du §2, courte et fermée.
-3. **Une consultation unitaire officielle**, celle du §4, aujourd'hui fermée aux
+3. **Un bac a sable public et gratuit** pour trancher les details de correspondance sans attendre personne.
+4. **Une consultation unitaire officielle**, celle du §4, aujourd'hui fermée aux
    machines.
 
 Une liste aurait été périmée le mois suivant. La règle, elle, ne périme pas — et
