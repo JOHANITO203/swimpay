@@ -40,6 +40,9 @@ grain = jeton("grain")
 logo = jeton("carte-logo")
 photo = b64("hero-personne.jpg", "image/jpeg")
 photo_tel = b64("hero-personne-tel.jpg", "image/jpeg")
+sujet = b64("hero-sujet.webp", "image/webp")
+sujet_tel = b64("hero-sujet-tel.webp", "image/webp")
+fond_flou = b64("hero-fond.webp", "image/webp")
 video = brut("hero-anim.mp4", "video/mp4")
 affiche = brut("hero-anim-poster.jpg", "image/jpeg")
 
@@ -66,21 +69,20 @@ def cartes(items, classe="grille"):
 PERSONNEL = [
     ("Envoyer et recevoir",
      "Vers un numéro Mobile Money ou un compte bancaire, au Sénégal comme à "
-     "Abidjan. L'app compare les routes et dit laquelle est la moins chère, "
-     "avant que tu ne valides.",
+     "Abidjan. L'application compare les routes et vous dit laquelle coûte le "
+     "moins cher avant que vous ne validiez.",
      "Orange Money · MTN MoMo · Moov · Wave · virement bancaire"),
     ("Payer sans contact",
-     "Ta carte vit dans le téléphone. Au comptoir, tu approches — pas de code "
-     "à saisir, pas d'espèces à faire l'appoint.",
+     "Votre carte vit dans votre téléphone. Au comptoir, vous approchez et "
+     "vous payez, sans code à saisir ni appoint à faire.",
      "puce EMV et sans contact sur la carte principale"),
     ("Cartes virtuelles",
-     "Un numéro à usage unique pour un abonnement ou un achat en ligne. Tu le "
-     "régénères quand tu veux ; l'ancien cesse d'être accepté sur-le-champ.",
+     "Un numéro à usage unique pour un abonnement ou un achat en ligne. Vous le "
+     "régénérez quand vous voulez, l'ancien cesse aussitôt d'être accepté.",
      "plafond mensuel réglable · destruction définitive"),
     ("Épargner sans se bloquer",
-     "Le coffre met de l'argent de côté sur un sous-compte. Tu peux le "
-     "verrouiller jusqu'à une date — et tant qu'elle n'est pas passée, rien "
-     "n'en sort. Y compris pour toi.",
+     "Le coffre met votre argent de côté sur un sous-compte. Verrouillez-le "
+     "jusqu'à une date, personne ne peut l'ouvrir avant, pas même vous.",
      "verrou daté · frais de commission coupés à l'entrée"),
 ]
 
@@ -90,9 +92,9 @@ BUSINESS = [
      "le soir. L'écart entre le compté et l'encaissé se voit tout de suite.",
      "boutique · kiosque · restaurant"),
     ("PME qui paie des salaires",
-     "Importer le fichier de paie tel qu'il est — CSV ou Excel — et l'app en "
-     "tire les routes de chaque employé. Un salarié déjà sur SwimPay est payé "
-     "sans frais ; les autres coûtent leur rail, et le montant est dit.",
+     "Importez votre fichier de paie au format CSV ou Excel. L'application "
+     "trouve la route de chaque employé et affiche ce que coûte chaque "
+     "virement avant que vous ne signiez.",
      "double signature · coffre daté pour l'échéance"),
     ("Commerce en ligne",
      "Un lien de paiement à envoyer, ou un checkout intégré au site. Le "
@@ -115,7 +117,15 @@ CODE_SDK = """&lt;script src="https://sdk.swimpay.pro/v1/checkout.js"&gt;&lt;/sc
   });
 &lt;/script&gt;"""
 
-HTML = f"""<title>SwimPay</title>
+HTML = f"""<meta charset="utf-8">
+<title>SwimPay</title>
+<!-- Sans ce meta, un telephone met la page en page a 980 px et la reduit :
+     aucune de nos regles <= 880 px ne s applique, la bande photo du heros
+     fait 0x0, et une sonde qui demande 390 px MESURE 980 sans le dire.
+     Le charset au-dessus n est pas decoratif non plus : sans lui, Chrome
+     DEVINE l encodage, et il a devine faux — Integration s affichait
+     IntEgration des que le debut du fichier a change de quelques octets. -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
@@ -135,6 +145,9 @@ HTML = f"""<title>SwimPay</title>
   --logo: {logo};
   --photo: {photo};
   --photo-tel: {photo_tel};
+  --sujet: {sujet};
+  --sujet-tel: {sujet_tel};
+  --fond-flou: {fond_flou};
   --sortie: cubic-bezier(.23, 1, .32, 1);
   --deux-sens: cubic-bezier(.77, 0, .175, 1);
   /* le Caméléon : une seule teinte pilote toute la section, et elle change */
@@ -172,7 +185,11 @@ a {{ color: inherit; text-decoration: none; }}
   color: var(--noir); background: rgba(20, 20, 20, .08);
 }}
 .nav[data-pose="non"] .bouton.creux {{ border-color: rgba(20, 20, 20, .34); }}
-.nav-in {{ display: flex; align-items: center; gap: 8px; height: 68px; }}
+.nav-in {{ display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 68px; }}
+/* display:contents fait disparaitre le conteneur de la mise en page : les trois
+   onglets restent des items du meme flex qu avant. En telephone il redevient
+   une boite, et passe a la ligne. */
+.onglets {{ display: contents; }}
 .logo {{ display: flex; align-items: center; gap: 10px; margin-right: 28px; }}
 .logo i {{ width: 24px; height: 27px; background: var(--logo) center / contain no-repeat; filter: brightness(0); }}
 .logo b {{ font-size: 19px; font-weight: 600; letter-spacing: -.02em; }}
@@ -203,8 +220,8 @@ a {{ color: inherit; text-decoration: none; }}
    Bord a bord, et l image commence AU PREMIER PIXEL : elle passe SOUS la barre
    de navigation, qui devient transparente tant qu on est dessus. */
 .heros {{
-  position: relative; overflow: hidden;
-  background: var(--acide) var(--photo) center right / cover no-repeat;
+  position: relative; overflow-x: clip; overflow-y: visible; z-index: 2;
+  background: var(--acide);
   margin-top: calc(-1 * var(--h-nav));
   padding-top: var(--h-nav);
 }}
@@ -222,15 +239,52 @@ a {{ color: inherit; text-decoration: none; }}
   display: grid; grid-template-columns: minmax(0, 1fr);
   align-items: center; min-height: min(86vh, 780px); padding: 72px 0 80px;
 }}
+.heros-in {{ position: relative; z-index: 3; }}
 .heros-in > div {{ max-width: min(46ch, 52%); }}
+/* ─── LES TROIS COUCHES DU HÉROS ───
+   Le fond flou pose la profondeur, le sujet net la traverse. On les DÉCALE
+   nettement (échelle et position) : superposés au même endroit, les deux
+   silhouettes se doubleraient et l'effet tomberait à plat. */
+.heros-fond {{
+  position: absolute; inset: -22% -18% -22% auto; width: 88%;
+  background: var(--fond-flou) center / cover no-repeat;
+  opacity: .82; pointer-events: none;
+  -webkit-mask-image: radial-gradient(74% 66% at 72% 48%, #000 0%, transparent 68%);
+          mask-image: radial-gradient(74% 66% at 72% 48%, #000 0%, transparent 68%);
+}}
+/* Le sujet déborde le bas du héros et empiète sur la section suivante :
+   c'est ce débord qui le fait sortir de l'image. */
+.heros-sujet {{
+  position: absolute; right: -3%; bottom: -9%; width: 68%; aspect-ratio: 1.79;
+  background: var(--sujet) center bottom / contain no-repeat;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 76%, transparent 99%);
+          mask-image: linear-gradient(to bottom, #000 76%, transparent 99%);
+  filter: drop-shadow(0 30px 60px rgba(20, 20, 20, .28));
+}}
+@media (prefers-reduced-motion: no-preference) {{
+  /* Le défilement écarte les deux couches. En CSS seul : pas de gestionnaire
+     de scroll, donc rien à désynchroniser. Sans prise en charge, tout reste
+     simplement en place — la page ne perd rien. */
+  @supports (animation-timeline: scroll()) {{
+    .heros-fond, .heros-sujet {{
+      animation: linear both; animation-timeline: scroll(root);
+      animation-range: 0 620px;
+    }}
+    .heros-fond {{ animation-name: derive-fond; }}
+    .heros-sujet {{ animation-name: derive-sujet; }}
+  }}
+}}
+@keyframes derive-fond {{ to {{ transform: translateY(74px) scale(1.07); }} }}
+@keyframes derive-sujet {{ to {{ transform: translateY(-26px); }} }}
 .heros h1 {{
-  margin: 0; font-size: clamp(40px, 6.4vw, 82px); line-height: .98;
-  font-weight: 600; letter-spacing: -.04em; color: var(--noir); text-wrap: balance;
+  margin: 0; font-size: clamp(40px, 6.4vw, 85px); line-height: 1;
+  font-weight: 500; letter-spacing: -.024em; color: var(--noir); text-wrap: balance;
 }}
 .heros h1 em {{ font-style: normal; display: block; }}
 .heros .dit {{
-  margin: 26px 0 0; max-width: 44ch; font-size: clamp(16.5px, 1.5vw, 19px);
-  line-height: 1.5; color: rgba(20, 20, 20, .78);
+  margin: 26px 0 0; max-width: 44ch; font-size: clamp(16.5px, 1.4vw, 18px);
+  line-height: 1.34; color: rgba(20, 20, 20, .78);
 }}
 .heros .gestes {{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }}
 .heros .sous {{ margin: 18px 0 0; font-size: 14px; color: rgba(20, 20, 20, .6); }}
@@ -241,14 +295,37 @@ a {{ color: inherit; text-decoration: none; }}
   .heros {{
     background-image: none; background-color: var(--acide);
     padding-top: 0; margin-top: 0;
+    /* Le heros rogne son debord au bureau (le voile). En telephone, ce meme
+       overflow COUPAIT les 122 px que la bande remonte sous la barre : la
+       boite disait « haut 0 », et la peinture commencait a 122.
+       On coupe donc les COTES seulement : « overflow: visible » tout court
+       ecrasait le clip lateral, et le sujet decoupe poussait la page a 441 px
+       de large sur un ecran de 390. */
+    overflow-x: clip; overflow-y: visible;
   }}
   .heros::before {{ content: none; }}
+  .heros-fond {{ display: none; }}
+  /* Au telephone il n'y a pas de place pour deux colonnes : le sujet decoupe
+     tient TOUTE la bande, sur l'acide, et deborde sur le texte en dessous. */
   .heros-bande {{
-    height: 46vh; min-height: 300px;
+    height: 300px;
     margin-top: calc(-1 * var(--h-nav));
-    background: var(--photo-tel) center 22% / cover no-repeat;
+    background: none;
   }}
-  .heros-in {{ min-height: 0; padding: 40px 0 56px; }}
+  /* La barre garde son sol acide sur les 122 premiers pixels : un sujet pose
+     a top 0 y perd sa tete. Il commence donc SOUS elle, et deborde en bas sur
+     l'acide — c'est la, au telephone, qu'il sort de l'image. */
+  .heros-sujet {{
+    position: absolute; left: 50%; right: auto; top: var(--h-nav); bottom: auto;
+    width: 152%; height: 340px; aspect-ratio: auto; margin-left: -76%;
+    background-image: var(--sujet-tel);
+    background-size: contain; background-position: center top;
+    filter: drop-shadow(0 16px 30px rgba(20, 20, 20, .20));
+  }}
+  /* Mesure : le titre pose sur le tailleur et l'ombre du bras tombait a
+     1,00:1 — du noir sur du noir. Il commence donc la ou le fondu a deja
+     eteint le sujet. Le chevauchement reste, la lisibilite aussi. */
+  .heros-in {{ min-height: 0; padding: 196px 0 56px; }}
   .heros-in > div {{ max-width: none; }}
 }}
 @media (min-width: 881px) {{ .heros-bande {{ display: none; }} }}
@@ -258,16 +335,11 @@ a {{ color: inherit; text-decoration: none; }}
 .sect.sombre {{ background: var(--noir); color: #FFFFFF; }}
 .sect.sombre .para {{ color: rgba(255, 255, 255, .68); }}
 .sect.gris {{ background: var(--fond-2); }}
-.sur-titre {{
-  margin: 0 0 16px; font-size: 12.5px; letter-spacing: .18em;
-  text-transform: uppercase; font-weight: 600; color: var(--sourd);
-}}
-.sect.sombre .sur-titre {{ color: var(--cam); }}
 h2 {{
-  margin: 0 0 20px; font-size: clamp(30px, 4.6vw, 54px); line-height: 1.06;
-  font-weight: 600; letter-spacing: -.035em; max-width: 18ch; text-wrap: balance;
+  margin: 0 0 20px; font-size: clamp(30px, 4.4vw, 50px); line-height: 1;
+  font-weight: 500; letter-spacing: -.012em; max-width: 16ch; text-wrap: balance;
 }}
-.para {{ margin: 0; max-width: 58ch; font-size: 17.5px; color: var(--sourd); }}
+.para {{ margin: 0; max-width: 58ch; font-size: 18px; line-height: 1.34; color: var(--sourd); }}
 .para b {{ color: inherit; font-weight: 500; }}
 .sect.sombre .para b {{ color: #FFFFFF; }}
 
@@ -312,7 +384,7 @@ h2 {{
   transition: transform 160ms var(--sortie), border-color 200ms ease, box-shadow 200ms ease;
 }}
 .sect.sombre .fiche {{ background: #1C1C1C; border-color: #2A2A2A; }}
-.fiche h3 {{ margin: 0 0 10px; font-size: 20px; font-weight: 600; letter-spacing: -.02em; }}
+.fiche h3 {{ margin: 0 0 10px; font-size: 22px; font-weight: 500; letter-spacing: -.01em; }}
 .fiche p {{ margin: 0; font-size: 16px; color: var(--sourd); }}
 .sect.sombre .fiche p {{ color: rgba(255, 255, 255, .64); }}
 .fiche em {{ display: block; margin-top: 16px; font-style: normal; font-size: 13.5px; color: var(--sourd); }}
@@ -366,7 +438,7 @@ h2 {{
 /* ─── PIED ─── */
 footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px 0 46px; }}
 .pied {{ display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 40px; }}
-.pied h4 {{ margin: 0 0 14px; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255, 255, 255, .42); font-weight: 600; }}
+.pied h4 {{ margin: 0 0 14px; font-size: 12.5px; letter-spacing: .01em; text-transform: none; color: rgba(255, 255, 255, .52); font-weight: 600; }}
 .pied ul {{ list-style: none; margin: 0; padding: 0; display: grid; font-size: 15px; }}
 /* 44 px de cible jusque dans le pied : la regle ne s arrete pas la ou l on
    croit que plus personne ne clique */
@@ -392,8 +464,36 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   .pied {{ grid-template-columns: 1fr 1fr; }}
 }}
 @media (max-width: 720px) {{
-  .nav a.onglet {{ display: none; }}
-  .nav a.onglet.tel {{ display: inline-flex; }}
+  /* La barre passe sur DEUX lignes : identite et compte en haut, les trois
+     sections en dessous. Les cacher — ce qu on faisait — rendait trois pages
+     sur cinq inatteignables au telephone, et laissait quand meme la premiere
+     ligne deborder de 8 px. */
+  :root {{ --h-nav: 122px; }}   /* repli : le script mesure la vraie hauteur */
+  .nav-in {{ padding-top: 9px; padding-bottom: 9px; }}
+  /* Le nom ecrit coute 86 px et fait tomber « S'inscrire » sur une troisieme
+     ligne. Le symbole seul suffit en haut d un telephone ; le mot reste lu
+     par les lecteurs d ecran, hors du flux donc sans largeur. */
+  .logo {{ margin-right: 0; min-width: 44px; justify-content: center; }}
+  .logo b {{
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }}
+  .onglets {{
+    display: flex; order: 3; flex-basis: 100%; gap: 4px;
+    margin: 0 -4px; overflow-x: auto; scrollbar-width: none;
+  }}
+  .onglets::-webkit-scrollbar {{ display: none; }}
+  /* Au bureau la barre peut rester transparente sur le heros : le sujet est
+     decale a droite, le texte de la barre vit sur l acide du fond de studio.
+     Au telephone le sujet occupe le CENTRE — « Se connecter » tombait sur des
+     cheveux noirs. La barre reprend donc un sol, dans l acide meme du fond de
+     la photo : le raccord reste invisible, l image part toujours du pixel 0. */
+  .nav[data-pose="non"] {{
+    background: hsl(82 100% 50% / .93); backdrop-filter: blur(10px);
+  }}
+  .nav[data-pose="non"] a.onglet {{ color: rgba(20, 20, 20, .74); }}
+  .nav a.onglet {{ padding: 12px 12px; white-space: nowrap; }}
+  .bouton {{ padding: 0 15px; }}
   .pied {{ grid-template-columns: 1fr; gap: 30px; }}
 }}
 
@@ -420,9 +520,11 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 <nav class="nav">
   <div class="dedans nav-in">
     <a class="logo" href="#accueil"><i aria-hidden="true"></i><b>SwimPay</b></a>
-    <a class="onglet" href="#personnel">Personnel</a>
-    <a class="onglet" href="#business">Business</a>
-    <a class="onglet" href="#integration">Intégration</a>
+    <span class="onglets">
+      <a class="onglet" href="#personnel">Personnel</a>
+      <a class="onglet" href="#business">Business</a>
+      <a class="onglet" href="#integration">Intégration</a>
+    </span>
     <span class="grow"></span>
     <a class="bouton creux" href="#connexion">Se connecter</a>
     <a class="bouton acide" href="#inscription">S'inscrire</a>
@@ -433,19 +535,19 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 <!-- ══════════ ACCUEIL ══════════ -->
 <div class="page" id="accueil">
   <header class="heros">
+    <div class="heros-fond" aria-hidden="true"></div>
+    <div class="heros-sujet" role="img" aria-label="Une utilisatrice de SwimPay"></div>
     <div class="heros-bande" role="img" aria-label="Une utilisatrice de SwimPay"></div>
     <div class="dedans heros-in">
       <div>
-        <h1>Bien plus qu'une <em>application.</em></h1>
-        <p class="dit">Envoyez de l'argent à vos proches, recevez votre salaire ou
-          payez vos employés, émettez des factures FNE, automatisez vos paiements
-          récurrents, liez votre banque et votre Mobile Money — en un clic.</p>
+        <h1>Bien plus qu'une <em>application</em></h1>
+        <p class="dit">Envoyez de l'argent à vos proches, recevez votre salaire et
+          payez vos employés depuis un seul compte. Émettez vos factures FNE et
+          automatisez vos paiements récurrents en une minute.</p>
         <div class="gestes">
           <a class="bouton plein grand" href="#telecharger">Télécharger l'application</a>
           <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir l'application</a>
         </div>
-        <p class="sous">L'expérience complète vit dans l'application.
-          Le web sert à comprendre, s'inscrire, et intégrer.</p>
       </div>
     </div>
   </header>
@@ -453,19 +555,18 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <!-- ── section 1 : le gain de temps, et le Caméléon ── -->
   <section class="sect sombre" id="temps">
     <div class="dedans">
-      <p class="sur-titre">Un gain de temps fou</p>
       <div class="cam-duo">
         <div>
-          <h2>Une opération, une facture, une minute.</h2>
-          <p class="para">Effectuez ou automatisez vos opérations et émettez des
-            <b>factures FNE approuvées par la DGI</b> en une minute. Le numéro de
-            facture, le QR de contrôle et l'archive légale partent avec — vous
-            n'avez rien à ressaisir ailleurs.</p>
+          <h2>Émettez vos factures en une minute</h2>
+          <p class="para">Vos opérations et vos <b>factures FNE approuvées par la
+            DGI</b> partent en une minute. Le numéro, le QR de contrôle et
+            l'archive légale les accompagnent, vous n'avez rien à ressaisir
+            ailleurs.</p>
           <div class="rails" role="group" aria-label="Réseaux pris en charge">
             {"".join(f'<button class="rail" data-h="{h}" data-encre="{e}"{" aria-pressed=~true~" if i == 0 else ""}>{n}</button>' for i, (n, h, e) in enumerate(RAILS)).replace("~", chr(34))}
           </div>
           <p class="cam-quoi">L'application prend la couleur du réseau que vous
-            utilisez. <b>Un seul compte</b>, tous les rails.</p>
+            utilisez. <b>Un seul compte</b> pour Orange Money, Wave, MTN et Moov.</p>
         </div>
         <div class="cam-video">
           <video src="{video}" poster="{affiche}" muted loop playsinline
@@ -478,16 +579,14 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <!-- ── section 2 : l'épargne ── -->
   <section class="sect">
     <div class="dedans">
-      <p class="sur-titre">Épargne</p>
-      <h2>Vous avez envie de réaliser des projets ?</h2>
-      <p class="para">Épargnez votre argent et récupérez-le quand vous voulez, avec
-        des <b>taux d'intérêt</b>. Et si vous préférez ne pas y toucher : verrouillez
-        le coffre jusqu'à une date. Tant qu'elle n'est pas passée, rien n'en sort —
-        <b>y compris pour vous</b>.</p>
+      <h2>Mettez de l'argent de côté</h2>
+      <p class="para">Rangez votre argent dans un coffre et récupérez-le quand vous
+        voulez. Verrouillez-le jusqu'à une date si vous préférez ne pas y toucher
+        avant, <b>personne ne peut l'ouvrir entre-temps</b>.</p>
       {cartes([
-        ("Le coffre", "Un sous-compte où ranger de l'argent, en un geste depuis le compte principal.", "les frais de commission sont coupés à l'entrée"),
-        ("Le verrou daté", "Choisissez une échéance. Le coffre refuse de se libérer avant, et vous dit jusqu'à quand.", "7 jours · 30 jours · 3 mois · 6 mois"),
-        ("Reprendre à tout moment", "Sans verrou, les fonds reviennent sur le compte principal immédiatement.", "aucun délai, aucun frais de sortie"),
+        ("Le coffre", "Rangez de l'argent de côté en un geste depuis votre compte principal.", "les frais de commission sont coupés à l'entrée"),
+        ("Le verrou daté", "Choisissez une échéance. Le coffre refuse de s'ouvrir avant, et vous dit jusqu'à quand.", "7 jours · 30 jours · 3 mois · 6 mois"),
+        ("Reprendre quand vous voulez", "Sans verrou, votre argent revient sur le compte principal tout de suite.", "aucun délai, aucun frais de sortie"),
       ])}
     </div>
   </section>
@@ -495,14 +594,12 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <!-- ── section 3 : la sécurité ── -->
   <section class="sect gris">
     <div class="dedans">
-      <p class="sur-titre">Sécurité</p>
-      <h2>Votre argent est en sécurité, donc vous aussi.</h2>
-      <p class="para">Les fonds sont <b>détenus</b>, pas seulement acheminés. Derrière
-        chaque compte il y a un compte de dépôt réel, et chaque mouvement est inscrit
-        au grand livre — aucun ne disparaît.</p>
+      <h2>Votre argent est en sécurité</h2>
+      <p class="para">Chaque compte repose sur un <b>compte de dépôt réel</b>. Chaque
+        mouvement y est inscrit avec sa date, sa référence et ses frais.</p>
       {cartes([
-        ("Une identité, pas un numéro", "Le compte est ancré sur l'identité vérifiée. Changer de puce n'est pas perdre son compte.", "un citoyen · plusieurs téléphones · un compte"),
-        ("Chaque geste sensible se confirme", "Code, empreinte ou visage avant qu'un montant ne parte. Une PME peut exiger deux signatures.", "PIN · biométrie · double validation"),
+        ("Une identité vérifiée", "Votre compte suit votre identité. Changer de puce ne vous fait pas perdre votre compte.", "un citoyen · plusieurs téléphones · un compte"),
+        ("Chaque geste se confirme", "Code, empreinte ou visage avant qu'un montant ne parte. Une entreprise peut exiger deux signatures.", "PIN · biométrie · double validation"),
         ("Tout est tracé", "Date, référence, frais, route empruntée. Un reçu complet pour chaque opération.", "grand livre · exports comptables"),
       ])}
     </div>
@@ -511,11 +608,10 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <!-- ── téléchargement ── -->
   <section class="sect sombre" id="telecharger">
     <div class="dedans" style="text-align: center">
-      <p class="sur-titre" style="color: var(--acide)">L'application</p>
-      <h2 style="margin-inline: auto">Installez SwimPay sur votre téléphone.</h2>
-      <p class="para" style="margin-inline: auto">L'application s'installe depuis le
-        navigateur, sans passer par un magasin. Elle fonctionne hors connexion pour
-        consulter, et se synchronise dès que le réseau revient.</p>
+      <h2 style="margin-inline: auto">Installez SwimPay en un geste</h2>
+      <p class="para" style="margin-inline: auto">L'application s'installe depuis
+        votre navigateur, sans passer par un magasin. Elle fonctionne hors connexion
+        et se synchronise dès que le réseau revient.</p>
       <div class="gestes" style="justify-content: center; margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
         <button class="bouton acide grand" id="installer">Installer l'application</button>
         <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener"
@@ -530,10 +626,9 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 <div class="page" id="personnel">
   <section class="sect">
     <div class="dedans">
-      <p class="sur-titre">Personnel</p>
-      <h2>Votre argent, votre téléphone, vos règles.</h2>
-      <p class="para">Un compte adossé à votre <b>numéro de téléphone</b>, pas à un
-        RIB. C'est le téléphone qui vous identifie ici : le produit part de là.</p>
+      <h2>Tout votre argent au même endroit</h2>
+      <p class="para">Votre compte s'ouvre avec votre <b>numéro de téléphone</b>.
+        Vous envoyez, vous recevez et vous épargnez sans changer d'application.</p>
       {cartes(PERSONNEL)}
       <div class="gestes" style="margin-top: 44px; display: flex; gap: 12px; flex-wrap: wrap">
         <a class="bouton acide grand" href="#inscription">Ouvrir un compte</a>
@@ -547,11 +642,10 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 <div class="page" id="business">
   <section class="sect">
     <div class="dedans">
-      <p class="sur-titre">Business</p>
-      <h2>Le même moteur, quatre métiers.</h2>
+      <h2>Un compte pour quatre métiers</h2>
       <p class="para">Un commerçant, une PME, une boutique en ligne et un cabinet
-        comptable ne font pas le même travail. Ils utilisent le même compte, la même
-        chaîne de paiement, et des écrans faits pour eux.</p>
+        comptable ne font pas le même travail. Chacun retrouve ses écrans, sur la
+        même chaîne de paiement.</p>
       {cartes(BUSINESS)}
       <div class="gestes" style="margin-top: 44px; display: flex; gap: 12px; flex-wrap: wrap">
         <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
@@ -565,10 +659,9 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 <div class="page" id="integration">
   <section class="sect">
     <div class="dedans">
-      <p class="sur-titre">Intégration</p>
-      <h2>Encaisser depuis votre site en quelques lignes.</h2>
-      <p class="para">Le SDK ouvre un checkout hébergé par SwimPay. Vous ne touchez
-        jamais aux identifiants de paiement : ils ne passent pas par votre serveur.</p>
+      <h2>Encaissez depuis votre site</h2>
+      <p class="para">Le SDK ouvre une page de paiement hébergée par SwimPay. Les
+        identifiants de vos clients ne passent jamais par votre serveur.</p>
       <div class="code"><pre style="margin:0">{CODE_SDK}</pre></div>
       {cartes([
         ("Le checkout est hébergé", "Il s'ouvre par-dessus votre page. Les informations de paiement ne transitent pas chez vous.", "aucune donnée sensible sur votre serveur"),
@@ -590,7 +683,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     <div class="form-corps">
       <div>
         <h2 style="font-size: clamp(28px, 3.4vw, 40px)">Se connecter</h2>
-        <p class="para">À votre espace personnel.</p>
+        <p class="para">Retrouvez votre espace personnel.</p>
         <form id="f-connexion" novalidate>
           <label class="champ-l" for="c-tel">Numéro de téléphone</label>
           <input class="champ" id="c-tel" name="tel" type="tel" inputmode="tel"
@@ -615,7 +708,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     <div class="form-corps">
       <div>
         <h2 style="font-size: clamp(28px, 3.4vw, 40px)">Ouvrir un compte</h2>
-        <p class="para">Quelques minutes, et une pièce d'identité.</p>
+        <p class="para">Comptez quelques minutes et une pièce d'identité.</p>
         <form id="f-inscription" novalidate>
           <label class="champ-l" for="i-nom">Nom et prénoms</label>
           <input class="champ" id="i-nom" name="nom" autocomplete="name" placeholder="Camille Laurent" required>
@@ -646,8 +739,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     <div class="pied">
       <div>
         <a class="logo" href="#accueil"><i aria-hidden="true"></i><b>SwimPay</b></a>
-        <p class="mot">L'argent reste chez nous, pas en transit. Un compte adossé à
-          un numéro de téléphone, des fonds réellement détenus.</p>
+        <p class="mot">SwimPay détient vos fonds sur un compte de dépôt réel. Votre
+          compte s'ouvre avec votre numéro de téléphone.</p>
       </div>
       <div>
         <h4>Produit</h4>
@@ -677,7 +770,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     </div>
     <div class="pied-bas">
       <span>© 2026 SwimPay</span>
-      <span>Prototype d'interface — aucun service n'est encore branché.</span>
+      <span>Prototype d'interface. Aucun service n'est encore branché.</span>
     </div>
   </div>
 </footer>
@@ -725,6 +818,13 @@ va(location.hash.slice(1));
    Elle ne se pose qu'une fois qu'on a quitté le haut : au premier pixel,
    l'image doit être entière. On lit la position réelle plutôt que de deviner. */
 const nav = document.querySelector(".nav");
+/* --h-nav pilote le decalage du heros bord a bord. Une constante ecrite a la
+   main devient fausse des que la barre change de forme — elle passe a deux
+   lignes en telephone. On MESURE, et le CSS ne sert plus que de repli. */
+const hauteurBarre = () =>
+  document.documentElement.style.setProperty("--h-nav", Math.round(nav.getBoundingClientRect().height) + "px");
+new ResizeObserver(hauteurBarre).observe(nav);
+hauteurBarre();
 const surHeros = () => {{
   const h = document.querySelector(".page.active .heros");
   const dessus = !!h && scrollY < 24;

@@ -27,8 +27,8 @@ ws.onmessage = (m) => { const d = JSON.parse(m.data);
   if (d.method === "Runtime.exceptionThrown") exceptions.push(String(d.params.exceptionDetails.exception?.description || d.params.exceptionDetails.text || "").split("\n")[0]);
   if (d.method && evs.has(d.method)) evs.get(d.method)(d.params); };
 const cmd = (m, p = {}) => new Promise((r) => { const id = ++seq; att.set(id, r); ws.send(JSON.stringify({ id, method: m, params: p })); });
-const ev = async (e) => {
-  const r = await cmd("Runtime.evaluate", { expression: e, returnByValue: true });
+const ev = async (e, attendre = false) => {
+  const r = await cmd("Runtime.evaluate", { expression: e, returnByValue: true, awaitPromise: attendre });
   if (r.result.exceptionDetails) return "EXC: " + String(r.result.exceptionDetails.exception?.description || "").split("\n")[0];
   return r.result.result.value;
 };
@@ -62,7 +62,25 @@ for (const page of ["accueil", "personnel", "business", "integration", "connexio
 
 await ev(`location.hash = "#accueil"`); await dodo(300);
 test("le héros porte la promesse",
-  (await ev(`document.querySelector(".heros h1").textContent.replace(/\\s+/g, " ").trim()`)) === "Bien plus qu'une application.");
+  (await ev(`document.querySelector(".heros h1").textContent.replace(/\\s+/g, " ").trim()`)) === "Bien plus qu'une application");
+
+/* LA CHARTE D'ÉCRITURE, tenue par la sonde et non par la bonne volonté.
+   Relevé sur revolut.com : aucun titre ne porte de point final, aucun texte
+   ne porte de tiret cadratin, et personne n'écrit « X, pas Y ». */
+const ecriture = await ev(`(() => {
+  const titres = [...document.querySelectorAll("h1, h2, .fiche h3")]
+    .map((e) => e.textContent.replace(/\\s+/g, " ").trim()).filter(Boolean);
+  const ponctues = titres.filter((t) => /[.?!]$/.test(t));
+  const longs = titres.filter((t) => t.split(" ").length > 7);
+  const corps = document.body.innerText;
+  const cadratins = (corps.match(/\\u2014/g) || []).length;
+  const antitheses = (corps.match(/, pas (un |une |le |la |seulement)/g) || []).length;
+  return { titres: titres.length, ponctues, longs, cadratins, antitheses };
+})()`);
+test("aucun titre ne se termine par un point", ecriture.ponctues.length === 0, ecriture.ponctues.join(" | "));
+test("aucun titre ne dépasse sept mots", ecriture.longs.length === 0, ecriture.longs.join(" | "));
+test("aucun tiret cadratin dans le corps", ecriture.cadratins === 0, `${ecriture.cadratins} trouvé(s)`);
+test("aucune antithèse « X, pas Y »", ecriture.antitheses === 0, `${ecriture.antitheses} trouvée(s)`);
 test("le héros dit la facture FNE",
   (await ev(`document.querySelector(".heros .dit").textContent.includes("FNE")`)) === true);
 /* Le texte du heros est pose SUR UNE PHOTO. Mesure au pixel : 13,75:1 au pire
@@ -87,6 +105,28 @@ test("l image du heros part du premier pixel",
   (await ev(`Math.round(document.querySelector(".heros").getBoundingClientRect().top)`)) <= 2);
 test("la barre s efface sur le heros",
   (await ev(`document.querySelector(".nav").getAttribute("data-pose")`)) === "non");
+
+/* LE PARALLAXE. Une animation de défilement qui ne bouge pas se voit très mal
+   à l'œil et pas du tout dans le code : on lit les deux transforms AVANT et
+   APRÈS avoir défilé, et on exige qu'ils diffèrent l'un de l'autre. */
+const derive = await ev(`(async () => {
+  const lis = () => ({
+    fond: getComputedStyle(document.querySelector(".heros-fond")).transform,
+    sujet: getComputedStyle(document.querySelector(".heros-sujet")).transform,
+  });
+  scrollTo(0, 0);
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const avant = lis();
+  scrollTo(0, 420);
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const apres = lis();
+  scrollTo(0, 0);
+  return { avant, apres,
+    bouge: apres.fond !== avant.fond && apres.sujet !== avant.sujet,
+    ecarte: apres.fond !== apres.sujet };
+})()`, true);
+test("les deux couches du héros dérivent au défilement",
+  derive.bouge === true && derive.ecarte === true, JSON.stringify(derive));
 
 test("la section du gain de temps parle de la DGI",
   (await ev(`document.getElementById("temps").textContent.includes("DGI")`)) === true);
@@ -114,7 +154,7 @@ test("le formulaire ne prétend pas enregistrer",
 test("un pied de page existe, avec ses colonnes",
   (await ev(`document.querySelectorAll("footer .pied > div").length`)) === 4);
 test("le pied dit que rien n'est branché",
-  (await ev(`document.querySelector("footer .pied-bas").textContent.includes("aucun service")`)) === true);
+  (await ev(`/aucun service/i.test(document.querySelector("footer .pied-bas").textContent)`)) === true);
 test("chaque lien externe s'ouvre en sécurité",
   (await ev(`[...document.querySelectorAll('a[target="_blank"]')].every((a) => (a.rel || "").includes("noopener"))`)) === true);
 
@@ -122,6 +162,30 @@ test("chaque lien externe s'ouvre en sécurité",
 for (const [nom, w, h] of [["mobile", 390, 844], ["tablette", 768, 1024], ["bureau", 1440, 900]]) {
   await cmd("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: w < 881 });
   await ev(`location.hash = "#accueil"`); await dodo(400);
+  /* LA GARDE QUI MANQUAIT. Sans meta viewport, un telephone met la page en
+     page a 980 px et la reduit : je demandais 390, je mesurais 980, et TOUT
+     ce que je verifiais ensuite portait sur une mise en page qui n existe sur
+     aucun telephone. Une sonde qui n a pas la largeur qu elle a demandee doit
+     le dire AVANT de mesurer quoi que ce soit d autre. */
+  const large = await ev(`innerWidth`);
+  test(`${nom} : la mise en page fait bien ${w} px de large`, large === w, `mesure ${large}`);
+
+  /* La barre a le droit de passer a deux lignes en telephone. Pas a trois :
+     a trois elle mangeait 176 px, soit la moitie de la bande photo du heros.
+     Et les trois sections doivent rester ATTEIGNABLES — les cacher rendait
+     trois pages sur cinq inaccessibles au telephone. */
+  const barre = await ev(`(() => {
+    const n = document.querySelector(".nav");
+    const vus = [...document.querySelectorAll(".nav a.onglet")]
+      .filter((a) => a.getBoundingClientRect().width > 0).length;
+    return { haut: Math.round(n.getBoundingClientRect().height), onglets: vus,
+             token: getComputedStyle(document.documentElement).getPropertyValue("--h-nav").trim() };
+  })()`);
+  const plafond = w < 721 ? 130 : 80;
+  test(`${nom} : la barre tient en ${w < 721 ? "deux lignes" : "une ligne"} et garde ses trois sections`,
+    barre.haut <= plafond && barre.onglets === 3, JSON.stringify(barre));
+  test(`${nom} : --h-nav vaut la hauteur mesuree de la barre`,
+    barre.token === barre.haut + "px", JSON.stringify(barre));
   const petites = await ev(`(() => {
     const p = [];
     document.querySelectorAll(".page.active a, .page.active button, .nav a, .nav button, footer a").forEach((e) => {
