@@ -8,6 +8,7 @@
 export * from './matcher/decide.js';
 export * from './invoicer/totals.js';
 export * from './invoicer/dgi-payload.js';
+export * from './invoicer/dgi-adapter.js';
 export * from './directory/msisdn.js';
 export * from './directory/identity.js';
 export * from './directory/recipient.js';
