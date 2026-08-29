@@ -313,3 +313,91 @@ dans le contrat et de le rendre visible dans l'application.
 - **Les plafonds sont des hypothèses tierces.**
 - **Le tarif de la puce marchande Orange n'est pas publié** — et c'est le chiffre
   qui départage A et E.
+
+---
+
+## 11. La boucle de combinaisons — B × E, mesuré (30 août 2026)
+
+> Demande de LO : *« les montages 2 et 3 peuvent être combinés — lance une loop
+> de combinaisons et sors-moi des modèles rentables et intelligents. »* Et une
+> décision actée en même temps : **plus de lecture de notifications** ; le
+> montage 1 par le téléphone est abandonné.
+>
+> Outil : `design/pivot/sondes/hybride.mjs`, qui importe le moteur de netting et
+> joue **72 combinaisons × 2 scénarios** (mois normal, mois avec vague de
+> retraits au jour 15). Quatre leviers : où mettre des caisses, quels mouvements
+> y passent, que faire caisse à sec, combien y immobiliser.
+
+### 11.1 La trouvaille : la soupape
+
+**Le montage 3 n'est pas un concurrent du montage 2 — c'est son filet de
+sécurité.** Règle : *caisse à sec → au lieu de refuser, router en direct par le
+rail le moins cher.* L'échec devient un coût, jamais un refus.
+
+| | B pur | **B + soupape** |
+|---|---|---|
+| Mois normal | 2 132 507 F, 0 refus | 2 132 507 F, 0 refus |
+| **Mois avec vague** | 2 268 155 F, **167 refus** | **3 945 429 F, 0 refus** |
+
+> **La vague qui cassait le modèle B coûte désormais ≈ 1,7 M F de plus ce
+> mois-là — et zéro paiement refusé.** Le problème « incident de presse »
+> devient un poste de dépense chiffré. C'est la robustesse au retrait que LO
+> demandait, et elle ne demande ni ligne de crédit ni ralentissement des
+> retraits : la ligne de crédit reste souhaitable, elle n'est plus bloquante.
+
+### 11.2 Le gagnant de la grille
+
+**Toutes caisses · gros mouvements (> 2 M) en direct · soupape · 6 M/boîte** :
+
+| | Mois normal | Mois avec vague |
+|---|---|---|
+| Brut | 2 269 755 199 F | 2 455 241 708 F |
+| Netting (rééquilibrages) | 120,2 M → 1 201 817 F | 188,3 M → 1 882 829 F |
+| Direct (gros mouvements) | 75,4 M → 753 754 F | 69,8 M → 697 855 F |
+| Secours (soupape) | 0 | 122,5 M → 1 225 035 F |
+| **Coût rails** | **1 955 571 F = 0,09 %** | **3 805 720 F = 0,16 %** |
+| Refus | **0** | **0** |
+
+Float immobilisé : 30 M F (coût retenu : 1 %/mois, hypothèse affichée).
+**Référence tout-direct (montage 3 pur) : 11 237 370 F/mois.** Le gagnant
+économise **≈ 9 M F par mois, soit ~80 % du coût de flux.**
+
+### 11.3 La surprise honnête : mes « caisses choisies » perdent
+
+J'avais proposé de ne tenir des caisses que sur Orange et Wave (`17` §3.2 en
+esprit). **La mesure me donne tort** : 5 368 008 F/mois contre 2 132 507 —
+**2,5 fois plus cher**. MTN, Moov et la banque font assez de volume pour que
+tout router en direct coûte plus que les caisses n'économisent en float. La
+banque surtout : c'est la boîte des paies.
+
+### 11.4 Les archétypes, côte à côte
+
+| Archétype | Coût normal | Float | Coût en vague | Refus (N/V) |
+|---|---|---|---|---|
+| B pur | 2 132 507 F | 15 M | 2 268 155 F | 0 / **167** |
+| **La Soupape** | 2 132 507 F | 15 M | 3 945 429 F | **0 / 0** |
+| Caisses choisies + soupape | 5 368 008 F | 6 M | 7 244 113 F | 0 / 0 |
+| Deux vitesses (> 1 M direct) + soupape | 2 269 830 F | 15 M | 4 119 949 F | 0 / 0 |
+| Le Complet | 5 738 572 F | 6 M | 7 454 337 F | 0 / 0 |
+| **Tout direct (montage 3 pur)** | **11 237 370 F** | 0 | 13 166 168 F | 0 / 0 |
+
+Sur 72 combinaisons, **9 sont éliminées** (au moins un paiement refusé) — toutes
+sans soupape.
+
+### 11.5 Les limites, dites avant qu'on les découvre
+
+1. **Le coût d'encaissement (payin) n'est pas compté.** Le simulateur compare
+   les coûts de sortie et de rééquilibrage. La commission que l'opérateur prend
+   à l'entrée existe dans *toutes* les combinaisons au même niveau : elle ne
+   change pas le classement, mais elle s'ajoute au niveau absolu partout.
+2. **Profils hypothétiques** — la vraie mesure viendra des flux réels.
+3. Les chiffres de `17` §7 (89,7 %) datent d'une graine antérieure ; depuis
+   l'ajout de l'on-us, la même config donne 90,6 %. Même ordre, mêmes
+   conclusions.
+
+### 11.6 Ce que ça décide
+
+Le modèle recommandé devient : **« Caisses + Soupape »** — le montage 2 partout,
+le montage 3 en dessous comme filet permanent et comme canal des très gros
+mouvements. Le routeur (E) n'est plus un modèle : c'est **l'organe de la
+soupape**. À coder en premier.

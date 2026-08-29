@@ -163,13 +163,14 @@ Trois voies, par ordre de solidité :
 3. **La lecture des notifications sur le téléphone du marchand** — instantané,
    sans API.
 
-> **La voie 3 est déjà construite dans ce repo.** L'application Android
-> réceptrice — 25 000 lignes de Kotlin — a été écrite exactement pour ça : voir
-> arriver une notification de paiement et la remonter. `00_VISION.md` §6 la
-> déclare « à retirer, hors sujet ».
+> ~~La voie 3 est déjà construite dans ce repo (l'app Android réceptrice).~~
 >
-> **Avec ce montage, elle redevient le cœur du sujet.** À rouvrir avant de la
-> supprimer.
+> **DÉCISION LO, 30 août 2026 : la voie 3 est abandonnée.** « Je ne veux plus
+> faire une app qui vérifie les notifications — ce n'est pas un modèle
+> rentable. » L'app Android réceptrice reste donc hors sujet, comme
+> `00_VISION.md` §6 le disait. Restent les voies 1 (API des opérateurs) et
+> 2 (import de relevés). La suite du travail porte sur la **combinaison des
+> montages 2 et 3** — voir `18` §11.
 
 ### 3.5 Ce qu'il faut vérifier avant de s'engager
 

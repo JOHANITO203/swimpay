@@ -30,7 +30,22 @@
  *
  *   node netting.mjs                 tous les scenarios
  *   node netting.mjs --clients 400 --budget 3000000
+ *
+ * ── MODE HYBRIDE (options de cfg, toutes inertes par defaut) ───────────────
+ *   caisses: ['orange','wave']  ne tenir des caisses QUE la ; le reste part
+ *                               en routage direct (montage 3)
+ *   seuilDirect: 1_000_000      un mouvement au-dela part en direct, sans
+ *                               toucher les caisses — les gros coups ne les
+ *                               vident plus
+ *   fallbackDirect: true        caisse a sec -> on route en direct au lieu
+ *                               d echouer. L echec devient un cout.
+ *   budgets: {orange: 5e6, …}   budget par boite, remplace budgetParBoite
+ *
+ * Le fichier est aussi un MODULE : hybride.mjs importe simule() pour explorer
+ * les combinaisons. Le chemin par defaut ne consomme pas un tirage de plus,
+ * pour que la graine reproduise les chiffres deja publies.
  */
+import { pathToFileURL } from 'node:url';
 
 function graine(n) {
   return function () {
@@ -41,12 +56,12 @@ function graine(n) {
   };
 }
 
-const OPERATEURS = ['orange', 'wave', 'mtn', 'moov', 'banque'];
+export const OPERATEURS = ['orange', 'wave', 'mtn', 'moov', 'banque'];
 
 /* Les rails. PayDunya et Julaya releves en primaire (docs/pivot/09 et 10) ;
    Wave, Orange et Hub2 en source tierce. Le plafond du compte marchand est une
    hypothese tierce — c est lui qui contraint le modele. */
-const RAILS = [
+export const RAILS = [
   { nom: 'marchand-wave', cout: 0.010, plafondMensuel: 15_000_000, ops: ['wave'] },
   { nom: 'marchand-orange', cout: 0.015, plafondMensuel: 20_000_000, ops: ['orange'] },
   { nom: 'julaya', cout: 0.010, plafondMensuel: Infinity, ops: OPERATEURS },
@@ -60,7 +75,7 @@ const RAIL_PISPI = { nom: 'pi-spi', cout: 0, plafondMensuel: Infinity, ops: OPER
    `partTransfert`: la part de ce qui ressort qui va vers un TIERS (salaire,
                     fournisseur) ; le reste est un RETRAIT du client lui-meme ;
    `garde`        : la part des encaissements qu il laisse chez nous. */
-const PROFILS_BASE = {
+export const PROFILS_BASE = {
   commercant: {
     part: 0.45, entrees: 900_000, partTransfert: 0.30, garde: 0.05,
     mixIn: { wave: 0.50, orange: 0.28, mtn: 0.14, moov: 0.08, banque: 0 },
@@ -90,22 +105,31 @@ const PROFILS_BASE = {
 
 const P_IN = 0.6, P_OUT = 0.5, P_RET = 0.35; // frequences journalieres
 
-function simule(cfg) {
+export function simule(cfg) {
   const profils = cfg.profils ?? PROFILS_BASE;
   const rnd = graine(cfg.graine ?? 12345);
   const rails = cfg.pispi ? [RAIL_PISPI, ...RAILS] : RAILS;
   const JOURS = cfg.jours ?? 30;
 
+  /* Mode hybride. Tout est inerte par defaut : le chemin de base garde
+     exactement les memes tirages et les memes chiffres. */
+  const actives = cfg.caisses ?? OPERATEURS;
+  const seuilDirect = cfg.seuilDirect ?? Infinity;
+  const fallbackDirect = cfg.fallbackDirect ?? false;
+
   const reserve = {}, budget = {}, creux = {};
   for (const op of OPERATEURS) {
-    budget[op] = cfg.budgetParBoite;
-    reserve[op] = cfg.budgetParBoite;
-    creux[op] = cfg.budgetParBoite;
+    // Une boite inactive n a ni budget ni reserve : tout y part en direct.
+    const b = actives.includes(op) ? (cfg.budgets?.[op] ?? cfg.budgetParBoite) : 0;
+    budget[op] = b;
+    reserve[op] = b;
+    creux[op] = b;
   }
   const consomme = {};
   for (const r of rails) consomme[r.nom] = 0;
 
   let brut = 0, deplace = 0, frais = 0, echecs = 0, montantEchoue = 0, onUs = 0;
+  let directement = 0, fraisDirect = 0, secours = 0, fraisSecours = 0;
   const densite = cfg.densite ?? 0;
   const entreParOp = {}, sortParOp = {};
   for (const op of OPERATEURS) { entreParOp[op] = 0; sortParOp[op] = 0; }
@@ -157,9 +181,24 @@ function simule(cfg) {
     return manque <= 0;
   }
 
+  /* Le routage direct — le montage 3 a l interieur du montage 2. Le mouvement
+     part immediatement par le rail le moins cher, frais sur le montant plein,
+     sans toucher les caisses. */
+  function routeDirect(op, m, enSecours) {
+    const rail = choisitRail(op, m);
+    if (!rail) { echecs++; montantEchoue += m; return; }
+    if (enSecours) { secours += m; fraisSecours += m * rail.cout; }
+    else { directement += m; fraisDirect += m * rail.cout; }
+    consomme[rail.nom] += m;
+  }
+
   function debite(op, m) {
+    // Pas de caisse ici, ou mouvement trop gros pour elle : direct d office.
+    if (!actives.includes(op) || m > seuilDirect) { routeDirect(op, m, false); return; }
     if (reserve[op] >= m) { reserve[op] -= m; }
     else if (rapprovisionne(op, m - reserve[op])) { reserve[op] -= m; }
+    // La soupape : caisse a sec -> l echec devient un cout, pas un refus.
+    else if (fallbackDirect) { routeDirect(op, m, true); return; }
     else { echecs++; montantEchoue += m; return; }
     if (reserve[op] < creux[op]) creux[op] = reserve[op];
   }
@@ -219,15 +258,22 @@ function simule(cfg) {
   for (const op of OPERATEURS) ecart += Math.abs(entreParOp[op] - sortParOp[op]);
   const structurel = brut > 0 ? ecart / 2 / brut : 0;
 
+  /* « traverse » = tout ce qui a paye un rail : reequilibrages + direct +
+     secours. Dans le chemin de base, direct et secours valent zero et les
+     chiffres publies ne bougent pas. */
+  const traverse = deplace + directement + secours;
+  const coutTotal = frais + fraisDirect + fraisSecours;
+
   return {
     clients: clients.length, brut, deplace, frais, onUs,
+    directement, fraisDirect, secours, fraisSecours, traverse, coutTotal,
     tauxOnUs: brut > 0 ? onUs / brut : 0,
-    compensation: brut > 0 ? 1 - deplace / brut : 0,
+    compensation: brut > 0 ? 1 - traverse / brut : 0,
     structurel,
-    coutEffectif: brut > 0 ? frais / brut : 0,
-    economie: brut * 0.02 - frais,
+    coutEffectif: brut > 0 ? coutTotal / brut : 0,
+    economie: brut * 0.02 - coutTotal,
     echecs, montantEchoue, creux, reserve,
-    float: cfg.budgetParBoite * OPERATEURS.length,
+    float: OPERATEURS.reduce((s, op) => s + budget[op], 0),
     entreParOp, sortParOp,
   };
 }
@@ -265,6 +311,9 @@ function ligne(titre, r) {
     `| compens ${P(r.compensation).padStart(8)} | struct ${P(r.structurel).padStart(7)} ` +
     `| frais ${F(r.frais).padStart(9)} | ${P(r.coutEffectif).padStart(7)}` + al);
 }
+
+// Le rapport complet ne tourne que si le fichier est LANCE, pas importe.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? Number(process.argv[i + 1]) : d; };
 const CLIENTS = arg('clients', 400), BUDGET = arg('budget', 3_000_000);
@@ -327,3 +376,5 @@ console.log('\n— 7. Le detail du scenario retenu');
   }
 }
 console.log('');
+
+} // fin du rapport lance directement
