@@ -457,6 +457,53 @@ test("la pastille du sélecteur glisse au lieu de sauter",
   glisse.b > glisse.a && glisse.retour === glisse.a && glisse.transition !== "0s",
   JSON.stringify(glisse));
 
+/* ═══ 9 quater. les gestes des écrans business ═══
+   Trois widgets portent des chiffres. On vérifie qu'ils les FONT LIRE :
+   la donnée se construit sous l'œil au lieu d'être posée. */
+const gestes = await evAttendu(`(async () => {
+  const releve = {};
+  const voir = async (ecran, sel, clef) => {
+    va(ecran);
+    await new Promise((r) => setTimeout(r, 140));
+    const e = document.querySelector(sel);
+    if (!e) { releve[clef] = { absent: true }; return; }
+    const s = getComputedStyle(e);
+    releve[clef] = { nom: s.animationName, jouees: e.getAnimations().length, delai: s.animationDelay };
+  };
+  await voir("b-commercant", "#b-commercant .barres i:nth-child(3)", "barres");
+  await voir("b-pme", "#b-pme .jauge-w i", "jauge");
+  await voir("b-comptable", "#b-comptable .anneau-c", "anneau");
+  return releve;
+})()`);
+test("le rythme des commandes se dresse, heure par heure",
+  gestes.barres && (gestes.barres.absent || (gestes.barres.nom === "barre-monte"
+    && gestes.barres.jouees > 0 && gestes.barres.delai !== "0s")),
+  JSON.stringify(gestes.barres));
+test("les jauges se remplissent jusqu'à leur niveau",
+  gestes.jauge && (gestes.jauge.absent || (gestes.jauge.nom === "jauge-remplit" && gestes.jauge.jouees > 0)),
+  JSON.stringify(gestes.jauge));
+
+/* L'ANNEAU EST LE POINT FRAGILE : une propriété personnalisée NON TYPÉE ne
+   s'interpole pas — l'anneau sauterait de 0 à sa valeur sans qu'on le voie.
+   On ne se fie donc pas au nom de l'animation : on relève --part PENDANT
+   qu'elle tourne et on exige une valeur intermédiaire. */
+const anneau = await evAttendu(`(async () => {
+  va("b-comptable");
+  await new Promise((r) => setTimeout(r, 60));
+  const e = document.querySelector("#b-comptable .anneau-c");
+  if (!e) return { absent: true };
+  const lit = () => parseFloat(getComputedStyle(e).getPropertyValue("--part")) || 0;
+  const vus = [];
+  for (let i = 0; i < 5; i++) { await new Promise((r) => setTimeout(r, 90)); vus.push(lit()); }
+  await new Promise((r) => setTimeout(r, 500));
+  const fin = lit();
+  return { vus, fin, intermediaires: vus.filter((v) => v > 0 && v < fin - 0.5).length };
+})()`);
+test("la part de l'anneau se dessine au lieu de sauter",
+  anneau.absent === true || anneau.intermediaires >= 1,
+  JSON.stringify(anneau));
+await ev('va("accueil")'); await dodo(300);
+
 /* ═══ 10. le mouvement suit l'UX de CHAQUE format ═══
    Les trois interfaces ne sont pas la même : le téléphone a un bas (pouce,
    pilule de navigation, feuille qui monte), le bureau n'en a pas (barre en

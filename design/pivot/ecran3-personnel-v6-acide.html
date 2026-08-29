@@ -1531,6 +1531,69 @@ button { font: inherit; color: inherit; }
   .row.neuve { transition: opacity 200ms ease; }
   .segments::before { transition: none; }
 }
+
+/* ═══════════════ LES GESTES DES ÉCRANS BUSINESS ═══════════════
+   Trois widgets portent des chiffres : les animer fait LIRE la donnée au lieu
+   de la poser. Tous en `transform` — la largeur et la hauteur restent celles
+   que le calcul a produites, on ne fait que les révéler. Animer `width` ferait
+   recalculer la mise en page à chaque image. */
+
+/* une propriété personnalisée NON TYPÉE ne s'interpole pas : sans cette
+   déclaration, l'anneau sauterait de 0 à sa valeur au lieu de se dessiner */
+@property --part {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* ─── LE RYTHME DES COMMANDES ───
+     Les barres se dressent depuis la ligne de base, dans l'ordre des heures.
+     La cascade dit le TEMPS : on lit la journée de gauche à droite. */
+  :where(.ecran:not([hidden]) .barres i) {
+    transform-origin: bottom;
+    animation: barre-monte 420ms var(--sortie) backwards;
+  }
+  @keyframes barre-monte {
+    from { transform: scaleY(0); opacity: .35; }
+    to   { transform: scaleY(1); opacity: 1; }
+  }
+  :where(.ecran:not([hidden]) .barres i:nth-child(1)) { animation-delay: 40ms; }
+  :where(.ecran:not([hidden]) .barres i:nth-child(2)) { animation-delay: 85ms; }
+  :where(.ecran:not([hidden]) .barres i:nth-child(3)) { animation-delay: 130ms; }
+  :where(.ecran:not([hidden]) .barres i:nth-child(4)) { animation-delay: 175ms; }
+  :where(.ecran:not([hidden]) .barres i:nth-child(5)) { animation-delay: 220ms; }
+  :where(.ecran:not([hidden]) .barres i:nth-child(6)) { animation-delay: 265ms; }
+  :where(.ecran:not([hidden]) .barres i:nth-child(7)) { animation-delay: 310ms; }
+  :where(.ecran:not([hidden]) .barres i:nth-child(8)) { animation-delay: 355ms; }
+
+  /* ─── LES JAUGES ───
+     Elles se remplissent depuis la gauche jusqu'à leur niveau. Voir le
+     remplissage dit COMBIEN ; un trait posé ne dit que « où ça s'arrête ». */
+  :where(.ecran:not([hidden]) .jauge i),
+  :where(.ecran:not([hidden]) .jauge-w i) {
+    transform-origin: left;
+    animation: jauge-remplit 620ms var(--sortie) 80ms backwards;
+  }
+  @keyframes jauge-remplit {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+
+  /* ─── L'ANNEAU DE RÉPARTITION ───
+     La part se dessine au lieu d'être posée. */
+  :where(.ecran:not([hidden]) .anneau-c) {
+    animation: anneau-remplit 760ms var(--sortie) 60ms backwards;
+  }
+  @keyframes anneau-remplit { from { --part: 0; } }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.ecran:not([hidden]) .barres i),
+  :where(.ecran:not([hidden]) .jauge i),
+  :where(.ecran:not([hidden]) .jauge-w i),
+  :where(.ecran:not([hidden]) .anneau-c) { animation: none; }
+}
 </style>
 
 <!-- ================================================================

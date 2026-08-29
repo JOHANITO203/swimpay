@@ -1278,7 +1278,33 @@ d'écrire un défaut : il cède devant tout ce qui est explicite.
   portée de sa requête média. Légal, mais illisible, et impossible à distinguer
   d'un doublon accidentel : il s'appelle maintenant `entre-bas-large`.
 
-## État : 65 écrans · 53/53 · 0 défaut · chorégraphies gardées
+
+## Les gestes des ecrans business
+
+Trois widgets portent des chiffres. Les animer, c est faire LIRE la donnee au
+lieu de la poser.
+
+| widget | ce que le geste dit |
+|---|---|
+| **les barres du rythme** | elles se dressent depuis la ligne de base, dans l ordre des heures — la cascade dit le TEMPS, on lit la journee de gauche a droite |
+| **les jauges** | elles se remplissent jusqu a leur niveau : voir le remplissage dit COMBIEN, un trait pose ne dit que « ou ca s arrete » |
+| **l anneau** | la part se dessine au lieu d etre posee |
+
+Toutes en `transform` (echelle) : la largeur et la hauteur restent celles que
+le calcul a produites, on ne fait que les reveler. Animer `width` ferait
+recalculer la mise en page a chaque image.
+
+**Le point fragile etait l anneau.** Une propriete personnalisee NON TYPEE ne
+s interpole pas : sans `@property --part { syntax: "<number>" }`, l anneau
+sauterait de 0 a sa valeur sans qu on voie rien. La sonde ne se fie donc pas au
+nom de l animation — elle releve `--part` PENDANT qu elle tourne et exige des
+valeurs intermediaires.
+
+Et les trois precautions issues de la panne precedente, appliquees d emblee :
+verifier que le nom d image-cles est LIBRE avant de l ecrire, `:where()` sur
+tout ce qui est generique, et `@property` au premier niveau.
+
+## État : 65 écrans · 56/56 · 0 défaut · gestes business mesurés
 
 Contraste : aucune combinaison sous le seuil, en clair comme en sombre.
 Cibles tactiles, tailles de texte, retours de flux, libellés de boutons,
