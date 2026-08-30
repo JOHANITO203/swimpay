@@ -30,6 +30,16 @@ Réglages du tableau de bord :
 
 Chaque poussée sur cette branche redéploie.
 
+> **« Retry deployment » ne corrige rien.** Le bouton rejoue le MÊME commit,
+> pas le dernier. Deux builds ont été perdus ainsi, à afficher des valeurs
+> déjà corrigées sur la branche. On le reconnaît à trois lignes du journal :
+>
+>     Success: Dependencies restored from build cache.
+>     No updated asset files to upload. Proceeding with deployment...
+>
+> Après une correction, **pousser un commit** — c'est la seule façon sûre de
+> déclencher un build sur le code neuf.
+
 ## Les trois pannes déjà payées
 
 Trois builds ont échoué avant que celui-ci passe. Chacune a laissé une trace
