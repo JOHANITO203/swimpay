@@ -158,3 +158,96 @@ titulaire, rail : tout cela vient du compte, jamais de l'image.
 posée par-dessus : il est *dans* l'image du fond. La carte n'est pas un fond,
 c'est un objet détouré — et comme elle est translucide, elle prend la couleur de
 ce qu'il y a derrière elle.
+
+---
+
+## 4 · La facture — quatre concepts en un seul prompt
+
+Pour illustrer la facture normalisée sur le site. Quatre idées distinctes, pas
+quatre variantes d'une même image : chacune porte un message différent du site.
+
+**Format** : 1200 × 800 (3:2 paysage) pour une bande de section. Passer en
+1000 × 1000 si l'image va dans une carte.
+
+**Le piège à ne jamais oublier** : un modèle d'image écrit toujours du faux
+texte sur une facture, et ça ressort en charabia. La consigne « aucun texte »
+est répétée trois fois dans le prompt, c'est volontaire. Si une image revient
+avec des lettres, elle est à jeter, pas à retoucher.
+
+### Le prompt
+
+```
+Generate FOUR separate images, one per concept below. All four share the same
+constraints. 1200 x 800, landscape.
+
+=== CONSTRAINTS THAT APPLY TO ALL FOUR ===
+
+PALETTE, strictly these four values and nothing else:
+  charcoal #141414 (the ground)
+  mid grey #434343 (shadow and secondary form)
+  paper white #FFFFFF (the documents)
+  acid green #A2FF01 — used ONCE per image, as a single small accent. Never a
+  second green element, never a green background, never a glow.
+
+MATERIAL, identical in all four:
+  every surface is matte. A very fine, dense, uniform speckle grain over the
+  entire frame, like fine abrasive paper or matte felt seen close up — clearly
+  visible, never smooth, never clean. Broad, very soft diagonal sweeps of light
+  raking from upper left to lower right, like one large soft studio light on a
+  matte material. Slow and cloudy, never a hard gradient, never a beam. No
+  gloss, no sheen, no specular highlight, no reflection, no lens flare.
+
+ABSOLUTELY NO TEXT. No letters, no numbers, no words, no digits, no symbols,
+no signature, no logo, no watermark, no user interface, no screen, no icons.
+Where a document surface would carry writing, show only soft blurred horizontal
+rules that never resolve into readable characters — suggestion of writing,
+never writing. If any character-like mark appears, the image is wrong.
+
+Also excluded: hands, faces, people, brand marks, currency symbols, stock-photo
+office props, plants, coffee cups, laptops.
+
+Composition: generous empty space, one clear subject, nothing crowded. Shot
+straight on or from directly above, never a dramatic tilted angle.
+
+=== CONCEPT 1 — the invoice writes itself ===
+A single sheet of white paper, seen at a slight three-quarter angle, lifting
+and rising off a flat charcoal surface, caught mid-air a few centimetres above
+it. The sheet is slightly curved as paper curves. Soft blurred horizontal rules
+across its upper two thirds. One narrow acid green horizontal band across its
+lower third, printed flat into the paper. A deep, soft, wide shadow on the
+charcoal beneath it. Nothing else in frame.
+
+=== CONCEPT 2 — the official seal ===
+Extreme macro. Thick matte white paper fills the entire frame, its fibrous
+texture visible. Pressed into it, slightly embossed and casting fine shadows in
+its recesses, a square block of irregular geometric pattern in acid green — an
+abstract grid of small filled and empty squares, dense and machine-like, never
+a readable code. The block sits off-centre. The rest is bare paper.
+
+=== CONCEPT 3 — disorder becoming order ===
+Top-down flat view of a charcoal surface. On the left half, a dozen loose white
+sheets scattered, overlapping, at random angles, half in shadow. On the right
+half, the same sheets resolved into one perfectly aligned stack, edges flush,
+evenly lit. The change happens gradually across the middle of the frame. A
+single acid green edge is visible on one sheet inside the neat stack.
+
+=== CONCEPT 4 — one gesture, two things ===
+Top-down flat view of a charcoal surface. Two flat objects lie side by side with
+wide space between them: on the left a plain white rounded square, thick and
+card-like; on the right a white sheet of paper with soft blurred rules. A single
+continuous acid green line, thin and unbroken, arcs from the edge of the square
+to the edge of the sheet, drawn flat on the charcoal like an inlay. Nothing
+else.
+```
+
+### Ce que chaque concept dit
+
+| | L'image | Le message du site |
+|---|---|---|
+| 1 | la feuille qui se soulève seule | « la facture part toute seule » |
+| 2 | le sceau pressé dans le papier | « certifiée par l'État » |
+| 3 | le désordre qui devient une pile | « mettre de l'ordre » |
+| 4 | le trait qui relie carte et feuille | « encaisser et facturer, le même geste » |
+
+Le 4 est celui qui porte l'angle mort du document, celui que personne d'autre
+ne fait. Le 2 est le plus fort en vignette.
