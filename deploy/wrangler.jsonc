@@ -1,0 +1,43 @@
+{
+  // ── SwimPay — le site, servi par un Worker à assets statiques ──
+  //
+  // POURQUOI CE FICHIER EST ICI ET NON À LA RACINE.
+  //
+  // Premier essai : wrangler.jsonc à la racine du dépôt. Cloudflare l'a bien
+  // trouvé, mais la racine porte le package.json du monorepo, avec ses
+  // workspaces. Deux conséquences, toutes deux mauvaises :
+  //
+  //   1. Cloudflare a installé 351 paquets et lancé « tsc -b » — la
+  //      compilation de tout le projet — pour publier trois fichiers
+  //      statiques ;
+  //   2. wrangler a refusé de déployer :
+  //      « The Cloudflare application detection logic has been run in the
+  //        root of a workspace instead of targeting a specific project. »
+  //
+  // La configuration redescend donc dans son propre dossier, qui ne contient
+  // aucun package.json. Cloudflare doit y être pointé — voir README.md :
+  //
+  //   Root directory   deploy
+  //   Build command    (vide)
+  //   Deploy command   npx wrangler deploy --config wrangler.jsonc
+  //
+  // Le --config explicite coupe court à la détection : wrangler prend ce
+  // fichier et ne remonte pas chercher un workspace.
+  //
+  //   name               donne swimpay-site.<sous-domaine>.workers.dev
+  //   compatibility_date fige le comportement du runtime. Ne pas l'avancer
+  //                      sans relire les notes de version.
+  "name": "swimpay-site",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-31",
+
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    // Le site est UNE page routée par ancre : toute adresse inconnue doit
+    // rendre index.html plutôt qu'un 404, sinon /business tombe à côté.
+    "not_found_handling": "single-page-application"
+  },
+
+  "observability": { "enabled": true }
+}
