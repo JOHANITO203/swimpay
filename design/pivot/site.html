@@ -1,5 +1,42 @@
+<!doctype html>
+<html lang="fr">
 <meta charset="utf-8">
-<title>SwimPay</title>
+<title>SwimPay — envoyer, encaisser et facturer depuis un seul compte</title>
+
+<!-- Ce que l'audit reprochait, dans l'ordre ou il le reprochait.
+
+     lang : sans lui le navigateur et les lecteurs d'ecran DEVINENT la langue,
+     et se trompent sur un texte francais truffe de noms anglais.
+
+     description : sans elle, Google ecrit lui-meme le resume, en prenant les
+     premiers mots qu'il trouve.
+
+     og: et twitter: : sans elles, un lien colle dans WhatsApp n'affiche NI
+     titre NI image. Sur ce marche, ou WhatsApp est le canal, c'est le manque
+     le plus couteux de la liste. Elles exigent une adresse absolue — d'ou
+     SITE_URL. -->
+<meta name="description" content="SwimPay réunit vos réseaux Mobile Money, votre banque et votre carte sur un seul compte. Envoyez, encaissez au comptoir comme en ligne, payez vos équipes, et vos factures FNE partent avec l'opération.">
+<link rel="canonical" href="https://swimpay.pro/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SwimPay">
+<meta property="og:locale" content="fr_CI">
+<meta property="og:url" content="https://swimpay.pro/">
+<meta property="og:title" content="SwimPay — un seul compte pour tout votre argent">
+<meta property="og:description" content="Vos réseaux Mobile Money, votre banque et votre carte au même endroit. Encaissez, payez, et vos factures FNE partent avec l'opération.">
+<meta property="og:image" content="https://swimpay.pro/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="SwimPay au centre, relié aux réseaux Mobile Money, aux banques et aux encaissements">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SwimPay — un seul compte pour tout votre argent">
+<meta name="twitter:description" content="Vos réseaux Mobile Money, votre banque et votre carte au même endroit.">
+<meta name="twitter:image" content="https://swimpay.pro/og.jpg">
+
+<meta name="theme-color" content="#141414">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAACXBIWXMAAAABAAAAAQBPJcTWAAACn0lEQVR4nO1WzUtUURT/3XNn3psPHXV0Ng8qgmxRQdLGRSCRizYTQcv+hXARBUFEELjMVaEkCG5CyhbRh9AiWtWqTUEq0hhRUDN+DJnz+ebeE++pr2mc0XmKUOBZPO79ncv5nY/fvTwxrrCnFtjb8Ngn+DdnoO1ahIXzNewEERmps0qtK4+pIqXMHXlMRExqVxWQa5OT6dfDExvxwYR4HDceIhLxU8Favn9FZ5OYUvcvTA2Omqsxz88yp9rawMtgAyjsvAIimpsr3BsaZa51BYNBsSmhbQiENqSUwZLlbioAcu9PDg08VXkHKEZXvJNaYlmkN7NuQyClnJkppFMpJz7BNFGeLvT2Itp9ouYkB0rRaFTKD/4Iwl+Sdy9P4l3LWjkAbn/K9CXCTB9dpDZhrcBU9EGglNIatLE1TVO53VHKDS0g5RYZN0EgOUgaxA6FFlpr7XVZCLSunJ6fn7dnT7kyLRuG0XV+SogAC7tZAma2bZhVFYRC62sikc1mr1/9js8v3D2iMdw5h0BjMdbx5A89GxiGKjhqYYF4PN/eKZRel7n8cRzp6daFmKuiXCd3CmTAAaDpCoiop6eVKk4IUNmRplrwvEIIopqK/c7AbieiYPGghxg46q1/hrOa8avLvQ0SRldGBgBR9kFg2/bYWKa89LVuases0LVbB8RSNzOzXLUsyzSf+6sgkj7z9sGj6KzboirLx1ZiMVx8VbSsDNM3D68olo2VW++pEKLu6xgOY3DwSos1rJTirRu/NYESpZKCIXMeYhvOA31pBLH+cRsl94bUmPZBQESJBKij4w9laDGZTPb1v1m7Ck3m3pAgf/jJzQlALXqIIEQiLxXVV7pvAncGUuhQFVTeQeiGBBBOx7lqBrux/T+7be3/b9FvuSjw6BkhpgQAAAAASUVORK5CYII=" sizes="32x32">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
 <!-- Sans ce meta, un telephone met la page en page a 980 px et la reduit :
      aucune de nos regles <= 880 px ne s applique, la bande photo du heros
      fait 0x0, et une sonde qui demande 390 px MESURE 980 sans le dire.
@@ -94,6 +131,14 @@ a { color: inherit; text-decoration: none; }
 .bouton.grand { min-height: 56px; padding: 0 28px; font-size: 17px; }
 .bouton:active { transform: scale(.97); }
 .burger { display: none; }
+
+.evite {
+  position: absolute; left: 12px; top: -60px; z-index: 100;
+  padding: 12px 18px; border-radius: 999px;
+  background: var(--noir); color: #FFFFFF; font-weight: 500;
+  transition: top 180ms var(--sortie);
+}
+.evite:focus { top: 12px; }
 
 /* ─── PAGES ─── */
 .page { display: none; }
@@ -663,6 +708,10 @@ g.t-actif .t-fam { fill: rgba(255, 255, 255, .78); }
 
 </style>
 
+<!-- Au clavier, la premiere tabulation doit pouvoir sauter la navigation.
+     Sans ce lien, il faut traverser sept onglets avant d'atteindre le texte,
+     a chaque page. -->
+<a class="evite" href="#contenu">Aller au contenu</a>
 <nav class="nav">
   <div class="dedans nav-in">
     <a class="logo" href="#accueil"><i aria-hidden="true"></i><b>SwimPay</b></a>
@@ -677,7 +726,7 @@ g.t-actif .t-fam { fill: rgba(255, 255, 255, .78); }
   </div>
 </nav>
 
-<main>
+<main id="contenu" tabindex="-1">
 <!-- ══════════ ACCUEIL ══════════ -->
 <div class="page" id="accueil">
   <header class="heros">
@@ -692,7 +741,7 @@ g.t-actif .t-fam { fill: rgba(255, 255, 255, .78); }
           automatisez vos paiements récurrents en une minute.</p>
         <div class="gestes">
           <a class="bouton plein grand" href="#telecharger">Télécharger l'application</a>
-          <a class="bouton creux grand" href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#accueil" target="_blank" rel="noopener">Voir l'application</a>
+          <a class="bouton creux grand" href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#accueil" target="_blank" rel="noopener">Voir la démo</a>
         </div>
       </div>
     </div>
@@ -834,7 +883,7 @@ g.t-actif .t-fam { fill: rgba(255, 255, 255, .78); }
         <div class="gestes" style="margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
           <button class="bouton acide grand" id="installer">Installer l'application</button>
           <a class="bouton creux grand" href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#accueil" target="_blank" rel="noopener"
-             style="border-color: #3A3A3A; color: #FFFFFF">Essayer sur le web</a>
+             style="border-color: #3A3A3A; color: #FFFFFF">Essayer la démo</a>
         </div>
         <p class="para" id="installer-mot" style="margin-top: 20px; font-size: 14.5px"></p>
       </div>
@@ -892,7 +941,7 @@ g.t-actif .t-fam { fill: rgba(255, 255, 255, .78); }
           toutes la même chose, elles ne se ressemblent pas.</p>
         <div class="gestes" style="margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
           <a class="bouton acide grand" href="#inscription">Ouvrir un compte</a>
-          <a class="bouton creux grand" href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#accueil" target="_blank" rel="noopener">Voir ces écrans</a>
+          <a class="bouton creux grand" href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#accueil" target="_blank" rel="noopener">Voir la démo</a>
         </div>
       </div>
       <div class="duo-img">
@@ -932,7 +981,7 @@ g.t-actif .t-fam { fill: rgba(255, 255, 255, .78); }
           activité.</p>
         <div class="gestes">
           <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
-          <a class="bouton creux grand" href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#b-pme" target="_blank" rel="noopener">Voir la console</a>
+          <a class="bouton creux grand" href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#b-pme" target="_blank" rel="noopener">Voir la démo de la console</a>
         </div>
         <div class="jalons">
           <span>Encaisser vos clients</span>
@@ -1097,7 +1146,7 @@ g.t-actif .t-fam { fill: rgba(255, 255, 255, .78); }
     </div>
       <div class="gestes" style="margin-top: 44px; display: flex; gap: 12px; flex-wrap: wrap">
         <a class="bouton acide grand" href="#inscription">Obtenir une clé</a>
-        <a class="bouton creux grand" href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#ec-checkout" target="_blank" rel="noopener">Voir le checkout</a>
+        <a class="bouton creux grand" href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#ec-checkout" target="_blank" rel="noopener">Voir la démo du checkout</a>
       </div>
     </div>
   </section>
@@ -1183,7 +1232,7 @@ g.t-actif .t-fam { fill: rgba(255, 255, 255, .78); }
         <ul>
           <li><a href="#connexion">Se connecter</a></li>
           <li><a href="#inscription">S'inscrire</a></li>
-          <li><a href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#accueil" target="_blank" rel="noopener">Voir l'application</a></li>
+          <li><a href="https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d#accueil" target="_blank" rel="noopener">Voir la démo</a></li>
         </ul>
       </div>
       <div>
@@ -1217,7 +1266,11 @@ const va = (id) => {
     const est = a.getAttribute("href") === "#" + cible;
     if (est) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
-  document.title = cible === "accueil" ? "SwimPay"
+  /* Le titre de l'accueil est celui de la balise <title> : le routeur
+     l'ecrasait par « SwimPay » tout court, ce qui annulait le referencement
+     de la page d'entree. Il ne le remplace plus que sur les AUTRES pages. */
+  document.title = cible === "accueil"
+    ? "SwimPay — envoyer, encaisser et facturer depuis un seul compte"
     : "SwimPay · " + cible.charAt(0).toUpperCase() + cible.slice(1);
   window.scrollTo({ top: 0, behavior: "instant" });
 };
@@ -1526,3 +1579,4 @@ if (bouton) bouton.addEventListener("click", async () => {
   });
 });
 </script>
+</html>

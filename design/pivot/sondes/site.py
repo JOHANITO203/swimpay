@@ -17,6 +17,17 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 A = r"d:\Dev\Projects\swimpay\design\pivot\assets"
 APP = r"d:\Dev\Projects\swimpay\design\pivot\ecran3-personnel-v6-acide.html"
 OUT = r"d:\Dev\Projects\swimpay\design\pivot\site.html"
+# ── L'ADRESSE PUBLIQUE ──
+# Elle sert aux balises canonique et og:, qui exigent une adresse ABSOLUE :
+# un chemin relatif ne dit rien a WhatsApp ni a Google. A changer ici, et
+# nulle part ailleurs, le jour ou le domaine change.
+SITE_URL = "https://swimpay.pro"
+
+# ── LE LIEN VERS LA DEMO ──
+# C'est une adresse de PREVISUALISATION, pas l'application. Les liens qui la
+# portent disent « demo » et non « l'application » : presenter une preview
+# comme le produit est un mensonge qui se paie a la premiere demonstration.
+# Le jour ou l'app a son domaine, une seule ligne a changer.
 LIEN_APP = "https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d"
 
 def b64(chemin, mime):
@@ -40,6 +51,11 @@ grain = jeton("grain")
 logo = jeton("carte-logo")
 # le moyeu de la toile prend le symbole seul, pas le logotype de la barre
 logo_svg = brut("logo-symbole-blanc.png", "image/png")
+# Les icones sont embarquees : le navigateur n'a pas a les redemander, et
+# l'onglet n'est jamais vide le temps d'un aller-retour reseau. Le
+# favicon.ico reste sur le disque pour les clients qui le cherchent en dur.
+icone32 = brut("favicon-32.png", "image/png")
+icone180 = brut("apple-touch-icon.png", "image/png")
 photo = b64("hero-personne.jpg", "image/jpeg")
 photo_tel = b64("hero-personne-tel.jpg", "image/jpeg")
 carte_visa = brut("carte-visa.webp", "image/webp")
@@ -132,8 +148,45 @@ CODE_SDK = """&lt;script src="https://sdk.swimpay.pro/v1/checkout.js"&gt;&lt;/sc
   });
 &lt;/script&gt;"""
 
-HTML = f"""<meta charset="utf-8">
-<title>SwimPay</title>
+HTML = f"""<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>SwimPay — envoyer, encaisser et facturer depuis un seul compte</title>
+
+<!-- Ce que l'audit reprochait, dans l'ordre ou il le reprochait.
+
+     lang : sans lui le navigateur et les lecteurs d'ecran DEVINENT la langue,
+     et se trompent sur un texte francais truffe de noms anglais.
+
+     description : sans elle, Google ecrit lui-meme le resume, en prenant les
+     premiers mots qu'il trouve.
+
+     og: et twitter: : sans elles, un lien colle dans WhatsApp n'affiche NI
+     titre NI image. Sur ce marche, ou WhatsApp est le canal, c'est le manque
+     le plus couteux de la liste. Elles exigent une adresse absolue — d'ou
+     SITE_URL. -->
+<meta name="description" content="SwimPay réunit vos réseaux Mobile Money, votre banque et votre carte sur un seul compte. Envoyez, encaissez au comptoir comme en ligne, payez vos équipes, et vos factures FNE partent avec l'opération.">
+<link rel="canonical" href="{SITE_URL}/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SwimPay">
+<meta property="og:locale" content="fr_CI">
+<meta property="og:url" content="{SITE_URL}/">
+<meta property="og:title" content="SwimPay — un seul compte pour tout votre argent">
+<meta property="og:description" content="Vos réseaux Mobile Money, votre banque et votre carte au même endroit. Encaissez, payez, et vos factures FNE partent avec l'opération.">
+<meta property="og:image" content="{SITE_URL}/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="SwimPay au centre, relié aux réseaux Mobile Money, aux banques et aux encaissements">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SwimPay — un seul compte pour tout votre argent">
+<meta name="twitter:description" content="Vos réseaux Mobile Money, votre banque et votre carte au même endroit.">
+<meta name="twitter:image" content="{SITE_URL}/og.jpg">
+
+<meta name="theme-color" content="#141414">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/png" href="{icone32}" sizes="32x32">
+<link rel="apple-touch-icon" href="{icone180}">
 <!-- Sans ce meta, un telephone met la page en page a 980 px et la reduit :
      aucune de nos regles <= 880 px ne s applique, la bande photo du heros
      fait 0x0, et une sonde qui demande 390 px MESURE 980 sans le dire.
@@ -228,6 +281,14 @@ a {{ color: inherit; text-decoration: none; }}
 .bouton.grand {{ min-height: 56px; padding: 0 28px; font-size: 17px; }}
 .bouton:active {{ transform: scale(.97); }}
 .burger {{ display: none; }}
+
+.evite {{
+  position: absolute; left: 12px; top: -60px; z-index: 100;
+  padding: 12px 18px; border-radius: 999px;
+  background: var(--noir); color: #FFFFFF; font-weight: 500;
+  transition: top 180ms var(--sortie);
+}}
+.evite:focus {{ top: 12px; }}
 
 /* ─── PAGES ─── */
 .page {{ display: none; }}
@@ -734,6 +795,10 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 {TOILE_CSS}
 </style>
 
+<!-- Au clavier, la premiere tabulation doit pouvoir sauter la navigation.
+     Sans ce lien, il faut traverser sept onglets avant d'atteindre le texte,
+     a chaque page. -->
+<a class="evite" href="#contenu">Aller au contenu</a>
 <nav class="nav">
   <div class="dedans nav-in">
     <a class="logo" href="#accueil"><i aria-hidden="true"></i><b>SwimPay</b></a>
@@ -748,7 +813,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   </div>
 </nav>
 
-<main>
+<main id="contenu" tabindex="-1">
 <!-- ══════════ ACCUEIL ══════════ -->
 <div class="page" id="accueil">
   <header class="heros">
@@ -763,7 +828,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           automatisez vos paiements récurrents en une minute.</p>
         <div class="gestes">
           <a class="bouton plein grand" href="#telecharger">Télécharger l'application</a>
-          <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir l'application</a>
+          <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir la démo</a>
         </div>
       </div>
     </div>
@@ -893,7 +958,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
         <div class="gestes" style="margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
           <button class="bouton acide grand" id="installer">Installer l'application</button>
           <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener"
-             style="border-color: #3A3A3A; color: #FFFFFF">Essayer sur le web</a>
+             style="border-color: #3A3A3A; color: #FFFFFF">Essayer la démo</a>
         </div>
         <p class="para" id="installer-mot" style="margin-top: 20px; font-size: 14.5px"></p>
       </div>
@@ -938,7 +1003,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           toutes la même chose, elles ne se ressemblent pas.</p>
         <div class="gestes" style="margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
           <a class="bouton acide grand" href="#inscription">Ouvrir un compte</a>
-          <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir ces écrans</a>
+          <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir la démo</a>
         </div>
       </div>
       <div class="duo-img">
@@ -978,7 +1043,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           activité.</p>
         <div class="gestes">
           <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
-          <a class="bouton creux grand" href="{LIEN_APP}#b-pme" target="_blank" rel="noopener">Voir la console</a>
+          <a class="bouton creux grand" href="{LIEN_APP}#b-pme" target="_blank" rel="noopener">Voir la démo de la console</a>
         </div>
         <div class="jalons">
           <span>Encaisser vos clients</span>
@@ -1119,7 +1184,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
       ])}
       <div class="gestes" style="margin-top: 44px; display: flex; gap: 12px; flex-wrap: wrap">
         <a class="bouton acide grand" href="#inscription">Obtenir une clé</a>
-        <a class="bouton creux grand" href="{LIEN_APP}#ec-checkout" target="_blank" rel="noopener">Voir le checkout</a>
+        <a class="bouton creux grand" href="{LIEN_APP}#ec-checkout" target="_blank" rel="noopener">Voir la démo du checkout</a>
       </div>
     </div>
   </section>
@@ -1205,7 +1270,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
         <ul>
           <li><a href="#connexion">Se connecter</a></li>
           <li><a href="#inscription">S'inscrire</a></li>
-          <li><a href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir l'application</a></li>
+          <li><a href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir la démo</a></li>
         </ul>
       </div>
       <div>
@@ -1239,7 +1304,11 @@ const va = (id) => {{
     const est = a.getAttribute("href") === "#" + cible;
     if (est) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   }});
-  document.title = cible === "accueil" ? "SwimPay"
+  /* Le titre de l'accueil est celui de la balise <title> : le routeur
+     l'ecrasait par « SwimPay » tout court, ce qui annulait le referencement
+     de la page d'entree. Il ne le remplace plus que sur les AUTRES pages. */
+  document.title = cible === "accueil"
+    ? "SwimPay — envoyer, encaisser et facturer depuis un seul compte"
     : "SwimPay · " + cible.charAt(0).toUpperCase() + cible.slice(1);
   window.scrollTo({{ top: 0, behavior: "instant" }});
 }};
@@ -1377,6 +1446,7 @@ if (bouton) bouton.addEventListener("click", async () => {{
   }});
 }});
 </script>
+</html>
 """
 
 open(OUT, "w", encoding="utf-8").write(HTML)

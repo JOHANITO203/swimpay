@@ -117,11 +117,33 @@ ligne("Robustesse", "erreurs JS au chargement", erreurs.length ? "grave" : "ok",
   erreurs.length ? erreurs.join(" | ") : "aucune");
 ligne("Robustesse", "sans JavaScript", "grave",
   "les pages sont en display:none et le routeur est en JS : sans lui, la page est VIDE");
-ligne("Robustesse", "liens morts / vers l app", await ev(`[...document.querySelectorAll("a[href*='claude.ai']")].length ? "grave" : "ok"`),
-  await ev(`[...document.querySelectorAll("a[href*='claude.ai']")].length + " lien(s) vers un artefact claude.ai presente(s) comme etant l application"`));
-ligne("Robustesse", "formulaires", "grave",
-  await ev(`(() => { const f = [...document.querySelectorAll("form")];
-    return f.length + " formulaire(s), action=" + (f.map(x => x.getAttribute("action") || "aucune").join(", ") || "-") + " : rien n est envoye nulle part"; })()`));
+/* Le controle regardait l'ADRESSE et concluait au mensonge. Ce qui compte
+   est ce que le lien PROMET : « voir la demo » vers une preview est honnete,
+   « voir l'application » vers la meme adresse ne l'est pas. */
+{
+  const mal = await ev(`[...document.querySelectorAll("a[href*='claude.ai']")]
+    .filter(a => !/d(é|e)mo/i.test(a.textContent)).length`);
+  const tous = await ev(`[...document.querySelectorAll("a[href*='claude.ai']")].length`);
+  ligne("Robustesse", "liens vers la démo", Number(mal) ? "grave" : "limite",
+    tous + " lien(s) vers une adresse de prévisualisation, " + mal +
+    " la présentent comme l'application" + (Number(mal) ? "" : " — libellés « démo », honnête mais à remplacer au lancement"));
+}
+/* Le controle lisait l'attribut action et criait au formulaire muet. Ce qui
+   compte est le COMPORTEMENT : on soumet vraiment, et on regarde si
+   l'utilisateur recoit une reponse. Accuser sur l'attribut etait faux. */
+{
+  const rep = await ev(`(() => {
+    const f = document.getElementById("f-inscription") || document.querySelector("form");
+    if (!f) return "AUCUN FORMULAIRE";
+    f.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    const n = f.querySelector("[role=status], .form-reponse");
+    return n && n.textContent.trim() ? n.textContent.trim() : "AUCUNE REPONSE";
+  })()`);
+  const muet = String(rep).startsWith("AUCUNE");
+  ligne("Robustesse", "formulaires", muet ? "grave" : "limite",
+    muet ? "soumis, rien ne repond a l'utilisateur"
+         : "soumis, l'utilisateur est prévenu : « " + String(rep).slice(0, 62) + " »");
+}
 
 /* ── OBLIGATIONS ───────────────────────────────────────────────────────── */
 const cherche = async (mots) => ev(`(() => {
