@@ -9,29 +9,23 @@ les en-têtes de sécurité.
 | `public/og.jpg` | l'image de partage, 1200 × 630 |
 | `public/favicon.ico` | pour les clients qui la cherchent en dur |
 | `worker.js` | les en-têtes ; il ne fabrique aucune page |
-| `wrangler.jsonc` | le nom du Worker et le dossier d'assets |
+| `../wrangler.jsonc` | **à la racine du dépôt**, là où Cloudflare le cherche |
 
 Poids réel transféré : **1406 Ko** une fois compressé.
 
-## Ce qu'il faut, et qui n'est pas sur cette machine
+## La mise en ligne se fait par Git
 
-Ni `wrangler`, ni identifiants Cloudflare. Deux chemins.
+Aucun identifiant ne traverse cette machine, et aucun outil n'est à installer.
+Le dépôt est déjà lié à Cloudflare : c'est Cloudflare qui construit et publie.
 
-### Par jeton d'API — sans navigateur
+**Branche à servir : `cloudflare`.**
 
-Créer un jeton sur `dash.cloudflare.com/profile/api-tokens` avec le modèle
-**Edit Cloudflare Workers**, puis :
+Dans le tableau de bord — *Workers & Pages → Create → Connect to Git* — choisir
+le dépôt, puis la branche `cloudflare`. Rien d'autre à renseigner :
+`wrangler.jsonc` est à la racine, là où Cloudflare le cherche, et le site n'a
+aucune étape de construction.
 
-    export CLOUDFLARE_API_TOKEN=...
-    export CLOUDFLARE_ACCOUNT_ID=...
-    cd deploy && npx wrangler deploy
-
-### Par connexion interactive
-
-    cd deploy && npx wrangler login && npx wrangler deploy
-
-`npx` télécharge wrangler le temps de la commande : rien n'est installé dans le
-dépôt, et aucune dépendance n'entre dans le projet.
+Chaque poussée sur cette branche redéploie.
 
 ## Après la première mise en ligne
 

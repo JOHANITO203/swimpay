@@ -32,3 +32,15 @@ apps/android-receiver/android/build/
 apps/android-receiver/android/app/build/
 .external-skills/
 .apk-research/
+
+# ── Outillage local de l'agent, pas du code du projet ──
+# Ces dossiers sont l'equipement de la machine, pas le produit : les versionner
+# fait entrer 380 fichiers etrangers dans chaque commit, et un « git add -A »
+# les ramasse tous.
+.agents/
+.claude/skills/
+.claude/settings.json
+skills-lock.json
+.swimpay-agent/screenshots/
+*.canvas
+*.base
