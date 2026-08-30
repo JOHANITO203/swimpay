@@ -46,6 +46,20 @@ ecran_accueil = brut("ecran-accueil.webp", "image/webp")
 video = brut("hero-anim.mp4", "video/mp4")
 affiche = brut("hero-anim-poster.jpg", "image/jpeg")
 
+# ── les rendus generes du 30 aout, reduits en WebP pour tenir dans la page.
+#    Seuls ceux qui peuvent partir TELS QUELS sont ici : les trois autres
+#    portent un logo Wave invente, un ecran en anglais ou des montants a
+#    decimales, et le franc CFA n'a pas de centime. ──
+img_coffre = brut("site-coffre.webp", "image/webp")
+img_cadenas = brut("site-cadenas.webp", "image/webp")
+img_pieces = brut("site-pieces.webp", "image/webp")
+img_socle = brut("site-socle.webp", "image/webp")
+img_anneau = brut("site-anneau.webp", "image/webp")
+# Pose sur decision de LO malgre son ecran en anglais et ses montants a
+# decimales : ici c'est une image d'ambiance sous un bouton d'installation,
+# pas une reference d'interface. La vraie capture reste en page Personnel.
+img_accueil = brut("site-accueil.webp", "image/webp")
+
 # ── les rails, pour le Caméléon : l'accent n'est jamais fixe, il vient du
 #    rail actif. Sur la page, le montrer EN LE FAISANT est plus juste que
 #    l'expliquer. ──
@@ -628,10 +642,18 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <!-- ── section 2 : l'épargne ── -->
   <section class="sect">
     <div class="dedans">
-      <h2>Mettez de l'argent de côté</h2>
-      <p class="para">Rangez votre argent dans un coffre et récupérez-le quand vous
-        voulez. Verrouillez-le jusqu'à une date si vous préférez ne pas y toucher
-        avant, <b>personne ne peut l'ouvrir entre-temps</b>.</p>
+      <div class="duo" style="align-items: center; margin-bottom: 12px">
+        <div>
+          <h2>Mettez de l'argent de côté</h2>
+          <p class="para">Rangez votre argent dans un coffre et récupérez-le quand vous
+            voulez. Verrouillez-le jusqu'à une date si vous préférez ne pas y toucher
+            avant, <b>personne ne peut l'ouvrir entre-temps</b>.</p>
+        </div>
+        <div class="duo-img">
+          <img src="{img_coffre}" width="1100" height="1100" loading="lazy"
+               alt="Le coffre SwimPay, porte entrouverte, entouré de pièces">
+        </div>
+      </div>
       {cartes([
         ("Le coffre", "Rangez de l'argent de côté en un geste depuis votre compte principal.", "les frais de commission sont coupés à l'entrée"),
         ("Le verrou daté", "Choisissez une échéance. Le coffre refuse de s'ouvrir avant, et vous dit jusqu'à quand.", "7 jours · 30 jours · 3 mois · 6 mois"),
@@ -643,10 +665,18 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <!-- ── section 3 : la sécurité ── -->
   <section class="sect gris">
     <div class="dedans">
-      <h2>Votre argent est en sécurité</h2>
-      <p class="para">Chaque transaction repose sur un <b>système de sécurité
-        complexe</b>, développé pour garantir la sécurité des utilisateurs. Trois
-        couches y travaillent en même temps.</p>
+      <div class="duo" style="align-items: center; margin-bottom: 12px">
+        <div class="duo-img">
+          <img src="{img_cadenas}" width="1100" height="1100" loading="lazy"
+               alt="Un cadenas de résine acide à lecteur d'empreinte, posé sur une pierre">
+        </div>
+        <div>
+          <h2>Votre argent est en sécurité</h2>
+          <p class="para">Chaque transaction repose sur un <b>système de sécurité
+            complexe</b>, développé pour garantir la sécurité des utilisateurs. Trois
+            couches y travaillent en même temps.</p>
+        </div>
+      </div>
       {cartes([
         ("Traçabilité", "Chaque mouvement est inscrit avec sa date, sa référence et son montant. Vous retrouvez n'importe quelle opération des mois plus tard, avec son reçu complet.", ""),
         ("Chiffrement", "Vos données et vos opérations circulent chiffrées, de votre téléphone jusqu'à nos serveurs. Personne ne les lit en chemin.", ""),
@@ -657,17 +687,24 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 
   <!-- ── téléchargement ── -->
   <section class="sect sombre" id="telecharger">
-    <div class="dedans" style="text-align: center">
-      <h2 style="margin-inline: auto">Installez SwimPay en un geste</h2>
-      <p class="para" style="margin-inline: auto">L'application s'installe depuis
-        votre navigateur, sans passer par un magasin. Elle fonctionne hors connexion
-        et se synchronise dès que le réseau revient.</p>
-      <div class="gestes" style="justify-content: center; margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
-        <button class="bouton acide grand" id="installer">Installer l'application</button>
-        <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener"
-           style="border-color: #3A3A3A; color: #FFFFFF">Essayer sur le web</a>
+    <div class="dedans duo" style="align-items: center">
+      <div>
+        <h2>Installez SwimPay en un geste</h2>
+        <p class="para">L'application s'installe depuis votre navigateur, sans passer
+          par un magasin. Elle fonctionne hors connexion et se synchronise dès que le
+          réseau revient.</p>
+        <div class="gestes" style="margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
+          <button class="bouton acide grand" id="installer">Installer l'application</button>
+          <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener"
+             style="border-color: #3A3A3A; color: #FFFFFF">Essayer sur le web</a>
+        </div>
+        <p class="para" id="installer-mot" style="margin-top: 20px; font-size: 14.5px"></p>
       </div>
-      <p class="para" id="installer-mot" style="margin-inline: auto; margin-top: 20px; font-size: 14.5px"></p>
+      <div class="duo-img">
+        <img src="{img_accueil}" width="900" height="1205" loading="lazy"
+             style="max-height: 580px; width: auto"
+             alt="SwimPay dans la main, le solde et les dernières opérations dès l'ouverture">
+      </div>
     </div>
   </section>
 </div>
@@ -676,10 +713,19 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 <div class="page" id="personnel">
   <section class="sect">
     <div class="dedans">
-      <h2>Reprenez la main sur votre argent</h2>
-      <p class="para">Envoyez, recevez et épargnez au même endroit,
-        <b>jusqu'à 1 % de frais</b>. Votre compte s'ouvre avec votre numéro de
-        téléphone, en quelques minutes.</p>
+      <div class="duo" style="align-items: center; margin-bottom: 12px">
+        <div>
+          <h2>Reprenez la main sur votre argent</h2>
+          <p class="para">Envoyez, recevez et épargnez au même endroit,
+            <b>jusqu'à 1 % de frais</b>. Votre compte s'ouvre avec votre numéro de
+            téléphone, en quelques minutes.</p>
+        </div>
+        <div class="duo-img">
+          <img src="{img_pieces}" width="820" height="1469" loading="lazy"
+               style="max-height: 560px; width: auto"
+               alt="Des pièces SwimPay qui tombent et s'empilent : moins de frais, plus pour vous">
+        </div>
+      </div>
       {cartes(PERSONNEL)}
     </div>
   </section>
@@ -741,6 +787,9 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
         <span>Encaisser depuis votre site</span>
         <span>Suivre la trésorerie</span>
       </div>
+      <img src="{img_anneau}" width="1400" height="781" loading="lazy"
+           style="display: block; width: 100%; height: auto; margin-top: 46px; border-radius: 16px"
+           alt="Wave, Orange Money, MTN et Moov reliés autour d'un téléphone SwimPay">
     </div>
   </section>
 
@@ -849,9 +898,21 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 <div class="page" id="integration">
   <section class="sect">
     <div class="dedans">
-      <h2>Encaissez depuis votre site</h2>
-      <p class="para">Le SDK ouvre une page de paiement hébergée par SwimPay. Les
-        identifiants de vos clients ne passent jamais par votre serveur.</p>
+      <div class="duo" style="align-items: center; margin-bottom: 34px">
+        <div>
+          <h2>Encaissez depuis votre site</h2>
+          <p class="para">Le SDK ouvre une page de paiement hébergée par SwimPay. Les
+            identifiants de vos clients ne passent jamais par votre serveur.</p>
+          <p class="para" style="margin-top: 18px">Quatre couches travaillent
+            ensemble sous le checkout : l'identité de celui qui paie, la facture
+            normalisée, l'argent, et les réseaux qui le portent.</p>
+        </div>
+        <div class="duo-img">
+          <img src="{img_socle}" width="940" height="1259" loading="lazy"
+               style="max-height: 520px; width: auto"
+               alt="Les quatre couches de SwimPay en vue éclatée">
+        </div>
+      </div>
       <div class="code"><pre style="margin:0">{CODE_SDK}</pre></div>
       {cartes([
         ("Le checkout est hébergé", "Il s'ouvre par-dessus votre page. Les informations de paiement ne transitent pas chez vous.", "aucune donnée sensible sur votre serveur"),
