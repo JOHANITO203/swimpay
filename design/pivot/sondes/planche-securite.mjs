@@ -73,9 +73,18 @@ const USAGES = [
     quoi: `Une seule vidéo, très agrandie et très pâle, derrière toute la section.
       Les trois cartes restent nettes par-dessus.`,
     cout: `Un seul décodage, mais plein écran.`,
-    pour: `Le seul usage que l'ORBITE supporte : sa queue à 0,382 dit qu'elle ne
-      s'arrête jamais. Au premier plan sa reprise se verrait ; noyée et floue,
-      elle passe.` },
+    pour: `Sa queue à 0,382 dit que l'ORBITE ne s'arrête jamais : au premier plan
+      sa reprise se verrait. Noyée et floue, elle passe.` },
+  { id: "scrub", nom: "Piloté au défilement",
+    quoi: `Rien ne joue tout seul. La section se colle en haut de l'écran et
+      c'est LE DÉFILEMENT qui avance les trois vidéos, image par image. On
+      remonte, elles reviennent en arrière.`,
+    cout: `Il faut une image-clé PAR IMAGE, sinon chaque saut décode tout
+      l'intervalle et ça saccade. Mesuré : 3080 Ko contre 1284, soit 2,4 fois
+      plus lourd — et encore, en descendant de 720 à 560 px.`,
+    pour: `Le seul usage où la QUEUE ne compte plus : il n'y a pas de boucle,
+      donc l'orbite cesse d'être un problème. Et l'empreinte, dont la lumière
+      culmine à 9,92 s, récompense enfin celui qui descend jusqu'au bout.` },
 ];
 
 console.log("\nprofils mesurés sur les originaux :");
@@ -84,12 +93,18 @@ const V = SRC.map((s, i) => {
   console.log("  " + String(i + 1) + " · pic mvt " + String(p.pic_mouvement_s).padStart(5) +
     " s   pic lum " + String(p.pic_lumiere_s).padStart(5) + " s   queue " + p.queue);
   const v = uri(`sec-${i + 1}.mp4`, "video/mp4");
-  return { p, video: v.d, ko: v.ko, affiche: uri(`sec-${i + 1}-poster.jpg`, "image/jpeg").d };
+  /* L'encodage du scrub est un fichier A PART : une image-cle par image, ce
+     qui le rend cherchable instantanement mais 2,4 fois plus lourd. Le poser
+     partout ferait payer ce surcout aux usages qui n'en tirent rien. */
+  const s2 = uri(`scrub-${i + 1}.mp4`, "video/mp4");
+  return { p, video: v.d, ko: v.ko, scrub: s2.d, scrubKo: s2.ko,
+           affiche: uri(`sec-${i + 1}-poster.jpg`, "image/jpeg").d };
 });
 
 const ech = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const net = (s) => s.replace(/\s+/g, " ").trim();
 const totalKo = V.reduce((s, x) => s + x.ko, 0);
+const totalScrubKo = V.reduce((s, x) => s + x.scrubKo, 0);
 const totalSrc = V.reduce((s, x) => s + x.p.poids_ko, 0);
 
 function courbe(vals, w, h) {
@@ -209,6 +224,33 @@ const html = `<title>Motion · section sécurité</title>
   .u-detoure .fiche .txt { text-align: center; }
   .u-detoure .fiche p { max-width: 34ch; margin-inline: auto; }
 
+  /* ── F · piloté au défilement ──
+     La piste donne la course, la section s'y colle. « overflow: hidden » sur
+     un ancetre casse le collage : la boite du demo l'ouvre pour cet usage. */
+  .film .v-scrub { display: none; }
+  .u-scrub .film .v-lect { display: none; }
+  .u-scrub .film .v-scrub { display: block; }
+  .demo.u-scrub { overflow: visible; }
+  .u-scrub .piste { position: relative; height: 260vh; }
+  .u-scrub .colle { position: sticky; top: 0; }
+  .u-scrub .fiche { padding: 0; }
+  .u-scrub .fiche .film { position: relative; inset: auto; opacity: 1;
+                          aspect-ratio: 16/9; background: #EDEDE8; }
+  .u-scrub .fiche .txt { padding: 22px 26px 26px; }
+  .u-scrub .sect { padding: clamp(32px, 4vw, 56px) 0; }
+  .jauge {
+    position: absolute; left: 0; right: 0; top: 0; height: 3px;
+    background: color-mix(in srgb, var(--encre) 10%, transparent); z-index: 5; display: none;
+  }
+  .u-scrub .jauge { display: block; }
+  .jauge i { display: block; height: 100%; width: 0; background: var(--acide);
+             transform-origin: left; }
+  .jauge b {
+    position: absolute; right: 12px; top: 10px;
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 500;
+    color: var(--sourd); font-variant-numeric: tabular-nums;
+  }
+
   /* ── E · ambiance de section ── */
   .u-ambiance .ambiance { opacity: 1; }
   .u-ambiance .ambiance video { transform: scale(1.25); filter: blur(10px) saturate(.7); }
@@ -272,7 +314,10 @@ const html = `<title>Motion · section sécurité</title>
   </div>
 
   <div class="demo u-vignette" id="demo">
+   <div class="piste" id="piste">
+    <div class="colle">
     <section class="sect">
+      <div class="jauge"><i id="jaugeBarre"></i><b id="jaugeTxt">0 %</b></div>
       <div class="ambiance">
         <video src="${V[3].video}" poster="${V[3].affiche}" muted loop playsinline
                preload="metadata" aria-hidden="true"></video>
@@ -286,8 +331,10 @@ const html = `<title>Motion · section sécurité</title>
           ${CARTES.map((c, i) => `
           <article class="fiche" tabindex="0">
             <div class="film">
-              <video src="${V[i].video}" poster="${V[i].affiche}" muted loop playsinline
-                     preload="metadata" aria-label="${ech(c.t)}"></video>
+              <video class="v-lect" src="${V[i].video}" poster="${V[i].affiche}" muted loop
+                     playsinline preload="metadata" aria-label="${ech(c.t)}"></video>
+              <video class="v-scrub" src="${V[i].scrub}" poster="${V[i].affiche}" muted
+                     playsinline preload="auto" aria-label="${ech(c.t)}"></video>
             </div>
             <span class="indice">survolez</span>
             <div class="txt">
@@ -298,6 +345,8 @@ const html = `<title>Motion · section sécurité</title>
         </div>
       </div>
     </section>
+    </div>
+   </div>
   </div>
 
   <dl class="info" id="info"></dl>
@@ -338,6 +387,16 @@ const html = `<title>Motion · section sécurité</title>
       3 Mo. « Révélé au survol » est le seul usage qui n'oblige à décoder qu'une
       vidéo à la fois — c'est aussi le moins cher, et de loin.
     </p>
+    <p>
+      <b>Le scrub se paie à l'encodage, pas au code.</b> Un fichier normal ne
+      pose une image-clé que de loin en loin : chaque saut oblige le décodeur à
+      repartir de la clé précédente et à rejouer l'intervalle, et c'est ça qui
+      traîne. Il faut donc une image-clé <b>par image</b>. Mesuré ici :
+      ${totalScrubKo} Ko en toutes-clés contre ${totalKo} Ko en lecture normale,
+      soit <b>${(totalScrubKo / totalKo).toFixed(1).replace(".", ",")} fois plus lourd</b> — et
+      encore, en descendant de 720 à 560 px. C'est le seul usage qui demande son
+      propre encodage.
+    </p>
   </footer>
 
 </div>
@@ -348,7 +407,8 @@ const html = `<title>Motion · section sécurité</title>
   const $ = (id) => document.getElementById(id);
   const USAGES = ${JSON.stringify(USAGES.map((u) => ({ id: u.id, nom: u.nom, quoi: net(u.quoi), cout: net(u.cout), pour: net(u.pour) })))};
   const demo = $("demo");
-  const cartes = [...document.querySelectorAll(".fiche video")];
+  const cartes = [...document.querySelectorAll(".fiche .v-lect")];
+  const scrubs = [...document.querySelectorAll(".fiche .v-scrub")];
   const ambiance = document.querySelector(".ambiance video");
   let usage = "vignette";
 
@@ -362,7 +422,8 @@ const html = `<title>Motion · section sécurité</title>
 
     /* On ne fait tourner QUE ce qui est visible dans l'usage courant : quatre
        decodages simultanes pour n'en montrer qu'un est du gaspillage pur. */
-    if (id === "ambiance") { cartes.forEach(stop); joue(ambiance); }
+    if (id === "scrub") { cartes.forEach(stop); stop(ambiance); scrubs.forEach(stop); defile(); }
+    else if (id === "ambiance") { cartes.forEach(stop); joue(ambiance); }
     else if (id === "survol") { cartes.forEach(stop); stop(ambiance); }
     else { stop(ambiance); cartes.forEach(joue); }
 
@@ -377,6 +438,42 @@ const html = `<title>Motion · section sécurité</title>
     const b = e.target.closest("button[data-u]");
     if (b) pose(b.dataset.u);
   });
+
+  /* ── le défilement pilote ──────────────────────────────────────────────
+     Rien ne joue : on POSE currentTime a la position lue dans la piste. Le
+     calcul se fait dans un requestAnimationFrame, jamais dans l'ecouteur —
+     lire une boite pendant le defilement force une mise en page a chaque
+     evenement, et c'est exactement ce qui saccade.
+
+     Pourquoi un encodage a part : sans image-cle sur chaque image, un saut
+     oblige le decodeur a repartir de la cle precedente et a rejouer tout
+     l'intervalle. C'est la vraie cause du scrub qui traine, jamais le code. */
+  function defile() {
+    if (usage !== "scrub") return;
+    const r = $("piste").getBoundingClientRect();
+    const course = r.height - innerHeight;
+    const p = course > 0 ? Math.min(1, Math.max(0, -r.top / course)) : 0;
+    for (const v of scrubs) {
+      const d = v.duration;
+      if (!d || !isFinite(d)) continue;
+      const t = p * (d - 0.04);
+      if (Math.abs(v.currentTime - t) > 0.012) v.currentTime = t;
+    }
+    $("jaugeBarre").style.width = (p * 100).toFixed(1) + "%";
+    $("jaugeTxt").textContent = Math.round(p * 100) + " %";
+  }
+  /* Une boucle continue, et non un ecouteur de defilement filtre. Premiere
+     version : ecouteur + porte requestAnimationFrame — la position saturait a
+     mi-course parce que le dernier evenement tombait pendant que la porte etait
+     fermee, et rien ne le rattrapait. La boucle ne tourne que dans cet usage,
+     et ne fait qu'une lecture de boite : le cout est nul devant le decodage. */
+  function boucle() {
+    if (usage === "scrub") defile();
+    requestAnimationFrame(boucle);
+  }
+  requestAnimationFrame(boucle);
+  addEventListener("resize", defile, { passive: true });
+  scrubs.forEach((v) => v.addEventListener("loadedmetadata", defile));
 
   /* Le survol : la video ne demarre qu'a l'entree. Au clavier, le focus fait
      le meme travail — sinon l'effet n'existe pas pour qui n'a pas de souris.
@@ -398,7 +495,7 @@ const html = `<title>Motion · section sécurité</title>
   let visible = false;
   new IntersectionObserver((es) => es.forEach((e) => {
     visible = e.isIntersecting;
-    if (visible) pose(usage); else { cartes.forEach(stop); stop(ambiance); }
+    if (visible) pose(usage); else { cartes.forEach(stop); stop(ambiance); scrubs.forEach(stop); }
   }), { threshold: .15 }).observe(demo);
 
   [...cartes, ambiance].forEach((v) => v && v.addEventListener("canplay", () => {
