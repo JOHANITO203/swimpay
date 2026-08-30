@@ -8,6 +8,21 @@
 > Fiabilité : `[V]` tarif concurrent vérifié en source primaire (docs `09`, `10`),
 > `[T]` tiers, `[P]` proposition à nous, à valider.
 
+> ### ⚠ CORRECTION 30 août 2026 — lire d'abord
+>
+> Ce document proposait des **prix fixes à 1 %** sur les opérations. LO a montré
+> que c'était une invention de ma part : à 1 % de prix pour ~1 % de coût, la
+> marge est nulle. **La vérité est un écart, pas un taux fixe :**
+>
+> **marge = prix facturé (marché + prime FNE) − coût routé au plus bas.**
+>
+> Les deux bords sont des leviers qu'on contrôle. La marge des transactions vient
+> surtout de **l'argent qui circule entre nos clients** (interne, sans frais
+> d'opérateur) et du **paiement en ligne** (marché plus haut). Le vrai modèle,
+> chiffré et sourcé, est dans **`20_TARIFS_RESEAUX_ET_COUTS.md` §5**. Les prix en
+> `[P]` ci-dessous ne sont **pas figés** : ils attendent les **taux négociés**
+> des rails et des API opérateurs, qui décident de la taille de l'écart.
+
 ---
 
 ## 1. Les deux principes, et le fait qui change tout

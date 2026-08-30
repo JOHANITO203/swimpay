@@ -195,6 +195,36 @@ SwimPay**.
 > C'est pour ça qu'on recrute des chaînes : plus l'argent reste dedans, plus il
 > devient rentable.
 
+### 5.0 ter La formule, et le QR adaptatif (idée de LO)
+
+Toute la marge tient en une ligne :
+
+```
+marge = prix facturé (marché + prime FNE) − coût routé au plus bas
+```
+
+Les deux bords sont des leviers qu'on pilote. Le prix suit la tendance du marché
+et la valeur d'émettre la FNE. Le coût, on le tire vers le bas en **choisissant
+le chemin** à chaque opération.
+
+**Le QR adaptatif** rend ce choix concret à l'encaissement. Le QR se *morphe*
+selon le portefeuille de l'acheteur : il paie en Orange, on capture dans notre
+caisse Orange ; il paie en Wave, dans la caisse Wave. On capture toujours sur le
+**même réseau que l'acheteur**, donc on ne paie jamais une conversion inter-réseau
+à l'entrée. Le déséquilibre entre caisses qui en résulte est réglé plus tard, sur
+le net, par le netting. C'est l'organisation des caisses que LO décrit, appliquée
+à chaque paiement.
+
+**Ce qui décide de la TAILLE de l'écart, à obtenir par devis avant de figer :**
+
+1. Le vrai coût de **capture par opérateur** (paiement marchand ~1 % chez Wave et
+   Orange, 1,5–2 % chez MTN ; le P2P à 0 F n'est pas utilisable pour de
+   l'encaissement commercial, ni traçable, ni conforme).
+2. Les **taux négociés** des rails (Julaya, CinetPay) et des API opérateurs.
+3. Le **coût de décaissement** (payout) par opérateur.
+
+Ces trois nombres font passer l'écart de 0,3 à 1,5 point. Pas de son existence.
+
 ### 5.1 à 5.4 La marge, selon que le bout est dedans ou dehors
 
 Prix `[P]`. Pour chaque opération : le cas courant (un bout dehors) et le cas
