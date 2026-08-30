@@ -597,6 +597,70 @@ footer { background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px 
   .page.active .dedans > *, .page.active .heros-in > *, .fiche { animation: none; }
   .cam-video::after { transition: none; }
 }
+/* ─── LA TOILE ───
+   La vue large : SwimPay au moyeu, toutes les contreparties autour. Chaque
+   rayon porte une opération réelle de la grille tarifaire, et son SENS est
+   l'information principale — acide pour ce qui entre, blanc pour ce qui sort.
+   Cinq rayons circulent dans les deux sens ; c'est là que SwimPay est un
+   passage et non une destination.
+
+   Ce fichier est lu tel quel par site.py. Il vit à part parce qu'injecter du
+   CSS et du JS dans une f-string oblige à doubler chaque accolade, et qu'un
+   oubli sur des centaines d'accolades est une panne silencieuse.
+
+   Zéro image, zéro dépendance : du SVG et une boucle. */
+
+#toile { position: relative; }
+#toile svg { display: block; width: 100%; height: auto; margin-top: 30px; }
+
+.t-rayon {
+  fill: none; stroke-linecap: round;
+  transition: stroke-opacity 260ms ease, stroke-width 260ms ease;
+}
+.t-e { stroke: var(--acide); stroke-opacity: .30; stroke-width: 1.4; }
+.t-s { stroke: #FFFFFF;      stroke-opacity: .20; stroke-width: 1.4; }
+.t-b { stroke: #FFFFFF;      stroke-opacity: .26; stroke-width: 1.4; }
+g.t-actif .t-rayon { stroke-opacity: .9; stroke-width: 2.4; }
+
+.t-anneau { fill: none; stroke-width: 1.2; stroke-opacity: .5; }
+.t-nom { font-size: 15px; font-weight: 500; fill: #FFFFFF; letter-spacing: -.01em; }
+.t-fam {
+  font-size: 10px; letter-spacing: .09em; text-transform: uppercase;
+  fill: rgba(255, 255, 255, .42);
+}
+g.t-noeud { cursor: pointer; }
+g.t-noeud:focus-visible { outline: 2px solid var(--acide); outline-offset: 4px; }
+g.t-actif .t-fam { fill: rgba(255, 255, 255, .78); }
+
+.t-moyeu-fond { fill: #1C1C1C; stroke: rgba(255, 255, 255, .16); stroke-width: 1; }
+.t-moyeu-halo { fill: none; stroke: rgba(255, 255, 255, .45); stroke-width: 1.5; }
+
+.t-bas {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 24px; flex-wrap: wrap; margin-top: 14px;
+}
+.t-legende {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  font-size: 13px; color: rgba(255, 255, 255, .5);
+}
+.t-legende span { display: flex; align-items: center; gap: 8px; }
+.t-legende i { width: 16px; height: 2px; border-radius: 2px; }
+.t-le { background: var(--acide); }
+.t-ls { background: rgba(255, 255, 255, .6); }
+.t-lb { background: linear-gradient(90deg, var(--acide), rgba(255, 255, 255, .6)); }
+
+.t-detail { margin: 0; text-align: right; min-width: 250px; }
+.t-detail b { display: block; font-size: 17px; font-weight: 500; color: #FFFFFF; }
+.t-detail span { font-size: 14px; color: rgba(255, 255, 255, .6); }
+
+@media (max-width: 700px) {
+  .t-detail { text-align: left; }
+  /* Sur un écran étroit, le SVG est réduit d'autant : les étiquettes doivent
+     grossir dans son repère pour rester lisibles à l'arrivée. */
+  .t-nom { font-size: 21px; }
+  .t-fam { font-size: 14px; }
+}
+
 </style>
 
 <nav class="nav">
@@ -634,6 +698,45 @@ footer { background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px 
     </div>
   </header>
 
+  <!-- ── la toile : la vue large, avant le détail ──
+       Les rails vivent ICI et non plus sous « Émettez vos factures » : un
+       titre qui promet la facturation ne peut pas porter des boutons qui
+       parlent d'interopérabilité. Deux sujets, deux sections. -->
+  <section class="sect sombre" id="toile">
+    <div class="dedans">
+      <h2>Tout passe par le même compte</h2>
+      <p class="para">Vos réseaux Mobile Money, votre banque, votre carte, vos
+        encaissements au comptoir et en ligne, vos salaires et vos fournisseurs.
+        <b>Une seule application au centre</b>, et chaque opération garde son sens.
+        C'est à vous de choisir le vôtre, votre correspondant garde le sien.</p>
+
+      <div class="rails" role="group" aria-label="Choisissez votre réseau">
+        <button class="rail" data-h="82 100% 50%" data-encre="#141414" data-noeud="SwimPay" aria-pressed="true">SwimPay</button><button class="rail" data-h="24 100% 50%" data-encre="#FFFFFF" data-noeud="Orange Money">Orange Money</button><button class="rail" data-h="196 92% 48%" data-encre="#FFFFFF" data-noeud="Wave">Wave</button><button class="rail" data-h="48 100% 50%" data-encre="#141414" data-noeud="MTN MoMo">MTN MoMo</button><button class="rail" data-h="212 88% 52%" data-encre="#FFFFFF" data-noeud="Moov Money">Moov Money</button>
+      </div>
+
+      <svg id="t-svg" viewBox="0 0 1000 660" role="list"
+           aria-label="SwimPay au centre, relié à dix contreparties">
+        <g id="t-rayons"></g>
+        <g id="t-jetons"></g>
+        <g id="t-noeuds"></g>
+        <g aria-hidden="true">
+          <circle class="t-moyeu-halo" id="t-halo" cx="500" cy="330" r="54" opacity="0"></circle>
+          <rect class="t-moyeu-fond" x="458" y="288" width="84" height="84" rx="24"></rect>
+          <image href="data:image/png;base64,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" x="479" y="309" width="42" height="42" opacity=".94"></image>
+        </g>
+      </svg>
+
+      <div class="t-bas">
+        <div class="t-legende">
+          <span><i class="t-le"></i>ce qui entre</span>
+          <span><i class="t-ls"></i>ce qui sort</span>
+          <span><i class="t-lb"></i>les deux sens</span>
+        </div>
+        <p class="t-detail" id="t-detail"></p>
+      </div>
+    </div>
+  </section>
+
   <!-- ── section 1 : le gain de temps, et le Caméléon ── -->
   <section class="sect sombre" id="temps">
     <div class="dedans">
@@ -644,12 +747,9 @@ footer { background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px 
             DGI</b> partent en une minute. Le numéro, le QR de contrôle et
             l'archive légale les accompagnent, vous n'avez rien à ressaisir
             ailleurs.</p>
-          <div class="rails" role="group" aria-label="Réseaux pris en charge">
-            <button class="rail" data-h="82 100% 50%" data-encre="#141414" aria-pressed="true">SwimPay</button><button class="rail" data-h="24 100% 50%" data-encre="#FFFFFF">Orange Money</button><button class="rail" data-h="196 92% 48%" data-encre="#FFFFFF">Wave</button><button class="rail" data-h="48 100% 50%" data-encre="#141414">MTN MoMo</button><button class="rail" data-h="212 88% 52%" data-encre="#FFFFFF">Moov Money</button>
-          </div>
-          <p class="cam-quoi">SwimPay envoie ou reçoit de l'argent depuis
-            <b>n'importe quel Mobile Money</b> et n'importe quelle banque.
-            C'est à vous de choisir, et votre correspondant garde le sien.</p>
+          <p class="cam-quoi">Vous n'ouvrez aucun portail et vous ne ressaisissez
+            rien : la facture part avec l'opération, et son archive reste
+            consultable des mois plus tard.</p>
         </div>
         <div class="cam-video">
           <div class="cam-ecran">
@@ -1144,6 +1244,180 @@ va(location.hash.slice(1));
 /* ─── LA BARRE SUR LE HÉROS ───
    Elle ne se pose qu'une fois qu'on a quitté le haut : au premier pixel,
    l'image doit être entière. On lit la position réelle plutôt que de deviner. */
+const TOILE_NOEUDS = [{"n": "Orange Money", "f": "Mobile Money", "h": "24 100% 50%", "sens": "b", "op": "transfert · encaissement · retrait"}, {"n": "Wave", "f": "Mobile Money", "h": "196 92% 48%", "sens": "b", "op": "transfert · encaissement · retrait"}, {"n": "MTN MoMo", "f": "Mobile Money", "h": "48 100% 50%", "sens": "b", "op": "transfert · encaissement · retrait"}, {"n": "Moov Money", "f": "Mobile Money", "h": "212 88% 52%", "sens": "b", "op": "transfert · encaissement · retrait"}, {"n": "Votre banque", "f": "Virement", "h": "0 0% 72%", "sens": "b", "op": "banque vers mobile · mobile vers banque"}, {"n": "Carte Visa", "f": "Paiement", "h": "0 0% 86%", "sens": "s", "op": "achat en ligne, carte virtuelle"}, {"n": "Au comptoir", "f": "Encaissement", "h": "82 100% 50%", "sens": "e", "op": "encaissement par QR ou sans contact"}, {"n": "Votre site", "f": "Encaissement", "h": "82 100% 50%", "sens": "e", "op": "checkout en ligne, par le SDK"}, {"n": "Vos salaires", "f": "Décaissement", "h": "0 0% 62%", "sens": "s", "op": "paie, une signature pour toute l'équipe"}, {"n": "Fournisseurs", "f": "Décaissement", "h": "0 0% 62%", "sens": "s", "op": "paiement fournisseur"}];
+/* ─── LA TOILE ───
+   Lue telle quelle par site.py : ce fichier n'est jamais interpolé, donc ses
+   accolades et ses apostrophes n'ont rien à craindre.
+
+   Les nœuds sont posés dans le DOM par ce script à partir de TOILE_NOEUDS,
+   que site.py injecte juste au-dessus. */
+(() => {
+  "use strict";
+  const svg = document.getElementById("t-svg");
+  if (!svg || typeof TOILE_NOEUDS === "undefined") return;
+
+  const N = TOILE_NOEUDS;
+  const CX = 500, CY = 330, RX = 352, RY = 232;
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (t, a) => {
+    const e = document.createElementNS(NS, t);
+    for (const k in a) e.setAttribute(k, a[k]);
+    return e;
+  };
+  const $$ = (id) => document.getElementById(id);
+
+  /* Une ellipse, pas un cercle : le cadre est large, et un cercle y laisserait
+     deux gros vides sur les côtés. */
+  const pts = N.map((_, i) => {
+    const a = -Math.PI / 2 + (i / N.length) * Math.PI * 2;
+    return { a, x: CX + Math.cos(a) * RX, y: CY + Math.sin(a) * RY };
+  });
+
+  const gR = $$("t-rayons"), gN = $$("t-noeuds"), gJ = $$("t-jetons");
+  const grp = [];
+
+  N.forEach((n, i) => {
+    const p = pts[i], teinte = "hsl(" + n.h + ")";
+
+    /* Une courbe, pas une droite : dix droites depuis un même point font une
+       étoile de mire ; une courbe fait une toile. */
+    const mx = (CX + p.x) / 2 + Math.cos(p.a + Math.PI / 2) * 26;
+    const my = (CY + p.y) / 2 + Math.sin(p.a + Math.PI / 2) * 26;
+    const d = "M " + CX + " " + CY + " Q " + mx.toFixed(1) + " " + my.toFixed(1) +
+              " " + p.x.toFixed(1) + " " + p.y.toFixed(1);
+
+    const ray = el("path", { class: "t-rayon t-" + n.sens, d: d });
+    gR.appendChild(ray);
+
+    const g = el("g", {
+      class: "t-noeud", tabindex: "0", role: "listitem",
+      "aria-label": n.n + ", " + n.f + " : " + n.op,
+    });
+    g.appendChild(el("circle", { class: "t-anneau", cx: p.x, cy: p.y, r: 21, stroke: teinte }));
+    g.appendChild(el("circle", { cx: p.x, cy: p.y, r: 13, fill: teinte }));
+
+    const dehors = 34;
+    const tx = p.x + Math.cos(p.a) * dehors, ty = p.y + Math.sin(p.a) * dehors;
+    const cote = Math.cos(p.a);
+    const anc = Math.abs(cote) < 0.34 ? "middle" : cote > 0 ? "start" : "end";
+    const nom = el("text", { class: "t-nom", x: tx, y: ty + 1, "text-anchor": anc });
+    nom.textContent = n.n;
+    const fam = el("text", { class: "t-fam", x: tx, y: ty + 17, "text-anchor": anc });
+    fam.textContent = n.f;
+    g.append(nom, fam);
+    gN.appendChild(g);
+
+    const j = el("circle", {
+      r: 5.5, cx: CX, cy: CY, opacity: 0,
+      fill: n.sens === "e" ? "var(--acide)" : teinte,
+    });
+    gJ.appendChild(j);
+
+    const o = { n: n, ray: ray, j: j, g: g, len: 0,
+                phase: (i / N.length) * 2.6 + (i % 3) * 0.31 };
+    grp.push(o);
+
+    const montre = () => allume(n.n);
+    g.addEventListener("pointerenter", montre);
+    g.addEventListener("focusin", montre);
+  });
+
+  /* getPointAtLength : le navigateur connaît déjà la Bézier, on ne la
+     re-dérive pas à la main. */
+  grp.forEach((o) => { o.len = o.ray.getTotalLength(); });
+
+  const repos = () => {
+    grp.forEach((x) => x.g.classList.remove("t-actif"));
+    $$("t-detail").innerHTML =
+      "<b>SwimPay</b><span>tout passe par le même compte</span>";
+  };
+
+  /* Le rail choisi allume SON nœud. Avant, les rails vivaient sous un titre
+     qui parlait de factures et ne pilotaient qu'une teinte : ils commandent
+     maintenant quelque chose qui les concerne.
+     SwimPay n'est pas un nœud de la toile — il en est le moyeu : on rend donc
+     la main au repos plutôt que de chercher un nœud qui n'existe pas. */
+  function allume(nom) {
+    const o = grp.find((x) => x.n.n === nom);
+    if (!o) { repos(); return; }
+    grp.forEach((x) => x.g.classList.remove("t-actif"));
+    o.g.classList.add("t-actif");
+    $$("t-detail").innerHTML = "<b>" + o.n.n + "</b><span>" + o.n.op + "</span>";
+  }
+  window.__toileAllume = allume;
+
+  $$("toile").addEventListener("pointerleave", repos);
+  repos();
+
+  const bez = (x1, y1, x2, y2) => {
+    const A = (a, b) => 1 - 3 * b + 3 * a, B = (a, b) => 3 * b - 6 * a, C = (a) => 3 * a;
+    const cal = (t, a, b) => ((A(a, b) * t + B(a, b)) * t + C(a)) * t;
+    const pen = (t, a, b) => 3 * A(a, b) * t * t + 2 * B(a, b) * t + C(a);
+    return (x) => {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      let t = x;
+      for (let i = 0; i < 8; i++) {
+        const dd = pen(t, x1, x2);
+        if (Math.abs(dd) < 1e-6) break;
+        const e = cal(t, x1, x2) - x;
+        if (Math.abs(e) < 1e-6) return cal(t, y1, y2);
+        t -= e / dd;
+      }
+      return cal(t, y1, y2);
+    };
+  };
+  const inOut = bez(0.65, 0, 0.35, 1);
+  const CYCLE = 2.9, PAUSE = 1.5, TOTAL = CYCLE + PAUSE;
+
+  let t0 = 0, prec = null, visible = false;
+  const doux = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function tour(ts) {
+    if (prec !== null && visible && !doux) t0 += (ts - prec) / 1000;
+    prec = ts;
+
+    if (visible) {
+      let auCentre = 0;
+      for (const o of grp) {
+        const local = (t0 + o.phase) % TOTAL;
+        if (local > CYCLE) { o.j.setAttribute("opacity", "0"); continue; }
+        const p = inOut(local / CYCLE);
+
+        /* Le sens : une entrée va du nœud vers le moyeu, une sortie l'inverse.
+           « Les deux » alterne d'un passage à l'autre — c'est ce qui distingue
+           un rayon qui circule d'un rayon à sens unique. */
+        let versCentre = o.n.sens === "e";
+        if (o.n.sens === "b") versCentre = Math.floor((t0 + o.phase) / TOTAL) % 2 === 0;
+
+        const l = versCentre ? (1 - p) * o.len : p * o.len;
+        const pt = o.ray.getPointAtLength(l);
+        o.j.setAttribute("cx", pt.x.toFixed(1));
+        o.j.setAttribute("cy", pt.y.toFixed(1));
+        o.j.setAttribute("opacity", Math.min(1, Math.sin(p * Math.PI) * 2.4).toFixed(3));
+        o.j.setAttribute("r", (4.4 + Math.sin(p * Math.PI) * 2.2).toFixed(2));
+
+        const d2 = (pt.x - CX) * (pt.x - CX) + (pt.y - CY) * (pt.y - CY);
+        if (d2 < 4900) auCentre += 1 - Math.sqrt(d2) / 70;
+      }
+      /* Le halo du moyeu n'est pas une pulsation décorative : il s'allume à la
+         mesure de ce qui le traverse à cet instant. */
+      $$("t-halo").setAttribute("opacity", Math.min(0.85, auCentre * 0.5).toFixed(3));
+      $$("t-halo").setAttribute("r", (54 + Math.min(3, auCentre) * 5).toFixed(1));
+    }
+    requestAnimationFrame(tour);
+  }
+
+  /* Rien ne tourne hors de l'écran. */
+  new IntersectionObserver(
+    (es) => es.forEach((e) => { visible = e.isIntersecting; }),
+    { threshold: 0.12 }
+  ).observe($$("toile"));
+
+  requestAnimationFrame(tour);
+})();
+
+
 const nav = document.querySelector(".nav");
 /* --h-nav pilote le decalage du heros bord a bord. Une constante ecrite a la
    main devient fausse des que la barre change de forme — elle passe a deux
@@ -1173,6 +1447,10 @@ const poseRail = (b) => {
   document.documentElement.style.setProperty("--s", b.dataset.h.split(" ")[1]);
   document.documentElement.style.setProperty("--l", b.dataset.h.split(" ")[2]);
   document.documentElement.style.setProperty("--cam-encre", b.dataset.encre);
+  /* Le rail commande enfin quelque chose qui le concerne : son nœud dans la
+     toile. SwimPay n'en est pas un — il en est le moyeu — donc data-noeud est
+     vide pour lui et la toile revient au repos. */
+  if (window.__toileAllume) window.__toileAllume(b.dataset.noeud || "");
 };
 let cycle = null, k = 0;
 const lance = () => {

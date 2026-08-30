@@ -11,7 +11,7 @@
 #
 # La matière vient de l'app : même grain, même acide, même typo. Une page qui
 # présente un produit doit être DE ce produit.
-import io, os, sys, base64, re
+import io, os, sys, base64, re, json
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 A = r"d:\Dev\Projects\swimpay\design\pivot\assets"
@@ -38,6 +38,8 @@ def jeton(nom):
 print("assets embarqués :")
 grain = jeton("grain")
 logo = jeton("carte-logo")
+# le moyeu de la toile prend le symbole seul, pas le logotype de la barre
+logo_svg = brut("logo-symbole-blanc.png", "image/png")
 photo = b64("hero-personne.jpg", "image/jpeg")
 photo_tel = b64("hero-personne-tel.jpg", "image/jpeg")
 carte_visa = brut("carte-visa.webp", "image/webp")
@@ -110,6 +112,14 @@ PERSONNEL = [
      "offre soumise à conditions"),
 ]
 
+
+# ── La toile : ses contreparties, et son CSS/JS lus a part. Ils ne passent
+#    JAMAIS par la f-string : sinon chaque accolade serait a doubler et
+#    chaque apostrophe a echapper — une panne silencieuse garantie. ──
+TOILE_NOEUDS = [{"n": "Orange Money", "f": "Mobile Money", "h": "24 100% 50%", "sens": "b", "op": "transfert · encaissement · retrait"}, {"n": "Wave", "f": "Mobile Money", "h": "196 92% 48%", "sens": "b", "op": "transfert · encaissement · retrait"}, {"n": "MTN MoMo", "f": "Mobile Money", "h": "48 100% 50%", "sens": "b", "op": "transfert · encaissement · retrait"}, {"n": "Moov Money", "f": "Mobile Money", "h": "212 88% 52%", "sens": "b", "op": "transfert · encaissement · retrait"}, {"n": "Votre banque", "f": "Virement", "h": "0 0% 72%", "sens": "b", "op": "banque vers mobile · mobile vers banque"}, {"n": "Carte Visa", "f": "Paiement", "h": "0 0% 86%", "sens": "s", "op": "achat en ligne, carte virtuelle"}, {"n": "Au comptoir", "f": "Encaissement", "h": "82 100% 50%", "sens": "e", "op": "encaissement par QR ou sans contact"}, {"n": "Votre site", "f": "Encaissement", "h": "82 100% 50%", "sens": "e", "op": "checkout en ligne, par le SDK"}, {"n": "Vos salaires", "f": "Décaissement", "h": "0 0% 62%", "sens": "s", "op": "paie, une signature pour toute l'équipe"}, {"n": "Fournisseurs", "f": "Décaissement", "h": "0 0% 62%", "sens": "s", "op": "paiement fournisseur"}]
+TOILE_CSS = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "toile.css"), encoding="utf-8").read()
+TOILE_JS = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "toile.js"), encoding="utf-8").read()
+TOILE_DONNEES = "const TOILE_NOEUDS = " + json.dumps(TOILE_NOEUDS, ensure_ascii=False) + ";"
 
 CODE_SDK = """&lt;script src="https://sdk.swimpay.pro/v1/checkout.js"&gt;&lt;/script&gt;
 &lt;script&gt;
@@ -721,6 +731,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   .page.active .dedans > *, .page.active .heros-in > *, .fiche {{ animation: none; }}
   .cam-video::after {{ transition: none; }}
 }}
+{TOILE_CSS}
 </style>
 
 <nav class="nav">
@@ -758,6 +769,45 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     </div>
   </header>
 
+  <!-- ── la toile : la vue large, avant le détail ──
+       Les rails vivent ICI et non plus sous « Émettez vos factures » : un
+       titre qui promet la facturation ne peut pas porter des boutons qui
+       parlent d'interopérabilité. Deux sujets, deux sections. -->
+  <section class="sect sombre" id="toile">
+    <div class="dedans">
+      <h2>Tout passe par le même compte</h2>
+      <p class="para">Vos réseaux Mobile Money, votre banque, votre carte, vos
+        encaissements au comptoir et en ligne, vos salaires et vos fournisseurs.
+        <b>Une seule application au centre</b>, et chaque opération garde son sens.
+        C'est à vous de choisir le vôtre, votre correspondant garde le sien.</p>
+
+      <div class="rails" role="group" aria-label="Choisissez votre réseau">
+        {"".join(f'<button class="rail" data-h="{h}" data-encre="{e}" data-noeud="{n}"{" aria-pressed=~true~" if i == 0 else ""}>{n}</button>' for i, (n, h, e) in enumerate(RAILS)).replace("~", chr(34))}
+      </div>
+
+      <svg id="t-svg" viewBox="0 0 1000 660" role="list"
+           aria-label="SwimPay au centre, relié à dix contreparties">
+        <g id="t-rayons"></g>
+        <g id="t-jetons"></g>
+        <g id="t-noeuds"></g>
+        <g aria-hidden="true">
+          <circle class="t-moyeu-halo" id="t-halo" cx="500" cy="330" r="54" opacity="0"></circle>
+          <rect class="t-moyeu-fond" x="458" y="288" width="84" height="84" rx="24"></rect>
+          <image href="{logo_svg}" x="479" y="309" width="42" height="42" opacity=".94"></image>
+        </g>
+      </svg>
+
+      <div class="t-bas">
+        <div class="t-legende">
+          <span><i class="t-le"></i>ce qui entre</span>
+          <span><i class="t-ls"></i>ce qui sort</span>
+          <span><i class="t-lb"></i>les deux sens</span>
+        </div>
+        <p class="t-detail" id="t-detail"></p>
+      </div>
+    </div>
+  </section>
+
   <!-- ── section 1 : le gain de temps, et le Caméléon ── -->
   <section class="sect sombre" id="temps">
     <div class="dedans">
@@ -768,12 +818,9 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
             DGI</b> partent en une minute. Le numéro, le QR de contrôle et
             l'archive légale les accompagnent, vous n'avez rien à ressaisir
             ailleurs.</p>
-          <div class="rails" role="group" aria-label="Réseaux pris en charge">
-            {"".join(f'<button class="rail" data-h="{h}" data-encre="{e}"{" aria-pressed=~true~" if i == 0 else ""}>{n}</button>' for i, (n, h, e) in enumerate(RAILS)).replace("~", chr(34))}
-          </div>
-          <p class="cam-quoi">SwimPay envoie ou reçoit de l'argent depuis
-            <b>n'importe quel Mobile Money</b> et n'importe quelle banque.
-            C'est à vous de choisir, et votre correspondant garde le sien.</p>
+          <p class="cam-quoi">Vous n'ouvrez aucun portail et vous ne ressaisissez
+            rien : la facture part avec l'opération, et son archive reste
+            consultable des mois plus tard.</p>
         </div>
         <div class="cam-video">
           <div class="cam-ecran">
@@ -1219,6 +1266,9 @@ va(location.hash.slice(1));
 /* ─── LA BARRE SUR LE HÉROS ───
    Elle ne se pose qu'une fois qu'on a quitté le haut : au premier pixel,
    l'image doit être entière. On lit la position réelle plutôt que de deviner. */
+{TOILE_DONNEES}
+{TOILE_JS}
+
 const nav = document.querySelector(".nav");
 /* --h-nav pilote le decalage du heros bord a bord. Une constante ecrite a la
    main devient fausse des que la barre change de forme — elle passe a deux
@@ -1248,6 +1298,10 @@ const poseRail = (b) => {{
   document.documentElement.style.setProperty("--s", b.dataset.h.split(" ")[1]);
   document.documentElement.style.setProperty("--l", b.dataset.h.split(" ")[2]);
   document.documentElement.style.setProperty("--cam-encre", b.dataset.encre);
+  /* Le rail commande enfin quelque chose qui le concerne : son nœud dans la
+     toile. SwimPay n'en est pas un — il en est le moyeu — donc data-noeud est
+     vide pour lui et la toile revient au repos. */
+  if (window.__toileAllume) window.__toileAllume(b.dataset.noeud || "");
 }};
 let cycle = null, k = 0;
 const lance = () => {{

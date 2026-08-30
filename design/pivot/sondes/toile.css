@@ -1,0 +1,63 @@
+/* ─── LA TOILE ───
+   La vue large : SwimPay au moyeu, toutes les contreparties autour. Chaque
+   rayon porte une opération réelle de la grille tarifaire, et son SENS est
+   l'information principale — acide pour ce qui entre, blanc pour ce qui sort.
+   Cinq rayons circulent dans les deux sens ; c'est là que SwimPay est un
+   passage et non une destination.
+
+   Ce fichier est lu tel quel par site.py. Il vit à part parce qu'injecter du
+   CSS et du JS dans une f-string oblige à doubler chaque accolade, et qu'un
+   oubli sur des centaines d'accolades est une panne silencieuse.
+
+   Zéro image, zéro dépendance : du SVG et une boucle. */
+
+#toile { position: relative; }
+#toile svg { display: block; width: 100%; height: auto; margin-top: 30px; }
+
+.t-rayon {
+  fill: none; stroke-linecap: round;
+  transition: stroke-opacity 260ms ease, stroke-width 260ms ease;
+}
+.t-e { stroke: var(--acide); stroke-opacity: .30; stroke-width: 1.4; }
+.t-s { stroke: #FFFFFF;      stroke-opacity: .20; stroke-width: 1.4; }
+.t-b { stroke: #FFFFFF;      stroke-opacity: .26; stroke-width: 1.4; }
+g.t-actif .t-rayon { stroke-opacity: .9; stroke-width: 2.4; }
+
+.t-anneau { fill: none; stroke-width: 1.2; stroke-opacity: .5; }
+.t-nom { font-size: 15px; font-weight: 500; fill: #FFFFFF; letter-spacing: -.01em; }
+.t-fam {
+  font-size: 10px; letter-spacing: .09em; text-transform: uppercase;
+  fill: rgba(255, 255, 255, .42);
+}
+g.t-noeud { cursor: pointer; }
+g.t-noeud:focus-visible { outline: 2px solid var(--acide); outline-offset: 4px; }
+g.t-actif .t-fam { fill: rgba(255, 255, 255, .78); }
+
+.t-moyeu-fond { fill: #1C1C1C; stroke: rgba(255, 255, 255, .16); stroke-width: 1; }
+.t-moyeu-halo { fill: none; stroke: rgba(255, 255, 255, .45); stroke-width: 1.5; }
+
+.t-bas {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 24px; flex-wrap: wrap; margin-top: 14px;
+}
+.t-legende {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  font-size: 13px; color: rgba(255, 255, 255, .5);
+}
+.t-legende span { display: flex; align-items: center; gap: 8px; }
+.t-legende i { width: 16px; height: 2px; border-radius: 2px; }
+.t-le { background: var(--acide); }
+.t-ls { background: rgba(255, 255, 255, .6); }
+.t-lb { background: linear-gradient(90deg, var(--acide), rgba(255, 255, 255, .6)); }
+
+.t-detail { margin: 0; text-align: right; min-width: 250px; }
+.t-detail b { display: block; font-size: 17px; font-weight: 500; color: #FFFFFF; }
+.t-detail span { font-size: 14px; color: rgba(255, 255, 255, .6); }
+
+@media (max-width: 700px) {
+  .t-detail { text-align: left; }
+  /* Sur un écran étroit, le SVG est réduit d'autant : les étiquettes doivent
+     grossir dans son repère pour rester lisibles à l'arrivée. */
+  .t-nom { font-size: 21px; }
+  .t-fam { font-size: 14px; }
+}
