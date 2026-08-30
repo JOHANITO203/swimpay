@@ -20,45 +20,65 @@ Le dépôt est déjà lié à Cloudflare : c'est Cloudflare qui construit et pub
 
 **Branche à servir : `cloudflare`.**
 
-Dans le tableau de bord — *Workers & Pages → Create → Connect to Git* — choisir
-le dépôt, la branche `cloudflare`, puis renseigner **trois champs** :
+Réglages du tableau de bord :
 
 | champ | valeur |
 |---|---|
 | Root directory | `deploy` |
-| Build command | *(vide — effacer ce qui est proposé)* |
-| Deploy command | `npx wrangler deploy --config wrangler.jsonc` |
+| Build command | *(vide)* |
+| Deploy command | `npx wrangler deploy` |
 
 Chaque poussée sur cette branche redéploie.
 
-### Pourquoi ces trois champs, et pas « rien à configurer »
+## Les trois pannes déjà payées
 
-Premier essai, `wrangler.jsonc` à la racine du dépôt. Cloudflare l'a trouvé,
-mais la racine porte le `package.json` du monorepo, avec ses *workspaces*. Deux
-conséquences :
+Trois builds ont échoué avant que celui-ci passe. Chacune a laissé une trace
+dans ce dossier ; ne pas défaire ces choix sans relire pourquoi.
 
-    22:07:43  Installing project dependencies: npm clean-install
-    22:07:55  added 351 packages
-    22:07:56  Executing user build command: npm run build  →  tsc -b
-    22:08:24  ✘ [ERROR] The Cloudflare application detection logic has been run
-              in the root of a workspace instead of targeting a specific
-              project. Change your working directory to one of the
-              applications in the workspace and try again.
+### 1. La racine du dépôt est une racine de workspace
 
-351 paquets installés et tout le projet compilé pour publier trois fichiers
-statiques — puis un refus. Les trois champs corrigent la cause :
+`wrangler.jsonc` était à la racine. Cloudflare l'a trouvé, mais la racine porte
+le `package.json` du monorepo avec `workspaces: ["apps/*","packages/*"]` :
 
-- **Root directory `deploy`** met Cloudflare dans un dossier sans
-  `package.json` : plus d'installation, plus de `tsc -b`, plus de racine de
-  workspace ;
-- **Build command vide** parce qu'il n'y a rien à construire — `index.html` est
-  généré ici, par `design/pivot/sondes/site.py`, et versionné tel quel ;
-- **`--config wrangler.jsonc`** coupe court à la détection de projet : wrangler
-  prend ce fichier et ne remonte pas chercher un workspace.
+    Installing project dependencies: npm clean-install
+    added 351 packages
+    Executing user build command: npm run build   ->  tsc -b
+    ERROR  The Cloudflare application detection logic has been run in the
+           root of a workspace instead of targeting a specific project.
+
+351 paquets installés et tout le monorepo compilé pour publier trois fichiers
+statiques — puis un refus. **Correction :** `wrangler.jsonc` descend dans
+`deploy/`, dossier sans `package.json`, et *Root directory* pointe dessus.
+
+### 2. Le nom du Worker est imposé par le CI
+
+    Failed to match Worker name. Your config file is using the Worker name
+    "swimpay-site", but the CI system expected "swimpay". Overriding using
+    the CI provided Worker name.
+
+Le CI tire le nom du dépôt et écrase le nôtre — et annonce qu'il ouvrira une
+pull request pour « corriger » ce fichier. **Correction :** `name` vaut
+`swimpay`, celui que le CI attend.
+
+### 3. La date de compatibilité se juge en UTC
+
+    Can't set compatibility date in the future: 2026-08-31  [code: 10021]
+
+Elle valait `2026-08-31`. Il était bien le 31 en heure locale, mais les
+journaux du build sont horodatés `2026-08-30T22:21` UTC : pour l'API, demain.
+Cet échec est arrivé **après** l'upload réussi des trois fichiers — tout le
+reste marchait. **Correction :** une date franchement passée, jamais celle du
+jour.
+
+### Ce qui reste et qu'on laisse
+
+Cloudflare installe quand même les 353 paquets de la racine avant d'appliquer
+le *root directory*. Douze secondes perdues par build, sans conséquence : la
+commande de construction est vide, rien n'en sort.
 
 ## Après la première mise en ligne
 
-Le Worker répond sur `swimpay-site.<sous-domaine>.workers.dev`. Deux valeurs à
+Le Worker répond sur `swimpay.<sous-domaine>.workers.dev`. Deux valeurs à
 mettre à jour dans `design/pivot/sondes/site.py`, puis régénérer :
 
     SITE_URL   l'adresse publique réelle — les balises canonique et og:
