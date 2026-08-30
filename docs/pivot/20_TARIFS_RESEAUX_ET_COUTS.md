@@ -155,18 +155,85 @@ sur rien qui traverse.**
 
 ---
 
-## 5. La grille de prix, corrigée et sourcée
+## 5. Ce qu'on gagne, opération par opération, chemin par chemin
 
-Ce qu'on facture au client, avec la source du prix de marché en face.
+Le tableau que LO réclame : pour chaque opération, notre prix, ce que ça coûte
+selon le chemin, et **la marge qui reste**. Une marge négative marque un chemin
+à éviter (on ne l'emprunte qu'en secours). Prix `[P]`, à valider.
 
-| Opération | Marché (sourcé) | Prix SwimPay `[P]` | Notre coût (bon chemin) |
+### 5.1 Encaisser une vente — prix client **1 %**
+
+| Chemin | Notre coût | **Marge** |
+|---|---|---|
+| API marchande **Wave** | ~1 % | **~0** |
+| API marchande **Orange** | ~1 % (J+5) | **~0** |
+| API marchande **MTN** | 1,5–2 % | **négative** |
+| Rail **Julaya** | 0,5–1 % | **0 à +0,5 %** |
+| Rail **CinetPay** | 1,5–3,5 % | **négative** |
+| **Netting** | ~0,1 % | **+0,9 %** |
+
+On encaisse par **Wave, Orange (équilibre) ou Julaya (petite marge)**. Jamais par
+MTN ni CinetPay à ce prix. La vraie marge vient du **netting**.
+
+### 5.2 Changer de réseau, le swap — prix client **1 %, max 500 F**
+
+| Chemin | Notre coût | **Marge** |
+|---|---|---|
+| Rail **Julaya** | 1–2,5 % | **0 à −1,5 %** |
+| Rail **CinetPay** | 3–5 % | **très négative** |
+| **Netting** | ~0,1 % | **+0,9 %** |
+
+Le swap **ne gagne de l'argent que par le netting**. Par un rail, il est à perte.
+
+### 5.3 Payer les salaires — prix client **1 %** (ou coût + 0,4 %)
+
+| Chemin | Notre coût | **Marge** |
+|---|---|---|
+| Rail **Julaya** payout | 0,5–1,5 % | **+0,5 à −0,5 %** |
+| Rail **CinetPay** payout | 1,5 % | **−0,5 %** |
+| **Netting**, ou on-us si les employés sont clients | ~0–0,1 % | **+0,9 à +1 %** |
+
+La paie rapporte surtout quand **les employés deviennent clients** : le versement
+devient une écriture interne, coût nul, et recrute 30 utilisateurs au passage.
+
+### 5.4 Checkout e-commerce — prix client **1,5 %**
+
+| Chemin | Notre coût | **Marge** |
+|---|---|---|
+| Rail **Julaya** | 0,5–1 % | **+0,5 à +1 %** |
+| API **Wave / Orange** | ~1 % | **+0,5 %** |
+| Rail **CinetPay** | 1,5–3,5 % | **0 à −2 %** |
+| **Netting** | ~0,1 % | **+1,4 %** |
+
+Le checkout est la seule opération rentable **même par un rail** (Julaya), parce
+que le prix de marché y est haut (2,25 à 3,5 %).
+
+### 5.5 Ce que ça donne sur un vrai mois de PME
+
+Une PME qui encaisse **5 000 000 F** et verse **3 000 000 F** de salaires.
+
+| Poste | Prix | Marge par netting | Marge par rail/opérateur |
 |---|---|---|---|
-| Envoi même réseau | 0 F Orange `[V]`, 1 % Wave `[T]` | **gratuit** | ~0 (on-us) |
-| Envoi réseau différent | ~1 % `[T]` | **1 %, max 500 F** | ~0,1 % netting |
-| Retrait vers un réseau | cash-out 0–1 % `[V/T]` | **gratuit** | ~0,1 % netting |
-| Encaisser une vente | ~1 % `[T]` | **1 %** | ~1 % API marchande, ~0,1 % netting |
-| Paie de salaire | Julaya 0,5–1,5 % `[V]` | **coût + 0,3–0,5 %** | netting, on-us si employés clients |
-| Checkout e-commerce | 2,25–3,5 % `[V]` | **1,5 %** | ~0,1 % netting + rail au besoin |
+| Abonnement | 10 000 F | **10 000 F** | 10 000 F |
+| Encaissement 5 M | 1 % | **+45 000 F** (0,9 %) | ~0 F |
+| Paie 3 M | 1 % | **+27 000 F** (0,9 %) | +15 000 F (0,5 %) |
+| **Total mensuel** | | **≈ 82 000 F** | **≈ 25 000 F** |
+
+> **Le netting triple ce qu'on gagne par client** : ~82 000 F contre ~25 000 F
+> par mois. Sans lui, il ne reste presque que l'abonnement. C'est la démonstration
+> chiffrée que le netting est le moteur du P&L, pas un détail technique.
+
+### 5.6 La règle qui sort de tout ça
+
+1. **L'abonnement est la marge sûre.** Il ne dépend d'aucun chemin.
+2. **Le netting double ou triple le reste.** C'est là qu'est l'argent des
+   transactions.
+3. **Julaya est le meilleur rail** quand le netting ne peut pas (caisse à sec),
+   surtout au checkout.
+4. **CinetPay et MTN sont des filets de dernier recours**, à perte sur
+   l'encaissement et le swap. On ne les emprunte que faute de mieux.
+5. **Le swap et l'encaissement à 1 % ne rapportent rien sans netting.** Ne jamais
+   promettre ces marges sur un chemin de rail.
 
 ---
 
