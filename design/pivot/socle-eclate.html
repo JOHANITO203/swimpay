@@ -9,24 +9,11 @@
     --sol-2:      #E4E4DC;
     --bord:       #D2D2C6;
     --studio:     #EAEAE4;
-    --studio-2:   #D6D6CE;
+    --studio-2:   #D4D4CC;
     --acide:      #A2FF01;
     --acide-mat:  #7FC400;
     --noir:       #0A0A0A;
-    --gris:       #434343;
-
-    --pas: 4px;
     --r: 10px;
-  }
-
-  :root:not([data-theme="light"]) {
-    @media (prefers-color-scheme: dark) {
-      --encre:   #EDEDE4;
-      --encre-2: #8E9083;
-      --sol:     #16170F;
-      --sol-2:   #1E1F16;
-      --bord:    #2E2F24;
-    }
   }
 
   @media (prefers-color-scheme: dark) {
@@ -65,35 +52,24 @@
     padding: 40px 0 72px;
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 26px;
   }
-
-  /* ── en-tête ─────────────────────────────────────────────── */
 
   header { display: flex; flex-direction: column; gap: 8px; }
 
   .sur {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
-    font-size: 11px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
     color: var(--encre-2);
   }
 
   h1 {
     margin: 0;
     font-size: clamp(28px, 5vw, 40px);
-    font-weight: 700;
-    letter-spacing: -.02em;
-    text-wrap: balance;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance;
   }
 
-  .chapo {
-    margin: 0;
-    max-width: 62ch;
-    color: var(--encre-2);
-  }
-
+  .chapo { margin: 0; max-width: 64ch; color: var(--encre-2); }
   .chapo b { color: var(--encre); font-weight: 600; }
 
   /* ── la fenêtre de rendu ─────────────────────────────────── */
@@ -102,8 +78,7 @@
     position: relative;
     border-radius: var(--r);
     border: 1px solid var(--bord);
-    background:
-      radial-gradient(120% 90% at 30% 8%, #FFFFFF 0%, var(--studio) 46%, var(--studio-2) 100%);
+    background: radial-gradient(120% 92% at 32% 6%, #FFFFFF 0%, var(--studio) 48%, var(--studio-2) 100%);
     aspect-ratio: 16 / 11;
     min-height: 340px;
     overflow: hidden;
@@ -114,385 +89,263 @@
   }
 
   .studio::after {
-    /* le liseré intérieur : sépare le rendu du cadre de la page */
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: var(--r);
-    box-shadow: inset 0 0 0 1px rgba(20, 21, 15, .06);
+    content: ""; position: absolute; inset: 0; border-radius: var(--r);
+    box-shadow: inset 0 0 0 1px rgba(20, 21, 15, .07);
     pointer-events: none;
   }
 
   .rig {
     position: relative;
-    width: 260px;
-    height: 260px;
+    width: 250px; height: 250px;
     transform-style: preserve-3d;
     will-change: transform;
   }
 
-  .plaque {
+  /* Un ETAGE porte le mouvement ; il ne contient rien d'autre que des
+     tranches immobiles. C'est le seul element anime par plateau. */
+  .etage {
     position: absolute;
     inset: 0;
-    border-radius: 58px;
     transform-style: preserve-3d;
     will-change: transform;
   }
 
-  /* 1 · le plateau du haut — acier brossé, tranche moletée, marque en creux */
-
-  .p-haut {
-    background:
-      linear-gradient(148deg, #FFFFFF 0%, #E9E9E4 26%, #FBFBF8 42%,
-                              #CFCFC8 62%, #F4F4EF 78%, #DCDCD4 100%);
-    box-shadow:
-      0 0 0 1px rgba(10, 10, 10, .10),
-      0 18px 34px -18px rgba(10, 10, 10, .45);
+  /* Une TRANCHE : une copie du plateau, decalee de quelques dixiemes en Z.
+     Empilees, elles font l'epaisseur — c'est ce qui manquait le plus. */
+  .tranche {
+    position: absolute;
+    inset: 0;
+    border-radius: 56px;
+    backface-visibility: hidden;
   }
 
-  /* la tranche moletée : de fines cannelures sur le pourtour */
-  .p-haut::before {
-    content: "";
+  /* la tranche visible du dessus porte la matiere, les autres font le flanc */
+  .flanc { background: linear-gradient(150deg, #D9D9D2, #8F8F87 55%, #C6C6BE); }
+
+  /* ── 1 · plateau du haut : acier brossé ─────────────────── */
+
+  .face-haut {
+    background:
+      linear-gradient(148deg,
+        #FFFFFF 0%, #E4E4DE 22%, #FCFCF9 38%,
+        #C2C2BA 58%, #F6F6F1 74%, #D3D3CB 92%, #EFEFEA 100%);
+    box-shadow: inset 0 0 0 1px rgba(10,10,10,.13);
+  }
+
+  /* la moleture : un anneau qui SUIT le carré arrondi, pas un disque.
+     Deux masques composés en xor — c'est ce qui manquait à la version 1. */
+  .moleture {
     position: absolute;
-    inset: -1px;
-    border-radius: 59px;
-    background: repeating-conic-gradient(
-      from 0deg,
-      rgba(10,10,10,.30) 0deg .55deg,
-      rgba(255,255,255,.55) .55deg 1.1deg);
-    -webkit-mask: radial-gradient(closest-side, transparent 0 88%, #000 92%);
-            mask: radial-gradient(closest-side, transparent 0 88%, #000 92%);
-    opacity: .5;
+    inset: 0;
+    border-radius: 56px;
+    padding: 9px;
+    background: repeating-conic-gradient(from 0deg,
+      #7E7E76 0deg 0.9deg, #FAFAF6 0.9deg 1.8deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    opacity: .62;
   }
 
   .marque {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
     font-family: Archivo, sans-serif;
-    font-size: 128px;
-    font-weight: 700;
-    letter-spacing: -.06em;
+    font-size: 116px; font-weight: 700; letter-spacing: -.06em;
     color: transparent;
-    background:
-      repeating-linear-gradient(58deg,
-        #C4C4BC 0 1.4px, #EFEFEA 1.4px 2.8px);
-    -webkit-background-clip: text;
-            background-clip: text;
-    text-shadow:
-      0 1px 0 rgba(255,255,255,.85),
-      0 -1px 1px rgba(10,10,10,.28);
+    background: linear-gradient(150deg, #B4B4AC 0%, #EDEDE8 44%, #9E9E96 100%);
+    -webkit-background-clip: text; background-clip: text;
+    text-shadow: 0 1.5px 0 rgba(255,255,255,.9), 0 -1.5px 1.5px rgba(10,10,10,.34);
     user-select: none;
   }
 
-  /* 2 · la lame de verre — perforations et arête acide */
+  /* ── 2 · la lame de verre ───────────────────────────────── */
 
-  .p-verre {
+  /* du verre, pas une plaque teintee : presque rien dans la masse, tout dans
+     l'arete. C'est le liseré vif qui fait lire la transparence. */
+  .face-verre {
     background: linear-gradient(150deg,
-      rgba(255,255,255,.86) 0%, rgba(255,255,255,.52) 50%, rgba(255,255,255,.80) 100%);
+      rgba(255,255,255,.30) 0%, rgba(255,255,255,.04) 42%,
+      rgba(162,255,1,.05) 66%, rgba(255,255,255,.22) 100%);
     box-shadow:
-      inset 0 0 0 6px rgba(255,255,255,.72),
-      0 0 0 1px var(--acide-mat),
-      0 14px 26px -18px rgba(10,10,10,.35);
-    backdrop-filter: blur(.5px);
+      inset 0 0 0 1.5px rgba(255,255,255,.92),
+      inset 0 0 30px rgba(255,255,255,.26),
+      0 0 0 1px rgba(127,196,0,.42);
   }
 
-  .p-verre::before {
-    content: "";
-    position: absolute;
-    inset: 26px;
-    border-radius: 34px;
+  .face-verre::before {
+    content: ""; position: absolute; inset: 30px; border-radius: 32px;
+    background: radial-gradient(circle at 50% 50%, rgba(110,175,0,.75) 0 1px, transparent 1.4px) 0 0 / 11px 11px;
+    opacity: .34;
+  }
+
+  .flanc-verre { background: linear-gradient(150deg, rgba(206,246,168,.34), rgba(142,203,78,.46)); }
+
+  /* ── 3 · la plaque acide dans son cadre ─────────────────── */
+
+  /* le cadre est une BORDURE : il tient dans l'empreinte du plateau et ne
+     deborde plus a l'etat ferme */
+  .face-acide {
+    border: 9px solid var(--noir);
     background:
-      radial-gradient(circle at 50% 50%, var(--acide-mat) 0 1.1px, transparent 1.4px) 0 0 / 9px 9px;
-    opacity: .55;
+      radial-gradient(90% 70% at 30% 22%, rgba(255,255,255,.55) 0%, transparent 58%),
+      linear-gradient(150deg, var(--acide) 0%, #86D400 48%, #6FAF00 78%, #9BF200 100%);
+    background-clip: padding-box;
+    box-shadow: inset 0 0 26px rgba(10,10,10,.30);
   }
 
-  .p-verre::after {
-    content: "";
-    position: absolute;
-    inset: 60px;
-    border-radius: 24px;
-    box-shadow: inset 0 0 0 3px rgba(162, 255, 1, .45);
+  .face-acide::before {
+    content: ""; position: absolute; inset: 66px; border-radius: 50%;
+    background: radial-gradient(circle at 36% 30%, #FFFFFF 0%, #E8E8E0 52%, #BFBFB6 100%);
+    box-shadow: 0 5px 12px -5px rgba(10,10,10,.6), inset 0 -2px 5px rgba(10,10,10,.14);
   }
 
-  /* 3 · la plaque acide dans son cadre noir */
+  .flanc-acide { background: linear-gradient(150deg, #1C1C1C, #050505 60%, #242424); }
 
-  .p-acide {
-    background: linear-gradient(150deg,
-      rgba(162,255,1,.92) 0%, rgba(127,196,0,.80) 55%, rgba(162,255,1,.70) 100%);
-    box-shadow:
-      0 0 0 9px var(--noir),
-      0 0 0 10px rgba(255,255,255,.30),
-      0 16px 30px -18px rgba(10,10,10,.5);
-  }
+  /* ── 4 · le socle ───────────────────────────────────────── */
 
-  .p-acide::before {
-    /* le disque pâle au centre, comme dans la référence */
-    content: "";
-    position: absolute;
-    inset: 74px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 38% 32%, #FFFFFF 0%, #E6E6DE 58%, #C8C8C0 100%);
-    box-shadow: 0 6px 14px -6px rgba(10,10,10,.55);
-  }
-
-  /* 4 · le socle — métal brossé, plus large */
-
-  .p-socle {
-    inset: -14px;
-    border-radius: 66px;
+  /* Brossage LINEAIRE. Un degrade conique fait un eventail rayonnant — une
+     nappe de dentelle, pas du metal. Defaut vu a la capture, corrige ici. */
+  .face-socle {
     background:
-      repeating-conic-gradient(from 210deg at 50% 50%,
-        #B9B9B1 0deg 2deg, #E2E2DB 2deg 4deg),
-      linear-gradient(150deg, #EFEFEA, #A8A8A0);
-    background-blend-mode: soft-light, normal;
-    box-shadow:
-      0 0 0 1px rgba(10,10,10,.14),
-      0 26px 40px -22px rgba(10,10,10,.5);
+      repeating-linear-gradient(58deg,
+        rgba(255,255,255,.26) 0 1px, rgba(118,118,110,.14) 1px 2.6px),
+      radial-gradient(80% 60% at 34% 24%, rgba(255,255,255,.55) 0%, transparent 62%),
+      linear-gradient(150deg, #F6F6F1 0%, #CACAC2 40%, #A2A29A 72%, #E4E4DD 100%);
+    box-shadow: inset 0 0 0 1px rgba(10,10,10,.16);
   }
 
-  /* les contours fantômes tracés dans le vide */
+  /* ── les contours fantômes ──────────────────────────────── */
 
   .fantome {
-    position: absolute;
-    inset: 4px;
-    border-radius: 56px;
-    border: 1px solid rgba(127, 196, 0, .5);
-    background: none;
-    box-shadow: none;
+    position: absolute; inset: 2px;
+    border-radius: 55px;
+    border: 1px solid rgba(127,196,0,.42);
+    will-change: transform, opacity;
   }
 
   /* ── transport ───────────────────────────────────────────── */
 
-  .transport {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-  }
+  .transport { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
   button {
     font: 600 14px/1 Archivo, sans-serif;
-    color: var(--sol);
-    background: var(--encre);
-    border: 0;
-    border-radius: 999px;
-    padding: 11px 20px;
-    cursor: pointer;
-    transition: transform 160ms cubic-bezier(.23,1,.32,1), opacity 160ms ease;
-    min-width: 96px;
+    color: var(--sol); background: var(--encre);
+    border: 0; border-radius: 999px; padding: 11px 20px;
+    cursor: pointer; min-width: 96px;
+    transition: transform 160ms cubic-bezier(.23,1,.32,1);
   }
-
   button:active { transform: scale(.97); }
   button:focus-visible { outline: 2px solid var(--acide-mat); outline-offset: 3px; }
 
   .horloge {
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    color: var(--encre-2);
-    white-space: nowrap;
+    font-family: "IBM Plex Mono", monospace; font-size: 13px;
+    font-variant-numeric: tabular-nums; color: var(--encre-2); white-space: nowrap;
   }
-
   .horloge b { color: var(--encre); font-weight: 600; }
 
   input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    background: none;
-    height: 22px;
-    cursor: pointer;
+    -webkit-appearance: none; appearance: none;
+    background: none; height: 22px; cursor: pointer;
   }
-
-  input[type="range"]::-webkit-slider-runnable-track {
-    height: 4px;
-    border-radius: 2px;
-    background: var(--bord);
-  }
-
-  input[type="range"]::-moz-range-track {
-    height: 4px;
-    border-radius: 2px;
-    background: var(--bord);
-  }
-
+  input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--bord); }
+  input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--bord); }
   input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 16px; height: 16px;
-    border-radius: 50%;
-    background: var(--encre);
-    border: 3px solid var(--sol);
-    margin-top: -6px;
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--encre); border: 3px solid var(--sol); margin-top: -6px;
     box-shadow: 0 0 0 1px var(--bord);
   }
-
   input[type="range"]::-moz-range-thumb {
-    width: 16px; height: 16px;
-    border-radius: 50%;
-    background: var(--encre);
-    border: 3px solid var(--sol);
-    box-shadow: 0 0 0 1px var(--bord);
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--encre); border: 3px solid var(--sol); box-shadow: 0 0 0 1px var(--bord);
   }
-
   input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--acide-mat); }
 
   .scrub { flex: 1 1 220px; min-width: 180px; }
 
-  /* ── la bande des phases ─────────────────────────────────── */
+  /* ── bande des phases ────────────────────────────────────── */
 
   .phases {
-    position: relative;
-    height: 46px;
-    border-radius: 8px;
-    border: 1px solid var(--bord);
-    background: var(--sol-2);
-    overflow: hidden;
+    position: relative; height: 46px;
+    border-radius: 8px; border: 1px solid var(--bord);
+    background: var(--sol-2); overflow: hidden;
   }
 
   .seg {
-    position: absolute;
-    top: 0; bottom: 0;
-    display: flex;
-    align-items: center;
-    padding-left: 9px;
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 10.5px;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    color: var(--encre-2);
-    border-left: 1px solid var(--bord);
-    white-space: nowrap;
-    overflow: hidden;
+    position: absolute; top: 0; bottom: 0;
+    display: flex; align-items: center; padding-left: 9px;
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--encre-2);
+    border-left: 1px solid var(--bord); white-space: nowrap; overflow: hidden;
   }
+  .seg-ecart  { background: rgba(162,255,1,.26); color: var(--encre); }
+  .seg-camera { background: rgba(162,255,1,.12); }
 
-  .seg-ecart  { background: rgba(162, 255, 1, .26); color: var(--encre); }
-  .seg-camera { background: rgba(162, 255, 1, .12); }
-  .seg-palier { background: transparent; }
-
+  /* la tete de lecture se deplace en TRANSFORM : aucune mise en page */
   .tete {
-    position: absolute;
-    top: -1px; bottom: -1px;
-    width: 2px;
-    background: var(--encre);
-    pointer-events: none;
+    position: absolute; top: -1px; bottom: -1px; left: 0;
+    width: 2px; background: var(--encre);
+    pointer-events: none; will-change: transform;
   }
 
   /* ── réglages ────────────────────────────────────────────── */
 
   .reglages {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 18px 26px;
-    padding: 22px;
-    border-radius: var(--r);
-    border: 1px solid var(--bord);
-    background: var(--sol-2);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 18px 26px; padding: 22px;
+    border-radius: var(--r); border: 1px solid var(--bord); background: var(--sol-2);
   }
 
   .champ { display: flex; flex-direction: column; gap: 5px; }
 
   .champ label {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 10px;
-    font-size: 12.5px;
-    color: var(--encre-2);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    font-size: 12.5px; color: var(--encre-2);
   }
-
   .champ label b {
-    font-family: "IBM Plex Mono", monospace;
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-    color: var(--encre);
+    font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums;
+    font-weight: 500; color: var(--encre);
   }
-
-  .champ .aide {
-    font-size: 11.5px;
-    color: var(--encre-2);
-    line-height: 1.4;
-  }
+  .champ .aide { font-size: 11.5px; color: var(--encre-2); line-height: 1.4; }
+  .champ .aide b { color: var(--encre); font-weight: 600; }
 
   select {
     font: 500 13px/1 "IBM Plex Mono", monospace;
-    color: var(--encre);
-    background: var(--sol);
-    border: 1px solid var(--bord);
-    border-radius: 7px;
-    padding: 9px 10px;
-    width: 100%;
+    color: var(--encre); background: var(--sol);
+    border: 1px solid var(--bord); border-radius: 7px; padding: 9px 10px; width: 100%;
   }
 
-  /* ── la sortie ───────────────────────────────────────────── */
-
-  .sortie {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .sortie h2 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: -.01em;
-  }
-
-  pre {
-    margin: 0;
-    padding: 18px;
-    border-radius: var(--r);
-    border: 1px solid var(--bord);
-    background: var(--sol-2);
-    overflow-x: auto;
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 12px;
-    line-height: 1.62;
-    color: var(--encre);
-    tab-size: 2;
-  }
-
-  .note {
-    font-size: 13px;
-    color: var(--encre-2);
-    max-width: 68ch;
-  }
-
-  .note b { color: var(--encre); font-weight: 600; }
+  /* ── mesure & sortie ─────────────────────────────────────── */
 
   .mesure {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1px;
-    background: var(--bord);
-    border: 1px solid var(--bord);
-    border-radius: var(--r);
-    overflow: hidden;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 1px; background: var(--bord);
+    border: 1px solid var(--bord); border-radius: var(--r); overflow: hidden;
   }
-
-  .mesure div {
-    background: var(--sol);
-    padding: 14px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-
+  .mesure div { background: var(--sol); padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
   .mesure span {
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 11px;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--encre-2);
+    font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--encre-2);
+  }
+  .mesure strong {
+    font-family: "IBM Plex Mono", monospace; font-size: 19px;
+    font-weight: 600; font-variant-numeric: tabular-nums;
   }
 
-  .mesure strong {
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 19px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
+  .sortie { display: flex; flex-direction: column; gap: 12px; }
+  .sortie h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+
+  pre {
+    margin: 0; padding: 18px;
+    border-radius: var(--r); border: 1px solid var(--bord); background: var(--sol-2);
+    overflow-x: auto;
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; line-height: 1.62;
+    color: var(--encre); tab-size: 2;
   }
+
+  .note { font-size: 13px; color: var(--encre-2); max-width: 68ch; }
+  .note b { color: var(--encre); font-weight: 600; }
 
   @media (prefers-reduced-motion: reduce) {
     button { transition: none; }
@@ -506,23 +359,16 @@
     <h1>Socle éclaté</h1>
     <p class="chapo">
       La boucle de la vidéo de référence, refaite en transformations CSS 3D.
-      Une seule coupe détectée dans les 246 images du fichier, à <b>4,233 s</b> :
-      la pile s'ouvre, elle tient, elle coupe — <b>elle ne se referme jamais</b>.
-      Les quatre plateaux sont ici dessinés en CSS ; ce sont des tenants-lieu,
-      à remplacer par les rendus définitifs sans toucher au mouvement.
+      Une seule coupe dans les 246 images du fichier, à <b>4,233 s</b> : la pile
+      s'ouvre, elle tient, elle coupe — <b>elle ne se referme jamais</b>.
+      Les quatre plateaux sont des tenants-lieu dessinés en CSS, extrudés en
+      tranches pour avoir une épaisseur réelle. Ils se remplacent par des rendus
+      en PNG sans toucher au mouvement.
     </p>
   </header>
 
   <div class="studio" id="studio">
-    <div class="rig" id="rig">
-      <div class="plaque p-socle" data-z="-140"></div>
-      <div class="plaque fantome"  data-z="-92"></div>
-      <div class="plaque p-acide"  data-z="-30"></div>
-      <div class="plaque fantome"  data-z="14"></div>
-      <div class="plaque p-verre"  data-z="60"></div>
-      <div class="plaque fantome"  data-z="112"></div>
-      <div class="plaque p-haut"   data-z="165"><div class="marque">S</div></div>
-    </div>
+    <div class="rig" id="rig"></div>
   </div>
 
   <div class="transport">
@@ -555,7 +401,8 @@
     <div class="champ">
       <label for="rCam">Fin de la caméra <b><span id="vCam">3,40</span> s</b></label>
       <input id="rCam" type="range" min="400" max="7000" step="10" value="3400">
-      <p class="aide">Elle s'arrête <b>après</b> les plateaux. C'est ce décalage qui fait le liant.</p>
+      <p class="aide">Elle s'arrête <b>après</b> les plateaux. Mets les deux à la même
+        valeur et regarde : le mouvement devient mécanique d'un coup.</p>
     </div>
 
     <div class="champ">
@@ -568,7 +415,7 @@
         <option value=".23,1,.32,1">fort — .23, 1, .32, 1</option>
         <option value="0,0,1,1">linéaire — aucune courbe</option>
       </select>
-      <p class="aide">Départ franc, freinage long. Rien de tout ça n'est un « ease-in ».</p>
+      <p class="aide">Départ franc, freinage long. Jamais un « ease-in ».</p>
     </div>
 
     <div class="champ">
@@ -580,18 +427,18 @@
         <option value=".65,0,.35,1">in-out — .65, 0, .35, 1</option>
         <option value="0,0,1,1">linéaire — aucune courbe</option>
       </select>
-      <p class="aide">Plus douce que celle des plateaux, sinon les deux mouvements se confondent.</p>
+      <p class="aide">Plus douce que celle des plateaux, sinon les deux se confondent.</p>
     </div>
 
     <div class="champ">
-      <label for="rEcartement">Amplitude de l'écartement <b><span id="vEcartement">100</span> %</b></label>
+      <label for="rEcartement">Amplitude <b><span id="vEcartement">100</span> %</b></label>
       <input id="rEcartement" type="range" min="30" max="180" step="1" value="100">
       <p class="aide">Distance entre les plateaux une fois ouverts.</p>
     </div>
   </div>
 
   <div class="mesure">
-    <div><span>Fichier</span><strong>8,200 s</strong></div>
+    <div><span>Fichier réf.</span><strong>8,200 s</strong></div>
     <div><span>Images</span><strong>246 @ 30</strong></div>
     <div><span>Coupes</span><strong>1</strong></div>
     <div><span>Boucle</span><strong>4,233 s</strong></div>
@@ -600,10 +447,9 @@
   <div class="sortie">
     <h2>Le mouvement, en CSS pur</h2>
     <p class="note">
-      Réglages actuels, prêts à coller. Cette version n'a besoin d'aucun script :
-      deux animations qui tournent sur la même durée, chacune avec sa courbe et son
-      point d'arrêt. La reprise de boucle en CSS est <b>une coupe franche</b> —
-      exactement ce que fait la référence.
+      Réglages actuels, prêts à coller. Aucun script : deux animations sur la
+      même durée, chacune avec sa courbe et son point d'arrêt. La reprise de
+      boucle <b>est</b> la coupe franche — ne rien ajouter pour revenir.
     </p>
     <pre id="css"></pre>
   </div>
@@ -614,194 +460,239 @@
 (() => {
   "use strict";
 
-  /* ── une cubic-bezier, résolue par Newton puis dichotomie ──────────────
-     Pas de dépendance : c'est la même courbe que celle du navigateur, mais
-     évaluable à la main pour pouvoir scrubber. */
-  function bezier(x1, y1, x2, y2) {
-    if (x1 === 0 && y1 === 0 && x2 === 1 && y2 === 1) return t => t;
-    const A = (a, b) => 1 - 3 * b + 3 * a;
-    const B = (a, b) => 3 * b - 6 * a;
-    const C = a => 3 * a;
-    const calc = (t, a, b) => ((A(a, b) * t + B(a, b)) * t + C(a)) * t;
-    const pente = (t, a, b) => 3 * A(a, b) * t * t + 2 * B(a, b) * t + C(a);
+  const $ = (id) => document.getElementById(id);
 
-    return function (x) {
-      if (x <= 0) return 0;
-      if (x >= 1) return 1;
-      let t = x;
-      for (let i = 0; i < 8; i++) {
-        const d = pente(t, x1, x2);
-        if (Math.abs(d) < 1e-6) break;
-        const e = calc(t, x1, x2) - x;
-        if (Math.abs(e) < 1e-6) return calc(t, y1, y2);
-        t -= e / d;
+  /* ── la scène, décrite une fois ────────────────────────────────────────
+     Chaque plateau est un ETAGE (seul élément animé) contenant des TRANCHES
+     empilées en Z. C'est l'épaisseur qui fait la pièce usinée : sans elle on
+     voit des feuilles de papier. */
+  const PLATEAUX = [
+    { cle: "p-socle", z: -140, ep: 16, face: "face-socle", flanc: "flanc",
+      debord: 14, rayon: 64, ombre: "0 30px 34px -16px rgba(10,10,10,.42)" },
+    { cle: "p-acide", z:  -30, ep: 22, face: "face-acide", flanc: "flanc-acide",
+      debord: 0, rayon: 56, ombre: "0 26px 30px -14px rgba(10,10,10,.46)" },
+    { cle: "p-verre", z:   60, ep: 10, face: "face-verre", flanc: "flanc-verre",
+      debord: 0, rayon: 56, ombre: "0 20px 26px -14px rgba(10,10,10,.30)" },
+    { cle: "p-haut",  z:  165, ep: 26, face: "face-haut",  flanc: "flanc",
+      debord: 0, rayon: 56, ombre: "0 30px 34px -14px rgba(10,10,10,.44)" },
+  ];
+
+  const FANTOMES = [-92, 14, 112];
+  const TRANCHES = 12;                    // copies par plateau — l'extrusion
+
+  const rig = $("rig");
+
+  /* les contours fantômes en premier : ils vivent derrière tout le reste */
+  const fantomes = FANTOMES.map((z) => {
+    const el = document.createElement("div");
+    el.className = "etage";
+    const f = document.createElement("div");
+    f.className = "fantome";
+    el.appendChild(f);
+    el.dataset.z = z;
+    rig.appendChild(el);
+    return el;
+  });
+
+  const etages = PLATEAUX.map((p) => {
+    const et = document.createElement("div");
+    et.className = "etage " + p.cle;
+    et.dataset.z = p.z;
+    if (p.debord) et.style.inset = -p.debord + "px";
+
+    for (let i = 0; i < TRANCHES; i++) {
+      const t = document.createElement("div");
+      const haut = i === TRANCHES - 1;
+      t.className = "tranche " + (haut ? p.face : p.flanc);
+      t.style.borderRadius = p.rayon + "px";
+      t.style.transform = "translateZ(" + ((i / (TRANCHES - 1) - 1) * p.ep).toFixed(2) + "px)";
+      // seule la tranche du bas porte l'ombre projetée sur le plateau d'en dessous
+      if (i === 0) t.style.boxShadow = p.ombre;
+      if (haut && p.cle === "p-haut") {
+        const m = document.createElement("div"); m.className = "moleture";
+        const q = document.createElement("div"); q.className = "marque"; q.textContent = "S";
+        t.append(m, q);
       }
-      let lo = 0, hi = 1;
-      t = x;
-      for (let i = 0; i < 24; i++) {
-        const e = calc(t, x1, x2) - x;
-        if (Math.abs(e) < 1e-6) break;
-        if (e > 0) hi = t; else lo = t;
-        t = (lo + hi) / 2;
-      }
-      return calc(t, y1, y2);
+      et.appendChild(t);
+    }
+    rig.appendChild(et);
+    return et;
+  });
+
+  /* ── état ──────────────────────────────────────────────────────────── */
+  const st = {
+    boucle: 4.233, finEcart: 2.5, finCam: 3.4, ampli: 1,
+    easePl: ".16, 1, .3, 1",
+    easeCam: ".22, 1, .36, 1",
+    lit: true,
+  };
+
+  const CAM = { ax: [62, 48], az: [-42, -49], ec: [.92, 1] };
+
+  const fmt = (n, d) => n.toFixed(d).replace(".", ",");
+  const camT = (i) => `rotateX(${CAM.ax[i]}deg) rotateZ(${CAM.az[i]}deg) scale(${CAM.ec[i]})`;
+
+  /* ── les animations : Web Animations API ───────────────────────────────
+     Elles tournent sur le COMPOSITEUR. Aucun script par image pendant la
+     lecture — c'est ça, la différence avec la version qui repeignait tout en
+     JavaScript à chaque rafraîchissement. Le scrub se fait en posant
+     currentTime, sans rien recalculer à la main. */
+  let anims = [];
+
+  function monte() {
+    anims.forEach((a) => a.cancel());
+    anims = [];
+
+    const d  = st.boucle * 1000;
+    const oE = Math.min(1, st.finEcart / st.boucle);
+    const oC = Math.min(1, Math.max(st.finCam, st.finEcart) / st.boucle);
+    const opt = { duration: d, iterations: Infinity, fill: "both" };
+
+    anims.push(rig.animate([
+      { offset: 0,  transform: camT(0), easing: `cubic-bezier(${st.easeCam})` },
+      { offset: oC, transform: camT(1) },
+      { offset: 1,  transform: camT(1) },
+    ], opt));
+
+    const pousse = (el) => {
+      const z = (parseFloat(el.dataset.z) * st.ampli).toFixed(2);
+      anims.push(el.animate([
+        { offset: 0,  transform: "translateZ(0px)", easing: `cubic-bezier(${st.easePl})` },
+        { offset: oE, transform: `translateZ(${z}px)` },
+        { offset: 1,  transform: `translateZ(${z}px)` },
+      ], opt));
     };
+
+    etages.forEach(pousse);
+
+    fantomes.forEach((el) => {
+      pousse(el);
+      // les contours n'apparaissent que lorsque l'espace s'ouvre
+      anims.push(el.firstChild.animate([
+        { offset: 0, opacity: 0, easing: `cubic-bezier(${st.easePl})` },
+        { offset: oE, opacity: 1 },
+        { offset: 1, opacity: 1 },
+      ], opt));
+    });
+
+    if (!st.lit) anims.forEach((a) => a.pause());
   }
 
-  const $ = id => document.getElementById(id);
+  const pos = () => (anims[0] ? (anims[0].currentTime || 0) / 1000 : 0);
+  const pose = (t) => anims.forEach((a) => { a.currentTime = t * 1000; });
 
-  const rig      = $("rig");
-  const plaques  = [...rig.querySelectorAll(".plaque")].map(el => ({
-    el, z: parseFloat(el.dataset.z)
-  }));
+  /* ── l'affichage du transport, à 12 Hz et non à 60 ──────────────────────
+     L'horloge, la glissière et la tête de lecture forcent chacune une mise
+     en page. Les rafraîchir à chaque image coûtait 1,19 mise en page par
+     image, mesuré. À 12 Hz, et avec la tête déplacée en transform, ça tombe
+     à presque rien. */
+  const largeurTete = () => $("phases").clientWidth;
+  let dernier = -1;
 
-  /* état */
-  const st = {
-    boucle: 4.233,
-    finEcart: 2.5,
-    finCam: 3.4,
-    ampli: 1,
-    easePl: [.16, 1, .3, 1],
-    easeCam: [.22, 1, .36, 1],
-    lit: true,
-    t: 0,
-  };
-
-  let fPl  = bezier(...st.easePl);
-  let fCam = bezier(...st.easeCam);
-
-  /* la caméra : de presque à la verticale vers un trois-quarts plus bas */
-  const CAM = {
-    ax: [62, 48],      // basculement — plus grand = vu de plus haut
-    az: [-42, -49],    // rotation dans le plan, l'orbite
-    ec: [.92, 1],      // l'objet grandit un peu dans le cadre
-  };
-
-  const lerp = (a, b, p) => a + (b - a) * p;
-  const fmt  = (n, d) => n.toFixed(d).replace(".", ",");
-
-  function pose(t) {
-    const pE = fPl(Math.min(1, t / st.finEcart));
-    const pC = fCam(Math.min(1, t / st.finCam));
-
-    rig.style.transform =
-      "rotateX(" + lerp(CAM.ax[0], CAM.ax[1], pC).toFixed(2) + "deg) " +
-      "rotateZ(" + lerp(CAM.az[0], CAM.az[1], pC).toFixed(2) + "deg) " +
-      "scale("   + lerp(CAM.ec[0], CAM.ec[1], pC).toFixed(4) + ")";
-
-    for (const p of plaques) {
-      p.el.style.transform = "translateZ(" + (p.z * st.ampli * pE).toFixed(2) + "px)";
-      if (p.el.classList.contains("fantome")) {
-        // les contours n'existent que lorsque l'espace s'ouvre
-        p.el.style.opacity = (pE * pE).toFixed(3);
+  function veille(ts) {
+    if (ts - dernier > 80) {
+      dernier = ts;
+      const t = pos() % st.boucle;
+      $("tCourant").textContent = fmt(t, 3);
+      $("tete").style.transform = "translateX(" + (t / st.boucle * largeurTete()).toFixed(1) + "px)";
+      if (document.activeElement !== $("scrub")) {
+        $("scrub").value = Math.round(t / st.boucle * 1000);
       }
     }
-
-    $("tCourant").textContent = fmt(t, 3);
-    $("scrub").value = Math.round((t / st.boucle) * 1000);
-    $("tete").style.left = ((t / st.boucle) * 100).toFixed(2) + "%";
+    requestAnimationFrame(veille);
   }
 
   function bande() {
     const b = st.boucle;
     const a = Math.min(st.finEcart, b) / b * 100;
     const c = Math.min(Math.max(st.finCam, st.finEcart), b) / b * 100;
-    $("segEcart").style.cssText  = "left:0%;width:" + a.toFixed(2) + "%";
-    $("segCamera").style.cssText = "left:" + a.toFixed(2) + "%;width:" + (c - a).toFixed(2) + "%";
-    $("segPalier").style.cssText = "left:" + c.toFixed(2) + "%;width:" + (100 - c).toFixed(2) + "%";
+    $("segEcart").style.cssText  = `left:0%;width:${a.toFixed(2)}%`;
+    $("segCamera").style.cssText = `left:${a.toFixed(2)}%;width:${(c - a).toFixed(2)}%`;
+    $("segPalier").style.cssText = `left:${c.toFixed(2)}%;width:${(100 - c).toFixed(2)}%`;
     $("tBoucle").textContent = fmt(b, 3);
   }
 
   function sortie() {
     const b  = st.boucle;
-    const pE = (Math.min(st.finEcart, b) / b * 100);
-    const pC = (Math.min(Math.max(st.finCam, st.finEcart), b) / b * 100);
-    const eP = "cubic-bezier(" + st.easePl.join(", ") + ")";
-    const eC = "cubic-bezier(" + st.easeCam.join(", ") + ")";
-    const z  = k => (k * st.ampli).toFixed(0);
+    const pE = Math.min(st.finEcart, b) / b * 100;
+    const pC = Math.min(Math.max(st.finCam, st.finEcart), b) / b * 100;
+    const z  = (k) => (k * st.ampli).toFixed(0);
 
     $("css").textContent =
 `/* Boucle mesuree : ${fmt(b, 3)} s, une seule coupe, aucune fermeture.
-   La reprise de la boucle EST la coupe franche : ne pas ajouter de retour. */
+   La reprise de la boucle EST la coupe : ne rien ajouter pour revenir. */
 
-.rig    { animation: camera ${b.toFixed(3)}s infinite; transform-style: preserve-3d; }
-.plaque { animation: ecarte ${b.toFixed(3)}s infinite; }
+.rig    { transform-style: preserve-3d;
+          animation: camera ${b.toFixed(3)}s infinite; }
+.etage  { transform-style: preserve-3d;
+          animation: ecarte ${b.toFixed(3)}s infinite; }
 
 @keyframes camera {
-  0%   { animation-timing-function: ${eC};
-         transform: rotateX(${CAM.ax[0]}deg) rotateZ(${CAM.az[0]}deg) scale(${CAM.ec[0]}); }
+  0%   { animation-timing-function: cubic-bezier(${st.easeCam});
+         transform: ${camT(0)}; }
   ${pC.toFixed(2)}%,
-  100% { transform: rotateX(${CAM.ax[1]}deg) rotateZ(${CAM.az[1]}deg) scale(${CAM.ec[1]}); }
+  100% { transform: ${camT(1)}; }
 }
 
 @keyframes ecarte {
-  0%   { animation-timing-function: ${eP}; transform: translateZ(0); }
+  0%   { animation-timing-function: cubic-bezier(${st.easePl});
+         transform: translateZ(0); }
   ${pE.toFixed(2)}%,
   100% { transform: translateZ(var(--z)); }
 }
 
-/* un --z par plateau, du bas vers le haut */
+/* un --z par etage, du bas vers le haut */
 .p-socle { --z: ${z(-140)}px; }
 .p-acide { --z: ${z(-30)}px; }
 .p-verre { --z: ${z(60)}px; }
 .p-haut  { --z: ${z(165)}px; }`;
   }
 
-  /* ── boucle de rendu ─────────────────────────────────────────────── */
-  let precedent = null;
-
-  function tour(ts) {
-    if (st.lit) {
-      if (precedent !== null) st.t += (ts - precedent) / 1000;
-      if (st.t >= st.boucle) st.t -= st.boucle;   // la coupe franche
-      pose(st.t);
-    }
-    precedent = ts;
-    requestAnimationFrame(tour);
-  }
-
-  /* ── branchements ────────────────────────────────────────────────── */
+  /* ── branchements ──────────────────────────────────────────────────── */
 
   $("btnLire").addEventListener("click", () => {
     st.lit = !st.lit;
     $("btnLire").textContent = st.lit ? "Pause" : "Lire";
+    anims.forEach((a) => (st.lit ? a.play() : a.pause()));
   });
 
-  $("scrub").addEventListener("input", e => {
+  $("scrub").addEventListener("input", (e) => {
     st.lit = false;
     $("btnLire").textContent = "Lire";
-    st.t = (e.target.value / 1000) * st.boucle;
-    pose(st.t);
+    anims.forEach((a) => a.pause());
+    pose((e.target.value / 1000) * st.boucle);
   });
 
-  const relie = (id, span, fn, dec) => {
-    $(id).addEventListener("input", e => {
-      fn(parseFloat(e.target.value));
-      $(span).textContent = dec.txt();
-      bande(); sortie(); pose(Math.min(st.t, st.boucle));
+  const relie = (id, span, applique, txt) => {
+    $(id).addEventListener("input", (e) => {
+      const t = pos() % st.boucle;
+      applique(parseFloat(e.target.value));
+      $(span).textContent = txt();
+      bande(); sortie(); monte();
+      pose(Math.min(t, st.boucle));
     });
   };
 
-  relie("rBoucle", "vBoucle", v => { st.boucle = v / 1000; }, { txt: () => fmt(st.boucle, 3) });
-  relie("rEcart",  "vEcart",  v => { st.finEcart = v / 1000; }, { txt: () => fmt(st.finEcart, 2) });
-  relie("rCam",    "vCam",    v => { st.finCam = v / 1000; },  { txt: () => fmt(st.finCam, 2) });
-  relie("rEcartement", "vEcartement", v => { st.ampli = v / 100; }, { txt: () => Math.round(st.ampli * 100) });
+  relie("rBoucle",     "vBoucle",     (v) => { st.boucle   = v / 1000; }, () => fmt(st.boucle, 3));
+  relie("rEcart",      "vEcart",      (v) => { st.finEcart = v / 1000; }, () => fmt(st.finEcart, 2));
+  relie("rCam",        "vCam",        (v) => { st.finCam   = v / 1000; }, () => fmt(st.finCam, 2));
+  relie("rEcartement", "vEcartement", (v) => { st.ampli    = v / 100;  }, () => Math.round(st.ampli * 100));
 
-  $("sEasePl").addEventListener("change", e => {
-    st.easePl = e.target.value.split(",").map(Number);
-    fPl = bezier(...st.easePl);
-    sortie(); pose(st.t);
+  $("sEasePl").addEventListener("change", (e) => {
+    const t = pos() % st.boucle;
+    st.easePl = e.target.value.split(",").map(Number).join(", ");
+    sortie(); monte(); pose(t);
   });
 
-  $("sEaseCam").addEventListener("change", e => {
-    st.easeCam = e.target.value.split(",").map(Number);
-    fCam = bezier(...st.easeCam);
-    sortie(); pose(st.t);
+  $("sEaseCam").addEventListener("change", (e) => {
+    const t = pos() % st.boucle;
+    st.easeCam = e.target.value.split(",").map(Number).join(", ");
+    sortie(); monte(); pose(t);
   });
 
   bande();
   sortie();
-  pose(0);
-  requestAnimationFrame(tour);
+  monte();
+  requestAnimationFrame(veille);
 })();
 </script>
