@@ -531,24 +531,55 @@ h2 {{
    L'accent n'est jamais fixe : il vient du rail actif. Sur la page, on le
    MONTRE en le faisant — la teinte passe d'un rail à l'autre, et toute la
    section suit. Expliquer « l'app s'adapte » convainc moins que le voir. */
-.cam-duo {{ display: grid; grid-template-columns: 1fr .8fr; gap: clamp(32px, 5vw, 72px); align-items: center; }}
+/* La video devient le SOL de la section : le texte vit dessus. Retenu sur la
+   planche de choix, apres avoir vu les cinq cadrages plutot que lus.
+
+   La video BOUGE : mesurer une seule image ne prouverait rien. Le voile est
+   donc dimensionne pour tenir dans le PIRE cas concevable, une image
+   entierement blanche. A 0,94 d'opacite, du blanc pur ressort a 15/255, soit
+   18,7:1 sous du texte blanc ; a 0,80, il ressort a 51, soit 12,3:1. La
+   colonne de texte s'arrete a 54 % de la largeur, la ou le voile vaut encore
+   au moins 0,78 : la garantie ne depend donc d'aucune image. */
+#temps {{ position: relative; overflow: clip; isolation: isolate; }}
 .cam-video {{
-  border-radius: 28px; overflow: hidden; aspect-ratio: 9 / 16;
-  max-height: 560px; margin-inline: auto; position: relative;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, .5);
-  outline: 1px solid color-mix(in srgb, var(--cam) 34%, transparent);
+  position: absolute; inset: 0; z-index: 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 92%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 92%, transparent 100%);
 }}
 .cam-video video {{ width: 100%; height: 100%; object-fit: cover; }}
+/* le voile, qui rend le texte lisible */
+.cam-video::before {{
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(90deg,
+    rgba(10, 10, 10, .94) 0%, rgba(10, 10, 10, .90) 30%,
+    rgba(10, 10, 10, .78) 56%, rgba(10, 10, 10, .40) 100%);
+}}
+/* le teint du rail, par-dessus : c'est lui le Caméléon, et il agit
+   maintenant sur toute la bande et non plus sur une vignette */
 .cam-video::after {{
-  content: ""; position: absolute; inset: 0; pointer-events: none;
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
   background: hsl(var(--h) var(--s) var(--l) / .30); mix-blend-mode: color;
   transition: background-color 900ms var(--deux-sens);
 }}
+.cam-texte {{ position: relative; z-index: 3; max-width: min(52ch, 54%); }}
+@media (max-width: 880px) {{
+  /* En telephone la colonne prend toute la largeur : le voile devient
+     vertical, sinon le texte tomberait sur la partie claire. */
+  .cam-texte {{ max-width: none; }}
+  .cam-video::before {{
+    background: linear-gradient(178deg,
+      rgba(10, 10, 10, .92) 0%, rgba(10, 10, 10, .88) 62%, rgba(10, 10, 10, .70) 100%);
+  }}
+}}
 .rails {{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 30px; }}
+/* Les rails vivent maintenant SUR la video. Un bouton a bord seul n y a pas
+   de sol : mesure 3,98:1 sur Moov et 4,22:1 sur MTN, sous le seuil. Ils
+   prennent donc leur propre sol sombre, et leur encre monte de 0,60 a 0,82 —
+   leur lisibilite ne depend plus de l image qui passe derriere. */
 .rail {{
   padding: 9px 16px; border-radius: 999px; font-size: 14.5px; font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, .18); color: rgba(255, 255, 255, .6);
-  background: none; cursor: pointer; font-family: inherit;
+  border: 1px solid rgba(255, 255, 255, .22); color: rgba(255, 255, 255, .82);
+  background: rgba(8, 8, 8, .58); cursor: pointer; font-family: inherit;
   transition: color 260ms ease, background-color 260ms ease, border-color 260ms ease,
               transform 140ms var(--sortie);
   min-height: 44px;
@@ -642,7 +673,6 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 /* ─── FORMATS ─── */
 @media (max-width: 980px) {{
   .heros-in {{ grid-template-columns: 1fr; gap: 34px; }}
-  .cam-duo {{ grid-template-columns: 1fr; }}
   .form-hote {{ grid-template-columns: 1fr; }}
   .form-cote {{ min-height: 200px; }}
   .pied {{ grid-template-columns: 1fr 1fr; }}
@@ -738,29 +768,30 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 
   <!-- ── section 1 : le gain de temps, et le Caméléon ── -->
   <section class="sect sombre" id="temps">
+    <!-- La vidéo est posée AVANT le texte et en absolu : elle occupe la
+         section entière, le texte passe devant. -->
+    <div class="cam-video">
+      <!-- preload="auto" : les octets sont deja dans la page (data URI),
+           donc precharger ne telecharge rien de plus — ca supprime seulement
+           la course entre l'observateur et la disponibilite des donnees, qui
+           empechait la video de demarrer. -->
+      <video src="{video}" poster="{affiche}" muted loop playsinline
+             preload="auto" aria-label="Animation SwimPay"></video>
+    </div>
+
     <div class="dedans">
-      <div class="cam-duo">
-        <div>
-          <h2>Émettez vos factures en une minute</h2>
-          <p class="para">Vos opérations et vos <b>factures FNE approuvées par la
-            DGI</b> partent en une minute. Le numéro, le QR de contrôle et
-            l'archive légale les accompagnent, vous n'avez rien à ressaisir
-            ailleurs.</p>
-          <div class="rails" role="group" aria-label="Réseaux pris en charge">
-            {"".join(f'<button class="rail" data-h="{h}" data-encre="{e}"{" aria-pressed=~true~" if i == 0 else ""}>{n}</button>' for i, (n, h, e) in enumerate(RAILS)).replace("~", chr(34))}
-          </div>
-          <p class="cam-quoi">SwimPay envoie ou reçoit de l'argent depuis
-            <b>n'importe quel Mobile Money</b> et n'importe quelle banque.
-            C'est à vous de choisir, et votre correspondant garde le sien.</p>
+      <div class="cam-texte">
+        <h2>Émettez vos factures en une minute</h2>
+        <p class="para">Vos opérations et vos <b>factures FNE approuvées par la
+          DGI</b> partent en une minute. Le numéro, le QR de contrôle et
+          l'archive légale les accompagnent, vous n'avez rien à ressaisir
+          ailleurs.</p>
+        <div class="rails" role="group" aria-label="Réseaux pris en charge">
+          {"".join(f'<button class="rail" data-h="{h}" data-encre="{e}"{" aria-pressed=~true~" if i == 0 else ""}>{n}</button>' for i, (n, h, e) in enumerate(RAILS)).replace("~", chr(34))}
         </div>
-        <div class="cam-video">
-          <!-- preload="auto" : les octets sont deja dans la page (data URI),
-               donc precharger ne telecharge rien de plus — ca supprime
-               seulement la course entre l'observateur et la disponibilite
-               des donnees, qui empechait la video de demarrer. -->
-          <video src="{video}" poster="{affiche}" muted loop playsinline
-                 preload="auto" aria-label="Animation SwimPay"></video>
-        </div>
+        <p class="cam-quoi">SwimPay envoie ou reçoit de l'argent depuis
+          <b>n'importe quel Mobile Money</b> et n'importe quelle banque.
+          C'est à vous de choisir, et votre correspondant garde le sien.</p>
       </div>
     </div>
   </section>
