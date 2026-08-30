@@ -136,8 +136,26 @@ export function computeTotals(
       throw new InvoiceInputError(`ligne ${i + 1} : remise hors bornes`);
     }
 
-    const brut = ligne.unitPriceMinor * ligne.quantity;
-    verifiePlafond(brut, `ligne ${i + 1}`);
+    const brutExact = ligne.unitPriceMinor * ligne.quantity;
+    verifiePlafond(brutExact, `ligne ${i + 1}`);
+    /* La quantite PEUT etre fractionnaire — 2,5 kg de riz est une vente
+       ordinaire — mais le MONTANT ne le peut pas : le franc CFA n'a pas de
+       centime. On arrondit donc le brut de ligne AVANT d'y appliquer les
+       remises. Trois raisons, dont deux etaient des defauts mesures :
+
+         1. `grossHtMinor` sort sur la facture et dans le recapitulatif DGI.
+            0,5 x 999 F y ecrivait « 499,5 » — un montant impossible en XOF ;
+         2. la remise est posee en soustraction (brut - net). Sans cet
+            arrondi, ce meme cas donnait discountMinor = -0,5 : une remise
+            NEGATIVE, soit un client ayant paye plus que le brut. Et 100
+            lignes de 0,01 accumulaient 1.0000000000000007 ;
+         3. le lecteur doit pouvoir refaire l'addition a la main — il ne le
+            peut que si la ligne qu'il lit est celle sur laquelle on calcule.
+
+       Consequence utile : brut est desormais entier et les deux remises sont
+       dans [0,100], donc baseHt <= brut par construction. La remise ne peut
+       plus etre negative, quelle que soit la quantite. */
+    const brut = arrondi(brutExact);
     // Les deux remises s'appliquent l'une apres l'autre, jamais additionnees.
     const apresLigne = brut * (1 - remiseLigne / 100);
     const baseHt = arrondi(apresLigne * (1 - remiseGlobale / 100));

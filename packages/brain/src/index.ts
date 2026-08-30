@@ -1,9 +1,28 @@
 /**
- * Le Cerveau — les quatre modules.
+ * Le Cerveau — la logique metier de SwimPay, sans fournisseur ni reseau.
  *
- * Rapprocheur, Moteur de factures, Annuaire, Routeur. Logique pure : aucun
- * module ne connait de fournisseur, aucun ne parle au reseau. Les bras
- * (PayDunya, la DGI) se branchent derriere @swimpay/rails et le DgiAdapter.
+ * Neuf domaines, et non quatre comme le disait cet en-tete jusqu'au
+ * 31 aout 2026 — il datait d'avant la tarification, la tresorerie, les
+ * releves et l'instruction :
+ *
+ *   matcher/      le Rapprocheur : decider si une operation correspond
+ *   invoicer/     le Moteur de factures : totaux, payload DGI, FNE, stickers
+ *   directory/    l'Annuaire : MSISDN, identite, destinataires
+ *   router/       le Routeur : le chemin et son cout
+ *   pricing/      la grille tarifaire : le PRIX, par nature d'operation
+ *   decision/     l'arbitrage
+ *   treasury/     le reequilibrage des soldes
+ *   statements/   la lecture des releves
+ *   instruction/  la sequence d'execution
+ *
+ * Regle d'architecture, tenue et non seulement enoncee : `pricing` ne connait
+ * pas les chemins, `router` ne connait pas les prix. Le prix suit la nature
+ * commerciale de l'operation, jamais le rail technique.
+ *
+ * Logique pure : aucun module ne connait de fournisseur, aucun ne parle au
+ * reseau. Les bras (PayDunya, la DGI) se branchent derriere @swimpay/rails et
+ * le DgiAdapter. Seule exception d'environnement : `directory/identity.ts`
+ * utilise `node:crypto` — le paquet suppose donc un runtime Node.
  */
 export * from './matcher/decide.js';
 export * from './invoicer/totals.js';

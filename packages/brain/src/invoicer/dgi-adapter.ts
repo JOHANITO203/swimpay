@@ -143,8 +143,17 @@ export const FNE_STATES_AFTER_SEND: readonly FneState[] = [
   'uncertain',
 ];
 
+/**
+ * Une garde de transition doit REFUSER ce qu'elle ne connait pas, jamais
+ * lever. Les etats arrivent d'une colonne de base : le jour ou une migration
+ * en ajoute un que ce module ignore encore, `FNE_TRANSITIONS[from]` vaut
+ * `undefined` et l'ancienne ecriture plantait sur `.includes`. Un garde-fou
+ * qui explose au lieu de dire non laisse passer l'exception a l'appelant, qui
+ * la traitera comme une panne technique — alors que la bonne reponse est
+ * simplement « non ».
+ */
 export function canTransition(from: FneState, to: FneState): boolean {
-  return FNE_TRANSITIONS[from].includes(to);
+  return FNE_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
 export function isTerminal(state: FneState): boolean {

@@ -3,6 +3,7 @@ import {
   computeTotals,
   formatLocalNumber,
   InvoiceInputError,
+  tauxBp,
   type InvoiceLine,
 } from './totals.js';
 import {
@@ -257,6 +258,13 @@ describe('le chemin du non-assujetti — TVAD', () => {
     expect(t.totalTvaMinor).toBe(0);
   });
 
+  it('les quatre taux, en points de base, tels que la DGI les reconnait', () => {
+    expect(tauxBp('TVA')).toBe(1800); // 18 % — le taux normal
+    expect(tauxBp('TVAB')).toBe(900); // 9 %  — le taux reduit
+    expect(tauxBp('TVAC')).toBe(0); // exoneration conventionnelle
+    expect(tauxBp('TVAD')).toBe(0); // exoneration legale
+  });
+
   it('les deux exonerations sont a zero, les deux taux ne le sont pas', () => {
     const zero = (code: InvoiceLine['taxes']) =>
       computeTotals([{ ...ligne, taxes: code }]).totalTvaMinor === 0;
@@ -276,5 +284,84 @@ describe('le chemin du non-assujetti — TVAD', () => {
     expect(t.lines[0]!.tvaMinor).toBe(0);
     expect(t.lines[1]!.tvaMinor).toBe(18_000);
     expect(t.totalTvaMinor).toBe(18_000);
+  });
+});
+
+/**
+ * La quantite fractionnaire — le trou trouve en revue du 31 aout 2026.
+ *
+ * `quantity` n'est pas contraint entier, et c'est voulu : 2,5 kg de riz est
+ * une vente ordinaire. Mais `grossHtMinor` sortait alors NON ARRONDI, et le
+ * module promet en tete de fichier que tout est en entiers XOF. Trois valeurs
+ * mesurees avant correction, qui sont les trois cas ci-dessous :
+ *
+ *     0,5 x 999 F     ->  grossHtMinor  = 499.5
+ *                         discountMinor = -0.5   (remise NEGATIVE)
+ *     100 x 0,01      ->  grossHtMinor  = 1.0000000000000007
+ *
+ * Ces tests echouent sur le code d'avant. C'est leur seul interet.
+ */
+describe('la quantite fractionnaire ne fait pas fuir de flottant', () => {
+  const entier = (n: number) => Number.isInteger(n);
+
+  it('0,5 x 999 F : tous les totaux restent entiers', () => {
+    const t = computeTotals([ligne({ unitPriceMinor: 999, quantity: 0.5 })]);
+    expect(entier(t.grossHtMinor)).toBe(true);
+    expect(entier(t.discountMinor)).toBe(true);
+    expect(entier(t.totalHtMinor)).toBe(true);
+    expect(entier(t.totalTvaMinor)).toBe(true);
+    expect(entier(t.totalTtcMinor)).toBe(true);
+    expect(entier(t.lines[0]!.grossHtMinor)).toBe(true);
+    // 999 x 0,5 = 499,5 -> 500 (au plus proche, la moitie vers le haut).
+    expect(t.grossHtMinor).toBe(500);
+    expect(t.totalHtMinor).toBe(500);
+  });
+
+  it('une remise ne peut jamais etre negative', () => {
+    // Le cas qui donnait -0,5. Et une balayeuse sur des quantites hostiles.
+    for (const quantity of [0.5, 0.01, 0.1, 1 / 3, 2.5, 0.007, 99.999]) {
+      for (const unitPriceMinor of [1, 999, 1000, 12_345]) {
+        const t = computeTotals([ligne({ unitPriceMinor, quantity })]);
+        expect(t.discountMinor).toBeGreaterThanOrEqual(0);
+        expect(entier(t.discountMinor)).toBe(true);
+      }
+    }
+  });
+
+  it('100 lignes de 0,01 n accumulent aucune derive', () => {
+    const lignes = Array.from({ length: 100 }, () =>
+      ligne({ unitPriceMinor: 1, quantity: 0.01 }),
+    );
+    const t = computeTotals(lignes);
+    expect(entier(t.grossHtMinor)).toBe(true);
+    // Chaque ligne vaut 0,01 -> arrondie a 0. Cent zeros font zero, et non
+    // 1.0000000000000007 comme la somme des flottants le donnait.
+    expect(t.grossHtMinor).toBe(0);
+    expect(t.discountMinor).toBe(0);
+  });
+
+  it('l identite brut - remise = net tient sur des quantites fractionnaires', () => {
+    for (const quantity of [0.5, 1.5, 2.5, 0.33, 7.77]) {
+      for (const discountPercent of [0, 7, 33, 100]) {
+        const t = computeTotals([ligne({ unitPriceMinor: 1_499, quantity })], {
+          discountPercent,
+        });
+        expect(t.grossHtMinor - t.discountMinor).toBe(t.totalHtMinor);
+        expect(t.totalTtcMinor).toBe(
+          t.totalHtMinor + t.totalTvaMinor + t.totalCustomMinor,
+        );
+      }
+    }
+  });
+
+  it('les quantites entieres ne bougent pas d un franc', () => {
+    // Le correctif ne doit RIEN changer au cas courant : arrondir un entier
+    // le laisse en place. Cette assertion est la pour le prouver.
+    const t = computeTotals([ligne({ unitPriceMinor: 1_000, quantity: 3 })]);
+    expect(t.grossHtMinor).toBe(3_000);
+    expect(t.totalHtMinor).toBe(3_000);
+    expect(t.totalTvaMinor).toBe(540);
+    expect(t.totalTtcMinor).toBe(3_540);
+    expect(t.discountMinor).toBe(0);
   });
 });
