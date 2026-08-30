@@ -126,3 +126,31 @@ describe('preuve : la formule marge = prix − cout, sur l exemple du document',
     }
   });
 });
+
+describe('les deux defauts releves par la verification adversariale', () => {
+  const RAILS_BANQUE: RailPolicy[] = [
+    ...RAILS,
+    { operation: 'payin', currency: 'XOF', rail: 'julaya', operator: '*', enabled: true, costPercentBp: 0, costFixedMinor: 0, priority: 5 },
+  ];
+  const ctxBanque: CheminContext = { caisses: CAISSES, railPolicies: RAILS_BANQUE };
+
+  it('l alimentation bancaire entrante est un PAYIN, plus jamais un payout a contresens', () => {
+    const d = choisitChemin({ origine: banque, destination: sp, amountMinor: 1_000_000, currency: 'XOF' }, ctxBanque);
+    expect(d.kind).toBe('rail');
+    if (d.kind === 'rail') {
+      expect(d.rail).toBe('julaya'); // l'alimentation bancaire gratuite (doc 10)
+      expect(d.estimatedCostMinor).toBe(0);
+      expect(d.enSecours).toBe(false);
+    }
+  });
+
+  it('banque → banque part en virement sortant, par le rail payout', () => {
+    /* Toutes les topologies constructibles avec le type Extremite actuel sont
+       couvertes par un chemin explicite ; le refus 'topologie_non_geree' est
+       une ceinture pour l'evolution du type, inatteignable aujourd'hui — on ne
+       fabrique pas de test tautologique pour le pretendre couvert. */
+    const d = choisitChemin({ origine: banque, destination: banque, amountMinor: 50_000, currency: 'XOF' }, ctx);
+    expect(d.kind).toBe('rail');
+    if (d.kind === 'rail') expect(d.rail).toBe('julaya');
+  });
+});

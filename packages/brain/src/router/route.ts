@@ -132,23 +132,27 @@ export function route(
   const choisi = trie[0]!;
 
   const cout = estimateCost(choisi, request.amountMinor);
-  if (request.operation === 'payout' && cout !== undefined && cout >= request.amountMinor) {
+  if (cout !== undefined && cout >= request.amountMinor) {
     /* Verifier que la grille EXISTE ne suffit pas : il faut la lire. Un
-       versement de 100 F qui en coute 150 appauvrit a chaque operation, et
-       personne ne le voit avant le bilan. */
+       versement de 100 F qui en coute 150 appauvrit a chaque operation — et un
+       encaissement de 100 F qui en coute 150 rend un solde negatif. Personne
+       ne le voit avant le bilan. */
     return {
       kind: 'refuse',
       code: 'cost_exceeds_amount',
-      reason: `${cout} de frais pour ${request.amountMinor} verses sur ${choisi.rail}`,
+      reason: `${cout} de frais pour ${request.amountMinor} sur ${choisi.rail}`,
     };
   }
-  if (request.operation === 'payout' && cout === undefined) {
-    // On refuse de verser a l'aveugle. C'est le garde-fou qui coute le moins
-    // cher de toute la chaine.
+  if (cout === undefined) {
+    /* On ne paie a l'aveugle dans AUCUN sens. La premiere version ne gardait
+       que les payouts, au motif qu'« on ne perd rien a encaisser » — faux :
+       un payin coute 1 a 3,5 % (mesure, docs/pivot/20), et router sans grille
+       presentait ce cout inconnu comme nul, gonflant chaque marge en silence.
+       Defaut releve par la verification adversariale de decision.ts. */
     return {
       kind: 'refuse',
       code: 'missing_cost_grid',
-      reason: `aucune grille de cout pour ${choisi.rail} : versement refuse`,
+      reason: `aucune grille de cout pour ${choisi.rail} : ${request.operation} refuse`,
     };
   }
 
@@ -156,7 +160,7 @@ export function route(
     kind: 'route',
     rail: choisi.rail,
     policy: choisi,
-    estimatedCostMinor: cout ?? 0,
+    estimatedCostMinor: cout,
     reason:
       malades.size > 0
         ? `${choisi.rail} retenu, ${[...malades].join(', ')} ecarte(s) pour taux d echec`

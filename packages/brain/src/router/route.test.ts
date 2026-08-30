@@ -37,11 +37,21 @@ describe('Le routeur — le garde-fou avant le choix', () => {
     expect(d).toMatchObject({ kind: 'refuse', code: 'missing_cost_grid' });
   });
 
-  it('laisse passer un encaissement sans grille : on ne perd rien a encaisser', () => {
+  it('refuse AUSSI un encaissement sans grille : un payin coute 1 a 3,5 %', () => {
+    /* L'ancienne version laissait passer, au motif qu'« on ne perd rien a
+       encaisser ». Faux, et pire : le cout inconnu ressortait a 0, donc la
+       marge de chaque decision etait gonflee en silence. */
     const d = route({ operation: 'payin', currency: 'XOF', amountMinor: 50_000 }, [
       p({ operation: 'payin', costFixedMinor: null, costPercentBp: null }),
     ]);
-    expect(d).toMatchObject({ kind: 'route', rail: 'paydunya' });
+    expect(d).toMatchObject({ kind: 'refuse', code: 'missing_cost_grid' });
+  });
+
+  it('cost_exceeds_amount vaut pour les payins aussi : encaisser 100 F qui en coutent 150', () => {
+    const d = route({ operation: 'payin', currency: 'XOF', amountMinor: 100 }, [
+      p({ operation: 'payin', costFixedMinor: 150, costPercentBp: 0 }),
+    ]);
+    expect(d).toMatchObject({ kind: 'refuse', code: 'cost_exceeds_amount' });
   });
 
   it('refuse quand aucune politique ne couvre la demande', () => {

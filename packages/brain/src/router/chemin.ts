@@ -90,6 +90,7 @@ export type CheminRefusal =
   | 'montant_invalide'
   | 'operateur_manquant'
   | 'cout_caisse_inconnu'
+  | 'topologie_non_geree'
   | RouteRefusal;
 
 /** Choisit le chemin le moins cher pour une operation donnee. */
@@ -155,8 +156,26 @@ export function choisitChemin(req: CheminRequest, ctx: CheminContext): CheminDec
     return versLeRail(req, ctx, 'payout', op, true);
   }
 
+  // L'argent ENTRE depuis une banque (l'alimentation d'un compte SwimPay par
+  // virement). C'est un PAYIN — la premiere version le laissait tomber dans le
+  // fallback payout, a contresens : defaut releve par la verification
+  // adversariale de decision.ts.
+  if (req.origine.type === 'banque' && req.destination.type === 'swimpay') {
+    return versLeRail(req, ctx, 'payin', undefined, false);
+  }
+
   // Destination banque : pas de caisse bancaire en V1, le rail fait le virement.
-  return versLeRail(req, ctx, 'payout', undefined, false);
+  if (req.destination.type === 'banque') {
+    return versLeRail(req, ctx, 'payout', undefined, false);
+  }
+
+  // Tout le reste est une topologie qu'on ne sait pas executer : on le DIT,
+  // on ne route pas au hasard.
+  return {
+    kind: 'refuse',
+    code: 'topologie_non_geree',
+    reason: `aucun chemin pour ${req.origine.type} → ${req.destination.type}`,
+  };
 }
 
 function versLeRail(
