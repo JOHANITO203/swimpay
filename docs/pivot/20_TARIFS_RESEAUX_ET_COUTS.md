@@ -134,8 +134,9 @@ et jusqu'à plus de 4 %** selon le rail. Or :
 
 ### 4.2 Ce que ça prouve
 
-**Le swap n'est rentable que par le netting**, où il coûte ~0,1 %. Là, on peut
-le facturer 1 % (au niveau du marché) et garder une marge.
+**Le swap n'est rentable que quand les deux bouts sont chez nous** (on-us, coût
+~0,1 %). Vers un numéro extérieur, il paie le frais de sortie de l'opérateur
+(~1 %) et ne rapporte rien au prix de 1 %. Voir le détail des régimes au §5.
 
 Autrement dit : le rail généraliste est un **filet de secours coûteux**, pas le
 chemin normal. Mon `18` l'avait dit pour la fiabilité ; les chiffres le
@@ -155,85 +156,91 @@ sur rien qui traverse.**
 
 ---
 
-## 5. Ce qu'on gagne, opération par opération, chemin par chemin
+## 5. Quand le netting joue, et ce qu'on gagne vraiment
 
-Le tableau que LO réclame : pour chaque opération, notre prix, ce que ça coûte
-selon le chemin, et **la marge qui reste**. Une marge négative marque un chemin
-à éviter (on ne l'emprunte qu'en secours). Prix `[P]`, à valider.
+> **Correction assumée.** La première version collait « netting ~0,1 % » sur
+> chaque opération, comme si c'était magique. **C'est faux, et LO l'a vu.** Le
+> netting ne s'applique pas partout de la même manière. Voici le vrai modèle.
 
-### 5.1 Encaisser une vente — prix client **1 %**
+### 5.0 Les trois régimes de coût
 
-| Chemin | Notre coût | **Marge** |
-|---|---|---|
-| API marchande **Wave** | ~1 % | **~0** |
-| API marchande **Orange** | ~1 % (J+5) | **~0** |
-| API marchande **MTN** | 1,5–2 % | **négative** |
-| Rail **Julaya** | 0,5–1 % | **0 à +0,5 %** |
-| Rail **CinetPay** | 1,5–3,5 % | **négative** |
-| **Netting** | ~0,1 % | **+0,9 %** |
+Toute opération tombe dans l'un des trois. C'est ça qu'il fallait poser d'abord.
 
-On encaisse par **Wave, Orange (équilibre) ou Julaya (petite marge)**. Jamais par
-MTN ni CinetPay à ce prix. La vraie marge vient du **netting**.
+1. **Interne (on-us) — ~0,1 %.** Les deux bouts sont des clients SwimPay.
+   L'argent ne quitte jamais nos livres, c'est une écriture. Un utilisateur paie
+   un autre, un salaire versé à un employé déjà client, un achat payé depuis un
+   solde SwimPay. **C'est là qu'on gagne.**
+2. **De bord — ~1 %.** L'argent **entre** depuis un mobile money (un client
+   extérieur paie) ou **sort** vers un numéro extérieur. On paie le frais de
+   l'opérateur, **que le netting ne supprime pas**. Encaisser d'un inconnu, un
+   retrait vers Orange, une paie vers un employé non client.
+3. **Rail (secours) — 2 à 5 %.** Caisse à sec, on passe par PayDunya, CinetPay,
+   Hub2.
 
-### 5.2 Changer de réseau, le swap — prix client **1 %, max 500 F**
+### 5.0 bis Ce que le netting fait, et ce qu'il ne fait pas
 
-| Chemin | Notre coût | **Marge** |
-|---|---|---|
-| Rail **Julaya** | 1–2,5 % | **0 à −1,5 %** |
-| Rail **CinetPay** | 3–5 % | **très négative** |
-| **Netting** | ~0,1 % | **+0,9 %** |
+**Ce qu'il fait :** il évite de déplacer l'argent **entre nos caisses**. On
+encaisse sur Wave, on paie sur Orange ; un système naïf bougerait Wave→Orange à
+chaque fois, en payant un rail. Le netting apparie les deux sur la masse, on ne
+bouge que le déséquilibre. **Il économise le rééquilibrage.**
 
-Le swap **ne gagne de l'argent que par le netting**. Par un rail, il est à perte.
+**Ce qu'il ne fait pas :** il ne supprime **pas** le frais de bord (~1 %) quand
+l'argent touche le monde extérieur. Pour un **checkout**, si l'acheteur n'est pas
+client, son argent entre depuis son Orange et **coûte ~1 %** d'entrée, netting ou
+pas. Le netting ne le rend gratuit que si l'acheteur paie **depuis son solde
+SwimPay**.
 
-### 5.3 Payer les salaires — prix client **1 %** (ou coût + 0,4 %)
+> **La vraie marge des transactions vient du on-us, pas du netting seul.** Le
+> netting empêche les flux de bord de nous saigner ; le on-us fait le bénéfice.
+> C'est pour ça qu'on recrute des chaînes : plus l'argent reste dedans, plus il
+> devient rentable.
 
-| Chemin | Notre coût | **Marge** |
-|---|---|---|
-| Rail **Julaya** payout | 0,5–1,5 % | **+0,5 à −0,5 %** |
-| Rail **CinetPay** payout | 1,5 % | **−0,5 %** |
-| **Netting**, ou on-us si les employés sont clients | ~0–0,1 % | **+0,9 à +1 %** |
+### 5.1 à 5.4 La marge, selon que le bout est dedans ou dehors
 
-La paie rapporte surtout quand **les employés deviennent clients** : le versement
-devient une écriture interne, coût nul, et recrute 30 utilisateurs au passage.
+Prix `[P]`. Pour chaque opération : le cas courant (un bout dehors) et le cas
+fermé (tout chez nous).
 
-### 5.4 Checkout e-commerce — prix client **1,5 %**
+| Opération | Prix | Cas courant, un bout dehors | Cas fermé, tout SwimPay |
+|---|---|---|---|
+| **Encaisser une vente** | 1 % | coût ~1 % → **marge ~0** | coût ~0,1 % → **+0,9 %** |
+| **Swap Orange→Wave** | 1 % | coût ~1 % (sortie) → **~0** | coût ~0,1 % → **+0,9 %** |
+| **Paie de salaire** | 1 % | coût ~1 % → **~0** | employés clients → **+0,9 %** |
+| **Checkout** | 1,5 % | coût ~1 % → **+0,5 %** | acheteur client → **+1,4 %** |
+| **Retrait vers un réseau** | gratuit | coût ~1 % (sortie) → **perte** si facturé | — |
 
-| Chemin | Notre coût | **Marge** |
-|---|---|---|
-| Rail **Julaya** | 0,5–1 % | **+0,5 à +1 %** |
-| API **Wave / Orange** | ~1 % | **+0,5 %** |
-| Rail **CinetPay** | 1,5–3,5 % | **0 à −2 %** |
-| **Netting** | ~0,1 % | **+1,4 %** |
+Le checkout est le seul qui gagne **toujours** un peu, parce que son prix (1,5 %)
+dépasse le frais de bord (~1 %). Tous les autres ne rapportent qu'en **fermé**.
 
-Le checkout est la seule opération rentable **même par un rail** (Julaya), parce
-que le prix de marché y est haut (2,25 à 3,5 %).
+Et **par un rail** (secours, caisse à sec) : encaissement et swap passent en
+**perte** (2 à 5 %). On ne les y met qu'en dernier recours.
 
-### 5.5 Ce que ça donne sur un vrai mois de PME
+### 5.5 Le vrai mois de PME, corrigé
 
-Une PME qui encaisse **5 000 000 F** et verse **3 000 000 F** de salaires.
+5 M encaissés (clients extérieurs) + 3 M de paie.
 
-| Poste | Prix | Marge par netting | Marge par rail/opérateur |
+| Poste | Prix | Marge si employés clients | Marge si employés dehors |
 |---|---|---|---|
 | Abonnement | 10 000 F | **10 000 F** | 10 000 F |
-| Encaissement 5 M | 1 % | **+45 000 F** (0,9 %) | ~0 F |
-| Paie 3 M | 1 % | **+27 000 F** (0,9 %) | +15 000 F (0,5 %) |
-| **Total mensuel** | | **≈ 82 000 F** | **≈ 25 000 F** |
+| Encaissement 5 M (bord) | 1 % | ~0 | ~0 |
+| Paie 3 M | 1 % | **+27 000 F** (on-us) | ~0 (bord) |
+| **Total mensuel** | | **≈ 37 000 F** | **≈ 10 000 F** |
 
-> **Le netting triple ce qu'on gagne par client** : ~82 000 F contre ~25 000 F
-> par mois. Sans lui, il ne reste presque que l'abonnement. C'est la démonstration
-> chiffrée que le netting est le moteur du P&L, pas un détail technique.
+> **Correction : mon 82 000 F supposait du netting sur l'encaissement extérieur,
+> ce qui n'existe pas.** Le vrai chiffre est ~37 000 F quand les employés sont
+> clients, et tombe à ~10 000 F (l'abonnement seul) quand tout le monde est
+> dehors. **La marge monte à mesure que les employés, les fournisseurs et les
+> clients rejoignent SwimPay.** Le netting, lui, garde les flux de bord à
+> l'équilibre au lieu de les laisser nous coûter un rail.
 
-### 5.6 La règle qui sort de tout ça
+### 5.6 La règle, corrigée
 
 1. **L'abonnement est la marge sûre.** Il ne dépend d'aucun chemin.
-2. **Le netting double ou triple le reste.** C'est là qu'est l'argent des
-   transactions.
-3. **Julaya est le meilleur rail** quand le netting ne peut pas (caisse à sec),
-   surtout au checkout.
-4. **CinetPay et MTN sont des filets de dernier recours**, à perte sur
-   l'encaissement et le swap. On ne les emprunte que faute de mieux.
-5. **Le swap et l'encaissement à 1 % ne rapportent rien sans netting.** Ne jamais
-   promettre ces marges sur un chemin de rail.
+2. **La marge des transactions vient du on-us**, quand les deux bouts sont chez
+   nous. Le netting ne fait pas la marge, il évite les surcoûts de rééquilibrage.
+3. **Donc la stratégie est de garder l'argent dedans** : recruter des chaînes,
+   faire des employés, fournisseurs et clients des utilisateurs.
+4. **Le checkout gagne toujours un peu**, prix haut.
+5. **CinetPay et MTN restent des filets à perte** sur l'encaissement et le swap.
 
 ---
 
