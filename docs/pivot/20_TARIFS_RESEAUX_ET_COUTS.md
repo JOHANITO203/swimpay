@@ -274,6 +274,45 @@ Et **par un rail** (secours, caisse à sec) : encaissement et swap passent en
 
 ---
 
+## 5 quater La machine à revenus, par nature d'opération
+
+Résumé de LO : la machine tourne sur **quatre moteurs**, et le prix dépend de la
+**nature de l'opération**. Le mobile → banque, longtemps négligé, y a sa place.
+
+### Moteur 1 — les frais selon la nature de l'opération `[P]`
+
+| Opération | Marché (sourcé) | Prix SwimPay | Rôle |
+|---|---|---|---|
+| mobile → mobile **même réseau** | 0 F Orange, 1 % Wave `[V/T]` | **gratuit** | l'appât |
+| mobile → mobile **réseau différent** (swap) | ~1 %, gratuit avec PI-SPI `[T]` | **1 %, max 500 F** | hameçon, décroît |
+| **mobile → banque** | ~1 % Wave, variable Orange `[T]` | **1 à 1,5 %** | trésorerie PME, **peu sensible au prix** |
+| **banque → mobile** | gratuit chez Julaya `[V]` | **gratuit** | on encourage l'alimentation |
+| retrait vers un réseau | cash-out 0–1 % `[V/T]` | **gratuit** | rétention |
+
+> **Le mobile → banque est un des meilleurs endroits pour la marge.** Une PME qui
+> consolide sa trésorerie ne compare pas au centime, contrairement au particulier
+> qui transfère 5 000 F. Et il **nette contre le banque → mobile** (l'alimentation) :
+> la banque est une caisse de plus dans le netting, donc son coût réel baisse.
+
+### Moteur 2 — les abonnements
+
+PME **15 000 F/mois**, commerçant **5 000 à 7 500**, comptable par dossier. La
+marge sûre, adossée à l'obligation FNE.
+
+### Moteur 3 — le checkout
+
+**1,8 %** (marché 2,25 à 3,5 %), plus la facture obligatoire que personne d'autre
+ne livre.
+
+### Moteur 4 — l'acquisition de masse par le transfert gratuit
+
+Le transfert gratuit fait **entrer les clients**. Plus ils sont nombreux, plus les
+flux deviennent **internes** (gratuits pour nous), et plus la marge des trois
+autres moteurs grandit. **Le transfert gratuit est notre coût d'acquisition, payé
+par l'effet de réseau**, pas par notre poche.
+
+---
+
 ## 6. Ce que ces chiffres imposent au produit
 
 1. **Encaisser passe par l'API marchande de l'opérateur (~1 %), pas par un rail
