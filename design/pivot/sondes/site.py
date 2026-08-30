@@ -54,7 +54,14 @@ img_coffre = brut("site-coffre.webp", "image/webp")
 img_cadenas = brut("site-cadenas.webp", "image/webp")
 img_pieces = brut("site-pieces.webp", "image/webp")
 img_socle = brut("site-socle.webp", "image/webp")
-img_anneau = brut("site-anneau.webp", "image/webp")
+# ── Le ruban ouvre la page Business. Le bord haut du rendu est MESURE a
+#    #0E0E0E : le sol de la section porte exactement cette valeur, donc
+#    l'image se prolonge dans la page sans raccord visible.
+#    L'anneau n'est plus pose : il porte le meme message que le ruban —
+#    quatre reseaux reunis — et deux images qui disent la meme chose sur un
+#    site sont de la redite. Le fichier reste dans assets/. ──
+ruban = b64("site-ruban.webp", "image/webp")
+ruban_tel = b64("site-ruban-tel.webp", "image/webp")
 # Pose sur decision de LO malgre son ecran en anglais et ses montants a
 # decimales : ici c'est une image d'ambiance sous un bouton d'installation,
 # pas une reference d'interface. La vraie capture reste en page Personnel.
@@ -146,6 +153,8 @@ HTML = f"""<meta charset="utf-8">
   --logo: {logo};
   --photo: {photo};
   --photo-tel: {photo_tel};
+  --ruban: {ruban};
+  --ruban-tel: {ruban_tel};
   --sortie: cubic-bezier(.23, 1, .32, 1);
   --deux-sens: cubic-bezier(.77, 0, .175, 1);
   /* le Caméléon : une seule teinte pilote toute la section, et elle change */
@@ -304,6 +313,119 @@ a {{ color: inherit; text-decoration: none; }}
   .heros-in > div {{ max-width: none; }}
 }}
 @media (min-width: 881px) {{ .heros-bande {{ display: none; }} }}
+
+/* ─── LE HÉROS SOMBRE (Business) ───
+   Même ossature que le héros clair, sol inversé. Deux choses le distinguent,
+   et toutes deux viennent de la mesure, pas du goût :
+
+   1. le sol porte EXACTEMENT #0E0E0E, couleur relevée au pixel sur le bord
+      haut du rendu. L'image se prolonge donc dans la page sans raccord ;
+   2. le texte NE SE POSE PAS SUR L'IMAGE. La sonde zone-texte.mjs donne
+      1,41:1 pour une colonne de texte descendue sur ce rendu — le liseré de
+      la main atteint 217 en luminance. Le bloc réserve donc en marge basse
+      la hauteur exacte de l'image et vit sur le noir nu, où le blanc est à
+      19:1. Aucun voile n'est nécessaire : un voile serait de l'ornement, et
+      il ternirait le ruban. */
+/* Le voile acide du heros clair s applique a TOUT .heros : sans cette ligne
+   il repeint le heros sombre en vert, et la mesure tombe a 1,08:1. Defaut vu
+   a la sonde, pas au code. */
+.heros.sombre::before {{ content: none; }}
+/* Au bureau : DEUX COLONNES, pas une pile. Empile, le heros montait a 1150 px
+   et le rendu passait sous la ligne de flottaison — vu a la capture. Cote a
+   cote, le texte et l image ne se touchent jamais, donc pas de voile et pas
+   de compromis de contraste. */
+.heros.sombre {{
+  background:
+    radial-gradient(52% 58% at 76% 52%, hsl(82 100% 50% / .16) 0%, transparent 70%),
+    #0E0E0E;
+}}
+.heros.sombre .heros-in {{
+  min-height: min(74vh, 680px);
+  padding: 34px 0 60px;
+}}
+/* Le rendu n est PAS un fond : pose en background il se lisait comme un
+   rectangle colle, son noir ne fondant pas tout a fait dans le sol. Il
+   devient un calque dont les quatre bords sont estompes par un masque —
+   c est ce qui le fait appartenir a la page. */
+@media (min-width: 881px) {{
+  .heros.sombre .heros-bande {{
+    display: block; position: absolute; z-index: 1;
+    top: 50%; transform: translateY(-50%);
+    /* Aucun debord a droite : il coupait le badge Moov. Couper de la matiere
+       passe, couper le logo d un partenaire non. */
+    right: 0;
+    width: min(56%, 820px); aspect-ratio: 1.792;
+    background: var(--ruban) center / contain no-repeat;
+    /* On estompe la gauche, le haut et le bas. PAS la droite : le bord droit
+       du rendu est deja du noir, donc invisible sur le sol, et un fondu la
+       aurait fantomise Moov. */
+    -webkit-mask-image:
+      linear-gradient(to right, transparent 0, #000 11%, #000 100%),
+      linear-gradient(to bottom, transparent 0, #000 9%, #000 91%, transparent 100%);
+            mask-image:
+      linear-gradient(to right, transparent 0, #000 11%, #000 100%),
+      linear-gradient(to bottom, transparent 0, #000 9%, #000 91%, transparent 100%);
+    -webkit-mask-composite: source-in;
+            mask-composite: intersect;
+  }}
+}}
+.heros.sombre .heros-in > div {{ max-width: min(46ch, 48%); }}
+/* La colonne etroite protege le TEXTE ; les boutons portent leur propre sol
+   et n en ont pas besoin. Herite d elle, « Ouvrir un compte professionnel »
+   se repliait sur trois lignes dans sa pastille. */
+.heros.sombre .gestes {{ width: auto; max-width: none; }}
+.heros.sombre h1 {{ color: #FFFFFF; font-size: clamp(38px, 5.2vw, 70px); }}
+.heros.sombre h1 em {{ color: var(--acide); }}
+.heros.sombre .dit {{ color: rgba(255, 255, 255, .74); }}
+.heros.sombre .sous {{ color: rgba(255, 255, 255, .54); }}
+/* Sur le noir, un bouton à bord n'a plus besoin du sol opaque que la photo
+   claire lui imposait : le trait blanc à 38 % tient tout seul. */
+.heros.sombre .bouton.creux {{
+  background: none; border-color: rgba(255, 255, 255, .38);
+  color: #FFFFFF; box-shadow: none;
+}}
+.heros.sombre .bouton.creux:hover {{ border-color: rgba(255, 255, 255, .7); }}
+/* Les pastilles portent un sol CLAIR et une encre foncee. Inverser l encre
+   sans inverser le sol donnait du blanc sur du blanc : 1,08:1, mesure. Les
+   deux se retournent ensemble ou pas du tout. */
+.heros.sombre .jalons {{ border-top-color: rgba(255, 255, 255, .16); }}
+.heros.sombre .jalons span {{
+  background: rgba(255, 255, 255, .09); color: rgba(255, 255, 255, .84);
+}}
+
+/* L'encre de la barre suit le sol du héros, et seulement quand elle est
+   posée dessus. Le JS écrit data-sol : sans lui, l'encre claire serait
+   tombée sur l'accueil acide, qui est un sol CLAIR. */
+.nav[data-pose="non"][data-sol="sombre"] .logo b {{ color: #FFFFFF; }}
+.nav[data-pose="non"][data-sol="sombre"] .logo i {{ filter: brightness(0) invert(1); }}
+.nav[data-pose="non"][data-sol="sombre"] a.onglet {{ color: rgba(255, 255, 255, .74); }}
+.nav[data-pose="non"][data-sol="sombre"] a.onglet[aria-current="page"] {{
+  color: #FFFFFF; background: rgba(255, 255, 255, .13);
+}}
+.nav[data-pose="non"][data-sol="sombre"] .bouton.creux {{
+  border-color: rgba(255, 255, 255, .36); color: #FFFFFF;
+}}
+.nav[data-pose="non"][data-sol="sombre"] .bouton.plein {{
+  background: #FFFFFF; color: var(--noir);
+}}
+
+@media (max-width: 880px) {{
+  .heros.sombre {{ background-image: none; background-color: #0E0E0E; }}
+  .heros.sombre .heros-in {{ min-height: 0; padding: 34px 20px 56px; }}
+  /* Le rendu large couperait la main et les pastilles en deux : c'est un
+     RECADRAGE qui sert, gardé à 72 % de la largeur d'origine, ratio 1,29. */
+  .heros.sombre .heros-bande {{
+    height: calc(100vw / 1.29 + var(--h-nav));
+    margin-top: calc(-1 * var(--h-nav));
+    background:
+      var(--ruban-tel) center bottom / contain no-repeat,
+      radial-gradient(130% 66% at 50% 102%, hsl(82 100% 50% / .16) 0%, transparent 68%),
+      #0E0E0E;
+  }}
+  .nav[data-pose="non"][data-sol="sombre"] {{
+    background: rgb(14 14 14 / .92); backdrop-filter: blur(10px);
+  }}
+}}
 
 /* ─── LA FAQ ───
    En <details> natif : elle s'ouvre sans une ligne de script, et reste
@@ -770,28 +892,29 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
 
 <!-- ══════════ BUSINESS ══════════ -->
 <div class="page" id="business">
-  <section class="sect">
-    <div class="dedans tete">
-      <h1>Le compte pro de votre entreprise</h1>
-      <p class="dit">Encaissez, payez des salaires et émettez vos FNE dans votre
-        application, au besoin de vos clients. Un seul compte pour toute votre
-        activité.</p>
-      <div class="gestes">
-        <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
-        <a class="bouton creux grand" href="{LIEN_APP}#b-pme" target="_blank" rel="noopener">Voir la console</a>
+  <header class="heros sombre">
+    <div class="heros-bande" role="img"
+         aria-label="Wave, Orange Money, MTN et Moov reliés par un même geste autour d'un téléphone SwimPay"></div>
+    <div class="dedans heros-in">
+      <div>
+        <h1>Le compte pro de <em>votre entreprise</em></h1>
+        <p class="dit">Encaissez, payez des salaires et émettez vos FNE dans votre
+          application, au besoin de vos clients. Un seul compte pour toute votre
+          activité.</p>
+        <div class="gestes">
+          <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
+          <a class="bouton creux grand" href="{LIEN_APP}#b-pme" target="_blank" rel="noopener">Voir la console</a>
+        </div>
+        <div class="jalons">
+          <span>Encaisser vos clients</span>
+          <span>Payer les salaires</span>
+          <span>Émettre vos FNE</span>
+          <span>Encaisser depuis votre site</span>
+          <span>Suivre la trésorerie</span>
+        </div>
       </div>
-      <div class="jalons">
-        <span>Encaisser vos clients</span>
-        <span>Payer les salaires</span>
-        <span>Émettre vos FNE</span>
-        <span>Encaisser depuis votre site</span>
-        <span>Suivre la trésorerie</span>
-      </div>
-      <img src="{img_anneau}" width="1400" height="781" loading="lazy"
-           style="display: block; width: 100%; height: auto; margin-top: 46px; border-radius: 16px"
-           alt="Wave, Orange Money, MTN et Moov reliés autour d'un téléphone SwimPay">
     </div>
-  </section>
+  </header>
 
   <section class="sect gris">
     <div class="dedans">
@@ -1080,6 +1203,11 @@ const surHeros = () => {{
   const h = document.querySelector(".page.active .heros");
   const dessus = !!h && scrollY < 24;
   nav.setAttribute("data-pose", dessus ? "non" : "oui");
+  /* Deux heros, deux sols : l accueil est acide (clair), Business est noir.
+     L encre de la barre suit le sol qu elle survole — sinon le blanc tombait
+     sur l acide et devenait illisible. */
+  nav.setAttribute("data-sol",
+    dessus && h.classList.contains("sombre") ? "sombre" : "clair");
 }};
 addEventListener("scroll", surHeros, {{ passive: true }});
 addEventListener("hashchange", () => requestAnimationFrame(surHeros));
