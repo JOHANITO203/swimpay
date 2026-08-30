@@ -754,8 +754,12 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
             C'est à vous de choisir, et votre correspondant garde le sien.</p>
         </div>
         <div class="cam-video">
+          <!-- preload="auto" : les octets sont deja dans la page (data URI),
+               donc precharger ne telecharge rien de plus — ca supprime
+               seulement la course entre l'observateur et la disponibilite
+               des donnees, qui empechait la video de demarrer. -->
           <video src="{video}" poster="{affiche}" muted loop playsinline
-                 preload="metadata" aria-label="Animation SwimPay"></video>
+                 preload="auto" aria-label="Animation SwimPay"></video>
         </div>
       </div>
     </div>
@@ -1235,10 +1239,18 @@ if (rails.length) {{
      l'écran consomme sans rien montrer */
   const sect = document.getElementById("temps");
   const video = document.querySelector(".cam-video video");
+  /* La video ne demarrait jamais : l'observateur appelait play() avant que
+     les donnees soient pretes, la promesse etait rejetee, et le catch vide
+     l'avalait sans jamais reessayer. On garde donc la visibilite dans une
+     variable, et on retente des que la video est lisible. */
+  let visible = false;
+  const joue = () => {{ if (video && visible && video.paused) video.play().catch(() => {{}}); }};
+  if (video) video.addEventListener("canplay", joue);
   new IntersectionObserver((entrees) => entrees.forEach((e) => {{
-    if (e.isIntersecting) {{ if (!cycle) lance(); if (video) video.play().catch(() => {{}}); }}
+    visible = e.isIntersecting;
+    if (visible) {{ if (!cycle) lance(); joue(); }}
     else {{ clearInterval(cycle); cycle = null; if (video) video.pause(); }}
-  }}), {{ threshold: .25 }}).observe(sect);
+  }}), {{ threshold: .15 }}).observe(sect);
 }}
 
 /* ─── L'INSTALLATION ───
