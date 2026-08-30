@@ -52,8 +52,12 @@ confronte enfin aux chiffres réels.
 |---|---|---|---|
 | **PayDunya** | **2,25 %** | **2,00 %** | `[V]` primaire (`09`) |
 | **Julaya** | **0,5 à 1 %** | **0,5 à 1,5 %** | `[V]` primaire (`10`) |
-| **CinetPay** | **1,5 à 2 %** | selon volume | `[T]` |
-| **Hub2** | **1,8 à 2,5 %** | négociable dès 50 M/mois | `[T]` |
+| **CinetPay** | **1,5 à 3,5 %** (paliers 3,5 · 2,5 · 2) | **1,5 %** | `[V]` Chrome réel, page affichée pour le Mali (zone UEMOA), à confirmer identique en CI |
+| **Hub2** | **sur devis, non public** (~1,8–2,5 % `[T]`) | sur devis | `[T]` |
+
+Note primaire : la grille CinetPay est relevée au Chrome réel
+(`assets/cinetpay-pricing-2026-08-30.png`). Le payin va de **1,5 % (gros
+volume) à 3,5 % (petit volume)**, le payout groupé est **fixe à 1,5 %**.
 
 ---
 
@@ -65,15 +69,19 @@ Le point que LO réclamait : pour chaque opération, le coût selon le chemin.
 
 | Chemin | Notre coût |
 |---|---|
-| **API marchande de l'opérateur** (Wave, Orange) | **~1 %** `[T]` |
-| Rail généraliste PayDunya | 2,25 % `[V]` |
+| **API marchande Wave** | **~1 %** `[T]` |
+| **API marchande Orange** | **1 %**, règlement **J+5**, jusqu'à 1,5–2,2 % selon volume `[T]` |
+| **API marchande MTN** | **1,5 à 2 %** en direct, 2,5 % via agrégateur `[T]` |
+| Rail PayDunya | 2,25 % `[V]` |
 | Rail Julaya | 0,5 à 1 % `[V]` |
+| Rail CinetPay | 1,5 à 3,5 % `[V]` |
 | **Netting** (nos caisses) | **~0,1 %** en simulation `[T]` |
 
-> **Découverte : encaisser directement par l'API marchande de l'opérateur (~1 %)
-> coûte deux fois moins qu'un rail généraliste comme PayDunya (2,25 %).** Pour
-> l'encaissement, on va donc chez l'opérateur, pas chez un agrégateur. Et le
-> netting bat tout le monde.
+> **Découverte : encaisser chez l'opérateur qui a le prix Wave (~1 %) coûte deux
+> fois moins qu'un rail généraliste (PayDunya 2,25 %, CinetPay jusqu'à 3,5 %).**
+> Mais tous les opérateurs ne se valent pas : Wave ~1 %, Orange ~1 % (mais J+5),
+> **MTN 1,5 à 2 %**. Le rail le moins cher reste Julaya (0,5 à 1 %). Et le netting
+> bat tout le monde.
 
 ### 3.2 Verser (paie, fournisseur, sortie)
 
@@ -104,7 +112,7 @@ dépend entièrement du chemin.
 | Chemin du swap | Calcul | **Ce que ça nous coûte** |
 |---|---|---|
 | Rail **PayDunya** | 2,25 % + 2,00 % | **4,25 %** `[V]` |
-| Rail **CinetPay** | ~1,75 % + ~1,75 % | **~3,5 %** `[T]` |
+| Rail **CinetPay** | (1,5–3,5 %) + 1,5 % | **3 à 5 %** `[V]` |
 | Rail **Hub2** | ~2 % + ~2 % | **~4 %** `[T]` |
 | Rail **Julaya** | 0,5–1 % + 0,5–1,5 % | **1 à 2,5 %** `[V]` |
 | **Netting** (nos caisses) | résidu | **~0,1 %** `[T]` |
@@ -176,17 +184,38 @@ Ce qu'on facture au client, avec la source du prix de marché en face.
 5. **Le swap ne porte pas le P&L.** Marché à 1 % qui va vers le gratuit avec le
    PI-SPI. Hameçon, pas rente. Le revenu vient de l'abonnement et de la marge
    nette sur les gros volumes (paie, checkout).
+6. **Chaque opérateur a un coût et un délai d'intégration.** MTN : développement
+   400 000 à 900 000 FCFA, activation marchande 1 à 3 semaines selon le dossier
+   RCCM `[T]`. À multiplier par le nombre de réseaux intégrés. On commence par
+   Wave et Orange (les moins chers et les plus utilisés), MTN et Moov ensuite.
+
+> **Contexte fiscal, pour mémoire :** la Côte d'Ivoire taxe le mobile money à
+> **7,2 % sur les commissions des opérateurs**, payé par les opérateurs, pas
+> facturé en plus à l'utilisateur `[T]`. Cela n'entre pas dans notre coût
+> direct, mais explique pourquoi les opérateurs ne descendent pas sous ~1 %.
 
 ---
 
-## 7. Ce qui reste à vérifier en primaire
+## 7. Ce qui est confirmé, ce qui reste à confirmer
 
-- Le **coût exact de l'API marchande Orange** (1 % ou 1,5–2,2 % selon volume) et
-  le délai J+5, à confirmer dans le contrat développeur.
-- Le **coût de l'API de décaissement** de chaque opérateur (payout).
-- Le **coût API marchand MTN et Moov** (le paiement est gratuit pour le client,
-  mais l'encaissement par API ?).
-- **CinetPay et Hub2** en source primaire, aujourd'hui `[T]`.
+**Confirmé depuis la première version :**
+
+- CinetPay relevé au Chrome réel : payin 1,5–3,5 %, payout 1,5 %.
+- MTN marchand : 1,5–2 % en direct, plus un coût d'intégration de 400 000 à
+  900 000 FCFA `[T]`.
+- Orange marchand : 1 % à J+5, jusqu'à 1,5–2,2 % selon volume `[T]`.
+
+**Reste à confirmer, uniquement par un devis direct :**
+
+- **Hub2** ne publie aucune grille : sur devis, comme Julaya.
+- Le **payout exact des opérateurs** (Orange, MTN, Moov) par leur API de
+  décaissement.
+- Le **coût API marchand Moov**.
+- Le délai de règlement de chaque rail (Orange est à J+5, les autres à préciser).
+
+Ces derniers points ne se trouvent pas en source publique : ils se demandent au
+commercial, en même temps que le partenariat. Toute la recherche publiquement
+disponible est faite.
 
 ---
 
@@ -197,5 +226,10 @@ Ce qu'on facture au client, avec la source du prix de marché en face.
   aux développeurs et ESN.
 - Pages et blogs tarifaires CI 2026 (Wave, MTN, Moov) `[T]`.
 - `wave.com` commissions CI (grille agents, pas client).
+- **`cinetpay.com/pricing`** relevé au Chrome réel `[V]`
+  (`assets/cinetpay-pricing-2026-08-30.png`) : payin 1,5–3,5 %, payout 1,5 %.
+- `business.orange.ci` / `developer.orange.com/apis/om-webpay` : marchand 1 %, J+5.
+- Kolonell, momocalc, payatlas (comparateurs) `[T]` : MTN direct 1,5–2 %, coût
+  d'intégration 400 000 à 900 000 FCFA, taxe opérateur mobile money 7,2 %.
 - Internes : `09_PAYDUNYA_TARIFS.md`, `10_JULAYA_TARIFS.md`, `17_LE_NETTING.md`,
   `18_MODELES_D_ALGORITHME.md`, `19_MODELE_DE_REVENUS.md`.
