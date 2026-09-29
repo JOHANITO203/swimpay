@@ -44,3 +44,6 @@ skills-lock.json
 .swimpay-agent/screenshots/
 *.canvas
 *.base
+
+# cache local de wrangler dev
+.wrangler/
