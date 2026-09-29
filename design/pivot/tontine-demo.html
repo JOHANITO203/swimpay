@@ -744,9 +744,8 @@ const ECRANS = {
           (q.differe ? "<div class='moins'><span>Versé à la clôture (d'autres n'ont pas payé)</span><b>−" + F(q.differe) + "</b></div>" : "") +
           "<div class='moins'><span>Réservé à " + (paye ? "tes " + paye + " prochaines cotisations" : "tes cotisations") + "</span><b>−" + F(bloque) + "</b></div>" +
           "<div class='total libre'><span>Tu peux retirer</span><b>" + F(q.libre) + "</b></div></div>" +
-        "<p class='aide'>C'est ce que tu as versé (" + F(c * t) + ") plus " + F(M.avance) + ". " + (poche ? "Il te restera <b>" + F(poche) + "</b> à payer de ta poche en fin de tontine." : "Tu n'as plus rien à payer de ta poche.") + "</p>" +
-        (E.retire ? "<div class='bloc ok'><h3>Retrait fait</h3>" + F(q.libre) + " envoyés sur Orange Money · 07 ·· ·· ·· 96, à ton nom.</div>"
-                  : "<button class='pilule acide' data-retirer" + (q.libre ? "" : " disabled") + ">Retirer " + F(q.libre) + "</button>") +
+        (E.retire ? "<div class='bloc ok'><h3>C'est sur ton compte SwimPay</h3>" + F(q.libre) + " sont sur ton solde SwimPay. De là, tu peux les envoyer vers tes Mobile Money ou ta banque.</div>"
+                  : "<button class='pilule acide' data-retirer" + (q.libre ? "" : " disabled") + ">Mettre " + F(q.libre) + " sur mon compte SwimPay</button>") +
         "<button class='pilule contour' data-retour>Retour à la tontine</button>" +
       "</div>";
   },
@@ -769,7 +768,6 @@ const ECRANS = {
   cloture() {
     const M = E.M, p = maPlace(), q = M.p[p];
     const rendu = q.rendu + q.partReserve + q.bonusRecu + q.differe + (E.creditRendu || 0);
-    const fideles = M.p.filter((_, i) => !M.absences[i]).length;
     return hero("36%", "<button class='rond' data-aller-racine='tontine' aria-label='Retour'>←</button><div style='flex:1'></div>",
       titre("Tontine terminée", 50, "Mon bilan") +
       "<div class='plaque'><div class='lp'><span>Versé sur ton compte SwimPay à la clôture</span></div><div class='montant'>" + montantHTML(rendu) + "</div></div>") +
@@ -785,7 +783,6 @@ const ECRANS = {
           "<div class='moins'><span>Frais du système payés</span><b>" + F(M.frais) + "</b></div>" +
           (q.penalites ? "<div class='moins'><span>Pénalités de retard</span><b>" + F(q.penalites) + "</b></div>" : "") +
         "</div>" +
-        "<div class='bloc " + (M.perteSw === 0 ? "ok" : "alerte") + "'><h3>Le groupe</h3><div>" + fideles + " membre" + (fideles > 1 ? "s" : "") + " sur " + M.N + " n'ont jamais manqué une échéance. Chaque cagnotte a été versée.</div><div>SwimPay a pris ses frais du système (" + F(M.revenu) + ") et n'a rien perdu.</div></div>" +
         "<button class='pilule contour' data-aller='journal'>Le journal complet</button>" +
       "</div>";
   },
@@ -981,11 +978,11 @@ function rendreFeuille() {
   }
   if (E.feuille === "retirer") {
     const q = E.M.p[maPlace()];
-    h += "<h3 id='feuille-titre'>Retirer " + F(q.libre) + "</h3>" +
-      "<div class='recap'><div><span>Vers</span><b>Orange Money · 07 ·· ·· ·· 96</b></div><div><span>Titulaire</span><b>Vous, nom vérifié</b></div></div>" +
-      "<p class='aide'>L'argent de la tontine ne sort que vers un compte <b>à ton nom</b>. Nouveau téléphone ou nouveau compte de retrait : <b>72 heures d'attente</b>.</p>" + clavierHTML();
+    h += "<h3 id='feuille-titre'>Récupérer " + F(q.libre) + "</h3>" +
+      "<div class='recap'><div><span>Vers</span><b>Ton compte SwimPay</b></div><div><span>Solde actuel</span><b>" + F(E.solde) + "</b></div></div>" +
+      "<p class='aide'>L'argent de ta cagnotte arrive d'abord sur <b>ton compte SwimPay</b>. Tu l'envoies ensuite où tu veux. Nouveau téléphone : <b>72 heures d'attente</b>.</p>" + clavierHTML();
   }
-  if (E.feuille === "confirmer") h += "<h3 id='feuille-titre'>Confirme sur ton appareil habituel</h3><p class='aide'>Deuxième niveau de sécurité : une confirmation arrive par un canal extérieur. SwimPay ne t'appelle jamais pour demander un code.</p><div class='bloc ok' style='text-align:center'>Confirmation reçue ✓</div><button class='pilule acide' data-confirme>Valider le retrait</button>";
+  if (E.feuille === "confirmer") h += "<h3 id='feuille-titre'>Confirme sur ton appareil habituel</h3><p class='aide'>Deuxième niveau de sécurité : une confirmation arrive par un canal extérieur. SwimPay ne t'appelle jamais pour demander un code.</p><div class='bloc ok' style='text-align:center'>Confirmation reçue ✓</div><button class='pilule acide' data-confirme>Valider</button>";
   if (E.feuille === "verifier") {
     const t = E.tirage, recalc = sha256(t.secret), graine = sha256(t.secret + "|" + t.gestes.join("|"));
     h += "<h3 id='feuille-titre'>Vérifier le tirage</h3>" +
