@@ -32,6 +32,11 @@
   "assets": {
     "directory": "public",
     "binding": "ASSETS",
+    // SANS CECI, LE WORKER NE TOURNE JAMAIS. Par defaut, Cloudflare sert un
+    // fichier qui correspond a la requete SANS invoquer le Worker : nos
+    // en-tetes de securite (CSP, HSTS, nosniff…) n'ont donc jamais ete
+    // envoyes, du premier deploiement au 29/09/2026, ou un curl -D l'a montre.
+    "run_worker_first": true,
     // Le site est UNE page routée par ancre : toute adresse inconnue doit
     // rendre index.html plutôt qu'un 404, sinon /business tombe à côté.
     "not_found_handling": "single-page-application"

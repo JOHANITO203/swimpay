@@ -29,7 +29,9 @@ const CSP = [
   "object-src 'none'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  "img-src 'self' data:",
+  /* blob: : l'onboarding de la demo affiche la photo de la piece choisie
+     par l'utilisateur via URL.createObjectURL. Sans lui, l'image est bloquee. */
+  "img-src 'self' data: blob:",
   "media-src 'self' data:",
   "script-src 'self' 'unsafe-inline'",
   "connect-src 'self'",
