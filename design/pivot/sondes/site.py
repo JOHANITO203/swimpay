@@ -28,13 +28,11 @@ SITE_URL = "https://swimpay.johaneoyaraht.workers.dev"
 # portent disent « demo » et non « l'application » : presenter une preview
 # comme le produit est un mensonge qui se paie a la premiere demonstration.
 # Le jour ou l'app a son domaine, une seule ligne a changer.
-LIEN_APP = "/demo/checkout.html"
 # ── LA DEMO JOUABLE PAR SCENARIOS (28/09/2026) ──
 # Le prototype complet : inscription, particulier, commercant, paie, salarie.
-# Chaque lien ouvre directement le bon scenario par son ancre. L'ancienne
-# demo (LIEN_APP) ne sert plus qu'au checkout, absent des scenarios.
-# Les deux sont SERVIES PAR LE SITE (LO, 29/09) : deploy/public/demo/, rempli
-# par sondes/publier-demo.py. Plus aucun lien vers un artifact Claude.
+# Chaque lien ouvre directement le bon scenario par son ancre. La demo est
+# SERVIE PAR LE SITE (LO, 29/09) : deploy/public/demo/, rempli par
+# sondes/publier-demo.py. L'ancienne demo est retiree : une seule verite.
 LIEN_DEMO = "/demo/"
 
 def b64(chemin, mime):
@@ -66,8 +64,8 @@ icone180 = brut("apple-touch-icon.png", "image/png")
 photo = b64("hero-personne.jpg", "image/jpeg")
 photo_tel = b64("hero-personne-tel.jpg", "image/jpeg")
 carte_visa = brut("carte-visa.webp", "image/webp")
-ecran_pme = brut("ecran-pme.webp", "image/webp")
-ecran_accueil = brut("ecran-accueil.webp", "image/webp")
+ecran_pme = brut("ecran-demo-comm.webp", "image/webp")
+ecran_accueil = brut("ecran-demo-part.webp", "image/webp")
 video = brut("hero-anim.mp4", "video/mp4")
 affiche = brut("hero-anim-poster.jpg", "image/jpeg")
 
@@ -577,11 +575,15 @@ a {{ color: inherit; text-decoration: none; }}
 /* ─── UN ÉCRAN DE L'APPLICATION ───
    Ce qu'on montre vient du prototype lui-même, pas d'une maquette dessinée. */
 .tel {{
-  justify-self: center; width: min(300px, 78%); padding: 10px;
-  border-radius: 42px; background: #141414;
-  box-shadow: 0 34px 80px rgba(20, 20, 20, .30), 0 0 0 1px rgba(255, 255, 255, .06) inset;
+  /* Le MEME boitier que la demo (design/pivot/swimpay-scenarios.html) :
+     biseau en degrade, liseré #4A4A4A, rayons au meme ratio. Une seule
+     verite pour le telephone, sur tout le site. */
+  justify-self: center; width: min(310px, 78%); padding: 8px;
+  border-radius: 45px;
+  background: linear-gradient(145deg, #3A3A3A, #111111 40%, #2A2A2A);
+  box-shadow: 0 34px 80px -24px rgba(0, 0, 0, .75), inset 0 0 0 1px #4A4A4A;
 }}
-.tel img {{ display: block; width: 100%; height: auto; border-radius: 32px; }}
+.tel img {{ display: block; width: 100%; height: auto; border-radius: 37px; }}
 
 /* ─── UNE IMAGE À CÔTÉ D'UN TEXTE ─── */
 .duo {{
@@ -620,11 +622,12 @@ h2 {{
 }}
 .cam-video {{
   aspect-ratio: 9 / 16; max-height: 560px; margin-inline: auto; position: relative;
-  border-radius: 40px; padding: 9px;
-  background: linear-gradient(148deg, #4A4A46, #101010 42%, #3C3C38 70%, #0C0C0C);
-  box-shadow: 0 34px 90px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255, 255, 255, .10);
+  border-radius: 45px; padding: 8px;
+  /* le boitier de la demo, le meme que .tel */
+  background: linear-gradient(145deg, #3A3A3A, #111111 40%, #2A2A2A);
+  box-shadow: 0 34px 90px -24px rgba(0, 0, 0, .75), inset 0 0 0 1px #4A4A4A;
 }}
-.cam-ecran {{ position: relative; height: 100%; border-radius: 32px; overflow: hidden; }}
+.cam-ecran {{ position: relative; height: 100%; border-radius: 37px; overflow: hidden; }}
 .cam-ecran video {{ width: 100%; height: 100%; object-fit: cover; }}
 .cam-ecran::before {{           /* l'encoche */
   content: ""; position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
@@ -636,7 +639,7 @@ h2 {{
 }}
 /* le teint du rail : le Caméléon, sur l'ecran seul */
 .cam-video::after {{
-  content: ""; position: absolute; inset: 9px; border-radius: 32px;
+  content: ""; position: absolute; inset: 8px; border-radius: 37px;
   pointer-events: none; z-index: 2;
   background: hsl(var(--h) var(--s) var(--l) / .30); mix-blend-mode: color;
   transition: background-color 900ms var(--deux-sens);
@@ -1004,13 +1007,13 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     <div class="dedans duo">
       <div>
         <h2>Votre argent tient sur un écran</h2>
-        <p class="para">Le solde, les dernières opérations et le coffre sont là
-          dès l'ouverture. Envoyer, recevoir ou mettre de côté prend deux gestes,
-          et chaque opération laisse un reçu complet.</p>
+        <p class="para">Le solde et les dernières opérations sont là dès
+          l'ouverture. Recharger, envoyer ou recevoir prend deux gestes, et
+          chaque opération laisse un reçu complet.</p>
       </div>
       <div class="tel">
-        <img src="{ecran_accueil}" width="460" height="995" loading="lazy"
-             alt="L'écran d'accueil de SwimPay">
+        <img src="{ecran_accueil}" width="740" height="1600" loading="lazy"
+             alt="L'accueil de SwimPay pour un particulier : le solde, recharger, envoyer, recevoir">
       </div>
     </div>
   </section>
@@ -1080,8 +1083,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
   <section class="sect sombre">
     <div class="dedans duo">
       <div class="tel">
-        <img src="{ecran_pme}" width="460" height="995" loading="lazy"
-             alt="La console d'entreprise SwimPay">
+        <img src="{ecran_pme}" width="740" height="1600" loading="lazy"
+             alt="L'accueil de SwimPay pour un commerçant : le solde, encaisser, vente cash">
       </div>
       <div>
         <h2>Sachez toujours où vous en êtes</h2>
@@ -1172,7 +1175,6 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
       ])}
       <div class="gestes" style="margin-top: 44px; display: flex; gap: 12px; flex-wrap: wrap">
         <a class="bouton acide grand" href="#inscription">Obtenir une clé</a>
-        <a class="bouton creux grand" href="{LIEN_APP}#ec-checkout" target="_blank" rel="noopener">Voir la démo du checkout</a>
       </div>
     </div>
   </section>

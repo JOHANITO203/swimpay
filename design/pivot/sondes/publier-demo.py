@@ -9,7 +9,6 @@
    deploy/public/demo/.
 
      deploy/public/demo/index.html     le prototype en scenarios
-     deploy/public/demo/checkout.html  l'ancienne demo, qui porte le checkout
      deploy/public/demo/photo.jpg      le hero photo des scenarios
      deploy/public/demo/grain.png      la tuile de grain
 
@@ -57,13 +56,7 @@ os.makedirs(SORTIE, exist_ok=True)
 sc = open(PIVOT + "swimpay-scenarios.html", encoding="utf-8").read()
 open(SORTIE + "index.html", "w", encoding="utf-8").write(envelopper(sc, "← Retour au site"))
 
-# 2. l'ancienne demo, pour le checkout : la version PUBLIEE, celle que le site
-#    visait, pas la copie locale qui a diverge depuis.
-source_checkout = PIVOT + "demo-checkout-publiee.html"
-co = open(source_checkout, encoding="utf-8").read()
-open(SORTIE + "checkout.html", "w", encoding="utf-8").write(envelopper(co, "← Retour au site"))
-
-# 3. les fichiers des scenarios
+# 2. les fichiers des scenarios
 shutil.copyfile(PIVOT + "assets/hero-personne.jpg", SORTIE + "photo.jpg")
 shutil.copyfile(PIVOT + "assets/grain-tuile.png", SORTIE + "grain.png")
 
