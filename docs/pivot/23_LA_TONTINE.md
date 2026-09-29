@@ -278,6 +278,134 @@ le reste du Cerveau.
 
 ---
 
+## 13. La version retenue : le Pacte SwimPay (29 septembre 2026)
+
+> Écrite après l'avis de LO. **Elle remplace les points du §4 à §7 qui la
+> contredisent** : la rotation se fait uniquement par tirage au sort (les modes
+> « ordre fixé » et « places choisies » sont abandonnés).
+
+### 13.1 Les consignes de LO
+
+- **Contrôler l'argent et le verrouiller immédiatement.**
+- **Contrôler le nombre de tours et l'objectif** de la tontine.
+- **Contrôler l'éligibilité** : les documents et la **preuve des fonds**, contre
+  les arnaques.
+- Le tout **en échange de l'accord de l'utilisateur**.
+- **La rotation par tirage au sort.**
+- **Le prélèvement se fait sur les fonds bloqués, ou après la prise.**
+- **Un système équilibré contre l'arnaque de celui qui prend.**
+- Un système **à la fois sécurisé et attractif**.
+
+### 13.2 Le piège, chiffré
+
+Tontine type : 10 membres, 25 000 F par tour, pot de 250 000 F, frais de 1 %.
+
+**Tout retenir tue la tontine.** Si l'on bloque sur le pot toutes les cotisations
+restantes du gagnant, il reçoit exactement ce qu'il a déjà payé : 25 000 F au
+tour 1, 125 000 F au tour 5. Son avance vaut **zéro**. La tontine devient une
+simple épargne, et plus personne n'a de raison d'y entrer.
+
+**Ne rien compenser rend le dernier tour perdant.** Celui qui est tiré au dernier
+tour a prêté son argent à tout le groupe pendant dix mois, et il finit à
+**−2 500 F** (les frais). Sans compensation, personne ne veut être tiré en dernier.
+
+### 13.3 Le Pacte, en sept pièces
+
+**1. Le Pacte, signé.** À l'entrée, le membre accepte en une fois, avec son code
+secret et sa pièce d'identité : le montant, le nombre de tours, l'objectif, le
+verrou, les prélèvements, la retenue. **Rien de tout cela ne change après le
+démarrage.** C'est l'accord de l'utilisateur en échange du contrôle.
+
+**2. L'entrée prouvée.** L'éligibilité demande :
+- la **pièce d'identité** ;
+- la **preuve des fonds** : la **caution** (une cotisation) et la **première
+  cotisation** sont bloquées à l'entrée, depuis le compte. Qui ne peut pas les
+  bloquer n'entre pas ;
+- une **capacité à tenir** : des entrées régulières sur le compte, sur quelques
+  mois, au moins égales à un multiple de la cotisation. Un **salaire versé par
+  SwimPay** en est la meilleure preuve.
+
+L'arnaqueur type (identité inconnue, pas d'argent, pas de revenus) est arrêté
+avant d'entrer.
+
+**3. Le verrou immédiat.** Chaque cotisation est **bloquée dès qu'elle est due**,
+prélevée sur le solde ou à l'arrivée du salaire. L'argent bloqué ne sort que vers
+la tontine.
+
+**4. Le tirage vivant.** L'ordre n'est pas tiré d'un coup au départ : **à chaque
+tour, un tirage au sort désigne le gagnant parmi ceux qui n'ont pas encore
+reçu**. Deux effets :
+- **la sécurité** : tant qu'on n'est pas tiré, on a toutes les raisons de continuer
+  à payer ;
+- **l'attrait** : chaque tour devient un **moment**, un tirage en direct dans l'app,
+  que tout le groupe attend.
+
+Chaque tirage est **prouvé** : l'app publie une empreinte avant, révèle le tirage
+après, et n'importe quel membre peut vérifier qu'il n'a pas été truqué.
+
+**5. La prise protégée.** Le gagnant reçoit le pot **moins une retenue**, et c'est
+**cette retenue qui paie automatiquement ses cotisations restantes** : c'est le
+« prélevé après la prise ». La retenue dépend de son niveau de confiance :
+
+| Tiré au tour | **Nouveau** (retenue 80 %) : reçoit tout de suite | risque non couvert | **Confirmé** (retenue 40 %) : reçoit tout de suite | risque non couvert |
+|---|---|---|---|---|
+| 1 | 67 500 F | 20 000 F | 157 500 F | 110 000 F |
+| 3 | 107 500 F | 10 000 F | 177 500 F | 80 000 F |
+| 5 | 147 500 F | 0 F | 197 500 F | 50 000 F |
+| 8 | 207 500 F | 0 F | 227 500 F | 5 000 F |
+| 10 | 247 500 F | 0 F | 247 500 F | 0 F |
+
+*Calcul : retenue = taux × cotisations restantes ; reçu = pot − retenue − frais ;
+risque non couvert = ce que ni la retenue ni la caution ne couvrent.*
+
+Le **nouveau** membre touche quand même de l'argent tôt, et ne peut presque rien
+emporter. Le **confirmé** touche beaucoup plus tôt, et son risque est couvert par
+ce qui l'a fait confirmer : son salaire prélevé à la source, son historique.
+**Le niveau de confiance se gagne en terminant des tontines**, et commencer par une
+tontine d'épargne (§3) permet de le monter sans risque.
+
+**6. La prime de patience.** Celui qui reçoit **avant d'avoir payé** verse une
+petite **prime sur son avance** (exemple : 2 % de l'avance nette, soit 2 650 F pour
+un confirmé tiré au tour 1) `[H]`. Ces primes sont **redistribuées à ceux qui sont
+tirés tard**, en proportion de leur attente. **La chance du tirage est compensée** :
+être tiré tard n'est plus une perte, c'est une épargne qui rapporte. Et ce n'est pas
+un intérêt, c'est un partage entre membres, que chacun voit dans le journal.
+
+**7. Le filet.** Si un membre cesse quand même de payer :
+1. sa **caution** et sa **retenue** sont saisies en premier ;
+2. le **fonds de garantie** de la tontine (1 % de chaque pot) couvre le reste, et le
+   gagnant du tour reçoit toujours son pot complet ;
+3. le défaillant perd son niveau de confiance, **son identité est connue** (pièce),
+   et le Pacte signé permet le recouvrement.
+
+### 13.4 L'objectif, contrôlé
+
+L'objectif est déclaré à la création (rentrée scolaire, mariage, fonds de commerce)
+et **ne change plus**. Pour une tontine projet, le pot peut être **versé directement
+au fournisseur** : l'école, le couturier, le grossiste. L'argent va là où le groupe
+l'a décidé.
+
+### 13.5 Ce que SwimPay gagne, dans cette version `[H]`
+
+- **Les frais de service** : 1 % du pot à chaque tour, soit 25 000 F sur un cycle
+  de la tontine type.
+- **Une part de la prime de patience**, si LO le décide : c'est plus rentable, mais
+  moins attractif. **Je recommande de la laisser entièrement aux membres** : c'est
+  ce qui rend le produit unique, et on gagne déjà sur les frais et sur tout ce que
+  la tontine ouvre ensuite (comptes, cotisations mensuelles, crédit).
+
+### 13.6 Ce qu'il reste à trancher
+
+- [ ] Les deux **taux de retenue** (80 % et 40 % sont des propositions), et
+      s'il faut un niveau intermédiaire.
+- [ ] La **prime de patience** : son taux, et si SwimPay en garde une part.
+- [ ] Le **seuil de preuve des fonds** : combien de mois d'entrées, quel multiple de
+      la cotisation.
+- [ ] La **qualification réglementaire** auprès du partenaire EME (§1.3), encore
+      plus importante ici puisque tout est bloqué dès l'entrée.
+
+---
+
 ## Sources
 
 - Techpoint Africa, *MoneyFellows raises $13m* — https://techpoint.africa/news/moneyfellows-pre-series-c/ `[T]`
