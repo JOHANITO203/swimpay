@@ -280,6 +280,10 @@ le reste du Cerveau.
 
 ## 13. La version retenue : le Pacte SwimPay (29 septembre 2026)
 
+> **Remplacée pour la tontine tournante par `24_TONTINE_EVENEMENT.md`** (même jour,
+> après une seconde consigne de LO : pas de salaire, l'utilisateur ordinaire, un
+> tirage unique et définitif, une protection en modules).
+
 > Écrite après l'avis de LO. **Elle remplace les points du §4 à §7 qui la
 > contredisent** : la rotation se fait uniquement par tirage au sort (les modes
 > « ordre fixé » et « places choisies » sont abandonnés).
