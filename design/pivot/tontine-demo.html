@@ -474,9 +474,9 @@ const SCENARIOS = [
   { id: "joyeux", lib: "Tout le monde paie", det: "Le cas le plus fréquent.", abs: () => ({}) },
   { id: "retard", lib: "Un retardataire revient", det: "Un membre du milieu manque deux échéances puis rattrape.", abs: (n, T, B) => { const p = B * Math.floor(T / 2); return T >= 5 ? { [p]: [3, 5] } : { [p]: [2, 3] }; } },
   { id: "abandon", lib: "Un membre abandonne avant de gagner", det: "Il arrête de payer bien avant son tour.", abs: (n, T, B) => { const tour = Math.min(T, Math.max(3, Math.ceil(T * .7))); return { [B * (tour - 1)]: [Math.max(2, Math.min(tour - 1, Math.ceil(T * .4))), null] }; } },
-  { id: "fuite1", lib: "Le premier gagnant fuit", det: "Il touche au tour 1, puis ne paie plus rien.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B; i++) o[i] = [2, null]; return o; } },
-  { id: "tiers", lib: "Le premier tiers fuit", det: "Les gagnants des premiers tours fuient juste après leur gain.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B * Math.ceil(T / 3); i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
-  { id: "presque", lib: "Tous fuient sauf les derniers", det: "Chaque gagnant fuit juste après son gain. Le pire cas.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < n - B; i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
+  { id: "fuite1", lib: "Le premier gagnant fuit", det: "Il touche au tour 1, puis ne paie plus rien. Sa cagnotte a déjà gardé toutes ses mises.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B; i++) o[i] = [2, null]; return o; } },
+  { id: "tiers", lib: "Le premier tiers fuit", det: "Les gagnants des premiers tours ne paient plus rien après leur gain.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B * Math.ceil(T / 3); i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
+  { id: "presque", lib: "Tous fuient sauf les derniers", det: "Chaque gagnant arrête de payer après son gain. Rien ne change pour le groupe.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < n - B; i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
 ];
 
 /* les offres qui arrivent par notification (exemples de maquette) */
