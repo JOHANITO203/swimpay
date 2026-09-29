@@ -86,6 +86,21 @@ Cloudflare installe quand même les 353 paquets de la racine avant d'appliquer
 le *root directory*. Douze secondes perdues par build, sans conséquence : la
 commande de construction est vide, rien n'en sort.
 
+## La démo fait partie du site
+
+Depuis le 29 septembre 2026, la démo est servie par le site lui-même, dans
+`public/demo/`. Plus aucun lien ne renvoie vers un artifact Claude.
+
+| | |
+|---|---|
+| `public/demo/index.html` | le prototype en scénarios (`#onb`, `#part`, `#comm`, `#paie`, `#sal`) |
+| `public/demo/checkout.html` | l'ancienne démo, qui porte le checkout (`#ec-checkout`) |
+| `public/demo/photo.jpg`, `grain.png` | les fichiers des scénarios |
+
+Ces fichiers sont **générés** : après toute modification d'un prototype, lancer
+`python design/pivot/sondes/publier-demo.py`, puis régénérer le site
+(`python design/pivot/sondes/site.py`) et le copier dans `public/index.html`.
+
 ## Après la première mise en ligne
 
 Le Worker répond sur `swimpay.<sous-domaine>.workers.dev`. Deux valeurs à

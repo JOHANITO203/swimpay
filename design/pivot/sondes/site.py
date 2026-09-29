@@ -28,12 +28,14 @@ SITE_URL = "https://swimpay.johaneoyaraht.workers.dev"
 # portent disent « demo » et non « l'application » : presenter une preview
 # comme le produit est un mensonge qui se paie a la premiere demonstration.
 # Le jour ou l'app a son domaine, une seule ligne a changer.
-LIEN_APP = "https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d"
+LIEN_APP = "/demo/checkout.html"
 # ── LA DEMO JOUABLE PAR SCENARIOS (28/09/2026) ──
 # Le prototype complet : inscription, particulier, commercant, paie, salarie.
 # Chaque lien ouvre directement le bon scenario par son ancre. L'ancienne
 # demo (LIEN_APP) ne sert plus qu'au checkout, absent des scenarios.
-LIEN_DEMO = "https://claude.ai/artifact/V4mfFxqvnbt9G1yK2Hws2j"
+# Les deux sont SERVIES PAR LE SITE (LO, 29/09) : deploy/public/demo/, rempli
+# par sondes/publier-demo.py. Plus aucun lien vers un artifact Claude.
+LIEN_DEMO = "/demo/"
 
 def b64(chemin, mime):
     d = open(os.path.join(A, chemin), "rb").read()
