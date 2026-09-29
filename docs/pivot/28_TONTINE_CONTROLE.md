@@ -19,6 +19,20 @@
 >
 > La facturation vient **après** ce document.
 
+## 0. Décisions de LO, 29/09 au soir — elles priment sur la suite du document
+
+| Sujet | Décision |
+|---|---|
+| **Niveaux entre membres** | **Supprimés.** Même règle pour tous. Les §3.1, §3.2 et le tableau des niveaux ci-dessous sont dépassés |
+| **Ce que le gagnant peut retirer le jour du gain** | **Ce qu'il a déjà versé, plus 5 % de la cagnotte.** Le reste reste bloqué et paie ses cotisations suivantes, automatiquement |
+| **Réserve de secours** | **2 % de chaque tour**, rendue à la clôture à ceux qui ont tout payé |
+| **Preuve** | Pire cas (le tiers des premiers gagnants fuit), 48 formats : **SwimPay ne paie jamais rien**. À 10 % de bonus, 31 formats sur 48 seulement ; à 15 %, 8 |
+| **Gel de l'argent retiré** | **Non.** L'intérêt de la tontine est de toucher une somme ; le geler la tue, et la protection n'en a pas besoin |
+| **Sécurité des retraits** | Deux niveaux à chaque retrait de la tontine : code ou empreinte, et confirmation extérieure. Contre le vol du téléphone |
+| **Le dernier** | Un bonus de 2 % à 5 % de sa cagnotte, **payé par le groupe** (et dit comme tel dans le Pacte), à la place du « loyer du temps » du §3.2. Montant et nombre de places concernées : à trancher |
+| **Celui qui fuit** | Il perd son bloqué et sa part de réserve ; sa dette est remboursée par tout argent qui arrive ensuite sur son compte |
+| **La limite connue** | Un gagnant tôt ne peut utiliser tout de suite que 5 % de l'argent des autres. C'est le prix de la sûreté : toute avance plus grosse est de l'argent que le groupe peut perdre |
+
 ---
 
 ## 1. Le principe : un système qui ne dépend de personne
