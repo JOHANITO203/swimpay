@@ -1,0 +1,945 @@
+<title>Paie SwimPay mobile</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Archivo:wdth,wght@62..125,500..900&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   L'onboarding SwimPay, grammaire « Photo et verre » (choix de LO sur la
+   planche du 28/09/2026), titres Archivo condense.
+     - une grande photo dans une carte bord a bord, rayon bas 36px, voile
+       sombre en bas, le titre en capitales pose dessus ;
+     - des champs en verre (blanc 16 %, flou 14px, contour blanc 28 %) ;
+     - une pilule acide sous la photo : l'element acide dominant.
+   Palette stricte : #141414 #434343 #FFFFFF #A2FF01 (+ #909090 derive,
+   + #E5484D reserve aux erreurs). Mono-theme sombre assume.
+   La photo au col bleu des assets est ECARTEE : le bleu sort de la palette.
+   ------------------------------------------------------------------ */
+:root {
+  color-scheme: dark;
+  --fond: #141414;
+  --planche: #0C0C0C;
+  --surface: #1C1C1C;
+  --surface-2: #242424;
+  --trait: #2E2E2E;
+  --gris: #434343;
+  --encre: #FFFFFF;
+  --sourd: #909090;
+  --acide: #A2FF01;
+  --encre-acide: #141414;
+  --erreur: #E5484D;
+  --verre: rgba(255, 255, 255, .16);
+  --verre-bord: rgba(255, 255, 255, .28);
+  --sortie: cubic-bezier(.23, 1, .32, 1);
+  --tiroir: cubic-bezier(.32, .72, 0, 1);
+  --titre: "Archivo", "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--planche); }
+body {
+  margin: 0; color: var(--encre);
+  font-family: "Outfit", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acide); outline-offset: 2px; }
+
+/* ================= la page autour du telephone ================= */
+.page {
+  max-width: 1080px; margin: 0 auto; padding: 28px 20px 56px;
+  display: grid; grid-template-columns: auto 1fr; gap: 48px; align-items: start;
+}
+.cote { display: grid; gap: 22px; padding-top: 8px; }
+.cote h1 { margin: 0; font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .95; font-size: clamp(34px, 4.6vw, 52px); text-transform: uppercase; }
+.cote p { margin: 0; color: var(--sourd); max-width: 58ch; }
+.cote p b { color: var(--encre); font-weight: 500; }
+.parcours { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.parcours button {
+  width: 100%; display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: 14px; border: 0; background: none; cursor: pointer; text-align: left;
+  color: var(--sourd); transition: background 160ms var(--sortie);
+}
+.parcours button:hover { background: var(--surface); color: var(--encre); }
+.parcours .num { width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; font-size: 12px; font-weight: 600; border: 1px solid var(--trait); }
+.parcours .fait .num { background: var(--gris); border-color: var(--gris); color: var(--encre); }
+.parcours .ici { background: var(--surface); color: var(--encre); }
+.parcours .ici .num { background: var(--acide); border-color: var(--acide); color: var(--encre-acide); }
+.parcours .saute { opacity: .45; }
+.parcours small { font-size: 12px; }
+.notes { border-top: 1px solid var(--trait); padding-top: 16px; display: grid; gap: 8px; font-size: 13px; color: var(--sourd); max-width: 58ch; }
+.notes b { color: var(--encre); font-weight: 500; }
+.recommencer { justify-self: start; border: 1px solid var(--trait); background: none; border-radius: 999px; padding: 9px 16px; cursor: pointer; color: var(--encre); }
+.recommencer:active { transform: scale(.97); }
+
+/* ================= le telephone ================= */
+.tel {
+  width: 390px; height: 820px; border-radius: 56px; padding: 10px; flex: none;
+  background: linear-gradient(145deg, #3a3a3a, #111 40%, #2a2a2a);
+  box-shadow: 0 40px 80px -30px rgba(0,0,0,.85), inset 0 0 0 1px #4a4a4a;
+  position: sticky; top: 20px;
+}
+.ecran {
+  position: relative; width: 100%; height: 100%; border-radius: 46px; overflow: hidden;
+  background: var(--fond); isolation: isolate;
+}
+.ecran::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: url("grain.png") repeat; background-size: 112px; opacity: .10; mix-blend-mode: overlay;
+}
+.barre {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 30; height: 50px;
+  display: flex; align-items: center; justify-content: space-between; padding: 4px 30px 0;
+  font-size: 14px; font-weight: 600; color: var(--encre); pointer-events: none;
+}
+.barre::after { content: ""; position: absolute; left: 50%; top: 11px; transform: translateX(-50%); width: 110px; height: 32px; border-radius: 99px; background: #000; }
+.barre .icones { display: flex; gap: 5px; align-items: center; }
+.barre .icones i { display: block; width: 17px; height: 10px; border-radius: 3px; border: 1.5px solid currentColor; }
+.indicateur { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 130px; height: 5px; border-radius: 9px; background: var(--encre); z-index: 30; pointer-events: none; }
+
+/* un ecran du parcours */
+.vue {
+  position: absolute; inset: 0; display: flex; flex-direction: column; z-index: 1;
+  animation: entre 360ms var(--sortie) both;
+}
+.vue.retour { animation-name: entre-retour; }
+@keyframes entre { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes entre-retour { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+
+/* la carte photo (constante de la grammaire) */
+.photo {
+  position: relative; flex: none; border-radius: 0 0 36px 36px; overflow: hidden;
+  transition: height 420ms var(--tiroir);
+}
+.photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,.28) 0%, rgba(20,20,20,0) 26%, rgba(20,20,20,0) 42%, rgba(20,20,20,.80) 100%); }
+.photo .dessus { position: absolute; left: 18px; right: 18px; bottom: 18px; z-index: 2; display: flex; flex-direction: column; gap: 12px; }
+.photo .haut { position: absolute; top: 54px; left: 16px; right: 16px; z-index: 3; display: flex; align-items: center; gap: 12px; }
+.titre {
+  margin: 0; font-family: var(--titre); font-weight: 900; font-stretch: 72%;
+  letter-spacing: -0.02em; line-height: .9; text-transform: uppercase; text-wrap: balance; color: var(--encre);
+}
+.surtitre { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.78); }
+
+/* progression facon « stories » + retour */
+.segments { flex: 1; display: flex; gap: 4px; }
+.segments span { flex: 1; height: 3px; border-radius: 9px; background: rgba(255,255,255,.28); overflow: hidden; }
+.segments span.fait { background: var(--encre); }
+.segments span.ici { background: linear-gradient(90deg, var(--encre) 50%, rgba(255,255,255,.28) 50%); }
+.rond-verre {
+  width: 40px; height: 40px; border-radius: 99px; flex: none; display: grid; place-items: center; cursor: pointer;
+  background: rgba(20,20,20,.35); border: 1px solid var(--verre-bord); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  font-size: 18px;
+}
+.rond-verre:active { transform: scale(.94); }
+
+/* le verre */
+.verre {
+  height: 54px; border-radius: 999px; display: flex; align-items: center; gap: 10px; padding: 0 20px;
+  background: var(--verre); border: 1px solid var(--verre-bord);
+  backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+.verre input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 17px; letter-spacing: .02em; }
+.verre input::placeholder { color: rgba(255,255,255,.55); }
+.verre .indic { color: rgba(255,255,255,.72); font-weight: 500; }
+.verre:focus-within { border-color: rgba(255,255,255,.6); }
+.verre.erreur { border-color: var(--erreur); }
+
+.segment { display: flex; padding: 4px; gap: 4px; border-radius: 999px; background: rgba(20,20,20,.55); align-self: flex-start; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.12); }
+.segment button { border: 0; border-radius: 999px; padding: 8px 16px; font-size: 12px; font-weight: 700; letter-spacing: .05em; background: none; cursor: pointer; transition: background 160ms, color 160ms; }
+.segment button[aria-pressed="true"] { background: var(--acide); color: var(--encre-acide); }
+
+/* le bas de l'ecran */
+.bas { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 18px 18px 30px; min-height: 0; }
+.bas.defile { overflow-y: auto; scrollbar-width: none; }
+.bas.defile::-webkit-scrollbar { display: none; }
+.pousse { flex: 1; }
+.pilule {
+  flex: none; height: 56px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 600; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform 140ms var(--sortie), opacity 160ms;
+}
+.pilule:active { transform: scale(.97); }
+.pilule.acide { background: var(--acide); color: var(--encre-acide); }
+.pilule.contour { background: none; border: 1px solid var(--gris); }
+.pilule:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+.lien { background: none; border: 0; color: var(--sourd); font-size: 14px; cursor: pointer; padding: 6px; align-self: center; }
+.lien:hover { color: var(--encre); }
+.mention { margin: 0; font-size: 11.5px; color: var(--sourd); text-align: center; line-height: 1.45; }
+.mention u { color: var(--encre); text-decoration: none; }
+.aide { margin: 0; font-size: 13px; color: var(--sourd); }
+.aide b { color: var(--encre); font-weight: 500; }
+.message-erreur { margin: 0; font-size: 13px; color: var(--erreur); min-height: 1.2em; }
+
+/* cases du code, en verre sur le sol sombre */
+.cases { display: grid; gap: 8px; }
+.cases .case {
+  height: 60px; border-radius: 18px; display: grid; place-items: center; font-size: 24px; font-weight: 600;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+  transition: border-color 160ms, background 160ms;
+}
+.cases .case.vide { color: rgba(255,255,255,.3); }
+.cases .case.ici { border-color: var(--encre); }
+.cases.erreur .case { border-color: var(--erreur); animation: secoue 320ms var(--sortie); }
+.cases.pin .case { font-size: 30px; }
+@keyframes secoue { 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+
+.clavier { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 16px; }
+.clavier button {
+  height: 58px; border-radius: 999px; border: 1px solid var(--trait); background: none; cursor: pointer;
+  font-size: 24px; transition: background 120ms, transform 120ms var(--sortie);
+}
+.clavier button:active { transform: scale(.94); background: var(--surface-2); }
+.clavier button.muet { border-color: transparent; font-size: 15px; color: var(--sourd); }
+
+/* options (profil, regimes, pieces) */
+.options { display: grid; gap: 10px; }
+.option {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; text-align: left;
+  padding: 16px 18px; border-radius: 24px; cursor: pointer; border: 1px solid var(--trait); background: var(--surface);
+  transition: border-color 160ms, background 160ms, transform 140ms var(--sortie);
+}
+.option:active { transform: scale(.98); }
+.option b { font-weight: 600; font-size: 16px; }
+.option span { grid-column: 1; color: var(--sourd); font-size: 13px; line-height: 1.35; }
+.option .prix { grid-row: 1 / span 2; grid-column: 2; font-size: 13px; font-weight: 600; color: var(--encre); text-align: right; line-height: 1.2; }
+.option .prix small { display: block; color: var(--sourd); font-weight: 400; }
+.option[aria-checked="true"] { border-color: var(--encre); background: var(--surface-2); }
+.puces { display: flex; flex-wrap: wrap; gap: 8px; }
+.puce { border: 1px solid var(--trait); background: none; border-radius: 999px; padding: 9px 15px; cursor: pointer; font-size: 14px; }
+.puce[aria-checked="true"] { background: var(--encre); color: var(--fond); border-color: var(--encre); font-weight: 600; }
+
+/* comptes relies */
+.ligne { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--trait); }
+.ligne .point { width: 10px; height: 10px; border-radius: 99px; flex: none; }
+.ligne .nom { flex: 1; min-width: 0; font-weight: 500; }
+.ligne .nom small { display: block; color: var(--sourd); font-weight: 400; font-size: 12.5px; }
+.ligne .action { border: 1px solid var(--gris); background: none; border-radius: 999px; padding: 7px 14px; cursor: pointer; font-size: 13px; font-weight: 600; flex: none; }
+.ligne .action.relie { border-color: transparent; background: var(--surface-2); color: var(--encre); }
+.ligne .action.relie::before { content: "✓ "; color: var(--acide); }
+.p-orange { background: #FF7900; } .p-mtn { background: #FFCB05; } .p-moov { background: #0066B3; } .p-wave { background: #1DC4FF; } .p-banque { background: var(--encre); }
+.groupe-titre { margin: 8px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+
+/* feuille (panneau qui monte, dans le telephone) */
+.voile { position: absolute; inset: 0; z-index: 20; background: rgba(0,0,0,.55); opacity: 0; transition: opacity 240ms var(--sortie); }
+.voile.ouvert { opacity: 1; }
+.feuille {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--surface);
+  border-radius: 32px 32px 0 0; border-top: 1px solid var(--trait);
+  padding: 10px 18px 34px; display: flex; flex-direction: column; gap: 12px;
+  transform: translateY(105%); transition: transform 300ms var(--tiroir);
+}
+.feuille.ouverte { transform: none; }
+.feuille .poignee { width: 40px; height: 5px; border-radius: 9px; background: var(--gris); align-self: center; margin-bottom: 4px; }
+.feuille h3 { margin: 0; font-size: 20px; font-weight: 600; }
+.champ { display: grid; gap: 6px; }
+.champ label { font-size: 13px; color: var(--sourd); }
+.saisie {
+  height: 52px; border-radius: 16px; border: 1px solid var(--trait); background: var(--fond); padding: 0 16px;
+  font-size: 16px; outline: 0; width: 100%; letter-spacing: .02em;
+}
+.saisie:focus { border-color: var(--sourd); }
+.saisie.erreur { border-color: var(--erreur); }
+
+/* piece d'identite */
+.faces { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.faces.une { grid-template-columns: 1fr; }
+.face {
+  position: relative; aspect-ratio: 1.58; border-radius: 20px; border: 1.5px dashed var(--gris); background: var(--surface);
+  display: grid; place-items: center; text-align: center; cursor: pointer; overflow: hidden; font-size: 13px; color: var(--sourd);
+}
+.face b { display: block; color: var(--encre); font-weight: 600; font-size: 14px; }
+.face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.face.pleine { border-style: solid; border-color: var(--encre); }
+.face.pleine::after { content: "✓"; position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 99px; background: var(--acide); color: var(--encre-acide); display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+.face input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* la consequence fiscale : l'etat se lit dans la forme */
+.consequence { border-radius: 20px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--trait); font-size: 13px; color: var(--sourd); }
+.consequence b { color: var(--encre); font-weight: 600; }
+.consequence .code { display: inline-block; font-weight: 700; color: var(--encre-acide); background: var(--encre); border-radius: 6px; padding: 1px 7px; margin-right: 6px; font-size: 12px; letter-spacing: .04em; }
+
+/* interrupteur */
+.interrupteur { width: 50px; height: 30px; border-radius: 99px; border: 0; cursor: pointer; position: relative; flex: none; background: var(--gris); transition: background 180ms var(--sortie); }
+.interrupteur::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 99px; background: var(--encre); transition: transform 220ms var(--sortie); }
+.interrupteur[aria-pressed="true"] { background: var(--acide); }
+.interrupteur[aria-pressed="true"]::after { transform: translateX(20px); background: var(--fond); }
+
+/* recapitulatif final */
+.recap { display: grid; gap: 0; background: var(--verre); border: 1px solid var(--verre-bord); border-radius: 26px; padding: 6px 18px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.recap div { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.14); font-size: 14px; }
+.recap div:last-child { border-bottom: 0; }
+.recap span { color: rgba(255,255,255,.72); }
+.recap b { font-weight: 600; text-align: right; }
+.echelle { display: flex; gap: 4px; }
+.echelle span { flex: 1; height: 4px; border-radius: 9px; background: rgba(255,255,255,.22); }
+.echelle span.fait { background: var(--acide); }
+.echelle-lib { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.6); margin-top: 6px; }
+.echelle-lib b { color: var(--encre); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0ms !important; transition-duration: 0ms !important; }
+}
+@media (max-width: 900px) {
+  .page { grid-template-columns: 1fr; justify-items: center; gap: 28px; }
+  .cote { order: -1; }
+  .tel { position: relative; top: 0; }
+}
+@media (max-width: 440px) {
+  .page { padding-inline: 16px; }
+  .tel { width: 100%; height: 780px; border-radius: 40px; padding: 7px; }
+  .ecran { border-radius: 34px; }
+}
+</style>
+<style>
+/* ================= le hero de l'app : la couleur, pas la photo =================
+   Decision de LO (28/09/2026) : la personne de l'onboarding n'est pas le hero
+   de l'app. On revient au hero deux tons valide le 28/08 : rampe acide, voile
+   radial qui donne le volume, grain, encre #141414 (8,02:1 sur l'arret le plus
+   sombre, mesure a l'epoque). Tout le reste de l'ecran reste noir.
+   L'acide dominant de chaque ecran est donc le HERO : les boutons principaux
+   passent en blanc pour ne pas lui faire concurrence. */
+:root { --grad-hero: linear-gradient(158deg, #6FBF00 0%, #8FE500 16%, #A2FF01 42%, #BFFF2E 68%, #E2FF8C 92%, #F2FFC4 100%);
+  --voile-hero: radial-gradient(118% 80% at 86% 2%, rgba(255,255,255,.30), transparent 62%), radial-gradient(92% 72% at 6% 98%, rgba(60,120,0,.30), transparent 58%); }
+.photo.hero-acide { background: var(--grad-hero); color: var(--encre-acide); }
+.photo.hero-acide::after { background: var(--voile-hero); }
+.photo.hero-acide::before { content: ""; position: absolute; inset: 0; background: url("grain.png") repeat; background-size: 112px; opacity: .22; mix-blend-mode: multiply; pointer-events: none; }
+.hero-acide .titre { color: var(--encre-acide); }
+.hero-acide .surtitre { color: rgba(20,20,20,.66); }
+.hero-acide .rond-verre, .hero-acide .avatar { background: rgba(20,20,20,.08); border-color: rgba(20,20,20,.18); color: var(--encre-acide); }
+.hero-acide .salut { text-shadow: none; color: var(--encre-acide); }
+.hero-acide .plaque { background: rgba(255,255,255,.36); border-color: rgba(255,255,255,.55); color: var(--encre-acide); }
+.hero-acide .plaque .ligne-plaque, .hero-acide .oeil { color: rgba(20,20,20,.72); }
+.hero-acide .recap { background: rgba(255,255,255,.36); border-color: rgba(255,255,255,.55); }
+.hero-acide .recap div { border-bottom-color: rgba(20,20,20,.12); }
+.hero-acide .recap span { color: rgba(20,20,20,.66); }
+.hero-acide .recap b { color: var(--encre-acide); }
+.hero-acide .verre { background: rgba(255,255,255,.36); border-color: rgba(255,255,255,.6); color: var(--encre-acide); }
+.hero-acide .verre input { color: var(--encre-acide); }
+.hero-acide .verre input::placeholder { color: rgba(20,20,20,.5); }
+.hero-acide .verre .indic { color: rgba(20,20,20,.66); }
+.ecran.app .barre { color: var(--encre-acide); }
+.pilule.blanche { background: var(--encre); color: var(--fond); }
+
+/* le choix de la cible : deux grandes options, chacune avec ses sous-options */
+.cibles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cible { border: 1px solid var(--trait); background: var(--surface); border-radius: 26px; padding: 18px 16px; text-align: left; cursor: pointer; display: grid; gap: 14px; min-height: 150px; align-content: space-between; transition: transform 140ms var(--sortie), border-color 160ms; }
+.cible:active { transform: scale(.97); }
+.cible[aria-checked="true"] { border-color: var(--encre); background: var(--surface-2); }
+.cible .ico { width: 44px; height: 44px; border-radius: 99px; display: grid; place-items: center; background: var(--surface-2); }
+.cible .ico svg { width: 22px; height: 22px; }
+.cible b { display: block; font-size: 17px; font-weight: 600; }
+.cible small { color: var(--sourd); font-size: 12.5px; line-height: 1.35; display: block; margin-top: 2px; }
+.sous { display: grid; gap: 8px; }
+.sous button { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-radius: 18px; border: 1px solid var(--trait); background: none; cursor: pointer; text-align: left; }
+.sous button[aria-checked="true"] { border-color: var(--encre); background: var(--surface-2); }
+.sous .point { width: 10px; height: 10px; border-radius: 99px; flex: none; }
+.sous .nom { flex: 1; font-weight: 500; }
+.sous .nom small { display: block; color: var(--sourd); font-weight: 400; font-size: 12.5px; }
+.verif { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--trait); font-size: 14px; }
+.verif .rond { width: 30px; height: 30px; border-radius: 99px; flex: none; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.verif.ok .rond { background: var(--acide); color: var(--encre-acide); }
+.verif.inconnu .rond { background: var(--surface-2); color: var(--sourd); }
+.verif small { display: block; color: var(--sourd); font-size: 12px; }
+.attente { display: grid; justify-items: center; gap: 12px; text-align: center; padding: 18px; border-radius: 24px; background: var(--surface); border: 1px solid var(--trait); }
+.attente .tourne { width: 26px; height: 26px; }
+
+/* ================= complements de l'app (meme grammaire que l'onboarding) ================= */
+.vue.avec-nav .bas { padding-bottom: 104px; }
+.vue.sans-anim { animation: none; }
+.nav {
+  position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 15;
+  display: flex; gap: 6px; padding: 6px; border-radius: 999px;
+  background: rgba(28,28,28,.92); border: 1px solid var(--trait); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.nav button { width: 54px; height: 54px; border-radius: 99px; border: 0; background: none; cursor: pointer; display: grid; place-items: center; color: var(--sourd); transition: background 160ms, color 160ms; }
+.nav button[aria-current="page"] { background: var(--acide); color: var(--encre-acide); }
+.nav svg { width: 22px; height: 22px; }
+
+.plaque {
+  border-radius: 28px; padding: 16px 18px; display: grid; gap: 4px;
+  background: var(--verre); border: 1px solid var(--verre-bord);
+  backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+.plaque .montant { font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .95; font-size: 56px; }
+.plaque .montant small { font-size: 28px; }
+.plaque .ligne-plaque { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: rgba(255,255,255,.8); }
+.oeil { border: 0; background: none; cursor: pointer; color: rgba(255,255,255,.8); font-size: 13px; padding: 4px 0; }
+.photo .haut .avatar { width: 40px; height: 40px; border-radius: 99px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: rgba(20,20,20,.35); border: 1px solid var(--verre-bord); backdrop-filter: blur(12px); }
+.photo .haut .salut { flex: 1; font-size: 14px; line-height: 1.2; text-shadow: 0 1px 8px rgba(0,0,0,.25); }
+.photo .haut .salut small { display: block; font-size: 12px; opacity: .8; }
+
+.actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.action-ronde { display: grid; justify-items: center; gap: 8px; border: 0; background: none; cursor: pointer; font-size: 13px; color: var(--encre); }
+.action-ronde span { width: 60px; height: 60px; border-radius: 99px; display: grid; place-items: center; border: 1px solid var(--gris); font-size: 22px; transition: transform 140ms var(--sortie); }
+.action-ronde:active span { transform: scale(.94); }
+.action-ronde.acide span { background: var(--acide); border-color: var(--acide); color: var(--encre-acide); }
+.entete-liste { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
+.entete-liste h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.entete-liste button { border: 0; background: none; color: var(--sourd); cursor: pointer; font-size: 13px; }
+
+.op { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--trait); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; cursor: pointer; text-align: left; }
+.op .ico { width: 42px; height: 42px; border-radius: 99px; flex: none; display: grid; place-items: center; background: var(--surface-2); font-size: 15px; font-weight: 700; }
+.op .nom { flex: 1; min-width: 0; font-weight: 500; }
+.op .nom small { display: block; color: var(--sourd); font-weight: 400; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.op .val { text-align: right; font-weight: 600; white-space: nowrap; }
+.op .val small { display: block; color: var(--sourd); font-weight: 400; font-size: 12px; }
+.op .val.entree { color: var(--acide); }
+.badge-fne { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; border: 1px solid var(--gris); border-radius: 6px; padding: 0 5px; margin-left: 4px; color: var(--encre); vertical-align: 1px; }
+.jour { margin: 14px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+
+/* saisie d'un montant */
+.montant-saisi { text-align: center; font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; font-size: 64px; line-height: 1; margin: 4px 0 0; }
+.montant-saisi.vide { color: var(--gris); }
+.montant-saisi small { font-size: 30px; }
+.frais-ligne { text-align: center; font-size: 13px; color: var(--sourd); min-height: 1.3em; margin: 0; }
+.frais-ligne b { color: var(--encre); font-weight: 500; }
+.clavier.compact button { height: 52px; }
+
+.recap-sombre { border: 1px solid var(--trait); border-radius: 24px; padding: 4px 18px; background: var(--surface); }
+.recap-sombre div { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--trait); font-size: 14px; }
+.recap-sombre div:last-child { border-bottom: 0; }
+.recap-sombre span { color: var(--sourd); }
+.recap-sombre b { font-weight: 600; text-align: right; }
+.recap-sombre .total b { font-size: 18px; }
+
+/* QR de maquette */
+.qr-carte { background: var(--encre); color: var(--fond); border-radius: 28px; padding: 18px; display: grid; justify-items: center; gap: 10px; }
+.qr-carte svg { width: 190px; height: 190px; }
+.qr-carte .qr-montant { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 40px; line-height: 1; letter-spacing: -0.02em; }
+.qr-carte small { color: #555; font-size: 12px; text-align: center; }
+.lien-copie { display: flex; align-items: center; gap: 10px; border: 1px solid var(--trait); border-radius: 999px; padding: 6px 6px 6px 16px; }
+.lien-copie span { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lien-copie button { border: 0; border-radius: 999px; padding: 9px 14px; background: var(--surface-2); cursor: pointer; font-size: 13px; font-weight: 600; }
+.demo { border: 1px dashed var(--gris); background: none; border-radius: 999px; height: 46px; cursor: pointer; color: var(--sourd); font-size: 13px; }
+
+/* facture certifiee */
+.statut-fne { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 22px; background: var(--surface); border: 1px solid var(--trait); }
+.statut-fne .rond { width: 36px; height: 36px; border-radius: 99px; display: grid; place-items: center; flex: none; background: var(--surface-2); }
+.statut-fne.certifiee .rond { background: var(--acide); color: var(--encre-acide); font-weight: 700; }
+.statut-fne .txt { flex: 1; font-size: 14px; }
+.statut-fne .txt small { display: block; color: var(--sourd); font-size: 12px; }
+.tourne { width: 16px; height: 16px; border-radius: 99px; border: 2px solid var(--gris); border-top-color: var(--encre); animation: tourne 700ms linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+
+.facture { background: var(--encre); color: var(--fond); border-radius: 22px; padding: 18px; display: grid; gap: 12px; font-size: 13px; }
+.facture .ent { display: flex; justify-content: space-between; gap: 12px; }
+.facture .ent b { font-size: 15px; display: block; }
+.facture .gris { color: #5c5c5c; }
+.facture table { width: 100%; border-collapse: collapse; }
+.facture th { text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #5c5c5c; padding: 6px 0; border-bottom: 1px solid #d9d9d9; }
+.facture td { padding: 8px 0; border-bottom: 1px solid #ececec; vertical-align: top; }
+.facture td:last-child, .facture th:last-child { text-align: right; }
+.facture .tot { display: grid; gap: 4px; }
+.facture .tot div { display: flex; justify-content: space-between; }
+.facture .tot .grand { font-size: 17px; font-weight: 700; border-top: 1px solid #141414; padding-top: 8px; margin-top: 4px; }
+.facture .sticker { display: flex; gap: 12px; align-items: center; border-top: 1px dashed #bdbdbd; padding-top: 12px; }
+.facture .sticker svg { width: 76px; height: 76px; flex: none; }
+.facture .sticker b { display: block; font-size: 12px; }
+.facture .ref { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; word-break: break-all; }
+.mention-tva { font-weight: 700; font-size: 12px; }
+
+.echelle-sombre .echelle span { background: var(--gris); }
+.echelle-sombre .echelle span.fait { background: var(--acide); }
+.echelle-sombre .echelle-lib { color: var(--sourd); }
+</style>
+<style>
+/* ================= la paie sur mobile (docs/pivot/21_LA_PAIE_B2B.md) ================= */
+.nav[hidden] { display: none; }
+.tuiles-resume { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tuile-r { border: 1px solid var(--trait); background: var(--surface); border-radius: 20px; padding: 12px; display: grid; gap: 2px; }
+.tuile-r b { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 30px; line-height: 1; }
+.tuile-r span { color: var(--sourd); font-size: 11.5px; line-height: 1.25; }
+.tuile-r.pret b { color: var(--acide); }
+.tuile-r.alerte b { color: var(--erreur); }
+.fichier { display: flex; align-items: center; gap: 12px; border: 1px solid var(--trait); background: var(--surface); border-radius: 20px; padding: 12px 14px; }
+.fichier .doc { width: 42px; height: 50px; border-radius: 8px; background: var(--encre); color: var(--fond); display: grid; place-items: end center; padding-bottom: 6px; font-size: 10px; font-weight: 800; flex: none; }
+.fichier .nom { flex: 1; min-width: 0; font-weight: 500; }
+.fichier .nom small { display: block; color: var(--sourd); font-weight: 400; font-size: 12.5px; }
+.col-lue { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--trait); font-size: 14px; }
+.col-lue span { color: var(--sourd); }
+.col-lue b { font-weight: 600; }
+.col-lue b::before { content: "✓ "; color: var(--acide); }
+.col-lue.manque b { color: var(--erreur); }
+.col-lue.manque b::before { content: "✕ "; color: var(--erreur); }
+.exception { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--trait); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left; cursor: pointer; }
+.exception .qui { font-weight: 500; }
+.exception .qui small { display: block; color: var(--sourd); font-weight: 400; font-size: 12px; }
+.exception .mont { text-align: right; font-weight: 600; font-size: 14px; }
+.exception .pb { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--sourd); }
+.pastille { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 2px 9px; border: 1px solid var(--trait); white-space: nowrap; }
+.pastille::before { content: ""; width: 6px; height: 6px; border-radius: 99px; background: currentColor; }
+.pastille.verifier { color: var(--erreur); border-color: rgba(229,72,77,.45); }
+.pastille.ecart { color: #F5B546; border-color: rgba(245,181,70,.45); }
+.pastille.ok { color: var(--acide); border-color: rgba(162,255,1,.35); }
+.anneau { position: relative; width: 190px; height: 190px; margin: 0 auto; }
+.anneau svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.anneau .centre { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.anneau .centre b { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 52px; line-height: 1; display: block; }
+.anneau .centre span { color: var(--sourd); font-size: 12px; }
+.fil { border: 1px solid var(--trait); border-radius: 20px; overflow: hidden; }
+.fil h3 { margin: 0; padding: 10px 14px; font-size: 12.5px; font-weight: 600; color: var(--sourd); border-bottom: 1px solid var(--trait); display: flex; justify-content: space-between; }
+.fil .vif { display: inline-flex; gap: 6px; align-items: center; color: var(--acide); }
+.fil .vif::before { content: ""; width: 7px; height: 7px; border-radius: 99px; background: var(--acide); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+.fil ol { list-style: none; margin: 0; padding: 0; max-height: 170px; overflow: auto; }
+.fil li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--trait); font-size: 13.5px; animation: arrive 420ms var(--sortie); }
+.fil li span { color: var(--sourd); font-size: 12px; }
+@keyframes arrive { from { opacity: 0; transform: translateY(-6px); } }
+.bloc-montant { display: grid; gap: 2px; }
+.bloc-montant span { color: var(--sourd); font-size: 12.5px; }
+.bloc-montant b { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 30px; line-height: 1.05; }
+.notif { border-radius: 26px; padding: 14px 16px; background: rgba(255,255,255,.36); border: 1px solid rgba(255,255,255,.55); backdrop-filter: blur(16px); color: var(--encre-acide); display: grid; gap: 4px; cursor: pointer; text-align: left; width: 100%; }
+.notif .app { display: flex; justify-content: space-between; font-size: 12px; color: rgba(20,20,20,.66); }
+.notif b { font-size: 15px; }
+.notif span { font-size: 13px; color: rgba(20,20,20,.75); }
+.barre-prog { height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.barre-prog i { display: block; height: 100%; width: 0; background: var(--acide); transition: width 160ms linear; }
+.reserve { border: 1px solid rgba(245,181,70,.45); border-radius: 20px; padding: 13px 15px; font-size: 13px; color: var(--sourd); }
+.reserve b { color: #F5B546; display: block; font-size: 14px; }
+.partage { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.partage button { border: 1px solid var(--trait); background: var(--fond); border-radius: 20px; padding: 14px 8px; cursor: pointer; display: grid; justify-items: center; gap: 6px; font-size: 13px; }
+.partage button[aria-checked="true"] { border-color: var(--encre); }
+.partage .rond { width: 40px; height: 40px; border-radius: 99px; display: grid; place-items: center; background: var(--surface-2); font-weight: 700; font-size: 13px; }
+.consigne { border-radius: 18px; border: 1px dashed var(--gris); padding: 12px 14px; font-size: 13px; color: var(--sourd); }
+.consigne b { color: var(--encre); font-weight: 500; }
+.parcours .groupe { margin: 10px 0 2px; padding-left: 12px; font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+</style>
+
+<div class="page">
+  <div class="tel"><div class="ecran app" id="ecran">
+    <div class="barre"><span>9:41</span><span class="icones"><i></i><i></i></span></div>
+    <div id="vue-hote"></div>
+    <nav class="nav" id="nav" aria-label="Navigation principale" hidden></nav>
+    <div class="voile" id="voile" hidden></div>
+    <div class="feuille" id="feuille" role="dialog" aria-modal="true" aria-labelledby="feuille-titre"></div>
+    <div class="indicateur"></div>
+  </div></div>
+
+  <aside class="cote">
+    <h1>La paie, sur mobile</h1>
+    <p>Le parcours de <b>Groupe Awa Distribution</b>, 1 000 salariés. Le fichier arrive du comptable par WhatsApp, on le contrôle, on invite, la dirigeante valide, chacun est payé <b>sur son compte SwimPay</b> et retire où il veut. Tout est jouable.</p>
+    <ol class="parcours" id="parcours"></ol>
+    <div class="notes">
+      <div><b>Tiré de la recherche (docs/pivot/21) :</b> aujourd'hui le comptable découpe son fichier par canal (banque au format texte BCEAO, une plateforme par opérateur Mobile Money, alimentation par chèque et 24 h d'attente), et les erreurs de numéro sont à la charge de l'entreprise.</div>
+      <div><b>Décisions de LO :</b> la solution est mobile ; chacun est payé sur son compte SwimPay ; l'argent réservé ne dépasse pas 24 h ; frais de paie 0,5 % pour l'employeur, retrait gratuit pour le salarié.</div>
+      <div><b>Maquette :</b> le fichier reçu sur WhatsApp, Odoo et les 1 000 salariés sont simulés. <b>Un vrai CSV fonctionne</b> via « Choisir un fichier ». Les colonnes seront réglées sur les vrais exports quand ils arriveront.</div>
+    </div>
+    <button class="recommencer" id="recommencer" type="button">Recommencer</button>
+  </aside>
+</div>
+
+<script>
+/* ============================ outils ============================ */
+const NB = " ";
+const F = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NB) + NB + "F";
+const M = (n) => (n / 1e6).toFixed(1).replace(".", ",") + NB + "M";
+const echappe = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let graine = 1;
+const alea = () => { graine = (graine * 1103515245 + 12345) & 0x7fffffff; return graine / 0x7fffffff; };
+const choix = (t) => t[Math.floor(alea() * t.length)];
+const TAUX_PAIE_BP = 50;      /* paie_salaires, GRILLE_DEFAUT */
+const RESERVE_H = 24;         /* decision de LO */
+
+/* ============================ 1 000 salaries de maquette ============================ */
+const PRENOMS = ["Aya", "Awa", "Mariam", "Fatou", "Adjoua", "Akissi", "Aminata", "Salimata", "Affoué", "Ahou", "Yao", "Koffi", "Kouamé", "Seydou", "Moussa", "Ibrahim", "Arsène", "Serge", "Didier", "Hervé", "Franck", "Sandrine", "Christelle", "Nadège", "Désiré", "Josiane", "Rokia", "Adama", "Lassina", "Bintou"];
+const NOMS = ["Kouassi", "Koné", "Traoré", "Yao", "Konan", "Kouadio", "Bamba", "Ouattara", "Coulibaly", "Diabaté", "N'Guessan", "Aka", "Brou", "Touré", "Diallo", "Soro", "Koffi", "Gnagne", "Assi", "Dosso", "Fofana", "Kamagaté", "Tanoh", "Ehui"];
+const GROUPES = [["Caisse", 95000, 140000, .28], ["Magasin", 85000, 125000, .30], ["Livraison", 110000, 160000, .18], ["Sécurité", 90000, 115000, .08], ["Administration", 180000, 320000, .10], ["Encadrement", 350000, 900000, .06]];
+const numero = () => choix(["07", "05", "01"]) + " " + Array.from({ length: 4 }, () => String(Math.floor(alea() * 100)).padStart(2, "0")).join(" ");
+function generer(n) {
+  graine = 20260928;
+  const L = [];
+  for (let i = 0; i < n; i++) {
+    let r = alea(), c = 0, g = GROUPES[0];
+    for (const x of GROUPES) { c += x[3]; if (r <= c) { g = x; break; } }
+    const base = Math.round((g[1] + alea() * (g[2] - g[1])) / 500) * 500;
+    const s = { mat: "GA-" + (1001 + i), nom: choix(PRENOMS) + " " + choix(NOMS), groupe: g[0], tel: numero(), net: base, avant: base, etat: "pret", pb: null, ok: false };
+    const e = alea();
+    if (e < .112) s.etat = "invite";
+    else if (e < .150) {
+      s.etat = "verifier";
+      s.pb = choix([
+        { txt: "Nom différent", det: "Ce numéro appartient à " + choix(PRENOMS) + " " + choix(NOMS) },
+        { txt: "Numéro prouvé différent", det: "Le salarié a prouvé le " + numero() },
+        { txt: "Numéro invalide", det: "9 chiffres au lieu de 10", court: true },
+      ]);
+      if (s.pb.court) s.tel = s.tel.slice(0, -1);
+    }
+    const v = alea();
+    if (v < .004) s.net = Math.round(base * (1.22 + alea() * .2) / 500) * 500;
+    else if (v < .12) s.net = base + choix([5000, 10000, 15000, -5000, 20000]);
+    L.push(s);
+  }
+  L[417].tel = L[88].tel; L[417].etat = "verifier"; L[417].pb = { txt: "Numéro en double", det: "Même numéro que " + L[88].nom };
+  return L;
+}
+const ecartFort = (s) => s.avant && Math.round(Math.abs(s.net - s.avant) / s.avant * 100) > 20;
+const aRegarder = (s) => ((s.etat === "verifier") || ecartFort(s)) && !s.ok;
+
+/* ============================ import : colonnes reconnues ============================ */
+const SYN = {
+  nom: ["employé", "employe", "salarié", "salarie", "nom", "nom complet", "name", "employee", "beneficiaire", "bénéficiaire"],
+  matricule: ["matricule", "id", "référence", "reference", "badge"],
+  telephone: ["téléphone portable", "telephone portable", "téléphone", "telephone", "mobile", "portable", "tel", "phone", "numéro", "numero"],
+  net: ["net à payer", "net a payer", "net", "salaire net", "montant", "net_wage", "à payer", "amount"],
+};
+const plat = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+function lireCsv(t) {
+  const p = t.split(/\r?\n/)[0] || "";
+  const sep = [";", ",", "\t"].map((c) => [c, p.split(c).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const lignes = []; let cur = [], ch = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { ch += '"'; i++; } else q = false; } else ch += c; }
+    else if (c === '"') q = true;
+    else if (c === sep) { cur.push(ch); ch = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && t[i + 1] === "\n") i++; cur.push(ch); ch = ""; if (cur.some((x) => x.trim())) lignes.push(cur); cur = []; }
+    else ch += c;
+  }
+  cur.push(ch); if (cur.some((x) => x.trim())) lignes.push(cur);
+  const ent = lignes.shift() || [];
+  const carte = {};
+  for (const [k, syn] of Object.entries(SYN)) {
+    const i = ent.findIndex((h) => syn.map(plat).includes(plat(h)));
+    carte[k] = i >= 0 ? { i, entete: ent[i] } : null;
+  }
+  return { lignes, carte };
+}
+function depuisCsv(f) {
+  graine = 99;
+  const g = (l, k) => f.carte[k] ? (l[f.carte[k].i] || "").trim() : "";
+  return f.lignes.map((l, i) => {
+    const t = g(l, "telephone").replace(/\D/g, "").replace(/^225/, "");
+    const net = Math.round(Number(g(l, "net").replace(/\s/g, "").replace(/[^\d,.-]/g, "").replace(",", ".")) || 0);
+    const s = { mat: g(l, "matricule") || "Ligne " + (i + 2), nom: g(l, "nom") || "Sans nom", groupe: "—", tel: t.replace(/(\d{2})(?=\d)/g, "$1 "), net, avant: net, etat: alea() < .86 ? "pret" : "invite", pb: null, ok: false };
+    if (t.length !== 10) { s.etat = "verifier"; s.pb = { txt: "Numéro invalide", det: t.length + " chiffres au lieu de 10" }; }
+    else if (!["07", "05", "01"].includes(t.slice(0, 2))) { s.etat = "verifier"; s.pb = { txt: "Préfixe inconnu", det: "Un numéro ivoirien commence par 07, 05 ou 01" }; }
+    else if (!net) { s.etat = "verifier"; s.pb = { txt: "Montant manquant", det: "Le net à payer est vide" }; }
+    return s;
+  });
+}
+
+/* ============================ etat ============================ */
+const neuf = () => ({
+  ecran: "accueil", pile: [], solde: 185000000,
+  fichier: null, salaries: [], filtre: "tout", montrer: 40,
+  relances: 0, envoyee: false, validee: false, paye: 0, debut: 0, fin: 0, releve: "whatsapp", format: "Excel",
+  salarie: { recu: 126500, cible: null, reseau: null, fait: false },
+});
+let E = neuf();
+let vif = null;
+function compte() {
+  const L = E.salaries;
+  const pret = L.filter((s) => s.etat === "pret").length;
+  const invite = L.filter((s) => s.etat === "invite").length;
+  const verifier = L.filter((s) => s.etat === "verifier" && !s.ok).length;
+  const ecarts = L.filter((s) => ecartFort(s) && !s.ok && s.etat !== "verifier").length;
+  const total = L.filter((s) => !(s.etat === "verifier" && !s.ok)).reduce((a, s) => a + s.net, 0);
+  const tout = L.reduce((a, s) => a + s.net, 0);
+  const aPayer = L.filter((s) => s.etat === "pret").reduce((a, s) => a + s.net, 0);
+  const reserve = L.filter((s) => s.etat === "invite").reduce((a, s) => a + s.net, 0);
+  const avant = L.reduce((a, s) => a + s.avant, 0);
+  return { n: L.length, pret, invite, verifier, ecarts, total, tout, aPayer, reserve, avant, frais: Math.round(total * TAUX_PAIE_BP / 10000), aRegarder: L.filter(aRegarder).length };
+}
+
+/* ============================ navigation ============================ */
+let sens = "avant", dernier = null;
+function aller(e, o = {}) {
+  if (!o.remplacer) E.pile.push(E.ecran);
+  if (e === "accueil") E.pile = [];
+  sens = o.retour ? "retour" : "avant";
+  E.ecran = e; clearInterval(vif); vif = null; fermerFeuille(); rendre();
+  if (e === "beneficiaires") demarrerVif();
+}
+function retour() { const p = E.pile.pop() || "accueil"; sens = "retour"; E.ecran = p; clearInterval(vif); vif = null; fermerFeuille(); rendre(); if (p === "beneficiaires") demarrerVif(); }
+
+/* ============================ briques ============================ */
+function carte(h, contenu, haut) {
+  return "<div class='photo hero-acide' style='height:" + h + "'><div class='haut'>" +
+    (haut !== undefined ? haut : "<button class='rond-verre' data-retour aria-label='Retour'>←</button><div style='flex:1'></div>") +
+    "</div><div class='dessus'>" + contenu + "</div></div>";
+}
+const titre = (t, px, sur) => (sur ? "<span class='surtitre'>" + sur + "</span>" : "") + "<h1 class='titre' style='font-size:" + px + "px'>" + t + "</h1>";
+const grand = (m) => F(m).replace(NB + "F", "<small>" + NB + "F</small>");
+function cases(n, v) { return "<div class='cases pin' style='grid-template-columns:repeat(" + n + ",1fr)'>" + Array.from({ length: n }, (_, i) => "<span class='case" + (v[i] === undefined ? " vide" : "") + (i === v.length ? " ici" : "") + "'>" + (v[i] === undefined ? "•" : "●") + "</span>").join("") + "</div>"; }
+function clavier() { return "<div class='clavier compact'>" + ["1","2","3","4","5","6","7","8","9","","0","effacer"].map((t) => t === "effacer" ? "<button class='muet' data-touche='effacer' aria-label='Effacer'>⌫</button>" : t === "" ? "<span></span>" : "<button data-touche='" + t + "'>" + t + "</button>").join("") + "</div>"; }
+const RESEAUX = { wave: ["Wave", "#1DC4FF"], orange: ["Orange Money", "#FF7900"], mtn: ["MTN MoMo", "#FFCB05"], moov: ["Moov Money", "#0066B3"] };
+
+/* ============================ ecrans ============================ */
+const ECRANS = {
+  accueil() {
+    const c = compte();
+    const statut = !E.salaries.length ? "Le fichier du comptable n'est pas encore arrivé"
+      : E.paye ? c.pret + " salariés payés · " + (c.n - c.pret) + " en attente"
+      : E.envoyee ? "En attente de votre validation" : "Fichier reçu · " + c.aRegarder + " lignes à regarder";
+    return carte("46%",
+      "<div class='plaque'><div class='ligne-plaque'><span>Solde SwimPay</span><span>Groupe Awa Distribution</span></div><div class='montant'>" + grand(E.solde) + "</div><div class='ligne-plaque'><span>1 000 salariés</span></div></div>",
+      "<span class='avatar'>AK</span><span class='salut'>Bonjour Awa<small>Groupe Awa Distribution</small></span><div style='flex:1'></div>") +
+      "<div class='bas defile'>" +
+        "<button class='notif' style='background:var(--surface);border-color:var(--trait);color:var(--encre)' data-aller='" + (E.envoyee && !E.paye ? "notification" : E.salaries.length ? "controle" : "recevoir") + "'>" +
+          "<span class='app' style='color:var(--sourd)'><span>Paie de septembre</span><span>›</span></span><b>" + (E.paye ? "Paie versée" : "Payer les salaires") + "</b><span style='color:var(--sourd)'>" + statut + "</span></button>" +
+        "<div class='actions' style='grid-template-columns:repeat(4,1fr)'>" +
+          "<button class='action-ronde' data-aller='recevoir'><span style='background:var(--encre);color:var(--fond);border-color:var(--encre)'>↗</span>Payer</button>" +
+          "<button class='action-ronde'><span>+</span>Recharger</button>" +
+          "<button class='action-ronde'><span>≡</span>Équipe</button>" +
+          "<button class='action-ronde' data-aller='salarie'><span>◎</span>Côté salarié</button>" +
+        "</div>" +
+        "<p class='aide'>Le salarié reçoit son salaire sur son compte SwimPay, puis le retire vers son Mobile Money ou sa banque, sans frais.</p>" +
+      "</div>";
+  },
+  recevoir() {
+    return carte("26%", titre("Le fichier<br>de paie", 40, "Septembre 2026")) +
+      "<div class='bas defile'>" +
+        "<div class='consigne'>Dans <b>WhatsApp</b> ou votre <b>email</b> : appuyez longuement sur le fichier du comptable, puis <b>Partager › SwimPay</b>.</div>" +
+        "<button class='notif' data-whatsapp style='background:var(--surface);border-color:var(--trait);color:var(--encre)'><span class='app' style='color:var(--sourd)'><span>WhatsApp · Cabinet Koné</span><span>09:12</span></span><b>Paie_septembre_2026.xlsx</b><span style='color:var(--sourd)'>Maquette : toucher pour simuler le partage vers SwimPay</span></button>" +
+        "<p class='groupe-titre'>Ou</p>" +
+        "<div class='sous'>" +
+          "<label style='position:relative;display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:18px;border:1px solid var(--trait);cursor:pointer'><span class='point' style='width:10px;height:10px;border-radius:99px;background:var(--encre)'></span><span class='nom' style='flex:1;font-weight:500'>Choisir un fichier du téléphone<small style='display:block;color:var(--sourd);font-weight:400;font-size:12.5px'>CSV, export Sage ou Odoo · un vrai fichier fonctionne</small></span><span>›</span><input type='file' accept='.csv,text/csv' data-fichier style='position:absolute;inset:0;opacity:0;cursor:pointer'></label>" +
+          "<button data-odoo><span class='point' style='background:#A2FF01'></span><span class='nom'>Odoo connecté<small>Lire les bulletins validés de septembre</small></span><span>›</span></button>" +
+        "</div>" +
+        "<p class='aide'>On accepte le fichier que le comptable produit déjà. Pas de modèle spécial à remplir.</p>" +
+      "</div>";
+  },
+  lecture() {
+    const f = E.fichier;
+    const lib = { nom: "Nom", matricule: "Matricule", telephone: "Téléphone", net: "Net à payer" };
+    const manque = f.carte ? Object.entries(f.carte).filter(([k, v]) => !v && k !== "matricule").length : 0;
+    return carte("24%", titre("Fichier lu", 44, f.source)) +
+      "<div class='bas defile'>" +
+        "<div class='fichier'><span class='doc'>" + f.ext + "</span><span class='nom'>" + echappe(f.nom) + "<small>" + (manque ? "Colonnes manquantes" : f.n + " lignes lues") + "</small></span></div>" +
+        "<p class='groupe-titre'>Colonnes reconnues</p>" +
+        "<div>" + Object.entries(lib).map(([k, l]) => {
+          const v = f.carte ? f.carte[k] : { entete: f.entetes[k] };
+          return "<div class='col-lue" + (!v && k !== "matricule" ? " manque" : "") + "'><span>" + l + "</span><b>" + (v ? echappe(v.entete) : k === "matricule" ? "facultatif" : "introuvable") + "</b></div>";
+        }).join("") + "</div>" +
+        (manque ? "<p class='message-erreur'>Il manque une colonne indispensable. Demandez au comptable l'export avec le téléphone et le net à payer.</p>" : "<p class='aide'>Ce réglage est gardé : le mois prochain, le fichier du même comptable se lit sans question.</p>") +
+        "<div class='pousse'></div>" +
+        "<button class='pilule blanche' data-aller='controle' " + (manque ? "disabled" : "") + ">Contrôler les " + f.n + " lignes</button>" +
+      "</div>";
+  },
+  controle() {
+    const c = compte();
+    const L = E.salaries.filter((s) => E.filtre === "tout" ? aRegarder(s) : E.filtre === "verifier" ? s.etat === "verifier" && !s.ok : ecartFort(s) && !s.ok && s.etat !== "verifier");
+    return carte("24%", titre(c.aRegarder ? c.aRegarder + " à regarder" : "Tout est bon", 42, c.n + " lignes contrôlées")) +
+      "<div class='bas defile'>" +
+        "<div class='tuiles-resume'><div class='tuile-r pret'><b>" + (c.n - c.aRegarder) + "</b><span>lignes prêtes</span></div><div class='tuile-r alerte'><b>" + c.verifier + "</b><span>numéros à vérifier</span></div><div class='tuile-r'><b>" + c.ecarts + "</b><span>écarts de plus de 20 %</span></div></div>" +
+        "<div class='puces'>" + [["tout", "À regarder"], ["verifier", "Numéros"], ["ecarts", "Écarts"]].map(([k, l]) => "<button class='puce' data-filtre='" + k + "' aria-checked='" + (E.filtre === k) + "'>" + l + "</button>").join("") + "</div>" +
+        "<div>" + (L.slice(0, E.montrer).map((s) => {
+          const ec = ecartFort(s) && s.etat !== "verifier";
+          return "<button class='exception' data-ligne='" + s.mat + "'><span class='qui'>" + echappe(s.nom) + "<small>" + s.mat + " · " + s.tel + "</small></span><span class='mont'>" + F(s.net) + "</span>" +
+            "<span class='pb'>" + (ec ? "<span class='pastille ecart'>Écart " + (s.net > s.avant ? "+" : "") + Math.round((s.net - s.avant) / s.avant * 100) + NB + "%</span>août : " + F(s.avant) : "<span class='pastille verifier'>" + s.pb.txt + "</span>" + echappe(s.pb.det)) + "</span></button>";
+        }).join("") || "<p class='aide' style='padding:16px 0'>Rien à regarder ici.</p>") + "</div>" +
+        (L.length > E.montrer ? "<button class='lien' data-plus>Voir " + (L.length - E.montrer) + " de plus</button>" : "") +
+        (c.ecarts ? "<button class='pilule contour' data-accepter-ecarts>Accepter les " + c.ecarts + " écarts</button>" : "") +
+        "<button class='pilule blanche' data-aller='beneficiaires'>Continuer</button>" +
+        (c.verifier ? "<p class='mention'>Les " + c.verifier + " numéros non corrigés seront mis de côté, pas payés.</p>" : "") +
+      "</div>";
+  },
+  beneficiaires() {
+    const c = compte();
+    const R = 80, P = 2 * Math.PI * R;
+    return carte("22%", titre("Qui est prêt ?", 40, "Invitations envoyées par SMS")) +
+      "<div class='bas defile'>" +
+        "<div class='anneau'><svg viewBox='0 0 190 190'><circle cx='95' cy='95' r='" + R + "' fill='none' stroke='#242424' stroke-width='14'/><circle id='arc' cx='95' cy='95' r='" + R + "' fill='none' stroke='#A2FF01' stroke-width='14' stroke-linecap='round' stroke-dasharray='" + P + "' stroke-dashoffset='" + P * (1 - c.pret / c.n) + "' style='transition:stroke-dashoffset 600ms cubic-bezier(.23,1,.32,1)'/></svg><div class='centre'><div><b id='pct'>" + Math.round(c.pret / c.n * 100) + "%</b><span>prêts à recevoir</span></div></div></div>" +
+        "<div class='tuiles-resume'><div class='tuile-r pret'><b id='n-pret'>" + c.pret + "</b><span>compte actif</span></div><div class='tuile-r'><b id='n-inv'>" + c.invite + "</b><span>invités sans réponse</span></div><div class='tuile-r alerte'><b>" + c.verifier + "</b><span>mis de côté</span></div></div>" +
+        "<div class='fil'><h3><span>Viennent de terminer</span><span class='vif'>En direct</span></h3><ol id='fil'></ol></div>" +
+        "<button class='pilule contour' data-relancer>" + (E.relances ? "Relance n°" + E.relances + " envoyée · relancer encore" : "Relancer les retardataires par SMS") + "</button>" +
+        "<p class='aide'>Chacun a reçu <b>son propre lien</b>, lié à son matricule, et prouve son numéro par SMS. Pas besoin d'attendre tout le monde : le salaire des autres est réservé " + RESERVE_H + " h.</p>" +
+        "<button class='pilule blanche' data-aller='recap'>Préparer le paiement</button>" +
+      "</div>";
+  },
+  recap() {
+    const c = compte();
+    return carte("28%", titre(M(c.total), 54, "Paie de septembre")) +
+      "<div class='bas defile'>" +
+        "<div class='recap-sombre'>" +
+          "<div><span>Payé tout de suite</span><b>" + F(c.aPayer) + "<br><span style='color:var(--sourd);font-weight:400'>" + c.pret + " salariés</span></b></div>" +
+          "<div><span>Réservé " + RESERVE_H + " h</span><b>" + F(c.reserve) + "<br><span style='color:var(--sourd);font-weight:400'>" + c.invite + " pas encore prêts</span></b></div>" +
+          "<div><span>Mis de côté</span><b>" + c.verifier + " lignes, non payées</b></div>" +
+          "<div><span>Frais SwimPay · 0,5 %</span><b>" + F(c.frais) + "</b></div>" +
+          "<div class='total'><span>Total débité</span><b>" + F(c.total + c.frais) + "</b></div>" +
+        "</div>" +
+        "<p class='aide'>Écart avec août : <b>" + (c.tout >= c.avant ? "+" : "−") + F(Math.abs(c.tout - c.avant)) + "</b>. Les salariés reçoivent leur net entier.</p>" +
+        "<div class='pousse'></div>" +
+        (E.envoyee ? "<button class='pilule blanche' data-aller='notification'>Voir la demande de validation</button>"
+          : "<button class='pilule blanche' data-envoyer>Envoyer à Awa Koné pour validation</button><p class='mention'>Celui qui prépare n'est pas celui qui valide.</p>") +
+      "</div>";
+  },
+  notification() {
+    const c = compte();
+    return carte("54%", titre("Téléphone<br>d'Awa", 46, "La dirigeante") +
+      "<button class='notif' data-valider><span class='app'><span>SwimPay</span><span>maintenant</span></span><b>Paie de septembre à valider</b><span>Cabinet Koné demande " + F(c.total + c.frais) + " pour " + (c.pret + c.invite) + " salariés. Touchez pour valider.</span></button>", "<div style='flex:1'></div>") +
+      "<div class='bas'><p class='aide'>La demande arrive en notification sur le téléphone de la dirigeante, où qu'elle soit. Elle valide avec son code secret.</p><div class='pousse'></div><button class='pilule blanche' data-valider>Valider avec mon code</button></div>";
+  },
+  paiement() {
+    const c = compte();
+    const fini = E.paye >= c.pret;
+    return carte(fini ? "40%" : "30%", fini
+      ? titre("Payés.", 64, "Paie de septembre") + "<div class='recap'><div><span>Versé</span><b>" + F(c.aPayer) + "</b></div><div><span>Salariés crédités</span><b>" + c.pret + "</b></div><div><span>Durée</span><b>" + ((E.fin - E.debut) / 1000).toFixed(1).replace(".", ",") + NB + "s</b></div></div>"
+      : titre("Paiement…", 48, "Validé par Awa Koné"), "<div style='flex:1'></div>") +
+      "<div class='bas defile'>" +
+        (fini ? "" : "<div class='barre-prog'><i id='prog' style='width:" + Math.round(E.paye / c.pret * 100) + "%'></i></div><p class='aide' id='prog-txt'>" + E.paye + " / " + c.pret + " versés</p>") +
+        (fini ? "<div class='reserve'><b>" + F(c.reserve) + " réservés pour " + c.invite + " salariés</b>Chacun reçoit son salaire dès qu'il termine son compte. Passé 24 h, demain 9:41, le reste revient sur votre solde et la liste s'affiche ici.</div>" +
+          "<p class='groupe-titre'>Renvoyer le relevé au comptable</p>" +
+          "<div class='partage' role='radiogroup' aria-label='Envoyer le relevé par'>" + [["whatsapp", "WA", "WhatsApp"], ["email", "@", "Email"], ["fichier", "↓", "Fichier"]].map(([k, i, l]) => "<button role='radio' data-releve='" + k + "' aria-checked='" + (E.releve === k) + "'><span class='rond'>" + i + "</span>" + l + "</button>").join("") + "</div>" +
+          "<div class='puces'>" + ["Excel", "CSV", "Import Odoo"].map((x) => "<button class='puce' data-format='" + x + "' aria-checked='" + (E.format === x) + "'>" + x + "</button>").join("") + "</div>" +
+          "<p class='aide'>Le relevé reprend chaque ligne du fichier reçu, avec son état (payé, réservé, mis de côté) et la référence SwimPay : le comptable le réimporte sans rien ressaisir.</p>" +
+          "<button class='pilule blanche' data-releve-envoyer>Envoyer le relevé</button>" : "") +
+      "</div>";
+  },
+
+  /* ---------- cote salarie ---------- */
+  salarie() {
+    const s = E.salarie;
+    return carte("50%", titre("+" + F(s.recu), 58, "Salaire de septembre") +
+      "<div class='plaque'><div class='ligne-plaque'><span>De Groupe Awa Distribution</span><span>aujourd'hui 9:41</span></div><div class='ligne-plaque'><span>Sur votre compte SwimPay</span><span>Frais 0" + NB + "F</span></div></div>") +
+      "<div class='bas'>" +
+        "<p class='aide'>Aya Koné, magasinière. Vous gardez l'argent sur SwimPay, ou vous le retirez où vous voulez.</p>" +
+        "<div class='pousse'></div>" +
+        "<button class='pilule blanche' data-aller='retirer'>Retirer</button>" +
+        "<button class='lien' data-aller='accueil'>Plus tard</button>" +
+      "</div>";
+  },
+  retirer() {
+    const s = E.salarie;
+    return carte("24%", titre("Retirer vers", 40, F(s.recu) + " disponibles")) +
+      "<div class='bas defile'>" +
+        "<p class='groupe-titre'>Mobile Money</p><div class='sous'>" +
+          Object.entries(RESEAUX).map(([k, r]) => "<button data-retrait='" + k + "'><span class='point' style='background:" + r[1] + "'></span><span class='nom'>" + r[0] + "<small>" + (k === "mtn" ? "Votre numéro 05 44 90 12 73" : "Ajouter un numéro") + "</small></span><span>›</span></button>").join("") +
+        "</div><p class='groupe-titre'>Banque</p><div class='sous'><button data-retrait='banque'><span class='point' style='background:var(--encre)'></span><span class='nom'>Mon compte bancaire<small>Ajouter un RIB</small></span><span>›</span></button></div>" +
+      "</div>";
+  },
+  retire() {
+    const s = E.salarie;
+    const lib = s.reseau === "banque" ? "votre compte bancaire" : RESEAUX[s.reseau][0];
+    return carte("58%", titre("Retiré.", 64) + "<div class='recap'><div><span>Montant</span><b>" + F(s.recu) + "</b></div><div><span>Vers</span><b>" + lib + "</b></div><div><span>Frais</span><b>0" + NB + "F</b></div></div>", "<div style='flex:1'></div>") +
+      "<div class='bas'><p class='aide'>Chez un opérateur, le retrait au point de vente reste à ses propres conditions.</p><div class='pousse'></div><button class='pilule blanche' data-aller='accueil'>Terminé</button></div>";
+  },
+};
+
+/* ============================ feuilles ============================ */
+const feuille = document.getElementById("feuille"), voile = document.getElementById("voile");
+let FE = null;
+function ouvrir(html, etat) { FE = etat || {}; feuille.innerHTML = "<div class='poignee'></div>" + html; voile.hidden = false; requestAnimationFrame(() => { voile.classList.add("ouvert"); feuille.classList.add("ouverte"); }); }
+function fermerFeuille() { FE = null; voile.classList.remove("ouvert"); feuille.classList.remove("ouverte"); setTimeout(() => { if (!FE) voile.hidden = true; }, 260); }
+voile.addEventListener("click", fermerFeuille);
+function feuilleLigne(mat) {
+  const s = E.salaries.find((x) => x.mat === mat);
+  const ec = ecartFort(s) && s.etat !== "verifier";
+  if (ec) {
+    ouvrir("<h3 id='feuille-titre'>" + echappe(s.nom) + "</h3><div class='recap-sombre' style='background:var(--fond)'><div><span>Septembre</span><b>" + F(s.net) + "</b></div><div><span>Août</span><b>" + F(s.avant) + "</b></div><div><span>Écart</span><b>" + (s.net > s.avant ? "+" : "−") + F(Math.abs(s.net - s.avant)) + "</b></div></div><p class='aide'>Une prime, une régularisation ? Si c'est voulu, acceptez.</p><button class='pilule blanche' data-f-ok>Accepter ce montant</button><button class='lien' data-f-non>Mettre de côté</button>");
+    feuille.querySelector("[data-f-ok]").addEventListener("click", () => { s.ok = true; fermerFeuille(); rendre(); });
+    feuille.querySelector("[data-f-non]").addEventListener("click", () => { s.etat = "verifier"; s.pb = { txt: "Mis de côté", det: "Écart non confirmé" }; fermerFeuille(); rendre(); });
+    return;
+  }
+  ouvrir("<h3 id='feuille-titre'>" + echappe(s.nom) + "</h3><p class='aide' style='margin-top:-6px'><span class='pastille verifier'>" + s.pb.txt + "</span> " + echappe(s.pb.det) + "</p><div class='champ'><label for='f-tel'>Numéro du salarié</label><input class='saisie' id='f-tel' inputmode='numeric' value='" + s.tel + "'></div><p class='message-erreur' id='f-err'></p><button class='pilule blanche' data-f-ok>Corriger et inviter</button><button class='lien' data-f-non>Laisser de côté ce mois-ci</button>");
+  const inp = feuille.querySelector("#f-tel");
+  inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 10).replace(/(\d{2})(?=\d)/g, "$1 "); });
+  feuille.querySelector("[data-f-ok]").addEventListener("click", () => {
+    const d = inp.value.replace(/\D/g, "");
+    if (d.length !== 10 || !["07", "05", "01"].includes(d.slice(0, 2))) { feuille.querySelector("#f-err").textContent = "10 chiffres, commençant par 07, 05 ou 01."; inp.classList.add("erreur"); return; }
+    s.tel = inp.value; s.ok = true; s.etat = "invite"; fermerFeuille(); rendre();
+  });
+  feuille.querySelector("[data-f-non]").addEventListener("click", fermerFeuille);
+}
+function feuilleCode(apres) {
+  const v = [];
+  const dessiner = () => {
+    feuille.innerHTML = "<div class='poignee'></div><h3 id='feuille-titre'>Code secret d'Awa</h3>" + cases(4, v) + clavier() + "<button class='lien' data-f-fermer>Annuler</button>";
+    feuille.querySelector("[data-f-fermer]").addEventListener("click", fermerFeuille);
+    feuille.querySelectorAll("[data-touche]").forEach((b) => b.addEventListener("click", () => {
+      if (b.dataset.touche === "effacer") v.pop(); else if (v.length < 4) v.push(b.dataset.touche);
+      dessiner(); if (v.length === 4) setTimeout(() => { fermerFeuille(); apres(); }, 260);
+    }));
+  };
+  ouvrir("", { code: true }); dessiner();
+}
+
+/* ============================ le direct ============================ */
+function demarrerVif() {
+  const fil = document.getElementById("fil"); if (!fil) return;
+  fil.innerHTML = E.salaries.filter((s) => s.etat === "pret").slice(-5).reverse().map((s) => "<li><b>" + echappe(s.nom) + "</b><span>" + s.mat + " · plus tôt</span></li>").join("");
+  vif = setInterval(() => {
+    const att = E.salaries.filter((s) => s.etat === "invite"); if (!att.length) return clearInterval(vif);
+    const s = att[Math.floor(Math.random() * att.length)]; s.etat = "pret";
+    const c = compte(), P = 2 * Math.PI * 80;
+    const arc = document.getElementById("arc"); if (!arc) return;
+    arc.setAttribute("stroke-dashoffset", P * (1 - c.pret / c.n));
+    document.getElementById("pct").textContent = Math.round(c.pret / c.n * 100) + "%";
+    document.getElementById("n-pret").textContent = c.pret;
+    document.getElementById("n-inv").textContent = c.invite;
+    const li = document.createElement("li"); li.innerHTML = "<b>" + echappe(s.nom) + "</b><span>" + s.mat + " · à l'instant</span>"; fil.prepend(li);
+  }, 1300);
+}
+
+/* ============================ rendu ============================ */
+const hote = document.getElementById("vue-hote");
+function rendre() {
+  const meme = E.ecran === dernier; dernier = E.ecran;
+  const d = meme && hote.querySelector(".bas.defile") ? hote.querySelector(".bas.defile").scrollTop : 0;
+  hote.innerHTML = "<section class='vue" + (sens === "retour" ? " retour" : "") + (meme ? " sans-anim" : "") + "'>" + ECRANS[E.ecran]() + "</section>";
+  if (d) hote.querySelector(".bas.defile").scrollTop = d;
+  sens = "avant"; brancher(); plan();
+}
+function lancerPaiement() {
+  E.validee = true; E.debut = performance.now(); E.paye = 0; E.pile = []; aller("paiement", { remplacer: true });
+  const c = compte();
+  const t = setInterval(() => {
+    E.paye = Math.min(c.pret, E.paye + Math.ceil(c.pret / 26));
+    const pr = document.getElementById("prog"), tx = document.getElementById("prog-txt");
+    if (pr) pr.style.width = Math.round(E.paye / c.pret * 100) + "%";
+    if (tx) tx.textContent = E.paye + " / " + c.pret + " versés";
+    if (E.paye >= c.pret) { clearInterval(t); E.fin = performance.now(); E.solde -= c.aPayer + c.reserve + c.frais; if (E.ecran === "paiement") rendre(); }
+  }, 80);
+}
+function charger(salaries, fichier) { E.salaries = salaries; E.fichier = fichier; E.envoyee = false; E.paye = 0; E.filtre = "tout"; E.montrer = 40; aller("lecture"); }
+function brancher() {
+  const v = hote.firstElementChild;
+  v.querySelectorAll("[data-retour]").forEach((b) => b.addEventListener("click", retour));
+  v.querySelectorAll("[data-aller]").forEach((b) => b.addEventListener("click", () => aller(b.dataset.aller)));
+  const wa = v.querySelector("[data-whatsapp]");
+  if (wa) wa.addEventListener("click", () => charger(generer(1000), { nom: "Paie_septembre_2026.xlsx", ext: "XLS", source: "Reçu sur WhatsApp · Cabinet Koné", n: 1000, carte: null, entetes: { nom: "Employé", matricule: "Matricule", telephone: "Téléphone portable", net: "Net à payer" } }));
+  const od = v.querySelector("[data-odoo]");
+  if (od) od.addEventListener("click", () => charger(generer(1000), { nom: "Bulletins validés · septembre", ext: "ODOO", source: "Lu depuis Odoo", n: 1000, carte: null, entetes: { nom: "Employé", matricule: "Matricule", telephone: "Mobile professionnel", net: "Net à payer" } }));
+  const fi = v.querySelector("[data-fichier]");
+  if (fi) fi.addEventListener("change", () => {
+    const f = fi.files && fi.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { const lu = lireCsv(String(r.result)); charger(depuisCsv(lu), { nom: f.name, ext: "CSV", source: "Fichier du téléphone", n: lu.lignes.length, carte: lu.carte }); };
+    r.readAsText(f, "utf-8");
+  });
+  v.querySelectorAll("[data-filtre]").forEach((b) => b.addEventListener("click", () => { E.filtre = b.dataset.filtre; E.montrer = 40; rendre(); }));
+  const pl = v.querySelector("[data-plus]"); if (pl) pl.addEventListener("click", () => { E.montrer += 80; rendre(); });
+  v.querySelectorAll("[data-ligne]").forEach((b) => b.addEventListener("click", () => feuilleLigne(b.dataset.ligne)));
+  const ae = v.querySelector("[data-accepter-ecarts]"); if (ae) ae.addEventListener("click", () => { E.salaries.forEach((s) => { if (ecartFort(s) && s.etat !== "verifier") s.ok = true; }); rendre(); });
+  const rl = v.querySelector("[data-relancer]"); if (rl) rl.addEventListener("click", () => { E.relances++; clearInterval(vif); rendre(); demarrerVif(); });
+  const en = v.querySelector("[data-envoyer]"); if (en) en.addEventListener("click", () => { E.envoyee = true; aller("notification"); });
+  v.querySelectorAll("[data-valider]").forEach((b) => b.addEventListener("click", () => feuilleCode(lancerPaiement)));
+  v.querySelectorAll("[data-releve]").forEach((b) => b.addEventListener("click", () => { E.releve = b.dataset.releve; rendre(); }));
+  v.querySelectorAll("[data-format]").forEach((b) => b.addEventListener("click", () => { E.format = b.dataset.format; rendre(); }));
+  const re = v.querySelector("[data-releve-envoyer]"); if (re) re.addEventListener("click", () => { re.textContent = "Relevé " + E.format + " envoyé par " + { whatsapp: "WhatsApp", email: "email", fichier: "fichier" }[E.releve] + " · maquette"; re.disabled = true; });
+  v.querySelectorAll("[data-retrait]").forEach((b) => b.addEventListener("click", () => feuilleCode(() => { E.salarie.reseau = b.dataset.retrait; aller("retire", { remplacer: true }); })));
+}
+const PLAN = [
+  ["Employeur", null],
+  ["accueil", "Accueil de l'entreprise"], ["recevoir", "Recevoir le fichier"], ["lecture", "Fichier lu, colonnes reconnues"], ["controle", "Contrôle des lignes"],
+  ["beneficiaires", "Bénéficiaires en direct"], ["recap", "Récap avant validation"], ["notification", "Validation par la dirigeante"], ["paiement", "Paiement et relevé"],
+  ["Salarié", null], ["salarie", "Salaire reçu"], ["retirer", "Retirer, sans frais"],
+];
+function plan() {
+  const vide = !E.salaries.length;
+  const bloque = (k) => vide && ["lecture", "controle", "beneficiaires", "recap", "notification", "paiement"].includes(k);
+  let n = 0;
+  document.getElementById("parcours").innerHTML = PLAN.map(([k, l]) => l === null ? "<li class='groupe'>" + k + "</li>" :
+    "<li><button class='" + (k === E.ecran || (k === "retirer" && E.ecran === "retire") ? "ici" : bloque(k) ? "saute" : "") + "' data-plan='" + k + "' " + (bloque(k) ? "disabled" : "") + "><span class='num'>" + (++n) + "</span><span>" + l + (bloque(k) ? "<br><small>Recevez d'abord un fichier</small>" : "") + "</span><span></span></button></li>").join("");
+  document.querySelectorAll("[data-plan]").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.plan === "paiement" && !E.validee) return feuilleCode(lancerPaiement);
+    E.pile = []; aller(b.dataset.plan);
+  }));
+}
+document.getElementById("recommencer").addEventListener("click", () => { clearInterval(vif); E = neuf(); dernier = null; fermerFeuille(); rendre(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && FE) return fermerFeuille();
+  if (FE && FE.code) { const t = /^[0-9]$/.test(e.key) ? e.key : e.key === "Backspace" ? "effacer" : null; const b = t && feuille.querySelector("[data-touche='" + t + "']"); if (b) b.click(); }
+});
+rendre();
+</script>

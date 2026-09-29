@@ -21,7 +21,7 @@ OUT = r"d:\Dev\Projects\swimpay\design\pivot\site.html"
 # Elle sert aux balises canonique et og:, qui exigent une adresse ABSOLUE :
 # un chemin relatif ne dit rien a WhatsApp ni a Google. A changer ici, et
 # nulle part ailleurs, le jour ou le domaine change.
-SITE_URL = "https://swimpay.pro"
+SITE_URL = "https://swimpay.johaneoyaraht.workers.dev"
 
 # ── LE LIEN VERS LA DEMO ──
 # C'est une adresse de PREVISUALISATION, pas l'application. Les liens qui la
@@ -29,6 +29,11 @@ SITE_URL = "https://swimpay.pro"
 # comme le produit est un mensonge qui se paie a la premiere demonstration.
 # Le jour ou l'app a son domaine, une seule ligne a changer.
 LIEN_APP = "https://claude.ai/code/artifact/359591a7-0b77-4707-aa3d-38d3260d280d"
+# ── LA DEMO JOUABLE PAR SCENARIOS (28/09/2026) ──
+# Le prototype complet : inscription, particulier, commercant, paie, salarie.
+# Chaque lien ouvre directement le bon scenario par son ancre. L'ancienne
+# demo (LIEN_APP) ne sert plus qu'au checkout, absent des scenarios.
+LIEN_DEMO = "https://claude.ai/artifact/V4mfFxqvnbt9G1yK2Hws2j"
 
 def b64(chemin, mime):
     d = open(os.path.join(A, chemin), "rb").read()
@@ -828,7 +833,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           automatisez vos paiements récurrents en une minute.</p>
         <div class="gestes">
           <a class="bouton plein grand" href="#telecharger">Télécharger l'application</a>
-          <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir la démo</a>
+          <a class="bouton creux grand" href="{LIEN_DEMO}#onb" target="_blank" rel="noopener">Voir la démo</a>
         </div>
       </div>
     </div>
@@ -937,7 +942,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           réseau revient.</p>
         <div class="gestes" style="margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
           <button class="bouton acide grand" id="installer">Installer l'application</button>
-          <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener"
+          <a class="bouton creux grand" href="{LIEN_DEMO}#part" target="_blank" rel="noopener"
              style="border-color: #3A3A3A; color: #FFFFFF">Essayer la démo</a>
         </div>
         <p class="para" id="installer-mot" style="margin-top: 20px; font-size: 14.5px"></p>
@@ -959,8 +964,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
         <div>
           <h2>Reprenez la main sur votre argent</h2>
           <p class="para">Envoyez, recevez et épargnez au même endroit,
-            <b>jusqu'à 1 % de frais</b>. Votre compte s'ouvre avec votre numéro de
-            téléphone, en quelques minutes.</p>
+            <b>la recharge est gratuite</b> et les frais suivent l'opération. Votre compte
+            s'ouvre avec votre numéro de téléphone, en quelques minutes.</p>
         </div>
         <div class="duo-img">
           <img src="{img_pieces}" width="820" height="1469" loading="lazy"
@@ -983,7 +988,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           toutes la même chose, elles ne se ressemblent pas.</p>
         <div class="gestes" style="margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap">
           <a class="bouton acide grand" href="#inscription">Ouvrir un compte</a>
-          <a class="bouton creux grand" href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir la démo</a>
+          <a class="bouton creux grand" href="{LIEN_DEMO}#part" target="_blank" rel="noopener">Voir la démo</a>
         </div>
       </div>
       <div class="duo-img">
@@ -1023,7 +1028,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           activité.</p>
         <div class="gestes">
           <a class="bouton acide grand" href="#inscription">Ouvrir un compte professionnel</a>
-          <a class="bouton creux grand" href="{LIEN_APP}#b-pme" target="_blank" rel="noopener">Voir la démo de la console</a>
+          <a class="bouton creux grand" href="{LIEN_DEMO}#comm" target="_blank" rel="noopener">Voir la démo pro</a>
         </div>
         <div class="jalons">
           <span>Encaisser vos clients</span>
@@ -1041,19 +1046,20 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
       <div class="bloc">
         <div><h2>Encaissez vos clients</h2></div>
         <div>
-          <p class="para">Via code QR au comptoir, ou par des liens de paiement que
-            vous envoyez sur vos applications de messagerie habituelles, WhatsApp
-            ou même par SMS. Vos clients paient depuis le réseau qu'ils utilisent
-            déjà.</p>
+          <p class="para">Par un QR simple, généré à chaque vente avec son montant, ou
+            par un lien de paiement envoyé sur WhatsApp ou par SMS. Le QR suit le
+            standard universel de la BCEAO : vos clients le scannent avec l'app
+            qu'ils utilisent déjà, Mobile Money ou banque.</p>
         </div>
       </div>
 
       <div class="bloc">
         <div><h2>Payez vos équipes de salariés</h2></div>
         <div>
-          <p class="para">Importez la liste des membres de votre équipe avec leurs
-            coordonnées Mobile Money ou bancaires, suivez le workflow, et SwimPay
-            s'occupe du reste. Vous signez une fois, tout le monde est payé.</p>
+          <p class="para">Partagez à SwimPay le fichier de paie que votre comptable vous
+            envoie déjà, depuis WhatsApp ou l'email. Chaque ligne est contrôlée,
+            vous validez une fois, et chaque salarié est payé sur son compte
+            SwimPay. Il retire ensuite où il veut, sans frais.</p>
         </div>
       </div>
 
@@ -1220,8 +1226,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           </select>
           <button class="bouton acide grand" type="submit" style="width: 100%; margin-top: 26px">Continuer</button>
         </form>
-        <div class="form-note">La vérification d'identité se fait dans l'application :
-          pièce, selfie, et le compte est ouvert.</div>
+        <div class="form-note">Votre numéro ouvre le compte. Votre pièce d'identité, ajoutée
+          dans l'application, vous engage et débloque les montants élevés.</div>
       </div>
     </div>
   </div>
@@ -1233,8 +1239,8 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     <div class="pied">
       <div>
         <a class="logo" href="#accueil"><i aria-hidden="true"></i><b>SwimPay</b></a>
-        <p class="mot">SwimPay détient vos fonds sur un compte de dépôt réel. Votre
-          compte s'ouvre avec votre numéro de téléphone.</p>
+        <p class="mot">Vos fonds sont conservés chez notre partenaire émetteur de
+          monnaie électronique agréé, sur un compte dédié adossé à 100 %.</p>
       </div>
       <div>
         <h4>Produit</h4>
@@ -1250,7 +1256,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
         <ul>
           <li><a href="#connexion">Se connecter</a></li>
           <li><a href="#inscription">S'inscrire</a></li>
-          <li><a href="{LIEN_APP}#accueil" target="_blank" rel="noopener">Voir la démo</a></li>
+          <li><a href="{LIEN_DEMO}#onb" target="_blank" rel="noopener">Voir la démo</a></li>
         </ul>
       </div>
       <div>
@@ -1258,7 +1264,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
         <ul>
           <li>Facturation FNE · DGI</li>
           <li>Côte d'Ivoire · zone UEMOA</li>
-          <li>Fonds détenus en compte de dépôt</li>
+          <li>Fonds cantonnés chez un émetteur agréé</li>
         </ul>
       </div>
     </div>

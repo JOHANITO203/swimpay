@@ -1,0 +1,760 @@
+<title>Onboarding Photo et verre</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Archivo:wdth,wght@62..125,500..900&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   L'onboarding SwimPay, grammaire « Photo et verre » (choix de LO sur la
+   planche du 28/09/2026), titres Archivo condense.
+     - une grande photo dans une carte bord a bord, rayon bas 36px, voile
+       sombre en bas, le titre en capitales pose dessus ;
+     - des champs en verre (blanc 16 %, flou 14px, contour blanc 28 %) ;
+     - une pilule acide sous la photo : l'element acide dominant.
+   Palette stricte : #141414 #434343 #FFFFFF #A2FF01 (+ #909090 derive,
+   + #E5484D reserve aux erreurs). Mono-theme sombre assume.
+   La photo au col bleu des assets est ECARTEE : le bleu sort de la palette.
+   ------------------------------------------------------------------ */
+:root {
+  color-scheme: dark;
+  --fond: #141414;
+  --planche: #0C0C0C;
+  --surface: #1C1C1C;
+  --surface-2: #242424;
+  --trait: #2E2E2E;
+  --gris: #434343;
+  --encre: #FFFFFF;
+  --sourd: #909090;
+  --acide: #A2FF01;
+  --encre-acide: #141414;
+  --erreur: #E5484D;
+  --verre: rgba(255, 255, 255, .16);
+  --verre-bord: rgba(255, 255, 255, .28);
+  --sortie: cubic-bezier(.23, 1, .32, 1);
+  --tiroir: cubic-bezier(.32, .72, 0, 1);
+  --titre: "Archivo", "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--planche); }
+body {
+  margin: 0; color: var(--encre);
+  font-family: "Outfit", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acide); outline-offset: 2px; }
+
+/* ================= la page autour du telephone ================= */
+.page {
+  max-width: 1080px; margin: 0 auto; padding: 28px 20px 56px;
+  display: grid; grid-template-columns: auto 1fr; gap: 48px; align-items: start;
+}
+.cote { display: grid; gap: 22px; padding-top: 8px; }
+.cote h1 { margin: 0; font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .95; font-size: clamp(34px, 4.6vw, 52px); text-transform: uppercase; }
+.cote p { margin: 0; color: var(--sourd); max-width: 58ch; }
+.cote p b { color: var(--encre); font-weight: 500; }
+.parcours { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.parcours button {
+  width: 100%; display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: 14px; border: 0; background: none; cursor: pointer; text-align: left;
+  color: var(--sourd); transition: background 160ms var(--sortie);
+}
+.parcours button:hover { background: var(--surface); color: var(--encre); }
+.parcours .num { width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; font-size: 12px; font-weight: 600; border: 1px solid var(--trait); }
+.parcours .fait .num { background: var(--gris); border-color: var(--gris); color: var(--encre); }
+.parcours .ici { background: var(--surface); color: var(--encre); }
+.parcours .ici .num { background: var(--acide); border-color: var(--acide); color: var(--encre-acide); }
+.parcours .saute { opacity: .45; }
+.parcours small { font-size: 12px; }
+.notes { border-top: 1px solid var(--trait); padding-top: 16px; display: grid; gap: 8px; font-size: 13px; color: var(--sourd); max-width: 58ch; }
+.notes b { color: var(--encre); font-weight: 500; }
+.recommencer { justify-self: start; border: 1px solid var(--trait); background: none; border-radius: 999px; padding: 9px 16px; cursor: pointer; color: var(--encre); }
+.recommencer:active { transform: scale(.97); }
+
+/* ================= le telephone ================= */
+.tel {
+  width: 390px; height: 820px; border-radius: 56px; padding: 10px; flex: none;
+  background: linear-gradient(145deg, #3a3a3a, #111 40%, #2a2a2a);
+  box-shadow: 0 40px 80px -30px rgba(0,0,0,.85), inset 0 0 0 1px #4a4a4a;
+  position: sticky; top: 20px;
+}
+.ecran {
+  position: relative; width: 100%; height: 100%; border-radius: 46px; overflow: hidden;
+  background: var(--fond); isolation: isolate;
+}
+.ecran::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: url("grain.png") repeat; background-size: 112px; opacity: .10; mix-blend-mode: overlay;
+}
+.barre {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 30; height: 50px;
+  display: flex; align-items: center; justify-content: space-between; padding: 4px 30px 0;
+  font-size: 14px; font-weight: 600; color: var(--encre); pointer-events: none;
+}
+.barre::after { content: ""; position: absolute; left: 50%; top: 11px; transform: translateX(-50%); width: 110px; height: 32px; border-radius: 99px; background: #000; }
+.barre .icones { display: flex; gap: 5px; align-items: center; }
+.barre .icones i { display: block; width: 17px; height: 10px; border-radius: 3px; border: 1.5px solid currentColor; }
+.indicateur { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 130px; height: 5px; border-radius: 9px; background: var(--encre); z-index: 30; pointer-events: none; }
+
+/* un ecran du parcours */
+.vue {
+  position: absolute; inset: 0; display: flex; flex-direction: column; z-index: 1;
+  animation: entre 360ms var(--sortie) both;
+}
+.vue.retour { animation-name: entre-retour; }
+@keyframes entre { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes entre-retour { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+
+/* la carte photo (constante de la grammaire) */
+.photo {
+  position: relative; flex: none; border-radius: 0 0 36px 36px; overflow: hidden;
+  transition: height 420ms var(--tiroir);
+}
+.photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,.28) 0%, rgba(20,20,20,0) 26%, rgba(20,20,20,0) 42%, rgba(20,20,20,.80) 100%); }
+.photo .dessus { position: absolute; left: 18px; right: 18px; bottom: 18px; z-index: 2; display: flex; flex-direction: column; gap: 12px; }
+.photo .haut { position: absolute; top: 54px; left: 16px; right: 16px; z-index: 3; display: flex; align-items: center; gap: 12px; }
+.titre {
+  margin: 0; font-family: var(--titre); font-weight: 900; font-stretch: 72%;
+  letter-spacing: -0.02em; line-height: .9; text-transform: uppercase; text-wrap: balance; color: var(--encre);
+}
+.surtitre { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.78); }
+
+/* progression facon « stories » + retour */
+.segments { flex: 1; display: flex; gap: 4px; }
+.segments span { flex: 1; height: 3px; border-radius: 9px; background: rgba(255,255,255,.28); overflow: hidden; }
+.segments span.fait { background: var(--encre); }
+.segments span.ici { background: linear-gradient(90deg, var(--encre) 50%, rgba(255,255,255,.28) 50%); }
+.rond-verre {
+  width: 40px; height: 40px; border-radius: 99px; flex: none; display: grid; place-items: center; cursor: pointer;
+  background: rgba(20,20,20,.35); border: 1px solid var(--verre-bord); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  font-size: 18px;
+}
+.rond-verre:active { transform: scale(.94); }
+
+/* le verre */
+.verre {
+  height: 54px; border-radius: 999px; display: flex; align-items: center; gap: 10px; padding: 0 20px;
+  background: var(--verre); border: 1px solid var(--verre-bord);
+  backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+.verre input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 17px; letter-spacing: .02em; }
+.verre input::placeholder { color: rgba(255,255,255,.55); }
+.verre .indic { color: rgba(255,255,255,.72); font-weight: 500; }
+.verre:focus-within { border-color: rgba(255,255,255,.6); }
+.verre.erreur { border-color: var(--erreur); }
+
+.segment { display: flex; padding: 4px; gap: 4px; border-radius: 999px; background: rgba(20,20,20,.55); align-self: flex-start; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.12); }
+.segment button { border: 0; border-radius: 999px; padding: 8px 16px; font-size: 12px; font-weight: 700; letter-spacing: .05em; background: none; cursor: pointer; transition: background 160ms, color 160ms; }
+.segment button[aria-pressed="true"] { background: var(--acide); color: var(--encre-acide); }
+
+/* le bas de l'ecran */
+.bas { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 18px 18px 30px; min-height: 0; }
+.bas.defile { overflow-y: auto; scrollbar-width: none; }
+.bas.defile::-webkit-scrollbar { display: none; }
+.pousse { flex: 1; }
+.pilule {
+  flex: none; height: 56px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 600; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform 140ms var(--sortie), opacity 160ms;
+}
+.pilule:active { transform: scale(.97); }
+.pilule.acide { background: var(--acide); color: var(--encre-acide); }
+.pilule.contour { background: none; border: 1px solid var(--gris); }
+.pilule:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+.lien { background: none; border: 0; color: var(--sourd); font-size: 14px; cursor: pointer; padding: 6px; align-self: center; }
+.lien:hover { color: var(--encre); }
+.mention { margin: 0; font-size: 11.5px; color: var(--sourd); text-align: center; line-height: 1.45; }
+.mention u { color: var(--encre); text-decoration: none; }
+.aide { margin: 0; font-size: 13px; color: var(--sourd); }
+.aide b { color: var(--encre); font-weight: 500; }
+.message-erreur { margin: 0; font-size: 13px; color: var(--erreur); min-height: 1.2em; }
+
+/* cases du code, en verre sur le sol sombre */
+.cases { display: grid; gap: 8px; }
+.cases .case {
+  height: 60px; border-radius: 18px; display: grid; place-items: center; font-size: 24px; font-weight: 600;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+  transition: border-color 160ms, background 160ms;
+}
+.cases .case.vide { color: rgba(255,255,255,.3); }
+.cases .case.ici { border-color: var(--encre); }
+.cases.erreur .case { border-color: var(--erreur); animation: secoue 320ms var(--sortie); }
+.cases.pin .case { font-size: 30px; }
+@keyframes secoue { 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+
+.clavier { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 16px; }
+.clavier button {
+  height: 58px; border-radius: 999px; border: 1px solid var(--trait); background: none; cursor: pointer;
+  font-size: 24px; transition: background 120ms, transform 120ms var(--sortie);
+}
+.clavier button:active { transform: scale(.94); background: var(--surface-2); }
+.clavier button.muet { border-color: transparent; font-size: 15px; color: var(--sourd); }
+
+/* options (profil, regimes, pieces) */
+.options { display: grid; gap: 10px; }
+.option {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; text-align: left;
+  padding: 16px 18px; border-radius: 24px; cursor: pointer; border: 1px solid var(--trait); background: var(--surface);
+  transition: border-color 160ms, background 160ms, transform 140ms var(--sortie);
+}
+.option:active { transform: scale(.98); }
+.option b { font-weight: 600; font-size: 16px; }
+.option span { grid-column: 1; color: var(--sourd); font-size: 13px; line-height: 1.35; }
+.option .prix { grid-row: 1 / span 2; grid-column: 2; font-size: 13px; font-weight: 600; color: var(--encre); text-align: right; line-height: 1.2; }
+.option .prix small { display: block; color: var(--sourd); font-weight: 400; }
+.option[aria-checked="true"] { border-color: var(--encre); background: var(--surface-2); }
+.puces { display: flex; flex-wrap: wrap; gap: 8px; }
+.puce { border: 1px solid var(--trait); background: none; border-radius: 999px; padding: 9px 15px; cursor: pointer; font-size: 14px; }
+.puce[aria-checked="true"] { background: var(--encre); color: var(--fond); border-color: var(--encre); font-weight: 600; }
+
+/* comptes relies */
+.ligne { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--trait); }
+.ligne .point { width: 10px; height: 10px; border-radius: 99px; flex: none; }
+.ligne .nom { flex: 1; min-width: 0; font-weight: 500; }
+.ligne .nom small { display: block; color: var(--sourd); font-weight: 400; font-size: 12.5px; }
+.ligne .action { border: 1px solid var(--gris); background: none; border-radius: 999px; padding: 7px 14px; cursor: pointer; font-size: 13px; font-weight: 600; flex: none; }
+.ligne .action.relie { border-color: transparent; background: var(--surface-2); color: var(--encre); }
+.ligne .action.relie::before { content: "✓ "; color: var(--acide); }
+.p-orange { background: #FF7900; } .p-mtn { background: #FFCB05; } .p-moov { background: #0066B3; } .p-wave { background: #1DC4FF; } .p-banque { background: var(--encre); }
+.groupe-titre { margin: 8px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+
+/* feuille (panneau qui monte, dans le telephone) */
+.voile { position: absolute; inset: 0; z-index: 20; background: rgba(0,0,0,.55); opacity: 0; transition: opacity 240ms var(--sortie); }
+.voile.ouvert { opacity: 1; }
+.feuille {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--surface);
+  border-radius: 32px 32px 0 0; border-top: 1px solid var(--trait);
+  padding: 10px 18px 34px; display: flex; flex-direction: column; gap: 12px;
+  transform: translateY(105%); transition: transform 300ms var(--tiroir);
+}
+.feuille.ouverte { transform: none; }
+.feuille .poignee { width: 40px; height: 5px; border-radius: 9px; background: var(--gris); align-self: center; margin-bottom: 4px; }
+.feuille h3 { margin: 0; font-size: 20px; font-weight: 600; }
+.champ { display: grid; gap: 6px; }
+.champ label { font-size: 13px; color: var(--sourd); }
+.saisie {
+  height: 52px; border-radius: 16px; border: 1px solid var(--trait); background: var(--fond); padding: 0 16px;
+  font-size: 16px; outline: 0; width: 100%; letter-spacing: .02em;
+}
+.saisie:focus { border-color: var(--sourd); }
+.saisie.erreur { border-color: var(--erreur); }
+
+/* piece d'identite */
+.faces { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.faces.une { grid-template-columns: 1fr; }
+.face {
+  position: relative; aspect-ratio: 1.58; border-radius: 20px; border: 1.5px dashed var(--gris); background: var(--surface);
+  display: grid; place-items: center; text-align: center; cursor: pointer; overflow: hidden; font-size: 13px; color: var(--sourd);
+}
+.face b { display: block; color: var(--encre); font-weight: 600; font-size: 14px; }
+.face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.face.pleine { border-style: solid; border-color: var(--encre); }
+.face.pleine::after { content: "✓"; position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 99px; background: var(--acide); color: var(--encre-acide); display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+.face input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* la consequence fiscale : l'etat se lit dans la forme */
+.consequence { border-radius: 20px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--trait); font-size: 13px; color: var(--sourd); }
+.consequence b { color: var(--encre); font-weight: 600; }
+.consequence .code { display: inline-block; font-weight: 700; color: var(--encre-acide); background: var(--encre); border-radius: 6px; padding: 1px 7px; margin-right: 6px; font-size: 12px; letter-spacing: .04em; }
+
+/* interrupteur */
+.interrupteur { width: 50px; height: 30px; border-radius: 99px; border: 0; cursor: pointer; position: relative; flex: none; background: var(--gris); transition: background 180ms var(--sortie); }
+.interrupteur::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 99px; background: var(--encre); transition: transform 220ms var(--sortie); }
+.interrupteur[aria-pressed="true"] { background: var(--acide); }
+.interrupteur[aria-pressed="true"]::after { transform: translateX(20px); background: var(--fond); }
+
+/* recapitulatif final */
+.recap { display: grid; gap: 0; background: var(--verre); border: 1px solid var(--verre-bord); border-radius: 26px; padding: 6px 18px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.recap div { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.14); font-size: 14px; }
+.recap div:last-child { border-bottom: 0; }
+.recap span { color: rgba(255,255,255,.72); }
+.recap b { font-weight: 600; text-align: right; }
+.echelle { display: flex; gap: 4px; }
+.echelle span { flex: 1; height: 4px; border-radius: 9px; background: rgba(255,255,255,.22); }
+.echelle span.fait { background: var(--acide); }
+.echelle-lib { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.6); margin-top: 6px; }
+.echelle-lib b { color: var(--encre); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0ms !important; transition-duration: 0ms !important; }
+}
+@media (max-width: 900px) {
+  .page { grid-template-columns: 1fr; justify-items: center; gap: 28px; }
+  .cote { order: -1; }
+  .tel { position: relative; top: 0; }
+}
+@media (max-width: 440px) {
+  .page { padding-inline: 16px; }
+  .tel { width: 100%; height: 780px; border-radius: 40px; padding: 7px; }
+  .ecran { border-radius: 34px; }
+}
+</style>
+
+<div class="page">
+  <div class="tel"><div class="ecran" id="ecran">
+    <div class="barre"><span>9:41</span><span class="icones"><i></i><i></i></span></div>
+    <div id="vue-hote"></div>
+    <div class="voile" id="voile" hidden></div>
+    <div class="feuille" id="feuille" role="dialog" aria-modal="true" aria-labelledby="feuille-titre"></div>
+    <div class="indicateur"></div>
+  </div></div>
+
+  <aside class="cote">
+    <h1>L'onboarding, photo et verre</h1>
+    <p>Le parcours complet, jouable dans le téléphone. Tout fonctionne : le numéro, le code, le choix du profil, la liaison de chaque réseau par son SMS, la pièce (ajoute une vraie image), le régime fiscal et le code secret. Le parcours s'allonge si tu choisis <b>Commerçant</b> ou <b>Entreprise</b>.</p>
+    <ol class="parcours" id="parcours"></ol>
+    <div class="notes">
+      <div><b>Pour voir les erreurs :</b> le code <b>000000</b> est refusé, un numéro 05 sur la ligne Orange est refusé, et deux codes secrets différents ne passent pas.</div>
+      <div><b>Réel, tiré de nos docs :</b> les préfixes des lignes (07 Orange, 05 MTN, 01 Moov, Wave sur n'importe quel numéro), les cinq régimes fiscaux et leur code TVA, les tarifs des abonnements de la grille par défaut, le format du RIB UEMOA à 24 caractères.</div>
+      <div><b>Exemples de maquette :</b> les numéros, le RIB et le NCC pré-remplis. Tout code à 6 chiffres autre que 000000 est accepté.</div>
+    </div>
+    <button class="recommencer" id="recommencer" type="button">Recommencer le parcours</button>
+  </aside>
+</div>
+
+<script>
+/* ============================ donnees ============================ */
+const LIGNES = {
+  orange: { nom: "Orange Money", prefixe: "07", aide: "Une ligne Orange commence par 07." },
+  mtn:    { nom: "MTN MoMo",     prefixe: "05", aide: "Une ligne MTN commence par 05." },
+  moov:   { nom: "Moov Money",   prefixe: "01", aide: "Une ligne Moov commence par 01." },
+  wave:   { nom: "Wave",         prefixe: null, aide: "Wave fonctionne sur n'importe quel numéro." },
+};
+/* Les abonnements : ABONNEMENTS_DEFAUT de packages/brain/src/pricing/grille.ts */
+const PROFILS = {
+  particulier: { nom: "Particulier", texte: "Envoyer, recevoir, payer", prix: "Gratuit" },
+  commercant:  { nom: "Commerçant", texte: "Encaisser au comptoir et en ligne, factures FNE", prix: "5 000 F", par: "par mois" },
+  entreprise:  { nom: "Entreprise", texte: "Paie des équipes, fournisseurs, factures FNE", prix: "15 000 F", par: "par mois" },
+};
+/* Les regimes : docs/pivot/12_ASSUJETTISSEMENT_TVA_ET_FNE.md, section 1 */
+const REGIMES = [
+  { cle: "TCE", nom: "Taxe communale de l'entreprenant", ca: "Chiffre d'affaires jusqu'à 5 millions", tva: false },
+  { cle: "TEE", nom: "Taxe d'État de l'entreprenant",    ca: "De 5 à 50 millions",   tva: false },
+  { cle: "RME", nom: "Microentreprises",                  ca: "De 50 à 200 millions", tva: false },
+  { cle: "RSI", nom: "Réel simplifié",                    ca: "De 200 à 500 millions", tva: true },
+  { cle: "RNI", nom: "Réel normal",                       ca: "Plus de 500 millions", tva: true },
+];
+const PIECES = {
+  cni: { nom: "CNI", faces: ["Recto", "Verso"] },
+  passeport: { nom: "Passeport", faces: ["Page photo"] },
+  consulaire: { nom: "Carte consulaire", faces: ["Recto", "Verso"] },
+};
+
+/* ============================ etat ============================ */
+const neuf = () => ({
+  mode: "creer", tel: "07 58 21 04 96", code: [], codeErreur: false, relance: 42,
+  profil: null,
+  relie: { orange: null, mtn: null, moov: null, wave: null }, banque: null,
+  piece: { type: "cni", faces: {}, plusTard: false },
+  ent: { nom: "", ncc: "", regime: null },
+  pin: [], pin1: null, pinErreur: false, empreinte: true,
+  ici: "bienvenue", vus: new Set(["bienvenue"]),
+});
+let E = neuf();
+let minuterie = null;
+
+const chiffres = (s) => s.replace(/\D/g, "");
+const formateTel = (s) => chiffres(s).slice(0, 10).replace(/(\d{2})(?=\d)/g, "$1 ");
+const echappe = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function etapes() {
+  if (E.mode === "connexion") return ["bienvenue", "code", "pin", "pret"];
+  const l = ["bienvenue", "code", "profil", "comptes", "piece"];
+  if (E.profil && E.profil !== "particulier") l.push("entreprise");
+  l.push("pin", "pret");
+  return l;
+}
+const LIBELLES = {
+  bienvenue: ["Bienvenue", "Numéro et consentement"],
+  code: ["Code SMS", "6 chiffres, renvoi à 0:42"],
+  profil: ["Profil", "Particulier, commerçant ou entreprise"],
+  comptes: ["Ajouter ses comptes", "Déclarés par vous, confirmés à la 1re recharge"],
+  piece: ["Pièce d'identité", "CNI, passeport ou carte consulaire"],
+  entreprise: ["Entreprise", "NCC et régime fiscal, pour la FNE"],
+  pin: ["Code secret", "4 chiffres, confirmés"],
+  pret: ["C'est prêt", "Récapitulatif et palier atteint"],
+};
+function palier() {
+  if (E.mode === "connexion") return 2;
+  let p = E.vus.has("profil") ? 2 : 1;
+  if (piecePrete()) p = 3;
+  if (p === 3 && E.ent.regime && nccValide(E.ent.ncc)) p = 4;
+  return p;
+}
+const nccValide = (v) => /^\d{7}[A-Z]$/.test(v.trim().toUpperCase());
+const piecePrete = () => PIECES[E.piece.type].faces.every((f) => E.piece.faces[f]);
+
+/* ============================ navigation ============================ */
+let sens = "avant";
+function aller(cle, retour = false) {
+  sens = retour ? "retour" : "avant";
+  E.ici = cle; E.vus.add(cle);
+  fermerFeuille();
+  rendre();
+}
+function suivant() { const l = etapes(); aller(l[Math.min(l.indexOf(E.ici) + 1, l.length - 1)]); }
+function precedent() { const l = etapes(); const i = l.indexOf(E.ici); if (i > 0) aller(l[i - 1], true); }
+
+/* ============================ briques ============================ */
+function carteHaut(hauteur, cadrage, titre, surtitre = "") {
+  const l = etapes(), i = l.indexOf(E.ici);
+  const segs = l.map((_, k) => "<span class='" + (k < i ? "fait" : k === i ? "ici" : "") + "'></span>").join("");
+  const retour = i > 0 && E.ici !== "pret"
+    ? "<button class='rond-verre' data-precedent aria-label='Retour'>←</button>" : "";
+  return "<div class='photo' style='height:" + hauteur + "'><img src='photo.jpg' alt='' style='object-position:" + cadrage + "'>" +
+    "<div class='haut'>" + retour + "<div class='segments' aria-label='Étape " + (i + 1) + " sur " + l.length + "'>" + segs + "</div></div>" +
+    "<div class='dessus'>" + (surtitre ? "<span class='surtitre'>" + surtitre + "</span>" : "") + titre + "</div></div>";
+}
+function clavier(extra) {
+  return "<div class='clavier'>" + ["1","2","3","4","5","6","7","8","9", extra, "0", "effacer"].map((t) =>
+    t === "effacer" ? "<button class='muet' data-touche='effacer' aria-label='Effacer'>⌫</button>"
+    : t === "coller" ? "<button class='muet' data-touche='coller'>Coller</button>"
+    : t === "" ? "<span></span>"
+    : "<button data-touche='" + t + "'>" + t + "</button>").join("") + "</div>";
+}
+function cases(n, valeurs, masque, erreur, pin) {
+  return "<div class='cases" + (erreur ? " erreur" : "") + (pin ? " pin" : "") + "' style='grid-template-columns:repeat(" + n + ",1fr)'>" +
+    Array.from({ length: n }, (_, i) => {
+      const v = valeurs[i];
+      return "<span class='case" + (v === undefined ? " vide" : "") + (i === valeurs.length ? " ici" : "") + "'>" +
+        (v === undefined ? "•" : masque ? "●" : v) + "</span>";
+    }).join("") + "</div>";
+}
+
+/* ============================ les ecrans ============================ */
+const ECRANS = {
+  bienvenue() {
+    const creer = E.mode === "creer";
+    const valide = chiffres(E.tel).length === 10;
+    return carteHaut("66%", "50% 18%",
+      "<h1 class='titre' style='font-size:" + (creer ? 58 : 54) + "px'>" + (creer ? "Un compte.<br>Tous vos<br>réseaux." : "Content de<br>vous revoir.") + "</h1>" +
+      "<div class='segment' role='group' aria-label='Créer ou se connecter'><button data-mode='creer' aria-pressed='" + creer + "'>CRÉER</button><button data-mode='connexion' aria-pressed='" + !creer + "'>SE CONNECTER</button></div>" +
+      "<label class='verre' for='tel'><span class='indic'>+225</span><input id='tel' inputmode='numeric' autocomplete='tel-national' placeholder='Votre numéro' value='" + E.tel + "' aria-label='Votre numéro de téléphone'></label>") +
+      "<div class='bas'>" +
+        "<p class='aide'>" + (creer ? "Un SMS confirmera que ce numéro est bien le vôtre. Ce sera votre numéro principal." : "Un SMS vous permettra de retrouver votre compte.") + "</p>" +
+        "<div class='pousse'></div>" +
+        "<button class='pilule acide' data-envoyer " + (valide ? "" : "disabled") + ">Recevoir le code</button>" +
+        (creer ? "<p class='mention'>En continuant, vous acceptez les <u>conditions</u> et la <u>politique de confidentialité</u>. Vos numéros ne sont jamais partagés sans votre accord.</p>" : "") +
+      "</div>";
+  },
+  code() {
+    const m = Math.floor(E.relance / 60), s = String(E.relance % 60).padStart(2, "0");
+    return carteHaut("32%", "50% 22%", "<h1 class='titre' style='font-size:44px'>Le code<br>du SMS</h1>", "Étape de vérification") +
+      "<div class='bas'>" +
+        "<p class='aide'>Envoyé au <b>" + E.tel + "</b> · <button class='lien' data-precedent style='padding:0;font-size:13px;text-decoration:underline'>changer</button></p>" +
+        cases(6, E.code, false, E.codeErreur) +
+        "<p class='message-erreur' aria-live='polite'>" + (E.codeErreur ? "Code incorrect. Vérifiez le SMS et réessayez." : "") + "</p>" +
+        clavier("coller") +
+        "<button class='lien' data-renvoyer " + (E.relance > 0 ? "disabled" : "") + ">" + (E.relance > 0 ? "Renvoyer le code dans " + m + ":" + s : "Renvoyer le code") + "</button>" +
+      "</div>";
+  },
+  profil() {
+    return carteHaut("30%", "52% 20%", "<h1 class='titre' style='font-size:44px'>Vous êtes…</h1>", "Numéro vérifié") +
+      "<div class='bas'>" +
+        "<div class='options' role='radiogroup' aria-label='Profil'>" +
+        Object.entries(PROFILS).map(([k, p]) =>
+          "<button class='option' role='radio' data-profil='" + k + "' aria-checked='" + (E.profil === k) + "'><b>" + p.nom + "</b><span>" + p.texte + "</span>" +
+          "<em class='prix' style='font-style:normal'>" + p.prix + (p.par ? "<small>" + p.par + "</small>" : "") + "</em></button>").join("") +
+        "</div>" +
+        "<p class='aide'>Vous pourrez changer de profil plus tard.</p>" +
+        "<div class='pousse'></div>" +
+        "<button class='pilule acide' data-suivant " + (E.profil ? "" : "disabled") + ">Continuer</button>" +
+      "</div>";
+  },
+  comptes() {
+    const n = Object.values(E.relie).filter(Boolean).length;
+    return carteHaut("26%", "50% 16%", "<h1 class='titre' style='font-size:42px'>Vos comptes</h1>", n ? n + " réseau" + (n > 1 ? "x" : "") + " relié" + (n > 1 ? "s" : "") : "Mobile Money et banque") +
+      "<div class='bas defile' style='gap:0'>" +
+        "<p class='aide' style='margin-bottom:6px'>Ajoutez les comptes que vous utilisez. Vous en êtes le garant ; chacun est confirmé à sa première recharge.</p>" +
+        Object.entries(LIGNES).map(([k, l]) => {
+          const r = E.relie[k];
+          return "<div class='ligne'><span class='point p-" + k + "'></span><span class='nom'>" + l.nom +
+            "<small>" + (r ? r + " · déclaré, confirmé à la 1re recharge" : l.prefixe ? "Ligne " + l.prefixe + "…" : "Sur n'importe quel numéro") + "</small></span>" +
+            "<button class='action" + (r ? " relie" : "") + "' data-relier='" + k + "'>" + (r ? "Relié" : "Relier") + "</button></div>";
+        }).join("") +
+        "<p class='groupe-titre'>Banque · facultatif</p>" +
+        "<div class='ligne'><span class='point p-banque'></span><span class='nom'>Compte bancaire<small>" +
+          (E.banque ? "RIB " + E.banque.slice(0, 5) + " … " + E.banque.slice(-2) : "Par RIB, à votre nom") + "</small></span>" +
+          "<button class='action" + (E.banque ? " relie" : "") + "' data-banque>" + (E.banque ? "Relié" : "Ajouter") + "</button></div>" +
+        "<div class='pousse' style='min-height:16px'></div>" +
+        "<button class='pilule acide' data-suivant " + (n ? "" : "disabled") + ">Continuer</button>" +
+        (n ? "" : "<p class='mention' style='margin-top:8px'>Reliez au moins un compte Mobile Money pour continuer.</p>") +
+      "</div>";
+  },
+  piece() {
+    const p = PIECES[E.piece.type];
+    return carteHaut("26%", "54% 14%", "<h1 class='titre' style='font-size:42px'>Votre pièce</h1>", "Vérification d'identité") +
+      "<div class='bas defile'>" +
+        "<div class='puces' role='radiogroup' aria-label='Type de pièce'>" +
+          Object.entries(PIECES).map(([k, x]) => "<button class='puce' role='radio' data-piece='" + k + "' aria-checked='" + (E.piece.type === k) + "'>" + x.nom + "</button>").join("") +
+        "</div>" +
+        "<div class='faces" + (p.faces.length === 1 ? " une" : "") + "'>" +
+          p.faces.map((f) => {
+            const src = E.piece.faces[f];
+            return "<label class='face" + (src ? " pleine" : "") + "'>" + (src ? "<img src='" + src + "' alt='" + f + "'>" : "<span><b>" + f + "</b>Ajouter une photo</span>") +
+              "<input type='file' accept='image/*' data-face='" + f + "' aria-label='" + f + " de la pièce'></label>";
+          }).join("") +
+        "</div>" +
+        "<p class='aide'>Les quatre coins visibles, sans reflet. La pièce vous engage et débloque les fonctionnalités avancées ; vous pouvez l'ajouter plus tard.</p>" +
+        "<div class='pousse'></div>" +
+        "<button class='pilule acide' data-suivant " + (piecePrete() ? "" : "disabled") + ">Envoyer la pièce</button>" +
+        "<button class='lien' data-plus-tard>Plus tard</button>" +
+      "</div>";
+  },
+  entreprise() {
+    const r = REGIMES.find((x) => x.cle === E.ent.regime);
+    const nccOk = nccValide(E.ent.ncc), nccVu = E.ent.ncc.length > 0;
+    const consequence = !r ? "" : r.tva
+      ? "<div class='consequence'><b>Assujetti à la TVA.</b> Vos factures FNE porteront la TVA de chaque article : <span class='code' style='background:var(--acide)'>TVA</span>18 % ou <span class='code' style='background:var(--acide)'>TVAB</span>9 %.</div>"
+      : "<div class='consequence'><span class='code' style='background:var(--acide)'>TVAD</span><b>Non assujetti à la TVA.</b> Vos factures FNE partiront hors taxes, avec la mention « TVA non applicable ».</div>";
+    return carteHaut("22%", "50% 12%", "<h1 class='titre' style='font-size:40px'>Votre entreprise</h1>", "Pour la facture FNE") +
+      "<div class='bas defile'>" +
+        "<div class='champ'><label for='ent-nom'>Nom commercial</label><input class='saisie' id='ent-nom' value='" + echappe(E.ent.nom) + "' placeholder='Ex. Boutique Awa'></div>" +
+        "<div class='champ'><label for='ent-ncc'>NCC (7 chiffres et une lettre)</label><input class='saisie" + (nccVu && !nccOk ? " erreur" : "") + "' id='ent-ncc' value='" + echappe(E.ent.ncc) + "' placeholder='Ex. 2500736C' autocapitalize='characters' maxlength='8'></div>" +
+        "<p class='message-erreur' style='margin-top:-6px'>" + (nccVu && !nccOk ? "Le NCC compte 7 chiffres suivis d'une lettre." : "") + "</p>" +
+        "<p class='groupe-titre' style='margin-top:-6px'>Régime fiscal</p>" +
+        "<div class='options' role='radiogroup' aria-label='Régime fiscal'>" +
+          REGIMES.map((x) => "<button class='option' role='radio' style='padding:12px 16px;border-radius:18px' data-regime='" + x.cle + "' aria-checked='" + (E.ent.regime === x.cle) + "'><b style='font-size:15px'>" + x.nom + "</b><span>" + x.ca + " F CFA</span><em class='prix' style='font-style:normal'>" + x.cle + "</em></button>").join("") +
+        "</div>" +
+        consequence +
+        "<button class='pilule acide' data-suivant " + (nccOk && r && E.ent.nom.trim() ? "" : "disabled") + " style='margin-top:4px'>Continuer</button>" +
+        "<button class='lien' data-suivant-force>Compléter plus tard</button>" +
+      "</div>";
+  },
+  pin() {
+    const connexion = E.mode === "connexion";
+    const confirmer = !connexion && E.pin1 !== null;
+    const titre = connexion ? "Votre code<br>secret" : confirmer ? "Encore<br>une fois" : "Votre code<br>secret";
+    return carteHaut("34%", "50% 24%", "<h1 class='titre' style='font-size:46px'>" + titre + "</h1>", connexion ? "Pour ouvrir votre compte" : confirmer ? "Confirmez le code" : "4 chiffres, pour valider chaque opération") +
+      "<div class='bas'>" +
+        cases(4, E.pin, true, E.pinErreur, true) +
+        "<p class='message-erreur' aria-live='polite'>" + (E.pinErreur ? "Les deux codes ne correspondent pas. Recommencez." : "") + "</p>" +
+        clavier("") +
+        (connexion ? "<button class='lien'>Code secret oublié</button>" :
+          "<div class='ligne' style='border:0;padding:4px 0'><span class='nom'>Valider avec l'empreinte<small>En plus du code, sur ce téléphone</small></span><button class='interrupteur' data-empreinte aria-pressed='" + E.empreinte + "' aria-label='Valider avec l’empreinte'></button></div>") +
+      "</div>";
+  },
+  pret() {
+    const connexion = E.mode === "connexion";
+    const p = palier();
+    const lib = ["Déclaré", "SMS", "Pièce", "NCC"];
+    const relies = Object.entries(E.relie).filter(([, v]) => v).map(([k]) => LIGNES[k].nom);
+    const lignes = connexion
+      ? "<div><span>Numéro</span><b>" + E.tel + "</b></div>"
+      : "<div><span>Profil</span><b>" + (PROFILS[E.profil] || PROFILS.particulier).nom + "</b></div>" +
+        "<div><span>Mobile Money</span><b>" + (relies.join(", ") || "Aucun") + "</b></div>" +
+        "<div><span>Banque</span><b>" + (E.banque ? "Reliée par RIB" : "Plus tard") + "</b></div>" +
+        (E.profil && E.profil !== "particulier" ? "<div><span>Factures FNE</span><b>" + (E.ent.regime ? (REGIMES.find((r) => r.cle === E.ent.regime).tva ? "Avec TVA" : "TVAD, hors taxes") : "À compléter") + "</b></div>" : "");
+    return carteHaut("62%", "50% 18%",
+      "<h1 class='titre' style='font-size:58px'>" + (connexion ? "Vous<br>revoilà." : "C'est<br>prêt.") + "</h1>" +
+      "<div class='recap'>" + lignes +
+        "<div style='display:block'><div class='echelle'>" + lib.map((_, i) => "<span class='" + (i < p ? "fait" : "") + "'></span>").join("") + "</div>" +
+        "<div class='echelle-lib'>" + lib.map((l, i) => i < p ? "<b>" + l + "</b>" : "<span>" + l + "</span>").join("") + "</div></div>" +
+      "</div>") +
+      "<div class='bas'>" +
+        (connexion ? "" : p < 3 ? "<p class='aide'>Palier <b>SMS</b> atteint. Ajoutez votre pièce quand vous voulez, dans Profil.</p>" : "<p class='aide'>Palier <b>" + lib[p - 1] + "</b> atteint.</p>") +
+        "<div class='pousse'></div>" +
+        "<button class='pilule acide' data-entrer>Entrer dans SwimPay</button>" +
+      "</div>";
+  },
+};
+
+/* ============================ feuilles ============================ */
+const feuille = document.getElementById("feuille");
+const voile = document.getElementById("voile");
+let F = null;
+function ouvrirFeuille(html, etat) {
+  F = etat;
+  feuille.innerHTML = "<div class='poignee'></div>" + html;
+  voile.hidden = false;
+  requestAnimationFrame(() => { voile.classList.add("ouvert"); feuille.classList.add("ouverte"); });
+  const premier = feuille.querySelector("input, button:not(.lien)");
+  if (premier) setTimeout(() => premier.focus({ preventScroll: true }), 320);
+}
+function fermerFeuille() {
+  F = null;
+  voile.classList.remove("ouvert"); feuille.classList.remove("ouverte");
+  setTimeout(() => { if (!F) voile.hidden = true; }, 260);
+}
+voile.addEventListener("click", fermerFeuille);
+
+function feuilleReseau(k) {
+  const l = LIGNES[k];
+  const defaut = E.relie[k] || (l.prefixe && chiffres(E.tel).startsWith(l.prefixe) ? E.tel : k === "wave" ? E.tel : "");
+  const etat = { k, num: defaut, envoye: false, code: [], erreur: "" };
+  const dessiner = () => {
+    const html =
+      "<h3 id='feuille-titre'>Relier " + l.nom + "</h3>" +
+      "<div class='champ'><label for='f-num'>Numéro " + l.nom + "</label><input class='saisie" + (etat.erreur ? " erreur" : "") + "' id='f-num' inputmode='numeric' value='" + etat.num + "' placeholder='" + (l.prefixe ? l.prefixe + " 00 00 00 00" : "07 00 00 00 00") + "' " + (etat.envoye ? "disabled" : "") + "></div>" +
+      "<p class='message-erreur' style='margin-top:-6px'>" + (etat.erreur || "") + "</p>" +
+      (etat.envoye
+        ? "<p class='aide' style='margin-top:-8px'>Code envoyé au <b>" + etat.num + "</b></p>" + cases(6, etat.code, false, false) +
+          "<div style='display:flex;gap:10px'><button class='pilule contour' style='flex:1' data-f-coller>Coller le code</button><button class='pilule acide' style='flex:1' data-f-relier " + (etat.code.length === 6 ? "" : "disabled") + ">Relier</button></div>"
+        : "<p class='aide' style='margin-top:-8px'>" + l.aide + "</p><button class='pilule acide' data-f-envoyer>Ajouter ce compte</button>") +
+      "<button class='lien' data-f-fermer>Annuler</button>";
+    if (F === etat) { feuille.innerHTML = "<div class='poignee'></div>" + html; brancherFeuille(); }
+    else { ouvrirFeuille(html, etat); brancherFeuille(); }
+  };
+  const brancherFeuille = () => {
+    const inp = feuille.querySelector("#f-num");
+    inp.addEventListener("input", () => { inp.value = formateTel(inp.value); etat.num = inp.value; });
+    feuille.querySelector("[data-f-fermer]").addEventListener("click", fermerFeuille);
+    const env = feuille.querySelector("[data-f-envoyer]");
+    if (env) env.addEventListener("click", () => {
+      const c = chiffres(etat.num);
+      if (c.length !== 10) { etat.erreur = "Le numéro compte 10 chiffres."; return dessiner(); }
+      if (l.prefixe && !c.startsWith(l.prefixe)) { etat.erreur = "Ce numéro n'est pas une ligne " + l.nom.split(" ")[0] + ". " + l.aide; return dessiner(); }
+      /* LO, 28/09 : pas de SMS par portefeuille. L'utilisateur declare ses comptes,
+         il en est le garant ; la premiere recharge les confirme (l'operateur
+         demande alors son code au titulaire). */
+      E.relie[k] = etat.num; fermerFeuille(); rendre();
+    });
+    const col = feuille.querySelector("[data-f-coller]");
+    if (col) col.addEventListener("click", () => { etat.code = [..."613408"]; dessiner(); });
+    const rel = feuille.querySelector("[data-f-relier]");
+    if (rel) rel.addEventListener("click", () => { E.relie[k] = etat.num; fermerFeuille(); rendre(); });
+  };
+  dessiner();
+}
+function feuilleBanque() {
+  const etat = { rib: E.banque || "CI008 01234 012345678901 23", erreur: "" };
+  const dessiner = () => {
+    const html =
+      "<h3 id='feuille-titre'>Ajouter un compte bancaire</h3>" +
+      "<div class='champ'><label for='f-rib'>RIB (24 caractères)</label><input class='saisie" + (etat.erreur ? " erreur" : "") + "' id='f-rib' value='" + etat.rib + "' autocapitalize='characters'></div>" +
+      "<p class='message-erreur' style='margin-top:-6px'>" + etat.erreur + "</p>" +
+      "<p class='aide' style='margin-top:-8px'>Le compte doit être à votre nom.</p>" +
+      "<button class='pilule acide' data-f-ok>Ajouter le compte</button><button class='lien' data-f-fermer>Plus tard</button>";
+    if (F === etat) feuille.innerHTML = "<div class='poignee'></div>" + html; else ouvrirFeuille(html, etat);
+    const inp = feuille.querySelector("#f-rib");
+    inp.addEventListener("input", () => { etat.rib = inp.value.toUpperCase(); });
+    feuille.querySelector("[data-f-fermer]").addEventListener("click", fermerFeuille);
+    feuille.querySelector("[data-f-ok]").addEventListener("click", () => {
+      const brut = etat.rib.replace(/\s/g, "");
+      if (!/^[A-Z]{2}[0-9A-Z]{22}$/.test(brut)) { etat.erreur = "Un RIB compte 24 caractères : code banque, guichet, compte et clé."; return dessiner(); }
+      E.banque = brut; fermerFeuille(); rendre();
+    });
+  };
+  dessiner();
+}
+
+/* ============================ rendu et branchements ============================ */
+const hote = document.getElementById("vue-hote");
+function rendre() {
+  hote.innerHTML = "<section class='vue" + (sens === "retour" ? " retour" : "") + "'>" + ECRANS[E.ici]() + "</section>";
+  sens = "avant";
+  brancher();
+  rendreParcours();
+}
+function brancher() {
+  const v = hote.firstElementChild;
+  v.querySelectorAll("[data-precedent]").forEach((b) => b.addEventListener("click", precedent));
+  v.querySelectorAll("[data-suivant]").forEach((b) => b.addEventListener("click", suivant));
+  v.querySelectorAll("[data-suivant-force]").forEach((b) => b.addEventListener("click", suivant));
+  v.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => { E.mode = b.dataset.mode; rendre(); }));
+  const tel = v.querySelector("#tel");
+  if (tel) tel.addEventListener("input", () => {
+    tel.value = formateTel(tel.value); E.tel = tel.value;
+    v.querySelector("[data-envoyer]").disabled = chiffres(E.tel).length !== 10;
+  });
+  const env = v.querySelector("[data-envoyer]");
+  if (env) env.addEventListener("click", () => { E.code = []; E.codeErreur = false; lancerRelance(); suivant(); });
+  v.querySelectorAll("[data-touche]").forEach((b) => b.addEventListener("click", () => toucher(b.dataset.touche)));
+  const renv = v.querySelector("[data-renvoyer]");
+  if (renv) renv.addEventListener("click", () => { E.code = []; E.codeErreur = false; lancerRelance(); rendre(); });
+  v.querySelectorAll("[data-profil]").forEach((b) => b.addEventListener("click", () => { E.profil = b.dataset.profil; rendre(); }));
+  v.querySelectorAll("[data-relier]").forEach((b) => b.addEventListener("click", () => feuilleReseau(b.dataset.relier)));
+  const bq = v.querySelector("[data-banque]");
+  if (bq) bq.addEventListener("click", feuilleBanque);
+  v.querySelectorAll("[data-piece]").forEach((b) => b.addEventListener("click", () => { E.piece.type = b.dataset.piece; rendre(); }));
+  v.querySelectorAll("[data-face]").forEach((inp) => inp.addEventListener("change", () => {
+    const f = inp.files && inp.files[0];
+    if (f) { E.piece.faces[inp.dataset.face] = URL.createObjectURL(f); rendre(); }
+  }));
+  const pt = v.querySelector("[data-plus-tard]");
+  if (pt) pt.addEventListener("click", () => { E.piece.plusTard = true; suivant(); });
+  const en = v.querySelector("#ent-nom");
+  if (en) en.addEventListener("input", () => { E.ent.nom = en.value; majBoutonEnt(v); });
+  const ncc = v.querySelector("#ent-ncc");
+  if (ncc) {
+    ncc.addEventListener("input", () => { ncc.value = ncc.value.toUpperCase(); E.ent.ncc = ncc.value; majBoutonEnt(v); });
+    ncc.addEventListener("blur", rendre);
+  }
+  v.querySelectorAll("[data-regime]").forEach((b) => b.addEventListener("click", () => { E.ent.regime = b.dataset.regime; rendre(); }));
+  const emp = v.querySelector("[data-empreinte]");
+  if (emp) emp.addEventListener("click", () => { E.empreinte = !E.empreinte; emp.setAttribute("aria-pressed", E.empreinte); });
+  const entrer = v.querySelector("[data-entrer]");
+  if (entrer) entrer.addEventListener("click", () => { entrer.textContent = "Bienvenue sur SwimPay"; entrer.disabled = true; });
+}
+function majBoutonEnt(v) {
+  const b = v.querySelector("[data-suivant]");
+  if (b) b.disabled = !(nccValide(E.ent.ncc) && E.ent.regime && E.ent.nom.trim());
+}
+function toucher(t) {
+  if (E.ici === "code") {
+    E.codeErreur = false;
+    if (t === "effacer") E.code.pop();
+    else if (t === "coller") E.code = [..."482913"];
+    else if (E.code.length < 6) E.code.push(t);
+    rendre();
+    if (E.code.length === 6) setTimeout(() => {
+      if (E.ici !== "code") return;
+      if (E.code.join("") === "000000") { E.codeErreur = true; E.code = []; rendre(); }
+      else suivant();
+    }, 380);
+  } else if (E.ici === "pin") {
+    E.pinErreur = false;
+    if (t === "effacer") E.pin.pop();
+    else if (E.pin.length < 4) E.pin.push(t);
+    rendre();
+    if (E.pin.length === 4) setTimeout(() => {
+      if (E.ici !== "pin") return;
+      if (E.mode === "connexion") return suivant();
+      if (E.pin1 === null) { E.pin1 = E.pin.join(""); E.pin = []; rendre(); }
+      else if (E.pin.join("") === E.pin1) suivant();
+      else { E.pinErreur = true; E.pin = []; E.pin1 = null; rendre(); }
+    }, 300);
+  }
+}
+function lancerRelance() {
+  E.relance = 42;
+  clearInterval(minuterie);
+  minuterie = setInterval(() => {
+    E.relance = Math.max(0, E.relance - 1);
+    const b = hote.querySelector("[data-renvoyer]");
+    if (b) {
+      b.disabled = E.relance > 0;
+      b.textContent = E.relance > 0 ? "Renvoyer le code dans 0:" + String(E.relance).padStart(2, "0") : "Renvoyer le code";
+    }
+    if (E.relance === 0) clearInterval(minuterie);
+  }, 1000);
+}
+
+/* le plan du parcours, a cote du telephone */
+function rendreParcours() {
+  const l = etapes(), i = l.indexOf(E.ici);
+  const tout = E.mode === "connexion" ? l : ["bienvenue", "code", "profil", "comptes", "piece", "entreprise", "pin", "pret"];
+  document.getElementById("parcours").innerHTML = tout.map((k) => {
+    const dans = l.includes(k), pos = l.indexOf(k);
+    const cls = !dans ? "saute" : k === E.ici ? "ici" : pos < i ? "fait" : "";
+    const [nom, det] = LIBELLES[k];
+    return "<li><button class='" + cls + "' data-aller='" + k + "' " + (dans ? "" : "disabled") + "><span class='num'>" + (dans ? pos + 1 : "–") + "</span><span>" + nom +
+      "<br><small>" + (dans ? det : "Seulement pour un commerçant ou une entreprise") + "</small></span><span>" + (k === E.ici ? "←" : "") + "</span></button></li>";
+  }).join("");
+  document.querySelectorAll("[data-aller]").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.aller;
+    if (k === "entreprise" && (!E.profil || E.profil === "particulier")) E.profil = "commercant";
+    if (k === "code") lancerRelance();
+    aller(k, etapes().indexOf(k) < etapes().indexOf(E.ici));
+  }));
+}
+
+document.getElementById("recommencer").addEventListener("click", () => { clearInterval(minuterie); E = neuf(); fermerFeuille(); rendre(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && F) fermerFeuille();
+  if ((E.ici === "code" || E.ici === "pin") && /^[0-9]$/.test(e.key) && !F && document.activeElement.tagName !== "INPUT") toucher(e.key);
+  if ((E.ici === "code" || E.ici === "pin") && e.key === "Backspace" && !F && document.activeElement.tagName !== "INPUT") toucher("effacer");
+});
+rendre();
+</script>
