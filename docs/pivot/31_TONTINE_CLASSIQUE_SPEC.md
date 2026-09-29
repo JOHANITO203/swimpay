@@ -1,12 +1,13 @@
-# La tontine classique SwimPay — spécification complète, soumise à relecture
+# La tontine classique SwimPay — spécification complète, version 2
 
-> Document autonome, écrit le 29 septembre 2026 pour être relu par d'autres IA.
-> Il rassemble les décisions prises dans `23` à `30`. En cas de désaccord avec ces
-> documents, **celui-ci fait foi**.
+> Document autonome, pour relecture par d'autres IA. **Version 2 (29/09/2026)**,
+> réécrite après les relectures de Gemini et DeepSeek sur la version 1 : les règles
+> sont rendues explicites, les situations oubliées ont reçu une règle, et **chaque
+> question posée reçoit une réponse au §12**.
 >
-> Légende : `[V]` vérifié en source · `[T]` source secondaire · `[H]` hypothèse
-> à vérifier. Rien n'est codé ; les chiffres viennent de simulations en entiers XOF
-> (scripts cités en §10).
+> Légende : `[V]` vérifié en source · `[T]` source secondaire · `[H]` hypothèse à
+> vérifier. Rien n'est codé. Les chiffres viennent de simulations en entiers XOF,
+> où la conservation de l'argent est vérifiée au franc près (§11).
 
 ---
 
@@ -15,36 +16,36 @@
 **SwimPay** est une application ivoirienne de compte de paiement. Le client a un
 compte SwimPay, qu'il recharge depuis ses comptes Mobile Money (Orange, MTN, Moov,
 Wave) et bancaires, et depuis lequel il paie et envoie. **Les fonds sont détenus
-par un partenaire émetteur de monnaie électronique agréé**, sur un compte dédié
-adossé à 100 %. SwimPay n'est pas une banque et ne prête pas son propre argent.
+par un partenaire émetteur de monnaie électronique (EME) agréé**, sur un compte
+dédié adossé à 100 %. SwimPay ne prête pas son propre argent.
 
 Plafonds de monnaie électronique dans l'UEMOA `[V]` : 2 000 000 F de solde pour un
 porteur identifié, 10 000 000 F de recharges par mois.
 
-**La tontine** est une pratique d'épargne collective très répandue : chaque membre
-verse la même somme à chaque tour, et à chaque tour un membre (ou plusieurs)
-touche la cagnotte. Son défaut majeur : **celui qui touche tôt peut disparaître
-avec l'argent des autres.**
-
-L'objectif : une tontine en ligne **sûre, juste, et qui fonctionne sans aucune
-intervention humaine**.
+**La tontine** : chaque membre verse la même somme à chaque tour, et à chaque tour
+un ou plusieurs membres touchent la cagnotte. Son défaut majeur : **celui qui
+touche tôt peut disparaître avec l'argent des autres.**
 
 ---
 
-## 2. Les principes posés par le fondateur
+## 2. Les principes, et le choix assumé
 
 1. **Aucun humain ne décide.** Ni le fondateur, ni un employé, ni l'organisateur.
-   Chaque situation a sa règle écrite d'avance, appliquée par le code.
-2. **La même règle pour tout le monde.** Pas de niveaux, pas de statut, pas de
-   passe-droit.
-3. **Rien ne bloque le système.** Même une fraude détectée ne l'arrête pas : elle
-   est rendue non rentable.
-4. **Deux modes d'entrée, mêmes règles** : *global* (on rejoint des inconnus) et
-   *par invitation* (entre proches, où se font en réalité la plupart des arnaques).
-5. **La tontine est un prêt tournant** : celui qui gagne tôt emprunte à ceux qui
-   gagnent tard. Il faut protéger les prêteurs, empêcher le premier de partir, et
-   éviter que le dernier se sente lésé.
-6. **SwimPay ne doit jamais porter un risque qui peut le mettre en faillite.**
+   Chaque situation a une règle écrite d'avance, appliquée par le code.
+2. **La même règle pour tout le monde.** Pas de niveaux, pas de statut.
+3. **Rien ne bloque la tontine.** Une fraude n'arrête pas le système : elle est
+   rendue sans intérêt.
+4. **Deux modes d'entrée, mêmes règles** : *global* (entre inconnus) et *par
+   invitation* (entre proches).
+5. **SwimPay ne porte jamais un risque qui peut le mettre en faillite.**
+
+**Le choix assumé par le fondateur.** La tontine SwimPay est **une épargne
+collective où personne ne peut partir avec l'argent des autres**. Ce n'est pas un
+crédit. Pour y arriver, chaque membre dépose une caution qui reste gelée jusqu'à la
+fin. **Pendant la tontine, chaque membre a donc moins d'argent disponible que dans
+une tontine de quartier** (§11.3). C'est le prix de la sécurité. Le fondateur le
+maintient malgré la critique : la force du produit est qu'**aucun membre ne peut
+fuir avec l'argent**, ce qu'aucune tontine de quartier ne garantit.
 
 ---
 
@@ -53,260 +54,389 @@ intervention humaine**.
 N membres, T tours, B gagnants par tour, c la cotisation par tour.
 
 - **N = B × T** : chaque membre gagne exactement une fois.
-- **B ∈ {1, 2, 3}**, le plus petit qui permet de tenir dans le nombre de tours
-  maximum du rythme.
+- **B ∈ {1, 2, 3}**, le plus petit qui tient dans le nombre de tours maximum.
 - **N ≤ 30.**
-- Cagnotte d'un gagnant = N × c / B = **T × c**, soit exactement ce qu'il cotise
-  au total.
+- Cagnotte brute d'un gagnant = **T × c**, soit exactement ce qu'il cotise au total.
 
-| Rythme | Un tour par | Tours | Cotisation |
-|---|---|---|---|
-| Rapide | jour | 3 à 7 | 1 000 à 25 000 F |
-| Hebdomadaire | semaine | 3 à 8 | 5 000 à 100 000 F |
-| Mensuel | mois | 3 à 12 | 10 000 à 200 000 F |
+| Rythme | Un tour par | Tours | Cotisation | Délai de grâce `[H]` |
+|---|---|---|---|---|
+| Rapide | jour | 3 à 7 | 1 000 à 25 000 F | 12 heures |
+| Hebdomadaire | semaine | 3 à 8 | 5 000 à 100 000 F | 48 heures |
+| Mensuel | mois | 3 à 12 | 10 000 à 200 000 F | 5 jours |
 
-Ces règles donnent **48 formats**. Un format n'est proposé qu'après avoir passé le
-pire scénario du simulateur (§9). Une cagnotte qui ferait dépasser le plafond de
-monnaie électronique est versée sur la banque du gagnant.
+Ces règles donnent **48 formats**. **Un format dont la cagnotte peut dépasser
+2 000 000 F n'est ouvert qu'aux membres ayant relié un compte bancaire vérifié à
+leur nom** (règle 17, §8).
 
 ---
 
-## 4. Le déroulé d'une tontine
+## 4. Le déroulé
 
 1. **Création.** Un membre choisit un format, un montant, un mode. Il n'a ensuite
-   **aucun pouvoir** : ni sur l'argent, ni sur l'ordre, ni sur les règles.
-2. **Recrutement.** Les places se remplissent. Si le groupe n'est pas complet dans
-   le délai, la tontine est annulée et tout est rendu.
+   **aucun pouvoir** sur l'argent, l'ordre ou les règles.
+2. **Recrutement.** Si le groupe n'est pas complet dans le délai, la tontine est
+   annulée et tout est rendu.
 3. **Entrée de chaque membre** :
-   - pièce d'identité, avec photo du visage en direct comparée à la pièce ;
-     **une pièce = une personne = une place** ;
-   - **caution de 35 % de la cagnotte, bloquée tout de suite** (§5.1) ;
-   - première cotisation bloquée tout de suite ;
-   - avant de signer, il voit **ses propres chiffres** : ce qu'il paie, ce qu'il
-     recevra, ce qu'il pourra retirer le jour du gain, les frais, ce qui se passe
-     s'il ne paie pas ;
-   - signature du **Pacte** (les règles) par code secret.
+   - pièce d'identité et photo du visage en direct, comparée à la pièce ; **une
+     pièce = une personne = une place** ;
+   - **caution de 30 % de la cagnotte** et **première cotisation**, bloquées tout de
+     suite ;
+   - l'écran affiche **ses propres chiffres** : ce qu'il paiera à chaque échéance, ce
+     qu'il pourra retirer le jour du gain selon sa place, ce qu'il récupérera à la
+     fin, les frais, ce qui se passe s'il paie en retard ou pas du tout ;
+   - signature du **Pacte** par code secret, qui inclut **l'autorisation de
+     prélèvement** du §6.6.
    Il peut partir **avant le tirage** : tout lui est rendu.
-4. **Tirage.** L'ordre des gagnants est tiré au sort **une fois pour toutes**
-   (§6). Ensuite, plus rien ne change : montant, rythme, membres, ordre. Le Pacte
-   est scellé par une empreinte.
-5. **Les tours.** À chaque échéance, la cotisation de chaque membre est prélevée
-   automatiquement. Le ou les gagnants du tour touchent leur cagnotte selon la
-   règle de retrait (§5.2).
-6. **Clôture.** Les cautions et la réserve de secours sont rendues aux membres qui
-   ont tout payé, le bonus des derniers est versé (§5.4).
+4. **Tirage** (§7). L'ordre est fixé une fois pour toutes. **Le tour de chaque
+   membre arrive toujours**, même s'il a cessé de payer.
+5. **Les tours.** À chaque échéance, chaque cotisation est prélevée
+   automatiquement, selon l'ordre du §6.3. Les gagnants du tour touchent leur
+   cagnotte selon le §6.2.
+6. **Clôture** (§6.7).
 
 ---
 
-## 5. Les règles d'argent
+## 5. Définitions
 
-### 5.1 La caution
-
-- **35 % de la cagnotte**, versée à l'entrée, **gelée pendant toute la tontine**,
-  quel que soit le rang de tirage.
-- Rendue entière à la clôture à celui qui a tout payé.
-- Celui qui fuit après avoir gagné **la perd** : elle couvre d'abord ses
-  cotisations manquées, **le reste revient aux membres honnêtes**.
-
-### 5.2 Ce que le gagnant peut retirer le jour du gain
-
-> **Ce qu'il a déjà versé en cotisations, plus 5 % de la cagnotte.**
-
-Le reste de sa cagnotte est **bloqué** et **paie automatiquement ses cotisations
-suivantes**. Ce qui reste bloqué est un peu inférieur à ce qu'il doit encore : il
-complète de sa poche en fin de tontine.
-
-Exemple : 10 membres, 10 tours, 10 000 F par tour, cagnotte de 100 000 F.
-
-| Gagnant du tour | A déjà versé | Retire tout de suite | Argent des autres en main |
-|---|---|---|---|
-| 1 | 10 000 | 15 000 | 5 000 |
-| 5 | 50 000 | 55 000 | 5 000 |
-| 10 | 100 000 | 100 000 | 0 |
-
-**Aucun gel de l'argent retiré** : le fondateur l'a écarté, parce que l'intérêt
-d'une tontine est de toucher une somme utilisable.
-
-### 5.3 La réserve de secours
-
-- **2 % de chaque tour**, mis de côté.
-- Elle paie les cotisations d'un défaillant quand sa part bloquée et sa caution ne
-  suffisent pas.
-- Ce qui reste est **rendu à la clôture** aux membres qui ont tout payé.
-
-### 5.4 Le bonus des derniers
-
-- Chaque gagnant du **dernier tiers des tours** reçoit **3 % de la cagnotte** en
-  plus (sur l'exemple : tours 8, 9 et 10, soit 3 000 F chacun).
-- Il est **payé par le groupe** à la clôture, sur la réserve restante et les
-  cautions saisies, puis sur les remboursements des membres honnêtes. Le Pacte le
-  dit comme tel : ce n'est pas un cadeau de SwimPay.
-
-### 5.5 Les frais du système
-
-- **3 % de la cagnotte, prélevés au gain.** C'est le seul revenu de SwimPay sur la
-  tontine ; SwimPay ne gagne jamais sur les cautions ni sur la réserve.
-- Justification donnée au client : c'est ce qui garantit que personne ne part avec
-  l'argent. Repère : le collecteur de tontine garde environ une mise par mois, soit
-  ~3 % `[H]`.
-- Comparaison : Money Fellows (Égypte) facture jusqu'à 16 % aux premières places,
-  0 % au milieu, avec un cashback pour les 3 dernières `[V]`. Son modèle fait payer
-  une vraie grosse avance ; le nôtre n'en donne pas, d'où un taux uniforme.
-
-### 5.6 Qui couvre une cotisation manquante, dans l'ordre
-
-1. la part bloquée du défaillant ;
-2. sa caution ;
-3. la réserve de secours ;
-4. SwimPay, en dernier recours, dans un plafond fixé (2 % de la collecte proposés).
-   **Dans toutes les simulations, SwimPay n'a jamais payé** (§9).
+| Terme | Définition exacte |
+|---|---|
+| **Cagnotte brute** | T × c |
+| **Cagnotte nette** | Cagnotte brute − frais (3 %) − mise en réserve (2 %) |
+| **Part libre** | Ce que le gagnant peut retirer le jour du gain |
+| **Part bloquée** | Cagnotte nette − part libre. Elle reste dans la tontine et paie ses cotisations suivantes |
+| **Échéance manquée** | Une cotisation que le membre n'a pas payée de sa poche à la fin du délai de grâce, et que sa part bloquée ne couvre pas |
+| **Défaillant** | Un membre qui a au moins une échéance manquée non remboursée |
+| **Fidèle** | Un membre qui n'a jamais eu d'échéance manquée |
+| **Tort causé** | Ce que la réserve et SwimPay ont payé à la place d'un défaillant, plus ses pénalités |
 
 ---
 
-## 6. Le tirage
+## 6. Les règles d'argent
+
+### 6.1 La caution
+
+- **30 % de la cagnotte brute** (le fondateur hésite entre 25 % et 30 % ; les deux
+  passent tous les scénarios, §11).
+- Versée à l'entrée, **gelée jusqu'à la clôture**, quel que soit le rang de tirage.
+- Elle ne sert qu'à **payer les échéances manquées** de son propriétaire, et leurs
+  pénalités.
+- **À la clôture, elle est rendue, moins le tort causé et rien d'autre** (§6.5).
+  Elle n'est jamais distribuée aux autres membres.
+
+### 6.2 La part libre, le jour du gain
+
+> **Part libre = les cotisations qu'il a déjà versées + 5 % de la cagnotte brute**,
+> dans la limite de la cagnotte nette.
+
+Exemple de référence : 10 membres, 10 tours, 10 000 F par tour, cagnotte brute
+100 000 F, cagnotte nette 95 000 F.
+
+| Gagnant du tour | A versé | Part libre | Part bloquée | Doit encore |
+|---|---|---|---|---|
+| 1 | 10 000 | 15 000 | 80 000 | 90 000 |
+| 5 | 50 000 | 55 000 | 40 000 | 50 000 |
+| 10 | 100 000 | 95 000 | 0 | 0 |
+
+**L'avance croît donc avec le rang** : 15 % de la cagnotte au 1er, 55 % au 5e,
+tout au dernier. Seuls 5 % de la cagnotte sont de l'argent des autres, à tout rang.
+
+La part libre n'est ni gelée, ni limitée dans son usage. Seules les règles de
+sécurité des retraits s'appliquent (§9).
+
+### 6.3 L'ordre de paiement d'une cotisation, à chaque échéance
+
+1. **La part bloquée du membre, toujours en premier**, jusqu'à épuisement ;
+2. puis **son compte SwimPay**, prélevé automatiquement ;
+3. si son compte ne suffit pas à la fin du délai de grâce, c'est une **échéance
+   manquée**, couverte dans l'ordre par :
+   1. **sa caution**,
+   2. **la réserve de secours**,
+   3. **une avance de SwimPay**, plafonnée à 2 % de la collecte totale de la
+      tontine ;
+4. si tout cela ne suffit pas, **la part manquante de la cagnotte du tour est
+   différée** : le gagnant la reçoit à la clôture, payée par les parts bloquées des
+   défaillants (§6.7). Le gagnant ne perd rien, il attend.
+
+Chaque franc couvert au point 3 coûte au défaillant **une pénalité de 5 %**, prise
+en même temps que la couverture, et versée à la réserve.
+
+### 6.4 Le retardataire qui revient
+
+Dès que de l'argent arrive sur son compte, il rembourse automatiquement, dans
+l'ordre : **l'avance de SwimPay**, puis **la réserve**, puis **il reconstitue sa
+caution**. Ensuite il paie normalement. Les pénalités déjà prises restent dues. Un
+retard ne l'exclut pas, et **son tour arrive à sa place, comme prévu**.
+
+### 6.5 Celui qui cesse de payer : la saisie limitée au tort
+
+La tontine ne cherche pas pourquoi il ne paie plus (fuite, perte de revenus,
+maladie, décès : même règle). À la clôture :
+
+1. **sa part bloquée** rembourse d'abord SwimPay, puis la réserve ;
+2. **sa caution** rembourse ce qui reste dû ;
+3. **ce qui reste de sa part bloquée et de sa caution lui est rendu**.
+
+Il ne perd donc que le tort causé et ses pénalités. **S'il n'a pas encore gagné**,
+son tour arrive quand même à sa place : sa cagnotte est alors **entièrement
+bloquée**, elle rembourse ce qui a été payé pour lui, et le reste lui est rendu à la
+clôture.
+
+**Pourquoi c'est suffisant pour empêcher la fuite** : il ne peut jamais emporter
+plus que ce qu'il a lui-même mis. Le jour du gain, il a versé sa caution (30 000 F)
+et ses cotisations, et ne peut retirer que ses cotisations plus 5 000 F. **Il n'y a
+rien à voler.** Fuir ne lui rapporte rien et lui coûte les pénalités (§11.2).
+
+### 6.6 La dette après la clôture
+
+Si sa caution et sa part bloquée ne suffisent pas à rembourser le tort (cas très
+rare, §11), le reste est une **dette**. Le Pacte contient une **autorisation de
+prélèvement**, signée par code secret, qui permet de la rembourser sur les entrées
+futures de son compte SwimPay. Sa validité et sa forme sont **à confirmer avec le
+partenaire EME** `[H]`. Sans cette autorisation, la dette passe au recouvrement
+ordinaire.
+
+### 6.7 La clôture
+
+Dans l'ordre :
+
+1. les parts bloquées et les cautions des défaillants remboursent SwimPay et la
+   réserve (§6.5) ;
+2. les **parts différées** sont versées aux gagnants concernés ;
+3. le **bonus des derniers** est versé : **3 % de la cagnotte brute à chaque
+   gagnant du dernier tiers des tours** (tours 8, 9, 10 sur l'exemple), payé par la
+   réserve restante, donc par le groupe ;
+4. ce qui reste de la réserve (pénalités comprises) est **partagé à parts égales
+   entre les fidèles** ;
+5. les cautions sont rendues (moins le tort, pour les défaillants).
+
+### 6.8 Les frais du système
+
+- **3 % de la cagnotte brute, prélevés au gain.** C'est le seul revenu de SwimPay
+  sur la tontine : SwimPay ne gagne ni sur les cautions, ni sur la réserve, ni sur
+  les pénalités.
+- Ils paient ce qui distingue le produit : **personne ne peut partir avec
+  l'argent**. Repère : le collecteur de tontine ivoirien garde environ une mise par
+  mois, soit ~3 %, sans cette garantie `[H]`.
+- Money Fellows (Égypte) facture jusqu'à 16 % aux premières places, 0 % au milieu,
+  et rembourse une partie aux 3 dernières `[V]`. Mais il **avance** la cagnotte au
+  premier ; SwimPay non. D'où un taux unique, plus bas.
+
+---
+
+## 7. Le tirage
 
 - SwimPay publie d'abord **l'empreinte** de son propre nombre au hasard.
 - Chaque membre connecté ajoute son **geste** (une contribution au hasard).
-- Le résultat combine tout, s'affiche en direct, et il est **définitif**.
-- Chaque membre peut refaire le calcul et vérifier.
-- Interrompu (réseau, application fermée), il reprend avec la même empreinte, sans
-  possibilité de retirer le résultat.
-- **Pur hasard, dans les deux modes.** Aucune place choisie, aucune place négociée.
+- Le résultat combine tout, s'affiche en direct, et il est **définitif** ; chacun
+  peut refaire le calcul et le vérifier.
+- Interrompu, il reprend avec la même empreinte, sans possibilité de changer le
+  résultat.
+- **Pur hasard, dans les deux modes.** Aucune place choisie ni négociée.
 
 ---
 
-## 7. Chaque situation a sa règle
+## 8. Chaque situation a sa règle
 
 | # | Situation | La règle |
 |---|---|---|
 | 1 | Le groupe ne se remplit pas | Annulation, tout est rendu |
 | 2 | Un membre part avant le tirage | Tout lui est rendu |
-| 3 | Un membre veut partir après le tirage | Impossible, le Pacte est scellé |
-| 4 | Une cotisation manque, **quelle qu'en soit la cause** | Délai de grâce selon le rythme, puis la couverture du §5.6. Le système ne cherche pas le motif |
-| 5 | Le défaillant **n'a pas encore gagné** | Il n'a pris l'argent de personne. À son tour, sa cagnotte est entièrement bloquée : elle paie ses cotisations manquées et rembourse la réserve ; le reste lui est rendu à la clôture |
-| 6 | Le défaillant **a déjà gagné** | Sa part bloquée puis sa caution couvrent ses cotisations ; le reste de la caution revient aux honnêtes. **Sa dette le suit** : toute entrée future sur son compte SwimPay la rembourse d'abord `[H]` |
-| 7 | Décès ou incapacité | Traité comme la ligne 4 ; ce qui revient au membre est versé sur son compte SwimPay, et la succession se règle au niveau du compte, selon la loi |
-| 8 | « J'ai payé » | Le journal de la tontine (le Carnet), visible par tous, fait foi. Aucune capture d'écran n'est une preuve |
-| 9 | « Le tirage est truqué » | Chacun peut le vérifier dans l'application |
-| 10 | « Je n'avais pas compris » | Le Pacte signé, avec ses propres chiffres affichés avant la signature, fait foi |
-| 11 | Panne de SwimPay ou d'un opérateur à l'échéance | La tontine est suspendue, l'horloge s'arrête, personne n'est compté en retard |
+| 3 | Un membre veut partir après le tirage | Impossible. S'il cesse de payer, c'est la règle 5 |
+| 4 | Retard de paiement, rattrapé ensuite | §6.3 et §6.4 : couverture, pénalité de 5 %, remboursement automatique au retour. Son tour arrive comme prévu |
+| 5 | Il cesse de payer, **quelle qu'en soit la cause** | §6.5 : saisie limitée au tort, le reste lui est rendu à la clôture |
+| 6 | Il cesse de payer **avant** son tour | Son tour arrive quand même ; sa cagnotte est entièrement bloquée, elle rembourse ce qui a été payé pour lui, le reste lui est rendu à la clôture |
+| 7 | **Décès** | Règle 5. Ce qui lui revient (part bloquée, caution moins le tort, part de réserve s'il était fidèle) est versé **sur son compte SwimPay**, et la succession se règle au niveau du compte, selon la loi, hors de la tontine. La tontine ne demande aucun certificat |
+| 8 | « J'ai payé » | Le journal de la tontine, visible par tous, fait foi. Aucune capture d'écran n'est une preuve |
+| 9 | « Le tirage est truqué » | Chacun le vérifie dans l'application |
+| 10 | « Je n'avais pas compris » | Le Pacte, signé après l'affichage de ses propres chiffres, fait foi |
+| 11 | Panne de SwimPay ou d'un opérateur à l'échéance | La tontine est suspendue, l'horloge s'arrête, personne n'est en retard. Au-delà de 7 jours de suspension `[H]` : liquidation (règle 20) |
 | 12 | Erreur prouvée de SwimPay | Compensation automatique par une réserve d'incidents de SwimPay |
 | 13 | Écart entre le registre et le solde réel chez le partenaire | Faute de SwimPay par définition : la réserve d'incidents comble l'écart, la tontine continue ; au-delà, suspension |
 | 14 | Cotisation payée en double | La seconde est rendue automatiquement |
 | 15 | Un versement échoue en route | Jamais relancé à l'aveugle : on vérifie ce qui est parti, puis on complète. Un versement ne part qu'une fois |
-| 16 | Une recharge par carte bancaire annulée après coup | L'argent rechargé par carte n'entre dans une tontine qu'après un délai de sécurité |
-| 17 | Une cagnotte dépasserait le plafond de monnaie électronique | Versée sur la banque du gagnant |
-| 18 | Une autorité judiciaire gèle un membre | Ses fonds sont gelés selon l'ordre ; pour la tontine, c'est la ligne 4 |
-| 19 | Comptes liés dans la même tontine (même appareil, mêmes sources d'argent, argent qui circule entre eux) | **Ils comptent comme une seule personne** : leur argent des autres en main est limité ensemble à ce qu'une seule personne pourrait avoir. Rien n'est bloqué |
+| 16 | Recharge par carte bancaire annulée après coup | L'argent rechargé par carte n'entre dans une tontine qu'après un délai de sécurité `[H]` |
+| 17 | **Cagnotte au-delà du plafond de 2 000 000 F** | Formats ouverts seulement avec un compte bancaire vérifié au nom du membre (§3). Si ce compte est fermé au moment du gain, **le surplus reste dans la tontine, à son nom**, chez le partenaire EME, jusqu'à ce qu'il relie un nouveau compte bancaire à son nom `[H]`. Rien n'est débité en plus aux autres : l'argent n'a jamais quitté le compte du partenaire |
+| 18 | Une autorité gèle un membre, ou son **identité est reconnue usurpée** | Pour la tontine, ses échéances non payées suivent la règle 5. **La personne dont l'identité a été volée n'est jamais débitrice** : la dette reste attachée au compte frauduleux. Si le contrôle d'identité de SwimPay a échoué, la perte est une erreur de SwimPay (règle 12). La reconnaissance de l'usurpation vient d'une autorité ou d'une décision de justice, hors de la tontine |
+| 19 | **Comptes liés** dans la même tontine | Voir le §10 : critères précis, appliqués par le code. Effet : ensemble, ils ne peuvent avoir en main que les 5 % d'une seule personne. Rien n'est bloqué |
+| 20 | **Liquidation** : suspension de plus de 7 jours, ou une part différée qui ne pourrait pas être payée à la clôture | La tontine s'arrête. Chaque membre reçoit **ce qu'il a versé moins ce qu'il a reçu**, les fidèles d'abord, les défaillants ensuite, sur l'argent de la tontine (parts bloquées, cautions, réserve). Les frais déjà pris sur des tours non terminés sont rendus |
 
 ---
 
-## 8. La protection contre les escrocs et les pirates
+## 9. La protection contre les escrocs et les pirates
 
-**Contre les escrocs** (ceux qui trompent des personnes) :
+**Contre les escrocs** :
 
-- une tontine SwimPay **n'existe que dans l'application** : on ne paie jamais
+- une tontine SwimPay **n'existe que dans l'application** ; on ne paie jamais
   ailleurs, et l'application le dit ;
 - chaque retrait de la tontine demande **le code ou l'empreinte, sur l'appareil
-  habituel** ;
+  habituel, avec une confirmation reçue par un canal extérieur** ;
 - **nouvel appareil, carte SIM changée ou nouveau compte de retrait : 72 heures
   d'attente** pour l'argent de la tontine, avec alerte sur l'ancien appareil ;
 - l'argent de la tontine **ne sort que vers un compte au nom du membre**, vérifié
   par le nom que renvoie l'opérateur ou la banque ;
 - SwimPay **n'envoie jamais de lien par SMS et n'appelle jamais pour demander un
-  code** ; un gain s'annonce uniquement dans l'application ;
+  code** ;
 - **aucun employé ne peut déplacer l'argent** ni changer un ordre ou un montant.
 
-**Contre les pirates** (ceux qui attaquent la machine) :
+**Contre les pirates** :
 
 - chaque opération d'argent est **signée par une clé qui ne quitte jamais la puce
   de sécurité du téléphone** ;
 - l'application vérifie qu'elle est l'originale ; les écrans de code ne peuvent pas
   être filmés ;
-- chaque demande porte un numéro unique et une heure : une demande rejouée est
-  refusée ;
+- une demande rejouée est refusée ;
 - un « paiement reçu » d'un partenaire n'est cru qu'après vérification de sa
-  signature **et** confirmation auprès du partenaire ;
-- le registre de l'argent est **en ajout seul et chaîné** : toute modification se
-  voit ; il doit égaler chaque jour le solde réel chez le partenaire ;
+  signature et confirmation auprès du partenaire ;
+- le registre de l'argent est **en ajout seul et chaîné**, rapproché chaque jour du
+  solde réel chez le partenaire ;
 - données chiffrées, pièces d'identité chiffrées à part.
 
+**Contre le blanchiment** : l'argent qui entre (recharges) passe le contrôle
+anti-blanchiment du partenaire EME. La caution d'un défaillant **n'est jamais
+redistribuée** (§6.1) : la tontine ne peut pas servir à faire passer de l'argent
+d'un membre à un autre. Seules les pénalités (5 % de ce qui est couvert) vont à la
+réserve, partagée à parts égales entre tous les fidèles ; un réseau ne peut pas les
+diriger vers un compte choisi.
+
 ---
 
-## 9. Ce qui a été simulé
+## 10. Les comptes liés : les critères exacts
 
-### 9.1 Le pire cas sur les 48 formats
+Deux comptes d'une même tontine sont **liés** si au moins un de ces faits est
+enregistré par le système :
 
-Scénario : **le tiers des premiers gagnants fuit juste après avoir touché.** Règle
-de retrait du §5.2, réserve de 2 %, **sans même compter la caution** :
+1. **le même appareil** (la même clé matérielle) a servi aux deux comptes ;
+2. **la même source de recharge** (le même numéro Mobile Money ou le même compte
+   bancaire) a rechargé les deux comptes ;
+3. **le même compte de retrait** est relié aux deux ;
+4. **de l'argent a circulé entre eux** dans les 30 jours avant l'entrée `[H]`.
 
-| Avance au gain | Réserve | Formats où SwimPay ne paie jamais rien |
-|---|---|---|
-| **5 %** | **2 %** | **48 sur 48** |
-| 10 % | 3 % | 31 sur 48 |
-| 15 % | 3 % | 8 sur 48 |
+Les liens se propagent : si A est lié à B et B à C, les trois forment un groupe.
 
-C'est ce qui a fixé l'avance à 5 %.
+**Effet, calculé par le code** : la somme de l'argent des autres que le groupe peut
+avoir en main (les 5 % de chaque gagnant du groupe) est limitée à **5 % d'une seule
+cagnotte**. Concrètement, à partir du deuxième gagnant du groupe, la part libre est
+seulement ses cotisations versées. Aucun humain ne décide, rien n'est bloqué, et une
+famille honnête n'y perd qu'un peu d'avance.
 
-### 9.2 Cinq scénarios complets, avec toutes les règles
+---
 
-Exemple : 10 membres, 10 tours, 10 000 F, caution de 35 000 F, frais de 3 %. Le
-résultat est ce que chacun a reçu moins ce qu'il a versé, à la fin. L'argent est
-vérifié au franc près.
+## 11. Ce qui a été simulé
 
-| Scénario | Chaque membre honnête | Chaque fuyard | SwimPay |
+Script : `design/pivot/sondes/tontine-v2.py`, qui applique **toutes** les règles du
+§6. Exemple de référence (10 membres, 10 tours, 10 000 F), caution de 30 %.
+Résultat = ce que chacun a reçu moins ce qu'il a versé, à la fin.
+
+### 11.1 Du scénario joyeux au pire
+
+| Scénario | Fidèles | Défaillants | SwimPay |
 |---|---|---|---|
-| Tout le monde paie | −3 900 F ; les 3 derniers −900 F | — | +30 000 F, perte 0 |
-| Un membre pas encore gagnant abandonne au tour 4 | −3 778 à −778 F | −5 000 F | +30 000 F, perte 0 |
-| Le gagnant du tour 1 fuit | −1 000 à +2 000 F | **−30 000 F** | +30 000 F, perte 0 |
-| Les 3 premiers gagnants fuient | **+7 286 à +10 286 F** | **−30 000 F chacun** | +30 000 F, perte 0 |
-| Le pire : les 3 premiers fuient, et un autre abandonne | +9 333 à +12 333 F | −30 000 F chacun, −5 000 F | +30 000 F, perte 0 |
+| A. Tout le monde paie | −3 900 F ; les 3 derniers −900 F | — | +30 000 F, aucune avance |
+| B. Un membre manque 2 échéances puis revient | −3 667 F environ | −6 000 F | +30 000 F, aucune avance |
+| C. Un membre pas encore gagnant abandonne au tour 4 | −3 556 F environ | −7 000 F | +30 000 F, aucune avance |
+| D. Le gagnant du tour 1 cesse de payer | −3 722 F environ | −5 500 F | +30 000 F, aucune avance |
+| E. Les 3 premiers gagnants cessent de payer | −3 214 F environ | −5 500 F chacun | +30 000 F, aucune avance |
+| F. Les 5 premiers gagnants cessent de payer au tour 6 | de −2 300 à +700 F | −5 500 F chacun | +30 000 F, aucune avance |
+| G. Les 9 premiers cessent de payer après leur gain | le dernier : +13 500 F | −5 500 F à −2 500 F | +30 000 F, aucune avance |
+| H. Tous sauf le dernier abandonnent dès le tour 2 | le dernier : +22 000 F | −2 000 F à −8 000 F | +30 000 F, avance de 20 000 F au plus, remboursée, **perte 0** |
 
-Lecture : **fuir fait perdre 30 000 F** ; quand des gagnants fuient, les honnêtes
-**gagnent** de l'argent, parce que les cautions saisies leur reviennent.
+À 25 % de caution, les résultats sont les mêmes, sauf l'avance de SwimPay dans le
+cas C (3 500 F, remboursée).
+
+### 11.2 Ce qu'il faut en retenir
+
+- **La tontine ne s'effondre jamais** : même si 9 membres sur 10 cessent de payer,
+  chaque cagnotte est financée par les parts bloquées et les cautions des
+  défaillants, et le dernier touche tout.
+- **SwimPay ne perd jamais rien.** Il peut avancer de l'argent au pire (cas H), dans
+  son plafond de 2 %, et il est remboursé à la clôture.
+- **Fuir ne rapporte rien.** Un défaillant finit toujours plus bas qu'un fidèle,
+  mais **la différence est petite** (−5 500 F contre −3 700 F environ), parce qu'on
+  ne lui prend que le tort et les pénalités. La dissuasion ne vient pas de la
+  punition, elle vient de ce qu'**il n'y a rien à emporter**.
+- **Les fidèles ne profitent pas de la défaillance des autres** au-delà des
+  pénalités (cas E : 700 F de mieux). Le seul cas visible est celui où presque tout
+  le monde abandonne (G, H) : le dernier fidèle reçoit seul la réserve et les
+  pénalités.
+
+### 11.3 Ce que chaque membre a en main pendant la tontine
+
+Pour **tout** gagnant sauf le dernier : il a versé sa caution (30 000 F) et ses
+cotisations, il retire ses cotisations plus 5 000 F. **Il a donc 25 000 F de moins
+en main, du jour de son entrée jusqu'à la clôture**, où sa caution lui revient.
+C'est le choix assumé du §2.
+
+### 11.4 Le catalogue
+
+Sur les 48 formats, dans le pire cas (le tiers des premiers gagnants fuit), **même
+sans caution**, l'avance de 5 % et la réserve de 2 % suffisent pour que SwimPay ne
+paie jamais rien (`tontine-retrait.py`). La caution est donc une marge
+supplémentaire, pas une condition de survie.
 
 ---
 
-## 10. Les limites connues, dites franchement
+## 12. Réponses aux relectures de la version 1
 
-1. **Le premier gagnant ne touche pas « une grosse somme » utilisable.** Sur
-   100 000 F, il peut en retirer 15 000 F le jour du gain, dont 5 000 F seulement
-   sont l'argent des autres. Toute avance plus grosse est de l'argent que le
-   groupe peut perdre. La caution ne change pas ce calcul : c'est son propre
-   argent.
-2. **La caution de 35 % exclut** ceux qui n'ont pas cette somme d'avance, c'est-à-
-   dire une partie de ceux qui ont le plus besoin d'une tontine.
-3. **Quand tout va bien, chaque membre paie 3 900 F sur 100 000 F** (frais et part
-   du bonus). Une tontine de quartier ne coûte rien.
-4. **Saisir tout le reste de la caution** d'un fuyard peut dépasser le tort causé :
-   un juge pourrait réduire cette sanction `[H]`.
-5. **Rembourser une dette sur les entrées futures du compte** demande une clause
-   acceptée par le partenaire EME `[H]`.
-6. **La nature juridique** : une tontine organisée en ligne avec des fonds détenus
-   pourrait être vue comme de la collecte d'épargne, activité réservée `[H]`.
-7. **La carte SIM dupliquée** n'est détectable que si l'opérateur fournit
-   l'information `[H]`.
-8. **La contrainte physique** (quelqu'un forcé de retirer avec son propre
-   téléphone) n'est pas couverte.
-9. Les simulations supposent que les honnêtes paient à l'heure ; **les retards
-   sans fuite** (payer en retard puis rattraper) n'ont pas été simulés.
+### Gemini
 
-Scripts : `design/pivot/sondes/tontine-scenarios.py` (catalogue),
-`tontine-retrait.py` (§9.1), `tontine-scenarios-frais.py` (§9.2),
-`tontine-pret.py` (la tontine comme prêt).
+| # | Question soulevée | Réponse |
+|---|---|---|
+| G1 | **Blanchiment** : des mules font défaut, leurs cautions saisies vont au compte « propre » | Corrigé et fermé. La caution n'est **plus jamais redistribuée** : on n'en prend que le tort, le reste revient au défaillant (§6.5). Seules les pénalités vont à la réserve, partagée à parts égales entre tous les fidèles, sans destinataire choisi. Et l'argent entrant passe le contrôle anti-blanchiment du partenaire (§9) |
+| G2 | **Plafond de 2 M sans banque** : l'argent reste « dans les limbes » | Règle 17 : ces formats exigent une banque vérifiée dès l'entrée ; si elle est fermée au gain, le surplus reste à son nom dans la tontine, chez le partenaire. Les autres ne sont pas débités : l'argent n'a jamais quitté le compte du partenaire |
+| G3 | **Le premier gagnant a moins d'argent qu'avant** (−30 000 F en v1) | **Exact, et assumé.** Avec 30 % de caution : −25 000 F en main jusqu'à la clôture, pour tout gagnant sauf le dernier (§11.3). C'est le choix du fondateur (§2) : la sécurité est la raison d'être du produit |
+| G4 | **Incitation perverse** : les honnêtes gagnent à la défaillance des autres | Corrigé. Sans redistribution des cautions, le gain des fidèles se limite aux pénalités (cas E : quelques centaines de francs) |
+| G5 | **Le retardataire de bonne foi** perd-il sa caution ? | Non. Règles §6.3 et §6.4 : après le délai de grâce, seule la cotisation manquante (et 5 % de pénalité) est prise sur la caution ; dès que de l'argent arrive, la caution est reconstituée ; son tour arrive comme prévu. Cas B simulé : il finit à −6 000 F, contre −3 667 F pour les autres |
+| G6 | **Identité usurpée découverte en cours de route** : qui paie le tour ? | Règle 18 : le tour est payé par la couverture habituelle (§6.3), la victime de l'usurpation n'est jamais débitrice, et si le contrôle d'identité de SwimPay a échoué, c'est une erreur de SwimPay, compensée (règle 12) |
+| G7 | **Supprimer la caution**, ou la remplacer par des garants | La caution est **maintenue** par le fondateur (§2), ramenée à 30 %. Les garants tiers sont écartés en première version : il faudrait prouver leur consentement et leur solvabilité, et ils ouvrent une nouvelle collusion (le garant complice). À étudier plus tard |
+| G8 | **Produit invendable** face à la tontine de quartier gratuite | Le produit ne vise pas à battre la tontine de quartier sur la liquidité, mais sur **la certitude d'être payé**. Coût pour un fidèle : 3 900 F sur 100 000 F. À valider par un test de marché ; c'est la vraie question ouverte |
+| G9 | **Clause pénale excessive** (droit OHADA) | Corrigé : la saisie est limitée au tort causé ; la seule pénalité est de 5 % des sommes couvertes à sa place, fixée d'avance dans le Pacte. Proportionnalité à confirmer par un juriste `[H]` |
+| G10 | **Prélever sur les fonds futurs** sans mandat | Corrigé : le Pacte contient une **autorisation de prélèvement** explicite, signée par code (§6.6). Sa validité est à confirmer avec le partenaire EME `[H]` |
+
+### DeepSeek
+
+| # | Question soulevée | Réponse |
+|---|---|---|
+| D1 | **Ordre de consommation** de la part bloquée non précisé | Précisé au §6.3 : **la part bloquée paie toujours en premier**, puis le compte du membre, puis caution, réserve, avance de SwimPay |
+| D2 | Le calcul du pire cas « 48 sur 48 » est-il juste ? | Oui (§11.4), et il tenait sans caution. Le calcul de la relecture comptait la part libre comme 5 000 F ; elle vaut les cotisations versées + 5 000 F (§6.2) |
+| D3 | **Abandon avant son tour** : sa caution est saisie et son tour annulé ? | Non. Son tour **n'est jamais annulé** : l'ordre est fixé au tirage. Sa cagnotte, à son tour, est entièrement bloquée, rembourse ce qui a été payé pour lui, et le reste lui est rendu (règle 6) |
+| D4 | Le gagnant du tour 5 qui fuit perd 75 000 F ? | Non : il perd son tort et ses pénalités. Cas F (les 5 premiers cessent de payer au tour 6) : chacun finit à −5 500 F, contre −2 300 F pour les fidèles. Il ne peut rien emporter de plus que ce qu'il a mis |
+| D5 | **Si 5 membres fuient, la tontine meurt** | Non. Simulé (cas F, et même 9 fuites, cas G) : les parts bloquées et les cautions des défaillants continuent de payer leurs cotisations ; **chaque cagnotte est financée** |
+| D6 | **Tous fuient sauf le dernier** : que reçoit-il ? | **Sa cagnotte entière**, plus la réserve (cas G : +13 500 F). Si l'argent manquait au moment de son tour, la part manquante lui serait versée à la clôture (§6.3, point 4) |
+| D7 | Il faut une **règle de liquidation** | Ajoutée (règle 20), pour les seuls cas où la tontine ne peut vraiment plus tourner : suspension de plus de 7 jours, ou part différée impayable. Elle ne s'est déclenchée dans aucun scénario simulé |
+| D8 | **Caution progressive, garant, nantissement** | Caution d'entrée maintenue (§2). « Progressive » (prise sur la future cagnotte) : c'est déjà le rôle de la part bloquée. Nantissement sur un bien : impossible à gérer sans humain, écarté. Garant : voir G7 |
+| D9 | **Avance variable selon la place** | C'est déjà le cas : 15 % de la cagnotte au 1er, 55 % au 5e, tout au dernier (§6.2) |
+| D10 | Le **bonus des derniers**, payé par le groupe, pénalise deux fois les premiers | Le fondateur maintient qu'il est payé par le groupe : c'est un rééquilibrage entre membres (les derniers ont attendu), pas un service de SwimPay. Coût : 900 F par membre sur l'exemple |
+| D11 | **Frais de 3 %** : la comparaison avec Money Fellows boite | D'accord : Money Fellows avance la cagnotte, pas SwimPay. Les 3 % paient la garantie que personne ne part avec l'argent (§6.8) |
+| D12 | **Comptes liés** : règle inapplicable, qui décide ? | Critères exacts au §10, appliqués par le code, sans humain. L'effet n'est pas un blocage mais une limite commune d'avance |
+| D13 | **Décès** : la part bloquée et la caution sont-elles saisies ? | Règle 7 : on ne prend que le tort causé ; tout le reste est versé sur son compte, pour sa succession |
+| D14 | **Qualification juridique** (collecte d'épargne, service de paiement, assurance) | **C'est la question n°1, d'accord.** Elle est posée au partenaire EME et à un avocat avant tout lancement. Pistes : que le partenaire agréé porte l'activité, SwimPay n'étant que l'opérateur technique ; ou un partenariat avec un établissement de microfinance `[H]` |
+| D15 | **Saisie totale de la caution** | Corrigé (G9) |
+| D16 | **Dette qui suit** sans clause | Corrigé (G10) |
 
 ---
 
-## 11. Ce qu'on demande aux relecteurs
+## 13. Ce qui reste ouvert
 
-1. **Y a-t-il une façon de voler de l'argent** (à un membre, au groupe, ou à
-   SwimPay) que ces règles laissent passer ? Donnez le scénario pas à pas.
-2. **Une règle est-elle injuste** envers une place de tirage, ou envers un type de
-   membre ?
-3. **Une situation n'a-t-elle pas de règle**, et demanderait donc un humain ?
-4. **La caution de 35 %, l'avance de 5 %, la réserve de 2 %, le bonus de 3 %, les
-   frais de 3 %** : lequel changeriez-vous, pour quelle valeur, et pourquoi ?
-5. **Le produit reste-t-il attractif** face à une tontine de quartier gratuite ?
-6. Quels **risques juridiques** en Côte d'Ivoire et dans l'UEMOA voyez-vous ?
+1. **La qualification juridique** de l'activité (D14). Bloquant avant lancement.
+2. **L'autorisation de prélèvement** et la proportionnalité de la pénalité de 5 %,
+   à valider par un juriste et le partenaire EME.
+3. **L'attractivité** (G8) : la sécurité vaut-elle 25 000 F bloqués et 3 900 F de
+   coût, pour les clients visés ? Seul un test de marché répondra.
+4. **Caution 25 % ou 30 %** : les deux passent tous les scénarios.
+5. Les délais de grâce et de suspension `[H]`.
+6. La SIM dupliquée n'est détectable que si l'opérateur fournit l'information `[H]`.
+7. La contrainte physique (quelqu'un forcé de retirer avec son propre téléphone)
+   n'est pas couverte.
 
-Merci de distinguer ce qui est **bloquant** de ce qui est un **détail**.
+---
+
+## 14. Ce qu'on demande aux relecteurs
+
+1. **Y a-t-il encore un moyen de voler** un membre, le groupe ou SwimPay ? Scénario
+   pas à pas, avec des chiffres.
+2. **Une situation n'a-t-elle pas de règle**, et demanderait un humain ?
+3. **Une règle se contredit-elle** avec une autre ?
+4. Une réponse du §12 vous paraît-elle fausse ? Laquelle, et pourquoi ?
+
+Merci de distinguer ce qui est **bloquant** de ce qui est un **détail**, et de
+vérifier vos calculs avec les définitions du §5.
