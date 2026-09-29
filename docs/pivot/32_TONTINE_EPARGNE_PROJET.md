@@ -1,5 +1,9 @@
 # Les modes Épargne et Projet de la tontine SwimPay
 
+> **EN ATTENTE (LO, 29/09/2026)** : seule la tontine classique avance. Les modes
+> Épargne et Projet attendent une réflexion plus approfondie ; ce document est un
+> premier jet, non validé en l'état.
+
 > Écrit le 29 septembre 2026, après validation de LO. **L'épargne et le projet sont
 > deux modes de la tontine, chacun avec un but, et chacun facturé.** Ils reprennent
 > les principes de la tontine classique (`31`) : aucun humain ne décide, la même
