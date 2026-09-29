@@ -33,7 +33,7 @@
 | **Celui qui fuit** | Il perd son bloqué et sa part de réserve ; sa dette est remboursée par tout argent qui arrive ensuite sur son compte |
 | **Caution** (LO, 29/09) | **35 % de la cagnotte, gelée tout l'événement**, rendue à la fin. Celui qui fuit la perd, elle revient aux membres honnêtes. Celui qui arrête **avant** d'avoir gagné : sa prise paie ses cotisations manquées, le reste lui est rendu à la fin (`tontine-scenarios-frais.py`) |
 | **Bonus du dernier tiers** | **3 % de la cagnotte** à chaque gagnant du dernier tiers des tours, payé par le groupe. Validé |
-| **Frais SwimPay** | En test : 2 % ou 5 % de la cagnotte, au gain. À trancher |
+| **Frais SwimPay** | **3 % de la cagnotte, prélevés au gain.** Présentés au client comme **les frais du système** : ce qui garantit que personne ne part avec l'argent. Repère : le collecteur de tontine garde environ une mise par mois, soit ~3 % `[H]`. Money Fellows (Égypte) facture l'argent reçu tôt (jusqu'à 16 %, 0 % au milieu, cashback aux 3 dernières places) ; non transposable ici, notre avance étant de 5 % seulement. Cas joyeux, exemple de LO : chaque membre −3 900 F, les 3 derniers −900 F, SwimPay +30 000 F par tontine. Validé par LO le 29/09 |
 | **La limite connue** | Un gagnant tôt ne peut utiliser tout de suite que 5 % de l'argent des autres. C'est le prix de la sûreté : toute avance plus grosse est de l'argent que le groupe peut perdre |
 
 ---
