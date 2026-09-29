@@ -3,8 +3,8 @@
 
    Regles simulees (doc 31) :
      - caution de 30 % de la cagnotte, versee a l'entree, gelee tout l'evenement ;
-     - jour du gain : retrait possible = cotisations deja versees + 5 % de la cagnotte ;
-       le reste est BLOQUE et paie les cotisations suivantes EN PREMIER ;
+     - jour du gain : la cagnotte garde de cote TOUTES les mises restantes du gagnant
+       (decision de LO, 29/09) ; elles sont prelevees dessus ; il recupere le reste ;
      - frais du systeme 3 % et reserve 2 %, preleves sur la cagnotte au gain ;
      - une cotisation non payee a l'echeance (apres le delai de grace) est couverte,
        dans l'ordre : part bloquee, caution, reserve, avance de SwimPay ;
@@ -37,6 +37,7 @@ def joue(absences, caution_pct=CAUTION_PCT):
     caution = {i: caution0 for i in M}
     dette_reserve = {i: 0 for i in M}             # ce que la reserve a paye pour lui
     dette_swimpay = {i: 0 for i in M}             # ce que SwimPay a avance pour lui
+    manquees = {i: 0 for i in M}                  # echeances manquees : un fidele n'en a aucune
     reserve = revenu = avance_max = 0
     avance_en_cours = 0
     plafond_sw = N * C * T * 2 // 100
@@ -71,6 +72,7 @@ def joue(absences, caution_pct=CAUTION_PCT):
             dette_swimpay[i] += sw; avance_en_cours += sw; besoin -= sw
             dette_reserve[i] += besoin; manque_tour += besoin          # non couvert : differe
             reserve += penalite                                        # la penalite va a la reserve
+            manquees[i] += 1
             avance_max = max(avance_max, avance_en_cours)
         # 2. le gagnant du tour
         g = t
@@ -79,7 +81,7 @@ def joue(absences, caution_pct=CAUTION_PCT):
         net = CAGNOTTE - frais - mise
         manque = min(manque_tour, reserve + 0) * 0 + manque_tour
         differe[g] += manque; net -= manque
-        libre = 0 if absent(g, t) else min(net, C * t + CAGNOTTE * AVANCE_PCT // 100)
+        libre = 0 if absent(g, t) else net - (T - t) * C
         libre = max(0, libre)
         poche_entree[g] += libre
         bloque[g] += net - libre
@@ -96,7 +98,7 @@ def joue(absences, caution_pct=CAUTION_PCT):
     impaye_reserve = sum(dette_reserve.values())
     for g in DERNIERS:
         b = min(reserve, CAGNOTTE * BONUS_PCT // 100); reserve -= b; poche_entree[g] += b
-    fideles = [i for i in M if i not in absences]
+    fideles = [i for i in M if manquees[i] == 0] or list(M)
     part, reste = divmod(reserve, len(fideles))
     for k, i in enumerate(fideles):
         poche_entree[i] += part + (1 if k < reste else 0)
