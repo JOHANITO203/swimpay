@@ -77,7 +77,7 @@ LO dans le dossier (« avoir 100 000 F gelés » pour une tontine de 100 000 F) 
 au membre d'avoir déjà la somme qu'il cherche à obtenir.
 
 Ce n'est pas une erreur en soi, c'est **un choix à assumer** : pour un inconnu,
-c'est la seule configuration sans risque (notre niveau Pousse). Mais le dossier
+c'est la seule configuration sans risque (notre nouveau membre). Mais le dossier
 présente ce pré-blocage comme une protection d'un crédit, alors qu'il **supprime le
 crédit**. Le crédit ne revient que pour des membres de confiance, avec un fonds de
 garantie dimensionné : c'est ce que notre catalogue règle par les niveaux.

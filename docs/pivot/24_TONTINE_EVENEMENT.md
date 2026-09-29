@@ -168,7 +168,7 @@ retenues monte.
 
 > **Précisé par `25_TONTINE_CATALOGUE.md`** : les taux de 80 % et 40 % ci-dessous
 > étaient une première approche. Le moteur éprouvé fixe la retenue par niveau
-> (Pousse, Tronc, Baobab) et par format, d'après le pire scénario simulé.
+> (nouveau, confirmé, très fiable) et par format, d'après le pire scénario simulé.
 
 Ce que dit ce tableau :
 

@@ -80,7 +80,7 @@ grade entreprise d'une application.
 | **I2** | **Personne ne déplace un franc bloqué hors des règles**, ni un membre, ni l'organisateur, ni SwimPay. Aucune exception à la main : chaque situation a sa règle écrite d'avance (`28` §5) | M10 |
 | **I3** | **Après le tirage, rien ne change** : montant, rythme, membres, ordre. Le Pacte est scellé par une empreinte, vérifiée à chaque action | M6, M7 |
 | **I4** | **Le gagnant d'un tour reçoit toujours sa prise complète**, dans les limites prouvées par le catalogue | M12, M14 |
-| **I5** | **Un membre Pousse ne fait courir aucun risque au groupe**, par construction | M12, M5 |
+| **I5** | **Un nouveau membre ne fait courir aucun risque au groupe**, par construction | M12, M5 |
 | **I6** | **SwimPay ne gagne jamais sur les garanties** : ses revenus ne viennent que des frais. Le fonds non utilisé revient aux membres | M9, M13 |
 | **I7** | **Chaque changement d'état a un motif** et laisse un événement dans le Carnet | M7, M19 |
 | **I8** | **Tout est en entiers XOF**, comme le reste du Cerveau | M9 |
@@ -101,7 +101,7 @@ c'est là qu'une arnaque est la moins chère à arrêter.
 | **M1 Identité unique** | Une pièce d'identité = une personne = une place par événement. Numéro principal vérifié | Faux comptes, comptes multiples |
 | **M2 Graphe des liens** | Repère les comptes liés : même appareil, mêmes sources de recharge, comptes créés ensemble, argent qui circule en boucle entre eux. **Il ne bloque rien** : les comptes liés sont traités comme **un seul emprunteur**, leurs découverts additionnés sous une seule limite, et leurs retenues montent d'elles-mêmes (`28` §4) | La bande, l'organisateur qui remplit avec ses comptes |
 | **M3 Éligibilité et preuve des fonds** | Test automatique : pièce, **caution et première cotisation bloquées immédiatement**, capacité à tenir sur les entrées réelles, limites d'engagement | L'arnaqueur sans argent |
-| **M4 Réputation** | Les niveaux **Pousse, Tronc, Baobab**, gagnés en terminant des événements. Le score global suit le membre d'un événement à l'autre ; il est exportable plus tard | Le défaillant qui recommence ailleurs |
+| **M4 Réputation** | Trois niveaux : **nouveau, confirmé, très fiable**, gagnés en terminant des événements. Le score global suit le membre d'un événement à l'autre ; il est exportable plus tard | Le défaillant qui recommence ailleurs |
 
 **Les deux modes** (apport DeepSeek, corrigé par la revue) sont **un réglage de
 recrutement, et rien d'autre** :

@@ -68,9 +68,9 @@ Il se gagne en terminant des tontines.
 
 | Niveau | Nom | Comment on y arrive `[H]` | Découvert autorisé |
 |---|---|---|---|
-| 1 | **Pousse** | Entrée : pièce d'identité et preuve des fonds | **aucun** : sa retenue et sa caution couvrent tout |
-| 2 | **Tronc** | Deux événements terminés sans aucun retard | une cotisation |
-| 3 | **Baobab** | Cinq événements terminés, dont un Relais ou un Marathon | deux cotisations |
+| 1 | **Nouveau membre** | Entrée : pièce d'identité et preuve des fonds | **aucun** : sa retenue et sa caution couvrent tout |
+| 2 | **Membre confirmé** | Deux événements terminés sans aucun retard | une cotisation |
+| 3 | **Membre très fiable** | Cinq événements terminés, dont un Relais ou un Marathon | deux cotisations |
 
 ---
 
@@ -86,7 +86,7 @@ Chaque règle du système porte un nom, que l'utilisateur apprend en jouant :
 | **La Prise protégée** | Le gagnant reçoit sa prise, moins la retenue qui paie ses cotisations restantes | 6 |
 | **Le Filet** | Retenue, caution, fonds de garantie, puis SwimPay : le gagnant reçoit toujours sa prise complète | 7 |
 | **Le Carnet** | Le journal de l'événement, visible par tous, impossible à modifier | 9 |
-| **La Réputation** | Pousse, Tronc, Baobab : ce que chaque membre emporte d'un événement à l'autre | 2 |
+| **La Réputation** | Nouveau, confirmé, très fiable : ce que chaque membre emporte d'un événement à l'autre | 2 |
 
 ---
 
@@ -103,18 +103,18 @@ des tours), puis SwimPay. Un niveau n'est accordé dans un format que si **le re
 
 ### 4.2 Ce que l'épreuve a montré
 
-**Au niveau Pousse, aucun des 48 formats ne demande un seul franc de recours, dans
+**Pour un nouveau membre, aucun des 48 formats ne demande un seul franc de recours, dans
 aucun scénario.** Le système est sûr pour tout le monde, même entre inconnus : c'est
 ce qui permet d'ouvrir des tontines à des gens qui ne se connaissent pas.
 
-Le prix de cette sécurité : un membre Pousse **ne reçoit pas d'avance**. Tiré tôt, il
+Le prix de cette sécurité : un nouveau membre **ne reçoit pas d'avance**. Tiré tôt, il
 touche à peu près ce qu'il a déjà engagé. Pour lui, la tontine est une **épargne à
 suspense** : zéro risque, un tirage à suivre, et une réputation qui monte. C'est en
-devenant Tronc puis Baobab qu'il gagne le droit de toucher avant d'avoir payé.
+devenant confirmé puis très fiable qu'il gagne le droit de toucher avant d'avoir payé.
 
 **L'avance des niveaux supérieurs dépend de la taille du fonds de garantie** :
 
-| Fonds de garantie | Recours SwimPay au plus | Formats où un **Tronc** passe | Formats où un **Baobab** passe |
+| Fonds de garantie | Recours SwimPay au plus | Formats où un **confirmé** passe | Formats où un **très fiable** passe |
 |---|---|---|---|
 | 1 % | 0 % | 0 / 48 | 0 / 48 |
 | 1 % | 2 % | 7 / 48 | 0 / 48 |
@@ -130,7 +130,7 @@ n'est que de l'argent bloqué le temps de l'événement.
 ### 4.3 La règle du moteur
 
 L'app ne propose à un membre **que l'avance que son format a prouvé pouvoir couvrir**.
-Si le format ne passe pas l'épreuve pour son niveau, il est traité comme une Pousse
+Si le format ne passe pas l'épreuve pour son niveau, il est traité comme un nouveau membre
 dans ce format-là. Aucune décision à la main : le moteur applique le résultat de
 l'épreuve.
 
@@ -168,7 +168,7 @@ créer.**
 - [ ] **Le fonds de garantie** (3 % proposé, rendu à la clôture) et le **plafond de
       recours SwimPay** (2 % proposé).
 - [ ] Les **bornes** des rythmes : tours et cotisations.
-- [ ] Les **noms** : Éclair, Relais, Marathon ; Cercle, Clan, Tribu ; Pousse, Tronc,
-      Baobab. À garder, à changer, ou à mettre en nouchi ?
+- [ ] Les **noms** : Éclair, Relais, Marathon ; Cercle, Clan, Tribu .
+      Les niveaux de confiance restent en mots simples : nouveau, confirmé, très fiable (décision de LO, 29/09). À garder, à changer, ou à mettre en nouchi ?
 - [ ] Les conditions de passage d'un niveau à l'autre.
 - [ ] Les délais de recrutement et de grâce.

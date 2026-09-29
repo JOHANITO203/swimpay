@@ -94,7 +94,7 @@ ce que le système peut couvrir s'il disparaît.** C'est la retenue calculée
 Le même exemple, **avec** la prise protégée. Ce que le membre a en main de l'argent
 des autres, en tours-francs (`design/pivot/sondes/tontine-pret.py`) :
 
-| Tiré au tour | Sans protection (tontine de quartier) | **Pousse** | **Tronc** | **Baobab** |
+| Tiré au tour | Sans protection (tontine de quartier) | **Nouveau** | **Confirmé** | **Très fiable** |
 |---|---|---|---|---|
 | 1 | 100 000 | **0** | 30 000 | 50 000 |
 | 2 | 60 000 | 0 | 20 000 | 30 000 |
@@ -103,11 +103,11 @@ des autres, en tours-francs (`design/pivot/sondes/tontine-pret.py`) :
 | 5 | 0 | 0 | 0 | 0 |
 
 **Le premier n'emporte plus la cagnotte : il n'emporte que son découvert.** Au pire
-10 000 F pour un Tronc, 20 000 F pour un Baobab, que le Filet couvre. S'en aller ne
+10 000 F pour un membre confirmé, 20 000 F pour un très fiable, que le Filet couvre. S'en aller ne
 lui rapporte presque rien, et lui coûte sa réputation et une dette qui le suit
 (§5, ligne 7).
 
-**Le revers, qu'il faut regarder en face.** Un membre **Pousse** tiré au premier tour
+**Le revers, qu'il faut regarder en face.** Un **nouveau membre** tiré au premier tour
 reçoit exactement ce qu'il a mis : sa caution et sa première cotisation. **Pour lui,
 la tontine n'est pas un crédit, c'est une épargne.** L'avance, qui fait l'intérêt
 d'une tontine, se gagne en montant de niveau. Le réglage du produit est là :
@@ -134,7 +134,7 @@ tous :
 > multiplié par ce qu'ils ont eu en main, en tours-francs. Le total est partagé
 > entre ceux qui ont attendu, au prorata de ce qu'ils ont avancé.**
 
-Sur l'exemple, niveau **Tronc**, taux de 1 % par tour, pour chaque gagnant :
+Sur l'exemple, membre **confirmé**, taux de 1 % par tour, pour chaque gagnant :
 
 | Tiré au tour | Il a eu en main | Il a avancé | **Loyer du temps** |
 |---|---|---|---|
@@ -151,7 +151,7 @@ Ce que cette règle garantit, mesuré :
 - **elle est impartiale** : personne ne choisit sa place, et la même formule
   s'applique à chacun selon la place que le hasard lui donne ;
 - **elle suit le risque réel** : sans découvert, personne n'a l'argent des autres en
-  main, et il n'y a rien à compenser. Entre des Pousse, le loyer vaut zéro partout ;
+  main, et il n'y a rien à compenser. Entre nouveaux membres, le loyer vaut zéro partout ;
 - **elle ne peut pas être impayée** : le loyer du débiteur est connu dès le tirage et
   **prélevé sur sa prise**. Celui des créanciers leur est versé à la clôture.
 
@@ -242,7 +242,7 @@ justice), traitées au niveau du compte, jamais par la tontine.
 | **Le créateur** (l'organisateur) | Réunir son groupe, voir la tontine avancer | Être tenu pour responsable si quelqu'un ne paie pas | Il ne détient ni l'argent ni l'ordre ; **il n'est responsable de rien** : le système l'est. Il ne peut ni tricher, ni être accusé de tricher |
 | **L'utilisateur de bonne foi** | Recevoir sa prise complète, à la date prévue | Qu'un autre parte avec l'argent | **Sa prise complète**, toujours (I4). S'il est tiré tard, **le loyer du temps le paie** pour avoir prêté |
 | **L'utilisateur de mauvaise foi** | Toucher tôt et partir ; ou tricher sur l'ordre ; ou entrer avec plusieurs comptes | — | Il ne peut emporter que ce que le Filet couvre. L'ordre ne dépend pas de lui. Ses comptes liés ne comptent que pour un. **L'arnaque ne rapporte rien** |
-| **Celui qui ne sait pas** | Participer comme dans une tontine de quartier | Se tromper sans le savoir | **Avant de signer, il voit ses propres chiffres** : ce qu'il paie, chaque jour ; ce qu'il recevra selon sa place ; la retenue ; le loyer ; ce qui se passe s'il ne paie pas. Surtout, s'il est Pousse, **on lui dit en clair que tiré au premier tour, il ne recevra que ce qu'il a mis**. C'est le malentendu le plus probable, donc le litige le plus probable. Une double confirmation empêche l'entrée par erreur. Et le niveau Pousse le protège : il ne peut rien perdre |
+| **Celui qui ne sait pas** | Participer comme dans une tontine de quartier | Se tromper sans le savoir | **Avant de signer, il voit ses propres chiffres** : ce qu'il paie, chaque jour ; ce qu'il recevra selon sa place ; la retenue ; le loyer ; ce qui se passe s'il ne paie pas. Surtout, s'il est nouveau, **on lui dit en clair que tiré au premier tour, il ne recevra que ce qu'il a mis**. C'est le malentendu le plus probable, donc le litige le plus probable. Une double confirmation empêche l'entrée par erreur. Et comme nouveau membre, il ne peut rien perdre |
 | **SwimPay** | Faire tourner le service sans risque de faillite ni de poursuite | Porter un risque non maîtrisé, promettre ce qu'il ne tient pas | Son risque est **plafonné** (dernier recours borné, prouvé par le simulateur). Il ne promet que les invariants que le code vérifie. **Le déterminisme est sa défense** : chaque décision se rejoue et se prouve, devant un membre comme devant un juge |
 
 ---
@@ -251,7 +251,7 @@ justice), traitées au niveau du compte, jamais par la tontine.
 
 - [ ] **L'avance** (§3.1) : le fonds de garantie, rendu à la clôture, à 1 %, 3 %
       ou 5 % du tour. C'est lui qui décide si la tontine SwimPay est un crédit ou une
-      épargne. Et, pour un Pousse tiré premier qui ne reçoit que ce qu'il a mis :
+      épargne. Et, pour un nouveau membre tiré premier qui ne reçoit que ce qu'il a mis :
       accepter (la première tontine est une épargne, l'avance se gagne), ou lui ouvrir
       aussi un découvert.
 - [ ] **Le loyer du temps** (§3.2) : l'adopter, son taux annuel, et le choix
