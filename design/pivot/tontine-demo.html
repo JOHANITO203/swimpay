@@ -41,10 +41,10 @@ button, input { font: inherit; color: inherit; }
 @keyframes entre { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
 @keyframes entre-retour { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
 
-.hero { position: relative; flex: none; border-radius: 0 0 36px 36px; overflow: hidden; background: var(--grad-hero); color: var(--encre-acide); }
+.hero { position: relative; flex: none; border-radius: 0 0 36px 36px; overflow: hidden; background: var(--grad-hero); color: var(--encre-acide); display: flex; flex-direction: column; gap: 14px; padding: 54px 18px 18px; }
 .hero::after { content: ""; position: absolute; inset: 0; background: var(--voile-hero); pointer-events: none; }
-.hero .haut { position: absolute; top: 54px; left: 16px; right: 16px; z-index: 3; display: flex; align-items: center; gap: 12px; }
-.hero .dessus { position: absolute; left: 18px; right: 18px; bottom: 18px; z-index: 2; display: flex; flex-direction: column; gap: 10px; }
+.hero .haut { position: relative; z-index: 3; display: flex; align-items: center; gap: 12px; min-height: 40px; }
+.hero .dessus { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
 .titre { margin: 0; font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .9; text-transform: uppercase; text-wrap: balance; }
 .surtitre { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(20,20,20,.66); }
 .rond { width: 40px; height: 40px; border-radius: 99px; flex: none; display: grid; place-items: center; cursor: pointer; background: rgba(20,20,20,.08); border: 1px solid rgba(20,20,20,.18); color: var(--encre-acide); font-size: 18px; }
@@ -207,8 +207,8 @@ td.neg { color: var(--encre); }
 .nav button[aria-current="page"] { background: var(--acide); color: var(--encre-acide); }
 .nav .pastille { position: absolute; top: 7px; right: 12px; width: 9px; height: 9px; border-radius: 99px; background: var(--erreur); border: 2px solid #1c1c1c; }
 .vue.avec-nav .bas { padding-bottom: 100px; }
-.notif { position: absolute; top: 52px; left: 10px; right: 10px; z-index: 25; border-radius: 26px; padding: 12px 12px 12px 14px; background: rgba(36,36,36,.97); border: 1px solid var(--gris); box-shadow: 0 18px 40px -12px rgba(0,0,0,.8); display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; transform: translateY(-140%); transition: transform 420ms var(--tiroir); }
-.notif.visible { transform: none; }
+.notif { position: absolute; top: 52px; left: 10px; right: 10px; z-index: 25; border-radius: 26px; padding: 12px 12px 12px 14px; background: rgba(36,36,36,.97); border: 1px solid var(--gris); box-shadow: 0 18px 40px -12px rgba(0,0,0,.8); display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; transform: translateY(calc(-100% - 70px)); opacity: 0; visibility: hidden; transition: transform 420ms var(--tiroir), opacity 200ms, visibility 0s 420ms; }
+.notif.visible { transform: none; opacity: 1; visibility: visible; transition: transform 420ms var(--tiroir), opacity 200ms, visibility 0s; }
 .notif .ico { width: 38px; height: 38px; border-radius: 12px; background: var(--acide); color: var(--encre-acide); display: grid; place-items: center; font-weight: 800; font-family: var(--titre); font-stretch: 72%; font-size: 18px; }
 .notif .txt { font-size: 13px; line-height: 1.3; min-width: 0; }
 .notif .txt b { display: block; font-size: 13.5px; }
@@ -526,7 +526,7 @@ function aller(ecran, opts = {}) {
 function retour() { arreter(); E.ecran = E.pile.pop() || "accueil"; E.sens = "retour"; fermerFeuille(true); rendre(); }
 
 /* ======================= briques ======================= */
-const hero = (h, haut, dessus) => "<div class='hero' style='height:" + h + "'><div class='haut'>" + haut + "</div><div class='dessus'>" + dessus + "</div></div>";
+const hero = (h, haut, dessus) => "<div class='hero' style='min-height:" + h + "'><div class='haut'>" + haut + "</div><div class='dessus'>" + dessus + "</div></div>";
 const btnRetour = "<button class='rond' data-retour aria-label='Retour'>←</button><div style='flex:1'></div>";
 const titre = (t, px, sur) => (sur ? "<span class='surtitre'>" + sur + "</span>" : "") + "<h1 class='titre' style='font-size:" + px + "px'>" + t + "</h1>";
 const montantHTML = (m) => F(m).replace(NBSP + "F", "<small>" + NBSP + "F</small>");
