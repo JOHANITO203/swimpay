@@ -31,6 +31,9 @@
 | **Sécurité des retraits** | Deux niveaux à chaque retrait de la tontine : code ou empreinte, et confirmation extérieure. Contre le vol du téléphone |
 | **Le dernier** | Un bonus de 2 % à 5 % de sa cagnotte, **payé par le groupe** (et dit comme tel dans le Pacte), à la place du « loyer du temps » du §3.2. Montant et nombre de places concernées : à trancher |
 | **Celui qui fuit** | Il perd son bloqué et sa part de réserve ; sa dette est remboursée par tout argent qui arrive ensuite sur son compte |
+| **Caution** (LO, 29/09) | **35 % de la cagnotte, gelée tout l'événement**, rendue à la fin. Celui qui fuit la perd, elle revient aux membres honnêtes. Celui qui arrête **avant** d'avoir gagné : sa prise paie ses cotisations manquées, le reste lui est rendu à la fin (`tontine-scenarios-frais.py`) |
+| **Bonus du dernier tiers** | **3 % de la cagnotte** à chaque gagnant du dernier tiers des tours, payé par le groupe. Validé |
+| **Frais SwimPay** | En test : 2 % ou 5 % de la cagnotte, au gain. À trancher |
 | **La limite connue** | Un gagnant tôt ne peut utiliser tout de suite que 5 % de l'argent des autres. C'est le prix de la sûreté : toute avance plus grosse est de l'argent que le groupe peut perdre |
 
 ---
