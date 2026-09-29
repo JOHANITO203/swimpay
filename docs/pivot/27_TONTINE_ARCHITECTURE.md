@@ -77,7 +77,7 @@ grade entreprise d'une application.
 | # | Invariant | Vérifié par |
 |---|---|---|
 | **I1** | **Conservation de l'argent** : à tout instant, cotisations reçues = prises versées + retenues + fonds de garantie + frais + montants en attente. Au franc près | M9, M23 |
-| **I2** | **Personne ne déplace un franc bloqué hors des règles.** Aucune exception à la main ; l'arbitrage (M18) passe par une double validation et un motif | M10 |
+| **I2** | **Personne ne déplace un franc bloqué hors des règles**, ni un membre, ni l'organisateur, ni SwimPay. Aucune exception à la main : chaque situation a sa règle écrite d'avance (`28` §5) | M10 |
 | **I3** | **Après le tirage, rien ne change** : montant, rythme, membres, ordre. Le Pacte est scellé par une empreinte, vérifiée à chaque action | M6, M7 |
 | **I4** | **Le gagnant d'un tour reçoit toujours sa prise complète**, dans les limites prouvées par le catalogue | M12, M14 |
 | **I5** | **Un membre Pousse ne fait courir aucun risque au groupe**, par construction | M12, M5 |
@@ -99,7 +99,7 @@ c'est là qu'une arnaque est la moins chère à arrêter.
 | Module | Rôle | Ce qu'il arrête |
 |---|---|---|
 | **M1 Identité unique** | Une pièce d'identité = une personne = une place par événement. Numéro principal vérifié | Faux comptes, comptes multiples |
-| **M2 Graphe des liens** | Repère les comptes liés : même appareil, mêmes sources de recharge, comptes créés ensemble, argent qui circule en boucle entre eux. Donne un **score de collusion** à chaque groupe | La bande, l'organisateur qui remplit avec ses comptes |
+| **M2 Graphe des liens** | Repère les comptes liés : même appareil, mêmes sources de recharge, comptes créés ensemble, argent qui circule en boucle entre eux. **Il ne bloque rien** : les comptes liés sont traités comme **un seul emprunteur**, leurs découverts additionnés sous une seule limite, et leurs retenues montent d'elles-mêmes (`28` §4) | La bande, l'organisateur qui remplit avec ses comptes |
 | **M3 Éligibilité et preuve des fonds** | Test automatique : pièce, **caution et première cotisation bloquées immédiatement**, capacité à tenir sur les entrées réelles, limites d'engagement | L'arnaqueur sans argent |
 | **M4 Réputation** | Les niveaux **Pousse, Tronc, Baobab**, gagnés en terminant des événements. Le score global suit le membre d'un événement à l'autre ; il est exportable plus tard | Le défaillant qui recommence ailleurs |
 
@@ -151,8 +151,8 @@ single-flight).
 | **M14 Filet** | Dans l'ordre : retenue du défaillant, sa caution, le fonds de garantie de l'événement, puis **SwimPay en dernier recours**, dans un plafond fixé |
 | **M15 Défaut et recouvrement** | L'échelle graduée (apport DeepSeek, resserrée) : rappel → délai de grâce → pénalité → saisie par le Filet → exclusion → recouvrement civil. **La PLCC seulement en cas de fraude** : fausse identité, comptes multiples, collusion organisée |
 | **M16 Remplacement** | La règle que le dossier DeepSeek n'avait pas : **un remplaçant paie d'abord les cotisations déjà échues, ou prend la dernière place**. Remplacement possible seulement si le partant **n'a pas encore reçu** ; s'il a reçu, sa dette est née et relève de M15 |
-| **M17 Événements de vie** | La procédure de décès (apport DeepSeek) : certificat, vérification en 7 jours, puis trois cas : *pas encore reçu* (remplacement ou remboursement des ayants droit), *déjà reçu* (le Filet couvre les tours restants), *gagnant à venir* (la prise revient aux ayants droit). Même logique pour une incapacité reconnue |
-| **M18 Litiges** | L'arbitrage SwimPay, avec le Carnet comme preuve. **Toute décision qui déplace de l'argent passe par deux personnes**, avec un motif, et se voit dans le Carnet |
+| **M17 Événements de vie** | **La tontine n'a pas besoin de connaître la cause d'un défaut.** Un décès ou une incapacité suit la même échelle qu'un impayé (M15, M16). Ce qui revient au membre est versé sur son compte SwimPay, et la succession se règle au niveau du compte, selon la loi, hors de la tontine (`28` §5, ligne 8). *La procédure du dossier DeepSeek (certificat vérifié en 7 jours) demandait un humain : écartée* |
+| **M18 Litiges** | **Aucun arbitre.** Chaque litige possible a sa règle et sa preuve : le Carnet, le tirage vérifiable, le Pacte signé avec les chiffres du membre. Une erreur prouvée de SwimPay est compensée automatiquement par une réserve d'incidents (`28` §5, lignes 9 à 13) |
 
 ### S6 · Surveillance — *la confiance*
 
@@ -175,7 +175,7 @@ nommés**, chacun avec un motif, que le Carnet enregistre tous :
 |---|---|---|
 | `tontine.creee` | M7 | M5, M19 |
 | `membre.admis` · `membre.refuse` | M3 | M7, M19, M2 |
-| `groupe.lien_suspect` | M2 | M20, M7 (bloque le tirage si seuil dépassé) |
+| `groupe.lien_detecte` | M2 | M12 (additionne les découverts liés), M20 |
 | `pacte.signe` · `pacte.scelle` | M6 | M7, M19 |
 | `tirage.engage` · `tirage.revele` | M8 | M7, M19 |
 | `cotisation.due` · `cotisation.bloquee` · `cotisation.manquee` | M11 | M9, M14, M15, M19 |
@@ -198,7 +198,7 @@ Un système de grade entreprise se juge à ce qu'il fait quand ça casse.
 |---|---|
 | **Le partenaire EME ou un rail ne répond pas à l'échéance** | L'événement passe en **Suspendu** : l'horloge s'arrête, aucun membre n'est compté en retard (I10), tout reprend à la même place. Les membres sont prévenus |
 | **Un versement de prise échoue en cours de route** | Il n'est **jamais relancé à l'aveugle** : on vérifie d'abord ce qui est réellement parti (la leçon du Cerveau pour la FNE), puis on complète |
-| **La réconciliation quotidienne trouve un écart** (I1) | L'événement concerné est gelé, l'équipe est alertée, aucun versement ne part tant que l'écart n'est pas expliqué |
+| **La réconciliation quotidienne trouve un écart** (I1) | L'écart est une faute de SwimPay : la réserve d'incidents le comble aussitôt et la tontine continue. Au-delà de la réserve, l'événement passe en **Suspendu**. L'enquête se fait à côté, sans bloquer les membres (`28` §5, ligne 21) |
 | **SwimPay fait faillite** (Q6 du dossier DeepSeek) | Les fonds sont chez le partenaire EME, sur un compte dédié, **hors du bilan de SwimPay** (`03_RESEARCH_COMPLETE.md` §1.4). Le Grand livre permet de rendre à chacun sa part. **À vérifier dans le contrat EME** |
 | **Un tirage est interrompu** (réseau, application fermée) | Le tirage n'est révélé que lorsqu'il est complet ; s'il est interrompu, il reprend avec la même empreinte, sans possibilité de retirer le résultat |
 
@@ -219,12 +219,12 @@ Un système de grade entreprise se juge à ce qu'il fait quand ça casse.
 
 ## 7. Ce que LO et moi devons encore trancher sur le cœur
 
-- [ ] **Le seuil de collusion** (M2) qui bloque un tirage : combien de membres liés
-      entre eux tolère-t-on dans un même événement ?
 - [ ] **Le plafond du dernier recours SwimPay** (M14) : 2 % de la collecte, comme
       éprouvé dans `25` ?
-- [ ] **Qui sont les deux personnes** qui valident un arbitrage d'argent (M18), au
-      démarrage de la société ?
 - [ ] **Le délai de suspension maximal** (§5) avant d'annuler et de tout rendre.
+
+Le seuil de collusion et les « deux personnes » d'arbitrage ont disparu : LO a
+posé le 29/09 que le système fonctionne **sans aucune intervention humaine**.
+Les autres décisions du cœur sont dans `28_TONTINE_CONTROLE.md` §7.
 
 Étape suivante : **la facturation du service de tontine.**
