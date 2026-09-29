@@ -199,12 +199,74 @@ td.neg { color: var(--encre); }
   .tel { width: 100%; height: 780px; border-radius: 40px; padding: 7px; }
   .ecran { border-radius: 34px; }
 }
+
+/* ---------- v2 : l'app autour de la tontine ---------- */
+.nav { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 15; display: flex; gap: 6px; padding: 6px; border-radius: 999px; background: rgba(28,28,28,.94); border: 1px solid var(--trait); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.nav button { width: 58px; height: 54px; border-radius: 99px; border: 0; background: none; cursor: pointer; display: grid; place-items: center; gap: 0; color: var(--sourd); font-size: 10px; font-weight: 600; letter-spacing: .02em; position: relative; }
+.nav button svg { width: 21px; height: 21px; }
+.nav button[aria-current="page"] { background: var(--acide); color: var(--encre-acide); }
+.nav .pastille { position: absolute; top: 7px; right: 12px; width: 9px; height: 9px; border-radius: 99px; background: var(--erreur); border: 2px solid #1c1c1c; }
+.vue.avec-nav .bas { padding-bottom: 100px; }
+.notif { position: absolute; top: 52px; left: 10px; right: 10px; z-index: 25; border-radius: 26px; padding: 12px 12px 12px 14px; background: rgba(36,36,36,.97); border: 1px solid var(--gris); box-shadow: 0 18px 40px -12px rgba(0,0,0,.8); display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; transform: translateY(-140%); transition: transform 420ms var(--tiroir); }
+.notif.visible { transform: none; }
+.notif .ico { width: 38px; height: 38px; border-radius: 12px; background: var(--acide); color: var(--encre-acide); display: grid; place-items: center; font-weight: 800; font-family: var(--titre); font-stretch: 72%; font-size: 18px; }
+.notif .txt { font-size: 13px; line-height: 1.3; min-width: 0; }
+.notif .txt b { display: block; font-size: 13.5px; }
+.notif .txt small { color: var(--sourd); font-size: 11.5px; }
+.notif .voir { border: 0; border-radius: 99px; background: var(--encre); color: var(--fond); font-weight: 600; font-size: 13px; padding: 8px 14px; cursor: pointer; }
+.actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.action-ronde { display: grid; justify-items: center; gap: 7px; border: 0; background: none; cursor: pointer; font-size: 12.5px; color: var(--encre); }
+.action-ronde span { width: 56px; height: 56px; border-radius: 99px; display: grid; place-items: center; border: 1px solid var(--gris); font-size: 20px; }
+.action-ronde.acide span { background: var(--acide); border-color: var(--acide); color: var(--encre-acide); font-family: var(--titre); font-weight: 900; font-stretch: 72%; }
+.carte-t { border: 1px solid var(--trait); background: var(--surface); border-radius: 24px; padding: 14px 16px; display: grid; gap: 8px; text-align: left; cursor: pointer; width: 100%; }
+.carte-t:active { transform: scale(.985); }
+.carte-t .l1 { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.carte-t .l1 b { font-size: 16px; font-weight: 600; }
+.carte-t .l1 span { font-size: 12px; color: var(--sourd); white-space: nowrap; }
+.carte-t .l2 { font-size: 13px; color: var(--sourd); }
+.carte-t .l2 b { color: var(--encre); font-weight: 500; }
+.carte-t.active { border-color: rgba(162,255,1,.45); }
+.etiquette { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; border-radius: 99px; padding: 3px 9px; border: 1px solid var(--gris); color: var(--sourd); }
+.etiquette.v { border-color: rgba(162,255,1,.5); color: var(--acide); }
+.etiquette.a { border-color: rgba(255,176,32,.5); color: var(--alerte); }
+.barre-places { display: flex; gap: 3px; }
+.barre-places span { flex: 1; height: 5px; border-radius: 9px; background: var(--gris); }
+.barre-places span.fait { background: var(--acide); }
+.champ { display: grid; gap: 6px; }
+.champ label { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+.saisie-l { display: flex; align-items: center; gap: 8px; height: 54px; border-radius: 18px; border: 1px solid var(--trait); background: var(--surface); padding: 0 16px; }
+.saisie-l:focus-within { border-color: var(--sourd); }
+.saisie-l input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 18px; font-weight: 600; }
+.saisie-l span { color: var(--sourd); font-size: 14px; white-space: nowrap; }
+.saisie-l.erreur { border-color: var(--erreur); }
+.deux { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.erreur-t { margin: 0; font-size: 13px; color: var(--erreur); }
+.flux { display: grid; gap: 0; }
+.flux div { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--trait); font-size: 13.5px; animation: entre 260ms var(--sortie) both; }
+.flux i { width: 8px; height: 8px; border-radius: 99px; background: var(--acide); }
+.flux .part i { background: var(--alerte); }
+.flux .sys i { background: var(--encre); }
+.flux small { color: var(--sourd); font-size: 12px; }
+.pilule.commencer { background: var(--gris); color: var(--sourd); }
+.pilule.commencer.pret { background: var(--acide); color: var(--encre-acide); box-shadow: 0 0 0 6px rgba(162,255,1,.14); }
+.direct { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--encre-acide); }
+.direct::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: #E5484D; animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+.revele { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--trait); animation: tombe 380ms var(--sortie) both; }
+@keyframes tombe { from { opacity: 0; transform: translateY(-10px) scale(.98); } to { opacity: 1; transform: none; } }
+.revele .num { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 22px; color: var(--sourd); }
+.revele.vous { background: rgba(162,255,1,.08); border-radius: 14px; padding-inline: 8px; }
+.revele.vous .num, .revele.vous .qui { color: var(--acide); }
+.revele .qui { font-weight: 500; }
+.stub { display: grid; place-items: center; text-align: center; gap: 8px; padding: 40px 10px; color: var(--sourd); }
+.parcours-btns { display: flex; flex-wrap: wrap; gap: 8px; }
 </style>
 
 <div class="page">
   <div class="tel"><div class="ecran" id="ecran">
     <div class="barre"><span>9:41</span><span><i></i><i></i></span></div>
     <div id="vue-hote"></div>
+    <div class="notif" id="notif" role="status" aria-live="polite"></div>
     <div class="voile" id="voile" hidden></div>
     <div class="feuille" id="feuille" role="dialog" aria-modal="true" aria-labelledby="feuille-titre"></div>
     <div class="indicateur"></div>
@@ -212,7 +274,7 @@ td.neg { color: var(--encre); }
 
   <aside class="cote">
     <h1>Tontine SwimPay</h1>
-    <p>La tontine classique, avec <b>les règles validées le 29 septembre</b>. Dans le téléphone, ce que voit le membre. Ici, <b>ce que fait le système</b>, tour par tour, pour tout le groupe. Aucun humain ne décide : chaque ligne du tableau suit une règle écrite d'avance.</p>
+    <p>La tontine classique dans l'app SwimPay, avec <b>les règles validées le 29 septembre</b>. Le téléphone montre ce que vit le membre, du premier écran au bilan. Ce panneau montre <b>ce que fait le système</b>, pour tout le groupe. Aucun humain ne décide.</p>
 
     <section class="regles" aria-label="Les règles">
       <div><b>30 %</b><span>de caution, gelée jusqu'à la fin</span></div>
@@ -224,6 +286,16 @@ td.neg { color: var(--encre); }
     </section>
 
     <section style="display:grid;gap:10px">
+      <h2>Le parcours</h2>
+      <p>Deux façons d'entrer : <b>créer</b> une tontine depuis l'onglet Tontine (tu es l'organisateur), ou <b>recevoir</b> une invitation ou un événement ouvert (tu es membre).</p>
+      <div class="parcours-btns">
+        <button class="cmd" id="cmd-invit" type="button">Recevoir une invitation</button>
+        <button class="cmd" id="cmd-global" type="button">Recevoir un événement ouvert</button>
+        <button class="cmd" id="cmd-raccourci" type="button">Sauter au tirage fait</button>
+      </div>
+    </section>
+
+    <section style="display:grid;gap:10px">
       <h2>Le scénario</h2>
       <div class="scenarios" id="scenarios" role="group" aria-label="Choisir un scénario"></div>
     </section>
@@ -231,7 +303,6 @@ td.neg { color: var(--encre); }
     <section style="display:grid;gap:10px">
       <h2>Le moteur</h2>
       <div class="commandes">
-        <button class="cmd" id="cmd-raccourci" type="button">Aller directement au tirage fait</button>
         <button class="cmd principale" id="cmd-tour" type="button">Tour suivant</button>
         <button class="cmd" id="cmd-fin" type="button">Aller à la fin</button>
         <button class="cmd" id="cmd-reset" type="button">Recommencer</button>
@@ -242,9 +313,8 @@ td.neg { color: var(--encre); }
     </section>
 
     <div class="notes">
-      <div><b>Réel :</b> les règles et tous les montants. Le moteur de cette page est le même calcul que le simulateur <b>tontine-v2.py</b>, vérifié identique sur ses 8 scénarios.</div>
-      <div><b>Exemples de maquette :</b> les noms des membres, le code secret (libre), le compte de retrait.</div>
-      <div><b>Pour essayer :</b> crée la tontine dans le téléphone, ou prends le raccourci. Choisis un scénario, puis avance tour par tour. Changer de scénario rejoue la tontine jusqu'au même tour.</div>
+      <div><b>Réel :</b> les règles et tous les montants. Le moteur de cette page est le même calcul que le simulateur <b>tontine-v2.py</b>, vérifié identique. Un format saisi librement passe dans ce moteur : le tableau montre s'il tient.</div>
+      <div><b>Exemples de maquette :</b> les noms, le solde, les arrivées et départs des membres, le code secret (libre), le compte de retrait.</div>
     </div>
   </aside>
 </div>
@@ -367,194 +437,281 @@ function cloture(M) {
 }
 const conserve = (M) => M.p.reduce((a, q) => a + q.sortie, 0) + M.perteSw === M.p.reduce((a, q) => a + q.entree, 0) + M.revenu;
 
-/* ======================= formats et scenarios ======================= */
+
+/* ======================= outils ======================= */
 const NBSP = " ";
 const F = (n) => (n < 0 ? "−" : "") + Math.abs(Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NBSP) + NBSP + "F";
 const Fs = (n) => (n > 0 ? "+" : "") + F(n);
 const echappe = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const chiffres = (s) => String(s).replace(/\D/g, "");
+const groupe3 = (s) => s.replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
+
 const RYTHMES = {
-  jour:    { lib: "Chaque jour",    unite: "jour",    tmin: 3, tmax: 7,  montants: [1000, 2000, 5000, 10000, 25000] },
-  semaine: { lib: "Chaque semaine", unite: "semaine", tmin: 3, tmax: 8,  montants: [5000, 10000, 25000, 50000, 100000] },
-  mois:    { lib: "Chaque mois",    unite: "mois",    tmin: 3, tmax: 12, montants: [10000, 25000, 50000, 100000, 200000] },
+  jour:    { lib: "Chaque jour",    un: "jour",    plur: "jours" },
+  semaine: { lib: "Chaque semaine", un: "semaine", plur: "semaines" },
+  mois:    { lib: "Chaque mois",    un: "mois",    plur: "mois" },
 };
-const TAILLES = [5, 6, 8, 9, 10, 12, 15, 18, 20, 24, 30];
-function format(rythme, N) {
-  const r = RYTHMES[rythme];
-  for (const B of [1, 2, 3]) if (N % B === 0 && N / B <= r.tmax && N / B >= r.tmin) return { B, T: N / B };
-  return null;
+const duree = (r, T) => T + " " + (T > 1 ? RYTHMES[r].plur : RYTHMES[r].un);
+const NOMS = ["Vous", "Koffi N.", "Aya T.", "Yao K.", "Mariam D.", "Ibrahim S.", "Adjoua B.", "Moussa C.", "Fatou O.", "Serge A.", "Ama Y.", "Drissa F.", "Clarisse E.", "Seydou B.", "Nadia G.", "Paul-Henri Z.", "Kadiatou M.", "Jean-Marc L.", "Rokia S.", "Brice T.", "Salimata K.", "Hervé D.", "Assita N.", "Didier Y.", "Mireille K.", "Oumar T.", "Esther A.", "Lassina C.", "Prisca B.", "Karim O.", "Awa K.", "Rodrigue E."];
+const initiales = (id) => id === 0 ? "V" : NOMS[id].replace(".", "").split(/[\s-]/).map((m) => m[0]).join("").slice(0, 2).toUpperCase();
+const LIMITES = { cMin: 500, cMax: 1000000, tMin: 2, tMax: 30, nMax: 30 };
+
+/* les regles des formats : N = B x T, B dans {1,2,3}, N <= 30 */
+function valide(cfg) {
+  const err = [];
+  if (!(cfg.c >= LIMITES.cMin)) err.push("La cotisation doit être d'au moins " + F(LIMITES.cMin) + ".");
+  if (cfg.c > LIMITES.cMax) err.push("La cotisation ne peut pas dépasser " + F(LIMITES.cMax) + ".");
+  if (!(cfg.T >= LIMITES.tMin && cfg.T <= LIMITES.tMax)) err.push("Le nombre de tours va de " + LIMITES.tMin + " à " + LIMITES.tMax + ".");
+  if (cfg.T * cfg.B > LIMITES.nMax) err.push(cfg.T + " tours × " + cfg.B + " gagnant" + (cfg.B > 1 ? "s" : "") + " par tour = " + cfg.T * cfg.B + " membres : 30 au plus.");
+  return err;
 }
-const NOMS = ["Awa K.", "Koffi N.", "Aya T.", "Yao K.", "Mariam D.", "Ibrahim S.", "Adjoua B.", "Moussa C.", "Fatou O.", "Serge A.", "Ama Y.", "Drissa F.", "Clarisse E.", "Seydou B.", "Nadia G.", "Paul-Henri Z.", "Kadiatou M.", "Jean-Marc L.", "Rokia S.", "Brice T.", "Salimata K.", "Hervé D.", "Assita N.", "Didier Y.", "Mireille K.", "Oumar T.", "Esther A.", "Lassina C.", "Prisca B.", "Karim O."];
-const initiales = (n) => n.replace(".", "").split(/[\s-]/).map((m) => m[0]).join("").slice(0, 2).toUpperCase();
+const N = (cfg) => cfg.T * cfg.B;
+const cagnotteDe = (cfg) => cfg.T * cfg.c;
 
 /* un scenario = des absences par PLACE (rang de tirage), comme tontine-v2.py */
 const SCENARIOS = [
   { id: "joyeux", lib: "Tout le monde paie", det: "Le cas le plus fréquent.", abs: () => ({}) },
-  { id: "retard", lib: "Un retardataire revient", det: "Un membre du milieu manque deux échéances puis rattrape.", abs: (N, T, B) => { const p = B * (Math.floor(T / 2)); return T >= 5 ? { [p]: [3, 5] } : { [p]: [2, 3] }; } },
-  { id: "abandon", lib: "Un membre abandonne avant de gagner", det: "Il arrête de payer bien avant son tour.", abs: (N, T, B) => { const tour = Math.max(3, Math.ceil(T * .7)); return { [B * (tour - 1)]: [Math.max(2, Math.ceil(T * .4)), null] }; } },
-  { id: "fuite1", lib: "Le premier gagnant fuit", det: "Il touche au tour 1, puis ne paie plus rien.", abs: (N, T, B) => { const o = {}; for (let i = 0; i < B; i++) o[i] = [2, null]; return o; } },
-  { id: "tiers", lib: "Le premier tiers fuit", det: "Les gagnants des premiers tours fuient juste après leur gain.", abs: (N, T, B) => { const o = {}; for (let i = 0; i < B * Math.ceil(T / 3); i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
-  { id: "presque", lib: "Tous fuient sauf les derniers", det: "Chaque gagnant fuit juste après son gain. Le pire cas.", abs: (N, T, B) => { const o = {}; for (let i = 0; i < N - B; i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
+  { id: "retard", lib: "Un retardataire revient", det: "Un membre du milieu manque deux échéances puis rattrape.", abs: (n, T, B) => { const p = B * Math.floor(T / 2); return T >= 5 ? { [p]: [3, 5] } : { [p]: [2, 3] }; } },
+  { id: "abandon", lib: "Un membre abandonne avant de gagner", det: "Il arrête de payer bien avant son tour.", abs: (n, T, B) => { const tour = Math.min(T, Math.max(3, Math.ceil(T * .7))); return { [B * (tour - 1)]: [Math.max(2, Math.min(tour - 1, Math.ceil(T * .4))), null] }; } },
+  { id: "fuite1", lib: "Le premier gagnant fuit", det: "Il touche au tour 1, puis ne paie plus rien.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B; i++) o[i] = [2, null]; return o; } },
+  { id: "tiers", lib: "Le premier tiers fuit", det: "Les gagnants des premiers tours fuient juste après leur gain.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B * Math.ceil(T / 3); i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
+  { id: "presque", lib: "Tous fuient sauf les derniers", det: "Chaque gagnant fuit juste après son gain. Le pire cas.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < n - B; i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
 ];
+
+/* les offres qui arrivent par notification (exemples de maquette) */
+const OFFRES = {
+  invitation: { type: "invitation", nom: "Tontine du bureau", orga: 1, cfg: { rythme: "semaine", c: 10000, T: 8, B: 1, mode: "invitation" }, deja: [1, 2, 3, 4, 5] },
+  global: { type: "global", nom: "Rentrée scolaire", orga: 9, cfg: { rythme: "jour", c: 5000, T: 7, B: 2, mode: "ouverte" }, deja: [9, 10, 11, 12, 13, 14, 15, 16] },
+};
 
 /* ======================= etat ======================= */
 const neuf = () => ({
   ecran: "accueil", pile: [], sens: "avant",
-  cfg: { rythme: "mois", c: 10000, N: 10, mode: "invitation" },
-  compris: false, signe: false, arrives: 0,
-  tirage: null, geste: null, ordre: null, scenario: "joyeux",
-  M: null, tourVu: 0, retire: false, pin: [], feuille: null,
+  role: null, nom: "Ma tontine", orga: 0,
+  cfg: { rythme: "mois", c: 10000, T: 10, B: 1, mode: "invitation" },
+  saisie: { c: "10000", T: "10" },
+  groupe: [], flux: [], parti: false, invites: false,
+  acceptes: [], jaiAccepte: false,
+  tirage: null, gestes: 0, monGeste: null, ordre: null, revelees: 0,
+  scenario: "joyeux", M: null, tourVu: 0, retire: false,
+  pin: [], feuille: null, notif: null, notifVue: false, offre: null, solde: 148350,
 });
 let E = neuf();
-const fmt = () => format(E.cfg.rythme, E.cfg.N);
-const cagnotte = () => { const f = fmt(); return f ? f.T * E.cfg.c : 0; };
-const maPlace = () => E.ordre ? E.ordre.indexOf(0) : -1;         // le membre 0 est l'utilisateur
-const nomPlace = (p) => E.ordre ? (E.ordre[p] === 0 ? "Vous" : NOMS[E.ordre[p]]) : "";
+let minuteur = null;
+const minuter = (fn, ms) => { clearTimeout(minuteur); minuteur = setTimeout(fn, ms); };
+const arreter = () => { clearTimeout(minuteur); minuteur = null; };
+
+const maPlace = () => E.ordre ? E.ordre.indexOf(0) : -1;
+const nomId = (id) => NOMS[id];
+const nomPlace = (p) => E.ordre ? nomId(E.ordre[p]) : "";
 
 function relancerMoteur() {
-  const f = fmt(); if (!f || !E.ordre) { E.M = null; return; }
+  if (!E.ordre) { E.M = null; return; }
   const tour = E.M ? E.M.tour : 0, clos = E.M ? E.M.clos : false;
-  const sc = SCENARIOS.find((s) => s.id === E.scenario);
-  E.M = creeMoteur(E.cfg.N, f.T, f.B, E.cfg.c, sc.abs(E.cfg.N, f.T, f.B));
+  const sc = SCENARIOS.find((s) => s.id === E.scenario), cfg = E.cfg;
+  E.M = creeMoteur(N(cfg), cfg.T, cfg.B, cfg.c, sc.abs(N(cfg), cfg.T, cfg.B));
   while (E.M.tour < tour) tourSuivant(E.M);
   if (clos) cloture(E.M);
 }
 
 /* ======================= navigation ======================= */
+const RACINES = ["accueil", "tontines", "activite", "profil"];
 function aller(ecran, opts = {}) {
-  if (!opts.remplacer) E.pile.push(E.ecran);
-  E.sens = "avant"; E.ecran = ecran; fermerFeuille(true); rendre();
+  arreter();
+  if (RACINES.includes(ecran)) E.pile = [];
+  else if (!opts.remplacer) E.pile.push(E.ecran);
+  E.sens = opts.retour ? "retour" : "avant"; E.ecran = ecran; fermerFeuille(true); rendre();
+  if (ecran === "recherche" || ecran === "salle") minuter(boucleRecrutement, 800);
 }
-function retour() { E.ecran = E.pile.pop() || "accueil"; E.sens = "retour"; fermerFeuille(true); rendre(); }
+function retour() { arreter(); E.ecran = E.pile.pop() || "accueil"; E.sens = "retour"; fermerFeuille(true); rendre(); }
 
-/* ======================= ecrans ======================= */
+/* ======================= briques ======================= */
 const hero = (h, haut, dessus) => "<div class='hero' style='height:" + h + "'><div class='haut'>" + haut + "</div><div class='dessus'>" + dessus + "</div></div>";
 const btnRetour = "<button class='rond' data-retour aria-label='Retour'>←</button><div style='flex:1'></div>";
 const titre = (t, px, sur) => (sur ? "<span class='surtitre'>" + sur + "</span>" : "") + "<h1 class='titre' style='font-size:" + px + "px'>" + t + "</h1>";
 const montantHTML = (m) => F(m).replace(NBSP + "F", "<small>" + NBSP + "F</small>");
+const ICO = {
+  accueil: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><path d='M4 11 12 4l8 7v9h-5v-6H9v6H4z'/></svg>",
+  tontine: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><circle cx='12' cy='12' r='8'/><circle cx='12' cy='4' r='2' fill='currentColor'/><circle cx='19' cy='15' r='2' fill='currentColor'/><circle cx='5' cy='15' r='2' fill='currentColor'/></svg>",
+  activite: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><path d='M4 7h16M4 12h16M4 17h10'/></svg>",
+  profil: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><circle cx='12' cy='8' r='4'/><path d='M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6'/></svg>",
+};
+function nav() {
+  const onglets = [["accueil", "Accueil"], ["tontines", "Tontine"], ["activite", "Activité"], ["profil", "Profil"]];
+  const pastille = E.notif && !E.notifVue ? "tontines" : null;
+  return "<nav class='nav' aria-label='Navigation principale'>" + onglets.map(([k, lib]) =>
+    "<button data-onglet='" + k + "' aria-label='" + lib + "'" + (E.ecran === k ? " aria-current='page'" : "") + ">" + ICO[k === "tontines" ? "tontine" : k] + (pastille === k ? "<span class='pastille'></span>" : "") + "</button>").join("") + "</nav>";
+}
+function resumeFormat(cfg) {
+  return N(cfg) + " membres · " + cfg.T + " tours · " + cfg.B + " gagnant" + (cfg.B > 1 ? "s" : "") + " par tour";
+}
+function carteMaTontine() {
+  const M = E.M;
+  if (!M) {
+    if (E.role && E.groupe.length) return "<button class='carte-t active' data-aller='" + (E.role === "organisateur" ? "recherche" : "salle") + "'><div class='l1'><b>" + echappe(E.nom) + "</b><span class='etiquette a'>En recrutement</span></div><div class='barre-places'>" + Array.from({ length: N(E.cfg) }, (_, i) => "<span class='" + (i < E.groupe.length ? "fait" : "") + "'></span>").join("") + "</div><div class='l2'>" + E.groupe.length + " / " + N(E.cfg) + " membres · " + F(E.cfg.c) + " " + RYTHMES[E.cfg.rythme].lib.toLowerCase() + "</div></button>";
+    return "";
+  }
+  const p = maPlace(), mt = tourDe(M, p);
+  const etat = M.clos ? "<span class='etiquette'>Terminée</span>" : "<span class='etiquette v'>Tour " + Math.max(1, M.tour) + " / " + M.T + "</span>";
+  return "<button class='carte-t active' data-aller='tontine'><div class='l1'><b>" + echappe(E.nom) + "</b>" + etat + "</div>" +
+    "<div class='barre-places'>" + Array.from({ length: M.T }, (_, i) => "<span class='" + (i < M.tour ? "fait" : "") + "'></span>").join("") + "</div>" +
+    "<div class='l2'>Ma place : <b>tour " + mt + "</b> · " + F(M.c) + " par échéance · cagnotte <b>" + F(M.cagnotte) + "</b></div></button>";
+}
 
+/* ======================= ecrans ======================= */
 const ECRANS = {
   accueil() {
-    return hero("50%", "<span class='surtitre' style='flex:1'>SwimPay</span>",
-      titre("Tontine", 76, "Cotiser ensemble") +
-      "<div class='plaque'><div class='lp'><span>Personne ne peut partir avec l'argent des autres.</span></div><div class='lp'><span>Le système tient les comptes. Aucun humain ne décide.</span></div></div>") +
+    return hero("44%", "<span class='rond' style='cursor:default;font-weight:700;font-size:13px'>AW</span><span style='flex:1;font-size:14px;line-height:1.2'>Bonjour Awa<small style='display:block;opacity:.7;font-size:12px'>Compte personnel</small></span>",
+      "<div class='plaque'><div class='lp'><span>Solde SwimPay</span></div><div class='montant'>" + montantHTML(E.solde) + "</div><div class='lp'><span>Vers tous les Mobile Money et banques</span></div></div>") +
       "<div class='bas'>" +
-        "<div class='bloc'><h3>Comment ça marche</h3>" +
-          "<div>1. Chacun dépose une <b>caution</b>, gelée jusqu'à la fin, puis cotise à chaque échéance.</div>" +
-          "<div>2. Un <b>tirage au sort</b>, vérifiable par tous, fixe l'ordre des gagnants.</div>" +
-          "<div>3. Le jour de ton gain, tu retires <b>ce que tu as déjà versé, plus 5 %</b>. Le reste paie tes cotisations suivantes.</div>" +
-          "<div>4. À la fin, ta caution te revient.</div></div>" +
+        "<div class='actions'>" +
+          "<button class='action-ronde'><span>+</span>Recharger</button>" +
+          "<button class='action-ronde'><span>↗</span>Envoyer</button>" +
+          "<button class='action-ronde'><span>↙</span>Recevoir</button>" +
+          "<button class='action-ronde acide' data-onglet='tontines'><span>T</span>Tontine</button>" +
+        "</div>" +
+        (carteMaTontine() || "<button class='carte-t' data-onglet='tontines'><div class='l1'><b>Tontine</b><span class='etiquette v'>Nouveau</span></div><div class='l2'>Cotise avec tes proches, ou rejoins un événement ouvert. <b>Personne ne peut partir avec l'argent.</b></div></button>") +
+        "<p class='groupe-titre'>Dernières opérations</p>" +
+        "<div class='tour-l'><span class='num' style='font-size:15px'>↙</span><span class='qui'>Aya T.<small>Reçu sur Wave</small></span><span class='st v'>+" + F(12500) + "</span></div>" +
+        "<div class='tour-l'><span class='num' style='font-size:15px'>+</span><span class='qui'>Recharge<small>Depuis Orange Money</small></span><span class='st'>+" + F(20000) + "</span></div>" +
+      "</div>" + nav();
+  },
+
+  tontines() {
+    const inv = E.notif && !(E.role === "membre" && E.offre === E.notif) ? OFFRES[E.notif] : null;
+    return hero("26%", "<div style='flex:1'></div>", titre("Tontine", 58, "Cotiser ensemble")) +
+      "<div class='bas'>" +
+        (carteMaTontine() ? "<p class='groupe-titre'>Ma tontine</p>" + carteMaTontine() : "") +
+        (inv ? "<p class='groupe-titre'>" + (inv.type === "invitation" ? "Invitation reçue" : "Événement ouvert, pour toi") + "</p>" +
+          "<button class='carte-t' data-offre='" + inv.type + "'><div class='l1'><b>" + echappe(inv.nom) + "</b><span class='etiquette " + (inv.type === "invitation" ? "v" : "a") + "'>" + (inv.type === "invitation" ? "Invitation" : "Ouvert") + "</span></div><div class='l2'>" + (inv.type === "invitation" ? "De <b>" + nomId(inv.orga) + "</b> · " : "") + F(inv.cfg.c) + " " + RYTHMES[inv.cfg.rythme].lib.toLowerCase() + " · " + resumeFormat(inv.cfg) + "</div><div class='l2'>Cagnotte de chaque gagnant : <b>" + F(cagnotteDe(inv.cfg)) + "</b></div></button>" : "") +
+        "<p class='groupe-titre'>Événements ouverts</p>" +
+        "<button class='carte-t' data-offre='global'><div class='l1'><b>" + OFFRES.global.nom + "</b><span>" + OFFRES.global.deja.length + " / " + N(OFFRES.global.cfg) + " places</span></div><div class='l2'>" + F(OFFRES.global.cfg.c) + " chaque jour · " + duree("jour", OFFRES.global.cfg.T) + " · cagnotte <b>" + F(cagnotteDe(OFFRES.global.cfg)) + "</b></div></button>" +
+        "<div class='bloc'><h3>Les règles, les mêmes pour tous</h3><div>Une <b>caution de 30 %</b> de la cagnotte, gelée jusqu'à la fin. Le jour de ton gain, tu retires <b>ce que tu as versé, plus 5 %</b> ; le reste paie tes cotisations suivantes.</div></div>" +
         "<div class='pousse'></div>" +
         "<button class='pilule blanche' data-aller='creer'>Créer une tontine</button>" +
-        (E.M ? "<button class='pilule contour' data-aller='tontine'>Voir ma tontine en cours</button>" : "") +
-      "</div>";
+      "</div>" + nav();
   },
 
   creer() {
-    const r = RYTHMES[E.cfg.rythme], f = fmt(), g = cagnotte();
-    return hero("22%", btnRetour, titre("Nouvelle tontine", 42)) +
+    const cfg = E.cfg;
+    return hero("20%", btnRetour, titre("Nouvelle tontine", 40)) +
       "<div class='bas'>" +
-        "<p class='groupe-titre'>Le rythme</p><div class='puces'>" +
-          Object.entries(RYTHMES).map(([k, v]) => "<button class='puce' data-rythme='" + k + "' aria-pressed='" + (E.cfg.rythme === k) + "'>" + v.lib + "</button>").join("") + "</div>" +
-        "<p class='groupe-titre'>La cotisation, à chaque échéance</p><div class='puces'>" +
-          r.montants.map((m) => "<button class='puce' data-montant='" + m + "' aria-pressed='" + (E.cfg.c === m) + "'>" + F(m) + "</button>").join("") + "</div>" +
-        "<p class='groupe-titre'>Le nombre de membres</p><div class='puces'>" +
-          TAILLES.map((n) => "<button class='puce' data-taille='" + n + "' aria-pressed='" + (E.cfg.N === n) + "'" + (format(E.cfg.rythme, n) ? "" : " disabled style='opacity:.3'") + ">" + n + "</button>").join("") + "</div>" +
-        "<p class='groupe-titre'>Qui peut entrer</p><div class='puces'>" +
-          "<button class='puce' data-mode='invitation' aria-pressed='" + (E.cfg.mode === "invitation") + "'>Sur invitation</button>" +
-          "<button class='puce' data-mode='ouverte' aria-pressed='" + (E.cfg.mode === "ouverte") + "'>Ouverte à tous</button></div>" +
-        (f ? "<div class='recap'>" +
-          "<div><span>Format</span><b>" + E.cfg.N + " membres · " + f.T + " tours · " + f.B + " gagnant" + (f.B > 1 ? "s" : "") + " par tour</b></div>" +
-          "<div><span>Durée</span><b>" + f.T + " " + r.unite + (f.T > 1 && r.unite !== "mois" ? "s" : "") + "</b></div>" +
-          "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
-          "<div><span>Caution à l'entrée</span><b>" + F(pct(g, 30)) + "</b></div></div>" +
-          (g > 2000000 ? "<p class='aide'>Cagnotte au-delà de 2 000 000 F : il faudra <b>un compte bancaire vérifié à ton nom</b>.</p>" : "")
-          : "<div class='bloc alerte'><h3>Format impossible</h3>Avec ce rythme, ce nombre de membres ne tient pas dans le nombre de tours permis.</div>") +
-        "<p class='aide'>Les mêmes règles s'appliquent dans les deux cas. Le mode ne change que la façon dont les membres arrivent.</p>" +
-        "<button class='pilule blanche' data-aller='pacte'" + (f ? "" : " disabled") + ">Voir mes chiffres</button>" +
+        "<div class='champ'><label for='f-nom'>Le nom</label><div class='saisie-l'><input id='f-nom' value='" + echappe(E.nom) + "' maxlength='32' autocomplete='off'></div></div>" +
+        "<div class='champ'><label>Le rythme</label><div class='puces'>" + Object.entries(RYTHMES).map(([k, v]) => "<button class='puce' data-rythme='" + k + "' aria-pressed='" + (cfg.rythme === k) + "'>" + v.lib + "</button>").join("") + "</div></div>" +
+        "<div class='deux'>" +
+          "<div class='champ'><label for='f-c'>Cotisation</label><div class='saisie-l' id='l-c'><input id='f-c' inputmode='numeric' value='" + groupe3(E.saisie.c) + "' autocomplete='off'><span>F</span></div></div>" +
+          "<div class='champ'><label for='f-t'>Durée</label><div class='saisie-l' id='l-t'><input id='f-t' inputmode='numeric' value='" + E.saisie.T + "' autocomplete='off'><span id='u-t'>" + (cfg.T > 1 ? RYTHMES[cfg.rythme].plur : RYTHMES[cfg.rythme].un) + "</span></div></div>" +
+        "</div>" +
+        "<div class='champ'><label>Gagnants par tour</label><div class='puces'>" + [1, 2, 3].map((b) => "<button class='puce' data-b='" + b + "' aria-pressed='" + (cfg.B === b) + "'>" + b + "</button>").join("") + "</div></div>" +
+        "<div class='champ'><label>Qui peut entrer</label><div class='puces'>" +
+          "<button class='puce' data-mode='invitation' aria-pressed='" + (cfg.mode === "invitation") + "'>Sur invitation</button>" +
+          "<button class='puce' data-mode='ouverte' aria-pressed='" + (cfg.mode === "ouverte") + "'>Ouverte à tous</button></div></div>" +
+        "<div id='recap-creer'>" + recapCreer() + "</div>" +
       "</div>";
   },
 
-  pacte() {
-    const f = fmt(), c = E.cfg.c, g = cagnotte(), T = f.T, B = f.B;
-    const net = g - pct(g, 3) - pct(g, 2);
-    const libreAu = (k) => Math.min(net, c * k + pct(g, 5));
-    const milieu = Math.ceil(T / 2);
-    return hero("30%", btnRetour,
-      titre("Mes chiffres", 50, "Avant de signer le Pacte") +
-      "<div class='plaque'><div class='lp'><span>Bloqué en entrant</span><b>" + F(pct(g, 30) + c) + "</b></div><div class='lp'><span>Caution " + F(pct(g, 30)) + " + 1re cotisation " + F(c) + "</span></div></div>") +
+  chiffres() {
+    const cfg = E.cfg, g = cagnotteDe(cfg), c = cfg.c, T = cfg.T;
+    const net = g - pct(g, 3) - pct(g, 2), libreAu = (k) => Math.min(net, c * k + pct(g, 5)), mil = Math.ceil(T / 2);
+    const membre = E.role === "membre";
+    return hero("28%", btnRetour, titre(membre ? echappe(E.nom) : "Mes chiffres", 44, membre ? (E.offre === "invitation" ? "Invitation de " + nomId(E.orga) : "Événement ouvert") : "Ce que chaque membre verra") +
+      "<div class='plaque'><div class='lp'><span>" + F(c) + " " + RYTHMES[cfg.rythme].lib.toLowerCase() + ", pendant " + duree(cfg.rythme, T) + "</span></div><div class='lp'><span>" + resumeFormat(cfg) + "</span></div></div>") +
       "<div class='bas'>" +
         "<div class='recap'>" +
-          "<div><span>À chaque échéance</span><b>" + F(c) + "</b></div>" +
-          "<div><span>Échéances</span><b>" + T + "</b></div>" +
-          "<div><span>Ta cagnotte, le jour de ton gain</span><b>" + F(g) + "</b></div>" +
+          "<div><span>Bloqué en acceptant le contrat</span><b>" + F(pct(g, 30) + c) + "</b></div>" +
+          "<div class='moins'><span>dont caution, rendue à la fin</span><b>" + F(pct(g, 30)) + "</b></div>" +
+          "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
           "<div class='moins'><span>Frais du système (3 %)</span><b>−" + F(pct(g, 3)) + "</b></div>" +
           "<div class='moins'><span>Réserve de secours (2 %), rendue à la fin</span><b>−" + F(pct(g, 2)) + "</b></div></div>" +
-        "<p class='groupe-titre'>Ce que tu retires le jour du gain</p>" +
-        "<div class='places'>" +
-          "<div><small>Tiré au tour 1</small><b>" + F(libreAu(1)) + "</b></div>" +
-          "<div><small>Tiré au tour " + milieu + "</small><b>" + F(libreAu(milieu)) + "</b></div>" +
-          "<div><small>Tiré au tour " + T + "</small><b>" + F(libreAu(T)) + "</b></div></div>" +
-        "<p class='aide'>Ce que tu as déjà versé, <b>plus " + F(pct(g, 5)) + "</b>. Le reste de ta cagnotte est bloqué et <b>paie tes cotisations suivantes</b>. Ta place dépend du tirage.</p>" +
-        "<div class='bloc'><h3>À la fin</h3><div>Ta caution de <b>" + F(pct(g, 30)) + "</b> te revient, avec ta part de la réserve.</div><div>Si tu es tiré dans le dernier tiers des tours, tu reçois <b>" + F(pct(g, 3)) + "</b> de bonus, payés par le groupe.</div></div>" +
-        "<div class='bloc alerte'><h3>Si tu paies en retard ou plus du tout</h3><div>Ta caution paie l'échéance à ta place, avec <b>5 % de pénalité</b>. Dès que tu recharges, elle se reconstitue.</div><div>Si tu arrêtes de payer, on prend sur ta caution <b>seulement ce qui a été payé à ta place</b>, plus la pénalité. Le reste t'est rendu à la fin.</div></div>" +
-        "<div class='interrupteur-l'><button class='interrupteur' data-compris aria-pressed='" + E.compris + "' aria-label='J&apos;ai compris mes chiffres'></button><span>J'ai lu et compris mes chiffres</span></div>" +
-        "<button class='pilule blanche' data-signer" + (E.compris ? "" : " disabled") + ">Signer avec mon code</button>" +
+        "<p class='groupe-titre'>Ce qu'on retire le jour du gain</p>" +
+        "<div class='places'><div><small>Tiré au tour 1</small><b>" + F(libreAu(1)) + "</b></div><div><small>Tiré au tour " + mil + "</small><b>" + F(libreAu(mil)) + "</b></div><div><small>Tiré au tour " + T + "</small><b>" + F(libreAu(T)) + "</b></div></div>" +
+        "<p class='aide'>Ce qu'on a déjà versé, <b>plus " + F(pct(g, 5)) + "</b>. Le reste est bloqué et <b>paie les cotisations suivantes</b>. La place dépend du tirage.</p>" +
+        "<div class='bloc alerte'><h3>En cas de retard ou d'arrêt</h3><div>La caution paie l'échéance, avec <b>5 % de pénalité</b>. Si on arrête de payer, on ne prend sur la caution <b>que ce qui a été payé à sa place</b> ; le reste est rendu à la fin.</div></div>" +
+        (membre ? "<button class='pilule blanche' data-rejoindre>Rejoindre la tontine</button><p class='aide' style='text-align:center'>Rien n'est bloqué avant le contrat. Tu peux te retirer tant que la tontine n'a pas commencé.</p>"
+                : "<button class='pilule blanche' data-publier>" + (cfg.mode === "ouverte" ? "Publier l'événement" : "Inviter des membres") + "</button>") +
       "</div>";
   },
 
-  recrutement() {
-    const N = E.cfg.N, n = E.arrives;
-    return hero("30%", btnRetour,
-      titre("Recrutement", 50, E.cfg.mode === "invitation" ? "Sur invitation" : "Ouverte à tous") +
-      "<div class='plaque'><div class='lp'><span>Places</span><b>" + n + " / " + N + "</b></div><div class='echelle'>" + Array.from({ length: N }, (_, i) => "<span class='" + (i < n ? "fait" : "") + "'></span>").join("") + "</div></div>") +
+  /* l'organisateur voit le recrutement en direct */
+  recherche() {
+    const n = N(E.cfg), k = E.groupe.length, plein = k >= n;
+    return hero("30%", "<button class='rond' data-onglet='tontines' aria-label='Retour'>←</button><div style='flex:1'></div><span class='direct'>En direct</span>",
+      titre(E.cfg.mode === "ouverte" ? "Recherche de participants" : "Invitations envoyées", 36, echappe(E.nom) + " · vue de l'organisateur") +
+      "<div class='plaque'><div class='lp'><span>Membres</span><b>" + k + " / " + n + "</b></div><div class='echelle'>" + Array.from({ length: n }, (_, i) => "<span class='" + (i < k ? "fait" : "") + "'></span>").join("") + "</div></div>") +
       "<div class='bas'>" +
-        "<p class='aide'>Chaque membre entre avec sa pièce d'identité et une photo de son visage. <b>Sa caution et sa première cotisation sont bloquées tout de suite.</b> On peut partir avant le tirage : tout est rendu.</p>" +
-        "<div>" + Array.from({ length: n }, (_, i) => "<div class='membre'><span class='ini" + (i === 0 ? " vous" : "") + "'>" + (i === 0 ? "V" : initiales(NOMS[i])) + "</span><span class='nom'>" + (i === 0 ? "Vous" : NOMS[i]) + "<small>Pièce vérifiée</small></span><span class='etat v'>Caution bloquée</span></div>").join("") + "</div>" +
+        "<p class='aide'>" + (E.cfg.mode === "ouverte" ? "Ton événement est visible par les membres SwimPay. Chacun voit les mêmes chiffres avant de rejoindre." : "Tes contacts ont reçu l'invitation. Ils voient les mêmes chiffres avant de rejoindre.") + " Un membre peut se retirer tant que la tontine n'a pas commencé.</p>" +
+        "<p class='groupe-titre'>Ce qui se passe</p>" + fluxHTML() +
         "<div class='pousse'></div>" +
-        (n < N ? "<button class='pilule contour' data-arrivees>Faire arriver les autres membres (démo)</button>"
-               : "<button class='pilule blanche' data-aller='tirage'>Passer au tirage</button>") +
+        "<button class='pilule commencer" + (plein ? " pret" : "") + "' data-commencer-orga" + (plein ? "" : " disabled") + ">" + (plein ? "Commencer la tontine" : "Commencer la tontine · " + (n - k) + " place" + (n - k > 1 ? "s" : "") + " à pourvoir") + "</button>" +
+      "</div>";
+  },
+
+  /* le membre attend que le groupe soit complet */
+  salle() {
+    const n = N(E.cfg), k = E.groupe.length;
+    return hero("30%", "<button class='rond' data-onglet='tontines' aria-label='Retour'>←</button><div style='flex:1'></div><span class='direct'>En direct</span>",
+      titre("Salle d'attente", 44, echappe(E.nom)) +
+      "<div class='plaque'><div class='lp'><span>Membres</span><b>" + k + " / " + n + "</b></div><div class='echelle'>" + Array.from({ length: n }, (_, i) => "<span class='" + (i < k ? "fait" : "") + "'></span>").join("") + "</div></div>") +
+      "<div class='bas'>" +
+        "<p class='aide'>Organisée par <b>" + nomId(E.orga) + "</b>. Quand le groupe est complet, l'organisateur lance la tontine, et chacun accepte le contrat.</p>" +
+        "<p class='groupe-titre'>Ce qui se passe</p>" + fluxHTML() +
+        "<div class='pousse'></div>" +
+        "<button class='pilule contour' data-seretirer>Me retirer</button>" +
+      "</div>";
+  },
+
+  /* tous les membres partagent cet ecran */
+  contrat() {
+    const cfg = E.cfg, g = cagnotteDe(cfg), n = N(cfg), acc = E.acceptes.length, tous = acc >= n;
+    return hero("26%", "<div style='flex:1'></div><span class='direct'>" + n + " membres sur cet écran</span>",
+      titre("Le contrat", 50, echappe(E.nom))) +
+      "<div class='bas'>" +
+        "<div class='recap'>" +
+          "<div><span>Cotisation</span><b>" + F(cfg.c) + " " + RYTHMES[cfg.rythme].lib.toLowerCase() + "</b></div>" +
+          "<div><span>Durée</span><b>" + duree(cfg.rythme, cfg.T) + " · " + resumeFormat(cfg) + "</b></div>" +
+          "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
+          "<div><span>Bloqué maintenant</span><b>" + F(pct(g, 30) + cfg.c) + "</b></div>" +
+          "<div><span>Frais du système</span><b>3 % au gain</b></div></div>" +
+        "<p class='aide'>Après le tirage, <b>plus rien ne change</b> : montant, rythme, membres, ordre. L'ordre est tiré au sort par le système, en direct, devant tous.</p>" +
+        "<p class='groupe-titre'>Les membres · " + acc + " / " + n + " ont accepté</p>" +
+        "<div>" + E.groupe.map((id) => { const ok = E.acceptes.includes(id);
+          return "<div class='membre'><span class='ini" + (id === 0 ? " vous" : "") + "'>" + initiales(id) + "</span><span class='nom'>" + nomId(id) + (id === E.orga ? "<small>Organisateur</small>" : "") + "</span><span class='etat " + (ok ? "v" : "") + "'>" + (ok ? "A accepté ✓" : "Lit le contrat…") + "</span></div>"; }).join("") + "</div>" +
+        (E.jaiAccepte ? (tous ? "<div class='bloc ok'><h3>Tout le monde a accepté</h3>Le tirage commence…</div>" : "<div class='bloc'><h3>Tu as accepté</h3>On attend les autres membres.</div>")
+          : "<button class='pilule blanche' data-accepter>J'accepte le contrat</button>") +
       "</div>";
   },
 
   tirage() {
-    const t = E.tirage;
-    const fait1 = !!t, fait2 = !!E.geste, fait3 = !!E.ordre;
+    const n = N(E.cfg), t = E.tirage, fini = E.ordre && E.revelees >= n;
     let liste = "";
-    if (fait3) {
-      const f = fmt();
-      liste = "<div>" + E.ordre.map((m, p) => "<div class='membre' style='animation-delay:" + Math.min(p, 12) * 40 + "ms'><span class='ini" + (m === 0 ? " vous" : "") + "'>" + (m === 0 ? "V" : initiales(NOMS[m])) + "</span><span class='nom'>" + (m === 0 ? "Vous" : NOMS[m]) + "</span><span class='etat" + (m === 0 ? " v" : "") + "'>Tour " + (Math.floor(p / f.B) + 1) + "</span></div>").join("") + "</div>";
-    }
-    return hero("24%", btnRetour, titre("Le tirage", 48, "Pur hasard, vérifiable par tous")) +
+    if (E.ordre) liste = E.ordre.slice(0, E.revelees).map((id, p) => "<div class='revele" + (id === 0 ? " vous" : "") + "'><span class='num'>" + (Math.floor(p / E.cfg.B) + 1) + "</span><span class='qui'>" + nomId(id) + "</span><span class='etat'>" + (id === 0 ? "C'est vous" : "") + "</span></div>").join("");
+    return hero("24%", "<div style='flex:1'></div><span class='direct'>En direct · " + n + " membres</span>", titre("Le tirage", 50, "Fait par le système, devant tous")) +
       "<div class='bas'>" +
-        "<div class='etape " + (fait1 ? "fait" : "") + "'><span class='n'>1</span><div class='t'>SwimPay publie l'empreinte de son nombre secret<small>Il ne peut plus le changer sans que ça se voie.</small>" + (fait1 ? "<span class='empreinte'>" + t.empreinte + "</span>" : "") + "</div></div>" +
-        "<div class='etape " + (fait2 ? "fait" : "") + "'><span class='n'>2</span><div class='t'>Chaque membre ajoute son geste<small>Personne, pas même SwimPay, ne connaît le résultat à l'avance.</small>" +
-          (fait2 ? "<span class='empreinte'>Ton geste : " + E.geste + " · et ceux des " + (E.cfg.N - 1) + " autres</span>" : "<button class='geste' data-geste>Touche ici pour ajouter ton geste</button>") + "</div></div>" +
-        "<div class='etape " + (fait3 ? "fait" : "") + "'><span class='n'>3</span><div class='t'>L'ordre est révélé, définitif<small>Montant, rythme, membres et ordre ne changent plus.</small></div></div>" +
-        (fait2 && !fait3 ? "<button class='pilule blanche' data-reveler>Révéler l'ordre</button>" : "") +
+        "<div class='etape fait'><span class='n'>1</span><div class='t'>SwimPay a publié l'empreinte de son nombre secret<small>Il ne peut plus le changer sans que ça se voie.</small><span class='empreinte'>" + t.empreinte + "</span></div></div>" +
+        "<div class='etape " + (E.gestes >= n ? "fait" : "") + "'><span class='n'>2</span><div class='t'>Chaque membre ajoute son geste · " + E.gestes + " / " + n + "<small>Personne ne connaît le résultat à l'avance, pas même SwimPay.</small>" +
+          (E.monGeste ? "<span class='empreinte'>Ton geste : " + E.monGeste + "</span>" : "<button class='geste' data-geste>Touche ici pour ajouter ton geste</button>") + "</div></div>" +
+        "<div class='etape " + (fini ? "fait" : "") + "'><span class='n'>3</span><div class='t'>L'ordre des gagnants<small>" + (E.ordre ? (fini ? "Définitif. Chacun peut le vérifier." : "Le système révèle l'ordre…") : "Dès que tous les gestes sont là.") + "</small></div></div>" +
         liste +
-        (fait3 ? "<button class='pilule contour' data-verifier>Vérifier le tirage</button><button class='pilule blanche' data-commencer>Commencer la tontine</button>" : "") +
+        (fini ? "<button class='pilule contour' data-verifier>Vérifier le tirage</button><button class='pilule blanche' data-aller-racine='tontine'>Voir ma tontine</button>" : "") +
       "</div>";
   },
 
   tontine() {
-    const M = E.M; if (!M) return ECRANS.accueil();
-    const p = maPlace(), q = M.p[p], monTour = tourDe(M, p), f = fmt();
-    const enMain = q.entree - q.sortie;
-    const etat = M.clos ? "Terminée" : M.tour === 0 ? "Prête à commencer" : "Tour " + M.tour + " sur " + M.T;
+    const M = E.M; if (!M) return ECRANS.tontines();
+    const p = maPlace(), q = M.p[p], monTour = tourDe(M, p);
+    const etat = M.clos ? "Terminée" : M.tour === 0 ? "Tirage fait, 1re échéance à venir" : "Tour " + M.tour + " sur " + M.T;
     const tours = [];
     for (let t = 1; t <= M.T; t++) {
       const qui = []; for (let i = 0; i < M.N; i++) if (tourDe(M, i) === t) qui.push(nomPlace(i));
-      const cl = t < M.tour || (t === M.tour) ? "passe" : "";
-      tours.push("<div class='tour-l " + (t === M.tour && !M.clos ? "encours" : cl) + "'><span class='num'>" + t + "</span><span class='qui'>" + qui.join(", ") + "<small>" + F(M.cagnotte) + (estDernier(M, t) ? " · + bonus des derniers" : "") + "</small></span><span class='st " + (t <= M.tour ? "v" : "") + "'>" + (t <= M.tour ? "Versée" : "À venir") + "</span></div>");
+      tours.push("<div class='tour-l " + (t === M.tour && !M.clos ? "encours" : t < M.tour || M.clos ? "passe" : "") + "'><span class='num'>" + t + "</span><span class='qui'>" + qui.join(", ") + "<small>" + F(M.cagnotte) + (estDernier(M, t) ? " · + bonus des derniers" : "") + "</small></span><span class='st " + (t <= M.tour ? "v" : "") + "'>" + (t <= M.tour ? "Versée" : "À venir") + "</span></div>");
     }
-    const monAbsent = !!M.absences[p];
-    return hero("40%", "<button class='rond' data-aller-racine='accueil' aria-label='Accueil'>←</button><span class='surtitre' style='flex:1;text-align:center'>" + etat + "</span><button class='rond' data-aller='journal' aria-label='Journal'>≡</button>",
-      titre("Ma place : tour " + monTour, 44, E.cfg.N + " membres · " + F(E.cfg.c) + " par échéance") +
-      "<div class='plaque'><div class='lp'><span>Mon solde tontine : reçu moins versé, caution comprise</span></div><div class='montant'>" + montantHTML(enMain) + "</div>" +
+    return hero("40%", "<button class='rond' data-onglet='tontines' aria-label='Retour'>←</button><span class='surtitre' style='flex:1;text-align:center'>" + etat + "</span><button class='rond' data-aller='journal' aria-label='Journal'>≡</button>",
+      titre("Ma place : tour " + monTour, 42, echappe(E.nom) + " · " + F(E.cfg.c) + " par échéance") +
+      "<div class='plaque'><div class='lp'><span>Mon solde tontine : reçu moins versé</span></div><div class='montant'>" + montantHTML(q.entree - q.sortie) + "</div>" +
       "<div class='lp'><span>Caution gelée</span><b>" + F(q.caution) + "</b></div>" +
       (q.bloque ? "<div class='lp'><span>Part bloquée, qui paie mes cotisations</span><b>" + F(q.bloque) + "</b></div>" : "") + "</div>") +
       "<div class='bas'>" +
-        (monAbsent ? "<div class='bloc alerte'><h3>Scénario : c'est vous qui manquez des échéances</h3>Le tableau du moteur montre ce que le système prend sur votre caution, et ce qu'il vous rend.</div>" : "") +
+        (M.absences[p] ? "<div class='bloc alerte'><h3>Scénario : c'est toi qui manques des échéances</h3>Le tableau du moteur montre ce que le système prend sur ta caution, et ce qu'il te rend.</div>" : "") +
         "<div class='boutons'>" +
           (M.clos ? "<button class='pilule blanche' data-aller='cloture' style='grid-column:1/-1'>Voir mon bilan</button>"
                   : M.tour < M.T ? "<button class='pilule blanche' data-tour>Tour suivant (démo)</button><button class='pilule contour' data-aller='journal'>Le journal</button>"
@@ -575,7 +732,7 @@ const ECRANS = {
         "<div class='bas'><div class='bloc alerte'><h3>Tu as des échéances non payées</h3><div>Ta cagnotte arrive quand même à ta place, mais elle est <b>entièrement bloquée</b> : elle rembourse d'abord ce qui a été payé pour toi.</div><div>Le reste t'est rendu à la clôture. Personne ne te prend plus que ce que tu dois.</div></div>" +
         "<button class='pilule blanche' data-retour>Retour à la tontine</button></div>";
     }
-    return hero("38%", btnRetour, titre("Tu as gagné", 60, "Tour " + t + " · tirage du " + (t === 1 ? "premier" : t + "e") + " tour") +
+    return hero("38%", btnRetour, titre("Tu as gagné", 60, "Tour " + t) +
       "<div class='plaque'><div class='lp'><span>Ta cagnotte</span></div><div class='montant'>" + montantHTML(M.cagnotte) + "</div></div>") +
       "<div class='bas'>" +
         "<div class='recap'>" +
@@ -596,7 +753,6 @@ const ECRANS = {
     const M = E.M, par = {};
     M.journal.filter((j) => j.genre !== "paie").forEach((j) => { (par[j.t] = par[j.t] || []).push(j); });
     const payes = (t) => M.journal.filter((j) => j.t === t && j.genre === "paie").length;
-    const tours = Object.keys(par).map(Number).sort((a, b) => b - a);
     const html = [];
     for (let t = M.tour + (M.clos ? 1 : 0); t >= 1; t--) {
       html.push("<p class='jour'>" + (t > M.T ? "Clôture" : "Tour " + t) + "</p>");
@@ -605,7 +761,7 @@ const ECRANS = {
     }
     return hero("22%", btnRetour, titre("Le journal", 48, "Visible par tous les membres")) +
       "<div class='bas'><p class='aide'>« J'ai payé » se vérifie ici. <b>Aucune capture d'écran n'est une preuve</b> : seul ce journal fait foi.</p>" +
-      (M.tour === 0 ? "<p class='aide'>Rien encore : la tontine n'a pas commencé.</p>" : html.join("")) + "</div>";
+      (M.tour === 0 ? "<p class='aide'>Rien encore : la première échéance n'est pas passée.</p>" : html.join("")) + "</div>";
   },
 
   cloture() {
@@ -627,7 +783,140 @@ const ECRANS = {
         "<button class='pilule contour' data-aller='journal'>Le journal complet</button>" +
       "</div>";
   },
+
+  activite() { return hero("26%", "<div style='flex:1'></div>", titre("Activité", 58)) + "<div class='bas'><div class='stub'>Hors de la démo tontine.</div></div>" + nav(); },
+  profil() { return hero("26%", "<div style='flex:1'></div>", titre("Profil", 58)) + "<div class='bas'><div class='stub'>Hors de la démo tontine.</div></div>" + nav(); },
 };
+
+function recapCreer() {
+  const cfg = E.cfg, err = valide(cfg), g = cagnotteDe(cfg);
+  if (err.length) return "<div class='bloc alerte'><h3>Format impossible</h3>" + err.map((e) => "<div>" + e + "</div>").join("") + "</div><button class='pilule blanche' disabled>Voir les chiffres</button>";
+  return "<div class='recap'>" +
+    "<div><span>Format</span><b>" + resumeFormat(cfg) + "</b></div>" +
+    "<div><span>Durée</span><b>" + duree(cfg.rythme, cfg.T) + "</b></div>" +
+    "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
+    "<div><span>Caution de chaque membre</span><b>" + F(pct(g, 30)) + "</b></div></div>" +
+    (g > 2000000 ? "<p class='aide'>Cagnotte au-delà de 2 000 000 F : chaque membre devra avoir <b>un compte bancaire vérifié à son nom</b>.</p>" : "") +
+    "<button class='pilule blanche' data-aller='chiffres'>Voir les chiffres</button>";
+}
+function fluxHTML() {
+  if (!E.flux.length) return "<p class='aide'>Rien pour l'instant.</p>";
+  return "<div class='flux'>" + E.flux.slice().reverse().slice(0, 12).map((f) => "<div class='" + f.genre + "'><i></i><span>" + f.texte + "</span><small>" + f.compte + "</small></div>").join("") + "</div>";
+}
+
+/* ======================= le recrutement, simule ======================= */
+function ajouterFlux(texte, genre) { E.flux.push({ texte, genre: genre || "", compte: E.groupe.length + " / " + N(E.cfg) }); }
+function candidats() { const pris = new Set(E.groupe.concat(E.partis || [])); return NOMS.map((_, i) => i).filter((i) => i > 0 && !pris.has(i)); }
+function boucleRecrutement() {
+  const n = N(E.cfg);
+  if (!["recherche", "salle"].includes(E.ecran)) return;
+  if (E.groupe.length >= n) {
+    if (E.role === "membre") {
+      ajouterFlux("<b>" + nomId(E.orga) + "</b> a lancé la tontine", "sys"); rendre();
+      minuter(() => lancerContrat(), 1200);
+    }
+    return;
+  }
+  const libres = candidats();
+  if (!E.parti && E.groupe.length >= 3 && Math.random() < .25) {
+    const partants = E.groupe.filter((id) => id !== 0 && id !== E.orga);
+    const id = partants[Math.floor(Math.random() * partants.length)];
+    E.groupe = E.groupe.filter((x) => x !== id); E.parti = true; E.partis = (E.partis || []).concat(id);
+    ajouterFlux("<b>" + nomId(id) + "</b> s'est retiré avant le début : rien ne lui a été pris", "part");
+  } else if (libres.length) {
+    const id = libres[Math.floor(Math.random() * libres.length)];
+    E.groupe.push(id); ajouterFlux("<b>" + nomId(id) + "</b> a rejoint", "");
+  }
+  rendre();
+  minuter(boucleRecrutement, 650 + Math.random() * 500);
+}
+function lancerContrat() {
+  E.acceptes = []; E.jaiAccepte = false; aller("contrat", { remplacer: true });
+  const autres = E.groupe.filter((id) => id !== 0);
+  const pas = () => {
+    if (E.ecran !== "contrat") return;
+    const reste = autres.filter((id) => !E.acceptes.includes(id));
+    if (reste.length) { E.acceptes.push(reste[Math.floor(Math.random() * reste.length)]); rendre(); }
+    if (E.acceptes.length >= N(E.cfg)) { rendre(); minuter(lancerTirage, 1400); return; }
+    minuter(pas, reste.length ? 420 + Math.random() * 380 : 600);
+  };
+  minuter(pas, 700);
+}
+
+/* ======================= le tirage en direct ======================= */
+function lancerTirage() {
+  const alea = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
+  const secret = alea() + alea() + alea() + alea();
+  E.tirage = { secret, empreinte: sha256(secret), gestes: [] }; E.gestes = 0; E.monGeste = null; E.ordre = null; E.revelees = 0; E.M = null;
+  aller("tirage", { remplacer: true });
+  const n = N(E.cfg);
+  const pas = () => {
+    if (E.ecran !== "tirage") return;
+    const attendus = n - (E.monGeste ? 0 : 1);
+    if (E.tirage.gestes.length < attendus) { E.tirage.gestes.push((Math.floor(Math.random() * 9000) + 1000).toString()); E.gestes = E.tirage.gestes.length; rendre(); minuter(pas, 180 + Math.random() * 260); return; }
+    if (!E.monGeste) { minuter(pas, 300); return; }
+    reveler();
+  };
+  minuter(pas, 600);
+}
+function reveler() {
+  const graine = sha256(E.tirage.secret + "|" + E.tirage.gestes.join("|"));
+  let s = parseInt(graine.slice(0, 8), 16) >>> 0;
+  const rnd = () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const ordre = E.groupe.slice().sort((a, b) => a - b);
+  for (let i = ordre.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ordre[i], ordre[j]] = [ordre[j], ordre[i]]; }
+  E.ordre = ordre; E.revelees = 0; relancerMoteur(); E.tourVu = 0; E.retire = false;
+  const pas = () => { if (E.ecran !== "tirage") { E.revelees = ordre.length; return; } E.revelees++; rendre(); if (E.revelees < ordre.length) minuter(pas, 260); };
+  minuter(pas, 400);
+}
+function raccourci() {
+  arreter();
+  if (valide(E.cfg).length) { const n0 = neuf(); E.cfg = n0.cfg; E.saisie = n0.saisie; }
+  if (!E.role) { E.role = "organisateur"; E.orga = 0; }
+  const n = N(E.cfg);
+  if (E.groupe.length !== n) { E.groupe = [0]; if (E.role === "membre") E.groupe.push(E.orga); const l = candidats(); while (E.groupe.length < n) E.groupe.push(l.shift()); }
+  E.acceptes = E.groupe.slice(); E.jaiAccepte = true;
+  const alea = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
+  const secret = alea() + alea() + alea() + alea();
+  E.tirage = { secret, empreinte: sha256(secret), gestes: Array.from({ length: n }, () => (Math.floor(Math.random() * 9000) + 1000).toString()) };
+  E.monGeste = E.tirage.gestes[0]; E.gestes = n; E.M = null;
+  const graine = sha256(E.tirage.secret + "|" + E.tirage.gestes.join("|"));
+  let s = parseInt(graine.slice(0, 8), 16) >>> 0;
+  const rnd = () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const ordre = E.groupe.slice().sort((a, b) => a - b);
+  for (let i = ordre.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ordre[i], ordre[j]] = [ordre[j], ordre[i]]; }
+  E.ordre = ordre; E.revelees = n; relancerMoteur(); E.tourVu = 0; E.retire = false;
+  E.pile = ["tontines"]; E.ecran = "tontine"; E.sens = "avant"; fermerFeuille(true); rendre();
+}
+function avancer() {
+  if (!E.M) { raccourci(); return; }
+  if (E.M.clos) return;
+  if (E.M.tour >= E.M.T) { cloture(E.M); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); return; }
+  tourSuivant(E.M);
+  const monTour = tourDe(E.M, maPlace());
+  if (E.M.tour === monTour && E.tourVu < monTour) { E.tourVu = monTour; E.pile = ["tontines", "tontine"]; E.ecran = "gain"; E.sens = "avant"; }
+  rendre();
+}
+
+/* ======================= notifications ======================= */
+function notifier(type) {
+  E.notif = type; E.notifVue = false;
+  const o = OFFRES[type], el = document.getElementById("notif");
+  el.innerHTML = "<span class='ico'>T</span><span class='txt'><b>" + (type === "invitation" ? nomId(o.orga) + " t'invite à une tontine" : "Nouvel événement ouvert") + "</b>" +
+    echappe(o.nom) + " · " + F(o.cfg.c) + " " + RYTHMES[o.cfg.rythme].lib.toLowerCase() + "<br><small>" + resumeFormat(o.cfg) + "</small></span><button class='voir' data-offre='" + type + "'>Voir</button>";
+  el.classList.add("visible");
+  clearTimeout(notifier.t); notifier.t = setTimeout(() => el.classList.remove("visible"), 7000);
+  rendre();
+}
+function ouvrirOffre(type) {
+  arreter();
+  const o = OFFRES[type];
+  document.getElementById("notif").classList.remove("visible");
+  E.notifVue = true; E.role = "membre"; E.offre = type; E.nom = o.nom; E.orga = o.orga;
+  E.cfg = Object.assign({}, o.cfg); E.groupe = o.deja.slice(); E.partis = []; E.flux = []; E.parti = false;
+  E.M = null; E.ordre = null; E.tirage = null;
+  E.pile = ["tontines"]; E.ecran = "chiffres"; E.sens = "avant"; fermerFeuille(true); rendre();
+}
 
 /* ======================= feuilles ======================= */
 function ouvrirFeuille(type) { E.feuille = type; E.pin = []; rendreFeuille(); }
@@ -645,17 +934,19 @@ function rendreFeuille() {
   const f = document.getElementById("feuille"), v = document.getElementById("voile");
   if (!E.feuille) return;
   let h = "<span class='poignee'></span>";
-  if (E.feuille === "signer") h += "<h3 id='feuille-titre'>Signer le Pacte</h3><p class='aide'>Ton code secret signe le Pacte. Après le tirage, plus rien ne change.</p>" + clavierHTML();
+  if (E.feuille === "accepter") {
+    const g = cagnotteDe(E.cfg);
+    h += "<h3 id='feuille-titre'>Accepter le contrat</h3><p class='aide'>Ton code secret signe le contrat. <b>" + F(pct(g, 30) + E.cfg.c) + "</b> sont bloqués sur ton compte SwimPay : ta caution et ta première cotisation.</p>" + clavierHTML();
+  }
   if (E.feuille === "retirer") {
     const q = E.M.p[maPlace()];
     h += "<h3 id='feuille-titre'>Retirer " + F(q.libre) + "</h3>" +
       "<div class='recap'><div><span>Vers</span><b>Orange Money · 07 ·· ·· ·· 96</b></div><div><span>Titulaire</span><b>Vous, nom vérifié</b></div></div>" +
       "<p class='aide'>L'argent de la tontine ne sort que vers un compte <b>à ton nom</b>. Nouveau téléphone ou nouveau compte de retrait : <b>72 heures d'attente</b>.</p>" + clavierHTML();
   }
-  if (E.feuille === "confirmer") h += "<h3 id='feuille-titre'>Confirme sur ton appareil habituel</h3><p class='aide'>Deuxième niveau de sécurité : une confirmation arrive par un canal extérieur. SwimPay ne t'appelle jamais pour demander un code.</p><div class='attente' style='display:grid;place-items:center;padding:18px'>Confirmation reçue ✓</div><button class='pilule acide' data-confirme>Valider le retrait</button>";
+  if (E.feuille === "confirmer") h += "<h3 id='feuille-titre'>Confirme sur ton appareil habituel</h3><p class='aide'>Deuxième niveau de sécurité : une confirmation arrive par un canal extérieur. SwimPay ne t'appelle jamais pour demander un code.</p><div class='bloc ok' style='text-align:center'>Confirmation reçue ✓</div><button class='pilule acide' data-confirme>Valider le retrait</button>";
   if (E.feuille === "verifier") {
-    const t = E.tirage, recalc = sha256(t.secret);
-    const graine = sha256(t.secret + "|" + t.gestes.join("|"));
+    const t = E.tirage, recalc = sha256(t.secret), graine = sha256(t.secret + "|" + t.gestes.join("|"));
     h += "<h3 id='feuille-titre'>Vérifier le tirage</h3>" +
       "<div class='etape fait'><span class='n'>1</span><div class='t'>Le nombre secret de SwimPay, révélé<span class='empreinte'>" + t.secret + "</span></div></div>" +
       "<div class='etape fait'><span class='n'>2</span><div class='t'>Son empreinte, recalculée ici<span class='empreinte'>" + recalc + "</span><small>" + (recalc === t.empreinte ? "Identique à l'empreinte publiée avant le tirage ✓" : "Différente : le tirage serait rejeté") + "</small></div></div>" +
@@ -664,39 +955,6 @@ function rendreFeuille() {
   }
   f.innerHTML = h; v.hidden = false;
   requestAnimationFrame(() => { f.classList.add("ouverte"); v.classList.add("ouvert"); });
-}
-
-/* ======================= tirage ======================= */
-function preparerTirage() {
-  const alea = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
-  const secret = alea() + alea() + alea() + alea();
-  E.tirage = { secret, empreinte: sha256(secret), gestes: [] };
-}
-function ajouterGestes() {
-  E.geste = (Math.floor(Math.random() * 9000) + 1000).toString();
-  E.tirage.gestes = [E.geste].concat(Array.from({ length: E.cfg.N - 1 }, () => (Math.floor(Math.random() * 9000) + 1000).toString()));
-}
-function reveler() {
-  const graine = sha256(E.tirage.secret + "|" + E.tirage.gestes.join("|"));
-  let s = parseInt(graine.slice(0, 8), 16) >>> 0;
-  const rnd = () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-  const ordre = Array.from({ length: E.cfg.N }, (_, i) => i);
-  for (let i = ordre.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ordre[i], ordre[j]] = [ordre[j], ordre[i]]; }
-  E.ordre = ordre; E.M = null; relancerMoteur();
-}
-function raccourci() {
-  E.compris = true; E.signe = true; E.arrives = E.cfg.N;
-  preparerTirage(); ajouterGestes(); reveler(); E.tourVu = 0; E.retire = false;
-  E.pile = ["accueil"]; E.ecran = "tontine"; E.sens = "avant"; fermerFeuille(true); rendre();
-}
-function avancer() {
-  if (!E.M) { raccourci(); }
-  if (E.M.clos) return;
-  if (E.M.tour >= E.M.T) { cloture(E.M); rendre(); return; }
-  tourSuivant(E.M);
-  const monTour = tourDe(E.M, maPlace());
-  if (E.M.tour === monTour && E.tourVu < monTour) { E.tourVu = monTour; E.pile = ["accueil", "tontine"]; E.ecran = "gain"; E.sens = "avant"; }
-  rendre();
 }
 
 /* ======================= le cote : le moteur ======================= */
@@ -708,17 +966,16 @@ function rendreCote() {
   document.getElementById("cmd-fin").disabled = !!(M && M.clos);
   document.getElementById("cmd-tour").textContent = !M ? "Commencer" : M.tour >= M.T ? "Clôturer" : "Tour suivant";
   if (!M) {
-    etat.textContent = "Le tirage n'a pas encore eu lieu. Crée la tontine dans le téléphone, ou prends le raccourci.";
+    etat.textContent = E.ordre ? "" : "Le tirage n'a pas encore eu lieu. Suis le parcours dans le téléphone, ou saute au tirage fait.";
     table.innerHTML = "<tr><td style='text-align:left;color:var(--sourd);padding:18px'>Le tableau du groupe apparaît après le tirage.</td></tr>";
     tot.innerHTML = ""; return;
   }
-  const f = fmt();
   etat.innerHTML = (M.clos ? "Tontine clôturée." : M.tour === 0 ? "Tirage fait, la tontine est prête." : "Fin du tour " + M.tour + " sur " + M.T + ".") +
     " " + M.N + " membres, " + M.T + " tours, " + M.B + " gagnant" + (M.B > 1 ? "s" : "") + " par tour, cagnotte de " + F(M.cagnotte) + ".";
-  let lignes = "<tr><th>Tour</th><th>Membre</th><th>État</th><th>A versé</th><th>A reçu</th><th>Caution</th><th>Bloqué</th><th>Doit</th><th>" + (M.clos ? "Résultat" : "En main") + "</th></tr>";
+  let lignes = "<tr><th>Tour</th><th>Membre</th><th>État</th><th>A versé</th><th>A reçu</th><th>Caution</th><th>Bloqué</th><th>Doit</th><th>" + (M.clos ? "Résultat" : "Solde") + "</th></tr>";
+  const cur = M.clos ? M.T : M.tour;
   for (let i = 0; i < M.N; i++) {
     const q = M.p[i], t = tourDe(M, i), a = M.absences[i];
-    const cur = M.clos ? M.T : M.tour;
     let pill = t <= cur ? "<span class='pill v'>a gagné</span>" : "<span class='pill'>à l'heure</span>";
     if (a && a[0] <= cur) {
       if (a[1] != null && a[1] <= cur) pill = "<span class='pill a'>a rattrapé</span>";
@@ -729,7 +986,6 @@ function rendreCote() {
     lignes += "<tr class='" + (E.ordre[i] === 0 ? "vous" : "") + "'><td>" + t + "</td><td>" + echappe(nomPlace(i)) + "</td><td>" + pill + "</td><td>" + F(q.sortie) + "</td><td>" + F(q.entree) + "</td><td>" + F(q.caution) + "</td><td>" + F(q.bloque) + "</td><td>" + (dette ? F(dette) : "—") + "</td><td class='" + (res > 0 ? "pos" : "neg") + "'>" + Fs(res) + "</td></tr>";
   }
   table.innerHTML = lignes;
-  const ok = conserve(M) || !M.clos;
   tot.innerHTML =
     "<div><span>Réserve de secours</span><b>" + F(M.reserve) + "</b></div>" +
     "<div><span>Frais du système (SwimPay)</span><b>" + F(M.revenu) + "</b></div>" +
@@ -744,59 +1000,86 @@ function rendre() {
   const hote = document.getElementById("vue-hote");
   const html = (ECRANS[E.ecran] || ECRANS.accueil)();
   const meme = dernierEcran === E.ecran;
-  const haut = meme && hote.querySelector(".bas") ? hote.querySelector(".bas").scrollTop : 0;
-  hote.innerHTML = "<div class='vue " + (meme ? "sans-anim" : E.sens === "retour" ? "retour" : "") + "'>" + html + "</div>";
+  const zone = hote.querySelector(".bas"), haut = meme && zone ? zone.scrollTop : 0;
+  const actif = document.activeElement && document.activeElement.id;
+  hote.innerHTML = "<div class='vue " + (meme ? "sans-anim " : E.sens === "retour" ? "retour " : "") + (RACINES.includes(E.ecran) ? "avec-nav" : "") + "'>" + html + "</div>";
   if (meme && hote.querySelector(".bas")) hote.querySelector(".bas").scrollTop = haut;
+  if (meme && actif && document.getElementById(actif)) document.getElementById(actif).focus();
   dernierEcran = E.ecran;
   rendreCote();
 }
 
+/* la saisie libre : on met a jour l'etat et le recapitulatif, sans redessiner les champs */
+document.addEventListener("input", (ev) => {
+  const el = ev.target;
+  if (el.id === "f-nom") { E.nom = el.value.trim() || "Ma tontine"; return; }
+  if (el.id === "f-c") { const v = chiffres(el.value).slice(0, 7); E.saisie.c = v; E.cfg.c = +v || 0; el.value = groupe3(v); }
+  if (el.id === "f-t") { const v = chiffres(el.value).slice(0, 2); E.saisie.T = v; E.cfg.T = +v || 0; el.value = v; const u = document.getElementById("u-t"); if (u) u.textContent = E.cfg.T > 1 ? RYTHMES[E.cfg.rythme].plur : RYTHMES[E.cfg.rythme].un; }
+  if (el.id === "f-c" || el.id === "f-t") {
+    const err = valide(E.cfg);
+    document.getElementById("l-c").classList.toggle("erreur", err.some((e) => e.includes("cotisation")));
+    document.getElementById("l-t").classList.toggle("erreur", err.some((e) => e.includes("tours")));
+    document.getElementById("recap-creer").innerHTML = recapCreer();
+  }
+});
+
 document.addEventListener("click", (ev) => {
-  const b = ev.target.closest("button, [data-fermer]"); if (!b) { if (ev.target.id === "voile") fermerFeuille(); return; }
+  const b = ev.target.closest("button"); if (!b) return;
   const d = b.dataset;
   if ("retour" in d) return retour();
+  if (d.onglet) return aller(d.onglet);
+  if (d.aller === "creer") { E.role = null; E.offre = null; E.M = null; E.ordre = null; E.groupe = []; E.flux = []; const n0 = neuf(); E.cfg = n0.cfg; E.saisie = n0.saisie; E.nom = n0.nom; }
   if (d.aller) return aller(d.aller);
-  if (d.allerRacine) { E.pile = d.allerRacine === "tontine" ? ["accueil"] : []; E.ecran = d.allerRacine; E.sens = "retour"; return rendre(); }
-  if (d.rythme) { E.cfg.rythme = d.rythme; const r = RYTHMES[d.rythme]; if (!r.montants.includes(E.cfg.c)) E.cfg.c = r.montants[1]; if (!format(d.rythme, E.cfg.N)) E.cfg.N = TAILLES.find((n) => format(d.rythme, n)) || 6; return rendre(); }
-  if (d.montant) { E.cfg.c = +d.montant; return rendre(); }
-  if (d.taille) { E.cfg.N = +d.taille; return rendre(); }
+  if (d.allerRacine) { arreter(); E.pile = ["tontines"]; E.ecran = d.allerRacine; E.sens = "avant"; fermerFeuille(true); return rendre(); }
+  if (d.offre) return ouvrirOffre(d.offre);
+  if (d.rythme) { E.cfg.rythme = d.rythme; return rendre(); }
+  if (d.b) { E.cfg.B = +d.b; return rendre(); }
   if (d.mode) { E.cfg.mode = d.mode; return rendre(); }
-  if ("compris" in d) { E.compris = !E.compris; return rendre(); }
-  if ("signer" in d) return ouvrirFeuille("signer");
+  if ("publier" in d) {
+    E.role = "organisateur"; E.orga = 0; E.offre = null; E.groupe = [0]; E.partis = []; E.flux = []; E.parti = false; E.M = null; E.ordre = null;
+    ajouterFlux("Tu as " + (E.cfg.mode === "ouverte" ? "publié l'événement" : "envoyé les invitations"), "sys");
+    aller("recherche"); return minuter(boucleRecrutement, 900);
+  }
+  if ("rejoindre" in d) {
+    E.groupe.push(0); E.flux = []; ajouterFlux("<b>Tu</b> as rejoint", "");
+    aller("salle"); return minuter(boucleRecrutement, 900);
+  }
+  if ("seretirer" in d) { arreter(); E.groupe = E.groupe.filter((id) => id !== 0); E.role = null; E.nom = "Ma tontine"; return aller("tontines"); }
+  if ("commencerOrga" in d) { ajouterFlux("Tu as lancé la tontine", "sys"); return lancerContrat(); }
+  if ("accepter" in d) return ouvrirFeuille("accepter");
   if (d.pin !== undefined) {
     if (d.pin === "⌫") E.pin.pop(); else if (E.pin.length < 4) E.pin.push(d.pin);
     if (E.pin.length === 4) {
       const type = E.feuille;
       setTimeout(() => {
-        if (type === "signer") { E.signe = true; E.arrives = 1; E.ordre = null; E.M = null; E.tirage = null; E.geste = null; fermerFeuille(); aller("recrutement"); }
-        if (type === "retirer") { ouvrirFeuille("confirmer"); }
+        if (type === "accepter") {
+          E.jaiAccepte = true; if (!E.acceptes.includes(0)) E.acceptes.push(0); E.solde -= pct(cagnotteDe(E.cfg), 30) + E.cfg.c;
+          fermerFeuille(); rendre();
+          if (E.acceptes.length >= N(E.cfg)) minuter(lancerTirage, 1400);
+          else { const suite = () => { if (E.ecran !== "contrat") return; const reste = E.groupe.filter((id) => !E.acceptes.includes(id)); if (reste.length) { E.acceptes.push(reste[0]); rendre(); } if (E.acceptes.length >= N(E.cfg)) { minuter(lancerTirage, 1400); return; } minuter(suite, 450); }; minuter(suite, 450); }
+        }
+        if (type === "retirer") ouvrirFeuille("confirmer");
       }, 180);
     }
     return rendreFeuille();
   }
-  if ("arrivees" in d) {
-    const pas = () => { if (E.arrives < E.cfg.N && E.ecran === "recrutement") { E.arrives++; rendre(); setTimeout(pas, 90); } };
-    return pas();
-  }
-  if ("geste" in d) { if (!E.tirage) preparerTirage(); ajouterGestes(); return rendre(); }
-  if ("reveler" in d) { reveler(); return rendre(); }
+  if ("geste" in d) { E.monGeste = (Math.floor(Math.random() * 9000) + 1000).toString(); E.tirage.gestes.push(E.monGeste); E.gestes = E.tirage.gestes.length; return rendre(); }
   if ("verifier" in d) return ouvrirFeuille("verifier");
   if ("fermer" in d) return fermerFeuille();
-  if ("commencer" in d) { E.tourVu = 0; E.retire = false; E.pile = ["accueil"]; E.ecran = "tontine"; E.sens = "avant"; return rendre(); }
   if ("tour" in d) return avancer();
-  if ("cloturer" in d) { cloture(E.M); E.pile = ["accueil", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; return rendre(); }
+  if ("cloturer" in d) { cloture(E.M); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; return rendre(); }
   if ("retirer" in d) return ouvrirFeuille("retirer");
-  if ("confirme" in d) { E.retire = true; fermerFeuille(); return rendre(); }
+  if ("confirme" in d) { E.retire = true; E.solde += E.M.p[maPlace()].libre; fermerFeuille(); return rendre(); }
   if (d.scenario) { E.scenario = d.scenario; relancerMoteur(); return rendre(); }
 });
 document.getElementById("voile").addEventListener("click", () => fermerFeuille());
+document.getElementById("cmd-invit").addEventListener("click", () => { if (!RACINES.includes(E.ecran)) aller("accueil"); notifier("invitation"); });
+document.getElementById("cmd-global").addEventListener("click", () => { if (!RACINES.includes(E.ecran)) aller("accueil"); notifier("global"); });
 document.getElementById("cmd-raccourci").addEventListener("click", raccourci);
-document.getElementById("cmd-tour").addEventListener("click", () => { if (E.M && E.M.tour >= E.M.T && !E.M.clos) { cloture(E.M); E.pile = ["accueil", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); } else avancer(); });
-document.getElementById("cmd-fin").addEventListener("click", () => { if (!E.M) raccourci(); cloture(E.M); E.pile = ["accueil", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); });
-document.getElementById("cmd-reset").addEventListener("click", () => { E = neuf(); dernierEcran = null; fermerFeuille(true); rendre(); });
+document.getElementById("cmd-tour").addEventListener("click", avancer);
+document.getElementById("cmd-fin").addEventListener("click", () => { if (!E.M) raccourci(); cloture(E.M); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); });
+document.getElementById("cmd-reset").addEventListener("click", () => { arreter(); E = neuf(); dernierEcran = null; fermerFeuille(true); document.getElementById("notif").classList.remove("visible"); rendre(); setTimeout(() => { if (E.ecran === "accueil" && !E.notif) notifier("invitation"); }, 1600); });
 
-/* le tirage prepare son empreinte des l'arrivee sur l'ecran */
-const rendreOriginal = rendre;
-rendre = function () { if (E.ecran === "tirage" && !E.tirage) preparerTirage(); rendreOriginal(); };
 rendre();
+setTimeout(() => { if (E.ecran === "accueil" && !E.notif) notifier("invitation"); }, 1600);
 </script>

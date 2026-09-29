@@ -84,7 +84,7 @@ leur nom** (règle 17, §8).
    - l'écran affiche **ses propres chiffres** : ce qu'il paiera à chaque échéance, ce
      qu'il pourra retirer le jour du gain selon sa place, ce qu'il récupérera à la
      fin, les frais, ce qui se passe s'il paie en retard ou pas du tout ;
-   - signature du **Pacte** par code secret, qui inclut **l'autorisation de
+   - signature du **contrat** par code secret, qui inclut **l'autorisation de
      prélèvement** du §6.6.
    Il peut partir **avant le tirage** : tout lui est rendu.
 4. **Tirage** (§7). L'ordre est fixé une fois pour toutes. **Le tour de chaque
@@ -189,7 +189,7 @@ rien à voler.** Fuir ne lui rapporte rien et lui coûte les pénalités (§11.2
 ### 6.6 La dette après la clôture
 
 Si sa caution et sa part bloquée ne suffisent pas à rembourser le tort (cas très
-rare, §11), le reste est une **dette**. Le Pacte contient une **autorisation de
+rare, §11), le reste est une **dette**. Le contrat contient une **autorisation de
 prélèvement**, signée par code secret, qui permet de la rembourser sur les entrées
 futures de son compte SwimPay. Sa validité et sa forme sont **à confirmer avec le
 partenaire EME** `[H]`. Sans cette autorisation, la dette passe au recouvrement
@@ -248,7 +248,7 @@ Dans l'ordre :
 | 7 | **Décès** | Règle 5. Ce qui lui revient (part bloquée, caution moins le tort, part de réserve s'il était fidèle) est versé **sur son compte SwimPay**, et la succession se règle au niveau du compte, selon la loi, hors de la tontine. La tontine ne demande aucun certificat |
 | 8 | « J'ai payé » | Le journal de la tontine, visible par tous, fait foi. Aucune capture d'écran n'est une preuve |
 | 9 | « Le tirage est truqué » | Chacun le vérifie dans l'application |
-| 10 | « Je n'avais pas compris » | Le Pacte, signé après l'affichage de ses propres chiffres, fait foi |
+| 10 | « Je n'avais pas compris » | Le contrat, signé après l'affichage de ses propres chiffres, fait foi |
 | 11 | Panne de SwimPay ou d'un opérateur à l'échéance | La tontine est suspendue, l'horloge s'arrête, personne n'est en retard. Au-delà de 7 jours de suspension `[H]` : liquidation (règle 20) |
 | 12 | Erreur prouvée de SwimPay | Compensation automatique par une réserve d'incidents de SwimPay |
 | 13 | Écart entre le registre et le solde réel chez le partenaire | Faute de SwimPay par définition : la réserve d'incidents comble l'écart, la tontine continue ; au-delà, suspension |
@@ -389,8 +389,8 @@ supplémentaire, pas une condition de survie.
 | G6 | **Identité usurpée découverte en cours de route** : qui paie le tour ? | Règle 18 : le tour est payé par la couverture habituelle (§6.3), la victime de l'usurpation n'est jamais débitrice, et si le contrôle d'identité de SwimPay a échoué, c'est une erreur de SwimPay, compensée (règle 12) |
 | G7 | **Supprimer la caution**, ou la remplacer par des garants | La caution est **maintenue** par le fondateur (§2), ramenée à 30 %. Les garants tiers sont écartés en première version : il faudrait prouver leur consentement et leur solvabilité, et ils ouvrent une nouvelle collusion (le garant complice). À étudier plus tard |
 | G8 | **Produit invendable** face à la tontine de quartier gratuite | Le produit ne vise pas à battre la tontine de quartier sur la liquidité, mais sur **la certitude d'être payé**. Coût pour un fidèle : 3 900 F sur 100 000 F. À valider par un test de marché ; c'est la vraie question ouverte |
-| G9 | **Clause pénale excessive** (droit OHADA) | Corrigé : la saisie est limitée au tort causé ; la seule pénalité est de 5 % des sommes couvertes à sa place, fixée d'avance dans le Pacte. Proportionnalité à confirmer par un juriste `[H]` |
-| G10 | **Prélever sur les fonds futurs** sans mandat | Corrigé : le Pacte contient une **autorisation de prélèvement** explicite, signée par code (§6.6). Sa validité est à confirmer avec le partenaire EME `[H]` |
+| G9 | **Clause pénale excessive** (droit OHADA) | Corrigé : la saisie est limitée au tort causé ; la seule pénalité est de 5 % des sommes couvertes à sa place, fixée d'avance dans le contrat. Proportionnalité à confirmer par un juriste `[H]` |
+| G10 | **Prélever sur les fonds futurs** sans mandat | Corrigé : le contrat contient une **autorisation de prélèvement** explicite, signée par code (§6.6). Sa validité est à confirmer avec le partenaire EME `[H]` |
 
 ### DeepSeek
 
