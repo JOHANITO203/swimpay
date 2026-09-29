@@ -277,7 +277,7 @@ td.neg { color: var(--encre); }
     <p>La tontine classique dans l'app SwimPay, avec <b>les règles validées le 29 septembre</b>. Le téléphone montre ce que vit le membre, du premier écran au bilan. Ce panneau montre <b>ce que fait le système</b>, pour tout le groupe. Aucun humain ne décide.</p>
 
     <section class="regles" aria-label="Les règles">
-      <div><b>30 %</b><span>de caution, gelée jusqu'à la fin</span></div>
+      <div><b>30 %</b><span>de caution, rendue à la fin</span></div>
       <div><b>+5 %</b><span>retirable au gain, en plus de ce qu'on a versé</span></div>
       <div><b>2 %</b><span>de réserve de secours, rendue à la fin</span></div>
       <div><b>3 %</b><span>de frais du système, pris au gain</span></div>
@@ -495,6 +495,7 @@ const neuf = () => ({
   tirage: null, gestes: 0, monGeste: null, ordre: null, revelees: 0,
   scenario: "joyeux", M: null, tourVu: 0, retire: false,
   pin: [], feuille: null, notif: null, notifVue: false, offre: null, solde: 148350,
+  soldeTontine: 0, dernierPrelev: null, credite: false, credit: { n: 1, source: "compte" },
 });
 let E = neuf();
 let minuteur = null;
@@ -586,7 +587,7 @@ const ECRANS = {
           "<button class='carte-t' data-offre='" + inv.type + "'><div class='l1'><b>" + echappe(inv.nom) + "</b><span class='etiquette " + (inv.type === "invitation" ? "v" : "a") + "'>" + (inv.type === "invitation" ? "Invitation" : "Ouvert") + "</span></div><div class='l2'>" + (inv.type === "invitation" ? "De <b>" + nomId(inv.orga) + "</b> · " : "") + F(inv.cfg.c) + " " + RYTHMES[inv.cfg.rythme].lib.toLowerCase() + " · " + resumeFormat(inv.cfg) + "</div><div class='l2'>Cagnotte de chaque gagnant : <b>" + F(cagnotteDe(inv.cfg)) + "</b></div></button>" : "") +
         "<p class='groupe-titre'>Événements ouverts</p>" +
         "<button class='carte-t' data-offre='global'><div class='l1'><b>" + OFFRES.global.nom + "</b><span>" + OFFRES.global.deja.length + " / " + N(OFFRES.global.cfg) + " places</span></div><div class='l2'>" + F(OFFRES.global.cfg.c) + " chaque jour · " + duree("jour", OFFRES.global.cfg.T) + " · cagnotte <b>" + F(cagnotteDe(OFFRES.global.cfg)) + "</b></div></button>" +
-        "<div class='bloc'><h3>Les règles, les mêmes pour tous</h3><div>Une <b>caution de 30 %</b> de la cagnotte, gelée jusqu'à la fin. Le jour de ton gain, tu retires <b>ce que tu as versé, plus 5 %</b> ; le reste paie tes cotisations suivantes.</div></div>" +
+        "<div class='bloc'><h3>Les règles, les mêmes pour tous</h3><div>Une <b>caution de 30 %</b> de la cagnotte, rendue à la fin. Le jour de ton gain, tu retires <b>ce que tu as versé, plus 5 %</b> ; le reste paie tes cotisations suivantes.</div></div>" +
         "<div class='pousse'></div>" +
         "<button class='pilule blanche' data-aller='creer'>Créer une tontine</button>" +
       "</div>" + nav();
@@ -618,7 +619,7 @@ const ECRANS = {
       "<div class='plaque'><div class='lp'><span>" + F(c) + " " + RYTHMES[cfg.rythme].lib.toLowerCase() + ", pendant " + duree(cfg.rythme, T) + "</span></div><div class='lp'><span>" + resumeFormat(cfg) + "</span></div></div>") +
       "<div class='bas'>" +
         "<div class='recap'>" +
-          "<div><span>Bloqué en acceptant le contrat</span><b>" + F(pct(g, 30) + c) + "</b></div>" +
+          "<div><span>Prélevé en acceptant le contrat</span><b>" + F(pct(g, 30) + c) + "</b></div>" +
           "<div class='moins'><span>dont caution, rendue à la fin</span><b>" + F(pct(g, 30)) + "</b></div>" +
           "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
           "<div class='moins'><span>Frais du système (3 %)</span><b>−" + F(pct(g, 3)) + "</b></div>" +
@@ -627,7 +628,7 @@ const ECRANS = {
         "<div class='places'><div><small>Tiré au tour 1</small><b>" + F(libreAu(1)) + "</b></div><div><small>Tiré au tour " + mil + "</small><b>" + F(libreAu(mil)) + "</b></div><div><small>Tiré au tour " + T + "</small><b>" + F(libreAu(T)) + "</b></div></div>" +
         "<p class='aide'>Ce qu'on a déjà versé, <b>plus " + F(pct(g, 5)) + "</b>. Le reste est bloqué et <b>paie les cotisations suivantes</b>. La place dépend du tirage.</p>" +
         "<div class='bloc alerte'><h3>En cas de retard ou d'arrêt</h3><div>La caution paie l'échéance, avec <b>5 % de pénalité</b>. Si on arrête de payer, on ne prend sur la caution <b>que ce qui a été payé à sa place</b> ; le reste est rendu à la fin.</div></div>" +
-        (membre ? "<button class='pilule blanche' data-rejoindre>Rejoindre la tontine</button><p class='aide' style='text-align:center'>Rien n'est bloqué avant le contrat. Tu peux te retirer tant que la tontine n'a pas commencé.</p>"
+        (membre ? "<button class='pilule blanche' data-rejoindre>Rejoindre la tontine</button><p class='aide' style='text-align:center'>Rien n'est prélevé avant le contrat. Tu peux te retirer tant que la tontine n'a pas commencé.</p>"
                 : "<button class='pilule blanche' data-publier>" + (cfg.mode === "ouverte" ? "Publier l'événement" : "Inviter des membres") + "</button>") +
       "</div>";
   },
@@ -670,7 +671,7 @@ const ECRANS = {
           "<div><span>Cotisation</span><b>" + F(cfg.c) + " " + RYTHMES[cfg.rythme].lib.toLowerCase() + "</b></div>" +
           "<div><span>Durée</span><b>" + duree(cfg.rythme, cfg.T) + " · " + resumeFormat(cfg) + "</b></div>" +
           "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
-          "<div><span>Bloqué maintenant</span><b>" + F(pct(g, 30) + cfg.c) + "</b></div>" +
+          "<div><span>Prélevé maintenant</span><b>" + F(pct(g, 30) + cfg.c) + "</b></div>" +
           "<div><span>Frais du système</span><b>3 % au gain</b></div></div>" +
         "<p class='aide'>Après le tirage, <b>plus rien ne change</b> : montant, rythme, membres, ordre. L'ordre est tiré au sort par le système, en direct, devant tous.</p>" +
         "<p class='groupe-titre'>Les membres · " + acc + " / " + n + " ont accepté</p>" +
@@ -707,14 +708,15 @@ const ECRANS = {
     }
     return hero("40%", "<button class='rond' data-onglet='tontines' aria-label='Retour'>←</button><span class='surtitre' style='flex:1;text-align:center'>" + etat + "</span><button class='rond' data-aller='journal' aria-label='Journal'>≡</button>",
       titre("Ma place : tour " + monTour, 42, echappe(E.nom) + " · " + F(E.cfg.c) + " par échéance") +
-      "<div class='plaque'><div class='lp'><span>Mon solde tontine : reçu moins versé</span></div><div class='montant'>" + montantHTML(q.entree - q.sortie) + "</div>" +
-      "<div class='lp'><span>Caution gelée</span><b>" + F(q.caution) + "</b></div>" +
-      (q.bloque ? "<div class='lp'><span>Part bloquée, qui paie mes cotisations</span><b>" + F(q.bloque) + "</b></div>" : "") + "</div>") +
+      "<div class='plaque'><div class='lp'><span>Solde tontine</span></div><div class='montant'>" + montantHTML(E.soldeTontine) + "</div>" +
+      "<div class='lp'><span>Caution</span><b>" + F(q.caution) + "</b></div>" +
+      (!M.clos && M.tour < M.T ? "<div class='lp'><span>Prochaine échéance · tour " + (M.tour + 1) + "</span><b>" + (q.bloque >= M.c ? "payée par ta cagnotte" : F(M.c)) + "</b></div>" : "") + "</div>") +
       "<div class='bas'>" +
+        infoPrelevement(M, q) +
         (M.absences[p] ? "<div class='bloc alerte'><h3>Scénario : c'est toi qui manques des échéances</h3>Le tableau du moteur montre ce que le système prend sur ta caution, et ce qu'il te rend.</div>" : "") +
         "<div class='boutons'>" +
           (M.clos ? "<button class='pilule blanche' data-aller='cloture' style='grid-column:1/-1'>Voir mon bilan</button>"
-                  : M.tour < M.T ? "<button class='pilule blanche' data-tour>Tour suivant (démo)</button><button class='pilule contour' data-aller='journal'>Le journal</button>"
+                  : M.tour < M.T ? (q.bloque >= M.c ? "" : "<button class='pilule acide' data-credit style='grid-column:1/-1'>Ajouter du crédit</button>") + "<button class='pilule blanche' data-tour>Tour suivant (démo)</button><button class='pilule contour' data-aller='journal'>Le journal</button>"
                   : "<button class='pilule blanche' data-cloturer style='grid-column:1/-1'>Clôturer la tontine</button>") +
         "</div>" +
         (q.libre !== null && !M.clos ? "<button class='pilule contour' data-aller='gain'>Revoir mon gain</button>" : "") +
@@ -728,8 +730,8 @@ const ECRANS = {
     const bloque = net - q.libre, paye = Math.min(Math.floor(bloque / c), M.T - t), poche = Math.max(0, doit - bloque);
     if (absent(M, p, t)) {
       return hero("34%", btnRetour, titre("Ton tour est arrivé", 46, "Tour " + t) +
-        "<div class='plaque'><div class='lp'><span>Cagnotte, entièrement bloquée</span></div><div class='montant'>" + montantHTML(net) + "</div></div>") +
-        "<div class='bas'><div class='bloc alerte'><h3>Tu as des échéances non payées</h3><div>Ta cagnotte arrive quand même à ta place, mais elle est <b>entièrement bloquée</b> : elle rembourse d'abord ce qui a été payé pour toi.</div><div>Le reste t'est rendu à la clôture. Personne ne te prend plus que ce que tu dois.</div></div>" +
+        "<div class='plaque'><div class='lp'><span>Cagnotte, réservée à ce que tu dois</span></div><div class='montant'>" + montantHTML(net) + "</div></div>") +
+        "<div class='bas'><div class='bloc alerte'><h3>Tu as des échéances non payées</h3><div>Ta cagnotte arrive quand même à ta place, mais elle est <b>entièrement réservée</b> : elle rembourse d'abord ce qui a été payé pour toi.</div><div>Le reste t'est rendu à la clôture. Personne ne te prend plus que ce que tu dois.</div></div>" +
         "<button class='pilule blanche' data-retour>Retour à la tontine</button></div>";
     }
     return hero("38%", btnRetour, titre("Tu as gagné", 60, "Tour " + t) +
@@ -740,7 +742,7 @@ const ECRANS = {
           "<div class='moins'><span>Frais du système</span><b>−" + F(M.frais) + "</b></div>" +
           "<div class='moins'><span>Réserve de secours, rendue à la fin</span><b>−" + F(M.mise) + "</b></div>" +
           (q.differe ? "<div class='moins'><span>Versé à la clôture (d'autres n'ont pas payé)</span><b>−" + F(q.differe) + "</b></div>" : "") +
-          "<div class='moins'><span>Part bloquée, qui paie " + (paye ? "tes " + paye + " prochaines cotisations" : "tes cotisations") + "</span><b>−" + F(bloque) + "</b></div>" +
+          "<div class='moins'><span>Réservé à " + (paye ? "tes " + paye + " prochaines cotisations" : "tes cotisations") + "</span><b>−" + F(bloque) + "</b></div>" +
           "<div class='total libre'><span>Tu peux retirer</span><b>" + F(q.libre) + "</b></div></div>" +
         "<p class='aide'>C'est ce que tu as versé (" + F(c * t) + ") plus " + F(M.avance) + ". " + (poche ? "Il te restera <b>" + F(poche) + "</b> à payer de ta poche en fin de tontine." : "Tu n'as plus rien à payer de ta poche.") + "</p>" +
         (E.retire ? "<div class='bloc ok'><h3>Retrait fait</h3>" + F(q.libre) + " envoyés sur Orange Money · 07 ·· ·· ·· 96, à ton nom.</div>"
@@ -765,20 +767,24 @@ const ECRANS = {
   },
 
   cloture() {
-    const M = E.M, p = maPlace(), q = M.p[p], net = q.entree - q.sortie;
+    const M = E.M, p = maPlace(), q = M.p[p];
+    const rendu = q.rendu + q.partReserve + q.bonusRecu + q.differe + (E.creditRendu || 0);
     const fideles = M.p.filter((_, i) => !M.absences[i]).length;
     return hero("36%", "<button class='rond' data-aller-racine='tontine' aria-label='Retour'>←</button><div style='flex:1'></div>",
       titre("Tontine terminée", 50, "Mon bilan") +
-      "<div class='plaque'><div class='lp'><span>Mon résultat : tout ce que j'ai reçu, moins tout ce que j'ai versé</span></div><div class='montant'>" + montantHTML(net) + "</div></div>") +
+      "<div class='plaque'><div class='lp'><span>Versé sur ton compte SwimPay à la clôture</span></div><div class='montant'>" + montantHTML(rendu) + "</div></div>") +
       "<div class='bas'>" +
         "<div class='recap'>" +
-          "<div><span>J'ai versé (caution comprise)</span><b>" + F(q.sortie) + "</b></div>" +
-          "<div><span>J'ai reçu, en tout</span><b>" + F(q.entree) + "</b></div>" +
-          "<div><span>dont caution et part bloquée rendues</span><b>" + F(q.rendu) + "</b></div>" +
-          "<div><span>dont ma part de la réserve</span><b>" + F(q.partReserve) + "</b></div>" +
-          (q.bonusRecu ? "<div><span>dont bonus des derniers</span><b>" + F(q.bonusRecu) + "</b></div>" : "") +
-          (q.penalites ? "<div class='moins'><span>Mes pénalités</span><b>" + F(q.penalites) + "</b></div>" : "") +
-          "<div class='total'><span>Résultat</span><b>" + Fs(net) + "</b></div></div>" +
+          "<div><span>Ta cagnotte, au tour " + tourDe(M, p) + "</span><b>" + F(M.cagnotte) + "</b></div>" +
+          "<div><span>Caution rendue</span><b>" + F(Math.min(q.rendu, M.caution0)) + "</b></div>" +
+          (q.rendu > M.caution0 ? "<div><span>Reste de ta cagnotte</span><b>" + F(q.rendu - M.caution0) + "</b></div>" : "") +
+          "<div><span>Ta part de la réserve de secours</span><b>" + F(q.partReserve) + "</b></div>" +
+          (q.bonusRecu ? "<div><span>Bonus des derniers</span><b>" + F(q.bonusRecu) + "</b></div>" : "") +
+          (q.differe ? "<div><span>Part de cagnotte versée à la clôture</span><b>" + F(q.differe) + "</b></div>" : "") +
+          (E.creditRendu ? "<div><span>Crédit tontine non utilisé</span><b>" + F(E.creditRendu) + "</b></div>" : "") +
+          "<div class='moins'><span>Frais du système payés</span><b>" + F(M.frais) + "</b></div>" +
+          (q.penalites ? "<div class='moins'><span>Pénalités de retard</span><b>" + F(q.penalites) + "</b></div>" : "") +
+        "</div>" +
         "<div class='bloc " + (M.perteSw === 0 ? "ok" : "alerte") + "'><h3>Le groupe</h3><div>" + fideles + " membre" + (fideles > 1 ? "s" : "") + " sur " + M.N + " n'ont jamais manqué une échéance. Chaque cagnotte a été versée.</div><div>SwimPay a pris ses frais du système (" + F(M.revenu) + ") et n'a rien perdu.</div></div>" +
         "<button class='pilule contour' data-aller='journal'>Le journal complet</button>" +
       "</div>";
@@ -886,13 +892,37 @@ function raccourci() {
   const ordre = E.groupe.slice().sort((a, b) => a - b);
   for (let i = ordre.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ordre[i], ordre[j]] = [ordre[j], ordre[i]]; }
   E.ordre = ordre; E.revelees = n; relancerMoteur(); E.tourVu = 0; E.retire = false;
+  E.solde = 148350 - pct(cagnotteDe(E.cfg), 30) - E.cfg.c; E.soldeTontine = E.cfg.c; E.dernierPrelev = null; E.credite = false;
   E.pile = ["tontines"]; E.ecran = "tontine"; E.sens = "avant"; fermerFeuille(true); rendre();
+}
+function infoPrelevement(M, q) {
+  const d = E.dernierPrelev;
+  let h = "";
+  if (d && !M.clos) {
+    const parts = [];
+    if (d.cagnotte) parts.push(F(d.cagnotte) + " par ta cagnotte");
+    if (d.tontine) parts.push(F(d.tontine) + " depuis ton solde tontine");
+    if (d.compte) parts.push(F(d.compte) + " depuis ton compte SwimPay" + (d.tontine || d.cagnotte ? "" : ", ton solde tontine était vide"));
+    if (parts.length) h += "<div class='bloc ok'><h3>Échéance du tour " + d.t + " payée</h3>" + parts.join(", ") + ".</div>";
+  }
+  if (!M.clos && M.tour < M.T && q.bloque < M.c && E.soldeTontine < M.c)
+    h += "<p class='aide'>Ajoute du crédit avant l'échéance. Sinon, ton compte SwimPay est prélevé ; s'il est vide, <b>ta caution paie, avec 5 % de pénalité</b>.</p>";
+  return h;
+}
+function cloturer() {
+  if (!E.M.clos) cloture(E.M);
+  if (!E.credite) { const q = E.M.p[maPlace()]; E.creditRendu = E.soldeTontine; E.solde += q.rendu + q.partReserve + q.bonusRecu + q.differe + E.soldeTontine; E.soldeTontine = 0; E.credite = true; }
 }
 function avancer() {
   if (!E.M) { raccourci(); return; }
   if (E.M.clos) return;
-  if (E.M.tour >= E.M.T) { cloture(E.M); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); return; }
+  if (E.M.tour >= E.M.T) { cloturer(); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); return; }
+  const p = maPlace(), avant = E.M.p[p].sortie, nJ = E.M.journal.length, bloqueAvant = E.M.p[p].bloque;
   tourSuivant(E.M);
+  const paye = E.M.p[p].sortie - avant;
+  const parCagnotte = Math.min(bloqueAvant, E.M.c);
+  const deT = Math.min(E.soldeTontine, paye); E.soldeTontine -= deT; E.solde -= paye - deT;
+  E.dernierPrelev = { t: E.M.tour, cagnotte: parCagnotte, tontine: deT, compte: paye - deT };
   const monTour = tourDe(E.M, maPlace());
   if (E.M.tour === monTour && E.tourVu < monTour) { E.tourVu = monTour; E.pile = ["tontines", "tontine"]; E.ecran = "gain"; E.sens = "avant"; }
   rendre();
@@ -936,7 +966,18 @@ function rendreFeuille() {
   let h = "<span class='poignee'></span>";
   if (E.feuille === "accepter") {
     const g = cagnotteDe(E.cfg);
-    h += "<h3 id='feuille-titre'>Accepter le contrat</h3><p class='aide'>Ton code secret signe le contrat. <b>" + F(pct(g, 30) + E.cfg.c) + "</b> sont bloqués sur ton compte SwimPay : ta caution et ta première cotisation.</p>" + clavierHTML();
+    h += "<h3 id='feuille-titre'>Accepter le contrat</h3><p class='aide'>Ton code secret signe le contrat. <b>" + F(pct(g, 30) + E.cfg.c) + "</b> sont prélevés sur ton compte SwimPay : ta caution (" + F(pct(g, 30)) + "), rendue à la fin, et ta première cotisation, qui va sur ton solde tontine.</p>" + clavierHTML();
+  }
+  if (E.feuille === "credit") {
+    const M = E.M, restant = (M.T - M.tour) * M.c, cr = E.credit;
+    const montant = cr.n === "tout" ? Math.max(M.c, restant - E.soldeTontine) : cr.n * M.c;
+    h += "<h3 id='feuille-titre'>Ajouter du crédit</h3><p class='aide'>Ton solde tontine paie tes échéances, automatiquement, le jour venu.</p>" +
+      "<div class='puces'>" + [[1, "1 échéance"], [2, "2 échéances"], ["tout", "Tout le reste"]].map(([k, l]) => "<button class='puce' data-credit-n='" + k + "' aria-pressed='" + (cr.n === k) + "'>" + l + "</button>").join("") + "</div>" +
+      "<div class='recap'><div class='total'><span>Montant</span><b>" + F(montant) + "</b></div></div>" +
+      "<p class='groupe-titre'>Depuis</p><div class='puces'>" +
+        [["compte", "Mon solde SwimPay · " + F(E.solde)], ["om", "Orange Money · 07 ·· 96"], ["wave", "Wave"]].map(([k, l]) => "<button class='puce' data-credit-source='" + k + "' aria-pressed='" + (cr.source === k) + "'>" + l + "</button>").join("") + "</div>" +
+      "<p class='aide'>Recharger est gratuit. Ton code confirme l'ajout.</p>" + clavierHTML();
+    E.credit.montant = montant;
   }
   if (E.feuille === "retirer") {
     const q = E.M.p[maPlace()];
@@ -1053,12 +1094,13 @@ document.addEventListener("click", (ev) => {
       const type = E.feuille;
       setTimeout(() => {
         if (type === "accepter") {
-          E.jaiAccepte = true; if (!E.acceptes.includes(0)) E.acceptes.push(0); E.solde -= pct(cagnotteDe(E.cfg), 30) + E.cfg.c;
+          E.jaiAccepte = true; if (!E.acceptes.includes(0)) E.acceptes.push(0); E.solde -= pct(cagnotteDe(E.cfg), 30) + E.cfg.c; E.soldeTontine = E.cfg.c;
           fermerFeuille(); rendre();
           if (E.acceptes.length >= N(E.cfg)) minuter(lancerTirage, 1400);
           else { const suite = () => { if (E.ecran !== "contrat") return; const reste = E.groupe.filter((id) => !E.acceptes.includes(id)); if (reste.length) { E.acceptes.push(reste[0]); rendre(); } if (E.acceptes.length >= N(E.cfg)) { minuter(lancerTirage, 1400); return; } minuter(suite, 450); }; minuter(suite, 450); }
         }
         if (type === "retirer") ouvrirFeuille("confirmer");
+        if (type === "credit") { E.soldeTontine += E.credit.montant; if (E.credit.source === "compte") E.solde -= E.credit.montant; fermerFeuille(); rendre(); }
       }, 180);
     }
     return rendreFeuille();
@@ -1067,8 +1109,11 @@ document.addEventListener("click", (ev) => {
   if ("verifier" in d) return ouvrirFeuille("verifier");
   if ("fermer" in d) return fermerFeuille();
   if ("tour" in d) return avancer();
-  if ("cloturer" in d) { cloture(E.M); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; return rendre(); }
+  if ("cloturer" in d) { cloturer(); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; return rendre(); }
   if ("retirer" in d) return ouvrirFeuille("retirer");
+  if ("credit" in d) { E.credit = { n: 1, source: "compte" }; return ouvrirFeuille("credit"); }
+  if (d.creditN) { E.credit.n = d.creditN === "tout" ? "tout" : +d.creditN; E.pin = []; return rendreFeuille(); }
+  if (d.creditSource) { E.credit.source = d.creditSource; E.pin = []; return rendreFeuille(); }
   if ("confirme" in d) { E.retire = true; E.solde += E.M.p[maPlace()].libre; fermerFeuille(); return rendre(); }
   if (d.scenario) { E.scenario = d.scenario; relancerMoteur(); return rendre(); }
 });
@@ -1077,7 +1122,7 @@ document.getElementById("cmd-invit").addEventListener("click", () => { if (!RACI
 document.getElementById("cmd-global").addEventListener("click", () => { if (!RACINES.includes(E.ecran)) aller("accueil"); notifier("global"); });
 document.getElementById("cmd-raccourci").addEventListener("click", raccourci);
 document.getElementById("cmd-tour").addEventListener("click", avancer);
-document.getElementById("cmd-fin").addEventListener("click", () => { if (!E.M) raccourci(); cloture(E.M); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); });
+document.getElementById("cmd-fin").addEventListener("click", () => { if (!E.M) raccourci(); cloturer(); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); });
 document.getElementById("cmd-reset").addEventListener("click", () => { arreter(); E = neuf(); dernierEcran = null; fermerFeuille(true); document.getElementById("notif").classList.remove("visible"); rendre(); setTimeout(() => { if (E.ecran === "accueil" && !E.notif) notifier("invitation"); }, 1600); });
 
 rendre();
