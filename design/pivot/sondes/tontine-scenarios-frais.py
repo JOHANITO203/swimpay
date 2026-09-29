@@ -31,6 +31,7 @@ def joue(frais_pct, fuite):
     for i in verse: verse[i] += CAUTION
     reserve = revenu = perte_swimpay = saisi = 0
     couvert = {i: 0 for i in verse}                # ce que la reserve a paye a la place du fuyard
+    avance_sw = {i: 0 for i in verse}              # ce que SwimPay a avance pour lui
     actif = lambda i, t: i not in fuite or t <= fuite[i]
     for t in range(1, T + 1):
         # 1. les cotisations du tour
@@ -42,7 +43,7 @@ def joue(frais_pct, fuite):
             else:                                  # le fuyard : sa caution, puis la reserve, puis SwimPay
                 x = min(caution[i], du); caution[i] -= x; saisi += 0; du -= x
                 x = min(reserve, du); reserve -= x; du -= x; couvert[i] += x
-                perte_swimpay += du
+                perte_swimpay += du; avance_sw[i] += du
         # 2. le gagnant du tour
         g = t
         reserve += RESERVE_TOUR
@@ -56,7 +57,9 @@ def joue(frais_pct, fuite):
     # 3. la cloture
     honnetes = [i for i in verse if i not in fuite]
     for i in fuite:
-        # 1. son bloque rembourse d'abord la reserve de ce qu'elle a paye pour lui
+        # 0. son bloque rembourse d'abord SwimPay de ce qu'il a avance
+        x = min(bloque[i], avance_sw[i]); bloque[i] -= x; perte_swimpay -= x; revenu += 0
+        # 1. puis la reserve de ce qu'elle a paye pour lui
         x = min(bloque[i], couvert[i]); bloque[i] -= x; saisi += x
         # 2. il perd sa caution ; 3. le reste de sa prise lui est rendu
         saisi += caution[i]; caution[i] = 0
