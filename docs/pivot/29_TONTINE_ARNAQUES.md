@@ -51,10 +51,10 @@ extérieur, ce qu'un escroc y tente, et la règle qui l'arrête.
 
 ## À trancher
 
-- [ ] **Le délai de sécurité** sur un nouvel appareil ou un nouveau compte de
-      retrait : 72 heures, plus, moins ?
+- [x] **Le délai de sécurité** sur un nouvel appareil ou un nouveau compte de
+      retrait : **72 heures**, validé par LO le 29/09.
 - [ ] Demander aux opérateurs (Orange, MTN, Moov) s'ils donnent **l'information de
       changement de carte SIM** `[H]`.
-- [ ] Le **code de détresse** : plus tard, ou dès le début ?
+- [x] Le **code de détresse** : **pas maintenant** (LO, 29/09).
 
 Étape suivante : **la cybersécurité technique** (étape 4).
