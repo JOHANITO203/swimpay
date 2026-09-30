@@ -25,7 +25,7 @@
  *   node hybride.mjs                 la grille complete + les archetypes
  *   node hybride.mjs --clients 400
  */
-import { simule, OPERATEURS } from './netting.mjs';
+import { simule } from './netting.mjs';
 
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? Number(process.argv[i + 1]) : d; };
 const CLIENTS = arg('clients', 400);

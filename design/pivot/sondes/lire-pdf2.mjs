@@ -24,7 +24,7 @@ while (true) {
   if (buf[s] === 0x0a) s++;
   const f = buf.indexOf("endstream", s);
   if (f < 0) break;
-  try { flux.push(inflateSync(buf.subarray(s, f)).toString("latin1")); } catch {}
+  try { flux.push(inflateSync(buf.subarray(s, f)).toString("latin1")); } catch { /* flux non compressé en deflate : il ne contient pas de texte à lire */ }
   i = f + 9;
 }
 

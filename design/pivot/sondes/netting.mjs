@@ -300,7 +300,7 @@ function etalonne() {
   return okA && okB;
 }
 
-const F = (n) => Math.round(n).toLocaleString('fr-FR').replace(/ | /g, ' ');
+const F = (n) => Math.round(n).toLocaleString('fr-FR').replace(/\u202f|\u00a0/g, ' ');
 const P = (x) => (x * 100).toFixed(2).replace('.', ',') + ' %';
 
 function ligne(titre, r) {

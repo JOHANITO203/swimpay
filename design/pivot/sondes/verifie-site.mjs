@@ -10,7 +10,7 @@ const profil = mkdtempSync(join(tmpdir(), "swimpay-site-"));
 const chrome = spawn(CHROME, ["--headless=new", "--disable-dev-shm-usage", "--disable-extensions",
   "--disable-background-networking", "--disable-sync", "--disable-gpu", "--autoplay-policy=no-user-gesture-required",
   `--remote-debugging-port=${PORT}`, `--user-data-dir=${profil}`, "about:blank"], { stdio: "ignore" });
-process.on("exit", () => { try { chrome.kill(); } catch {} try { rmSync(profil, { recursive: true, force: true }); } catch {} });
+process.on("exit", () => { try { chrome.kill(); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } try { rmSync(profil, { recursive: true, force: true }); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } });
 const dodo = (ms) => new Promise((r) => setTimeout(r, ms));
 let ws;
 for (let i = 0; i < 40 && !ws; i++) {
@@ -18,7 +18,7 @@ for (let i = 0; i < 40 && !ws; i++) {
   try {
     const p = (await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()).find((x) => x.type === "page");
     if (p) ws = new WebSocket(p.webSocketDebuggerUrl);
-  } catch {}
+  } catch { /* Chrome démarre encore : on réessaie au tour suivant */ }
 }
 await new Promise((r) => (ws.onopen = r));
 let seq = 0; const att = new Map(); const evs = new Map(); const exceptions = [];

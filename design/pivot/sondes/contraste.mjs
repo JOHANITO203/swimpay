@@ -34,7 +34,7 @@ const PORT = 9400 + (process.pid % 500);
 const profil = mkdtempSync(join(tmpdir(), "swimpay-c-"));
 const ch = spawn(CHROME, ["--headless=new", "--disable-gpu", "--disable-dev-shm-usage",
   `--remote-debugging-port=${PORT}`, `--user-data-dir=${profil}`, "about:blank"], { stdio: "ignore" });
-process.on("exit", () => { try { ch.kill(); } catch {} try { rmSync(profil, { recursive: true, force: true }); } catch {} });
+process.on("exit", () => { try { ch.kill(); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } try { rmSync(profil, { recursive: true, force: true }); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } });
 const dodo = (m) => new Promise((r) => setTimeout(r, m));
 let ws;
 for (let i = 0; i < 40 && !ws; i++) {
@@ -42,7 +42,7 @@ for (let i = 0; i < 40 && !ws; i++) {
   try {
     const pg = (await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()).find((x) => x.type === "page");
     if (pg) ws = new WebSocket(pg.webSocketDebuggerUrl);
-  } catch {}
+  } catch { /* Chrome démarre encore : on réessaie au tour suivant */ }
 }
 await new Promise((r) => (ws.onopen = r));
 let seq = 0; const att = new Map(), evs = new Map();
