@@ -675,10 +675,11 @@ const ECRANS = {
       "<div class='bas'>" +
         "<div class='recap'>" +
           "<div><span>Prélevé en acceptant le contrat</span><b>" + F(pct(g, REGLES.caution) + c) + "</b></div>" +
-          "<div class='moins'><span>dont caution, rendue au fil des mises</span><b>" + F(pct(g, REGLES.caution)) + "</b></div>" +
+          "<div class='moins'><span>dont caution (" + REGLES.caution + " % de la cagnotte), rendue au fil des mises</span><b>" + F(pct(g, REGLES.caution)) + "</b></div>" +
+          "<div class='moins'><span>dont première mise</span><b>" + F(c) + "</b></div>" +
           "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
-          "<div class='moins'><span>Frais du système (3 %)</span><b>−" + F(pct(g, REGLES.frais)) + "</b></div>" +
-          "<div class='moins'><span>Réserve de secours (2 %), rendue à la fin</span><b>−" + F(pct(g, REGLES.reserve)) + "</b></div></div>" +
+          "<div class='moins'><span>Frais du système (" + REGLES.frais + " %)</span><b>−" + F(pct(g, REGLES.frais)) + "</b></div>" +
+          "<div class='moins'><span>Réserve de secours (" + REGLES.reserve + " %), rendue à la fin</span><b>−" + F(pct(g, REGLES.reserve)) + "</b></div></div>" +
         "<p class='groupe-titre'>Ce qu'on retire le jour du gain</p>" +
         "<div class='places'><div><small>Tiré au tour 1</small><b>" + F(libreAu(1)) + "</b></div><div><small>Tiré au tour " + mil + "</small><b>" + F(libreAu(mil)) + "</b></div><div><small>Tiré au tour " + T + "</small><b>" + F(libreAu(T)) + "</b></div></div>" +
         "<p class='aide'>Le jour du gain, SwimPay <b>ne garde que les mises qui restent à payer</b>, pris d'abord sur la caution. Tout le reste est rendu. Puis, à chaque mise payée, on rend un peu plus. La place dépend du tirage.</p>" +

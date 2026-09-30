@@ -123,6 +123,8 @@ for (const cible of CIBLES) {
     return { chiffres, cautionMoteur: E.M.caution0, cautionEcran: document.body.innerText, solde: E.solde };
   })()`);
   test("Tontine du bureau, Mes chiffres : caution 20 000 F", num(ligne(bureau.chiffres, "dont caution").split("mises")[1]) === 20000, ligne(bureau.chiffres, "dont caution"));
+  test("Tontine du bureau, le pourcentage de la caution est affiche (25 %)", ligne(bureau.chiffres, "dont caution").includes("25 %"), ligne(bureau.chiffres, "dont caution"));
+  test("Tontine du bureau, la premiere mise est affichee (10 000 F)", num(ligne(bureau.chiffres, "dont première mise").split("mise")[1]) === 10000, ligne(bureau.chiffres, "dont première mise"));
   test("Tontine du bureau, preleve au contrat 30 000 F", num(ligne(bureau.chiffres, "Prélevé en acceptant").split("contrat")[1]) === 30000, ligne(bureau.chiffres, "Prélevé en acceptant"));
   test("Tontine du bureau, caution du moteur 20 000 F", bureau.cautionMoteur === 20000, String(bureau.cautionMoteur));
   test("Tontine du bureau, solde apres signature 118 350 F", bureau.solde === 118350, String(bureau.solde));
