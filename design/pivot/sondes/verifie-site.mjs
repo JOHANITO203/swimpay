@@ -43,7 +43,7 @@ const test = (n, ok, d = "") => R.push(`${ok === true ? "PASS" : "FAIL"}  ${n}${
 
 test("aucune exception au chargement", exceptions.length === 0, exceptions.join(" | "));
 test("la barre porte le logo puis les trois onglets",
-  (await ev(`[...document.querySelectorAll(".nav .logo b, .nav a.onglet")].map((e) => e.textContent.trim()).join(" · ")`))
+  (await ev(`[...document.querySelectorAll(".nav .logo b, .nav a.onglet:not(.tel-seul)")].map((e) => e.textContent.trim()).join(" · ")`))
     === "SwimPay · Personnel · Business · Intégration");
 test("et les deux entrées de compte",
   (await ev(`[...document.querySelectorAll(".nav .bouton")].map((e) => e.textContent.trim()).join(" · ")`))
@@ -161,20 +161,22 @@ for (const [nom, w, h] of [["mobile", 390, 844], ["tablette", 768, 1024], ["bure
   const large = await ev(`innerWidth`);
   test(`${nom} : la mise en page fait bien ${w} px de large`, large === w, `mesure ${large}`);
 
-  /* La barre a le droit de passer a deux lignes en telephone. Pas a trois :
-     a trois elle mangeait 176 px, soit la moitie de la bande photo du heros.
-     Et les trois sections doivent rester ATTEIGNABLES — les cacher rendait
-     trois pages sur cinq inaccessibles au telephone. */
+  /* Une seule rangee a tous les formats (30/09/2026). En telephone, les trois
+     sections vivent dans le menu : elles doivent rester ATTEIGNABLES — les
+     cacher sans menu rendait trois pages sur cinq inaccessibles. On ouvre donc
+     le menu et on compte ce qu'il montre. */
   const barre = await ev(`(() => {
-    const n = document.querySelector(".nav");
-    const vus = [...document.querySelectorAll(".nav a.onglet")]
+    const n = document.querySelector(".nav"), b = n.querySelector(".menu-bouton");
+    const tel = b && b.getBoundingClientRect().width > 0;
+    if (tel) b.click();
+    const vus = [...document.querySelectorAll(".nav a.onglet:not(.tel-seul)")]
       .filter((a) => a.getBoundingClientRect().width > 0).length;
-    return { haut: Math.round(n.getBoundingClientRect().height), onglets: vus,
+    if (tel) b.click();
+    return { haut: Math.round(n.getBoundingClientRect().height), onglets: vus, menu: tel,
              token: getComputedStyle(document.documentElement).getPropertyValue("--h-nav").trim() };
   })()`);
-  const plafond = w < 721 ? 130 : 80;
-  test(`${nom} : la barre tient en ${w < 721 ? "deux lignes" : "une ligne"} et garde ses trois sections`,
-    barre.haut <= plafond && barre.onglets === 3, JSON.stringify(barre));
+  test(`${nom} : la barre tient en une ligne et garde ses trois sections${w < 721 ? " (dans le menu)" : ""}`,
+    barre.haut <= 80 && barre.onglets === 3 && barre.menu === (w < 721), JSON.stringify(barre));
   test(`${nom} : --h-nav vaut la hauteur mesuree de la barre`,
     barre.token === barre.haut + "px", JSON.stringify(barre));
   const petites = await ev(`(() => {

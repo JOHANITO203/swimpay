@@ -91,8 +91,10 @@ a { color: inherit; text-decoration: none; }
 :root { --h-nav: 68px; }
 .nav {
   position: sticky; top: 0; z-index: 40;
-  background: color-mix(in srgb, var(--fond) 86%, transparent);
-  backdrop-filter: blur(14px); border-bottom: 1px solid var(--trait);
+  /* 86 % de blanc sur une section noire donnait une bande grise terne (#DBDBDB) :
+     94 % et une saturation gardent la barre nette sur tous les sols. */
+  background: color-mix(in srgb, var(--fond) 94%, transparent);
+  backdrop-filter: saturate(170%) blur(18px); border-bottom: 1px solid var(--trait);
   transition: background-color 220ms ease, border-color 220ms ease;
 }
 /* sur le heros, la barre s efface pour laisser l image commencer au premier
@@ -119,6 +121,7 @@ a { color: inherit; text-decoration: none; }
 }
 .nav a.onglet[aria-current="page"] { color: var(--encre); background: var(--fond-2); }
 .nav .grow { flex: 1; }
+.menu-bouton, .onglet.tel-seul { display: none; }
 .bouton {
   display: inline-flex; align-items: center; justify-content: center; gap: 9px;
   min-height: 46px; padding: 0 20px; border-radius: 999px; border: 0; cursor: pointer;
@@ -203,6 +206,16 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 2px 14px rgba(20, 20, 20, .10);
 }
 .heros .sous { margin: 18px 0 0; font-size: 14px; color: rgba(20, 20, 20, .6); }
+/* Tablette (881 a 1180 px) : plus l'ecran est etroit pour sa hauteur, plus la
+   photo, calee a droite en « cover », est rognee a gauche, et le visage glissait
+   sous le voile du texte (constate a 1024 x 768). On borne la hauteur aux
+   proportions de la photo (1,79) : elle n'est plus rognee, le sujet reste a sa
+   place. Au-dela de 1180 px le rendu regle a 1440 ne change pas. */
+@media (min-width: 881px) and (max-width: 1180px) {
+  .heros-in { min-height: min(94vh, 900px, calc(100vw / 1.79 - var(--h-nav))); }
+  /* le paragraphe touchait l'epaule de la veste a 1024 px */
+  .heros .dit { max-width: 32ch; }
+}
 /* Sur telephone, couvrir une image de ratio 1,79 dans un cadre etroit
    couperait le sujet en deux : elle devient une bande haute, et le texte
    reprend sa place sur l acide en dessous. */
@@ -317,19 +330,27 @@ a { color: inherit; text-decoration: none; }
   background: rgba(255, 255, 255, .09); color: rgba(255, 255, 255, .84);
 }
 
+/* Sur le héros acide de l'accueil, « S'inscrire » était vert sur vert : il se
+   lisait comme du texte. Il prend le noir, comme le bouton principal du héros. */
+.nav[data-pose="non"][data-sol="clair"] .bouton.acide { background: var(--noir); color: #FFFFFF; }
+/* Posée, sur une section noire ou le pied de page, la barre devient noire
+   elle aussi (le JS écrit data-sol d'après ce qu'elle survole). */
+.nav[data-pose="oui"][data-sol="sombre"] {
+  background: color-mix(in srgb, #141414 90%, transparent); border-bottom-color: #2A2A2A;
+}
 /* L'encre de la barre suit le sol du héros, et seulement quand elle est
    posée dessus. Le JS écrit data-sol : sans lui, l'encre claire serait
    tombée sur l'accueil acide, qui est un sol CLAIR. */
-.nav[data-pose="non"][data-sol="sombre"] .logo b { color: #FFFFFF; }
-.nav[data-pose="non"][data-sol="sombre"] .logo i { filter: brightness(0) invert(1); }
-.nav[data-pose="non"][data-sol="sombre"] a.onglet { color: rgba(255, 255, 255, .74); }
-.nav[data-pose="non"][data-sol="sombre"] a.onglet[aria-current="page"] {
+.nav[data-sol="sombre"] .logo b { color: #FFFFFF; }
+.nav[data-sol="sombre"] .logo i { filter: brightness(0) invert(1); }
+.nav[data-sol="sombre"] a.onglet { color: rgba(255, 255, 255, .74); }
+.nav[data-sol="sombre"] a.onglet[aria-current="page"] {
   color: #FFFFFF; background: rgba(255, 255, 255, .13);
 }
-.nav[data-pose="non"][data-sol="sombre"] .bouton.creux {
+.nav[data-sol="sombre"] .bouton.creux {
   border-color: rgba(255, 255, 255, .36); color: #FFFFFF;
 }
-.nav[data-pose="non"][data-sol="sombre"] .bouton.plein {
+.nav[data-sol="sombre"] .bouton.plein {
   background: #FFFFFF; color: var(--noir);
 }
 
@@ -349,6 +370,9 @@ a { color: inherit; text-decoration: none; }
   .nav[data-pose="non"][data-sol="sombre"] {
     background: rgb(14 14 14 / .92); backdrop-filter: blur(10px);
   }
+  /* La colonne du bureau (48 %) n'etait pas annulee : au telephone le titre
+     « Le compte pro de votre entreprise » tombait a un mot par ligne. */
+  .heros.sombre .heros-in > div { max-width: none; }
 }
 
 /* ─── LA FAQ ───
@@ -451,6 +475,11 @@ a { color: inherit; text-decoration: none; }
 .sect.sombre { background: var(--noir); color: #FFFFFF; }
 .sect.sombre .para { color: rgba(255, 255, 255, .68); }
 .sect.gris { background: var(--fond-2); }
+/* Deux sections du même sol qui se suivent additionnaient leurs marges : 256 px
+   de noir entre « Tout passe par le même compte » et « Émettez vos factures ».
+   La seconde reprend sans marge haute : l'écart redevient celui de tout le site. */
+.sect.sombre + .sect.sombre, .sect.gris + .sect.gris,
+.sect:not(.sombre):not(.gris) + .sect:not(.sombre):not(.gris) { padding-top: 0; }
 h2 {
   margin: 0 0 20px; font-size: clamp(30px, 4.4vw, 50px); line-height: 1;
   font-weight: 500; letter-spacing: -.012em; max-width: 16ch; text-wrap: balance;
@@ -603,25 +632,36 @@ footer { background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px 
   .pied { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 720px) {
-  /* La barre passe sur DEUX lignes : identite et compte en haut, les trois
-     sections en dessous. Les cacher — ce qu on faisait — rendait trois pages
-     sur cinq inatteignables au telephone, et laissait quand meme la premiere
-     ligne deborder de 8 px. */
-  :root { --h-nav: 122px; }   /* repli : le script mesure la vraie hauteur */
-  .nav-in { padding-top: 9px; padding-bottom: 9px; }
-  /* Le nom ecrit coute 86 px et fait tomber « S'inscrire » sur une troisieme
-     ligne. Le symbole seul suffit en haut d un telephone ; le mot reste lu
-     par les lecteurs d ecran, hors du flux donc sans largeur. */
-  .logo { margin-right: 0; min-width: 44px; justify-content: center; }
-  .logo b {
-    position: absolute; width: 1px; height: 1px;
-    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  /* Une seule rangée : le nom, « S'inscrire », et un menu qui porte les trois
+     sections et « Se connecter ». Avant, la barre prenait DEUX rangées (95 px)
+     et perdait le nom SwimPay faute de place. Les sections restent toutes
+     atteignables : c'était la raison des deux rangées, le menu la garde. */
+  :root { --h-nav: 64px; }   /* repli : le script mesure la vraie hauteur */
+  .nav-in { flex-wrap: nowrap; min-height: 64px; }
+  .logo { margin-right: 0; }
+  .nav .bouton.connexion { display: none; }
+  .menu-bouton {
+    display: grid; place-content: center; gap: 5px; flex: none;
+    width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--trait);
+    background: none; cursor: pointer; margin-left: 4px;
   }
+  .menu-bouton i { display: block; width: 16px; height: 2px; border-radius: 2px; background: currentColor;
+    transition: transform 200ms var(--sortie); }
+  .nav[data-menu="ouvert"] .menu-bouton i:first-child { transform: translateY(3.5px) rotate(45deg); }
+  .nav[data-menu="ouvert"] .menu-bouton i:last-child { transform: translateY(-3.5px) rotate(-45deg); }
+  .nav[data-sol="sombre"] .menu-bouton { border-color: rgba(255, 255, 255, .36); color: #FFFFFF; }
   .onglets {
-    display: flex; order: 3; flex-basis: 100%; gap: 4px;
-    margin: 0 -4px; overflow-x: auto; scrollbar-width: none;
+    display: none; position: absolute; top: 100%; left: 0; right: 0;
+    flex-direction: column; gap: 2px; padding: 10px 16px 18px;
+    background: var(--fond); border-bottom: 1px solid var(--trait);
+    box-shadow: 0 24px 40px -24px rgba(20, 20, 20, .35);
   }
-  .onglets::-webkit-scrollbar { display: none; }
+  .nav[data-menu="ouvert"] .onglets { display: flex; }
+  .onglet.tel-seul { display: block; }
+  .nav .onglets a.onglet, .nav[data-sol="sombre"] .onglets a.onglet {
+    color: var(--encre); font-size: 17px; padding: 14px 12px; border-radius: 14px;
+  }
+  .nav .onglets a.onglet[aria-current="page"] { background: var(--fond-2); }
   /* Au bureau la barre peut rester transparente sur le heros : le sujet est
      decale a droite, le texte de la barre vit sur l acide du fond de studio.
      Au telephone le sujet occupe le CENTRE — « Se connecter » tombait sur des
@@ -631,7 +671,6 @@ footer { background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px 
     background: hsl(82 100% 50% / .93); backdrop-filter: blur(10px);
   }
   .nav[data-pose="non"] a.onglet { color: rgba(20, 20, 20, .74); }
-  .nav a.onglet { padding: 12px 12px; white-space: nowrap; }
   .bouton { padding: 0 15px; }
   .pied { grid-template-columns: 1fr; gap: 30px; }
 }
@@ -664,14 +703,17 @@ footer { background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px 
 <nav class="nav">
   <div class="dedans nav-in">
     <a class="logo" href="#accueil"><i aria-hidden="true"></i><b>SwimPay</b></a>
-    <span class="onglets">
+    <span class="onglets" id="menu-tel">
       <a class="onglet" href="#personnel">Personnel</a>
       <a class="onglet" href="#business">Business</a>
       <a class="onglet" href="#integration">Intégration</a>
+      <a class="onglet tel-seul" href="#connexion">Se connecter</a>
     </span>
     <span class="grow"></span>
-    <a class="bouton creux" href="#connexion">Se connecter</a>
+    <a class="bouton creux connexion" href="#connexion">Se connecter</a>
     <a class="bouton acide" href="#inscription">S'inscrire</a>
+    <button class="menu-bouton" type="button" aria-expanded="false" aria-controls="menu-tel"
+            aria-label="Ouvrir le menu"><i></i><i></i></button>
   </div>
 </nav>
 
@@ -1277,8 +1319,20 @@ new ResizeObserver(hauteurBarre).observe(nav);
 hauteurBarre();
 const surHeros = () => {
   const h = document.querySelector(".page.active .heros");
-  const dessus = !!h && scrollY < 24;
+  const ouvert = nav.getAttribute("data-menu") === "ouvert";
+  const dessus = !!h && scrollY < 24 && !ouvert;
   nav.setAttribute("data-pose", dessus ? "non" : "oui");
+  if (!dessus) {
+    /* posée, la barre prend le sol de ce qu'elle survole : noire sur une
+       section noire ou sur le pied de page, claire ailleurs ; claire aussi
+       quand le menu est ouvert, puisqu'il se déplie en blanc */
+    const y = nav.getBoundingClientRect().bottom + 2;
+    const sous = document.elementFromPoint(innerWidth / 2, y);
+    const sol = sous && sous.closest(".sect, .heros, footer");
+    const noir = !ouvert && !!sol && (sol.tagName === "FOOTER" || sol.classList.contains("sombre"));
+    nav.setAttribute("data-sol", noir ? "sombre" : "clair");
+    return;
+  }
   /* Deux heros, deux sols : l accueil est acide (clair), Business est noir.
      L encre de la barre suit le sol qu elle survole — sinon le blanc tombait
      sur l acide et devenait illisible. */
@@ -1286,6 +1340,16 @@ const surHeros = () => {
     dessus && h.classList.contains("sombre") ? "sombre" : "clair");
 };
 addEventListener("scroll", surHeros, { passive: true });
+const menuBouton = nav.querySelector(".menu-bouton");
+const menu = (ouvert) => {
+  nav.setAttribute("data-menu", ouvert ? "ouvert" : "ferme");
+  menuBouton.setAttribute("aria-expanded", String(ouvert));
+  menuBouton.setAttribute("aria-label", ouvert ? "Fermer le menu" : "Ouvrir le menu");
+  surHeros();
+};
+menuBouton.addEventListener("click", () => menu(nav.getAttribute("data-menu") !== "ouvert"));
+nav.querySelectorAll(".onglets a").forEach((a) => a.addEventListener("click", () => menu(false)));
+addEventListener("keydown", (e) => { if (e.key === "Escape" && nav.getAttribute("data-menu") === "ouvert") { menu(false); menuBouton.focus(); } });
 addEventListener("hashchange", () => requestAnimationFrame(surHeros));
 surHeros();
 
