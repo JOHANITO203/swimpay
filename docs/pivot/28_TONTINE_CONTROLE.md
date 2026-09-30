@@ -24,7 +24,7 @@
 | Sujet | Décision |
 |---|---|
 | **Niveaux entre membres** | **Supprimés.** Même règle pour tous. Les §3.1, §3.2 et le tableau des niveaux ci-dessous sont dépassés |
-| **Ce que le gagnant récupère le jour du gain** | **Sa cagnotte garde de côté toutes ses mises restantes, prélevées dessus ; il récupère le reste, sur son compte SwimPay** (LO, 29/09 au soir, après la démo ; remplace « ce qu'il a versé + 5 % »). Après son gain, il n'a plus rien à payer |
+| **Ce que le gagnant récupère le jour du gain** | **Règle de la version 3 (LO, 30/09)** : SwimPay garde exactement ses mises restantes, caution d'abord, puis cagnotte ; tout le reste lui est rendu, sur son compte SwimPay. À chaque mise payée, on lui rend autant. Chacun est à −5 % de la cagnotte le jour de son gain, à toute place et pour toute taille de tontine (`tontine-v3.py`, `31` §6.2) |
 | **Réserve de secours** | **2 % de chaque tour**, rendue à la clôture à ceux qui ont tout payé |
 | **Preuve** | Pire cas (le tiers des premiers gagnants fuit), 48 formats : **SwimPay ne paie jamais rien**. À 10 % de bonus, 31 formats sur 48 seulement ; à 15 %, 8 |
 | **Gel de l'argent retiré** | **Non.** L'intérêt de la tontine est de toucher une somme ; le geler la tue, et la protection n'en a pas besoin |

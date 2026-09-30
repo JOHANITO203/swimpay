@@ -1,8 +1,8 @@
 # La tontine classique SwimPay — spécification complète, version 2
 
-> Document autonome, pour relecture par d'autres IA. **Version 2.1 (29/09/2026)** :
-> la cagnotte du gagnant garde désormais de côté **toutes** ses mises restantes
-> (décision de LO après la démo, §6.2). **Version 2**,
+> Document autonome, pour relecture par d'autres IA. **Version 3 (30/09/2026)** :
+> une règle de retrait unique, qui s'adapte au risque de chaque membre (§6.2).
+> **Version 2**,
 > réécrite après les relectures de Gemini et DeepSeek sur la version 1 : les règles
 > sont rendues explicites, les situations oubliées ont reçu une règle, et **chaque
 > question posée reçoit une réponse au §12**.
@@ -125,57 +125,81 @@ leur nom** (règle 17, §8).
 - **À la clôture, elle est rendue, moins le tort causé et rien d'autre** (§6.5).
   Elle n'est jamais distribuée aux autres membres.
 
-### 6.2 Le jour du gain : la cagnotte paie d'abord toutes les mises restantes
+### 6.2 Le jour du gain : on ne garde que ce qu'il doit encore
 
-> **La cagnotte du gagnant garde de côté toutes les mises qu'il doit encore. Le
-> système les prélève dessus, à chaque échéance. Le gagnant récupère le reste.**
+> **Le jour du gain, SwimPay garde exactement les mises qui restent à payer au
+> gagnant, prises d'abord sur sa caution, puis sur sa cagnotte si la caution ne
+> suffit pas. Tout le reste lui est rendu, tout de suite.**
 >
-> Part récupérée = cagnotte nette − (tours restants × cotisation).
+> **Ensuite, à chaque mise qu'il paie, il doit moins : ce qui est gardé baisse
+> d'autant, et la différence lui est rendue.**
 
-Décision de LO du 29/09/2026, après la démo : la version 2 laissait retirer « ce
-qu'on a versé + 5 % », si bien que la part mise de côté ne couvrait jamais toutes
-les mises restantes (il manquait environ 10 % de la cagnotte). Désormais, **après son
-gain, un membre n'a plus rien à payer.**
+En formule, après le tour t, pour un membre gagnant :
 
-Exemple de référence : 10 membres, 10 tours, 10 000 F par tour, cagnotte brute
-100 000 F, cagnotte nette 95 000 F.
+    gardé  =  (T − t) × c                      ses mises restantes, ni plus ni moins
+    dont   caution gardée   = min(caution restante, gardé)
+           cagnotte gardée  = gardé − caution gardée
+    rendu  =  tout le reste (cagnotte nette, et caution au-delà de ce qu'il doit)
 
-| Gagnant du tour | A versé | Récupère | Gardé pour ses mises restantes |
-|---|---|---|---|
-| 1 | 10 000 | 5 000 | 90 000 |
-| 5 | 50 000 | 45 000 | 50 000 |
-| 10 | 100 000 | 95 000 | 0 |
+Le jour du gain, cela donne : **rendu = cagnotte nette + caution − mises
+restantes**.
 
-Conséquence : **plus personne n'a jamais en main l'argent des autres.** Chaque
-gagnant récupère ce qu'il a versé, moins les frais (3 %) et la mise en réserve
-(2 %, rendue à la fin). La tontine SwimPay est une épargne où l'on est certain
-d'être payé, pas un crédit.
+Exemple de référence : 10 membres, 10 tours, 10 000 F, cagnotte nette 95 000 F,
+caution 30 000 F.
 
-La part récupérée arrive sur le **compte SwimPay** du membre ; de là, il l'envoie
-où il veut. Seules les règles de sécurité des retraits s'appliquent (§9).
+| Gagnant du tour | A versé (caution comprise) | Récupère le jour du gain | Gardé | Position le jour du gain |
+|---|---|---|---|---|
+| 1 | 40 000 | 35 000 | 90 000 (caution + 60 000 de cagnotte) | −5 000 |
+| 3 | 60 000 | 55 000 | 70 000 (caution + 40 000) | −5 000 |
+| 5 | 80 000 | 75 000 | 50 000 (caution + 20 000) | −5 000 |
+| 7 | 100 000 | 95 000 | 30 000 (la caution seule) | −5 000 |
+| 10 | 130 000 | 125 000 (la caution est rendue) | 0 | −5 000 |
 
-Cas limite : si la cagnotte nette est inférieure aux mises restantes (tontines très
-longues, gagnant du premier tour), tout est gardé et le complément est prélevé sur
-son solde, comme une échéance normale.
+Le gagnant du tour 3 récupère 55 000 F, puis 10 000 F à chacune de ses 7 mises
+payées (d'abord de sa cagnotte, puis de sa caution), jusqu'à tout avoir récupéré.
+
+**Les trois propriétés, mesurées (§11)** :
+
+1. **Juste** : le jour de son gain, chaque membre, **à n'importe quelle place**, se
+   retrouve exactement à −5 % de la cagnotte (frais 3 % et réserve 2 %, la réserve
+   étant rendue à la fin). La seule différence entre les places est le moment où
+   l'on touche ; le dernier tiers reçoit un bonus de 3 % pour son attente.
+2. **Adaptée à chaque membre** : le calcul ne regarde que ce qu'il doit encore et sa
+   caution restante. Un membre dont la caution a servi à couvrir des retards non
+   rattrapés a moins de caution : on garde davantage de sa cagnotte.
+3. **Indépendante du nombre de membres** : N n'entre pas dans la formule. Avec 10,
+   20 ou 30 membres, le gagnant du tour 1 d'une tontine de 10 tours récupère la même
+   somme.
+
+Historique : la version 2 laissait retirer « ce qu'on a versé + 5 % » ; la part
+gardée ne couvrait alors jamais toutes les mises restantes. Une version
+intermédiaire gardait toutes les mises sur la cagnotte ; LO l'a rejetée parce
+qu'elle retirait l'intérêt d'être tiré tôt. La version 3 compte la caution dans ce
+qui est gardé : on rend beaucoup plus, et le risque reste nul.
+
+Ce qui est rendu arrive sur le **compte SwimPay** du membre ; de là, il l'envoie où
+il veut. Les règles de sécurité des retraits s'appliquent (§9).
 
 ### 6.3 L'ordre de paiement d'une cotisation, à chaque échéance
 
-1. **La part gardée de sa cagnotte, toujours en premier**, jusqu'à épuisement ;
-2. puis **son solde tontine**, qu'il alimente quand il veut (bouton « Ajouter du
+1. **son solde tontine**, qu'il alimente quand il veut (bouton « Ajouter du
    crédit ») ;
-3. puis **son compte SwimPay**, prélevé automatiquement ;
-4. si cela ne suffit pas à la fin du délai de grâce, c'est une **échéance
+2. puis **son compte SwimPay**, prélevé automatiquement ;
+3. si cela ne suffit pas à la fin du délai de grâce, c'est une **échéance
    manquée**, couverte dans l'ordre par :
-   1. **sa caution**,
-   2. **la réserve de secours**,
-   3. **une avance de SwimPay**, plafonnée à 2 % de la collecte totale de la
+   1. **ce qui est gardé de sa cagnotte**, s'il a déjà gagné,
+   2. **sa caution**,
+   3. **la réserve de secours**,
+   4. **une avance de SwimPay**, plafonnée à 2 % de la collecte totale de la
       tontine ;
-5. si tout cela ne suffit pas, **la part manquante de la cagnotte du tour est
-   différée** : le gagnant la reçoit à la clôture, payée par les parts bloquées des
-   défaillants (§6.7). Le gagnant ne perd rien, il attend.
+4. si tout cela ne suffit pas, **la part manquante de la cagnotte du tour est
+   différée** : le gagnant la reçoit à la clôture, payée par ce qui est gardé chez
+   les défaillants (§6.7). Le gagnant ne perd rien, il attend.
 
-Chaque franc couvert au point 4 coûte au défaillant **une pénalité de 5 %**, prise
-en même temps que la couverture, et versée à la réserve.
+Chaque franc couvert au point 3 coûte au défaillant **une pénalité de 5 %**, versée
+à la réserve. **La pénalité ne se prend que sur son propre argent, et seulement sur
+ce qui dépasse ses mises encore à venir** : elle ne passe jamais avant ce qu'il doit
+au groupe, et personne ne l'avance pour lui.
 
 ### 6.4 Le retardataire qui revient
 
@@ -198,11 +222,12 @@ son tour arrive quand même à sa place : sa cagnotte est alors **entièrement
 bloquée**, elle rembourse ce qui a été payé pour lui, et le reste lui est rendu à la
 clôture.
 
-**Pourquoi la fuite n'existe plus** : après son gain, un membre n'a plus aucune mise
-à payer, puisque sa cagnotte les paie toutes. Et le jour du gain, il ne récupère que
-ce qu'il a lui-même versé, moins les frais. **Il n'y a rien à voler.** Le seul cas
-de défaut restant est celui du membre qui cesse de payer **avant** son tour ; sa
-caution, puis sa propre cagnotte à son tour, couvrent tout (§11).
+**Pourquoi la fuite ne rapporte rien** : ce qui est gardé (caution comprise) couvre
+toujours toutes ses mises restantes. S'il s'enfuit après son gain, ses mises sont
+payées par ce qui est gardé, et il a récupéré moins que ce qu'il a versé. **Il n'y a
+rien à voler.** Quand sa cagnotte arrive, elle rembourse **d'abord ses propres
+dettes** envers le groupe ; et ce qu'on lui doit (une part différée) règle d'abord
+ce qu'il doit encore.
 
 ### 6.6 La dette après la clôture
 
@@ -275,7 +300,7 @@ Dans l'ordre :
 | 16 | Recharge par carte bancaire annulée après coup | L'argent rechargé par carte n'entre dans une tontine qu'après un délai de sécurité `[H]` |
 | 17 | **Cagnotte au-delà du plafond de 2 000 000 F** | Formats ouverts seulement avec un compte bancaire vérifié au nom du membre (§3). Si ce compte est fermé au moment du gain, **le surplus reste dans la tontine, à son nom**, chez le partenaire EME, jusqu'à ce qu'il relie un nouveau compte bancaire à son nom `[H]`. Rien n'est débité en plus aux autres : l'argent n'a jamais quitté le compte du partenaire |
 | 18 | Une autorité gèle un membre, ou son **identité est reconnue usurpée** | Pour la tontine, ses échéances non payées suivent la règle 5. **La personne dont l'identité a été volée n'est jamais débitrice** : la dette reste attachée au compte frauduleux. Si le contrôle d'identité de SwimPay a échoué, la perte est une erreur de SwimPay (règle 12). La reconnaissance de l'usurpation vient d'une autorité ou d'une décision de justice, hors de la tontine |
-| 19 | **Comptes liés** dans la même tontine | Voir le §10 : critères précis, appliqués par le code. Depuis la version 2.1, personne n'a jamais en main l'argent des autres : les liens servent à la surveillance, pas au calcul. Rien n'est bloqué |
+| 19 | **Comptes liés** dans la même tontine | Voir le §10 : critères précis, appliqués par le code. Depuis la version 3, personne n'a jamais en main l'argent des autres : les liens servent à la surveillance, pas au calcul. Rien n'est bloqué |
 | 20 | **Liquidation** : suspension de plus de 7 jours, ou une part différée qui ne pourrait pas être payée à la clôture | La tontine s'arrête. Chaque membre reçoit **ce qu'il a versé moins ce qu'il a reçu**, les fidèles d'abord, les défaillants ensuite, sur l'argent de la tontine (parts bloquées, cautions, réserve). Les frais déjà pris sur des tours non terminés sont rendus |
 
 ---
@@ -331,7 +356,7 @@ enregistré par le système :
 
 Les liens se propagent : si A est lié à B et B à C, les trois forment un groupe.
 
-**Effet** : depuis la version 2.1 (§6.2), aucun membre n'a jamais en main l'argent des
+**Effet** : depuis la version 3 (§6.2), aucun membre n'a jamais en main l'argent des
 autres, liés ou non ; un groupe de comptes liés ne peut donc rien extraire. Les liens
 sont enregistrés et servent à la surveillance (répétition du même schéma d'une
 tontine à l'autre). Aucun humain ne décide, rien n'est bloqué.
@@ -340,8 +365,9 @@ tontine à l'autre). Aucun humain ne décide, rien n'est bloqué.
 
 ## 11. Ce qui a été simulé
 
-Script : `design/pivot/sondes/tontine-v2.py`, qui applique **toutes** les règles du
-§6. Exemple de référence (10 membres, 10 tours, 10 000 F), caution de 30 %.
+Scripts : `design/pivot/sondes/tontine-v3.py` (la règle de la version 3, et les
+épreuves), repris à l'identique par le moteur de la démo (1 760 cas comparés, zéro
+écart). Exemple de référence : 10 membres, 10 tours, 10 000 F, caution de 30 %.
 Résultat = ce que chacun a reçu moins ce qu'il a versé, à la fin.
 
 ### 11.1 Du scénario joyeux au pire
@@ -349,40 +375,41 @@ Résultat = ce que chacun a reçu moins ce qu'il a versé, à la fin.
 | Scénario | Fidèles | Défaillants | SwimPay |
 |---|---|---|---|
 | A. Tout le monde paie | −3 900 F ; les 3 derniers −900 F | — | +30 000 F, aucune avance |
-| B. Un membre manque 2 échéances puis revient | −3 667 F environ | −6 000 F | +30 000 F, aucune avance |
-| C. Un membre pas encore gagnant abandonne au tour 4 | −3 556 F environ | −7 000 F | +30 000 F, aucune avance |
-| D. Le gagnant du tour 1 cesse de payer | **−3 900 F, comme si de rien n'était** | aucun : sa cagnotte a déjà tout payé | +30 000 F, aucune avance |
-| E. Les 3 premiers gagnants cessent de payer | idem | aucun | idem |
-| F. Les 5 premiers gagnants cessent de payer au tour 6 | idem | aucun | idem |
-| G. Les 9 premiers cessent de payer après leur gain | idem | aucun | idem |
-| H. Tous sauf le dernier abandonnent dès le tour 2 | le dernier : +9 750 F | −2 000 F à −8 000 F | +30 000 F, avance de 20 000 F au plus, remboursée, **perte 0** |
+| B. Un membre manque 2 échéances puis revient | −3 778 F environ | −5 000 F | +30 000 F, aucune avance |
+| C. Un membre pas encore gagnant abandonne au tour 4 | −3 611 F environ | −6 500 F | +30 000 F, aucune avance |
+| D. Le gagnant du tour 1 cesse de payer | −3 778 F environ | −5 000 F | +30 000 F, aucune avance |
+| E. Les 3 premiers gagnants cessent de payer | −3 429 F environ | −5 000 F chacun | +30 000 F, aucune avance |
+| F. Les 5 premiers gagnants cessent de payer au tour 6 | de −2 800 à +200 F | −5 000 F chacun | +30 000 F, aucune avance |
+| G. Les 9 premiers cessent de payer après leur gain | le dernier : +9 000 F | −5 000 F à −2 000 F | +30 000 F, aucune avance |
+| H. Tous sauf le dernier abandonnent dès le tour 2 | le dernier : +27 000 F | −2 500 F à −9 000 F | +30 000 F, avance de 20 000 F au plus, remboursée, **perte 0** |
 
-Résultat = ce que chacun a reçu moins ce qu'il a versé, à la fin ; le −3 900 F d'un
-fidèle, ce sont les frais du système (3 000 F) et sa part du bonus des derniers
-(900 F). À 25 % de caution, les résultats sont les mêmes, sauf l'avance de SwimPay
-dans le cas C (3 500 F, remboursée).
+Le −3 900 F d'un fidèle, ce sont les frais du système (3 000 F) et sa part du bonus
+des derniers (900 F). Un fidèle ne finit jamais plus bas que dans le cas A ; ce qu'il
+gagne en plus vient des pénalités des défaillants.
 
-### 11.2 Ce qu'il faut en retenir
+### 11.2 Les épreuves
 
-- **La tontine ne s'effondre jamais** : chaque cagnotte est financée, même si 9
-  membres sur 10 abandonnent.
-- **SwimPay ne perd jamais rien.** Il peut avancer de l'argent au pire (cas H), dans
-  son plafond de 2 %, et il est remboursé à la clôture.
-- **Un gagnant ne peut plus fuir** : il n'a plus rien à payer (cas D à G).
-- **Le seul défaillant possible** est celui qui arrête avant son tour ; il finit
-  plus bas qu'un fidèle (−7 000 F contre −3 556 F, cas C).
+| Épreuve | Résultat |
+|---|---|
+| 260 cas types : les formats de 2 à 30 membres, de 2 à 30 tours, 1 à 3 gagnants par tour, sous 5 scénarios de défaut (dont « tous les gagnants fuient » et « presque tous abandonnent au tour 2 ») | perte de SwimPay **0** ; honnêtes lésés **0** ; fuites qui rapportent **0** |
+| 5 000 tontines tirées au hasard : cotisations de 500 à 100 000 F, 35 % des membres en retard ou en abandon, avec ou sans retour | perte de SwimPay **0** ; honnêtes lésés **0** ; fuites qui rapportent **0**, hors 17 cas où **tous** les membres font défaut, sans honnête à léser |
+| Argent des autres qu'un membre a eu en main, au plus | **0 F** |
+
+Deux défauts anciens, présents aussi en version 2, ont été trouvés par ces épreuves
+et corrigés : une part différée versée à un membre qui devait encore au groupe, et
+des pénalités prises sur l'argent qui devait payer les mises à venir.
 
 ### 11.3 Ce que chaque membre a en main pendant la tontine
 
-Il a versé sa caution (30 000 F) et ses cotisations ; le jour du gain, il récupère
-ses cotisations moins les frais et la réserve. **La caution lui revient à la
-clôture.** Il n'a jamais d'argent des autres en main. C'est le choix assumé du §2.
+Avant son gain : il a versé sa caution et ses mises. Le jour de son gain : il a
+récupéré tout ce qu'il a mis, caution comprise, **moins 5 %**. Ensuite, chaque mise
+payée lui est rendue, jusqu'à ce qu'il ne doive plus rien. Il n'a jamais d'argent
+des autres en main.
 
 ### 11.4 Le catalogue
 
-La version 2 prouvait que, même sans caution, une avance de 5 % restait sûre sur
-les 48 formats (`tontine-retrait.py`). La version 2.1 supprime l'avance : le risque
-d'un gagnant qui fuit disparaît par construction, dans tous les formats.
+La règle de la version 3 ne dépend ni du nombre de membres, ni du nombre de tours :
+les épreuves du §11.2 couvrent tous les formats permis.
 
 ---
 
@@ -394,7 +421,7 @@ d'un gagnant qui fuit disparaît par construction, dans tous les formats.
 |---|---|---|
 | G1 | **Blanchiment** : des mules font défaut, leurs cautions saisies vont au compte « propre » | Corrigé et fermé. La caution n'est **plus jamais redistribuée** : on n'en prend que le tort, le reste revient au défaillant (§6.5). Seules les pénalités vont à la réserve, partagée à parts égales entre tous les fidèles, sans destinataire choisi. Et l'argent entrant passe le contrôle anti-blanchiment du partenaire (§9) |
 | G2 | **Plafond de 2 M sans banque** : l'argent reste « dans les limbes » | Règle 17 : ces formats exigent une banque vérifiée dès l'entrée ; si elle est fermée au gain, le surplus reste à son nom dans la tontine, chez le partenaire. Les autres ne sont pas débités : l'argent n'a jamais quitté le compte du partenaire |
-| G3 | **Le premier gagnant a moins d'argent qu'avant** (−30 000 F en v1) | **Exact, et assumé.** Il a versé sa caution, rendue à la clôture, et ne récupère au gain que ses cotisations moins les frais (§6.2, §11.3). C'est le choix du fondateur (§2) : la sécurité est la raison d'être du produit |
+| G3 | **Le premier gagnant a moins d'argent qu'avant** (−30 000 F en v1) | **Corrigé en version 3.** Le jour de son gain, il récupère tout ce qu'il a mis, caution comprise, moins 5 % : 35 000 F sur l'exemple, contre 15 000 F en version 2 (§6.2) |
 | G4 | **Incitation perverse** : les honnêtes gagnent à la défaillance des autres | Corrigé. Sans redistribution des cautions, le gain des fidèles se limite aux pénalités (cas E : quelques centaines de francs) |
 | G5 | **Le retardataire de bonne foi** perd-il sa caution ? | Non. Règles §6.3 et §6.4 : après le délai de grâce, seule la cotisation manquante (et 5 % de pénalité) est prise sur la caution ; dès que de l'argent arrive, la caution est reconstituée ; son tour arrive comme prévu. Cas B simulé : il finit à −6 000 F, contre −3 667 F pour les autres |
 | G6 | **Identité usurpée découverte en cours de route** : qui paie le tour ? | Règle 18 : le tour est payé par la couverture habituelle (§6.3), la victime de l'usurpation n'est jamais débitrice, et si le contrôle d'identité de SwimPay a échoué, c'est une erreur de SwimPay, compensée (règle 12) |
@@ -408,17 +435,17 @@ d'un gagnant qui fuit disparaît par construction, dans tous les formats.
 | # | Question soulevée | Réponse |
 |---|---|---|
 | D1 | **Ordre de consommation** de la part bloquée non précisé | Précisé au §6.3 : **la part bloquée paie toujours en premier**, puis le compte du membre, puis caution, réserve, avance de SwimPay |
-| D2 | Le calcul du pire cas « 48 sur 48 » est-il juste ? | Oui pour la version 2 (§11.4). La version 2.1 supprime l'avance : la question ne se pose plus |
+| D2 | Le calcul du pire cas « 48 sur 48 » est-il juste ? | Oui pour la version 2. La version 3 est éprouvée sur tous les formats et 5 000 tontines au hasard (§11.2) |
 | D3 | **Abandon avant son tour** : sa caution est saisie et son tour annulé ? | Non. Son tour **n'est jamais annulé** : l'ordre est fixé au tirage. Sa cagnotte, à son tour, est entièrement bloquée, rembourse ce qui a été payé pour lui, et le reste lui est rendu (règle 6) |
-| D4 | Le gagnant du tour 5 qui fuit perd 75 000 F ? | Non. Depuis la version 2.1, sa cagnotte a déjà payé toutes ses mises : il n'a plus rien à payer, donc rien à fuir (cas F) |
+| D4 | Le gagnant du tour 5 qui fuit perd 75 000 F ? | Non : ce qui est gardé paie ses mises ; il finit à −5 000 F, contre −2 800 F environ pour les fidèles (cas F). Il ne peut rien emporter des autres |
 | D5 | **Si 5 membres fuient, la tontine meurt** | Non. Simulé (cas F, et même 9 fuites, cas G) : les parts bloquées et les cautions des défaillants continuent de payer leurs cotisations ; **chaque cagnotte est financée** |
 | D6 | **Tous fuient sauf le dernier** : que reçoit-il ? | **Sa cagnotte entière**, plus la réserve (cas G : +13 500 F). Si l'argent manquait au moment de son tour, la part manquante lui serait versée à la clôture (§6.3, point 4) |
 | D7 | Il faut une **règle de liquidation** | Ajoutée (règle 20), pour les seuls cas où la tontine ne peut vraiment plus tourner : suspension de plus de 7 jours, ou part différée impayable. Elle ne s'est déclenchée dans aucun scénario simulé |
 | D8 | **Caution progressive, garant, nantissement** | Caution d'entrée maintenue (§2). « Progressive » (prise sur la future cagnotte) : c'est déjà le rôle de la part bloquée. Nantissement sur un bien : impossible à gérer sans humain, écarté. Garant : voir G7 |
-| D9 | **Avance variable selon la place** | Écartée en version 2.1 : il n'y a plus d'avance. Chacun récupère ce qu'il a versé, moins les frais (§6.2) |
+| D9 | **Avance variable selon la place** | Résolu autrement en version 3 : ce qui est rendu croît avec la place (35 000 F au tour 1, 125 000 F au tour 10), et chacun est à −5 % le jour de son gain (§6.2) |
 | D10 | Le **bonus des derniers**, payé par le groupe, pénalise deux fois les premiers | Le fondateur maintient qu'il est payé par le groupe : c'est un rééquilibrage entre membres (les derniers ont attendu), pas un service de SwimPay. Coût : 900 F par membre sur l'exemple |
 | D11 | **Frais de 3 %** : la comparaison avec Money Fellows boite | D'accord : Money Fellows avance la cagnotte, pas SwimPay. Les 3 % paient la garantie que personne ne part avec l'argent (§6.8) |
-| D12 | **Comptes liés** : règle inapplicable, qui décide ? | Critères exacts au §10, appliqués par le code, sans humain. Sans avance (v2.1), ils ne peuvent rien extraire ; les liens servent à la surveillance |
+| D12 | **Comptes liés** : règle inapplicable, qui décide ? | Critères exacts au §10, appliqués par le code, sans humain. En version 3, personne n'a l'argent des autres en main : des comptes liés ne peuvent rien extraire ; les liens servent à la surveillance |
 | D13 | **Décès** : la part bloquée et la caution sont-elles saisies ? | Règle 7 : on ne prend que le tort causé ; tout le reste est versé sur son compte, pour sa succession |
 | D14 | **Qualification juridique** (collecte d'épargne, service de paiement, assurance) | **C'est la question n°1, d'accord.** Elle est posée au partenaire EME et à un avocat avant tout lancement. Pistes : que le partenaire agréé porte l'activité, SwimPay n'étant que l'opérateur technique ; ou un partenariat avec un établissement de microfinance `[H]` |
 | D15 | **Saisie totale de la caution** | Corrigé (G9) |
@@ -431,7 +458,7 @@ d'un gagnant qui fuit disparaît par construction, dans tous les formats.
 1. **La qualification juridique** de l'activité (D14). Bloquant avant lancement.
 2. **L'autorisation de prélèvement** et la proportionnalité de la pénalité de 5 %,
    à valider par un juriste et le partenaire EME.
-3. **L'attractivité** (G8) : la sécurité vaut-elle 30 000 F de caution jusqu'à la fin et 3 900 F de
+3. **L'attractivité** (G8) : la sécurité vaut-elle une caution de 30 %, rendue au fil des mises après le gain, et 3 900 F de
    coût, pour les clients visés ? Seul un test de marché répondra.
 4. **Caution 25 % ou 30 %** : les deux passent tous les scénarios.
 5. Les délais de grâce et de suspension `[H]`.

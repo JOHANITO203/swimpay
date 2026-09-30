@@ -278,7 +278,7 @@ td.neg { color: var(--encre); }
 
     <section class="regles" aria-label="Les règles">
       <div><b>30 %</b><span>de caution, rendue à la fin</span></div>
-      <div><b>100 %</b><span>des mises restantes du gagnant, prélevées sur sa cagnotte</span></div>
+      <div><b>= dû</b><span>au gain, on ne garde que ce qu'il doit encore, caution d'abord ; tout le reste est rendu</span></div>
       <div><b>2 %</b><span>de réserve de secours, rendue à la fin</span></div>
       <div><b>3 %</b><span>de frais du système, pris au gain</span></div>
       <div><b>+3 %</b><span>de bonus pour le dernier tiers des tours</span></div>
@@ -344,55 +344,84 @@ function sha256(texte) {
   return h.map((v) => (v >>> 0).toString(16).padStart(8, "0")).join("");
 }
 
-/* ======================= le moteur (port de tontine-v2.py) ======================= */
-const REGLES = { caution: 30, avance: 5, frais: 3, reserve: 2, bonus: 3, penalite: 5, plafondSw: 2 };
+/* ======================= le moteur (port de tontine-v3.py) =======================
+   LA REGLE (LO, 30/09/2026) : le jour du gain, SwimPay garde EXACTEMENT les mises
+   restantes du gagnant, prises d'abord sur sa caution, puis sur sa cagnotte, et lui
+   rend tout le reste. A chaque mise payee, ce qui est garde baisse d'autant : la
+   difference lui est rendue. Le gagnant paie ses mises lui-meme ; ce qui est garde
+   ne paie que s'il ne paie pas. */
+const REGLES = { caution: 30, frais: 3, reserve: 2, bonus: 3, penalite: 5, plafondSw: 2 };
 const pct = (m, p) => Math.floor(m * p / 100);
 function creeMoteur(N, T, B, c, absences) {
   const cagnotte = T * c;
   const M = { N, T, B, c, cagnotte, absences: absences || {},
-    caution0: pct(cagnotte, REGLES.caution), avance: pct(cagnotte, REGLES.avance),
+    caution0: pct(cagnotte, REGLES.caution),
     frais: pct(cagnotte, REGLES.frais), mise: pct(cagnotte, REGLES.reserve), bonus: pct(cagnotte, REGLES.bonus),
     plafondSw: pct(N * c * T, REGLES.plafondSw),
     tour: 0, clos: false, reserve: 0, revenu: 0, avanceEnCours: 0, avanceMax: 0, perteSw: 0, journal: [], p: [] };
-  for (let i = 0; i < N; i++) M.p.push({ sortie: M.caution0, entree: 0, bloque: 0, caution: M.caution0, detteRes: 0, detteSw: 0, differe: 0, penalites: 0, libre: null, rendu: 0, bonusRecu: 0, partReserve: 0 });
+  for (let i = 0; i < N; i++) M.p.push({ sortie: M.caution0, entree: 0, bloque: 0, caution: M.caution0, detteRes: 0, detteSw: 0,
+    differe: 0, penalites: 0, manquees: 0, libre: null, rendu: 0, bonusRecu: 0, partReserve: 0, liberes: 0, liberesTour: 0, gain: null });
   return M;
 }
 const tourDe = (M, i) => Math.floor(i / M.B) + 1;
 const estDernier = (M, t) => t > M.T - Math.floor(M.T / 3);
 function absent(M, i, t) { const a = M.absences[i]; if (!a) return false; return t >= a[0] && (a[1] == null || t < a[1]); }
 function note(M, t, i, texte, genre) { M.journal.push({ t, i, texte, genre: genre || "" }); }
+/* garder exactement ses mises restantes apres le tour t : caution d'abord, puis cagnotte */
+function ajuste(M, i, t) {
+  const q = M.p[i], restantes = (M.T - t) * M.c;
+  let rendu = 0;
+  if (q.caution > restantes) { rendu += q.caution - restantes; q.caution = restantes; }
+  const cible = Math.max(0, restantes - q.caution);
+  if (q.bloque > cible) { rendu += q.bloque - cible; q.bloque = cible; }
+  q.entree += rendu;
+  return rendu;
+}
 function tourSuivant(M) {
   if (M.clos || M.tour >= M.T) return;
   const t = ++M.tour, c = M.c;
+  M.p.forEach((q) => { q.liberesTour = 0; });
   for (const [k, a] of Object.entries(M.absences)) {
     const i = +k; if (a[1] !== t) continue;
-    const q = M.p[i], sw = q.detteSw, rs = q.detteRes, cau = M.caution0 - q.caution;
-    q.sortie += sw + rs + cau; q.detteSw = 0; q.detteRes = 0; q.caution = M.caution0;
+    const q = M.p[i], sw = q.detteSw, rs = q.detteRes;
+    const cible = tourDe(M, i) >= t ? M.caution0 : Math.min(M.caution0, (M.T - t + 1) * c);
+    const cau = Math.max(0, cible - q.caution);
+    q.sortie += sw + rs + cau; q.detteSw = 0; q.detteRes = 0; q.caution += cau;
     M.avanceEnCours -= sw; M.reserve += rs;
-    note(M, t, i, "revient : rembourse " + F(sw + rs) + " et reconstitue sa caution (" + F(cau) + ")", "retour");
+    note(M, t, i, "revient : rembourse " + F(sw + rs) + (cau ? " et reconstitue sa caution (" + F(cau) + ")" : ""), "retour");
   }
   let manque = 0;
   for (let i = 0; i < M.N; i++) {
-    const q = M.p[i]; let du = c;
-    const x = Math.min(q.bloque, du); q.bloque -= x; du -= x;
-    if (x > 0) note(M, t, i, "sa part bloquée paie " + F(x), "bloque");
-    if (du === 0) continue;
+    const q = M.p[i], du = c;
     if (!absent(M, i, t)) { q.sortie += du; note(M, t, i, "paie " + F(du), "paie"); continue; }
-    const pen = pct(du, REGLES.penalite);
-    let besoin = du + pen;
+    let besoin = du;
+    const xg = Math.min(q.bloque, besoin); q.bloque -= xg; besoin -= xg;
     const xc = Math.min(q.caution, besoin); q.caution -= xc; besoin -= xc;
     const xr = Math.min(M.reserve, besoin); M.reserve -= xr; besoin -= xr; q.detteRes += xr;
     const xs = Math.min(besoin, Math.max(0, M.plafondSw - M.avanceEnCours));
     q.detteSw += xs; M.avanceEnCours += xs; besoin -= xs;
     q.detteRes += besoin; manque += besoin;
-    M.reserve += pen; q.penalites += pen; q.manquees = (q.manquees || 0) + 1;
+    // la penalite ne se prend que sur son argent, et jamais avant ses mises a venir
+    let pen = Math.min(pct(du, REGLES.penalite), Math.max(0, q.bloque + q.caution - (M.T - t) * c));
+    const pg = Math.min(q.bloque, pen); q.bloque -= pg; pen -= pg;
+    const pc = Math.min(q.caution, pen); q.caution -= pc;
+    M.reserve += pg + pc; q.penalites += pg + pc; q.manquees += 1;
     M.avanceMax = Math.max(M.avanceMax, M.avanceEnCours);
     const parts = [];
+    if (xg) parts.push("ce qui était gardé de sa cagnotte " + F(xg));
     if (xc) parts.push("sa caution " + F(xc));
     if (xr) parts.push("la réserve " + F(xr));
     if (xs) parts.push("une avance de SwimPay " + F(xs));
     if (besoin) parts.push(F(besoin) + " différés");
-    note(M, t, i, "échéance manquée, couverte par " + parts.join(", ") + " (pénalité " + F(pen) + ")", "manque");
+    note(M, t, i, "échéance manquée, couverte par " + parts.join(", ") + (pg + pc ? " (pénalité " + F(pg + pc) + ")" : ""), "manque");
+  }
+  // deblocage progressif : ce qui est garde redescend a ce qu'il doit encore
+  for (let i = 0; i < M.N; i++) {
+    const q = M.p[i];
+    if (tourDe(M, i) < t && !absent(M, i, t) && !q.detteSw && !q.detteRes) {
+      const r = ajuste(M, i, t);
+      if (r) { q.liberes += r; q.liberesTour = r; note(M, t, i, "sa mise est payée : " + F(r) + " lui sont rendus", "rendu"); }
+    }
   }
   const gagnants = []; for (let i = 0; i < M.N; i++) if (tourDe(M, i) === t) gagnants.push(i);
   gagnants.forEach((g, k) => {
@@ -401,11 +430,17 @@ function tourSuivant(M) {
     let net = M.cagnotte - M.frais - M.mise;
     const part = Math.floor(manque / gagnants.length) + (k < manque % gagnants.length ? 1 : 0);
     q.differe += part; net -= part;
-    // la cagnotte garde de cote TOUTES les mises restantes ; le gagnant recupere le reste
-    let libre = absent(M, g, t) ? 0 : net - (M.T - t) * c;
-    libre = Math.max(0, libre);
-    q.entree += libre; q.libre = libre; q.bloque += net - libre;
-    note(M, t, g, "gagne la cagnotte : " + F(libre) + " libres, " + F(net - libre) + " bloqués" + (part ? ", " + F(part) + " versés à la clôture" : ""), "gain");
+    // sa cagnotte rembourse d'abord ses propres dettes
+    let x = Math.min(net, q.detteSw); net -= x; q.detteSw -= x; M.avanceEnCours -= x;
+    x = Math.min(net, q.detteRes); net -= x; q.detteRes -= x; M.reserve += x;
+    const restantes = (M.T - t) * c;
+    const libre = absent(M, g, t) ? 0 : Math.max(0, net - Math.max(0, restantes - q.caution));
+    q.entree += libre; q.bloque += net - libre;
+    let rendu = libre;
+    if (!absent(M, g, t) && !q.detteSw && !q.detteRes) rendu += ajuste(M, g, t);
+    q.libre = rendu;
+    q.gain = { t, net, restantes, gardeCagnotte: q.bloque, gardeCaution: Math.min(q.caution, restantes), cautionRendue: rendu - libre };
+    note(M, t, g, "gagne la cagnotte : " + F(rendu) + " rendus tout de suite, " + F(q.bloque + Math.min(q.caution, restantes)) + " gardés pour ses mises restantes" + (part ? ", " + F(part) + " versés à la clôture" : ""), "gain");
   });
 }
 function cloture(M) {
@@ -419,10 +454,16 @@ function cloture(M) {
     x = Math.min(q.caution, q.detteSw); q.caution -= x; q.detteSw -= x; M.avanceEnCours -= x;
     x = Math.min(q.caution, q.detteRes); q.caution -= x; q.detteRes -= x; M.reserve += x;
     q.rendu = q.bloque + q.caution; q.entree += q.rendu;
-    if (q.rendu) note(M, t, i, "récupère " + F(q.rendu) + " (sa caution et sa part bloquée restantes)", "rendu");
+    if (q.rendu) note(M, t, i, "récupère " + F(q.rendu) + " (sa caution et ce qui restait gardé)", "rendu");
     q.bloque = 0; q.caution = 0;
   }
-  for (let i = 0; i < M.N; i++) { const q = M.p[i]; if (q.differe) { M.reserve -= q.differe; q.entree += q.differe; note(M, t, i, "reçoit sa part différée : " + F(q.differe), "rendu"); } }
+  for (let i = 0; i < M.N; i++) {
+    const q = M.p[i]; if (!q.differe) continue;
+    // ce qu'on lui doit regle d'abord ce qu'il doit encore
+    let x = Math.min(q.differe, q.detteSw); q.differe -= x; q.detteSw -= x; M.avanceEnCours -= x; M.reserve -= x;
+    x = Math.min(q.differe, q.detteRes); q.differe -= x; q.detteRes -= x;
+    if (q.differe) { M.reserve -= q.differe; q.entree += q.differe; note(M, t, i, "reçoit sa part différée : " + F(q.differe), "rendu"); }
+  }
   M.perteSw = M.p.reduce((s, q) => s + q.detteSw, 0);
   for (let i = 0; i < M.N; i++) if (estDernier(M, tourDe(M, i))) {
     const b = Math.min(M.reserve, M.bonus); M.reserve -= b; M.p[i].entree += b; M.p[i].bonusRecu = b;
@@ -474,9 +515,9 @@ const SCENARIOS = [
   { id: "joyeux", lib: "Tout le monde paie", det: "Le cas le plus fréquent.", abs: () => ({}) },
   { id: "retard", lib: "Un retardataire revient", det: "Un membre du milieu manque deux échéances puis rattrape.", abs: (n, T, B) => { const p = B * Math.floor(T / 2); return T >= 5 ? { [p]: [3, 5] } : { [p]: [2, 3] }; } },
   { id: "abandon", lib: "Un membre abandonne avant de gagner", det: "Il arrête de payer bien avant son tour.", abs: (n, T, B) => { const tour = Math.min(T, Math.max(3, Math.ceil(T * .7))); return { [B * (tour - 1)]: [Math.max(2, Math.min(tour - 1, Math.ceil(T * .4))), null] }; } },
-  { id: "fuite1", lib: "Le premier gagnant fuit", det: "Il touche au tour 1, puis ne paie plus rien. Sa cagnotte a déjà gardé toutes ses mises.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B; i++) o[i] = [2, null]; return o; } },
+  { id: "fuite1", lib: "Le premier gagnant fuit", det: "Il touche au tour 1, puis ne paie plus rien. Ce qui a été gardé paie ses mises.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B; i++) o[i] = [2, null]; return o; } },
   { id: "tiers", lib: "Le premier tiers fuit", det: "Les gagnants des premiers tours ne paient plus rien après leur gain.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B * Math.ceil(T / 3); i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
-  { id: "presque", lib: "Tous fuient sauf les derniers", det: "Chaque gagnant arrête de payer après son gain. Rien ne change pour le groupe.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < n - B; i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
+  { id: "presque", lib: "Tous fuient sauf les derniers", det: "Chaque gagnant arrête de payer après son gain. Le pire cas.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < n - B; i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
 ];
 
 /* les offres qui arrivent par notification (exemples de maquette) */
@@ -588,7 +629,7 @@ const ECRANS = {
           "<button class='carte-t' data-offre='" + inv.type + "'><div class='l1'><b>" + echappe(inv.nom) + "</b><span class='etiquette " + (inv.type === "invitation" ? "v" : "a") + "'>" + (inv.type === "invitation" ? "Invitation" : "Ouvert") + "</span></div><div class='l2'>" + (inv.type === "invitation" ? "De <b>" + nomId(inv.orga) + "</b> · " : "") + F(inv.cfg.c) + " " + RYTHMES[inv.cfg.rythme].lib.toLowerCase() + " · " + resumeFormat(inv.cfg) + "</div><div class='l2'>Cagnotte de chaque gagnant : <b>" + F(cagnotteDe(inv.cfg)) + "</b></div></button>" : "") +
         "<p class='groupe-titre'>Événements ouverts</p>" +
         "<button class='carte-t' data-offre='global'><div class='l1'><b>" + OFFRES.global.nom + "</b><span>" + OFFRES.global.deja.length + " / " + N(OFFRES.global.cfg) + " places</span></div><div class='l2'>" + F(OFFRES.global.cfg.c) + " chaque jour · " + duree("jour", OFFRES.global.cfg.T) + " · cagnotte <b>" + F(cagnotteDe(OFFRES.global.cfg)) + "</b></div></button>" +
-        "<div class='bloc'><h3>Les règles, les mêmes pour tous</h3><div>Une <b>caution de 30 %</b> de la cagnotte, rendue à la fin. Le jour de ton gain, ta cagnotte <b>paie d'abord toutes tes mises restantes</b> ; tu récupères le reste, et tu n'as plus rien à payer.</div></div>" +
+        "<div class='bloc'><h3>Les règles, les mêmes pour tous</h3><div>Une <b>caution de 30 %</b> de la cagnotte, rendue à la fin. Le jour de ton gain, SwimPay <b>ne garde que ce que tu dois encore</b>, ta caution d'abord ; tout le reste t'est rendu. À chaque mise payée, on t'en rend un peu plus.</div></div>" +
         "<div class='pousse'></div>" +
         "<button class='pilule blanche' data-aller='creer'>Créer une tontine</button>" +
       "</div>" + nav();
@@ -614,7 +655,7 @@ const ECRANS = {
 
   chiffres() {
     const cfg = E.cfg, g = cagnotteDe(cfg), c = cfg.c, T = cfg.T;
-    const net = g - pct(g, 3) - pct(g, 2), libreAu = (k) => Math.max(0, net - (T - k) * c), mil = Math.ceil(T / 2);
+    const net = g - pct(g, 3) - pct(g, 2), libreAu = (k) => Math.max(0, net + pct(g, 30) - (T - k) * c), mil = Math.ceil(T / 2);
     const membre = E.role === "membre";
     return hero("28%", btnRetour, titre(membre ? echappe(E.nom) : "Mes chiffres", 44, membre ? (E.offre === "invitation" ? "Invitation de " + nomId(E.orga) : "Événement ouvert") : "Ce que chaque membre verra") +
       "<div class='plaque'><div class='lp'><span>" + F(c) + " " + RYTHMES[cfg.rythme].lib.toLowerCase() + ", pendant " + duree(cfg.rythme, T) + "</span></div><div class='lp'><span>" + resumeFormat(cfg) + "</span></div></div>") +
@@ -627,7 +668,7 @@ const ECRANS = {
           "<div class='moins'><span>Réserve de secours (2 %), rendue à la fin</span><b>−" + F(pct(g, 2)) + "</b></div></div>" +
         "<p class='groupe-titre'>Ce qu'on retire le jour du gain</p>" +
         "<div class='places'><div><small>Tiré au tour 1</small><b>" + F(libreAu(1)) + "</b></div><div><small>Tiré au tour " + mil + "</small><b>" + F(libreAu(mil)) + "</b></div><div><small>Tiré au tour " + T + "</small><b>" + F(libreAu(T)) + "</b></div></div>" +
-        "<p class='aide'>La cagnotte <b>paie d'abord toutes les mises restantes</b> du gagnant. Il récupère le reste, et n'a plus rien à payer. La place dépend du tirage.</p>" +
+        "<p class='aide'>Le jour du gain, SwimPay <b>ne garde que les mises qui restent à payer</b>, pris d'abord sur la caution. Tout le reste est rendu. Puis, à chaque mise payée, on rend un peu plus. La place dépend du tirage.</p>" +
         "<div class='bloc alerte'><h3>En cas de retard ou d'arrêt</h3><div>La caution paie l'échéance, avec <b>5 % de pénalité</b>. Si on arrête de payer, on ne prend sur la caution <b>que ce qui a été payé à sa place</b> ; le reste est rendu à la fin.</div></div>" +
         (membre ? "<button class='pilule blanche' data-rejoindre>Rejoindre la tontine</button><p class='aide' style='text-align:center'>Rien n'est prélevé avant le contrat. Tu peux te retirer tant que la tontine n'a pas commencé.</p>"
                 : "<button class='pilule blanche' data-publier>" + (cfg.mode === "ouverte" ? "Publier l'événement" : "Inviter des membres") + "</button>") +
@@ -711,13 +752,14 @@ const ECRANS = {
       titre("Ma place : tour " + monTour, 42, echappe(E.nom) + " · " + F(E.cfg.c) + " par échéance") +
       "<div class='plaque'><div class='lp'><span>Solde tontine</span></div><div class='montant'>" + montantHTML(E.soldeTontine) + "</div>" +
       "<div class='lp'><span>Caution</span><b>" + F(q.caution) + "</b></div>" +
-      (!M.clos && M.tour < M.T ? "<div class='lp'><span>Prochaine échéance · tour " + (M.tour + 1) + "</span><b>" + (q.bloque >= M.c ? "payée par ta cagnotte" : F(M.c)) + "</b></div>" : "") + "</div>") +
+      (!M.clos && M.tour < M.T ? "<div class='lp'><span>Prochaine échéance · tour " + (M.tour + 1) + "</span><b>" + F(M.c) + "</b></div>" : "") +
+      (q.bloque ? "<div class='lp'><span>Gardé sur ta cagnotte, pour tes mises</span><b>" + F(q.bloque) + "</b></div>" : "") + "</div>") +
       "<div class='bas'>" +
         infoPrelevement(M, q) +
         (M.absences[p] ? "<div class='bloc alerte'><h3>Scénario : c'est toi qui manques des échéances</h3>Le tableau du moteur montre ce que le système prend sur ta caution, et ce qu'il te rend.</div>" : "") +
         "<div class='boutons'>" +
           (M.clos ? "<button class='pilule blanche' data-aller='cloture' style='grid-column:1/-1'>Voir mon bilan</button>"
-                  : M.tour < M.T ? (q.bloque >= M.c ? "" : "<button class='pilule acide' data-credit style='grid-column:1/-1'>Ajouter du crédit</button>") + "<button class='pilule blanche' data-tour>Tour suivant (démo)</button><button class='pilule contour' data-aller='journal'>Le journal</button>"
+                  : M.tour < M.T ? "<button class='pilule acide' data-credit style='grid-column:1/-1'>Ajouter du crédit</button>" + "<button class='pilule blanche' data-tour>Tour suivant (démo)</button><button class='pilule contour' data-aller='journal'>Le journal</button>"
                   : "<button class='pilule blanche' data-cloturer style='grid-column:1/-1'>Clôturer la tontine</button>") +
         "</div>" +
         (q.libre !== null && !M.clos ? "<button class='pilule contour' data-aller='gain'>Revoir mon gain</button>" : "") +
@@ -726,15 +768,14 @@ const ECRANS = {
   },
 
   gain() {
-    const M = E.M, p = maPlace(), q = M.p[p], t = tourDe(M, p), c = M.c;
-    const doit = (M.T - t) * c, net = M.cagnotte - M.frais - M.mise - q.differe;
-    const bloque = net - q.libre, paye = Math.min(Math.floor(bloque / c), M.T - t), poche = Math.max(0, doit - bloque);
+    const M = E.M, p = maPlace(), q = M.p[p], t = tourDe(M, p), G = q.gain;
     if (absent(M, p, t)) {
       return hero("34%", btnRetour, titre("Ton tour est arrivé", 46, "Tour " + t) +
-        "<div class='plaque'><div class='lp'><span>Cagnotte, réservée à ce que tu dois</span></div><div class='montant'>" + montantHTML(net) + "</div></div>") +
+        "<div class='plaque'><div class='lp'><span>Cagnotte, réservée à ce que tu dois</span></div><div class='montant'>" + montantHTML(G.net) + "</div></div>") +
         "<div class='bas'><div class='bloc alerte'><h3>Tu as des échéances non payées</h3><div>Ta cagnotte arrive quand même à ta place, mais elle est <b>entièrement réservée</b> : elle rembourse d'abord ce qui a été payé pour toi.</div><div>Le reste t'est rendu à la clôture. Personne ne te prend plus que ce que tu dois.</div></div>" +
         "<button class='pilule blanche' data-retour>Retour à la tontine</button></div>";
     }
+    const garde = G.gardeCagnotte + G.gardeCaution, nb = Math.round(G.restantes / M.c);
     return hero("38%", btnRetour, titre("Tu as gagné", 60, "Tour " + t) +
       "<div class='plaque'><div class='lp'><span>Ta cagnotte</span></div><div class='montant'>" + montantHTML(M.cagnotte) + "</div></div>") +
       "<div class='bas'>" +
@@ -743,8 +784,10 @@ const ECRANS = {
           "<div class='moins'><span>Frais du système</span><b>−" + F(M.frais) + "</b></div>" +
           "<div class='moins'><span>Réserve de secours, rendue à la fin</span><b>−" + F(M.mise) + "</b></div>" +
           (q.differe ? "<div class='moins'><span>Versé à la clôture (d'autres n'ont pas payé)</span><b>−" + F(q.differe) + "</b></div>" : "") +
-          "<div class='moins'><span>Réservé à " + (paye ? "tes " + paye + " prochaines cotisations" : "tes cotisations") + "</span><b>−" + F(bloque) + "</b></div>" +
-          "<div class='total libre'><span>Tu peux retirer</span><b>" + F(q.libre) + "</b></div></div>" +
+          (G.gardeCagnotte ? "<div class='moins'><span>Gardé sur ta cagnotte pour tes mises</span><b>−" + F(G.gardeCagnotte) + "</b></div>" : "") +
+          (G.cautionRendue ? "<div><span>Ta caution, que tu ne dois plus</span><b>+" + F(G.cautionRendue) + "</b></div>" : "") +
+          "<div class='total libre'><span>Tu récupères maintenant</span><b>" + F(q.libre) + "</b></div></div>" +
+        (nb ? "<p class='aide'>Il te reste <b>" + nb + " mise" + (nb > 1 ? "s" : "") + "</b> à payer (" + F(G.restantes) + "). SwimPay garde exactement cette somme : ta caution d'abord" + (G.gardeCagnotte ? ", puis " + F(G.gardeCagnotte) + " de ta cagnotte" : "") + ". <b>À chaque mise payée, on t'en rend autant.</b></p>" : "<p class='aide'>Tu n'as plus de mise à payer : tout t'est rendu, ta caution comprise.</p>") +
         (E.retire ? "<div class='bloc ok'><h3>C'est sur ton compte SwimPay</h3>" + F(q.libre) + " sont sur ton solde SwimPay. De là, tu peux les envoyer vers tes Mobile Money ou ta banque.</div>"
                   : "<button class='pilule acide' data-retirer" + (q.libre ? "" : " disabled") + ">Mettre " + F(q.libre) + " sur mon compte SwimPay</button>") +
         "<button class='pilule contour' data-retour>Retour à la tontine</button>" +
@@ -898,12 +941,11 @@ function infoPrelevement(M, q) {
   let h = "";
   if (d && !M.clos) {
     const parts = [];
-    if (d.cagnotte) parts.push(F(d.cagnotte) + " par ta cagnotte");
     if (d.tontine) parts.push(F(d.tontine) + " depuis ton solde tontine");
     if (d.compte) parts.push(F(d.compte) + " depuis ton compte SwimPay" + (d.tontine || d.cagnotte ? "" : ", ton solde tontine était vide"));
-    if (parts.length) h += "<div class='bloc ok'><h3>Échéance du tour " + d.t + " payée</h3>" + parts.join(", ") + ".</div>";
+    if (parts.length) h += "<div class='bloc ok'><h3>Échéance du tour " + d.t + " payée</h3>" + parts.join(", ") + "." + (d.rendu ? "<div>Tu dois moins : <b>" + F(d.rendu) + "</b> t'ont été rendus sur ton compte SwimPay.</div>" : "") + "</div>";
   }
-  if (!M.clos && M.tour < M.T && q.bloque < M.c && E.soldeTontine < M.c)
+  if (!M.clos && M.tour < M.T && E.soldeTontine < M.c)
     h += "<p class='aide'>Ajoute du crédit avant l'échéance. Sinon, ton compte SwimPay est prélevé ; s'il est vide, <b>ta caution paie, avec 5 % de pénalité</b>.</p>";
   return h;
 }
@@ -915,12 +957,11 @@ function avancer() {
   if (!E.M) { raccourci(); return; }
   if (E.M.clos) return;
   if (E.M.tour >= E.M.T) { cloturer(); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); return; }
-  const p = maPlace(), avant = E.M.p[p].sortie, nJ = E.M.journal.length, bloqueAvant = E.M.p[p].bloque;
+  const p = maPlace(), avant = E.M.p[p].sortie;
   tourSuivant(E.M);
-  const paye = E.M.p[p].sortie - avant;
-  const parCagnotte = Math.min(bloqueAvant, E.M.c);
-  const deT = Math.min(E.soldeTontine, paye); E.soldeTontine -= deT; E.solde -= paye - deT;
-  E.dernierPrelev = { t: E.M.tour, cagnotte: parCagnotte, tontine: deT, compte: paye - deT };
+  const paye = E.M.p[p].sortie - avant, rendu = E.M.p[p].liberesTour;
+  const deT = Math.min(E.soldeTontine, paye); E.soldeTontine -= deT; E.solde -= paye - deT; E.solde += rendu;
+  E.dernierPrelev = { t: E.M.tour, tontine: deT, compte: paye - deT, rendu };
   const monTour = tourDe(E.M, maPlace());
   if (E.M.tour === monTour && E.tourVu < monTour) { E.tourVu = monTour; E.pile = ["tontines", "tontine"]; E.ecran = "gain"; E.sens = "avant"; }
   rendre();
