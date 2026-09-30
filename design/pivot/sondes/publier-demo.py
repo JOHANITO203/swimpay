@@ -11,6 +11,7 @@
      deploy/public/demo/index.html     le prototype en scenarios
      deploy/public/demo/photo.jpg      le hero photo des scenarios
      deploy/public/demo/grain.png      la tuile de grain
+     deploy/public/demo/tontine/       la demo de la tontine classique
 
    A relancer apres chaque modification d'un prototype, avant de pousser."""
 import io, os, re, shutil, sys
@@ -60,6 +61,13 @@ open(SORTIE + "index.html", "w", encoding="utf-8").write(envelopper(sc, "← Ret
 shutil.copyfile(PIVOT + "assets/hero-personne.jpg", SORTIE + "photo.jpg")
 shutil.copyfile(PIVOT + "assets/grain-tuile.png", SORTIE + "grain.png")
 
+# 3. la tontine classique (30/09/2026), sa propre page
+os.makedirs(SORTIE + "tontine/", exist_ok=True)
+to = open(PIVOT + "tontine-demo.html", encoding="utf-8").read()
+open(SORTIE + "tontine/index.html", "w", encoding="utf-8").write(envelopper(to, "← Retour au site"))
+print("  %-14s %6d Ko" % ("tontine/", os.path.getsize(SORTIE + "tontine/index.html") // 1024))
+
 for f in sorted(os.listdir(SORTIE)):
+    if os.path.isdir(SORTIE + f): continue
     print("  %-14s %6d Ko" % (f, os.path.getsize(SORTIE + f) // 1024))
 print("demo publiee dans deploy/public/demo/")

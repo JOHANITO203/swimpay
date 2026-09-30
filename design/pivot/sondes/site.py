@@ -34,6 +34,11 @@ SITE_URL = "https://swimpay.johaneoyaraht.workers.dev"
 # SERVIE PAR LE SITE (LO, 29/09) : deploy/public/demo/, rempli par
 # sondes/publier-demo.py. L'ancienne demo est retiree : une seule verite.
 LIEN_DEMO = "/demo/"
+# ── LA DEMO DE LA TONTINE (30/09/2026) ──
+# La tontine classique, jouable de bout en bout, avec son moteur visible :
+# design/pivot/tontine-demo.html, publie par publier-demo.py dans
+# deploy/public/demo/tontine/.
+LIEN_TONTINE = "/demo/tontine/"
 
 def b64(chemin, mime):
     d = open(os.path.join(A, chemin), "rb").read()
@@ -66,6 +71,8 @@ photo_tel = b64("hero-personne-tel.jpg", "image/jpeg")
 carte_visa = brut("carte-visa.webp", "image/webp")
 ecran_pme = brut("ecran-demo-comm.webp", "image/webp")
 ecran_accueil = brut("ecran-demo-part.webp", "image/webp")
+# l'ecran du gain, tire de la demo de la tontine (meme telephone, une seule verite)
+ecran_tontine = brut("ecran-demo-tontine.webp", "image/webp")
 video = brut("hero-anim.mp4", "video/mp4")
 affiche = brut("hero-anim-poster.jpg", "image/jpeg")
 
@@ -914,6 +921,35 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
     </div>
   </section>
 
+  <!-- ── la tontine (nouvelle fonctionnalité, 30/09/2026) ──
+       Les règles sont celles de docs/pivot/31, version 3 : caution, tirage
+       vérifiable, on ne garde que ce que le gagnant doit encore. -->
+  <section class="sect sombre" id="tontine">
+    <div class="dedans">
+      <div class="duo" style="align-items: center; margin-bottom: 12px">
+        <div>
+          <h2>La tontine, sans que personne parte avec l'argent</h2>
+          <p class="para">Créez une tontine avec vos proches, ou rejoignez un
+            événement ouvert. Le tirage se fait en direct, devant tous. Le jour de
+            votre gain, <b>vous récupérez tout de suite ce que vous ne devez plus</b>,
+            sur votre compte SwimPay.</p>
+          <div class="gestes" style="margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap">
+            <a class="bouton acide grand" href="{LIEN_TONTINE}" target="_blank" rel="noopener">Essayer la tontine</a>
+          </div>
+        </div>
+        <div class="tel">
+          <img src="{ecran_tontine}" width="740" height="1600" loading="lazy"
+               alt="L'écran du gain d'une tontine SwimPay : la cagnotte, ce qui est gardé pour les mises, ce que l'on récupère">
+        </div>
+      </div>
+      {cartes([
+        ("Le tirage devant tous", "L'ordre des gagnants est tiré au sort par le système, en direct. Chaque membre peut refaire le calcul et le vérifier.", "personne ne choisit sa place"),
+        ("Votre gain, tout de suite", "SwimPay ne garde que les mises qu'il vous reste à payer. Tout le reste arrive sur votre compte, et à chaque mise payée, on vous en rend un peu plus.", "3 % de frais du système, pris au gain"),
+        ("Personne ne part avec l'argent", "Votre caution et ce qui est gardé couvrent toujours vos mises. Un membre qui s'enfuit ne peut rien emporter des autres.", "la caution vous est rendue au fil des mises"),
+      ])}
+    </div>
+  </section>
+
   <!-- ── section 3 : la sécurité ── -->
   <section class="sect gris">
     <div class="dedans">
@@ -1252,6 +1288,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           <li><a href="#personnel">Personnel</a></li>
           <li><a href="#business">Business</a></li>
           <li><a href="#integration">Intégration</a></li>
+          <li><a href="#tontine">Tontine</a></li>
           <li><a href="#telecharger">Télécharger</a></li>
         </ul>
       </div>
@@ -1261,6 +1298,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
           <li><a href="#connexion">Se connecter</a></li>
           <li><a href="#inscription">S'inscrire</a></li>
           <li><a href="{LIEN_DEMO}#onb" target="_blank" rel="noopener">Voir la démo</a></li>
+          <li><a href="{LIEN_TONTINE}" target="_blank" rel="noopener">Essayer la tontine</a></li>
         </ul>
       </div>
       <div>
@@ -1302,8 +1340,7 @@ const va = (id) => {{
     : "SwimPay · " + cible.charAt(0).toUpperCase() + cible.slice(1);
   window.scrollTo({{ top: 0, behavior: "instant" }});
 }};
-addEventListener("hashchange", () => {{
-  const h = location.hash.slice(1);
+const suit = (h) => {{
   /* une ancre INTERNE à la page courante (#telecharger) fait défiler, elle ne
      change pas de page — sans ce partage, le lien du pied ramenait à l'accueil
      puis y restait sans rien montrer */
@@ -1315,8 +1352,10 @@ addEventListener("hashchange", () => {{
     return;
   }}
   va(h);
-}});
-va(location.hash.slice(1));
+}};
+addEventListener("hashchange", () => suit(location.hash.slice(1)));
+/* a l'ouverture aussi : un lien partage vers #tontine doit descendre jusqu'a la section */
+suit(location.hash.slice(1));
 
 /* ─── LE CAMÉLÉON ───
    L'accent n'est jamais fixe : il vient du rail actif. On le montre en le
