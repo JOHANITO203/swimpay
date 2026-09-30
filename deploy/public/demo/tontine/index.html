@@ -668,17 +668,17 @@ const ECRANS = {
 
   chiffres() {
     const cfg = E.cfg, g = cagnotteDe(cfg), c = cfg.c, T = cfg.T;
-    const net = g - pct(g, 3) - pct(g, 2), libreAu = (k) => Math.max(0, net + pct(g, 30) - (T - k) * c), mil = Math.ceil(T / 2);
+    const net = g - pct(g, REGLES.frais) - pct(g, REGLES.reserve), libreAu = (k) => Math.max(0, net + pct(g, REGLES.caution) - (T - k) * c), mil = Math.ceil(T / 2);
     const membre = E.role === "membre";
     return hero("28%", btnRetour, titre(membre ? echappe(E.nom) : "Mes chiffres", 44, membre ? (E.offre === "invitation" ? "Invitation de " + nomId(E.orga) : "Événement ouvert") : "Ce que chaque membre verra") +
       "<div class='plaque'><div class='lp'><span>" + F(c) + " " + RYTHMES[cfg.rythme].lib.toLowerCase() + ", pendant " + duree(cfg.rythme, T) + "</span></div><div class='lp'><span>" + resumeFormat(cfg) + "</span></div></div>") +
       "<div class='bas'>" +
         "<div class='recap'>" +
-          "<div><span>Prélevé en acceptant le contrat</span><b>" + F(pct(g, 30) + c) + "</b></div>" +
-          "<div class='moins'><span>dont caution, rendue au fil des mises</span><b>" + F(pct(g, 30)) + "</b></div>" +
+          "<div><span>Prélevé en acceptant le contrat</span><b>" + F(pct(g, REGLES.caution) + c) + "</b></div>" +
+          "<div class='moins'><span>dont caution, rendue au fil des mises</span><b>" + F(pct(g, REGLES.caution)) + "</b></div>" +
           "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
-          "<div class='moins'><span>Frais du système (3 %)</span><b>−" + F(pct(g, 3)) + "</b></div>" +
-          "<div class='moins'><span>Réserve de secours (2 %), rendue à la fin</span><b>−" + F(pct(g, 2)) + "</b></div></div>" +
+          "<div class='moins'><span>Frais du système (3 %)</span><b>−" + F(pct(g, REGLES.frais)) + "</b></div>" +
+          "<div class='moins'><span>Réserve de secours (2 %), rendue à la fin</span><b>−" + F(pct(g, REGLES.reserve)) + "</b></div></div>" +
         "<p class='groupe-titre'>Ce qu'on retire le jour du gain</p>" +
         "<div class='places'><div><small>Tiré au tour 1</small><b>" + F(libreAu(1)) + "</b></div><div><small>Tiré au tour " + mil + "</small><b>" + F(libreAu(mil)) + "</b></div><div><small>Tiré au tour " + T + "</small><b>" + F(libreAu(T)) + "</b></div></div>" +
         "<p class='aide'>Le jour du gain, SwimPay <b>ne garde que les mises qui restent à payer</b>, pris d'abord sur la caution. Tout le reste est rendu. Puis, à chaque mise payée, on rend un peu plus. La place dépend du tirage.</p>" +
@@ -726,7 +726,7 @@ const ECRANS = {
           "<div><span>Cotisation</span><b>" + F(cfg.c) + " " + RYTHMES[cfg.rythme].lib.toLowerCase() + "</b></div>" +
           "<div><span>Durée</span><b>" + duree(cfg.rythme, cfg.T) + " · " + resumeFormat(cfg) + "</b></div>" +
           "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
-          "<div><span>Prélevé maintenant</span><b>" + F(pct(g, 30) + cfg.c) + "</b></div>" +
+          "<div><span>Prélevé maintenant</span><b>" + F(pct(g, REGLES.caution) + cfg.c) + "</b></div>" +
           "<div><span>Frais du système</span><b>3 % au gain</b></div></div>" +
         "<p class='aide'>Après le tirage, <b>plus rien ne change</b> : montant, rythme, membres, ordre. L'ordre est tiré au sort par le système, en direct, devant tous.</p>" +
         "<p class='groupe-titre'>Les membres · " + acc + " / " + n + " ont accepté</p>" +
@@ -855,7 +855,7 @@ function recapCreer() {
     "<div><span>Format</span><b>" + resumeFormat(cfg) + "</b></div>" +
     "<div><span>Durée</span><b>" + duree(cfg.rythme, cfg.T) + "</b></div>" +
     "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
-    "<div><span>Caution de chaque membre</span><b>" + F(pct(g, 30)) + "</b></div></div>" +
+    "<div><span>Caution de chaque membre</span><b>" + F(pct(g, REGLES.caution)) + "</b></div></div>" +
     (g > 2000000 ? "<p class='aide'>Cagnotte au-delà de 2 000 000 F : chaque membre devra avoir <b>un compte bancaire vérifié à son nom</b>.</p>" : "") +
     "<button class='pilule blanche' data-aller='chiffres'>Voir les chiffres</button>";
 }
@@ -1018,7 +1018,7 @@ function rendreFeuille() {
   let h = "<span class='poignee'></span>";
   if (E.feuille === "accepter") {
     const g = cagnotteDe(E.cfg);
-    h += "<h3 id='feuille-titre'>Accepter le contrat</h3><p class='aide'>Ton code secret signe le contrat. <b>" + F(pct(g, 30) + E.cfg.c) + "</b> sont prélevés sur ton compte SwimPay : ta caution (" + F(pct(g, 30)) + "), rendue à la fin, et ta première cotisation, qui va sur ton solde tontine.</p>" + clavierHTML();
+    h += "<h3 id='feuille-titre'>Accepter le contrat</h3><p class='aide'>Ton code secret signe le contrat. <b>" + F(pct(g, REGLES.caution) + E.cfg.c) + "</b> sont prélevés sur ton compte SwimPay : ta caution (" + F(pct(g, REGLES.caution)) + "), rendue à la fin, et ta première cotisation, qui va sur ton solde tontine.</p>" + clavierHTML();
   }
   if (E.feuille === "credit") {
     const M = E.M, restant = (M.T - M.tour) * M.c, cr = E.credit;
