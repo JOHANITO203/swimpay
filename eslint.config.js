@@ -40,6 +40,21 @@ export default tseslint.config(
     }
   },
   {
+    // Les memes outils, ecrits en CommonJS (.cjs) : require et __dirname y
+    // sont l'idiome normal, pas un import a moderniser.
+    files: ['design/**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+        WebSocket: 'readonly'
+      }
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off'
+    }
+  },
+  {
     // Scripts executes dans une page web (injectes par design/pivot/sondes/site.py).
     files: ['design/**/*.js'],
     languageOptions: {
