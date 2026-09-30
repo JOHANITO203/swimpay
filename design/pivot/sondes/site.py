@@ -163,7 +163,7 @@ CODE_SDK = """&lt;script src="https://sdk.swimpay.pro/v1/checkout.js"&gt;&lt;/sc
 HTML = f"""<!doctype html>
 <html lang="fr">
 <meta charset="utf-8">
-<title>SwimPay — envoyer, encaisser et facturer depuis un seul compte</title>
+<title>SwimPay · Envoyer, encaisser et facturer depuis un seul compte</title>
 
 <!-- Ce que l'audit reprochait, dans l'ordre ou il le reprochait.
 
@@ -184,14 +184,14 @@ HTML = f"""<!doctype html>
 <meta property="og:site_name" content="SwimPay">
 <meta property="og:locale" content="fr_CI">
 <meta property="og:url" content="{SITE_URL}/">
-<meta property="og:title" content="SwimPay — un seul compte pour tout votre argent">
+<meta property="og:title" content="SwimPay · Un seul compte pour tout votre argent">
 <meta property="og:description" content="Vos réseaux Mobile Money, votre banque et votre carte au même endroit. Encaissez, payez, et vos factures FNE partent avec l'opération.">
 <meta property="og:image" content="{SITE_URL}/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="SwimPay au centre, relié aux réseaux Mobile Money, aux banques et aux encaissements">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="SwimPay — un seul compte pour tout votre argent">
+<meta name="twitter:title" content="SwimPay · Un seul compte pour tout votre argent">
 <meta name="twitter:description" content="Vos réseaux Mobile Money, votre banque et votre carte au même endroit.">
 <meta name="twitter:image" content="{SITE_URL}/og.jpg">
 
@@ -1336,7 +1336,7 @@ const va = (id) => {{
      l'ecrasait par « SwimPay » tout court, ce qui annulait le referencement
      de la page d'entree. Il ne le remplace plus que sur les AUTRES pages. */
   document.title = cible === "accueil"
-    ? "SwimPay — envoyer, encaisser et facturer depuis un seul compte"
+    ? "SwimPay · Envoyer, encaisser et facturer depuis un seul compte"
     : "SwimPay · " + cible.charAt(0).toUpperCase() + cible.slice(1);
   window.scrollTo({{ top: 0, behavior: "instant" }});
 }};
