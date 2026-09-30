@@ -81,7 +81,7 @@ leur nom** (règle 17, §8).
 3. **Entrée de chaque membre** :
    - pièce d'identité et photo du visage en direct, comparée à la pièce ; **une
      pièce = une personne = une place** ;
-   - **caution de 30 % de la cagnotte** et **première cotisation**, bloquées tout de
+   - **caution de 25 % de la cagnotte** et **première cotisation**, bloquées tout de
      suite ;
    - l'écran affiche **ses propres chiffres** : ce qu'il paiera à chaque échéance, ce
      qu'il pourra retirer le jour du gain selon sa place, ce qu'il récupérera à la
@@ -117,8 +117,9 @@ leur nom** (règle 17, §8).
 
 ### 6.1 La caution
 
-- **30 % de la cagnotte brute** (le fondateur hésite entre 25 % et 30 % ; les deux
-  passent tous les scénarios, §11).
+- **25 % de la cagnotte brute** (décision de LO, 30/09/2026). Les 260 épreuves du
+  §11.2 rejouées à 25 % : perte de SwimPay 0, honnêtes lésés 0, fuites qui
+  rapportent 0, comme à 30 %.
 - Versée à l'entrée, **gelée jusqu'à la clôture**, quel que soit le rang de tirage.
 - Elle ne sert qu'à **payer les échéances manquées** de son propriétaire, et leurs
   pénalités.
@@ -144,18 +145,55 @@ En formule, après le tour t, pour un membre gagnant :
 Le jour du gain, cela donne : **rendu = cagnotte nette + caution − mises
 restantes**.
 
+#### La règle en pourcentage — position figée par LO le 30/09/2026
+
+C = cagnotte brute, T = nombre de tours, une mise = C ÷ T. Aucun montant fixe : tout
+est un pourcentage de C.
+
+| Élément | En % de C |
+|---|---|
+| Caution, versée à l'entrée | **25 %** |
+| Frais du système, au gain | 3 % |
+| Réserve, au gain, rendue à la clôture | 2 % |
+| Cagnotte nette | **95 %** |
+| Mises restantes après le tour t | **(T − t) ÷ T** |
+
+Pour le gagnant du tour t :
+
+    gardé    =  (T − t) ÷ T          caution d'abord, puis cagnotte
+    rendu    =  95 % + 25 % − (T − t) ÷ T
+    versé    =  25 % + t ÷ T
+    position =  rendu − versé  =  −5 %   à toute place, pour toute taille
+
+Puis une mise rendue à chaque mise payée, jusqu'à ce que le gardé soit à zéro.
+
+**Exemple, cagnotte de 330 000 F** (11 membres, 11 tours, mise de 30 000 F ; caution
+82 500 F, cagnotte nette 313 500 F), calculé par `tontine-v3.py` :
+
+| Gagne au tour | A versé | Gardé (caution / cagnotte) | Rendu le jour du gain | Position |
+|---|---|---|---|---|
+| 1 | 112 500 | 300 000 (82 500 / 217 500) | 96 000 | −16 500 |
+| 3 | 172 500 | 240 000 (82 500 / 157 500) | 156 000 | −16 500 |
+| 6 | 262 500 | 150 000 (82 500 / 67 500) | 246 000 | −16 500 |
+| 8 | 322 500 | 90 000 (82 500 / 7 500) | 306 000 | −16 500 |
+| 9 | 352 500 | 60 000 (60 000 / 0) | 336 000 | −16 500 |
+| 11 | 412 500 | 0 | 396 000 | −16 500 |
+
+Tous payés : −12 600 F (−3,8 %) aux places 1 à 8, −2 700 F (−0,8 %) aux places 9 à
+11 (bonus du dernier tiers). Perte de SwimPay 0, argent des autres en main 0.
+
 Exemple de référence : 10 membres, 10 tours, 10 000 F, cagnotte nette 95 000 F,
-caution 30 000 F.
+caution 25 000 F.
 
 | Gagnant du tour | A versé (caution comprise) | Récupère le jour du gain | Gardé | Position le jour du gain |
 |---|---|---|---|---|
-| 1 | 40 000 | 35 000 | 90 000 (caution + 60 000 de cagnotte) | −5 000 |
-| 3 | 60 000 | 55 000 | 70 000 (caution + 40 000) | −5 000 |
-| 5 | 80 000 | 75 000 | 50 000 (caution + 20 000) | −5 000 |
-| 7 | 100 000 | 95 000 | 30 000 (la caution seule) | −5 000 |
-| 10 | 130 000 | 125 000 (la caution est rendue) | 0 | −5 000 |
+| 1 | 35 000 | 30 000 | 90 000 (caution + 65 000 de cagnotte) | −5 000 |
+| 3 | 55 000 | 50 000 | 70 000 (caution + 45 000) | −5 000 |
+| 5 | 75 000 | 70 000 | 50 000 (caution + 25 000) | −5 000 |
+| 7 | 95 000 | 90 000 | 30 000 (caution + 5 000) | −5 000 |
+| 10 | 125 000 | 120 000 (la caution est rendue) | 0 | −5 000 |
 
-Le gagnant du tour 3 récupère 55 000 F, puis 10 000 F à chacune de ses 7 mises
+Le gagnant du tour 3 récupère 50 000 F, puis 10 000 F à chacune de ses 7 mises
 payées (d'abord de sa cagnotte, puis de sa caution), jusqu'à tout avoir récupéré.
 
 **Les trois propriétés, mesurées (§11)** :
@@ -367,7 +405,9 @@ tontine à l'autre). Aucun humain ne décide, rien n'est bloqué.
 
 Scripts : `design/pivot/sondes/tontine-v3.py` (la règle de la version 3, et les
 épreuves), repris à l'identique par le moteur de la démo (1 760 cas comparés, zéro
-écart). Exemple de référence : 10 membres, 10 tours, 10 000 F, caution de 30 %.
+écart). Exemple de référence : 10 membres, 10 tours, 10 000 F. Les scénarios du
+§11.1 ont été joués avec une caution de 30 % ; les épreuves du §11.2 passent aussi à
+25 %, la caution retenue.
 Résultat = ce que chacun a reçu moins ce qu'il a versé, à la fin.
 
 ### 11.1 Du scénario joyeux au pire
@@ -460,7 +500,7 @@ les épreuves du §11.2 couvrent tous les formats permis.
    à valider par un juriste et le partenaire EME.
 3. **L'attractivité** (G8) : la sécurité vaut-elle une caution de 30 %, rendue au fil des mises après le gain, et 3 900 F de
    coût, pour les clients visés ? Seul un test de marché répondra.
-4. **Caution 25 % ou 30 %** : les deux passent tous les scénarios.
+4. ~~Caution 25 % ou 30 %~~ : **tranché, 25 %** (LO, 30/09/2026).
 5. Les délais de grâce et de suspension `[H]`.
 6. La SIM dupliquée n'est détectable que si l'opérateur fournit l'information `[H]`.
 7. La contrainte physique (quelqu'un forcé de retirer avec son propre téléphone)

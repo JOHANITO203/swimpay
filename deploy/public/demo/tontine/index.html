@@ -290,7 +290,7 @@ td.neg { color: var(--encre); }
     <p>La tontine classique dans l'app SwimPay, avec <b>les règles validées le 29 septembre</b>. Le téléphone montre ce que vit le membre, du premier écran au bilan. Ce panneau montre <b>ce que fait le système</b>, pour tout le groupe. Aucun humain ne décide.</p>
 
     <section class="regles" aria-label="Les règles">
-      <div><b>30 %</b><span>de caution, rendue au fil des mises après le gain</span></div>
+      <div><b>25 %</b><span>de caution, rendue au fil des mises après le gain</span></div>
       <div><b>= dû</b><span>au gain, on ne garde que ce qu'il doit encore, caution d'abord ; tout le reste est rendu</span></div>
       <div><b>2 %</b><span>de réserve de secours, rendue à la fin</span></div>
       <div><b>3 %</b><span>de frais du système, pris au gain</span></div>
@@ -363,7 +363,7 @@ function sha256(texte) {
    rend tout le reste. A chaque mise payee, ce qui est garde baisse d'autant : la
    difference lui est rendue. Le gagnant paie ses mises lui-meme ; ce qui est garde
    ne paie que s'il ne paie pas. */
-const REGLES = { caution: 30, frais: 3, reserve: 2, bonus: 3, penalite: 5, plafondSw: 2 };
+const REGLES = { caution: 25, frais: 3, reserve: 2, bonus: 3, penalite: 5, plafondSw: 2 };
 const pct = (m, p) => Math.floor(m * p / 100);
 function creeMoteur(N, T, B, c, absences) {
   const cagnotte = T * c;
@@ -642,7 +642,7 @@ const ECRANS = {
           "<button class='carte-t' data-offre='" + inv.type + "'><div class='l1'><b>" + echappe(inv.nom) + "</b><span class='etiquette " + (inv.type === "invitation" ? "v" : "a") + "'>" + (inv.type === "invitation" ? "Invitation" : "Ouvert") + "</span></div><div class='l2'>" + (inv.type === "invitation" ? "De <b>" + nomId(inv.orga) + "</b> · " : "") + F(inv.cfg.c) + " " + RYTHMES[inv.cfg.rythme].lib.toLowerCase() + " · " + resumeFormat(inv.cfg) + "</div><div class='l2'>Cagnotte de chaque gagnant : <b>" + F(cagnotteDe(inv.cfg)) + "</b></div></button>" : "") +
         "<p class='groupe-titre'>Événements ouverts</p>" +
         "<button class='carte-t' data-offre='global'><div class='l1'><b>" + OFFRES.global.nom + "</b><span>" + OFFRES.global.deja.length + " / " + N(OFFRES.global.cfg) + " places</span></div><div class='l2'>" + F(OFFRES.global.cfg.c) + " chaque jour · " + duree("jour", OFFRES.global.cfg.T) + " · cagnotte <b>" + F(cagnotteDe(OFFRES.global.cfg)) + "</b></div></button>" +
-        "<div class='bloc'><h3>Les règles, les mêmes pour tous</h3><div>Une <b>caution de 30 %</b> de la cagnotte, rendue au fil de tes mises après ton gain. Le jour de ton gain, SwimPay <b>ne garde que ce que tu dois encore</b>, ta caution d'abord ; tout le reste t'est rendu. À chaque mise payée, on t'en rend un peu plus.</div></div>" +
+        "<div class='bloc'><h3>Les règles, les mêmes pour tous</h3><div>Une <b>caution de 25 %</b> de la cagnotte, rendue au fil de tes mises après ton gain. Le jour de ton gain, SwimPay <b>ne garde que ce que tu dois encore</b>, ta caution d'abord ; tout le reste t'est rendu. À chaque mise payée, on t'en rend un peu plus.</div></div>" +
         "<div class='pousse'></div>" +
         "<button class='pilule blanche' data-aller='creer'>Créer une tontine</button>" +
       "</div>" + nav();
