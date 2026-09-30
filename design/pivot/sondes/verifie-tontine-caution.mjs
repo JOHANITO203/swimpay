@@ -28,7 +28,7 @@ const PORT = 9610 + Math.floor(process.pid % 200);
 const profil = mkdtempSync(join(tmpdir(), "swimpay-tontine-"));
 const chrome = spawn(CHROME, ["--headless=new", "--disable-gpu", "--disable-extensions",
   `--remote-debugging-port=${PORT}`, `--user-data-dir=${profil}`, "about:blank"], { stdio: "ignore" });
-const menage = () => { try { chrome.kill(); } catch {} try { rmSync(profil, { recursive: true, force: true }); } catch {} };
+const menage = () => { try { chrome.kill(); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } try { rmSync(profil, { recursive: true, force: true }); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } };
 process.on("exit", menage);
 
 const dodo = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -38,7 +38,7 @@ for (let i = 0; i < 60 && !ws; i++) {
   try {
     const p = (await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()).find((x) => x.type === "page");
     if (p) ws = new WebSocket(p.webSocketDebuggerUrl);
-  } catch {}
+  } catch { /* Chrome démarre encore : on réessaie au tour suivant */ }
 }
 if (!ws) { console.error("Chrome injoignable"); process.exit(2); }
 await new Promise((r) => (ws.onopen = r));
