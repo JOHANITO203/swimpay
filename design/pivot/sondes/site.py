@@ -284,6 +284,7 @@ a {{ color: inherit; text-decoration: none; }}
 .bouton {{
   display: inline-flex; align-items: center; justify-content: center; gap: 9px;
   min-height: 46px; padding: 0 20px; border-radius: 999px; border: 0; cursor: pointer;
+  white-space: nowrap;  /* charte : un bouton ne casse jamais sur deux lignes */
   font-family: inherit; font-size: 15.5px; font-weight: 500;
   transition: transform 140ms var(--sortie), background-color 180ms ease;
 }}
@@ -353,7 +354,9 @@ a {{ color: inherit; text-decoration: none; }}
   display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px;
   /* Les boutons portent leur propre sol : ils n'ont pas besoin de la colonne
      etroite qui protege le texte, et tiennent sur une seule ligne. */
-  width: max-content; max-width: min(52ch, 46%);
+  /* max-width en % se calculait sur la colonne de 39 % : il restait ~250 px et
+     « Telecharger l'application » cassait. Les boutons passent a la ligne entiers. */
+  width: max-content; max-width: 90vw;
 }}
 /* Sur une photo, un bouton a bord seul n'a pas de sol : mesure 2,19:1 sur la
    manche. Il en prend un, opaque. */
@@ -599,6 +602,10 @@ a {{ color: inherit; text-decoration: none; }}
 }}
 .duo-img {{ border-radius: 28px; overflow: hidden; box-shadow: 0 30px 70px rgba(20, 20, 20, .16); }}
 .duo-img img {{ display: block; width: 100%; height: auto; }}
+/* Une image en portrait, bridee en hauteur, garde sa largeur naturelle : le cadre
+   la suit, sinon il restait une bande blanche a droite (mesure le 30/09 : 312 a
+   433 px d'image dans un cadre de 555 px, sur trois pages). */
+.duo-img.etroit {{ justify-self: center; width: fit-content; max-width: 100%; }}
 @media (max-width: 880px) {{ .duo {{ grid-template-columns: 1fr; }} }}
 
 /* ─── SECTIONS ─── */
@@ -988,7 +995,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
         </div>
         <p class="para" id="installer-mot" style="margin-top: 20px; font-size: 14.5px"></p>
       </div>
-      <div class="duo-img">
+      <div class="duo-img etroit">
         <img src="{img_accueil}" width="900" height="1205" loading="lazy"
              style="max-height: 580px; width: auto"
              alt="SwimPay dans la main, le solde et les dernières opérations dès l'ouverture">
@@ -1008,7 +1015,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
             <b>la recharge est gratuite</b> et les frais suivent l'opération. Votre compte
             s'ouvre avec votre numéro de téléphone, en quelques minutes.</p>
         </div>
-        <div class="duo-img">
+        <div class="duo-img etroit">
           <img src="{img_pieces}" width="820" height="1469" loading="lazy"
                style="max-height: 560px; width: auto"
                alt="Des pièces SwimPay qui tombent et s'empilent : moins de frais, plus pour vous">
@@ -1197,7 +1204,7 @@ footer {{ background: var(--noir); color: rgba(255, 255, 255, .6); padding: 70px
             ensemble sous le checkout : l'identité de celui qui paie, la facture
             normalisée, l'argent, et les réseaux qui le portent.</p>
         </div>
-        <div class="duo-img">
+        <div class="duo-img etroit">
           <img src="{img_socle}" width="940" height="1259" loading="lazy"
                style="max-height: 520px; width: auto"
                alt="Les quatre couches de SwimPay en vue éclatée">
