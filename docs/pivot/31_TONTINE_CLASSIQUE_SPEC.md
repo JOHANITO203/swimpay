@@ -405,9 +405,11 @@ tontine à l'autre). Aucun humain ne décide, rien n'est bloqué.
 
 Scripts : `design/pivot/sondes/tontine-v3.py` (la règle de la version 3, et les
 épreuves), repris à l'identique par le moteur de la démo (1 760 cas comparés, zéro
-écart). Exemple de référence : 10 membres, 10 tours, 10 000 F. Les scénarios du
-§11.1 ont été joués avec une caution de 30 % ; les épreuves du §11.2 passent aussi à
-25 %, la caution retenue.
+écart). Exemple de référence : 10 membres, 10 tours, 10 000 F, **caution de 25 %**.
+Les scénarios du §11.1 sont rejoués par `tontine-v3-scenarios.py`, qui retrouve aussi
+à l'identique les chiffres de l'ancienne caution de 30 %. Deux lignes changent à 25 % :
+C (SwimPay avance 3 000 F, remboursés) et H (le dernier finit à +24 500 F au lieu de
++27 000 F : une caution plus petite laisse moins de pénalités à prendre).
 Résultat = ce que chacun a reçu moins ce qu'il a versé, à la fin.
 
 ### 11.1 Du scénario joyeux au pire
@@ -416,12 +418,12 @@ Résultat = ce que chacun a reçu moins ce qu'il a versé, à la fin.
 |---|---|---|---|
 | A. Tout le monde paie | −3 900 F ; les 3 derniers −900 F | — | +30 000 F, aucune avance |
 | B. Un membre manque 2 échéances puis revient | −3 778 F environ | −5 000 F | +30 000 F, aucune avance |
-| C. Un membre pas encore gagnant abandonne au tour 4 | −3 611 F environ | −6 500 F | +30 000 F, aucune avance |
+| C. Un membre pas encore gagnant abandonne au tour 4 | −3 611 F environ | −6 500 F | +30 000 F, avance de 3 000 F au plus, remboursée, **perte 0** |
 | D. Le gagnant du tour 1 cesse de payer | −3 778 F environ | −5 000 F | +30 000 F, aucune avance |
 | E. Les 3 premiers gagnants cessent de payer | −3 429 F environ | −5 000 F chacun | +30 000 F, aucune avance |
 | F. Les 5 premiers gagnants cessent de payer au tour 6 | de −2 800 à +200 F | −5 000 F chacun | +30 000 F, aucune avance |
 | G. Les 9 premiers cessent de payer après leur gain | le dernier : +9 000 F | −5 000 F à −2 000 F | +30 000 F, aucune avance |
-| H. Tous sauf le dernier abandonnent dès le tour 2 | le dernier : +27 000 F | −2 500 F à −9 000 F | +30 000 F, avance de 20 000 F au plus, remboursée, **perte 0** |
+| H. Tous sauf le dernier abandonnent dès le tour 2 | le dernier : +24 500 F | −2 500 F à −9 000 F | +30 000 F, avance de 20 000 F au plus, remboursée, **perte 0** |
 
 Le −3 900 F d'un fidèle, ce sont les frais du système (3 000 F) et sa part du bonus
 des derniers (900 F). Un fidèle ne finit jamais plus bas que dans le cas A ; ce qu'il

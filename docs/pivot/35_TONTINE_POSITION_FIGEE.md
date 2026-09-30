@@ -102,6 +102,11 @@ rejouées avec la caution de 25 % :
 
 Sur l'exemple de 330 000 F : perte de SwimPay 0, argent des autres en main 0.
 
+Les 8 scénarios du `31` §11.1 (du « tout le monde paie » au « tous fuient sauf le
+dernier »), rejoués à 25 % par `tontine-v3-scenarios.py` : perte de SwimPay 0 partout ;
+un fidèle ne finit jamais plus bas que −3 900 F (places 1 à 7) ou −900 F (dernier
+tiers) sur l'exemple de 100 000 F.
+
 ---
 
 ## 6. Ce qui reste ouvert
@@ -110,5 +115,4 @@ Sur l'exemple de 330 000 F : perte de SwimPay 0, argent des autres en main 0.
    (`31` §13).
 2. L'autorisation de prélèvement et la proportionnalité de la pénalité de 5 %.
 3. Les délais de grâce et de suspension `[H]`.
-4. Les scénarios chiffrés du `31` §11.1 datent de la caution à 30 % ; les épreuves du
-   §5 passent à 25 %.
+
